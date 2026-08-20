@@ -121,11 +121,7 @@ class RuntimeSetupExample {
   static void example4RuntimeSetup() {
     // Define environments
     const prodEnv = TomEnvironment('prod');
-    const devEnv = TomEnvironment(
-      'dev',
-      parent: prodEnv,
-      isDevelopment: true,
-    );
+    const devEnv = TomEnvironment('dev', parent: prodEnv, isDevelopment: true);
 
     // Register environments
     TomRuntime.addEnvironment(prodEnv);

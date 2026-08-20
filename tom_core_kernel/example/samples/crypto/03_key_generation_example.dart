@@ -55,9 +55,18 @@ class KeyPairGenerationExample {
     exponent = publicKey.exponent;
     hasPrivateKeyComponents = privateKey.p != null && privateKey.q != null;
 
-    assert(modulusBitLength == 2048, 'Standard RSA key size should be 2048 bits');
-    assert(exponent == BigInt.from(65537), 'Standard public exponent should be 65537');
-    assert(hasPrivateKeyComponents, 'Should have private key components p and q');
+    assert(
+      modulusBitLength == 2048,
+      'Standard RSA key size should be 2048 bits',
+    );
+    assert(
+      exponent == BigInt.from(65537),
+      'Standard public exponent should be 65537',
+    );
+    assert(
+      hasPrivateKeyComponents,
+      'Should have private key components p and q',
+    );
   }
 }
 
@@ -188,10 +197,14 @@ class DevelopmentKeysExample {
     devPrivateExists = devPrivate.privateExponent != null;
 
     // Development keys should have standard properties
-    isDevelopmentKey = devModulusBits == 2048 && devExponent == BigInt.from(65537);
+    isDevelopmentKey =
+        devModulusBits == 2048 && devExponent == BigInt.from(65537);
 
     assert(devModulusBits == 2048, 'Development key should be 2048 bits');
-    assert(devExponent == BigInt.from(65537), 'Development key should use 65537');
+    assert(
+      devExponent == BigInt.from(65537),
+      'Development key should use 65537',
+    );
     assert(devPrivateExists, 'Should have private exponent');
     assert(isDevelopmentKey, 'Should be a valid development key');
   }
@@ -220,7 +233,10 @@ class KeyComparisonExample {
     generatedDifferentFromDev = publicKey.modulus != devPublic.modulus;
 
     assert(publicPrivateModulusMatch, 'Public/Private modulus should match');
-    assert(generatedDifferentFromDev, 'Generated keys should differ from dev keys');
+    assert(
+      generatedDifferentFromDev,
+      'Generated keys should differ from dev keys',
+    );
   }
 }
 

@@ -41,9 +41,7 @@ class FieldErrorsExample {
     result = register('not-an-email', 'short');
 
     fieldErrorCount = result!.error!.fieldErrors.length;
-    offendingFields = [
-      for (final e in result!.error!.fieldErrors) e.field,
-    ];
+    offendingFields = [for (final e in result!.error!.fieldErrors) e.field];
 
     assert(fieldErrorCount == 2, 'Both inputs were rejected');
     assert(
@@ -108,25 +106,31 @@ class SeverityExample {
 
   /// Severity does not change what happened — it suggests how loudly to say it.
   static String present(TomErrorResult error) => switch (error.severity) {
-        TomErrorSeverity.info => 'notice',
-        TomErrorSeverity.warning => 'toast',
-        TomErrorSeverity.error => 'dialog',
-        TomErrorSeverity.fatal => 'blocking-dialog',
-      };
+    TomErrorSeverity.info => 'notice',
+    TomErrorSeverity.warning => 'toast',
+    TomErrorSeverity.error => 'dialog',
+    TomErrorSeverity.fatal => 'blocking-dialog',
+  };
 
   static void example4Severity() {
     presentations
       ..clear()
-      ..add(present(
-        const TomErrorResult('PARTIAL', severity: TomErrorSeverity.info),
-      ))
-      ..add(present(
-        const TomErrorResult('ODD', severity: TomErrorSeverity.warning),
-      ))
+      ..add(
+        present(
+          const TomErrorResult('PARTIAL', severity: TomErrorSeverity.info),
+        ),
+      )
+      ..add(
+        present(
+          const TomErrorResult('ODD', severity: TomErrorSeverity.warning),
+        ),
+      )
       ..add(present(const TomErrorResult('FAILED')))
-      ..add(present(
-        const TomErrorResult('BROKEN', severity: TomErrorSeverity.fatal),
-      ));
+      ..add(
+        present(
+          const TomErrorResult('BROKEN', severity: TomErrorSeverity.fatal),
+        ),
+      );
 
     assert(
       presentations.join(',') == 'notice,toast,dialog,blocking-dialog',

@@ -75,10 +75,12 @@ class ContextExecutionExample {
       entriesVisibleInZone = currentContext?.contextMap.length ?? 0;
 
       // Individual values come from the named, typed read.
-      retrievedUserId =
-          TomExecutionContext.getValueFromCurrentZone<String>('userId');
-      retrievedRequestId =
-          TomExecutionContext.getValueFromCurrentZone<String>('requestId');
+      retrievedUserId = TomExecutionContext.getValueFromCurrentZone<String>(
+        'userId',
+      );
+      retrievedRequestId = TomExecutionContext.getValueFromCurrentZone<String>(
+        'requestId',
+      );
     });
 
     print('   - Zone executed: $zoneExecuted');
@@ -123,8 +125,9 @@ class DynamicEntriesExample {
     // The count is a property of the map, so it is read from the map.
     entryCountAfterAdding = dynamicContext.contextMap.length;
     capturedRole = dynamicContext.getEntry<String>('role')?.value;
-    capturedPermissions =
-        dynamicContext.getEntry<List<String>>('permissions')?.value;
+    capturedPermissions = dynamicContext
+        .getEntry<List<String>>('permissions')
+        ?.value;
 
     print('   - Entry count after adding: $entryCountAfterAdding');
     print('   - role: $capturedRole');
@@ -134,7 +137,10 @@ class DynamicEntriesExample {
     assert(capturedRole == 'admin', 'Role should be admin');
     assert(capturedPermissions is List<String>, 'Permissions should be a list');
     assert(capturedPermissions!.length == 3, 'Should have 3 permissions');
-    assert(capturedPermissions!.contains('read'), 'Should have read permission');
+    assert(
+      capturedPermissions!.contains('read'),
+      'Should have read permission',
+    );
   }
 }
 
@@ -301,12 +307,15 @@ class StaticZoneAccessExample {
 
     staticContext.runInContext(() {
       // Static method to get values directly by name and type
-      staticSessionId =
-          TomExecutionContext.getValueFromCurrentZone<String>('sessionId');
-      staticMaxRetries =
-          TomExecutionContext.getValueFromCurrentZone<int>('maxRetries');
-      staticMissing =
-          TomExecutionContext.getValueFromCurrentZone<String>('notThere');
+      staticSessionId = TomExecutionContext.getValueFromCurrentZone<String>(
+        'sessionId',
+      );
+      staticMaxRetries = TomExecutionContext.getValueFromCurrentZone<int>(
+        'maxRetries',
+      );
+      staticMissing = TomExecutionContext.getValueFromCurrentZone<String>(
+        'notThere',
+      );
     });
 
     print('   - sessionId: $staticSessionId');

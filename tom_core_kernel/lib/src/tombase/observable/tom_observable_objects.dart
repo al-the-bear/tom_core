@@ -559,7 +559,7 @@ class TomOZonedDate extends TomOTimezoned<TomZonedDate> {
     TomZonedDate.fromDateTime(DateTime.utc(1970)),
   );
 
-  TomOZonedDate(super.initialValue): super._();
+  TomOZonedDate(super.initialValue) : super._();
 }
 
 /// An observable wrapper for [TomZonedDateTime] values (datetime with timezone).
@@ -597,7 +597,7 @@ class TomOZonedDateTime extends TomOTimezoned<TomZonedDateTime> {
     TomZonedDateTime.fromDateTime(DateTime.utc(1970)),
   );
 
-  TomOZonedDateTime(super.initialValue): super._();
+  TomOZonedDateTime(super.initialValue) : super._();
 }
 
 /// An observable wrapper for nullable [String] values.
@@ -840,10 +840,14 @@ class TomTimeRange extends TomClass {
 @tomReflector
 class TomDateTimeRange extends TomClass {
   /// The start datetime of the range (nullable).
-  TomNOZonedDateTime startDateTime = TomNOZonedDateTime(TomNOZonedDateTime.noZonedDateTime);
+  TomNOZonedDateTime startDateTime = TomNOZonedDateTime(
+    TomNOZonedDateTime.noZonedDateTime,
+  );
 
   /// The end datetime of the range (nullable).
-  TomNOZonedDateTime endDateTime = TomNOZonedDateTime(TomNOZonedDateTime.noZonedDateTime);
+  TomNOZonedDateTime endDateTime = TomNOZonedDateTime(
+    TomNOZonedDateTime.noZonedDateTime,
+  );
 }
 
 /// A base class for complex observable objects with multiple [TomObject] members.
@@ -897,7 +901,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
       tomReflector.reflectType(TomClass) as ClassMirror;
 
   /// Hook to create objects BEFORE start of self-observation
-  /// 
+  ///
   void prepareForSelfObservation() {
     // Override in subclasses to create member objects before observation starts
   }
@@ -1338,7 +1342,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
       return valueValue == null
           ? null
           : "${TomDateTime.serializationPrefix}"
-              "${(valueValue as DateTime).toIso8601String()}";
+                "${(valueValue as DateTime).toIso8601String()}";
     }
     if (value is TomOTimezoned) {
       return valueValue != null
@@ -1730,6 +1734,7 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
 
   @override
   bool any(bool Function(E e) test) => _value.any(test);
+
   /// A **read-only** re-typed view of this list.
   ///
   /// `List.cast` alone returns a writable view: `list.cast<TomObject>().add(x)`
@@ -1817,8 +1822,7 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   /// Like [_acceptsElement], this exists because `E` is only in scope here:
   /// [TomClass._setListMember] knows the raw JSON value but not the element
   /// type. See [TomObject._widenForDoubleTarget] for the rule itself.
-  dynamic _widenElement(dynamic raw) =>
-      TomObject._widenForDoubleTarget<E>(raw);
+  dynamic _widenElement(dynamic raw) => TomObject._widenForDoubleTarget<E>(raw);
 
   /// Loosely-typed variant of [resetWith] used by deserialization.
   ///

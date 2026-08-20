@@ -33,7 +33,8 @@ class UserAccount implements TomLoggable {
   String get logRepresentation => 'User($id: $username)';
 
   @override
-  String toString() => 'UserAccount{id: $id, username: $username, email: $email, sensitiveData: $sensitiveData}';
+  String toString() =>
+      'UserAccount{id: $id, username: $username, email: $email, sensitiveData: $sensitiveData}';
 }
 
 /// Another loggable class showing custom formatting.
@@ -130,8 +131,10 @@ class AdvancedLoggingExample {
 
     // Assertions
     assert(pushedLevel == TomLogLevel.trace, 'Should be trace after push');
-    assert(levelStackWorks,
-        'Push should change the level and pop should restore the previous one');
+    assert(
+      levelStackWorks,
+      'Push should change the level and pop should restore the previous one',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -182,17 +185,27 @@ class AdvancedLoggingExample {
     print('\n3. Log level exceptions pattern:');
 
     // Set multiple name levels using a pattern string
-    tomLog.setLogLevelExceptions('AuthService=TRACE,PaymentService=DEBUG,ReportGenerator=INFO');
+    tomLog.setLogLevelExceptions(
+      'AuthService=TRACE,PaymentService=DEBUG,ReportGenerator=INFO',
+    );
 
     // Verify they were set
     final authLevel = tomLog.getNameLevel('AuthService');
     final paymentLevel = tomLog.getNameLevel('PaymentService');
     final reportLevel = tomLog.getNameLevel('ReportGenerator');
 
-    print('   - Pattern: AuthService=TRACE,PaymentService=DEBUG,ReportGenerator=INFO');
-    print('   - AuthService: ${authLevel?.levelPattern} (trace=${TomLogLevel.trace.levelPattern})');
-    print('   - PaymentService: ${paymentLevel?.levelPattern} (debug=${TomLogLevel.debug.levelPattern})');
-    print('   - ReportGenerator: ${reportLevel?.levelPattern} (info=${TomLogLevel.info.levelPattern})');
+    print(
+      '   - Pattern: AuthService=TRACE,PaymentService=DEBUG,ReportGenerator=INFO',
+    );
+    print(
+      '   - AuthService: ${authLevel?.levelPattern} (trace=${TomLogLevel.trace.levelPattern})',
+    );
+    print(
+      '   - PaymentService: ${paymentLevel?.levelPattern} (debug=${TomLogLevel.debug.levelPattern})',
+    );
+    print(
+      '   - ReportGenerator: ${reportLevel?.levelPattern} (info=${TomLogLevel.info.levelPattern})',
+    );
 
     // Clean up
     tomLog.removeNameLevel('AuthService');
@@ -239,14 +252,21 @@ class AdvancedLoggingExample {
     // Assertions. Compare bit patterns, not instances: name lookup builds each
     // compound level fresh, so the result is never identical to the static.
     assert(
-        byNameDevelopment.levelPattern == TomLogLevel.development.levelPattern,
-        'DEVELOPMENT should resolve to the development level');
-    assert(byNameProduction.levelPattern == TomLogLevel.production.levelPattern,
-        'PRODUCTION should resolve to the production level');
-    assert(byNameSilent.levelPattern == TomLogLevel.silent.levelPattern,
-        'SILENT should resolve to the silent level');
-    assert(restoredLevel.levelPattern == currentLevel.levelPattern,
-        'The level in force before the section should be restored');
+      byNameDevelopment.levelPattern == TomLogLevel.development.levelPattern,
+      'DEVELOPMENT should resolve to the development level',
+    );
+    assert(
+      byNameProduction.levelPattern == TomLogLevel.production.levelPattern,
+      'PRODUCTION should resolve to the production level',
+    );
+    assert(
+      byNameSilent.levelPattern == TomLogLevel.silent.levelPattern,
+      'SILENT should resolve to the silent level',
+    );
+    assert(
+      restoredLevel.levelPattern == currentLevel.levelPattern,
+      'The level in force before the section should be restored',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -285,7 +305,10 @@ class AdvancedLoggingExample {
 
     // Assertions
     assert(loggableWorks, 'Loggable should hide sensitive data');
-    assert(!user.logRepresentation.contains('secret'), 'Should not contain sensitive data');
+    assert(
+      !user.logRepresentation.contains('secret'),
+      'Should not contain sensitive data',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -294,7 +317,8 @@ class AdvancedLoggingExample {
   static void example6LimitedHelper() {
     print('\n6. limited() helper function:');
 
-    final longString = 'This is a very long string that would clutter log output if not truncated';
+    final longString =
+        'This is a very long string that would clutter log output if not truncated';
     final shortString = 'Short';
     final nullValue = null;
 
@@ -323,16 +347,36 @@ class AdvancedLoggingExample {
     print('\n7. Global logging settings:');
 
     // Show current global settings
-    print('   - globalSettingDetermineCaller: ${TomLogger.globalSettingDetermineCaller}');
-    print('   - globalSettingInfoEnabled: ${TomLogger.globalSettingInfoEnabled}');
-    print('   - globalSettingWarnEnabled: ${TomLogger.globalSettingWarnEnabled}');
-    print('   - globalSettingErrorEnabled: ${TomLogger.globalSettingErrorEnabled}');
-    print('   - globalSettingDebugEnabled: ${TomLogger.globalSettingDebugEnabled}');
-    print('   - globalSettingTraceEnabled: ${TomLogger.globalSettingTraceEnabled}');
-    print('   - globalSettingTrafficEnabled: ${TomLogger.globalSettingTrafficEnabled}');
-    print('   - globalSettingSevereEnabled: ${TomLogger.globalSettingSevereEnabled}');
-    print('   - globalSettingFatalEnabled: ${TomLogger.globalSettingFatalEnabled}');
-    print('   - globalSettingStatusEnabled: ${TomLogger.globalSettingStatusEnabled}');
+    print(
+      '   - globalSettingDetermineCaller: ${TomLogger.globalSettingDetermineCaller}',
+    );
+    print(
+      '   - globalSettingInfoEnabled: ${TomLogger.globalSettingInfoEnabled}',
+    );
+    print(
+      '   - globalSettingWarnEnabled: ${TomLogger.globalSettingWarnEnabled}',
+    );
+    print(
+      '   - globalSettingErrorEnabled: ${TomLogger.globalSettingErrorEnabled}',
+    );
+    print(
+      '   - globalSettingDebugEnabled: ${TomLogger.globalSettingDebugEnabled}',
+    );
+    print(
+      '   - globalSettingTraceEnabled: ${TomLogger.globalSettingTraceEnabled}',
+    );
+    print(
+      '   - globalSettingTrafficEnabled: ${TomLogger.globalSettingTrafficEnabled}',
+    );
+    print(
+      '   - globalSettingSevereEnabled: ${TomLogger.globalSettingSevereEnabled}',
+    );
+    print(
+      '   - globalSettingFatalEnabled: ${TomLogger.globalSettingFatalEnabled}',
+    );
+    print(
+      '   - globalSettingStatusEnabled: ${TomLogger.globalSettingStatusEnabled}',
+    );
     print('');
     print('   These can be toggled to completely disable certain log levels');
     print('   even if the log level pattern would normally include them.');
@@ -362,13 +406,19 @@ class AdvancedLoggingExample {
 
     print('');
     print('   - info records captured with the toggle on:  $countWhileEnabled');
-    print('   - ... and after one more call with it off:   $countWhileDisabled');
+    print(
+      '   - ... and after one more call with it off:   $countWhileDisabled',
+    );
 
     // Assertions
-    assert(countWhileEnabled == 1,
-        'An enabled level should reach the output at a matching log level');
-    assert(countWhileDisabled == countWhileEnabled,
-        'A disabled level should emit nothing even though DEVELOPMENT includes it');
+    assert(
+      countWhileEnabled == 1,
+      'An enabled level should reach the output at a matching log level',
+    );
+    assert(
+      countWhileDisabled == countWhileEnabled,
+      'A disabled level should emit nothing even though DEVELOPMENT includes it',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -399,13 +449,17 @@ class AdvancedLoggingExample {
 
     // Assertions. STATUS is the easily-missed one: progress reporting is
     // deliberately kept off stdout so a program's real output stays clean.
-    assert(stderrLevel.levelPattern ==
-            (TomLogLevel.errors + TomLogLevel.status).levelPattern,
-        'stderr should default to errors plus status');
-    assert(stdoutLevel.levelPattern ==
-            (TomLogLevel.all - (TomLogLevel.errors + TomLogLevel.status))
-                .levelPattern,
-        'stdout should default to everything except errors and status');
+    assert(
+      stderrLevel.levelPattern ==
+          (TomLogLevel.errors + TomLogLevel.status).levelPattern,
+      'stderr should default to errors plus status',
+    );
+    assert(
+      stdoutLevel.levelPattern ==
+          (TomLogLevel.all - (TomLogLevel.errors + TomLogLevel.status))
+              .levelPattern,
+      'stdout should default to everything except errors and status',
+    );
     for (final level in [
       TomLogLevel.error,
       TomLogLevel.severe,
@@ -413,8 +467,10 @@ class AdvancedLoggingExample {
       TomLogLevel.status,
     ]) {
       assert(stderrLevel.matches(level), 'Level $level should reach stderr');
-      assert(!stdoutLevel.matches(level),
-          'Level $level should not also reach stdout');
+      assert(
+        !stdoutLevel.matches(level),
+        'Level $level should not also reach stdout',
+      );
     }
     for (final level in [
       TomLogLevel.trace,
@@ -424,8 +480,10 @@ class AdvancedLoggingExample {
       TomLogLevel.warn,
     ]) {
       assert(stdoutLevel.matches(level), 'Level $level should reach stdout');
-      assert(!stderrLevel.matches(level),
-          'Level $level should not also reach stderr');
+      assert(
+        !stderrLevel.matches(level),
+        'Level $level should not also reach stderr',
+      );
     }
   }
 
@@ -454,7 +512,10 @@ class AdvancedLoggingExample {
     assert(infoAndError.matches(TomLogLevel.info), 'Should match info');
     assert(infoAndError.matches(TomLogLevel.error), 'Should match error');
     assert(!infoAndError.matches(TomLogLevel.debug), 'Should not match debug');
-    assert(!productionNoWarn.matches(TomLogLevel.warn), 'Should not match warn');
+    assert(
+      !productionNoWarn.matches(TomLogLevel.warn),
+      'Should not match warn',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -465,18 +526,35 @@ class AdvancedLoggingExample {
 
     print('   Level           | Pattern  | Description');
     print('   ----------------|----------|----------------------------------');
-    print('   development     | ${TomLogLevel.development.levelPattern.toString().padLeft(8)} | All levels including trace');
-    print('   extended        | ${TomLogLevel.extended.levelPattern.toString().padLeft(8)} | Production + debug + traffic');
-    print('   production      | ${TomLogLevel.production.levelPattern.toString().padLeft(8)} | info, warn, errors, status');
-    print('   still           | ${TomLogLevel.still.levelPattern.toString().padLeft(8)} | warn + errors + status');
-    print('   silent          | ${TomLogLevel.silent.levelPattern.toString().padLeft(8)} | errors + status only');
-    print('   errors          | ${TomLogLevel.errors.levelPattern.toString().padLeft(8)} | error + severe + fatal');
-    print('   off/none        | ${TomLogLevel.off.levelPattern.toString().padLeft(8)} | No logging');
-    print('   all             | ${TomLogLevel.all.levelPattern.toString().padLeft(8)} | All possible levels');
+    print(
+      '   development     | ${TomLogLevel.development.levelPattern.toString().padLeft(8)} | All levels including trace',
+    );
+    print(
+      '   extended        | ${TomLogLevel.extended.levelPattern.toString().padLeft(8)} | Production + debug + traffic',
+    );
+    print(
+      '   production      | ${TomLogLevel.production.levelPattern.toString().padLeft(8)} | info, warn, errors, status',
+    );
+    print(
+      '   still           | ${TomLogLevel.still.levelPattern.toString().padLeft(8)} | warn + errors + status',
+    );
+    print(
+      '   silent          | ${TomLogLevel.silent.levelPattern.toString().padLeft(8)} | errors + status only',
+    );
+    print(
+      '   errors          | ${TomLogLevel.errors.levelPattern.toString().padLeft(8)} | error + severe + fatal',
+    );
+    print(
+      '   off/none        | ${TomLogLevel.off.levelPattern.toString().padLeft(8)} | No logging',
+    );
+    print(
+      '   all             | ${TomLogLevel.all.levelPattern.toString().padLeft(8)} | All possible levels',
+    );
 
     // Assertions: each description above is a claim about the composition of
     // a level, so each is checked against the level itself.
-    const allPrimitiveNames = 'trace, debug, traffic, info, warn, status, '
+    const allPrimitiveNames =
+        'trace, debug, traffic, info, warn, status, '
         'error, severe and fatal';
     final allPrimitives = [
       TomLogLevel.trace,
@@ -491,46 +569,59 @@ class AdvancedLoggingExample {
     ];
 
     for (final level in allPrimitives) {
-      assert(TomLogLevel.development.matches(level),
-          'development should include every named level ($allPrimitiveNames)');
-      assert(TomLogLevel.all.matches(level),
-          'all should include every named level');
+      assert(
+        TomLogLevel.development.matches(level),
+        'development should include every named level ($allPrimitiveNames)',
+      );
+      assert(
+        TomLogLevel.all.matches(level),
+        'all should include every named level',
+      );
       assert(!TomLogLevel.off.matches(level), 'off should include nothing');
     }
-    assert(TomLogLevel.off.levelPattern == 0, 'off should be the empty pattern');
+    assert(
+      TomLogLevel.off.levelPattern == 0,
+      'off should be the empty pattern',
+    );
 
     assert(
-        TomLogLevel.extended.levelPattern ==
-            (TomLogLevel.production + TomLogLevel.debug + TomLogLevel.traffic)
-                .levelPattern,
-        'extended should be production plus debug and traffic');
+      TomLogLevel.extended.levelPattern ==
+          (TomLogLevel.production + TomLogLevel.debug + TomLogLevel.traffic)
+              .levelPattern,
+      'extended should be production plus debug and traffic',
+    );
     assert(
-        TomLogLevel.production.levelPattern ==
-            (TomLogLevel.info +
-                    TomLogLevel.warn +
-                    TomLogLevel.errors +
-                    TomLogLevel.status)
-                .levelPattern,
-        'production should be info, warn, errors and status');
+      TomLogLevel.production.levelPattern ==
+          (TomLogLevel.info +
+                  TomLogLevel.warn +
+                  TomLogLevel.errors +
+                  TomLogLevel.status)
+              .levelPattern,
+      'production should be info, warn, errors and status',
+    );
     assert(
-        TomLogLevel.still.levelPattern ==
-            (TomLogLevel.warn + TomLogLevel.errors + TomLogLevel.status)
-                .levelPattern,
-        'still should be warn plus errors and status');
+      TomLogLevel.still.levelPattern ==
+          (TomLogLevel.warn + TomLogLevel.errors + TomLogLevel.status)
+              .levelPattern,
+      'still should be warn plus errors and status',
+    );
     assert(
-        TomLogLevel.silent.levelPattern ==
-            (TomLogLevel.errors + TomLogLevel.status).levelPattern,
-        'silent should be errors and status only');
+      TomLogLevel.silent.levelPattern ==
+          (TomLogLevel.errors + TomLogLevel.status).levelPattern,
+      'silent should be errors and status only',
+    );
     assert(
-        TomLogLevel.errors.levelPattern ==
-            (TomLogLevel.error + TomLogLevel.severe + TomLogLevel.fatal)
-                .levelPattern,
-        'errors should be error, severe and fatal');
+      TomLogLevel.errors.levelPattern ==
+          (TomLogLevel.error + TomLogLevel.severe + TomLogLevel.fatal)
+              .levelPattern,
+      'errors should be error, severe and fatal',
+    );
 
     assert(
-        TomLogLevel.development.levelPattern ==
-            (TomLogLevel.extended + TomLogLevel.trace).levelPattern,
-        'development should be extended plus trace, and nothing more');
+      TomLogLevel.development.levelPattern ==
+          (TomLogLevel.extended + TomLogLevel.trace).levelPattern,
+      'development should be extended plus trace, and nothing more',
+    );
   }
 }
 
@@ -541,7 +632,9 @@ class AdvancedLoggingExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('ADVANCED LOGGING CONFIGURATION EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   AdvancedLoggingExample.example1LogLevelStack();
   AdvancedLoggingExample.example2NameLevels();

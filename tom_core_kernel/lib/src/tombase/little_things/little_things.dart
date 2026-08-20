@@ -429,9 +429,11 @@ List<String> tomGetStackTraceAsList([StackTrace? s, int depth = -1]) {
 /// print('Full trace: $stackString');
 /// print('First frame: ${stackList.first}');
 /// ```
-(String, List<String>) tomGetStackTraceAsTuple([StackTrace? s, int depth = -1]) {
+(String, List<String>) tomGetStackTraceAsTuple([
+  StackTrace? s,
+  int depth = -1,
+]) {
   List<String> stackLines = _processStackFrames(s, depth);
   String stackString = stackLines.join('\n');
   return (stackString, stackLines);
 }
-

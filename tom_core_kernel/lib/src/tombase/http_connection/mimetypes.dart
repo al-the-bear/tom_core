@@ -255,12 +255,7 @@ class TomMimeType {
       }
     }
 
-    return TomMimeType(
-      primaryType,
-      subType,
-      charset: charset,
-      codecs: codecs,
-    );
+    return TomMimeType(primaryType, subType, charset: charset, codecs: codecs);
   }
 
   /// Strips one pair of surrounding double quotes, which a parameter value is

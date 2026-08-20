@@ -95,7 +95,7 @@ class TomTimezoneException extends TomException {
 class TomTimezone {
   /// The IANA timezone name (e.g., 'America/New_York', 'Europe/London').
   final String timezone;
-  
+
   /// The underlying timezone location from the `timezone` package.
   ///
   /// Provides access to low-level timezone operations and data.

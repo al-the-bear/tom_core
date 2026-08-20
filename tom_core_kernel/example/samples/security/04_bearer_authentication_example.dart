@@ -44,8 +44,12 @@ class BearerAuthenticationExample {
     print('   - Provides access to TomPrincipal from tokens');
 
     // Static accessors for current token state
-    print('   - Current auth token: ${TomBearerAuthentication.token ?? 'null'}');
-    print('   - Current authz token: ${TomBearerAuthentication.authorizationToken ?? 'null'}');
+    print(
+      '   - Current auth token: ${TomBearerAuthentication.token ?? 'null'}',
+    );
+    print(
+      '   - Current authz token: ${TomBearerAuthentication.authorizationToken ?? 'null'}',
+    );
 
     staticAccessorsWork = true;
   }
@@ -118,7 +122,10 @@ class BearerAuthenticationExample {
     assert(publicPayload['username'] == 'john.doe', 'Username should match');
     assert(publicPayload['userId'] == 123, 'User ID should match');
     assert(privatePayload['roles'] is List, 'Roles should be a list');
-    assert((privatePayload['roles'] as List).contains('premium'), 'Should have premium role');
+    assert(
+      (privatePayload['roles'] as List).contains('premium'),
+      'Should have premium role',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -182,12 +189,12 @@ class BearerAuthenticationExample {
     print('\n5. Client limits information (CLI):');
 
     final cli = TomClientLimitsInformation(
-      enabledModules: ['module.reports', 'module.dashboard', 'module.analytics'],
-      quotas: {
-        'api.calls.daily': 10000,
-        'storage.mb': 500,
-        'users.max': 25,
-      },
+      enabledModules: [
+        'module.reports',
+        'module.dashboard',
+        'module.analytics',
+      ],
+      quotas: {'api.calls.daily': 10000, 'storage.mb': 500, 'users.max': 25},
     );
 
     print('   - Enabled modules: ${cli.enabledModules}');
@@ -262,13 +269,19 @@ class BearerAuthenticationExample {
     print('   * token - Raw authentication token string');
     print('   * authorizationToken - Raw authorization token string');
     print('   * clientJwtToken - Parsed TomClientJwtToken for auth');
-    print('   * clientAuthorizationJwtToken - Parsed TomClientJwtToken for authz');
+    print(
+      '   * clientAuthorizationJwtToken - Parsed TomClientJwtToken for authz',
+    );
     print('   * getPrincipal() - Get the current TomPrincipal');
     print('');
     print('   Current state:');
     print('   * token: ${TomBearerAuthentication.token ?? 'null'}');
-    print('   * authorizationToken: ${TomBearerAuthentication.authorizationToken ?? 'null'}');
-    print('   * clientJwtToken: ${TomBearerAuthentication.clientJwtToken ?? 'null'}');
+    print(
+      '   * authorizationToken: ${TomBearerAuthentication.authorizationToken ?? 'null'}',
+    );
+    print(
+      '   * clientJwtToken: ${TomBearerAuthentication.clientJwtToken ?? 'null'}',
+    );
   }
 }
 
@@ -279,7 +292,9 @@ class BearerAuthenticationExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('BEARER AUTHENTICATION EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   BearerAuthenticationExample.example1AuthenticationStructure();
   BearerAuthenticationExample.example2ConvertPrincipalToPayload();

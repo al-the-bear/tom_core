@@ -73,10 +73,14 @@ Future<void> run() async {
     throw StateError('6000 minutes should have been rejected');
   } on TomFormattingException catch (e) {
     print('   6000 -> rejected: ${e.key}');
-    assert(e.key == 'formatting.utc_offset.out_of_range',
-        'Out-of-range offsets must report the documented key');
-    assert(e.parameters?['totalMinutes'] == 6000,
-        'The offending value must travel with the exception');
+    assert(
+      e.key == 'formatting.utc_offset.out_of_range',
+      'Out-of-range offsets must report the documented key',
+    );
+    assert(
+      e.parameters?['totalMinutes'] == 6000,
+      'The offending value must travel with the exception',
+    );
   }
   print('');
 
@@ -162,8 +166,11 @@ Future<void> run() async {
     // 6. autoLog — an exception logs itself on construction.
     // -------------------------------------------------------------------------
     recorder.messages.clear();
-    TomException('storage.connect.database_down', 'database down',
-        autoLog: true);
+    TomException(
+      'storage.connect.database_down',
+      'database down',
+      autoLog: true,
+    );
     assert(
       recorder.messages.any((m) => m.contains('EXCEPTION:')),
       'autoLog must emit an EXCEPTION line on construction',
@@ -172,8 +179,10 @@ Future<void> run() async {
       recorder.messages.any((m) => m.contains('database down')),
       'autoLog line must contain the default user message',
     );
-    print('6. autoLog emitted ${recorder.messages.length} line(s) on '
-        'construction.');
+    print(
+      '6. autoLog emitted ${recorder.messages.length} line(s) on '
+      'construction.',
+    );
   } finally {
     tomLog.logOutput = previousOutput;
   }
@@ -192,8 +201,10 @@ Future<void> run() async {
     'request failed',
     serverCallError: serverError,
   );
-  print('   status: ${httpException.serverCallError!.statusCode} '
-      '(${httpException.serverCallError!.reasonPhrase})');
+  print(
+    '   status: ${httpException.serverCallError!.statusCode} '
+    '(${httpException.serverCallError!.reasonPhrase})',
+  );
   assert(
     httpException.serverCallError!.statusCode == 404,
     'serverCallError must expose the attached HTTP status',

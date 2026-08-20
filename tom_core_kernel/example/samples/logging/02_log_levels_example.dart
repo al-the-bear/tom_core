@@ -137,8 +137,14 @@ class LevelByNameExample {
     debugByNameBit = debugByName?.levelPattern;
     prodByNameBit = prodByName?.levelPattern;
 
-    assert(debugByNameBit == TomLogLevel.debug.levelPattern, 'DEBUG should match');
-    assert(prodByNameBit == TomLogLevel.production.levelPattern, 'PRODUCTION should match');
+    assert(
+      debugByNameBit == TomLogLevel.debug.levelPattern,
+      'DEBUG should match',
+    );
+    assert(
+      prodByNameBit == TomLogLevel.production.levelPattern,
+      'PRODUCTION should match',
+    );
     assert(invalidName == null, 'Invalid name should return null');
     assert(caseInsensitive != null, 'Should be case-insensitive');
   }
@@ -174,9 +180,18 @@ class SetLogLevelExample {
 
     tomLog.setLogLevel(originalLogLevel);
 
-    assert(devLevel == TomLogLevel.development.levelPattern, 'Dev level should match');
-    assert(prodLevel == TomLogLevel.production.levelPattern, 'Prod level should match');
-    assert(extLevel == TomLogLevel.extended.levelPattern, 'Ext level should match');
+    assert(
+      devLevel == TomLogLevel.development.levelPattern,
+      'Dev level should match',
+    );
+    assert(
+      prodLevel == TomLogLevel.production.levelPattern,
+      'Prod level should match',
+    );
+    assert(
+      extLevel == TomLogLevel.extended.levelPattern,
+      'Ext level should match',
+    );
     assert(levelChangesWork, 'Level changes should work');
   }
 }
@@ -210,9 +225,18 @@ class PushPopLogLevelExample {
 
     tomLog.setLogLevel(originalLogLevel);
 
-    assert(baseLevelBit == TomLogLevel.production.levelPattern, 'Base should be production');
-    assert(pushedLevelBit == TomLogLevel.development.levelPattern, 'Pushed should be development');
-    assert(afterPopBit == TomLogLevel.production.levelPattern, 'After pop should be production');
+    assert(
+      baseLevelBit == TomLogLevel.production.levelPattern,
+      'Base should be production',
+    );
+    assert(
+      pushedLevelBit == TomLogLevel.development.levelPattern,
+      'Pushed should be development',
+    );
+    assert(
+      afterPopBit == TomLogLevel.production.levelPattern,
+      'After pop should be production',
+    );
     assert(pushPopWorks, 'Push/pop should work');
   }
 }

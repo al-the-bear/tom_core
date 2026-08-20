@@ -219,7 +219,9 @@ Future<void> run() async {
 
   TomCreatorLogOutput.fallbackOutput = originalCreatorFallback;
 
-  print('   off-isolate message ->  fallback captured: $creatorFallbackMessage');
+  print(
+    '   off-isolate message ->  fallback captured: $creatorFallbackMessage',
+  );
   print('   gated-out message   ->  fallback captured: $creatorGatedMessage');
   print('');
 
@@ -240,7 +242,8 @@ Future<void> run() async {
   // it.)
   final executorsBefore = List<TomExecutor>.of(TomWorker.executors);
   await context.initializeIsolate();
-  final registeredExecutor = TomWorker.executors.length == executorsBefore.length
+  final registeredExecutor =
+      TomWorker.executors.length == executorsBefore.length
       ? null
       : TomWorker.executors.last;
   // Restore: the chain just written is the main isolate's, not a worker's.
@@ -248,17 +251,23 @@ Future<void> run() async {
   executorsBefore.forEach(TomWorker.addExecutor);
 
   final registersLoggingExecutor = registeredExecutor is TomLoggingExecutor;
-  print('   initializeIsolate registers a TomLoggingExecutor? '
-      '$registersLoggingExecutor (${registeredExecutor.runtimeType})');
+  print(
+    '   initializeIsolate registers a TomLoggingExecutor? '
+    '$registersLoggingExecutor (${registeredExecutor.runtimeType})',
+  );
 
   // startLoggingToCreator swaps the global output to a creator-routing sink.
   final beforeSwap = tomLog.logOutput;
   TomIsolateLogging.startLoggingToCreator();
   final swappedToCreator = tomLog.logOutput is TomCreatorLogOutput;
   tomLog.logOutput = beforeSwap; // restore
-  print('   startLoggingToCreator installs TomCreatorLogOutput? '
-      '$swappedToCreator');
-  print('   (startIsolatedLogging spawns a real logging pool — shown in tests)');
+  print(
+    '   startLoggingToCreator installs TomCreatorLogOutput? '
+    '$swappedToCreator',
+  );
+  print(
+    '   (startIsolatedLogging spawns a real logging pool — shown in tests)',
+  );
   print('');
 
   // ===========================================================================
@@ -288,8 +297,10 @@ Future<void> run() async {
   final okResult = TomRemoteLogResult();
   final errResult = TomRemoteLogResult.withError('sink unavailable');
   print('   ok result   -> hasError=${okResult.hasError}');
-  print('   err result  -> hasError=${errResult.hasError} '
-      '"${errResult.errorMessage}"');
+  print(
+    '   err result  -> hasError=${errResult.hasError} '
+    '"${errResult.errorMessage}"',
+  );
 
   final ctx = TomLoggingContext(inRemoteLogging: true);
   print('   TomLoggingContext.inRemoteLogging: ${ctx.inRemoteLogging}');
@@ -363,10 +374,14 @@ Future<void> run() async {
 
   TomRemoteLogServer.localOutput = originalServerOutput;
 
-  print('   receive(clean)  -> hasError=${cleanResult.hasError}, '
-      'isolate="$serverIsolateName" (sender prefixed)');
-  print('   receive(hostile)-> hasError=${hostileResult.hasError}, '
-      'sanitized="$sanitizedMessage"');
+  print(
+    '   receive(clean)  -> hasError=${cleanResult.hasError}, '
+    'isolate="$serverIsolateName" (sender prefixed)',
+  );
+  print(
+    '   receive(hostile)-> hasError=${hostileResult.hasError}, '
+    'sanitized="$sanitizedMessage"',
+  );
   print('');
 
   // ===========================================================================
@@ -391,8 +406,15 @@ Future<void> run() async {
     _SendOutcome.ok,
   ]);
   TomRemoteLogOutput.remoteEndpoint = flaky;
-  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
-      TomLogger.INFO, 'recovered by retry', 'main', fixedTime, null);
+  resilientOutput.output(
+    TomLogLevel.production,
+    TomLogLevel.info,
+    TomLogger.INFO,
+    'recovered by retry',
+    'main',
+    fixedTime,
+    null,
+  );
   await Future<void>.delayed(Duration.zero);
   final retriedSends = flaky.sendCount;
   final retriedAccepted = flaky.accepted.map((m) => m.message).toList();
@@ -401,8 +423,15 @@ Future<void> run() async {
   // still surfaced locally so nothing is lost).
   final down = _ScriptedLogEndpoint([_SendOutcome.throwError]);
   TomRemoteLogOutput.remoteEndpoint = down;
-  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
-      TomLogger.INFO, 'buffered while down', 'main', fixedTime, null);
+  resilientOutput.output(
+    TomLogLevel.production,
+    TomLogLevel.info,
+    TomLogger.INFO,
+    'buffered while down',
+    'main',
+    fixedTime,
+    null,
+  );
   await Future<void>.delayed(Duration.zero);
   final queuedAfterOutage = TomRemoteLogOutput.replayQueueLength;
 
@@ -410,8 +439,15 @@ Future<void> run() async {
   // before sending itself, so ordering is preserved across the outage.
   final recovered = _ScriptedLogEndpoint([_SendOutcome.ok]);
   TomRemoteLogOutput.remoteEndpoint = recovered;
-  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
-      TomLogger.INFO, 'flush trigger', 'main', fixedTime, null);
+  resilientOutput.output(
+    TomLogLevel.production,
+    TomLogLevel.info,
+    TomLogger.INFO,
+    'flush trigger',
+    'main',
+    fixedTime,
+    null,
+  );
   await Future<void>.delayed(Duration.zero);
   final drainedAccepted = recovered.accepted.map((m) => m.message).toList();
   final queueAfterDrain = TomRemoteLogOutput.replayQueueLength;
@@ -423,8 +459,15 @@ Future<void> run() async {
   // retried, surfaced locally with the server's own reason, and buffered.
   final refusing = _ScriptedLogEndpoint([_SendOutcome.returnServerRejection]);
   TomRemoteLogOutput.remoteEndpoint = refusing;
-  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
-      TomLogger.INFO, 'refused by collector', 'main', fixedTime, null);
+  resilientOutput.output(
+    TomLogLevel.production,
+    TomLogLevel.info,
+    TomLogger.INFO,
+    'refused by collector',
+    'main',
+    fixedTime,
+    null,
+  );
   await Future<void>.delayed(Duration.zero);
   final refusedSends = refusing.sendCount;
   final queuedAfterRefusal = TomRemoteLogOutput.replayQueueLength;
@@ -442,10 +485,24 @@ Future<void> run() async {
   // ahead of the live records and no record is sent twice.
   final ordered = _ScriptedLogEndpoint([_SendOutcome.ok]);
   TomRemoteLogOutput.remoteEndpoint = ordered;
-  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
-      TomLogger.INFO, 'back to back 1', 'main', fixedTime, null);
-  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
-      TomLogger.INFO, 'back to back 2', 'main', fixedTime, null);
+  resilientOutput.output(
+    TomLogLevel.production,
+    TomLogLevel.info,
+    TomLogger.INFO,
+    'back to back 1',
+    'main',
+    fixedTime,
+    null,
+  );
+  resilientOutput.output(
+    TomLogLevel.production,
+    TomLogLevel.info,
+    TomLogger.INFO,
+    'back to back 2',
+    'main',
+    fixedTime,
+    null,
+  );
   await Future<void>.delayed(Duration.zero);
   final orderedAccepted = ordered.accepted.map((m) => m.message).toList();
 
@@ -459,8 +516,10 @@ Future<void> run() async {
   print('   9a retry: $retriedSends sends, accepted=$retriedAccepted');
   print('   9b outage: queued=$queuedAfterOutage record(s)');
   print('   9c drain:  accepted=$drainedAccepted, queue now $queueAfterDrain');
-  print('   9d refusal: $refusedSends sends, queued=$queuedAfterRefusal, '
-      'warning="$refusalWarning"');
+  print(
+    '   9d refusal: $refusedSends sends, queued=$queuedAfterRefusal, '
+    'warning="$refusalWarning"',
+  );
   print('   9e order:  accepted=$orderedAccepted');
   print('');
 
@@ -473,8 +532,9 @@ Future<void> run() async {
   // The replay queue's storage is pluggable. The default keeps records in
   // memory (lost if the process exits mid-outage); a file-backed store mirrors
   // them to disk so a fresh process resumes with the buffered records.
-  final storeDir =
-      Directory.systemTemp.createTempSync('tom_core_kernel_replay_');
+  final storeDir = Directory.systemTemp.createTempSync(
+    'tom_core_kernel_replay_',
+  );
   final storePath = '${storeDir.path}/replay_queue.json';
 
   final durableFallback = _CapturingOutput();
@@ -482,47 +542,72 @@ Future<void> run() async {
   TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 4;
 
   // 10a: first process — endpoint is down, so records buffer to disk.
-  TomRemoteLogOutput.globalSettingReplayStore =
-      TomFileLogReplayStore(storePath);
-  TomRemoteLogOutput.remoteEndpoint =
-      _ScriptedLogEndpoint([_SendOutcome.throwError]);
+  TomRemoteLogOutput.globalSettingReplayStore = TomFileLogReplayStore(
+    storePath,
+  );
+  TomRemoteLogOutput.remoteEndpoint = _ScriptedLogEndpoint([
+    _SendOutcome.throwError,
+  ]);
   final firstProcess = TomRemoteLogOutput();
-  firstProcess.output(TomLogLevel.production, TomLogLevel.info, TomLogger.INFO,
-      'queued before restart A', 'main', fixedTime, null);
+  firstProcess.output(
+    TomLogLevel.production,
+    TomLogLevel.info,
+    TomLogger.INFO,
+    'queued before restart A',
+    'main',
+    fixedTime,
+    null,
+  );
   await Future<void>.delayed(Duration.zero);
-  firstProcess.output(TomLogLevel.production, TomLogLevel.info, TomLogger.INFO,
-      'queued before restart B', 'main', fixedTime, null);
+  firstProcess.output(
+    TomLogLevel.production,
+    TomLogLevel.info,
+    TomLogger.INFO,
+    'queued before restart B',
+    'main',
+    fixedTime,
+    null,
+  );
   await Future<void>.delayed(Duration.zero);
   final bufferedBeforeRestart = TomRemoteLogOutput.replayQueueLength;
 
   // 10b: simulate a restart — a brand-new store instance at the same path
   // reloads what the "previous process" buffered.
-  TomRemoteLogOutput.globalSettingReplayStore =
-      TomFileLogReplayStore(storePath);
+  TomRemoteLogOutput.globalSettingReplayStore = TomFileLogReplayStore(
+    storePath,
+  );
   final reloadedAfterRestart = TomRemoteLogOutput.replayQueueLength;
 
   // 10c: the endpoint recovers — the reloaded records drain oldest-first.
   final durableRecovered = _ScriptedLogEndpoint([_SendOutcome.ok]);
   TomRemoteLogOutput.remoteEndpoint = durableRecovered;
   final secondProcess = TomRemoteLogOutput();
-  secondProcess.output(TomLogLevel.production, TomLogLevel.info, TomLogger.INFO,
-      'after restart C', 'main', fixedTime, null);
+  secondProcess.output(
+    TomLogLevel.production,
+    TomLogLevel.info,
+    TomLogger.INFO,
+    'after restart C',
+    'main',
+    fixedTime,
+    null,
+  );
   await Future<void>.delayed(Duration.zero);
-  final durableDrained =
-      durableRecovered.accepted.map((m) => m.message).toList();
+  final durableDrained = durableRecovered.accepted
+      .map((m) => m.message)
+      .toList();
   final durableQueueAfter = TomRemoteLogOutput.replayQueueLength;
 
   // A record in the store's on-disk shape, for hand-building damaged files.
   String onDisk(String message) => jsonEncode({
-        'sender': '',
-        'timeStamp': fixedTime.toIso8601String(),
-        'loggerLevel': TomLogLevel.production.levelPattern,
-        'logLevel': TomLogLevel.info.levelPattern,
-        'level': TomLogger.INFO,
-        'message': message,
-        'isolateName': 'main',
-        'origin': null,
-      });
+    'sender': '',
+    'timeStamp': fixedTime.toIso8601String(),
+    'loggerLevel': TomLogLevel.production.levelPattern,
+    'logLevel': TomLogLevel.info.levelPattern,
+    'level': TomLogger.INFO,
+    'message': message,
+    'isolateName': 'main',
+    'origin': null,
+  });
 
   // 10d: a crash mid-write used to leave a half-written array that the next
   // start could not open at all — the durable buffer taking down the process
@@ -534,23 +619,28 @@ Future<void> run() async {
   durableFallback.messages.clear();
   final afterCrash = TomFileLogReplayStore(storePath);
   final crashSalvaged = afterCrash.snapshot().map((m) => m.message).toList();
-  final crashReported =
-      durableFallback.messages.any((m) => m.contains('could not be read'));
+  final crashReported = durableFallback.messages.any(
+    (m) => m.contains('could not be read'),
+  );
   final quarantined = File('$storePath.corrupt').existsSync();
 
   // 10e: damage the parser *can* see past — a well-formed array with junk
   // among the records. Here salvage is real: the readable records are kept
   // and only the junk is dropped, so partial damage no longer presents as an
   // empty queue. The count of what was dropped is reported.
-  File(storePath).writeAsStringSync(
-      '[1, ${onDisk('kept A')}, "junk", ${onDisk('kept B')}]');
+  File(
+    storePath,
+  ).writeAsStringSync('[1, ${onDisk('kept A')}, "junk", ${onDisk('kept B')}]');
   durableFallback.messages.clear();
   final afterPartial = TomFileLogReplayStore(storePath);
-  final partialSalvaged =
-      afterPartial.snapshot().map((m) => m.message).toList();
+  final partialSalvaged = afterPartial
+      .snapshot()
+      .map((m) => m.message)
+      .toList();
   final partialReport = durableFallback.messages.firstWhere(
-      (m) => m.contains('unreadable'),
-      orElse: () => '');
+    (m) => m.contains('unreadable'),
+    orElse: () => '',
+  );
 
   // Restore defaults (back to the zero-config in-memory store) and clean up.
   TomRemoteLogOutput.globalSettingFallbackOutput = originalRemoteFallback;
@@ -562,10 +652,14 @@ Future<void> run() async {
 
   print('   10a before restart: buffered=$bufferedBeforeRestart to disk');
   print('   10b after restart:  reloaded=$reloadedAfterRestart from disk');
-  print('   10c drain:          accepted=$durableDrained, '
-      'queue now $durableQueueAfter');
-  print('   10d truncated file: salvaged=$crashSalvaged, '
-      'reported=$crashReported, quarantined=$quarantined');
+  print(
+    '   10c drain:          accepted=$durableDrained, '
+    'queue now $durableQueueAfter',
+  );
+  print(
+    '   10d truncated file: salvaged=$crashSalvaged, '
+    'reported=$crashReported, quarantined=$quarantined',
+  );
   print('   10e partial damage: salvaged=$partialSalvaged');
   print('');
 
@@ -578,7 +672,10 @@ Future<void> run() async {
   assert(record.level == TomLogger.INFO);
   assert(record.message == 'worker started');
   assert(record.origin == 'App.boot');
-  assert(record.toString() == 'TomInterIsolateLogMessage worker-1 INFO    worker started');
+  assert(
+    record.toString() ==
+        'TomInterIsolateLogMessage worker-1 INFO    worker started',
+  );
 
   // Example 2: executor
   assert(handled == true);
@@ -604,7 +701,9 @@ Future<void> run() async {
   assert(remoteMessage.sender == 'edge-node-7');
   assert(remoteMessage.message == 'remote hello');
   assert(remoteMessage.origin == 'App.ping');
-  assert(remoteMessage.toString() == 'TomRemoteLogMessage main INFO    remote hello');
+  assert(
+    remoteMessage.toString() == 'TomRemoteLogMessage main INFO    remote hello',
+  );
   assert(okResult.hasError == false);
   assert(errResult.hasError == true);
   assert(errResult.errorMessage == 'sink unavailable');
@@ -623,7 +722,10 @@ Future<void> run() async {
 
   // Example 9: retry recovers, outage buffers, recovery drains in order
   assert(retriedSends == 3); // two failures + one success
-  assert(retriedAccepted.length == 1 && retriedAccepted.first == 'recovered by retry');
+  assert(
+    retriedAccepted.length == 1 &&
+        retriedAccepted.first == 'recovered by retry',
+  );
   assert(queuedAfterOutage == 1); // record buffered while endpoint down
   // The buffered record drains before the trigger, preserving order.
   assert(drainedAccepted.length == 2);
@@ -691,10 +793,10 @@ const String _rejectionReason = 'quota exceeded';
 class _ScriptedLogEndpoint
     extends TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult> {
   _ScriptedLogEndpoint(this.script)
-      : super(
-          TomServerChannel('localhost', 80),
-          TomServerCallSpecs('POST', Uri.parse('http://localhost/remotelog')),
-        );
+    : super(
+        TomServerChannel('localhost', 80),
+        TomServerCallSpecs('POST', Uri.parse('http://localhost/remotelog')),
+      );
 
   /// Per-call outcomes; the last entry repeats once the script is exhausted.
   final List<_SendOutcome> script;

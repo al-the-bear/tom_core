@@ -64,9 +64,7 @@ void run() {
   final directiveTree = <String, dynamic>{
     'plain': 'value',
     'link@shared@dev': '@',
-    'nested': <String, dynamic>{
-      'ref@profiles@prod': '...',
-    },
+    'nested': <String, dynamic>{'ref@profiles@prod': '...'},
   };
 
   final discovered = <String>[];

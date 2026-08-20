@@ -123,7 +123,7 @@ class WorkerSetupContext extends TomWorkerContext {
   bool workerInitialized = false;
 
   WorkerSetupContext(this.workerConfig, {String namePrefix = 'SetupW'})
-      : super(defaultTomEnvironment, platformLinux, [], namePrefix);
+    : super(defaultTomEnvironment, platformLinux, [], namePrefix);
 
   @override
   Future<void> initializeIsolate() async {
@@ -244,18 +244,16 @@ class WorkerSetupAndGuardsExample {
       'timeout': '30',
     });
 
-    final worker = await TomWorker.spawn(
-      TomWorker.startRemoteIsolate,
-      context,
-    );
+    final worker = await TomWorker.spawn(TomWorker.startRemoteIsolate, context);
 
     workerReady = worker.isReady;
     workerInitializedRan = context.workerInitialized;
 
     // Only a command can see what initializeIsolate did, because it ran in the
     // worker's copy of this library's state.
-    isolateConfigInWorker = await worker
-        .executeCommand(ReadIsolateConfigCommand('database')) as String;
+    isolateConfigInWorker =
+        await worker.executeCommand(ReadIsolateConfigCommand('database'))
+            as String;
     isolateConfigInCreator = isolateConfig['database'];
 
     print('   - worker ready:                   $workerReady');
@@ -407,7 +405,9 @@ class WorkerSetupAndGuardsExample {
 Future<void> run() async {
   print('═══════════════════════════════════════════════════════════════════');
   print('WORKER SETUP AND CREATOR-SIDE GUARDS EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   WorkerSetupAndGuardsExample.example1CreatorHasNoBackChannel();
   WorkerSetupAndGuardsExample.example2SendToCreatorRefuses();

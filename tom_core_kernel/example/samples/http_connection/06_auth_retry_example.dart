@@ -61,8 +61,12 @@ Future<void> run() async {
   // Example 1: The zero-config default policy
   // -------------------------------------------------------------------------
   print('1. Default retry policy:');
-  print('   - Expiry status codes: ${tomDefaultAuthRetryPolicy.expiryStatusCodes}');
-  print('   - Max refresh retries: ${tomDefaultAuthRetryPolicy.maxRefreshRetries}');
+  print(
+    '   - Expiry status codes: ${tomDefaultAuthRetryPolicy.expiryStatusCodes}',
+  );
+  print(
+    '   - Max refresh retries: ${tomDefaultAuthRetryPolicy.maxRefreshRetries}',
+  );
   print('   - 401 is expiry: ${tomDefaultAuthRetryPolicy.isAuthExpiry(401)}');
   print('   - 403 is expiry: ${tomDefaultAuthRetryPolicy.isAuthExpiry(403)}\n');
 
@@ -79,7 +83,9 @@ Future<void> run() async {
     refresher: happyRefresher,
   );
   print('   - Result status: ${happyResult.statusCode}');
-  print('   - Sends: ${happySender.calls()}, refreshes: ${happyRefresher.refreshCount}\n');
+  print(
+    '   - Sends: ${happySender.calls()}, refreshes: ${happyRefresher.refreshCount}\n',
+  );
 
   // -------------------------------------------------------------------------
   // Example 3: Expiry then successful refresh + retry
@@ -97,7 +103,9 @@ Future<void> run() async {
     refresher: recoverRefresher,
   );
   print('   - Result status: ${recovered.statusCode}');
-  print('   - Sends: ${recoverSender.calls()}, refreshes: ${recoverRefresher.refreshCount}\n');
+  print(
+    '   - Sends: ${recoverSender.calls()}, refreshes: ${recoverRefresher.refreshCount}\n',
+  );
 
   // -------------------------------------------------------------------------
   // Example 4: Refresher declines (no session) — original response stands
@@ -112,7 +120,9 @@ Future<void> run() async {
     refresher: declineRefresher,
   );
   print('   - Result status: ${declined.statusCode} (unchanged)');
-  print('   - Sends: ${declineSender.calls()}, refreshes: ${declineRefresher.refreshCount}\n');
+  print(
+    '   - Sends: ${declineSender.calls()}, refreshes: ${declineRefresher.refreshCount}\n',
+  );
 
   // -------------------------------------------------------------------------
   // Example 5: Persistent expiry after refresh — throws
@@ -152,7 +162,9 @@ Future<void> run() async {
     refresher: forbiddenRefresher,
   );
   print('   - Result status: ${forbidden.statusCode}');
-  print('   - refreshes: ${forbiddenRefresher.refreshCount} (no refresh on 403)\n');
+  print(
+    '   - refreshes: ${forbiddenRefresher.refreshCount} (no refresh on 403)\n',
+  );
 
   // -------------------------------------------------------------------------
   // Example 7: A custom policy tunes the expiry set and retry budget
@@ -164,7 +176,9 @@ Future<void> run() async {
     maxRefreshRetries: 2,
   );
   print('   - 419 is expiry: ${customPolicy.isAuthExpiry(419)}');
-  print('   - 401 is expiry: ${customPolicy.isAuthExpiry(401)} (not under this policy)');
+  print(
+    '   - 401 is expiry: ${customPolicy.isAuthExpiry(401)} (not under this policy)',
+  );
 
   final customRefresher = _ScriptedRefresher(succeeds: true);
   final customSender = _scriptedSender([
@@ -186,19 +200,25 @@ Future<void> run() async {
   // -------------------------------------------------------------------------
   print('8. Active policy resolution via bean:');
 
-  print('   - Without a bean, active == default: '
-      '${identical(TomAuthRetryPolicy.active, tomDefaultAuthRetryPolicy)}');
+  print(
+    '   - Without a bean, active == default: '
+    '${identical(TomAuthRetryPolicy.active, tomDefaultAuthRetryPolicy)}',
+  );
 
   TomBean.withType(
     TomAuthRetryPolicy,
     const TomAuthRetryPolicy(expiryStatusCodes: {440}, maxRefreshRetries: 3),
   );
   final active = TomAuthRetryPolicy.active;
-  print('   - After registering a bean, active expiry codes: ${active.expiryStatusCodes}');
+  print(
+    '   - After registering a bean, active expiry codes: ${active.expiryStatusCodes}',
+  );
   print('   - active max retries: ${active.maxRefreshRetries}');
   TomBean.resetBeanContext();
-  print('   - After reset, active == default again: '
-      '${identical(TomAuthRetryPolicy.active, tomDefaultAuthRetryPolicy)}\n');
+  print(
+    '   - After reset, active == default again: '
+    '${identical(TomAuthRetryPolicy.active, tomDefaultAuthRetryPolicy)}\n',
+  );
 
   // =========================================================================
   // Assertions

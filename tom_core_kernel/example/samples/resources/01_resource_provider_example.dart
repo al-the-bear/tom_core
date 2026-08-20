@@ -16,15 +16,10 @@ class TextResourceFromMapExample {
 
   static void example1TextResourceFromMap() {
     final textResources = TomTextResourceProvider.from({
-      'app': {
-        'title': 'My Application',
-        'version': '1.0.0',
-      },
+      'app': {'title': 'My Application', 'version': '1.0.0'},
       'messages': {
         'welcome': 'Welcome to our app!',
-        'errors': {
-          'notFound': 'Resource not found',
-        },
+        'errors': {'notFound': 'Resource not found'},
       },
     });
 
@@ -34,7 +29,10 @@ class TextResourceFromMapExample {
     resourcesLoaded = true;
 
     assert(appTitle == 'My Application', 'App title should match');
-    assert(welcomeMessage == 'Welcome to our app!', 'Welcome message should match');
+    assert(
+      welcomeMessage == 'Welcome to our app!',
+      'Welcome message should match',
+    );
     assert(nestedError == 'Resource not found', 'Nested error should match');
     assert(resourcesLoaded, 'Resources should be loaded');
   }
@@ -52,13 +50,8 @@ class LoaderFunctionExample {
   static void example2LoaderFunction() {
     Map<String, dynamic> simulateJsonLoad() {
       return {
-        'labels': {
-          'username': 'Username',
-          'password': 'Password',
-        },
-        'validation': {
-          'required': 'This field is required',
-        },
+        'labels': {'username': 'Username', 'password': 'Password'},
+        'validation': {'required': 'This field is required'},
       };
     }
 
@@ -69,7 +62,10 @@ class LoaderFunctionExample {
     loaderUsed = true;
 
     assert(usernameLabel == 'Username', 'Username label should match');
-    assert(requiredValidation == 'This field is required', 'Validation message should match');
+    assert(
+      requiredValidation == 'This field is required',
+      'Validation message should match',
+    );
     assert(loaderUsed, 'Loader should be used');
   }
 }
@@ -118,7 +114,10 @@ class FallbackBehaviorExample {
     // When key is missing, the key itself is returned
     fallbackReturnsKey = missingKeyValue == missingKey;
 
-    assert(missingKeyValue == missingKey, 'Missing key should return the key itself');
+    assert(
+      missingKeyValue == missingKey,
+      'Missing key should return the key itself',
+    );
     assert(fallbackReturnsKey, 'Fallback behavior should work');
   }
 }
@@ -135,13 +134,8 @@ class ConfigResourceExample {
 
   static void example5ConfigResource() {
     final configProvider = TomConfigResourceProvider.from({
-      'api': {
-        'baseUrl': 'https://api.example.com',
-        'timeout': 30000,
-      },
-      'features': {
-        'darkMode': true,
-      },
+      'api': {'baseUrl': 'https://api.example.com', 'timeout': 30000},
+      'features': {'darkMode': true},
     });
 
     apiBaseUrl = configProvider.getText('api.baseUrl') as String?;
@@ -149,7 +143,10 @@ class ConfigResourceExample {
     darkModeEnabled = configProvider.getText('features.darkMode').toString();
     configLoaded = true;
 
-    assert(apiBaseUrl == 'https://api.example.com', 'API base URL should match');
+    assert(
+      apiBaseUrl == 'https://api.example.com',
+      'API base URL should match',
+    );
     assert(apiTimeout == '30000', 'API timeout should be string');
     assert(darkModeEnabled == 'true', 'Dark mode should be string');
     assert(configLoaded, 'Config should be loaded');
@@ -169,9 +166,7 @@ class ConfigLoaderExample {
     Map<String, dynamic> loadEnvironmentConfig() {
       return {
         'environment': 'development',
-        'logging': {
-          'level': 'debug',
-        },
+        'logging': {'level': 'debug'},
       };
     }
 
@@ -180,8 +175,7 @@ class ConfigLoaderExample {
     environment = envConfig.getText('environment') as String?;
     logLevel = envConfig.getText('logging.level') as String?;
 
-    configLoaderWorks =
-        environment == 'development' && logLevel == 'debug';
+    configLoaderWorks = environment == 'development' && logLevel == 'debug';
 
     assert(environment == 'development', 'Environment should be development');
     assert(logLevel == 'debug', 'Log level should be debug');

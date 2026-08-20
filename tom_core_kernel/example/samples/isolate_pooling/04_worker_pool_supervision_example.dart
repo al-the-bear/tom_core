@@ -56,8 +56,10 @@ Future<void> run() async {
     context,
     healthCheckInterval: const Duration(milliseconds: 50),
   );
-  print('  Supervised pool created (isSupervised=${pool.isSupervised}, '
-      'workers=${pool.workerCount})');
+  print(
+    '  Supervised pool created (isSupervised=${pool.isSupervised}, '
+    'workers=${pool.workerCount})',
+  );
 
   // Normal work succeeds.
   final before = await pool.execute(AddCommand(2, 3)) as int;
@@ -89,7 +91,10 @@ Future<void> run() async {
   pool.close();
 
   assert(before == 5, 'normal command before death should compute 2 + 3');
-  assert(sawDeath, 'the in-flight command must fail with TomWorkerDiedException');
+  assert(
+    sawDeath,
+    'the in-flight command must fail with TomWorkerDiedException',
+  );
   assert(recovered == 2, 'the pool should respawn a replacement after a death');
   assert(after == 42, 'recovered pool should compute 20 + 22');
 }

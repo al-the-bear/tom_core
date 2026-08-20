@@ -24,8 +24,10 @@ class ConnectionConfigExample {
   static late TomMimeType pdfMime;
   static late TomMimeType parsedJson;
   static late TomMimeType customMime;
-  static late TomApiEndpoint<Map<String, Object?>, Map<String, Object?>> getUserEndpoint;
-  static late TomApiEndpoint<Map<String, Object?>, Map<String, Object?>> createUserEndpoint;
+  static late TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>
+  getUserEndpoint;
+  static late TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>
+  createUserEndpoint;
 
   // -------------------------------------------------------------------------
   // Example 1: Working with MIME types
@@ -41,7 +43,9 @@ class ConnectionConfigExample {
 
     print('   - JSON: ${jsonMime.primaryType}/${jsonMime.subType}');
     print('   - HTML: ${htmlMime.primaryType}/${htmlMime.subType}');
-    print('   - PDF: ${pdfMime.primaryType}/${pdfMime.subType}, charset: ${pdfMime.charset ?? 'none'}');
+    print(
+      '   - PDF: ${pdfMime.primaryType}/${pdfMime.subType}, charset: ${pdfMime.charset ?? 'none'}',
+    );
     print('   - Octet-stream: ${octetMime.primaryType}/${octetMime.subType}');
 
     // Header value generation
@@ -51,7 +55,10 @@ class ConnectionConfigExample {
     print('   - PDF header value: $pdfHeader');
 
     // Assertions
-    assert(jsonMime.primaryType == 'application', 'JSON primary type should be application');
+    assert(
+      jsonMime.primaryType == 'application',
+      'JSON primary type should be application',
+    );
     assert(jsonMime.subType == 'json', 'JSON subtype should be json');
   }
 
@@ -99,13 +106,18 @@ class ConnectionConfigExample {
       codecs: ['avc1.42E01E', 'mp4a.40.2'],
     );
 
-    print('   - Custom API MIME: ${customMime.primaryType}/${customMime.subType}');
+    print(
+      '   - Custom API MIME: ${customMime.primaryType}/${customMime.subType}',
+    );
     print('   - Video MIME: ${videoMime.primaryType}/${videoMime.subType}');
     print('   - Video codecs: ${videoMime.codecs}');
     print('   - Custom isText: ${customMime.isText}');
 
     // Assertions
-    assert(customMime.primaryType == 'application', 'Custom primary type should match');
+    assert(
+      customMime.primaryType == 'application',
+      'Custom primary type should match',
+    );
     assert(customMime.subType == 'vnd.api+json', 'Custom subtype should match');
     assert(videoMime.codecs.length == 2, 'Video should have 2 codecs');
   }
@@ -144,8 +156,14 @@ class ConnectionConfigExample {
     print('   - Attachment disposition: ${TomContentDisposition.attachment}');
 
     // Assertions
-    assert(TomHeader.contentType == 'Content-Type', 'Content-Type header should match');
-    assert(TomHeader.contentDisposition == 'Content-Disposition', 'Content-Disposition should match');
+    assert(
+      TomHeader.contentType == 'Content-Type',
+      'Content-Type header should match',
+    );
+    assert(
+      TomHeader.contentDisposition == 'Content-Disposition',
+      'Content-Disposition should match',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -155,46 +173,53 @@ class ConnectionConfigExample {
     print('\n6. API endpoint definitions:');
 
     // Define an endpoint
-    getUserEndpoint = TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>(
-      id: 'getUser',
-      uri: '/get',
-      method: TomHttpMethod.get,
-      consumes: TomMimeType.none,
-      produces: TomMimeType.json,
-      description: 'Retrieves a user by ID',
-    );
+    getUserEndpoint =
+        TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>(
+          id: 'getUser',
+          uri: '/get',
+          method: TomHttpMethod.get,
+          consumes: TomMimeType.none,
+          produces: TomMimeType.json,
+          description: 'Retrieves a user by ID',
+        );
 
-    createUserEndpoint = TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>(
-      id: 'createUser',
-      uri: '/create',
-      method: TomHttpMethod.post,
-      consumes: TomMimeType.json,
-      produces: TomMimeType.json,
-      description: 'Creates a new user',
-      requestHeaders: {'X-API-Version': '2.0'},
-      followRedirects: false,
-      includeBearerAuthentication: true,
-    );
+    createUserEndpoint =
+        TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>(
+          id: 'createUser',
+          uri: '/create',
+          method: TomHttpMethod.post,
+          consumes: TomMimeType.json,
+          produces: TomMimeType.json,
+          description: 'Creates a new user',
+          requestHeaders: {'X-API-Version': '2.0'},
+          followRedirects: false,
+          includeBearerAuthentication: true,
+        );
 
-    final downloadEndpoint = TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>(
-      id: 'downloadReport',
-      uri: '/report/download',
-      method: TomHttpMethod.get,
-      produces: TomMimeType.pdf,
-      contentDisposition: 'attachment; filename="report.pdf"',
-      description: 'Downloads a PDF report',
-    );
+    final downloadEndpoint =
+        TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>(
+          id: 'downloadReport',
+          uri: '/report/download',
+          method: TomHttpMethod.get,
+          produces: TomMimeType.pdf,
+          contentDisposition: 'attachment; filename="report.pdf"',
+          description: 'Downloads a PDF report',
+        );
 
     print('   - Get User endpoint:');
     print('     • ID: ${getUserEndpoint.id}');
     print('     • URI: ${getUserEndpoint.uri}');
     print('     • Method: ${getUserEndpoint.method.name}');
-    print('     • Produces: ${getUserEndpoint.produces.primaryType}/${getUserEndpoint.produces.subType}');
+    print(
+      '     • Produces: ${getUserEndpoint.produces.primaryType}/${getUserEndpoint.produces.subType}',
+    );
 
     print('   - Create User endpoint:');
     print('     • ID: ${createUserEndpoint.id}');
     print('     • Method: ${createUserEndpoint.method.name}');
-    print('     • Consumes: ${createUserEndpoint.consumes.primaryType}/${createUserEndpoint.consumes.subType}');
+    print(
+      '     • Consumes: ${createUserEndpoint.consumes.primaryType}/${createUserEndpoint.consumes.subType}',
+    );
     print('     • Request headers: ${createUserEndpoint.requestHeaders}');
 
     print('   - Download endpoint:');
@@ -204,8 +229,14 @@ class ConnectionConfigExample {
     // Assertions
     assert(getUserEndpoint.id == 'getUser', 'Endpoint ID should match');
     assert(getUserEndpoint.method == TomHttpMethod.get, 'Method should be GET');
-    assert(createUserEndpoint.consumes == TomMimeType.json, 'Should consume JSON');
-    assert(createUserEndpoint.includeBearerAuthentication == true, 'Should include bearer auth');
+    assert(
+      createUserEndpoint.consumes == TomMimeType.json,
+      'Should consume JSON',
+    );
+    assert(
+      createUserEndpoint.includeBearerAuthentication == true,
+      'Should include bearer auth',
+    );
     assert(downloadEndpoint.produces == TomMimeType.pdf, 'Should produce PDF');
   }
 

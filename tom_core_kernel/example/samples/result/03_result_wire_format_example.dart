@@ -19,8 +19,9 @@ class DiscriminatorExample {
   /// indistinguishable.
   static void example1ExplicitDiscriminator() {
     successJson = const TomResult<String>.success('ok').toJson();
-    failureJson =
-        const TomResult<String>.failure(TomErrorResult('NOPE')).toJson();
+    failureJson = const TomResult<String>.failure(
+      TomErrorResult('NOPE'),
+    ).toJson();
 
     assert(successJson!['success'] == true, 'Success is stated, not inferred');
     assert(successJson!['value'] == 'ok', 'The payload rides alongside it');
@@ -124,14 +125,19 @@ class RawPayloadExample {
   /// and leaves the typed conversion to the call site. That is what keeps the
   /// envelope itself free of any reflection dependency.
   static void example5RawPayloadOnDecode() {
-    final wire = const TomResult<Receipt>.success(Receipt('r-9', 1250)).toJson();
+    final wire = const TomResult<Receipt>.success(
+      Receipt('r-9', 1250),
+    ).toJson();
 
     envelope = TomResult<Map<String, Object?>>.fromJson(wire);
     final raw = envelope!.value!;
     typed = Receipt(raw['id']! as String, raw['cents']! as int);
 
     assert(envelope!.isSuccess, 'Still the success arm');
-    assert(typed!.id == 'r-9', 'The call site knows the type; the envelope does not');
+    assert(
+      typed!.id == 'r-9',
+      'The call site knows the type; the envelope does not',
+    );
   }
 }
 
@@ -151,8 +157,10 @@ class MalformedPayloadExample {
     missingDiscriminator = TomResult<String>.fromJson({'value': 'ok'});
 
     // An `error` arm that is not a map — read as UNKNOWN_ERROR.
-    unparseableError =
-        TomResult<String>.fromJson({'success': false, 'error': 'boom'});
+    unparseableError = TomResult<String>.fromJson({
+      'success': false,
+      'error': 'boom',
+    });
 
     // A severity a newer server invented — read as the ordinary one.
     unknownSeverity = TomErrorSeverity.fromWire('catastrophic');

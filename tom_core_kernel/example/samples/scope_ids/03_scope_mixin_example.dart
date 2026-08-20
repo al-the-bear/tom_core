@@ -78,7 +78,9 @@ void run() {
   });
   final afterPath = TomScope.current.getScopePath();
 
-  print('   inside: current == checkout: $insideIsCheckout, path "$insidePath"');
+  print(
+    '   inside: current == checkout: $insideIsCheckout, path "$insidePath"',
+  );
   print('   after runInScope: "$afterPath" (restored)');
   print('');
 
@@ -88,8 +90,9 @@ void run() {
 
   print('3. InScopeBuilder captures the custom scope:');
 
-  final wrapped = InScopeBuilder(scope: checkout)
-      .wrap1<String, String>((field) => '${TomScope.current.getScopePath()}.$field');
+  final wrapped = InScopeBuilder(scope: checkout).wrap1<String, String>(
+    (field) => '${TomScope.current.getScopePath()}.$field',
+  );
   final wrappedResult = wrapped('orderForm');
 
   print('   wrapped("orderForm"): "$wrappedResult"');

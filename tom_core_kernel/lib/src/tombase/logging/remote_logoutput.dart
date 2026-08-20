@@ -552,8 +552,9 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// every attempt (the first plus [globalSettingMaxSendRetries] retries)
   /// fails.
   Future<String?> _sendWithRetry(TomRemoteLogMessage remoteMessage) async {
-    final maxRetries =
-        globalSettingMaxSendRetries < 0 ? 0 : globalSettingMaxSendRetries;
+    final maxRetries = globalSettingMaxSendRetries < 0
+        ? 0
+        : globalSettingMaxSendRetries;
     String? lastFailure;
     for (var attempt = 0; attempt <= maxRetries; attempt++) {
       if (attempt > 0 && globalSettingRetryBackoff > Duration.zero) {
@@ -682,7 +683,8 @@ class TomRemoteLogOutput extends TomLogOutput {
     try {
       rendered = "$record";
     } catch (renderError) {
-      rendered = "<a ${record.runtimeType} that could not be rendered: "
+      rendered =
+          "<a ${record.runtimeType} that could not be rendered: "
           "$renderError>";
     }
     try {

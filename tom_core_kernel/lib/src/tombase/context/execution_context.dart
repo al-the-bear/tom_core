@@ -102,7 +102,7 @@ class TomExecutionContext {
     }
     return null;
   }
-  
+
   /// Reads the entry named [name] from the [TomExecutionContext] installed in
   /// the current zone, and returns its value.
   ///
@@ -130,7 +130,10 @@ class TomExecutionContext {
   /// entry's type parameter explicitly — `TomContextEntry<String>(...)`, not
   /// `TomContextEntry(...)` — or it infers `dynamic` from this parameter's type
   /// and no typed read will find it; see [TomContextEntry].
-  TomExecutionContext( Map<String, TomContextEntry> contextMap, { TomExecutionContext? parentContext }) {
+  TomExecutionContext(
+    Map<String, TomContextEntry> contextMap, {
+    TomExecutionContext? parentContext,
+  }) {
     // Merge into this context's own fresh map, never the caller's argument:
     // the parent supplies the base entries and the child (`contextMap`)
     // overwrites them on collision, so the inner context wins and the source
@@ -214,7 +217,10 @@ class TomExecutionContext {
   ///   return computeResult(user, requestId);
   /// }, zoneValues: {'requestId': id});
   /// ```
-  T runInContext<T>(T Function() body, {Map<Object?, Object?> zoneValues = const {}, }) {
+  T runInContext<T>(
+    T Function() body, {
+    Map<Object?, Object?> zoneValues = const {},
+  }) {
     return runZoned<T>(zoneValues: _buildZoneValues(zoneValues), body);
   }
 
@@ -275,10 +281,12 @@ class TomExecutionContext {
   ///   return await fetchData(user, requestId);
   /// }, zoneValues: {'requestId': id});
   /// ```
-  Future<T> runInContextAsync<T>(Future<T> Function() body, {Map<Object?, Object?> zoneValues = const {}, }) {
+  Future<T> runInContextAsync<T>(
+    Future<T> Function() body, {
+    Map<Object?, Object?> zoneValues = const {},
+  }) {
     return runZoned<Future<T>>(zoneValues: _buildZoneValues(zoneValues), body);
   }
-
 }
 
 // =============================================================================
@@ -305,7 +313,10 @@ class TomZoneValues {
   late Map<Object?, Object?> zoneValues;
 
   /// Creates a zone values container.
-  TomZoneValues( Map<Object?, Object?>? zoneValues, { TomZoneValues? existingValues}) {
+  TomZoneValues(
+    Map<Object?, Object?>? zoneValues, {
+    TomZoneValues? existingValues,
+  }) {
     this.zoneValues = {};
     if (existingValues != null) {
       this.zoneValues.addAll(existingValues.zoneValues);
@@ -338,7 +349,7 @@ class TomZoneValues {
 
   /// Checks if a key exists in the zone values.
   bool containsKey(Object? key) {
-    return zoneValues.containsKey(key); 
+    return zoneValues.containsKey(key);
   }
 
   /// Removes a key from the zone values.

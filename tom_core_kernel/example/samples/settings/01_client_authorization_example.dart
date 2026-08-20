@@ -17,7 +17,8 @@ class SettingsRequestExample {
       ..authorizationToken = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xyz';
 
     messageToken = message.authorizationToken;
-    hasToken = message.authorizationToken != null &&
+    hasToken =
+        message.authorizationToken != null &&
         message.authorizationToken!.isNotEmpty;
     requestCreated = true;
 
@@ -39,7 +40,8 @@ class AnonymousRequestExample {
     final anonymousMessage = TomGetSettingsMessage();
 
     anonymousToken = anonymousMessage.authorizationToken;
-    isAnonymous = anonymousMessage.authorizationToken == null ||
+    isAnonymous =
+        anonymousMessage.authorizationToken == null ||
         anonymousMessage.authorizationToken!.isEmpty;
 
     assert(isAnonymous, 'Should be anonymous request');
@@ -138,10 +140,7 @@ class AccessTextsExample {
 
   static void example5AccessTexts() {
     final result = TomGetSettingsResult(
-      texts: {
-        'welcome': 'Welcome!',
-        'logout': 'Sign Out',
-      },
+      texts: {'welcome': 'Welcome!', 'logout': 'Sign Out'},
     );
 
     welcomeText = result.texts['welcome'] as String?;
@@ -204,16 +203,13 @@ class CheckRolesExample {
   static bool roleCheckWorks = false;
 
   static void example7CheckRoles() {
-    final result = TomGetSettingsResult(
-      roles: ['admin', 'editor', 'viewer'],
-    );
+    final result = TomGetSettingsResult(roles: ['admin', 'editor', 'viewer']);
 
     hasAdminRole = result.roles.contains('admin');
     hasEditorRole = result.roles.contains('editor');
     hasSuperRole = result.roles.contains('super-admin');
 
-    roleCheckWorks =
-        hasAdminRole && hasEditorRole && !hasSuperRole;
+    roleCheckWorks = hasAdminRole && hasEditorRole && !hasSuperRole;
 
     assert(hasAdminRole, 'Should have admin role');
     assert(hasEditorRole, 'Should have editor role');
@@ -234,10 +230,7 @@ class CheckEntitlementsExample {
 
   static void example8CheckEntitlements() {
     final result = TomGetSettingsResult(
-      entitlements: [
-        'feature.dashboard.view',
-        'feature.dashboard.edit',
-      ],
+      entitlements: ['feature.dashboard.view', 'feature.dashboard.edit'],
     );
 
     canViewDashboard = result.entitlements.contains('feature.dashboard.view');

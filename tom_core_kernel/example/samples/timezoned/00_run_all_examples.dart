@@ -37,7 +37,9 @@ Future<void> main() async {
 Future<void> run() async {
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║              Tom Timezoned System Samples                        ║');
-  print('╚══════════════════════════════════════════════════════════════════╝\n');
+  print(
+    '╚══════════════════════════════════════════════════════════════════╝\n',
+  );
 
   // Run all examples
   timezone_basics.run();

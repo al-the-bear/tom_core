@@ -141,7 +141,10 @@ class DateTimeRoundTripExample {
     storedText = stored.value;
     sameMoment = decoded!.isAtSameMomentAs(local);
 
-    assert(stored.valueType == TomUserPreferenceCodec.dateTimeType, 'Type name');
+    assert(
+      stored.valueType == TomUserPreferenceCodec.dateTimeType,
+      'Type name',
+    );
     // What is asserted is the *stored text*, not `decoded.isUtc`. The flag only
     // says a conversion happened; it says nothing about which zone was
     // converted *from*, so it is true even of a value read wrongly. The `Z` in
@@ -197,10 +200,14 @@ class ZonelessTimestampExample {
 
     // `parseInstant` is the same test, available to a client that wants to
     // check its own text before sending it.
-    assert(TomUserPreferenceCodec.parseInstant('2026-03-04T05:06:07') == null,
-        'A zoneless timestamp is not an instant');
-    assert(TomUserPreferenceCodec.parseInstant('2026-03-04T05:06:07Z') != null,
-        'A zoned timestamp is');
+    assert(
+      TomUserPreferenceCodec.parseInstant('2026-03-04T05:06:07') == null,
+      'A zoneless timestamp is not an instant',
+    );
+    assert(
+      TomUserPreferenceCodec.parseInstant('2026-03-04T05:06:07Z') != null,
+      'A zoned timestamp is',
+    );
     assert(writeRejected, 'The boundary refuses an ambiguous timestamp');
     assert(errorKey == 'preferences.encoded.not_an_instant', 'Named error');
     assert(readRejected, 'So does the read');

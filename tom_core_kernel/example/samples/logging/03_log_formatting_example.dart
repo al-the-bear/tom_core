@@ -79,13 +79,16 @@ class ConsoleOutputConfigExample {
   static bool stderrMatchesInfo = false;
 
   static void example1ConsoleOutputConfig() {
-    stderrLevelBit = TomConsoleLogOutput.globalSettingStderrLogLevel.levelPattern;
-    stdoutLevelBit = TomConsoleLogOutput.globalSettingStdoutLogLevel.levelPattern;
+    stderrLevelBit =
+        TomConsoleLogOutput.globalSettingStderrLogLevel.levelPattern;
+    stdoutLevelBit =
+        TomConsoleLogOutput.globalSettingStdoutLogLevel.levelPattern;
 
-    stderrMatchesError =
-        TomConsoleLogOutput.globalSettingStderrLogLevel.matches(TomLogLevel.error);
-    stderrMatchesInfo =
-        TomConsoleLogOutput.globalSettingStderrLogLevel.matches(TomLogLevel.info);
+    stderrMatchesError = TomConsoleLogOutput.globalSettingStderrLogLevel
+        .matches(TomLogLevel.error);
+    stderrMatchesInfo = TomConsoleLogOutput.globalSettingStderrLogLevel.matches(
+      TomLogLevel.info,
+    );
 
     assert(stderrLevelBit > 0, 'Stderr level should be configured');
     assert(stdoutLevelBit > 0, 'Stdout level should be configured');
@@ -255,10 +258,14 @@ class CallerDeterminationExample {
     tomLog.logOutput = originalLogOutput;
     tomLog.setLogLevel(originalLogLevel);
 
-    assert(originWhenEnabled.contains('CallerDeterminationExample'),
-        'Origin should name the calling member when determination is on');
-    assert(originWhenDisabled.isEmpty,
-        'Origin should be absent when determination is off');
+    assert(
+      originWhenEnabled.contains('CallerDeterminationExample'),
+      'Origin should name the calling member when determination is on',
+    );
+    assert(
+      originWhenDisabled.isEmpty,
+      'Origin should be absent when determination is off',
+    );
   }
 }
 

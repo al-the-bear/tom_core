@@ -65,7 +65,9 @@ void run() {
   final beta = resources.getObjectOrNull('app.beta');
   final limits = resources.getObjectOrNull('app.limits');
   final missingObject = resources.getObjectOrNull('app.missing');
-  final missingObjectEcho = resources.getObject('app.missing'); // echoes the key
+  final missingObjectEcho = resources.getObject(
+    'app.missing',
+  ); // echoes the key
 
   print('   getObject("app.retries"): $retries');
   print('   getObjectOrNull("app.beta"): $beta');
@@ -81,7 +83,9 @@ void run() {
   print('4. existsObject vs exists:');
 
   final retriesExistsObject = resources.existsObject('app.retries');
-  final retriesExistsText = resources.exists('app.retries'); // int → not a String
+  final retriesExistsText = resources.exists(
+    'app.retries',
+  ); // int → not a String
   final titleExistsText = resources.exists('app.title');
   final missingExistsObject = resources.existsObject('app.missing');
 

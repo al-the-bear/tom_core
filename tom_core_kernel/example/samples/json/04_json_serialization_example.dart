@@ -119,7 +119,9 @@ void run() {
   final primaryClean = descriptorClean['primary'] as Map<String, Object?>;
 
   print('   - primary converted to a map: ${primaryClean['name']}');
-  print('   - primary is a Map now:       ${descriptorClean['primary'] is Map}');
+  print(
+    '   - primary is a Map now:       ${descriptorClean['primary'] is Map}',
+  );
   print('');
 
   // ===========================================================================

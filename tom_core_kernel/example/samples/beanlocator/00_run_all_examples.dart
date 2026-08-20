@@ -21,7 +21,8 @@ import '02_bean_dependency_patterns_example.dart' as bean_patterns;
 import '03_named_beans_example.dart' as named_beans;
 import '04_interface_and_type_registration_example.dart' as type_registration;
 import '05_annotation_based_beans_example.dart' as annotation_beans;
-import '06_type_and_environment_registration_example.dart' as type_env_registration;
+import '06_type_and_environment_registration_example.dart'
+    as type_env_registration;
 
 /// Standalone entry point for running beanlocator examples.
 void main() {
@@ -34,7 +35,9 @@ void main() {
 void run() {
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║              Tom Beanlocator System Samples                      ║');
-  print('╚══════════════════════════════════════════════════════════════════╝\n');
+  print(
+    '╚══════════════════════════════════════════════════════════════════╝\n',
+  );
 
   // Run all examples
   init_sequence.run();

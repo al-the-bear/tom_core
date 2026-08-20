@@ -157,8 +157,10 @@ class TomFileLogReplayStore implements TomLogReplayStore {
       return;
     }
     if (decoded is! List) {
-      _recoverFrom('could not be read (expected a JSON array, got '
-          '${decoded.runtimeType})');
+      _recoverFrom(
+        'could not be read (expected a JSON array, got '
+        '${decoded.runtimeType})',
+      );
       return;
     }
 
@@ -173,9 +175,11 @@ class TomFileLogReplayStore implements TomLogReplayStore {
     if (skipped > 0) {
       // Partial corruption used to present as "the queue was empty". Keep what
       // is readable, and count what is not rather than dropping it in silence.
-      _recoverFrom('contained $skipped unreadable '
-          '${skipped == 1 ? 'entry' : 'entries'} which were dropped '
-          '(${_records.length} recovered)');
+      _recoverFrom(
+        'contained $skipped unreadable '
+        '${skipped == 1 ? 'entry' : 'entries'} which were dropped '
+        '(${_records.length} recovered)',
+      );
     }
   }
 
@@ -200,7 +204,8 @@ class TomFileLogReplayStore implements TomLogReplayStore {
     try {
       _persist();
     } catch (error) {
-      outcome = '$outcome, and the salvaged records could not be '
+      outcome =
+          '$outcome, and the salvaged records could not be '
           'written back ($error)';
     }
     _report('Log replay file ${file.path} $detail; $outcome');

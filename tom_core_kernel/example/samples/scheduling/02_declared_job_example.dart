@@ -268,8 +268,9 @@ class ScanValidationExample {
       );
     } on TomScheduledJobException catch (error) {
       errorKey = error.key;
-      messageNamesTheClass =
-          error.defaultUserMessage.contains('AmbiguousTrigger');
+      messageNamesTheClass = error.defaultUserMessage.contains(
+        'AmbiguousTrigger',
+      );
     }
     nothingRegistered = scheduler.jobs.isEmpty;
 
@@ -340,8 +341,10 @@ class CoexistenceExample {
     );
     try {
       quietly(
-        () =>
-            TomScheduledJobs.registerAll(scheduler, where: only({'HourlyRollup'})),
+        () => TomScheduledJobs.registerAll(
+          scheduler,
+          where: only({'HourlyRollup'}),
+        ),
       );
     } on TomScheduledJobException catch (error) {
       collisionKey = error.key;

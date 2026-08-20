@@ -41,12 +41,20 @@ class RemoteContextExample {
 
     print('   - Base URI: ${context.baseUri}');
     print('   - Authentication URI: ${context.authenticationUri}');
-    print('   - Are they the same? ${context.baseUri == context.authenticationUri}');
+    print(
+      '   - Are they the same? ${context.baseUri == context.authenticationUri}',
+    );
     print('   - toString(): $context');
 
     // Assertions
-    assert(capturedBaseUri.host == 'api.example.com', 'Base URI host should match');
-    assert(capturedAuthUri.host == 'api.example.com', 'Auth URI should default to base URI');
+    assert(
+      capturedBaseUri.host == 'api.example.com',
+      'Base URI host should match',
+    );
+    assert(
+      capturedAuthUri.host == 'api.example.com',
+      'Auth URI should default to base URI',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -62,11 +70,19 @@ class RemoteContextExample {
 
     print('   - Base URI: ${context.baseUri}');
     print('   - Auth URI: ${context.authenticationUri}');
-    print('   - Different servers: ${context.baseUri.host != context.authenticationUri.host}');
+    print(
+      '   - Different servers: ${context.baseUri.host != context.authenticationUri.host}',
+    );
 
     // Assertions
-    assert(context.baseUri.host == 'api.example.com', 'Base should be api.example.com');
-    assert(context.authenticationUri.host == 'auth.example.com', 'Auth should be auth.example.com');
+    assert(
+      context.baseUri.host == 'api.example.com',
+      'Base should be api.example.com',
+    );
+    assert(
+      context.authenticationUri.host == 'auth.example.com',
+      'Auth should be auth.example.com',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -111,14 +127,14 @@ class RemoteContextExample {
 
     // Check initial state (may be null or set from previous tests)
     final initialState = TomClientRemoteContext.current;
-    print('   - Initial current state: ${initialState != null ? 'set' : 'null'}');
+    print(
+      '   - Initial current state: ${initialState != null ? 'set' : 'null'}',
+    );
 
     // If not set, we'll demonstrate setting it
     if (initialState == null) {
       TomClientRemoteContext.setCurrent(
-        TomClientRemoteContext(
-          Uri.parse('https://sample.api.com'),
-        ),
+        TomClientRemoteContext(Uri.parse('https://sample.api.com')),
       );
       print('   - Set current context to: ${TomClientRemoteContext.current}');
     }
@@ -144,9 +160,7 @@ class RemoteContextExample {
     // Try to set the context again - should throw
     try {
       TomClientRemoteContext.setCurrent(
-        TomClientRemoteContext(
-          Uri.parse('https://another.api.com'),
-        ),
+        TomClientRemoteContext(Uri.parse('https://another.api.com')),
       );
       print('   - ERROR: Should have thrown exception');
     } on TomClientRemoteContextException catch (e) {
@@ -160,7 +174,8 @@ class RemoteContextExample {
     // Assertions
     assert(caughtDoubleInitError, 'Should catch double init exception');
     assert(
-      caughtExceptionKey == 'tomclient.remote_context_state_error.already_initialized',
+      caughtExceptionKey ==
+          'tomclient.remote_context_state_error.already_initialized',
       'Exception key should match',
     );
   }
@@ -192,8 +207,14 @@ class RemoteContextExample {
 
     // Assertions
     assert(usersEndpoint.path == '/api/v1/users', 'Users path should match');
-    assert(userById.path == '/api/v1/users/123', 'User by ID path should match');
-    assert(withQuery.queryParameters['q'] == 'test', 'Query param should match');
+    assert(
+      userById.path == '/api/v1/users/123',
+      'User by ID path should match',
+    );
+    assert(
+      withQuery.queryParameters['q'] == 'test',
+      'Query param should match',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -206,9 +227,7 @@ class RemoteContextExample {
     TomClientRemoteContext createContextForEnv(String env) {
       switch (env) {
         case 'dev':
-          return TomClientRemoteContext(
-            Uri.parse('http://localhost:8080'),
-          );
+          return TomClientRemoteContext(Uri.parse('http://localhost:8080'));
         case 'int':
           return TomClientRemoteContext(
             Uri.parse('https://int-api.example.com'),
@@ -220,9 +239,7 @@ class RemoteContextExample {
             Uri.parse('https://sso.example.com'),
           );
         default:
-          return TomClientRemoteContext(
-            Uri.parse('http://localhost:8080'),
-          );
+          return TomClientRemoteContext(Uri.parse('http://localhost:8080'));
       }
     }
 
@@ -231,13 +248,23 @@ class RemoteContextExample {
     final prodCtx = createContextForEnv('prod');
 
     print('   - Dev base: ${devCtx.baseUri}');
-    print('   - Int base: ${intCtx.baseUri}, auth: ${intCtx.authenticationUri}');
-    print('   - Prod base: ${prodCtx.baseUri}, auth: ${prodCtx.authenticationUri}');
+    print(
+      '   - Int base: ${intCtx.baseUri}, auth: ${intCtx.authenticationUri}',
+    );
+    print(
+      '   - Prod base: ${prodCtx.baseUri}, auth: ${prodCtx.authenticationUri}',
+    );
 
     // Assertions
     assert(devCtx.baseUri.host == 'localhost', 'Dev should be localhost');
-    assert(intCtx.baseUri.host == 'int-api.example.com', 'Int should use int-api');
-    assert(prodCtx.authenticationUri.host == 'sso.example.com', 'Prod auth should use SSO');
+    assert(
+      intCtx.baseUri.host == 'int-api.example.com',
+      'Int should use int-api',
+    );
+    assert(
+      prodCtx.authenticationUri.host == 'sso.example.com',
+      'Prod auth should use SSO',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -286,10 +313,14 @@ class RemoteContextExample {
     print('   - API endpoint:  ${apiEndpoint.specs.url}');
     print('   - Auth endpoint: ${authEndpoint.specs.url}');
 
-    assert(apiEndpoint.specs.url.host == 'api.example.com',
-        'An API endpoint must address the API server');
-    assert(authEndpoint.specs.url.host == 'auth.example.com',
-        'An authentication endpoint must address the authentication server');
+    assert(
+      apiEndpoint.specs.url.host == 'api.example.com',
+      'An API endpoint must address the API server',
+    );
+    assert(
+      authEndpoint.specs.url.host == 'auth.example.com',
+      'An authentication endpoint must address the authentication server',
+    );
   }
 }
 
@@ -300,7 +331,9 @@ class RemoteContextExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('REMOTE CONTEXT CONFIGURATION EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   RemoteContextExample.example1ContextStructure();
   RemoteContextExample.example2SeparateAuthServer();

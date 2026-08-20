@@ -1129,14 +1129,15 @@ class TomUserPreferenceCodec {
           entry.key: _narrowScalar(parts.element, entry.value, key, storedName),
       };
       return switch (parts.element) {
-        stringType => Map<String, String>.from(values),
-        intType => Map<String, int>.from(values),
-        doubleType => Map<String, double>.from(values),
-        boolType => Map<String, bool>.from(values),
-        // Only the five scalars reach here: `parts` came from
-        // [_collectionParts], which recognises nothing else.
-        _ => Map<String, DateTime>.from(values),
-      } as T;
+            stringType => Map<String, String>.from(values),
+            intType => Map<String, int>.from(values),
+            doubleType => Map<String, double>.from(values),
+            boolType => Map<String, bool>.from(values),
+            // Only the five scalars reach here: `parts` came from
+            // [_collectionParts], which recognises nothing else.
+            _ => Map<String, DateTime>.from(values),
+          }
+          as T;
     }
     if (raw is! List<Object?>) throw _notDecodable(key, storedName);
     final values = [
@@ -1144,12 +1145,13 @@ class TomUserPreferenceCodec {
         _narrowScalar(parts.element, element, key, storedName),
     ];
     return switch (parts.element) {
-      stringType => List<String>.from(values),
-      intType => List<int>.from(values),
-      doubleType => List<double>.from(values),
-      boolType => List<bool>.from(values),
-      _ => List<DateTime>.from(values),
-    } as T;
+          stringType => List<String>.from(values),
+          intType => List<int>.from(values),
+          doubleType => List<double>.from(values),
+          boolType => List<bool>.from(values),
+          _ => List<DateTime>.from(values),
+        }
+        as T;
   }
 
   /// Raised when a stored row is not shaped like the type it was read as.

@@ -64,7 +64,8 @@ class AdvancedRuntimeExample {
     print('   - First (root): ${hierarchy.first.env}');
     print('   - Last (current): ${hierarchy.last.env}');
 
-    hierarchyWorks = hierarchyNames!.length == 3 &&
+    hierarchyWorks =
+        hierarchyNames!.length == 3 &&
         hierarchyNames![0] == 'root' &&
         hierarchyNames![2] == 'current';
 
@@ -82,7 +83,8 @@ class AdvancedRuntimeExample {
     print('   - TomRuntime.printReport():');
     print('     $report');
 
-    diagnosticWorks = report.contains('TomRuntime') &&
+    diagnosticWorks =
+        report.contains('TomRuntime') &&
         report.contains('Platform') &&
         report.contains('Environment');
 
@@ -112,8 +114,8 @@ class AdvancedRuntimeExample {
     print('   - platformInitCount after: $platformInitCount');
     print('   - lastInitializedPlatform: $lastInitializedPlatform');
 
-    platformInitWorks = platformInitCount == 1 &&
-        lastInitializedPlatform == 'custom-platform';
+    platformInitWorks =
+        platformInitCount == 1 && lastInitializedPlatform == 'custom-platform';
 
     // Assertions
     assert(platformInitWorks, 'Platform initializer should run');
@@ -168,8 +170,8 @@ class AdvancedRuntimeExample {
     print('   @noTomPlatform     // Works on any platform');
     print('   class DefaultMyService implements MyService {}');
 
-    sentinelsWork = noTomEnvironment.env == 'none' &&
-        noTomPlatform.name == 'none';
+    sentinelsWork =
+        noTomEnvironment.env == 'none' && noTomPlatform.name == 'none';
 
     // Assertions
     assert(sentinelsWork, 'Sentinels should have correct names');
@@ -236,7 +238,10 @@ class AdvancedRuntimeExample {
   static void example8EnvironmentToString() {
     print('\n8. Environment and Platform toString:');
 
-    const envWithParent = TomEnvironment('child', parent: defaultTomEnvironment);
+    const envWithParent = TomEnvironment(
+      'child',
+      parent: defaultTomEnvironment,
+    );
 
     print('   - defaultTomEnvironment.toString():');
     print('     ${defaultTomEnvironment.toString()}');
@@ -308,7 +313,9 @@ class AdvancedRuntimeExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('ADVANCED RUNTIME EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   // Clear the process-global environment/platform registries so this sample
   // starts from a clean runtime — the master samples runner executes every

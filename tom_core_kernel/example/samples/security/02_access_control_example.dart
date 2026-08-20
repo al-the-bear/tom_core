@@ -29,10 +29,7 @@ final regularPrincipal = TomPrincipal(
   ),
 );
 
-final guestPrincipal = TomPrincipal(
-  authenticated: false,
-  user: TomUser(),
-);
+final guestPrincipal = TomPrincipal(authenticated: false, user: TomUser());
 
 // =============================================================================
 // EXAMPLE 1: TomPublicAccess - Allows Everyone
@@ -169,7 +166,9 @@ class GroupAccessExample {
     adminsGroupAdmin = adminsGroupAccess.checkAccessibility(adminPrincipal);
     adminsGroupRegular = adminsGroupAccess.checkAccessibility(regularPrincipal);
     devsGroupAdmin = developersGroupAccess.checkAccessibility(adminPrincipal);
-    devsGroupRegular = developersGroupAccess.checkAccessibility(regularPrincipal);
+    devsGroupRegular = developersGroupAccess.checkAccessibility(
+      regularPrincipal,
+    );
 
     groupAccessWorks =
         adminsGroupAdmin == true &&
@@ -178,7 +177,10 @@ class GroupAccessExample {
         devsGroupRegular == true;
 
     assert(adminsGroupAdmin == true, 'Admin should be in administrators');
-    assert(adminsGroupRegular == false, 'Regular should not be in administrators');
+    assert(
+      adminsGroupRegular == false,
+      'Regular should not be in administrators',
+    );
     assert(devsGroupAdmin == false, 'Admin should not be in developers');
     assert(devsGroupRegular == true, 'Regular should be in developers');
     assert(groupAccessWorks, 'Group access should work');
@@ -197,13 +199,21 @@ class EntitlementAccessExample {
   static bool entitlementAccessWorks = false;
 
   static void example6EntitlementAccess() {
-    const dashboardEditAccess = TomEntitlementAccess(['feature.dashboard.edit']);
-    const dashboardViewAccess = TomEntitlementAccess(['feature.dashboard.view']);
+    const dashboardEditAccess = TomEntitlementAccess([
+      'feature.dashboard.edit',
+    ]);
+    const dashboardViewAccess = TomEntitlementAccess([
+      'feature.dashboard.view',
+    ]);
 
     dashboardEditAdmin = dashboardEditAccess.checkAccessibility(adminPrincipal);
-    dashboardEditRegular = dashboardEditAccess.checkAccessibility(regularPrincipal);
+    dashboardEditRegular = dashboardEditAccess.checkAccessibility(
+      regularPrincipal,
+    );
     dashboardViewAdmin = dashboardViewAccess.checkAccessibility(adminPrincipal);
-    dashboardViewRegular = dashboardViewAccess.checkAccessibility(regularPrincipal);
+    dashboardViewRegular = dashboardViewAccess.checkAccessibility(
+      regularPrincipal,
+    );
 
     entitlementAccessWorks =
         dashboardEditAdmin == true &&
@@ -211,7 +221,10 @@ class EntitlementAccessExample {
         dashboardViewRegular == true;
 
     assert(dashboardEditAdmin == true, 'Admin should have dashboard edit');
-    assert(dashboardEditRegular == false, 'Regular should not have dashboard edit');
+    assert(
+      dashboardEditRegular == false,
+      'Regular should not have dashboard edit',
+    );
     assert(dashboardViewRegular == true, 'Regular should have dashboard view');
     assert(entitlementAccessWorks, 'Entitlement access should work');
   }
@@ -230,14 +243,24 @@ class MultipleRolesExample {
     // This checks if user has ANY of the specified roles (OR logic)
     const managerOrAdminAccess = TomRoleAccess(['manager', 'admin']);
 
-    managerOrAdminAdmin = managerOrAdminAccess.checkAccessibility(adminPrincipal);
-    managerOrAdminRegular = managerOrAdminAccess.checkAccessibility(regularPrincipal);
+    managerOrAdminAdmin = managerOrAdminAccess.checkAccessibility(
+      adminPrincipal,
+    );
+    managerOrAdminRegular = managerOrAdminAccess.checkAccessibility(
+      regularPrincipal,
+    );
 
     multiRoleWorks =
         managerOrAdminAdmin == true && managerOrAdminRegular == false;
 
-    assert(managerOrAdminAdmin == true, 'Admin has admin role (one of manager/admin)');
-    assert(managerOrAdminRegular == false, 'Regular has neither manager nor admin');
+    assert(
+      managerOrAdminAdmin == true,
+      'Admin has admin role (one of manager/admin)',
+    );
+    assert(
+      managerOrAdminRegular == false,
+      'Regular has neither manager nor admin',
+    );
     assert(multiRoleWorks, 'Multiple roles check should work');
   }
 }

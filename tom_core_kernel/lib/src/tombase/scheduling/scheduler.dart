@@ -212,12 +212,14 @@ class TomScheduler implements TomClosable {
     this.lock,
     this.leaseTtl = const Duration(minutes: 1),
     Duration? leaseRenewInterval,
-  })  : ownerId = ownerId ?? 'scheduler-${DateTime.now().microsecondsSinceEpoch}',
-        clock = clock ?? DateTime.now,
-        onAlert = onAlert ?? _logAlert,
-        random = random ?? Random(),
-        leaseRenewInterval = leaseRenewInterval ??
-            Duration(microseconds: leaseTtl.inMicroseconds ~/ 3) {
+  }) : ownerId =
+           ownerId ?? 'scheduler-${DateTime.now().microsecondsSinceEpoch}',
+       clock = clock ?? DateTime.now,
+       onAlert = onAlert ?? _logAlert,
+       random = random ?? Random(),
+       leaseRenewInterval =
+           leaseRenewInterval ??
+           Duration(microseconds: leaseTtl.inMicroseconds ~/ 3) {
     if (this.leaseRenewInterval >= leaseTtl) {
       throw TomScheduleException(
         'schedule.scheduler.renew_interval',
@@ -364,7 +366,8 @@ class TomScheduler implements TomClosable {
   Duration _nextTickDelay() {
     if (tickJitter <= 0) return tickInterval;
     final shaved =
-        (tickInterval.inMicroseconds * tickJitter * random.nextDouble()).round();
+        (tickInterval.inMicroseconds * tickJitter * random.nextDouble())
+            .round();
     return Duration(microseconds: tickInterval.inMicroseconds - shaved);
   }
 
@@ -712,10 +715,7 @@ class TomScheduler implements TomClosable {
   /// Returns `null` both when there is no lock (the single-node case, where the
   /// caller proceeds anyway) and when a peer holds the lease; the caller
   /// distinguishes them by whether [lock] is set.
-  Future<TomLease?> _acquireLease(
-    TomJobDefinition job,
-    TomJobRun run,
-  ) async {
+  Future<TomLease?> _acquireLease(TomJobDefinition job, TomJobRun run) async {
     final coordinator = lock;
     if (coordinator == null) return null;
     final resource = _leaseResource(job, run);
@@ -816,11 +816,7 @@ class TomScheduler implements TomClosable {
   /// Renewal is what decouples the lease TTL from job duration: without it the
   /// TTL would have to exceed the slowest possible run, and a dead node would
   /// then block its work for exactly that long.
-  Timer? _startHeartbeat(
-    TomJobDefinition job,
-    TomJobRun run,
-    TomLease? lease,
-  ) {
+  Timer? _startHeartbeat(TomJobDefinition job, TomJobRun run, TomLease? lease) {
     if (lock == null || lease == null) return null;
     return Timer.periodic(
       leaseRenewInterval,
@@ -884,8 +880,7 @@ class TomScheduler implements TomClosable {
       await _failFinally(job, run, error, stack);
       return;
     }
-    final retryAt =
-        now.add(job.retryPolicy.backoffFor(run.attempt, random));
+    final retryAt = now.add(job.retryPolicy.backoffFor(run.attempt, random));
     await store.fail(run, error.toString(), now, retryAt: retryAt);
     onAlert(
       TomJobAlert(

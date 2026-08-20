@@ -59,7 +59,10 @@ class AdvancedJwtExample {
     exceptionCaught = true;
 
     // Assertions
-    assert(exception.key == 'jwt_token.error.decryption_failed', 'Key should match');
+    assert(
+      exception.key == 'jwt_token.error.decryption_failed',
+      'Key should match',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -93,10 +96,9 @@ class AdvancedJwtExample {
     final now = DateTime.now();
 
     // Token that's valid immediately for 2 hours
-    final immediateToken = TomServerJwtToken(
-      {'userId': 'user-1'},
-      expiresIn: Duration(hours: 2),
-    );
+    final immediateToken = TomServerJwtToken({
+      'userId': 'user-1',
+    }, expiresIn: Duration(hours: 2));
 
     // Token that becomes valid after 5 minutes
     final delayedToken = TomServerJwtToken(
@@ -106,10 +108,9 @@ class AdvancedJwtExample {
     );
 
     // Token with very short expiration
-    final shortLivedToken = TomServerJwtToken(
-      {'userId': 'user-3'},
-      expiresIn: Duration(seconds: 30),
-    );
+    final shortLivedToken = TomServerJwtToken({
+      'userId': 'user-3',
+    }, expiresIn: Duration(seconds: 30));
 
     final jwt1 = immediateToken.getJWT('issuer');
     final jwt2 = delayedToken.getJWT('issuer');
@@ -197,10 +198,13 @@ class AdvancedJwtExample {
     print('   - Created token with encrypted data');
     print('   - Parsed with decrypt: false');
     print('   - payload["userId"]: ${tokenNoDecrypt.payload?["userId"]}');
-    print('   - payload["encrypted"]: ${tokenNoDecrypt.payload?.containsKey("encrypted") == true ? "(encrypted string)" : "not present"}');
+    print(
+      '   - payload["encrypted"]: ${tokenNoDecrypt.payload?.containsKey("encrypted") == true ? "(encrypted string)" : "not present"}',
+    );
     print('   - secretData: ${tokenNoDecrypt.secretData}');
 
-    decryptDisabledWorks = tokenNoDecrypt.secretData == null &&
+    decryptDisabledWorks =
+        tokenNoDecrypt.secretData == null &&
         tokenNoDecrypt.payload?.containsKey('encrypted') == true;
 
     print('');
@@ -227,7 +231,9 @@ class AdvancedJwtExample {
     TomClientJwtToken.globalSettingShowContentInToString = true;
     final withContent = clientToken.toString();
     print('   With globalSettingShowContentInToString = true:');
-    print('   - toString shows: issuer, jwtId, audience, header, subject, payload, secretData');
+    print(
+      '   - toString shows: issuer, jwtId, audience, header, subject, payload, secretData',
+    );
     print('   - Length: ${withContent.length} chars');
 
     // Hide content for production logs
@@ -243,7 +249,10 @@ class AdvancedJwtExample {
     TomClientJwtToken.globalSettingShowContentInToString = true;
 
     // Assertions
-    assert(withContent.length > withoutContent.length, 'Content hidden should be shorter');
+    assert(
+      withContent.length > withoutContent.length,
+      'Content hidden should be shorter',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -255,14 +264,11 @@ class AdvancedJwtExample {
     // With issued at (default)
     final withIat = TomServerJwtToken(
       {'data': 'test'},
-      noIssueAt: false,  // default
+      noIssueAt: false, // default
     );
 
     // Without issued at
-    final withoutIat = TomServerJwtToken(
-      {'data': 'test'},
-      noIssueAt: true,
-    );
+    final withoutIat = TomServerJwtToken({'data': 'test'}, noIssueAt: true);
 
     print('   noIssueAt: false (default)');
     print('   - Token includes "iat" (issued at) claim');
@@ -377,7 +383,9 @@ class AdvancedJwtExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('ADVANCED JWT TOKEN EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   AdvancedJwtExample.example1DecryptionException();
   AdvancedJwtExample.example2CatchingException();
@@ -391,10 +399,19 @@ void run() {
   AdvancedJwtExample.example10BestPractices();
 
   // Final assertions
-  assert(AdvancedJwtExample.exceptionCaught, 'Exception should be demonstrated');
-  assert(AdvancedJwtExample.validityWindowWorks, 'Validity windows should work');
+  assert(
+    AdvancedJwtExample.exceptionCaught,
+    'Exception should be demonstrated',
+  );
+  assert(
+    AdvancedJwtExample.validityWindowWorks,
+    'Validity windows should work',
+  );
   assert(AdvancedJwtExample.customConfigWorks, 'Custom config should work');
-  assert(AdvancedJwtExample.decryptDisabledWorks, 'Decrypt disabled should work');
+  assert(
+    AdvancedJwtExample.decryptDisabledWorks,
+    'Decrypt disabled should work',
+  );
 
   print('\n✓ All advanced JWT examples passed!\n');
 }

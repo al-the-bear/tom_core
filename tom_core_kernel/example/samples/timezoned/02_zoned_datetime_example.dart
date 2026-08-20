@@ -40,8 +40,12 @@ class ZonedDateTimeExample {
     );
 
     print('   - Timezone: ${tokyoMeeting.timezone.timezone}');
-    print('   - Local time: ${tokyoMeeting.localYear}-${tokyoMeeting.localMonth.toString().padLeft(2, '0')}-${tokyoMeeting.localDay.toString().padLeft(2, '0')} ${tokyoMeeting.localHour}:${tokyoMeeting.localMinute.toString().padLeft(2, '0')}:${tokyoMeeting.localSecond.toString().padLeft(2, '0')}');
-    print('   - UTC time: ${tokyoMeeting.year}-${tokyoMeeting.month.toString().padLeft(2, '0')}-${tokyoMeeting.day.toString().padLeft(2, '0')} ${tokyoMeeting.hour}:${tokyoMeeting.minute.toString().padLeft(2, '0')}:${tokyoMeeting.second.toString().padLeft(2, '0')}');
+    print(
+      '   - Local time: ${tokyoMeeting.localYear}-${tokyoMeeting.localMonth.toString().padLeft(2, '0')}-${tokyoMeeting.localDay.toString().padLeft(2, '0')} ${tokyoMeeting.localHour}:${tokyoMeeting.localMinute.toString().padLeft(2, '0')}:${tokyoMeeting.localSecond.toString().padLeft(2, '0')}',
+    );
+    print(
+      '   - UTC time: ${tokyoMeeting.year}-${tokyoMeeting.month.toString().padLeft(2, '0')}-${tokyoMeeting.day.toString().padLeft(2, '0')} ${tokyoMeeting.hour}:${tokyoMeeting.minute.toString().padLeft(2, '0')}:${tokyoMeeting.second.toString().padLeft(2, '0')}',
+    );
     print('   - isUtc: ${tokyoMeeting.isUtc}');
 
     // Assertions
@@ -68,12 +72,20 @@ class ZonedDateTimeExample {
     );
 
     print('   - Timezone: ${utcTime.timezone.timezone}');
-    print('   - Local/UTC time: ${utcTime.localYear}-${utcTime.localMonth}-${utcTime.localDay} ${utcTime.localHour}:${utcTime.localMinute}:${utcTime.localSecond}');
+    print(
+      '   - Local/UTC time: ${utcTime.localYear}-${utcTime.localMonth}-${utcTime.localDay} ${utcTime.localHour}:${utcTime.localMinute}:${utcTime.localSecond}',
+    );
     print('   - For UTC, local and UTC values are the same');
 
     // Assertions
-    assert(utcTime.localHour == utcTime.hour, 'For UTC, local and UTC hour should match');
-    assert(utcTime.localDay == utcTime.day, 'For UTC, local and UTC day should match');
+    assert(
+      utcTime.localHour == utcTime.hour,
+      'For UTC, local and UTC hour should match',
+    );
+    assert(
+      utcTime.localDay == utcTime.day,
+      'For UTC, local and UTC day should match',
+    );
     assert(utcTime.timezone == TomTimezone.utc, 'Timezone should be UTC');
   }
 
@@ -90,13 +102,23 @@ class ZonedDateTimeExample {
 
     print('   - Original DateTime: $existingDateTime');
     print('   - Associated timezone: ${fromDateTime.timezone.timezone}');
-    print('   - UTC components: ${fromDateTime.year}-${fromDateTime.month}-${fromDateTime.day} ${fromDateTime.hour}:${fromDateTime.minute}');
-    print('   - Local components: ${fromDateTime.localYear}-${fromDateTime.localMonth}-${fromDateTime.localDay} ${fromDateTime.localHour}:${fromDateTime.localMinute}');
+    print(
+      '   - UTC components: ${fromDateTime.year}-${fromDateTime.month}-${fromDateTime.day} ${fromDateTime.hour}:${fromDateTime.minute}',
+    );
+    print(
+      '   - Local components: ${fromDateTime.localYear}-${fromDateTime.localMonth}-${fromDateTime.localDay} ${fromDateTime.localHour}:${fromDateTime.localMinute}',
+    );
 
     // March is before BST starts, so London is at UTC+0
     // Assertions
-    assert(fromDateTime.hour == existingDateTime.hour, 'UTC hour should match original');
-    assert(fromDateTime.timezone.timezone == 'Europe/London', 'Timezone should be London');
+    assert(
+      fromDateTime.hour == existingDateTime.hour,
+      'UTC hour should match original',
+    );
+    assert(
+      fromDateTime.timezone.timezone == 'Europe/London',
+      'Timezone should be London',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -110,14 +132,23 @@ class ZonedDateTimeExample {
     final nowInTokyo = TomZonedDateTime.fromDateTime(now, tokyo);
     final nowInUtc = TomZonedDateTime.fromDateTime(now, TomTimezone.utc);
 
-    print('   - Now in Tokyo: ${nowInTokyo.localHour}:${nowInTokyo.localMinute.toString().padLeft(2, '0')}');
-    print('   - Now in UTC: ${nowInUtc.localHour}:${nowInUtc.localMinute.toString().padLeft(2, '0')}');
+    print(
+      '   - Now in Tokyo: ${nowInTokyo.localHour}:${nowInTokyo.localMinute.toString().padLeft(2, '0')}',
+    );
+    print(
+      '   - Now in UTC: ${nowInUtc.localHour}:${nowInUtc.localMinute.toString().padLeft(2, '0')}',
+    );
     print('   - Both represent the same instant');
-    print('   - Tokyo UTC offset: ${nowInTokyo.timezone.timezoneOffsetMin} minutes');
+    print(
+      '   - Tokyo UTC offset: ${nowInTokyo.timezone.timezoneOffsetMin} minutes',
+    );
 
     // Assertions
     assert(nowInTokyo.isUtc == true, 'Should be stored as UTC');
-    assert(nowInTokyo.timezone.timezone == 'Asia/Tokyo', 'Timezone should be Tokyo');
+    assert(
+      nowInTokyo.timezone.timezone == 'Asia/Tokyo',
+      'Timezone should be Tokyo',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -147,7 +178,9 @@ class ZonedDateTimeExample {
     print('   - localSecond: ${dt.localSecond}');
     print('   - localMillisecond: ${dt.localMillisecond}');
     print('   - localMicrosecond: ${dt.localMicrosecond}');
-    print('   - localWeekday: ${dt.localWeekday} (${_weekdayName(dt.localWeekday)})');
+    print(
+      '   - localWeekday: ${dt.localWeekday} (${_weekdayName(dt.localWeekday)})',
+    );
 
     // July 4, 2024 is a Thursday (weekday = 4)
     // Assertions
@@ -176,9 +209,15 @@ class ZonedDateTimeExample {
       timezone: sydney,
     );
 
-    print('   - Local: ${lateNight.localYear}-${lateNight.localMonth.toString().padLeft(2, '0')}-${lateNight.localDay.toString().padLeft(2, '0')} ${lateNight.localHour}:${lateNight.localMinute.toString().padLeft(2, '0')}');
-    print('   - UTC: ${lateNight.year}-${lateNight.month.toString().padLeft(2, '0')}-${lateNight.day.toString().padLeft(2, '0')} ${lateNight.hour}:${lateNight.minute.toString().padLeft(2, '0')}');
-    print('   - UTC is ${sydney.getUtcOffsetOn(lateNight) ~/ 60} hours behind local');
+    print(
+      '   - Local: ${lateNight.localYear}-${lateNight.localMonth.toString().padLeft(2, '0')}-${lateNight.localDay.toString().padLeft(2, '0')} ${lateNight.localHour}:${lateNight.localMinute.toString().padLeft(2, '0')}',
+    );
+    print(
+      '   - UTC: ${lateNight.year}-${lateNight.month.toString().padLeft(2, '0')}-${lateNight.day.toString().padLeft(2, '0')} ${lateNight.hour}:${lateNight.minute.toString().padLeft(2, '0')}',
+    );
+    print(
+      '   - UTC is ${sydney.getUtcOffsetOn(lateNight) ~/ 60} hours behind local',
+    );
 
     // Sydney in January is on AEDT (UTC+11), so 23:30 local = 12:30 UTC same day
     // Assertions
@@ -234,12 +273,24 @@ class ZonedDateTimeExample {
     print('   - Full serialized: ${dt.getSerializationPrefix()}$dt');
 
     // Assertions
-    assert(dt.getSerializationPrefix() == '@X@', 'TomZonedDateTime prefix should be @X@');
+    assert(
+      dt.getSerializationPrefix() == '@X@',
+      'TomZonedDateTime prefix should be @X@',
+    );
   }
 
   // Helper function
   static String _weekdayName(int weekday) {
-    const names = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const names = [
+      '',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
     return names[weekday];
   }
 

@@ -81,20 +81,30 @@ void run() {
   // ---------------------------------------------------------------------------
   // Example 2: the state predicates drive UI rendering decisions.
   // ---------------------------------------------------------------------------
-  print('2. TomAuthState predicates (isVisible / isInteractive / showsContent):');
+  print(
+    '2. TomAuthState predicates (isVisible / isInteractive / showsContent):',
+  );
 
-  print('   - full     → visible=${TomAuthState.full.isVisible}, '
-      'interactive=${TomAuthState.full.isInteractive}, '
-      'showsContent=${TomAuthState.full.showsContent}');
-  print('   - read     → visible=${TomAuthState.read.isVisible}, '
-      'interactive=${TomAuthState.read.isInteractive}, '
-      'showsContent=${TomAuthState.read.showsContent}');
-  print('   - disabled → visible=${TomAuthState.disabled.isVisible}, '
-      'interactive=${TomAuthState.disabled.isInteractive}, '
-      'showsContent=${TomAuthState.disabled.showsContent}');
-  print('   - none     → visible=${TomAuthState.none.isVisible}, '
-      'interactive=${TomAuthState.none.isInteractive}, '
-      'showsContent=${TomAuthState.none.showsContent}\n');
+  print(
+    '   - full     → visible=${TomAuthState.full.isVisible}, '
+    'interactive=${TomAuthState.full.isInteractive}, '
+    'showsContent=${TomAuthState.full.showsContent}',
+  );
+  print(
+    '   - read     → visible=${TomAuthState.read.isVisible}, '
+    'interactive=${TomAuthState.read.isInteractive}, '
+    'showsContent=${TomAuthState.read.showsContent}',
+  );
+  print(
+    '   - disabled → visible=${TomAuthState.disabled.isVisible}, '
+    'interactive=${TomAuthState.disabled.isInteractive}, '
+    'showsContent=${TomAuthState.disabled.showsContent}',
+  );
+  print(
+    '   - none     → visible=${TomAuthState.none.isVisible}, '
+    'interactive=${TomAuthState.none.isInteractive}, '
+    'showsContent=${TomAuthState.none.showsContent}\n',
+  );
 
   assert(TomAuthState.full.isInteractive);
   assert(!TomAuthState.read.isInteractive);
@@ -110,7 +120,9 @@ void run() {
   // ---------------------------------------------------------------------------
   print('3. Defaulting (only `full` supplied):');
 
-  final adminOnly = TomGradedAccess(full: const TomRoleAccess(['payroll.admin']));
+  final adminOnly = TomGradedAccess(
+    full: const TomRoleAccess(['payroll.admin']),
+  );
 
   final adminOnlyForAdmin = adminOnly.resolveAuthState(payrollAdmin);
   final adminOnlyForManager = adminOnly.resolveAuthState(manager);

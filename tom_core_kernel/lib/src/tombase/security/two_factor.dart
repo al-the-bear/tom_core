@@ -222,9 +222,9 @@ class Tom2FAMethodDescriptor {
   /// cannot half-follow it, and adding one cannot silently invent a fourth
   /// naming scheme.
   Tom2FAMethodDescriptor.scoped(this.type)
-      : displayNameKey = '$resourceScope.$type.name',
-        descriptionKey = '$resourceScope.$type.description',
-        iconKey = '$resourceScope.$type.icon';
+    : displayNameKey = '$resourceScope.$type.name',
+      descriptionKey = '$resourceScope.$type.description',
+      iconKey = '$resourceScope.$type.icon';
 
   @override
   String toString() => 'Tom2FAMethodDescriptor($type -> $displayNameKey)';
@@ -289,27 +289,27 @@ class Tom2FAChallenge {
 
   /// This challenge with one more attempt consumed.
   Tom2FAChallenge withConsumedAttempt() => Tom2FAChallenge(
-        type: type,
-        hint: hint,
-        attempt: attempt + 1,
-        attemptsAllowed: attemptsAllowed,
-        expiresAt: expiresAt,
-        clientData: clientData,
-      );
+    type: type,
+    hint: hint,
+    attempt: attempt + 1,
+    attemptsAllowed: attemptsAllowed,
+    expiresAt: expiresAt,
+    clientData: clientData,
+  );
 
   /// Projects this challenge onto the public token claims (see [Tom2FAClaims]).
   ///
   /// Includes [Tom2FAClaims.requires2FA]`: "true"` — a token carrying a
   /// challenge is by definition not yet a completed login.
   Map<String, Object?> toClaims() => {
-        Tom2FAClaims.requires2FA: 'true',
-        Tom2FAClaims.type: type,
-        Tom2FAClaims.hint: hint,
-        Tom2FAClaims.attempt: attempt,
-        Tom2FAClaims.attemptsAllowed: attemptsAllowed,
-        Tom2FAClaims.expiresAt: expiresAt.toUtc().toIso8601String(),
-        Tom2FAClaims.clientData: clientData,
-      };
+    Tom2FAClaims.requires2FA: 'true',
+    Tom2FAClaims.type: type,
+    Tom2FAClaims.hint: hint,
+    Tom2FAClaims.attempt: attempt,
+    Tom2FAClaims.attemptsAllowed: attemptsAllowed,
+    Tom2FAClaims.expiresAt: expiresAt.toUtc().toIso8601String(),
+    Tom2FAClaims.clientData: clientData,
+  };
 
   /// Reads a challenge back from a token's public [payload], or returns `null`
   /// when the payload carries none.
@@ -493,8 +493,9 @@ class Tom2FAPendingEnrolment {
     if (type.isEmpty && offeredTypes.isEmpty) return null;
 
     final expiresAtRaw = payload[Tom2FAEnrolmentClaims.expiresAt];
-    final expiresAt =
-        expiresAtRaw is String ? DateTime.tryParse(expiresAtRaw) : null;
+    final expiresAt = expiresAtRaw is String
+        ? DateTime.tryParse(expiresAtRaw)
+        : null;
     // The choosing stop legitimately carries no deadline; a begun one must.
     if (type.isNotEmpty && expiresAt == null) return null;
 
@@ -514,8 +515,9 @@ class Tom2FAPendingEnrolment {
           : const <String, Object?>{},
       offeredTypes: offeredTypes,
       skippable: _claimIsTrue(payload[Tom2FAEnrolmentClaims.skippable]),
-      skipSpendsGrace:
-          _claimIsTrue(payload[Tom2FAEnrolmentClaims.skipSpendsGrace]),
+      skipSpendsGrace: _claimIsTrue(
+        payload[Tom2FAEnrolmentClaims.skipSpendsGrace],
+      ),
     );
   }
 
@@ -529,7 +531,8 @@ class Tom2FAPendingEnrolment {
   static bool _claimIsTrue(Object? raw) => raw == true || raw == 'true';
 
   @override
-  String toString() => 'Tom2FAPendingEnrolment '
+  String toString() =>
+      'Tom2FAPendingEnrolment '
       '${hasOffer ? type : 'choosing from $offeredTypes'} '
       'attempt: $attempt/$attemptsAllowed skippable: $skippable '
       'expires: ${expiresAt?.toIso8601String() ?? '-'}';
@@ -572,7 +575,11 @@ class TomTotp {
   static int counterFor({DateTime? at, Duration period = defaultPeriod}) {
     final step = period.inSeconds;
     if (step <= 0) {
-      throw ArgumentError.value(period, 'period', 'must be a positive duration');
+      throw ArgumentError.value(
+        period,
+        'period',
+        'must be a positive duration',
+      );
     }
     final seconds =
         (at ?? DateTime.now()).toUtc().millisecondsSinceEpoch ~/ 1000;
@@ -599,7 +606,8 @@ class TomTotp {
     // Dynamic truncation (RFC 4226 §5.3): the low nibble of the last byte
     // selects which four bytes of the digest become the code.
     final offset = mac[mac.length - 1] & 0x0f;
-    final binary = ((mac[offset] & 0x7f) << 24) |
+    final binary =
+        ((mac[offset] & 0x7f) << 24) |
         ((mac[offset + 1] & 0xff) << 16) |
         ((mac[offset + 2] & 0xff) << 8) |
         (mac[offset + 3] & 0xff);

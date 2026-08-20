@@ -420,16 +420,14 @@ class TomBean<T> {
     String? environment,
   }) {
     final env =
-        environment ?? _requireCurrentEnvironment("installByEnvironment", T).env;
+        environment ??
+        _requireCurrentEnvironment("installByEnvironment", T).env;
     final factory = factories[env];
     if (factory == null) {
       throw TomBeanLocatorException(
         "beanlocator.environment.no_factory_for_environment",
         "No bean factory registered for environment '$env'.",
-        parameters: {
-          "environment": env,
-          "available": factories.keys.toList(),
-        },
+        parameters: {"environment": env, "available": factories.keys.toList()},
         autoLog: true,
       );
     }

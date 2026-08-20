@@ -80,7 +80,9 @@ class _CapturingLogOutput extends TomLogOutput {
 /// surfaces through the server's configured local output — prefixed with the
 /// client's sender id so the origin is identifiable.
 void run() {
-  print('1. Remote logging — client message received and re-emitted by server:');
+  print(
+    '1. Remote logging — client message received and re-emitted by server:',
+  );
 
   // --- Server side: capture what the collector writes locally. ---------------
   final serverOutput = _CapturingLogOutput();
@@ -108,7 +110,9 @@ void run() {
   print('   result.hasError: ${result.hasError}\n');
 
   // --- Client fallback: with no endpoint configured, records stay local. -----
-  print('2. Remote logging — falls back locally when no endpoint is configured:');
+  print(
+    '2. Remote logging — falls back locally when no endpoint is configured:',
+  );
   final fallbackOutput = _CapturingLogOutput();
   final originalFallback = TomRemoteLogOutput.globalSettingFallbackOutput;
   TomRemoteLogOutput.globalSettingFallbackOutput = fallbackOutput;
@@ -144,8 +148,10 @@ void run() {
   );
   final messageAfterGatedRecord = fallbackOutput.lastMessage;
 
-  print('   after a DEBUG record at PRODUCTION level: $messageAfterGatedRecord'
-      ' (unchanged)\n');
+  print(
+    '   after a DEBUG record at PRODUCTION level: $messageAfterGatedRecord'
+    ' (unchanged)\n',
+  );
 
   // --- Client wiring: point the output at a real collector. ------------------
   //
@@ -262,8 +268,10 @@ class CustomLoggingContext extends TomLoggingWorkerContext {
     // TomRemoteLogOutput.globalSettingFallbackOutput — the console. That keeps
     // the demo server-free while still exercising the real redirect.
     tomLog.logOutput = TomRemoteLogOutput();
-    print('   [logging isolate] its own logOutput is now '
-        '${tomLog.logOutput.runtimeType}');
+    print(
+      '   [logging isolate] its own logOutput is now '
+      '${tomLog.logOutput.runtimeType}',
+    );
   }
 }
 
@@ -311,8 +319,10 @@ Future<void> runIsolateLoggingDemo(List<String> args) async {
   }
   tomLog.logOutput = originalOutput;
 
-  print('   (worker isolates would call '
-      'TomIsolateLogging.startLoggingToCreator() to route their logs back)\n');
+  print(
+    '   (worker isolates would call '
+    'TomIsolateLogging.startLoggingToCreator() to route their logs back)\n',
+  );
 }
 
 /// Standalone entry point.

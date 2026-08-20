@@ -73,7 +73,10 @@ class EntitlementAccessExample {
 
     // Assertions
     assert(exactMatchPremium == true, 'Premium should have export entitlement');
-    assert(exactMatchBasic == false, 'Basic should not have export entitlement');
+    assert(
+      exactMatchBasic == false,
+      'Basic should not have export entitlement',
+    );
   }
 
   static void example2PatternEntitlementMatch() {
@@ -103,8 +106,12 @@ class EntitlementAccessExample {
       r'admin\..*',
     ]);
 
-    multiPatternPremium = premiumOrAdminAccess.checkAccessibility(premiumPrincipal);
-    final multiPatternBasic = premiumOrAdminAccess.checkAccessibility(basicPrincipal);
+    multiPatternPremium = premiumOrAdminAccess.checkAccessibility(
+      premiumPrincipal,
+    );
+    final multiPatternBasic = premiumOrAdminAccess.checkAccessibility(
+      basicPrincipal,
+    );
 
     print('   - Patterns: [premium.*, admin.*]');
     print('   - Premium matches: $multiPatternPremium');
@@ -151,9 +158,13 @@ class ResourceKeyAccessExample {
     print('   - Basic resource keys: ${basicPrincipal.aci.resourceKeys}');
 
     // Direct check on the access control
-    emailAccessPremium = premiumPrincipal.aci.resourceKeys.contains('user.email');
+    emailAccessPremium = premiumPrincipal.aci.resourceKeys.contains(
+      'user.email',
+    );
     emailAccessBasic = basicPrincipal.aci.resourceKeys.contains('user.email');
-    salaryAccessPremium = premiumPrincipal.aci.resourceKeys.contains('user.salary');
+    salaryAccessPremium = premiumPrincipal.aci.resourceKeys.contains(
+      'user.salary',
+    );
     salaryAccessBasic = basicPrincipal.aci.resourceKeys.contains('user.salary');
 
     print('   - Premium has email key: $emailAccessPremium');
@@ -205,7 +216,10 @@ class ResourceKeyProtectionExample {
     );
 
     print('   - Protection disabled: $protectedEmail');
-    assert(protectedEmail == realEmail, 'Should return real value when disabled');
+    assert(
+      protectedEmail == realEmail,
+      'Should return real value when disabled',
+    );
 
     // Reset
     TomResourceKeyProtection.globalSettingProtectionDefault = false;
@@ -217,7 +231,11 @@ class ResourceKeyProtectionExample {
     TomResourceKeyProtection.globalSettingProtectionDefault = false;
 
     // tomProtect is a shorthand for TomResourceKeyProtection.protect
-    final protectedValue = tomProtect('sensitive data', '[redacted]', 'data.key');
+    final protectedValue = tomProtect(
+      'sensitive data',
+      '[redacted]',
+      'data.key',
+    );
     print('   - tomProtect(): $protectedValue');
 
     // tomProtected checks if a resource is protected
@@ -225,7 +243,10 @@ class ResourceKeyProtectionExample {
     print('   - tomProtected(): $isProtected');
 
     // Assertions
-    assert(protectedValue == 'sensitive data', 'Should return real when disabled');
+    assert(
+      protectedValue == 'sensitive data',
+      'Should return real when disabled',
+    );
     assert(isProtected == false, 'Should not be protected when disabled');
 
     TomResourceKeyProtection.globalSettingProtectionDefault = false;
@@ -335,14 +356,22 @@ class GlobalSettingsExample {
     print('\n10. Global protection settings:');
 
     // Show available global settings
-    print('   - globalSettingProtectionDefault: '
-        '${TomResourceKeyProtection.globalSettingProtectionDefault}');
-    print('   - globalSettingUseAutomaticEndpointProtection: '
-        '${TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection}');
-    print('   - globalSettingUseAutomaticJsonProtection: '
-        '${TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection}');
-    print('   - globalSettingUseAutomaticDatabaseProtection: '
-        '${TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection}');
+    print(
+      '   - globalSettingProtectionDefault: '
+      '${TomResourceKeyProtection.globalSettingProtectionDefault}',
+    );
+    print(
+      '   - globalSettingUseAutomaticEndpointProtection: '
+      '${TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection}',
+    );
+    print(
+      '   - globalSettingUseAutomaticJsonProtection: '
+      '${TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection}',
+    );
+    print(
+      '   - globalSettingUseAutomaticDatabaseProtection: '
+      '${TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection}',
+    );
 
     // These can be configured at app startup
     // TomResourceKeyProtection.globalSettingProtectionDefault = true;
@@ -356,7 +385,9 @@ class GlobalSettingsExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('ADVANCED ACCESS CONTROL EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   // Entitlement access examples
   EntitlementAccessExample.example1ExactEntitlementMatch();

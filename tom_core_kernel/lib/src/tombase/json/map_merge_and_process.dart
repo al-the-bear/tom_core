@@ -113,8 +113,9 @@ List<dynamic> _mergeListsOneSided(
   // Only the overlapping prefix has two elements to combine. Iterating to
   // base.length unconditionally caused a RangeError when the override array
   // was shorter (bug §44).
-  final int overlap =
-      base.length < override.length ? base.length : override.length;
+  final int overlap = base.length < override.length
+      ? base.length
+      : override.length;
   for (int i = 0; i < overlap; i++) {
     final Object? baseElement = base[i];
     final Object? overrideElement = override[i];
@@ -132,8 +133,11 @@ List<dynamic> _mergeListsOneSided(
       _mergeMapsOneSided(merged, overrideElement);
       result[i] = merged;
     } else if (baseElement is List && overrideElement is List) {
-      result[i] =
-          _mergeListsOneSided(baseElement, overrideElement, '$name[$i]');
+      result[i] = _mergeListsOneSided(
+        baseElement,
+        overrideElement,
+        '$name[$i]',
+      );
     } else if (overrideElement is Map || overrideElement is List) {
       tomLog.error(
         "Attempt to merge a structured value into $name[$i] = $baseElement, "

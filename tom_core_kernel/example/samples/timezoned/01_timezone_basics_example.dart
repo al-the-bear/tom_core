@@ -76,15 +76,22 @@ class TimezoneBasicsExample {
     final tokyoOffset = tokyo!.timezoneOffsetMin;
     final utcOffset = TomTimezone.utc.timezoneOffsetMin;
 
-    print('   - Tokyo current offset: $tokyoOffset minutes (${tokyoOffset ~/ 60} hours)');
+    print(
+      '   - Tokyo current offset: $tokyoOffset minutes (${tokyoOffset ~/ 60} hours)',
+    );
     print('   - UTC current offset: $utcOffset minutes');
-    print('   - New York current offset: ${newYork!.timezoneOffsetMin} minutes');
+    print(
+      '   - New York current offset: ${newYork!.timezoneOffsetMin} minutes',
+    );
 
     // Assertions
     assert(tokyoOffset == 540, 'Tokyo should be UTC+9 (540 minutes)');
     assert(utcOffset == 0, 'UTC should have 0 offset');
     // New York varies by DST, so just check it's negative
-    assert(newYork!.timezoneOffsetMin < 0, 'New York should have negative offset');
+    assert(
+      newYork!.timezoneOffsetMin < 0,
+      'New York should have negative offset',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -101,14 +108,24 @@ class TimezoneBasicsExample {
     final tokyoWinter = tokyo!.getUtcOffsetOn(winterDate);
     final tokyoSummer = tokyo!.getUtcOffsetOn(summerDate);
 
-    print('   - New York winter (Jan 15): $nyWinterOffset minutes (${newYork!.getUtcOffsetStringOn(winterDate)})');
-    print('   - New York summer (Jul 15): $nySummerOffset minutes (${newYork!.getUtcOffsetStringOn(summerDate)})');
+    print(
+      '   - New York winter (Jan 15): $nyWinterOffset minutes (${newYork!.getUtcOffsetStringOn(winterDate)})',
+    );
+    print(
+      '   - New York summer (Jul 15): $nySummerOffset minutes (${newYork!.getUtcOffsetStringOn(summerDate)})',
+    );
     print('   - Tokyo winter: $tokyoWinter minutes (no DST)');
     print('   - Tokyo summer: $tokyoSummer minutes (no DST)');
 
     // Assertions
-    assert(nyWinterOffset == -300, 'NY winter should be EST (-5:00 = -300 minutes)');
-    assert(nySummerOffset == -240, 'NY summer should be EDT (-4:00 = -240 minutes)');
+    assert(
+      nyWinterOffset == -300,
+      'NY winter should be EST (-5:00 = -300 minutes)',
+    );
+    assert(
+      nySummerOffset == -240,
+      'NY summer should be EDT (-4:00 = -240 minutes)',
+    );
     assert(tokyoWinter == 540, 'Tokyo has no DST');
     assert(tokyoSummer == 540, 'Tokyo has no DST');
   }
@@ -125,7 +142,9 @@ class TimezoneBasicsExample {
 
     // Find all timezones with UTC+0 offset
     offsetTimezones = TomTimezone.allWithOffset(0);
-    print('   - All with +00:00: ${offsetTimezones?.take(5).map((t) => t.timezone).join(', ')}...');
+    print(
+      '   - All with +00:00: ${offsetTimezones?.take(5).map((t) => t.timezone).join(', ')}...',
+    );
     print('   - Total +00:00 timezones: ${offsetTimezones?.length}');
 
     // Find timezone with UTC-5 offset (EST)
@@ -134,7 +153,10 @@ class TimezoneBasicsExample {
 
     // Assertions
     assert(firstByOffset != null, 'Should find timezone with +09:00');
-    assert(offsetTimezones != null && offsetTimezones!.isNotEmpty, 'Should find timezones with +00:00');
+    assert(
+      offsetTimezones != null && offsetTimezones!.isNotEmpty,
+      'Should find timezones with +00:00',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -155,7 +177,10 @@ class TimezoneBasicsExample {
     print('   - New York (summer): $nySummerStr');
 
     // Assertions
-    assert(tokyoStr.contains('Asia/Tokyo'), 'Tokyo string should contain timezone name');
+    assert(
+      tokyoStr.contains('Asia/Tokyo'),
+      'Tokyo string should contain timezone name',
+    );
     assert(nyWinterStr.contains('-05:00'), 'NY winter should show EST offset');
     assert(nySummerStr.contains('-04:00'), 'NY summer should show EDT offset');
   }
@@ -169,8 +194,12 @@ class TimezoneBasicsExample {
     final allTimezones = TomTimezone.timezones;
 
     print('   - Total timezones: ${allTimezones.length}');
-    print('   - Contains EUROPE/LONDON: ${allTimezones.containsKey('EUROPE/LONDON')}');
-    print('   - Contains ASIA/TOKYO: ${allTimezones.containsKey('ASIA/TOKYO')}');
+    print(
+      '   - Contains EUROPE/LONDON: ${allTimezones.containsKey('EUROPE/LONDON')}',
+    );
+    print(
+      '   - Contains ASIA/TOKYO: ${allTimezones.containsKey('ASIA/TOKYO')}',
+    );
 
     // Sample some timezone names
     final sampleNames = allTimezones.keys.take(5).toList();
@@ -199,7 +228,10 @@ class TimezoneBasicsExample {
     print('   - Current time in Tokyo: $nowInTokyo');
 
     // Assertions
-    assert(tokyoTz.hour == 21, 'Tokyo should be UTC+9, so 12:00 UTC = 21:00 Tokyo');
+    assert(
+      tokyoTz.hour == 21,
+      'Tokyo should be UTC+9, so 12:00 UTC = 21:00 Tokyo',
+    );
     assert(tokyoTz.day == 15, 'Same day in Tokyo');
   }
 

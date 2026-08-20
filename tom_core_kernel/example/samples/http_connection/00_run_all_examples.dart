@@ -34,7 +34,9 @@ Future<void> main() async {
 Future<void> run() async {
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║              Tom HTTP Connection System Samples                  ║');
-  print('╚══════════════════════════════════════════════════════════════════╝\n');
+  print(
+    '╚══════════════════════════════════════════════════════════════════╝\n',
+  );
 
   // Run all examples
   http_client.run();

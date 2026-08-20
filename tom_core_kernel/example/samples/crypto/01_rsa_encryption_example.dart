@@ -38,7 +38,10 @@ class BasicRsaEncryptionExample {
     final decrypted = rsaDecrypt(privateKey, encrypted);
     decryptedMessage = utf8.decode(decrypted);
 
-    assert(decryptedMessage == originalMessage, 'Decrypted should match original');
+    assert(
+      decryptedMessage == originalMessage,
+      'Decrypted should match original',
+    );
     assert(encryptedIsNotEmpty, 'Encrypted data should not be empty');
     assert(encryptedIsLarger, 'RSA adds padding, so encrypted is larger');
   }
@@ -92,13 +95,19 @@ class RsaKeyHelperExample {
     final helperBytes = Uint8List.fromList(utf8.encode(helperMessage!));
 
     final helperEncrypted = RsaKeyHelper.rsaEncrypt(publicKey, helperBytes);
-    final helperDecrypted = RsaKeyHelper.rsaDecrypt(privateKey, helperEncrypted);
+    final helperDecrypted = RsaKeyHelper.rsaDecrypt(
+      privateKey,
+      helperEncrypted,
+    );
     helperResult = utf8.decode(helperDecrypted);
 
     roundTripSuccess = helperMessage == helperResult;
 
     assert(roundTripSuccess, 'Round-trip encryption should work');
-    assert(helperResult == 'Encrypted with RsaKeyHelper', 'Result should match');
+    assert(
+      helperResult == 'Encrypted with RsaKeyHelper',
+      'Result should match',
+    );
   }
 }
 

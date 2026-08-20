@@ -125,7 +125,8 @@ class TomRetryPolicy {
   }
 
   @override
-  String toString() => 'TomRetryPolicy(maxAttempts: $maxAttempts, '
+  String toString() =>
+      'TomRetryPolicy(maxAttempts: $maxAttempts, '
       'initialBackoff: $initialBackoff, multiplier: $multiplier)';
 }
 
@@ -301,35 +302,35 @@ class TomJobAlert {
 
   /// A one-line description suitable for a log line or a notification body.
   String describe() => switch (kind) {
-        TomJobAlertKind.attemptFailed =>
-          'Job "$jobName" attempt ${run?.attempt} failed ($error); '
-              'retrying at ${retryAt?.toIso8601String()}.',
-        TomJobAlertKind.timedOut =>
-          'Job "$jobName" attempt ${run?.attempt} exceeded its timeout.',
-        TomJobAlertKind.runFailed =>
-          'Job "$jobName" failed permanently after ${run?.attempt} '
-              'attempt(s): $error',
-        TomJobAlertKind.runAbandoned =>
-          'Job "$jobName" run ${run?.id} was abandoned by its holder and '
-              'returned to the queue.',
-        TomJobAlertKind.recoveryDeclined =>
-          'Job "$jobName" run ${run?.id} was interrupted mid-execution and '
-              'was NOT re-queued; the job does not set requestsRecovery.',
-        TomJobAlertKind.windowsMissed =>
-          'Job "$jobName" skipped $missedWindows missed window(s).',
-        TomJobAlertKind.neverFires =>
-          'Job "$jobName" has no future window and will never run '
-              '(schedule: $schedule).',
-        TomJobAlertKind.lockContended =>
-          'Job "$jobName" run ${run?.id} is held by another node'
-              '${lease == null ? '' : ' (${lease!.owner})'}; conceding.',
-        TomJobAlertKind.leaseStolen =>
-          'Job "$jobName" run ${run?.id} taken over from a lapsed holder'
-              '${lease == null ? '' : ' (was ${lease!.owner})'}.',
-        TomJobAlertKind.leaseLost =>
-          'Job "$jobName" run ${run?.id} lost its lease while running '
-              '(token ${lease?.token}); another node may now be executing it.',
-      };
+    TomJobAlertKind.attemptFailed =>
+      'Job "$jobName" attempt ${run?.attempt} failed ($error); '
+          'retrying at ${retryAt?.toIso8601String()}.',
+    TomJobAlertKind.timedOut =>
+      'Job "$jobName" attempt ${run?.attempt} exceeded its timeout.',
+    TomJobAlertKind.runFailed =>
+      'Job "$jobName" failed permanently after ${run?.attempt} '
+          'attempt(s): $error',
+    TomJobAlertKind.runAbandoned =>
+      'Job "$jobName" run ${run?.id} was abandoned by its holder and '
+          'returned to the queue.',
+    TomJobAlertKind.recoveryDeclined =>
+      'Job "$jobName" run ${run?.id} was interrupted mid-execution and '
+          'was NOT re-queued; the job does not set requestsRecovery.',
+    TomJobAlertKind.windowsMissed =>
+      'Job "$jobName" skipped $missedWindows missed window(s).',
+    TomJobAlertKind.neverFires =>
+      'Job "$jobName" has no future window and will never run '
+          '(schedule: $schedule).',
+    TomJobAlertKind.lockContended =>
+      'Job "$jobName" run ${run?.id} is held by another node'
+          '${lease == null ? '' : ' (${lease!.owner})'}; conceding.',
+    TomJobAlertKind.leaseStolen =>
+      'Job "$jobName" run ${run?.id} taken over from a lapsed holder'
+          '${lease == null ? '' : ' (was ${lease!.owner})'}.',
+    TomJobAlertKind.leaseLost =>
+      'Job "$jobName" run ${run?.id} lost its lease while running '
+          '(token ${lease?.token}); another node may now be executing it.',
+  };
 
   @override
   String toString() => describe();

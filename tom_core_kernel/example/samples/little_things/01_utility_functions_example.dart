@@ -124,12 +124,16 @@ class StackTraceFormattingExample {
     // The depth is a frame count, not a ceiling — so this is `==`, not `<=`.
     // An upper bound would also hold for a single frame, which is what a
     // truncating formatter returns; it would report the bug as success.
-    assert(unlimitedLineCount > 5,
-        'The chain must be deeper than the limit, or the count proves nothing');
+    assert(
+      unlimitedLineCount > 5,
+      'The chain must be deeper than the limit, or the count proves nothing',
+    );
     assert(stackLineCount == 5, 'Depth 5 must yield exactly 5 frames');
     // Truncation keeps the frames nearest the throw site, in that order.
-    assert(capturedLines[0].contains('_levelThree'),
-        'The throw site must lead the trace');
+    assert(
+      capturedLines[0].contains('_levelThree'),
+      'The throw site must lead the trace',
+    );
     assert(capturedLines[1].contains('_levelTwo'), 'Then its caller');
     assert(capturedLines[2].contains('_levelOne'), 'Then the caller above it');
   }
@@ -214,7 +218,9 @@ class TomExceptionPropertiesExample {
     exceptionUuid = exception.uuid;
     exceptionRequestUuid = exception.requestUuid;
     exceptionParameters = exception.parameters;
-    hasTimestamp = exception.timeStamp.isBefore(DateTime.now().add(Duration(seconds: 1)));
+    hasTimestamp = exception.timeStamp.isBefore(
+      DateTime.now().add(Duration(seconds: 1)),
+    );
     hasStackTrace = exception.stackTrace.isNotEmpty;
 
     assert(exceptionKey == 'user.fetch.not_found', 'Key should match');
@@ -281,7 +287,8 @@ class RootExceptionExample {
     );
 
     rootException = wrappedException.rootException;
-    rootExceptionMessage = (rootException as ArgumentError?)?.message as String?;
+    rootExceptionMessage =
+        (rootException as ArgumentError?)?.message as String?;
     hasRootException = rootException != null;
 
     assert(hasRootException, 'Should have root exception');

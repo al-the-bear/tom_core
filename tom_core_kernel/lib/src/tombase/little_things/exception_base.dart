@@ -104,27 +104,27 @@ class TomException extends TomBaseException implements TomLoggable {
     String? uuid,
     this.serverCallError,
   }) : super(
-          key,
-          defaultUserMessage,
-          requestUuid: requestUuid,
-          parameters: parameters,
-          rootException: rootException,
-          // Capture the trace *here* rather than leaving `stack` null. Left
-          // null it is captured later, inside the formatter, which by then is
-          // the only thing on the stack — so `printStackTrace` reported the
-          // formatter's call path and never the failure's. The capture belongs
-          // in the constructor because that is the last moment at which the
-          // creating code is still on the stack.
-          //
-          // Passing it to `super` rather than assigning it in the body is what
-          // keeps the two representations in step: the base constructor derives
-          // the formatted `stackTrace` string from this argument, so the raw
-          // trace and the string describe the same place. Assigning afterwards
-          // would leave `stackTrace` — which `autoLog` writes — pointing at the
-          // base class's own formatter.
-          stack: stack ?? StackTrace.current,
-          uuid: uuid,
-        ) {
+         key,
+         defaultUserMessage,
+         requestUuid: requestUuid,
+         parameters: parameters,
+         rootException: rootException,
+         // Capture the trace *here* rather than leaving `stack` null. Left
+         // null it is captured later, inside the formatter, which by then is
+         // the only thing on the stack — so `printStackTrace` reported the
+         // formatter's call path and never the failure's. The capture belongs
+         // in the constructor because that is the last moment at which the
+         // creating code is still on the stack.
+         //
+         // Passing it to `super` rather than assigning it in the body is what
+         // keeps the two representations in step: the base constructor derives
+         // the formatted `stackTrace` string from this argument, so the raw
+         // trace and the string describe the same place. Assigning afterwards
+         // would leave `stackTrace` — which `autoLog` writes — pointing at the
+         // base class's own formatter.
+         stack: stack ?? StackTrace.current,
+         uuid: uuid,
+       ) {
     if (autoLog) {
       tomLog.error("EXCEPTION: $this");
       // `this.` is load-bearing: the constructor's `uuid` and `requestUuid`
@@ -134,7 +134,8 @@ class TomException extends TomBaseException implements TomLoggable {
       // [printStackTrace] both reported the generated uuid — two log lines
       // describing one exception, disagreeing about which one it was.
       tomLog.error(
-          "EXCEPTION_STACKTRACE: ${this.uuid}-${this.requestUuid} $stackTrace");
+        "EXCEPTION_STACKTRACE: ${this.uuid}-${this.requestUuid} $stackTrace",
+      );
     }
   }
 

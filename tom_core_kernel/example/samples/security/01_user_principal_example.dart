@@ -62,7 +62,10 @@ class GuestUserExample {
     isGuest = guestUser.username == TomUser.guestUsername;
     guestConstant = TomUser.guestUsername;
 
-    assert(guestUsername == TomUser.guestUsername, 'Guest username should match');
+    assert(
+      guestUsername == TomUser.guestUsername,
+      'Guest username should match',
+    );
     assert(isGuest, 'Should be guest user');
     assert(guestConstant != null, 'Guest constant should exist');
   }
@@ -211,7 +214,10 @@ class PrincipalContextExample {
     contextSize = principal.currentContext.length;
     contextAdded = true;
 
-    assert(sessionStart == '2026-01-01T10:00:00Z', 'Session start should match');
+    assert(
+      sessionStart == '2026-01-01T10:00:00Z',
+      'Session start should match',
+    );
     assert(ipAddress == '192.168.1.100', 'IP address should match');
     assert(contextSize >= 2, 'Context should have at least 2 entries');
     assert(contextAdded, 'Context should be added');

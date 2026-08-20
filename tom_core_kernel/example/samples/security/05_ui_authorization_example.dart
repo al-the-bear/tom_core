@@ -108,12 +108,18 @@ void run() {
     'shipping': TomAuthState.read, // the group's own resolved state
   });
 
-  final controlsAll =
-      TomAuthorizationGroup('shipping', mode: AuthGroupMode.controlsAll);
-  final controlsWidest =
-      TomAuthorizationGroup('shipping', mode: AuthGroupMode.controlsWidest);
-  final controlsNarrowest =
-      TomAuthorizationGroup('shipping', mode: AuthGroupMode.controlsNarrowest);
+  final controlsAll = TomAuthorizationGroup(
+    'shipping',
+    mode: AuthGroupMode.controlsAll,
+  );
+  final controlsWidest = TomAuthorizationGroup(
+    'shipping',
+    mode: AuthGroupMode.controlsWidest,
+  );
+  final controlsNarrowest = TomAuthorizationGroup(
+    'shipping',
+    mode: AuthGroupMode.controlsNarrowest,
+  );
 
   // A member that would otherwise be fully editable.
   final allResult = controlsAll.applyMode(full); // replaced by group `read`
@@ -132,7 +138,11 @@ void run() {
   print('4. Group membership introspection:');
 
   final group = TomAuthorizationGroup('address');
-  final street = _FixedAuthorizable('street', TomAuthState.read, tomGroup: group);
+  final street = _FixedAuthorizable(
+    'street',
+    TomAuthState.read,
+    tomGroup: group,
+  );
   final city = _FixedAuthorizable('city', TomAuthState.read, tomGroup: group);
   final zip = _FixedAuthorizable('zip', TomAuthState.disabled, tomGroup: group);
   group.register(street);
@@ -168,8 +178,9 @@ void run() {
   final narrowsOnlyResult = narrowsOnly.effectiveAuth(read); // …capped at read
 
   // fromAction: full widget + no action permission → disabled.
-  final fromAction =
-      TomAuthorizer.fromAction(actionAuth: () => TomAuthState.none);
+  final fromAction = TomAuthorizer.fromAction(
+    actionAuth: () => TomAuthState.none,
+  );
   final fromActionResult = fromAction.effectiveAuth(full);
 
   print('   fixed(disabled).effectiveAuth(full): $fixedResult');

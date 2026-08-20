@@ -45,7 +45,10 @@ void run() {
   TomScope.withScope('app', () {
     appScopeId = TomScope.current.id;
     appScopePath = TomScope.current.getScopePath();
-    appParentIsDefault = identical(TomScope.current.parent, TomScope.defaultScope);
+    appParentIsDefault = identical(
+      TomScope.current.parent,
+      TomScope.defaultScope,
+    );
   });
 
   print('   inside withScope("app"): id=$appScopeId path="$appScopePath"');
@@ -77,7 +80,9 @@ void run() {
   print('4. Scope restoration after the body returns:');
 
   final beforePath = TomScope.current.getScopePath();
-  TomScope.withScope('temporary', () {/* do work in scope */});
+  TomScope.withScope('temporary', () {
+    /* do work in scope */
+  });
   final afterPath = TomScope.current.getScopePath();
 
   print('   path before: "$beforePath"');

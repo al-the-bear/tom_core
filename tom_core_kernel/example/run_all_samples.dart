@@ -57,7 +57,9 @@ Future<void> main() async {
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║           TOM CORE - ALL SAMPLES RUNNER                          ║');
-  print('╚══════════════════════════════════════════════════════════════════╝\n');
+  print(
+    '╚══════════════════════════════════════════════════════════════════╝\n',
+  );
 
   final stopwatch = Stopwatch()..start();
   var samplesRun = 0;
@@ -202,7 +204,6 @@ Future<void> main() async {
     print('═' * 70);
     await timezoned.run();
     samplesRun++;
-
   } catch (e, st) {
     print('\n❌ ERROR running samples: $e');
     print(st);
@@ -215,8 +216,12 @@ Future<void> main() async {
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║           ALL SAMPLES COMPLETED SUCCESSFULLY!                    ║');
   print('╠══════════════════════════════════════════════════════════════════╣');
-  print('║  Sample groups run: $samplesRun                                           ║');
-  print('║  Total time: ${stopwatch.elapsed.inSeconds}s                                              ║');
+  print(
+    '║  Sample groups run: $samplesRun                                           ║',
+  );
+  print(
+    '║  Total time: ${stopwatch.elapsed.inSeconds}s                                              ║',
+  );
   print('╚══════════════════════════════════════════════════════════════════╝');
 
   exit(0);

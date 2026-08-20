@@ -160,8 +160,7 @@ class PathAccessExample {
     primaryHost = primaryDb['host'] as String?;
     primaryPort = primaryDb['port'] as int?;
 
-    pathAccessWorks =
-        primaryHost == 'db1.example.com' && primaryPort == 5432;
+    pathAccessWorks = primaryHost == 'db1.example.com' && primaryPort == 5432;
 
     assert(primaryHost == 'db1.example.com', 'Host should match');
     assert(primaryPort == 5432, 'Port should match');
@@ -196,10 +195,9 @@ class ObjectFromTreeExample {
         getObjectFromTree(deepConfig, 'services.cache.redis.host') as String?;
     redisPort =
         getObjectFromTree(deepConfig, 'services.cache.redis.port') as int?;
-    replicaConfig = getObjectFromTree(
-      deepConfig,
-      'services.database.replica',
-    ) as Map<String, dynamic>?;
+    replicaConfig =
+        getObjectFromTree(deepConfig, 'services.database.replica')
+            as Map<String, dynamic>?;
 
     objectAccessWorks =
         redisHost == 'redis.example.com' &&
@@ -245,7 +243,10 @@ class MapSanitizationExample {
     cleaningWorks = cleanedEntryCount < originalEntryCount && hasStringKeysOnly;
 
     assert(originalEntryCount == 7, 'Original should have 7 entries');
-    assert(cleanedEntryCount == 6, 'Cleaned should have 6 entries (no numeric key)');
+    assert(
+      cleanedEntryCount == 6,
+      'Cleaned should have 6 entries (no numeric key)',
+    );
     assert(hasStringKeysOnly, 'All keys should be strings');
     assert(cleaningWorks, 'Cleaning should work');
   }

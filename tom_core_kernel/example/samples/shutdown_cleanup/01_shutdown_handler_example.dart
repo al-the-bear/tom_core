@@ -87,7 +87,10 @@ class ClosableConnectionExample {
 
     closableWorks = !isClosedBefore && isClosedAfter;
 
-    assert(connectionName == 'DatabaseConnection', 'Connection name should match');
+    assert(
+      connectionName == 'DatabaseConnection',
+      'Connection name should match',
+    );
     assert(!isClosedBefore, 'Should not be closed before');
     assert(isClosedAfter, 'Should be closed after');
     assert(closableWorks, 'Closable should work');

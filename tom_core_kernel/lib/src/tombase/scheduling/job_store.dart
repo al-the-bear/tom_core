@@ -164,19 +164,19 @@ class TomJobRun {
 
   /// Encodes this run as a JSON-native map.
   Map<String, Object?> toJson() => {
-        'id': id,
-        'jobName': jobName,
-        'scheduledFor': scheduledFor.toIso8601String(),
-        'runAt': runAt.toIso8601String(),
-        'state': state.name,
-        'attempt': attempt,
-        'claimedBy': claimedBy,
-        'claimedAt': claimedAt?.toIso8601String(),
-        'startedAt': startedAt?.toIso8601String(),
-        'lastError': lastError,
-        'completedAt': completedAt?.toIso8601String(),
-        'payload': payload,
-      };
+    'id': id,
+    'jobName': jobName,
+    'scheduledFor': scheduledFor.toIso8601String(),
+    'runAt': runAt.toIso8601String(),
+    'state': state.name,
+    'attempt': attempt,
+    'claimedBy': claimedBy,
+    'claimedAt': claimedAt?.toIso8601String(),
+    'startedAt': startedAt?.toIso8601String(),
+    'lastError': lastError,
+    'completedAt': completedAt?.toIso8601String(),
+    'payload': payload,
+  };
 
   /// Decodes a map produced by [toJson].
   ///
@@ -185,22 +185,22 @@ class TomJobRun {
   /// unable to start, and "pending" is the safe reading — the run is offered
   /// again instead of being silently treated as done.
   factory TomJobRun.fromJson(Map<String, Object?> map) => TomJobRun(
-        id: map['id'] as String,
-        jobName: map['jobName'] as String,
-        scheduledFor: DateTime.parse(map['scheduledFor'] as String),
-        runAt: DateTime.parse(map['runAt'] as String),
-        state: TomJobRunState.values.firstWhere(
-          (s) => s.name == map['state'],
-          orElse: () => TomJobRunState.pending,
-        ),
-        attempt: map['attempt'] as int? ?? 1,
-        claimedBy: map['claimedBy'] as String?,
-        claimedAt: _parseOrNull(map['claimedAt']),
-        startedAt: _parseOrNull(map['startedAt']),
-        lastError: map['lastError'] as String?,
-        completedAt: _parseOrNull(map['completedAt']),
-        payload: map['payload'],
-      );
+    id: map['id'] as String,
+    jobName: map['jobName'] as String,
+    scheduledFor: DateTime.parse(map['scheduledFor'] as String),
+    runAt: DateTime.parse(map['runAt'] as String),
+    state: TomJobRunState.values.firstWhere(
+      (s) => s.name == map['state'],
+      orElse: () => TomJobRunState.pending,
+    ),
+    attempt: map['attempt'] as int? ?? 1,
+    claimedBy: map['claimedBy'] as String?,
+    claimedAt: _parseOrNull(map['claimedAt']),
+    startedAt: _parseOrNull(map['startedAt']),
+    lastError: map['lastError'] as String?,
+    completedAt: _parseOrNull(map['completedAt']),
+    payload: map['payload'],
+  );
 
   static DateTime? _parseOrNull(Object? value) =>
       value is String ? DateTime.parse(value) : null;

@@ -17,17 +17,20 @@ class BasicJwtCreationExample {
   static bool hasCorrectStructure = false;
 
   static void example1BasicJwtCreation() {
-    final basicToken = TomServerJwtToken(
-      {'userId': 'user-123', 'role': 'admin'},
-      expiresIn: Duration(hours: 24),
-    );
+    final basicToken = TomServerJwtToken({
+      'userId': 'user-123',
+      'role': 'admin',
+    }, expiresIn: Duration(hours: 24));
 
     jwtString = basicToken.getJWT('my-auth-server');
     final jwtParts = jwtString!.split('.');
     jwtPartCount = jwtParts.length;
     hasCorrectStructure = jwtPartCount == 3;
 
-    assert(hasCorrectStructure, 'JWT should have 3 parts (header.payload.signature)');
+    assert(
+      hasCorrectStructure,
+      'JWT should have 3 parts (header.payload.signature)',
+    );
     assert(jwtString!.isNotEmpty, 'JWT string should not be empty');
   }
 }
@@ -44,10 +47,10 @@ class JwtParsingExample {
 
   static void example2JwtParsing() {
     // Create a token
-    final serverToken = TomServerJwtToken(
-      {'userId': 'user-123', 'role': 'admin'},
-      expiresIn: Duration(hours: 24),
-    );
+    final serverToken = TomServerJwtToken({
+      'userId': 'user-123',
+      'role': 'admin',
+    }, expiresIn: Duration(hours: 24));
     final jwtString = serverToken.getJWT('my-auth-server');
 
     // Parse the token
@@ -139,15 +142,13 @@ class TokenExpirationExample {
   static bool longTokenCreated = false;
 
   static void example5TokenExpiration() {
-    final shortLivedToken = TomServerJwtToken(
-      {'type': 'short-lived'},
-      expiresIn: Duration(minutes: 15),
-    );
+    final shortLivedToken = TomServerJwtToken({
+      'type': 'short-lived',
+    }, expiresIn: Duration(minutes: 15));
 
-    final longLivedToken = TomServerJwtToken(
-      {'type': 'long-lived'},
-      expiresIn: Duration(days: 30),
-    );
+    final longLivedToken = TomServerJwtToken({
+      'type': 'long-lived',
+    }, expiresIn: Duration(days: 30));
 
     final shortJwt = shortLivedToken.getJWT('issuer');
     final longJwt = longLivedToken.getJWT('issuer');
@@ -248,10 +249,9 @@ class TokenRoundTripExample {
     const originalIssuer = 'round-trip-issuer';
 
     // Create token
-    final token = TomServerJwtToken(
-      {'userId': originalUserId},
-      expiresIn: Duration(hours: 1),
-    );
+    final token = TomServerJwtToken({
+      'userId': originalUserId,
+    }, expiresIn: Duration(hours: 1));
 
     // Serialize
     final jwt = token.getJWT(originalIssuer);

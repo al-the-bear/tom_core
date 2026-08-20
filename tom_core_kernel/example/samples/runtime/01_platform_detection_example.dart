@@ -17,7 +17,8 @@ class SamplePlatformUtils extends TomFallbackPlatformUtils {
   bool isWeb() => false; // We're in a Dart VM, not browser
 
   @override
-  bool isDesktop() => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  bool isDesktop() =>
+      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
   @override
   bool isMobile() => Platform.isAndroid || Platform.isIOS;
@@ -66,7 +67,7 @@ class FallbackPlatformExample {
   static void example1FallbackPlatform() {
     // First set up a proper platform for subsequent examples
     TomPlatformUtils.setCurrentPlatform(SamplePlatformUtils());
-    
+
     // Now test fallback behavior
     final originalPlatform = TomPlatformUtils.current;
 
@@ -132,7 +133,8 @@ class OsDetectionExample {
     isAndroid = platform.isAndroid();
     isIos = platform.isIos();
 
-    osDetectionWorks = isMacOs != null &&
+    osDetectionWorks =
+        isMacOs != null &&
         isWindows != null &&
         isLinux != null &&
         isAndroid != null &&

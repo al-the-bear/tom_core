@@ -44,9 +44,15 @@ class TimezoneConversionExample {
     londonMeeting = tokyoMeeting.convertToTimezone(london);
 
     print('   - Meeting scheduled at:');
-    print('   - Tokyo: ${tokyoMeeting.localHour}:${tokyoMeeting.localMinute.toString().padLeft(2, '0')} (${tokyoMeeting.localMonth}/${tokyoMeeting.localDay})');
-    print('   - New York: ${nyMeeting.localHour}:${nyMeeting.localMinute.toString().padLeft(2, '0')} (${nyMeeting.localMonth}/${nyMeeting.localDay})');
-    print('   - London: ${londonMeeting.localHour}:${londonMeeting.localMinute.toString().padLeft(2, '0')} (${londonMeeting.localMonth}/${londonMeeting.localDay})');
+    print(
+      '   - Tokyo: ${tokyoMeeting.localHour}:${tokyoMeeting.localMinute.toString().padLeft(2, '0')} (${tokyoMeeting.localMonth}/${tokyoMeeting.localDay})',
+    );
+    print(
+      '   - New York: ${nyMeeting.localHour}:${nyMeeting.localMinute.toString().padLeft(2, '0')} (${nyMeeting.localMonth}/${nyMeeting.localDay})',
+    );
+    print(
+      '   - London: ${londonMeeting.localHour}:${londonMeeting.localMinute.toString().padLeft(2, '0')} (${londonMeeting.localMonth}/${londonMeeting.localDay})',
+    );
 
     // All represent the same UTC moment
     print('   - Same UTC time? ${tokyoMeeting.toUtc() == nyMeeting.toUtc()}');
@@ -77,9 +83,13 @@ class TimezoneConversionExample {
       timezone: berlin,
     );
 
-    print('   - Berlin local time: ${summerTime.localHour}:${summerTime.localMinute}');
+    print(
+      '   - Berlin local time: ${summerTime.localHour}:${summerTime.localMinute}',
+    );
     print('   - Stored UTC time: ${summerTime.hour}:${summerTime.minute}');
-    print('   - Difference: Berlin is UTC+${(summerTime.localHour - summerTime.hour)} in summer');
+    print(
+      '   - Difference: Berlin is UTC+${(summerTime.localHour - summerTime.hour)} in summer',
+    );
 
     // Create a time during winter (CET = UTC+1)
     final winterTime = TomZonedDateTime(
@@ -91,9 +101,13 @@ class TimezoneConversionExample {
       timezone: berlin,
     );
 
-    print('   - Berlin winter local time: ${winterTime.localHour}:${winterTime.localMinute}');
+    print(
+      '   - Berlin winter local time: ${winterTime.localHour}:${winterTime.localMinute}',
+    );
     print('   - Stored UTC time: ${winterTime.hour}:${winterTime.minute}');
-    print('   - Difference: Berlin is UTC+${(winterTime.localHour - winterTime.hour)} in winter');
+    print(
+      '   - Difference: Berlin is UTC+${(winterTime.localHour - winterTime.hour)} in winter',
+    );
 
     // Assertions
     assert(summerTime.hour == 12, 'Summer: 14:30 Berlin = 12:30 UTC');
@@ -124,7 +138,9 @@ class TimezoneConversionExample {
     print('   - UTC: ${utcEvent.localHour}:00 on Sept 1');
     print('   - Tokyo: ${utcEvent.convertToTimezone(tokyo).localHour}:00');
     print('   - Sydney: ${utcEvent.convertToTimezone(sydney).localHour}:00');
-    print('   - Los Angeles: ${utcEvent.convertToTimezone(losAngeles).localHour}:00 on ${utcEvent.convertToTimezone(losAngeles).localMonth}/${utcEvent.convertToTimezone(losAngeles).localDay}');
+    print(
+      '   - Los Angeles: ${utcEvent.convertToTimezone(losAngeles).localHour}:00 on ${utcEvent.convertToTimezone(losAngeles).localMonth}/${utcEvent.convertToTimezone(losAngeles).localDay}',
+    );
     print('   - São Paulo: ${utcEvent.convertToTimezone(sao).localHour}:00');
 
     // Assertions
@@ -152,8 +168,12 @@ class TimezoneConversionExample {
 
     final honoluluTime = tokyoNewYear.convertToTimezone(honolulu);
 
-    print('   - Tokyo: ${tokyoNewYear.localYear}-${tokyoNewYear.localMonth.toString().padLeft(2, '0')}-${tokyoNewYear.localDay.toString().padLeft(2, '0')} ${tokyoNewYear.localHour}:00');
-    print('   - Honolulu: ${honoluluTime.localYear}-${honoluluTime.localMonth.toString().padLeft(2, '0')}-${honoluluTime.localDay.toString().padLeft(2, '0')} ${honoluluTime.localHour}:00');
+    print(
+      '   - Tokyo: ${tokyoNewYear.localYear}-${tokyoNewYear.localMonth.toString().padLeft(2, '0')}-${tokyoNewYear.localDay.toString().padLeft(2, '0')} ${tokyoNewYear.localHour}:00',
+    );
+    print(
+      '   - Honolulu: ${honoluluTime.localYear}-${honoluluTime.localMonth.toString().padLeft(2, '0')}-${honoluluTime.localDay.toString().padLeft(2, '0')} ${honoluluTime.localHour}:00',
+    );
     print('   - Honolulu is still in the previous year!');
 
     // Tokyo is UTC+9, Honolulu is UTC-10
@@ -189,15 +209,31 @@ class TimezoneConversionExample {
 
     print('   - Standup meeting scheduled:');
     print('   - San Francisco: ${meeting.localHour}:00 (local working hours)');
-    print('   - Bangalore: ${bangaloreMeeting.localHour}:${bangaloreMeeting.localMinute.toString().padLeft(2, '0')} (${bangaloreMeeting.localHour < 12 ? "morning" : bangaloreMeeting.localHour < 18 ? "afternoon" : "evening"})');
-    print('   - Dublin: ${dublinMeeting.localHour}:00 (${dublinMeeting.localHour < 12 ? "morning" : dublinMeeting.localHour < 18 ? "afternoon" : "evening"})');
+    print(
+      '   - Bangalore: ${bangaloreMeeting.localHour}:${bangaloreMeeting.localMinute.toString().padLeft(2, '0')} (${bangaloreMeeting.localHour < 12
+          ? "morning"
+          : bangaloreMeeting.localHour < 18
+          ? "afternoon"
+          : "evening"})',
+    );
+    print(
+      '   - Dublin: ${dublinMeeting.localHour}:00 (${dublinMeeting.localHour < 12
+          ? "morning"
+          : dublinMeeting.localHour < 18
+          ? "afternoon"
+          : "evening"})',
+    );
 
     // Check if it's reasonable hours for everyone
     final sfOk = meeting.localHour >= 9 && meeting.localHour <= 17;
-    final bangaloreOk = bangaloreMeeting.localHour >= 9 && bangaloreMeeting.localHour <= 22;
-    final dublinOk = dublinMeeting.localHour >= 9 && dublinMeeting.localHour <= 17;
+    final bangaloreOk =
+        bangaloreMeeting.localHour >= 9 && bangaloreMeeting.localHour <= 22;
+    final dublinOk =
+        dublinMeeting.localHour >= 9 && dublinMeeting.localHour <= 17;
 
-    print('   - Reasonable hours? SF: $sfOk, Bangalore: $bangaloreOk, Dublin: $dublinOk');
+    print(
+      '   - Reasonable hours? SF: $sfOk, Bangalore: $bangaloreOk, Dublin: $dublinOk',
+    );
 
     // Assertions
     assert(sfOk, 'SF should be during work hours');
@@ -227,15 +263,32 @@ class TimezoneConversionExample {
     // Convert back to Paris
     final backToParis = singaporeTime.convertToTimezone(paris);
 
-    print('   - Original Paris time: ${originalTime.localHour}:${originalTime.localMinute}');
-    print('   - In Singapore: ${singaporeTime.localHour}:${singaporeTime.localMinute}');
-    print('   - Back to Paris: ${backToParis.localHour}:${backToParis.localMinute}');
-    print('   - Values preserved: ${originalTime.localHour == backToParis.localHour && originalTime.localMinute == backToParis.localMinute}');
+    print(
+      '   - Original Paris time: ${originalTime.localHour}:${originalTime.localMinute}',
+    );
+    print(
+      '   - In Singapore: ${singaporeTime.localHour}:${singaporeTime.localMinute}',
+    );
+    print(
+      '   - Back to Paris: ${backToParis.localHour}:${backToParis.localMinute}',
+    );
+    print(
+      '   - Values preserved: ${originalTime.localHour == backToParis.localHour && originalTime.localMinute == backToParis.localMinute}',
+    );
 
     // Assertions
-    assert(originalTime.localHour == backToParis.localHour, 'Hour should be preserved');
-    assert(originalTime.localMinute == backToParis.localMinute, 'Minute should be preserved');
-    assert(originalTime.localDay == backToParis.localDay, 'Day should be preserved');
+    assert(
+      originalTime.localHour == backToParis.localHour,
+      'Hour should be preserved',
+    );
+    assert(
+      originalTime.localMinute == backToParis.localMinute,
+      'Minute should be preserved',
+    );
+    assert(
+      originalTime.localDay == backToParis.localDay,
+      'Day should be preserved',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -263,10 +316,15 @@ class TimezoneConversionExample {
 
     print('   - Cairo time: ${cairoTime.localHour}:${cairoTime.localMinute}');
     print('   - As UTC: ${utcTime.localHour}:${utcTime.localMinute}');
-    print('   - Back to Cairo: ${backToCairo.localHour}:${backToCairo.localMinute}');
+    print(
+      '   - Back to Cairo: ${backToCairo.localHour}:${backToCairo.localMinute}',
+    );
 
     // Assertions
-    assert(cairoTime.localHour == backToCairo.localHour, 'Should be same after round-trip');
+    assert(
+      cairoTime.localHour == backToCairo.localHour,
+      'Should be same after round-trip',
+    );
   }
 
   // -------------------------------------------------------------------------

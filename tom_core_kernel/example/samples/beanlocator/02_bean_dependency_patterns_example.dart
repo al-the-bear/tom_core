@@ -84,7 +84,9 @@ class PrimaryPaymentGateway implements PaymentGateway {
 
   @override
   bool charge(String userId, double amount) {
-    print('     [$gatewayName] Charging $userId: \$${amount.toStringAsFixed(2)}');
+    print(
+      '     [$gatewayName] Charging $userId: \$${amount.toStringAsFixed(2)}',
+    );
     return true;
   }
 }
@@ -96,7 +98,9 @@ class BackupPaymentGateway implements PaymentGateway {
 
   @override
   bool charge(String userId, double amount) {
-    print('     [$gatewayName] Charging $userId: \$${amount.toStringAsFixed(2)}');
+    print(
+      '     [$gatewayName] Charging $userId: \$${amount.toStringAsFixed(2)}',
+    );
     return true;
   }
 }
@@ -112,7 +116,9 @@ class OrderServiceImpl implements OrderService {
   @override
   String createOrder(int userId, String item, double price) {
     final userName = _userService.getUserName(userId);
-    _logger.info('Creating order for $userName: $item @ \$${price.toStringAsFixed(2)}');
+    _logger.info(
+      'Creating order for $userName: $item @ \$${price.toStringAsFixed(2)}',
+    );
 
     final charged = _payment.charge(userName, price);
     if (!charged) {
@@ -128,7 +134,9 @@ class OrderServiceImpl implements OrderService {
 
 /// Demonstrates how a service class uses TomBean fields for dependencies.
 class ExampleServiceWithBeans {
-  final TomBean<PaymentGateway> payment = TomBean.fromName('sample_primaryPayment');
+  final TomBean<PaymentGateway> payment = TomBean.fromName(
+    'sample_primaryPayment',
+  );
   final TomBean<LoggingService> logger = TomBean.fromName('sample_logger');
 
   String lastPaymentGateway = '';
@@ -196,7 +204,10 @@ class BeanDependencyPatternsExample {
     // Assertions
     assert(orderId.startsWith('ORD-'), 'Order ID should start with ORD-');
     assert(logCount == 3, 'Should have 3 log entries');
-    assert(logger.logs[0].contains('Retrieved user'), 'First log should be user retrieval');
+    assert(
+      logger.logs[0].contains('Retrieved user'),
+      'First log should be user retrieval',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -207,8 +218,14 @@ class BeanDependencyPatternsExample {
     print('   Registering payment gateways by name...');
 
     // Register payment gateways with unique names
-    final primaryBean = TomBean.withName('sample_primaryPayment', PrimaryPaymentGateway());
-    final backupBean = TomBean.withName('sample_backupPayment', BackupPaymentGateway());
+    final primaryBean = TomBean.withName(
+      'sample_primaryPayment',
+      PrimaryPaymentGateway(),
+    );
+    final backupBean = TomBean.withName(
+      'sample_backupPayment',
+      BackupPaymentGateway(),
+    );
 
     // Access using the TomBean callable syntax
     print('   - Primary gateway: ${primaryBean().gatewayName}');
@@ -218,8 +235,14 @@ class BeanDependencyPatternsExample {
     backupGatewayName = backupBean().gatewayName;
 
     // Assertions
-    assert(primaryGatewayName == 'PrimaryGateway', 'Primary gateway name should match');
-    assert(backupGatewayName == 'BackupGateway', 'Backup gateway name should match');
+    assert(
+      primaryGatewayName == 'PrimaryGateway',
+      'Primary gateway name should match',
+    );
+    assert(
+      backupGatewayName == 'BackupGateway',
+      'Backup gateway name should match',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -229,14 +252,20 @@ class BeanDependencyPatternsExample {
     print('\n3. Resolving named beans with TomBean.fromName:');
 
     // Resolve the beans we registered above
-    final resolvedPrimary = TomBean<PaymentGateway>.fromName('sample_primaryPayment');
-    final resolvedBackup = TomBean<PaymentGateway>.fromName('sample_backupPayment');
+    final resolvedPrimary = TomBean<PaymentGateway>.fromName(
+      'sample_primaryPayment',
+    );
+    final resolvedBackup = TomBean<PaymentGateway>.fromName(
+      'sample_backupPayment',
+    );
 
     print('   - Resolved primary: ${resolvedPrimary().gatewayName}');
     print('   - Resolved backup: ${resolvedBackup().gatewayName}');
 
     // Verify they are the same instances
-    final primaryBean = TomBean<PaymentGateway>.fromName('sample_primaryPayment');
+    final primaryBean = TomBean<PaymentGateway>.fromName(
+      'sample_primaryPayment',
+    );
     sameInstance = identical(primaryBean(), resolvedPrimary());
     print('   - Same instance? $sameInstance');
 
@@ -286,7 +315,10 @@ class BeanDependencyPatternsExample {
 
     // Assertions
     assert(errorKey.isNotEmpty, 'Should have caught an exception');
-    assert(errorKey.contains('beanlocator'), 'Error key should contain beanlocator');
+    assert(
+      errorKey.contains('beanlocator'),
+      'Error key should contain beanlocator',
+    );
   }
 
   // -------------------------------------------------------------------------

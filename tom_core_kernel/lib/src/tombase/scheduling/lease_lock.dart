@@ -133,24 +133,25 @@ class TomLease {
 
   /// Encodes this lease as a JSON-native map.
   Map<String, Object?> toJson() => {
-        'resource': resource,
-        'owner': owner,
-        'token': token,
-        'acquiredAt': acquiredAt.toIso8601String(),
-        'expiresAt': expiresAt.toIso8601String(),
-      };
+    'resource': resource,
+    'owner': owner,
+    'token': token,
+    'acquiredAt': acquiredAt.toIso8601String(),
+    'expiresAt': expiresAt.toIso8601String(),
+  };
 
   /// Decodes a map produced by [toJson].
   factory TomLease.fromJson(Map<String, Object?> map) => TomLease(
-        resource: map['resource'] as String,
-        owner: map['owner'] as String,
-        token: map['token'] as int,
-        acquiredAt: DateTime.parse(map['acquiredAt'] as String),
-        expiresAt: DateTime.parse(map['expiresAt'] as String),
-      );
+    resource: map['resource'] as String,
+    owner: map['owner'] as String,
+    token: map['token'] as int,
+    acquiredAt: DateTime.parse(map['acquiredAt'] as String),
+    expiresAt: DateTime.parse(map['expiresAt'] as String),
+  );
 
   @override
-  String toString() => 'TomLease($resource by $owner, token $token, '
+  String toString() =>
+      'TomLease($resource by $owner, token $token, '
       'expires ${expiresAt.toIso8601String()})';
 }
 
@@ -197,9 +198,9 @@ class TomLeaseInfo {
 
   /// An inspection result for a resource with no record at all.
   const TomLeaseInfo.free(this.resource)
-      : lease = null,
-        isHeld = false,
-        wasReleased = false;
+    : lease = null,
+      isHeld = false,
+      wasReleased = false;
 
   /// Whether the last holder lapsed without releasing — i.e. it vanished.
   bool get holderVanished => lease != null && !isHeld && !wasReleased;
@@ -216,7 +217,7 @@ class TomLeaseInfo {
     final ending = wasReleased
         ? 'released by ${current.owner}'
         : 'lapsed at ${current.expiresAt.toIso8601String()} while held by '
-            '${current.owner} (holder vanished)';
+              '${current.owner} (holder vanished)';
     return 'Lease "$resource": free; $ending (token ${current.token}).';
   }
 
@@ -303,14 +304,10 @@ class TomMemoryLeaseLock extends TomLeaseLock {
 
   /// Creates an in-memory lock.
   TomMemoryLeaseLock({DateTime Function()? clock})
-      : clock = clock ?? DateTime.now;
+    : clock = clock ?? DateTime.now;
 
   @override
-  Future<TomLease?> acquire(
-    String resource,
-    String owner,
-    Duration ttl,
-  ) async {
+  Future<TomLease?> acquire(String resource, String owner, Duration ttl) async {
     final now = clock();
     final record = _records[resource];
     final held = record?.lease;
@@ -449,20 +446,14 @@ class TomFileLeaseLock extends TomLeaseLock {
   final DateTime Function() clock;
 
   /// Creates a lock over [path], creating the directory if it is missing.
-  TomFileLeaseLock(
-    String path, {
-    DateTime Function()? clock,
-  })  : directory = Directory(path),
-        clock = clock ?? DateTime.now {
+  TomFileLeaseLock(String path, {DateTime Function()? clock})
+    : directory = Directory(path),
+      clock = clock ?? DateTime.now {
     directory.createSync(recursive: true);
   }
 
   @override
-  Future<TomLease?> acquire(
-    String resource,
-    String owner,
-    Duration ttl,
-  ) async {
+  Future<TomLease?> acquire(String resource, String owner, Duration ttl) async {
     final now = clock();
     _directoryFor(resource).createSync(recursive: true);
     final current = _scan(resource);
@@ -719,8 +710,9 @@ class TomFileLeaseLock extends TomLeaseLock {
 
   /// The record file for one [token] of [resource].
   File _fileFor(String resource, int token) => File(
-      '${_directoryFor(resource).path}${Platform.pathSeparator}'
-      '$token$_recordSuffix');
+    '${_directoryFor(resource).path}${Platform.pathSeparator}'
+    '$token$_recordSuffix',
+  );
 
   static const String _recordSuffix = '.lease';
 }
@@ -743,9 +735,9 @@ class _LeaseRecord {
   }
 
   Map<String, Object?> toJson() => {
-        'lease': lease?.toJson(),
-        'released': released,
-      };
+    'lease': lease?.toJson(),
+    'released': released,
+  };
 
   factory _LeaseRecord.fromJson(Map<String, Object?> map) {
     final raw = map['lease'];

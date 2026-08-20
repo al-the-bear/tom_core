@@ -233,10 +233,10 @@ class TomGetSettingsResult {
     this.clientLanguage,
     this.clientCountry,
     this.clientTimeZone,
-  })  : texts = texts ?? <String, Object?>{},
-        config = config ?? <String, Object?>{},
-        groups = groups ?? <String>[],
-        roles = roles ?? <String>[],
-        entitlements = entitlements ?? <String>[],
-        resourceKeys = resourceKeys ?? <String>[];
+  }) : texts = texts ?? <String, Object?>{},
+       config = config ?? <String, Object?>{},
+       groups = groups ?? <String>[],
+       roles = roles ?? <String>[],
+       entitlements = entitlements ?? <String>[],
+       resourceKeys = resourceKeys ?? <String>[];
 }

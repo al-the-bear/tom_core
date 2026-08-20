@@ -348,8 +348,8 @@ class TomGradedAccess extends TomAccessControl {
     required this.full,
     TomAccessControl? read,
     TomAccessControl? disabled,
-  })  : read = read ?? full,
-        disabled = disabled ?? read ?? full;
+  }) : read = read ?? full,
+       disabled = disabled ?? read ?? full;
 
   @override
   TomAuthState resolvePrincipalAuthState(TomPrincipal? principal) {
@@ -616,8 +616,8 @@ class TomEntitlementAccess extends TomAccessControl {
   @override
   TomAuthState resolveServerAuthState(TomPrincipal serverPrincipal) =>
       checkPrincipalAccess(serverPrincipal)
-          ? TomAuthState.full
-          : TomAuthState.none;
+      ? TomAuthState.full
+      : TomAuthState.none;
 }
 
 // =============================================================================

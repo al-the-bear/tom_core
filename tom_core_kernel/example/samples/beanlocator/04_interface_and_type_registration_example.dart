@@ -217,7 +217,7 @@ class InterfaceAndTypeRegistrationExample {
 
     // Create a new cache service
     final cacheService = InMemoryCacheService();
-    
+
     // First registration succeeds
     TomBean.withType(CacheService, cacheService);
     cacheServiceType = 'CacheService registered';
@@ -237,10 +237,7 @@ class InterfaceAndTypeRegistrationExample {
     }
 
     // Assertions
-    assert(
-      caughtDuplicateTypeError,
-      'Should catch duplicate type exception',
-    );
+    assert(caughtDuplicateTypeError, 'Should catch duplicate type exception');
     assert(
       caughtErrorKey == 'beanlocator.initialization.duplicate_bean_with_type',
       'Error key should match',
@@ -312,10 +309,10 @@ class InterfaceAndTypeRegistrationExample {
     print('\n7. TomBean type inspection methods:');
 
     final bean = TomBean<NotificationService>();
-    
+
     // getType() returns the type parameter T
     final declaredType = bean.getType();
-    
+
     // getBeanType() also returns T (alias for getType)
     final beanType = bean.getBeanType();
 
@@ -331,9 +328,18 @@ class InterfaceAndTypeRegistrationExample {
     print('   - Actual type (implementation): $actualType');
 
     // Assertions
-    assert(declaredType == NotificationService, 'getType should return NotificationService');
-    assert(beanType == NotificationService, 'getBeanType should return NotificationService');
-    assert(actualType == EmailNotificationService, 'Actual type should be implementation');
+    assert(
+      declaredType == NotificationService,
+      'getType should return NotificationService',
+    );
+    assert(
+      beanType == NotificationService,
+      'getBeanType should return NotificationService',
+    );
+    assert(
+      actualType == EmailNotificationService,
+      'Actual type should be implementation',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -375,7 +381,9 @@ abstract class _NonExistentService {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('04: INTERFACE AND TYPE REGISTRATION EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   InterfaceAndTypeRegistrationExample.example1ManualTypeRegistration();
   InterfaceAndTypeRegistrationExample.example2GetBeanByType();

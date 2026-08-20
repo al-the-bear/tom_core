@@ -53,13 +53,15 @@ class ObserverPatternExample {
     lastNotifiedValue = null;
 
     // Add observer using >> operator
-    final observer = name >> (obs) {
-      callbackCount++;
-      // `obs` arrives typed as TomString — `>>` is an extension on the
-      // receiver's type, so no cast is needed to reach `get()`.
-      lastNotifiedValue = obs.get();
-      print('   Callback triggered: value is now "$lastNotifiedValue"');
-    };
+    final observer =
+        name >>
+        (obs) {
+          callbackCount++;
+          // `obs` arrives typed as TomString — `>>` is an extension on the
+          // receiver's type, so no cast is needed to reach `get()`.
+          lastNotifiedValue = obs.get();
+          print('   Callback triggered: value is now "$lastNotifiedValue"');
+        };
 
     name | 'Bob';
     name | 'Charlie';
@@ -69,10 +71,15 @@ class ObserverPatternExample {
     // Remove observer
     name.removeObserver(observer);
     name | 'David';
-    print('   After removing observer: callbackCount = $callbackCount (unchanged)');
+    print(
+      '   After removing observer: callbackCount = $callbackCount (unchanged)',
+    );
 
     // Assertions
-    assert(callbackCount == 2, 'Callback should be called twice before removal');
+    assert(
+      callbackCount == 2,
+      'Callback should be called twice before removal',
+    );
     assert(lastNotifiedValue == 'Charlie', "Last value should be 'Charlie'");
   }
 
@@ -112,10 +119,12 @@ class ObserverPatternExample {
     // WeakReference, so the wrapper `>>` hands back is the only strong
     // reference keeping the callback alive; discard it and notifications stop
     // at the next garbage collection, silently and nondeterministically.
-    final scoreObserver = score >> (obs) {
-      muteTestCount++;
-      print('   Score observer: muteTestCount = $muteTestCount');
-    };
+    final scoreObserver =
+        score >>
+        (obs) {
+          muteTestCount++;
+          print('   Score observer: muteTestCount = $muteTestCount');
+        };
 
     score | 110.0;
     print('   After first change: $muteTestCount notification(s)');
@@ -142,8 +151,10 @@ class ObserverPatternExample {
     // unmute — not three replayed, and not none. That consolidation is the
     // behaviour this example exists to show, so it is asserted exactly: `>=`
     // here would pass for a mute that never suppressed anything.
-    assert(muteTestCount == 2,
-        'Unmute should deliver exactly one consolidated notification');
+    assert(
+      muteTestCount == 2,
+      'Unmute should deliver exactly one consolidated notification',
+    );
     assert(~score == 140.0, 'Value should still change while muted');
     assert(score.isMuted == false, 'Should not be muted after unmute');
 
@@ -170,10 +181,14 @@ class ObserverPatternExample {
     ];
 
     price | 19.99;
-    print('   After first change: [$observer1Count, $observer2Count, $observer3Count]');
+    print(
+      '   After first change: [$observer1Count, $observer2Count, $observer3Count]',
+    );
 
     price | 29.99;
-    print('   After second change: [$observer1Count, $observer2Count, $observer3Count]');
+    print(
+      '   After second change: [$observer1Count, $observer2Count, $observer3Count]',
+    );
 
     // Assertions
     assert(observer1Count == 2, 'Observer 1 count should be 2');
@@ -220,19 +235,24 @@ class ObserverPatternExample {
     // and each one must be kept: they are held weakly, so the wrappers
     // collected here are what keep both callbacks subscribed.
     final valueObservers = [
-      value >> (obs) {
-        totalNotifications++;
-      },
-      value >> (obs) {
-        totalNotifications++;
-      },
+      value >>
+          (obs) {
+            totalNotifications++;
+          },
+      value >>
+          (obs) {
+            totalNotifications++;
+          },
     ];
 
     value | 1;
     print('   Total notifications from 2 observers: $totalNotifications');
 
     // Assertions
-    assert(totalNotifications == 2, 'Should have 2 notifications (one per observer)');
+    assert(
+      totalNotifications == 2,
+      'Should have 2 notifications (one per observer)',
+    );
 
     for (final observer in valueObservers) {
       value.removeObserver(observer);

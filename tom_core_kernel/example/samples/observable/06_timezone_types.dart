@@ -40,13 +40,18 @@ class TimezoneTypesExample {
     print('   year: ${(~observableBirthday).localYear}');
     print('   month: ${(~observableBirthday).localMonth}');
     print('   day: ${(~observableBirthday).localDay}');
-    print('   Serialization prefix: ${observableBirthday.getSerializationPrefix()}');
+    print(
+      '   Serialization prefix: ${observableBirthday.getSerializationPrefix()}',
+    );
 
     // Assertions
     assert((~observableBirthday).localYear == 1990, 'Year should be 1990');
     assert((~observableBirthday).localMonth == 5, 'Month should be 5');
     assert((~observableBirthday).localDay == 15, 'Day should be 15');
-    assert(observableBirthday.getSerializationPrefix() == '@D@', 'Prefix should be @D@');
+    assert(
+      observableBirthday.getSerializationPrefix() == '@D@',
+      'Prefix should be @D@',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -66,12 +71,17 @@ class TimezoneTypesExample {
     print('   meetingTime: ${~observableMeetingTime}');
     print('   hour: ${(~observableMeetingTime).localHour}');
     print('   minute: ${(~observableMeetingTime).localMinute}');
-    print('   Serialization prefix: ${observableMeetingTime.getSerializationPrefix()}');
+    print(
+      '   Serialization prefix: ${observableMeetingTime.getSerializationPrefix()}',
+    );
 
     // Assertions
     assert((~observableMeetingTime).localHour == 14, 'Hour should be 14');
     assert((~observableMeetingTime).localMinute == 30, 'Minute should be 30');
-    assert(observableMeetingTime.getSerializationPrefix() == '@T@', 'Prefix should be @T@');
+    assert(
+      observableMeetingTime.getSerializationPrefix() == '@T@',
+      'Prefix should be @T@',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -95,13 +105,18 @@ class TimezoneTypesExample {
     print('   year: ${(~observableEvent).localYear}');
     print('   month: ${(~observableEvent).localMonth}');
     print('   hour: ${(~observableEvent).localHour}');
-    print('   Serialization prefix: ${observableEvent.getSerializationPrefix()}');
+    print(
+      '   Serialization prefix: ${observableEvent.getSerializationPrefix()}',
+    );
 
     // Assertions
     assert((~observableEvent).localYear == 2024, 'Year should be 2024');
     assert((~observableEvent).localMonth == 12, 'Month should be 12');
     assert((~observableEvent).localHour == 18, 'Hour should be 18');
-    assert(observableEvent.getSerializationPrefix() == '@X@', 'Prefix should be @X@');
+    assert(
+      observableEvent.getSerializationPrefix() == '@X@',
+      'Prefix should be @X@',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -119,13 +134,16 @@ class TimezoneTypesExample {
     // WeakReference, so the wrapper `>>` hands back is the only strong
     // reference keeping the callback alive; discard it and notifications stop
     // at the next garbage collection, silently and nondeterministically.
-    final appointmentObserver = appointment >> (obs) {
-      notifyCount++;
-      print('   Appointment changed! (notification #$notifyCount)');
-    };
+    final appointmentObserver =
+        appointment >>
+        (obs) {
+          notifyCount++;
+          print('   Appointment changed! (notification #$notifyCount)');
+        };
 
     // Change the value
-    appointment | TomZonedDateTime.fromDateTime(DateTime.utc(2024, 1, 11, 10, 0));
+    appointment |
+        TomZonedDateTime.fromDateTime(DateTime.utc(2024, 1, 11, 10, 0));
     print('   New appointment: ${~appointment}');
 
     // Assertions
@@ -151,16 +169,24 @@ class TimezoneTypesExample {
     // Set values
     optionalDate | TomZonedDate.fromDateTime(DateTime.utc(2024, 6, 1));
     optionalTime | TomZonedTime.fromDateTime(DateTime.utc(2024, 1, 1, 12, 30));
-    optionalDateTime | TomZonedDateTime.fromDateTime(DateTime.utc(2024, 3, 15, 14, 0));
+    optionalDateTime |
+        TomZonedDateTime.fromDateTime(DateTime.utc(2024, 3, 15, 14, 0));
 
-    print('   After setting optionalDate: ${(~optionalDate)?.localYear}-${(~optionalDate)?.localMonth}-${(~optionalDate)?.localDay}');
-    print('   After setting optionalTime: ${(~optionalTime)?.localHour}:${(~optionalTime)?.localMinute}');
+    print(
+      '   After setting optionalDate: ${(~optionalDate)?.localYear}-${(~optionalDate)?.localMonth}-${(~optionalDate)?.localDay}',
+    );
+    print(
+      '   After setting optionalTime: ${(~optionalTime)?.localHour}:${(~optionalTime)?.localMinute}',
+    );
     print('   After setting optionalDateTime: ${~optionalDateTime}');
 
     // Assertions
     assert(!optionalDate.isNull, 'Optional date should not be null after set');
     assert(!optionalTime.isNull, 'Optional time should not be null after set');
-    assert(!optionalDateTime.isNull, 'Optional datetime should not be null after set');
+    assert(
+      !optionalDateTime.isNull,
+      'Optional datetime should not be null after set',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -172,15 +198,21 @@ class TimezoneTypesExample {
     final vacation = TomDateRange();
     int rangeNotifyCount = 0;
 
-    final vacationObserver = vacation >> (obs) {
-      rangeNotifyCount++;
-    };
+    final vacationObserver =
+        vacation >>
+        (obs) {
+          rangeNotifyCount++;
+        };
 
     vacation.startDate | TomZonedDate.fromDateTime(DateTime.utc(2024, 7, 1));
     vacation.endDate | TomZonedDate.fromDateTime(DateTime.utc(2024, 7, 14));
 
-    print('   Vacation start: ${(~vacation.startDate)?.localYear}-${(~vacation.startDate)?.localMonth}-${(~vacation.startDate)?.localDay}');
-    print('   Vacation end: ${(~vacation.endDate)?.localYear}-${(~vacation.endDate)?.localMonth}-${(~vacation.endDate)?.localDay}');
+    print(
+      '   Vacation start: ${(~vacation.startDate)?.localYear}-${(~vacation.startDate)?.localMonth}-${(~vacation.startDate)?.localDay}',
+    );
+    print(
+      '   Vacation end: ${(~vacation.endDate)?.localYear}-${(~vacation.endDate)?.localMonth}-${(~vacation.endDate)?.localDay}',
+    );
     print('   Range notifications: $rangeNotifyCount');
 
     // Assertions
@@ -201,21 +233,17 @@ class TimezoneTypesExample {
 
     final workHours = TomTimeRange();
 
-    workHours.startTime | TomZonedTime(
-      hour: 9,
-      minute: 0,
-      second: 0,
-      timezone: TomTimezone.utc,
-    );
-    workHours.endTime | TomZonedTime(
-      hour: 17,
-      minute: 0,
-      second: 0,
-      timezone: TomTimezone.utc,
-    );
+    workHours.startTime |
+        TomZonedTime(hour: 9, minute: 0, second: 0, timezone: TomTimezone.utc);
+    workHours.endTime |
+        TomZonedTime(hour: 17, minute: 0, second: 0, timezone: TomTimezone.utc);
 
-    print('   Work hours start: ${(~workHours.startTime)?.localHour}:${(~workHours.startTime)?.localMinute.toString().padLeft(2, '0')}');
-    print('   Work hours end: ${(~workHours.endTime)?.localHour}:${(~workHours.endTime)?.localMinute.toString().padLeft(2, '0')}');
+    print(
+      '   Work hours start: ${(~workHours.startTime)?.localHour}:${(~workHours.startTime)?.localMinute.toString().padLeft(2, '0')}',
+    );
+    print(
+      '   Work hours end: ${(~workHours.endTime)?.localHour}:${(~workHours.endTime)?.localMinute.toString().padLeft(2, '0')}',
+    );
 
     // Assertions
     assert((~workHours.startTime)?.localHour == 9, 'Start hour should be 9');
@@ -235,14 +263,19 @@ class TimezoneTypesExample {
     // fromDateTime stores the *absolute instant* and localYear reads it back in
     // the attached zone (UTC), so on a host east of UTC+2 the end instant falls
     // back into 2024, and west of UTC-4 the start instant moves up into 2025.
-    event.startDateTime | TomZonedDateTime.fromDateTime(DateTime.utc(2024, 12, 31, 20, 0));
-    event.endDateTime | TomZonedDateTime.fromDateTime(DateTime.utc(2025, 1, 1, 2, 0));
+    event.startDateTime |
+        TomZonedDateTime.fromDateTime(DateTime.utc(2024, 12, 31, 20, 0));
+    event.endDateTime |
+        TomZonedDateTime.fromDateTime(DateTime.utc(2025, 1, 1, 2, 0));
 
     print('   Event start: ${~event.startDateTime}');
     print('   Event end: ${~event.endDateTime}');
 
     // Assertions
-    assert((~event.startDateTime)?.localYear == 2024, 'Start year should be 2024');
+    assert(
+      (~event.startDateTime)?.localYear == 2024,
+      'Start year should be 2024',
+    );
     assert((~event.endDateTime)?.localYear == 2025, 'End year should be 2025');
   }
 
@@ -252,7 +285,9 @@ class TimezoneTypesExample {
   static void example9SetByString() {
     print('\n9. setByString for deserialization:');
 
-    final deserializedDate = TomOZonedDate(TomZonedDate.fromDateTime(DateTime.utc(1970)));
+    final deserializedDate = TomOZonedDate(
+      TomZonedDate.fromDateTime(DateTime.utc(1970)),
+    );
 
     // Create a serialized string
     final originalDate = TomZonedDate(
@@ -272,8 +307,14 @@ class TimezoneTypesExample {
     print('   Deserialized day: ${(~deserializedDate).localDay}');
 
     // Assertions
-    assert((~deserializedDate).localYear == 2024, 'Deserialized year should be 2024');
-    assert((~deserializedDate).localMonth == 3, 'Deserialized month should be 3');
+    assert(
+      (~deserializedDate).localYear == 2024,
+      'Deserialized year should be 2024',
+    );
+    assert(
+      (~deserializedDate).localMonth == 3,
+      'Deserialized month should be 3',
+    );
     assert((~deserializedDate).localDay == 20, 'Deserialized day should be 20');
   }
 

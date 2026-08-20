@@ -44,17 +44,18 @@ class DefaultProvidersExample {
     print('   - organization: $defaultOrg');
     print('   - application: $defaultApp');
     print('   - process: $defaultProcess');
-    print('   - server locale: $defaultLang / $defaultCountry / '
-        '$defaultTimezone');
-    print('   - client locale: $defaultClientLang / $defaultClientCountry / '
-        '$defaultClientTimezone');
+    print(
+      '   - server locale: $defaultLang / $defaultCountry / '
+      '$defaultTimezone',
+    );
+    print(
+      '   - client locale: $defaultClientLang / $defaultClientCountry / '
+      '$defaultClientTimezone',
+    );
 
     assert(defaultOrg == 'default', 'Default organization should be "default"');
     assert(defaultApp == 'default', 'Default application should be "default"');
-    assert(
-      defaultProcess == 'default',
-      'Default process should be "default"',
-    );
+    assert(defaultProcess == 'default', 'Default process should be "default"');
     assert(defaultLang == 'en', 'Default language should be "en"');
     assert(defaultCountry == 'XX', 'Default country should be "XX"');
     assert(defaultTimezone == 'utc', 'Default timezone should be "utc"');
@@ -115,7 +116,10 @@ class PrincipalProvidersExample {
     print('   - timezone: $principalTimezone');
 
     assert(principalOrg == 'acme-corp', 'Principal org should be acme-corp');
-    assert(principalApp == 'billing-app', 'Principal app should be billing-app');
+    assert(
+      principalApp == 'billing-app',
+      'Principal app should be billing-app',
+    );
     assert(principalLang == 'de', 'Principal language should be de');
     assert(principalCountry == 'DE', 'Principal country should be DE');
     assert(
@@ -200,8 +204,10 @@ class DefaultExecutionContextExample {
     tomExecutionContext.contextMap.forEach((name, entry) {
       print('     - $name: ${entry.type}');
     });
-    print('   - Every entry is declared TomContextEntry<String>, which is what '
-        'makes getEntry<String> find them');
+    print(
+      '   - Every entry is declared TomContextEntry<String>, which is what '
+      'makes getEntry<String> find them',
+    );
     print('   - organization value (no principal in zone): $orgValue');
 
     assert(hasOrganization, 'Should have organization entry');
@@ -240,10 +246,12 @@ class ContextWithPrincipalExample {
     runZoned(() {
       tomExecutionContext.runInContext(() {
         contextRetrieved = true;
-        ctxOrg =
-            TomExecutionContext.getValueFromCurrentZone<String>('organization');
-        ctxApp =
-            TomExecutionContext.getValueFromCurrentZone<String>('application');
+        ctxOrg = TomExecutionContext.getValueFromCurrentZone<String>(
+          'organization',
+        );
+        ctxApp = TomExecutionContext.getValueFromCurrentZone<String>(
+          'application',
+        );
         ctxClientLang = TomExecutionContext.getValueFromCurrentZone<String>(
           'clientLanguage',
         );
@@ -253,8 +261,10 @@ class ContextWithPrincipalExample {
     print('   - organization: $ctxOrg');
     print('   - application: $ctxApp');
     print('   - clientLanguage: $ctxClientLang');
-    print('   - The entries are lazy, so they resolve against whichever '
-        'principal is in the zone at read time');
+    print(
+      '   - The entries are lazy, so they resolve against whichever '
+      'principal is in the zone at read time',
+    );
 
     assert(contextRetrieved, 'Context should have been retrieved');
     assert(ctxOrg == 'acme-corp', 'Context org should match principal');

@@ -279,7 +279,8 @@ class TomFileMetadata {
       other.storedAt == storedAt;
 
   @override
-  int get hashCode => Object.hash(key, mediaType, byteCount, fileName, storedAt);
+  int get hashCode =>
+      Object.hash(key, mediaType, byteCount, fileName, storedAt);
 
   @override
   String toString() =>
@@ -314,9 +315,8 @@ class TomTransferProgress {
   ///
   /// Clamped because a server may report a `Content-Length` that a chunked
   /// re-encoding then exceeds, and a progress bar past 100 % looks like a bug.
-  double? get fraction => isDeterminate
-      ? (transferred / total!).clamp(0.0, 1.0).toDouble()
-      : null;
+  double? get fraction =>
+      isDeterminate ? (transferred / total!).clamp(0.0, 1.0).toDouble() : null;
 
   @override
   String toString() => 'TomTransferProgress($transferred/${total ?? '?'})';

@@ -152,7 +152,8 @@ class ModifiedSignatureExample {
 
     // Create a modified signature (flip some bits)
     final modifiedSignature = Uint8List.fromList(validSignature);
-    modifiedSignature[0] = modifiedSignature[0] ^ 0xFF; // Flip bits in first byte
+    modifiedSignature[0] =
+        modifiedSignature[0] ^ 0xFF; // Flip bits in first byte
 
     validSigResult = rsaVerify(publicKey, testBytes, validSignature);
     modifiedSigResult = rsaVerify(publicKey, testBytes, modifiedSignature);
@@ -193,16 +194,14 @@ class DocumentSigningExample {
     final docSignatureBase64 = base64Encode(docSignature);
 
     // Step 3: Package for transmission
-    signedDocument = {
-      'document': document,
-      'signature': docSignatureBase64,
-    };
+    signedDocument = {'document': document, 'signature': docSignatureBase64};
 
     // Step 4: Recipient verifies (simulated)
     final receivedDoc = signedDocument!['document'] as Map<String, dynamic>;
     final receivedSig = signedDocument!['signature'] as String;
-    final receivedDocBytes =
-        Uint8List.fromList(utf8.encode(jsonEncode(receivedDoc)));
+    final receivedDocBytes = Uint8List.fromList(
+      utf8.encode(jsonEncode(receivedDoc)),
+    );
     final receivedSigBytes = Uint8List.fromList(base64Decode(receivedSig));
 
     documentValid = rsaVerify(publicKey, receivedDocBytes, receivedSigBytes);

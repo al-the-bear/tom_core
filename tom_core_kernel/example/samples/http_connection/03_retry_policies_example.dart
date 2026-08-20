@@ -54,7 +54,10 @@ class RetryPoliciesExample {
     // Assertions
     assert(retrySpecs.followRedirects == true, 'Should follow redirects');
     assert(retrySpecs.maxRedirects == 3, 'Max redirects should be 3');
-    assert(retrySpecs.persistentConnection == true, 'Should have persistent connection');
+    assert(
+      retrySpecs.persistentConnection == true,
+      'Should have persistent connection',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -68,11 +71,19 @@ class RetryPoliciesExample {
 
     print('   - Channel created for: ${channel.host}:${channel.port}');
     print('   - Client is lazily created on first use');
-    print('   - Same client is reused for subsequent calls (connection pooling)');
+    print(
+      '   - Same client is reused for subsequent calls (connection pooling)',
+    );
 
     // Demonstrate that we can prepare multiple calls
-    final specs1 = TomServerCallSpecs('GET', Uri.parse('https://api.example.com/users'));
-    final specs2 = TomServerCallSpecs('GET', Uri.parse('https://api.example.com/orders'));
+    final specs1 = TomServerCallSpecs(
+      'GET',
+      Uri.parse('https://api.example.com/users'),
+    );
+    final specs2 = TomServerCallSpecs(
+      'GET',
+      Uri.parse('https://api.example.com/orders'),
+    );
 
     print('   - Multiple call specs can be prepared from same channel');
     print('     • Specs 1: ${specs1.method} ${specs1.url.path}');
@@ -100,10 +111,18 @@ class RetryPoliciesExample {
     final forbidden = TomServerCallError(statusCode: 403);
     final notFound = TomServerCallError(statusCode: 404);
 
-    print('   - Status 400 (Bad Request): hasError=${badRequest.hasError} (no retry - fix request)');
-    print('   - Status 401 (Unauthorized): hasError=${unauthorized.hasError} (retry after re-auth)');
-    print('   - Status 403 (Forbidden): hasError=${forbidden.hasError} (no retry - permissions)');
-    print('   - Status 404 (Not Found): hasError=${notFound.hasError} (no retry - wrong endpoint)');
+    print(
+      '   - Status 400 (Bad Request): hasError=${badRequest.hasError} (no retry - fix request)',
+    );
+    print(
+      '   - Status 401 (Unauthorized): hasError=${unauthorized.hasError} (retry after re-auth)',
+    );
+    print(
+      '   - Status 403 (Forbidden): hasError=${forbidden.hasError} (no retry - permissions)',
+    );
+    print(
+      '   - Status 404 (Not Found): hasError=${notFound.hasError} (no retry - wrong endpoint)',
+    );
 
     // Server errors - usually SHOULD retry
     final serverError = TomServerCallError(statusCode: 500);
@@ -112,10 +131,18 @@ class RetryPoliciesExample {
     final serviceUnavailable = TomServerCallError(statusCode: 503);
     final gatewayTimeout = TomServerCallError(statusCode: 504);
 
-    print('   - Status 500 (Server Error): hasError=$serverErrorHasError (maybe retry)');
-    print('   - Status 502 (Bad Gateway): hasError=${badGateway.hasError} (retry)');
-    print('   - Status 503 (Unavailable): hasError=${serviceUnavailable.hasError} (retry with backoff)');
-    print('   - Status 504 (Timeout): hasError=${gatewayTimeout.hasError} (retry)');
+    print(
+      '   - Status 500 (Server Error): hasError=$serverErrorHasError (maybe retry)',
+    );
+    print(
+      '   - Status 502 (Bad Gateway): hasError=${badGateway.hasError} (retry)',
+    );
+    print(
+      '   - Status 503 (Unavailable): hasError=${serviceUnavailable.hasError} (retry with backoff)',
+    );
+    print(
+      '   - Status 504 (Timeout): hasError=${gatewayTimeout.hasError} (retry)',
+    );
 
     // Assertions
     assert(successHasError == false, 'Success should not have error');
@@ -180,7 +207,9 @@ class RetryPoliciesExample {
       final error = TomServerCallError(statusCode: code);
       final retryable = isRetryable(code);
       retryableStatusCodes[code] = retryable;
-      print('   - Status $code: hasError=${error.hasError}, retryable=$retryable');
+      print(
+        '   - Status $code: hasError=${error.hasError}, retryable=$retryable',
+      );
     }
 
     // Assertions
@@ -225,7 +254,10 @@ class RetryPoliciesExample {
 
     // Assertions
     assert(jsonError.hasError == true, 'JSON error should have error');
-    assert(jsonError.internalError == TomServerCallError.jsonDecodingError, 'Should be JSON decoding error');
+    assert(
+      jsonError.internalError == TomServerCallError.jsonDecodingError,
+      'Should be JSON decoding error',
+    );
     assert(networkError.hasError == true, 'Network error should have error');
     assert(timeoutError.hasError == true, 'Timeout error should have error');
   }
@@ -252,12 +284,16 @@ class RetryPoliciesExample {
 
     for (final method in idempotentMethods) {
       final httpMethod = TomHttpMethod.methods[method];
-      print('   - $method: idempotent=true, acceptsBody=${httpMethod?.acceptsBody}');
+      print(
+        '   - $method: idempotent=true, acceptsBody=${httpMethod?.acceptsBody}',
+      );
     }
 
     for (final method in nonIdempotentMethods) {
       final httpMethod = TomHttpMethod.methods[method];
-      print('   - $method: idempotent=false, acceptsBody=${httpMethod?.acceptsBody}');
+      print(
+        '   - $method: idempotent=false, acceptsBody=${httpMethod?.acceptsBody}',
+      );
     }
 
     // Assertions

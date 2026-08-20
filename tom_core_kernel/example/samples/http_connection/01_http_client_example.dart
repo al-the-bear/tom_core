@@ -42,10 +42,18 @@ class HttpClientExample {
     final deleteMethod = TomHttpMethod.delete;
     final traceMethod = TomHttpMethod.trace;
 
-    print('   - GET method: ${getMethod.name}, accepts body: ${getMethod.acceptsBody}');
-    print('   - POST method: ${postMethod.name}, accepts body: ${postMethod.acceptsBody}');
-    print('   - DELETE method: ${deleteMethod.name}, accepts body: ${deleteMethod.acceptsBody}');
-    print('   - TRACE method: ${traceMethod.name}, accepts body: ${traceMethod.acceptsBody}');
+    print(
+      '   - GET method: ${getMethod.name}, accepts body: ${getMethod.acceptsBody}',
+    );
+    print(
+      '   - POST method: ${postMethod.name}, accepts body: ${postMethod.acceptsBody}',
+    );
+    print(
+      '   - DELETE method: ${deleteMethod.name}, accepts body: ${deleteMethod.acceptsBody}',
+    );
+    print(
+      '   - TRACE method: ${traceMethod.name}, accepts body: ${traceMethod.acceptsBody}',
+    );
 
     // Lookup method by name
     final lookupMethod = TomHttpMethod.methods['PUT'];
@@ -89,7 +97,10 @@ class HttpClientExample {
     assert(getSpecs.url.host == 'api.example.com', 'Host should match');
     assert(postSpecs.followRedirects == true, 'Should follow redirects');
     assert(postSpecs.maxRedirects == 5, 'Max redirects should be 5');
-    assert(postSpecs.includeBearerAuthentication == false, 'Should not include bearer auth');
+    assert(
+      postSpecs.includeBearerAuthentication == false,
+      'Should not include bearer auth',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -121,10 +132,16 @@ class HttpClientExample {
     print('   - Binary load size: ${binaryLoad.byteBody?.length} bytes');
 
     // Assertions
-    assert(jsonLoad.contentType == 'application/json', 'JSON content type should match');
+    assert(
+      jsonLoad.contentType == 'application/json',
+      'JSON content type should match',
+    );
     assert(jsonLoad.stringBody != null, 'JSON body should not be null');
     assert(formLoad.bodyFields != null, 'Form fields should not be null');
-    assert(formLoad.bodyFields!['username'] == 'john_doe', 'Username should match');
+    assert(
+      formLoad.bodyFields!['username'] == 'john_doe',
+      'Username should match',
+    );
     assert(binaryLoad.byteBody != null, 'Binary body should not be null');
     assert(binaryLoad.byteBody!.length == 5, 'Binary body should be 5 bytes');
   }
@@ -191,8 +208,10 @@ class HttpClientExample {
     assert(errorResponse.hasError == true, 'Not found should have error');
     assert(errorResponse.statusCode == 404, 'Status code should be 404');
     assert(internalError.hasError == true, 'Internal error should have error');
-    assert(internalError.internalError == TomServerCallError.jsonDecodingError,
-        'Internal error should be JSON decoding error');
+    assert(
+      internalError.internalError == TomServerCallError.jsonDecodingError,
+      'Internal error should be JSON decoding error',
+    );
   }
 
   // -------------------------------------------------------------------------

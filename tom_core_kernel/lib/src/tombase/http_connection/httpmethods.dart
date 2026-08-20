@@ -54,17 +54,17 @@ class TomHttpMethod {
   /// single caller writing it would reroute method lookup process-wide.
   static final Map<String, TomHttpMethod> methods =
       Map<String, TomHttpMethod>.unmodifiable(const {
-    "HEAD": head,
-    "GET": get,
-    "POST": post,
-    "PUT": put,
-    "PATCH": patch,
-    "DELETE": delete,
-    "CONNECT": connect,
-    "TRACE": trace,
-    "OPTIONS": options,
-    "ALL": all,
-  });
+        "HEAD": head,
+        "GET": get,
+        "POST": post,
+        "PUT": put,
+        "PATCH": patch,
+        "DELETE": delete,
+        "CONNECT": connect,
+        "TRACE": trace,
+        "OPTIONS": options,
+        "ALL": all,
+      });
 
   /// The uppercase name of the HTTP method (e.g., "GET", "POST").
   final String name;

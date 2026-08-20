@@ -246,7 +246,7 @@ class TomTextResourceProvider {
   ///
   /// [resources] - The pre-populated resource map.
   TomTextResourceProvider.from(Map<String, dynamic> resources)
-      : _resources = resources;
+    : _resources = resources;
 
   // ---------------------------------------------------------------------------
   // Instance Methods

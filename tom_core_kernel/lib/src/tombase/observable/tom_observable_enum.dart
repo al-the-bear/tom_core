@@ -117,13 +117,13 @@ class TomObservableEnum<E extends Enum> extends TomObject<E> {
   /// [scope] overrides the ambient [TomScope] used for key resolution — pass
   /// it only when the cell is constructed outside the scope whose labels it
   /// should use.
-  TomObservableEnum(E initialValue,
-      {required List<E> values, TomScope? scope})
-      : values = List<E>.unmodifiable(values),
-        scope = scope ?? TomScope.current,
-        super(initialValue) {
+  TomObservableEnum(E initialValue, {required List<E> values, TomScope? scope})
+    : values = List<E>.unmodifiable(values),
+      scope = scope ?? TomScope.current,
+      super(initialValue) {
     _checkInRange(initialValue, this.values, 'construct');
-    _resourcesObserver = TomTextResourceProvider.appResourcesRevision >>
+    _resourcesObserver =
+        TomTextResourceProvider.appResourcesRevision >>
         (_) => notifyObservers();
   }
 
@@ -280,14 +280,18 @@ class TomObservableEnum<E extends Enum> extends TomObject<E> {
     if (_warnedKeys.length >= _maxWarnedKeys) {
       if (_warnLimitReported) return;
       _warnLimitReported = true;
-      tomLog.warn('More than $_maxWarnedKeys distinct enum label resources are '
-          'missing — suppressing further warnings until the text resources '
-          'change.');
+      tomLog.warn(
+        'More than $_maxWarnedKeys distinct enum label resources are '
+        'missing — suppressing further warnings until the text resources '
+        'change.',
+      );
       return;
     }
     _warnedKeys.add(keys.first);
-    tomLog.warn('No enum label resource for ${keys.first} '
-        '(tried: ${keys.join(', ')}) — rendering the raw enum name.');
+    tomLog.warn(
+      'No enum label resource for ${keys.first} '
+      '(tried: ${keys.join(', ')}) — rendering the raw enum name.',
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -314,7 +318,10 @@ class TomObservableEnum<E extends Enum> extends TomObject<E> {
   /// [operation] names what was attempted, so the message says which call
   /// failed rather than only which value was rejected.
   static void _checkInRange<E extends Enum>(
-      E value, List<E> permitted, String operation) {
+    E value,
+    List<E> permitted,
+    String operation,
+  ) {
     if (permitted.contains(value)) return;
     throw TomObservableException(
       'observable.enum_value.not_in_values',
@@ -349,8 +356,9 @@ class TomObservableEnum<E extends Enum> extends TomObject<E> {
   /// and dies with this cell. Call it when a long-lived cell should freeze on
   /// the labels it has.
   void detachFromResources() {
-    TomTextResourceProvider.appResourcesRevision
-        .removeObserver(_resourcesObserver);
+    TomTextResourceProvider.appResourcesRevision.removeObserver(
+      _resourcesObserver,
+    );
   }
 
   @override

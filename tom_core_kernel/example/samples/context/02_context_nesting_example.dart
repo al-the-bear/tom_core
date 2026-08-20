@@ -88,8 +88,10 @@ class OverwriteContextExample {
     print('   - version before: $versionBefore');
     print('   - version after: $versionAfter');
     print('   - newFeature: $hasNewFeature');
-    print('   - Entries after overwrite: $entryCountAfterOverwrite '
-        '(the colliding key was replaced, not duplicated)');
+    print(
+      '   - Entries after overwrite: $entryCountAfterOverwrite '
+      '(the colliding key was replaced, not duplicated)',
+    );
 
     assert(versionBefore == 'v1.0', 'Original version should be v1.0');
     assert(versionAfter == 'v2.0', 'Version should be overwritten to v2.0');
@@ -120,13 +122,10 @@ class ExplicitParentExample {
     // The constructor merges the parent's entries first and the child's over
     // them, so the child wins on collision — the same rule combineWith uses,
     // applied once at construction instead of afterwards.
-    final childCtx = TomExecutionContext(
-      {
-        'child': TomContextEntry<String>(() => 'child-value'),
-        'shared': TomContextEntry<String>(() => 'from-child'),
-      },
-      parentContext: parentCtx,
-    );
+    final childCtx = TomExecutionContext({
+      'child': TomContextEntry<String>(() => 'child-value'),
+      'shared': TomContextEntry<String>(() => 'from-child'),
+    }, parentContext: parentCtx);
 
     childEntryCount = childCtx.contextMap.length;
     parentEntryCount = parentCtx.contextMap.length;
@@ -139,8 +138,10 @@ class ExplicitParentExample {
     print('   - child (the child\'s own): $ownChild');
     print('   - shared (child overrides parent): $overriddenShared');
     print('   - Parent is left unchanged: $parentEntryCount entries');
-    print('   - This is the mechanism runInContext nests with: it builds a new '
-        'context whose parent is the zone\'s current one');
+    print(
+      '   - This is the mechanism runInContext nests with: it builds a new '
+      'context whose parent is the zone\'s current one',
+    );
 
     assert(childEntryCount == 3, 'Child should hold base, shared and child');
     assert(inheritedBase == 'parent-value', 'Base should come from the parent');
@@ -179,17 +180,21 @@ class NestedZoneExample {
     outerContext.runInContext(() {
       outerZoneExecuted = true;
       outerLevel = TomExecutionContext.getValueFromCurrentZone<String>('level');
-      outerShared =
-          TomExecutionContext.getValueFromCurrentZone<int>('sharedValue');
+      outerShared = TomExecutionContext.getValueFromCurrentZone<int>(
+        'sharedValue',
+      );
 
       innerContext.runInContext(() {
         innerZoneExecuted = true;
-        innerLevel =
-            TomExecutionContext.getValueFromCurrentZone<String>('level');
-        innerShared =
-            TomExecutionContext.getValueFromCurrentZone<int>('sharedValue');
-        innerOnly =
-            TomExecutionContext.getValueFromCurrentZone<String>('innerOnly');
+        innerLevel = TomExecutionContext.getValueFromCurrentZone<String>(
+          'level',
+        );
+        innerShared = TomExecutionContext.getValueFromCurrentZone<int>(
+          'sharedValue',
+        );
+        innerOnly = TomExecutionContext.getValueFromCurrentZone<String>(
+          'innerOnly',
+        );
       });
     });
 
@@ -207,7 +212,10 @@ class NestedZoneExample {
     assert(outerShared == 100, 'Outer shared should be 100');
     assert(innerLevel == 'inner', 'Inner level should shadow outer');
     assert(innerShared == 100, 'Inner should inherit shared value');
-    assert(innerOnly == 'inner-exclusive', 'Inner-only value should be present');
+    assert(
+      innerOnly == 'inner-exclusive',
+      'Inner-only value should be present',
+    );
   }
 }
 
@@ -237,10 +245,12 @@ class ContextInheritanceExample {
       childContext.runInContext(() {
         childZoneExecuted = true;
         // Child zone should have access to both parent and child values
-        inheritedParent =
-            TomExecutionContext.getValueFromCurrentZone<String>('parentValue');
-        inheritedChild =
-            TomExecutionContext.getValueFromCurrentZone<String>('childValue');
+        inheritedParent = TomExecutionContext.getValueFromCurrentZone<String>(
+          'parentValue',
+        );
+        inheritedChild = TomExecutionContext.getValueFromCurrentZone<String>(
+          'childValue',
+        );
       });
     });
 

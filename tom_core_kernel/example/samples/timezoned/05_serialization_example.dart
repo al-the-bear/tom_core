@@ -51,8 +51,14 @@ class SerializationExample {
 
     // Assertions
     assert(dateTimeSerialized.contains('Z'), 'Should contain UTC marker');
-    assert(dateTimeSerialized.contains('Asia/Tokyo'), 'Should contain timezone name');
-    assert(dateTimeSerialized.startsWith('@X@'), 'Should start with @X@ prefix');
+    assert(
+      dateTimeSerialized.contains('Asia/Tokyo'),
+      'Should contain timezone name',
+    );
+    assert(
+      dateTimeSerialized.startsWith('@X@'),
+      'Should start with @X@ prefix',
+    );
     assert(dt.getSerializationPrefix() == '@X@', 'Prefix should be @X@');
   }
 
@@ -78,7 +84,10 @@ class SerializationExample {
 
     // Assertions
     assert(dateSerialized.startsWith('@D@'), 'Should start with @D@ prefix');
-    assert(dateSerialized.contains('America/New_York'), 'Should contain timezone name');
+    assert(
+      dateSerialized.contains('America/New_York'),
+      'Should contain timezone name',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -88,12 +97,7 @@ class SerializationExample {
     print('\n3. Serializing TomZonedTime:');
 
     final london = TomTimezone.fromName('Europe/London')!;
-    final time = TomZonedTime(
-      hour: 9,
-      minute: 30,
-      second: 0,
-      timezone: london,
-    );
+    final time = TomZonedTime(hour: 9, minute: 30, second: 0, timezone: london);
 
     timeSerialized = time.toString();
 
@@ -117,11 +121,18 @@ class SerializationExample {
 
     print('   - Input: $parseString');
     print('   - Parsed timezone: ${parsedDateTime.timezone.timezone}');
-    print('   - Parsed local time: ${parsedDateTime.localHour}:${parsedDateTime.localMinute}');
-    print('   - Parsed UTC time: ${parsedDateTime.hour}:${parsedDateTime.minute}');
+    print(
+      '   - Parsed local time: ${parsedDateTime.localHour}:${parsedDateTime.localMinute}',
+    );
+    print(
+      '   - Parsed UTC time: ${parsedDateTime.hour}:${parsedDateTime.minute}',
+    );
 
     // Assertions
-    assert(parsedDateTime.timezone.timezone == 'Asia/Tokyo', 'Timezone should be Tokyo');
+    assert(
+      parsedDateTime.timezone.timezone == 'Asia/Tokyo',
+      'Timezone should be Tokyo',
+    );
     assert(parsedDateTime.hour == 5, 'UTC hour should be 5');
     assert(parsedDateTime.localHour == 14, 'Local hour should be 14 (5 + 9)');
   }
@@ -138,10 +149,15 @@ class SerializationExample {
 
     print('   - Input: $parseString');
     print('   - Parsed timezone: ${parsedDate.timezone.timezone}');
-    print('   - Parsed local date: ${parsedDate.localYear}-${parsedDate.localMonth}-${parsedDate.localDay}');
+    print(
+      '   - Parsed local date: ${parsedDate.localYear}-${parsedDate.localMonth}-${parsedDate.localDay}',
+    );
 
     // Assertions
-    assert(parsedDate.timezone.timezone == 'America/New_York', 'Timezone should be New York');
+    assert(
+      parsedDate.timezone.timezone == 'America/New_York',
+      'Timezone should be New York',
+    );
     assert(parsedDate.localMonth == 12, 'Month should be December');
     assert(parsedDate.localDay == 25, 'Day should be 25');
   }
@@ -167,10 +183,15 @@ class SerializationExample {
 
     print('   - Input: $parseString');
     print('   - Parsed timezone: ${parsedTime.timezone.timezone}');
-    print('   - Parsed local time: ${parsedTime.localHour}:${parsedTime.localMinute}');
+    print(
+      '   - Parsed local time: ${parsedTime.localHour}:${parsedTime.localMinute}',
+    );
 
     // Assertions
-    assert(parsedTime.timezone.timezone == 'Europe/London', 'Timezone should be London');
+    assert(
+      parsedTime.timezone.timezone == 'Europe/London',
+      'Timezone should be London',
+    );
     assert(parsedTime.localHour == 9, 'Hour should be 9');
     assert(parsedTime.localMinute == 30, 'Minute should be 30');
   }
@@ -234,12 +255,17 @@ class SerializationExample {
     // Parse back
     final restored = TomZonedDateTime.parseFromString(serialized);
 
-    print('   - Original: ${original.localHour}:${original.localMinute}:${original.localSecond} in ${original.timezone.timezone}');
+    print(
+      '   - Original: ${original.localHour}:${original.localMinute}:${original.localSecond} in ${original.timezone.timezone}',
+    );
     print('   - Serialized: $serialized');
-    print('   - Restored: ${restored.localHour}:${restored.localMinute}:${restored.localSecond} in ${restored.timezone.timezone}');
+    print(
+      '   - Restored: ${restored.localHour}:${restored.localMinute}:${restored.localSecond} in ${restored.timezone.timezone}',
+    );
 
     // Verify all values match
-    final match = original.localYear == restored.localYear &&
+    final match =
+        original.localYear == restored.localYear &&
         original.localMonth == restored.localMonth &&
         original.localDay == restored.localDay &&
         original.localHour == restored.localHour &&
@@ -270,7 +296,9 @@ class SerializationExample {
         TomZonedDateTime.parseFromString(str);
         print('   - "$str" -> Unexpectedly parsed');
       } on FormatException catch (e) {
-        print('   - "$str" -> FormatException: ${e.message.substring(0, 30)}...');
+        print(
+          '   - "$str" -> FormatException: ${e.message.substring(0, 30)}...',
+        );
       }
     }
   }

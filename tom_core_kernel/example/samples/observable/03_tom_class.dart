@@ -92,10 +92,12 @@ class TomClassExample {
     // WeakReference, so the wrapper `>>` hands back is the only strong
     // reference keeping the callback alive; discard it and notifications stop
     // at the next garbage collection, silently and nondeterministically.
-    final personObserver = person >> (obs) {
-      notificationCount++;
-      print('   Person changed! (notification #$notificationCount)');
-    };
+    final personObserver =
+        person >>
+        (obs) {
+          notificationCount++;
+          print('   Person changed! (notification #$notificationCount)');
+        };
 
     person.name | 'Jane Doe';
     person.age | 25;
@@ -121,10 +123,12 @@ class TomClassExample {
     final person2 = SamplePerson();
     batchNotifyCount = 0;
 
-    final person2Observer = person2 >> (obs) {
-      batchNotifyCount++;
-      print('   Batch update notification #$batchNotifyCount');
-    };
+    final person2Observer =
+        person2 >>
+        (obs) {
+          batchNotifyCount++;
+          print('   Batch update notification #$batchNotifyCount');
+        };
 
     // setValues mutes during update, then unmutes - single notification
     person2.setValues({
@@ -143,7 +147,10 @@ class TomClassExample {
     person2.removeObserver(person2Observer);
     assert(~person2.email == 'alice@example.com', 'Email should be updated');
     assert(~person2.isActive == false, 'isActive should be updated');
-    assert(batchNotifyCount == 1, 'setValues should result in one notification');
+    assert(
+      batchNotifyCount == 1,
+      'setValues should result in one notification',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -164,7 +171,8 @@ class TomClassExample {
     // Create new person from JSON string
     final person4 = SamplePerson();
     person4.fromJson(
-        '{"name": "Carol Brown", "age": 40, "email": "carol@example.com", "isActive": true}');
+      '{"name": "Carol Brown", "age": 40, "email": "carol@example.com", "isActive": true}',
+    );
 
     print('   fromJson: name=${~person4.name}, age=${~person4.age}');
 
@@ -184,10 +192,12 @@ class TomClassExample {
     customer = SampleCustomer();
     int customerNotifyCount = 0;
 
-    final customerObserver = customer >> (obs) {
-      customerNotifyCount++;
-      print('   Customer changed! (notification #$customerNotifyCount)');
-    };
+    final customerObserver =
+        customer >>
+        (obs) {
+          customerNotifyCount++;
+          print('   Customer changed! (notification #$customerNotifyCount)');
+        };
 
     customer.customerId | 'CUST-001';
     customer.name | 'Acme Corp';
@@ -197,16 +207,23 @@ class TomClassExample {
     customer.address.city | 'New York';
     customer.address.zipCode | '10001';
 
-    print('   Customer notifications from nested changes: $customerNotifyCount');
+    print(
+      '   Customer notifications from nested changes: $customerNotifyCount',
+    );
 
     // Assertions
     // Two direct changes plus three nested ones, each notifying the customer
     // once. Asserting the count is what actually checks the claim above — that
     // a change to `address` reaches an observer of `customer`; the value
     // assertions below would hold even if nesting notified nobody.
-    assert(customerNotifyCount == 5,
-        'Nested member changes should notify the parent, once each');
-    assert(~customer.address.street == '123 Main St', 'Nested street should be set');
+    assert(
+      customerNotifyCount == 5,
+      'Nested member changes should notify the parent, once each',
+    );
+    assert(
+      ~customer.address.street == '123 Main St',
+      'Nested street should be set',
+    );
     assert(~customer.address.city == 'New York', 'Nested city should be set');
 
     customer.removeObserver(customerObserver);
@@ -234,7 +251,10 @@ class TomClassExample {
 
     // Assertions
     assert(~customer2.customerId == 'CUST-002', 'Customer ID should be set');
-    assert(~customer2.address.city == 'Los Angeles', 'Nested city should be set via setValues');
+    assert(
+      ~customer2.address.city == 'Los Angeles',
+      'Nested city should be set via setValues',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -254,7 +274,10 @@ class TomClassExample {
     assert(members.containsKey('name'), "Should have 'name' member");
     assert(members.containsKey('age'), "Should have 'age' member");
     assert(members.containsKey('email'), "Should have 'email' member");
-    assert(~nameFromMap == ~person.name, 'Member map value should match field value');
+    assert(
+      ~nameFromMap == ~person.name,
+      'Member map value should match field value',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -266,9 +289,11 @@ class TomClassExample {
     final person5 = SamplePerson();
     int muteTestCount = 0;
 
-    final person5Observer = person5 >> (obs) {
-      muteTestCount++;
-    };
+    final person5Observer =
+        person5 >>
+        (obs) {
+          muteTestCount++;
+        };
 
     person5.mute();
     print('   isMuted: ${person5.isMuted}');
@@ -282,7 +307,10 @@ class TomClassExample {
 
     // Assertions
     assert(person5.isMuted == false, 'Should not be muted after unmute');
-    assert(~person5.name == 'Muted Name', 'Value should be set even while muted');
+    assert(
+      ~person5.name == 'Muted Name',
+      'Value should be set even while muted',
+    );
     assert(muteTestCount == 1, 'Single consolidated notification after unmute');
 
     person5.removeObserver(person5Observer);

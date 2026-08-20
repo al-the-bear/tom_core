@@ -104,17 +104,17 @@ class TomFieldError implements TomJsonSerializable {
 
   @override
   Map<String, Object?> toJson() => {
-        'field': field,
-        'code': code,
-        if (message != null) 'message': message,
-      };
+    'field': field,
+    'code': code,
+    if (message != null) 'message': message,
+  };
 
   /// Reconstructs a [TomFieldError] from its [toJson] map.
   factory TomFieldError.fromJson(Map<String, Object?> json) => TomFieldError(
-        json['field'] as String? ?? '',
-        json['code'] as String? ?? '',
-        message: json['message'] as String?,
-      );
+    json['field'] as String? ?? '',
+    json['code'] as String? ?? '',
+    message: json['message'] as String?,
+  );
 
   @override
   String toString() => 'TomFieldError($field: $code)';
@@ -156,13 +156,13 @@ class TomErrorResult implements TomJsonSerializable {
 
   @override
   Map<String, Object?> toJson() => {
-        'code': code,
-        if (message != null) 'message': message,
-        if (fieldErrors.isNotEmpty)
-          'fieldErrors': [for (final e in fieldErrors) e.toJson()],
-        'retryable': retryable,
-        'severity': severity.wireName,
-      };
+    'code': code,
+    if (message != null) 'message': message,
+    if (fieldErrors.isNotEmpty)
+      'fieldErrors': [for (final e in fieldErrors) e.toJson()],
+    'retryable': retryable,
+    'severity': severity.wireName,
+  };
 
   /// Reconstructs a [TomErrorResult] from its [toJson] map.
   factory TomErrorResult.fromJson(Map<String, Object?> json) {
@@ -229,10 +229,10 @@ class TomResult<T> implements TomJsonSerializable {
 
   @override
   Map<String, Object?> toJson() => {
-        'success': isSuccess,
-        if (isSuccess) 'value': _encodeValue(value),
-        if (isError) 'error': error!.toJson(),
-      };
+    'success': isSuccess,
+    if (isSuccess) 'value': _encodeValue(value),
+    if (isError) 'error': error!.toJson(),
+  };
 
   /// Encodes the success [value] into a JSON-safe form.
   ///

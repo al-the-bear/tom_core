@@ -27,10 +27,7 @@ void initializeProd(TomEnvironment env) {
 // Environment Definitions
 // =============================================================================
 
-const environmentProd = TomEnvironment(
-  'prod',
-  initializer: initializeProd,
-);
+const environmentProd = TomEnvironment('prod', initializer: initializeProd);
 
 const environmentDev = TomEnvironment(
   'dev',
@@ -75,7 +72,10 @@ class SetPlatformUtilsExample {
     platformType = TomPlatformUtils.current.runtimeType.toString();
     platformSet = TomPlatformUtils.current is TomStandalonePlatformUtils;
 
-    assert(TomPlatformUtils.current is TomStandalonePlatformUtils, 'Should be standalone');
+    assert(
+      TomPlatformUtils.current is TomStandalonePlatformUtils,
+      'Should be standalone',
+    );
     assert(platformSet, 'Platform should be set');
   }
 }
@@ -147,9 +147,7 @@ class VerifyRuntimeStateExample {
     platformName = platform?.name;
 
     stateVerified =
-        envName == 'dev' &&
-        parentEnvName == 'prod' &&
-        platform != null;
+        envName == 'dev' && parentEnvName == 'prod' && platform != null;
 
     assert(envName == 'dev', 'Env should be dev');
     assert(parentEnvName == 'prod', 'Parent should be prod');

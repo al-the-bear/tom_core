@@ -34,7 +34,9 @@ void run() {
   final loadedText = TomTextResourceProvider();
   final loadedTitle = loadedText.getText('app.title');
 
-  print('   TomTextResourceProvider.loader set, then TomTextResourceProvider()');
+  print(
+    '   TomTextResourceProvider.loader set, then TomTextResourceProvider()',
+  );
   print('   app.title: $loadedTitle');
   print('');
 

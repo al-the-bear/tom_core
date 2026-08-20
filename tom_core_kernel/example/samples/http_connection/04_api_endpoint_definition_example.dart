@@ -128,8 +128,12 @@ class ApiEndpointDefinitionExample {
     print('   - Create endpoint ID: $endpointId');
     print('   - Create endpoint method: $endpointMethod');
     print('   - Create endpoint URI: ${createUserEndpoint.uri}');
-    print('   - Create endpoint consumes: ${createUserEndpoint.consumes.toHeaderValue()}');
-    print('   - Create endpoint produces: ${createUserEndpoint.produces.toHeaderValue()}');
+    print(
+      '   - Create endpoint consumes: ${createUserEndpoint.consumes.toHeaderValue()}',
+    );
+    print(
+      '   - Create endpoint produces: ${createUserEndpoint.produces.toHeaderValue()}',
+    );
 
     print('   - GetById endpoint ID: ${getUserEndpoint.id}');
     print('   - GetById endpoint method: ${getUserEndpoint.method.name}');
@@ -139,7 +143,10 @@ class ApiEndpointDefinitionExample {
     // Assertions
     assert(endpointId == 'create', 'Endpoint ID should be create');
     assert(endpointMethod == 'POST', 'Method should be POST');
-    assert(getUserEndpoint.method == TomHttpMethod.get, 'GetById should be GET');
+    assert(
+      getUserEndpoint.method == TomHttpMethod.get,
+      'GetById should be GET',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -174,11 +181,15 @@ class ApiEndpointDefinitionExample {
     print('   - Registered order API: ${retrievedOrderApi.id}');
     print('   - Total APIs registered: ${TomRemoteApis.current.apis.length}');
 
-    registryWorks = retrievedUserApi.id == 'users' && retrievedOrderApi.id == 'orders';
+    registryWorks =
+        retrievedUserApi.id == 'users' && retrievedOrderApi.id == 'orders';
 
     // Assertions
     assert(registryWorks, 'Registry should work');
-    assert(TomRemoteApis.current.apis.length >= 2, 'Should have at least 2 APIs');
+    assert(
+      TomRemoteApis.current.apis.length >= 2,
+      'Should have at least 2 APIs',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -197,7 +208,9 @@ class ApiEndpointDefinitionExample {
 
     // Chain bracket notation to get endpoint directly
     final ordersListEndpoint = tomRemoteApis['orders']['list'];
-    print('   - Orders list endpoint method: ${ordersListEndpoint.method.name}');
+    print(
+      '   - Orders list endpoint method: ${ordersListEndpoint.method.name}',
+    );
 
     // Assertions
     assert(api.id == 'users', 'Should access users API');
@@ -211,22 +224,23 @@ class ApiEndpointDefinitionExample {
     print('\n5. TomApiEndpoint configuration options:');
 
     // Create an endpoint with all configuration options
-    final fullConfigEndpoint = TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>(
-      id: 'upload',
-      uri: '/files/upload',
-      description: 'Upload a file with metadata',
-      method: TomHttpMethod.post,
-      consumes: TomMimeType.multipartFormData,
-      produces: TomMimeType.json,
-      contentDisposition: TomContentDisposition.attachment,
-      formFields: ['file', 'description', 'tags'],
-      requestHeaders: {'X-Upload-Source': 'mobile-app'},
-      responseHeaders: {'X-File-Version': '1.0'},
-      followRedirects: true,
-      maxRedirects: 3,
-      persistentConnection: true,
-      includeBearerAuthentication: true,
-    );
+    final fullConfigEndpoint =
+        TomApiEndpoint<Map<String, Object?>, Map<String, Object?>>(
+          id: 'upload',
+          uri: '/files/upload',
+          description: 'Upload a file with metadata',
+          method: TomHttpMethod.post,
+          consumes: TomMimeType.multipartFormData,
+          produces: TomMimeType.json,
+          contentDisposition: TomContentDisposition.attachment,
+          formFields: ['file', 'description', 'tags'],
+          requestHeaders: {'X-Upload-Source': 'mobile-app'},
+          responseHeaders: {'X-File-Version': '1.0'},
+          followRedirects: true,
+          maxRedirects: 3,
+          persistentConnection: true,
+          includeBearerAuthentication: true,
+        );
 
     print('   - Endpoint ID: ${fullConfigEndpoint.id}');
     print('   - Consumes: ${fullConfigEndpoint.consumes.toHeaderValue()}');
@@ -235,12 +249,20 @@ class ApiEndpointDefinitionExample {
     print('   - Form fields: ${fullConfigEndpoint.formFields}');
     print('   - Follow redirects: ${fullConfigEndpoint.followRedirects}');
     print('   - Max redirects: ${fullConfigEndpoint.maxRedirects}');
-    print('   - Include bearer auth: ${fullConfigEndpoint.includeBearerAuthentication}');
+    print(
+      '   - Include bearer auth: ${fullConfigEndpoint.includeBearerAuthentication}',
+    );
 
     // Assertions
-    assert(fullConfigEndpoint.followRedirects == true, 'Should follow redirects');
+    assert(
+      fullConfigEndpoint.followRedirects == true,
+      'Should follow redirects',
+    );
     assert(fullConfigEndpoint.maxRedirects == 3, 'Max redirects should be 3');
-    assert(fullConfigEndpoint.formFields.length == 3, 'Should have 3 form fields');
+    assert(
+      fullConfigEndpoint.formFields.length == 3,
+      'Should have 3 form fields',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -285,7 +307,10 @@ class ApiEndpointDefinitionExample {
 
     // Assertions
     assert(caughtEndpointException, 'Should catch exception');
-    assert(caughtExceptionKey == 'apis.api.not_found', 'Exception key should match');
+    assert(
+      caughtExceptionKey == 'apis.api.not_found',
+      'Exception key should match',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -347,10 +372,10 @@ class ApiEndpointDefinitionExample {
       name: 'API with Status Code Types',
       uri: '/api/v1/status',
       statusCodeResponseTypes: {
-        400: Map<String, Object?>,  // Bad request returns error map
-        401: Map<String, Object?>,  // Unauthorized
-        404: Map<String, Object?>,  // Not found
-        500: Map<String, Object?>,  // Server error
+        400: Map<String, Object?>, // Bad request returns error map
+        401: Map<String, Object?>, // Unauthorized
+        404: Map<String, Object?>, // Not found
+        500: Map<String, Object?>, // Server error
       },
       endpoints: [
         TomApiEndpoint<UserResponse, CreateUserRequest>(
@@ -358,14 +383,18 @@ class ApiEndpointDefinitionExample {
           uri: '/create',
           method: TomHttpMethod.post,
           statusCodeResponseTypes: {
-            409: Map<String, Object?>,  // Conflict - endpoint specific
+            409: Map<String, Object?>, // Conflict - endpoint specific
           },
         ),
       ],
     );
 
-    print('   - API-level status code types: ${apiWithStatusCodes.statusCodeResponseTypes}');
-    print('   - Endpoint-level status code types: ${apiWithStatusCodes['create'].statusCodeResponseTypes}');
+    print(
+      '   - API-level status code types: ${apiWithStatusCodes.statusCodeResponseTypes}',
+    );
+    print(
+      '   - Endpoint-level status code types: ${apiWithStatusCodes['create'].statusCodeResponseTypes}',
+    );
 
     // Assertions
     assert(
@@ -373,7 +402,8 @@ class ApiEndpointDefinitionExample {
       'Should have 400 mapping',
     );
     assert(
-      apiWithStatusCodes['create'].statusCodeResponseTypes?.containsKey(409) ?? false,
+      apiWithStatusCodes['create'].statusCodeResponseTypes?.containsKey(409) ??
+          false,
       'Should have endpoint 409 mapping',
     );
   }
@@ -414,12 +444,15 @@ class ApiEndpointDefinitionExample {
 
     // createApiServerEndpoint resolves the same way, so going straight from a
     // declaration to a callable endpoint needs no hand-written URI either.
-    final endpoint = TomServerEndpoint.createApiServerEndpoint<OrderResponse,
-        CreateUserRequest>(
-      catalogApi['getById'],
-      baseUri: Uri.parse('https://api.example.com'),
-      parameters: {'itemId': 42, 'language': 'de'},
-    );
+    final endpoint =
+        TomServerEndpoint.createApiServerEndpoint<
+          OrderResponse,
+          CreateUserRequest
+        >(
+          catalogApi['getById'],
+          baseUri: Uri.parse('https://api.example.com'),
+          parameters: {'itemId': 42, 'language': 'de'},
+        );
     print('   - createApiServerEndpoint:    ${endpoint.specs.url}');
 
     // An optional query parameter is simply omitted when it has no value...
@@ -460,7 +493,9 @@ class ApiEndpointDefinitionExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('API AND ENDPOINT DEFINITION EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   ApiEndpointDefinitionExample.example1CreateApi();
   ApiEndpointDefinitionExample.example2BracketNotation();

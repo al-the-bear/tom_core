@@ -47,9 +47,8 @@ import 'timezones.dart';
 /// final parsed = TomTimezoned.parseFromString('2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo');
 /// ```
 class TomTimezoned extends DateTime {
-
   TomTimezone _timezone = TomTimezone.utc;
-  
+
   /// Returns the timezone associated with this datetime.
   ///
   /// The timezone is preserved from creation and used for display
@@ -66,7 +65,7 @@ class TomTimezoned extends DateTime {
   String getSerializationPrefix() => '';
 
   /// Internal constructor that takes already-computed UTC values.
-  /// 
+  ///
   /// Used by factories and subclasses after they've converted local time to UTC.
   TomTimezoned._fromUtc({
     required int year,
@@ -78,7 +77,16 @@ class TomTimezoned extends DateTime {
     required int millisecond,
     required int microsecond,
     TomTimezone? timezone,
-  }) : super.utc(year, month, day, hour, minute, second, millisecond, microsecond) {
+  }) : super.utc(
+         year,
+         month,
+         day,
+         hour,
+         minute,
+         second,
+         millisecond,
+         microsecond,
+       ) {
     _timezone = timezone ?? TomTimezone.utc;
   }
 
@@ -121,7 +129,17 @@ class TomTimezoned extends DateTime {
   }) {
     final tz_ = timezone ?? TomTimezone.utc;
     // Convert local time to UTC using TZDateTime
-    final localTime = tz.TZDateTime(tz_.location, year, month, day, hour, minute, second, millisecond, microsecond);
+    final localTime = tz.TZDateTime(
+      tz_.location,
+      year,
+      month,
+      day,
+      hour,
+      minute,
+      second,
+      millisecond,
+      microsecond,
+    );
     final utcTime = localTime.toUtc();
     return TomTimezoned._fromUtc(
       year: utcTime.year,
@@ -148,7 +166,16 @@ class TomTimezoned extends DateTime {
     int second = 0,
     int millisecond = 0,
     int microsecond = 0,
-  }) : super.utc(year, month, day, hour, minute, second, millisecond, microsecond);
+  }) : super.utc(
+         year,
+         month,
+         day,
+         hour,
+         minute,
+         second,
+         millisecond,
+         microsecond,
+       );
 
   /// Creates a [TomTimezoned] representing the current time.
   ///
@@ -232,14 +259,18 @@ class TomTimezoned extends DateTime {
       r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?)_(Z|[+-]\d{2}:\d{2})_([a-zA-Z0-9_/-]+)\s?$",
     ).firstMatch(formattedString.trim());
     if (match == null) {
-      throw FormatException("Failed to parse TomTimezoned string: $formattedString");
+      throw FormatException(
+        "Failed to parse TomTimezoned string: $formattedString",
+      );
     }
     String dateTimeStr = match.group(1)!;
     String zone = match.group(3)!;
     DateTime dt = DateTime.parse(dateTimeStr).toUtc();
     final timezone = TomTimezone.fromName(zone);
     if (timezone == null) {
-      throw FormatException("Unknown timezone '$zone' in TomTimezoned string: $formattedString");
+      throw FormatException(
+        "Unknown timezone '$zone' in TomTimezoned string: $formattedString",
+      );
     }
     return TomTimezoned.fromDateTime(dt, timezone);
   }
@@ -316,7 +347,6 @@ class TomTimezoned extends DateTime {
   DateTime toDateTime() {
     return _toLocal();
   }
-
 }
 
 /// A timezone-aware date value (without time components).
@@ -345,12 +375,11 @@ class TomTimezoned extends DateTime {
 /// print(parsed.localDay); // 15 (local day in Tokyo)
 /// ```
 class TomZonedDate extends TomTimezoned {
-  
   /// The serialization prefix for date values.
   ///
   /// All [TomZonedDate] strings start with `@D@` to identify the type.
   static const String serializationPrefix = "@D@";
-  
+
   /// Returns the serialization prefix for this date type.
   @override
   String getSerializationPrefix() => serializationPrefix;
@@ -372,7 +401,17 @@ class TomZonedDate extends TomTimezoned {
   }) {
     final tz_ = timezone ?? TomTimezone.utc;
     // Create midnight in the local timezone
-    final localMidnight = tz.TZDateTime(tz_.location, year, month, day, 0, 0, 0, 0, 0);
+    final localMidnight = tz.TZDateTime(
+      tz_.location,
+      year,
+      month,
+      day,
+      0,
+      0,
+      0,
+      0,
+      0,
+    );
     // Convert to UTC
     final utcTime = localMidnight.toUtc();
     return TomZonedDate._fromUtcValues(
@@ -400,16 +439,16 @@ class TomZonedDate extends TomTimezoned {
     required int utcMicrosecond,
     required TomTimezone timezone,
   }) : super._fromUtc(
-          year: utcYear,
-          month: utcMonth,
-          day: utcDay,
-          hour: utcHour,
-          minute: utcMinute,
-          second: utcSecond,
-          millisecond: utcMillisecond,
-          microsecond: utcMicrosecond,
-          timezone: timezone,
-        );
+         year: utcYear,
+         month: utcMonth,
+         day: utcDay,
+         hour: utcHour,
+         minute: utcMinute,
+         second: utcSecond,
+         millisecond: utcMillisecond,
+         microsecond: utcMicrosecond,
+         timezone: timezone,
+       );
 
   /// Creates a [TomZonedDate] from an existing [DateTime].
   ///
@@ -469,14 +508,18 @@ class TomZonedDate extends TomTimezoned {
       r"^@D@(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?)_(Z|[+-]\d{2}:\d{2})_([a-zA-Z0-9_/-]+)\s?$",
     ).firstMatch(formattedString.trim());
     if (match == null) {
-      throw FormatException("Failed to parse TomZonedDate string: $formattedString");
+      throw FormatException(
+        "Failed to parse TomZonedDate string: $formattedString",
+      );
     }
     String dateTimeStr = match.group(1)!;
     String zone = match.group(3)!;
     DateTime dt = DateTime.parse(dateTimeStr).toUtc();
     final timezone = TomTimezone.fromName(zone);
     if (timezone == null) {
-      throw FormatException("Unknown timezone '$zone' in TomZonedDate string: $formattedString");
+      throw FormatException(
+        "Unknown timezone '$zone' in TomZonedDate string: $formattedString",
+      );
     }
     return TomZonedDate.fromDateTime(dt, timezone);
   }
@@ -495,7 +538,9 @@ class TomZonedDate extends TomTimezoned {
   /// Returns `true` if the string starts with `@D@` and matches
   /// the expected serialization format.
   static bool isTomZonedDateString(String s) {
-    return RegExp(r"^@D@\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z?_(Z|[+-]\d{2}:\d{2})_[a-zA-Z0-9_/-]+\s?$").hasMatch(s);
+    return RegExp(
+      r"^@D@\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z?_(Z|[+-]\d{2}:\d{2})_[a-zA-Z0-9_/-]+\s?$",
+    ).hasMatch(s);
   }
 
   /// Checks if a [DateTime] represents a date-only value.
@@ -572,12 +617,11 @@ class TomZonedDate extends TomTimezoned {
 /// final parsed = TomZonedTime.parseFromString('@T@1970-01-01T05:30:00.000Z_+09:00_Asia/Tokyo');
 /// ```
 class TomZonedTime extends TomTimezoned {
-  
   /// The serialization prefix for time values.
   ///
   /// All [TomZonedTime] strings start with `@T@` to identify the type.
   static const String serializationPrefix = "@T@";
-  
+
   /// Returns the serialization prefix for this time type.
   @override
   String getSerializationPrefix() => serializationPrefix;
@@ -604,7 +648,17 @@ class TomZonedTime extends TomTimezoned {
   }) {
     final tz_ = timezone ?? TomTimezone.utc;
     // Create time on 1970-01-01 in local timezone
-    final localTime = tz.TZDateTime(tz_.location, 1970, 1, 1, hour, minute, second, millisecond, microsecond);
+    final localTime = tz.TZDateTime(
+      tz_.location,
+      1970,
+      1,
+      1,
+      hour,
+      minute,
+      second,
+      millisecond,
+      microsecond,
+    );
     // Convert to UTC
     final utcTime = localTime.toUtc();
     return TomZonedTime._fromUtcValues(
@@ -632,16 +686,16 @@ class TomZonedTime extends TomTimezoned {
     required int utcMicrosecond,
     required TomTimezone timezone,
   }) : super._fromUtc(
-          year: utcYear,
-          month: utcMonth,
-          day: utcDay,
-          hour: utcHour,
-          minute: utcMinute,
-          second: utcSecond,
-          millisecond: utcMillisecond,
-          microsecond: utcMicrosecond,
-          timezone: timezone,
-        );
+         year: utcYear,
+         month: utcMonth,
+         day: utcDay,
+         hour: utcHour,
+         minute: utcMinute,
+         second: utcSecond,
+         millisecond: utcMillisecond,
+         microsecond: utcMicrosecond,
+         timezone: timezone,
+       );
 
   /// Creates a [TomZonedTime] from an existing [DateTime].
   ///
@@ -681,14 +735,18 @@ class TomZonedTime extends TomTimezoned {
       r"^@T@(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?)_(Z|[+-]\d{2}:\d{2})_([a-zA-Z0-9_/-]+)\s?$",
     ).firstMatch(formattedString.trim());
     if (match == null) {
-      throw FormatException("Failed to parse TomZonedTime string: $formattedString");
+      throw FormatException(
+        "Failed to parse TomZonedTime string: $formattedString",
+      );
     }
     String dateTimeStr = match.group(1)!;
     String zone = match.group(3)!;
     DateTime dt = DateTime.parse(dateTimeStr).toUtc();
     final timezone = TomTimezone.fromName(zone);
     if (timezone == null) {
-      throw FormatException("Unknown timezone '$zone' in TomZonedTime string: $formattedString");
+      throw FormatException(
+        "Unknown timezone '$zone' in TomZonedTime string: $formattedString",
+      );
     }
     return TomZonedTime.fromDateTime(dt, timezone);
   }
@@ -756,7 +814,7 @@ class TomZonedTime extends TomTimezoned {
   /// Example:
   /// ```dart
   /// final standup = TomZonedTime(hour: 9, minute: 0, timezone: nyTz);
-  /// 
+  ///
   /// // Get the actual time for a specific date
   /// final march10 = DateTime(2024, 3, 10);
   /// final standupOnMarch10 = standup.inTimezoneOn(march10);
@@ -823,7 +881,7 @@ class TomZonedTime extends TomTimezoned {
 ///
 /// ```dart
 /// final ny = TomTimezone.fromName('America/New_York');
-/// 
+///
 /// // Summer (EDT: UTC-4)
 /// final summer = TomZonedDateTime(
 ///   year: 2024, month: 6, day: 15, hour: 12,
@@ -839,7 +897,6 @@ class TomZonedTime extends TomTimezoned {
 /// print(winter.hour); // 17 (12 + 5 hours for EST)
 /// ```
 class TomZonedDateTime extends TomTimezoned {
-
   /// The serialization prefix for datetime values.
   ///
   /// All [TomZonedDateTime] strings start with `@X@` to identify the type.
@@ -876,7 +933,17 @@ class TomZonedDateTime extends TomTimezoned {
   }) {
     final tz_ = timezone ?? TomTimezone.utc;
     // Create local time in the timezone
-    final localTime = tz.TZDateTime(tz_.location, year, month, day, hour, minute, second, millisecond, microsecond);
+    final localTime = tz.TZDateTime(
+      tz_.location,
+      year,
+      month,
+      day,
+      hour,
+      minute,
+      second,
+      millisecond,
+      microsecond,
+    );
     // Convert to UTC
     final utcTime = localTime.toUtc();
     return TomZonedDateTime._fromUtcValues(
@@ -904,16 +971,16 @@ class TomZonedDateTime extends TomTimezoned {
     required int utcMicrosecond,
     required TomTimezone timezone,
   }) : super._fromUtc(
-          year: utcYear,
-          month: utcMonth,
-          day: utcDay,
-          hour: utcHour,
-          minute: utcMinute,
-          second: utcSecond,
-          millisecond: utcMillisecond,
-          microsecond: utcMicrosecond,
-          timezone: timezone,
-        );
+         year: utcYear,
+         month: utcMonth,
+         day: utcDay,
+         hour: utcHour,
+         minute: utcMinute,
+         second: utcSecond,
+         millisecond: utcMillisecond,
+         microsecond: utcMicrosecond,
+         timezone: timezone,
+       );
 
   /// Creates a [TomZonedDateTime] from an existing [DateTime].
   ///
@@ -978,14 +1045,18 @@ class TomZonedDateTime extends TomTimezoned {
       r"^@X@(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?)_(Z|[+-]\d{2}:\d{2})_([a-zA-Z0-9_/-]+)\s?$",
     ).firstMatch(formattedString.trim());
     if (match == null) {
-      throw FormatException("Failed to parse TomZonedDateTime string: $formattedString");
+      throw FormatException(
+        "Failed to parse TomZonedDateTime string: $formattedString",
+      );
     }
     String dateTimeStr = match.group(1)!;
     String zone = match.group(3)!;
     DateTime dt = DateTime.parse(dateTimeStr).toUtc();
     final timezone = TomTimezone.fromName(zone);
     if (timezone == null) {
-      throw FormatException("Unknown timezone '$zone' in TomZonedDateTime string: $formattedString");
+      throw FormatException(
+        "Unknown timezone '$zone' in TomZonedDateTime string: $formattedString",
+      );
     }
     return TomZonedDateTime.fromDateTime(dt, timezone);
   }

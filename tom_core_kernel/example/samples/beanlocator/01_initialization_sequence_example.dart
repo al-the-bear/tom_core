@@ -110,8 +110,10 @@ void step2Runtime() {
   // environment instead of the one that was asked for.
   TomRuntime.setCurrentEnvironment('dev');
   environmentBeforeRegistering = TomRuntime.getCurrentEnvironment().env;
-  print('   - setCurrentEnvironment("dev") before registering it '
-      '-> "$environmentBeforeRegistering"');
+  print(
+    '   - setCurrentEnvironment("dev") before registering it '
+    '-> "$environmentBeforeRegistering"',
+  );
 
   TomRuntime.addEnvironment(const TomEnvironment('dev', isDevelopment: true));
   TomRuntime.setCurrentEnvironment('dev');

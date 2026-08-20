@@ -115,7 +115,10 @@ class TomLoggableExample {
     // Email should be excluded from log representation
     emailExcluded = !userLogRepr!.contains('email');
 
-    assert(userLogRepr == 'User(id=usr_001, name=John Doe)', 'Log repr should match');
+    assert(
+      userLogRepr == 'User(id=usr_001, name=John Doe)',
+      'Log repr should match',
+    );
     assert(emailExcluded, 'Email should be excluded from log representation');
     assert(userToString!.contains('email'), 'toString should contain email');
   }
@@ -187,8 +190,14 @@ class LimitedUtilityExample {
         truncated50!.length <= 50 + 3;
 
     assert(originalLength > 50, 'Original should be longer than 50');
-    assert(truncated20!.length < originalLength, 'Truncated 20 should be shorter');
-    assert(truncated50!.length < originalLength, 'Truncated 50 should be shorter');
+    assert(
+      truncated20!.length < originalLength,
+      'Truncated 20 should be shorter',
+    );
+    assert(
+      truncated50!.length < originalLength,
+      'Truncated 50 should be shorter',
+    );
     assert(truncationWorks, 'Truncation should work');
   }
 }

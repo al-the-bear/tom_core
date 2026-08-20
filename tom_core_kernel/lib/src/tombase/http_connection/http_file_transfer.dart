@@ -116,7 +116,10 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
       );
     }
     return baseUri.replace(
-      pathSegments: [...baseUri.pathSegments.where((s) => s.isNotEmpty), ...segments],
+      pathSegments: [
+        ...baseUri.pathSegments.where((s) => s.isNotEmpty),
+        ...segments,
+      ],
     );
   }
 
@@ -222,7 +225,11 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
       throw _notFound(slot);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw _rejected(slot, response.statusCode, await _readBody(response, slot));
+      throw _rejected(
+        slot,
+        response.statusCode,
+        await _readBody(response, slot),
+      );
     }
 
     final total = response.contentLength;
@@ -327,7 +334,9 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
       fileName: tomFileNameFromDisposition(
         responseHeaders['content-disposition'],
       ),
-      storedAt: DateTime.tryParse(responseHeaders['x-tom-file-stored-at'] ?? ''),
+      storedAt: DateTime.tryParse(
+        responseHeaders['x-tom-file-stored-at'] ?? '',
+      ),
     );
   }
 
@@ -349,7 +358,11 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
     stack: stack,
   );
 
-  TomFileTransferException _rejected(String slot, int statusCode, String? body) {
+  TomFileTransferException _rejected(
+    String slot,
+    int statusCode,
+    String? body,
+  ) {
     if (statusCode == 404) return _notFound(slot);
     return TomFileTransferException(
       'file_transfer.rejected',
@@ -369,7 +382,6 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
 
   static int _portOf(Uri uri) =>
       uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80);
-
 }
 
 /// Writes the descriptor header a `HEAD` response needs so

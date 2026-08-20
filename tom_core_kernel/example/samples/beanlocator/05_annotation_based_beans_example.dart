@@ -35,7 +35,7 @@ abstract class StorageService {
 // ============================================================================
 
 /// A logging helper service registered by its CONCRETE type.
-/// 
+///
 /// With `@tomComponent` (no interface type), this bean is registered as
 /// `TomBean<LoggingHelper>` and resolved using `TomBean<LoggingHelper>()`.
 @tomReflector
@@ -53,7 +53,7 @@ class LoggingHelper {
 }
 
 /// Default email service implementation.
-/// 
+///
 /// With `@TomComponent(EmailService)`, this bean is registered under the
 /// EmailService interface and resolved using `TomBean<EmailService>()`.
 @tomReflector
@@ -74,7 +74,7 @@ class DefaultEmailService implements EmailService {
 }
 
 /// Default storage service implementation.
-/// 
+///
 /// With `@TomComponent(StorageService)`, this bean is registered under the
 /// StorageService interface and resolved using `TomBean<StorageService>()`.
 @tomReflector
@@ -96,7 +96,7 @@ class DefaultStorageService implements StorageService {
 }
 
 /// A notification service that demonstrates BEAN DEPENDENCIES.
-/// 
+///
 /// This class uses `TomBean<T>` fields to inject other beans.
 /// The dependencies are automatically resolved at runtime.
 @tomReflector
@@ -110,20 +110,16 @@ class NotificationService {
   void sendNotification(String userId, String message) {
     // Use callable syntax for concise access
     _logger().log('Sending notification to $userId');
-    
+
     // Send via email service
-    _emailService().sendEmail(
-      '$userId@example.com',
-      'Notification',
-      message,
-    );
-    
+    _emailService().sendEmail('$userId@example.com', 'Notification', message);
+
     // Save timestamp to storage
     _storageService().save(
       'last_notification_$userId',
       DateTime.now().toIso8601String(),
     );
-    
+
     _logger().log('Notification sent and recorded');
   }
 }
@@ -166,11 +162,11 @@ class AnnotationBasedBeansExample {
   static void example2ConcreteTypeBeans() {
     print('2. Resolving concrete type beans:');
     print('');
-    
+
     // Resolve the LoggingHelper bean by its concrete type
     final logger = TomBean<LoggingHelper>().get();
     print('   Resolved LoggingHelper: ${logger.runtimeType}');
-    
+
     logger.log('Hello from concrete type bean!');
     print('   Log count: ${logger.logs.length}');
     print('');
@@ -180,23 +176,23 @@ class AnnotationBasedBeansExample {
   static void example3InterfaceBeans() {
     print('3. Resolving interface-based beans:');
     print('');
-    
+
     // Resolve by interface - gets the DefaultEmailService
     final emailService = TomBean<EmailService>().get();
     emailServiceType = emailService.runtimeType.toString();
     print('   Resolved EmailService: $emailServiceType');
-    
+
     emailService.sendEmail('user@example.com', 'Test Subject', 'Test body');
     emailsSentCount = emailService.sentEmails.length;
     print('   Emails sent: $emailsSentCount');
     print('');
-    
+
     // Resolve StorageService
     final storageService = TomBean<StorageService>().get();
     storageServiceName = storageService.storageName;
     print('   Resolved StorageService: ${storageService.runtimeType}');
     print('   Storage name: $storageServiceName');
-    
+
     storageService.save('test_key', 'test_value');
     final loaded = storageService.load('test_key');
     print('   Loaded value: $loaded');
@@ -218,12 +214,12 @@ class AnnotationBasedBeansExample {
     print('   │ }                                              │');
     print('   └────────────────────────────────────────────────┘');
     print('');
-    
+
     // Resolve the notification service
     final notificationService = TomBean<NotificationService>().get();
     print('   Calling notificationService.sendNotification():');
     notificationService.sendNotification('user123', 'Welcome!');
-    
+
     // Verify dependency injection worked
     final emailService = TomBean<EmailService>().get();
     dependencyInjectionWorks = emailService.sentEmails.isNotEmpty;
@@ -236,15 +232,15 @@ class AnnotationBasedBeansExample {
   static void example5CallableSyntax() {
     print('5. TomBean callable syntax for concise access:');
     print('');
-    
+
     final emailBean = TomBean<EmailService>();
-    
+
     // Traditional .get() syntax
     final email1 = emailBean.get();
-    
+
     // Callable () syntax - equivalent and more concise
     final email2 = emailBean();
-    
+
     print('   Both syntaxes return the same instance:');
     print('   - emailBean.get() == emailBean(): ${identical(email1, email2)}');
     print('');
@@ -296,7 +292,9 @@ class AnnotationBasedBeansExample {
     print('   │ class IosStorageService implements StorageService│');
     print('   └──────────────────────────────────────────────┘');
     print('');
-    print('   Resolution priority: exact match > platform > environment > default');
+    print(
+      '   Resolution priority: exact match > platform > environment > default',
+    );
     print('');
   }
 
@@ -304,9 +302,13 @@ class AnnotationBasedBeansExample {
   // Run all examples
   // -------------------------------------------------------------------------
   static void run() {
-    print('═══════════════════════════════════════════════════════════════════');
+    print(
+      '═══════════════════════════════════════════════════════════════════',
+    );
     print('05: ANNOTATION-BASED BEANS EXAMPLE');
-    print('═══════════════════════════════════════════════════════════════════\n');
+    print(
+      '═══════════════════════════════════════════════════════════════════\n',
+    );
 
     // Note: initializeReflection() should be called by 00_run_all_examples.dart
     // For standalone execution, we need to set up beans manually

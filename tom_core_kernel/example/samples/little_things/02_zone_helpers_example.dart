@@ -192,10 +192,7 @@ class NestedZoneShadowingExample {
             innerEnvironment = innerConfig?.environment;
           },
           zoneValues: {
-            AppConfig: const AppConfig(
-              environment: 'inner',
-              maxConnections: 5,
-            ),
+            AppConfig: const AppConfig(environment: 'inner', maxConnections: 5),
           },
         );
       },

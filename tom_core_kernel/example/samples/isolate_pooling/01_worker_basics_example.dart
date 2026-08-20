@@ -101,10 +101,7 @@ class WorkerSpawningExample {
       'BasicWorker',
     );
 
-    final worker = await TomWorker.spawn(
-      TomWorker.startRemoteIsolate,
-      context,
-    );
+    final worker = await TomWorker.spawn(TomWorker.startRemoteIsolate, context);
 
     workerIsReady = worker.isReady;
     workerIsClosed = worker.isClosed;
@@ -164,9 +161,9 @@ class ComplexDataCommandExample {
   static int? dataCount;
 
   static Future<void> example4ComplexDataCommand(TomWorker worker) async {
-    final dataResult = await worker.executeCommand(
-      ProcessDataCommand([10, 20, 30, 40, 50]),
-    ) as Map;
+    final dataResult =
+        await worker.executeCommand(ProcessDataCommand([10, 20, 30, 40, 50]))
+            as Map;
 
     dataSum = dataResult['sum'] as int?;
     dataAvg = dataResult['average'] as double?;
@@ -197,15 +194,16 @@ class ExecutorExample {
     // and the isolate processes them in the order they were sent.
     worker.sendExecutorToIsolate(StringExecutor());
 
-    reverseResult = await worker.executeCommand({
-      'type': 'reverse',
-      'value': 'Hello World',
-    }) as String?;
+    reverseResult =
+        await worker.executeCommand({'type': 'reverse', 'value': 'Hello World'})
+            as String?;
 
-    uppercaseResult = await worker.executeCommand({
-      'type': 'uppercase',
-      'value': 'hello world',
-    }) as String?;
+    uppercaseResult =
+        await worker.executeCommand({
+              'type': 'uppercase',
+              'value': 'hello world',
+            })
+            as String?;
 
     executorWorks =
         reverseResult == 'dlroW olleH' && uppercaseResult == 'HELLO WORLD';
@@ -238,8 +236,10 @@ class UnhandledMessageExample {
     final followUp = await worker.executeCommand(FactorialCommand(4));
     workerStillUsable = followUp == 24;
 
-    assert(wasReportedAsUnhandled,
-        'An unclaimed message must answer with TomExecutor.noResult');
+    assert(
+      wasReportedAsUnhandled,
+      'An unclaimed message must answer with TomExecutor.noResult',
+    );
     assert(workerStillUsable, 'The worker must stay usable afterwards');
   }
 }
@@ -276,8 +276,10 @@ class WorkerLifecycleExample {
 
     assert(wasReadyBeforeClose, 'Worker should be ready before close');
     assert(isClosedAfterClose, 'Worker should be closed after close');
-    assert(dispatchAfterCloseRefused,
-        'executeCommand() after close() should throw TomWorkerException');
+    assert(
+      dispatchAfterCloseRefused,
+      'executeCommand() after close() should throw TomWorkerException',
+    );
   }
 }
 

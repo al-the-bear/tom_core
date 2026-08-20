@@ -266,11 +266,11 @@ class TomCloseAdaptor implements TomClosable {
 class TomShutdownCleanup {
   late TomSignalHandler _signalHandler;
   bool _executed = false;
-  
+
   /// When true, signal handling is paused and signals are ignored.
   /// Use this in interactive REPLs that have their own CTRL-C handling.
   bool paused = false;
-  
+
   /// When true, suppresses output messages during shutdown.
   bool silent = false;
 

@@ -53,7 +53,11 @@ void run() {
   items.append(TomString('alpha')).append(TomString('beta'));
 
   final before = items.map((e) => ~e).join(', ');
-  items.resetWith([TomString('gamma'), TomString('delta'), TomString('epsilon')]);
+  items.resetWith([
+    TomString('gamma'),
+    TomString('delta'),
+    TomString('epsilon'),
+  ]);
   final after = items.map((e) => ~e).join(', ');
 
   print('   before: [$before]');
@@ -99,8 +103,12 @@ void run() {
   tracked.resetWith([TomString('x'), TomString('y'), TomString('z')]);
 
   print('   events: ${listener.events}');
-  print('   size seen in onBeforeClear: ${listener.sizeBeforeClear} (old contents)');
-  print('   size seen in onAfterReset: ${listener.sizeAfterReset} (new contents)');
+  print(
+    '   size seen in onBeforeClear: ${listener.sizeBeforeClear} (old contents)',
+  );
+  print(
+    '   size seen in onAfterReset: ${listener.sizeAfterReset} (new contents)',
+  );
   print('');
 
   // ===========================================================================

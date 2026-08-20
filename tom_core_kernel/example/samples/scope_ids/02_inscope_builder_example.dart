@@ -87,9 +87,12 @@ void run() {
   print('4. wrap1n returns null for a null callback:');
 
   final nullableBuilder = InScopeBuilder(scope: explicitScope);
-  final String Function(int)? nullWrapped = nullableBuilder.wrap1n<String, int>(null);
-  final String Function(int)? realWrapped =
-      nullableBuilder.wrap1n<String, int>((i) => 'value:$i');
+  final String Function(int)? nullWrapped = nullableBuilder.wrap1n<String, int>(
+    null,
+  );
+  final String Function(int)? realWrapped = nullableBuilder.wrap1n<String, int>(
+    (i) => 'value:$i',
+  );
 
   print('   wrap1n(null) is null: ${nullWrapped == null}');
   print('   wrap1n(fn)(3): "${realWrapped!(3)}"');
@@ -108,8 +111,12 @@ void run() {
         '${TomScope.current.getScopePath()}:$label $currentLength/$maxLength',
   );
 
-  final counterResult =
-      counter('chars', currentLength: 4, maxLength: 10, isFocused: true);
+  final counterResult = counter(
+    'chars',
+    currentLength: 4,
+    maxLength: 10,
+    isFocused: true,
+  );
 
   print('   wrapCounter result: "$counterResult"');
   print('');

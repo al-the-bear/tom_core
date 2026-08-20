@@ -152,7 +152,8 @@ class TomExceptionExample {
       },
     );
 
-    parametersWork = exception.parameters != null &&
+    parametersWork =
+        exception.parameters != null &&
         exception.parameters!['userId'] == 'user-456';
 
     print('   - Parameters:');
@@ -184,7 +185,10 @@ class TomExceptionExample {
       print('   - rootException: ${exception.rootException}');
 
       // Assertions
-      assert(exception.rootException is FormatException, 'Root should be FormatException');
+      assert(
+        exception.rootException is FormatException,
+        'Root should be FormatException',
+      );
     }
   }
 
@@ -229,8 +233,10 @@ class TomExceptionExample {
         (m) => m.contains('trace-uuid-1-trace-req-1 exception stacktrace'),
       );
 
-      print('   - printStackTrace(2) logged ${recorder.messages.length} '
-          'line(s), prefixed with the exception identity:');
+      print(
+        '   - printStackTrace(2) logged ${recorder.messages.length} '
+        'line(s), prefixed with the exception identity:',
+      );
       print('     ${recorder.messages.first.split('\n').first}');
 
       // Assertions
@@ -311,14 +317,18 @@ class TomExceptionExample {
     }
 
     print('   - Without autoLog, construction logged nothing.');
-    print('   - With autoLog: true, it logged '
-        '${recorder.messages.length} line(s):');
+    print(
+      '   - With autoLog: true, it logged '
+      '${recorder.messages.length} line(s):',
+    );
     for (final message in recorder.messages) {
       // Only the first line of each: the stack-trace line runs to many frames.
       print('     ${message.split('\n').first}');
     }
-    print('   - Both lines carry ${logged.uuid}-${logged.requestUuid}, so a '
-        'trace can be joined back to the failure it came from.');
+    print(
+      '   - Both lines carry ${logged.uuid}-${logged.requestUuid}, so a '
+      'trace can be joined back to the failure it came from.',
+    );
 
     // Assertions
     assert(autoLogEmitted, 'autoLog must log exactly two lines, and only then');
@@ -346,7 +356,8 @@ class TomExceptionExample {
       statusCode: 403,
       reasonPhrase: 'Forbidden',
       headers: {'x-tom-error': 'true', 'content-type': 'application/json'},
-      response: '{"errorKey":"access.check.permission_denied",'
+      response:
+          '{"errorKey":"access.check.permission_denied",'
           '"uuid":"srv-err-9001","requestUuid":"srv-req-9002",'
           '"autoLog":false,"clientRethrow":true}',
     );
@@ -358,19 +369,23 @@ class TomExceptionExample {
     );
 
     final attached = exception.serverCallError!;
-    serverCallErrorDecoded = attached.errorKey ==
-            'access.check.permission_denied' &&
+    serverCallErrorDecoded =
+        attached.errorKey == 'access.check.permission_denied' &&
         attached.uuid == 'srv-err-9001';
 
-    print('   - statusCode: ${attached.statusCode} '
-        '(${attached.reasonPhrase})');
+    print(
+      '   - statusCode: ${attached.statusCode} '
+      '(${attached.reasonPhrase})',
+    );
     print('   - headers: ${attached.headers.keys.join(', ')}');
     print('   - decoded errorKey: ${attached.errorKey}');
     print('   - decoded server uuid: ${attached.uuid}');
     print('   - decoded server requestUuid: ${attached.requestUuid}');
     print('   - clientRethrow: ${attached.clientRethrow}');
-    print('   - the client-side exception keeps its own key '
-        '(${exception.key}) and uuid, so both identities survive.');
+    print(
+      '   - the client-side exception keeps its own key '
+      '(${exception.key}) and uuid, so both identities survive.',
+    );
 
     // Assertions
     assert(attached.statusCode == 403, 'HTTP status must be preserved');
@@ -398,10 +413,7 @@ class TomExceptionExample {
       throw TomException(
         'user.delete.has_active_subscriptions',
         'Cannot delete user with active subscriptions',
-        parameters: {
-          'userId': 'user-123',
-          'activeSubscriptions': 3,
-        },
+        parameters: {'userId': 'user-123', 'activeSubscriptions': 3},
       );
     } on TomException catch (e) {
       print('   - Caught TomException');
@@ -432,7 +444,9 @@ class TomExceptionExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('TOM EXCEPTION DETAILED USAGE EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   TomExceptionExample.example1BasicException();
   TomExceptionExample.example2CustomUuid();

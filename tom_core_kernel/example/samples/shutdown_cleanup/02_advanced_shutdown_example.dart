@@ -181,7 +181,9 @@ class AdvancedShutdownExample {
 
     adaptor.close();
 
-    print('   - isDisposed after calling adaptor.close(): ${stream.isDisposed}');
+    print(
+      '   - isDisposed after calling adaptor.close(): ${stream.isDisposed}',
+    );
     adaptorDisposeWorks = stream.isDisposed;
 
     // Assertions
@@ -204,7 +206,9 @@ class AdvancedShutdownExample {
 
     adaptor.close();
 
-    print('   - isShutdown after calling adaptor.close(): ${resource.isShutdown}');
+    print(
+      '   - isShutdown after calling adaptor.close(): ${resource.isShutdown}',
+    );
     customMethodWorks = resource.isShutdown;
 
     // Assertions
@@ -225,7 +229,9 @@ class AdvancedShutdownExample {
       print('   - ERROR: Should have thrown exception');
       noMethodError = false;
     } catch (e) {
-      print('   - Caught expected exception: ${e.toString().split('\n').first}');
+      print(
+        '   - Caught expected exception: ${e.toString().split('\n').first}',
+      );
       noMethodError = e.toString().contains("didn't find a close method");
     }
 
@@ -247,7 +253,9 @@ class AdvancedShutdownExample {
       print('   - ERROR: Should have thrown exception');
       parameterError = false;
     } catch (e) {
-      print('   - Caught expected exception: ${e.toString().split('\n').first}');
+      print(
+        '   - Caught expected exception: ${e.toString().split('\n').first}',
+      );
       parameterError = e.toString().contains('needs parameter');
     }
 
@@ -368,7 +376,9 @@ class AdvancedShutdownExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('ADVANCED SHUTDOWN CLEANUP EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   AdvancedShutdownExample.example1AdaptorWithClose();
   AdvancedShutdownExample.example2AdaptorWithDispose();
@@ -382,11 +392,26 @@ void run() {
   AdvancedShutdownExample.example10CustomShutdownHandler();
 
   // Final assertions
-  assert(AdvancedShutdownExample.adaptorCloseWorks, 'Adaptor close should work');
-  assert(AdvancedShutdownExample.adaptorDisposeWorks, 'Adaptor dispose should work');
-  assert(AdvancedShutdownExample.customMethodWorks, 'Custom method should work');
-  assert(AdvancedShutdownExample.noMethodError, 'No method error should be caught');
-  assert(AdvancedShutdownExample.parameterError, 'Parameter error should be caught');
+  assert(
+    AdvancedShutdownExample.adaptorCloseWorks,
+    'Adaptor close should work',
+  );
+  assert(
+    AdvancedShutdownExample.adaptorDisposeWorks,
+    'Adaptor dispose should work',
+  );
+  assert(
+    AdvancedShutdownExample.customMethodWorks,
+    'Custom method should work',
+  );
+  assert(
+    AdvancedShutdownExample.noMethodError,
+    'No method error should be caught',
+  );
+  assert(
+    AdvancedShutdownExample.parameterError,
+    'Parameter error should be caught',
+  );
 
   print('\n✓ All advanced shutdown cleanup examples passed!\n');
 }

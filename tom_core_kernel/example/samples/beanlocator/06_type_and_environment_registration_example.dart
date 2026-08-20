@@ -69,8 +69,10 @@ void run() {
 
   final byType = TomBean.getBeanByType(PaymentGateway);
   print('   - getBeanByType(PaymentGateway): ${byType.runtimeType}');
-  print('   - getBeanByType(String) (unregistered): '
-      '${TomBean.getBeanByType(String)}');
+  print(
+    '   - getBeanByType(String) (unregistered): '
+    '${TomBean.getBeanByType(String)}',
+  );
 
   // -------------------------------------------------------------------------
   // Example 3: installByEnvironment with an explicit environment name
@@ -78,13 +80,10 @@ void run() {
   print('\n3. installByEnvironment (explicit environment = "test"):');
 
   TomBean.resetBeanContext();
-  TomBean.installByEnvironment<PaymentGateway>(
-    {
-      'prod': LivePaymentGateway.new,
-      'test': SandboxPaymentGateway.new,
-    },
-    environment: 'test',
-  );
+  TomBean.installByEnvironment<PaymentGateway>({
+    'prod': LivePaymentGateway.new,
+    'test': SandboxPaymentGateway.new,
+  }, environment: 'test');
 
   final selected = TomBean<PaymentGateway>().get();
   print('   - installed implementation: ${selected.runtimeType}');
@@ -154,8 +153,13 @@ void run() {
   assert(selectedFromRuntime is LivePaymentGateway);
 
   // Example 5: the two distinct type-path error keys.
-  assert(uninitializedKey == 'beanlocator.bean_access.no_bean_found_uninitialized');
-  assert(ambiguousKey == 'beanlocator.bean_access.more_than_one_implementation_found');
+  assert(
+    uninitializedKey == 'beanlocator.bean_access.no_bean_found_uninitialized',
+  );
+  assert(
+    ambiguousKey ==
+        'beanlocator.bean_access.more_than_one_implementation_found',
+  );
 }
 
 void main() => run();

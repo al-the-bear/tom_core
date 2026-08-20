@@ -32,7 +32,8 @@ class DatabaseConfig {
   });
 
   @override
-  String toString() => 'DatabaseConfig($host:$port/$database, primary: $isPrimary)';
+  String toString() =>
+      'DatabaseConfig($host:$port/$database, primary: $isPrimary)';
 }
 
 /// An API endpoint configuration.
@@ -48,7 +49,8 @@ class ApiEndpointConfig {
   });
 
   @override
-  String toString() => 'ApiEndpointConfig($baseUrl, timeout: ${timeout.inSeconds}s)';
+  String toString() =>
+      'ApiEndpointConfig($baseUrl, timeout: ${timeout.inSeconds}s)';
 }
 
 /// A cache configuration.
@@ -59,7 +61,8 @@ class CacheConfig {
   CacheConfig({required this.maxSize, required this.ttl});
 
   @override
-  String toString() => 'CacheConfig(maxSize: $maxSize, ttl: ${ttl.inMinutes}min)';
+  String toString() =>
+      'CacheConfig(maxSize: $maxSize, ttl: ${ttl.inMinutes}min)';
 }
 
 // ============================================================================
@@ -130,9 +133,18 @@ class NamedBeansExample {
     print('   - Replica is primary? ${replicaConfig.isPrimary}');
 
     // Assertions
-    assert(primaryHost == 'primary.db.example.com', 'Primary host should match');
-    assert(replicaHost == 'replica.db.example.com', 'Replica host should match');
-    assert(primaryConfig.isPrimary == true, 'Primary should be marked as primary');
+    assert(
+      primaryHost == 'primary.db.example.com',
+      'Primary host should match',
+    );
+    assert(
+      replicaHost == 'replica.db.example.com',
+      'Replica host should match',
+    );
+    assert(
+      primaryConfig.isPrimary == true,
+      'Primary should be marked as primary',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -165,9 +177,15 @@ class NamedBeansExample {
     TomBean.withName('named_partnerApi', partnerApi);
 
     // Resolve each by name
-    final internalEndpoint = TomBean<ApiEndpointConfig>.fromName('named_internalApi')();
-    final externalEndpoint = TomBean<ApiEndpointConfig>.fromName('named_externalApi')();
-    final partnerEndpoint = TomBean<ApiEndpointConfig>.fromName('named_partnerApi')();
+    final internalEndpoint = TomBean<ApiEndpointConfig>.fromName(
+      'named_internalApi',
+    )();
+    final externalEndpoint = TomBean<ApiEndpointConfig>.fromName(
+      'named_externalApi',
+    )();
+    final partnerEndpoint = TomBean<ApiEndpointConfig>.fromName(
+      'named_partnerApi',
+    )();
 
     apiEndpoints = [
       internalEndpoint.baseUrl,
@@ -265,12 +283,17 @@ class NamedBeansExample {
       caughtErrorKey = e.key;
       print('   - Exception type: TomBeanLocatorException');
       print('   - Error key: $caughtErrorKey');
-      print('   - Message contains bean name: ${e.defaultUserMessage.contains('nonexistent_db_config')}');
+      print(
+        '   - Message contains bean name: ${e.defaultUserMessage.contains('nonexistent_db_config')}',
+      );
     }
 
     // Assertions
     assert(caughtErrorKey.isNotEmpty, 'Should catch exception');
-    assert(caughtErrorKey.contains('beanlocator'), 'Error key should contain beanlocator');
+    assert(
+      caughtErrorKey.contains('beanlocator'),
+      'Error key should contain beanlocator',
+    );
   }
 
   // -------------------------------------------------------------------------

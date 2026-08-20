@@ -155,12 +155,28 @@ class TomCronSchedule extends TomSchedule {
   };
 
   static const Map<String, int> _monthNames = {
-    'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'JUN': 6,
-    'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10, 'NOV': 11, 'DEC': 12,
+    'JAN': 1,
+    'FEB': 2,
+    'MAR': 3,
+    'APR': 4,
+    'MAY': 5,
+    'JUN': 6,
+    'JUL': 7,
+    'AUG': 8,
+    'SEP': 9,
+    'OCT': 10,
+    'NOV': 11,
+    'DEC': 12,
   };
 
   static const Map<String, int> _dayNames = {
-    'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6,
+    'SUN': 0,
+    'MON': 1,
+    'TUE': 2,
+    'WED': 3,
+    'THU': 4,
+    'FRI': 5,
+    'SAT': 6,
   };
 
   /// The expression this schedule was parsed from, kept for [describe].
@@ -214,12 +230,29 @@ class TomCronSchedule extends TomSchedule {
 
     final minutes = _parseField(fields[0], 0, 59, expression, 'minute');
     final hours = _parseField(fields[1], 0, 23, expression, 'hour');
-    final daysOfMonth =
-        _parseField(fields[2], 1, 31, expression, 'day-of-month');
-    final months =
-        _parseField(fields[3], 1, 12, expression, 'month', _monthNames);
-    final daysOfWeek =
-        _parseField(fields[4], 0, 7, expression, 'day-of-week', _dayNames);
+    final daysOfMonth = _parseField(
+      fields[2],
+      1,
+      31,
+      expression,
+      'day-of-month',
+    );
+    final months = _parseField(
+      fields[3],
+      1,
+      12,
+      expression,
+      'month',
+      _monthNames,
+    );
+    final daysOfWeek = _parseField(
+      fields[4],
+      0,
+      7,
+      expression,
+      'day-of-week',
+      _dayNames,
+    );
 
     return TomCronSchedule._(
       trimmed,
@@ -347,19 +380,24 @@ class TomCronSchedule extends TomSchedule {
     String expression,
     String fieldName,
     String problem,
-  ) =>
-      TomScheduleException(
-        'schedule.cron.invalid_field',
-        'The $fieldName field of "$expression" is invalid: $problem.',
-        parameters: {'expression': expression, 'field': fieldName},
-      );
+  ) => TomScheduleException(
+    'schedule.cron.invalid_field',
+    'The $fieldName field of "$expression" is invalid: $problem.',
+    parameters: {'expression': expression, 'field': fieldName},
+  );
 
   @override
   DateTime? nextFireAfter(DateTime from) {
     // Cron resolves to whole minutes, so the search starts at the minute after
     // `from` — truncating first, so a `from` of 10:30:45 does not skip 10:31.
-    var candidate = _at(from, from.year, from.month, from.day, from.hour,
-        from.minute + 1);
+    var candidate = _at(
+      from,
+      from.year,
+      from.month,
+      from.day,
+      from.hour,
+      from.minute + 1,
+    );
     final limit = _at(from, from.year + _searchYears, from.month, from.day);
 
     // Coarse-to-fine: an unmatched month skips a whole month rather than
@@ -370,18 +408,33 @@ class TomCronSchedule extends TomSchedule {
         continue;
       }
       if (!_matchesDay(candidate)) {
-        candidate =
-            _at(candidate, candidate.year, candidate.month, candidate.day + 1);
+        candidate = _at(
+          candidate,
+          candidate.year,
+          candidate.month,
+          candidate.day + 1,
+        );
         continue;
       }
       if (!_hours.contains(candidate.hour)) {
-        candidate = _at(candidate, candidate.year, candidate.month,
-            candidate.day, candidate.hour + 1);
+        candidate = _at(
+          candidate,
+          candidate.year,
+          candidate.month,
+          candidate.day,
+          candidate.hour + 1,
+        );
         continue;
       }
       if (!_minutes.contains(candidate.minute)) {
-        candidate = _at(candidate, candidate.year, candidate.month,
-            candidate.day, candidate.hour, candidate.minute + 1);
+        candidate = _at(
+          candidate,
+          candidate.year,
+          candidate.month,
+          candidate.day,
+          candidate.hour,
+          candidate.minute + 1,
+        );
         continue;
       }
       return candidate;
@@ -659,9 +712,12 @@ class TomCalendarSchedule extends TomSchedule {
 
   @override
   String describe() {
-    final time = '${hour.toString().padLeft(2, '0')}:'
+    final time =
+        '${hour.toString().padLeft(2, '0')}:'
         '${minute.toString().padLeft(2, '0')}';
-    final every = monthInterval == 1 ? 'monthly' : 'every $monthInterval months';
+    final every = monthInterval == 1
+        ? 'monthly'
+        : 'every $monthInterval months';
     if (rule == TomCalendarRule.dayOfMonth) {
       final which = dayOfMonth > 0
           ? 'day $dayOfMonth'
@@ -696,7 +752,7 @@ class TomIntervalSchedule extends TomSchedule {
 
   /// Creates an interval schedule firing every [period] from [anchor].
   TomIntervalSchedule(this.period, {DateTime? anchor})
-      : anchor = anchor ?? DateTime.utc(1970) {
+    : anchor = anchor ?? DateTime.utc(1970) {
     if (period <= Duration.zero) {
       throw TomScheduleException(
         'schedule.interval.period',
@@ -709,8 +765,7 @@ class TomIntervalSchedule extends TomSchedule {
   @override
   DateTime? nextFireAfter(DateTime from) {
     final micros = period.inMicroseconds;
-    final elapsed =
-        from.microsecondsSinceEpoch - anchor.microsecondsSinceEpoch;
+    final elapsed = from.microsecondsSinceEpoch - anchor.microsecondsSinceEpoch;
     // Floor division, then step one grid point on, so the answer is strictly
     // after `from` even when `from` sits exactly on the grid.
     final steps = (elapsed / micros).floor() + 1;
@@ -850,7 +905,6 @@ DateTime _at(
   int day, [
   int hour = 0,
   int minute = 0,
-]) =>
-    reference.isUtc
-        ? DateTime.utc(year, month, day, hour, minute)
-        : DateTime(year, month, day, hour, minute);
+]) => reference.isUtc
+    ? DateTime.utc(year, month, day, hour, minute)
+    : DateTime(year, month, day, hour, minute);

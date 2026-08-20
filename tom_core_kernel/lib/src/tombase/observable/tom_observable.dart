@@ -18,7 +18,7 @@ import '../reflection/reflection.dart';
 /// ```dart
 /// class MyModel extends TomObservable {
 ///   String _name = '';
-///   
+///
 ///   set name(String value) {
 ///     _name = value;
 ///     notifyObservers();
@@ -230,7 +230,6 @@ class TomObservable {
       _observers.removeWhere((ref) => ref.target == null);
     }
   }
-
 }
 
 /// Adds the observation operator `>>` to every [TomObservable].
@@ -296,8 +295,8 @@ class _ObserverRef {
   final int _identityHash;
 
   _ObserverRef(TomObserver observer)
-      : _reference = WeakReference(observer),
-        _identityHash = identityHashCode(observer);
+    : _reference = WeakReference(observer),
+      _identityHash = identityHashCode(observer);
 
   /// The observer, or `null` once it has been garbage collected.
   TomObserver? get target => _reference.target;

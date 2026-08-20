@@ -117,7 +117,9 @@ Future<void> run() async {
   once.performShutdown();
   once.performShutdown();
 
-  print('   - close() invocations after 3 triggers: ${onceClosable.closeCount}\n');
+  print(
+    '   - close() invocations after 3 triggers: ${onceClosable.closeCount}\n',
+  );
 
   // ---------------------------------------------------------------------------
   // Example 3: Fault isolation (a throwing entry doesn't abort the phase)
@@ -183,8 +185,10 @@ Future<void> run() async {
 
   adaptorCleanup.performShutdown();
 
-  print('   - LegacyService.shutdown() called via adaptor: '
-      '${legacy.shutdownCalled}\n');
+  print(
+    '   - LegacyService.shutdown() called via adaptor: '
+    '${legacy.shutdownCalled}\n',
+  );
 
   // ---------------------------------------------------------------------------
   // Example 7: cancelAll / dispose — tear the signal watchers down
@@ -210,7 +214,14 @@ Future<void> run() async {
   // SIGHUP/SIGINT watchers that the constructor started. Those watchers keep the
   // process alive, so without this block the sample prints everything below and
   // then hangs forever instead of exiting.
-  for (final cleanup in [ordered, once, isolated, paused, silent, adaptorCleanup]) {
+  for (final cleanup in [
+    ordered,
+    once,
+    isolated,
+    paused,
+    silent,
+    adaptorCleanup,
+  ]) {
     await cleanup.dispose();
   }
 

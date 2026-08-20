@@ -148,11 +148,14 @@ class TomAuthorizationGroup {
   /// Registered members stored as weak references.
   final Set<WeakReference<TomAuthorizable>> _members =
       HashSet<WeakReference<TomAuthorizable>>(
-    equals: (a, b) => identical(a.target, b.target),
-    hashCode: (ref) => identityHashCode(ref.target),
-  );
+        equals: (a, b) => identical(a.target, b.target),
+        hashCode: (ref) => identityHashCode(ref.target),
+      );
 
-  TomAuthorizationGroup(this.groupId, {this.mode = AuthGroupMode.controlsWidest});
+  TomAuthorizationGroup(
+    this.groupId, {
+    this.mode = AuthGroupMode.controlsWidest,
+  });
 
   /// Registers a [TomAuthorizable] element with this group.
   void register(TomAuthorizable element) {
@@ -386,9 +389,9 @@ class TomAuthorizer {
   /// Creates an authorizer that always returns the given [state], regardless
   /// of resource authorization.
   factory TomAuthorizer.fixed(TomAuthState state) => TomAuthorizer(
-        strategy: TomAuthorizerStrategy.authorizerDecides,
-        resolve: (_) => state,
-      );
+    strategy: TomAuthorizerStrategy.authorizerDecides,
+    resolve: (_) => state,
+  );
 
   /// Creates an authorizer from an action's authorization.
   ///
@@ -397,22 +400,20 @@ class TomAuthorizer {
   /// [TomAuthState.disabled] (button visible but greyed out).
   factory TomAuthorizer.fromAction({
     required TomAuthState Function() actionAuth,
-  }) =>
-      TomAuthorizer(
-        strategy: TomAuthorizerStrategy.authorizerDecides,
-        resolve: (resourceAuth) {
-          final aAuth = actionAuth();
-          // Widget hidden → stay hidden
-          if (resourceAuth == TomAuthState.none) return TomAuthState.none;
-          // Widget full + action none → disabled (shows button exists but unavailable)
-          if (resourceAuth == TomAuthState.full &&
-              aAuth == TomAuthState.none) {
-            return TomAuthState.disabled;
-          }
-          // Otherwise, narrow to the most restrictive
-          return resourceAuth.narrow(aAuth);
-        },
-      );
+  }) => TomAuthorizer(
+    strategy: TomAuthorizerStrategy.authorizerDecides,
+    resolve: (resourceAuth) {
+      final aAuth = actionAuth();
+      // Widget hidden → stay hidden
+      if (resourceAuth == TomAuthState.none) return TomAuthState.none;
+      // Widget full + action none → disabled (shows button exists but unavailable)
+      if (resourceAuth == TomAuthState.full && aAuth == TomAuthState.none) {
+        return TomAuthState.disabled;
+      }
+      // Otherwise, narrow to the most restrictive
+      return resourceAuth.narrow(aAuth);
+    },
+  );
 }
 
 // =============================================================================

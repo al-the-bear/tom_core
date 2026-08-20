@@ -188,12 +188,14 @@ class TomObjectBasicsExample {
     // WeakReference, so the wrapper `>>` hands back is the only strong
     // reference keeping the callback alive; discard it and notifications stop
     // at the next garbage collection, silently and nondeterministically.
-    final counterObserver = counter >> (obs) {
-      notifyCount++;
-      // `obs` is a TomInt, not a bare TomObservable: `>>` is an extension on
-      // the receiver's type, so the callback parameter follows `counter`.
-      print('   [Observer] Counter changed to ${~obs}');
-    };
+    final counterObserver =
+        counter >>
+        (obs) {
+          notifyCount++;
+          // `obs` is a TomInt, not a bare TomObservable: `>>` is an extension on
+          // the receiver's type, so the callback parameter follows `counter`.
+          print('   [Observer] Counter changed to ${~obs}');
+        };
 
     counter | 1;
     counter | 2;

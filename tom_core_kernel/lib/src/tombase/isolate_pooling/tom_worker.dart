@@ -726,12 +726,12 @@ class TomWorker {
     // superviseExit() a silent no-op, leaving the running worker unsupervised.
     final readyExitPort = RawReceivePort();
     readyExitPort.handler = (_) => failStartup(
-          TomWorkerException(
-            'isolate.died_before_ready.spawn',
-            'TomWorker $workerName died before signalling readiness.',
-            parameters: {'isolateName': workerName},
-          ),
-        );
+      TomWorkerException(
+        'isolate.died_before_ready.spawn',
+        'TomWorker $workerName died before signalling readiness.',
+        parameters: {'isolateName': workerName},
+      ),
+    );
     spawned.addOnExitListener(readyExitPort.sendPort);
 
     Timer? deadline = Timer(
@@ -1077,7 +1077,9 @@ class TomWorker {
       // the isolate as an unhandled error and the creator simply never hears
       // the ready signal — it would wait forever. Reporting the failure on the
       // channel the creator already listens to is the only way out.
-      context._sendPort!.send(_TomIsolateInitFailure(e.toString(), s.toString()));
+      context._sendPort!.send(
+        _TomIsolateInitFailure(e.toString(), s.toString()),
+      );
       receivePort.close();
       return;
     }
@@ -1379,9 +1381,7 @@ class TomWorker {
       _onDeath = null;
       _commands.send('shutdown');
       if (_activeRequests.isEmpty) _responses.close();
-      tomLog.trace(
-        '--- port closed  $name  ${Isolate.current.debugName} --- ',
-      );
+      tomLog.trace('--- port closed  $name  ${Isolate.current.debugName} --- ');
     }
   }
 }
@@ -1586,8 +1586,10 @@ class TomWorkerPool {
       );
     }
     if (healthCheckInterval != null) {
-      twp._healthTimer =
-          Timer.periodic(healthCheckInterval, (_) => twp._runHealthCheck());
+      twp._healthTimer = Timer.periodic(
+        healthCheckInterval,
+        (_) => twp._runHealthCheck(),
+      );
     }
     return twp;
   }
@@ -1710,9 +1712,9 @@ class TomWorkerPool {
   }
 
   TomWorkerException _closedException() => TomWorkerException(
-        'isolate.pool_closed.execute_after_close',
-        'Cannot execute on a TomWorkerPool that has been closed.',
-      );
+    'isolate.pool_closed.execute_after_close',
+    'Cannot execute on a TomWorkerPool that has been closed.',
+  );
 
   /// Shuts down every worker in this pool and releases their isolates.
   ///

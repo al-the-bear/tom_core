@@ -73,7 +73,10 @@ class TomListExample {
     names = TomList<TomString>();
 
     // append() returns the list for chaining
-    names.append(TomString('Alice')).append(TomString('Bob')).append(TomString('Charlie'));
+    names
+        .append(TomString('Alice'))
+        .append(TomString('Bob'))
+        .append(TomString('Charlie'));
 
     print('   names: [${names.map((e) => ~e).join(', ')}]');
 
@@ -95,10 +98,12 @@ class TomListExample {
     // WeakReference, so the wrapper `>>` hands back is the only strong
     // reference keeping the callback alive; discard it and notifications stop
     // at the next garbage collection, silently and nondeterministically.
-    final itemsObserver = items >> (obs) {
-      listNotifyCount++;
-      print('   List notification #$listNotifyCount');
-    };
+    final itemsObserver =
+        items >>
+        (obs) {
+          listNotifyCount++;
+          print('   List notification #$listNotifyCount');
+        };
 
     items.add(TomString('item1'));
     items.add(TomString('item2'));
@@ -122,7 +127,11 @@ class TomListExample {
     print('\n4. List operations:');
 
     final scores = TomList<TomInt>();
-    scores.append(TomInt(100)).append(TomInt(85)).append(TomInt(92)).append(TomInt(78));
+    scores
+        .append(TomInt(100))
+        .append(TomInt(85))
+        .append(TomInt(92))
+        .append(TomInt(78));
 
     // Access by index
     print('   scores[0]: ${~scores[0]}');
@@ -171,7 +180,10 @@ class TomListExample {
     // Assertions
     assert(~values[1] == 2.5, 'values[1] should be 2.5');
     assert(~values[0] == 1.5, 'values[0] should be 1.5');
-    assert(modifyCount == 2, 'Should notify on index assignment and element change');
+    assert(
+      modifyCount == 2,
+      'Should notify on index assignment and element change',
+    );
 
     values.removeObserver(valuesObserver);
   }
@@ -183,15 +195,22 @@ class TomListExample {
     print('\n6. Removing elements:');
 
     final fruits = TomList<TomString>();
-    fruits.append(TomString('apple')).append(TomString('banana')).append(TomString('cherry'));
+    fruits
+        .append(TomString('apple'))
+        .append(TomString('banana'))
+        .append(TomString('cherry'));
 
     print('   Before: [${fruits.map((e) => ~(e as TomString)).join(', ')}]');
 
     fruits.removeAt(1); // Remove "banana"
-    print('   After removeAt(1): [${fruits.map((e) => ~(e as TomString)).join(', ')}]');
+    print(
+      '   After removeAt(1): [${fruits.map((e) => ~(e as TomString)).join(', ')}]',
+    );
 
     fruits.removeLast();
-    print('   After removeLast: [${fruits.map((e) => ~(e as TomString)).join(', ')}]');
+    print(
+      '   After removeLast: [${fruits.map((e) => ~(e as TomString)).join(', ')}]',
+    );
 
     // Assertions
     assert(fruits.length == 1, 'Should have 1 fruit after removeLast');
@@ -211,7 +230,9 @@ class TomListExample {
     list2.append(TomInt(3)).append(TomInt(4));
 
     final combined = list1 + list2;
-    print('   list1 + list2: [${combined.map((e) => ~(e as TomInt)).join(', ')}]');
+    print(
+      '   list1 + list2: [${combined.map((e) => ~(e as TomInt)).join(', ')}]',
+    );
 
     // Original lists unchanged
     print('   list1.length: ${list1.length}, list2.length: ${list2.length}');
@@ -252,7 +273,10 @@ class TomListExample {
 
     // Assertions
     assert(tasks.length == 2, 'Should have 2 tasks');
-    assert(~tasks[0].title == 'Complete report', 'First task title should match');
+    assert(
+      ~tasks[0].title == 'Complete report',
+      'First task title should match',
+    );
     assert(~tasks[0].completed == true, 'First task should be completed');
   }
 
@@ -287,7 +311,10 @@ class TomListExample {
     // Assertions
     assert(rows.length == 2, 'List should still have 2 elements');
     assert(identical(returned, rows), '<< should return the list itself');
-    assert(notifications == 2, 'One notification for the swap, one for the edit');
+    assert(
+      notifications == 2,
+      'One notification for the swap, one for the edit',
+    );
     assert(~rows[0] == 'z', 'The incoming element should be observed and set');
 
     rows.removeObserver(rowsObserver);

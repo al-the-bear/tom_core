@@ -42,11 +42,7 @@ class ConfigResourceProviderExample {
         'timeout': 30000,
         'retryCount': 3,
       },
-      'features': {
-        'darkMode': true,
-        'analytics': false,
-        'maxItems': 100,
-      },
+      'features': {'darkMode': true, 'analytics': false, 'maxItems': 100},
       'simpleKey': 'simple value',
     });
 
@@ -76,12 +72,8 @@ class ConfigResourceProviderExample {
     print('\n2. Checking configuration existence:');
 
     final config = TomConfigResourceProvider.from({
-      'api': {
-        'baseUrl': 'https://api.example.com',
-      },
-      'features': {
-        'analytics': true,
-      },
+      'api': {'baseUrl': 'https://api.example.com'},
+      'features': {'analytics': true},
     });
 
     // Check if configuration keys exist
@@ -108,9 +100,7 @@ class ConfigResourceProviderExample {
   static void example3FallbackBehavior() {
     print('\n3. Missing key fallback behavior:');
 
-    final config = TomConfigResourceProvider.from({
-      'existing': 'value',
-    });
+    final config = TomConfigResourceProvider.from({'existing': 'value'});
 
     // Missing keys return the key itself
     final existingValue = config.getText('existing');
@@ -139,15 +129,8 @@ class ConfigResourceProviderExample {
       // This could load from a file, network, etc.
       print('   - Loader function called!');
       return {
-        'database': {
-          'host': 'localhost',
-          'port': 5432,
-          'name': 'myapp_db',
-        },
-        'cache': {
-          'enabled': true,
-          'ttl': 3600,
-        },
+        'database': {'host': 'localhost', 'port': 5432, 'name': 'myapp_db'},
+        'cache': {'enabled': true, 'ttl': 3600},
       };
     });
 
@@ -175,14 +158,8 @@ class ConfigResourceProviderExample {
     // Set the global configuration provider
     TomConfigResourceProvider.setAppConfigProvider(
       TomConfigResourceProvider.from({
-        'app': {
-          'name': 'My Application',
-          'version': '2.0.0',
-        },
-        'settings': {
-          'theme': 'dark',
-          'language': 'en',
-        },
+        'app': {'name': 'My Application', 'version': '2.0.0'},
+        'settings': {'theme': 'dark', 'language': 'en'},
       }),
     );
 
@@ -241,9 +218,7 @@ class ConfigResourceProviderExample {
         },
       };
 
-      return TomConfigResourceProvider.from(
-        configs[env] ?? configs['dev']!,
-      );
+      return TomConfigResourceProvider.from(configs[env] ?? configs['dev']!);
     }
 
     // Create configs for different environments
@@ -262,7 +237,10 @@ class ConfigResourceProviderExample {
     assert(devApiUrl.contains('localhost'), 'Dev should use localhost');
     assert(prodApiUrl.contains('api.example.com'), 'Prod should use real API');
     assert(devConfig.getText('api.debug') == true, 'Dev should have debug');
-    assert(prodConfig.getText('api.debug') == false, 'Prod should not have debug');
+    assert(
+      prodConfig.getText('api.debug') == false,
+      'Prod should not have debug',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -276,21 +254,17 @@ class ConfigResourceProviderExample {
         'primary': {
           'host': 'primary.db.example.com',
           'port': 5432,
-          'credentials': {
-            'username': 'admin',
-            'password': 'secret',
-          },
+          'credentials': {'username': 'admin', 'password': 'secret'},
         },
-        'replica': {
-          'host': 'replica.db.example.com',
-          'port': 5433,
-        },
+        'replica': {'host': 'replica.db.example.com', 'port': 5433},
       },
     });
 
     // Deep nested access
     final primaryHost = config.getText('database.primary.host');
-    final primaryUsername = config.getText('database.primary.credentials.username');
+    final primaryUsername = config.getText(
+      'database.primary.credentials.username',
+    );
     final replicaPort = config.getText('database.replica.port');
 
     print('   - Primary host: $primaryHost');
@@ -305,7 +279,10 @@ class ConfigResourceProviderExample {
     }
 
     // Assertions
-    assert(primaryHost == 'primary.db.example.com', 'Primary host should match');
+    assert(
+      primaryHost == 'primary.db.example.com',
+      'Primary host should match',
+    );
     assert(primaryUsername == 'admin', 'Username should be admin');
     assert(replicaPort == 5433, 'Replica port should be 5433');
   }
@@ -362,7 +339,9 @@ class ConfigResourceProviderExample {
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
   print('CONFIGURATION RESOURCE PROVIDER EXAMPLE');
-  print('═══════════════════════════════════════════════════════════════════\n');
+  print(
+    '═══════════════════════════════════════════════════════════════════\n',
+  );
 
   ConfigResourceProviderExample.example1CreateFromMap();
   ConfigResourceProviderExample.example2ExistsCheck();

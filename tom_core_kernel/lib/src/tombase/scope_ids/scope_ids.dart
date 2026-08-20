@@ -32,16 +32,22 @@ abstract class TomScope {
   /// at runtime would change resource resolution for the whole process. Use
   /// [withScope] or [runInScope] to install a different scope — they are
   /// zone-carried and cannot outlive their body.
-  static final TomScope defaultScope =
-      TomScopeBase(scopeId: 'default', parentScope: null);
+  static final TomScope defaultScope = TomScopeBase(
+    scopeId: 'default',
+    parentScope: null,
+  );
 
   /// The scope installed on the current [Zone], or [defaultScope] if none.
   static TomScope get current => getFromCurrentZone<TomScope>() ?? defaultScope;
 
   /// Runs [body] in a new child scope named [scope], parented to [current].
   static T withScope<T>(String scope, T Function() body) {
-    return runZoned(body,
-        zoneValues: {TomScope: TomScopeBase(scopeId: scope, parentScope: current)});
+    return runZoned(
+      body,
+      zoneValues: {
+        TomScope: TomScopeBase(scopeId: scope, parentScope: current),
+      },
+    );
   }
 
   /// Runs [body] inside this scope's zone.
@@ -130,8 +136,7 @@ mixin TomScopeMixin on Object implements TomScope {
 class InScopeBuilder {
   final TomScope _scope;
 
-  InScopeBuilder({TomScope? scope})
-      : _scope = scope ?? TomScope.current;
+  InScopeBuilder({TomScope? scope}) : _scope = scope ?? TomScope.current;
 
   /// Wraps a 0-argument callback.
   R Function() wrap0<R>(R Function() fn) =>
@@ -155,12 +160,12 @@ class InScopeBuilder {
 
   /// Wraps a 5-argument callback.
   R Function(A, B, C, D, E) wrap5<R, A, B, C, D, E>(
-          R Function(A, B, C, D, E) fn) =>
+    R Function(A, B, C, D, E) fn,
+  ) =>
       (a, b, c, d, e) => _scope.runInScope(() => fn(a, b, c, d, e));
 
   /// Wraps a nullable 0-argument callback. Returns null if [fn] is null.
-  R Function()? wrap0n<R>(R Function()? fn) =>
-      fn == null ? null : wrap0(fn);
+  R Function()? wrap0n<R>(R Function()? fn) => fn == null ? null : wrap0(fn);
 
   /// Wraps a nullable 1-argument callback. Returns null if [fn] is null.
   R Function(A)? wrap1n<R, A>(R Function(A)? fn) =>
@@ -180,18 +185,34 @@ class InScopeBuilder {
 
   /// Wraps a nullable 5-argument callback. Returns null if [fn] is null.
   R Function(A, B, C, D, E)? wrap5n<R, A, B, C, D, E>(
-          R Function(A, B, C, D, E)? fn) =>
-      fn == null ? null : wrap5(fn);
+    R Function(A, B, C, D, E)? fn,
+  ) => fn == null ? null : wrap5(fn);
 
   /// Wraps a callback with one positional and named parameters.
   /// Use for Flutter's [InputCounterWidgetBuilder] and similar typedefs
   /// that use named parameters.
-  R Function(A, {required B currentLength, required C maxLength, required D isFocused})
-      wrapCounter<R, A, B, C, D>(
-          R Function(A, {required B currentLength, required C maxLength, required D isFocused}) fn) =>
+  R Function(
+    A, {
+    required B currentLength,
+    required C maxLength,
+    required D isFocused,
+  })
+  wrapCounter<R, A, B, C, D>(
+    R Function(
+      A, {
+      required B currentLength,
+      required C maxLength,
+      required D isFocused,
+    })
+    fn,
+  ) =>
       (a, {required currentLength, required maxLength, required isFocused}) =>
-          _scope.runInScope(() => fn(a,
+          _scope.runInScope(
+            () => fn(
+              a,
               currentLength: currentLength,
               maxLength: maxLength,
-              isFocused: isFocused));
+              isFocused: isFocused,
+            ),
+          );
 }

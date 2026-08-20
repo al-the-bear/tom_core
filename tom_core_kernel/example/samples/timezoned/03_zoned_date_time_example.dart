@@ -26,23 +26,25 @@ class ZonedDateTimeExample {
 
     final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
 
-    tokyoDate = TomZonedDate(
-      year: 2024,
-      month: 12,
-      day: 25,
-      timezone: tokyo,
-    );
+    tokyoDate = TomZonedDate(year: 2024, month: 12, day: 25, timezone: tokyo);
 
     print('   - Timezone: ${tokyoDate.timezone.timezone}');
-    print('   - Local date: ${tokyoDate.localYear}-${tokyoDate.localMonth.toString().padLeft(2, '0')}-${tokyoDate.localDay.toString().padLeft(2, '0')}');
-    print('   - Local time components: ${tokyoDate.localHour}:${tokyoDate.localMinute}:${tokyoDate.localSecond}');
+    print(
+      '   - Local date: ${tokyoDate.localYear}-${tokyoDate.localMonth.toString().padLeft(2, '0')}-${tokyoDate.localDay.toString().padLeft(2, '0')}',
+    );
+    print(
+      '   - Local time components: ${tokyoDate.localHour}:${tokyoDate.localMinute}:${tokyoDate.localSecond}',
+    );
     print('   - Serialization prefix: "${tokyoDate.getSerializationPrefix()}"');
 
     // Assertions
     assert(tokyoDate.localYear == 2024, 'Year should be 2024');
     assert(tokyoDate.localMonth == 12, 'Month should be 12');
     assert(tokyoDate.localDay == 25, 'Day should be 25');
-    assert(tokyoDate.getSerializationPrefix() == '@D@', 'TomZonedDate prefix should be @D@');
+    assert(
+      tokyoDate.getSerializationPrefix() == '@D@',
+      'TomZonedDate prefix should be @D@',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -52,7 +54,8 @@ class ZonedDateTimeExample {
     print('\n2. Checking if values are date-only:');
 
     // TomZonedDate time components should be zero in local time
-    final hasTimeComponent = tokyoDate.localHour != 0 ||
+    final hasTimeComponent =
+        tokyoDate.localHour != 0 ||
         tokyoDate.localMinute != 0 ||
         tokyoDate.localSecond != 0;
 
@@ -62,11 +65,18 @@ class ZonedDateTimeExample {
     final dateOnly = DateTime(2024, 6, 15, 0, 0, 0);
     final withTime = DateTime(2024, 6, 15, 14, 30, 0);
 
-    print('   - DateTime(2024,6,15,0,0,0) isDate: ${TomZonedDate.isDate(dateOnly)}');
-    print('   - DateTime(2024,6,15,14,30,0) isDate: ${TomZonedDate.isDate(withTime)}');
+    print(
+      '   - DateTime(2024,6,15,0,0,0) isDate: ${TomZonedDate.isDate(dateOnly)}',
+    );
+    print(
+      '   - DateTime(2024,6,15,14,30,0) isDate: ${TomZonedDate.isDate(withTime)}',
+    );
 
     // Assertions
-    assert(TomZonedDate.isDate(dateOnly) == true, 'Midnight should be date-only');
+    assert(
+      TomZonedDate.isDate(dateOnly) == true,
+      'Midnight should be date-only',
+    );
     assert(TomZonedDate.isDate(withTime) == false, 'Has time component');
   }
 
@@ -86,14 +96,21 @@ class ZonedDateTimeExample {
     );
 
     print('   - Timezone: ${lunchTime.timezone.timezone}');
-    print('   - Local time: ${lunchTime.localHour}:${lunchTime.localMinute.toString().padLeft(2, '0')}:${lunchTime.localSecond.toString().padLeft(2, '0')}');
-    print('   - Local date: ${lunchTime.localYear}-${lunchTime.localMonth}-${lunchTime.localDay}');
+    print(
+      '   - Local time: ${lunchTime.localHour}:${lunchTime.localMinute.toString().padLeft(2, '0')}:${lunchTime.localSecond.toString().padLeft(2, '0')}',
+    );
+    print(
+      '   - Local date: ${lunchTime.localYear}-${lunchTime.localMonth}-${lunchTime.localDay}',
+    );
     print('   - Serialization prefix: "${lunchTime.getSerializationPrefix()}"');
 
     // Assertions
     assert(lunchTime.localHour == 12, 'Hour should be 12');
     assert(lunchTime.localMinute == 30, 'Minute should be 30');
-    assert(lunchTime.getSerializationPrefix() == '@T@', 'TomZonedTime prefix should be @T@');
+    assert(
+      lunchTime.getSerializationPrefix() == '@T@',
+      'TomZonedTime prefix should be @T@',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -109,7 +126,9 @@ class ZonedDateTimeExample {
     );
 
     print('   - Time-only values use epoch date (1970-01-01) internally');
-    print('   - UTC components: ${utcTime.year}-${utcTime.month}-${utcTime.day}');
+    print(
+      '   - UTC components: ${utcTime.year}-${utcTime.month}-${utcTime.day}',
+    );
     print('   - UTC time: ${utcTime.hour}:${utcTime.minute}');
 
     // Assertions
@@ -130,7 +149,9 @@ class ZonedDateTimeExample {
     final zonedDate = TomZonedDate.fromDateTime(existingDate, london);
 
     print('   - Original DateTime: $existingDate');
-    print('   - As TomZonedDate: ${zonedDate.localYear}-${zonedDate.localMonth}-${zonedDate.localDay}');
+    print(
+      '   - As TomZonedDate: ${zonedDate.localYear}-${zonedDate.localMonth}-${zonedDate.localDay}',
+    );
     print('   - Timezone: ${zonedDate.timezone.timezone}');
 
     // For time
@@ -138,10 +159,15 @@ class ZonedDateTimeExample {
     final zonedTime = TomZonedTime.fromDateTime(existingTime, london);
 
     print('   - Original time DateTime: $existingTime');
-    print('   - As TomZonedTime: ${zonedTime.localHour}:${zonedTime.localMinute}:${zonedTime.localSecond}');
+    print(
+      '   - As TomZonedTime: ${zonedTime.localHour}:${zonedTime.localMinute}:${zonedTime.localSecond}',
+    );
 
     // Assertions
-    assert(zonedDate.timezone.timezone == 'Europe/London', 'Timezone should be London');
+    assert(
+      zonedDate.timezone.timezone == 'Europe/London',
+      'Timezone should be London',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -163,19 +189,30 @@ class ZonedDateTimeExample {
 
     final laChristmas = tokyoChristmas.convertToTimezone(losAngeles);
 
-    print('   - Tokyo date: ${tokyoChristmas.localYear}-${tokyoChristmas.localMonth}-${tokyoChristmas.localDay}');
-    print('   - Same moment in LA: ${laChristmas.localYear}-${laChristmas.localMonth}-${laChristmas.localDay}');
+    print(
+      '   - Tokyo date: ${tokyoChristmas.localYear}-${tokyoChristmas.localMonth}-${tokyoChristmas.localDay}',
+    );
+    print(
+      '   - Same moment in LA: ${laChristmas.localYear}-${laChristmas.localMonth}-${laChristmas.localDay}',
+    );
     print('   - (LA is behind Tokyo, so midnight Dec 25 Tokyo = Dec 24 in LA)');
 
     // Time conversion
     final tokyoTime = TomZonedTime(hour: 10, minute: 0, timezone: tokyo);
     final laTime = tokyoTime.convertToTimezone(losAngeles);
 
-    print('   - Tokyo time: ${tokyoTime.localHour}:${tokyoTime.localMinute.toString().padLeft(2, '0')}');
-    print('   - Same moment in LA: ${laTime.localHour}:${laTime.localMinute.toString().padLeft(2, '0')}');
+    print(
+      '   - Tokyo time: ${tokyoTime.localHour}:${tokyoTime.localMinute.toString().padLeft(2, '0')}',
+    );
+    print(
+      '   - Same moment in LA: ${laTime.localHour}:${laTime.localMinute.toString().padLeft(2, '0')}',
+    );
 
     // Assertions
-    assert(laChristmas.timezone.timezone == 'America/Los_Angeles', 'Should be LA timezone');
+    assert(
+      laChristmas.timezone.timezone == 'America/Los_Angeles',
+      'Should be LA timezone',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -186,13 +223,25 @@ class ZonedDateTimeExample {
 
     final tz = TomTimezone.utc;
 
-    final dateTime = TomZonedDateTime(year: 2024, month: 6, day: 15, hour: 12, timezone: tz);
+    final dateTime = TomZonedDateTime(
+      year: 2024,
+      month: 6,
+      day: 15,
+      hour: 12,
+      timezone: tz,
+    );
     final dateOnly = TomZonedDate(year: 2024, month: 6, day: 15, timezone: tz);
     final timeOnly = TomZonedTime(hour: 12, minute: 0, timezone: tz);
 
-    print('   - TomZonedDateTime prefix: "${dateTime.getSerializationPrefix()}" (@X@)');
-    print('   - TomZonedDate prefix: "${dateOnly.getSerializationPrefix()}" (@D@)');
-    print('   - TomZonedTime prefix: "${timeOnly.getSerializationPrefix()}" (@T@)');
+    print(
+      '   - TomZonedDateTime prefix: "${dateTime.getSerializationPrefix()}" (@X@)',
+    );
+    print(
+      '   - TomZonedDate prefix: "${dateOnly.getSerializationPrefix()}" (@D@)',
+    );
+    print(
+      '   - TomZonedTime prefix: "${timeOnly.getSerializationPrefix()}" (@T@)',
+    );
 
     final dateTimeStr = '${dateTime.getSerializationPrefix()}$dateTime';
     final dateOnlyStr = '${dateOnly.getSerializationPrefix()}$dateOnly';
@@ -203,9 +252,18 @@ class ZonedDateTimeExample {
     print('   - Full serialized Time: $timeOnlyStr');
 
     // Assertions
-    assert(dateTime.getSerializationPrefix() == '@X@', 'DateTime prefix should be @X@');
-    assert(dateOnly.getSerializationPrefix() == '@D@', 'Date prefix should be @D@');
-    assert(timeOnly.getSerializationPrefix() == '@T@', 'Time prefix should be @T@');
+    assert(
+      dateTime.getSerializationPrefix() == '@X@',
+      'DateTime prefix should be @X@',
+    );
+    assert(
+      dateOnly.getSerializationPrefix() == '@D@',
+      'Date prefix should be @D@',
+    );
+    assert(
+      timeOnly.getSerializationPrefix() == '@T@',
+      'Time prefix should be @T@',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -222,14 +280,29 @@ class ZonedDateTimeExample {
     final nowDate = TomZonedDate.fromDateTime(now, berlin);
     final nowTime = TomZonedTime.fromDateTime(now, berlin);
 
-    print('   - Current DateTime in Berlin: ${nowDateTime.localHour}:${nowDateTime.localMinute.toString().padLeft(2, '0')}');
-    print('   - Current Date in Berlin: ${nowDate.localYear}-${nowDate.localMonth}-${nowDate.localDay}');
-    print('   - Current Time in Berlin: ${nowTime.localHour}:${nowTime.localMinute.toString().padLeft(2, '0')}');
+    print(
+      '   - Current DateTime in Berlin: ${nowDateTime.localHour}:${nowDateTime.localMinute.toString().padLeft(2, '0')}',
+    );
+    print(
+      '   - Current Date in Berlin: ${nowDate.localYear}-${nowDate.localMonth}-${nowDate.localDay}',
+    );
+    print(
+      '   - Current Time in Berlin: ${nowTime.localHour}:${nowTime.localMinute.toString().padLeft(2, '0')}',
+    );
 
     // Assertions
-    assert(nowDateTime.timezone.timezone == 'Europe/Berlin', 'Should be Berlin timezone');
-    assert(nowDate.timezone.timezone == 'Europe/Berlin', 'Should be Berlin timezone');
-    assert(nowTime.timezone.timezone == 'Europe/Berlin', 'Should be Berlin timezone');
+    assert(
+      nowDateTime.timezone.timezone == 'Europe/Berlin',
+      'Should be Berlin timezone',
+    );
+    assert(
+      nowDate.timezone.timezone == 'Europe/Berlin',
+      'Should be Berlin timezone',
+    );
+    assert(
+      nowTime.timezone.timezone == 'Europe/Berlin',
+      'Should be Berlin timezone',
+    );
   }
 
   // -------------------------------------------------------------------------

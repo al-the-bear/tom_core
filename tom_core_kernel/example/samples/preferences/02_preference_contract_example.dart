@@ -76,8 +76,9 @@ class PreferenceKeyRuleExample {
 
     assert(appKeyAccepted, 'A namespaced application key is a legal key');
     assert(
-      refusedCauses.join(',') == 'empty,leading_character,'
-              'illegal_character,too_long' &&
+      refusedCauses.join(',') ==
+              'empty,leading_character,'
+                  'illegal_character,too_long' &&
           refusedCauses.length == 4,
       'The refusal names the reason, so a caller can branch on it',
     );

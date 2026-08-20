@@ -56,7 +56,10 @@ class TomMapExample {
     // Assertions
     assert(settings.length == 3, 'Map should have 3 entries');
     assert(~settings['darkMode']! == true, 'darkMode should be true');
-    assert(~settings['notifications']! == false, 'notifications should be false');
+    assert(
+      ~settings['notifications']! == false,
+      'notifications should be false',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -100,10 +103,12 @@ class TomMapExample {
     // WeakReference, so the wrapper `>>` hands back is the only strong
     // reference keeping the callback alive; discard it and notifications stop
     // at the next garbage collection, silently and nondeterministically.
-    final configObserver = config >> (obs) {
-      mapNotifyCount++;
-      print('   Map notification #$mapNotifyCount');
-    };
+    final configObserver =
+        config >>
+        (obs) {
+          mapNotifyCount++;
+          print('   Map notification #$mapNotifyCount');
+        };
 
     config['theme'] = TomString('light');
     config['language'] = TomString('en');
@@ -139,13 +144,18 @@ class TomMapExample {
     // Modify existing value
     counters['clicks']! | 75;
 
-    print('   counters: page_views=${~counters['page_views']!}, clicks=${~counters['clicks']!}');
+    print(
+      '   counters: page_views=${~counters['page_views']!}, clicks=${~counters['clicks']!}',
+    );
     print('   Total notifications: $updateNotifyCount');
 
     // Assertions
     assert(~counters['page_views']! == 150, 'page_views should be 150');
     assert(~counters['clicks']! == 75, 'clicks should be 75');
-    assert(updateNotifyCount == 2, 'Should notify on replacement and value change');
+    assert(
+      updateNotifyCount == 2,
+      'Should notify on replacement and value change',
+    );
 
     counters.removeObserver(countersObserver);
   }
@@ -261,8 +271,14 @@ class TomMapExample {
 
     // Assertions
     assert(profiles.length == 2, 'Should have 2 profiles');
-    assert(~profiles['alice']!.displayName == 'Alice', 'Alice display name should match');
-    assert(~profiles['alice']!.followerCount == 1100, 'Alice follower count should be updated');
+    assert(
+      ~profiles['alice']!.displayName == 'Alice',
+      'Alice display name should match',
+    );
+    assert(
+      ~profiles['alice']!.followerCount == 1100,
+      'Alice follower count should be updated',
+    );
   }
 
   // -------------------------------------------------------------------------

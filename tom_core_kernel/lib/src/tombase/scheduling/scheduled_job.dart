@@ -437,11 +437,11 @@ class TomScheduledJobs {
             : 'scheduled_job.multiple_schedules',
         declared.isEmpty
             ? "The job '$name' on ${_nameOf(candidate)} declares no "
-                'trigger. Set exactly one of cron:, interval:, calendar: or '
-                'event:.'
+                  'trigger. Set exactly one of cron:, interval:, calendar: or '
+                  'event:.'
             : "The job '$name' on ${_nameOf(candidate)} declares "
-                '${declared.length} triggers (${declared.join(', ')}). Exactly '
-                'one of cron:, interval:, calendar: or event: may be set.',
+                  '${declared.length} triggers (${declared.join(', ')}). Exactly '
+                  'one of cron:, interval:, calendar: or event: may be set.',
         parameters: {'job': name, 'declared': declared},
         autoLog: true,
       );
@@ -552,7 +552,8 @@ class TomScheduledJobs {
     if (at != null) {
       final parts = at.split(':');
       if (parts.length != 2) fail("at: must be HH:MM; got '$at'");
-      hour = int.tryParse(parts[0]) ?? fail("at: hour is not a number in '$at'");
+      hour =
+          int.tryParse(parts[0]) ?? fail("at: hour is not a number in '$at'");
       minute =
           int.tryParse(parts[1]) ?? fail("at: minute is not a number in '$at'");
     }
@@ -583,7 +584,9 @@ class TomScheduledJobs {
       final ordinal = parts[0] == 'last'
           ? -1
           : (int.tryParse(parts[0]) ??
-                fail("weekday: ordinal is not a number or 'last': '${parts[0]}'"));
+                fail(
+                  "weekday: ordinal is not a number or 'last': '${parts[0]}'",
+                ));
       final weekday =
           _weekdays[parts[1]] ?? fail("unknown weekday '${parts[1]}'");
       return TomCalendarSchedule.weekdayOfMonth(

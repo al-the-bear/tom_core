@@ -36,7 +36,7 @@ class BackchannelWorkerContext extends TomWorkerContext {
   bool workerInitialized = false;
 
   BackchannelWorkerContext()
-      : super(defaultTomEnvironment, platformLinux, [], 'Backchannel');
+    : super(defaultTomEnvironment, platformLinux, [], 'Backchannel');
 
   @override
   Future<void> initializeIsolate() async {
@@ -172,10 +172,7 @@ Future<void> run() async {
   final canSendFromCreator = TomWorker.canSendToCreator();
 
   final context = BackchannelWorkerContext();
-  final worker = await TomWorker.spawn(
-    TomWorker.startRemoteIsolate,
-    context,
-  );
+  final worker = await TomWorker.spawn(TomWorker.startRemoteIsolate, context);
 
   final canSendFromWorker =
       await worker.executeCommand(CanSendToCreatorProbe()) as bool;
@@ -199,8 +196,9 @@ Future<void> run() async {
   // -------------------------------------------------------------------------
   print('3. Fire-and-forget notification to the creator:');
 
-  final sendAck =
-      await worker.executeCommand(NotifyCreatorCommand('worker-online'));
+  final sendAck = await worker.executeCommand(
+    NotifyCreatorCommand('worker-online'),
+  );
 
   // sendToCreator is one-way; give the creator a moment to process the message.
   await Future.delayed(Duration(milliseconds: 20));

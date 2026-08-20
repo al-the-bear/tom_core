@@ -109,8 +109,10 @@ class WorkerPoolCreationExample {
     }
     emptyPoolRejected = sizeError != null;
 
-    assert(emptyPoolRejected,
-        'withSize(0, ...) should throw TomWorkerException');
+    assert(
+      emptyPoolRejected,
+      'withSize(0, ...) should throw TomWorkerException',
+    );
 
     return pool;
   }
@@ -157,8 +159,9 @@ class ParallelExecutionExample {
     final ranges = [1000, 2000, 3000, 4000];
     final stopwatch = Stopwatch()..start();
 
-    final parallelFutures =
-        ranges.map((n) async => pool.execute(CountPrimesCommand(n)));
+    final parallelFutures = ranges.map(
+      (n) async => pool.execute(CountPrimesCommand(n)),
+    );
     final results = await Future.wait(parallelFutures);
 
     executionTimeMs = stopwatch.elapsedMilliseconds;
@@ -228,7 +231,9 @@ class SequentialVsParallelExample {
 
     // Parallel execution: fan the tasks out across the pool, then await all.
     final parStopwatch = Stopwatch()..start();
-    final futures = ranges.map((n) => pool.execute(CountPrimesCommand(n))).toList();
+    final futures = ranges
+        .map((n) => pool.execute(CountPrimesCommand(n)))
+        .toList();
     await Future.wait(futures);
     parallelTimeMs = parStopwatch.elapsedMilliseconds;
 
@@ -265,8 +270,10 @@ class PoolCleanupExample {
 
     poolClosedSuccessfully = closedError != null;
 
-    assert(closedError is TomWorkerException,
-        'execute() after close() should throw TomWorkerException');
+    assert(
+      closedError is TomWorkerException,
+      'execute() after close() should throw TomWorkerException',
+    );
     assert(poolClosedSuccessfully, 'Pool cleanup should complete successfully');
   }
 }

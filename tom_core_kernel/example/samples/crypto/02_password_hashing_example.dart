@@ -34,7 +34,10 @@ class BasicHashingExample {
     assert(hashContainsSeparator, 'Hash should contain salt\$hash separator');
     assert(salt!.isNotEmpty, 'Salt should not be empty');
     assert(hashValue!.isNotEmpty, 'Hash value should not be empty');
-    assert(spec == TomPasswordHasher.globalSettingDefaultHashSpec, 'Spec should match default');
+    assert(
+      spec == TomPasswordHasher.globalSettingDefaultHashSpec,
+      'Spec should match default',
+    );
   }
 }
 
@@ -151,8 +154,12 @@ class DifferentHashesExample {
 
   static void example5DifferentHashes() {
     const samePassword = 'TestPassword';
-    final (resultHash1, resultSpec1) = TomPasswordHasher.hashPassword(samePassword);
-    final (resultHash2, resultSpec2) = TomPasswordHasher.hashPassword(samePassword);
+    final (resultHash1, resultSpec1) = TomPasswordHasher.hashPassword(
+      samePassword,
+    );
+    final (resultHash2, resultSpec2) = TomPasswordHasher.hashPassword(
+      samePassword,
+    );
 
     hash1 = resultHash1;
     hash2 = resultHash2;
@@ -163,8 +170,16 @@ class DifferentHashesExample {
     specsAreSame = spec1 == spec2;
 
     // Both should still verify correctly
-    final verify1 = TomPasswordHasher.verifyPassword(samePassword, hash1!, spec1!);
-    final verify2 = TomPasswordHasher.verifyPassword(samePassword, hash2!, spec2!);
+    final verify1 = TomPasswordHasher.verifyPassword(
+      samePassword,
+      hash1!,
+      spec1!,
+    );
+    final verify2 = TomPasswordHasher.verifyPassword(
+      samePassword,
+      hash2!,
+      spec2!,
+    );
     bothVerifyCorrectly = verify1 && verify2;
 
     assert(hashesAreDifferent, 'Same password should produce different hashes');

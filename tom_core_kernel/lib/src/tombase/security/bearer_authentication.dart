@@ -236,7 +236,9 @@ class TomBearerAuthentication {
     // StateError rather than letting a null-check operator throw deep inside.
     final payload = t.payload;
     if (payload == null) {
-      throw StateError("Can't construct a principal from a token without payload");
+      throw StateError(
+        "Can't construct a principal from a token without payload",
+      );
     }
     final secret = t.secretData;
 
@@ -294,7 +296,7 @@ class TomBearerAuthentication {
     return TomPrincipal(
       authenticated:
           (str("username") ?? TomUser.guestUsername) != TomUser.guestUsername &&
-              !requires2FA,
+          !requires2FA,
       requires2FA: requires2FA,
       twoFactorType: str(Tom2FAClaims.type),
       context: mapFrom(secret, "context"),
@@ -546,8 +548,9 @@ class TomBearerAuthentication {
       // principal says so and nobody has reported it satisfied.
       final stillOwed = principal.requires2FA && !twoFactorSatisfied;
       publicInfo[Tom2FAClaims.requires2FA] = stillOwed ? "true" : "false";
-      publicInfo[Tom2FAClaims.type] =
-          stillOwed ? principal.twoFactorType : null;
+      publicInfo[Tom2FAClaims.type] = stillOwed
+          ? principal.twoFactorType
+          : null;
     }
 
     TomAccessControlInformation aci = definition != null
