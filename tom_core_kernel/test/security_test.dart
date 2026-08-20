@@ -2903,6 +2903,39 @@ void main() {
         expect(restored.requires2FA, isFalse);
       });
 
+      // The two flags disagree, and the challenge wins. `twoFactorSatisfied` is
+      // read only on the branch that has no challenge, so a caller passing both
+      // gets an interim token — the fail-safe direction. Asserted because the
+      // combination is the one a reader is most likely to guess wrong about:
+      // "satisfied" sounds final, but issuing a challenge says the opposite.
+      test('a challenge outranks twoFactorSatisfied', () {
+        final (
+          publicInfo,
+          privateInfo,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+          createTestPrincipal(requires2FA: true, twoFactorType: 'totp'),
+          null,
+          'US',
+          'en',
+          challenge: challenge(),
+          twoFactorVerification: const {'nonce': 'n-1'},
+          twoFactorSatisfied: true,
+        );
+
+        expect(publicInfo[Tom2FAClaims.requires2FA], equals('true'));
+        expect(Tom2FAChallenge.fromClaims(publicInfo.cast()), isNotNull);
+        // A challenge is in flight, so the blob it was minted for rides along.
+        expect(
+          privateInfo[Tom2FAClaims.verificationData],
+          equals({'nonce': 'n-1'}),
+        );
+
+        final restored = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo),
+        );
+        expect(restored.authenticated, isFalse);
+      });
+
       // Fail-safe by construction: omitting `twoFactorSatisfied` produces an
       // unusable interim token, never an over-privileged one.
       test('forgetting to report satisfaction keeps the factor owed', () {

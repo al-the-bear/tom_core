@@ -140,6 +140,21 @@ anyone who was writing them.
 
 ### Changed
 
+- **The mirror's `convertPrincipalToTokenPayload` row no longer misstates both
+  of its two-factor claims.** It said `requires2FA` is cleared when
+  `twoFactorSatisfied` is `true`, and that `twoFactorVerification` goes into the
+  private payload full stop. Neither holds: a supplied `challenge` projects
+  `requires2FA: "true"` unconditionally and `twoFactorSatisfied` is read only on
+  the branch that has no challenge, while `twoFactorVerification` is written
+  *only* alongside a challenge and is otherwise dropped. Both readings were
+  dangerous in the same direction — a reader trusting the row would expect
+  `(challenge: c, twoFactorSatisfied: true)` to mint a completed session and
+  would ship the mechanism's server-only blob expecting it to be persisted. The
+  row now states both conditions and the reasons behind them (fail-safe claim; a
+  secret must not outlive its challenge). The source dartdoc was already
+  correct. A test pins the case the row got wrong — a challenge outranks
+  `twoFactorSatisfied` — which was the one combination the suite never exercised.
+
 - **The security API mirror lists all six two-factor classes.** Its table of
   contents, class hierarchy and `two_factor.dart` overview each named three —
   `Tom2FAClaims`, `Tom2FAChallenge`, `TomTotp` — while the reference body
