@@ -129,6 +129,28 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomAuthorizationGroup`'s documentation stopped naming a parameter that
+  does not exist.** The class dartdoc pointed at `[authorizationGroup]` — a
+  member `TomAuthorizable` has never had, so the reference was dead — and both
+  the dartdoc and `doc/security/security.md` carried a worked example reading
+  `TomTextField(tomId: 'street', authorizationGroup: shipping, ...)`, which
+  would not compile: Tom Flutter UI's input widgets take `tomGroup`. The
+  prose doc contradicted itself fourteen lines apart, its own
+  `TomAuthorizable` table having listed `tomGroup` correctly all along. Both
+  samples now lead with the kernel-level `register(element)` form, which is
+  what this package actually offers and what its compiled example asserts, and
+  the widget snippet is marked as belonging to the UI package. The two live
+  references are qualified (`[TomAuthorizable.tomId]` /
+  `[TomAuthorizable.tomGroup]`) so they resolve from the group's scope rather
+  than silently rendering as plain text.
+
+  Worth knowing for anyone writing against either layer: Tom Flutter UI really
+  does use both spellings — `tomGroup` on inputs and other `TomNodeBase`
+  widgets, `authorizationGroup` on `TomForm`, `TomActionController` and
+  `TomExpansionPanel`. That split is what made the error easy to write, and
+  both doc sites now say so instead of leaving the next reader to rediscover
+  it.
+
 - **`TomAuthorizationGroup`'s inspection helpers now agree with each other
   about who is in the group.** `isUniform` and `mostRestrictive` skipped
   members whose `effectiveAuthState` is `none`; `members`, `memberCount`,

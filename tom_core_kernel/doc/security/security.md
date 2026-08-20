@@ -321,8 +321,12 @@ automatically. The group's path is `<scopePath>.<groupId>` (see the
 final shipping = TomAuthorizationGroup('shipping',
     mode: AuthGroupMode.controlsAll);
 shipping.register(streetField); // and shipping.unregister(streetField)
-// TomTextField(tomId: 'street', authorizationGroup: shipping, ...)
-// TomTextField(tomId: 'city',   authorizationGroup: shipping, ...)
+// Declaratively, in Tom Flutter UI — input widgets take the group as
+// `tomGroup` and register themselves. Mind the name: form- and
+// container-level widgets in that package call the same thing
+// `authorizationGroup`.
+// TomTextField(tomId: 'street', tomGroup: shipping, ...)
+// TomTextField(tomId: 'city',   tomGroup: shipping, ...)
 ```
 
 Members join and leave via `register(element)` / `unregister(element)`. The

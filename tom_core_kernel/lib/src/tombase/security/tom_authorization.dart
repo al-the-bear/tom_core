@@ -127,14 +127,27 @@ enum AuthGroupMode {
 
 /// A group of related Tom elements that share authorization control.
 ///
-/// Members implement [TomAuthorizable], ensuring type-safe access to [tomId]
-/// and [authorizationGroup] properties.
+/// Members implement [TomAuthorizable], which is what gives the group
+/// type-safe access to their [TomAuthorizable.tomId] and
+/// [TomAuthorizable.tomGroup] properties.
+///
+/// Membership is established by registering with the group:
 ///
 /// ```dart
-/// final shippingGroup = TomAuthorizationGroup('shipping',
+/// final shipping = TomAuthorizationGroup('shipping',
 ///     mode: AuthGroupMode.controlsAll);
-/// TomTextField(tomId: 'street', authorizationGroup: shippingGroup, ...),
-/// TomTextField(tomId: 'city', authorizationGroup: shippingGroup, ...),
+/// shipping.register(streetField);
+/// shipping.register(cityField);
+/// ```
+///
+/// UI packages built on this kernel wire the same thing up declaratively. In
+/// Tom Flutter UI the input widgets take the group as `tomGroup` and register
+/// themselves — note the name, since form- and container-level widgets in that
+/// package spell the same concept `authorizationGroup`:
+///
+/// ```dart
+/// TomTextField(tomId: 'street', tomGroup: shipping, ...),
+/// TomTextField(tomId: 'city', tomGroup: shipping, ...),
 /// ```
 ///
 /// Group paths follow the pattern: `<scopePath>.<groupId>`.
