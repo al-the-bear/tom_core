@@ -398,11 +398,7 @@ class ConfigResourceProviderExample {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('CONFIGURATION RESOURCE PROVIDER EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 02: Configuration Resource Provider Example ===\n');
 
   ConfigResourceProviderExample.example1CreateFromMap();
   ConfigResourceProviderExample.example2ExistsCheck();

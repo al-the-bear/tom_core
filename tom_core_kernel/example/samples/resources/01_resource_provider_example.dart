@@ -30,6 +30,12 @@ class TextResourceFromMapExample {
     nestedError = textResources.getText('messages.errors.notFound');
     resourcesLoaded = true;
 
+    print('1. Reading nested text out of a map:');
+    print('   getText("app.title"): $appTitle');
+    print('   getText("messages.welcome"): $welcomeMessage');
+    print('   getText("messages.errors.notFound"): $nestedError');
+    print('');
+
     assert(appTitle == 'My Application', 'App title should match');
     assert(
       welcomeMessage == 'Welcome to our app!',
@@ -63,6 +69,11 @@ class LoaderFunctionExample {
     requiredValidation = loadedResources.getText('validation.required');
     loaderUsed = true;
 
+    print('2. Building a provider from a loader function:');
+    print('   getText("labels.username"): $usernameLabel');
+    print('   getText("validation.required"): $requiredValidation');
+    print('');
+
     assert(usernameLabel == 'Username', 'Username label should match');
     assert(
       requiredValidation == 'This field is required',
@@ -91,6 +102,11 @@ class ResourceExistenceExample {
 
     existenceChecksWork = existsAppTitle && !existsMissing;
 
+    print('3. Checking whether a key exists:');
+    print('   exists("app.title"): $existsAppTitle');
+    print('   exists("nonexistent.path"): $existsMissing');
+    print('');
+
     assert(existsAppTitle, 'app.title should exist');
     assert(!existsMissing, 'nonexistent.path should not exist');
     assert(existenceChecksWork, 'Existence checks should work');
@@ -115,6 +131,10 @@ class FallbackBehaviorExample {
 
     // When key is missing, the key itself is returned
     fallbackReturnsKey = missingKeyValue == missingKey;
+
+    print('4. Fallback for a missing key:');
+    print('   getText("$missingKey"): "$missingKeyValue" (the key itself)');
+    print('');
 
     assert(
       missingKeyValue == missingKey,
@@ -144,6 +164,12 @@ class ConfigResourceExample {
     apiTimeout = configProvider.getText('api.timeout').toString();
     darkModeEnabled = configProvider.getText('features.darkMode').toString();
     configLoaded = true;
+
+    print('5. TomConfigResourceProvider for configuration values:');
+    print('   getText("api.baseUrl"): $apiBaseUrl');
+    print('   getText("api.timeout"): $apiTimeout');
+    print('   getText("features.darkMode"): $darkModeEnabled');
+    print('');
 
     assert(
       apiBaseUrl == 'https://api.example.com',
@@ -179,6 +205,11 @@ class ConfigLoaderExample {
 
     configLoaderWorks = environment == 'development' && logLevel == 'debug';
 
+    print('6. Config provider built from a loader function:');
+    print('   getText("environment"): $environment');
+    print('   getText("logging.level"): $logLevel');
+    print('');
+
     assert(environment == 'development', 'Environment should be development');
     assert(logLevel == 'debug', 'Log level should be debug');
     assert(configLoaderWorks, 'Config loader should work');
@@ -190,6 +221,8 @@ class ConfigLoaderExample {
 // =============================================================================
 
 void run() {
+  print('=== 01: Resource Provider Example ===\n');
+
   TextResourceFromMapExample.example1TextResourceFromMap();
   LoaderFunctionExample.example2LoaderFunction();
   ResourceExistenceExample.example3ResourceExistence();
