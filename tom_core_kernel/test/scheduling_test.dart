@@ -1271,6 +1271,148 @@ void main() {
       );
     });
 
+    // A retry policy is checked here rather than in its own constructor
+    // because that constructor must stay `const` — `@TomScheduledJob(retry:
+    // TomRetryPolicy(...))` is an annotation argument, and Dart requires those
+    // to be compile-time constants. A const constructor has no body to throw
+    // from, so the job definition, which every policy passes through on its way
+    // into the scheduler, is where a bad one is caught.
+    group('retry policy validation', () {
+      void expectRejected(TomRetryPolicy policy, String key) {
+        expect(
+          () => TomJobDefinition(
+            name: 'job',
+            schedule: TomCronSchedule('@daily'),
+            body: (_) => OkCommand(),
+            retryPolicy: policy,
+          ),
+          throwsA(isA<TomScheduleException>().having((e) => e.key, 'key', key)),
+        );
+      }
+
+      test('rejects maxAttempts below 1', () {
+        // 0 is the trap the check exists for: it reads as "unlimited" and
+        // behaves as `none`, because allowsRetryAfter is `attempt <
+        // maxAttempts` and no attempt is below zero.
+        expectRejected(
+          const TomRetryPolicy(maxAttempts: 0),
+          'schedule.retry.max_attempts',
+        );
+      });
+
+      test('rejects a multiplier below 1', () {
+        // A multiplier under 1 shrinks the wait on every failure — 10s, 5s,
+        // 2.5s. Accelerating under failure is the exact pathology exponential
+        // backoff exists to prevent.
+        expectRejected(
+          const TomRetryPolicy(multiplier: 0.5),
+          'schedule.retry.multiplier',
+        );
+      });
+
+      test('rejects jitter below 0', () {
+        // Negative jitter was previously accepted and then silently ignored by
+        // the `jitter > 0` guard in backoffFor, so the caller's argument had no
+        // effect and nothing said so.
+        expectRejected(
+          const TomRetryPolicy(jitter: -1),
+          'schedule.retry.jitter',
+        );
+      });
+
+      test('rejects jitter above 1', () {
+        // The dartdoc has always said 0-1. Above 1 the reserved headroom
+        // exceeds the ceiling, so the plateau collapses below the initial
+        // backoff.
+        expectRejected(
+          const TomRetryPolicy(jitter: 1.5),
+          'schedule.retry.jitter',
+        );
+      });
+
+      test('rejects a negative initialBackoff', () {
+        expectRejected(
+          const TomRetryPolicy(initialBackoff: Duration(seconds: -1)),
+          'schedule.retry.initial_backoff',
+        );
+      });
+
+      test('rejects a non-positive maxBackoff', () {
+        // Zero is rejected here while a zero initialBackoff is allowed: "retry
+        // at once" is a real choice, but a zero *ceiling* clamps every backoff
+        // to nothing and turns maxAttempts into a tight spin.
+        expectRejected(
+          const TomRetryPolicy(maxBackoff: Duration.zero),
+          'schedule.retry.max_backoff',
+        );
+      });
+
+      test('names the offending job and value in the exception', () {
+        // The check runs where the job name is known, which is the reason it
+        // is worth running here: "job X has maxAttempts 0" is actionable in a
+        // way that "a policy is invalid" is not.
+        try {
+          TomJobDefinition(
+            name: 'nightly-report',
+            schedule: TomCronSchedule('@daily'),
+            body: (_) => OkCommand(),
+            retryPolicy: const TomRetryPolicy(maxAttempts: 0),
+          );
+          fail('expected a TomScheduleException');
+        } on TomScheduleException catch (e) {
+          expect(e.parameters?['job'], 'nightly-report');
+          expect(e.parameters?['maxAttempts'], 0);
+        }
+      });
+
+      test('accepts the boundary values', () {
+        // 1 attempt is `none`; a multiplier of exactly 1 is a constant,
+        // non-growing backoff, which is a legitimate choice; 0 and 1 jitter are
+        // the documented ends of the range; a zero initialBackoff retries at
+        // once.
+        expect(
+          () => TomJobDefinition(
+            name: 'job',
+            schedule: TomCronSchedule('@daily'),
+            body: (_) => OkCommand(),
+            retryPolicy: const TomRetryPolicy(
+              maxAttempts: 1,
+              multiplier: 1,
+              jitter: 0,
+              initialBackoff: Duration.zero,
+              maxBackoff: Duration(microseconds: 1),
+            ),
+          ),
+          returnsNormally,
+        );
+        expect(
+          () => TomJobDefinition(
+            name: 'job',
+            schedule: TomCronSchedule('@daily'),
+            body: (_) => OkCommand(),
+            retryPolicy: const TomRetryPolicy(jitter: 1),
+          ),
+          returnsNormally,
+        );
+      });
+
+      test('accepts the two policies the module ships', () {
+        // none and the default are constructed at every annotation site, so a
+        // rule that rejected either would break the module's own front door.
+        for (final policy in const [TomRetryPolicy.none, TomRetryPolicy()]) {
+          expect(
+            () => TomJobDefinition(
+              name: 'job',
+              schedule: TomCronSchedule('@daily'),
+              body: (_) => OkCommand(),
+              retryPolicy: policy,
+            ),
+            returnsNormally,
+          );
+        }
+      });
+    });
+
     test('defaults to runOnce, no overlap, and a retrying policy', () {
       final job = TomJobDefinition(
         name: 'job',

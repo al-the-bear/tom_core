@@ -327,7 +327,9 @@ TomJobDefinition({
 ```
 
 Validates eagerly, throwing `TomScheduleException` for an empty `name`, a
-`catchUpLimit` below 1, or a non-positive `timeout`.
+`catchUpLimit` below 1, or a non-positive `timeout`. It also calls
+`retryPolicy.validate(name)`, so an out-of-range retry policy is rejected here
+rather than at the constructor that built it — see `TomRetryPolicy.validate`.
 
 #### Properties
 
@@ -365,6 +367,13 @@ const TomRetryPolicy({
 })
 ```
 
+The constructor checks nothing, and has to stay that way: a policy appears as a
+`@TomScheduledJob(retry: …)` argument, Dart requires annotation arguments to be
+compile-time constants, and a `const` constructor has no body to throw from. The
+ranges are enforced by `validate`, which `TomJobDefinition` calls — the point
+every policy passes through on its way into a scheduler, and the only one where
+a job name exists to name in the message.
+
 #### Static Properties
 
 | Property | Type | Description |
@@ -375,11 +384,11 @@ const TomRetryPolicy({
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `maxAttempts` | `int` | Total attempts, including the first. |
-| `initialBackoff` | `Duration` | Delay before attempt 2. |
-| `multiplier` | `double` | Growth factor per attempt. |
-| `maxBackoff` | `Duration` | Ceiling on the delay, jitter included; the curve plateaus at `maxBackoff / (1 + jitter)`. |
-| `jitter` | `double` | Random fraction added to each delay, so retries across a cluster spread out. |
+| `maxAttempts` | `int` | Total attempts, including the first. At least 1. |
+| `initialBackoff` | `Duration` | Delay before attempt 2. Non-negative; zero retries at once. |
+| `multiplier` | `double` | Growth factor per attempt. At least 1; exactly 1 is a constant delay. |
+| `maxBackoff` | `Duration` | Ceiling on the delay, jitter included; the curve plateaus at `maxBackoff / (1 + jitter)`. Positive. |
+| `jitter` | `double` | Random fraction added to each delay, so retries across a cluster spread out. `0`-`1`; `0` disables it. |
 
 #### Methods
 
@@ -387,6 +396,7 @@ const TomRetryPolicy({
 | ------ | --------- | ----------- |
 | `allowsRetryAfter` | `bool allowsRetryAfter(int attempt)` | Whether another attempt is permitted after `attempt`. |
 | `backoffFor` | `Duration backoffFor(int attempt, [Random? random])` | The delay before the given attempt, jitter applied, never above `maxBackoff`. Without a `Random`, the unjittered low end. |
+| `validate` | `void validate(String job)` | Throws a `schedule.retry.*` `TomScheduleException` if a field is out of range, naming `job`. Called by `TomJobDefinition`. |
 | `toString` | `String toString()` | *(override)* The policy's parameters. |
 
 ### TomJobDispatcher

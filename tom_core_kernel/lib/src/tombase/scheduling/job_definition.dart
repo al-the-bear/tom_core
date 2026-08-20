@@ -79,17 +79,36 @@ enum TomMissedWindowPolicy {
 /// That pile-up is worst once every job has saturated at the ceiling, which is
 /// what a long outage produces, so the curve plateaus a jitter's width below
 /// [maxBackoff] rather than clamping the jittered value. See [backoffFor].
+///
+/// The fields have ranges — `maxAttempts >= 1`, `multiplier >= 1`,
+/// `jitter` in `0..1`, a non-negative [initialBackoff] and a positive
+/// [maxBackoff] — enforced by [validate] rather than by the constructor, which
+/// must stay `const` for annotation use.
 class TomRetryPolicy {
   /// Total attempts including the first, so `1` means "no retry".
+  ///
+  /// At least 1. `0` is rejected rather than read as "unlimited": it would
+  /// behave as [none], since [allowsRetryAfter] asks whether the attempt number
+  /// is below this and no attempt is below zero.
   final int maxAttempts;
 
   /// The delay before the second attempt.
+  ///
+  /// May be zero, which retries at once. Never negative.
   final Duration initialBackoff;
 
   /// The factor each successive backoff is multiplied by.
+  ///
+  /// At least 1. Below 1 the "backoff" would shrink on every failure — 10 s,
+  /// 5 s, 2.5 s — which is the pathology exponential backoff exists to prevent.
+  /// Exactly 1 is allowed and means a constant delay between attempts.
   final double multiplier;
 
   /// The ceiling backoff never exceeds, [jitter] included.
+  ///
+  /// Positive, where [initialBackoff] need only be non-negative: retrying at
+  /// once is a real choice, but a zero ceiling clamps every backoff to nothing
+  /// and turns [maxAttempts] into a tight spin against whatever just failed.
   ///
   /// Because jitter is added on top, the exponential curve plateaus at
   /// `maxBackoff / (1 + jitter)` — with the defaults, 27 min 16 s under the
@@ -100,10 +119,18 @@ class TomRetryPolicy {
   ///
   /// Applied additively upward only, so jitter never makes a retry earlier than
   /// the backoff the policy promised, and never later than [maxBackoff], whose
-  /// plateau reserves the room it needs.
+  /// plateau reserves the room it needs. `0` disables jitter; a negative value
+  /// is rejected rather than read as "off", since it would silently mean that.
   final double jitter;
 
   /// Creates a retry policy.
+  ///
+  /// The arguments are **not** checked here. This constructor has to stay
+  /// `const` — `@TomScheduledJob(retry: TomRetryPolicy(…))` is an annotation
+  /// argument, and Dart requires those to be compile-time constants — and a
+  /// `const` constructor has no body to throw from. The checks therefore run in
+  /// [validate], which [TomJobDefinition] calls; see there for why that is the
+  /// honest boundary rather than merely the available one.
   const TomRetryPolicy({
     this.maxAttempts = 3,
     this.initialBackoff = const Duration(seconds: 30),
@@ -114,6 +141,63 @@ class TomRetryPolicy {
 
   /// A policy that never retries: one attempt, and a failure is final.
   static const TomRetryPolicy none = TomRetryPolicy(maxAttempts: 1);
+
+  /// Throws a `schedule.retry.*` [TomScheduleException] if this policy would
+  /// misbehave, naming [job] so the report identifies which one to fix.
+  ///
+  /// Called by [TomJobDefinition], which every policy passes through on its way
+  /// into a scheduler. That placement is deliberate rather than a workaround
+  /// for the `const` constructor: an unattached policy governs nothing, so the
+  /// moment a bad value starts producing wrong answers is the moment a job
+  /// adopts it — and only then is there a name to put in the message.
+  ///
+  /// Each rule below rejects a value that is currently accepted and then
+  /// quietly does the wrong thing, which is the shared reason they are errors
+  /// and not merely unusual settings.
+  void validate(String job) {
+    if (maxAttempts < 1) {
+      throw TomScheduleException(
+        'schedule.retry.max_attempts',
+        'maxAttempts counts the first attempt, so it must be at least 1 '
+            '(1 means "no retry"); got $maxAttempts.',
+        parameters: {'job': job, 'maxAttempts': maxAttempts},
+      );
+    }
+    if (multiplier < 1) {
+      throw TomScheduleException(
+        'schedule.retry.multiplier',
+        'multiplier must be at least 1, or the backoff shrinks on every '
+            'failure instead of growing; got $multiplier.',
+        parameters: {'job': job, 'multiplier': multiplier},
+      );
+    }
+    if (jitter < 0 || jitter > 1) {
+      throw TomScheduleException(
+        'schedule.retry.jitter',
+        'jitter is a fraction of the computed backoff and must be 0..1; '
+            'got $jitter.',
+        parameters: {'job': job, 'jitter': jitter},
+      );
+    }
+    if (initialBackoff < Duration.zero) {
+      throw TomScheduleException(
+        'schedule.retry.initial_backoff',
+        'initialBackoff cannot be negative; got $initialBackoff.',
+        parameters: {'job': job, 'initialBackoff': '$initialBackoff'},
+      );
+    }
+    // Positive, where initialBackoff need only be non-negative: retrying at
+    // once is a real choice, but a zero ceiling clamps every backoff to nothing
+    // and turns maxAttempts into a tight spin against whatever just failed.
+    if (maxBackoff <= Duration.zero) {
+      throw TomScheduleException(
+        'schedule.retry.max_backoff',
+        'maxBackoff is the ceiling every backoff is clamped to and must be '
+            'positive; got $maxBackoff.',
+        parameters: {'job': job, 'maxBackoff': '$maxBackoff'},
+      );
+    }
+  }
 
   /// Whether an attempt numbered [attempt] may be followed by another.
   bool allowsRetryAfter(int attempt) => attempt < maxAttempts;
@@ -137,8 +221,10 @@ class TomRetryPolicy {
     // fleet to [maxBackoff] together. Reserving the headroom keeps the full
     // spread there, at the cost of the plateau sitting below the ceiling.
     //
-    // A negative [jitter] reserves nothing, matching the guard below that
-    // declines to apply it.
+    // The `> 0` guards keep this arithmetic total for a policy that never
+    // reached [validate] — one built by hand and used without a job. A
+    // registered policy cannot be negative, so for every policy the scheduler
+    // actually runs these guards are simply never the deciding branch.
     final headroom = 1 + (jitter > 0 ? jitter : 0);
     final plateau = maxBackoff.inMicroseconds / headroom;
     var micros = (scaled.isFinite ? scaled.clamp(0, plateau) : plateau).round();
@@ -536,6 +622,10 @@ class TomJobDefinition {
         parameters: {'job': name},
       );
     }
+    // The policy cannot check itself: its constructor is `const` so that it can
+    // appear in a @TomScheduledJob annotation. This is where it becomes live,
+    // so this is where it is checked.
+    retryPolicy.validate(name);
   }
 
   @override

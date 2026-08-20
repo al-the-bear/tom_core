@@ -539,6 +539,16 @@ capping the jittered value is what keeps the spread alive once every job has
 saturated, which is the state a long outage leaves a fleet in and precisely the
 pile-up jitter exists to prevent.
 
+The fields have ranges — `maxAttempts >= 1`, `multiplier >= 1`, `jitter` in
+`0..1`, a non-negative `initialBackoff` and a positive `maxBackoff` — and a
+value outside them throws a `schedule.retry.*` `TomScheduleException`. The check
+runs when a `TomJobDefinition` adopts the policy, not in the policy's own
+constructor: that constructor must stay `const` so a policy can appear in a
+`@TomScheduledJob(retry: …)` annotation, and a `const` constructor has no body to
+throw from. The placement is also the honest one — an unattached policy governs
+nothing, so the moment a bad value starts producing wrong answers is the moment a
+job adopts it, and only then is there a job name to put in the message.
+
 An attempt that overruns `timeout` is failed and retried like any other failure.
 A **body factory that throws** is different: that is a permanent defect, not a
 transient failure, so the run fails outright rather than retrying identically
