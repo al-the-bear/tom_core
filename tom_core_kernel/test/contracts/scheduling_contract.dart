@@ -205,6 +205,108 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       expect(stored.isFinished, isTrue);
     });
 
+    // -------------------------------------------------------------------------
+    // A terminal transition records an outcome; it never creates a record.
+    //
+    // `complete` and `fail` are the only mutators a caller reaches holding a
+    // run object it obtained some time ago, so they are the ones that can be
+    // handed an id the store no longer has — a dispatch still in flight when
+    // purgeFinished ran. Writing it back would defeat the only thing that
+    // bounds the queue, and would do so with a freshly stamped completedAt
+    // that resets the retention clock.
+    // -------------------------------------------------------------------------
+
+    /// Enqueues, claims and finishes `r1`, then purges it away.
+    Future<TomJobRun> seedPurged({required bool succeeded}) async {
+      await store.enqueue(makeRun('r1'));
+      final claimed = (await store.claimDue(at, 'node-a')).single;
+      if (succeeded) {
+        await store.complete(claimed, at);
+      } else {
+        await store.fail(claimed, 'nope', at);
+      }
+      expect(await store.purgeFinished(at.add(const Duration(days: 1))), 1);
+      expect(await store.all(), isEmpty);
+      return claimed;
+    }
+
+    test('complete does not resurrect a purged run', () async {
+      final purged = await seedPurged(succeeded: true);
+
+      await store.complete(purged, at.add(const Duration(days: 2)));
+
+      expect(await store.all(), isEmpty);
+    });
+
+    test('fail does not resurrect a purged run', () async {
+      final purged = await seedPurged(succeeded: false);
+
+      await store.fail(purged, 'late', at.add(const Duration(days: 2)));
+
+      expect(await store.all(), isEmpty);
+    });
+
+    test('a retrying fail does not resurrect a purged run', () async {
+      final purged = await seedPurged(succeeded: false);
+
+      // The retry branch writes a *pending* row, so a resurrection here would
+      // not merely leak a record — it would put work back into the queue that
+      // the operator had already seen finish and age out.
+      await store.fail(
+        purged,
+        'late',
+        at.add(const Duration(days: 2)),
+        retryAt: at.add(const Duration(days: 2)),
+      );
+
+      expect(await store.all(), isEmpty);
+    });
+
+    test('complete ignores a run the store never held', () async {
+      await store.complete(makeRun('ghost'), at);
+      expect(await store.all(), isEmpty);
+    });
+
+    test('fail ignores a run the store never held', () async {
+      await store.fail(makeRun('ghost'), 'nope', at);
+      expect(await store.all(), isEmpty);
+    });
+
+    test('complete ignores a run that is not running', () async {
+      final run = makeRun('r1');
+      await store.enqueue(run);
+
+      await store.complete(run, at);
+
+      final stored = await reload('r1');
+      expect(stored.state, TomJobRunState.pending);
+      expect(stored.completedAt, isNull);
+    });
+
+    test('fail ignores a run that is not running', () async {
+      final run = makeRun('r1');
+      await store.enqueue(run);
+
+      await store.fail(run, 'nope', at);
+
+      final stored = await reload('r1');
+      expect(stored.state, TomJobRunState.pending);
+      expect(stored.lastError, isNull);
+    });
+
+    test('a second complete does not refresh the retention clock', () async {
+      await store.enqueue(makeRun('r1'));
+      final claimed = (await store.claimDue(at, 'node-a')).single;
+      await store.complete(claimed, at);
+
+      // The late duplicate. If it landed, completedAt would move to `later` and
+      // the run would outlive every purge cutoff computed from the first one.
+      final later = at.add(const Duration(days: 7));
+      await store.complete(claimed, later);
+
+      expect((await reload('r1')).completedAt, at);
+    });
+
     test('recoverAbandoned returns an expired lease to the queue', () async {
       await store.enqueue(makeRun('a'));
       await store.claimDue(at, 'dead-owner');

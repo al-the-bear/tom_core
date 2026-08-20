@@ -227,6 +227,24 @@ class TomJobRun {
 /// the same run as claimable would double-fire it. The in-process
 /// implementations here are atomic by virtue of Dart's single-threaded event
 /// loop — they perform no `await` between selecting and stamping.
+///
+/// **A transition out of a claim only ever *records* a run; it never creates
+/// one.** [release], [markStarted], [renewClaim], [complete] and [fail] are all
+/// no-ops unless the store still holds the run *and* still holds it as
+/// `running`. Each of the five is reached by a caller holding a `TomJobRun` it
+/// obtained some time earlier, so each can be handed a run the store has since
+/// finished, re-queued, handed to another node via [recoverAbandoned], or
+/// dropped entirely via [purgeFinished] — and in every one of those cases the
+/// outcome of the attempt this caller is reporting is no longer the run's
+/// outcome. Writing it back would either overrule the node that now owns the
+/// run or, worse, resurrect a purged row: [purgeFinished] is the only thing
+/// bounding the store, and a re-inserted run carries a freshly stamped
+/// [TomJobRun.completedAt] that restarts its retention clock, so it survives
+/// every subsequent cutoff.
+///
+/// The rule costs nothing when nothing went wrong — a run this node still owns
+/// is `running` by definition — and it is what makes the five safe to call
+/// without first re-reading the store.
 abstract class TomJobStore {
   /// Whether an abandoned [run] may be offered again.
   ///
@@ -300,6 +318,9 @@ abstract class TomJobStore {
   /// The attempt count is deliberately untouched. Nothing was attempted, and
   /// charging an attempt would let a busy cluster exhaust a job's retry budget
   /// through contention alone.
+  ///
+  /// A no-op unless the store still holds [run] as `running` — a completion
+  /// that raced the release must win.
   Future<void> release(TomJobRun run);
 
   /// Records that [run]'s body actually began executing at [now].
@@ -309,9 +330,10 @@ abstract class TomJobStore {
   /// *execution* from an abandoned *reservation*. Without it every `running` row
   /// looks the same after a node dies, and recovery has to guess.
   ///
-  /// A no-op on a run the store no longer holds as `running`, for the same
-  /// reason [renewClaim] is: the outcome of a run this node has lost belongs to
-  /// whoever took it over.
+  /// A no-op on a run the store no longer holds as `running`: the outcome of a
+  /// run this node has lost belongs to whoever took it over. Stamping
+  /// `startedAt` onto it would tell recovery that a *different* node's attempt
+  /// had begun.
   Future<void> markStarted(TomJobRun run, DateTime now);
 
   /// Refreshes the lease timestamp on a claimed [run] to [now].
@@ -320,9 +342,18 @@ abstract class TomJobStore {
   /// [recoverAbandoned] would hand its work to a second runner while the first
   /// is still going. This is the store half of that heartbeat; the lock half is
   /// `TomLeaseLock.renew`.
+  ///
+  /// A no-op unless the store still holds [run] as `running` — a heartbeat for
+  /// a lease this node no longer owns would keep recovery off a run it has
+  /// already reassigned.
   Future<void> renewClaim(TomJobRun run, DateTime now);
 
   /// Marks [run] succeeded at [now] and releases its lease.
+  ///
+  /// A no-op unless the store still holds [run] as `running` — see the rule on
+  /// [TomJobStore]. Calling it twice therefore records the *first* completion
+  /// only; the second does not move [TomJobRun.completedAt] forward, so a
+  /// duplicate outcome cannot extend the run's retention.
   Future<void> complete(TomJobRun run, DateTime now);
 
   /// Records a failed attempt of [run].
@@ -330,6 +361,12 @@ abstract class TomJobStore {
   /// When [retryAt] is non-null the run returns to `pending` with its attempt
   /// count incremented and `runAt` set to [retryAt]; when it is `null` the run
   /// becomes terminally [TomJobRunState.failed].
+  ///
+  /// A no-op unless the store still holds [run] as `running`, exactly as
+  /// [complete] is. The retrying branch has a second reason to check: it
+  /// increments the attempt count, and charging a retry to a run that now
+  /// belongs to another node would eat a retry budget this caller is no longer
+  /// spending.
   Future<void> fail(
     TomJobRun run,
     String error,
@@ -456,9 +493,10 @@ class TomMemoryJobStore implements TomJobStore {
 
   @override
   Future<void> release(TomJobRun run) async {
+    // The `running` guard on this and the four transitions below is the rule
+    // documented on [TomJobStore]: an outcome records a run, it never creates
+    // or overrules one.
     final stored = _runs[run.id];
-    // Only a claimed run can be handed back. Resetting one that already
-    // finished — a completion that raced the release — would resurrect it.
     if (stored == null || stored.state != TomJobRunState.running) return;
     stored.state = TomJobRunState.pending;
     stored.claimedBy = null;
@@ -485,12 +523,12 @@ class TomMemoryJobStore implements TomJobStore {
 
   @override
   Future<void> complete(TomJobRun run, DateTime now) async {
-    final stored = _runs[run.id] ?? run;
+    final stored = _runs[run.id];
+    if (stored == null || stored.state != TomJobRunState.running) return;
     stored.state = TomJobRunState.succeeded;
     stored.completedAt = now;
     stored.claimedBy = null;
     stored.claimedAt = null;
-    _runs[stored.id] = stored;
     onMutated();
   }
 
@@ -501,7 +539,8 @@ class TomMemoryJobStore implements TomJobStore {
     DateTime now, {
     DateTime? retryAt,
   }) async {
-    final stored = _runs[run.id] ?? run;
+    final stored = _runs[run.id];
+    if (stored == null || stored.state != TomJobRunState.running) return;
     stored.lastError = error;
     stored.claimedBy = null;
     stored.claimedAt = null;
@@ -513,7 +552,6 @@ class TomMemoryJobStore implements TomJobStore {
       stored.attempt++;
       stored.runAt = retryAt;
     }
-    _runs[stored.id] = stored;
     onMutated();
   }
 

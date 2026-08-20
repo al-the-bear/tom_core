@@ -593,6 +593,34 @@ This is the distinction `startedAt` exists for, and it is also why `markStarted`
 is a store operation rather than a field the node keeps: the decision is made by
 a *surviving peer*, reading state the departed node wrote before it died.
 
+### And what the losing node must not do
+
+Recovery has a second half, easy to miss because it lives on the *other* node.
+The departed holder is not always dead — often it is merely slow, or was
+partitioned away, and it comes back still holding the run object and still
+intending to report an outcome. By then the run may have been re-queued,
+re-claimed, finished by someone else, or purged away entirely.
+
+So every transition out of a claim — `release`, `markStarted`, `renewClaim`,
+`complete` and `fail` — **records a run; it never creates or overrules one**.
+Each is a no-op unless the store still holds the run *and* still holds it as
+`running`. A late `renewClaim` would otherwise keep recovery off a run already
+reassigned; a late `fail` with a `retryAt` would charge an attempt to the node
+that holds it now; a late `complete` would overwrite a peer's outcome with a
+stale one.
+
+The worst case is the one that leaves no trace. `purgeFinished` is the only
+thing bounding the store, and it deletes on `completedAt`. A `complete` arriving
+after the purge would *re-insert* the row — stamped with the current time, so
+its retention clock starts over and it outlives every subsequent cutoff. The
+queue then grows without bound, one straggler at a time, and nothing in it looks
+wrong.
+
+The rule costs nothing when nothing went wrong: a run this node still owns is
+`running` by definition. It is what lets a runner report an outcome without
+first re-reading the store, and `test/contracts/scheduling_contract.dart`
+asserts it, so every store implementation inherits the check.
+
 ## Retries, Backoff and Timeouts
 
 `TomRetryPolicy` grows the wait exponentially from `initialBackoff` by

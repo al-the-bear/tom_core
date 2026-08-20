@@ -49,6 +49,16 @@ releasing the rejects would briefly hide runs from peers that would have
 accepted them, making contention depend on timing rather than on state. The
 library comment in `sql_job_store.dart` records the reasoning in full.
 
+The same conditional shape carries the kernel's rule that a transition out of a
+claim records a run but never creates or overrules one: `release`,
+`markStarted`, `renewClaim`, `complete` and `fail` each add `AND state =
+'running'` and return without touching the caller's `TomJobRun` when the
+statement affects no row. A node that was slow rather than dead therefore cannot
+report an outcome for a run recovery has already handed to a peer, and cannot
+restart the retention clock on one `purgeFinished` has dropped. See
+`TomJobStore` for the rule; `test/contracts/scheduling_contract.dart` in
+`tom_core_kernel` asserts it against this store too.
+
 ## When the claim's answer is lost
 
 Because the affected-row count *is* the arbitration, a claim whose

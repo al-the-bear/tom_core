@@ -643,6 +643,18 @@ factory TomJobRun.fromJson(Map<String, Object?> map)
 
 The persistence contract. Its methods are the vocabulary of the tick loop.
 
+**A transition out of a claim records a run; it never creates one.** `release`,
+`markStarted`, `renewClaim`, `complete` and `fail` are all no-ops unless the
+store still holds the run *and* still holds it as `running`. Each is reached by
+a caller holding a `TomJobRun` it obtained earlier, so each can be handed a run
+the store has since finished, re-queued, reassigned by `recoverAbandoned` or
+dropped by `purgeFinished` — and in all of those cases the outcome being
+reported is no longer the run's. Writing it back would overrule the node that
+owns the run now, or resurrect a purged row with a freshly stamped
+`completedAt` that restarts its retention clock and so survives every later
+cutoff. The check costs nothing when nothing went wrong, and it is what makes
+the five safe to call without first re-reading the store.
+
 - **Extends:** abstract class.
 
 #### Static Members
@@ -663,8 +675,8 @@ The persistence contract. Its methods are the vocabulary of the tick loop.
 | `release` | `Future<void> release(TomJobRun run)` | Hands a claimed run back to `pending` **without** charging an attempt — the voluntary counterpart of `recoverAbandoned`, so lease contention cannot drain a retry budget. |
 | `markStarted` | `Future<void> markStarted(TomJobRun run, DateTime now)` | Records that execution began. |
 | `renewClaim` | `Future<void> renewClaim(TomJobRun run, DateTime now)` | Heartbeats a claim so it is not judged abandoned. |
-| `complete` | `Future<void> complete(TomJobRun run, DateTime now)` | Marks the run succeeded. |
-| `fail` | `Future<void> fail(TomJobRun run, String error, DateTime now, {DateTime? retryAt})` | Records a failure; a `retryAt` schedules another attempt, its absence makes the failure terminal. |
+| `complete` | `Future<void> complete(TomJobRun run, DateTime now)` | Marks the run succeeded. Calling it twice records the first completion only, so a duplicate outcome cannot extend the run's retention. |
+| `fail` | `Future<void> fail(TomJobRun run, String error, DateTime now, {DateTime? retryAt})` | Records a failure; a `retryAt` schedules another attempt, its absence makes the failure terminal. Guarded like `complete`, and doubly so on the retrying branch: it charges an attempt. |
 | `recoverAbandoned` | `Future<List<TomJobRun>> recoverAbandoned(DateTime now, Duration leaseTimeout, {bool Function(String jobName)? requestsRecovery})` | Reclaims runs left `running` by a holder that vanished, without charging an attempt. Returns every run it changed, so the caller can alert on each. |
 | `all` | `Future<List<TomJobRun>> all()` | Every held run, in insertion order — diagnostics and tests. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Deletes terminal runs completed before `before`; returns the count. |

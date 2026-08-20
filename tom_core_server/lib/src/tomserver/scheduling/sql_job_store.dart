@@ -434,15 +434,22 @@ class TomSqlJobStore implements TomJobStore {
   @override
   Future<void> complete(TomJobRun run, DateTime now) async {
     await ensureSchema();
-    await datasource.executeCommand(
+    // Guarded on `running` like every other transition out of a claim — the
+    // rule on `TomJobStore`. Ungated, this would stamp a fresh `completed_at`
+    // onto a row that recovery had already handed to another node, restarting
+    // the retention clock on a run whose outcome is no longer ours to report.
+    final affected = await datasource.executeCommand(
       'UPDATE $table SET state = :succeeded, completed_at = :now, '
-      'claimed_by = NULL, claimed_at = NULL WHERE id = :id',
+      'claimed_by = NULL, claimed_at = NULL '
+      'WHERE id = :id AND state = :running',
       {
         'succeeded': TomJobRunState.succeeded.name,
+        'running': TomJobRunState.running.name,
         'now': sqlInstant(now),
         'id': run.id,
       },
     );
+    if (affected != BigInt.one) return;
     run.state = TomJobRunState.succeeded;
     run.completedAt = _asUtc(now);
     run.claimedBy = null;
@@ -457,35 +464,42 @@ class TomSqlJobStore implements TomJobStore {
     DateTime? retryAt,
   }) async {
     await ensureSchema();
+    // Guarded on `running` in both branches, for the reason given on [complete].
+    // The retrying branch has a second reason: it increments `attempt`, so an
+    // ungated statement would charge a retry to whoever holds the run now.
     if (retryAt == null) {
-      await datasource.executeCommand(
+      final affected = await datasource.executeCommand(
         'UPDATE $table SET state = :failed, last_error = :error, '
         'completed_at = :now, claimed_by = NULL, claimed_at = NULL '
-        'WHERE id = :id',
+        'WHERE id = :id AND state = :running',
         {
           'failed': TomJobRunState.failed.name,
+          'running': TomJobRunState.running.name,
           'error': error,
           'now': sqlInstant(now),
           'id': run.id,
         },
       );
+      if (affected != BigInt.one) return;
       run.state = TomJobRunState.failed;
       run.completedAt = _asUtc(now);
     } else {
       // `attempt = attempt + 1` in the statement, not `:attempt`: the counter
       // belongs to the row, and computing it from a possibly stale in-memory
       // copy would let a recovered run under-count its retries.
-      await datasource.executeCommand(
+      final affected = await datasource.executeCommand(
         'UPDATE $table SET state = :pending, last_error = :error, '
         'attempt = attempt + 1, run_at = :retryAt, claimed_by = NULL, '
-        'claimed_at = NULL WHERE id = :id',
+        'claimed_at = NULL WHERE id = :id AND state = :running',
         {
           'pending': TomJobRunState.pending.name,
+          'running': TomJobRunState.running.name,
           'error': error,
           'retryAt': sqlInstant(retryAt),
           'id': run.id,
         },
       );
+      if (affected != BigInt.one) return;
       run.state = TomJobRunState.pending;
       run.attempt++;
       run.runAt = _asUtc(retryAt);

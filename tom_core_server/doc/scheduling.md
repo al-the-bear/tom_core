@@ -163,8 +163,39 @@ This is Quartz's `TransactionValidator` in miniature, and like Quartz's it is
 scoped narrowly. **No other statement needs it**, and the reason is worth
 stating positively rather than left as an omission: a lost acknowledgement leaves
 the row `running` for `complete`, `fail`, `markStarted` and `renewClaim`, and
-`pending` for `release` — states the lease already recovers from, because none of
-those statements answers a question with its affected-row count.
+`pending` for `release` — states the lease already recovers from. Those five do
+read their affected-row count, but only to decide whether to mirror the write
+onto the caller's `TomJobRun`; unlike the claim, none of them is *asking* the
+database a question it cannot otherwise answer.
+
+## Reporting an Outcome for a Run You May Have Lost
+
+Every transition out of a claim carries `AND state = 'running'`:
+
+```sql
+UPDATE tom_job_run SET state='succeeded', completed_at=:now, claimed_by=NULL,
+       claimed_at=NULL
+ WHERE id=:id AND state='running'
+```
+
+This is the kernel's rule — a transition out of a claim *records* a run, it
+never creates or overrules one — expressed in the idiom this store already uses
+for everything else. A node that was slow rather than dead comes back still
+holding the run object and still meaning to report an outcome, by which time the
+run may have been recovered, re-claimed, finished by a peer or purged. Zero
+affected rows says exactly that, and the store returns without touching the
+caller's `TomJobRun`.
+
+The retrying branch of `fail` has a second reason to be gated: it runs
+`attempt = attempt + 1`, so ungated it would spend a retry from the budget of
+whoever holds the run now.
+
+`purgeFinished` is the case where the SQL store was already safer than its
+in-memory sibling — an `UPDATE` against a deleted row simply misses, where a map
+write would have re-inserted it. The guard makes the *stated* contract the same
+everywhere rather than an accident of the storage medium, and
+`test/contracts/scheduling_contract.dart` in `tom_core_kernel` asserts it
+against all three stores.
 
 ## The Roll Call
 
