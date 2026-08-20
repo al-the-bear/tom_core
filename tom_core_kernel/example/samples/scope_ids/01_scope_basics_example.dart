@@ -137,6 +137,7 @@ void run() {
   // `TomScope.defaultScope` itself is dropped from a path, so this one stays.
   final appRoot = TomScopeBase(scopeId: 'app', parentScope: null);
   final namedDefault = TomScopeBase(scopeId: 'default', parentScope: appRoot);
+  final appRootPath = appRoot.getScopePath();
   final namedDefaultPath = namedDefault.getScopePath();
 
   // The same id again, this time parented directly to the real sentinel: the
@@ -148,9 +149,25 @@ void run() {
   final underSentinelPath = underSentinel.getScopePath();
   final namedIsSentinel = identical(namedDefault, TomScope.defaultScope);
 
-  print('   "app" > "default" path: "$namedDefaultPath"');
-  print('   defaultScope > "default" path: "$underSentinelPath"');
-  print('   is that scope the sentinel? $namedIsSentinel');
+  // The same rule reached the way callers actually reach it. `withScope` is
+  // handed an id and takes the parent from `current`, so the chain it elides
+  // against is one it built itself — which is the form a default tenant or a
+  // default profile arrives in.
+  final nestedDefaultPath = TomScope.withScope(
+    'app',
+    () => TomScope.withScope('default', () => TomScope.current.getScopePath()),
+  );
+  final rootDefaultPath = TomScope.withScope(
+    'default',
+    () => TomScope.current.getScopePath(),
+  );
+
+  print('   "app" > "default" path:          "$namedDefaultPath"');
+  print('   defaultScope > "default" path:   "$underSentinelPath"');
+  print('   is that scope the sentinel?      $namedIsSentinel');
+  print('   via withScope, nested:           "$nestedDefaultPath"');
+  print('   via withScope, at the root:      "$rootDefaultPath"');
+  print('   ...next to "app" on its own:     "$appRootPath"');
   print('');
 
   // ===========================================================================
@@ -224,9 +241,7 @@ void run() {
   assert(insideIsWidget);
   assert(afterRunPath.isEmpty);
 
-  // Example 7: elision is by identity, not by id. An implementation that
-  // matched the string 'default' would produce 'app' and '' here — deleting a
-  // real segment, and collapsing two distinct scopes onto one lookup prefix.
+  // Example 7: elision is by identity, not by id.
   assert(!namedIsSentinel, 'sharing the sentinel id does not make it the root');
   assert(
     namedDefaultPath == 'app.default',
@@ -235,6 +250,29 @@ void run() {
   assert(
     underSentinelPath == 'default',
     'only the sentinel itself is elided, even when its child shares its id',
+  );
+
+  // The rule survives the zone. `withScope` derives each parent from `current`
+  // rather than being handed one, and the sentinel it lands on at the root is
+  // elided the same way — so the path does not depend on how the chain was
+  // assembled.
+  assert(nestedDefaultPath == 'app.default');
+  assert(rootDefaultPath == 'default');
+
+  // Why the distinction earns a rule of its own. A by-name implementation
+  // deletes the segment wherever the id appears, and the two assertions below
+  // are what that costs. Nested, "app > default" would render as "app" — a
+  // different, existing scope's path, so two namespaces would share one lookup
+  // key and whichever wrote last would win. At the root it is worse: the scope
+  // would render as "", which is exactly how this module spells "no scope at
+  // all", so a real scope would silently resolve against the root.
+  assert(
+    namedDefaultPath != appRootPath,
+    'two distinct scopes must not collapse onto one lookup prefix',
+  );
+  assert(
+    rootDefaultPath.isNotEmpty,
+    'a real scope must not render as "no scope at all"',
   );
 
   // Example 8: the id check. Without it the first two lines below would be

@@ -388,6 +388,17 @@ anyone who was writing them.
 
 ### Examples
 
+- **The `default`-named domain scope is now shown costing something.** Section
+  seven of `01_scope_basics_example.dart` demonstrated the identity rule by
+  constructing the chain by hand and asserting the resulting paths; it now also
+  reaches it through `withScope`, which derives each parent from `current`
+  rather than being handed one, so the rule visibly does not depend on how the
+  chain was assembled. Two assertions replace what had been a claim in a
+  comment: `app > default` must not render as `app`, because that is a
+  different existing scope's path and the two would share a lookup key; and a
+  root-level `default` must not render as the empty string, because that is how
+  the module spells "no scope at all". Both fail under a by-name elision, which
+  the earlier assertions also catch but only by their expected values.
 - `example/samples/scope_ids/01_scope_basics_example.dart` gains an eighth
   section on unusable ids. It builds the `'a'` → `'b'` → `'c'` chain first, so
   the reader sees the path the dotted id used to be indistinguishable from
