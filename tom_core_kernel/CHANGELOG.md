@@ -129,6 +129,24 @@ anyone who was writing them.
 
 ### Changed
 
+- **`Tom2FAChallenge.expiresAt` and `Tom2FAPendingEnrolment.expiresAt` are now
+  actually normalised to UTC, as both types said they were.** The constructors
+  assigned the parameter straight through, so a caller that passed a local
+  instant got it back with its own zone attached while the dartdoc promised
+  UTC. Nothing misbehaved internally — `isExpired` and `toClaims` each called
+  `toUtc()` again on the way past — but that re-normalisation is exactly what
+  hid the omission, and it did nothing for the one reader that mattered: an
+  application rendering a countdown from the public field, or comparing the
+  `toString()` of one challenge across two machines in different zones. The
+  constructors now normalise (`null` stays `null` on the enrolment, whose
+  choosing stop has no deadline to normalise) and the downstream `toUtc()`
+  calls are gone, so the invariant is stated once, where it is established.
+  `isExpired` likewise dropped its normalisation of `now`: `isBefore` compares
+  instants, not wall clocks, so a caller may pass either zone. This brings the
+  two kernel types in line with their server counterparts
+  `Tom2FAEnrolmentState` and `TomOAuthTokenGrant`, which already normalised in
+  the constructor and relied on it downstream — `Tom2FAEnrolmentState` carries
+  the very sentence the kernel challenge had copied without the code.
 - **`pendingTwoFactorChallenge` / `pendingTwoFactorEnrolment` are now `null` for
   a challenge or offer that has lapsed or burned its last attempt.** The
   security guide stated this as a kernel guarantee, but the getters delegated
@@ -346,6 +364,16 @@ anyone who was writing them.
 
 ### Tests
 
+- **The UTC normalisation of both 2FA expiries is pinned at the constructor.**
+  One case per class builds a challenge / offer from a local `DateTime` and
+  asserts the field reads back `isUtc` *and* on the same instant — normalising
+  must re-label the instant, not shift it. A `toString()` case per class pins
+  the printed form, which is where the drift was visible: the same challenge
+  used to print two hours apart on two machines. Two guards cover what the
+  cleanup must not break — the enrolment chooser's `null` deadline must stay
+  `null` rather than acquire one, and `isExpired` must answer identically for a
+  local `now` as for a UTC one, since the normalisation of its argument was
+  dropped.
 - **The 2FA freshness filter is pinned on both getters, in both directions.**
   Four cases assert that a lapsed or burned challenge / offer reads as nothing
   pending. Two more guard the boundaries the fix had to respect: `fromClaims`

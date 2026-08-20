@@ -802,7 +802,9 @@ Three things this buys over branching on `result.twoFactorType` by hand:
 - **The challenge, not the type, drives the UI.** `hint`, `attemptsRemaining`
   and `expiresAt` are what a user needs to see, and `clientData` carries
   whatever else the mechanism wants to say. Switching on the type alone throws
-  all of that away.
+  all of that away. `expiresAt` is always UTC — the constructor normalises it,
+  so a countdown may subtract it from `DateTime.now()` directly and two clients
+  in different zones agree about when the challenge dies.
 - **A wrong code is a loop, not a restart.** With attempts left, pass 2 answers
   with a *fresh* interim token whose attempt counter has advanced, so the block
   above simply repeats. Only an exhausted or expired challenge sends the client

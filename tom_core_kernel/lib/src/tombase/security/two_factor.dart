@@ -261,22 +261,27 @@ class Tom2FAChallenge {
   /// code knows what is in it.
   final Map<String, Object?> clientData;
 
-  /// Creates a challenge. [expiresAt] is normalised to UTC so comparisons are
-  /// unambiguous regardless of who constructed it.
+  /// Creates a challenge. [expiresAt] is normalised to UTC here, which is the
+  /// only place that can make the field's promise good: every other path
+  /// reaches the field directly, so a caller that passed a local instant would
+  /// otherwise hand its own zone on to whoever renders the countdown.
   Tom2FAChallenge({
     required this.type,
-    required this.expiresAt,
+    required DateTime expiresAt,
     this.hint = '',
     this.attempt = 0,
     this.attemptsAllowed = 3,
     this.clientData = const {},
-  });
+  }) : expiresAt = expiresAt.toUtc();
 
   /// Whether the challenge has lapsed as of [now] (defaults to the current
   /// instant). An expired challenge can no longer be answered; the client must
   /// restart at pass 1.
+  ///
+  /// [now] may be in either zone: `isBefore` compares instants, not wall
+  /// clocks, so no normalisation is needed on either side.
   bool isExpired([DateTime? now]) =>
-      !(now ?? DateTime.now().toUtc()).toUtc().isBefore(expiresAt.toUtc());
+      !(now ?? DateTime.now()).isBefore(expiresAt);
 
   /// How many attempts are still available. Never negative.
   int get attemptsRemaining {
@@ -307,7 +312,7 @@ class Tom2FAChallenge {
     Tom2FAClaims.hint: hint,
     Tom2FAClaims.attempt: attempt,
     Tom2FAClaims.attemptsAllowed: attemptsAllowed,
-    Tom2FAClaims.expiresAt: expiresAt.toUtc().toIso8601String(),
+    Tom2FAClaims.expiresAt: expiresAt.toIso8601String(),
     Tom2FAClaims.clientData: clientData,
   };
 
@@ -350,7 +355,7 @@ class Tom2FAChallenge {
       hint: hint is String ? hint : '',
       attempt: attempt is int ? attempt : 0,
       attemptsAllowed: attemptsAllowed is int ? attemptsAllowed : 0,
-      expiresAt: expiresAt.toUtc(),
+      expiresAt: expiresAt,
       clientData: clientData is Map
           ? clientData.cast<String, Object?>()
           : const <String, Object?>{},
@@ -434,9 +439,11 @@ class Tom2FAPendingEnrolment {
   /// Whether declining spends one of the principal's grace logins.
   final bool skipSpendsGrace;
 
-  /// Creates a pending enrolment.
+  /// Creates a pending enrolment. [expiresAt] is normalised to UTC for the
+  /// same reason [Tom2FAChallenge]'s is — and stays `null` when it was `null`,
+  /// since the choosing stop has no deadline to normalise.
   Tom2FAPendingEnrolment({
-    this.expiresAt,
+    DateTime? expiresAt,
     this.type = '',
     this.hint = '',
     this.attempt = 0,
@@ -445,7 +452,7 @@ class Tom2FAPendingEnrolment {
     this.offeredTypes = const [],
     this.skippable = false,
     this.skipSpendsGrace = false,
-  });
+  }) : expiresAt = expiresAt?.toUtc();
 
   /// Whether a mechanism has been chosen and its enrolment begun — i.e. whether
   /// the client should render the mechanism's panel rather than the chooser.
@@ -458,10 +465,13 @@ class Tom2FAPendingEnrolment {
   /// Always false while the user is still choosing — there is no generated
   /// material to go stale, so a chooser left open is a UX question, not a
   /// security one.
+  ///
+  /// [now] may be in either zone: `isBefore` compares instants, not wall
+  /// clocks, so no normalisation is needed on either side.
   bool isExpired([DateTime? now]) {
     final deadline = expiresAt;
     if (deadline == null) return false;
-    return !(now ?? DateTime.now().toUtc()).toUtc().isBefore(deadline.toUtc());
+    return !(now ?? DateTime.now()).isBefore(deadline);
   }
 
   /// How many confirmation attempts are still available. Never negative.
@@ -523,7 +533,7 @@ class Tom2FAPendingEnrolment {
       hint: hint is String ? hint : '',
       attempt: attempt is int ? attempt : 0,
       attemptsAllowed: attemptsAllowed is int ? attemptsAllowed : 0,
-      expiresAt: expiresAt?.toUtc(),
+      expiresAt: expiresAt,
       clientData: clientData is Map
           ? clientData.cast<String, Object?>()
           : const <String, Object?>{},

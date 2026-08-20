@@ -2611,6 +2611,44 @@ void main() {
         );
       });
 
+      // `now` is caller-supplied and may well be local. Expiry is a question
+      // about instants, not about wall clocks, so the answer must not depend
+      // on which zone the caller's clock is labelled with.
+      test('expiry is evaluated against a local instant identically', () {
+        final c = challenge();
+        expect(c.isExpired(DateTime.now()), isFalse);
+        expect(
+          c.isExpired(DateTime.now().add(const Duration(minutes: 6))),
+          isTrue,
+        );
+      });
+
+      // The field's dartdoc promises a UTC instant, so an application that
+      // renders a countdown from `challenge.expiresAt` may read it without
+      // re-normalising. Only the constructor can keep that promise: every
+      // path but `fromClaims` reaches the field directly.
+      test('a locally-built expiry is normalised to UTC', () {
+        final local = DateTime.now().add(const Duration(minutes: 5));
+        expect(local.isUtc, isFalse, reason: 'precondition for this test');
+
+        final c = Tom2FAChallenge(type: 'totp', expiresAt: local);
+
+        expect(c.expiresAt.isUtc, isTrue);
+        expect(
+          c.expiresAt.millisecondsSinceEpoch,
+          equals(local.millisecondsSinceEpoch),
+          reason: 'normalising must re-label the instant, not shift it',
+        );
+      });
+
+      // Same challenge, two machines, two zones: one string.
+      test('toString prints the expiry in UTC', () {
+        final local = DateTime.now().add(const Duration(minutes: 5));
+        final c = Tom2FAChallenge(type: 'totp', expiresAt: local);
+
+        expect(c.toString(), contains(local.toUtc().toIso8601String()));
+      });
+
       // A token is an outside input, so a payload that claims a challenge but
       // cannot describe one must read as "no challenge" rather than as a
       // half-built one whose gaps an attacker gets to choose.
@@ -2933,6 +2971,42 @@ void main() {
 
         expect(free!.skipSpendsGrace, isFalse);
         expect(charged!.skipSpendsGrace, isTrue);
+      });
+
+      // The same promise the challenge's expiry makes, asserted separately so
+      // the pair cannot drift apart.
+      test('a locally-built expiry is normalised to UTC', () {
+        final local = DateTime.now().add(const Duration(minutes: 5));
+        expect(local.isUtc, isFalse, reason: 'precondition for this test');
+
+        final pending = Tom2FAPendingEnrolment(type: 'totp', expiresAt: local);
+
+        expect(pending.expiresAt!.isUtc, isTrue);
+        expect(
+          pending.expiresAt!.millisecondsSinceEpoch,
+          equals(local.millisecondsSinceEpoch),
+          reason: 'normalising must re-label the instant, not shift it',
+        );
+      });
+
+      // Normalising must not invent a deadline. The choosing stop has none by
+      // design — nothing has been generated that could go stale — and an
+      // offer that acquired one here would lapse a chooser the user is still
+      // reading.
+      test('the choosing stop keeps its absent expiry absent', () {
+        final choosing = Tom2FAPendingEnrolment(
+          offeredTypes: const ['totp', 'sms'],
+        );
+
+        expect(choosing.expiresAt, isNull);
+        expect(choosing.isExpired(), isFalse);
+      });
+
+      test('toString prints the expiry in UTC', () {
+        final local = DateTime.now().add(const Duration(minutes: 5));
+        final pending = Tom2FAPendingEnrolment(type: 'totp', expiresAt: local);
+
+        expect(pending.toString(), contains(local.toUtc().toIso8601String()));
       });
 
       // Same fail-safe reading as the challenge: a payload that announces an

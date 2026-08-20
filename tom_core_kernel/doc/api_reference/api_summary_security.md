@@ -1127,7 +1127,7 @@ Tom2FAChallenge({
 | `hint` | `String` | Display hint for the client, e.g. a masked destination. Never a secret. |
 | `attempt` | `int` | Attempts already consumed against this challenge. |
 | `attemptsAllowed` | `int` | The attempt budget. |
-| `expiresAt` | `DateTime` | UTC instant after which the challenge is refused. |
+| `expiresAt` | `DateTime` | UTC instant after which the challenge is refused. Always UTC: the constructor normalises whatever it is handed, so a countdown rendered from this field needs no `toUtc()` of its own. |
 | `clientData` | `Map<String, Object?>` | The mechanism's own payload for its client UI; not interpreted by the framework. |
 | `attemptsRemaining` | `int` | *(getter)* `attemptsAllowed - attempt`, floored at zero. |
 | `isExhausted` | `bool` | *(getter)* True once no attempts remain. |
@@ -1136,7 +1136,7 @@ Tom2FAChallenge({
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `isExpired([DateTime? now])` | `bool` | Whether the challenge has passed [expiresAt] (defaults to the current UTC time). |
+| `isExpired([DateTime? now])` | `bool` | Whether the challenge has passed [expiresAt] (defaults to the current instant). `now` may be in either zone — the comparison is between instants, not wall clocks. |
 | `withConsumedAttempt()` | `Tom2FAChallenge` | A copy with [attempt] advanced by one. |
 | `toClaims()` | `Map<String, Object?>` | The public-claim map, keyed by [Tom2FAClaims]. |
 
@@ -1231,7 +1231,7 @@ Tom2FAPendingEnrolment({
 | `hint` | `String` | Display hint for the factor being set up; empty when the mechanism has nothing useful to show. |
 | `attempt` | `int` | Confirmation attempts already consumed. |
 | `attemptsAllowed` | `int` | The confirmation-attempt budget before the offer is burned. |
-| `expiresAt` | `DateTime?` | UTC instant after which the offer is no longer answerable — `null` while choosing, because the deadline belongs to the mechanism's offer and nothing has been generated yet. |
+| `expiresAt` | `DateTime?` | UTC instant after which the offer is no longer answerable — `null` while choosing, because the deadline belongs to the mechanism's offer and nothing has been generated yet. Normalised by the constructor exactly as [Tom2FAChallenge.expiresAt] is; a `null` stays `null` rather than acquiring a deadline. |
 | `clientData` | `Map<String, Object?>` | The mechanism's opaque payload for its client UI, passed through untouched by the framework. Empty while choosing. |
 | `offeredTypes` | `List<String>` | The mechanism keys this principal was offered, in preference order. |
 | `skippable` | `bool` | Whether the user may decline and complete the login without a factor. |
@@ -1244,7 +1244,7 @@ Tom2FAPendingEnrolment({
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `isExpired([DateTime? now])` | `bool` | Whether the offer has lapsed as of `now` (defaults to the current UTC time). **Always false while choosing** — there is no generated material to go stale, so a chooser left open is a UX question, not a security one. |
+| `isExpired([DateTime? now])` | `bool` | Whether the offer has lapsed as of `now` (defaults to the current instant; either zone will do, the comparison is between instants). **Always false while choosing** — there is no generated material to go stale, so a chooser left open is a UX question, not a security one. |
 
 #### Static Methods
 
