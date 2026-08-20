@@ -30,7 +30,8 @@
 #
 # Which is also why this script does one thing that is not a run at all: before
 # the sweep it checks that every `dart run …example/…` command the package
-# *documents* — in a sample header, in `README.md`, in `doc/` — carries
+# *documents* — anywhere in the package: a sample header, `README.md`, `doc/`, a
+# dartdoc comment in `lib/`, a sibling script in `tool/` — carries
 # `--enable-asserts`. That this sweep passes the flag says nothing about what a
 # reader does, and a reader does what the documentation says. A header that
 # omits it hands out a command under which the sample prints its usual
@@ -92,15 +93,32 @@ mkdir -p "$LOG_DIR"
 # A "documented command" is a `dart run` naming a path under `example/` — which
 # is what excludes `dart run build_runner build` (real, and correctly flagless)
 # and prose that merely mentions `dart run` without inviting anyone to type it.
-# `doc/analyzer_analysis.json` is out of scope by file type: it is a generated
-# analyzer dump holding stale copies of dartdoc from before the paths moved, so
-# it documents nothing to anyone.
+#
+# The sweep covers the whole package rather than `example/`, `doc/` and
+# `README.md`, because a reader does not know which directory a command came
+# from: a dartdoc comment in `lib/`, a module `readme.md`, the `CHANGELOG`, a
+# sibling script in `tool/` and a note in `_copilot_guidelines/` all hand out a
+# command that gets typed. Restricting the search to the three places the
+# commands happen to live today would leave the check passing the moment one is
+# written anywhere else — which is precisely when it is needed.
+#
+# Exclusions. `.dart_tool/`, `build/`, `coverage/` and `testlog/` are generated
+# or gitignored, so nothing in them is documentation; `doc/analyzer_analysis.json`
+# falls out for the same reason via the file-type allowlist, being a generated
+# analyzer dump that holds stale copies of dartdoc from before the paths moved.
+# And this script excludes *itself*: the prose above describing the check matches
+# the pattern the check looks for, and a guard that always reports itself reports
+# nothing.
 flagless=()
 while IFS= read -r hit; do
   [ -n "$hit" ] && flagless+=("$hit")
 done < <(grep -rn 'dart run [^`]*example/' \
   --include='*.dart' --include='*.md' --include='*.sh' \
-  example doc README.md 2>/dev/null | grep -v -- '--enable-asserts')
+  --include='*.yaml' --include='*.txt' \
+  --exclude='run_standalone_examples.sh' \
+  --exclude-dir='.dart_tool' --exclude-dir='build' \
+  --exclude-dir='coverage' --exclude-dir='testlog' \
+  . 2>/dev/null | grep -v -- '--enable-asserts')
 
 if [ ${#flagless[@]} -gt 0 ]; then
   echo "Documented commands missing --enable-asserts (${#flagless[@]}):"
