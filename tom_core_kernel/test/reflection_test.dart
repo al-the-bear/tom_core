@@ -119,7 +119,6 @@ class Employee {
 }
 
 @tomReflector
-@tomReflector
 class TeamMember {
   String name = '';
   String role = '';

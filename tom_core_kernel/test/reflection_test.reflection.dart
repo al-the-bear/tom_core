@@ -404,7 +404,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         0,
         11,
         const <int>[],
-        const <Object>[prefix12.tomReflector, prefix12.tomReflector],
+        const <Object>[prefix12.tomReflector],
         null,
       ),
       r.NonGenericClassMirrorImpl<prefix20.Team>(
