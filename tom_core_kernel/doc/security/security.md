@@ -490,6 +490,7 @@ Then install an adapter over the current principal's grants, typically at login
 from the authorization token's `resourceRoles` claim:
 
 ```dart
+final principal = TomBearerAuthentication.getPrincipal();
 TomAuthorization.adapter = TomResourceRoleAdapter(principal.aci.resourceRoles);
 
 // Anywhere in the UI or the server pipeline:
@@ -584,18 +585,21 @@ grants; they never widen them.**
 It is, and it is still not enough:
 
 ```dart
-final control = TomEntitlementAccess(['feature.reports.export']);
+const control = TomEntitlementAccess(['feature.reports.export']);
+
+final user = TomBearerAuthentication.getPrincipal();
+final server = TomServerPrincipal.current!;    // this deployment did log in
 
 // The user holds it.
-user.aci.entitlements;    // ['feature.reports.export', ...]
+user.aci.entitlements;                         // ['feature.reports.export', ...]
 control.checkPrincipalAccess(user);            // true  ← the user operand
 
 // The deployment does not.
-TomServerPrincipal.current!.aci.entitlements;  // ['feature.reports.view']
+server.aci.entitlements;                       // ['feature.reports.view']
 control.resolveServerAuthState(server);        // TomAuthState.none
 
 control.resolveAuthState(user);                // TomAuthState.none  ← the meet
-control.checkAccessibility(user);               // false
+control.checkAccessibility(user);              // false
 ```
 
 Nothing is wrong with the user's grant. This deployment is not licensed for the
@@ -687,6 +691,11 @@ thing that varies between them is the installed `TomServerPrincipal`. See
 `tom_core_samples/advanced_ops_server/test/ops_authorization_meet_test.dart` and
 the narrative in
 [`README_advanced_14_operations.md`](../../../tom_core_samples/README_advanced_14_operations.md).
+
+Runnable, without the full stack:
+[`example/samples/security/08_server_principal_meet_example.dart`](../../example/samples/security/08_server_principal_meet_example.dart)
+walks the worked example above and the two traps around it — the cap that never
+widens, and `null` versus a principal entitled to nothing.
 
 ---
 

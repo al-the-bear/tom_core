@@ -9,6 +9,17 @@ anyone who was writing them.
 
 ### Added
 
+- **`08_server_principal_meet_example.dart`.** The meet — every authorization
+  decision's second operand — was the one central security concept with no
+  runnable sample, and the prose's worked example for it was illustrative only.
+  The sample holds the user fixed and varies nothing but the installed
+  `TomServerPrincipal`, so each outcome is attributable: an uncapped resolution,
+  the same grant refused by an unlicensed deployment, the same grant restored by
+  a licensed one, a generous deployment failing to widen a user who never held
+  the grant, `null` versus a principal entitled to nothing (opposites, not
+  synonyms), and a `TomRoleAccess` abstaining with `full` because it has no
+  opinion about which features a deployment licenses.
+
 - **`TomScopeException`.** The scope module's own `TomException` subclass,
   keyed `scope_ids.<operation>.<condition>` — `init_scope.empty_id`,
   `init_scope.separator_in_id`, `use_scope.no_identity` — with `parameters`
@@ -128,6 +139,16 @@ anyone who was writing them.
   shared `tomReflectionInfo` stays lenient.
 
 ### Changed
+
+- **The meet's worked example now declares the identifiers it turns on.** The
+  security guide's central explanation of why a control the user satisfies can
+  still resolve to `none` used `user` and `server` without binding either, and
+  obtained the server principal on one line only to discard it and pass an
+  undeclared `server` on the next. Both are now bound —
+  `TomBearerAuthentication.getPrincipal()` and `TomServerPrincipal.current!` —
+  and the per-resource-role adapter snippet nearby, which had the same defect on
+  `principal`, is bound too. The values the blocks assert were already correct
+  and are now verified by the new `08_server_principal_meet_example.dart`.
 
 - **No documented `updatePrincipal` call silently wipes the principal's
   per-resource grants any more.** The method replaces the ACI rather than
