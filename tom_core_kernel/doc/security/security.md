@@ -808,6 +808,14 @@ Three things this buys over branching on `result.twoFactorType` by hand:
   above simply repeats. Only an exhausted or expired challenge sends the client
   back to pass 1 — and then `pendingTwoFactorChallenge` is `null`, so the code
   above cannot mistake it for a completed login.
+- **A stale token reads as no challenge.** The getter applies the expiry and
+  attempt checks itself, so a client that slept, or sat in a background tab,
+  and woke holding a lapsed interim token gets `null` and restarts at pass 1
+  rather than prompting for a code the server will refuse. The guarantee is the
+  kernel's, not a consequence of the server happening to re-issue in time.
+  [Tom2FAChallenge.fromClaims] does *not* filter — it stays a pure decoder of
+  the wire format, because the server has its own authoritative clock and runs
+  its own checks.
 - **The interim token is not a session.** Its `requires2FA` claim makes
   [TomBearerAuthentication.convertTokenPayloadToPrincipal] build a principal
   with `authenticated == false`, so holding it never passes an authentication
@@ -855,7 +863,12 @@ by hand:
   not have to remember which pass produced it.
 - **A wrong confirmation code is a loop, not a restart** — exactly as it is for
   a challenge. `attempt` advances in a fresh interim token and the block above
-  repeats.
+  repeats. The loop terminates on a lapsed or burned offer because the getter
+  filters those out, the same way `pendingTwoFactorChallenge` does. One
+  difference, and it is the same one that makes `expiresAt` nullable here: the
+  attempt budget belongs to the *mechanism's* offer, so the choosing stop is
+  never filtered out for exhaustion — a chooser owes no attempts, because
+  nothing has been generated to attempt yet.
 - **A skip is the server's decision.** `skippable` was decided on the pass that
   made the offer and is carried in the signed token, so a client that shows a
   "not now" button anyway achieves nothing: the server checks the same claim

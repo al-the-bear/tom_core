@@ -129,6 +129,23 @@ anyone who was writing them.
 
 ### Changed
 
+- **`pendingTwoFactorChallenge` / `pendingTwoFactorEnrolment` are now `null` for
+  a challenge or offer that has lapsed or burned its last attempt.** The
+  security guide stated this as a kernel guarantee, but the getters delegated
+  straight to `fromClaims`, which checks only that the claims are *decodable* —
+  so a lapsed interim token round-tripped to a live-looking challenge. A client
+  that slept, or sat in a background tab, prompted for a code the server was
+  always going to refuse; on the enrolment side the documented `while
+  (enrolment != null)` loop had nothing to terminate it. The freshness check
+  sits on the getters rather than in `fromClaims`, which stays a clock-free
+  decoder of the wire format: the server has its own authoritative clock and
+  already runs the same checks in `authenticatePass2`, and a test needs to be
+  able to build a lapsed challenge to assert against. One asymmetry on the
+  enrolment getter — exhaustion disqualifies an offer only once `hasOffer` is
+  true, because the choosing stop carries no attempt budget and so reads back
+  as exhausted; a chooser owes no attempts because nothing has been generated
+  to attempt yet. (The server's own `Tom2FAEnrolmentState.isExhausted` already
+  encodes that rule as `hasOffer && attemptsRemaining <= 0`.)
 - **Breaking: `TomClientLimitsInformation` is read-only, like its sibling.**
   `enabledModules` and `quotas` were plain reassignable public fields with
   `const []` / `const {}` defaults — which made the class mutable in the one way
@@ -329,6 +346,15 @@ anyone who was writing them.
 
 ### Tests
 
+- **The 2FA freshness filter is pinned on both getters, in both directions.**
+  Four cases assert that a lapsed or burned challenge / offer reads as nothing
+  pending. Two more guard the boundaries the fix had to respect: `fromClaims`
+  must *still* decode what the getter filters out (otherwise the filter has
+  leaked into the wire decoder), and the enrolment chooser must survive the
+  filter even though its absent attempt budget reads back as `isExhausted`
+  (otherwise the filter deletes the choosing stop and the enrolment flow with
+  it). Both of those pass before the fix as well as after — which is the point:
+  they are the guards, not the demonstration.
 - **The fail-closed attempt budget is pinned on both 2FA readers.** One case per
   class asserts that a payload whose `attemptsAllowed` is missing (or the wrong
   shape) still yields a *non-null* challenge / offer, but one that is already

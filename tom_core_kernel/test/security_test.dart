@@ -2805,6 +2805,51 @@ void main() {
 
         expect(TomBearerAuthentication.pendingTwoFactorChallenge, isNull);
       });
+
+      // A client that slept, or sat in a background tab, wakes holding an
+      // interim token whose challenge has lapsed. Answering it is pointless —
+      // the server will refuse — so the getter reports "nothing pending" and
+      // the client restarts at pass 1 rather than looping on a dead challenge.
+      test('a lapsed challenge is not pending', () {
+        final interim = _makeJwt(
+          challenge(
+            validIn: const Duration(minutes: -1),
+          ).toClaims().cast<String, dynamic>()..['username'] = 'alice',
+        );
+        TomBearerAuthentication.setTokens(interim, interim, false);
+
+        expect(TomBearerAuthentication.pendingTwoFactorChallenge, isNull);
+      });
+
+      test('a burned challenge is not pending', () {
+        final interim = _makeJwt(
+          challenge(
+            attempt: 3,
+            attemptsAllowed: 3,
+          ).toClaims().cast<String, dynamic>()..['username'] = 'alice',
+        );
+        TomBearerAuthentication.setTokens(interim, interim, false);
+
+        expect(TomBearerAuthentication.pendingTwoFactorChallenge, isNull);
+      });
+
+      // The freshness filter belongs to the getter, not to the decoder. The
+      // server holds the authoritative clock and tests need to build a lapsed
+      // challenge to assert against, so `fromClaims` stays a pure wire reader
+      // and only the client-facing read applies `DateTime.now()`.
+      test('fromClaims still decodes what the getter filters out', () {
+        final lapsed = challenge(validIn: const Duration(minutes: -1));
+        final burned = challenge(attempt: 3, attemptsAllowed: 3);
+
+        expect(
+          Tom2FAChallenge.fromClaims(lapsed.toClaims().cast<String, dynamic>()),
+          isNotNull,
+        );
+        expect(
+          Tom2FAChallenge.fromClaims(burned.toClaims().cast<String, dynamic>()),
+          isNotNull,
+        );
+      });
     });
 
     // The client-visible half of a pending *enrolment* — the step before a
@@ -2969,6 +3014,50 @@ void main() {
         expect(pending, isNotNull);
         expect(pending!.type, equals('totp'));
         expect(pending.skippable, isTrue);
+      });
+
+      // The same freshness filter as the challenge, and it matters more here:
+      // the documented client loop re-reads this getter until it answers null,
+      // so a lapsed offer that kept reporting itself would spin forever.
+      test('a lapsed offer is not pending', () {
+        final interim = _makeJwt(
+          claims(type: 'totp', validIn: const Duration(minutes: -1))
+            ..['username'] = 'alice',
+        );
+        TomBearerAuthentication.setTokens(interim, interim, false);
+
+        expect(TomBearerAuthentication.pendingTwoFactorEnrolment, isNull);
+      });
+
+      test('a burned offer is not pending', () {
+        final interim = _makeJwt(
+          claims(type: 'totp')
+            ..[Tom2FAEnrolmentClaims.attempt] = 3
+            ..['username'] = 'alice',
+        );
+        TomBearerAuthentication.setTokens(interim, interim, false);
+
+        expect(TomBearerAuthentication.pendingTwoFactorEnrolment, isNull);
+      });
+
+      // The trap in filtering this getter on exhaustion. The attempt budget
+      // belongs to the *mechanism's* offer, so the choosing stop carries no
+      // such claim — and an absent budget reads back as 0, i.e. `isExhausted`.
+      // Filtering on exhaustion unconditionally would therefore delete the
+      // chooser, which owes no attempts because nothing has been generated to
+      // attempt yet. Exactly the reading `expiresAt` already gets.
+      test('the choosing stop survives the freshness filter', () {
+        final interim = _makeJwt(claims()..['username'] = 'alice');
+        TomBearerAuthentication.setTokens(interim, interim, false);
+
+        final pending = TomBearerAuthentication.pendingTwoFactorEnrolment;
+        expect(pending, isNotNull);
+        expect(pending!.hasOffer, isFalse);
+        expect(
+          pending.isExhausted,
+          isTrue,
+          reason: 'no budget claim at this stop — the filter must not read it',
+        );
       });
     });
   });

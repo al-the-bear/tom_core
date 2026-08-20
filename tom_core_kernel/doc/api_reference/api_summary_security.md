@@ -1058,8 +1058,8 @@ TomBearerAuthentication()
 | `authorizationToken` | `String?` | *(getter)* The current authorization token string. |
 | `clientJwtToken` | `TomClientJwtToken?` | *(getter)* The parsed authentication JWT token. |
 | `clientAuthorizationJwtToken` | `TomClientJwtToken?` | *(getter)* The parsed authorization JWT token. |
-| `pendingTwoFactorChallenge` | `Tom2FAChallenge?` | *(getter)* The challenge carried by the currently held token, or `null` when the login is complete. Reads the authorization token if present, otherwise the authentication token. |
-| `pendingTwoFactorEnrolment` | `Tom2FAPendingEnrolment?` | *(getter)* The enrolment the currently held token is part-way through, or `null` when the login owes no set-up. Read the same way as `pendingTwoFactorChallenge`. Both can answer non-null at once — a principal forced to enrol who already holds a factor is being asked for both, and the client renders the challenge first. |
+| `pendingTwoFactorChallenge` | `Tom2FAChallenge?` | *(getter)* The challenge carried by the currently held token, or `null` when the login is complete. Reads the authorization token if present, otherwise the authentication token. Also `null` when the challenge has expired or burned its last attempt: it is no longer answerable, so a client holding a stale token restarts at pass 1 instead of looping. The freshness check lives here, not in `Tom2FAChallenge.fromClaims`, which stays a clock-free wire decoder. |
+| `pendingTwoFactorEnrolment` | `Tom2FAPendingEnrolment?` | *(getter)* The enrolment the currently held token is part-way through, or `null` when the login owes no set-up. Read and freshness-filtered the same way as `pendingTwoFactorChallenge`, with one asymmetry: exhaustion disqualifies an offer only once `hasOffer` is true, because the choosing stop carries no attempt budget and would otherwise read as exhausted. Both getters can answer non-null at once — a principal forced to enrol who already holds a factor is being asked for both, and the client renders the challenge first. |
 
 #### Static Methods
 

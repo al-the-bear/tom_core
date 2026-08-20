@@ -189,11 +189,22 @@ class TomBearerAuthentication {
   /// how many attempts remain — without having to decode the token itself.
   /// Returns `null` once pass 2 has stored the completed token pair, which is
   /// exactly the signal that the login is done.
+  ///
+  /// Also `null` for a challenge that has lapsed or burned its last attempt.
+  /// Such a challenge is no longer answerable — the server refuses it — so
+  /// reporting it as pending would leave a client that slept, or sat in a
+  /// background tab, looping on a dead challenge instead of restarting at
+  /// pass 1. "Nothing pending" is the honest answer and the actionable one.
+  ///
+  /// The freshness test lives here rather than in [Tom2FAChallenge.fromClaims]
+  /// because it is the only genuinely client-side read. `fromClaims` stays a
+  /// pure decoder of the wire format, with no dependency on
+  /// [DateTime.now]: the server has its own authoritative clock, and a test
+  /// needs to be able to build a lapsed challenge to assert against.
   static Tom2FAChallenge? get pendingTwoFactorChallenge {
-    var t =
-        bearerAuthentication._clientAuthorizationJwtToken ??
-        bearerAuthentication._clientJwtToken;
-    return t == null ? null : Tom2FAChallenge.fromClaims(t.payload);
+    final challenge = Tom2FAChallenge.fromClaims(_currentTokenPayload);
+    if (challenge == null) return null;
+    return challenge.isExpired() || challenge.isExhausted ? null : challenge;
   }
 
   /// The second-factor **enrolment** the stored token is part-way through, or
@@ -209,12 +220,34 @@ class TomBearerAuthentication {
   /// Both getters can answer non-null at once: a principal whose policy forces
   /// enrolment *and* who already holds a factor is being asked for both, and
   /// the client renders the challenge first.
+  ///
+  /// Filtered for freshness exactly like [pendingTwoFactorChallenge], and it
+  /// matters more here: the documented client loop re-reads this getter until
+  /// it answers `null`, so a lapsed offer that kept reporting itself would
+  /// spin. One asymmetry, and it follows the one [Tom2FAPendingEnrolment]
+  /// already has for its deadline: the attempt budget belongs to the
+  /// *mechanism's* offer, so the choosing stop carries no budget claim and
+  /// reads back as [Tom2FAPendingEnrolment.isExhausted]. Exhaustion is
+  /// therefore only disqualifying once [Tom2FAPendingEnrolment.hasOffer] — a
+  /// chooser owes no attempts because nothing has been generated to attempt.
   static Tom2FAPendingEnrolment? get pendingTwoFactorEnrolment {
-    var t =
-        bearerAuthentication._clientAuthorizationJwtToken ??
-        bearerAuthentication._clientJwtToken;
-    return t == null ? null : Tom2FAPendingEnrolment.fromClaims(t.payload);
+    final enrolment = Tom2FAPendingEnrolment.fromClaims(_currentTokenPayload);
+    if (enrolment == null) return null;
+    if (enrolment.isExpired()) return null;
+    if (enrolment.hasOffer && enrolment.isExhausted) return null;
+    return enrolment;
   }
+
+  /// The public claims of the token the 2FA getters read, or `null` when no
+  /// token is held.
+  ///
+  /// The authorization token when there is one, else the authentication token:
+  /// a pass-1 login installs the same interim token as both, but a client that
+  /// refreshed only its authorization half must be read from the fresher one.
+  static Map<String, dynamic>? get _currentTokenPayload =>
+      (bearerAuthentication._clientAuthorizationJwtToken ??
+              bearerAuthentication._clientJwtToken)
+          ?.payload;
 
   /// Converts JWT token payloads to a [TomPrincipal] object.
   ///
