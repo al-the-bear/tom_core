@@ -76,10 +76,39 @@ void main() {
       test('is a no-op zone when the scope is already current (identity)', () {
         TomScope.withScope('app', () {
           final current = TomScope.current;
-          // Re-entering the identical scope must not create a nested zone.
-          current.runInScope(() {
+          final zoneOutside = Zone.current;
+          var ran = false;
+
+          // It is the zone that is elided, not the call: the body still runs
+          // and its result is still returned. Asserting only that
+          // `TomScope.current` is unchanged would not pin this — installing
+          // the identical scope on a child zone resolves to the same value,
+          // so that assertion holds on both branches. `Zone.current` is what
+          // tells them apart.
+          final result = current.runInScope(() {
+            ran = true;
             expect(TomScope.current, same(current));
+            expect(Zone.current, same(zoneOutside));
+            return 'body-result';
           });
+
+          expect(ran, isTrue);
+          expect(result, equals('body-result'));
+        });
+      });
+
+      test('installs a child zone when the scope is not already current', () {
+        TomScope.withScope('app', () {
+          final zoneOutside = Zone.current;
+          final other = TomScopeBase(scopeId: 'widget', parentScope: null);
+
+          final result = other.runInScope(() {
+            expect(TomScope.current, same(other));
+            expect(Zone.current, isNot(same(zoneOutside)));
+            return 'body-result';
+          });
+
+          expect(result, equals('body-result'));
         });
       });
 

@@ -263,6 +263,14 @@ anyone who was writing them.
   pointers are refused. Traceability now runs todo → code through the todo's
   own `references` list, so the link outlives the work item without the code
   carrying its id.
+- **`scope_ids_test.dart` now pins the zone-elision branch it names.** The test
+  called "is a no-op zone when the scope is already current" asserted only that
+  `TomScope.current` was unchanged inside the body — which holds on *both*
+  branches, because installing the identical scope on a child zone resolves to
+  the same value. It therefore passed with the identity check deleted. It now
+  compares `Zone.current`, which is what distinguishes the two paths, and also
+  asserts the body ran and its result was returned; a companion test covers the
+  other branch, where a different scope does get a child zone.
 
 ### Examples
 
@@ -301,6 +309,11 @@ anyone who was writing them.
 - `doc/scheduling/scheduling.md` (including the execution guarantee in full),
   `doc/result/result.md`, `doc/preferences/preferences.md`, and the matching
   `doc/api_reference/api_summary_*.md` entries.
+- `doc/scope_ids/scope_ids.md` no longer calls `runInScope` "a no-op wrapper"
+  when the scope is already current. What is elided is the zone, not the call:
+  the body runs and its result is returned on both branches. The old wording
+  was one word away from saying the call does nothing, in a method almost
+  always written as `scope.runInScope(() => …)` where the body is the point.
 
 ## 1.1.15
 

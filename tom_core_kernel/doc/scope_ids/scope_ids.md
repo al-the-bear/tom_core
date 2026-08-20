@@ -73,8 +73,10 @@ The abstract contract for a scope.
 | `String getScopePath()` | This scope's full path as a dot-separated string |
 | `T runInScope(T Function())` | Runs a body with this scope installed on the zone |
 
-`runInScope` is a no-op wrapper when `this` is already the current scope
-(identity check), which prevents redundant zone nesting.
+When `this` is already the current scope (identity check), `runInScope` runs
+the body directly rather than wrapping it in a child zone. The body runs and
+its result is returned either way — it is the zone that is elided, which is
+what prevents redundant scope nesting.
 
 **The root scope cannot be swapped out.** `defaultScope` is `static final`, so
 there is no supported way — and no compiling way — to point the process at a
