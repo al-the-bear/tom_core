@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 65 files
-// Generated: 2026-08-20T10:48:16.308347
+// Generated: 2026-08-20T12:28:47.972199
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -10683,6 +10683,11 @@ BridgedClass _createTomJobStoreBridge() {
         final requestsRecovery = requestsRecoveryRaw == null ? null : ((String p0) { return D4.callInterpreterCallback(visitor!, requestsRecoveryRaw, [p0]) as bool; }) as bool Function(String);
         return $tom_core_kernel_33.TomJobStore.isRecoverable(run, requestsRecovery);
       },
+      'encodePayload': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'encodePayload');
+        final run = D4.getRequiredArg<$tom_core_kernel_33.TomJobRun>(positional, 0, 'run', 'encodePayload');
+        return $tom_core_kernel_33.TomJobStore.encodePayload(run);
+      },
     },
     methodSignatures: {
       'enqueue': 'Future<void> enqueue(TomJobRun run)',
@@ -10700,6 +10705,7 @@ BridgedClass _createTomJobStoreBridge() {
     },
     staticMethodSignatures: {
       'isRecoverable': 'bool isRecoverable(TomJobRun run, bool Function(String jobName)? requestsRecovery)',
+      'encodePayload': 'String? encodePayload(TomJobRun run)',
     },
     staticGetterSignatures: {
       'recoveryDeclinedError': 'String get recoveryDeclinedError',

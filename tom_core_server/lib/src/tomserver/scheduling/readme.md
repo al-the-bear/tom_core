@@ -129,6 +129,17 @@ Three constraints carry the design:
   node claims runs under, so the roll call stays one row per node and a departed
   node's work joins straight back to it.
 
+## Payload
+
+The `payload` column is written by the kernel's `TomJobStore.encodePayload`
+rather than by a local `jsonEncode`, so a payload this store cannot serialise is
+refused under the same `schedule.job.payload` key the memory and file stores
+use. That matters more here than the duplicated line it saves: a job is
+developed against the memory store and deployed against this one, and a
+restriction only the database enforces is a restriction discovered in
+production. The encode runs while the bind map is being built, so the refusal
+still precedes any statement.
+
 ## Time
 
 Instants are stored as UTC `DATETIME(6)` and carried through `String` columns.

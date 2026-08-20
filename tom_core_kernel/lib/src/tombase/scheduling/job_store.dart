@@ -44,6 +44,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../little_things/atomic_file.dart';
+import 'schedule.dart';
 
 // =============================================================================
 // RUN STATE
@@ -276,10 +277,47 @@ abstract class TomJobStore {
       'Interrupted mid-execution and not re-queued: the job does not set '
       'requestsRecovery, so re-running it could repeat work already done.';
 
+  /// The JSON text a durable store writes for [run]'s payload, or `null` when
+  /// there is no payload.
+  ///
+  /// This is also the contract's definition of "JSON-encodable", and every
+  /// implementation of [enqueue] calls it — *including the in-memory one*,
+  /// which has nothing to write. The restriction belongs to the contract rather
+  /// than to any one medium: a payload only the memory store would accept is a
+  /// payload that fails on the first deployment that has a file or a database,
+  /// and it should fail on the developer's machine instead.
+  ///
+  /// Throws a `schedule.job.payload` [TomScheduleException] naming the job and
+  /// the offending type. The raw [JsonUnsupportedObjectError] says only that
+  /// *some* object could not be converted, which is of little use several
+  /// frames below whichever event handed the payload over.
+  static String? encodePayload(TomJobRun run) {
+    if (run.payload == null) return null;
+    try {
+      return jsonEncode(run.payload);
+    } on JsonUnsupportedObjectError catch (error, stack) {
+      final type = error.unsupportedObject.runtimeType;
+      throw TomScheduleException(
+        'schedule.job.payload',
+        "The payload for job '${run.jobName}' is not JSON-encodable: it "
+            'contains $type. A payload has to survive being written to a file or '
+            'a database column, so it must be built from JSON-native values — '
+            'send $type as a string or a number instead.',
+        parameters: {'job': run.jobName, 'run': run.id, 'type': '$type'},
+        rootException: error,
+        stack: stack,
+      );
+    }
+  }
+
   /// Adds [run] to the queue.
   ///
   /// The caller is responsible for idempotence via [findWindow]; the store
   /// stores what it is given.
+  ///
+  /// Throws a `schedule.job.payload` [TomScheduleException], **before changing
+  /// the queue**, when [TomJobRun.payload] is not JSON-encodable — see
+  /// [encodePayload].
   Future<void> enqueue(TomJobRun run);
 
   /// The run already recorded for [jobName] at [scheduledFor], or `null`.
@@ -440,6 +478,12 @@ class TomMemoryJobStore implements TomJobStore {
 
   @override
   Future<void> enqueue(TomJobRun run) async {
+    // Check before mutating, and discard the text: [TomFileJobStore] mirrors
+    // from [onMutated], so an encode failure discovered *there* would leave the
+    // run in memory and every later mirror re-encoding it — one bad payload
+    // would silently stop the queue from ever reaching disk again while the
+    // store went on looking healthy.
+    TomJobStore.encodePayload(run);
     _runs[run.id] = run;
     onMutated();
   }

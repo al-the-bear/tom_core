@@ -95,6 +95,62 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       expect((await store.findWindow('job', at))!.id, 'a');
     });
 
+    test('enqueue rejects a payload that is not JSON-encodable', () async {
+      await expectLater(
+        store.enqueue(
+          TomJobRun(
+            id: 'bad',
+            jobName: 'job',
+            scheduledFor: at,
+            runAt: at,
+            payload: DateTime.utc(2026),
+          ),
+        ),
+        throwsA(
+          isA<TomScheduleException>()
+              .having((e) => e.key, 'key', 'schedule.job.payload')
+              .having((e) => e.parameters?['job'], 'job', 'job')
+              .having((e) => e.parameters?['type'], 'type', 'DateTime'),
+        ),
+      );
+    });
+
+    test('a rejected payload leaves the queue as it was', () async {
+      await store.enqueue(makeRun('a'));
+      await expectLater(
+        store.enqueue(
+          TomJobRun(
+            id: 'bad',
+            jobName: 'job',
+            scheduledFor: at.add(const Duration(hours: 1)),
+            runAt: at.add(const Duration(hours: 1)),
+            payload: DateTime.utc(2026),
+          ),
+        ),
+        throwsA(isA<TomScheduleException>()),
+      );
+      expect((await store.all()).map((r) => r.id), ['a']);
+    });
+
+    test('an encodable payload survives the store', () async {
+      await store.enqueue(
+        TomJobRun(
+          id: 'a',
+          jobName: 'job',
+          scheduledFor: at,
+          runAt: at,
+          payload: {
+            'when': at.toIso8601String(),
+            'ids': [1, 2],
+          },
+        ),
+      );
+      expect((await reload('a')).payload, {
+        'when': at.toIso8601String(),
+        'ids': [1, 2],
+      });
+    });
+
     test('findWindow does not match a different job', () async {
       await store.enqueue(makeRun('a'));
       expect(await store.findWindow('other', at), isNull);

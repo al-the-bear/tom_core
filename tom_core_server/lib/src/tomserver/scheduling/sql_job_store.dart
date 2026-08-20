@@ -723,6 +723,13 @@ class TomSqlJobStore implements TomJobStore {
         payload: _decodePayload(row.payload),
       );
 
+  /// Binds [run] to the queue table's columns.
+  ///
+  /// The payload is rendered by the kernel's [TomJobStore.encodePayload] rather
+  /// than by a local `jsonEncode`, so that a store this node cannot serialise
+  /// is refused with the same `schedule.job.payload` exception the memory and
+  /// file stores raise. Every binding site is evaluated before the statement is
+  /// sent, so the refusal still precedes any write.
   Map<String, dynamic> _bindOf(TomJobRun run) => {
         'id': run.id,
         'jobName': run.jobName,
@@ -736,31 +743,10 @@ class TomSqlJobStore implements TomJobStore {
         'lastError': run.lastError,
         'completedAt':
             run.completedAt == null ? null : sqlInstant(run.completedAt!),
-        'payload': _encodePayload(run),
+        'payload': TomJobStore.encodePayload(run),
       };
 
   static DateTime _asUtc(DateTime value) => value.isUtc ? value : value.toUtc();
-
-  /// Renders [TomJobRun.payload] as the JSON text the column holds.
-  ///
-  /// A durable queue can only store what it can serialise; the file store has
-  /// the same constraint by virtue of writing JSON. Failing loudly here names
-  /// the job, which is far more useful than a `JsonUnsupportedObjectError`
-  /// thrown from inside a database call.
-  static String? _encodePayload(TomJobRun run) {
-    if (run.payload == null) return null;
-    try {
-      return jsonEncode(run.payload);
-    } on JsonUnsupportedObjectError catch (error, stack) {
-      throw TomServerException(
-        'scheduling.store.unserialisable_payload',
-        'The job payload cannot be stored because it is not JSON-encodable.',
-        parameters: {'job': run.jobName, 'run': run.id},
-        rootException: error,
-        stack: stack,
-      );
-    }
-  }
 
   static Object? _decodePayload(String? value) {
     if (value == null || value.isEmpty) return null;

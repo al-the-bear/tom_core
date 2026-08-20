@@ -1123,6 +1123,38 @@ void main() {
       expect(await TomFileJobStore(path).all(), isEmpty);
     });
 
+    test('a rejected payload does not wedge later persistence', () async {
+      final path = '${makeTempDir().path}/queue.json';
+      final store = TomFileJobStore(path);
+      await store.enqueue(
+        TomJobRun(id: 'a', jobName: 'job', scheduledFor: at, runAt: at),
+      );
+      await expectLater(
+        store.enqueue(
+          TomJobRun(
+            id: 'bad',
+            jobName: 'job',
+            scheduledFor: at.add(const Duration(hours: 1)),
+            runAt: at.add(const Duration(hours: 1)),
+            payload: DateTime.utc(2026),
+          ),
+        ),
+        throwsA(isA<TomScheduleException>()),
+      );
+      // The point of rejecting before the mutation: an accepted-then-unwritable
+      // run stays in memory and is re-encoded by every later mirror, so one bad
+      // payload would silently stop the queue from ever reaching disk again.
+      await store.enqueue(
+        TomJobRun(
+          id: 'b',
+          jobName: 'job',
+          scheduledFor: at.add(const Duration(hours: 2)),
+          runAt: at.add(const Duration(hours: 2)),
+        ),
+      );
+      expect((await TomFileJobStore(path).all()).map((r) => r.id), ['a', 'b']);
+    });
+
     group('atomic persistence', () {
       test('a half-written file beside the queue is ignored on load', () async {
         final path = '${makeTempDir().path}/queue.json';
@@ -2961,6 +2993,26 @@ void main() {
 
         expect(dispatcher.dispatched, hasLength(1));
         expect((await store.all()).single.state, TomJobRunState.succeeded);
+      });
+
+      test('an unstorable payload alerts rather than escaping', () async {
+        final controller = makeEventSource();
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(
+          TomJobDefinition(
+            name: 'on-event',
+            schedule: TomEventSchedule(controller.stream),
+            body: (_) => OkCommand(),
+          ),
+        );
+
+        controller.add(DateTime.utc(2026));
+        await pumpEventQueue();
+
+        expect(await store.all(), isEmpty);
+        expect(alerts.single.jobName, 'on-event');
+        expect(alerts.single.error, isA<TomScheduleException>());
       });
 
       test('deregister stops the subscription from enqueuing more', () async {

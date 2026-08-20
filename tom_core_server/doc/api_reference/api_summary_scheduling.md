@@ -139,7 +139,7 @@ tick.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `ensureSchema` | `Future<void> ensureSchema()` | Creates the queue table if it does not exist. Idempotent, called by every operation, and exposed so a start-up sequence can provision the schema before serving traffic. |
-| `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with `REPLACE`, so re-planning a window overwrites it; the unique key on `(job_name, scheduled_for)` keeps one-run-per-window a database invariant. |
+| `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with `REPLACE`, so re-planning a window overwrites it; the unique key on `(job_name, scheduled_for)` keeps one-run-per-window a database invariant. A payload that is not JSON-encodable is refused by `TomJobStore.encodePayload` while the bind map is built, so no statement is sent. |
 | `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor)` | *(override)* The run recorded for that job and window, or `null`. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | *(override)* The greatest `scheduled_for` recorded for the job, as a UTC instant, or `null` when it has no runs. |
 | `claimDue` | `Future<List<TomJobRun>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | *(override)* Scans pending runs due at `now` ordered by `seq`, applies `accept` in Dart, and issues one conditional `UPDATE` per survivor; a candidate a peer claimed first is skipped. Returns the runs actually won, at most `limit`. |
@@ -182,7 +182,7 @@ TomJobRunRow()
 | `startedAt` | `String?` | When the body began executing, as stored UTC text; `null` if it never did — the one column separating an interrupted execution from an abandoned reservation. |
 | `lastError` | `String?` | The message of the most recent failure. |
 | `completedAt` | `String?` | When the run reached a terminal state, as stored UTC text. |
-| `payload` | `String?` | The JSON text of the run's payload. |
+| `payload` | `String?` | The JSON text of the run's payload, written by the kernel's `TomJobStore.encodePayload` so that every store refuses the same payloads under the same key. |
 | `seq` | `int` | Insertion order, which is the queue's natural order. |
 
 ### TomJobRunWindowRow

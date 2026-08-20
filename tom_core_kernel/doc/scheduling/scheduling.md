@@ -207,6 +207,22 @@ Three behaviours worth knowing:
 each event on the stream enqueues a run carrying its payload. Two events at the
 same instant collapse into one run, since the window *is* the instant.
 
+The payload is **stored**, not merely handed along, so it has to be
+JSON-encodable: maps, lists, strings, numbers, booleans, `null`, and objects
+with a `toJson()`. `enqueue` checks it and refuses what it could not write,
+throwing a `schedule.job.payload` `TomScheduleException` naming the job and the
+offending type — and refusing *before* the queue changes, because a run accepted
+into memory and then found unwritable would be re-encoded by every later mirror,
+quietly stopping the whole queue from reaching disk again. The in-memory store
+applies the same check even though it has nothing to write: the restriction is
+the contract's, and a payload only memory would accept is one that fails the
+first time the application is deployed against a database. A `DateTime` is the
+usual casualty — send `toIso8601String()` instead.
+
+An event's enqueue is deliberately not awaited, so that a slow store cannot
+stall the event source. A refusal therefore arrives as a `runFailed` alert
+against the job, not as an exception at the `add()` call.
+
 ## Declaring a Job
 
 **This is the recommended way to write a job.** A class annotated with

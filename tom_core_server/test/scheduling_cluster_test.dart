@@ -700,6 +700,10 @@ void main() {
       // `executeCommand` is called — so the queue never sees a row it would
       // have to read back as unparseable. The scripted source proves it: it
       // records every statement, and records none.
+      //
+      // The exception is the kernel's, not this layer's: every store refuses
+      // the same payloads under the same key, which is what lets a job be
+      // developed against the memory store and deployed against this one.
       final datasource = _ScriptedDataSource();
       final store = TomSqlJobStore(datasource, createSchema: false);
 
@@ -714,12 +718,8 @@ void main() {
           ),
         ),
         throwsA(
-          isA<TomServerException>()
-              .having(
-                (e) => e.key,
-                'key',
-                'scheduling.store.unserialisable_payload',
-              )
+          isA<TomScheduleException>()
+              .having((e) => e.key, 'key', 'schedule.job.payload')
               .having((e) => e.parameters?['job'], 'job', 'export')
               .having((e) => e.parameters?['run'], 'run', 'run-9'),
         ),

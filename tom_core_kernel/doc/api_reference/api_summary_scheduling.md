@@ -628,7 +628,7 @@ factory TomJobRun.fromJson(Map<String, Object?> map)
 | `startedAt` | `DateTime?` | When execution actually began; `null` means nothing has run yet. |
 | `lastError` | `String?` | The most recent failure text. |
 | `completedAt` | `DateTime?` | When the run reached a terminal state. |
-| `payload` | `Object?` | The trigger payload, for event-driven runs. |
+| `payload` | `Object?` | The trigger payload, for event-driven runs. Must be JSON-encodable — `enqueue` refuses anything else. |
 | `isFinished` | `bool` | Whether `state` is terminal (getter). |
 
 #### Methods
@@ -661,6 +661,7 @@ the five safe to call without first re-reading the store.
 
 | Member | Signature | Description |
 | ------ | --------- | ----------- |
+| `encodePayload` | `static String? encodePayload(TomJobRun run)` | The JSON text a durable store writes for the run's payload, and the contract's definition of "JSON-encodable". Throws a `schedule.job.payload` `TomScheduleException` naming the job and the offending type. Every `enqueue` calls it — including the in-memory one, which has nothing to write, so that a payload fails on the developer's machine rather than on the first deployment with a database. |
 | `isRecoverable` | `static bool isRecoverable(TomJobRun run, bool Function(String jobName)? requestsRecovery)` | Whether an abandoned run may be re-queued: always, if it never started; otherwise only if its job opted in. |
 | `recoveryDeclinedError` | `static const String` | The operator-facing text recorded against a run that was interrupted and deliberately not re-queued — a constant so it reads identically whichever store wrote it. |
 
@@ -668,7 +669,7 @@ the five safe to call without first re-reading the store.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `enqueue` | `Future<void> enqueue(TomJobRun run)` | Adds a run. Idempotence is the caller's job, via `findWindow`. |
+| `enqueue` | `Future<void> enqueue(TomJobRun run)` | Adds a run. Idempotence is the caller's job, via `findWindow`. Throws `schedule.job.payload` — **before** changing the queue — when `payload` is not JSON-encodable. |
 | `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor)` | The existing run for a window, if it was already planned. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | The most recent window planned for a job — where catch-up resumes from. |
 | `claimDue` | `Future<List<TomJobRun>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | Atomically claims up to `limit` due runs for `owner`. |

@@ -342,16 +342,23 @@ class TomScheduler implements TomClosable {
     final schedule = job.schedule;
     if (schedule is TomEventSchedule) {
       _cancel(_eventSubscriptions.remove(job.name));
-      _eventSubscriptions[job.name] = schedule.events.listen(
-        (payload) => unawaited(_enqueueEvent(job, payload)),
-        onError: (Object error, StackTrace stack) => onAlert(
-          TomJobAlert(
-            jobName: job.name,
-            kind: TomJobAlertKind.runFailed,
-            error: error,
-            stackTrace: stack,
-          ),
+      // Both failure paths mean the same thing to an operator — this event
+      // produced no run — so both raise the same alert. The enqueue is not
+      // awaited, because a slow store must not stall the event source; without
+      // this its failure would have nowhere to go but the enclosing zone, and
+      // a payload the store refuses is the likeliest way to provoke one.
+      void alertEventLost(Object error, StackTrace stack) => onAlert(
+        TomJobAlert(
+          jobName: job.name,
+          kind: TomJobAlertKind.runFailed,
+          error: error,
+          stackTrace: stack,
         ),
+      );
+      _eventSubscriptions[job.name] = schedule.events.listen(
+        (payload) =>
+            unawaited(_enqueueEvent(job, payload).catchError(alertEventLost)),
+        onError: alertEventLost,
       );
     }
   }
