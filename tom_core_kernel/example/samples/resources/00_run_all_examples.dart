@@ -17,6 +17,7 @@ import '01_resource_provider_example.dart' as resource_provider;
 import '02_config_resource_provider_example.dart' as config_provider;
 import '03_resource_fallback_example.dart' as resource_fallback;
 import '04_app_singleton_example.dart' as app_singleton;
+import '05_resource_revision_example.dart' as resource_revision;
 
 /// Standalone entry point for running resources examples.
 void main() {
@@ -37,6 +38,7 @@ void run() {
   config_provider.run();
   resource_fallback.run();
   app_singleton.run();
+  resource_revision.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║                    All Samples Complete!                         ║');
