@@ -946,6 +946,10 @@ anyone who was writing them.
     subclass, and states the two throwing behaviours around the registry:
     `registerHandler` refuses a duplicate name, `getHandler` refuses an unknown
     one.
+  - The OAuth **endpoints** section names `tomOAuthApiId` and the three
+    `tomOAuth*EndpointId` constants, and says why they are constants: the
+    server restates them in `@TomApiEndpointImplementation(apiId: …)`, and a
+    mistyped literal there compiles cleanly and simply never binds.
   - The Overview says once that this document is organised by concept and
     points at `api_summary_security.md` for the exhaustive member list.
 - `Tom2FAChallenge.fromClaims` no longer promises it "never returns a

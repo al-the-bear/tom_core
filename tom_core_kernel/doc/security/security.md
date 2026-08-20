@@ -902,6 +902,16 @@ the handshake's verification steps.
 | `/oauth/authorize` | POST | `TomOAuthAuthorizationRequest` → `TomOAuthAuthorizationDto` |
 | `/oauth/callback` | GET | `TomOAuthCallbackRequest` → `TomAuthenticationResult` |
 
+**Name the ids through the constants, never as literals.** The api and its
+three endpoints are identified by `tomOAuthApiId` (`'tomOAuth'`),
+`tomOAuthProvidersEndpointId` (`'listOAuthProviders'`),
+`tomOAuthBeginEndpointId` (`'beginOAuthAuthorization'`) and
+`tomOAuthCompleteEndpointId` (`'completeOAuthAuthorization'`). They are
+constants because the server side has to restate them in
+`@TomApiEndpointImplementation(apiId: …)`: a literal spelled out a second time
+there is the one string that can go wrong without anything failing to compile —
+it names a different api, so the implementation never binds to this contract.
+
 All three are `TomPublicAccess`, and necessarily so: this is how a caller who is
 *not yet* authenticated becomes authenticated, exactly like `/login`. Public does
 not mean unguarded — the flow is protected by the `state` handle (single-use,
