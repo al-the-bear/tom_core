@@ -346,6 +346,77 @@ void main() {
       });
     });
 
+    group('immutability', () {
+      test('should return unmodifiable enabledModules list', () {
+        // Arrange
+        var cli = TomClientLimitsInformation(enabledModules: ['core']);
+
+        // Act & Assert
+        expect(
+          () => cli.enabledModules.add('reporting'),
+          throwsA(isA<UnsupportedError>()),
+        );
+      });
+
+      test('should return unmodifiable quotas map', () {
+        // Arrange
+        var cli = TomClientLimitsInformation(quotas: {'api_calls': 1000});
+
+        // Act & Assert
+        expect(
+          () => cli.quotas['storage_mb'] = 500,
+          throwsA(isA<UnsupportedError>()),
+        );
+      });
+
+      test('should refuse modification the same way whether or not values '
+          'were supplied', () {
+        // The default-constructed instance must not be a special case. It once
+        // was: the empty defaults were `const`, so an untouched instance threw
+        // while a populated one accepted the write.
+        var empty = TomClientLimitsInformation();
+        var populated = TomClientLimitsInformation(
+          enabledModules: ['core'],
+          quotas: {'api_calls': 1000},
+        );
+
+        expect(
+          () => empty.enabledModules.add('core'),
+          throwsA(isA<UnsupportedError>()),
+        );
+        expect(
+          () => populated.enabledModules.add('reporting'),
+          throwsA(isA<UnsupportedError>()),
+        );
+        expect(
+          () => empty.quotas['api_calls'] = 1,
+          throwsA(isA<UnsupportedError>()),
+        );
+        expect(
+          () => populated.quotas['storage_mb'] = 500,
+          throwsA(isA<UnsupportedError>()),
+        );
+      });
+
+      test('should copy the caller\'s collections rather than alias them', () {
+        // Arrange
+        var modules = ['core'];
+        var quotas = {'api_calls': 1000};
+        var cli = TomClientLimitsInformation(
+          enabledModules: modules,
+          quotas: quotas,
+        );
+
+        // Act — the caller still holds its own references and edits them.
+        modules.add('reporting');
+        quotas['api_calls'] = 999999;
+
+        // Assert
+        expect(cli.enabledModules, equals(['core']));
+        expect(cli.quotas['api_calls'], equals(1000));
+      });
+    });
+
     group('toString', () {
       test('should return formatted string with counts', () {
         // Arrange

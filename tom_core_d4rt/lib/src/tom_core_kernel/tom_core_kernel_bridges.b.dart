@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 65 files
-// Generated: 2026-08-20T12:28:47.972199
+// Generated: 2026-08-20T18:01:39.405300
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -229,6 +229,7 @@ class TomCoreKernelBridge {
       _createTomScheduledJobBridge(),
       _createTomScheduledJobsBridge(),
       _createTomSchedulerBridge(),
+      _createTomScopeExceptionBridge(),
       _createTomScopeBridge(),
       _createTomScopeBaseBridge(),
       _createInScopeBuilderBridge(),
@@ -494,6 +495,7 @@ class TomCoreKernelBridge {
       'TomScheduledJob': _createTomScheduledJobBridge,
       'TomScheduledJobs': _createTomScheduledJobsBridge,
       'TomScheduler': _createTomSchedulerBridge,
+      'TomScopeException': _createTomScopeExceptionBridge,
       'TomScope': _createTomScopeBridge,
       'TomScopeBase': _createTomScopeBaseBridge,
       'InScopeBuilder': _createInScopeBuilderBridge,
@@ -758,6 +760,7 @@ class TomCoreKernelBridge {
       'TomScheduledJob': $tom_core_kernel_36.TomScheduledJob,
       'TomScheduledJobs': $tom_core_kernel_36.TomScheduledJobs,
       'TomScheduler': $tom_core_kernel_37.TomScheduler,
+      'TomScopeException': $tom_core_kernel_38.TomScopeException,
       'TomScope': $tom_core_kernel_38.TomScope,
       'TomScopeBase': $tom_core_kernel_38.TomScopeBase,
       'InScopeBuilder': $tom_core_kernel_38.InScopeBuilder,
@@ -1023,6 +1026,7 @@ class TomCoreKernelBridge {
       'TomScheduledJob': 'package:tom_core_kernel/src/tombase/scheduling/scheduled_job.dart',
       'TomScheduledJobs': 'package:tom_core_kernel/src/tombase/scheduling/scheduled_job.dart',
       'TomScheduler': 'package:tom_core_kernel/src/tombase/scheduling/scheduler.dart',
+      'TomScopeException': 'package:tom_core_kernel/src/tombase/scope_ids/scope_ids.dart',
       'TomScope': 'package:tom_core_kernel/src/tombase/scope_ids/scope_ids.dart',
       'TomScopeBase': 'package:tom_core_kernel/src/tombase/scope_ids/scope_ids.dart',
       'InScopeBuilder': 'package:tom_core_kernel/src/tombase/scope_ids/scope_ids.dart',
@@ -1213,6 +1217,7 @@ class TomCoreKernelBridge {
       'TomScheduledJobException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomJobBase': ['TomCommand'],
       'TomScheduler': ['TomClosable'],
+      'TomScopeException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomScopeBase': ['TomScopeMixin', 'TomScope'],
       'TomScopeMixin': ['TomScope'],
       'TomGradedAccess': ['TomAccessControl'],
@@ -9796,6 +9801,7 @@ BridgedClass _createTomResultBridge() {
           case $tom_core_kernel_30.TomResourceException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_30.TomResourceException>.success(value);
           case $tom_core_kernel_35.TomScheduleException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_35.TomScheduleException>.success(value);
           case $tom_core_kernel_36.TomScheduledJobException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_36.TomScheduledJobException>.success(value);
+          case $tom_core_kernel_38.TomScopeException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_38.TomScopeException>.success(value);
           case $tom_core_kernel_11.TomServerConnectionException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomServerConnectionException>.success(value);
           case $tom_core_kernel_25.TomTimeRange _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_25.TomTimeRange>.success(value);
           case $tom_core_kernel_51.TomTimezoneException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_51.TomTimezoneException>.success(value);
@@ -12163,6 +12169,115 @@ BridgedClass _createTomSchedulerBridge() {
 }
 
 // =============================================================================
+// TomScopeException Bridge
+// =============================================================================
+
+BridgedClass _createTomScopeExceptionBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_38.TomScopeException,
+    name: 'TomScopeException',
+    isAssignable: (v) => v is $tom_core_kernel_38.TomScopeException,
+    hierarchyDepth: 4,
+    constructors: {
+      '': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 2, 'TomScopeException');
+        final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomScopeException');
+        final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomScopeException');
+        final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
+        final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
+        final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
+        final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
+        final serverCallError = D4.getOptionalNamedArg<$tom_core_kernel_11.TomServerCallError?>(named, 'serverCallError');
+        return $tom_core_kernel_38.TomScopeException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, uuid: uuid, serverCallError: serverCallError);
+      },
+    },
+    getters: {
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').stackTrace,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').serverCallError,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').logRepresentation,
+    },
+    setters: {
+      'uuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+      'requestUuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+      'timeStamp': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+      'key': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').key = D4.extractBridgedArg<String>(value, 'key'),
+      'defaultUserMessage': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+      'stack': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+      'rootException': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+      'stackTrace': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+      'autoLog': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+      'serverCallError': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_11.TomServerCallError>(value, 'serverCallError'),
+    },
+    methods: {
+      'toString': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException');
+        return t.toString();
+      },
+      'printStackTrace': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_38.TomScopeException>(target, 'TomScopeException');
+        final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
+        t.printStackTrace(depth);
+        return null;
+      },
+    },
+    constructorSignatures: {
+      '': 'TomScopeException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
+    },
+    methodSignatures: {
+      'toString': 'String toString()',
+      'printStackTrace': 'void printStackTrace([int depth = -1])',
+    },
+    getterSignatures: {
+      'uuid': 'String get uuid',
+      'requestUuid': 'String? get requestUuid',
+      'timeStamp': 'DateTime get timeStamp',
+      'key': 'String get key',
+      'defaultUserMessage': 'String get defaultUserMessage',
+      'parameters': 'Map<String, Object?>? get parameters',
+      'stack': 'Object? get stack',
+      'rootException': 'Object? get rootException',
+      'stackTrace': 'String get stackTrace',
+      'autoLog': 'bool get autoLog',
+      'serverCallError': 'TomServerCallError? get serverCallError',
+      'logRepresentation': 'String get logRepresentation',
+    },
+    setterSignatures: {
+      'uuid': 'set uuid(String value)',
+      'requestUuid': 'set requestUuid(String? value)',
+      'timeStamp': 'set timeStamp(DateTime value)',
+      'key': 'set key(String value)',
+      'defaultUserMessage': 'set defaultUserMessage(String value)',
+      'parameters': 'set parameters(Map<String, Object?>? value)',
+      'stack': 'set stack(Object? value)',
+      'rootException': 'set rootException(Object? value)',
+      'stackTrace': 'set stackTrace(String value)',
+      'autoLog': 'set autoLog(bool value)',
+      'serverCallError': 'set serverCallError(TomServerCallError? value)',
+    },
+  );
+}
+
+// =============================================================================
 // TomScope Bridge
 // =============================================================================
 
@@ -12529,6 +12644,12 @@ BridgedClass _createTomResourceKeyProtectionBridge() {
         final resourceKey = D4.getRequiredArg<String>(positional, 2, 'resourceKey', 'protect');
         return $tom_core_kernel_39.TomResourceKeyProtection.protect(data, fallback, resourceKey);
       },
+      'isProtectedFor': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 2, 'isProtectedFor');
+        final principal = D4.getRequiredArg<$tom_core_kernel_47.TomPrincipal?>(positional, 0, 'principal', 'isProtectedFor');
+        final resourceKey = D4.getRequiredArg<String>(positional, 1, 'resourceKey', 'isProtectedFor');
+        return $tom_core_kernel_39.TomResourceKeyProtection.isProtectedFor(principal, resourceKey);
+      },
       'isProtected': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isProtected');
         final resourceKey = D4.getRequiredArg<String>(positional, 0, 'resourceKey', 'isProtected');
@@ -12556,6 +12677,7 @@ BridgedClass _createTomResourceKeyProtectionBridge() {
     },
     staticMethodSignatures: {
       'protect': 'T protect(T data, T fallback, String resourceKey)',
+      'isProtectedFor': 'bool isProtectedFor(TomPrincipal? principal, String resourceKey)',
       'isProtected': 'bool isProtected(String resourceKey)',
     },
     staticGetterSignatures: {
@@ -14786,10 +14908,6 @@ BridgedClass _createTomClientLimitsInformationBridge() {
       'enabledModules': (visitor, target) => D4.validateTarget<$tom_core_kernel_47.TomClientLimitsInformation>(target, 'TomClientLimitsInformation').enabledModules,
       'quotas': (visitor, target) => D4.validateTarget<$tom_core_kernel_47.TomClientLimitsInformation>(target, 'TomClientLimitsInformation').quotas,
     },
-    setters: {
-      'enabledModules': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_47.TomClientLimitsInformation>(target, 'TomClientLimitsInformation').enabledModules = D4.coerceList<String>(value, 'enabledModules'),
-    },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_47.TomClientLimitsInformation>(target, 'TomClientLimitsInformation');
@@ -14805,10 +14923,6 @@ BridgedClass _createTomClientLimitsInformationBridge() {
     getterSignatures: {
       'enabledModules': 'List<String> get enabledModules',
       'quotas': 'Map<String, int> get quotas',
-    },
-    setterSignatures: {
-      'enabledModules': 'set enabledModules(dynamic value)',
-      'quotas': 'set quotas(dynamic value)',
     },
   );
 }
@@ -16202,6 +16316,7 @@ BridgedClass _createTomObjectBridge() {
           case $tom_core_kernel_30.TomResourceException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_30.TomResourceException>(initialValue);
           case $tom_core_kernel_35.TomScheduleException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_35.TomScheduleException>(initialValue);
           case $tom_core_kernel_36.TomScheduledJobException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_36.TomScheduledJobException>(initialValue);
+          case $tom_core_kernel_38.TomScopeException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_38.TomScopeException>(initialValue);
           case $tom_core_kernel_11.TomServerConnectionException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomServerConnectionException>(initialValue);
           case $tom_core_kernel_25.TomTimeRange _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_25.TomTimeRange>(initialValue);
           case $tom_core_kernel_51.TomTimezoneException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_51.TomTimezoneException>(initialValue);

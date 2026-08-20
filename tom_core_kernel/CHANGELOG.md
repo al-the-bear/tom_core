@@ -129,6 +129,22 @@ anyone who was writing them.
 
 ### Changed
 
+- **Breaking: `TomClientLimitsInformation` is read-only, like its sibling.**
+  `enabledModules` and `quotas` were plain reassignable public fields with
+  `const []` / `const {}` defaults — which made the class mutable in the one way
+  that skips the constructor and immutable in the one way a caller reaches for
+  first. `TomClientLimitsInformation().enabledModules.add('reporting')` threw an
+  `UnsupportedError` at runtime with no compile-time signal, because the default
+  was a `const` literal, while the very same call on a *populated* instance
+  succeeded and silently also mutated the list the caller had passed in. The
+  class now follows `TomAccessControlInformation` exactly: private backing
+  collections, copied in the constructor, exposed through `List.unmodifiable` /
+  `Map.unmodifiable`. The two ACI-side classes finally read the same way, and
+  neither can be edited behind the issuer's back — a subscription is decided by
+  whatever minted it, not by the code reading it. Callers that assigned to
+  either field must construct a new instance instead; nothing in the kernel did,
+  and `bearer_authentication.dart` only ever read them.
+
 - **Breaking: a scope id that is empty or contains `.` is now refused.** Ids
   are joined with `.` to build the scope path, and nothing looked at the string,
   so an id carrying the separator forged a segment boundary: `TomScopeBase(
@@ -313,6 +329,13 @@ anyone who was writing them.
 
 ### Tests
 
+- **`TomClientLimitsInformation` has the immutability group its sibling always
+  had.** Four new cases: unmodifiable `enabledModules`, unmodifiable `quotas`, a
+  case asserting that an empty instance and a populated one refuse writes the
+  *same* way — the asymmetry the `const` defaults created was visible only by
+  comparing the two — and one proving the constructor copies rather than aliases,
+  by editing the caller's own list and map afterwards and expecting the instance
+  to be unmoved.
 - **`TomResourceKeyAccess` is pinned to its argument.** The group grew from two
   cases to seven, covering both sides of the master switch, a `null` principal,
   and a principal that holds the key with **no zone installed** — the case that

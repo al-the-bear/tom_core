@@ -46,6 +46,11 @@ The security module consists of these main files:
 - **Principal**: Authenticated session with full context
 - **ACI (Access Control Information)**: Roles, groups, entitlements, resource keys
 - **CLI (Client Limits Information)**: Quotas and feature flags
+- Both ACI and CLI are **read-only once constructed**: each copies what its
+  constructor is given and hands out unmodifiable views, so a caller can neither
+  edit a grant nor raise a quota by writing to the object it was handed. Both are
+  decided by whoever issued the principal. To apply new values, build a new
+  instance
 - **2FA Challenge**: A pending second factor, carried in an interim token's
   public claims between pass 1 and pass 2 of a login
 - **2FA Enrolment**: The same interim-token mechanism one step earlier — the

@@ -154,6 +154,14 @@ class TomAccessControlInformation {
 /// - Subscription tier limits (e.g., API call quotas)
 /// - Module enablement per client
 ///
+/// ## Immutability
+///
+/// Limits are read-only once constructed, the same way
+/// [TomAccessControlInformation] is: the constructor copies what it is given
+/// and the getters hand out unmodifiable views. A client's subscription is
+/// decided by whatever issued it, not by the code reading it, so there is no
+/// in-place edit. To apply a new subscription state, build a new instance.
+///
 /// ## Example
 ///
 /// ```dart
@@ -172,15 +180,26 @@ class TomAccessControlInformation {
 /// ```
 // TODO: determine where to get this from...
 class TomClientLimitsInformation {
-  /// List of module names that are enabled for this client.
-  List<String> enabledModules;
+  final List<String> _enabledModules = [];
 
-  /// Map of quota names to their limits.
-  Map<String, int> quotas;
+  /// Unmodifiable list of module names that are enabled for this client.
+  List<String> get enabledModules => List.unmodifiable(_enabledModules);
+
+  final Map<String, int> _quotas = {};
+
+  /// Unmodifiable map of quota names to their limits.
+  Map<String, int> get quotas => Map.unmodifiable(_quotas);
+
+  /// Creates client limits information.
+  ///
+  /// Both collections are optional and default to empty.
   TomClientLimitsInformation({
-    this.enabledModules = const [],
-    this.quotas = const {},
-  });
+    List<String> enabledModules = const [],
+    Map<String, int> quotas = const {},
+  }) {
+    if (enabledModules.isNotEmpty) _enabledModules.addAll(enabledModules);
+    if (quotas.isNotEmpty) _quotas.addAll(quotas);
+  }
 
   @override
   String toString() => "CLI ${enabledModules.length} modules, quotas: $quotas.";
