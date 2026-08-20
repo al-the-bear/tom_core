@@ -129,6 +129,33 @@ anyone who was writing them.
 
 ### Changed
 
+- **The security documentation now covers per-resource roles, which it had
+  never mentioned.** `resource_role_authorization.dart` is exported from the
+  barrel, tested, and used throughout `tom_core_server` and the advanced
+  samples — but `doc/security/security.md` introduced "these main files" and
+  listed eight of the module's nine, omitting exactly that one. So
+  `TomResourceRoleRegistry`, `TomResourceRoleAdapter` and the fifth ACI
+  collection `resourceRoles` were absent from the module's prose, and with them
+  an entire authorization paradigm: a role scoped to a *single* resource, so one
+  principal can be `owner` of one project and `viewer` of another at the same
+  time. The gap was compounded by the doc claiming, of the
+  `TomAuthorizationAdapter` contract, that "a kernel-backed adapter maps
+  resource-key protection to states" — a description of nothing that exists.
+  `TomResourceRoleAdapter` is the only implementation the kernel ships, and it
+  is what makes `TomAuthorization.resolveAuth` return anything other than
+  `full`. The file table now lists all nine files, the ACI table and its
+  constructor sample carry `resourceRoles`, Key Concepts defines the term,
+  "Choose One Authorization Paradigm" lists it as the fifth (and warns that it
+  deliberately ignores the global roles), and a new section documents the
+  registry/adapter pair together with the no-fallback guarantee that governs
+  both: an ungranted resource resolves to `none` rather than degrading to the
+  global roles, and an unregistered role resolves to `none` rather than
+  granting by default. The module readme and the package README key-type tables
+  gained the pair as well. Also documented, because it is the trap this API
+  makes easiest to fall into: `TomBearerAuthentication.updatePrincipal`
+  *replaces* the ACI, so omitting its optional `resourceRoles` argument silently
+  drops every per-resource grant the principal held — the Token Management
+  sample now passes it.
 - **`TomAuthorizationGroup`'s documentation stopped naming a parameter that
   does not exist.** The class dartdoc pointed at `[authorizationGroup]` — a
   member `TomAuthorizable` has never had, so the reference was dead — and both
@@ -544,6 +571,19 @@ anyone who was writing them.
 
 ### Examples
 
+- **New: `07_resource_role_authorization_example.dart`.** The kernel's only
+  shipped `TomAuthorizationAdapter` had no runnable demonstration, which is part
+  of why it went undocumented for so long. The sample declares a role
+  vocabulary in `TomResourceRoleRegistry`, shows one principal holding `owner`
+  on one project and `viewer` on another simultaneously, and asserts both halves
+  of the no-fallback guarantee — the ungranted resource and the unregistered
+  role each resolving to `none`, with the principal deliberately made a global
+  `admin` to demonstrate that the global grant does not leak through. It then
+  installs the adapter on `TomAuthorization`, contrasts the resolved states with
+  the no-adapter `full` default, and covers `stateOf` and the unmodifiable
+  registry snapshot. Every snippet in the new prose section is a shape this
+  sample compiles and asserts, so the documentation cannot drift from the API
+  without the sample failing.
 - **The resource-key sample now exercises the control rather than the ACI.**
   Section four of `03_advanced_access_control_example.dart` built an
   `emailAccess` and a `salaryAccess` and then asserted on

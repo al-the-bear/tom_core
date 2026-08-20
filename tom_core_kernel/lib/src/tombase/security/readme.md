@@ -16,6 +16,7 @@ an element is hidden, locked, read-only, or fully editable.
 | `TomAuthorization` / `TomAuthorizer` | Decide the effective access for a principal against a resource. |
 | `TomAccessControl` (+ `TomNoAccess` / `TomPublicAccess` / `TomAuthenticatedAccess` / `TomRoleAccess` / `TomEntitlementAccess` / `TomGroupAccess` / `TomResourceKeyAccess` / `TomCustomAccess`) | Composable access-control rules attached to resources. `resolveAuthState` bridges the binary `checkAccessibility` to `TomAuthState` (granted → `full`, denied → `none`). |
 | `TomGradedAccess` | Composes `full` / `read` / `disabled` controls into all four `TomAuthState` values, so a single rule can express `full` / `read` / `disabled` / `none`. |
+| `TomResourceRoleRegistry` / `TomResourceRoleAdapter` | Per-principal-per-resource roles: the `roleName → TomAuthState` table, and the kernel's only shipped `TomAuthorizationAdapter`, which resolves a resource key through the principal's role for it. Closed by design — an ungranted resource or an unregistered role yields `none`, never a fallback. |
 | `TomUser` / `TomPrincipal` | Authenticated identity and its security context. |
 | `TomGroup` / `TomRole` / `TomEntitlement` | Authorization subjects a user can hold. |
 | `TomBearerAuthentication` | Bearer-token authentication. |

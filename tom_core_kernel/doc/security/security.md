@@ -15,6 +15,7 @@ The security module provides a comprehensive authentication and authorization sy
   - [TomAuthorizable](#tomauthorizable)
   - [TomAuthorizationGroup](#tomauthorizationgroup)
   - [TomAuthorization (Global Singleton)](#tomauthorization-global-singleton)
+  - [Per-Resource Roles (the shipped adapter)](#per-resource-roles-the-shipped-adapter)
   - [TomAuthorizer](#tomauthorizer)
   - [TomUIStateController](#tomuistatecontroller)
 - [The Server Principal and the Meet](#the-server-principal-and-the-meet)
@@ -36,6 +37,7 @@ The security module consists of these main files:
 | `bearer_authentication.dart` | JWT token management |
 | `user_principal_aci.dart` | User, principal, and ACI types |
 | `tom_authorization.dart` | UI authorization primitives — the four-state model, groups, authorizers, and the global authorization singleton |
+| `resource_role_authorization.dart` | Per-principal-per-resource roles — the role→state registry and the one `TomAuthorizationAdapter` the kernel ships |
 | `two_factor.dart` | The shared half of the two-pass login — the challenge and enrolment wire shapes, their claim names, the method descriptor, and the TOTP primitives |
 | `server_principal.dart` | The ambient server principal — the deployment's own identity, which caps every user's grants |
 | `oauth_contract.dart` | The wire contract for external-identity login — the provider/authorization/callback DTOs and the `/oauth` API declaration both tiers bind to |
@@ -44,7 +46,12 @@ The security module consists of these main files:
 
 - **User**: Basic identity information (name, email, etc.)
 - **Principal**: Authenticated session with full context
-- **ACI (Access Control Information)**: Roles, groups, entitlements, resource keys
+- **ACI (Access Control Information)**: Roles, groups, entitlements, resource
+  keys, and resource *roles*
+- **Resource Role**: A role scoped to a *single* resource rather than to the
+  principal as a whole, so one user can be `owner` of one project and `viewer`
+  of another at the same time. See [Per-Resource
+  Roles](#per-resource-roles-the-shipped-adapter)
 - **CLI (Client Limits Information)**: Quotas and feature flags
 - Both ACI and CLI are **read-only once constructed**: each copies what its
   constructor is given and hands out unmodifiable views, so a caller can neither
@@ -169,6 +176,7 @@ Groups authorization data:
 | `groups` | Organizational units (can be nested) |
 | `entitlements` | Fine-grained permissions |
 | `resourceKeys` | Field-level access identifiers |
+| `resourceRoles` | `resourceKey → roleName` — the principal's role on each *individual* resource |
 
 ```dart
 var aci = TomAccessControlInformation(
@@ -176,8 +184,15 @@ var aci = TomAccessControlInformation(
   groups: ['engineering'],
   entitlements: ['feature.reports.view'],
   resourceKeys: ['user.email', 'user.phone'],
+  resourceRoles: {'project.apollo': 'owner', 'project.gemini': 'viewer'},
 );
 ```
+
+The first four are flat lists that describe the principal *everywhere*.
+`resourceRoles` is the odd one out: it is a map, and each entry scopes a role to
+one resource, which is what lets the same principal hold different rights on two
+projects at once. It is resolved by a different mechanism from the other four —
+see [Per-Resource Roles](#per-resource-roles-the-shipped-adapter).
 
 #### TomAccessControlDefinition
 
@@ -376,9 +391,66 @@ final state = TomAuthorization.resolveAuth('checkout.email');
 TomAuthorization.reset(); // clears the adapter
 ```
 
-`TomAuthorizationAdapter` is the bridging contract — a kernel-backed adapter maps
-resource-key protection to states, while test doubles return predetermined
-results.
+`TomAuthorizationAdapter` is the bridging contract, and it is a one-method
+interface: `TomAuthState resolveAuth(String resourceKeyPath)`. The kernel ships
+exactly one implementation — [`TomResourceRoleAdapter`](#per-resource-roles-the-shipped-adapter),
+described next. Anything else is yours to write, and test doubles that return
+predetermined results are the usual second implementation.
+
+### Per-Resource Roles (the shipped adapter)
+
+`resource_role_authorization.dart` is the kernel's answer to "*what is this
+principal **on this resource**?*" — as opposed to `TomAccessControlInformation`'s
+`roles`, which answer "*what is this principal, everywhere?*". Two pieces make a
+per-resource role resolvable to a `TomAuthState`:
+
+| Type | Role |
+| ---- | ---- |
+| `TomResourceRoleRegistry` | Process-wide `roleName → TomAuthState` table. Roles arrive from grant data as opaque strings; this is where the application declares what each one is *worth* |
+| `TomResourceRoleAdapter` | A `TomAuthorizationAdapter` built over a principal's `resourceRoles` map. Resolves a resource key by finding the principal's role for it, then mapping that role through the registry |
+
+Declare the vocabulary once at startup — client and server declare the *same*
+mapping, so presentation and enforcement cannot disagree:
+
+```dart
+TomResourceRoleRegistry.registerAll({
+  'owner': TomAuthState.full,
+  'editor': TomAuthState.full,
+  'commenter': TomAuthState.read,
+  'viewer': TomAuthState.read,
+});
+```
+
+Then install an adapter over the current principal's grants, typically at login
+from the authorization token's `resourceRoles` claim:
+
+```dart
+TomAuthorization.adapter = TomResourceRoleAdapter(principal.aci.resourceRoles);
+
+// Anywhere in the UI or the server pipeline:
+final state = TomAuthorization.resolveAuth('project.apollo');
+if (state.isInteractive) { /* editable */ }
+```
+
+**The no-fallback guarantee.** The resolution is deliberately closed, in both
+directions where a fallback would be tempting:
+
+- a resource key **absent** from the principal's map means the principal has no
+  role there, and resolves to `none`. It does *not* degrade to the global
+  `roles` — a user who is a global `admin` still gets `none` on a project nobody
+  granted them;
+- a role **absent** from the registry resolves to `none` as well. An unknown
+  role grants nothing rather than silently granting access, so a typo in grant
+  data fails closed.
+
+`stateOf(resourceKey)` performs the same computation as `resolveAuth` under a
+name that reads correctly at **server-side enforcement** call sites — where an
+adapter is already in hand and going through the global singleton would be
+wrong.
+
+A runnable walkthrough of all of the above, with both halves of the no-fallback
+guarantee asserted, is
+[`example/samples/security/07_resource_role_authorization_example.dart`](../../example/samples/security/07_resource_role_authorization_example.dart).
 
 ### TomAuthorizer
 
@@ -714,8 +786,15 @@ TomBearerAuthentication.updatePrincipal(
   ['new-role'],
   ['new-entitlement'],
   ['new-resource-key'],
+  resourceRoles: {'project.apollo': 'owner'},
 );
 ```
+
+`updatePrincipal` **replaces** the ACI rather than merging into it, so every
+collection it is not given comes back empty. `resourceRoles` is the easiest one
+to lose, because it is the only optional parameter: omit it and the principal's
+per-resource grants are silently dropped. Pass the full set you want the
+principal to have, not the delta.
 
 ---
 
@@ -729,6 +808,14 @@ While mixing approaches is supported, it's cleaner to use one:
 - **Enterprise apps**: Role-based (RBAC)
 - **Fine-grained control**: Entitlement-based
 - **Field-level security**: Resource keys
+- **Per-resource rights** (the same user is `owner` here and `viewer` there):
+  [Resource roles](#per-resource-roles-the-shipped-adapter)
+
+The last of these is the one that does not compose with the others by accident:
+resource roles resolve through their own adapter and, by design, ignore the
+global `roles` entirely. Mixing them means a user's rights on a resource come
+from one mechanism and their rights everywhere else from another — workable, but
+decide it deliberately rather than discovering it.
 
 ### 2. Define Clear Role Hierarchies
 

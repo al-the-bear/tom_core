@@ -19,6 +19,7 @@ import '03_advanced_access_control_example.dart' as advanced_access;
 import '04_bearer_authentication_example.dart' as bearer_auth;
 import '05_ui_authorization_example.dart' as ui_authorization;
 import '06_graded_access_example.dart' as graded_access;
+import '07_resource_role_authorization_example.dart' as resource_roles;
 
 /// Standalone entry point for running security examples.
 void main() {
@@ -41,6 +42,7 @@ void run() {
   bearer_auth.run();
   ui_authorization.run();
   graded_access.run();
+  resource_roles.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║                    All Samples Complete!                         ║');
