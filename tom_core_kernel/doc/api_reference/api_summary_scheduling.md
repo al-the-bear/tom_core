@@ -745,13 +745,17 @@ held/free, because a lease can lapse without ever being released.
 ```dart
 const TomLeaseInfo({
   required String resource,
-  TomLease? lease,
+  required TomLease? lease,
   required bool isHeld,
-  required bool wasReleased,
+  bool wasReleased = false,
 })
 
 const TomLeaseInfo.free(String resource)
 ```
+
+`lease` is required despite being nullable: "never held" has its own
+constructor, `TomLeaseInfo.free`, so a null lease should be stated rather than
+arrived at by leaving the argument out.
 
 #### Properties
 

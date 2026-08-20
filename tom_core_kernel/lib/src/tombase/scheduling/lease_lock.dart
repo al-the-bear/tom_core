@@ -189,6 +189,11 @@ class TomLeaseInfo {
   final bool wasReleased;
 
   /// Creates an inspection result.
+  ///
+  /// [lease] is required even though it is nullable, because "never held" has
+  /// its own constructor below. Defaulting it would give that state a second
+  /// spelling reachable by omission, and an inspection result that says
+  /// "never held" because an argument was forgotten is worse than no answer.
   const TomLeaseInfo({
     required this.resource,
     required this.lease,
