@@ -1040,6 +1040,162 @@ void main() {
   });
 
   // ===========================================================================
+  // Observable Revision
+  // ===========================================================================
+  //
+  // `appResourcesRevision` is the module's only cross-module surface: a locale
+  // switch becomes visible to `TomObservableEnum` (see
+  // lib/src/tombase/observable/tom_observable_enum.dart) because the counter
+  // moves, and for no other reason. Its contract is therefore as much about
+  // when it does *not* move as when it does — a spurious bump re-renders the
+  // application for nothing, a missing one leaves it showing stale text.
+  //
+  // The counter is a process-wide `static final TomInt` that nothing resets, so
+  // every test here reads it with `~` before and after and compares the delta
+  // rather than an absolute value.
+  //
+  // The two bumps already pinned by the bootstrap contract group above — the
+  // first install bumps, clearing does not — are not repeated here.
+  group('observable revision', () {
+    setUp(() {
+      TomTextResourceProvider.loader = null;
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({}),
+      );
+    });
+
+    test('notifyAppResourcesChanged bumps the revision', () {
+      // The manual escape hatch, for the one change the module cannot detect.
+      final before = ~TomTextResourceProvider.appResourcesRevision;
+
+      TomTextResourceProvider.notifyAppResourcesChanged();
+
+      expect(~TomTextResourceProvider.appResourcesRevision, equals(before + 1));
+    });
+
+    test('replacing an installed provider bumps the revision again', () {
+      // Not just the *first* install: every install announces itself, which is
+      // what makes a locale switch (install the new bundle) work at all.
+      final before = ~TomTextResourceProvider.appResourcesRevision;
+
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({'greeting': 'Hello'}),
+      );
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({'greeting': 'Bonjour'}),
+      );
+
+      expect(~TomTextResourceProvider.appResourcesRevision, equals(before + 2));
+      expect(
+        TomTextResourceProvider.getAppResources().getText('greeting'),
+        equals('Bonjour'),
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // The setter's identity guard.
+    //
+    // `set resources` bumps only when `identical(this, _resourceProvider)`.
+    // That one line decides whether an assignment is an application-wide event
+    // or a private edit, and it is silently correct or silently wrong — nothing
+    // observable distinguishes the two until an observer fires (or doesn't).
+    // Both sides of it are pinned below.
+    // -------------------------------------------------------------------------
+    test('assigning resources on the installed provider bumps', () {
+      final installed = TomTextResourceProvider.from({'greeting': 'Hello'});
+      TomTextResourceProvider.setAppResourceProvider(installed);
+      final before = ~TomTextResourceProvider.appResourcesRevision;
+
+      installed.resources = {'greeting': 'Bonjour'};
+
+      expect(~TomTextResourceProvider.appResourcesRevision, equals(before + 1));
+      expect(
+        TomTextResourceProvider.getAppResources().getText('greeting'),
+        equals('Bonjour'),
+      );
+    });
+
+    test('assigning resources on a provider that is not installed does not '
+        'bump', () {
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({'greeting': 'Hello'}),
+      );
+      final other = TomTextResourceProvider.from({});
+      final before = ~TomTextResourceProvider.appResourcesRevision;
+
+      other.resources = {'greeting': 'Bonjour'};
+
+      // Nobody is reading `other`, so nobody needs to hear about it.
+      expect(~TomTextResourceProvider.appResourcesRevision, equals(before));
+      expect(
+        TomTextResourceProvider.getAppResources().getText('greeting'),
+        equals('Hello'),
+      );
+    });
+
+    test('constructing a provider does not bump, however it is populated', () {
+      // Both populating constructors assign through the setter, and the guard
+      // is what keeps that from announcing a bundle nothing has installed yet.
+      // This is the instance-level half of the declare/install split.
+      TomTextResourceProvider.loader = () => {'origin': 'staticLoader'};
+      final before = ~TomTextResourceProvider.appResourcesRevision;
+
+      TomTextResourceProvider();
+      TomTextResourceProvider.load(() => {'origin': 'scoped'});
+      TomTextResourceProvider.from({'origin': 'literal'});
+
+      expect(~TomTextResourceProvider.appResourcesRevision, equals(before));
+    });
+
+    // -------------------------------------------------------------------------
+    // In-place mutation.
+    //
+    // The documented limitation, and the reason notifyAppResourcesChanged
+    // exists: assignment goes through a setter that can see it, `[]=` does not.
+    // -------------------------------------------------------------------------
+    test('mutating the installed bundle in place does not bump', () {
+      final installed = TomTextResourceProvider.from({
+        'greeting': 'Hello',
+        'nested': {'leaf': 'Leaf'},
+      });
+      TomTextResourceProvider.setAppResourceProvider(installed);
+      final before = ~TomTextResourceProvider.appResourcesRevision;
+
+      installed.resources['greeting'] = 'Bonjour';
+      (installed.resources['nested'] as Map)['leaf'] = 'Feuille';
+
+      // The value changed and the counter did not: an observer would still be
+      // showing 'Hello'.
+      expect(
+        TomTextResourceProvider.getAppResources().getText('greeting'),
+        equals('Bonjour'),
+      );
+      expect(~TomTextResourceProvider.appResourcesRevision, equals(before));
+
+      // Which is what the manual notification is for.
+      TomTextResourceProvider.notifyAppResourcesChanged();
+      expect(~TomTextResourceProvider.appResourcesRevision, equals(before + 1));
+    });
+
+    test('the revision reaches observers', () {
+      // The counter is only useful because something reacts to it; a bump that
+      // notified nobody would satisfy every test above. Observers are held
+      // weakly, so the subscription is retained for the length of the test.
+      var seen = 0;
+      final observer =
+          TomTextResourceProvider.appResourcesRevision >> (_) => seen++;
+
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({'greeting': 'Bonjour'}),
+      );
+      TomTextResourceProvider.notifyAppResourcesChanged();
+
+      expect(seen, equals(2));
+      TomTextResourceProvider.appResourcesRevision.removeObserver(observer);
+    });
+  });
+
+  // ===========================================================================
   // Edge Cases and Integration Tests
   // ===========================================================================
   group('Edge Cases', () {
