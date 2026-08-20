@@ -1125,6 +1125,61 @@ void main() {
         expect(backoff, lessThanOrEqualTo(const Duration(seconds: 15)));
       }
     });
+
+    // The two tests above each disable half of the interaction — one sets
+    // `jitter: 0`, the other leaves `maxBackoff` at a default far too high to
+    // bite. The policy's two promises only collide when both are in play, so
+    // that is what the next two exercise.
+    const saturating = TomRetryPolicy(
+      initialBackoff: Duration(seconds: 10),
+      multiplier: 10,
+      maxBackoff: Duration(minutes: 1),
+      jitter: 0.5,
+    );
+
+    test('jitter never pushes the delay past maxBackoff', () {
+      final random = Random(1);
+      for (var attempt = 1; attempt <= 5; attempt++) {
+        final unjittered = saturating.backoffFor(attempt);
+        for (var i = 0; i < 50; i++) {
+          final backoff = saturating.backoffFor(attempt, random);
+          expect(
+            backoff,
+            lessThanOrEqualTo(const Duration(minutes: 1)),
+            reason: 'attempt $attempt exceeded the ceiling',
+          );
+          expect(
+            backoff,
+            greaterThanOrEqualTo(unjittered),
+            reason: 'attempt $attempt retried earlier than promised',
+          );
+        }
+      }
+    });
+
+    test('jitter still spreads the retries once the backoff has saturated', () {
+      // Saturation is the case jitter exists for: a long outage drives every
+      // job in the fleet to maxBackoff together. Capping the *jittered* value
+      // would satisfy the ceiling by handing them all the same instant to
+      // retry on, which is the pile-up jitter is meant to prevent. So the
+      // curve plateaus a jitter's width below the ceiling instead, and the
+      // spread reaches maxBackoff without crossing it.
+      final random = Random(1);
+      final seen = <Duration>{};
+      for (var i = 0; i < 50; i++) {
+        seen.add(saturating.backoffFor(4, random));
+      }
+
+      expect(seen.length, greaterThan(10), reason: 'jitter collapsed');
+      expect(
+        seen.reduce((a, b) => a < b ? a : b),
+        greaterThanOrEqualTo(const Duration(seconds: 40)),
+      );
+      expect(
+        seen.reduce((a, b) => a > b ? a : b),
+        greaterThan(const Duration(seconds: 50)),
+      );
+    });
   });
 
   // ===========================================================================

@@ -378,15 +378,15 @@ const TomRetryPolicy({
 | `maxAttempts` | `int` | Total attempts, including the first. |
 | `initialBackoff` | `Duration` | Delay before attempt 2. |
 | `multiplier` | `double` | Growth factor per attempt. |
-| `maxBackoff` | `Duration` | Ceiling on the computed delay. |
-| `jitter` | `double` | Random fraction applied to each delay, so retries across a cluster spread out. |
+| `maxBackoff` | `Duration` | Ceiling on the delay, jitter included; the curve plateaus at `maxBackoff / (1 + jitter)`. |
+| `jitter` | `double` | Random fraction added to each delay, so retries across a cluster spread out. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `allowsRetryAfter` | `bool allowsRetryAfter(int attempt)` | Whether another attempt is permitted after `attempt`. |
-| `backoffFor` | `Duration backoffFor(int attempt, [Random? random])` | The delay before the given attempt, jitter applied. |
+| `backoffFor` | `Duration backoffFor(int attempt, [Random? random])` | The delay before the given attempt, jitter applied, never above `maxBackoff`. Without a `Random`, the unjittered low end. |
 | `toString` | `String toString()` | *(override)* The policy's parameters. |
 
 ### TomJobDispatcher

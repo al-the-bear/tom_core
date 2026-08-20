@@ -70,10 +70,15 @@ enum TomMissedWindowPolicy {
 
 /// How a failed attempt is retried.
 ///
-/// Backoff is exponential from [initialBackoff] by [multiplier], clamped to
-/// [maxBackoff]. [jitter] spreads the retries of jobs that failed together —
-/// without it, a downstream service that dropped every job at once gets them
-/// all back simultaneously, which is how a brief outage becomes a long one.
+/// Backoff is exponential from [initialBackoff] by [multiplier], and never
+/// exceeds [maxBackoff] — jitter included. [jitter] spreads the retries of jobs
+/// that failed together — without it, a downstream service that dropped every
+/// job at once gets them all back simultaneously, which is how a brief outage
+/// becomes a long one.
+///
+/// That pile-up is worst once every job has saturated at the ceiling, which is
+/// what a long outage produces, so the curve plateaus a jitter's width below
+/// [maxBackoff] rather than clamping the jittered value. See [backoffFor].
 class TomRetryPolicy {
   /// Total attempts including the first, so `1` means "no retry".
   final int maxAttempts;
@@ -84,13 +89,18 @@ class TomRetryPolicy {
   /// The factor each successive backoff is multiplied by.
   final double multiplier;
 
-  /// The ceiling backoff never exceeds.
+  /// The ceiling backoff never exceeds, [jitter] included.
+  ///
+  /// Because jitter is added on top, the exponential curve plateaus at
+  /// `maxBackoff / (1 + jitter)` — with the defaults, 27 min 16 s under the
+  /// 30 min ceiling — and jitter fills the gap.
   final Duration maxBackoff;
 
   /// The fraction of the computed backoff that may be added at random, `0`-`1`.
   ///
   /// Applied additively upward only, so jitter never makes a retry earlier than
-  /// the backoff the policy promised.
+  /// the backoff the policy promised, and never later than [maxBackoff], whose
+  /// plateau reserves the room it needs.
   final double jitter;
 
   /// Creates a retry policy.
@@ -111,17 +121,34 @@ class TomRetryPolicy {
   /// The delay before the attempt following [attempt] (1-based).
   ///
   /// [random] is supplied by the scheduler so jitter is reproducible in tests;
-  /// omitting it yields the exact, unjittered backoff.
+  /// omitting it yields the exact, unjittered backoff — the low end of the
+  /// range a jittered call draws from.
   Duration backoffFor(int attempt, [Random? random]) {
     final steps = (attempt - 1).clamp(0, 30);
     final scaled = initialBackoff.inMicroseconds * pow(multiplier, steps);
-    var micros = scaled.isFinite
-        ? scaled.round().clamp(0, maxBackoff.inMicroseconds)
-        : maxBackoff.inMicroseconds;
+
+    // Jitter is added on top, so the exponential curve has to plateau a
+    // jitter's width *below* [maxBackoff] for the jittered result to land on
+    // the ceiling rather than past it.
+    //
+    // The alternative — clamping after jittering — would keep the ceiling by
+    // handing every saturated job the same instant to retry on, and saturation
+    // is precisely the case jitter exists for: a long outage drives a whole
+    // fleet to [maxBackoff] together. Reserving the headroom keeps the full
+    // spread there, at the cost of the plateau sitting below the ceiling.
+    //
+    // A negative [jitter] reserves nothing, matching the guard below that
+    // declines to apply it.
+    final headroom = 1 + (jitter > 0 ? jitter : 0);
+    final plateau = maxBackoff.inMicroseconds / headroom;
+    var micros = (scaled.isFinite ? scaled.clamp(0, plateau) : plateau).round();
     if (random != null && jitter > 0) {
       micros += (micros * jitter * random.nextDouble()).round();
     }
-    return Duration(microseconds: micros);
+
+    // Two roundings sit between the plateau and here, either of which can go
+    // up, so the ceiling is enforced rather than merely arrived at.
+    return Duration(microseconds: micros.clamp(0, maxBackoff.inMicroseconds));
   }
 
   @override

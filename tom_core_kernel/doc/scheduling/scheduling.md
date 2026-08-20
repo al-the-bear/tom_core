@@ -519,11 +519,18 @@ a *surviving peer*, reading state the departed node wrote before it died.
 ## Retries, Backoff and Timeouts
 
 `TomRetryPolicy` grows the wait exponentially from `initialBackoff` by
-`multiplier`, clamped to `maxBackoff`, with `jitter` that only ever *lengthens*
+`multiplier`, bounded by `maxBackoff`, with `jitter` that only ever *lengthens*
 the wait — so a fleet that failed together does not retry together. `maxAttempts`
 counts the first attempt, so `TomRetryPolicy.none` (`maxAttempts: 1`) fails
 without retrying. The default is three attempts, 30 s initial backoff, doubling,
 capped at 30 min, with 10 % jitter.
+
+`maxBackoff` bounds the delay **after** jitter, so the exponential curve
+plateaus at `maxBackoff / (1 + jitter)` — 27 min 16 s under the default 30 min
+ceiling — and jitter fills the gap up to it. Reserving that headroom rather than
+capping the jittered value is what keeps the spread alive once every job has
+saturated, which is the state a long outage leaves a fleet in and precisely the
+pile-up jitter exists to prevent.
 
 An attempt that overruns `timeout` is failed and retried like any other failure.
 A **body factory that throws** is different: that is a permanent defect, not a
