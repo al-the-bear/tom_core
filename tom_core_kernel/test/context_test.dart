@@ -253,7 +253,7 @@ void main() {
       });
 
       test('inner context wins on colliding key (precedence)', () async {
-        // 
+        //
         final outerContext = TomExecutionContext({
           'shared': TomContextEntry<String>(() => 'outerValue'),
         });
@@ -275,7 +275,7 @@ void main() {
       });
 
       test('does not mutate source context map (no aliasing)', () async {
-        // 
+        //
         final outerContext = TomExecutionContext({
           'outer': TomContextEntry<String>(() => 'outerValue'),
         });

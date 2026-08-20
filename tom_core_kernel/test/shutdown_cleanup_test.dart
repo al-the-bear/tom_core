@@ -738,17 +738,14 @@ void main() {
       expect(target.disposedFlag, isTrue);
     });
 
-    test(
-      'resolves a custom-named method inherited from a superclass',
-      () {
-        final target = InheritsShutdown();
+    test('resolves a custom-named method inherited from a superclass', () {
+      final target = InheritsShutdown();
 
-        final adaptor = TomCloseAdaptor(target, 'shutdown');
-        adaptor.close();
+      final adaptor = TomCloseAdaptor(target, 'shutdown');
+      adaptor.close();
 
-        expect(target.shutdownCalled, isTrue);
-      },
-    );
+      expect(target.shutdownCalled, isTrue);
+    });
 
     test('throws when the resolved method requires a parameter', () {
       expect(

@@ -475,8 +475,7 @@ class BackoffCurveExample {
     );
 
     assert(
-      steepCurve.map((backoff) => backoff.inSeconds).join(',') ==
-          '10,40,40,40',
+      steepCurve.map((backoff) => backoff.inSeconds).join(',') == '10,40,40,40',
       'Ten seconds, then ten times that — except 100s is past the plateau, so '
       'attempt 2 already saturates. The curve is exponential until it is not; '
       'multiplier decides how fast you get to the ceiling, not how high it is',

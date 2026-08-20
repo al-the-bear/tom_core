@@ -813,31 +813,28 @@ void main() {
         expect(result.resourceKeys, contains('admin.view'));
       });
 
-      test(
-        'should preserve the user\'s own resource keys',
-        () {
-          // The user directly holds a resource key; resolution must keep it
-          // rather than dropping it in favour of entitlement names.
-          var definition = TomAccessControlDefinition(
-            roles: [
-              TomRole(name: 'user', resourceKeys: ['role.key']),
-            ],
-          );
-          var userAci = TomAccessControlInformation(
-            roles: ['user'],
-            entitlements: ['some.entitlement'],
-            resourceKeys: ['own.key'],
-          );
+      test('should preserve the user\'s own resource keys', () {
+        // The user directly holds a resource key; resolution must keep it
+        // rather than dropping it in favour of entitlement names.
+        var definition = TomAccessControlDefinition(
+          roles: [
+            TomRole(name: 'user', resourceKeys: ['role.key']),
+          ],
+        );
+        var userAci = TomAccessControlInformation(
+          roles: ['user'],
+          entitlements: ['some.entitlement'],
+          resourceKeys: ['own.key'],
+        );
 
-          // Act
-          var result = definition.completeFromDefinition(userAci);
+        // Act
+        var result = definition.completeFromDefinition(userAci);
 
-          // Assert — both the user's key and the role-granted key are present,
-          // and the entitlement name has NOT leaked into the resource keys.
-          expect(result.resourceKeys, containsAll(['own.key', 'role.key']));
-          expect(result.resourceKeys, isNot(contains('some.entitlement')));
-        },
-      );
+        // Assert — both the user's key and the role-granted key are present,
+        // and the entitlement name has NOT leaked into the resource keys.
+        expect(result.resourceKeys, containsAll(['own.key', 'role.key']));
+        expect(result.resourceKeys, isNot(contains('some.entitlement')));
+      });
 
       test(
         'should preserve the user\'s resourceRoles (C-5 per-resource role map)',
@@ -867,32 +864,29 @@ void main() {
         },
       );
 
-      test(
-        'resolved entitlements are entitlements, not a copy of groups',
-        () {
-          // Distinct group and entitlement names so a groups/entitlements mixup
-          // is detectable.
-          var definition = TomAccessControlDefinition(
-            roles: [
-              TomRole(
-                name: 'manager',
-                groupMemberShips: ['leads'],
-                entitlements: ['reports.manage'],
-              ),
-            ],
-            groups: [TomGroup(name: 'leads')],
-          );
-          var userAci = TomAccessControlInformation(roles: ['manager']);
+      test('resolved entitlements are entitlements, not a copy of groups', () {
+        // Distinct group and entitlement names so a groups/entitlements mixup
+        // is detectable.
+        var definition = TomAccessControlDefinition(
+          roles: [
+            TomRole(
+              name: 'manager',
+              groupMemberShips: ['leads'],
+              entitlements: ['reports.manage'],
+            ),
+          ],
+          groups: [TomGroup(name: 'leads')],
+        );
+        var userAci = TomAccessControlInformation(roles: ['manager']);
 
-          // Act
-          var result = definition.completeFromDefinition(userAci);
+        // Act
+        var result = definition.completeFromDefinition(userAci);
 
-          // Assert
-          expect(result.entitlements, contains('reports.manage'));
-          expect(result.entitlements, isNot(contains('leads')));
-          expect(result.groups, contains('leads'));
-        },
-      );
+        // Assert
+        expect(result.entitlements, contains('reports.manage'));
+        expect(result.entitlements, isNot(contains('leads')));
+        expect(result.groups, contains('leads'));
+      });
 
       test('should resolve a multi-level definition end to end', () {
         // role admin → role user, group staff; staff → group employees;

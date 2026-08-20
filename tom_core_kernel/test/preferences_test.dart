@@ -1160,27 +1160,30 @@ void main() {
       );
     });
 
-    test('an unannotated enum is refused, with advice that can be followed', () {
-      // The rule is the one every non-scalar already follows, so there is no
-      // separate thing to learn: annotate it. The refusal comes while naming
-      // the value — the call that cannot answer — rather than one call later
-      // from `encodeValue`, whose message would tell the caller to annotate a
-      // class, advice an enum cannot act on.
-      expect(
-        () => TomUserPreferenceCodec.typeNameOf(
-          UnreflectedThemePreference.dark,
-          'ui.theme',
-        ),
-        throwsCodecKey('preferences.type.not_reflected'),
-      );
-      expect(
-        () => TomUserPreferenceCodec.encode(
-          'ui.theme',
-          UnreflectedThemePreference.dark,
-        ),
-        throwsCodecKey('preferences.type.not_reflected'),
-      );
-    });
+    test(
+      'an unannotated enum is refused, with advice that can be followed',
+      () {
+        // The rule is the one every non-scalar already follows, so there is no
+        // separate thing to learn: annotate it. The refusal comes while naming
+        // the value — the call that cannot answer — rather than one call later
+        // from `encodeValue`, whose message would tell the caller to annotate a
+        // class, advice an enum cannot act on.
+        expect(
+          () => TomUserPreferenceCodec.typeNameOf(
+            UnreflectedThemePreference.dark,
+            'ui.theme',
+          ),
+          throwsCodecKey('preferences.type.not_reflected'),
+        );
+        expect(
+          () => TomUserPreferenceCodec.encode(
+            'ui.theme',
+            UnreflectedThemePreference.dark,
+          ),
+          throwsCodecKey('preferences.type.not_reflected'),
+        );
+      },
+    );
 
     test('a constant that no longer exists is refused, not defaulted', () {
       // The failure a released application actually meets: the row was written

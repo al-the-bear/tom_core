@@ -380,36 +380,33 @@ void main() {
         expect(base['items'], equals([1, 2, 3]));
       });
 
-      test(
-        'should not throw when override array is shorter than base',
-        () {
-          // The base array has more map elements than the override — a normal
-          // "override only the first N" config-layering case. A merge loop
-          // driven by the base's length would index overrideMapArray[i] past
-          // its end and throw RangeError.
-          final base = <String, dynamic>{
-            'servers': [
-              <String, Object>{'host': 'a', 'port': 1},
-              <String, Object>{'host': 'b', 'port': 2},
-              <String, Object>{'host': 'c', 'port': 3},
-            ],
-          };
-          final override = <String, dynamic>{
-            'servers': [
-              <String, Object>{'host': 'A'},
-            ],
-          };
+      test('should not throw when override array is shorter than base', () {
+        // The base array has more map elements than the override — a normal
+        // "override only the first N" config-layering case. A merge loop
+        // driven by the base's length would index overrideMapArray[i] past
+        // its end and throw RangeError.
+        final base = <String, dynamic>{
+          'servers': [
+            <String, Object>{'host': 'a', 'port': 1},
+            <String, Object>{'host': 'b', 'port': 2},
+            <String, Object>{'host': 'c', 'port': 3},
+          ],
+        };
+        final override = <String, dynamic>{
+          'servers': [
+            <String, Object>{'host': 'A'},
+          ],
+        };
 
-          expect(() => mergeMapsOneSided(base, override), returnsNormally);
+        expect(() => mergeMapsOneSided(base, override), returnsNormally);
 
-          final servers = base['servers'] as List;
-          expect(servers.length, equals(3));
-          expect(servers[0]['host'], equals('A')); // merged from override
-          expect(servers[0]['port'], equals(1)); // preserved from base
-          expect(servers[1]['host'], equals('b')); // untouched (no override)
-          expect(servers[2]['host'], equals('c')); // untouched (no override)
-        },
-      );
+        final servers = base['servers'] as List;
+        expect(servers.length, equals(3));
+        expect(servers[0]['host'], equals('A')); // merged from override
+        expect(servers[0]['port'], equals(1)); // preserved from base
+        expect(servers[1]['host'], equals('b')); // untouched (no override)
+        expect(servers[2]['host'], equals('c')); // untouched (no override)
+      });
 
       test('a differing scalar element is replaced by the override', () {
         // The most ordinary layering operation there is: change one entry of a
