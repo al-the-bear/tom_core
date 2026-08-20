@@ -163,7 +163,13 @@ class TomClientRemoteContext {
   /// This is the supported way to address a different remote for part of a
   /// program — a tool talking to two servers, or a test exercising one. The
   /// context is carried on the [Zone], so it follows [body] across `await`
-  /// boundaries and cannot leak past it.
+  /// boundaries and the caller's own continuation never sees it.
+  ///
+  /// That bounds *reachability*, not lifetime. Anything [body] schedules — an
+  /// unawaited request, a timer, a stream subscription — inherits the zone and
+  /// still targets [context] whenever it later runs, however long after this
+  /// call returned. Start work that belongs to a different remote outside the
+  /// body, or install the context it should actually use.
   ///
   /// ## Example
   ///

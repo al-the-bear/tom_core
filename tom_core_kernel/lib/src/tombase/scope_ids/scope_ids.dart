@@ -30,8 +30,9 @@ abstract class TomScope {
   ///
   /// Immutable by design: it is the root of every scope path, so reassigning it
   /// at runtime would change resource resolution for the whole process. Use
-  /// [withScope] or [runInScope] to install a different scope — they are
-  /// zone-carried and cannot outlive their body.
+  /// [withScope] or [runInScope] instead — they install a scope on a child
+  /// zone, so the change reaches that body and the callbacks it schedules,
+  /// never the caller or the rest of the process.
   static final TomScope defaultScope = TomScopeBase(
     scopeId: 'default',
     parentScope: null,
@@ -41,6 +42,18 @@ abstract class TomScope {
   static TomScope get current => getFromCurrentZone<TomScope>() ?? defaultScope;
 
   /// Runs [body] in a new child scope named [scope], parented to [current].
+  ///
+  /// The scope rides on a child [Zone], which bounds *reachability*, not
+  /// lifetime. The caller's own continuation after this call never sees the
+  /// scope — but anything [body] schedules (a `Future`, `Timer` or stream
+  /// subscription) inherits the zone and observes the scope whenever it later
+  /// runs. A fire-and-forget `Future` started here therefore keeps this scope
+  /// for its entire life, however long that outlasts [body].
+  ///
+  /// Zone inheritance covers callbacks the async machinery schedules; it does
+  /// not cover a closure that is merely *stored* here and invoked directly by
+  /// someone else later, which runs in the invoker's scope. Wrap those with
+  /// [InScopeBuilder].
   static T withScope<T>(String scope, T Function() body) {
     return runZoned(
       body,

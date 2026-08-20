@@ -16,6 +16,8 @@ threading an identifier through every call.
   - [InScopeBuilder](#inscopebuilder)
 - [Scope Paths](#scope-paths)
 - [Crossing Zone Boundaries](#crossing-zone-boundaries)
+  - [Fire-and-forget work started inside a scope](#fire-and-forget-work-started-inside-a-scope)
+  - [Deferred callbacks the framework invokes](#deferred-callbacks-the-framework-invokes)
 - [Best Practices](#best-practices)
 - [Dependencies](#dependencies)
 
@@ -80,8 +82,9 @@ different root. That is deliberate rather than incidental: it is the root of
 every scope path, so a reassignment would silently change resource resolution
 for everything already running, including code holding a scope captured before
 the swap. Changing the active scope is what `withScope` and `runInScope` are
-for; both are zone-carried, so their effect is bounded by their body and the
-previous scope is restored on exit.
+for; both are zone-carried, so the caller's own continuation is unaffected and
+the previous scope is restored on exit. That bounds what the *caller* sees, not
+how long the scope lives — see [Crossing Zone Boundaries](#crossing-zone-boundaries).
 
 ### TomScopeBase and TomScopeMixin
 
@@ -152,14 +155,85 @@ written as an identity check rather than a name comparison.
 
 ## Crossing Zone Boundaries
 
-Because the active scope lives on the zone, it is lost whenever execution hops to
-a callback the framework runs later. The two tools for keeping the scope intact
-are:
+A zone bounds **reachability, not lifetime**. This is the single most
+misread property of the module, so it is worth stating both halves precisely.
 
-- `withScope` / `runInScope` — install a scope for the duration of a synchronous
-  body.
-- `InScopeBuilder` — capture the scope now and restore it inside a deferred
-  callback.
+**What is guaranteed:** the caller's own continuation never sees the installed
+scope. Once `withScope` returns, the next line runs in whatever scope the caller
+was already in. Nothing a body does can change that.
+
+**What is *not* guaranteed is that the scope stops existing.** A zone is not a
+dynamic extent. Anything the body *schedules* inherits the zone and observes the
+scope whenever it eventually runs, arbitrarily long after the body returned:
+
+```dart
+TomScope.withScope('report', () {
+  Timer(const Duration(minutes: 5), () {
+    // Still "report", five minutes after withScope returned.
+    print(TomScope.current.getScopePath());
+  });
+});
+
+print(TomScope.current.getScopePath()); // "" — the caller is unaffected
+```
+
+The same holds for a `Future`, a microtask, and a stream subscription opened
+inside the body. An `await` inside an async body also keeps the scope across the
+suspension, which is what makes the module usable from async code at all.
+
+### Fire-and-forget work started inside a scope
+
+The practical consequence: **a `Future` started inside a scope and never awaited
+keeps that scope for its entire life.** Usually that is exactly right — the work
+belongs to the request or the widget that started it, and its resource and
+authorization lookups should resolve against that path.
+
+It matters when the work is expected to outlive its origin. A background task
+spawned inside `app.checkout.orderForm` still resolves resources under
+`app.checkout.orderForm` long after that form is gone. If the work is genuinely
+independent, start it outside the scope, or install the scope it should actually
+run under:
+
+```dart
+// Belongs to the form — inherits app.checkout.orderForm.
+TomScope.withScope('orderForm', () {
+  unawaited(_sendAnalytics());
+});
+
+// Independent of the form — give it its own scope.
+TomScope.withScope('orderForm', () { /* ... */ });
+unawaited(TomScope.defaultScope.runInScope(_flushOutbox));
+```
+
+Nothing needs tearing down: the scope is an identifier, not a resource, and it
+becomes unreachable when the last callback holding its zone is collected.
+
+### Deferred callbacks the framework invokes
+
+Zone inheritance covers callbacks the **async machinery** schedules. It does not
+cover a closure that is merely *stored* inside the body and invoked directly by
+someone else later — that runs in **the invoker's** scope, not the one in force
+when it was created:
+
+```dart
+late String Function() stored;
+TomScope.withScope('origin', () {
+  stored = () => TomScope.current.getScopePath();
+});
+
+stored(); // "" — not "origin"
+```
+
+This is precisely the gap `InScopeBuilder` closes, and the reason it exists:
+Flutter stores builder callbacks and calls them from its own build pipeline, so
+they arrive outside the zone that constructed the widget.
+
+So the two tools are:
+
+- `withScope` / `runInScope` — install a scope for a body **and everything that
+  body schedules**.
+- `InScopeBuilder` — capture the scope now and re-install it inside a callback
+  that will be invoked directly, from outside the zone.
 
 ## Best Practices
 
@@ -170,6 +244,10 @@ are:
    lookups resolve against the right path.
 3. **Keep ids path-safe.** Scope ids become dot-separated path segments — avoid
    embedding `.` in an id.
+4. **Decide which scope background work belongs to.** A `Future` started inside
+   a scope keeps it for its whole life, so a fire-and-forget task inherits the
+   scope of whatever happened to start it. Start genuinely independent work
+   outside the scope, or install the one it should run under.
 
 ## Dependencies
 

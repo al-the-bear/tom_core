@@ -69,14 +69,14 @@ on the current `Zone`.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `defaultScope` | `TomScope` | The root scope used when no scope is installed on the current zone. `static final` — immutable by design, because it is the root of every scope path and reassigning it would change resource resolution for the whole process. Use `withScope` / `runInScope` to install a different scope; both are zone-carried and cannot outlive their body. |
+| `defaultScope` | `TomScope` | The root scope used when no scope is installed on the current zone. `static final` — immutable by design, because it is the root of every scope path and reassigning it would change resource resolution for the whole process. Use `withScope` / `runInScope` to install a different scope; both install it on a child zone, so the change reaches that body and the callbacks it schedules, never the caller. |
 | `current` | `TomScope` | The scope installed on the current `Zone`, or `defaultScope` if none (static getter). |
 
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `withScope` | `static T withScope<T>(String scope, T Function() body)` | Runs `body` in a new child scope named `scope`, parented to `current`. |
+| `withScope` | `static T withScope<T>(String scope, T Function() body)` | Runs `body` in a new child scope named `scope`, parented to `current`. The zone bounds reachability, not lifetime: the caller's continuation never sees the scope, but anything `body` schedules inherits it and observes it whenever it later runs. |
 | `buildScopePath` | `static String buildScopePath(TomScope scope)` | Builds the dot-separated scope path for any `TomScope` (e.g. `app.checkout.orderForm`), eliding only the root sentinel. |
 
 #### Properties

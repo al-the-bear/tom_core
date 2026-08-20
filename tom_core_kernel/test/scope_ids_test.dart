@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:test/test.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -205,7 +207,9 @@ void main() {
     // tcca16: `defaultScope` is the root of every scope path, so a reassignment
     // would change resource resolution for the whole process. It is `final`;
     // `withScope` / `runInScope` are the supported ways to change the current
-    // scope, and they cannot outlive their body.
+    // scope, and they change it only for that body and the callbacks it
+    // schedules — never for the caller. (What they do *not* bound is the
+    // scope's lifetime; see the `zone propagation` group.)
     test('the default scope is restored after every scoped body', () {
       final root = TomScope.defaultScope;
       TomScope.withScope('transient', () {
@@ -213,6 +217,129 @@ void main() {
       });
       expect(TomScope.current, same(root));
       expect(TomScope.defaultScope, same(root));
+    });
+  });
+
+  // ===========================================================================
+  // Zone propagation — what a scope's lifetime actually is
+  // ===========================================================================
+  //
+  // A zone bounds *reachability*, not *lifetime*. These tests pin the two
+  // halves of that, because the module's documentation used to claim a scope
+  // "cannot outlive its body" — which is false the moment the body schedules
+  // anything, and which is the sentence a reader leans on when deciding
+  // whether a scope needs tearing down.
+  //
+  // The distinction between the two groups below is also the entire reason
+  // InScopeBuilder exists: async-scheduled callbacks inherit the zone for
+  // free, and directly-invoked stored closures do not.
+  group('zone propagation', () {
+    group('a scope DOES outlive the body it was installed for', () {
+      test('a Timer scheduled inside the body observes the scope', () async {
+        final fired = Completer<String>();
+        TomScope.withScope('app', () {
+          Timer.run(() => fired.complete(TomScope.current.getScopePath()));
+        });
+
+        // The body has already returned by the time the timer fires.
+        expect(TomScope.current, same(TomScope.defaultScope));
+        expect(await fired.future, equals('app'));
+      });
+
+      test(
+        'an unawaited Future started inside the body keeps the scope',
+        () async {
+          final ran = Completer<String>();
+          TomScope.withScope('background', () {
+            // Fire-and-forget: nothing awaits this, and it outlives the body.
+            unawaited(
+              Future<void>.microtask(
+                () => ran.complete(TomScope.current.getScopePath()),
+              ),
+            );
+          });
+
+          expect(await ran.future, equals('background'));
+        },
+      );
+
+      test(
+        'a stream subscription opened inside the body keeps the scope',
+        () async {
+          final controller = StreamController<int>();
+          final seen = Completer<String>();
+          TomScope.withScope('stream', () {
+            controller.stream.listen(
+              (_) => seen.complete(TomScope.current.getScopePath()),
+            );
+          });
+
+          controller.add(1);
+          expect(await seen.future, equals('stream'));
+          await controller.close();
+        },
+      );
+
+      test('the scope survives an await inside an async body', () async {
+        late String beforeAwait;
+        late String afterAwait;
+        await TomScope.withScope('outer', () async {
+          beforeAwait = TomScope.current.getScopePath();
+          await Future<void>.delayed(Duration.zero);
+          afterAwait = TomScope.current.getScopePath();
+        });
+
+        expect(beforeAwait, equals('outer'));
+        expect(afterAwait, equals('outer'));
+      });
+    });
+
+    group('what a zone DOES guarantee', () {
+      test(
+        'the caller continues in its own scope, never the installed one',
+        () async {
+          TomScope.withScope('installed', () {
+            Timer.run(() {});
+          });
+
+          // The guarantee is about the caller, not about elapsed time: no matter
+          // what the body scheduled, this code is unaffected.
+          expect(TomScope.current, same(TomScope.defaultScope));
+          await Future<void>.delayed(Duration.zero);
+          expect(TomScope.current, same(TomScope.defaultScope));
+        },
+      );
+
+      test('a plain closure stored in the body runs in the INVOKER scope', () {
+        late String Function() stored;
+        TomScope.withScope('origin', () {
+          stored = () => TomScope.current.getScopePath();
+        });
+
+        // Zone inheritance covers callbacks the async machinery schedules, not
+        // a closure someone else calls directly later. This is the gap that
+        // InScopeBuilder closes.
+        expect(stored(), isEmpty);
+        TomScope.withScope('elsewhere', () {
+          expect(stored(), equals('elsewhere'));
+        });
+      });
+
+      test('InScopeBuilder closes that gap for a stored closure', () {
+        late String Function() wrapped;
+        TomScope.withScope('origin', () {
+          wrapped = InScopeBuilder().wrap0<String>(
+            () => TomScope.current.getScopePath(),
+          );
+        });
+
+        // Same shape as the previous test, but the callback keeps its own
+        // scope instead of adopting the invoker's.
+        expect(wrapped(), equals('origin'));
+        TomScope.withScope('elsewhere', () {
+          expect(wrapped(), equals('origin'));
+        });
+      });
     });
   });
 

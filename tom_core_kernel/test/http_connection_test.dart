@@ -1500,7 +1500,10 @@ void main() {
 
     // tcca16: `current` used to be a public mutable static. The scoped helper
     // is the supported way to point calls at a different remote — it is
-    // zone-carried, so it cannot leak past the body it was installed for.
+    // zone-carried, so the caller's own continuation never sees it. That
+    // bounds reachability, not lifetime: anything the body *schedules* (a
+    // fire-and-forget request, a timer) inherits the zone and still targets
+    // the scoped remote whenever it later runs.
     group('runWithContext', () {
       test('installs the context for the duration of the body', () {
         final scoped = TomClientRemoteContext(
@@ -1516,7 +1519,7 @@ void main() {
         expect(
           TomClientRemoteContext.current,
           isNull,
-          reason: 'the scope must not outlive the body',
+          reason: 'the caller continues without the scoped context',
         );
       });
 
@@ -1572,6 +1575,29 @@ void main() {
 
         expect(seen, same(scoped));
       });
+
+      test(
+        'work scheduled inside the body still targets the scoped context',
+        () async {
+          // The zone bounds reachability, not lifetime. A fire-and-forget
+          // request started here keeps addressing the scoped remote long after
+          // `runWithContext` returned — which is the half of the guarantee the
+          // dartdoc used to deny.
+          final scoped = TomClientRemoteContext(
+            Uri.parse('https://scoped.example.com'),
+          );
+          final deferred = Completer<TomClientRemoteContext?>();
+
+          TomClientRemoteContext.runWithContext(scoped, () {
+            Timer.run(() => deferred.complete(TomClientRemoteContext.current));
+          });
+
+          // The caller is already back out of the context...
+          expect(TomClientRemoteContext.current, isNull);
+          // ...but the callback the body scheduled is not.
+          expect(await deferred.future, same(scoped));
+        },
+      );
     });
 
     group('resetCurrent', () {

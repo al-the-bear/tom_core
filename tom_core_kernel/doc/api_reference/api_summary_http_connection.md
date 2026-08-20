@@ -673,7 +673,7 @@ TomClientRemoteContext(Uri baseUri, [Uri? authenticationUri])
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `setCurrent` | `static void setCurrent(TomClientRemoteContext context)` | Installs the process-wide context; may be called only once — a second call throws `TomClientRemoteContextException`. |
-| `runWithContext` | `static T runWithContext<T>(TomClientRemoteContext context, T Function() body)` | Runs `body` with `context` as `current`, restoring the previous one afterwards. The context rides on the `Zone`, so it follows `body` across `await` boundaries and cannot leak past it. The supported way to address a second remote — a tool talking to two servers, or a test exercising one. |
+| `runWithContext` | `static T runWithContext<T>(TomClientRemoteContext context, T Function() body)` | Runs `body` with `context` as `current`, restoring the previous one afterwards. The context rides on the `Zone`, so it follows `body` across `await` boundaries and the caller's continuation never sees it — but anything `body` schedules inherits the zone and still targets `context` whenever it later runs. The supported way to address a second remote — a tool talking to two servers, or a test exercising one. |
 | `resetCurrent` | `@visibleForTesting static void resetCurrent()` | Clears the context installed by `setCurrent`, so it may be called again. Test-only — tests need a clean process context per case; application code sets it once at startup and uses `runWithContext` for anything narrower. |
 
 ##### Properties
