@@ -728,6 +728,22 @@ void main() {
         );
       });
 
+      test('ordinal 5 is not a spelling of "last"', () {
+        // The two coincide only in a month that happens to have five of the
+        // weekday, which is what lets the wrong reading survive a casual
+        // check. March 2026 has four Fridays (6, 13, 20, 27), so it separates
+        // them: `-1` fires on the 27th, while `5` finds no fifth Friday until
+        // May (1, 8, 15, 22, 29).
+        DateTime? firstFriday(int ordinal) =>
+            TomCalendarSchedule.weekdayOfMonth(
+              weekday: DateTime.friday,
+              ordinal: ordinal,
+            ).nextFireAfter(DateTime.utc(2026, 3, 1));
+
+        expect(firstFriday(-1), DateTime.utc(2026, 3, 27));
+        expect(firstFriday(5), DateTime.utc(2026, 5, 29));
+      });
+
       test('rejects an out-of-range weekday or ordinal', () {
         expect(
           () => TomCalendarSchedule.weekdayOfMonth(weekday: 0, ordinal: 1),
