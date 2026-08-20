@@ -686,7 +686,9 @@ An in-process store — the default for tests and single-process use.
 ### TomFileJobStore
 
 Adds durability by writing the whole store to a JSON file on every mutation, so
-a restart resumes where it left off.
+a restart resumes where it left off. The file is a single JSON array of run
+objects — not an append-per-record log — so it is always rewritten in full and
+is only ever wholly valid or wholly discarded.
 
 The write is atomic: the new queue is staged in a sibling `<path>.<pid>.tmp` and
 renamed over the target. An interrupted write therefore leaves the previous

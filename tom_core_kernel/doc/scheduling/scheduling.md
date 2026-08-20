@@ -416,26 +416,74 @@ Two implementations ship here:
 
 - **`TomMemoryJobStore`** — one process, nothing survives a restart. Right for
   tests and for jobs whose loss on restart is acceptable.
-- **`TomFileJobStore`** — a JSON file. Survives a restart; an in-flight run
-  comes back as an *expired claim* rather than as lost work, so the scheduler
-  recovers it on its next tick.
-
-The file store rewrites the whole queue on every mutation, and it does so
-*atomically*: the new content is staged in a sibling `<queue>.<pid>.tmp` and
-renamed over the target, a rename being atomic within a directory. So a process
-killed mid-write — or one that hits a full disk — leaves the previous queue on
-disk, not a truncated one. This matters more than it sounds: the loader treats
-an unparseable file as an empty queue (deliberately, so one bad byte cannot stop
-a scheduler from starting), which means a torn write would not lose the run
-being recorded, it would lose *every* run, silently. The staging file carries
-the process id so that two nodes on a shared mount cannot publish each other's
-half-written files; a stray one left by a crash is ignored by the loader and
-overwritten by that process's next write.
+- **`TomFileJobStore`** — a JSON file holding the whole queue as **one array**,
+  rewritten on every mutation. Survives a restart; an in-flight run comes back
+  as an *expired claim* rather than as lost work, so the scheduler recovers it
+  on its next tick.
 
 A third, **`TomSqlJobStore`**, ships in `tom_core_server` — the kernel has no
 persistence layer, so the relational implementation belongs one layer up. It is
 the production choice for a cluster; see
 [Choosing a substrate](#choosing-a-substrate).
+
+### The on-disk format
+
+One array of run objects, and nothing else. A queue holding a single pending
+run, pretty-printed (the file itself is written unindented):
+
+```json
+[
+  {
+    "id": "nightly-report:1772330400000000:0",
+    "jobName": "nightly-report",
+    "scheduledFor": "2026-03-01T02:00:00.000Z",
+    "runAt": "2026-03-01T02:00:00.000Z",
+    "state": "pending",
+    "attempt": 1,
+    "claimedBy": null,
+    "claimedAt": null,
+    "startedAt": null,
+    "lastError": null,
+    "completedAt": null,
+    "payload": null
+  }
+]
+```
+
+Every field is written, `null` included, rather than omitted when empty — so the
+shape on disk is the same for every run and a file can be eyeballed without
+cross-referencing which fields a given build chose to skip. Decoding tolerates
+more than that: a missing `attempt` reads as `1`, and an unrecognised `state`
+reads as `pending`, so a queue written by a newer build cannot stop an older one
+from starting.
+
+The `id` is `<jobName>:<microsecondsSinceEpoch>:<counter>`, assigned by the
+scheduler as it enqueues the window. Treat it as opaque — it is the store's own
+handle for the record. The idempotence key is `scheduledFor`.
+
+**The array is the whole point of the format, and it is worth being precise
+about it**, because the obvious alternative fails differently and a reader who
+assumes the wrong one will size the risk wrongly. This is *not* a JSON-lines /
+append-per-record log, where a torn last line costs one record and the rest of
+the file is still good. It is rewritten in full every time, so there is no such
+thing as losing only the last record: either the file parses and the whole queue
+is there, or it does not and the loader treats it as empty (deliberately — one
+bad byte must not stop a scheduler from starting, since starting is how the rest
+of the queue gets drained).
+
+The whole-file rewrite is the deliberate choice. The queue is small — one record
+per schedule window, purged once terminal — so rewriting it costs less than the
+compaction bookkeeping an append-only journal would need to stay small.
+
+What makes that safe is that the write is **atomic**: the new content is staged
+in a sibling `<queue>.<pid>.tmp` and renamed over the target, a rename being
+atomic within a directory. A process killed mid-write — or one that hits a full
+disk — therefore leaves the previous queue on disk, not a truncated one. Without
+that, the two properties above would compose badly: a torn write would not lose
+the run being recorded, it would lose *every* run, silently. The staging file
+carries the process id so that two nodes on a shared mount cannot publish each
+other's half-written files; a stray one left by a crash is ignored by the loader
+and overwritten by that process's next write.
 
 ## The Scheduler
 
