@@ -55,7 +55,7 @@ on the current `Zone`.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `defaultScope` | `TomScope` | The root scope used when no scope is installed on the current zone (mutable). |
+| `defaultScope` | `TomScope` | The root scope used when no scope is installed on the current zone. `static final` — immutable by design, because it is the root of every scope path and reassigning it would change resource resolution for the whole process. Use `withScope` / `runInScope` to install a different scope; both are zone-carried and cannot outlive their body. |
 | `current` | `TomScope` | The scope installed on the current `Zone`, or `defaultScope` if none (static getter). |
 
 #### Static Methods
@@ -95,7 +95,9 @@ TomScopeBase({required String scopeId, TomScope? parentScope})
 ### TomScopeMixin
 
 Reusable `TomScope` implementation backing `TomScopeBase`. Mix into a class and
-call `initScope` once during construction to set the scope's write-once identity.
+call `initScope` exactly once to set the scope's write-once identity — usually
+from the constructor, or on the constructed instance when the parent is only
+known later.
 
 - **Implements:** `TomScope`
 - **Mixin on:** `Object`
@@ -111,7 +113,7 @@ call `initScope` once during construction to set the scope's write-once identity
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity; call exactly once during construction. |
+| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. |
 | `getScopePath` | `String getScopePath()` | *(override)* Returns the full dot-separated scope path. |
 | `runInScope` | `T runInScope<T>(T Function() body)` | *(override)* Runs `body` inside this scope's zone, reusing the current zone when already active. |
 
@@ -127,6 +129,10 @@ resources against the correct scope.
 ```dart
 InScopeBuilder({TomScope? scope})
 ```
+
+Omitting `scope` captures `TomScope.current` **at construction time**, which is
+the point of the class: construct it where the correct scope is installed, and
+the wrapped callbacks carry that scope wherever they are later invoked.
 
 #### Methods
 

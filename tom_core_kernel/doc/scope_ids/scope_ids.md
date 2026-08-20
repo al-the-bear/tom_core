@@ -64,7 +64,7 @@ The abstract contract for a scope.
 | ------ | ----------- |
 | `String get id` | This scope's local identifier (the last path segment) |
 | `TomScope? get parent` | The enclosing scope, or `null` for the root |
-| `static TomScope defaultScope` | The root scope used when none is installed |
+| `static final TomScope defaultScope` | The root scope used when none is installed. `final`, so it cannot be swapped out at runtime — see below |
 | `static TomScope get current` | The scope installed on the current zone, or `defaultScope` |
 | `static T withScope(String, T Function())` | Runs a body in a new child scope named for the string |
 | `static String buildScopePath(TomScope)` | Dot-joins a scope's chain, skipping `default` |
@@ -73,6 +73,15 @@ The abstract contract for a scope.
 
 `runInScope` is a no-op wrapper when `this` is already the current scope
 (identity check), which prevents redundant zone nesting.
+
+**The root scope cannot be swapped out.** `defaultScope` is `static final`, so
+there is no supported way — and no compiling way — to point the process at a
+different root. That is deliberate rather than incidental: it is the root of
+every scope path, so a reassignment would silently change resource resolution
+for everything already running, including code holding a scope captured before
+the swap. Changing the active scope is what `withScope` and `runInScope` are
+for; both are zone-carried, so their effect is bounded by their body and the
+previous scope is restored on exit.
 
 ### TomScopeBase and TomScopeMixin
 
