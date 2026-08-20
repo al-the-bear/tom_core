@@ -107,7 +107,7 @@ TomTextResourceProvider.from(Map<String, dynamic> resources)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor. Declares how to build a bundle; setting it installs nothing. Synchronous by design — see [Loading from an asynchronous source](#loading-from-an-asynchronous-source). |
+| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor — *every* construction, not just the singleton's. Declares how to build a bundle; setting it installs nothing, and it stays set until something assigns `null`, so later locally-scoped providers are populated from it too. Synchronous by design — see [Loading from an asynchronous source](#loading-from-an-asynchronous-source). |
 | `appResourcesRevision` | `TomInt` | Observable revision counter, incremented whenever the installed bundle changes. Observe it to re-derive text computed from the bundle (see `TomObservableEnum`). |
 
 #### Static Methods
@@ -167,7 +167,7 @@ TomConfigResourceProvider.from(Map<String, dynamic> resources)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor. Declares how to build a bundle; setting it installs nothing. Synchronous by design — see [Loading from an asynchronous source](#loading-from-an-asynchronous-source). |
+| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor — *every* construction, not just the singleton's. Declares how to build a bundle; setting it installs nothing, and it stays set until something assigns `null`, so later locally-scoped providers are populated from it too. Synchronous by design — see [Loading from an asynchronous source](#loading-from-an-asynchronous-source). |
 
 #### Static Methods
 

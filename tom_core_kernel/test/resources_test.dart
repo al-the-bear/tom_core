@@ -1331,6 +1331,55 @@ void main() {
     });
 
     group('loader function behavior', () {
+      test('the static loader persists and populates every later default '
+          'construction', () {
+        // `loader` is not consumed by the construction it was set for. It is
+        // process-wide state that stays set, so a provider built much later for
+        // an unrelated local scope silently inherits the startup bundle instead
+        // of starting empty. Pinned because it is action at a distance, and
+        // because it is why this suite clears the field in setUp.
+        var calls = 0;
+        TomTextResourceProvider.loader = () {
+          calls++;
+          return {'origin': 'staticLoader'};
+        };
+
+        // Bootstrap-style use: build, then install.
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider(),
+        );
+        expect(
+          TomTextResourceProvider.getAppResources().getText('origin'),
+          equals('staticLoader'),
+        );
+
+        // A provider built later, never installed, for a caller that wanted an
+        // empty one. It is populated anyway, and the loader ran a second time.
+        final local = TomTextResourceProvider();
+        expect(local.getText('origin'), equals('staticLoader'));
+        expect(calls, equals(2));
+
+        // Installing did not consume the field either.
+        expect(TomTextResourceProvider.loader, isNotNull);
+
+        // `load` is the way out: it takes the loader as an argument, so it
+        // touches no static state and the bare constructor is unaffected.
+        final scoped = TomTextResourceProvider.load(() => {'origin': 'scoped'});
+        expect(scoped.getText('origin'), equals('scoped'));
+        expect(calls, equals(2));
+      });
+
+      test('the config loader has the same process-wide reach', () {
+        TomConfigResourceProvider.loader = () => {'origin': 'staticLoader'};
+        TomConfigResourceProvider.setAppConfigProvider(
+          TomConfigResourceProvider(),
+        );
+
+        final local = TomConfigResourceProvider();
+        expect(local.getText('origin'), equals('staticLoader'));
+        expect(TomConfigResourceProvider.loader, isNotNull);
+      });
+
       test('should support loader that returns empty map', () {
         TomTextResourceProvider.loader = () => {};
         final provider = TomTextResourceProvider();

@@ -246,7 +246,7 @@ type of the value at the key, not on which provider holds it.
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor builds the bundle from. Declares *how* to build, not *when* to install. **Synchronous** — asynchronous sources are awaited before the install instead |
+| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor builds the bundle from — every construction, not just the singleton's. Declares *how* to build, not *when* to install. **Process-wide and persistent**: it stays set, so later providers built for local scopes pick it up too. **Synchronous** — asynchronous sources are awaited before the install instead |
 | `appResourcesRevision` | `TomInt` | Observable revision counter, bumped whenever the installed bundle changes |
 | `notifyAppResourcesChanged()` | Method | Bumps `appResourcesRevision` after an in-place edit of the installed bundle |
 | `setAppResourceProvider()` | Method | Sets the application-wide provider instance and bumps `appResourcesRevision` |
@@ -283,7 +283,7 @@ rendered, so it carries no revision counter and no String-specific accessors.
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor builds the bundle from. Declares *how* to build, not *when* to install. **Synchronous** — asynchronous sources are awaited before the install instead |
+| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor builds the bundle from — every construction, not just the singleton's. Declares *how* to build, not *when* to install. **Process-wide and persistent**: it stays set, so later providers built for local scopes pick it up too. **Synchronous** — asynchronous sources are awaited before the install instead |
 | `setAppConfigProvider()` | Method | Sets the application-wide provider instance |
 | `getAppConfig()` | Method | Returns the installed provider; throws `resources.config_provider.not_installed` if there is none |
 

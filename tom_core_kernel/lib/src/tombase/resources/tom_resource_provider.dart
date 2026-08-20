@@ -256,9 +256,20 @@ class TomTextResourceProvider {
   /// documentation.
   ///
   /// Setting this on its own installs nothing: [getAppResources] does not
-  /// bootstrap itself, and will throw until the install above has run. When
-  /// both halves live in the same place, prefer
-  /// [TomTextResourceProvider.load], which needs no static state.
+  /// bootstrap itself, and will throw until the install above has run.
+  ///
+  /// It is also process-wide and persistent, which is the cost of the split.
+  /// The field is not consumed by the construction it was set for: it stays set
+  /// until something assigns `null`, and *every* later bare
+  /// `TomTextResourceProvider()` — including one built for a purely local scope,
+  /// far from the startup code that set it — is populated from it rather than
+  /// starting empty. That is action at a distance, so set it once during
+  /// bootstrap and leave it alone. Test suites that exercise the default
+  /// constructor have to clear it between cases for the same reason.
+  ///
+  /// When both halves live in the same place, prefer
+  /// [TomTextResourceProvider.load]: it takes the loader as an argument, so it
+  /// populates the one provider being built and leaves no static state behind.
   static Map<String, dynamic> Function()? loader;
 
   /// Observable revision counter for the application-wide text bundle.
@@ -569,11 +580,12 @@ class TomConfigResourceProvider {
   /// Optional loader function consulted by the default constructor.
   ///
   /// Declares *how* to build the configuration; [setAppConfigProvider] decides
-  /// *when* it is installed. Setting this on its own installs nothing — see
-  /// [TomTextResourceProvider.loader] for the two-phase pattern, its
-  /// single-statement alternative [TomConfigResourceProvider.load], and why
-  /// asynchronous sources are awaited before the install rather than inside a
-  /// loader.
+  /// *when* it is installed. Setting this on its own installs nothing, and it
+  /// stays set afterwards, so every later bare `TomConfigResourceProvider()`
+  /// is populated from it — see [TomTextResourceProvider.loader] for the
+  /// two-phase pattern, that process-wide coupling, its single-statement
+  /// alternative [TomConfigResourceProvider.load], and why asynchronous sources
+  /// are awaited before the install rather than inside a loader.
   static Map<String, dynamic> Function()? loader;
 
   // ---------------------------------------------------------------------------
