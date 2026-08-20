@@ -722,7 +722,6 @@ class TomReflectionInfo {
   }
 
   /// Prints all declarations of a class.
-  /// Prints all declarations of a class.
   void _printDeclarations(ClassMirror cm) {
     print("Declarations: ");
     cm.declarations.forEach((key, value) {
@@ -1026,19 +1025,15 @@ class TomReflectionInfo {
       tomLog.trace("Value found: ${entry.key} ${limited(entry.value, 80)}");
     }
 
-    try {
-      if (_trySetPrimitiveValue(im, entry)) return;
+    if (_trySetPrimitiveValue(im, entry)) return;
 
-      final imSet = cm.instanceMembers["${entry.key}="];
-      final imGet = cm.instanceMembers[entry.key];
+    final imSet = cm.instanceMembers["${entry.key}="];
+    final imGet = cm.instanceMembers[entry.key];
 
-      if (imGet != null && imSet != null) {
-        _setComplexValue(im, cm, imGet, entry);
-      } else {
-        _handleMissingField(imGet, entry);
-      }
-    } catch (error) {
-      rethrow;
+    if (imGet != null && imSet != null) {
+      _setComplexValue(im, cm, imGet, entry);
+    } else {
+      _handleMissingField(imGet, entry);
     }
   }
 
