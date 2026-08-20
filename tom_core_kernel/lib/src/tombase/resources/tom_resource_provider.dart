@@ -77,10 +77,21 @@ class TomResourceException extends TomException {
 // resolution rule in one place; every accessor on both providers is expressed
 // in terms of them, differing only in the missing-value fallback each returns.
 //
-// The accessors themselves still surface a present null as `null`, which their
-// callers read as "not configured". These providers have no third state to
-// report it with; the distinction is preserved where it is representable, in
-// [getObjectFromTree] itself.
+// The accessors above these helpers then collapse that distinction: a key that
+// is present and holds null is indistinguishable from one that was never there.
+// [exists] and [existsObject] both report `false`, the `*OrNull` accessors both
+// return `null`, and [getText] and [getObject] both echo the key back. This is
+// not an oversight but the absence of anywhere to put a third state — `bool` and
+// `Object?` have no room for "present, but null". It matters in practice because
+// bundles are usually JSON and translation tooling emits `null` for an
+// untranslated string; such a key takes the missing branch, which is the
+// intended fallback reached by an unintended route.
+//
+// The distinction is preserved where it is representable — in
+// [getObjectFromTree], which returns `null` for a present null and throws for an
+// absent key — and the bundle itself remains public. A caller that needs it
+// reads `provider.resources.containsKey(key)` for a flat key, or calls
+// [getObjectFromTree] directly for a dotted path.
 
 /// Resolves the raw object at [path] in [resources].
 ///

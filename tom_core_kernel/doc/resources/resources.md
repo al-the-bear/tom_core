@@ -339,6 +339,43 @@ On the config provider this is not merely tidier — it is the difference betwee
 a default and a crash, because `getText`'s echoed key is a `String` and the
 cast that follows it is not.
 
+#### A key that is present and holds null
+
+"Missing" covers one more case than the name suggests: a key that **is** in the
+bundle but holds `null` is reported exactly like a key that was never there.
+Every accessor on both providers behaves this way, for a flat key and a dotted
+path alike:
+
+```dart
+final resources = TomTextResourceProvider.from({
+  'flat': null,
+  'nested': {'leaf': null},
+});
+
+resources.exists('flat');              // false
+resources.existsObject('nested.leaf'); // false
+resources.getTextOrNull('flat');       // null
+resources.getObjectOrNull('flat');     // null
+resources.getObject('nested.leaf');    // 'nested.leaf' — the key echoed back
+```
+
+This is worth knowing because bundles are usually JSON, `null` is a legal JSON
+value, and translation tooling routinely emits it for a string that has not been
+translated yet. Such a key takes the missing branch and renders its key — which
+is the intended fallback, just reached by a route you did not plan for.
+
+The accessors have nowhere to report a third state: `exists` returns `bool` and
+`getObjectOrNull` returns `Object?`, so "present, but null" has no slot. The
+information is not lost, though — `resources` is public, and the underlying
+`getObjectFromTree` distinguishes the two cases (it returns `null` for a present
+null and throws for an absent key). A caller that needs the distinction reads it
+directly:
+
+```dart
+final untranslated = resources.resources.containsKey('flat') &&
+    resources.getTextOrNull('flat') == null;
+```
+
 ### Observing bundle changes
 
 Text derived from the resource bundle — a translated label held in a widget, a

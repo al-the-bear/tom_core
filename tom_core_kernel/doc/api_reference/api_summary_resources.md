@@ -30,6 +30,15 @@ direct initialization from a map. When a key is missing, the getters return the
 key itself as a fallback (or `null` for the `*OrNull` variants) to help identify
 missing resources during development.
 
+"Missing" includes a key that is **present in the bundle and holds `null`** —
+the common case being JSON emitted by translation tooling for an untranslated
+string. Every accessor on both providers collapses it onto absence: `exists` and
+`existsObject` report `false`, the `*OrNull` accessors return `null`, and
+`getText` / `getObject` echo the key. There is no third state to report it with,
+so a caller that needs the distinction reads `provider.resources` directly —
+`containsKey` for a flat key, `getObjectFromTree` for a dotted path (it returns
+`null` for a present null and throws for an absent key).
+
 Both singletons are installed explicitly, before anything reads them:
 `getAppResources` and `getAppConfig` throw
 `resources.text_provider.not_installed` / `resources.config_provider.not_installed`

@@ -1180,6 +1180,88 @@ void main() {
         // Both echo the key back on a miss.
         expect(config.getText('missing'), equals('missing'));
       });
+
+      // -----------------------------------------------------------------------
+      // A key that is present and holds null.
+      //
+      // The json layer distinguishes it from an absent key — `getObjectFromTree`
+      // returns null for the first and throws for the second — but the provider
+      // accessors have no third state to report it with, so every one of them
+      // collapses it onto "missing". These tests pin that collapse so it stays a
+      // documented property rather than an accident, and pin the escape hatch
+      // (`resources.containsKey`) that callers who need the distinction use.
+      // -----------------------------------------------------------------------
+      test(
+        'a present null key reports as absent through every text accessor',
+        () {
+          final provider = TomTextResourceProvider.from({
+            'flat': null,
+            'nested': {'leaf': null},
+          });
+
+          for (final path in ['flat', 'nested.leaf']) {
+            expect(provider.exists(path), isFalse, reason: 'exists($path)');
+            expect(
+              provider.existsObject(path),
+              isFalse,
+              reason: 'existsObject($path)',
+            );
+            expect(
+              provider.getTextOrNull(path),
+              isNull,
+              reason: 'getTextOrNull($path)',
+            );
+            expect(
+              provider.getObjectOrNull(path),
+              isNull,
+              reason: 'getObjectOrNull($path)',
+            );
+            // The lenient accessors echo the key, exactly as for a key that was
+            // never there.
+            expect(provider.getText(path), equals(path));
+            expect(provider.getObject(path), equals(path));
+          }
+        },
+      );
+
+      test(
+        'a present null key reports as absent through every config accessor',
+        () {
+          final provider = TomConfigResourceProvider.from({
+            'flat': null,
+            'nested': {'leaf': null},
+          });
+
+          for (final path in ['flat', 'nested.leaf']) {
+            expect(provider.exists(path), isFalse, reason: 'exists($path)');
+            expect(
+              provider.getObjectOrNull(path),
+              isNull,
+              reason: 'getObjectOrNull($path)',
+            );
+            expect(provider.getText(path), equals(path));
+          }
+        },
+      );
+
+      test('the bundle map still distinguishes a present null from an absent '
+          'key', () {
+        // The information is not lost, only unreachable through the accessors:
+        // `resources` is public, so a caller that needs the distinction reads
+        // the map. This is the documented escape hatch, and the reason the
+        // collapse above is acceptable rather than a data-loss bug.
+        final provider = TomTextResourceProvider.from({
+          'flat': null,
+          'nested': {'leaf': null},
+        });
+
+        expect(provider.resources.containsKey('flat'), isTrue);
+        expect(provider.resources.containsKey('absent'), isFalse);
+        expect(
+          (provider.resources['nested'] as Map).containsKey('leaf'),
+          isTrue,
+        );
+      });
     });
 
     group('loader function behavior', () {
