@@ -263,6 +263,18 @@ anyone who was writing them.
   pointers are refused. Traceability now runs todo → code through the todo's
   own `references` list, so the link outlives the work item without the code
   carrying its id.
+- **`import_convention_test.dart` pins how the package refers to its own
+  libraries, in both directions.** Inside `lib/` a sibling module is reached
+  relatively; from `test/`, `example/` and `tool/` it is reached as
+  `package:tom_core_kernel/…`. Each side has one correct form and the wrong one
+  resolves anyway, so neither mistake announces itself. A `package:` URI into
+  the package's own `src/` is what `implementation_imports` refuses for every
+  other package — it passes only because the package is importing itself — and
+  a relative `../lib/…` from outside gives the library a second identity, so
+  the same class arrives under two types. `dart analyze` catches neither: the
+  shared options enable four lint rules and neither of those two is among them.
+  The barrel form inside `lib/` is deliberately not covered; it names a public
+  entry point rather than reaching past one.
 - **`scope_ids_test.dart` now pins the zone-elision branch it names.** The test
   called "is a no-op zone when the scope is already current" asserted only that
   `TomScope.current` was unchanged inside the body — which holds on *both*
