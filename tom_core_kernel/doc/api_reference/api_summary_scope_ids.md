@@ -33,13 +33,26 @@ zone.
 ## Class Hierarchy
 
 ```
-TomScope  (abstract)
-    └── TomScopeBase  (with TomScopeMixin)
+TomScope  (abstract — nothing extends it)
 
-TomScopeMixin  (mixin on Object implements TomScope)
+TomScopeMixin  (mixin on Object, implements TomScope)
+    └── TomScopeBase  (with TomScopeMixin; extends Object)
 
 InScopeBuilder
 ```
+
+`TomScopeBase` is a `TomScope` by *interface*, not by inheritance: it extends
+`Object`, applies `TomScopeMixin`, and the mixin's `implements TomScope` is what
+makes the subtype hold. Nothing in the package extends `TomScope`, and the mixin
+is the only declared implementation of it.
+
+The distinction is load-bearing rather than notational. Adding a concrete member
+to `TomScope` does not quietly propagate into `TomScopeBase` the way an inherited
+member would — it fails the build at `TomScopeBase`, which now has an unsatisfied
+interface (`non_abstract_class_inherits_abstract_member`). Note where the error
+lands: a mixin that declares `implements` is not itself obliged to supply the
+member, so the diagnostic surfaces on every class applying the mixin, not on
+`TomScopeMixin`.
 
 ## Classes
 
@@ -49,7 +62,8 @@ A hierarchical, zone-propagated identifier used to namespace resource lookups.
 Scopes form a parent chain rooted at `defaultScope`; the active scope is carried
 on the current `Zone`.
 
-- **Extends:** abstract class.
+- **Extends:** none (abstract class, extends `Object`)
+- **Implemented by:** `TomScopeMixin` — and so by `TomScopeBase`
 
 #### Static Properties
 
@@ -84,6 +98,8 @@ on the current `Zone`.
 Concrete `TomScope` built from a scope id and an optional parent. Its
 constructor calls `initScope` to set the write-once identity.
 
+- **Extends:** none (extends `Object`)
+- **Mixes in:** `TomScopeMixin`
 - **Implements:** `TomScope` (via `TomScopeMixin`)
 
 #### Constructors
@@ -101,6 +117,7 @@ known later.
 
 - **Implements:** `TomScope`
 - **Mixin on:** `Object`
+- **Applied by:** `TomScopeBase` (the only class in the package that applies it)
 
 #### Properties
 
