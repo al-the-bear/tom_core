@@ -699,7 +699,37 @@ This module depends on:
   `TomWorkerContext` for the application's own isolate-side setup to read — see
   [Platform support](#platform-support)
 - **`dart:isolate`**: directly, which is what makes the module native-only
-- **Logging Module**: For logging within worker isolates
 - **Little Things Module**: `TomException`, the base of `TomWorkerException` and
   `TomWorkerDiedException`, and `tomPrintStackTrace` for reporting a failure
   raised inside a worker isolate
+- **`package:tom_basics`**: `tomLog`, the sink for everything the pool reports —
+  see [What the pool logs](#what-the-pool-logs) below
+- **`package:meta`**: `@visibleForTesting` only; no runtime behaviour
+
+### The logging module is a dependent, not a dependency
+
+The kernel's [logging module](../logging/logging.md) does not appear above, and
+the omission is deliberate: the edge runs the *other* way. `logging_isolate.dart`
+imports this module to run its file writer on a worker, so logging depends on
+isolate pooling. Adding the reverse edge would close a cycle.
+
+What the pool reports, it reports through **`tomLog`** — a live global from
+`tom_basics` with a working default, so nothing has to be wired up first. That
+is also what makes the pool usable *inside* a worker isolate, where the kernel's
+logging module may not be initialized at all.
+
+### What the pool logs
+
+Every report is a `tomLog` entry and nothing else — none of these are raised,
+returned, or otherwise visible to a caller that discards log output:
+
+| Level | Reported when |
+| ----- | ------------- |
+| `trace` | An isolate begins or finishes its initialization; a receive port closes |
+| `info` | An isolate finishes initializing (with the elapsed milliseconds), becomes ready for messages, or a pool worker is created |
+| `warn` | A command completed with `NO_RESULT` — the work ran but produced nothing to send back |
+| `error` | A command threw inside the isolate; a message arrived with no executor set; a respawn failed after an isolate death |
+
+The `warn` row is the one worth knowing about: a `NO_RESULT` is *not* an error
+and does not fail the call, so a caller seeing an empty result and no exception
+will find the explanation only in the log.

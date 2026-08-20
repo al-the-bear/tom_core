@@ -47,7 +47,11 @@ library;
 // Imports
 // =============================================================================
 
-import '../observable/tom_observable_objects.dart';
+// `@tomReflector` is the only thing this module needs from the rest of the
+// package, and it is declared here. The observable module re-exports it, but
+// importing it from there would suggest a coupling to observable's own API
+// that does not exist.
+import '../reflection/reflection.dart';
 
 // =============================================================================
 // Settings Request Message

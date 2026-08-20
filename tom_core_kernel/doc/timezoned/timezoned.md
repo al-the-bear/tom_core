@@ -450,7 +450,30 @@ if (TomZonedDateTime.isTomZonedDateTimeString(input)) {
 
 ## Dependencies
 
-This module depends on:
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `timezone` | package | every file | The IANA database and `tz.TZDateTime`. This is the module — the Tom types are a typed, observable surface over it |
+| [**Little Things Module**](../little_things/little_things.md) | kernel module | `timezones.dart` | `TomException`, the base of the module's exception (`exception_base.dart`), and `convertMinutesToUtcOffset` for rendering a UTC offset (`formatting.dart`) |
+| `tom_basics` | package | `timezones.dart` | `tomLog`, at `debug` when a zone lookup falls back and at `error` when initialization fails |
+| `meta` | package | `timezones.dart` | `@visibleForTesting` only; no runtime behaviour |
 
-- **Little Things Module**: `TomException` for error handling
-- **External**: `timezone` package for IANA timezone data
+Note that `date_timestamp.dart` — where `TomZonedDate`, `TomZonedTime` and
+`TomZonedDateTime` live — imports only `timezone` and its sibling
+`timezones.dart`. The kernel dependencies above all belong to `timezones.dart`,
+the initialization and lookup half of the module.
+
+### Platform selection is a conditional import
+
+`timezones.dart` picks its initializer at compile time:
+
+```dart
+import 'init_tz.dart'
+    if (dart.library.io) 'init_tz_flutter.dart'
+    if (dart.library.js) 'init_tz_web.dart';
+```
+
+So the `timezone` package is reached through a different entry point per
+platform — `standalone.dart` on native, `data/latest.dart` under Flutter,
+`browser.dart` on the web. Nothing in the calling code changes, but a
+platform whose database has not been loaded fails at the first lookup rather
+than at import.

@@ -389,7 +389,16 @@ So the two tools are:
 
 ## Dependencies
 
-This module depends on:
+`scope_ids.dart` is the module's only source file, and the
+[little things module](../little_things/little_things.md) is its only
+dependency — nothing else, from this package or outside it:
 
-- **Little Things Module**: `getFromCurrentZone` for reading the active scope
-  off the current zone.
+- `little_things.dart` — `getFromCurrentZone`, for reading the active scope off
+  the current zone
+- `exception_base.dart` — `TomException`, the base of `TomScopeException`
+
+There are no package dependencies and no SDK imports. That is what lets the
+module sit as far down the graph as it does — the two kernel modules that use
+`TomScope` for key resolution, [security](../security/security.md)
+(`tom_authorization.dart`) and [observable](../observable/observable.md)
+(`tom_observable_enum.dart`), reach it without dragging anything along.

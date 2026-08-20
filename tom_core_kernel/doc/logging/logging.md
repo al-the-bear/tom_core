@@ -702,9 +702,17 @@ that route records off the emitting isolate.
 
 ## Dependencies
 
-This module depends on:
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `tom_basics` | package | all four files | `tomLog` and the `TomLogOutput` interface this module plugs into. The module does not *define* logging — it supplies outputs for the logger that already exists |
+| [**HTTP Connection Module**](../http_connection/http_connection.md) | kernel module | `remote_logoutput.dart` | `TomServerEndpoint`, which ships batches to the log server |
+| [**Reflection Module**](../reflection/reflection.md) | kernel module | `remote_logoutput.dart`, `remote_logserver.dart` | `@tomReflector` on the wire DTOs — the remote path does not work without generated reflection data |
+| [**Isolate Pooling Module**](../isolate_pooling/isolate_pooling.md) | kernel module | `logging_isolate.dart` | `TomWorker`, which is what moves file writes off the calling isolate |
+| [**Little Things Module**](../little_things/little_things.md) | kernel module | `remote_logoutput.dart` (`little_things.dart`), `file_log_replay_store.dart` (`atomic_file.dart`) | `getFromCurrentZone` for the ambient `TomLoggingContext`, and `tomWriteFileAtomically` for the replay store. Note that `exception_base.dart` is *not* imported — this module raises no `TomException` |
+| `dart:io` | SDK | `file_log_replay_store.dart` | The replay store's file access, and the reason that one file is native-only |
 
-- **Little Things Module**: `getFromCurrentZone`, used by `remote_logoutput.dart`
-  to pick up the ambient `TomLoggingContext`. Only `little_things.dart` is
-  imported, not `exception_base.dart` — this module raises no `TomException`
-- **HTTP Connection Module**: For remote logging endpoints
+The isolate-pooling row runs one way only: logging depends on isolate pooling,
+never the reverse — see
+[The logging module is a dependent, not a dependency](../isolate_pooling/isolate_pooling.md#the-logging-module-is-a-dependent-not-a-dependency).
+The pool reports through `tomLog` precisely so that it does not have to import
+this module back.

@@ -1322,5 +1322,26 @@ This module depends on:
   there is no path dependency and no override. Its mirror data is produced at
   build time by `tom_reflection_generator` (a dev dependency); see
   [Build Configuration](#build-configuration).
-- **Observable Module**: Integration with `TomClass` observable objects
+- **Observable Module**: `TomClass` and the observable field types, which the
+  JSON conversion special-cases rather than treating as opaque objects
+- **Timezoned Module**: `TomZonedDate`, `TomZonedTime` and `TomZonedDateTime` —
+  the conversion knows these three types by name, which is why a zoned value
+  survives a round trip that a general object graph would flatten
 - **Little Things Module**: `TomException`, the base of `TomReflectorException`
+- **`tom_basics`**: `tomLog`, used at `trace` level throughout the conversion to
+  report each declaration and value it resolves. This is verbose by design and
+  is the first thing to turn up when a field fails to serialize
+- **`dart:convert`**: the `jsonEncode`/`jsonDecode` behind the string-level
+  conversion entry points
+
+The whole module is one file, `reflection.dart`, so every row above applies to
+it.
+
+### The observable edge is a cycle
+
+The [observable module](../observable/observable.md) imports this one back —
+for `@tomReflector` and the reflector itself, which is how `TomClass` discovers
+its own fields. So the two are mutually dependent: reflection needs to
+recognize `TomClass` to convert it, and `TomClass` needs the reflector to
+describe itself. Dart permits the cycle, but neither module can be extracted
+from the package without the other.

@@ -506,6 +506,18 @@ lookup["john"] = Person();
 
 ## Dependencies
 
-- `reflection.dart` — `@tomReflector` annotation and reflection utilities
-- `date_timestamp.dart` — `TomTimezoned`, `TomZonedDate`, `TomZonedTime`, `TomZonedDateTime`
-- `tom_exception.dart` — base exception class
+Relative imports, by the file that makes them:
+
+- `tom_observable.dart` → `reflection/reflection.dart` — `@tomReflector` and the
+  global reflector
+- `tom_observable_objects.dart` → `reflection/reflection.dart`,
+  `timezoned/date_timestamp.dart` (`TomTimezoned`, `TomZonedDate`,
+  `TomZonedTime`, `TomZonedDateTime`), `little_things/exception_base.dart`
+  (`TomException`, the base of `TomObservableException`)
+- `tom_observable_enum.dart` → `resources/tom_resource_provider.dart`
+  (`appResourcesRevision`), `scope_ids/scope_ids.dart` (`TomScope`)
+
+Packages: `tom_reflection` (`ClassMirror`) and `tom_basics` (`tomLog`).
+
+See [Dependencies](observable.md#dependencies) in the full document for what
+each is used for, and for the two-way edge with the resources module.

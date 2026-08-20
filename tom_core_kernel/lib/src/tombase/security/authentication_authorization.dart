@@ -63,7 +63,10 @@ library;
 // IMPORTS
 // =============================================================================
 
-import '../observable/tom_observable_objects.dart';
+// For `@tomReflector` only, as in `oauth_contract.dart` and `two_factor.dart`.
+// The observable module re-exports the annotation, but nothing here uses
+// observable's own API.
+import '../reflection/reflection.dart';
 import 'two_factor.dart';
 import 'user_principal_aci.dart';
 

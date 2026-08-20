@@ -284,7 +284,30 @@ extension ConfigExtensions on TomGetSettingsResult {
 
 ## Dependencies
 
-This module depends on:
+`settings_client_authorization.dart` is the module's only source file, and it
+has exactly one import:
 
-- **Security Module**: For authentication tokens
-- **Resources Module**: For text and configuration resource handling
+| Dependency | Used for |
+| ---------- | -------- |
+| [**Reflection Module**](../reflection/reflection.md) | `@tomReflector`, the annotation both classes carry. It is the whole of the dependency — and it is what makes the wire round trip work, because the JSON conversion in both directions is driven by the generated reflection data |
+
+That is the entire list. The module declares two annotated data classes and
+nothing else: no transport, no storage, no validation. A package that consumes
+these DTOs therefore needs a **`build_runner` step** — `tom_reflection_generator`
+as a dev dependency and `dart run build_runner build` — or the classes will
+serialize to nothing.
+
+### What this module does *not* depend on
+
+Two modules are easy to mistake for dependencies because their subject matter
+runs through the DTOs, and neither is imported:
+
+| Module | Its actual relationship |
+| ------ | ----------------------- |
+| [Security](../security/security.md) | Produces the token that [`TomGetSettingsMessage.authorizationToken`](#tomgetsettingsmessage) carries, and consumes the `roles` / `groups` / `entitlements` / `resourceKeys` the result returns. The field is a plain `String?`; this module neither parses nor validates it |
+| [Resources](../resources/resources.md) | A typical consumer of the returned `texts` map, which it can load as a resource bundle. The field is a plain `Map<String, dynamic>`; this module attaches no meaning to it |
+
+Carrying a payload is not depending on a module. The distinction matters when
+changing the fields: a break here is felt by whatever *produces* and *consumes*
+the payload at either end of the wire, and the compiler will not point at any
+of it.

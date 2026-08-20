@@ -2166,8 +2166,27 @@ class Address extends TomClass {
 
 ## Dependencies
 
-The observable system depends on:
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| [**Reflection Module**](../reflection/reflection.md) | kernel module | `tom_observable.dart`, `tom_observable_objects.dart` | The `@tomReflector` annotation and the global reflector behind `TomClass` field discovery |
+| `tom_reflection` | package | `tom_observable_objects.dart` | `ClassMirror`, the mirror type `TomClass` walks to find its own observable fields |
+| [**Timezoned Module**](../timezoned/timezoned.md) | kernel module | `tom_observable_objects.dart` | `TomTimezoned`, `TomZonedDate`, `TomZonedTime`, `TomZonedDateTime` — the observable wrappers for zoned values |
+| [**Little Things Module**](../little_things/little_things.md) | kernel module | `tom_observable_objects.dart` | `TomException`, the base of `TomObservableException` |
+| [**Resources Module**](../resources/resources.md) | kernel module | `tom_observable_enum.dart` | `TomTextResourceProvider.appResourcesRevision` — how an enum's displayed label re-resolves when the resource bundle changes |
+| [**Scope IDs Module**](../scope_ids/scope_ids.md) | kernel module | `tom_observable_enum.dart` | `TomScope`, which supplies the implicit scope segment in an enum's resource key |
+| `tom_basics` | package | `tom_observable_enum.dart` | `tomLog`, for the warnings raised when an enum label cannot be resolved |
 
-- **Reflection Module**: `@tomReflector` annotation for `TomClass` reflection
-- **Timezoned Module**: `TomTimezoned`, `TomZonedDate`, `TomZonedTime`, `TomZonedDateTime`
-- **Little Things Module**: Base `TomException` class for `TomObservableException`
+The last three rows belong to `tom_observable_enum.dart` alone. That file is
+the module's only outward-reaching part — the rest of the observable system
+knows nothing about resources or scopes, and an application that never uses
+[`TomObservableEnum`](#tomobservableenum-resource-keyed-enums) never engages any
+of it.
+
+### Resources is a two-way edge
+
+The [resources module](../resources/resources.md) imports this one back, for
+`TomInt` — the type of `appResourcesRevision` itself. So the two modules form a
+cycle: resources publishes a revision counter *as* an observable, and
+`tom_observable_enum.dart` observes it. Dart permits this, and it is the reason
+a locale switch reaches a bound enum label at all, but it is worth knowing
+before moving code between the two.

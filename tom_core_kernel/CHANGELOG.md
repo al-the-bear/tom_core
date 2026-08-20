@@ -140,6 +140,18 @@ anyone who was writing them.
 
 ### Changed
 
+- **`settings_client_authorization.dart` and `authentication_authorization.dart`
+  now import `@tomReflector` from the reflection module directly.** Both
+  previously reached it through `observable/tom_observable_objects.dart`, which
+  re-exports the reflection module wholesale. Neither file uses anything of
+  observable's own — the annotation was the entire reason for the import — so the
+  import line asserted a coupling that does not exist, and it is what the two
+  documents' Dependencies sections were reading when they credited observable for
+  the DTO annotations. Eleven other files in the package, including the sibling
+  `oauth_contract.dart` and `two_factor.dart`, already imported reflection
+  directly; these two were the outliers. No symbol resolves differently and no
+  executable line moved.
+
 - **Every boolean 2FA claim is now read the same way, `Tom2FAClaims.isTrue`,
   including at the gates.** The module already stated the rule — a claim can
   cross the wire as the JSON boolean `true` or the string `"true"`, because the
@@ -980,6 +992,48 @@ anyone who was writing them.
   is where the window it opens belongs.
 
 ### Documentation
+
+- **Every module document's Dependencies section was checked against its
+  source's imports, and ten were wrong.** The settings document was the clearest
+  case: it named the **Security** and **Resources** modules, neither of which the
+  module imports, and omitted the only import there is. Four documents named a
+  module that is genuinely never imported — settings (security, resources),
+  `shutdown_cleanup` (logging, observable), `isolate_pooling` (logging), and
+  security (a "Crypto Module" that does not exist in this package; the JWT work
+  is `package:tom_crypto`). Six more named only true dependencies but left real
+  ones out: logging omitted isolate pooling, reflection and `atomic_file`;
+  observable omitted resources and scope IDs; reflection omitted timezoned and
+  `tom_basics`; timezoned omitted `formatting`, `meta` and `tom_basics`;
+  `scope_ids` omitted its exception import; and
+  `observable_short_reference.md` pointed at a file called `tom_exception.dart`,
+  which has never existed. Every section now lists what the source actually
+  imports, names the symbol taken from each, and — where the module has more
+  than one source file — says which file makes the import.
+
+  Three recurring confusions were behind most of it, and each is now called out
+  where it applies. **Carrying a payload is not depending on a module:** the
+  settings DTOs carry an authorization token and a texts map, which is why
+  security and resources looked like dependencies; they are the modules at the
+  *ends of the wire*, and the settings document now says so under its own
+  heading. **A dependency has a direction:** `isolate_pooling` claimed to depend
+  on logging when `logging_isolate.dart` imports the pool, not the reverse — the
+  pool reports through `tomLog` from `tom_basics` precisely so the cycle stays
+  open. And **`@tomReflector` belongs to the reflection module,** not to
+  observable, which merely re-exports it; that misattribution appeared in the
+  settings, security and `shutdown_cleanup` documents.
+
+  Three genuine facts surfaced while checking and are now documented where they
+  were previously invisible: the **observable ↔ resources cycle** (resources
+  publishes `appResourcesRevision` as a `TomInt`, and `tom_observable_enum.dart`
+  observes it — which is what makes a locale switch reach a bound enum label);
+  the **reflection ↔ observable cycle** (reflection must recognize `TomClass` to
+  convert it, and `TomClass` needs the reflector to describe itself, so neither
+  can be extracted without the other); and the fact that five of
+  `http_connection`'s six source files import **this package's own barrel**
+  rather than their siblings, so an import list there says nothing about what the
+  module uses and the analyzer cannot flag a new coupling introduced in it.
+  `isolate_pooling` and `timezoned` also gained the log-level and
+  conditional-import tables the check produced.
 
 - **The settings and security documents no longer invent a transport that does
   not exist.** Every snippet showing how to *send* one of these modules' DTOs

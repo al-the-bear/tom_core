@@ -856,8 +856,35 @@ TomApiEndpoint<PublicData, void>(
 
 This module depends on:
 
-- **Little Things Module**: `TomException` base class for error handling
-- **Security Module**: `TomBearerAuthentication` for authentication
-- **Bean Locator Module**: `TomBean` for resolving the active `TomAuthRetryPolicy`
-- **Reflection Module**: `TomReflectionInfo` for JSON serialization support
-- **Runtime Module**: Platform utilities for HTTP client creation
+- [**Little Things Module**](../little_things/little_things.md): `TomException`,
+  the base class for error handling
+- [**Security Module**](../security/security.md): `TomBearerAuthentication`, for
+  the token attached when `includeBearerAuthentication` is set, and
+  `TomAccessControl` / `TomPublicAccess` / `TomAuthenticatedAccess` for the
+  endpoint access policies
+- [**Bean Locator Module**](../beanlocator/beanlocator.md): `TomBean` for
+  resolving the active `TomAuthRetryPolicy`
+- [**Reflection Module**](../reflection/reflection.md): the global
+  `tomReflectionInfo` — `createInstance`, `convertToJsonString` and
+  `convertFromJsonString`, which *are* the send path. A DTO sent through this
+  module needs generated reflection data or the round trip produces nothing
+- **Runtime Module** (`tom_basics`): `TomPlatformUtils.current.httpClient()`,
+  which is how a channel obtains a platform-appropriate client
+- **`package:http`**: `Client`, `Response` and `StreamedResponse`, the transport
+  underneath `TomServerChannel`
+- **`package:meta`**: `@visibleForTesting` only; no runtime behaviour
+
+### Most of these arrive through the package barrel
+
+Only `endpoints_apis.dart` names its kernel siblings directly
+(`little_things/exception_base.dart`, `security/access_controls.dart`). The
+other five source files import
+**`package:tom_core_kernel/tom_core_kernel.dart`** — this package's own barrel —
+and pick up everything above through it.
+
+That is worth knowing for two reasons. Reading an import list in this module
+tells you almost nothing about what it actually uses, so the table above was
+compiled from the symbols rather than from the imports. And because the barrel
+exports every module, the analyzer cannot flag a new coupling introduced here:
+a file that starts using a module it has no business touching still compiles
+without an import line changing.

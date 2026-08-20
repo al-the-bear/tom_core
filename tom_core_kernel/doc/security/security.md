@@ -1351,11 +1351,29 @@ disappears a few seconds after login, with nothing in the logs.
 
 ## Dependencies
 
-This module depends on:
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| [**Reflection Module**](../reflection/reflection.md) | kernel module | `authentication_authorization.dart`, `oauth_contract.dart`, `two_factor.dart` | `@tomReflector` — the annotation on every DTO in this module, and hence the JSON round trip that carries them over the wire |
+| [**HTTP Connection Module**](../http_connection/http_connection.md) | kernel module | `oauth_contract.dart` | `TomApi` / `TomApiEndpoint` and `TomHttpMethod`, for the external-identity contract |
+| [**Scope IDs Module**](../scope_ids/scope_ids.md) | kernel module | `tom_authorization.dart` | `TomScope` path resolution for `TomAuthorizationGroup` |
+| [**Little Things Module**](../little_things/little_things.md) | kernel module | `access_controls.dart` | `getFromCurrentZone<TomPrincipal>()` — how resource protection finds the ambient principal without being passed one |
+| `tom_crypto` | package | `bearer_authentication.dart` | `TomClientJwtToken`, the parsed form of both bearer tokens |
+| `crypto` | package | `two_factor.dart` | `Hmac`/`sha1`, the TOTP primitive |
+| `meta` | package | `access_controls.dart` | `@nonVirtual` only; no runtime behaviour |
 
-- **Crypto Module**: JWT token generation and parsing
-- **Observable Module**: Reflection annotations for DTOs
-- **Little Things Module**: Zone-based utilities
-- **Scope IDs Module**: `TomScope` path resolution for `TomAuthorizationGroup`
-- **HTTP Connection Module**: `TomApi` / `TomApiEndpoint` and `TomHttpMethod`
-  for the external-identity contract in `oauth_contract.dart`
+Two entries that used to appear here are gone, and both were wrong in the same
+way — they named a module whose subject matter *runs through* this one:
+
+- There is **no crypto module** in this package. JWT work is
+  [`package:tom_crypto`](https://pub.dev/packages/tom_crypto), a hosted
+  dependency, and only `bearer_authentication.dart` touches it.
+- The **observable module** supplies nothing here. It re-exports
+  `@tomReflector`, so importing DTO annotations *through* it used to look like a
+  dependency; the annotation is the reflection module's and is now imported from
+  there directly.
+
+Note the shape of the reflection row: it is the only dependency shared by more
+than one file, and it is the one with a build-time cost. `tomReflector` answers
+from generated data, so a package that serializes these DTOs needs
+`tom_reflection_generator` as a dev dependency and a `dart run build_runner
+build`.
