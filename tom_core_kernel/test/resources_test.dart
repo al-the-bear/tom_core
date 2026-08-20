@@ -379,6 +379,38 @@ void main() {
         final provider = TomTextResourceProvider.from({'count': 42});
         expect(provider.getObject('unknown'), equals('unknown'));
       });
+
+      test('should return an arbitrary object identically, read through the '
+          'installed singleton', () {
+        // The case the object family exists for, and the one the module
+        // documentation names: a look-and-feel value (a TextStyle, a Color)
+        // living in the text bundle beside the strings it styles. Not a
+        // primitive, and read the way an application reads it.
+        const heading = _UiValue('heading');
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from({
+            'styles': {'heading': heading},
+            'labels': {'heading': 'Overview'},
+          }),
+        );
+        final resources = TomTextResourceProvider.getAppResources();
+
+        expect(
+          identical(resources.getObject('styles.heading'), heading),
+          isTrue,
+        );
+        expect(resources.existsObject('styles.heading'), isTrue);
+
+        // ... and the reason it must not be read with the String family: to
+        // `getText`, a non-String value is absent, so it echoes the key. That
+        // is what "text accessor" means — not that the provider is
+        // Strings-only.
+        expect(resources.getText('styles.heading'), equals('styles.heading'));
+        expect(resources.exists('styles.heading'), isFalse);
+
+        // The strings in the same bundle are unaffected.
+        expect(resources.getText('labels.heading'), equals('Overview'));
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -1258,4 +1290,12 @@ void main() {
       });
     });
   });
+}
+
+/// Stands in for a look-and-feel value of the kind the object family exists for
+/// — a TextStyle or a Color in a real application. Deliberately not a
+/// primitive, and deliberately not a `String`.
+class _UiValue {
+  final String name;
+  const _UiValue(this.name);
 }

@@ -68,6 +68,15 @@ messages) that also supports retrieval of arbitrary object values via
 `existsObject`/`getObject`. Singleton access is via `getAppResources`; values
 are looked up by flat keys or dot-notation paths.
 
+The bundle is a `Map<String, dynamic>` and holds values of any type — "text"
+names the purpose, not the value type, and the object family is what keeps
+look-and-feel values (TextStyles, Colors) in the same bundle as the strings they
+style. Note that the String family reports a non-String value as *absent*:
+`getText` on a Color echoes the key back, so such values are read with
+`getObject`/`getObjectOrNull`. A non-String value does not belong in
+`TomConfigResourceProvider` on account of its type; see that class for the axis
+the two providers actually differ on.
+
 #### Constructors
 
 ```dart
@@ -114,6 +123,13 @@ TomTextResourceProvider.from(Map<String, dynamic> resources)
 A singleton provider for configuration values (API endpoints, feature flags,
 timeouts, and other settings). Singleton access is via `getAppConfig`; values
 are looked up by flat keys or dot-notation paths.
+
+Both providers hold values of any type, so the choice between them is one of
+purpose, not of value type: this one is for how the application is *set up*,
+`TomTextResourceProvider` for what the user *sees*. The consequences are that
+configuration is read at the point of use rather than rendered, so it has no
+revision counter to observe, and that its three accessors are a strict subset of
+the text provider's six.
 
 Values are `Object`, so reading one usually means casting it. Cast
 `getObjectOrNull`, not `getText`: `getText` echoes the key back as a `String`

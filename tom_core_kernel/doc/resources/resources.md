@@ -19,10 +19,26 @@ The Resources module provides singleton-based resource management for applicatio
 
 The module consists of two main providers:
 
-| Provider | Purpose | Value Types |
-|----------|---------|-------------|
-| `TomTextResourceProvider` | Localized strings, UI labels, messages | Strings only |
-| `TomConfigResourceProvider` | Application settings, feature flags | Any type |
+| Provider | Holds | Accessors | Observable |
+|----------|-------|-----------|------------|
+| `TomTextResourceProvider` | Everything the user sees: localized strings, UI labels, messages — and the non-String values that travel with them, such as TextStyles and Colors | String family (`getText`, `getTextOrNull`, `exists`) **and** object family (`getObject`, `getObjectOrNull`, `existsObject`) | Yes — `appResourcesRevision` |
+| `TomConfigResourceProvider` | How the application is set up: API endpoints, feature flags, timeouts | Object family only (`getText` returns `Object`, plus `getObjectOrNull` and `exists`) | No |
+
+**Both bundles are `Map<String, dynamic>` and both hold values of any type.**
+The split is by *purpose*, not by value type: a Color belonging to the theme is
+a text resource, and a `bool` feature flag is configuration. Two consequences
+follow, and they are the reason the split is worth having:
+
+- Only the text provider is observable. `appResourcesRevision` exists because a
+  locale or theme switch has to re-render; configuration is read at the point of
+  use and does not.
+- Only the text provider has the String-specific accessors. `getText` on a
+  non-String value reports the key as missing (that is what "text accessor"
+  means), so a TextStyle stored in the text bundle is read with `getObject` /
+  `getObjectOrNull`, not `getText`.
+
+So do not reach for `TomConfigResourceProvider` merely because a value is not a
+`String` — it has no revision counter, and its accessors are a strict subset.
 
 Both providers share similar patterns:
 - **Singleton access** for application-wide resource sharing
@@ -218,7 +234,11 @@ You find this file in the UAM sample application.
 
 ### TomTextResourceProvider
 
-A singleton provider for text-based resources.
+A singleton provider for application-facing resources: text (localized strings,
+labels, messages) plus the arbitrary object values that belong with it —
+TextStyles, Colors, and other look-and-feel settings. The String family and the
+object family below address the same bundle; which one you use depends on the
+type of the value at the key, not on which provider holds it.
 
 #### Static Members
 
@@ -252,7 +272,10 @@ A singleton provider for text-based resources.
 
 ### TomConfigResourceProvider
 
-A singleton provider for configuration values of any type.
+A singleton provider for how the application is set up — endpoints, feature
+flags, timeouts. It holds values of any type, as the text provider does; what
+distinguishes it is that its contents are read at the point of use rather than
+rendered, so it carries no revision counter and no String-specific accessors.
 
 #### Static Members
 
@@ -282,8 +305,10 @@ A singleton provider for configuration values of any type.
 > `getObjectOrNull` with a default — `config.getObjectOrNull('api.timeout') as
 > int? ?? 5000` — not `getText`, whose echoed key is a `String` that makes the
 > cast throw. See [Reading a typed configuration value](#reading-a-typed-configuration-value).
-> The String-specific accessors (`getTextOrNull`, `existsObject`, `getObject`)
-> live on [`TomTextResourceProvider`](#tomtextresourceprovider), not here.
+> The three accessors here are the whole surface. `getTextOrNull` — the only
+> genuinely String-specific accessor in the module — lives on
+> [`TomTextResourceProvider`](#tomtextresourceprovider), as do `getObject` and
+> `existsObject`, whose roles are filled here by `getText` and `exists`.
 
 ### Fallback: key vs. null
 

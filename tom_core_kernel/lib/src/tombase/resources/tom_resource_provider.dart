@@ -122,10 +122,20 @@ String? _resolveStringOrNull(Map<String, dynamic> resources, String path) {
 ///
 /// [TomTextResourceProvider] is designed for storing and retrieving text-based
 /// resources such as localized strings, UI labels, error messages, and other
-/// text content that may vary by locale or configuration. It also supports
-/// retrieval of object values using the existsObject and getObject methods,
-/// this is intended for extended UI configuration which is related to look
-/// and feel of the UI, such as TextStyles, Colors, etc. This allows for a unified resource management
+/// text content that may vary by locale or configuration.
+///
+/// It also holds values that are *not* Strings. [existsObject], [getObject] and
+/// [getObjectOrNull] resolve a value of any type, which is what lets the
+/// look-and-feel settings that travel with the text — TextStyles, Colors, and
+/// similar — live in the same bundle instead of a second one. The bundle is a
+/// `Map<String, dynamic>` either way; "text" names what the resources are *for*,
+/// not what type they are.
+///
+/// The String family ([getText], [getTextOrNull], [exists]) reports a non-String
+/// value as absent, so a Color is read with [getObject], not [getText]. Do not
+/// move such a value to [TomConfigResourceProvider] on account of its type:
+/// configuration is a different purpose, its accessors are a strict subset of
+/// these, and it has no [appResourcesRevision] to re-render from.
 ///
 /// The provider supports:
 /// - Singleton access via [getAppResources], after an explicit install
