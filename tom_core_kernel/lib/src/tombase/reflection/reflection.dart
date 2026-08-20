@@ -834,11 +834,12 @@ class TomReflectionInfo {
       try {
         blank = objectMirror.newInstance("", []) as T;
       } catch (error, stack) {
-        // A mirror with no invocable default constructor raises the reflection
-        // package's own NoSuchCapabilityError. Letting it out would make this
-        // method's one documented failure mode a lie and hand the caller an
-        // exception type this module never tells anyone to catch; the same
-        // wrapping [createInstance] already applies, under the same key.
+        // A mirror with no invocable default constructor raises
+        // `tom_reflection`'s own NoSuchCapabilityError. Letting it out would
+        // make this method's one documented failure mode a lie and hand the
+        // caller an exception type this module never tells anyone to catch;
+        // the same wrapping [createInstance] already applies, under the same
+        // key.
         throw TomReflectorException(
           "reflector.instance_creation.failed",
           "Failed to create instance of type ${objectMirror.simpleName} "

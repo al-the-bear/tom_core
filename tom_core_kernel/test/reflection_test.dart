@@ -1928,9 +1928,9 @@ void main() {
       // always an exception. It has to be *our* exception, though: the
       // default-constructor fallback was unguarded, so a mirror the reflector
       // cannot instantiate — a quantified built-in such as `String`, which has
-      // mirror data but no invocable constructor — escaped as the reflection
-      // package's own NoSuchCapabilityError, which is not the type this module
-      // documents or that `on TomReflectorException` catches.
+      // mirror data but no invocable constructor — escaped as
+      // `tom_reflection`'s own NoSuchCapabilityError, which is not the type
+      // this module documents or that `on TomReflectorException` catches.
       expect(
         () => tomReflectionInfo.createInstanceFromJson<SimplePerson>(
           tomReflector.reflectType(String) as ClassMirror,
@@ -2178,8 +2178,8 @@ void main() {
     });
 
     test('getValues reports an unreflected class instead of leaking', () {
-      // Was a bare `NoSuchCapabilityError` from inside the reflectable
-      // package: it named the type and nothing else — not the operation, not
+      // Was a bare `NoSuchCapabilityError` from inside `tom_reflection`:
+      // it named the type and nothing else — not the operation, not
       // the missing annotation — and slipped past every `on
       // TomReflectorException` the framework has.
       expect(

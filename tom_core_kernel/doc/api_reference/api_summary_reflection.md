@@ -13,6 +13,7 @@ converter singletons.
   - [TomReflectorException](#tomreflectorexception)
   - [TomReflector](#tomreflector)
   - [TomReflectionInfo](#tomreflectioninfo)
+- [Serialization Hooks](#serialization-hooks)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -127,11 +128,87 @@ all. Type arguments are parsed by a static helper that counts bracket depth.
 | `reportReflect` | `void reportReflect(ClassMirror cm)` | Prints detailed reflection information about a `ClassMirror` for debugging. |
 | `convertFromJsonString` | `T convertFromJsonString<T extends Object>(T o, String s)` | Parses a JSON string and populates the fields of object `o`; returns the same object. |
 | `createInstanceFromJsonString` | `T createInstanceFromJsonString<T extends Object>(ClassMirror objectMirror, String s)` | Creates a new instance of `T` from a JSON string using `objectMirror`. Parses `s` before any reflection happens, so malformed JSON raises a `FormatException` from `jsonDecode`; everything after that is `createInstanceFromJson`. Returns the instance or throws — there is no failure value. |
-| `createInstanceFromJson` | `T createInstanceFromJson<T extends Object>(ClassMirror objectMirror, Map<String, Object?> jsonData)` | Creates a new instance of `T` from JSON data, preferring a `fromJson` constructor and falling back to the default constructor plus `setValues`. The constructor is looked up in the mirror's declarations *before* it is called, so the fallback happens only when there genuinely is no `fromJson`. One that exists and raises throws `TomReflectorException` (`reflection.hook.failed`) naming the hook and the class and keeping the original error as `rootException` — it used to be caught and discarded, so a bug in the caller's own constructor was rebuilt around by the fallback path and reported, if at all, as a field-level type mismatch inside the reflection layer. One that returns something that is not a `T` throws `reflection.hook.invalid_return`. A target the reflector cannot construct at all — a quantified built-in such as `String`, which has mirror data but no invocable default constructor — throws `reflector.instance_creation.failed`, the same key and shape `createInstance` uses; `tom_reflection`'s own `NoSuchCapabilityError` used to escape unwrapped, an exception type this module never tells anyone to catch. Returns the instance or throws: every exit either produces a `T` or raises, so the result is non-nullable and a caller testing it for null is writing a branch that cannot be entered. |
+| `createInstanceFromJson` | `T createInstanceFromJson<T extends Object>(ClassMirror objectMirror, Map<String, Object?> jsonData)` | Creates a new instance of `T` from JSON data, preferring a `fromJson` constructor and falling back to the default constructor plus `setValues` — so a class declaring only `jsonDecode` is honoured here too, while one declaring only `fromJson` is not honoured by `setValues`; see [Serialization Hooks](#serialization-hooks). The constructor is looked up in the mirror's declarations *before* it is called, so the fallback happens only when there genuinely is no `fromJson`. One that exists and raises throws `TomReflectorException` (`reflection.hook.failed`) naming the hook and the class and keeping the original error as `rootException` — it used to be caught and discarded, so a bug in the caller's own constructor was rebuilt around by the fallback path and reported, if at all, as a field-level type mismatch inside the reflection layer. One that returns something that is not a `T` throws `reflection.hook.invalid_return`. A target the reflector cannot construct at all — a quantified built-in such as `String`, which has mirror data but no invocable default constructor — throws `reflector.instance_creation.failed`, the same key and shape `createInstance` uses; `tom_reflection`'s own `NoSuchCapabilityError` used to escape unwrapped, an exception type this module never tells anyone to catch. Returns the instance or throws: every exit either produces a `T` or raises, so the result is non-nullable and a caller testing it for null is writing a branch that cannot be entered. |
 | `createInstance` | `T createInstance<T extends Object>([Type? type])` | Creates a new instance using its default constructor. The type is named twice over and the two are not the same question: `type` says *what to build*, `T` says *what to call the result* and is applied to it as a cast. Each defaults to the other, so most calls pass only one — but passing only `type` leaves nothing to infer `T` from, so it falls to its bound and the result is statically an `Object` even though the instance is of the requested class. Passing both is worthwhile when they differ: it builds `type` and hands it back as a supertype it satisfies. Nothing checks that they agree until the cast runs, so a `type` that is not a `T` is not a compile error; it throws `TomReflectorException` (`reflector.instance_creation.failed`), as does a class that cannot be reflected or constructed. |
-| `setValues` | `T setValues<T extends Object>(T o, Map<String, dynamic> values)` | Sets field values on `o` from a map (the main deserialization entry point); handles primitives, `int`→`double` widening, date/time types, nested annotated objects, and collections. A class declaring a `jsonDecode` method takes deserialization over entirely; the method is looked up in `instanceMembers` before it is called, so only its genuine absence falls back to the field walk. A `jsonDecode` that exists and raises throws `TomReflectorException` (`reflection.hook.failed`) rather than being read as absent and silently replaced by the walk it was written to override. A String bound for a `DateTime`, `TomZonedDate`, `TomZonedTime` or `TomZonedDateTime` field that will not parse throws `TomReflectorException` (`reflection.set.date_parse_failed`) naming the class, the field and the offending text — plus the map key or list index when the field is a `Map<String, DateTime>` or `List<DateTime>` — and keeps the `FormatException` as `rootException`. It used to escape as that bare `FormatException`: no field, no class, no exception id, and invisible to `on TomReflectorException`. The field, or the collection, retains its previous contents. Collections are assigned atomically — the field is untouched unless every element materializes — and this covers collections of primitives as well as of annotated objects: a typed collection is built and checked element by element before assignment, never through a lazy `cast`. An element the target type rejects throws `TomReflectorException` (`reflection.set.collection_element_type_mismatch`) naming the field, the position and the value; a non-`String` map key throws `reflection.set.map_key_type_mismatch`. Collections nest one level deep: a field whose element type is itself generic (`List<List<String>>`, `Map<String, List<X>>`) throws `reflector.type_resolution.nested_generic_unsupported`, naming the field's declared type rather than reporting the cast that failed inside. `int`→`double` widening applies inside collections too. Resolves the class from the instance, so an annotated generic class is populated like any other; see `getValues`. Throws `TomReflectorException` (`reflector.reflect.not_reflectable`) if `o`'s class has no generated reflection data, and (`reflector.type.not_annotated`) if it reflects but is not annotated — a `String`, `int`, `DateTime` or `List` target used to be returned unchanged, reporting success for a write that could not happen. |
+| `setValues` | `T setValues<T extends Object>(T o, Map<String, dynamic> values)` | Sets field values on `o` from a map (the main deserialization entry point); handles primitives, `int`→`double` widening, date/time types, nested annotated objects, and collections. A `TomClass` short-circuits everything below: `o.setValues(values)` is called and no mirror is taken. Otherwise a class declaring a `jsonDecode` method takes deserialization over entirely; the method is looked up in `instanceMembers` before it is called, so only its genuine absence falls back to the field walk. For the full precedence and the other three hooks, see [Serialization Hooks](#serialization-hooks). A `jsonDecode` that exists and raises throws `TomReflectorException` (`reflection.hook.failed`) rather than being read as absent and silently replaced by the walk it was written to override. A String bound for a `DateTime`, `TomZonedDate`, `TomZonedTime` or `TomZonedDateTime` field that will not parse throws `TomReflectorException` (`reflection.set.date_parse_failed`) naming the class, the field and the offending text — plus the map key or list index when the field is a `Map<String, DateTime>` or `List<DateTime>` — and keeps the `FormatException` as `rootException`. It used to escape as that bare `FormatException`: no field, no class, no exception id, and invisible to `on TomReflectorException`. The field, or the collection, retains its previous contents. Collections are assigned atomically — the field is untouched unless every element materializes — and this covers collections of primitives as well as of annotated objects: a typed collection is built and checked element by element before assignment, never through a lazy `cast`. An element the target type rejects throws `TomReflectorException` (`reflection.set.collection_element_type_mismatch`) naming the field, the position and the value; a non-`String` map key throws `reflection.set.map_key_type_mismatch`. Collections nest one level deep: a field whose element type is itself generic (`List<List<String>>`, `Map<String, List<X>>`) throws `reflector.type_resolution.nested_generic_unsupported`, naming the field's declared type rather than reporting the cast that failed inside. `int`→`double` widening applies inside collections too. Resolves the class from the instance, so an annotated generic class is populated like any other; see `getValues`. Throws `TomReflectorException` (`reflector.reflect.not_reflectable`) if `o`'s class has no generated reflection data, and (`reflector.type.not_annotated`) if it reflects but is not annotated — a `String`, `int`, `DateTime` or `List` target used to be returned unchanged, reporting success for a write that could not happen. |
 | `convertToJsonString` | `String convertToJsonString(Object o)` | Calls `getValues` and encodes the result to a JSON string. |
-| `getValues` | `Map<String, Object?> getValues(Object o)` | Extracts all values from an object as a JSON-compatible map (the main serialization entry point). A class declaring a `jsonEncode` getter supplies its own representation; the getter is looked up in `instanceMembers` before it is read, so only its genuine absence falls back to the field walk. One that exists and raises throws `TomReflectorException` (`reflection.hook.failed`); one that returns anything but a `Map<String, Object?>` throws `reflection.hook.invalid_return`. Both used to be indistinguishable from "no such getter", so the custom representation was quietly dropped and the fields it exists to replace were serialized instead. Resolves the class from the *instance*, so an annotated **generic** class serializes like any other — the registry is keyed by declaration and holds no `Holder<int>` entry, which is what a `reflectType(o.runtimeType)` lookup would fall over on. The type argument is not a member, so two instantiations of one declaration produce one JSON shape. Throws `TomReflectorException` (`reflector.reflect.not_reflectable`) if `o`'s class has no generated reflection data, and (`reflector.type.not_annotated`) if it reflects but carries no `@tomReflector`. The latter is the case that used to return `{}`: quantified built-ins such as `String`, `int`, `DateTime` and `List` have mirror data because they appear as field types, present no settable declarations, and so serialized to an empty map — `convertToJsonString` turned that into the string `"{}"`. The test is the metadata on the resolved mirror, not membership of `annotatedClasses`, which holds the quantified types and omits the mirror of an annotated generic instantiation. |
+| `getValues` | `Map<String, Object?> getValues(Object o)` | Extracts all values from an object as a JSON-compatible map (the main serialization entry point). A `TomClass` short-circuits everything below: `o.toJson()` is returned and no mirror is taken. Outside that one case a plain `toJson()` method is *not* consulted, and neither is `TomJsonSerializable` — see [Serialization Hooks](#serialization-hooks). Otherwise a class declaring a `jsonEncode` getter supplies its own representation; the getter is looked up in `instanceMembers` before it is read, so only its genuine absence falls back to the field walk. One that exists and raises throws `TomReflectorException` (`reflection.hook.failed`); one that returns anything but a `Map<String, Object?>` throws `reflection.hook.invalid_return`. Both used to be indistinguishable from "no such getter", so the custom representation was quietly dropped and the fields it exists to replace were serialized instead. Resolves the class from the *instance*, so an annotated **generic** class serializes like any other — the registry is keyed by declaration and holds no `Holder<int>` entry, which is what a `reflectType(o.runtimeType)` lookup would fall over on. The type argument is not a member, so two instantiations of one declaration produce one JSON shape. Throws `TomReflectorException` (`reflector.reflect.not_reflectable`) if `o`'s class has no generated reflection data, and (`reflector.type.not_annotated`) if it reflects but carries no `@tomReflector`. The latter is the case that used to return `{}`: quantified built-ins such as `String`, `int`, `DateTime` and `List` have mirror data because they appear as field types, present no settable declarations, and so serialized to an empty map — `convertToJsonString` turned that into the string `"{}"`. The test is the metadata on the resolved mirror, not membership of `annotatedClasses`, which holds the quantified types and omits the mirror of an annotated generic instantiation. |
+
+## Serialization Hooks
+
+Four member names are part of this module's contract even though they are not
+declared anywhere in it: a class *of the caller's* that declares one of them
+takes over the corresponding conversion. Two are outbound, two inbound. The
+names are looked for by string, so nothing enforces the signature — declaring
+one with the wrong shape produces a hook failure at run time, not a compile
+error.
+
+| Hook | Kind | Expected signature | Direction | Honoured by |
+| ---- | ---- | ------------------ | --------- | ----------- |
+| `jsonEncode` | getter | `Map<String, Object?> get jsonEncode` | out | `getValues` — found via `instanceMembers`, on any annotated class |
+| `toJson` | method | `Map<String, dynamic> toJson()` | out | `getValues` — **only** when the object `is TomClass`; not looked up by name |
+| `jsonDecode` | method | `void jsonDecode(Map<String, dynamic> values)` | in | `setValues` — found via `instanceMembers`; the return value is ignored |
+| `fromJson` | named constructor | `X.fromJson(Map<String, Object?> json)` | in | `createInstanceFromJson` — found in the mirror's declarations |
+
+The two directions are not symmetric, and the asymmetry is in the names: the
+outbound pair is `jsonEncode`/`toJson`, the inbound pair
+`jsonDecode`/`fromJson`. `jsonEncode` and `jsonDecode` are a matched pair;
+`toJson` and `fromJson` are not — `toJson` is reachable only through
+`TomClass`, `fromJson` on any class the reflector can see.
+
+**Outbound precedence, as `getValues` applies it:**
+
+1. `o is TomClass` → return `o.toJson()`. No mirror is taken.
+2. Reflect the instance (`reflector.reflect.not_reflectable` if there is no
+   generated data) and require `@tomReflector` on the resolved mirror
+   (`reflector.type.not_annotated`).
+3. Read the `jsonEncode` getter if `instanceMembers` has one; its result is
+   the answer.
+4. Otherwise walk the non-static, non-final, non-private fields.
+
+A plain `toJson()` method is not consulted at step 3, and neither is
+`TomJsonSerializable`. Today a class that implements `TomJsonSerializable` but
+is neither a `TomClass` nor `@tomReflector`-annotated does not fall back to its
+own `toJson()` — it fails at step 2. `TomErrorResult` is the worked case: its
+`toJson()` returns `{code: …, message: …, retryable: …, severity: …}`, while
+`tomReflectionInfo.getValues` on the same instance throws
+`TomReflectorException` (`reflector.reflect.not_reflectable`). The server's
+endpoint pipeline reaches such results only because it tests `TomClass`,
+`TomJsonSerializable`, `Map` and `List` itself before falling through to
+`convertToJsonString` — that chain is load-bearing, not a convenience.
+
+**Inbound precedence, as `createInstanceFromJson` applies it:**
+
+1. A `fromJson` named constructor, if the mirror declares one.
+2. Otherwise the default constructor, then `setValues` on the result.
+
+**Inbound precedence, as `setValues` applies it:**
+
+1. `o is TomClass` → `o.setValues(values)`, return `o`.
+2. Reflect and require the annotation, as above.
+3. Invoke `jsonDecode` if `instanceMembers` has one; it takes over entirely.
+4. Otherwise set each map entry onto its field.
+
+Because `createInstanceFromJson` falls through to `setValues`, a class
+declaring only `jsonDecode` is honoured by both entry points. The reverse does
+not hold: a class declaring only `fromJson` is not consulted when an existing
+instance is updated.
+
+`TomJsonSerializable`
+(`lib/src/tombase/json/json_serializable.dart`) declares nothing but
+`Map<String, Object?> toJson();`. It exists as the cheap `is` test by which a
+caller's custom conversion is *detected* — a one-instruction type check in
+place of a mirror lookup — not as a workaround for something the serializer
+cannot do. Implement it to say "this type converts itself"; it carries no
+business or security logic and adds no behaviour of its own.
+
+Three of the four hooks — `jsonEncode`, `jsonDecode` and `fromJson` — share one
+failure contract: each is looked up before it is called, so a hook that exists
+and fails throws `TomReflectorException` (`reflection.hook.failed`, or
+`reflection.hook.invalid_return` for a wrong return type) rather than being
+mistaken for an absent one and silently replaced by the walk it was written to
+override. `toJson` is not among them: nothing looks it up, `TomClass.toJson()`
+is called directly, and a failure inside it propagates as whatever it threw.
 
 ## Global Functions and Constants
 
