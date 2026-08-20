@@ -168,6 +168,7 @@ tom_core_bridge/       VS Code bridge server with the Tom bridge set (core_bs) (
 tom_core_agentic/      domain-free agentic building blocks (dart:io-free)      (agentic)
 tom_flutter_form_test/ runnable demo: the form framework                      (demo app)
 tom_flutter_ui_test/   runnable demo/smoke-test: the whole widget library     (demo app)
+tool/                  repo-wide developer tooling (see below)                (tooling)
 ```
 
 Dependency direction, simplified: everything roots at `tom_core_kernel`;
@@ -176,6 +177,29 @@ Dependency direction, simplified: everything roots at `tom_core_kernel`;
 `tom_core_d4rt` bridges the runtimes into DartScript and `tom_core_bridge`
 serves those bridges to the VS Code extension; `tom_core_agentic` depends only
 on `tom_basics`.
+
+## Repository tooling
+
+Tools that span the whole repository live in `tool/`; anything scoped to one
+package lives in that package's own `tool/`.
+
+| Tool | What it does |
+| ---- | ------------ |
+| [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits every `## Table of Contents` in the tree against its own document |
+
+```bash
+python3 tool/check_doc_tocs.py                # the whole repository
+python3 tool/check_doc_tocs.py tom_core_kernel   # one subtree
+```
+
+It reports three faults and exits non-zero if it finds any: sections the
+contents omit, entries whose link resolves to no heading, and entries listed in
+an order the document does not follow. The last is the one a reader cannot
+easily catch, and a presence check passes it silently.
+
+Documents drift from their contents whenever a section is added without the
+list being touched, so the check is worth running after editing any document
+that has one.
 
 ## License
 

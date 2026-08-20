@@ -17,6 +17,7 @@ covers only what changes when the substrate is a database.
 - [How Exclusion Is Arbitrated](#how-exclusion-is-arbitrated)
 - [Why the Claim Is One Statement per Run](#why-the-claim-is-one-statement-per-run)
 - [When the Answer to a Claim Is Lost](#when-the-answer-to-a-claim-is-lost)
+- [Reporting an Outcome for a Run You May Have Lost](#reporting-an-outcome-for-a-run-you-may-have-lost)
 - [The Roll Call](#the-roll-call)
 - [Recovering an Interrupted Run](#recovering-an-interrupted-run)
 - [What Was Taken from Quartz, and What Was Not](#what-was-taken-from-quartz-and-what-was-not)

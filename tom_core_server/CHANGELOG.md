@@ -70,6 +70,22 @@
   key rather than refused, because refusing it would make the common
   "just give me a page" call an error.
 
+### Documentation
+
+- **`doc/scheduling.md`'s table of contents lists "Reporting an Outcome for a
+  Run You May Have Lost".** The section was added after the contents were
+  written and never listed, which is the failure mode a reader is least able to
+  work around: the section is only reachable by scrolling past the list that
+  claims to be a map of the file.
+
+  The wider check that found it is now a committed tool rather than a script
+  rebuilt each time — see `tool/check_doc_tocs.py` in the repository root. It
+  audits every `## Table of Contents` in the tree for three faults: sections the
+  contents omit, entries whose link resolves to no heading, and entries listed
+  in an order the document does not follow. Across the repository's 118
+  documents with a table of contents, this was the only defect outside the
+  families already tracked for a deliberate decision.
+
 ## 1.2.0
 
 ### Features
