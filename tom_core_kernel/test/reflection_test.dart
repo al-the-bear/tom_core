@@ -346,6 +346,40 @@ class UninitializedCollectionsHolder {
   UninitializedCollectionsHolder();
 }
 
+/// Deliberately not annotated, but named as a field type by
+/// [OpaqueFieldHolder] and so pulled into the generated data anyway.
+///
+/// That last part is the whole point, and the reason this is not
+/// [NotReflectedHolder]: capabilities quantify over field types, so mentioning
+/// a class from an annotated one generates data for it. It therefore reflects,
+/// and is refused by this module's `@tomReflector` metadata check rather than
+/// by `tom_reflection` — a different guard, needing its own subject.
+class QuantifiedUnannotated {
+  String name = '';
+
+  QuantifiedUnannotated();
+}
+
+/// Test class whose fields declare types the map-setting path cannot build.
+///
+/// Every strategy that fills a field from a `Map` ends by trying to instantiate
+/// the field's declared type and fill it. These four declarations each defeat
+/// that in a different way — `dynamic` and `Object?` name no class to build,
+/// [QuantifiedUnannotated] names one that carries no `@tomReflector`, and
+/// `GenericHolder<int>` names a generic instantiation that the registry, which
+/// is keyed by declaration, does not hold. They exist to pin what happens
+/// after the last strategy declines, which is not the same answer in all four
+/// cases.
+@tomReflector
+class OpaqueFieldHolder {
+  dynamic anything;
+  Object? thing;
+  QuantifiedUnannotated? plain;
+  GenericHolder<int>? generic;
+
+  OpaqueFieldHolder();
+}
+
 /// Test class with nullable List elements (`List<X?>?`).
 @tomReflector
 class NullableElementListHolder {
@@ -396,6 +430,13 @@ class GenericHolder<T> {
 /// The one input for which `tom_reflection`, rather than this module's code,
 /// decides what the failure looks like — which is what makes it the test
 /// subject for the error boundary.
+///
+/// **No annotated class in this file may name this type.** Capabilities
+/// quantify over field types, so one `NotReflectedHolder` field anywhere would
+/// generate data for it; it would start reflecting, and the tests that depend
+/// on it *not* reflecting would quietly begin exercising the metadata guard
+/// instead. Use [QuantifiedUnannotated] when an unannotated *field type* is
+/// what is wanted.
 class NotReflectedHolder {
   String name = '';
   int count = 0;
@@ -3711,6 +3752,175 @@ void main() {
         ),
       );
       expect(holder.teamMembers, isNull);
+    });
+  });
+
+  group('a value whose shape does not fit the field', () {
+    // `setValues` dispatches on the *incoming value's* type, not the field's: a
+    // Map goes to the map path and a List to the list path whatever the field
+    // was declared as. The two paths then disagree about what to do when the
+    // field cannot take that shape — the map path raises, the list path drops
+    // the value and reports success. This group states that difference rather
+    // than arguing with it. The asymmetry is a known open end (tcopen55 /
+    // tcopen56); until it is settled, an untested silent path is one that can
+    // change by accident.
+
+    test('a List handed to a field that is not a list is silently dropped', () {
+      // Four different non-list shapes, one call each, so a future change that
+      // starts raising for one of them is attributed to that one.
+      final mapHolder = MapHolder();
+      tomReflectionInfo.setValues(mapHolder, {
+        'intMap': [1, 2, 3],
+      });
+      expect(mapHolder.intMap, isNull);
+
+      final collections = UninitializedCollectionsHolder();
+      tomReflectionInfo.setValues(collections, {
+        'teamMembers': [
+          {'name': 'Alice'},
+        ],
+      });
+      expect(collections.teamMembers, isNull);
+
+      final person = NullablePerson();
+      tomReflectionInfo.setValues(person, {
+        'age': [1],
+        'name': ['Alice'],
+      });
+      expect(person.age, isNull);
+      expect(person.name, isNull);
+
+      final nested = PersonWithAddress();
+      tomReflectionInfo.setValues(nested, {
+        'address': [
+          {'city': 'Berlin'},
+        ],
+      });
+      expect(nested.address, isNull);
+    });
+
+    test('a List handed to a list field still binds', () {
+      // The control for the test above: the drop is about the *field*, not
+      // about lists being unsupported.
+      final holder = ListHolder();
+      tomReflectionInfo.setValues(holder, {
+        'intList': [1, 2, 3],
+      });
+      expect(holder.intList, [1, 2, 3]);
+    });
+
+    test('a Map handed to a scalar or typed-collection field is refused', () {
+      // The mirror image of the first test, and the reason the pair is worth
+      // pinning: the same category of mistake is loud here and silent there.
+      for (final entry in {
+        'age': NullablePerson.new,
+        'name': NullablePerson.new,
+      }.entries) {
+        expect(
+          () => tomReflectionInfo.setValues(entry.value(), {
+            entry.key: {'a': 1},
+          }),
+          throwsA(
+            isA<TomReflectorException>().having(
+              (e) => e.key,
+              'key',
+              'reflector.instance_creation.failed',
+            ),
+          ),
+          reason: 'field ${entry.key}',
+        );
+      }
+
+      expect(
+        () => tomReflectionInfo.setValues(ListHolder(), {
+          'intList': {'a': 1},
+        }),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.instance_creation.failed',
+          ),
+        ),
+      );
+
+      expect(
+        () => tomReflectionInfo.setValues(UninitializedCollectionsHolder(), {
+          'addresses': {'a': 1},
+        }),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.instance_creation.failed',
+          ),
+        ),
+      );
+    });
+
+    test('a Map handed to a field of an unreflected type is refused', () {
+      // `Object?` and an unannotated class both name a type the registry has
+      // no data for, and that refusal is attributed to the type, not to the
+      // instantiation attempt.
+      for (final field in ['thing', 'plain']) {
+        expect(
+          () => tomReflectionInfo.setValues(OpaqueFieldHolder(), {
+            field: {'name': 'Alice'},
+          }),
+          throwsA(
+            isA<TomReflectorException>().having(
+              (e) => e.key,
+              'key',
+              'reflector.type.not_annotated',
+            ),
+          ),
+          reason: 'field $field',
+        );
+      }
+    });
+
+    test(
+      'a Map handed to a field with no type to build is silently dropped',
+      () {
+        // The tail of the map path, and the only way to reach it. `dynamic`
+        // names no class at all; `GenericHolder<int>` names an instantiation the
+        // registry — keyed by declaration — does not hold. A field declared
+        // `dynamic` to carry an arbitrary payload is the realistic case, and it
+        // loses the payload without a word.
+        final holder = OpaqueFieldHolder();
+        tomReflectionInfo.setValues(holder, {
+          'anything': {'name': 'Alice'},
+          'generic': {'name': 'Alice', 'count': 3},
+        });
+        expect(holder.anything, isNull);
+        expect(holder.generic, isNull);
+      },
+    );
+
+    test('a Map that does fit replaces a map field but fills an object field', () {
+      // Not mismatches, but they bound the cases above from the other side and
+      // they are not the same answer: which strategy claims the payload decides
+      // whether prior content survives. A `Map<String, String>` is a primitive
+      // map type, handled first and assigned wholesale, so a partial payload
+      // loses the keys it omits. A field holding an annotated object falls
+      // through to the fill-in-place strategy, so a partial payload there
+      // updates only what it names.
+      final mapHolder = MapHolder();
+      mapHolder.stringMap = {'keep': 'me'};
+      tomReflectionInfo.setValues(mapHolder, {
+        'stringMap': {'add': 'new'},
+      });
+      expect(mapHolder.stringMap, {'add': 'new'});
+
+      final nested = PersonWithAddress();
+      nested.address = Address()
+        ..street = 'Old Street'
+        ..city = 'Berlin';
+      tomReflectionInfo.setValues(nested, {
+        'address': {'city': 'Hamburg'},
+      });
+      expect(nested.address?.city, 'Hamburg');
+      expect(nested.address?.street, 'Old Street');
     });
   });
 }

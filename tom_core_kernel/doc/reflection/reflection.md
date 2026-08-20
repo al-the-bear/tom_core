@@ -988,6 +988,54 @@ every qualified name here is `.Address` and listing them would only repeat the
 ambiguous name back. Resolve the collision by renaming one class or by dropping
 its `@tomReflector`.
 
+### When the Value's Shape Does Not Fit the Field
+
+`setValues` picks how to fill a field from the **incoming value's** type, not
+from the field's. A `Map` goes to the map-setting path and a `List` to the
+list-setting path whatever the field was declared as — so the same category of
+mistake gets two different answers depending on which way round it is:
+
+| Payload | Field | Result |
+| --- | --- | --- |
+| `List` | any non-list field | **silently dropped** — the field is untouched and the call reports success |
+| `Map` | scalar, or a collection of a known element type | `reflector.instance_creation.failed` |
+| `Map` | `Object?`, or a class with no `@tomReflector` | `reflector.type.not_annotated` |
+| `Map` | `dynamic`, or a generic instantiation such as `GenericHolder<int>` | **silently dropped** |
+
+```dart
+// MapHolder declares `Map<String, int>? intMap`
+final holder = MapHolder();
+tomReflectionInfo.setValues(holder, {'intMap': [1, 2, 3]});
+print(holder.intMap); // null — the list was discarded without a word
+
+// ListHolder declares `List<int>? intList`
+tomReflectionInfo.setValues(ListHolder(), {'intList': {'a': 1}});
+// throws TomReflectorException(reflector.instance_creation.failed)
+```
+
+The two silent cases are a known rough edge, not a design position: a field
+declared `dynamic` to carry an arbitrary payload loses that payload, and a
+list sent to the wrong field disappears. Both are covered by tests so that the
+behaviour cannot change unnoticed, and turning either into a diagnosis is a
+separate, deliberate change.
+
+When the shape *does* fit, whether prior content survives depends on which
+strategy claims the payload:
+
+```dart
+// A primitive map type is assigned wholesale — omitted keys are lost.
+final holder = MapHolder()..stringMap = {'keep': 'me'};
+tomReflectionInfo.setValues(holder, {'stringMap': {'add': 'new'}});
+print(holder.stringMap); // {add: new}
+
+// A field already holding an annotated object is filled in place — omitted
+// fields keep their values.
+final person = PersonWithAddress()
+  ..address = (Address()..street = 'Old Street'..city = 'Berlin');
+tomReflectionInfo.setValues(person, {'address': {'city': 'Hamburg'}});
+print(person.address!.street); // Old Street
+```
+
 ## Best Practices
 
 ### 1. Initialize All Fields
