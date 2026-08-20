@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Test runner for tom_dartscript_bridges
-// Generated: 2026-08-19T17:23:14.661368
+// Generated: 2026-08-20T05:55:47.159106
 
 // ignore_for_file: avoid_print
 

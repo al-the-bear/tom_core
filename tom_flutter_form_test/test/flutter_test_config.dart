@@ -27,11 +27,15 @@
 // `flutter test` auto-discovers this file (one per package test root) and runs
 // `testExecutable` before the suite, installing the comparator. See quest todo
 // RCJ17.
+//
+// It also performs the resource bootstrap the widgets need — see
+// `_installEmptyResourceBundles` below.
 
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// Fraction (0.0–1.0) of pixel difference tolerated before a golden fails.
 ///
@@ -56,7 +60,29 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
     Uri.parse('${defaultComparator.basedir}flutter_test_config.dart'),
     tolerance: _goldenTolerance,
   );
+  _installEmptyResourceBundles();
   await testMain();
+}
+
+/// Performs the resource bootstrap a real application performs in `main()`.
+///
+/// `TomTextResourceProvider.getAppResources()` refuses to bootstrap itself — it
+/// throws `resources.text_provider.not_installed` until `setAppResourceProvider`
+/// has run. That is deliberate (a self-installing lookup would put a bundle in
+/// place without bumping `appResourcesRevision`, so observers registered earlier
+/// would keep showing raw keys), and it means every widget here that resolves a
+/// label needs the same bootstrap.
+///
+/// An empty bundle is the right one for this suite: every lookup then echoes its
+/// key, which is what the tests assert against. Tests that care about specific
+/// text install their own provider in `setUp`.
+void _installEmptyResourceBundles() {
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from(const {}),
+  );
+  TomConfigResourceProvider.setAppConfigProvider(
+    TomConfigResourceProvider.from(const {}),
+  );
 }
 
 /// [LocalFileComparator] that passes when the pixel difference is within

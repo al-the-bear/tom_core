@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 65 files
-// Generated: 2026-08-20T01:30:37.619717
+// Generated: 2026-08-20T05:55:38.948682
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -194,6 +194,7 @@ class TomCoreKernelBridge {
       _createTomUserPreferenceWriteRequestBridge(),
       _createTomUserPreferenceKeyRequestBridge(),
       _createTomUserPreferencesApiServiceBridge(),
+      _createTomResourceExceptionBridge(),
       _createTomTextResourceProviderBridge(),
       _createTomConfigResourceProviderBridge(),
       _createTomFieldErrorBridge(),
@@ -458,6 +459,7 @@ class TomCoreKernelBridge {
       'TomUserPreferenceWriteRequest': _createTomUserPreferenceWriteRequestBridge,
       'TomUserPreferenceKeyRequest': _createTomUserPreferenceKeyRequestBridge,
       'TomUserPreferencesApiService': _createTomUserPreferencesApiServiceBridge,
+      'TomResourceException': _createTomResourceExceptionBridge,
       'TomTextResourceProvider': _createTomTextResourceProviderBridge,
       'TomConfigResourceProvider': _createTomConfigResourceProviderBridge,
       'TomFieldError': _createTomFieldErrorBridge,
@@ -721,6 +723,7 @@ class TomCoreKernelBridge {
       'TomUserPreferenceWriteRequest': $tom_core_kernel_28.TomUserPreferenceWriteRequest,
       'TomUserPreferenceKeyRequest': $tom_core_kernel_28.TomUserPreferenceKeyRequest,
       'TomUserPreferencesApiService': $tom_core_kernel_28.TomUserPreferencesApiService,
+      'TomResourceException': $tom_core_kernel_30.TomResourceException,
       'TomTextResourceProvider': $tom_core_kernel_30.TomTextResourceProvider,
       'TomConfigResourceProvider': $tom_core_kernel_30.TomConfigResourceProvider,
       'TomFieldError': $tom_core_kernel_31.TomFieldError,
@@ -985,6 +988,7 @@ class TomCoreKernelBridge {
       'TomUserPreferenceWriteRequest': 'package:tom_core_kernel/src/tombase/preferences/user_preferences_contract.dart',
       'TomUserPreferenceKeyRequest': 'package:tom_core_kernel/src/tombase/preferences/user_preferences_contract.dart',
       'TomUserPreferencesApiService': 'package:tom_core_kernel/src/tombase/preferences/user_preferences_contract.dart',
+      'TomResourceException': 'package:tom_core_kernel/src/tombase/resources/tom_resource_provider.dart',
       'TomTextResourceProvider': 'package:tom_core_kernel/src/tombase/resources/tom_resource_provider.dart',
       'TomConfigResourceProvider': 'package:tom_core_kernel/src/tombase/resources/tom_resource_provider.dart',
       'TomFieldError': 'package:tom_core_kernel/src/tombase/result/result.dart',
@@ -1189,6 +1193,7 @@ class TomCoreKernelBridge {
       'TomFileLogReplayStore': ['TomLogReplayStore'],
       'TomUserPreferenceCodecException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomUserPreferenceKeyException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
+      'TomResourceException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomFieldError': ['TomJsonSerializable'],
       'TomErrorResult': ['TomJsonSerializable'],
       'TomResult': ['TomJsonSerializable'],
@@ -9269,6 +9274,115 @@ BridgedClass _createTomUserPreferencesApiServiceBridge() {
 }
 
 // =============================================================================
+// TomResourceException Bridge
+// =============================================================================
+
+BridgedClass _createTomResourceExceptionBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_30.TomResourceException,
+    name: 'TomResourceException',
+    isAssignable: (v) => v is $tom_core_kernel_30.TomResourceException,
+    hierarchyDepth: 4,
+    constructors: {
+      '': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 2, 'TomResourceException');
+        final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomResourceException');
+        final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomResourceException');
+        final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
+        final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
+        final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
+        final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
+        final serverCallError = D4.getOptionalNamedArg<$tom_core_kernel_11.TomServerCallError?>(named, 'serverCallError');
+        return $tom_core_kernel_30.TomResourceException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, uuid: uuid, serverCallError: serverCallError);
+      },
+    },
+    getters: {
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').stackTrace,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').serverCallError,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').logRepresentation,
+    },
+    setters: {
+      'uuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+      'requestUuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+      'timeStamp': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+      'key': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').key = D4.extractBridgedArg<String>(value, 'key'),
+      'defaultUserMessage': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+      'stack': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+      'rootException': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+      'stackTrace': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+      'autoLog': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+      'serverCallError': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_11.TomServerCallError>(value, 'serverCallError'),
+    },
+    methods: {
+      'toString': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException');
+        return t.toString();
+      },
+      'printStackTrace': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_30.TomResourceException>(target, 'TomResourceException');
+        final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
+        t.printStackTrace(depth);
+        return null;
+      },
+    },
+    constructorSignatures: {
+      '': 'TomResourceException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
+    },
+    methodSignatures: {
+      'toString': 'String toString()',
+      'printStackTrace': 'void printStackTrace([int depth = -1])',
+    },
+    getterSignatures: {
+      'uuid': 'String get uuid',
+      'requestUuid': 'String? get requestUuid',
+      'timeStamp': 'DateTime get timeStamp',
+      'key': 'String get key',
+      'defaultUserMessage': 'String get defaultUserMessage',
+      'parameters': 'Map<String, Object?>? get parameters',
+      'stack': 'Object? get stack',
+      'rootException': 'Object? get rootException',
+      'stackTrace': 'String get stackTrace',
+      'autoLog': 'bool get autoLog',
+      'serverCallError': 'TomServerCallError? get serverCallError',
+      'logRepresentation': 'String get logRepresentation',
+    },
+    setterSignatures: {
+      'uuid': 'set uuid(String value)',
+      'requestUuid': 'set requestUuid(String? value)',
+      'timeStamp': 'set timeStamp(DateTime value)',
+      'key': 'set key(String value)',
+      'defaultUserMessage': 'set defaultUserMessage(String value)',
+      'parameters': 'set parameters(Map<String, Object?>? value)',
+      'stack': 'set stack(Object? value)',
+      'rootException': 'set rootException(Object? value)',
+      'stackTrace': 'set stackTrace(String value)',
+      'autoLog': 'set autoLog(bool value)',
+      'serverCallError': 'set serverCallError(TomServerCallError? value)',
+    },
+  );
+}
+
+// =============================================================================
 // TomTextResourceProvider Bridge
 // =============================================================================
 
@@ -9354,6 +9468,9 @@ BridgedClass _createTomTextResourceProviderBridge() {
         final provider = D4.getRequiredArg<$tom_core_kernel_30.TomTextResourceProvider>(positional, 0, 'provider', 'setAppResourceProvider');
         return $tom_core_kernel_30.TomTextResourceProvider.setAppResourceProvider(provider);
       },
+      'clearAppResourceProvider': (visitor, positional, named, typeArgs) {
+        return $tom_core_kernel_30.TomTextResourceProvider.clearAppResourceProvider();
+      },
       'getAppResources': (visitor, positional, named, typeArgs) {
         return $tom_core_kernel_30.TomTextResourceProvider.getAppResources();
       },
@@ -9386,6 +9503,7 @@ BridgedClass _createTomTextResourceProviderBridge() {
     staticMethodSignatures: {
       'notifyAppResourcesChanged': 'void notifyAppResourcesChanged()',
       'setAppResourceProvider': 'void setAppResourceProvider(TomTextResourceProvider provider)',
+      'clearAppResourceProvider': 'void clearAppResourceProvider()',
       'getAppResources': 'TomTextResourceProvider getAppResources()',
     },
     staticGetterSignatures: {
@@ -9456,6 +9574,9 @@ BridgedClass _createTomConfigResourceProviderBridge() {
         final provider = D4.getRequiredArg<$tom_core_kernel_30.TomConfigResourceProvider>(positional, 0, 'provider', 'setAppConfigProvider');
         return $tom_core_kernel_30.TomConfigResourceProvider.setAppConfigProvider(provider);
       },
+      'clearAppConfigProvider': (visitor, positional, named, typeArgs) {
+        return $tom_core_kernel_30.TomConfigResourceProvider.clearAppConfigProvider();
+      },
       'getAppConfig': (visitor, positional, named, typeArgs) {
         return $tom_core_kernel_30.TomConfigResourceProvider.getAppConfig();
       },
@@ -9483,6 +9604,7 @@ BridgedClass _createTomConfigResourceProviderBridge() {
     },
     staticMethodSignatures: {
       'setAppConfigProvider': 'void setAppConfigProvider(TomConfigResourceProvider provider)',
+      'clearAppConfigProvider': 'void clearAppConfigProvider()',
       'getAppConfig': 'TomConfigResourceProvider getAppConfig()',
     },
     staticGetterSignatures: {
@@ -9664,6 +9786,7 @@ BridgedClass _createTomResultBridge() {
           case $tom_core_kernel_29.TomReflectorException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_29.TomReflectorException>.success(value);
           case $tom_core_kernel_11.TomRequestAbortedException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomRequestAbortedException>.success(value);
           case $tom_core_kernel_11.TomRequestTimeoutException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomRequestTimeoutException>.success(value);
+          case $tom_core_kernel_30.TomResourceException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_30.TomResourceException>.success(value);
           case $tom_core_kernel_35.TomScheduleException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_35.TomScheduleException>.success(value);
           case $tom_core_kernel_36.TomScheduledJobException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_36.TomScheduledJobException>.success(value);
           case $tom_core_kernel_11.TomServerConnectionException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomServerConnectionException>.success(value);
@@ -15768,8 +15891,12 @@ BridgedClass _createTomReflectionInfoBridge() {
     isAssignable: (v) => v is $tom_core_kernel_29.TomReflectionInfo,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_29.TomReflectionInfo();
+        final strictUnknownFields = D4.getNamedArgWithDefault<bool>(named, 'strictUnknownFields', false);
+        return $tom_core_kernel_29.TomReflectionInfo(strictUnknownFields: strictUnknownFields);
       },
+    },
+    getters: {
+      'strictUnknownFields': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomReflectionInfo>(target, 'TomReflectionInfo').strictUnknownFields,
     },
     methods: {
       'mapValueElementType': (visitor, target, positional, named, typeArgs) {
@@ -15864,7 +15991,7 @@ BridgedClass _createTomReflectionInfoBridge() {
         $tom_core_kernel_29.TomReflectionInfo.debugSwitchLogReflectionDetailsTypes = D4.extractBridgedArg<bool>(value, 'debugSwitchLogReflectionDetailsTypes'),
     },
     constructorSignatures: {
-      '': 'TomReflectionInfo()',
+      '': 'TomReflectionInfo({bool strictUnknownFields = false})',
     },
     methodSignatures: {
       'mapValueElementType': 'ClassMirror mapValueElementType(Object collection)',
@@ -15878,6 +16005,9 @@ BridgedClass _createTomReflectionInfoBridge() {
       'setValues': 'T setValues(T o, Map<String, dynamic> values)',
       'convertToJsonString': 'String convertToJsonString(Object o)',
       'getValues': 'Map<String, Object?> getValues(Object o)',
+    },
+    getterSignatures: {
+      'strictUnknownFields': 'bool get strictUnknownFields',
     },
     staticGetterSignatures: {
       'debugSwitchLogReflectionDetailsMembers': 'bool get debugSwitchLogReflectionDetailsMembers',
@@ -16048,6 +16178,7 @@ BridgedClass _createTomObjectBridge() {
           case $tom_core_kernel_29.TomReflectorException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_29.TomReflectorException>(initialValue);
           case $tom_core_kernel_11.TomRequestAbortedException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomRequestAbortedException>(initialValue);
           case $tom_core_kernel_11.TomRequestTimeoutException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomRequestTimeoutException>(initialValue);
+          case $tom_core_kernel_30.TomResourceException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_30.TomResourceException>(initialValue);
           case $tom_core_kernel_35.TomScheduleException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_35.TomScheduleException>(initialValue);
           case $tom_core_kernel_36.TomScheduledJobException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_36.TomScheduledJobException>(initialValue);
           case $tom_core_kernel_11.TomServerConnectionException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomServerConnectionException>(initialValue);

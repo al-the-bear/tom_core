@@ -798,6 +798,146 @@ void main() {
   // ===========================================================================
   // Edge Cases and Integration Tests
   // ===========================================================================
+  // ===========================================================================
+  // Bootstrap Contract
+  // ===========================================================================
+  //
+  // Both providers must be installed explicitly before anything reads them.
+  // There used to be a lazy path — the first `getAppResources()` created a
+  // provider from the static `loader` — and it installed a bundle without
+  // bumping `appResourcesRevision`. Observers registered before the first
+  // lookup (`TomObservableEnum` re-derives its labels from that counter) never
+  // heard about the bundle that the lookup itself had just loaded, and kept
+  // showing raw keys until some unrelated later change moved the counter.
+  //
+  // These tests pin the replacement: there is no way to install a bundle
+  // except through `setAppResourceProvider`, which notifies. The counter and
+  // the installed bundle can no longer disagree because only one thing
+  // installs.
+  group('bootstrap contract', () {
+    setUp(() {
+      TomTextResourceProvider.loader = null;
+      TomConfigResourceProvider.loader = null;
+      TomTextResourceProvider.clearAppResourceProvider();
+      TomConfigResourceProvider.clearAppConfigProvider();
+    });
+
+    tearDown(() {
+      // Leave the process bootstrapped for whatever runs next.
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({}),
+      );
+      TomConfigResourceProvider.setAppConfigProvider(
+        TomConfigResourceProvider.from({}),
+      );
+    });
+
+    test('getAppResources throws before a text provider is installed', () {
+      expect(
+        () => TomTextResourceProvider.getAppResources(),
+        throwsA(
+          isA<TomResourceException>().having(
+            (e) => e.key,
+            'key',
+            'resources.text_provider.not_installed',
+          ),
+        ),
+      );
+    });
+
+    test('getAppConfig throws before a config provider is installed', () {
+      expect(
+        () => TomConfigResourceProvider.getAppConfig(),
+        throwsA(
+          isA<TomResourceException>().having(
+            (e) => e.key,
+            'key',
+            'resources.config_provider.not_installed',
+          ),
+        ),
+      );
+    });
+
+    // A bootstrap failure is reported at the read, arbitrarily far from the
+    // startup code that forgot to install. The message has to carry the fix,
+    // because the stack trace points at the innocent party.
+    test('each message names the call that fixes it', () {
+      expect(
+        () => TomTextResourceProvider.getAppResources(),
+        throwsA(
+          isA<TomResourceException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            contains('setAppResourceProvider'),
+          ),
+        ),
+      );
+      expect(
+        () => TomConfigResourceProvider.getAppConfig(),
+        throwsA(
+          isA<TomResourceException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            contains('setAppConfigProvider'),
+          ),
+        ),
+      );
+    });
+
+    // The defect this contract replaced, stated as its own test: `loader` is a
+    // recipe, not an install. Declaring how to load the bundle used to be
+    // enough to get one silently installed at revision 0.
+    test('setting the static loader does not install a bundle', () {
+      TomTextResourceProvider.loader = () => {
+        'app': {'title': 'Lazy Loaded'},
+      };
+      TomConfigResourceProvider.loader = () => {'api': 42};
+
+      expect(
+        () => TomTextResourceProvider.getAppResources(),
+        throwsA(isA<TomResourceException>()),
+      );
+      expect(
+        () => TomConfigResourceProvider.getAppConfig(),
+        throwsA(isA<TomResourceException>()),
+      );
+    });
+
+    // The counter's documented meaning — "the installed bundle changed" — has
+    // to hold for the *first* bundle too, which is exactly what the lazy path
+    // broke.
+    test('the first install bumps the revision', () {
+      TomTextResourceProvider.loader = () => {
+        'app': {'title': 'Loaded'},
+      };
+      final before = ~TomTextResourceProvider.appResourcesRevision;
+
+      TomTextResourceProvider.setAppResourceProvider(TomTextResourceProvider());
+
+      expect(
+        ~TomTextResourceProvider.appResourcesRevision,
+        greaterThan(before),
+      );
+      expect(
+        TomTextResourceProvider.getAppResources().getText('app.title'),
+        equals('Loaded'),
+      );
+    });
+
+    // Clearing is teardown, and teardown has no readers: an observer woken by
+    // the clear would call getAppResources() and throw.
+    test('clearing the provider does not bump the revision', () {
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({'a': 'b'}),
+      );
+      final after = ~TomTextResourceProvider.appResourcesRevision;
+
+      TomTextResourceProvider.clearAppResourceProvider();
+
+      expect(~TomTextResourceProvider.appResourcesRevision, equals(after));
+    });
+  });
+
   group('Edge Cases', () {
     group('special key names', () {
       test('should handle keys with single dot', () {

@@ -1,7 +1,7 @@
 # Tom Core Kernel API Reference: Resources Module
 
 Singleton-based resource management for application text and configuration, with
-hierarchical dot-notation key access and lazy initialization from JSON maps or
+hierarchical dot-notation key access and explicit bootstrap from JSON maps or
 loader functions.
 
 ## Table of Contents
@@ -9,6 +9,7 @@ loader functions.
 - [Overview](#overview)
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
+  - [TomResourceException](#tomresourceexception)
   - [TomTextResourceProvider](#tomtextresourceprovider)
   - [TomConfigResourceProvider](#tomconfigresourceprovider)
 - [Global Functions and Constants](#global-functions-and-constants)
@@ -23,20 +24,41 @@ messages) as well as arbitrary object values (TextStyles, Colors, and other
 non-String UI values) for unified resource management. `TomConfigResourceProvider`
 stores and retrieves configuration values such as API endpoints, feature flags,
 and timeouts. Both support flat keys and hierarchical dot-notation paths (e.g.
-`app.title`), lazy initialization through an optional `loader` function, and
+`app.title`), deferred loading through an optional `loader` function, and
 direct initialization from a map. When a key is missing, the getters return the
 key itself as a fallback (or `null` for the `*OrNull` variants) to help identify
 missing resources during development.
 
+Both singletons are installed explicitly, before anything reads them:
+`getAppResources` and `getAppConfig` throw
+`resources.text_provider.not_installed` / `resources.config_provider.not_installed`
+rather than creating a provider on first access. That is what makes
+`appResourcesRevision` trustworthy — every installed bundle went through the one
+call that bumps it. An application with no bundle installs an empty one.
+
 ## Class Hierarchy
 
 ```
+TomBaseException
+  └── TomException
+        └── TomResourceException
+
 TomTextResourceProvider
 
 TomConfigResourceProvider
 ```
 
 ## Classes
+
+### TomResourceException
+
+Thrown when the providers are used outside their contract — currently one
+condition on each: a lookup before a bundle was installed.
+
+| Key | Raised by | Condition |
+| --- | --------- | --------- |
+| `resources.text_provider.not_installed` | `TomTextResourceProvider.getAppResources` | No text bundle installed. |
+| `resources.config_provider.not_installed` | `TomConfigResourceProvider.getAppConfig` | No configuration bundle installed. |
 
 ### TomTextResourceProvider
 
@@ -57,7 +79,7 @@ TomTextResourceProvider.from(Map<String, dynamic> resources)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `loader` | `Map<String, dynamic> Function()?` | Optional loader invoked the first time `getAppResources` lazily creates a provider. |
+| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor. Declares how to load a bundle; setting it installs nothing. |
 | `appResourcesRevision` | `TomInt` | Observable revision counter, incremented whenever the installed bundle changes. Observe it to re-derive text computed from the bundle (see `TomObservableEnum`). |
 
 #### Static Methods
@@ -65,8 +87,9 @@ TomTextResourceProvider.from(Map<String, dynamic> resources)
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `setAppResourceProvider` | `static void setAppResourceProvider(TomTextResourceProvider provider)` | Installs `provider` as the application-wide text resource provider and bumps `appResourcesRevision`. |
-| `getAppResources` | `static TomTextResourceProvider getAppResources()` | Returns the application-wide provider, lazily creating one (using `loader` if set) on first access. |
+| `getAppResources` | `static TomTextResourceProvider getAppResources()` | Returns the installed application-wide provider. Throws `TomResourceException` (`resources.text_provider.not_installed`) if `setAppResourceProvider` has not run. |
 | `notifyAppResourcesChanged` | `static void notifyAppResourcesChanged()` | Bumps `appResourcesRevision`. Call after mutating the installed provider's `resources` map in place. |
+| `clearAppResourceProvider` | `@visibleForTesting static void clearAppResourceProvider()` | Returns the process to the un-bootstrapped state. Does not bump `appResourcesRevision` — there is no bundle left for observers to re-derive from. |
 
 #### Properties
 
@@ -103,14 +126,15 @@ TomConfigResourceProvider.from(Map<String, dynamic> resources)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `loader` | `Map<String, dynamic> Function()?` | Optional loader invoked the first time `getAppConfig` lazily creates a provider. |
+| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor. Declares how to load a bundle; setting it installs nothing. |
 
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `setAppConfigProvider` | `static void setAppConfigProvider(TomConfigResourceProvider provider)` | Installs `provider` as the application-wide configuration provider. |
-| `getAppConfig` | `static TomConfigResourceProvider getAppConfig()` | Returns the application-wide provider, lazily creating one (using `loader` if set) on first access. |
+| `clearAppConfigProvider` | `@visibleForTesting static void clearAppConfigProvider()` | Returns the process to the un-bootstrapped state. |
+| `getAppConfig` | `static TomConfigResourceProvider getAppConfig()` | Returns the installed application-wide provider. Throws `TomResourceException` (`resources.config_provider.not_installed`) if `setAppConfigProvider` has not run. |
 
 #### Properties
 

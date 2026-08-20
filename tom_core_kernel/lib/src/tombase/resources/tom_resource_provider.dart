@@ -7,14 +7,23 @@
 /// Both providers support hierarchical key access using dot notation (e.g., 'app.title')
 /// and can be initialized from JSON maps or loader functions.
 ///
+/// ## Bootstrap
+///
+/// Both providers must be installed explicitly during startup, before anything
+/// reads from them; an uninstalled lookup throws rather than bootstrapping
+/// itself. Applications with no bundle install an empty one — every lookup then
+/// echoes its key, which is the intended degradation.
+///
 /// ## Example
 ///
 /// ```dart
-/// // Set up a text resource provider
-/// TomTextResourceProvider.loader = () => {
-///   'app': {'title': 'My App', 'version': '1.0.0'},
-///   'messages': {'welcome': 'Hello, World!'}
-/// };
+/// // Install the bundles once, at startup.
+/// TomTextResourceProvider.setAppResourceProvider(
+///   TomTextResourceProvider.from({
+///     'app': {'title': 'My App', 'version': '1.0.0'},
+///     'messages': {'welcome': 'Hello, World!'},
+///   }),
+/// );
 ///
 /// // Access resources anywhere in the app
 /// final resources = TomTextResourceProvider.getAppResources();
@@ -27,8 +36,33 @@ library;
 // Imports
 // =============================================================================
 
+import 'package:meta/meta.dart';
+
 import '../json/map_merge_and_process.dart';
+import '../little_things/exception_base.dart';
 import '../observable/tom_observable_objects.dart';
+
+// =============================================================================
+// Exceptions
+// =============================================================================
+
+/// Thrown when the resource providers are used outside their contract.
+///
+/// Currently that is one condition on each provider — a lookup before a bundle
+/// was installed (`resources.text_provider.not_installed`,
+/// `resources.config_provider.not_installed`).
+class TomResourceException extends TomException {
+  TomResourceException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.uuid,
+    super.serverCallError,
+  });
+}
 
 // =============================================================================
 // Shared Resolution Helpers
@@ -94,9 +128,9 @@ String? _resolveStringOrNull(Map<String, dynamic> resources, String path) {
 /// and feel of the UI, such as TextStyles, Colors, etc. This allows for a unified resource management
 ///
 /// The provider supports:
-/// - Singleton access via [getAppResources]
+/// - Singleton access via [getAppResources], after an explicit install
 /// - Hierarchical key access using dot notation
-/// - Lazy initialization with a loader function
+/// - Deferred *loading* with a loader function, separate from installation
 /// - Direct initialization from a map
 ///
 /// ## Usage
@@ -104,8 +138,10 @@ String? _resolveStringOrNull(Map<String, dynamic> resources, String path) {
 /// ### Setting up with a loader function
 ///
 /// ```dart
-/// // Define the loader before first access
-/// TomTextResourceProvider.loader = () => loadJsonFromAssets('strings.json');
+/// // Install once at startup; the loader runs here, not at first access.
+/// TomTextResourceProvider.setAppResourceProvider(
+///   TomTextResourceProvider.load(() => loadJsonFromAssets('strings.json')),
+/// );
 ///
 /// // Access resources throughout the app
 /// final resources = TomTextResourceProvider.getAppResources();
@@ -137,10 +173,23 @@ class TomTextResourceProvider {
   /// The singleton instance of the text resource provider.
   static TomTextResourceProvider? _resourceProvider;
 
-  /// Optional loader function to initialize resources lazily.
+  /// Optional loader function consulted by the default constructor.
   ///
-  /// Set this before the first call to [getAppResources] to provide
-  /// a custom resource loading mechanism (e.g., loading from JSON assets).
+  /// This declares *how* to load the bundle; [setAppResourceProvider] decides
+  /// *when* it is installed. The split lets a platform layer name the source
+  /// (JSON assets, a downloaded pack) in one place while startup code installs
+  /// it at the right moment:
+  ///
+  /// ```dart
+  /// TomTextResourceProvider.loader = () => loadJsonFromAssets('strings.json');
+  /// // ... later, in main():
+  /// TomTextResourceProvider.setAppResourceProvider(TomTextResourceProvider());
+  /// ```
+  ///
+  /// Setting this on its own installs nothing: [getAppResources] does not
+  /// bootstrap itself, and will throw until the install above has run. When
+  /// both halves live in the same place, prefer
+  /// [TomTextResourceProvider.load], which needs no static state.
   static Map<String, dynamic> Function()? loader;
 
   /// Observable revision counter for the application-wide text bundle.
@@ -186,16 +235,50 @@ class TomTextResourceProvider {
     notifyAppResourcesChanged();
   }
 
+  /// Returns the process to the un-bootstrapped state, where [getAppResources]
+  /// throws again.
+  ///
+  /// Deliberately does *not* bump [appResourcesRevision]. The revision exists so
+  /// that observers can re-derive text from the new bundle, and after a clear
+  /// there is no bundle to re-derive from — every observer's reaction would
+  /// throw. Uninstalling is a teardown step, and teardown has no readers.
+  ///
+  /// Tests need this because installation is otherwise one-way: [getAppResources]
+  /// refuses to bootstrap itself, so the very first install can only be observed
+  /// by a test that can get back to "nothing installed".
+  @visibleForTesting
+  static void clearAppResourceProvider() {
+    _resourceProvider = null;
+  }
+
   /// Returns the application-wide text resource provider.
   ///
-  /// If no provider has been set, creates a new instance using the
-  /// [loader] function if available, or an empty provider otherwise.
+  /// Throws `resources.text_provider.not_installed` when
+  /// [setAppResourceProvider] has not run. There is deliberately no lazy
+  /// bootstrap: a self-installing lookup would put a bundle in place without
+  /// bumping [appResourcesRevision], leaving observers registered before the
+  /// first lookup showing raw keys for a bundle that had in fact been loaded.
+  /// Because installation now happens in exactly one place, and that place
+  /// notifies, the counter and the installed bundle cannot disagree.
   ///
-  /// This method implements lazy initialization - the provider is created
-  /// on first access.
+  /// An application with no text resources still installs one — an empty
+  /// bundle makes every lookup echo its key, which is the intended
+  /// degradation. Not installing at all is a bootstrap bug, and this reports
+  /// it at the first read rather than rendering the whole UI in raw keys.
   static TomTextResourceProvider getAppResources() {
-    _resourceProvider ??= TomTextResourceProvider();
-    return _resourceProvider!;
+    final provider = _resourceProvider;
+    if (provider == null) {
+      throw TomResourceException(
+        "resources.text_provider.not_installed",
+        "No application text resources are installed. Call "
+            "TomTextResourceProvider.setAppResourceProvider(...) during "
+            "startup, before anything reads text — "
+            "setAppResourceProvider(TomTextResourceProvider.from({})) if the "
+            "application has no bundle.",
+        autoLog: true,
+      );
+    }
+    return provider;
   }
 
   // ---------------------------------------------------------------------------
@@ -349,8 +432,10 @@ class TomTextResourceProvider {
 /// ### Setting up with a loader function
 ///
 /// ```dart
-/// // Define the loader before first access
-/// TomConfigResourceProvider.loader = () => loadJsonFromAssets('config.json');
+/// // Install once at startup; the loader runs here, not at first access.
+/// TomConfigResourceProvider.setAppConfigProvider(
+///   TomConfigResourceProvider.load(() => loadJsonFromAssets('config.json')),
+/// );
 ///
 /// // Access configuration throughout the app
 /// final config = TomConfigResourceProvider.getAppConfig();
@@ -389,10 +474,12 @@ class TomConfigResourceProvider {
   /// The singleton instance of the configuration provider.
   static TomConfigResourceProvider? _configProvider;
 
-  /// Optional loader function to initialize configuration lazily.
+  /// Optional loader function consulted by the default constructor.
   ///
-  /// Set this before the first call to [getAppConfig] to provide
-  /// a custom configuration loading mechanism (e.g., loading from JSON assets).
+  /// Declares *how* to load the configuration; [setAppConfigProvider] decides
+  /// *when* it is installed. Setting this on its own installs nothing — see
+  /// [TomTextResourceProvider.loader] for the two-phase pattern and its
+  /// single-statement alternative, [TomConfigResourceProvider.load].
   static Map<String, dynamic> Function()? loader;
 
   // ---------------------------------------------------------------------------
@@ -409,16 +496,36 @@ class TomConfigResourceProvider {
     _configProvider = provider;
   }
 
+  /// Returns the process to the un-bootstrapped state, where [getAppConfig]
+  /// throws again. See [TomTextResourceProvider.clearAppResourceProvider].
+  @visibleForTesting
+  static void clearAppConfigProvider() {
+    _configProvider = null;
+  }
+
   /// Returns the application-wide configuration provider.
   ///
-  /// If no provider has been set, creates a new instance using the
-  /// [loader] function if available, or an empty provider otherwise.
-  ///
-  /// This method implements lazy initialization - the provider is created
-  /// on first access.
+  /// Throws `resources.config_provider.not_installed` when
+  /// [setAppConfigProvider] has not run. Configuration has no revision counter
+  /// to keep honest, so this provider does not share the text provider's
+  /// specific defect; it shares the contract because the two are used side by
+  /// side, and a module in which one sibling refuses an unbootstrapped lookup
+  /// while the other quietly answers "not configured" teaches nothing a caller
+  /// can rely on.
   static TomConfigResourceProvider getAppConfig() {
-    _configProvider ??= TomConfigResourceProvider();
-    return _configProvider!;
+    final provider = _configProvider;
+    if (provider == null) {
+      throw TomResourceException(
+        "resources.config_provider.not_installed",
+        "No application configuration is installed. Call "
+            "TomConfigResourceProvider.setAppConfigProvider(...) during "
+            "startup, before anything reads configuration — "
+            "setAppConfigProvider(TomConfigResourceProvider.from({})) if the "
+            "application has no configuration bundle.",
+        autoLog: true,
+      );
+    }
+    return provider;
   }
 
   // ---------------------------------------------------------------------------

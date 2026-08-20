@@ -5,7 +5,7 @@
 ///
 /// Key concepts:
 /// - Creating configuration providers from maps
-/// - Using loader functions for lazy initialization
+/// - Using loader functions to build a provider from a computed map
 /// - Hierarchical key access with dot notation
 /// - Typed configuration values (int, bool, nested objects)
 /// - Global singleton pattern
@@ -121,10 +121,10 @@ class ConfigResourceProviderExample {
   }
 
   // --------------------------------------------------------------------------
-  // Example 4: Using loader function for lazy initialization
+  // Example 4: Using a loader function to build the map
   // --------------------------------------------------------------------------
   static void example4LoaderFunction() {
-    print('\n4. Using loader function for lazy initialization:');
+    print('\n4. Using a loader function to build the map:');
 
     // Create provider with a loader function
     final config = TomConfigResourceProvider.load(() {

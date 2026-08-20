@@ -5,15 +5,22 @@
 /// This example covers:
 /// - The static `loader` field driving the default constructor
 ///   (`TomTextResourceProvider()` / `TomConfigResourceProvider()`)
-/// - Lazy singleton initialization via `getAppResources()` / `getAppConfig()`
-/// - Replacing the singleton with `setAppResourceProvider()` /
+/// - Installing the singleton with `setAppResourceProvider()` /
 ///   `setAppConfigProvider()`
+/// - Reading it back with `getAppResources()` / `getAppConfig()`
 /// - Singleton identity (the same instance is returned on repeat access)
 /// - The two providers holding fully independent singletons
 ///
 /// The singleton pattern lets application code configure resources once (at
 /// startup, typically from JSON assets via a `loader`) and then read them from
 /// anywhere without threading a provider reference through the call graph.
+///
+/// Installation is explicit and mandatory: `getAppResources()` throws
+/// `resources.text_provider.not_installed` until `setAppResourceProvider()` has
+/// run, and setting `loader` alone does not install anything — it says how to
+/// load a bundle, not when to put one in place. That is what keeps
+/// `appResourcesRevision` honest: every installed bundle went through the one
+/// call that bumps the counter.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -43,13 +50,13 @@ void run() {
   print('');
 
   // ===========================================================================
-  // Example 2: getAppResources lazily builds the singleton from the loader
+  // Example 2: installing a loader-built provider, then reading it back
   // ===========================================================================
 
-  print('2. getAppResources() builds the singleton lazily from the loader:');
+  print('2. Install a loader-built provider, then getAppResources() reads it:');
 
-  // Replace the app-wide instance with a freshly loader-built one so the
-  // example is self-contained regardless of prior singleton state.
+  // Installing is what makes the bundle app-wide; getAppResources() only reads
+  // back what was installed, and throws if that never happened.
   TomTextResourceProvider.setAppResourceProvider(TomTextResourceProvider());
   final appText = TomTextResourceProvider.getAppResources();
   final appTitleAgain = TomTextResourceProvider.getAppResources();
@@ -133,7 +140,7 @@ void run() {
   // Example 1: loader-driven default constructor
   assert(loadedTitle == 'Loaded App');
 
-  // Example 2: lazy singleton from loader + identity
+  // Example 2: installed loader-built singleton + identity
   assert(appTitleValue == 'Loaded App');
   assert(sameTextSingleton);
 

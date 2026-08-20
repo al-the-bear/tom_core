@@ -5,6 +5,7 @@ The Resources module provides singleton-based resource management for applicatio
 ## Table of Contents
 
 - [Overview](#overview)
+- [Bootstrap](#bootstrap)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
 - [Usage Examples](#usage-examples)
@@ -25,9 +26,45 @@ The module consists of two main providers:
 
 Both providers share similar patterns:
 - **Singleton access** for application-wide resource sharing
+- **Explicit bootstrap** — the singleton is installed once at startup; there is
+  no lazy first-access creation (see [Bootstrap](#bootstrap))
 - **Hierarchical key access** using dot notation (e.g., `'app.settings.theme'`)
-- **Lazy initialization** with optional loader functions
+- **Deferred loading** with optional loader functions
 - **Fallback behavior** returning the key when a resource is not found
+
+## Bootstrap
+
+Both providers must be installed before anything reads them:
+
+```dart
+TomTextResourceProvider.setAppResourceProvider(TomTextResourceProvider.from({}));
+TomConfigResourceProvider.setAppConfigProvider(TomConfigResourceProvider.from({}));
+```
+
+`getAppResources()` and `getAppConfig()` throw
+`resources.text_provider.not_installed` /
+`resources.config_provider.not_installed` until that has happened. An
+application with no bundle installs an empty one — every lookup then echoes its
+key, which is the intended degradation. Not installing at all is a bootstrap
+bug, and it is reported at the first read rather than rendering the whole UI in
+raw keys.
+
+Installation is the *only* way a bundle becomes application-wide, and that is
+what keeps `appResourcesRevision` honest: every installed bundle went through
+the one call that bumps the counter. A lazily self-installing lookup could not
+make that promise — it used to put a bundle in place at revision 0, so
+observers registered before the first lookup never heard about the bundle that
+the lookup itself had just loaded.
+
+Test suites install in `setUp` (or, for Flutter packages, once in
+`test/flutter_test_config.dart`), exactly as an application installs in
+`main()`.
+
+`clearAppResourceProvider()` / `clearAppConfigProvider()` return the process to
+the un-bootstrapped state. They are annotated `@visibleForTesting`: without
+them the first install is unobservable, because nothing else can get back to
+"nothing installed". Clearing deliberately does *not* bump the revision —
+observers woken by it would read a bundle that is no longer there.
 
 ## Quick Start
 
@@ -36,17 +73,20 @@ Both providers share similar patterns:
 ```dart
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-// Option A: Define a loader function (recommended for JSON assets)
-TomTextResourceProvider.loader = () => {
-  'app': {
-    'title': 'My Application',
-    'version': '1.0.0',
-  },
-  'messages': {
-    'welcome': 'Welcome to the app!',
-    'goodbye': 'See you later!',
-  },
-};
+// Option A: Load from a function (recommended for JSON assets). The loader
+// runs here, during the install — not at first access.
+TomTextResourceProvider.setAppResourceProvider(
+  TomTextResourceProvider.load(() => {
+    'app': {
+      'title': 'My Application',
+      'version': '1.0.0',
+    },
+    'messages': {
+      'welcome': 'Welcome to the app!',
+      'goodbye': 'See you later!',
+    },
+  }),
+);
 
 // Option B: Create from an existing map
 final provider = TomTextResourceProvider.from({
@@ -77,18 +117,20 @@ String missing = resources.getText('unknown.key');       // 'unknown.key'
 ### 3. Set Up Configuration
 
 ```dart
-// Define configuration loader
-TomConfigResourceProvider.loader = () => {
-  'api': {
-    'baseUrl': 'https://api.example.com',
-    'timeout': 30000,
-  },
-  'features': {
-    'darkMode': true,
-    'analytics': false,
-    'maxItems': 100,
-  },
-};
+// Install the configuration bundle at startup.
+TomConfigResourceProvider.setAppConfigProvider(
+  TomConfigResourceProvider.load(() => {
+    'api': {
+      'baseUrl': 'https://api.example.com',
+      'timeout': 30000,
+    },
+    'features': {
+      'darkMode': true,
+      'analytics': false,
+      'maxItems': 100,
+    },
+  }),
+);
 ```
 
 ### 4. Access Configuration
@@ -141,11 +183,11 @@ A singleton provider for text-based resources.
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `loader` | `Map<String, dynamic> Function()?` | Optional function to load resources lazily |
+| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor loads from. Declares *how* to load, not *when* to install |
 | `appResourcesRevision` | `TomInt` | Observable revision counter, bumped whenever the installed bundle changes |
 | `notifyAppResourcesChanged()` | Method | Bumps `appResourcesRevision` after an in-place edit of the installed bundle |
 | `setAppResourceProvider()` | Method | Sets the application-wide provider instance and bumps `appResourcesRevision` |
-| `getAppResources()` | Method | Returns the singleton provider instance |
+| `getAppResources()` | Method | Returns the installed provider; throws `resources.text_provider.not_installed` if there is none |
 
 #### Constructors
 
@@ -175,9 +217,9 @@ A singleton provider for configuration values of any type.
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `loader` | `Map<String, dynamic> Function()?` | Optional function to load configuration lazily |
+| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor loads from. Declares *how* to load, not *when* to install |
 | `setAppConfigProvider()` | Method | Sets the application-wide provider instance |
-| `getAppConfig()` | Method | Returns the singleton provider instance |
+| `getAppConfig()` | Method | Returns the installed provider; throws `resources.config_provider.not_installed` if there is none |
 
 #### Constructors
 
@@ -269,18 +311,19 @@ display strings current — see [`observable`](../observable/observable.md).
 import 'dart:convert';
 import 'package:flutter/services.dart';
 
+// Call this from main(), before runApp(). Asset loading is asynchronous and
+// the providers are not, so the bundles are awaited here and installed once
+// they are in hand — which is also the moment `appResourcesRevision` moves.
 Future<void> initializeResources() async {
-  // Load text resources from assets
-  TomTextResourceProvider.loader = () {
-    final jsonString = await rootBundle.loadString('assets/strings.json');
-    return jsonDecode(jsonString) as Map<String, dynamic>;
-  };
-  
-  // Load configuration from assets
-  TomConfigResourceProvider.loader = () {
-    final jsonString = await rootBundle.loadString('assets/config.json');
-    return jsonDecode(jsonString) as Map<String, dynamic>;
-  };
+  final strings = await rootBundle.loadString('assets/strings.json');
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from(jsonDecode(strings) as Map<String, dynamic>),
+  );
+
+  final config = await rootBundle.loadString('assets/config.json');
+  TomConfigResourceProvider.setAppConfigProvider(
+    TomConfigResourceProvider.from(jsonDecode(config) as Map<String, dynamic>),
+  );
 }
 ```
 
@@ -438,7 +481,7 @@ void updateLocale(String newLocale) {
 
 ### Singleton Pattern
 
-Both providers use the singleton pattern with lazy initialization. The first call to `getAppResources()` or `getAppConfig()` creates the instance, which is then reused for all subsequent calls.
+Both providers use the singleton pattern with an explicit bootstrap. `setAppResourceProvider()` / `setAppConfigProvider()` install the instance; `getAppResources()` / `getAppConfig()` return it for all subsequent calls, and throw if the install never happened. See [Bootstrap](#bootstrap).
 
 ### Hierarchical Access
 

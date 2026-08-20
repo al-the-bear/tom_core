@@ -510,8 +510,10 @@ Resource keys now live under the field's **basePath**, e.g. `checkout.customer.e
 Singleton-based resource management using hierarchical dot-notation keys.
 
 ```dart
-// Initialization
-TomTextResourceProvider.loader = () => loadFromJson('strings.json');
+// Install once at startup, before anything reads text.
+TomTextResourceProvider.setAppResourceProvider(
+  TomTextResourceProvider.load(() => loadFromJson('strings.json')),
+);
 
 // Access anywhere
 final resources = TomTextResourceProvider.getAppResources();
@@ -523,9 +525,17 @@ bool hasIt = resources.exists('form.username.helperText');
 
 Both support:
 - Singleton pattern with `getAppResources()` / `getAppConfig()`
-- Lazy initialization via `loader` callback
+- Deferred loading via the `loader` callback or the `.load(fn)` constructor
 - Direct initialization via `.from(Map)` constructor
 - Hierarchical key resolution via `getObjectFromTree()`
+
+Installation is explicit: the getters throw
+`resources.text_provider.not_installed` /
+`resources.config_provider.not_installed` rather than creating a provider on
+first access, so a widget reading a label before the app bootstrapped says so
+instead of rendering raw keys. Widget tests in this package get an empty bundle
+from `test/flutter_test_config.dart`; tests that care about specific text
+install their own in `setUp`.
 
 ### Global State Extension Pattern
 
