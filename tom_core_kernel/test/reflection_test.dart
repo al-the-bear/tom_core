@@ -307,7 +307,7 @@ class GenericHolder<T> {
 
 /// Deliberately **not** annotated, so no mirror data exists for it.
 ///
-/// The one input for which the reflectable package, rather than Tom's code,
+/// The one input for which `tom_reflection`, rather than this module's code,
 /// decides what the failure looks like — which is what makes it the test
 /// subject for the error boundary.
 class NotReflectedHolder {
@@ -2341,7 +2341,7 @@ void main() {
       // This one never reached the empty map: resolving the class mirror of a
       // generic instantiation the reflector does not own threw a bare
       // `_TypeError` ("Null check operator used on a null value") from inside
-      // the reflectable package — no type name, no operation, and not a
+      // `tom_reflection` — no type name, no operation, and not a
       // `TomReflectorException`. The boundary has to survive the lookup
       // failing, not just answer once it succeeds.
       expect(

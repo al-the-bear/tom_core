@@ -1,9 +1,11 @@
 # Tom Reflection System
 
-The Tom Reflection System provides runtime reflection capabilities for Dart
-classes, enabling JSON serialization/deserialization without hand-written
-serialization code for each model class. It uses the `reflection` package to
-achieve this while maintaining type safety.
+The Tom Reflection System provides reflection over annotated Dart classes,
+enabling JSON serialization/deserialization without hand-written serialization
+code for each model class. It is built on the `tom_reflection` package, whose
+mirrors are emitted by a build step rather than discovered at runtime through
+`dart:mirrors` — which is what lets the module work in AOT builds and on
+Flutter web, where `dart:mirrors` is unavailable.
 
 ## Table of Contents
 
@@ -689,7 +691,7 @@ Each hook is now looked up before it is called — `instanceMembers` for the
 method and the getter, the declared constructor names for `fromJson` — so
 absence is settled without running anything, and the `catch` around the call
 exists only to attribute a failure. Nothing is inferred from the *type* of the
-error, which matters: the reflection package does not report absence
+error, which matters: `tom_reflection` does not report absence
 consistently. A missing constructor raises `NoSuchCapabilityError`, but a
 missing method or getter surfaces as a plain `NoSuchMethodError` from a dynamic
 dispatch, because the generated getters map is shared across the whole
@@ -971,6 +973,12 @@ searching for a type that cannot exist.
 
 This module depends on:
 
-- **External**: `reflection` package for runtime reflection capabilities
+- **`tom_reflection`** (hosted on pub.dev, constraint `>=1.0.1`): supplies
+  `Reflection`, the `ClassMirror`/`InstanceMirror` types and
+  `NoSuchCapabilityError`. A Tom-framework package rather than a third-party
+  one, but consumed by version constraint like any other hosted dependency —
+  there is no path dependency and no override. Its mirror data is produced at
+  build time by `tom_reflection_generator` (a dev dependency); see
+  [Build Configuration](#build-configuration).
 - **Observable Module**: Integration with `TomClass` observable objects
 - **Little Things Module**: `TomException`, the base of `TomReflectorException`

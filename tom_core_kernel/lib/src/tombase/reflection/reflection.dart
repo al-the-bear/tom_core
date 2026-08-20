@@ -517,7 +517,7 @@ class TomReflectionInfo {
   /// The single door through which every instance-mirror lookup passes, so
   /// that the one thing that can go wrong here goes wrong the same way
   /// everywhere. That thing is an object whose class carries no
-  /// `@tomReflector`: the reflectable package answers with a
+  /// `@tomReflector`: `tom_reflection` answers with a
   /// `NoSuchCapabilityError` naming the type and nothing else — not the
   /// operation that wanted it, not the annotation that would fix it, and not
   /// in the exception type the rest of this class raises. Callers that catch
@@ -568,7 +568,7 @@ class TomReflectionInfo {
   /// Each hook is now *looked up before it is called*, so absence is settled
   /// without running anything and the invocation itself is guarded only for
   /// the purpose of attribution. Nothing is inferred from the type of the
-  /// failure, which matters because the reflection package does not report
+  /// failure, which matters because `tom_reflection` does not report
   /// absence in one consistent way: a missing constructor raises
   /// [NoSuchCapabilityError], but a missing method or getter surfaces as a
   /// plain `NoSuchMethodError` from a dynamic dispatch, because the generated
@@ -642,7 +642,7 @@ class TomReflectionInfo {
   ///
   /// Resolving the mirror is itself inside the guard: for a generic
   /// instantiation the reflector does not own, `im.type` throws a bare
-  /// `_TypeError` from inside the reflectable package, naming neither the type
+  /// `_TypeError` from inside `tom_reflection`, naming neither the type
   /// nor the operation.
   ClassMirror _annotatedType(InstanceMirror im, Object o, String operation) {
     ClassMirror classMirror;
