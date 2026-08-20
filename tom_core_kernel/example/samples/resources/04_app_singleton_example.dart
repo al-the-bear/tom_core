@@ -137,8 +137,17 @@ void run() {
   print('   config singleton api.timeout: $configStillTimeout');
   print('');
 
-  // Reset static loaders so this example leaves no global state behind for a
-  // subsequent example run in the same process.
+  // Reset the static loaders. These are the part of the state left behind that
+  // could change another sample's behaviour: the default constructor consults
+  // them, so leaving them set would silently alter what
+  // `TomTextResourceProvider()` builds anywhere else in the process.
+  //
+  // The two installed singletons stay installed. Uninstalling is
+  // `clearAppResourceProvider` / `clearAppConfigProvider`, which are
+  // `@visibleForTesting` — calling them here would be an analyzer warning, and
+  // they are test-only on purpose: an application installs once at startup and
+  // has no reason to return to un-bootstrapped. Leaving them costs nothing,
+  // because every sample that reads a singleton installs its own bundle first.
   TomTextResourceProvider.loader = null;
   TomConfigResourceProvider.loader = null;
 

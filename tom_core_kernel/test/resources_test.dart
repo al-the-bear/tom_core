@@ -9,10 +9,16 @@ void main() {
   // TomTextResourceProvider Tests
   // ===========================================================================
   group('TomTextResourceProvider', () {
-    // Reset static state before each test
+    // Bootstrap each test with an empty bundle. This is an install, not a
+    // reset: it replaces whatever the previous test left behind and bumps
+    // `appResourcesRevision` like any other install. The actual reset is
+    // `clearAppResourceProvider`, which returns the process to
+    // un-bootstrapped without bumping; it is `@visibleForTesting` and the
+    // "bootstrap contract" group below is what exercises it. Installing is
+    // what this group wants, because its tests read `getAppResources()` and
+    // would throw `not_installed` against a cleared process.
     setUp(() {
       TomTextResourceProvider.loader = null;
-      // Reset singleton by setting a new empty provider
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from({}),
       );
@@ -141,7 +147,10 @@ void main() {
         'should create instance using loader if set and no instance exists',
         () {
           TomTextResourceProvider.loader = () => {'loaded': 'resource'};
-          // Force reset singleton by setting explicitly
+          // Install a provider built by the default constructor, which is the
+          // only one that consults `loader`. Installing is what makes the
+          // loader's output reachable through `getAppResources()` — the
+          // getter never builds a provider of its own.
           TomTextResourceProvider.setAppResourceProvider(
             TomTextResourceProvider(),
           );
@@ -476,10 +485,11 @@ void main() {
   // TomConfigResourceProvider Tests
   // ===========================================================================
   group('TomConfigResourceProvider', () {
-    // Reset static state before each test
+    // Bootstrap each test with an empty bundle, for the reason given on the
+    // `TomTextResourceProvider` group above: this is an install, not a reset,
+    // and these tests need an installed provider to read from.
     setUp(() {
       TomConfigResourceProvider.loader = null;
-      // Reset singleton by setting a new empty provider
       TomConfigResourceProvider.setAppConfigProvider(
         TomConfigResourceProvider.from({}),
       );
