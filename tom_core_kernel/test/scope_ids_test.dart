@@ -63,6 +63,42 @@ void main() {
           expect(TomScope.current.getScopePath(), equals('app'));
         });
       });
+
+      // `withScope` always builds a *new* scope parented to `current`, so
+      // re-entering the same id nests rather than recognising itself: the path
+      // repeats the segment. `runInScope` behaves differently for the same
+      // nesting, because it short-circuits on instance identity and there is
+      // one instance to recognise.
+      //
+      // Whether the repetition is desirable is a separate question; this test
+      // does not answer it. It pins what happens today, so that changing it has
+      // to be a decision rather than an accident. Re-entrancy is reachable in
+      // practice: a widget subtree that installs its own scope and is nested
+      // inside itself does exactly this.
+      test('re-entering the same id nests and repeats the path segment', () {
+        final repeated = TomScope.withScope(
+          'app',
+          () => TomScope.withScope('app', () {
+            expect(
+              TomScope.current.parent?.getScopePath(),
+              equals('app'),
+              reason: 'the inner scope is a distinct child, not the outer one',
+            );
+            return TomScope.current.getScopePath();
+          }),
+        );
+        expect(repeated, equals('app.app'));
+      });
+
+      test('re-entering the same instance does NOT repeat the segment', () {
+        // The contrast that makes the case above a property of `withScope`
+        // rather than of scopes: given an instance, `runInScope` recognises it.
+        final app = TomScopeBase(scopeId: 'app');
+        final path = app.runInScope(
+          () => app.runInScope(() => TomScope.current.getScopePath()),
+        );
+        expect(path, equals('app'));
+      });
     });
 
     group('runInScope', () {
@@ -470,6 +506,53 @@ void main() {
       });
     });
 
+    // The identity is write-once. That is not a stylistic preference: the
+    // acyclicity argument for the unguarded walk in `buildScopePath` holds only
+    // because links, once written, stay written, and `runInScope`'s identity
+    // short-circuit assumes a scope's path does not change under it.
+    //
+    // `late final` supplies the enforcement, so the tests below are pinning a
+    // language guarantee rather than a hand-written check. They earn their
+    // place anyway: nothing stops someone relaxing the fields to plain
+    // mutables, and the failure that would cause — a path that changes after
+    // something cached it — surfaces nowhere near the change.
+    group('after initScope has run', () {
+      test('a second initScope is refused', () {
+        final lazy = _LazyMixinScope()..initScope(scopeId: 'first');
+        expect(() => lazy.initScope(scopeId: 'second'), throwsA(isA<Error>()));
+      });
+
+      test('a refused second call moves neither the id nor the parent', () {
+        final root = _MixinScope(scopeId: 'root');
+        final other = _MixinScope(scopeId: 'other');
+        final child = _MixinScope(scopeId: 'child', parentScope: root);
+
+        // Both fields differ from the established ones, so a partial write
+        // would show up as a changed id even if the parent survived.
+        expect(
+          () => child.initScope(scopeId: 'renamed', parentScope: other),
+          throwsA(isA<Error>()),
+        );
+
+        expect(child.id, equals('child'));
+        expect(child.parent, same(root));
+        expect(child.getScopePath(), equals('root.child'));
+      });
+
+      test('an unusable id is refused before the write-once field is', () {
+        // When both rules are broken at once the id check wins, because it runs
+        // first. Worth pinning: it means the diagnostic names the thing the
+        // caller can actually fix, rather than a LateError about a private
+        // field. Reordering the two checks would silently degrade that.
+        final scope = _LazyMixinScope()..initScope(scopeId: 'kept');
+        expect(
+          () => scope.initScope(scopeId: 'a.b'),
+          throwsA(isA<TomScopeException>()),
+        );
+        expect(scope.id, equals('kept'));
+      });
+    });
+
     // `defaultScope` is the root of every scope path, so a reassignment would
     // change resource resolution for the whole process. It is `final`;
     // `withScope` / `runInScope` are the supported ways to change the current
@@ -687,11 +770,90 @@ void main() {
       TomScope.withScope('captured', () {
         builder = InScopeBuilder();
       });
-      final wrapped = builder.wrap1n<String, int>(
-        (a) => TomScope.current.getScopePath(),
+
+      // Every arity, not just wrap1n: each `wrapNn` is a separate hand-written
+      // forwarding body, so "one of them installs the scope" says nothing about
+      // the other five. Each also forwards its full argument list, which is
+      // where a copy-paste arity bug would hide.
+      final w0 = builder.wrap0n<String>(() => TomScope.current.getScopePath());
+      final w1 = builder.wrap1n<String, int>(
+        (a) => '${TomScope.current.getScopePath()}:$a',
       );
-      expect(wrapped, isNotNull);
-      expect(wrapped!(1), equals('captured'));
+      final w2 = builder.wrap2n<String, int, int>(
+        (a, b) => '${TomScope.current.getScopePath()}:$a$b',
+      );
+      final w3 = builder.wrap3n<String, int, int, int>(
+        (a, b, c) => '${TomScope.current.getScopePath()}:$a$b$c',
+      );
+      final w4 = builder.wrap4n<String, int, int, int, int>(
+        (a, b, c, d) => '${TomScope.current.getScopePath()}:$a$b$c$d',
+      );
+      final w5 = builder.wrap5n<String, int, int, int, int, int>(
+        (a, b, c, d, e) => '${TomScope.current.getScopePath()}:$a$b$c$d$e',
+      );
+
+      expect(w0!(), equals('captured'));
+      expect(w1!(1), equals('captured:1'));
+      expect(w2!(1, 2), equals('captured:12'));
+      expect(w3!(1, 2, 3), equals('captured:123'));
+      expect(w4!(1, 2, 3, 4), equals('captured:1234'));
+      expect(w5!(1, 2, 3, 4, 5), equals('captured:12345'));
+    });
+
+    // Every test above captures a scope and invokes the wrapper outside it, so
+    // all of them pass whether the wrapper *installs* the captured scope or
+    // merely fails to disturb the ambient one — at the point of invocation the
+    // ambient scope is the root either way.
+    //
+    // These two run it the other way round. That direction is the whole point
+    // of the class: a Flutter builder captured at the top of a tree can be
+    // invoked from deep inside an unrelated scope, and it must resolve
+    // resources against where it was *built*, not where it happened to be
+    // called from.
+    group('the captured scope replaces the ambient one, not just the root', () {
+      test('a builder captured outside any scope resets an ambient scope', () {
+        final builder = InScopeBuilder();
+        final wrapped = builder.wrap0<String>(
+          () => TomScope.current.getScopePath(),
+        );
+
+        TomScope.withScope('elsewhere', () {
+          expect(
+            TomScope.current.getScopePath(),
+            equals('elsewhere'),
+            reason:
+                'the ambient scope must be non-empty for this to prove '
+                'anything',
+          );
+          expect(
+            wrapped(),
+            isEmpty,
+            reason:
+                'the wrapper captured the root, so it must install the '
+                'root — not inherit "elsewhere"',
+          );
+        });
+      });
+
+      test('a builder captured in one scope overrides a different one', () {
+        late InScopeBuilder builder;
+        TomScope.withScope('a', () => builder = InScopeBuilder());
+        final wrapped = builder.wrap1<String, int>(
+          (n) => '${TomScope.current.getScopePath()}:$n',
+        );
+
+        TomScope.withScope('b', () {
+          expect(wrapped(7), equals('a:7'));
+        });
+
+        // And nesting does not accumulate: the captured scope is absolute, not
+        // a prefix applied to wherever the call happens.
+        TomScope.withScope('b', () {
+          TomScope.withScope('c', () {
+            expect(wrapped(7), equals('a:7'));
+          });
+        });
+      });
     });
 
     test('wrapCounter restores the scope and forwards named arguments', () {

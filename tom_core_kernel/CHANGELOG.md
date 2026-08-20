@@ -307,6 +307,21 @@ anyone who was writing them.
   a boundary (slashes, spaces, hyphens, non-ASCII, a U+00B7 middle dot) stay
   legal, because the rule is about the ambiguity and not the alphabet. Deleting
   the guard turns all fifteen red.
+- **The scope failure modes the suite stopped one case short of.** Seven tests
+  close the gap between "every documented behaviour is covered" and "every way
+  the module can be misused is covered". Scope identity is write-once, so a
+  second `initScope` is refused and a refused call moves neither the id nor the
+  parent; when an unusable id and the write-once field are violated by the same
+  call the id diagnostic wins, because the check runs first and names the thing
+  the caller can fix. `InScopeBuilder` is now exercised in the direction that
+  distinguishes *installing* the captured scope from merely not disturbing the
+  ambient one — a builder captured at the root and invoked inside
+  `withScope('elsewhere')` must yield the root — and all six `wrapNn` wrappers
+  are run with real callbacks rather than only `null`, since each is a separate
+  hand-written forwarding body. Re-entering `withScope` with an id already on
+  the zone nests and repeats the segment (`app.app`) where `runInScope` on the
+  same instance does not, a contrast now pinned rather than assumed. Every one
+  was proven fireable by mutating the implementation.
 - New suites for every new module: `scheduling_test.dart`,
   `scheduled_job_test.dart` (plus `test/contracts/scheduling_contract.dart`, the
   shared store/lock contract), `result_test.dart`, `file_transfer_test.dart`,

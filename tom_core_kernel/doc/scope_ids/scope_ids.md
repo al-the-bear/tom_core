@@ -81,6 +81,14 @@ the body directly rather than wrapping it in a child zone. The body runs and
 its result is returned either way — it is the zone that is elided, which is
 what prevents redundant scope nesting.
 
+**`withScope` does not share that short-circuit.** It is given an id, not a
+scope, so it has no instance to recognise: it always constructs a fresh child
+of `current`. Re-entering the same id therefore nests, and the path repeats the
+segment — `withScope('app', () => withScope('app', ...))` resolves to
+`app.app`, where `app.runInScope(() => app.runInScope(...))` on one instance
+resolves to `app`. Code that can be nested inside itself (a widget subtree that
+installs its own scope, say) should hold the scope and use `runInScope`.
+
 **The root scope cannot be swapped out.** `defaultScope` is `static final`, so
 there is no supported way — and no compiling way — to point the process at a
 different root. That is deliberate rather than incidental: it is the root of
