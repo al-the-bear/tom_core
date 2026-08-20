@@ -9,8 +9,11 @@
 /// - Hierarchical key access with dot notation
 /// - Typed configuration values (int, bool, nested objects), and why they are
 ///   read through `getObjectOrNull` rather than a direct `getText` cast
-/// - Global singleton pattern
 /// - Environment-specific configuration
+///
+/// Every provider here is a local instance. The application-wide singleton —
+/// `setAppConfigProvider` / `getAppConfig`, the static `loader`, and the
+/// independence of the text and config singletons — belongs to example 04.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -27,7 +30,6 @@ class ConfigResourceProviderExample {
   static late int timeout;
   static late bool darkModeEnabled;
   static late bool analyticsExists;
-  static bool globalConfigWorks = false;
   static late String devApiUrl;
   static late String prodApiUrl;
   static late int maxItems;
@@ -187,44 +189,10 @@ class ConfigResourceProviderExample {
   }
 
   // --------------------------------------------------------------------------
-  // Example 5: Global singleton pattern
+  // Example 5: Environment-specific configuration pattern
   // --------------------------------------------------------------------------
-  static void example5GlobalSingleton() {
-    print('\n5. Global singleton pattern:');
-
-    // Set the global configuration provider
-    TomConfigResourceProvider.setAppConfigProvider(
-      TomConfigResourceProvider.from({
-        'app': {'name': 'My Application', 'version': '2.0.0'},
-        'settings': {'theme': 'dark', 'language': 'en'},
-      }),
-    );
-
-    // Access from anywhere using getAppConfig()
-    final globalConfig = TomConfigResourceProvider.getAppConfig();
-    final appName = globalConfig.getText('app.name');
-    final theme = globalConfig.getText('settings.theme');
-
-    globalConfigWorks = appName == 'My Application';
-
-    print('   - App name from global: $appName');
-    print('   - Theme from global: $theme');
-
-    // Multiple calls return the same instance
-    final sameConfig = TomConfigResourceProvider.getAppConfig();
-    final isSameInstance = identical(globalConfig, sameConfig);
-    print('   - Same singleton instance: $isSameInstance');
-
-    // Assertions
-    assert(globalConfigWorks, 'Global config should work');
-    assert(isSameInstance, 'Should be same instance');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 6: Environment-specific configuration pattern
-  // --------------------------------------------------------------------------
-  static void example6EnvironmentConfig() {
-    print('\n6. Environment-specific configuration pattern:');
+  static void example5EnvironmentConfig() {
+    print('\n5. Environment-specific configuration pattern:');
 
     // Factory function for environment-specific config
     TomConfigResourceProvider createConfigForEnv(String env) {
@@ -281,10 +249,10 @@ class ConfigResourceProviderExample {
   }
 
   // --------------------------------------------------------------------------
-  // Example 7: Accessing nested configuration
+  // Example 6: Accessing nested configuration
   // --------------------------------------------------------------------------
-  static void example7NestedConfig() {
-    print('\n7. Accessing nested configuration:');
+  static void example6NestedConfig() {
+    print('\n6. Accessing nested configuration:');
 
     final config = TomConfigResourceProvider.from({
       'database': {
@@ -325,10 +293,10 @@ class ConfigResourceProviderExample {
   }
 
   // --------------------------------------------------------------------------
-  // Example 8: Configuration with lists
+  // Example 7: Configuration with lists
   // --------------------------------------------------------------------------
-  static void example8ListConfig() {
-    print('\n8. Configuration with lists:');
+  static void example7ListConfig() {
+    print('\n7. Configuration with lists:');
 
     final config = TomConfigResourceProvider.from({
       'allowedOrigins': [
@@ -404,10 +372,9 @@ void run() {
   ConfigResourceProviderExample.example2ExistsCheck();
   ConfigResourceProviderExample.example3FallbackBehavior();
   ConfigResourceProviderExample.example4LoaderFunction();
-  ConfigResourceProviderExample.example5GlobalSingleton();
-  ConfigResourceProviderExample.example6EnvironmentConfig();
-  ConfigResourceProviderExample.example7NestedConfig();
-  ConfigResourceProviderExample.example8ListConfig();
+  ConfigResourceProviderExample.example5EnvironmentConfig();
+  ConfigResourceProviderExample.example6NestedConfig();
+  ConfigResourceProviderExample.example7ListConfig();
 
   print('\n✓ All configuration resource provider examples passed!\n');
 }

@@ -1,6 +1,8 @@
 /// Demonstrates the application-wide singleton surface of both resource
-/// providers, which examples 01 and 02 do not cover (they exercise instances
-/// directly).
+/// providers. Examples 01 through 03 build providers with `.from()` and
+/// `.load()` and read from those instances directly — none of them installs
+/// one, so nothing they build is reachable by code that was not handed the
+/// reference. This example is about the other half.
 ///
 /// This example covers:
 /// - The static `loader` field driving the default constructor
