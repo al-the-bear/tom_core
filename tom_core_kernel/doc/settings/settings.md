@@ -87,51 +87,126 @@ if (result.roles.contains('admin')) {
 
 ## Core Components
 
+Both classes are annotated with `@tomReflector`, and that annotation is why they
+are shaped the way they are. The reflected serializer builds an instance through
+a zero-argument constructor and then assigns each field by name, so every field
+here is public, mutable and non-`final`, and neither class declares a `fromJson`
+constructor or a `toJson` method — there is no hand-written serialization in the
+module at all. Adding a field to either class is therefore the whole of
+extending the wire contract; the [Dependencies](#dependencies) section covers
+the `build_runner` step that makes it take effect.
+
 ### TomGetSettingsMessage
 
 The request message for fetching settings from the server.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `authorizationToken` | `String?` | JWT bearer token for authentication |
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `authorizationToken` | `String?` | `""` | JWT bearer token for authentication |
+
+The empty-string default is a field initializer, and it is the one place in the
+module where an unset string reads as `""` rather than `null`. Every string on
+`TomGetSettingsResult` defaults to `null` instead — do not carry the convention
+across.
 
 ### TomGetSettingsResult
 
 The response containing all settings data.
 
+#### Constructor
+
+Every parameter is named and optional, so the class is constructible with no
+arguments at all — which is what the reflected deserializer does before
+assigning the fields it found on the wire.
+
+```dart
+TomGetSettingsResult({
+  Map<String, Object?>? texts,
+  Map<String, Object?>? config,
+  List<String>? groups,
+  List<String>? roles,
+  List<String>? entitlements,
+  List<String>? resourceKeys,
+  String? organization,
+  String? process,
+  String? application,
+  String? country,
+  String? language,
+  String? clientLanguage,
+  String? clientCountry,
+  String? clientTimeZone,
+})
+```
+
+Two default contracts follow from it, and both matter to callers:
+
+- **Every collection defaults to a fresh, empty, mutable collection** — a new
+  instance per result, never a shared const. So `result.roles.add(...)` and
+  `result.config['k'] = v` work on a result built with no arguments, and two
+  results never alias each other's state.
+- **Every string defaults to `null`**, and the fields carry no initializer
+  either, so an unset string is `null` however the instance was made — including
+  through deserialization. `null` therefore means "the server did not set this",
+  distinguishably from a value the server deliberately answered as `""`.
+  Consumers null-check rather than reach for `.isEmpty`.
+
+The mutable-collection contract exists for the server side, which typically
+builds a result incrementally rather than in one call:
+
+```dart
+/// The settings this principal gets, assembled as each source is consulted.
+TomGetSettingsResult buildSettings(User user, Tenant tenant) {
+  // No arguments: every collection starts empty and mutable, every string null.
+  final result = TomGetSettingsResult();
+
+  result.texts.addAll(tenant.textBundle);
+  result.config.addAll(tenant.defaults);
+
+  for (final role in user.roles) {
+    result.roles.add(role.name);
+    result.entitlements.addAll(role.entitlements);
+  }
+
+  result.organization = tenant.id;
+  result.clientLanguage = user.preferredLanguage;
+
+  return result;
+}
+```
+
 #### Resources
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `texts` | `Map<String, Object?>` | Localized text resources for UI |
-| `config` | `Map<String, Object?>` | Application configuration values |
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `texts` | `Map<String, Object?>` | `{}` (fresh) | Localized text resources for UI |
+| `config` | `Map<String, Object?>` | `{}` (fresh) | Application configuration values |
 
 #### Authorization
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `groups` | `List<String>` | Security groups the user belongs to |
-| `roles` | `List<String>` | Roles assigned to the user |
-| `entitlements` | `List<String>` | Fine-grained permissions |
-| `resourceKeys` | `List<String>` | Accessible resource identifiers |
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `groups` | `List<String>` | `[]` (fresh) | Security groups the user belongs to |
+| `roles` | `List<String>` | `[]` (fresh) | Roles assigned to the user |
+| `entitlements` | `List<String>` | `[]` (fresh) | Fine-grained permissions |
+| `resourceKeys` | `List<String>` | `[]` (fresh) | Accessible resource identifiers |
 
 #### Application Context
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `organization` | `String?` | Organization context |
-| `process` | `String?` | Business process identifier |
-| `application` | `String?` | Application identifier |
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `organization` | `String?` | `null` | Organization context |
+| `process` | `String?` | `null` | Business process identifier |
+| `application` | `String?` | `null` | Application identifier |
 
 #### Localization
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `country` | `String?` | Server-side country code |
-| `language` | `String?` | Server-side language code |
-| `clientCountry` | `String?` | Client's preferred country (ISO 3166-1) |
-| `clientLanguage` | `String?` | Client's preferred language (ISO 639-1) |
-| `clientTimeZone` | `String?` | Client's timezone (IANA format) |
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `country` | `String?` | `null` | Server-side country code |
+| `language` | `String?` | `null` | Server-side language code |
+| `clientCountry` | `String?` | `null` | Client's preferred country (ISO 3166-1) |
+| `clientLanguage` | `String?` | `null` | Client's preferred language (ISO 639-1) |
+| `clientTimeZone` | `String?` | `null` | Client's timezone (IANA format) |
 
 ## Usage Examples
 
@@ -244,11 +319,24 @@ class SettingsCache {
 
 ### 2. Handle Missing Values Gracefully
 
-Always provide defaults for optional settings:
+Which values need a fallback follows from the
+[defaults](#constructor): the eight string fields default to `null` and
+arrive as `null` whenever the server left them unset, so each one needs a `??`
+at the point of use. The six collections do not — they are always present and
+always mutable, so `settings.roles.isEmpty` is a meaningful test rather than a
+possible null dereference. Values read out of `texts` and `config` are a third
+case: the map is there, but any given key may be absent, and its static type is
+`Object?`.
 
 ```dart
-final pageSize = (settings.config['pageSize'] as int?) ?? 20;
+// String field: may be null, so supply a fallback.
 final language = settings.clientLanguage ?? 'en';
+
+// Map entry: the map always exists, the key may not — cast and fall back.
+final pageSize = (settings.config['pageSize'] as int?) ?? 20;
+
+// Collection: never null, so no `??` — just ask.
+if (settings.roles.isEmpty) { /* unauthorized */ }
 ```
 
 ### 3. Validate Authorization Early

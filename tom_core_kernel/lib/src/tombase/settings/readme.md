@@ -36,6 +36,13 @@ void main() {
 }
 ```
 
+Both classes carry `@tomReflector`, which is why every field is public, mutable
+and non-`final` and neither class writes its own `toJson`/`fromJson`: the
+generated reflection data builds a zero-argument instance and assigns the fields
+by name. Every constructor parameter is optional — collections then default to a
+fresh mutable empty one per instance (so a server can build a result
+incrementally), strings to `null`.
+
 ---
 
 Part of [`tom_core_kernel`](../../../../README.md) — see the package README for

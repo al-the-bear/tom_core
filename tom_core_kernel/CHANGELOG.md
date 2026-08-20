@@ -993,6 +993,31 @@ anyone who was writing them.
 
 ### Documentation
 
+- **`doc/settings/settings.md` now documents the constructor, the defaults and
+  the reflected shape (tcinc299).** The module's main prose document showed
+  results only as things that arrive from a server, never as things anyone
+  builds: the fourteen-parameter constructor appeared in the API mirror and
+  nowhere else, and the property tables carried no default column. It now has a
+  Constructor section with the signature, both default contracts — a fresh
+  mutable empty collection per instance, `null` for the eight strings — and a
+  snippet building a result incrementally, which is the server-side shape the
+  mutable-collection contract exists to support. All four property tables gained
+  a Default column.
+
+  The gap had a visible consequence inside the document. "Handle Missing Values
+  Gracefully" told the reader to write `settings.clientLanguage ?? 'en'` — right,
+  and right *because* the field defaults to null — but gave the rule without the
+  reason, so there was no way to tell which fields need the `??`. It now
+  separates the three cases: strings need a fallback, collections never do
+  (always present, always mutable), and map entries need one for the missing key
+  rather than for the map.
+
+  Both classes are also now stated to be `@tomReflector`-annotated at the point
+  it explains something, rather than only in the Dependencies table: it is why
+  every field is public, mutable and non-`final`, and why neither class writes a
+  `toJson`/`fromJson` of its own. The module readme carried none of this and now
+  carries it too.
+
 - **The API mirrors no longer file non-supertypes under an `Extends` heading
   (tcinc298).** `api_summary_settings.md` gave both settings DTOs the bullet
   `**Extends:** annotated with @tomReflector`, reading as though the annotation
