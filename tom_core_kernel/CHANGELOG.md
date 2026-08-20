@@ -641,6 +641,16 @@ anyone who was writing them.
 
 ### Tests
 
+- **The documented settings round trip is now executed, not just written
+  down.** The settings suite exercised the two DTOs thoroughly and the exchange
+  not at all — which is how a transport that never existed came to be
+  documented four times without anything noticing. Two cases run the shape the
+  documents now show, end to end over a stubbed HTTP client: a 200 answer
+  deserializes into a populated `TomGetSettingsResult` and the request really
+  goes out as a `POST` to the documented URI, and a 401 reports through the
+  `error` half of the pair while still handing back a result object — which is
+  the reason the documented order is check-then-read, since a caller who skips
+  the check reads empty settings as if they were real.
 - **The settings result's "unset is null" contract is pinned on the
   deserialization path, not only the constructor.** The existing round-trip
   case set every field, so it could not observe any default at all, and the
@@ -825,6 +835,16 @@ anyone who was writing them.
 
 ### Examples
 
+- **The settings and bearer-authentication samples now build the endpoint that
+  carries the exchange.** Neither sample touched the transport, so nothing in
+  the example tree contradicted the phantom service the documents described.
+  The settings sample gains a ninth case that constructs the
+  `TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>` the documents
+  show and asserts its method, URI and bearer flag; the bearer-authentication
+  sample makes step 1 of its token-flow walkthrough concrete by building the
+  login endpoint and asserting it carries no bearer token — which is the point
+  of a login. Constructing an endpoint opens no connection, so both run without
+  a server; the live round trip is exercised in the settings tests.
 - **The security module's example coverage is now complete (tcinc288).** A sweep
   of every public name declared under `lib/src/tombase/security/` against the
   hand-written samples found 26 that no example mentioned — not the 17 the todo
@@ -961,6 +981,34 @@ anyone who was writing them.
 
 ### Documentation
 
+- **The settings and security documents no longer invent a transport that does
+  not exist.** Every snippet showing how to *send* one of these modules' DTOs
+  called a service declared nowhere in the workspace —
+  `settingsService.getSettings(message)` in the settings library dartdoc and
+  twice in `doc/settings/settings.md`, `authService.authenticate(message)` in
+  the security library dartdoc and in `doc/security/security.md`, and
+  `authService.login(message)` on `TomAuthenticationResult`. A sixth,
+  `authService.currentToken`, stood in for the token source. A reader who
+  searched for those names found nothing and had no pointer to what to use
+  instead. The real mechanism is `TomServerEndpoint`, declared in this same
+  package, so the documents were inventing a transport while the genuine one
+  went unmentioned. All six snippets now show the actual round trip — build the
+  endpoint over a `TomServerChannel` and `TomServerCallSpecs`, `send` the
+  message, check the `(result, error)` pair — following the shape
+  `doc/logging/logging.md` already used for the remote-log endpoint, and taking
+  the token from `TomBearerAuthentication.authorizationToken`, which does exist.
+  Two things the phantom had obscured are now stated: settings addresses the
+  **API** base URI with `includeBearerAuthentication: true`, whereas a login
+  addresses the **authentication** URI with it `false` — the two differ only in
+  a split deployment, so a client that confused them would look correct on a
+  single host; and authentication has **two** failure channels, the call's
+  `error` and the result's own `error`, where the phantom's single return value
+  implied one, so a client checking only the latter reads an unreachable server
+  as a successful login. Not every service-shaped name was a phantom:
+  `oauthService.listOAuthProviders()` and `beginOAuthAuthorization(...)` name
+  real methods of the declared `TomOAuthApiService`, and the `userService`,
+  `httpClient` and `reportingApi` placeholders elsewhere are arbitrary callees
+  in snippets about something else. Those were left as they were.
 - **The settings API mirror no longer promises an empty-string default for
   eight fields that default to `null`.** All eight of `TomGetSettingsResult`'s
   context and localization strings — `organization`, `process`, `application`,

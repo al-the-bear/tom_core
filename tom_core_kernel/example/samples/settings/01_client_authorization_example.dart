@@ -250,6 +250,56 @@ class CheckEntitlementsExample {
 }
 
 // =============================================================================
+// EXAMPLE 9: Building the Endpoint That Carries the Exchange
+// =============================================================================
+
+/// The settings module declares the two DTOs and no transport of its own — the
+/// exchange runs over `TomServerEndpoint` from the `http_connection` module.
+/// Settings is an ordinary bearer-authenticated endpoint of the API server, not
+/// part of the authentication exchange, so it addresses the API base URI.
+///
+/// Constructing an endpoint opens no connection; the channel creates its HTTP
+/// client on the first call. That is why this example can build one and assert
+/// its shape without a server: only `send` reaches the network.
+class SettingsEndpointExample {
+  static String? method;
+  static Uri? url;
+  static bool sendsBearerToken = false;
+
+  static void example9BuildEndpoint() {
+    final endpoint =
+        TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>(
+          TomServerChannel('api.example.com', 443),
+          TomServerCallSpecs(
+            'POST',
+            Uri.parse('https://api.example.com/settings'),
+            includeBearerAuthentication: true,
+          ),
+        );
+
+    method = endpoint.specs.method;
+    url = endpoint.specs.url;
+    sendsBearerToken = endpoint.specs.includeBearerAuthentication;
+
+    assert(method == 'POST', 'Settings is posted');
+    assert(
+      url.toString() == 'https://api.example.com/settings',
+      'Endpoint addresses the API base URI',
+    );
+    assert(sendsBearerToken, 'Settings is a bearer-authenticated endpoint');
+
+    // Sending it answers a (result, error) pair rather than throwing, so a
+    // caller checks the error half before reading the result:
+    //
+    //   final (result, error) = await endpoint.send(message);
+    //   if (error?.hasError ?? false) return;
+    //
+    // A live round trip needs a server, so it is exercised in the module's
+    // tests against a stubbed client rather than here.
+  }
+}
+
+// =============================================================================
 // RUN ALL EXAMPLES
 // =============================================================================
 
@@ -262,6 +312,7 @@ void run() {
   AccessConfigExample.example6AccessConfig();
   CheckRolesExample.example7CheckRoles();
   CheckEntitlementsExample.example8CheckEntitlements();
+  SettingsEndpointExample.example9BuildEndpoint();
 }
 
 void main() {

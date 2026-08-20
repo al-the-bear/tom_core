@@ -16,7 +16,23 @@
 ///
 /// ## Example
 ///
+/// This library declares only the DTOs; the exchange runs over
+/// `TomServerEndpoint` from the `http_connection` module. A login addresses
+/// `TomClientRemoteContext.current!.authenticationUri` — the authentication
+/// server, which differs from the API base URI only in a split deployment — and
+/// sends no bearer token, because establishing one is the point of the call.
+///
 /// ```dart
+/// final endpoint =
+///     TomServerEndpoint<TomAuthenticationMessage, TomAuthenticationResult>(
+///       TomServerChannel('auth.example.com', 443),
+///       TomServerCallSpecs(
+///         'POST',
+///         Uri.parse('https://auth.example.com/authenticate'),
+///         includeBearerAuthentication: false,
+///       ),
+///     );
+///
 /// // Create authentication request
 /// var message = TomAuthenticationMessage()
 ///   ..userName = 'john.doe'
@@ -24,14 +40,19 @@
 ///   ..application = 'myapp';
 ///
 /// // Process result
-/// var result = await authService.authenticate(message);
-/// if (result.error.isEmpty) {
+/// var (result, error) = await endpoint.send(message);
+/// if (!(error?.hasError ?? false) && result.error.isEmpty) {
 ///   TomBearerAuthentication.setTokens(
 ///     result.authenticationToken,
 ///     result.authorizationToken,
 ///   );
 /// }
 /// ```
+///
+/// Note the two failure channels: `error` reports that the *call* did not
+/// succeed (refused connection, expired deadline, HTTP error), while
+/// [TomAuthenticationResult.error] reports that the call succeeded and the
+/// server declined the credentials. Both have to be checked.
 ///
 /// See also:
 /// - [TomBearerAuthentication] for token management
@@ -158,8 +179,18 @@ class TomAuthenticationMessage {
 ///
 /// ## Example
 ///
+/// `loginEndpoint` is the
+/// `TomServerEndpoint<TomAuthenticationMessage, TomAuthenticationResult>` built
+/// as shown in this library's documentation; only its result is of interest
+/// here.
+///
 /// ```dart
-/// var result = await authService.login(message);
+/// var (result, error) = await loginEndpoint.send(message);
+///
+/// if (error?.hasError ?? false) {
+///   showError(error!.errorKey);
+///   return;
+/// }
 ///
 /// if (result.error.isNotEmpty) {
 ///   showError(result.error);

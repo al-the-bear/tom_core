@@ -11,16 +11,36 @@
 ///
 /// ## Example
 ///
+/// This library declares only the two DTOs; the exchange itself runs over
+/// `TomServerEndpoint` from the `http_connection` module — settings is an
+/// ordinary bearer-authenticated endpoint of the API server, not part of the
+/// authentication exchange. Building an endpoint opens no connection.
+///
 /// ```dart
+/// final endpoint =
+///     TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>(
+///       TomServerChannel('api.example.com', 443),
+///       TomServerCallSpecs(
+///         'POST',
+///         Uri.parse('https://api.example.com/settings'),
+///         includeBearerAuthentication: true,
+///       ),
+///     );
+///
 /// // Create a settings request with authorization token
 /// final message = TomGetSettingsMessage()
-///   ..authorizationToken = 'Bearer xyz123';
+///   ..authorizationToken = TomBearerAuthentication.authorizationToken;
 ///
 /// // Process the result
-/// final result = await settingsService.getSettings(message);
+/// final (result, error) = await endpoint.send(message);
+/// if (error?.hasError ?? false) return;
+///
 /// print('User roles: ${result.roles}');
 /// print('Config: ${result.config}');
 /// ```
+///
+/// A real client takes the host and URI from
+/// `TomClientRemoteContext.current!.baseUri` rather than spelling them out.
 library;
 
 // =============================================================================

@@ -218,8 +218,35 @@ class BearerAuthenticationExample {
   static void example6TokenFlowPattern() {
     print('\n6. Token flow pattern:');
 
+    // Step 1 of the flow, made concrete. The security module declares the
+    // authentication DTOs and no transport of its own — the exchange runs over
+    // `TomServerEndpoint` from the `http_connection` module. A login addresses
+    // the *authentication* server rather than the API base URI, and sends no
+    // bearer token, because establishing one is the point of the call.
+    //
+    // Building an endpoint opens no connection; the channel creates its HTTP
+    // client on the first call. So this example can assert the shape without a
+    // server — only `send` reaches the network, and it answers a
+    // `(result, error)` pair rather than throwing.
+    final loginEndpoint =
+        TomServerEndpoint<TomAuthenticationMessage, TomAuthenticationResult>(
+          TomServerChannel('auth.example.com', 443),
+          TomServerCallSpecs(
+            'POST',
+            Uri.parse('https://auth.example.com/authenticate'),
+            includeBearerAuthentication: false,
+          ),
+        );
+
+    assert(loginEndpoint.specs.method == 'POST', 'Credentials are posted');
+    assert(
+      !loginEndpoint.specs.includeBearerAuthentication,
+      'A login carries no bearer token — it is what produces one',
+    );
+
     print('   LOGIN FLOW:');
     print('   1. Client sends credentials to auth server');
+    print('      ${loginEndpoint.specs.method} ${loginEndpoint.specs.url}');
     print('   2. Server validates credentials');
     print('   3. Server creates TomPrincipal for user');
     print('   4. Server calls convertPrincipalToTokenPayload()');

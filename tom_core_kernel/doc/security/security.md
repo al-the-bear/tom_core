@@ -87,8 +87,26 @@ including the ones named only in passing here — see
 
 ### 1. Set Up Authentication
 
+This module declares the authentication DTOs; the exchange itself runs over
+`TomServerEndpoint` from the `http_connection` module. A login addresses
+`TomClientRemoteContext.current!.authenticationUri` — the authentication server,
+which differs from the API base URI only in a split deployment — and sends no
+bearer token, because establishing one is the point of the call.
+
 ```dart
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+// Build the endpoint. This opens no connection; the channel creates its HTTP
+// client on the first call.
+var endpoint =
+    TomServerEndpoint<TomAuthenticationMessage, TomAuthenticationResult>(
+      TomServerChannel('auth.example.com', 443),
+      TomServerCallSpecs(
+        'POST',
+        Uri.parse('https://auth.example.com/authenticate'),
+        includeBearerAuthentication: false,
+      ),
+    );
 
 // Create authentication request
 var message = TomAuthenticationMessage()
@@ -97,16 +115,22 @@ var message = TomAuthenticationMessage()
   ..application = 'myapp';
 
 // Send to server and get result
-var result = await authService.authenticate(message);
+var (result, error) = await endpoint.send(message);
 
 // Store tokens on success
-if (result.error.isEmpty) {
+if (!(error?.hasError ?? false) && result.error.isEmpty) {
   TomBearerAuthentication.setTokens(
     result.authenticationToken,
     result.authorizationToken,
   );
 }
 ```
+
+The two failure channels are distinct: `error` reports that the *call* did not
+succeed (refused connection, expired deadline, HTTP error), while
+`result.error` reports that the call succeeded and the server declined the
+credentials. A client that checks only one of them will treat an unreachable
+server as a successful login.
 
 ### 2. Access Current User
 

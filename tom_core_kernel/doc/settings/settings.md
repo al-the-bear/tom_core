@@ -30,17 +30,48 @@ The settings system follows a request-response pattern where the client sends a 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 ```
 
-### 2. Create a Settings Request
+### 2. Build the Endpoint
+
+This module declares the two DTOs and nothing else — the exchange runs over
+`TomServerEndpoint` from the `http_connection` module. Settings is an ordinary
+bearer-authenticated endpoint of the API server, not part of the authentication
+exchange, so it addresses the API base URI. Building an endpoint opens no
+connection; the channel creates its HTTP client on the first call.
+
+```dart
+final endpoint =
+    TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>(
+      TomServerChannel('api.example.com', 443),
+      TomServerCallSpecs(
+        'POST',
+        Uri.parse('https://api.example.com/settings'),
+        includeBearerAuthentication: true,
+      ),
+    );
+```
+
+A real client takes the host and URI from
+`TomClientRemoteContext.current!.baseUri` rather than spelling them out.
+
+### 3. Create a Settings Request
 
 ```dart
 final message = TomGetSettingsMessage()
   ..authorizationToken = 'Bearer your-jwt-token';
 ```
 
-### 3. Process the Response
+### 4. Process the Response
+
+`send` answers a `(result, error)` pair rather than throwing: a refused
+connection, an expired deadline and an HTTP error all arrive as an error value,
+so the pair has to be checked before the result is read.
 
 ```dart
-final result = await settingsService.getSettings(message);
+final (result, error) = await endpoint.send(message);
+if (error?.hasError ?? false) {
+  // No settings to apply — see TomServerCallError.errorKey.
+  return;
+}
 
 // Access configuration
 final theme = result.config['theme'];
@@ -107,12 +138,15 @@ The response containing all settings data.
 ### Basic Settings Retrieval
 
 ```dart
-Future<void> initializeApp() async {
+Future<void> initializeApp(
+  TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult> endpoint,
+) async {
   final message = TomGetSettingsMessage()
-    ..authorizationToken = authService.currentToken;
-  
-  final settings = await settingsService.getSettings(message);
-  
+    ..authorizationToken = TomBearerAuthentication.authorizationToken;
+
+  final (settings, error) = await endpoint.send(message);
+  if (error?.hasError ?? false) return;
+
   // Apply configuration
   appConfig.theme = settings.config['theme'] as String?;
   appConfig.maxItems = settings.config['maxItems'] as int? ?? 50;

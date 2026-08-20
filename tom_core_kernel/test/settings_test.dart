@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:http/http.dart';
 import 'package:test/test.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -1113,4 +1116,115 @@ void main() {
       });
     });
   });
+
+  // ==========================================================================
+  // The documented transport
+  // ==========================================================================
+
+  // The submodule declares the two DTOs and no transport, so every document
+  // showing how to *send* a settings request has to reach outside it. What the
+  // documents show now is `TomServerEndpoint`, and this group is what keeps
+  // that honest: it runs the documented shape end to end against a stubbed
+  // client, so a snippet that stops compiling — or an endpoint whose contract
+  // changes out from under it — fails here rather than in a reader's editor.
+  // Nothing else in the module's suite exercises the exchange at all, which is
+  // exactly how a transport that never existed came to be documented four
+  // times.
+  group('settings over TomServerEndpoint', () {
+    /// Builds the endpoint exactly as the module documentation does, over a
+    /// client that answers [body] with [statusCode].
+    (TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>,
+      _RecordingClient,
+    )
+    documentedEndpoint(String body, {int statusCode = 200}) {
+      final client = _RecordingClient((request) async {
+        final bytes = utf8.encode(body);
+        return StreamedResponse(
+          Stream<List<int>>.value(bytes),
+          statusCode,
+          contentLength: bytes.length,
+          request: request,
+        );
+      });
+      final endpoint =
+          TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>(
+            TomServerChannel(
+              'api.example.com',
+              443,
+              clientFactory: _RecordingClientFactory(client),
+            ),
+            TomServerCallSpecs(
+              'POST',
+              Uri.parse('https://api.example.com/settings'),
+              includeBearerAuthentication: true,
+            ),
+          );
+      return (endpoint, client);
+    }
+
+    test('the documented round trip answers a populated result', () async {
+      final (endpoint, client) = documentedEndpoint(
+        '{"texts":{"welcome":"Hello"},"config":{"theme":"dark"},'
+        '"roles":["admin"],"groups":[],"entitlements":[],"resourceKeys":[],'
+        '"organization":"acme-corp"}',
+      );
+
+      final message = TomGetSettingsMessage()
+        ..authorizationToken = 'Bearer xyz123';
+
+      final (result, error) = await endpoint.send(message);
+
+      expect(error?.hasError ?? false, isFalse);
+      expect(result.texts['welcome'], equals('Hello'));
+      expect(result.config['theme'], equals('dark'));
+      expect(result.roles, contains('admin'));
+      expect(result.organization, equals('acme-corp'));
+      // The request really went out over the specs the documents show.
+      expect(client.lastRequest!.method, equals('POST'));
+      expect(
+        client.lastRequest!.url,
+        equals(Uri.parse('https://api.example.com/settings')),
+      );
+    });
+
+    // The pair is why the documents check `error` before reading `result`: a
+    // server that refuses still produces a result object, so a caller that
+    // skips the check reads empty settings as if they were real ones.
+    test('a refused call reports through the error half of the pair', () async {
+      final (endpoint, _) = documentedEndpoint('{}', statusCode: 401);
+
+      final (result, error) = await endpoint.send(TomGetSettingsMessage());
+
+      expect(error, isNotNull);
+      expect(error!.hasError, isTrue);
+      expect(error.statusCode, equals(401));
+      expect(result.roles, isEmpty);
+    });
+  });
+}
+
+/// A [BaseClient] that answers from [handler] and remembers the last request,
+/// so a test can assert what actually went onto the wire.
+class _RecordingClient extends BaseClient {
+  _RecordingClient(this.handler);
+
+  final Future<StreamedResponse> Function(BaseRequest request) handler;
+
+  BaseRequest? lastRequest;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) {
+    lastRequest = request;
+    return handler(request);
+  }
+}
+
+/// Hands a [TomServerChannel] the one [_RecordingClient] under test.
+class _RecordingClientFactory extends TomHttpClientFactory {
+  _RecordingClientFactory(this._client);
+
+  final _RecordingClient _client;
+
+  @override
+  _RecordingClient getClient() => _client;
 }
