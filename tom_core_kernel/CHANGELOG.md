@@ -129,6 +129,25 @@ anyone who was writing them.
 
 ### Changed
 
+- **The resource-key protection docs no longer show a snippet that protects
+  nothing.** `TomResourceKeyProtection.globalSettingProtectionDefault` defaults
+  to `false`, and `isProtectedFor` returns `false` before consulting any key
+  while it is off — so `tomProtect` serves the real value for every key and
+  every principal. Best Practice 5 ("Protect Sensitive Fields") and the Quick
+  Start both showed `tomProtect` calls with no mention of the switch, five
+  hundred lines from the one place it appeared; copied as written they were
+  no-ops on exactly the PII they claimed to guard. Both snippets now set the
+  switch and link to the canonical subsection, which itself now states that the
+  default is fail-*open*. Best Practice 5 additionally documents the
+  fail-*closed* consequence of turning it on: `tomProtect` reads the principal
+  from the ambient zone, so outside a request — start-up, a background isolate,
+  a test — every protected field serves its fallback, and a serializer shared
+  between a request and a job will behave differently in each. The same
+  precondition is now stated on `protect`, `isProtectedFor`, `isProtected`,
+  `tomProtect` and `tomProtected`, so it reaches IDE hover and not just the
+  prose. Documentation only — the behaviour was already correct and covered by
+  tests.
+
 - **`TomGradedAccess` now appears in the security prose, including in the
   built-in access-control table it was missing from.** The table listed nine
   controls; `access_controls.dart` ships ten. The omitted one is the only

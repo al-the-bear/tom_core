@@ -111,6 +111,11 @@ class TomResourceKeyProtection {
   /// Returns [data] if the current user has access to [resourceKey],
   /// otherwise returns [fallback].
   ///
+  /// **Requires [globalSettingProtectionDefault] to be `true`.** It defaults to
+  /// `false`, and while it is off this returns [data] for every key and every
+  /// principal — so a call added for protection protects nothing until the
+  /// switch is set.
+  ///
   /// - [data]: The actual value to return if access is granted
   /// - [fallback]: The value to return if access is denied
   /// - [resourceKey]: The key identifying the protected resource
@@ -124,6 +129,10 @@ class TomResourceKeyProtection {
   /// Returns `true` if the resource is protected (the principal lacks access),
   /// `false` if the resource is accessible. A `null` [principal] is treated as
   /// holding no keys, so a protected resource is out of its reach.
+  ///
+  /// Gated on [globalSettingProtectionDefault]: while that is `false` — its
+  /// default — this answers `false` for every key and every principal, before
+  /// any key is consulted.
   ///
   /// This is the rule itself, stated over an explicit operand. [isProtected]
   /// applies it to whoever the ambient zone names; [TomResourceKeyAccess]
@@ -147,6 +156,12 @@ class TomResourceKeyProtection {
   /// Returns `true` if the resource is protected (user lacks access),
   /// `false` if the resource is accessible.
   ///
+  /// Gated on [globalSettingProtectionDefault] exactly as [isProtectedFor] is.
+  /// Note the two ways this answers `false`: protection switched off (nothing
+  /// is protected) and the principal holding the key. Outside a request zone
+  /// there is no principal, so with protection on this answers `true` for
+  /// everything — fail-closed.
+  ///
   /// - [resourceKey]: The key identifying the resource to check
   static bool isProtected(String resourceKey) =>
       isProtectedFor(getFromCurrentZone<TomPrincipal>(), resourceKey);
@@ -158,9 +173,14 @@ class TomResourceKeyProtection {
 
 /// Convenience function to protect a value based on resource key access.
 ///
-/// This is a shorthand for [TomResourceKeyProtection.protect].
+/// This is a shorthand for [TomResourceKeyProtection.protect], and inherits its
+/// precondition: nothing is protected until
+/// [TomResourceKeyProtection.globalSettingProtectionDefault] is `true`.
 ///
 /// ```dart
+/// // Once, at start-up — otherwise the call below is a no-op.
+/// TomResourceKeyProtection.globalSettingProtectionDefault = true;
+///
 /// var visibleEmail = tomProtect(user.email, '[hidden]', 'user.email');
 /// ```
 T tomProtect<T>(T data, T fallback, String resourceKey) {
@@ -169,7 +189,10 @@ T tomProtect<T>(T data, T fallback, String resourceKey) {
 
 /// Convenience function to check if a resource is protected.
 ///
-/// This is a shorthand for [TomResourceKeyProtection.isProtected].
+/// This is a shorthand for [TomResourceKeyProtection.isProtected], and inherits
+/// its precondition: while
+/// [TomResourceKeyProtection.globalSettingProtectionDefault] is `false` — its
+/// default — this always answers `false` and the guard below always passes.
 ///
 /// ```dart
 /// if (!tomProtected('user.email')) {
@@ -201,6 +224,9 @@ bool tomProtected(String resourceKey) {
 /// - [TomEntitlementAccess]: Requires specific entitlements
 /// - [TomResourceKeyAccess]: Checks resource key protection
 /// - [TomCustomAccess]: Delegates to custom handler
+/// - [TomGradedAccess]: Composes three of the above into all four
+///   [TomAuthState] values — the only built-in that can resolve to
+///   [TomAuthState.disabled] or [TomAuthState.read]
 ///
 /// ## Two operands: the user and the deployment
 ///

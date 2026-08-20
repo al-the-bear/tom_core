@@ -118,9 +118,15 @@ void adminOnly() {
   // Only admins can access this
 }
 
-// Using resource key protection
+// Using resource key protection — the master switch is off by default,
+// so without this line tomProtect returns the real value every time.
+TomResourceKeyProtection.globalSettingProtectionDefault = true;
 var email = tomProtect(user.email, '[hidden]', 'user.email');
 ```
+
+See [Resource Key Protection](#resource-key-protection) for what the switch
+turns on, and [Protect Sensitive Fields](#5-protect-sensitive-fields) for the
+fail-closed behaviour it brings with it.
 
 ---
 
@@ -296,7 +302,8 @@ Runnable:
 Protect individual fields or resources:
 
 ```dart
-// Enable protection globally
+// Enable protection globally. This defaults to `false`, and while it is off
+// every check below reports "not protected" and every value is served as-is.
 TomResourceKeyProtection.globalSettingProtectionDefault = true;
 
 // Protect a value
@@ -307,6 +314,10 @@ if (!tomProtected('user.salary')) {
   showSalary(user.salary);
 }
 ```
+
+The master switch is the first thing to get right, because the default is
+fail-*open*: an application that never sets it can call `tomProtect` on every
+sensitive field it has and still serve all of them. Set it once at start-up.
 
 The rule lives in one place, `TomResourceKeyProtection.isProtectedFor`, and is
 reached two ways. The helpers above — `tomProtect`, `tomProtected` and
@@ -913,14 +924,30 @@ void validateAccessHandlers() {
 
 ### 5. Protect Sensitive Fields
 
-Use resource keys for PII and sensitive data:
+Use resource keys for PII and sensitive data — but **switch protection on
+first**. `TomResourceKeyProtection.globalSettingProtectionDefault` defaults to
+`false`, and while it is off `tomProtect` returns the real value for every key
+and every principal. Without its first line, the snippet below protects nothing:
 
 ```dart
+// Once, at start-up — without this, everything below is a no-op.
+TomResourceKeyProtection.globalSettingProtectionDefault = true;
+
 // In your user serialization
 'email': tomProtect(user.email, null, 'user.email'),
 'phone': tomProtect(user.phone, null, 'user.phone'),
 'salary': tomProtect(user.salary, null, 'user.salary'),
 ```
+
+Once it is on, protection is **fail-closed**: `tomProtect` resolves the
+principal from the ambient zone, and a `null` principal is treated as holding no
+keys at all. Outside a request zone — a start-up path, a background isolate, a
+test — *every* protected field therefore serves its fallback. That is the safe
+direction to fail, but it means a value that renders correctly inside a request
+comes back as `null` from a job that reuses the same serializer. Where the
+principal is already in hand, name it with
+`TomResourceKeyProtection.isProtectedFor(principal, key)` rather than reading the
+zone. See [Resource Key Protection](#resource-key-protection).
 
 Resource keys are all-or-nothing: the value is served or it is replaced. When a
 field needs a middle ground — payroll edits it, managers see it, everyone else
