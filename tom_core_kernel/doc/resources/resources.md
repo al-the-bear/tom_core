@@ -411,8 +411,11 @@ TomTextResourceProvider.notifyAppResourcesChanged();
 
 Assigning `resources` on a provider that is *not* the installed one is silent by
 design: a provider nobody reads from has not changed anything
-application-visible. This is what `TomObservableEnum` observes to keep its
-display strings current — see [`observable`](../observable/observable.md).
+application-visible.
+
+`appResourcesRevision` is what `TomObservableEnum` observes to keep its display
+strings current, so a language switch re-renders bound widgets without the
+caller rebuilding them — see [`observable`](../observable/observable.md).
 
 ## Usage Examples
 
@@ -650,4 +653,11 @@ the key is missing.
 
 This module depends on:
 
-- **JSON Module**: `getObjectFromTree` function for hierarchical key access
+- **JSON Module**: `getObjectFromTree`, the tree walk behind every dotted-path
+  lookup
+- **Observable Module**: `TomInt`, the type of `appResourcesRevision`. This is
+  the module's only outward-facing signal — it is what carries a bundle change
+  to everything derived from the bundle, so a locale switch reaches bound
+  widgets at all
+- **Little Things Module**: `TomException`, the base of `TomResourceException`
+- **`package:meta`**: `@visibleForTesting` only; no runtime behaviour
