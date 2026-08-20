@@ -208,9 +208,13 @@ void main() {
         expect(provider.exists('level1.level2.level3'), isTrue);
       });
 
-      test('should return false for empty string key', () {
+      test('should return true for an empty key the bundle contains', () {
+        // '' is a legal flat key, not a malformed one. Splitting it on '.'
+        // yields a single empty segment, which `containsKey` finds like any
+        // other, so the value resolves.
         final provider = TomTextResourceProvider.from({'': 'empty key'});
         expect(provider.exists(''), isTrue);
+        expect(provider.getText(''), equals('empty key'));
       });
 
       test('should return false for non-string value at path', () {
@@ -673,10 +677,14 @@ void main() {
         expect(provider.exists('list'), isTrue);
       });
 
-      test('should return true for null value if key exists', () {
+      test('should return false for a key present with a null value', () {
+        // `exists` is `_resolveObjectOrNull(...) != null`, and that helper
+        // returns null both for an absent key and for one holding null, so it
+        // cannot tell the two apart. See the 'shared resolution contract' group
+        // for the full behaviour and the `resources.containsKey` escape hatch.
         final provider = TomConfigResourceProvider.from({'nullable': null});
-        // Note: null values won't pass the resources[s] != null check
         expect(provider.exists('nullable'), isFalse);
+        expect(provider.resources.containsKey('nullable'), isTrue);
       });
 
       test('should return true for nested map value', () {
