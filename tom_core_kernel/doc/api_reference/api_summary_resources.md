@@ -114,6 +114,12 @@ A singleton provider for configuration values (API endpoints, feature flags,
 timeouts, and other settings). Singleton access is via `getAppConfig`; values
 are looked up by flat keys or dot-notation paths.
 
+Values are `Object`, so reading one usually means casting it. Cast
+`getObjectOrNull`, not `getText`: `getText` echoes the key back as a `String`
+when the key is absent, so `getText('api.timeout') as int` throws on exactly
+the case the lenient fallback exists to survive — and `as int?` throws with it,
+because the echoed key is a non-null `String`.
+
 #### Constructors
 
 ```dart
@@ -147,7 +153,8 @@ TomConfigResourceProvider.from(Map<String, dynamic> resources)
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `exists` | `bool exists(String s)` | Whether any value exists at path `s` (flat key or dot path). |
-| `getText` | `Object getText(String s)` | Returns the value at path `s` (any type), or the key `s` itself if not found. |
+| `getText` | `Object getText(String s)` | Returns the value at path `s` (any type), or the key `s` itself — **as a `String`** — if not found. A direct `as int` therefore throws on a miss, and so does `as int?`. |
+| `getObjectOrNull` | `Object? getObjectOrNull(String s)` | Returns the value at path `s` (any type), or `null` if not found. The accessor to cast: `getObjectOrNull('api.timeout') as int? ?? 5000`. |
 
 ## Global Functions and Constants
 

@@ -772,6 +772,68 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
+    // Casting a Config Value
+    // -------------------------------------------------------------------------
+    //
+    // `getText` returns `Object` and echoes the key back on a miss, so the
+    // direct `as int` that reads so naturally throws on exactly the case the
+    // lenient fallback exists to survive — and throws a `TypeError` that names
+    // `String` and `int` and never names the key that was missing.
+    //
+    // A nullable cast does not rescue it either: the miss value is a non-null
+    // `String`, so `as int?` throws just as hard. These tests pin both the trap
+    // and the two forms that actually work, because the documentation now
+    // teaches them.
+    group('casting a config value', () {
+      final provider = TomConfigResourceProvider.from({
+        'api': {'timeout': 30000},
+      });
+
+      test('a direct cast succeeds when the key is present', () {
+        expect(provider.getText('api.timeout') as int, equals(30000));
+      });
+
+      test('a direct cast throws when the key is absent', () {
+        expect(
+          () => provider.getText('api.retries') as int,
+          throwsA(isA<TypeError>()),
+        );
+      });
+
+      test(
+        'a nullable cast throws too — the miss value is a String, not null',
+        () {
+          // The obvious defensive move does not work, which is why the guarded
+          // forms below are the documented ones.
+          expect(
+            () => provider.getText('api.retries') as int?,
+            throwsA(isA<TypeError>()),
+          );
+        },
+      );
+
+      test('getObjectOrNull returns null on a miss, so `as int?` is safe', () {
+        expect(provider.getObjectOrNull('api.retries'), isNull);
+        expect(provider.getObjectOrNull('api.retries') as int? ?? 3, equals(3));
+      });
+
+      test('getObjectOrNull returns the value on a hit', () {
+        expect(
+          provider.getObjectOrNull('api.timeout') as int? ?? 3,
+          equals(30000),
+        );
+      });
+
+      test('guarding with exists() is the two-lookup equivalent', () {
+        int read(String key, int fallback) =>
+            provider.exists(key) ? provider.getText(key) as int : fallback;
+
+        expect(read('api.timeout', 5000), equals(30000));
+        expect(read('api.retries', 5000), equals(5000));
+      });
+    });
+
+    // -------------------------------------------------------------------------
     // resources Field Tests
     // -------------------------------------------------------------------------
     group('resources field', () {
@@ -795,9 +857,6 @@ void main() {
     });
   });
 
-  // ===========================================================================
-  // Edge Cases and Integration Tests
-  // ===========================================================================
   // ===========================================================================
   // Bootstrap Contract
   // ===========================================================================
@@ -938,6 +997,9 @@ void main() {
     });
   });
 
+  // ===========================================================================
+  // Edge Cases and Integration Tests
+  // ===========================================================================
   group('Edge Cases', () {
     group('special key names', () {
       test('should handle keys with single dot', () {

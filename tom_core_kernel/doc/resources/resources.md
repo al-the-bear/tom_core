@@ -138,16 +138,45 @@ TomConfigResourceProvider.setAppConfigProvider(
 ```dart
 final config = TomConfigResourceProvider.getAppConfig();
 
-// Retrieve typed configuration values
-String apiUrl = config.getText('api.baseUrl') as String;   // 'https://api.example.com'
-int timeout = config.getText('api.timeout') as int;        // 30000
-bool darkMode = config.getText('features.darkMode') as bool; // true
+// Retrieve typed configuration values. Cast the nullable accessor and supply a
+// default — see "Reading a typed configuration value" below for why.
+final apiUrl = config.getObjectOrNull('api.baseUrl') as String? ?? '';       // 'https://api.example.com'
+final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;       // 30000
+final darkMode = config.getObjectOrNull('features.darkMode') as bool? ?? false; // true
 
 // Check if configuration exists
 if (config.exists('features.experimental')) {
   enableExperimentalFeatures();
 }
 ```
+
+#### Reading a typed configuration value
+
+`getText` returns `Object` and, on a miss, echoes the key back **as a
+`String`**. That lenient fallback is right for text — a label renders as its key
+instead of crashing — but configuration is cast, so the miss lands on the cast:
+
+```dart
+config.getText('api.timeout') as int   // 30000 when present
+config.getText('api.retries') as int   // throws: String is not a subtype of int
+config.getText('api.retries') as int?  // throws too — the miss value is a
+                                       // non-null String, not null
+```
+
+The `TypeError` names `String` and `int` and never names the key, so it does not
+say which setting is missing. Two forms avoid it:
+
+```dart
+// Preferred: one lookup, cannot throw on absence.
+final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
+
+// Equivalent, two lookups — use when the branch does more than pick a default.
+final retries = config.exists('api.retries')
+    ? config.getText('api.retries') as int
+    : 3;
+```
+
+Cast `getText` directly only where a miss is genuinely impossible.
 
 ### 5. Easy client integration
 
@@ -167,8 +196,18 @@ extension TomResourceExtension on Object {
   bool Function(String) get configExists =>
       TomConfigResourceProvider.getAppConfig().exists;
 
-  //TODO: add method to get configuration as int, double and bool
+  /// Reads a configuration value of type [T], falling back to [orElse] when the
+  /// key is absent. Goes through `getObjectOrNull` so a miss is `null` and takes
+  /// the default, rather than the echoed key blowing up the cast.
+  T config<T>(String key, T orElse) =>
+      TomConfigResourceProvider.getAppConfig().getObjectOrNull(key) as T? ??
+      orElse;
 }
+```
+
+```dart
+final timeout = config('api.timeout', 5000);        // int
+final darkMode = config('features.darkMode', false); // bool
 ```
 
 You find this file in the UAM sample application.
@@ -235,11 +274,14 @@ A singleton provider for configuration values of any type.
 |--------|-------------|-------------|
 | `exists(key)` | `bool` | Checks if any value exists at the path |
 | `getText(key)` | `Object` | Returns the value (any type), or the **key itself** if not found |
+| `getObjectOrNull(key)` | `Object?` | Returns the value (any type), or **`null`** if not found |
 
-> **Note:** `TomConfigResourceProvider.getText` returns `Object` (callers cast,
-> e.g. `config.getText('api.timeout') as int`). The object/`OrNull` accessors
-> (`getObject`, `getObjectOrNull`, `existsObject`, `getTextOrNull`) live on
-> [`TomTextResourceProvider`](#tomtextresourceprovider), not here.
+> **Note:** both accessors return `Object`, so callers cast. Cast
+> `getObjectOrNull` with a default — `config.getObjectOrNull('api.timeout') as
+> int? ?? 5000` — not `getText`, whose echoed key is a `String` that makes the
+> cast throw. See [Reading a typed configuration value](#reading-a-typed-configuration-value).
+> The String-specific accessors (`getTextOrNull`, `existsObject`, `getObject`)
+> live on [`TomTextResourceProvider`](#tomtextresourceprovider), not here.
 
 ### Fallback: key vs. null
 
@@ -259,13 +301,16 @@ String label = resources.getText('screens.home.title');
 String? optional = resources.getTextOrNull('screens.home.subtitle');
 if (optional != null) showSubtitle(optional);
 
-// On the text provider, getObjectOrNull avoids the exists()+get double lookup.
+// getObjectOrNull avoids the exists()+get double lookup. Both providers have it.
 final retries = resources.getObjectOrNull('api.retries') as int? ?? 3;
 
-// The config provider has no OrNull accessor — guard with exists() before casting.
 final config = TomConfigResourceProvider.getAppConfig();
-final timeout = config.exists('api.timeout') ? config.getText('api.timeout') as int : 5000;
+final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
 ```
+
+On the config provider this is not merely tidier — it is the difference between
+a default and a crash, because `getText`'s echoed key is a `String` and the
+cast that follows it is not.
 
 ### Observing bundle changes
 
@@ -369,10 +414,7 @@ class LocalizationService {
 class FeatureFlags {
   static bool isEnabled(String feature) {
     final config = TomConfigResourceProvider.getAppConfig();
-    if (config.exists('features.$feature')) {
-      return config.getText('features.$feature') as bool;
-    }
-    return false;
+    return config.getObjectOrNull('features.$feature') as bool? ?? false;
   }
 }
 
@@ -441,28 +483,26 @@ String getRequiredText(String key) {
 
 ### 4. Type Safety for Configuration
 
-Cast configuration values to their expected types and handle type mismatches:
+Read configuration through one typed helper rather than casting at each call
+site — the helper is the single place the absent-key and wrong-type cases are
+decided:
 
 ```dart
 T getConfig<T>(String key, T defaultValue) {
-  final config = TomConfigResourceProvider.getAppConfig();
-  
-  if (!config.exists(key)) {
-    return defaultValue;
-  }
-  
-  final value = config.getText(key);
-  if (value is T) {
-    return value;
-  }
-  
-  return defaultValue;
+  final value = TomConfigResourceProvider.getAppConfig().getObjectOrNull(key);
+  return value is T ? value : defaultValue;
 }
 
 // Usage
 final timeout = getConfig<int>('api.timeout', 5000);
 final debugMode = getConfig<bool>('debug.enabled', false);
 ```
+
+The `is T` test rather than `as T?` because it also absorbs a *configured* value
+of the wrong type. Which of the two you want is a real choice: `as T?` lets a
+`"thirty seconds"` in the config file fail loudly at startup, while `is T`
+quietly uses the default. Prefer `as T?` for settings a broken value would make
+the application misbehave with, and `is T` for genuinely optional tuning knobs.
 
 ### 5. Avoid Reloading in Production
 

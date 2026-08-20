@@ -7,7 +7,8 @@
 /// - Creating configuration providers from maps
 /// - Using loader functions to build a provider from a computed map
 /// - Hierarchical key access with dot notation
-/// - Typed configuration values (int, bool, nested objects)
+/// - Typed configuration values (int, bool, nested objects), and why they are
+///   read through `getObjectOrNull` rather than a direct `getText` cast
 /// - Global singleton pattern
 /// - Environment-specific configuration
 library;
@@ -48,11 +49,17 @@ class ConfigResourceProviderExample {
       'simpleKey': 'simple value',
     });
 
-    // Access configuration values
-    apiBaseUrl = config.getText('api.baseUrl') as String;
-    timeout = config.getText('api.timeout') as int;
-    darkModeEnabled = config.getText('features.darkMode') as bool;
-    maxItems = config.getText('features.maxItems') as int;
+    // Access configuration values.
+    //
+    // `getObjectOrNull` rather than `getText` for the non-String values:
+    // `getText` echoes the key back as a `String` when the key is absent, so
+    // `as int` throws on a miss (and so does `as int?`). `getObjectOrNull`
+    // returns null on a miss, which `?? default` then absorbs. See example 3.
+    apiBaseUrl = config.getObjectOrNull('api.baseUrl') as String? ?? '';
+    timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
+    darkModeEnabled =
+        config.getObjectOrNull('features.darkMode') as bool? ?? false;
+    maxItems = config.getObjectOrNull('features.maxItems') as int? ?? 20;
 
     print('   - API Base URL: $apiBaseUrl');
     print('   - Timeout: $timeout ms');
@@ -115,9 +122,37 @@ class ConfigResourceProviderExample {
     final debugMessage = 'Config value: ${config.getText('debug.level')}';
     print('   - Debug message shows key: $debugMessage');
 
+    // The sharp edge of that fallback: the echoed key is a String, so casting
+    // a missing value to the type you expected throws — and a *nullable* cast
+    // throws just the same, because the echoed key is non-null.
+    final typed = TomConfigResourceProvider.from({
+      'api': {'timeout': 30000},
+    });
+    var directCastThrew = false;
+    try {
+      // ignore: unused_local_variable
+      final retries = typed.getText('api.retries') as int;
+    } on TypeError {
+      directCastThrew = true;
+    }
+    print('   - getText(...) as int on a missing key threw: $directCastThrew');
+
+    // Two ways to read a typed value without that risk. Prefer the first: one
+    // lookup, one line, and it cannot throw on an absent key.
+    final retries = typed.getObjectOrNull('api.retries') as int? ?? 3;
+    final timeoutMs = typed.exists('api.timeout')
+        ? typed.getText('api.timeout') as int
+        : 5000;
+
+    print('   - Retries (absent, defaulted): $retries');
+    print('   - Timeout (present): $timeoutMs ms');
+
     // Assertions
     assert(existingValue == 'value', 'Existing should return value');
     assert(missingValue == 'missing.key.path', 'Missing should return key');
+    assert(directCastThrew, 'A direct cast of a missing key should throw');
+    assert(retries == 3, 'Absent config should fall back to the default');
+    assert(timeoutMs == 30000, 'Present config should win over the default');
   }
 
   // --------------------------------------------------------------------------

@@ -439,9 +439,12 @@ class TomTextResourceProvider {
 ///
 /// // Access configuration throughout the app
 /// final config = TomConfigResourceProvider.getAppConfig();
-/// String apiUrl = config.getText('api.baseUrl') as String;
-/// int timeout = config.getText('api.timeout') as int;
+/// final apiUrl = config.getObjectOrNull('api.baseUrl') as String? ?? '';
+/// final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
 /// ```
+///
+/// [getObjectOrNull] rather than [getText] here because [getText] echoes the
+/// key back as a `String` on a miss, so `as int` throws — see [getText].
 ///
 /// ### Setting up with a custom provider
 ///
@@ -582,11 +585,53 @@ class TomConfigResourceProvider {
   /// Supports both flat keys (e.g., 'timeout') and hierarchical paths
   /// using dot notation (e.g., 'api.timeout').
   ///
-  /// If the configuration is not found, returns the key itself as a fallback,
-  /// which helps identify missing configuration during development.
+  /// **On a miss this returns the key itself, as a `String`** — the same
+  /// lenient fallback the text provider uses, which makes a missing key visible
+  /// rather than fatal. For configuration that has a sharp edge: the caller
+  /// wanted an `int` or a `bool`, so a direct cast throws.
+  ///
+  /// ```dart
+  /// config.getText('api.timeout') as int   // 30000 when present
+  /// config.getText('api.retries') as int   // throws: String is not int
+  /// config.getText('api.retries') as int?  // throws too — the miss value is
+  ///                                        // a non-null String, not null
+  /// ```
+  ///
+  /// The `TypeError` names `String` and `int` and never names the key, so it
+  /// tells you nothing about which setting is missing. Use [getObjectOrNull]
+  /// with a default instead — it is one lookup and it cannot throw:
+  ///
+  /// ```dart
+  /// final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
+  /// ```
+  ///
+  /// Cast [getText] directly only where a miss is genuinely impossible, or
+  /// behind an [exists] guard.
   ///
   /// [s] - The configuration key or path to retrieve.
   ///
   /// Returns the value if found (can be any type), or the key [s] if not found.
   Object getText(String s) => _resolveObjectOrNull(resources, s) ?? s;
+
+  /// Retrieves the configuration value at the given path, or `null` when it is
+  /// absent.
+  ///
+  /// The presence-reporting counterpart to [getText], mirroring
+  /// [TomTextResourceProvider.getObjectOrNull]. Prefer it whenever the value is
+  /// going to be cast: because a miss is `null` rather than the echoed key, a
+  /// nullable cast with a default expresses "use the configured value, else
+  /// this" in one lookup and one line.
+  ///
+  /// ```dart
+  /// final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
+  /// final dark = config.getObjectOrNull('features.darkMode') as bool? ?? false;
+  /// ```
+  ///
+  /// A configured value of the wrong type still throws, which is the intent —
+  /// that is a broken configuration file, not an absent setting.
+  ///
+  /// [s] - The configuration key or path to retrieve.
+  ///
+  /// Returns the value if found (can be any type), or null if not found.
+  Object? getObjectOrNull(String s) => _resolveObjectOrNull(resources, s);
 }
