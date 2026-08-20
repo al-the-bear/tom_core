@@ -848,6 +848,46 @@ void main() {
         expect(restored.clientTimeZone, equals('America/New_York'));
       });
 
+      // "Unset is null" has to hold on every path an instance can arrive by,
+      // not just the constructor — a client reads results the deserializer
+      // built, so that is the path the guarantee is actually consumed on. The
+      // populated round-trip above cannot see this: with every field set,
+      // whatever the unset default is never shows.
+      test('an unset string is still null after a round-trip', () {
+        final original = TomGetSettingsResult();
+
+        final json = tomReflectionInfo.convertToJsonString(original);
+        final mirror =
+            tomReflector.reflectType(TomGetSettingsResult) as ClassMirror;
+        final restored = tomReflectionInfo
+            .createInstanceFromJsonString<TomGetSettingsResult>(mirror, json);
+
+        expect(restored.organization, isNull);
+        expect(restored.process, isNull);
+        expect(restored.application, isNull);
+        expect(restored.country, isNull);
+        expect(restored.language, isNull);
+        expect(restored.clientCountry, isNull);
+        expect(restored.clientLanguage, isNull);
+        expect(restored.clientTimeZone, isNull);
+      });
+
+      // The counterpart: a string the server deliberately set to empty must
+      // survive as empty. Null and `""` are two answers, and the wire has to
+      // carry the difference for the distinction to mean anything.
+      test('an empty string set on purpose survives a round-trip', () {
+        final original = TomGetSettingsResult(organization: '');
+
+        final json = tomReflectionInfo.convertToJsonString(original);
+        final mirror =
+            tomReflector.reflectType(TomGetSettingsResult) as ClassMirror;
+        final restored = tomReflectionInfo
+            .createInstanceFromJsonString<TomGetSettingsResult>(mirror, json);
+
+        expect(restored.organization, isNotNull);
+        expect(restored.organization, isEmpty);
+      });
+
       test('TomGetSettingsMessage survives serialize -> deserialize', () {
         final original = TomGetSettingsMessage()
           ..authorizationToken = 'Bearer xyz123';

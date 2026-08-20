@@ -48,7 +48,7 @@ permissions to return.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `authorizationToken` | `String?` | The authorization token (typically a JWT bearer token) authenticating the settings request; if null or empty, the server may return default/anonymous settings (default `""`). |
+| `authorizationToken` | `String?` | The authorization token (typically a JWT bearer token) authenticating the settings request; if null or empty, the server may return default/anonymous settings (default `""`). This is the one string in the module that really does default to the empty string — it is a field initializer, so an unset token reads as `""` rather than `null` and the two are not distinguishable here. `TomGetSettingsResult`'s strings default to `null` instead; do not carry the convention across. |
 
 ### TomGetSettingsResult
 
@@ -79,7 +79,13 @@ TomGetSettingsResult({
 ```
 
 All collection parameters default to fresh, empty mutable collections so callers
-can mutate them in place.
+can mutate them in place. All string parameters default to `null`, and the
+fields carry no initializer either, so an unset string is `null` however the
+instance was made — including through the reflected deserialization path, which
+is how a client receives one. `null` therefore means "the server did not set
+this", distinguishably from an organization or language the server deliberately
+answered as the empty string. Consumers must null-check rather than reach for
+`.isEmpty`.
 
 #### Properties
 
@@ -91,14 +97,14 @@ can mutate them in place.
 | `roles` | `List<String>` | Roles assigned to the user (e.g. `admin`, `editor`, `viewer`). |
 | `entitlements` | `List<String>` | Fine-grained permissions for specific features or operations. |
 | `resourceKeys` | `List<String>` | Resource keys (screens, modules, data sets) the user may access. |
-| `organization` | `String?` | The organization context for this session (default `""`). |
-| `process` | `String?` | The business process/workflow context (default `""`). |
-| `application` | `String?` | The application identifier selecting the configuration to use (default `""`). |
-| `country` | `String?` | Server-determined country code for localization (default `""`). |
-| `language` | `String?` | Server-determined language code for localization (default `""`). |
-| `clientCountry` | `String?` | Client's preferred country code, ISO 3166-1 alpha-2 (default `""`). |
-| `clientLanguage` | `String?` | Client's preferred language code, ISO 639-1 (default `""`). |
-| `clientTimeZone` | `String?` | Client's IANA timezone identifier (e.g. `America/New_York`) (default `""`). |
+| `organization` | `String?` | The organization context for this session (default `null`). |
+| `process` | `String?` | The business process/workflow context (default `null`). |
+| `application` | `String?` | The application identifier selecting the configuration to use (default `null`). |
+| `country` | `String?` | Server-determined country code for localization (default `null`). |
+| `language` | `String?` | Server-determined language code for localization (default `null`). |
+| `clientCountry` | `String?` | Client's preferred country code, ISO 3166-1 alpha-2 (default `null`). |
+| `clientLanguage` | `String?` | Client's preferred language code, ISO 639-1 (default `null`). |
+| `clientTimeZone` | `String?` | Client's IANA timezone identifier (e.g. `America/New_York`) (default `null`). |
 
 ## Global Functions and Constants
 

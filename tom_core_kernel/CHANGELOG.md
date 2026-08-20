@@ -641,6 +641,17 @@ anyone who was writing them.
 
 ### Tests
 
+- **The settings result's "unset is null" contract is pinned on the
+  deserialization path, not only the constructor.** The existing round-trip
+  case set every field, so it could not observe any default at all, and the
+  null-default case only exercised the constructor — leaving the path a client
+  actually receives a result by unguarded for the guarantee the API mirror now
+  states. Two cases close it: a default-constructed result still reports all
+  eight strings `null` after a serialize/deserialize cycle, and an
+  `organization` deliberately set to `""` still comes back empty rather than
+  null, so the distinction the contract rests on is shown to survive the wire
+  in both directions.
+
 - **Every `TomAuthorizationGroup` inspection helper is pinned against a hidden
   member.** One case per helper — `members`, `memberCount`, `findMember`, and
   the `isEmpty` / `isNotEmpty` pair over an all-hidden group — each of which
@@ -950,6 +961,22 @@ anyone who was writing them.
 
 ### Documentation
 
+- **The settings API mirror no longer promises an empty-string default for
+  eight fields that default to `null`.** All eight of `TomGetSettingsResult`'s
+  context and localization strings — `organization`, `process`, `application`,
+  `country`, `language`, `clientCountry`, `clientLanguage`, `clientTimeZone` —
+  were documented as `(default "")`. Every one defaults to `null`, as the
+  declarations, the constructor dartdoc and the test suite all say. The mirror
+  had picked up the claim from the `= ""` field initializers that this release
+  removed as dead code, and those initializers never took effect either, so the
+  documented default was never the real one. This is not cosmetic: a reader who
+  trusted the mirror writes `settings.organization.isEmpty` and gets a null
+  dereference on the default path. The class-level note, which stated only the
+  collection half of the constructor's contract, now states the string half
+  too, including that `null` means "not set" as distinct from a server that
+  answered with the empty string. `TomGetSettingsMessage.authorizationToken` is
+  the one string in the module that genuinely does default to `""`; its row now
+  says so explicitly, and says not to carry the convention across.
 - **Five of the six `TomResourceKeyProtection.globalSettingUseAutomatic*`
   switches say plainly that they do nothing.** A workspace-wide sweep found a
   reader for exactly one of them — `…EndpointProtection`, consulted by
