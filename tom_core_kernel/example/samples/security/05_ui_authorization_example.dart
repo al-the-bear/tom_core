@@ -182,15 +182,29 @@ void run() {
 
   print('5. TomAuthorizer combines resource auth with a resolver:');
 
+  // TomAuthorizerStrategy is the whole difference between the two shapes: it
+  // says whether the resolver's answer is taken as given, or met with the
+  // resource state first.
+
   // fixed: ignores resource auth entirely (authorizerDecides).
   final fixed = TomAuthorizer.fixed(TomAuthState.disabled);
   final fixedResult = fixed.effectiveAuth(full);
 
-  // narrows-only: cannot widen beyond the resource state.
+  // narrows-only: cannot widen beyond the resource state. This is the default,
+  // named here to contrast with the one below.
   final narrowsOnly = TomAuthorizer(
+    strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
     resolve: (_) => TomAuthState.full, // tries to widen…
   );
   final narrowsOnlyResult = narrowsOnly.effectiveAuth(read); // …capped at read
+
+  // The same resolver under the other strategy does widen — which is why the
+  // permissive one is never the default.
+  final decides = TomAuthorizer(
+    strategy: TomAuthorizerStrategy.authorizerDecides,
+    resolve: (_) => TomAuthState.full,
+  );
+  final decidesResult = decides.effectiveAuth(read);
 
   // fromAction: full widget + no action permission → disabled.
   final fromAction = TomAuthorizer.fromAction(
@@ -200,7 +214,9 @@ void run() {
 
   print('   fixed(disabled).effectiveAuth(full): $fixedResult');
   print('   narrowsOnly tries full on read → $narrowsOnlyResult');
+  print('   authorizerDecides tries full on read → $decidesResult');
   print('   fromAction(none).effectiveAuth(full): $fromActionResult');
+  print('   default strategy: ${TomAuthorizer(resolve: (a) => a).strategy}');
   print('');
 
   // ===========================================================================
@@ -266,10 +282,17 @@ void run() {
   assert(countWithHidden == 3);
   assert(hiddenLookup == null);
 
-  // Example 5: authorizer strategies
+  // Example 5: authorizer strategies. The two strategies differ on exactly one
+  // question — may the resolver widen? — and the safe answer is the default.
   assert(fixedResult == TomAuthState.disabled);
   assert(narrowsOnlyResult == TomAuthState.read);
+  assert(decidesResult == TomAuthState.full);
   assert(fromActionResult == TomAuthState.disabled);
+  assert(
+    TomAuthorizer(resolve: (a) => a).strategy ==
+        TomAuthorizerStrategy.authorizerNarrowsOnly,
+  );
+  assert(fixed.strategy == TomAuthorizerStrategy.authorizerDecides);
 
   // Example 6: UI state controller
   assert(ownRow == TomAuthState.full);

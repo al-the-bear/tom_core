@@ -765,6 +765,65 @@ anyone who was writing them.
 
 ### Examples
 
+- **The security module's example coverage is now complete (tcinc288).** A sweep
+  of every public name declared under `lib/src/tombase/security/` against the
+  hand-written samples found 26 that no example mentioned — not the 17 the todo
+  listed, because two of its entries had since been covered by samples 07 and 08
+  and because an initial sweep that included generated `*.reflection.dart` files
+  reported a flattering 14. Three new samples and three additions close all 26.
+- **New: `09_two_factor_login_example.dart`.** The two-pass login end to end:
+  pass 1 succeeding *without* finishing (`error` empty, `requires2FA` set, no
+  authorization token — the shape a client that reads only `error` walks
+  straight past), the challenge crossing the wire through
+  `Tom2FAChallenge.toClaims`/`fromClaims`, a stale code costing an attempt,
+  the budget burning down to `isExhausted`, and the right code derived twice —
+  once as an authenticator would through `TomTotp.codeFor` and once as a
+  verifier does through `decodeBase32` + `counterFor` + `generateCode`, which is
+  the disagreement the kernel exists to prevent. It then shows the two readings
+  that must not be confused: an expired challenge, and the fail-closed fallback
+  where an unreadable `attemptsAllowed` arrives as `0` rather than the
+  constructor's `3`. The enrolment arc covers both of
+  `Tom2FAPendingEnrolment`'s stops — choosing (an offer, no mechanism, and
+  legitimately no deadline) and confirming (a mechanism, a deadline, and the
+  `otpauth://` material) — including the `'true'`-or-`true` claim reading.
+- **New: `10_oauth_contract_example.dart`.** The todo permitted leaving the OAuth
+  DTOs example-free on the grounds that the flow needs a server. The flow does;
+  the *contract* does not, and the contract is the part that can silently break.
+  The sample walks `registerTomOAuthApi` (idempotent, explicit), the three
+  endpoints resolved against a base URI, `TomPublicAccess` on all of them, and
+  the `urlParameterMapping` seam where the provider's `error_description`
+  becomes the DTO's `errorDescription` — asserting the four endpoint ids as
+  literals, because those are the strings the server restates in its
+  `@TomApiEndpointImplementation` annotations, where a rename compiles on both
+  sides and binds the handler to nothing. It ends on the point the contract
+  exists to make: `/oauth/callback` answers with `TomAuthenticationResult`
+  carrying `requires2FA`, so signing in with a provider resolves a principal and
+  does not finish a login.
+- **New: `11_access_control_definition_example.dart`.** Every other security
+  sample reads an ACI that already exists; this one builds it. It defines a
+  role that inherits a role *and* joins a group, a group that belongs to a
+  parent group, and an entitlement that includes other entitlements, then runs
+  the one fold a login runs — `completeFromDefinition` — and shows a single
+  assigned role name arriving in the token as five entitlements and three
+  resource keys, two hops and a kind away. It also pins the two behaviours the
+  fold is easy to assume wrong: an assignment naming something the definition
+  does not define is *kept* (a configuration gap must not look like a
+  revocation), and an empty definition is the identity rather than a denial.
+- **`TomGuestAccess` is now shown next to the control it is confused with.**
+  Section eight of `02_access_control_example.dart` puts it against
+  `TomAuthenticatedAccess`, since the two differ on exactly one caller, and adds
+  the case neither's documentation states: a principal with a *name* but no
+  authentication is admitted by neither, because the control tests the guest
+  username rather than the absence of a login.
+- **`TomAccessControlHandler` and `TomAuthorizerStrategy` are named where they
+  act.** The custom-access handler in `03_advanced_access_control_example.dart`
+  was an anonymous closure, so the extension point's actual type never appeared;
+  it is now a top-level function declared as a `TomAccessControlHandler`, with
+  `getHandler` shown returning the very function that was registered. In
+  `05_ui_authorization_example.dart`, the narrows-only authorizer relied on the
+  default strategy and the enum was invisible; both strategies now appear with
+  the same widening resolver, so the one question they differ on — may the
+  resolver widen? — is visible, along with which answer is the default.
 - **New: `07_resource_role_authorization_example.dart`.** The kernel's only
   shipped `TomAuthorizationAdapter` had no runnable demonstration, which is part
   of why it went undocumented for so long. The sample declares a role

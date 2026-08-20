@@ -181,7 +181,7 @@ Future<void> main() async {
     print('\n${'═' * 70}');
     print('SECURITY SAMPLES');
     print('═' * 70);
-    security.run();
+    await security.run();
     samplesRun++;
 
     // 18. Settings samples

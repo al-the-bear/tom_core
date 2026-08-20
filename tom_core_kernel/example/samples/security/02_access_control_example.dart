@@ -268,6 +268,67 @@ class MultipleRolesExample {
 }
 
 // =============================================================================
+// EXAMPLE 8: TomGuestAccess - The Pair To Example 3
+// =============================================================================
+
+/// [TomGuestAccess] and [TomAuthenticatedAccess] differ on exactly one caller:
+/// the guest. Both refuse `null`, both admit a logged-in user; only this one
+/// admits a session that has a guest identity but no authentication — the
+/// shopping cart before checkout.
+///
+/// Worth reading next to example 3 rather than in isolation, because choosing
+/// between them is the actual decision, and "public" is a third thing again:
+/// [TomPublicAccess] admits `null`, which means *no session at all*.
+class GuestAccessExample {
+  static bool? adminResult;
+  static bool? guestResult;
+  static bool? nullResult;
+  static bool? authenticatedGuestResult;
+  static bool guestAccessWorks = false;
+
+  static void example8GuestAccess() {
+    const guestAccess = TomGuestAccess();
+
+    adminResult = guestAccess.checkAccessibility(adminPrincipal);
+    guestResult = guestAccess.checkAccessibility(guestPrincipal);
+    nullResult = guestAccess.checkAccessibility(null);
+
+    // A named user whose session is not authenticated is *not* a guest — the
+    // control tests the guest username, not merely the absence of a login.
+    authenticatedGuestResult = guestAccess.checkAccessibility(
+      TomPrincipal(
+        authenticated: false,
+        user: TomUser(id: 3, username: 'half_logged_in'),
+      ),
+    );
+
+    guestAccessWorks =
+        adminResult == true &&
+        guestResult == true &&
+        nullResult == false &&
+        authenticatedGuestResult == false;
+
+    assert(adminResult == true, 'Authenticated users are admitted too');
+    assert(
+      guestResult == true,
+      'The guest session is the point of the control',
+    );
+    assert(nullResult == false, 'No session at all is still refused');
+    assert(
+      authenticatedGuestResult == false,
+      'A named but unauthenticated principal is neither guest nor user',
+    );
+    assert(guestPrincipal.username == TomUser.guestUsername);
+    // The one caller the two controls disagree about.
+    assert(
+      const TomAuthenticatedAccess().checkAccessibility(guestPrincipal) ==
+          false,
+    );
+    assert(guestAccessWorks, 'Guest access should work');
+  }
+}
+
+// =============================================================================
 // RUN ALL EXAMPLES
 // =============================================================================
 
@@ -279,6 +340,7 @@ void run() {
   GroupAccessExample.example5GroupAccess();
   EntitlementAccessExample.example6EntitlementAccess();
   MultipleRolesExample.example7MultipleRoles();
+  GuestAccessExample.example8GuestAccess();
 }
 
 void main() {

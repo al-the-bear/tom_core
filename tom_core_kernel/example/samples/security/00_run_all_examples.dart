@@ -21,16 +21,19 @@ import '05_ui_authorization_example.dart' as ui_authorization;
 import '06_graded_access_example.dart' as graded_access;
 import '07_resource_role_authorization_example.dart' as resource_roles;
 import '08_server_principal_meet_example.dart' as server_principal_meet;
+import '09_two_factor_login_example.dart' as two_factor_login;
+import '10_oauth_contract_example.dart' as oauth_contract;
+import '11_access_control_definition_example.dart' as acl_definition;
 
 /// Standalone entry point for running security examples.
-void main() {
+Future<void> main() async {
   bootstrapSamples();
-  run();
+  await run();
 }
 
 /// Run all security examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
-void run() {
+Future<void> run() async {
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║              Tom Security System Samples                         ║');
   print(
@@ -45,6 +48,9 @@ void run() {
   graded_access.run();
   resource_roles.run();
   server_principal_meet.run();
+  two_factor_login.run();
+  await oauth_contract.run();
+  acl_definition.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║                    All Samples Complete!                         ║');

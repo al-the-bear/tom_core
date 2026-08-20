@@ -266,6 +266,20 @@ class ResourceKeyProtectionExample {
 // Example Class: TomCustomAccess
 // ============================================================================
 
+/// A [TomAccessControlHandler]: does this principal own this document?
+///
+/// A top-level function rather than a closure so it can be named by its type
+/// below — the point being that the extension point is an ordinary function
+/// signature, not a class to subclass.
+bool _isDocumentOwner(TomPrincipal? principal, String docId) {
+  if (principal == null) return false;
+  // Simulate ownership check - user 1 owns document 123
+  if (principal.id == 1 && docId == '123') return true;
+  // User 2 owns document 456
+  if (principal.id == 2 && docId == '456') return true;
+  return false;
+}
+
 class CustomAccessExample {
   static bool? documentOwnerAccess;
   static bool? documentNonOwnerAccess;
@@ -275,16 +289,15 @@ class CustomAccessExample {
   static void example7RegisterHandler() {
     print('\n7. Registering custom access handler:');
 
+    // The handler's shape is TomAccessControlHandler — the whole extension
+    // point of the custom control, and deliberately narrow: a principal, a
+    // resource id, a boolean. It is not graded and it is not async, so a check
+    // that needs a database round trip belongs behind a cache, not here.
+    const TomAccessControlHandler isDocumentOwner = _isDocumentOwner;
+
     // Register a custom handler for document ownership checks
     if (!TomCustomAccess.handlerExists('isDocumentOwner')) {
-      TomCustomAccess.registerHandler('isDocumentOwner', (principal, docId) {
-        if (principal == null) return false;
-        // Simulate ownership check - user 1 owns document 123
-        if (principal.id == 1 && docId == '123') return true;
-        // User 2 owns document 456
-        if (principal.id == 2 && docId == '456') return true;
-        return false;
-      });
+      TomCustomAccess.registerHandler('isDocumentOwner', isDocumentOwner);
     }
 
     handlerRegistered = TomCustomAccess.handlerExists('isDocumentOwner');
@@ -292,6 +305,12 @@ class CustomAccessExample {
 
     // Assertions
     assert(handlerRegistered, 'Handler should be registered');
+    // The registry hands back the very function that was registered, so a
+    // handler can be shared between a control and a direct call.
+    assert(
+      identical(TomCustomAccess.getHandler('isDocumentOwner'), isDocumentOwner),
+    );
+    assert(isDocumentOwner(null, '123') == false);
   }
 
   static void example8UseCustomHandler() {
