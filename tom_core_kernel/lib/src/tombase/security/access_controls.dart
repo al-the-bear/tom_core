@@ -64,6 +64,12 @@ import 'user_principal_aci.dart';
 /// - [globalSettingUseAutomaticActionProtection]: Auto-protect actions
 /// - [globalSettingUseAutomaticActionProtectionForDisabling]: Auto-disable action triggers like buttons
 ///
+/// Of the six automatic switches, **only
+/// [globalSettingUseAutomaticEndpointProtection] currently does anything** —
+/// the server's endpoint pipeline consults it. The other five are declared and
+/// documented but read by nothing, so setting one to `true` has no effect. Each
+/// says so on its own declaration; do not rely on one until it does.
+///
 /// ## Example
 ///
 /// ```dart
@@ -84,26 +90,45 @@ class TomResourceKeyProtection {
   /// access is evaluated based on the current principal's resource keys.
   static bool globalSettingProtectionDefault = false;
 
-  // TODO: check that these three parts are implemented
+  // TODO: five of the six switches below have no reader anywhere. Decide per
+  // switch whether to implement the tier or delete the flag — a `bool` that
+  // reads like a control and performs nothing is worse than an absent one.
+
   /// When enabled, API endpoints are automatically protected based on metadata.
+  ///
+  /// The one automatic switch that is honoured: `tom_core_server`'s endpoint
+  /// pipeline consults it when the ordinary access check has already refused.
   static bool globalSettingUseAutomaticEndpointProtection = false;
 
   /// When enabled, JSON serialization automatically respects resource protection.
+  ///
+  /// **Not implemented.** Nothing reads this flag; the `json` module does not
+  /// reference resource-key protection at all.
   static bool globalSettingUseAutomaticJsonProtection = false;
 
   /// When enabled, database queries automatically filter protected resources.
+  ///
+  /// **Not implemented.** Nothing reads this flag; `object_persistence` does
+  /// not reference resource-key protection at all.
   static bool globalSettingUseAutomaticDatabaseProtection = false;
 
   /// When enabled, form fields are automatically protected based on their
   /// resource keys.
+  ///
+  /// **Not implemented.** Nothing reads this flag. Form fields resolve their
+  /// visibility from [TomAuthState] instead — see `tom_flutter_ui`'s forms.
   static bool globalSettingUseAutomaticFormFieldProtection = false;
 
   /// When enabled, actions are automatically protected based on their resource
   /// keys.
+  ///
+  /// **Not implemented.** Nothing reads this flag.
   static bool globalSettingUseAutomaticActionProtection = false;
 
   /// When enabled, a protected action that the principal may not trigger is
   /// automatically disabled rather than hidden.
+  ///
+  /// **Not implemented.** Nothing reads this flag.
   static bool globalSettingUseAutomaticActionProtectionForDisabling = false;
 
   /// Protects a value based on resource key access.

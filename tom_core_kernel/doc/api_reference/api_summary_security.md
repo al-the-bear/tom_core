@@ -707,12 +707,12 @@ principal the current request installed. Every one of them is gated on
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `globalSettingProtectionDefault` | `bool` | Master switch for resource protection. **Defaults to `false`**, and while it is off every method below short-circuits to "accessible" — a protection call added to the code protects nothing until this is set. |
-| `globalSettingUseAutomaticEndpointProtection` | `bool` | When enabled, API endpoints are automatically protected based on metadata. Defaults to `false`. |
-| `globalSettingUseAutomaticJsonProtection` | `bool` | When enabled, JSON serialization automatically respects resource protection. Defaults to `false`. |
-| `globalSettingUseAutomaticDatabaseProtection` | `bool` | When enabled, database queries automatically filter protected resources. Defaults to `false`. |
-| `globalSettingUseAutomaticFormFieldProtection` | `bool` | When enabled, form fields are automatically protected based on their resource keys. Defaults to `false`. |
-| `globalSettingUseAutomaticActionProtection` | `bool` | When enabled, actions are automatically protected based on their resource keys. Defaults to `false`. |
-| `globalSettingUseAutomaticActionProtectionForDisabling` | `bool` | When enabled, a protected action is automatically disabled rather than hidden. Defaults to `false`. |
+| `globalSettingUseAutomaticEndpointProtection` | `bool` | When enabled, API endpoints are automatically protected based on metadata. Defaults to `false`. The one automatic switch that is honoured — `tom_core_server`'s endpoint pipeline consults it. |
+| `globalSettingUseAutomaticJsonProtection` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag, and the `json` module does not reference resource-key protection at all. |
+| `globalSettingUseAutomaticDatabaseProtection` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag, and `object_persistence` does not reference resource-key protection at all. |
+| `globalSettingUseAutomaticFormFieldProtection` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag; form fields resolve visibility from `TomAuthState`. |
+| `globalSettingUseAutomaticActionProtection` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag. |
+| `globalSettingUseAutomaticActionProtectionForDisabling` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag. |
 
 #### Static Methods
 

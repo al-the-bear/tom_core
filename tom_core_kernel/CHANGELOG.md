@@ -916,6 +916,18 @@ anyone who was writing them.
 
 ### Documentation
 
+- **Five of the six `TomResourceKeyProtection.globalSettingUseAutomatic*`
+  switches say plainly that they do nothing.** A workspace-wide sweep found a
+  reader for exactly one of them — `…EndpointProtection`, consulted by
+  `tom_core_server`'s endpoint pipeline. The JSON, database, form-field, action
+  and action-for-disabling switches are declared and documented but read
+  nowhere, so setting one to `true` has no effect. Their dartdoc previously
+  described the filtering they would perform, which reads like a control that is
+  on; each now leads with **Not implemented** and says what does the job
+  instead, and the class-level list carries the same warning. The API mirror
+  rows were corrected to match. Whether each tier gets implemented or each flag
+  gets deleted is a separate decision, and the `TODO:` above the block now
+  states that question instead of asking whether the check was ever done.
 - **`doc/security/security.md` names the five public types it never mentioned.**
   Key Concepts introduced "User" and "CLI (Client Limits Information)" by
   concept, so a reader who went looking for either class had nothing to search
