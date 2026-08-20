@@ -26,7 +26,7 @@ void main() {
     print(TomScope.current.id); // checkout
 
     TomScope.withScope('row-1', () {
-      // The root 'default' scope is elided; segments join with '.'.
+      // The root scope is elided; segments join with '.'.
       print(TomScope.buildScopePath(TomScope.current)); // checkout.row-1
     });
   });

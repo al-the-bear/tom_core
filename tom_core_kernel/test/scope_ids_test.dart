@@ -17,7 +17,7 @@ void main() {
         expect(TomScope.defaultScope.parent, isNull);
       });
 
-      test('defaultScope path is empty (default segment is skipped)', () {
+      test('defaultScope has an empty path (the sentinel adds no segment)', () {
         expect(TomScope.defaultScope.getScopePath(), isEmpty);
       });
     });
@@ -91,7 +91,7 @@ void main() {
     });
 
     group('buildScopePath', () {
-      test('skips the default scope segment', () {
+      test('elides the root sentinel from a chain rooted at it', () {
         final scope = TomScopeBase(
           scopeId: 'app',
           parentScope: TomScope.defaultScope,

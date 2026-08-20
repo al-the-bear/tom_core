@@ -7,6 +7,7 @@
 /// - Nesting scopes and reading the dotted path via `getScopePath()`
 /// - Building scope paths directly with [TomScope.buildScopePath]
 /// - Running a body inside an explicit scope with `runInScope`
+/// - Why the root is elided from a path by *identity* and not by its id
 ///
 /// Scopes are carried on the current [Zone], so `TomScope.current` always
 /// resolves to whichever scope was installed by the nearest enclosing
@@ -31,7 +32,10 @@ void run() {
   final currentIsDefault = identical(TomScope.current, TomScope.defaultScope);
 
   print('   defaultScope.id: $defaultId');
-  print('   defaultScope.getScopePath(): "$defaultPath" (empty — skipped)');
+  print(
+    '   defaultScope.getScopePath(): "$defaultPath" (the sentinel adds no '
+    'segment)',
+  );
   print('   current == defaultScope: $currentIsDefault');
   print('');
 
@@ -123,6 +127,32 @@ void run() {
   print('');
 
   // ===========================================================================
+  // Example 7: The root is elided by identity, not by name
+  // ===========================================================================
+
+  print('7. A domain scope whose id happens to be "default":');
+
+  // An ordinary scope that merely shares the sentinel's id. Only
+  // `TomScope.defaultScope` itself is dropped from a path, so this one stays.
+  final appRoot = TomScopeBase(scopeId: 'app', parentScope: null);
+  final namedDefault = TomScopeBase(scopeId: 'default', parentScope: appRoot);
+  final namedDefaultPath = namedDefault.getScopePath();
+
+  // The same id again, this time parented directly to the real sentinel: the
+  // sentinel contributes nothing, the same-named domain scope still does.
+  final underSentinel = TomScopeBase(
+    scopeId: 'default',
+    parentScope: TomScope.defaultScope,
+  );
+  final underSentinelPath = underSentinel.getScopePath();
+  final namedIsSentinel = identical(namedDefault, TomScope.defaultScope);
+
+  print('   "app" > "default" path: "$namedDefaultPath"');
+  print('   defaultScope > "default" path: "$underSentinelPath"');
+  print('   is that scope the sentinel? $namedIsSentinel');
+  print('');
+
+  // ===========================================================================
   // Assertions
   // ===========================================================================
 
@@ -149,6 +179,19 @@ void run() {
   // Example 6: runInScope
   assert(insideIsWidget);
   assert(afterRunPath.isEmpty);
+
+  // Example 7: elision is by identity, not by id. An implementation that
+  // matched the string 'default' would produce 'app' and '' here — deleting a
+  // real segment, and collapsing two distinct scopes onto one lookup prefix.
+  assert(!namedIsSentinel, 'sharing the sentinel id does not make it the root');
+  assert(
+    namedDefaultPath == 'app.default',
+    'a non-root scope named "default" keeps its segment',
+  );
+  assert(
+    underSentinelPath == 'default',
+    'only the sentinel itself is elided, even when its child shares its id',
+  );
 }
 
 /// Standalone entry point.

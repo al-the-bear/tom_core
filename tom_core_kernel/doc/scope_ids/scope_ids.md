@@ -67,7 +67,7 @@ The abstract contract for a scope.
 | `static final TomScope defaultScope` | The root scope used when none is installed. `final`, so it cannot be swapped out at runtime — see below |
 | `static TomScope get current` | The scope installed on the current zone, or `defaultScope` |
 | `static T withScope(String, T Function())` | Runs a body in a new child scope named for the string |
-| `static String buildScopePath(TomScope)` | Dot-joins a scope's chain, skipping `default` |
+| `static String buildScopePath(TomScope)` | Dot-joins a scope's chain, eliding the root sentinel — by identity, not by id |
 | `String getScopePath()` | This scope's full path as a dot-separated string |
 | `T runInScope(T Function())` | Runs a body with this scope installed on the zone |
 
@@ -123,16 +123,32 @@ signature.
 ## Scope Paths
 
 `buildScopePath` walks from a scope up to the root, collecting each `id` and
-**skipping the `default` root**, then joins the segments with `.` in
-root-to-leaf order:
+**eliding the root sentinel**, then joins the segments with `.` in root-to-leaf
+order:
 
 ```dart
-// default ← "app" ← "checkout" ← "orderForm"
+// defaultScope ← "app" ← "checkout" ← "orderForm"
 //   produces "app.checkout.orderForm"
 ```
 
-An empty path (only the default scope) yields `''`, which lets consumers treat
+An empty path (only the root sentinel) yields `''`, which lets consumers treat
 "no scope" as an empty prefix.
+
+**The elision is by identity, not by name.** Only `TomScope.defaultScope`
+itself — compared with `identical` — is dropped from the walk. A domain scope
+whose local id happens to be `default` is an ordinary scope and keeps its
+segment:
+
+```dart
+final root = TomScopeBase(scopeId: 'app', parentScope: null);
+final named = TomScopeBase(scopeId: 'default', parentScope: root);
+
+print(named.getScopePath()); // app.default — not "app"
+```
+
+Matching on the id string instead would delete that segment silently, and
+collapse two genuinely distinct scopes onto one path. That is why the rule is
+written as an identity check rather than a name comparison.
 
 ## Crossing Zone Boundaries
 
