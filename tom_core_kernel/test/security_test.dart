@@ -3409,6 +3409,25 @@ void main() {
         () => TomTotp.counterFor(period: Duration.zero),
         throwsA(isA<ArgumentError>()),
       );
+      // The bound is one whole second, not "positive": the step is
+      // `period.inSeconds`, which truncates, so a sub-second period is a
+      // positive duration that would still divide by zero.
+      expect(
+        () => TomTotp.counterFor(period: const Duration(milliseconds: 500)),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => TomTotp.counterFor(period: const Duration(seconds: -30)),
+        throwsA(isA<ArgumentError>()),
+      );
+      // One second is accepted — the boundary is inclusive.
+      expect(
+        TomTotp.counterFor(
+          at: DateTime.utc(1970, 1, 1, 0, 0, 42),
+          period: const Duration(seconds: 1),
+        ),
+        equals(42),
+      );
     });
 
     test('codeFor derives the code for an instant from the base32 secret', () {

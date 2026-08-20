@@ -596,13 +596,18 @@ class TomTotp {
   /// Centralised because the counter is where the two sides of a TOTP exchange
   /// most easily drift apart: it is UTC seconds — not milliseconds, not local
   /// time — divided by the step.
+  ///
+  /// Throws [ArgumentError] unless [period] is at least one second. The step is
+  /// taken as `period.inSeconds`, which truncates, so a sub-second period is
+  /// rejected as well as a zero or negative one — it is a positive duration
+  /// that would still divide by zero.
   static int counterFor({DateTime? at, Duration period = defaultPeriod}) {
     final step = period.inSeconds;
     if (step <= 0) {
       throw ArgumentError.value(
         period,
         'period',
-        'must be a positive duration',
+        'must be at least one second',
       );
     }
     final seconds =

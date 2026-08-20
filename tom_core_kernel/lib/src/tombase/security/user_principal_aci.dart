@@ -850,16 +850,21 @@ class TomPrincipal {
   /// The process identifier within the application.
   String? process;
 
-  /// The organization's database ID.
+  /// The organization's database ID, or `-1` when unset.
+  ///
+  /// These four ids are non-nullable and carry `-1` as their "unset" value,
+  /// where their string counterparts above ([organization], [application],
+  /// [process]) are nullable and use `null`. Test for `-1`, not for `0` and
+  /// not for null.
   int organizationId = -1;
 
-  /// The application's database ID.
+  /// The application's database ID, or `-1` when unset.
   int applicationId = -1;
 
-  /// The process's database ID.
+  /// The process's database ID, or `-1` when unset.
   int processId = -1;
 
-  /// The client's database ID.
+  /// The client's database ID, or `-1` when unset.
   int clientId = -1;
 
   /// Application/server language (ISO 639-1 code).

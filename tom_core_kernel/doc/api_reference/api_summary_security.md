@@ -477,10 +477,10 @@ TomPrincipal({
 | `organization` | `String?` | The organization identifier for multi-tenant systems. |
 | `application` | `String?` | The application identifier for multi-application deployments. |
 | `process` | `String?` | The process identifier within the application. |
-| `organizationId` | `int` | The organization's database ID. |
-| `applicationId` | `int` | The application's database ID. |
-| `processId` | `int` | The process's database ID. |
-| `clientId` | `int` | The client's database ID. |
+| `organizationId` | `int` | The organization's database ID. Defaults to `-1`, the "unset" value. These four ids are non-nullable where their string counterparts ([organization], [application], [process]) are nullable, so test for `-1` — not for `0`, and not for null. |
+| `applicationId` | `int` | The application's database ID. Defaults to `-1` when unset. |
+| `processId` | `int` | The process's database ID. Defaults to `-1` when unset. |
+| `clientId` | `int` | The client's database ID. Defaults to `-1` when unset. |
 | `language` | `String?` | Application/server language (ISO 639-1). |
 | `country` | `String?` | Application/server country (ISO 3166-1 alpha-2). |
 | `timezone` | `String?` | Application/server timezone identifier. |
@@ -707,12 +707,12 @@ principal the current request installed. Every one of them is gated on
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `globalSettingProtectionDefault` | `bool` | Master switch for resource protection. **Defaults to `false`**, and while it is off every method below short-circuits to "accessible" — a protection call added to the code protects nothing until this is set. |
-| `globalSettingUseAutomaticEndpointProtection` | `bool` | When enabled, API endpoints are automatically protected based on metadata. |
-| `globalSettingUseAutomaticJsonProtection` | `bool` | When enabled, JSON serialization automatically respects resource protection. |
-| `globalSettingUseAutomaticDatabaseProtection` | `bool` | When enabled, database queries automatically filter protected resources. |
-| `globalSettingUseAutomaticFormFieldProtection` | `bool` | When enabled, form fields are automatically protected based on their resource keys. |
-| `globalSettingUseAutomaticActionProtection` | `bool` | When enabled, actions are automatically protected based on their resource keys. |
-| `globalSettingUseAutomaticActionProtectionForDisabling` | `bool` | When enabled, a protected action is automatically disabled rather than hidden. |
+| `globalSettingUseAutomaticEndpointProtection` | `bool` | When enabled, API endpoints are automatically protected based on metadata. Defaults to `false`. |
+| `globalSettingUseAutomaticJsonProtection` | `bool` | When enabled, JSON serialization automatically respects resource protection. Defaults to `false`. |
+| `globalSettingUseAutomaticDatabaseProtection` | `bool` | When enabled, database queries automatically filter protected resources. Defaults to `false`. |
+| `globalSettingUseAutomaticFormFieldProtection` | `bool` | When enabled, form fields are automatically protected based on their resource keys. Defaults to `false`. |
+| `globalSettingUseAutomaticActionProtection` | `bool` | When enabled, actions are automatically protected based on their resource keys. Defaults to `false`. |
+| `globalSettingUseAutomaticActionProtectionForDisabling` | `bool` | When enabled, a protected action is automatically disabled rather than hidden. Defaults to `false`. |
 
 #### Static Methods
 
@@ -1031,9 +1031,9 @@ TomAuthenticationMessage()
 | `application` | `String` | The application identifier for multi-application deployments. |
 | `process` | `String` | The process identifier within the application. |
 | `organization` | `String` | The organization identifier for multi-tenant deployments. |
-| `clientLanguage` | `String` | The client's preferred language (ISO 639-1). |
-| `clientCountry` | `String` | The client's country (ISO 3166-1 alpha-2). |
-| `clientTimezone` | `String` | The client's timezone identifier. |
+| `clientLanguage` | `String` | The client's preferred language (ISO 639-1). Defaults to `"en"`. |
+| `clientCountry` | `String` | The client's country (ISO 3166-1 alpha-2). Defaults to `"XX"`, the "no country" code — not the empty string, so a country is always syntactically present. |
+| `clientTimezone` | `String` | The client's timezone identifier — what the *device* is set to, never a stored preference (that is server-side, applied after login). Defaults to `"utc"`. |
 
 ### TomAuthenticationResult
 
@@ -1076,7 +1076,7 @@ TomBearerAuthentication()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `bearerAuthentication` | `TomBearerAuthentication` | Global singleton instance for bearer authentication. |
+| `bearerAuthentication` | `TomBearerAuthentication` | Global singleton instance for bearer authentication. **Not `final`** — publicly assignable, and deliberately so: every static accessor below reads through it, so assigning a fresh instance swaps the whole cached authentication state at once. This is the isolation seam tests use in `setUp`/`tearDown`. |
 | `token` | `String?` | *(getter)* The current authentication token string. |
 | `authorizationToken` | `String?` | *(getter)* The current authorization token string. |
 | `clientJwtToken` | `TomClientJwtToken?` | *(getter)* The parsed authentication JWT token. |
@@ -1162,6 +1162,7 @@ Tom2FAChallenge({
 | `isExpired([DateTime? now])` | `bool` | Whether the challenge has passed [expiresAt] (defaults to the current instant). `now` may be in either zone — the comparison is between instants, not wall clocks. |
 | `withConsumedAttempt()` | `Tom2FAChallenge` | A copy with [attempt] advanced by one. |
 | `toClaims()` | `Map<String, Object?>` | The public-claim map, keyed by [Tom2FAClaims]. |
+| `toString()` | `String` | *(override)* Type, hint, attempt budget and expiry, for logs. Carries no secret — [hint] is already the masked form. |
 
 #### Static Methods
 
@@ -1268,6 +1269,7 @@ Tom2FAPendingEnrolment({
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `isExpired([DateTime? now])` | `bool` | Whether the offer has lapsed as of `now` (defaults to the current instant; either zone will do, the comparison is between instants). **Always false while choosing** — there is no generated material to go stale, so a chooser left open is a UX question, not a security one. |
+| `toString()` | `String` | *(override)* Attempt budget, skippability and expiry, for logs; renders the chosen mechanism once [hasOffer], and the offered list while still choosing. Carries no enrolment secret. |
 
 #### Static Methods
 
@@ -1368,7 +1370,7 @@ agree on it exactly.
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `counterFor({DateTime? at, Duration period = defaultPeriod})` | `int` | The time-step counter for an instant: seconds since the epoch divided by the period. |
+| `counterFor({DateTime? at, Duration period = defaultPeriod})` | `int` | The time-step counter for an instant: UTC seconds since the epoch divided by the period. `at` defaults to now. Throws [ArgumentError] unless `period` is at least one second — the step is `period.inSeconds`, which truncates, so a sub-second period is rejected too. |
 | `generateCode(List<int> key, int counter, [int digits = defaultDigits])` | `String` | The HOTP code for a raw key and counter, zero-padded to `digits`. |
 | `codeFor(String secret, {DateTime? at, int digits = defaultDigits, Duration period = defaultPeriod})` | `String` | The TOTP code for a base32 secret at an instant. Returns an empty string for an undecodable secret, so a bad secret matches nothing rather than throwing into a UI. |
 | `decodeBase32(String secret)` | `List<int>` | Decodes an RFC 4648 base32 secret to bytes; case-insensitive, ignoring spaces, `-` and `=`. Returns an empty list for an out-of-alphabet character. |
@@ -1493,9 +1495,15 @@ TomOAuthAuthorizationRequest({
 | `application` | `String` | The application the login is for. |
 | `process` | `String` | The process the login is for. |
 | `organization` | `String` | The organization the login is for. |
-| `clientLanguage` | `String` | The client's language code. |
-| `clientCountry` | `String` | The client's country code. |
-| `clientTimezone` | `String` | The client's IANA timezone name. |
+| `clientLanguage` | `String` | The client's language code. Defaults to `''`, **not** to the `"en"` its namesake [TomAuthenticationMessage.clientLanguage] uses. |
+| `clientCountry` | `String` | The client's country code. Defaults to `''`, not to `"XX"`. |
+| `clientTimezone` | `String` | The client's IANA timezone name. Defaults to `''`, not to `"utc"`. |
+
+These three carry the same names as their [TomAuthenticationMessage]
+counterparts but not the same defaults: the password path starts from
+`"en"`/`"XX"`/`"utc"`, the OAuth path from the empty string. A caller that
+leaves them unset therefore produces a different client context depending on
+which login it used.
 
 Note what is **absent**: a redirect URI. Where the provider sends the user back
 is server configuration, because a redirect target a caller may choose is an

@@ -140,6 +140,35 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomTotp.counterFor` says what it actually requires of `period`.** The
+  `ArgumentError` read `must be a positive duration`, but the guard is
+  `period.inSeconds <= 0` and `inSeconds` truncates — so a 500 ms period *is* a
+  positive duration and is still rejected. The message now says `must be at
+  least one second`, the dartdoc explains why truncation makes the two
+  different, and the test pins the sub-second and negative cases alongside the
+  zero one it already covered, plus the inclusive one-second boundary.
+
+- **`bearerAuthentication` is documented as the injection seam it is.** Source
+  and mirror both called it a "global singleton instance" and stopped there.
+  It is not `final`: every static accessor on `TomBearerAuthentication` reads
+  through it, so assigning a fresh instance swaps the whole cached client-side
+  auth state at once — which is exactly what a dozen test files do in
+  `setUp`/`tearDown` to keep one test's login out of the next. A reader who
+  took "singleton" to mean read-only would not have found it.
+
+- **Mirror rows state the defaults a reader cannot guess.** The six remaining
+  `globalSetting*` switches (`false`), `clientLanguage`/`clientCountry`/
+  `clientTimezone` (`"en"`/`"XX"`/`"utc"` — the last two being values nobody
+  would infer), and the four `TomPrincipal` database ids, whose unset value is
+  `-1` while their string counterparts are nullable. Defaults that *are*
+  guessable — an empty string on a DTO field, a `false` on a boolean flag —
+  are deliberately left unstated; spelling them out on thirty rows would bury
+  the handful that carry information.
+
+- **The mirror documents `Tom2FAChallenge.toString()` and
+  `Tom2FAPendingEnrolment.toString()`**, which it does for nearly every other
+  class, noting in both cases that the rendering carries no secret.
+
 - **The mirror's `TomResourceKeyProtection` section states the master switch and
   gains the missing `isProtectedFor` row.** The `isProtected` row described only
   the key lookup — "whether the resource is protected from the current
