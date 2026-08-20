@@ -329,6 +329,13 @@ anyone who was writing them.
 
 ### Tests
 
+- **The fail-closed attempt budget is pinned on both 2FA readers.** One case per
+  class asserts that a payload whose `attemptsAllowed` is missing (or the wrong
+  shape) still yields a *non-null* challenge / offer, but one that is already
+  `isExhausted`. Written as a pair deliberately: whichever of the two siblings
+  someone edits, the other's test still states the rule. Verified to bite by
+  temporarily changing the fallback to the constructor's `3` — both fail with
+  `Expected: <0> Actual: <3>`.
 - **`TomClientLimitsInformation` has the immutability group its sibling always
   had.** Four new cases: unmodifiable `enabledModules`, unmodifiable `quotas`, a
   case asserting that an empty instance and a populated one refuse writes the
@@ -500,6 +507,16 @@ anyone who was writing them.
 
 ### Documentation
 
+- `Tom2FAChallenge.fromClaims` no longer promises it "never returns a
+  half-built challenge". It does return one, on purpose: an unreadable
+  `attemptsAllowed` claim falls back to `0` rather than to the constructor's
+  `3`, so the challenge arrives already `isExhausted` and a malformed token
+  cannot mint attempts. The dartdoc now says so and says why, and
+  `Tom2FAPendingEnrolment.fromClaims` — which has always behaved identically —
+  states the same rule instead of leaving it to the API mirror alone. The two
+  mirror rows in `doc/api_reference/api_summary_security.md` were brought into
+  line with each other. Behaviour is unchanged; the rule is now pinned by a
+  test in each class, so the docs and the fallback can no longer drift apart.
 - `doc/scope_ids/scope_ids.md` gains an *Ids may not contain the separator*
   section under Scope Paths, showing the two chains that used to render
   identically and why the path being an authorization prefix makes that a

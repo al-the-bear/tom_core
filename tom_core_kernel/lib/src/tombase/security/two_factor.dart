@@ -315,10 +315,19 @@ class Tom2FAChallenge {
   /// when the payload carries none.
   ///
   /// Tokens arrive from outside the process, so every claim is read
-  /// defensively: a payload that says it requires 2FA but carries an unusable
-  /// mechanism or expiry yields `null` rather than a half-built challenge — the
-  /// caller then treats the token as simply not answerable, which is the safe
-  /// reading.
+  /// defensively. A payload that says it requires 2FA but carries an unusable
+  /// mechanism or expiry yields `null` — the caller then treats the token as
+  /// simply not answerable, which is the safe reading.
+  ///
+  /// The remaining claims fall back instead of rejecting, and all but one fall
+  /// back to what the constructor would have chosen anyway ([hint] to `''`,
+  /// [attempt] to `0`). [attemptsAllowed] is the exception: it falls back to
+  /// `0`, *not* to the constructor's `3`, so a challenge whose budget is
+  /// unreadable arrives already [isExhausted]. That is deliberate and
+  /// fail-closed — a malformed token must not be able to mint attempts. Being
+  /// sent back to pass 1 on a challenge that was in fact answerable is a
+  /// recoverable annoyance; handing three free guesses to whoever shaped the
+  /// payload is not. [Tom2FAPendingEnrolment.fromClaims] does the same.
   static Tom2FAChallenge? fromClaims(Map<String, dynamic>? payload) {
     if (payload == null) return null;
     if (payload[Tom2FAClaims.requires2FA] != 'true') return null;
@@ -477,6 +486,11 @@ class Tom2FAPendingEnrolment {
   /// deadline is what stops a generated secret being confirmable forever, so a
   /// panel that could not tell the user when the offer lapses must not be
   /// rendered at all.
+  ///
+  /// [attemptsAllowed] falls back to `0` rather than to the constructor's `3`,
+  /// so an offer whose budget is unreadable arrives already [isExhausted] —
+  /// the same fail-closed rule [Tom2FAChallenge.fromClaims] applies, for the
+  /// same reason.
   static Tom2FAPendingEnrolment? fromClaims(Map<String, dynamic>? payload) {
     if (payload == null) return null;
     if (payload[Tom2FAEnrolmentClaims.pendingEnrolment] != 'true') return null;

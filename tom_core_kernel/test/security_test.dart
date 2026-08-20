@@ -2641,6 +2641,46 @@ void main() {
         );
       });
 
+      // The one claim whose fallback deliberately disagrees with the
+      // constructor's default. `hint` and `attempt` fall back to what the
+      // constructor would have chosen anyway; `attemptsAllowed` falls back to
+      // 0 rather than 3, so a token that cannot state its budget is born
+      // exhausted instead of being handed three free guesses. Pinned here
+      // because the rule is otherwise only prose, and prose is what drifted.
+      test('an unreadable attempt budget yields an exhausted challenge, not '
+          'a fresh one', () {
+        final withoutBudget = Tom2FAChallenge.fromClaims({
+          Tom2FAClaims.requires2FA: 'true',
+          Tom2FAClaims.type: 'totp',
+          Tom2FAClaims.expiresAt: DateTime.now()
+              .toUtc()
+              .add(const Duration(minutes: 5))
+              .toIso8601String(),
+        });
+
+        expect(
+          withoutBudget,
+          isNotNull,
+          reason: 'the challenge is still readable — only its budget is not',
+        );
+        expect(withoutBudget!.attemptsAllowed, isZero);
+        expect(withoutBudget.attemptsRemaining, isZero);
+        expect(withoutBudget.isExhausted, isTrue);
+
+        // A wrong-shaped budget is no more trustworthy than a missing one.
+        final wrongShape = Tom2FAChallenge.fromClaims({
+          Tom2FAClaims.requires2FA: 'true',
+          Tom2FAClaims.type: 'totp',
+          Tom2FAClaims.attemptsAllowed: '99',
+          Tom2FAClaims.expiresAt: DateTime.now()
+              .toUtc()
+              .add(const Duration(minutes: 5))
+              .toIso8601String(),
+        });
+
+        expect(wrongShape!.isExhausted, isTrue);
+      });
+
       test('a challenge is projected into the token payload', () {
         final (
           publicInfo,
@@ -2877,6 +2917,25 @@ void main() {
           isNull,
           reason: 'neither a mechanism in flight nor a list to choose from',
         );
+      });
+
+      // The same fail-closed budget as the challenge, asserted separately so
+      // the pair cannot drift apart: whichever of the two someone edits, the
+      // other's test still states the rule.
+      test('an unreadable attempt budget yields an exhausted offer, not a '
+          'fresh one', () {
+        final begun = claims(type: 'totp');
+        begun.remove(Tom2FAEnrolmentClaims.attemptsAllowed);
+
+        final pending = Tom2FAPendingEnrolment.fromClaims(begun);
+
+        expect(
+          pending,
+          isNotNull,
+          reason: 'the offer is still renderable — only its budget is not',
+        );
+        expect(pending!.attemptsAllowed, isZero);
+        expect(pending.isExhausted, isTrue);
       });
 
       // The two flags cross the wire as JSON booleans today, but the sibling

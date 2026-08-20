@@ -1144,7 +1144,7 @@ Tom2FAChallenge({
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `fromClaims(Map<String, dynamic>? payload)` | `Tom2FAChallenge?` | Reads a challenge back out of a token payload, or `null` when the payload carries no challenge or a malformed one. Never returns a half-built challenge. |
+| `fromClaims(Map<String, dynamic>? payload)` | `Tom2FAChallenge?` | Reads a challenge back out of a token payload, or `null` when the payload carries no challenge, names no mechanism, or carries an unreadable expiry. An unreadable `attemptsAllowed` falls back to `0`, not to the constructor's `3`, so a malformed token cannot hand out attempts — the challenge is returned already `isExhausted`. |
 
 ### Tom2FAEnrolmentClaims
 
@@ -1250,7 +1250,7 @@ Tom2FAPendingEnrolment({
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `fromClaims(Map<String, dynamic>? payload)` | `Tom2FAPendingEnrolment?` | Reads a pending enrolment back out of a token payload, as defensively as [Tom2FAChallenge.fromClaims]. Yields `null` when the payload carries no enrolment, when it names neither a chosen mechanism nor an offer list (nothing a client could render), and when a *begun* enrolment's expiry is unreadable. An unreadable `attemptsAllowed` falls back to `0`, not to the constructor's `3`, so a malformed token cannot hand out attempts. |
+| `fromClaims(Map<String, dynamic>? payload)` | `Tom2FAPendingEnrolment?` | Reads a pending enrolment back out of a token payload, as defensively as [Tom2FAChallenge.fromClaims]. Yields `null` when the payload carries no enrolment, when it names neither a chosen mechanism nor an offer list (nothing a client could render), and when a *begun* enrolment's expiry is unreadable. An unreadable `attemptsAllowed` falls back to `0`, not to the constructor's `3`, so a malformed token cannot hand out attempts — the offer is returned already `isExhausted`. |
 
 ### Tom2FAMethodDescriptor
 
