@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:test/test.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -1184,6 +1186,75 @@ void main() {
           equals(['db2.example.com', 'db3.example.com']),
         );
         expect(provider.getText('cache.enabled'), equals(true));
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Bootstrapping from a source that is only available asynchronously.
+    //
+    // `loader` is deliberately synchronous (`Map<String, dynamic> Function()`),
+    // because `getText` is synchronous: the bundle has to be in memory by the
+    // time anything reads it, and a constructor cannot await. These tests pin
+    // that contract and the pattern the documentation recommends in its place,
+    // so a sample that awaits inside a loader cannot be reintroduced without a
+    // test turning red.
+    // -------------------------------------------------------------------------
+    group('bootstrapping from an asynchronous source', () {
+      /// Stands in for `rootBundle.loadString`, a file read, or a network
+      /// fetch — anything whose result only exists after an await.
+      Future<String> readAssetString() async {
+        await Future<void>.delayed(Duration.zero);
+        return '{"labels": {"username": "Username"}}';
+      }
+
+      test(
+        'awaiting the source before installing makes reads synchronous',
+        () async {
+          final contents = await readAssetString();
+          TomTextResourceProvider.setAppResourceProvider(
+            TomTextResourceProvider.from(
+              jsonDecode(contents) as Map<String, dynamic>,
+            ),
+          );
+
+          // No await here, and none at any other call site: the bundle was
+          // already in hand when the provider was installed.
+          expect(
+            TomTextResourceProvider.getAppResources().getText(
+              'labels.username',
+            ),
+            equals('Username'),
+          );
+        },
+      );
+
+      test('load returns a fully populated provider, with no await', () {
+        // The counterpart to the test above: when the bundle *can* be produced
+        // synchronously, `load` is complete the moment it returns. Nothing in
+        // the API defers work to first access, which is why the loader cannot
+        // be asynchronous.
+        final provider = TomTextResourceProvider.load(
+          () =>
+              jsonDecode('{"labels": {"username": "Username"}}')
+                  as Map<String, dynamic>,
+        );
+        expect(provider.getText('labels.username'), equals('Username'));
+      });
+
+      test('config bundles bootstrap the same way', () async {
+        final contents = await readAssetString();
+        TomConfigResourceProvider.setAppConfigProvider(
+          TomConfigResourceProvider.from(
+            jsonDecode(contents) as Map<String, dynamic>,
+          ),
+        );
+
+        expect(
+          TomConfigResourceProvider.getAppConfig().getObjectOrNull(
+            'labels.username',
+          ),
+          equals('Username'),
+        );
       });
     });
   });

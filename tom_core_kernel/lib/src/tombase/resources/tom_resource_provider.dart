@@ -140,12 +140,36 @@ String? _resolveStringOrNull(Map<String, dynamic> resources, String path) {
 /// ```dart
 /// // Install once at startup; the loader runs here, not at first access.
 /// TomTextResourceProvider.setAppResourceProvider(
-///   TomTextResourceProvider.load(() => loadJsonFromAssets('strings.json')),
+///   TomTextResourceProvider.load(() => jsonDecode(bundledStrings)
+///       as Map<String, dynamic>),
 /// );
 ///
 /// // Access resources throughout the app
 /// final resources = TomTextResourceProvider.getAppResources();
 /// String title = resources.getText('screens.home.title');
+/// ```
+///
+/// ### Setting up from an asynchronous source
+///
+/// The loader is synchronous by design — [getText] is synchronous, so the
+/// bundle has to be in memory before anything reads it, and a constructor
+/// cannot await. A source that only yields a `Future` (an asset, a file, a
+/// downloaded pack) is therefore awaited *before* the install, and the
+/// resolved map is handed to [TomTextResourceProvider.from]:
+///
+/// ```dart
+/// Future<void> initializeResources() async {
+///   final strings = await rootBundle.loadString('assets/strings.json');
+///   TomTextResourceProvider.setAppResourceProvider(
+///     TomTextResourceProvider.from(jsonDecode(strings) as Map<String, dynamic>),
+///   );
+/// }
+///
+/// void main() async {
+///   WidgetsFlutterBinding.ensureInitialized();
+///   await initializeResources();
+///   runApp(const MyApp());
+/// }
 /// ```
 ///
 /// ### Setting up with a custom provider
@@ -175,16 +199,24 @@ class TomTextResourceProvider {
 
   /// Optional loader function consulted by the default constructor.
   ///
-  /// This declares *how* to load the bundle; [setAppResourceProvider] decides
-  /// *when* it is installed. The split lets a platform layer name the source
-  /// (JSON assets, a downloaded pack) in one place while startup code installs
-  /// it at the right moment:
+  /// This declares *how* to build the bundle; [setAppResourceProvider] decides
+  /// *when* it is installed. The split lets a platform layer name the source in
+  /// one place while startup code installs it at the right moment:
   ///
   /// ```dart
-  /// TomTextResourceProvider.loader = () => loadJsonFromAssets('strings.json');
+  /// TomTextResourceProvider.loader =
+  ///     () => jsonDecode(bundledStrings) as Map<String, dynamic>;
   /// // ... later, in main():
   /// TomTextResourceProvider.setAppResourceProvider(TomTextResourceProvider());
   /// ```
+  ///
+  /// The signature is synchronous, and deliberately so: [getText] is
+  /// synchronous, so the map must exist by the time the constructor returns.
+  /// The loader therefore only fits sources that can be produced without
+  /// awaiting — a computed map, a compiled-in constant, an already-decoded
+  /// string. Anything asynchronous (assets, files, network) is awaited in
+  /// `main()` and installed with [TomTextResourceProvider.from]; see the class
+  /// documentation.
   ///
   /// Setting this on its own installs nothing: [getAppResources] does not
   /// bootstrap itself, and will throw until the install above has run. When
@@ -320,6 +352,11 @@ class TomTextResourceProvider {
 
   /// Creates a new text resource provider with a custom loader function.
   ///
+  /// The loader is called here, so the provider is fully populated by the time
+  /// this returns. It must therefore produce the map without awaiting; for a
+  /// source that only yields a `Future`, await it first and use
+  /// [TomTextResourceProvider.from].
+  ///
   /// [loader] - A function that returns the resource map.
   TomTextResourceProvider.load(Map<String, dynamic> Function() loader) {
     resources = loader();
@@ -434,7 +471,8 @@ class TomTextResourceProvider {
 /// ```dart
 /// // Install once at startup; the loader runs here, not at first access.
 /// TomConfigResourceProvider.setAppConfigProvider(
-///   TomConfigResourceProvider.load(() => loadJsonFromAssets('config.json')),
+///   TomConfigResourceProvider.load(() => jsonDecode(bundledConfig)
+///       as Map<String, dynamic>),
 /// );
 ///
 /// // Access configuration throughout the app
@@ -445,6 +483,20 @@ class TomTextResourceProvider {
 ///
 /// [getObjectOrNull] rather than [getText] here because [getText] echoes the
 /// key back as a `String` on a miss, so `as int` throws — see [getText].
+///
+/// ### Setting up from an asynchronous source
+///
+/// The loader is synchronous, so a configuration file that only arrives via a
+/// `Future` is awaited before the install and handed to
+/// [TomConfigResourceProvider.from] — the same shape as
+/// [TomTextResourceProvider], and usually the same `initializeResources()`:
+///
+/// ```dart
+/// final contents = await rootBundle.loadString('assets/config.json');
+/// TomConfigResourceProvider.setAppConfigProvider(
+///   TomConfigResourceProvider.from(jsonDecode(contents) as Map<String, dynamic>),
+/// );
+/// ```
 ///
 /// ### Setting up with a custom provider
 ///
@@ -479,10 +531,12 @@ class TomConfigResourceProvider {
 
   /// Optional loader function consulted by the default constructor.
   ///
-  /// Declares *how* to load the configuration; [setAppConfigProvider] decides
+  /// Declares *how* to build the configuration; [setAppConfigProvider] decides
   /// *when* it is installed. Setting this on its own installs nothing — see
-  /// [TomTextResourceProvider.loader] for the two-phase pattern and its
-  /// single-statement alternative, [TomConfigResourceProvider.load].
+  /// [TomTextResourceProvider.loader] for the two-phase pattern, its
+  /// single-statement alternative [TomConfigResourceProvider.load], and why
+  /// asynchronous sources are awaited before the install rather than inside a
+  /// loader.
   static Map<String, dynamic> Function()? loader;
 
   // ---------------------------------------------------------------------------
@@ -555,6 +609,11 @@ class TomConfigResourceProvider {
   }
 
   /// Creates a new configuration provider with a custom loader function.
+  ///
+  /// The loader is called here, so the provider is fully populated by the time
+  /// this returns. It must therefore produce the map without awaiting; for a
+  /// source that only yields a `Future`, await it first and use
+  /// [TomConfigResourceProvider.from].
   ///
   /// [loader] - A function that returns the configuration map.
   TomConfigResourceProvider.load(Map<String, dynamic> Function() loader) {

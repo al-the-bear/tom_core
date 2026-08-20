@@ -12,6 +12,7 @@ loader functions.
   - [TomResourceException](#tomresourceexception)
   - [TomTextResourceProvider](#tomtextresourceprovider)
   - [TomConfigResourceProvider](#tomconfigresourceprovider)
+- [Loading from an Asynchronous Source](#loading-from-an-asynchronous-source)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -79,7 +80,7 @@ TomTextResourceProvider.from(Map<String, dynamic> resources)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor. Declares how to load a bundle; setting it installs nothing. |
+| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor. Declares how to build a bundle; setting it installs nothing. Synchronous by design — see [Loading from an asynchronous source](#loading-from-an-asynchronous-source). |
 | `appResourcesRevision` | `TomInt` | Observable revision counter, incremented whenever the installed bundle changes. Observe it to re-derive text computed from the bundle (see `TomObservableEnum`). |
 
 #### Static Methods
@@ -132,7 +133,7 @@ TomConfigResourceProvider.from(Map<String, dynamic> resources)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor. Declares how to load a bundle; setting it installs nothing. |
+| `loader` | `Map<String, dynamic> Function()?` | Optional loader consulted by the default constructor. Declares how to build a bundle; setting it installs nothing. Synchronous by design — see [Loading from an asynchronous source](#loading-from-an-asynchronous-source). |
 
 #### Static Methods
 
@@ -155,6 +156,31 @@ TomConfigResourceProvider.from(Map<String, dynamic> resources)
 | `exists` | `bool exists(String s)` | Whether any value exists at path `s` (flat key or dot path). |
 | `getText` | `Object getText(String s)` | Returns the value at path `s` (any type), or the key `s` itself — **as a `String`** — if not found. A direct `as int` therefore throws on a miss, and so does `as int?`. |
 | `getObjectOrNull` | `Object? getObjectOrNull(String s)` | Returns the value at path `s` (any type), or `null` if not found. The accessor to cast: `getObjectOrNull('api.timeout') as int? ?? 5000`. |
+
+## Loading from an Asynchronous Source
+
+Both `loader` fields are `Map<String, dynamic> Function()` — synchronous, and
+deliberately so. `getText` is synchronous, so the bundle must be in memory
+before the first read, and a constructor cannot await. An `async` closure
+returns `Future<Map<String, dynamic>>` and no longer matches the field type, so
+`TomTextResourceProvider.load(() async => ...)` does not compile.
+
+`loader` and `.load` are therefore for bundles that can be produced without
+awaiting: a computed map, a compiled-in constant, an already-decoded string.
+An asynchronous source is resolved first and installed with `.from(...)`:
+
+```dart
+Future<void> initializeResources() async {
+  final strings = await rootBundle.loadString('assets/strings.json');
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from(jsonDecode(strings) as Map<String, dynamic>),
+  );
+}
+```
+
+One `await` in `main()` buys synchronous reads at every other call site.
+`tom_core_kernel` has no Flutter dependency, so `rootBundle` comes from the
+application; on a server, `File(...).readAsString()` has the same shape.
 
 ## Global Functions and Constants
 

@@ -73,8 +73,10 @@ observers woken by it would read a bundle that is no longer there.
 ```dart
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-// Option A: Load from a function (recommended for JSON assets). The loader
-// runs here, during the install — not at first access.
+// Option A: Build the bundle in a function. The loader runs here, during the
+// install — not at first access — so it has to produce the map without
+// awaiting. For a source that only yields a `Future` (a JSON asset, a file, a
+// download), see "Loading Resources from JSON Assets" below.
 TomTextResourceProvider.setAppResourceProvider(
   TomTextResourceProvider.load(() => {
     'app': {
@@ -222,7 +224,7 @@ A singleton provider for text-based resources.
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor loads from. Declares *how* to load, not *when* to install |
+| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor builds the bundle from. Declares *how* to build, not *when* to install. **Synchronous** — asynchronous sources are awaited before the install instead |
 | `appResourcesRevision` | `TomInt` | Observable revision counter, bumped whenever the installed bundle changes |
 | `notifyAppResourcesChanged()` | Method | Bumps `appResourcesRevision` after an in-place edit of the installed bundle |
 | `setAppResourceProvider()` | Method | Sets the application-wide provider instance and bumps `appResourcesRevision` |
@@ -256,7 +258,7 @@ A singleton provider for configuration values of any type.
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor loads from. Declares *how* to load, not *when* to install |
+| `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor builds the bundle from. Declares *how* to build, not *when* to install. **Synchronous** — asynchronous sources are awaited before the install instead |
 | `setAppConfigProvider()` | Method | Sets the application-wide provider instance |
 | `getAppConfig()` | Method | Returns the installed provider; throws `resources.config_provider.not_installed` if there is none |
 
@@ -371,6 +373,24 @@ Future<void> initializeResources() async {
   );
 }
 ```
+
+Note what this does *not* do: it does not await inside a `loader`. `loader` is
+`Map<String, dynamic> Function()` — synchronous — and that is deliberate rather
+than an oversight. `getText` is synchronous, so the bundle has to be in memory
+before the first read, and a constructor cannot await. An `async` closure would
+return `Future<Map<String, dynamic>>` and no longer match the field type, so
+`TomTextResourceProvider.load(() async => ...)` does not compile.
+
+The rule that follows is short: **produce the map first, then install it.**
+`loader` and `.load` are for bundles you can build without awaiting — a computed
+map, a compiled-in constant, an already-decoded string. Everything else is
+awaited in `main()` and installed with `.from(...)`, as above. The one `await`
+in `initializeResources()` is the whole cost, and it buys synchronous reads
+everywhere else in the application.
+
+`tom_core_kernel` has no Flutter dependency, so `rootBundle` above comes from
+the application, not from this package; on a server or in a plain Dart script
+substitute `File(...).readAsString()`, which has the same shape.
 
 ### Environment-Specific Configuration
 

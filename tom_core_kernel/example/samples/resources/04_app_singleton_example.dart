@@ -11,16 +11,23 @@
 /// - Singleton identity (the same instance is returned on repeat access)
 /// - The two providers holding fully independent singletons
 ///
-/// The singleton pattern lets application code configure resources once (at
-/// startup, typically from JSON assets via a `loader`) and then read them from
-/// anywhere without threading a provider reference through the call graph.
+/// The singleton pattern lets application code configure resources once, at
+/// startup, and then read them from anywhere without threading a provider
+/// reference through the call graph.
 ///
 /// Installation is explicit and mandatory: `getAppResources()` throws
 /// `resources.text_provider.not_installed` until `setAppResourceProvider()` has
 /// run, and setting `loader` alone does not install anything — it says how to
-/// load a bundle, not when to put one in place. That is what keeps
+/// build a bundle, not when to put one in place. That is what keeps
 /// `appResourcesRevision` honest: every installed bundle went through the one
 /// call that bumps the counter.
+///
+/// `loader` is synchronous (`Map<String, dynamic> Function()`), because
+/// `getText` is: the bundle has to be in memory before the first read. It
+/// therefore suits bundles that can be produced without awaiting, as below. An
+/// asynchronous source — a JSON asset, a file, a download — is awaited in
+/// `main()` first and installed with `.from(...)`; see
+/// `doc/resources/resources.md`.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
