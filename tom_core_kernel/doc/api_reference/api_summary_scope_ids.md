@@ -123,16 +123,23 @@ known later.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `id` | `String` | The scope's local id. Read-only; written once by `initScope`. |
-| `parent` | `TomScope?` | The parent scope. Read-only; written once by `initScope`. |
+| `id` | `String` | The scope's local id. Read-only; written once by `initScope`. Throws `StateError` before `initScope` has run. |
+| `parent` | `TomScope?` | The parent scope. Read-only; written once by `initScope`. Throws `StateError` before `initScope` has run. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. |
+| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. Throws `StateError` if `parentScope` has no identity of its own. |
 | `getScopePath` | `String getScopePath()` | *(override)* Returns the full dot-separated scope path. |
-| `runInScope` | `T runInScope<T>(T Function() body)` | *(override)* Runs `body` inside this scope's zone, reusing the current zone when already active. |
+| `runInScope` | `T runInScope<T>(T Function() body)` | *(override)* Runs `body` inside this scope's zone, reusing the current zone when already active. Throws `StateError` before `initScope` has run, without running `body`. |
+
+Until `initScope` runs, the instance is not yet a scope: it can neither be
+installed nor be another scope's parent, and each refusal names the class and
+the missing call. Checking the parent at `initScope` rather than during the path
+walk keeps both checks O(1) — an initialised scope has a fully initialised chain
+by induction — and buys the invariant that whatever `TomScope.current` returns is
+usable. See `doc/scope_ids/scope_ids.md`.
 
 ### InScopeBuilder
 

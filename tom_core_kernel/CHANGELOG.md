@@ -125,6 +125,29 @@ anyone who was writing them.
 
 ### Changed
 
+- **Breaking: a `TomScopeMixin` instance whose `initScope` never ran is now
+  refused at the point of use, not at the point of consequence.** Because
+  `initScope` may be called after construction — a documented pattern, for a
+  scope whose parent is only known later — there is a window in which an
+  instance exists and is not yet a scope. `runInScope` read neither `id` nor
+  `parent`, so it installed the half-built object onto the zone without
+  complaint: the body ran, every line of it saw `TomScope.current` return the
+  broken instance, and the failure surfaced at whichever later call first asked
+  for a path — a resource lookup, an authorization check — as a
+  `LateInitializationError` naming a mangled private field and mentioning
+  neither the class nor the missing call. Installation now throws a
+  `StateError` naming both, and so do `id`, `parent` and `getScopePath()`, which
+  previously threw the same unhelpful `LateError`. `initScope` additionally
+  refuses a `parentScope` that has no identity of its own, which closes the
+  variant where a perfectly good child installs cleanly and the chain walk hits
+  the broken parent later. Checking the parent there rather than during the
+  path walk is what keeps both checks O(1): an initialised scope has a fully
+  initialised chain by induction, since the identity is write-once and a parent
+  cannot lose one afterwards. Together they buy one invariant — whatever
+  `TomScope.current` returns is usable. Calling `initScope` twice is still
+  rejected, unchanged. `InScopeBuilder` still captures an uninitialised scope
+  without complaint and refuses at invocation; capture is not use, and a widget
+  may legally be constructed with a scope identified before the first build.
 - **Breaking: `convertMinutesToUtcOffset` rejects offsets outside ±14:00.** The
   hour field is two digits wide and the padding never truncates, so an
   unbounded offset rendered as `+100:00` — a string the function accepted
@@ -283,6 +306,14 @@ anyone who was writing them.
   compares `Zone.current`, which is what distinguishes the two paths, and also
   asserts the body ran and its result was returned; a companion test covers the
   other branch, where a different scope does get a child zone.
+- **`scope_ids_test.dart` covers the window between construction and
+  `initScope`.** A `before initScope has run` group asserts that installation
+  is refused and the body never runs, that the instance cannot be another
+  scope's parent, that `InScopeBuilder` refuses at invocation, and that `id`,
+  `parent` and `getScopePath()` all name the class and the missing call. A
+  fifth test holds the other side of the line — a scope identified after
+  construction installs normally — so the guard cannot be tightened into
+  breaking the pattern it is protecting.
 
 ### Examples
 
@@ -315,6 +346,11 @@ anyone who was writing them.
   the reader who typed it. This was the shape of the original defect — a header
   advertising a command the file could not answer — and it is now the third
   static check, beside the `--enable-asserts` and `requireAsserts()` ones.
+- `example/samples/scope_ids/03_scope_mixin_example.dart` gains a fifth section
+  showing what the post-construction `initScope` pattern costs: until the call
+  runs the instance is not yet a scope, and both installing it and passing it
+  as a parent are refused. The example is where readers meet the pattern, so it
+  is where the window it opens belongs.
 
 ### Documentation
 
@@ -326,6 +362,10 @@ anyone who was writing them.
   the body runs and its result is returned on both branches. The old wording
   was one word away from saying the call does nothing, in a method almost
   always written as `scope.runInScope(() => …)` where the body is the point.
+- `doc/scope_ids/scope_ids.md` documents the window between construction and
+  `initScope` — which entry point refuses what, why the parent is checked at
+  `initScope` rather than during the path walk, and the invariant the two
+  checks buy: whatever `TomScope.current` returns is usable.
 
 ## 1.1.15
 

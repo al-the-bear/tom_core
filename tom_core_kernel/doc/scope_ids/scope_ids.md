@@ -13,6 +13,7 @@ threading an identifier through every call.
 - [Core Components](#core-components)
   - [TomScope](#tomscope)
   - [TomScopeBase and TomScopeMixin](#tomscopebase-and-tomscopemixin)
+    - [The window before initScope](#the-window-before-initscope)
   - [InScopeBuilder](#inscopebuilder)
 - [Scope Paths](#scope-paths)
 - [Crossing Zone Boundaries](#crossing-zone-boundaries)
@@ -105,6 +106,43 @@ print(child.getScopePath()); // app.checkout
 > `id` and `parent`, and there is no way to change them afterwards — use the
 > constructor (`TomScopeBase(scopeId:, parentScope:)`), or call `initScope`
 > exactly once when mixing `TomScopeMixin` into your own type.
+
+#### The window before initScope
+
+Because `initScope` may run after construction, there is a window in which an
+instance exists and is not yet a scope. Using it as one inside that window is
+refused immediately, with a `StateError` naming the class and the call that was
+skipped:
+
+```dart
+class LazyScope with TomScopeMixin {}
+
+LazyScope().runInScope(() { /* never runs */ });
+// StateError: Cannot install a scope on the zone: LazyScope has no scope
+// identity because initScope() was never called on it. …
+```
+
+Two entry points enforce it, and between them they close the window:
+
+| Entry point | Refuses |
+| ----------- | ------- |
+| `runInScope` — and everything built on it, including `InScopeBuilder` | installing a scope that has no identity |
+| `initScope` | a `parentScope` that has no identity |
+
+Checking the parent at `initScope`, rather than when the path is built, is what
+keeps both checks O(1): an initialised scope then has a fully initialised
+*chain*, by induction — the identity is write-once, so a parent cannot lose one
+later. The result is a single invariant worth relying on: **whatever
+`TomScope.current` returns is usable.**
+
+The alternative is worse than it looks. A half-built instance installs onto the
+zone perfectly well, so the failure surfaces at whichever later call first asks
+for a path — a resource lookup, an authorization check — on a stack that
+mentions neither scopes nor the constructor that skipped `initScope`.
+
+`InScopeBuilder` still *captures* an uninitialised scope without complaint; it
+is the invocation that is refused. Capture is not use, and a widget may legally
+be constructed with a scope that gets its identity before the first build.
 
 ### InScopeBuilder
 
@@ -240,7 +278,9 @@ So the two tools are:
 ## Best Practices
 
 1. **Construct scopes, don't mutate them.** Use the `TomScopeBase` constructor;
-   treat the identity as immutable after creation.
+   treat the identity as immutable after creation. If you mix `TomScopeMixin`
+   into your own type, prefer calling `initScope` from the constructor — that
+   leaves no window in which the instance is not yet a scope.
 2. **Wrap framework callbacks.** Any builder that the UI framework calls back
    into should be wrapped with `InScopeBuilder` so resource/authorization
    lookups resolve against the right path.

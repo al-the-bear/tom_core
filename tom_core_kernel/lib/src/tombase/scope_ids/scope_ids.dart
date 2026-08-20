@@ -5,12 +5,38 @@ import '../little_things/little_things.dart';
 /// Shared scope-installation policy for [TomScope.runInScope] and
 /// [TomScopeMixin.runInScope].
 ///
+/// Every install goes through here, which is what makes the identity check
+/// below a property of the module rather than of one call site.
+///
 /// If [scope] is already the current zone scope (identical reference), [body]
 /// runs directly without creating a new zone — this prevents duplicate scope
 /// nesting. Otherwise [body] runs in a child zone carrying [scope].
 T _runScoped<T>(TomScope scope, T Function() body) {
+  _requireScopeIdentity(scope, 'Cannot install a scope on the zone');
   if (identical(scope, TomScope.current)) return body();
   return runZoned(body, zoneValues: {TomScope: scope});
+}
+
+/// Refuses a [TomScopeMixin] instance whose [TomScopeMixin.initScope] has never
+/// run, naming the class and the missing call.
+///
+/// [attemptedAction] opens the message, so the reader learns what was refused
+/// before why. Anything that is not an uninitialised mixin passes: a
+/// hand-rolled `implements TomScope` has no initialisation window this module
+/// knows about.
+///
+/// Without this, a half-built instance installs silently and the failure
+/// surfaces at whichever later call first asks for a path — a resource lookup
+/// or an authorization check, on a stack that mentions neither scopes nor the
+/// constructor that skipped [TomScopeMixin.initScope].
+void _requireScopeIdentity(TomScope? scope, String attemptedAction) {
+  if (scope is! TomScopeMixin || scope._hasIdentity) return;
+  throw StateError(
+    '$attemptedAction: ${scope.runtimeType} has no scope identity because '
+    'initScope() was never called on it. Call initScope(scopeId: ..., '
+    'parentScope: ...) exactly once — from the constructor, or on the '
+    'constructed instance once its parent is known.',
+  );
 }
 
 /// A hierarchical, zone-propagated identifier used to namespace resource
@@ -109,20 +135,43 @@ mixin TomScopeMixin on Object implements TomScope {
   late final String _id;
   late final TomScope? _parent;
 
+  /// Whether [initScope] has run.
+  ///
+  /// Tracked separately because Dart offers no way to ask a `late` field
+  /// whether it has been written — reading it to find out throws, which is the
+  /// very failure this flag exists to pre-empt.
+  bool _hasIdentity = false;
+
   /// Initialises this scope's identity.
   ///
   /// The single write-once entry point: call it exactly once, from the
   /// constructor or — for a scope whose parent is only known later — on the
   /// constructed instance.
+  ///
+  /// [parentScope] must already have an identity of its own. Checking it here
+  /// rather than when the path is built is what keeps the check O(1): an
+  /// initialised scope then has a fully initialised chain by induction, since
+  /// the identity is write-once and a parent cannot lose one later.
   void initScope({required String scopeId, TomScope? parentScope}) {
+    // Validate before mutating: a rejected call must leave the instance in the
+    // state it was in, still initialisable.
+    _requireScopeIdentity(parentScope, 'Cannot use a scope as parentScope');
     _id = scopeId;
     _parent = parentScope;
+    _hasIdentity = true;
   }
 
   @override
-  String get id => _id;
+  String get id {
+    _requireScopeIdentity(this, 'Cannot read a scope id');
+    return _id;
+  }
+
   @override
-  TomScope? get parent => _parent;
+  TomScope? get parent {
+    _requireScopeIdentity(this, 'Cannot read a scope parent');
+    return _parent;
+  }
 
   @override
   String getScopePath() => TomScope.buildScopePath(this);

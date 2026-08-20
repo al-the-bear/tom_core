@@ -9,6 +9,8 @@
 ///   `runInScope`, `InScopeBuilder`)
 /// - `initScope` called *after* construction, for a scope whose parent is only
 ///   known once the enclosing scope exists
+/// - What that window costs: until `initScope` runs the instance is not yet a
+///   scope, and using it as one is refused on the spot
 ///
 /// Run with (asserts MUST be enabled so the invariants below are checked):
 /// ```bash
@@ -113,6 +115,36 @@ void run() {
   print('');
 
   // ===========================================================================
+  // Example 5: the window before initScope
+  // ===========================================================================
+  //
+  // Initialising after construction means an instance exists for a while that
+  // is not yet a scope. Using it in that window is refused on the spot — an
+  // uninitialised scope can neither be installed nor be another scope's
+  // parent — so whatever reaches `TomScope.current` is always usable.
+
+  print('5. Using a scope before initScope has run:');
+
+  String refusalOf(void Function() action) {
+    try {
+      action();
+      return '(no error)';
+    } on StateError catch (e) {
+      return e.message;
+    }
+  }
+
+  final installRefusal = refusalOf(() => LazyScope().runInScope(() {}));
+  final parentRefusal = refusalOf(
+    () =>
+        ScreenSection(title: 'Orphan', scopeId: 'x', parentScope: LazyScope()),
+  );
+
+  print('   runInScope:     $installRefusal');
+  print('   as parentScope: $parentRefusal');
+  print('');
+
+  // ===========================================================================
   // Assertions
   // ===========================================================================
 
@@ -134,6 +166,13 @@ void run() {
   // Example 4: a post-construction initScope assigns the identity
   assert(lazy.id == 'lazy');
   assert(lazy.getScopePath() == 'app.lazy');
+
+  // Example 5: the window is closed at the point of use, by a message that
+  // names the class and the call that was skipped
+  assert(installRefusal.contains('LazyScope'));
+  assert(installRefusal.contains('initScope'));
+  assert(parentRefusal.contains('LazyScope'));
+  assert(parentRefusal.contains('initScope'));
 }
 
 /// Standalone entry point.

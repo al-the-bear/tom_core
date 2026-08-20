@@ -232,6 +232,90 @@ void main() {
       expect(lazy.getScopePath(), equals('root.lazy'));
     });
 
+    // =========================================================================
+    // The window between construction and initScope
+    // =========================================================================
+    //
+    // Because initScope may run after construction, an instance exists for a
+    // while that is not yet a scope. Reading its identity has always failed;
+    // what these tests pin is that *installing* it fails too, and at the point
+    // of installation rather than at whichever unrelated call later asks for a
+    // path. A scope reaching `TomScope.current` is therefore always usable.
+    group('before initScope has run', () {
+      // The failure has to name the class and the missing call, because the
+      // stack it surfaces on is otherwise about resource lookup or
+      // authorization and says nothing about scopes at all.
+      void expectNamesTypeAndInitScope(void Function() action) {
+        expect(
+          action,
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              allOf(contains('_LazyMixinScope'), contains('initScope')),
+            ),
+          ),
+        );
+      }
+
+      test(
+        'runInScope refuses to install the scope, and the body never runs',
+        () {
+          final lazy = _LazyMixinScope();
+          var ran = false;
+          expectNamesTypeAndInitScope(() => lazy.runInScope(() => ran = true));
+          expect(
+            ran,
+            isFalse,
+            reason: 'the body must not run in a broken scope',
+          );
+          expect(TomScope.current, same(TomScope.defaultScope));
+        },
+      );
+
+      // Guarding only the installed scope would leave this hole open: the
+      // child is a perfectly good scope, so installing it passes, and the
+      // chain walk only reaches the broken parent when someone asks for a
+      // path. Rejecting the parent at initScope keeps the check O(1) — every
+      // initialised scope then has a fully initialised chain by induction.
+      test("it cannot be used as another scope's parent", () {
+        expectNamesTypeAndInitScope(
+          () => _MixinScope(scopeId: 'child', parentScope: _LazyMixinScope()),
+        );
+      });
+
+      test(
+        'InScopeBuilder refuses to run a callback in the captured scope',
+        () {
+          final wrapped = InScopeBuilder(
+            scope: _LazyMixinScope(),
+          ).wrap0<String>(() => TomScope.current.getScopePath());
+          expectNamesTypeAndInitScope(wrapped);
+        },
+      );
+
+      // Reading the identity directly already threw, but as a
+      // LateInitializationError naming a mangled private field. The diagnosis
+      // is the same whichever door you came through, so the message is too.
+      test('reading the identity names the type and the missing call', () {
+        expectNamesTypeAndInitScope(() => _LazyMixinScope().id);
+        expectNamesTypeAndInitScope(() => _LazyMixinScope().parent);
+        expectNamesTypeAndInitScope(() => _LazyMixinScope().getScopePath());
+      });
+
+      // The guard must close the window, not the pattern: assigning the
+      // identity after construction is documented and supported.
+      test('once initScope has run the scope installs normally', () {
+        final root = _MixinScope(scopeId: 'root');
+        final lazy = _LazyMixinScope()
+          ..initScope(scopeId: 'lazy', parentScope: root);
+        lazy.runInScope(() {
+          expect(TomScope.current, same(lazy));
+          expect(TomScope.current.getScopePath(), equals('root.lazy'));
+        });
+      });
+    });
+
     // `defaultScope` is the root of every scope path, so a reassignment would
     // change resource resolution for the whole process. It is `final`;
     // `withScope` / `runInScope` are the supported ways to change the current
