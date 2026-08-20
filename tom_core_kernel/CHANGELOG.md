@@ -993,6 +993,28 @@ anyone who was writing them.
 
 ### Documentation
 
+- **The API mirrors no longer file non-supertypes under an `Extends` heading
+  (tcinc298).** `api_summary_settings.md` gave both settings DTOs the bullet
+  `**Extends:** annotated with @tomReflector`, reading as though the annotation
+  were the base class. Neither class extends anything, and the annotation is the
+  one thing about them a reader has to understand — it is why every field is
+  mutable and non-final. Both bullets are now `**Annotations:**` and say so:
+  the deserializer creates a zero-argument instance and assigns into it.
+
+  The label was being misused more widely. Six classes across `scheduling` and
+  `shutdown_cleanup` (`TomSchedule`, `TomJobDispatcher`, `TomJobStore`,
+  `TomLeaseLock`, `TomDisposable`, `TomClosable`) carried
+  `**Extends:** abstract class.` — a class *modifier* in the slot reserved for a
+  supertype. They now read `**Extends:** none (abstract class).`, the form
+  `api_summary_json.md`, `api_summary_scope_ids.md` and
+  `api_summary_http_connection.md` were already using. `TomJobRun` had the same
+  defect under the sibling label, `**Implements:** JSON round-trip via toJson /
+  TomJobRun.fromJson` — a capability, not an interface, and the class implements
+  nothing; it is now `**Serialization:**`.
+
+  Every remaining `**Extends:**` bullet in the mirrors was then checked against
+  the source declaration it describes; all name a real supertype.
+
 - **Every invented exception type was removed from the samples, and the samples
   now use the vocabulary the package actually documents (tcinc297).** Five
   samples threw or constructed a type that is declared nowhere —

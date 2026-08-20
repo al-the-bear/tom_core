@@ -116,7 +116,7 @@ TomPermanentFailure  (mixin)
 The "when" contract. A schedule computes fire times and knows nothing about
 jobs, runs, or the scheduler.
 
-- **Extends:** abstract class.
+- **Extends:** none (abstract class).
 
 #### Constructors
 
@@ -404,7 +404,7 @@ a job name exists to name in the message.
 How a job's command is executed. Separating this from the scheduler is what lets
 the same job definition run inline in a test and on a worker pool in production.
 
-- **Extends:** abstract class.
+- **Extends:** none (abstract class).
 
 #### Constructors
 
@@ -590,7 +590,7 @@ namespace; the constructor is private.
 One row per *window* — which is what makes planning idempotent across restarts
 and across a cluster.
 
-- **Implements:** JSON round-trip via `toJson` / `TomJobRun.fromJson`.
+- **Serialization:** JSON round-trip via `toJson` / `TomJobRun.fromJson`.
 
 #### Constructors
 
@@ -655,7 +655,7 @@ owns the run now, or resurrect a purged row with a freshly stamped
 cutoff. The check costs nothing when nothing went wrong, and it is what makes
 the five safe to call without first re-reading the store.
 
-- **Extends:** abstract class.
+- **Extends:** none (abstract class).
 
 #### Static Members
 
@@ -810,7 +810,7 @@ arrived at by leaving the argument out.
 
 The mutual-exclusion contract.
 
-- **Extends:** abstract class.
+- **Extends:** none (abstract class).
 
 #### Constructors
 

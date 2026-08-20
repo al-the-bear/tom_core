@@ -42,7 +42,9 @@ Message class for requesting client settings from the server. It encapsulates
 the authorization token the server uses to determine which settings and
 permissions to return.
 
-- **Extends:** annotated with `@tomReflector`.
+- **Annotations:** `@tomReflector` — reflected JSON serialization. The field is
+  mutable and the class declares no constructor, so the deserializer can create
+  an instance and assign into it.
 
 #### Properties
 
@@ -55,7 +57,9 @@ permissions to return.
 Result class containing client settings, authorization data, and localization —
 everything a client needs to configure itself.
 
-- **Extends:** annotated with `@tomReflector`.
+- **Annotations:** `@tomReflector` — reflected JSON serialization. Every field
+  is mutable and every constructor parameter optional, so the deserializer can
+  create an instance and assign into it.
 
 #### Constructors
 
