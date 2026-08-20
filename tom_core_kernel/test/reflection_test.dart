@@ -39,7 +39,6 @@ class DateTimeHolder {
 }
 
 @tomReflector
-@tomReflector
 class ZonedDateTimeHolder {
   TomZonedDate? zonedDate;
   TomZonedTime? zonedTime;
@@ -208,7 +207,91 @@ class BadJsonEncodeHolder {
   Object get jsonEncode => 'not a map';
 }
 
+/// A plain [TomClass], carrying no hook of its own.
+///
+/// `getValues`/`setValues` short-circuit on `o is TomClass` before they reflect
+/// on anything, so this class is what "the delegation happened" is measured
+/// against: its observable members are reachable only through that branch.
 @tomReflector
+class ObservablePoint extends TomClass {
+  TomString label = TomString('');
+  TomInt x = TomInt(0);
+}
+
+/// A [TomClass] that *also* declares both reflective hooks.
+///
+/// Nothing in the language stops a class from doing this, and the two
+/// mechanisms disagree about what the object's JSON is — so which one wins is
+/// a real decision, and this class is what pins it. Both hooks write a value
+/// no member walk could produce, so "the hook ran instead" would be obvious.
+@tomReflector
+class ObservableWithJsonHooks extends TomClass {
+  TomString label = TomString('');
+
+  Map<String, Object?> get jsonEncode => {'encoded': 'by the getter'};
+
+  void jsonDecode(Map<String, dynamic> json) {
+    label | 'decoded by the hook';
+  }
+}
+
+/// Declares that it serializes itself, in the way the interface exists to make
+/// cheap to detect.
+///
+/// `toJson` deliberately renames the field, so honouring the interface and
+/// walking the fields cannot produce the same map.
+@tomReflector
+class SelfSerializingDto implements TomJsonSerializable {
+  String status = '';
+
+  SelfSerializingDto();
+
+  @override
+  Map<String, Object?> toJson() => {'ok': status};
+}
+
+/// Carries a plain `toJson()` and nothing else — no interface, no annotation
+/// beyond `@tomReflector`, no getter.
+///
+/// The structural half of the same question [SelfSerializingDto] asks
+/// nominally.
+@tomReflector
+class PlainToJsonHolder {
+  String status = '';
+
+  PlainToJsonHolder();
+
+  Map<String, Object?> toJson() => {'ok': status};
+}
+
+/// Carries two *outbound* hooks that disagree.
+@tomReflector
+class EncodeAndToJsonHolder {
+  String status = '';
+
+  EncodeAndToJsonHolder();
+
+  Map<String, Object?> get jsonEncode => {'from': 'jsonEncode'};
+
+  Map<String, Object?> toJson() => {'from': 'toJson'};
+}
+
+/// Carries two *inbound* hooks that disagree: a `fromJson` constructor and a
+/// `jsonDecode` method, each writing a distinguishable marker.
+@tomReflector
+class FromJsonAndDecodeHolder {
+  String source = '';
+
+  FromJsonAndDecodeHolder();
+
+  factory FromJsonAndDecodeHolder.fromJson(Map<String, dynamic> json) =>
+      FromJsonAndDecodeHolder()..source = 'fromJson';
+
+  void jsonDecode(Map<String, dynamic> json) {
+    source = 'jsonDecode';
+  }
+}
+
 @tomReflector
 class NestedInfo {
   String info = '';
@@ -2350,6 +2433,205 @@ void main() {
           hookFailed('jsonEncode', 'ThrowingJsonHookHolder', 'is broken'),
         );
       });
+    });
+  });
+
+  group('a TomClass converts itself, and the reflective path steps aside', () {
+    // `getValues` and `setValues` both open with `o is TomClass` and hand the
+    // whole conversion to the object — outbound to `TomClass.toJson()`, inbound
+    // to `TomClass.setValues()`. Neither branch had a test. They are the widest
+    // of the hooks: every observable model in the framework takes them, and a
+    // regression would not be a wrong value but an object converted by the
+    // wrong mechanism entirely, which for a TomClass means its members are
+    // ignored and its `TomObject` wrappers are walked as if they were data.
+
+    test('outbound: getValues delegates to the observable members', () {
+      final point = ObservablePoint();
+      point.label | 'origin';
+      point.x | 7;
+
+      // The member map, not a field walk: a walk would find the `TomString`
+      // and `TomInt` *wrappers* rather than the values inside them.
+      expect(tomReflectionInfo.getValues(point), {'label': 'origin', 'x': 7});
+    });
+
+    test('outbound: it agrees with the object converting itself', () {
+      final point = ObservablePoint();
+      point.label | 'origin';
+
+      expect(tomReflectionInfo.getValues(point), point.toJson());
+    });
+
+    test('inbound: setValues writes through the observable members', () {
+      final point = ObservablePoint();
+
+      final returned = tomReflectionInfo.setValues(point, {
+        'label': 'origin',
+        'x': 7,
+      });
+
+      expect(identical(returned, point), isTrue);
+      expect(point.label.get(), 'origin');
+      expect(point.x.get(), 7);
+    });
+
+    test('inbound: the write is observable, as the delegation exists to make '
+        'it', () {
+      // The reason the branch exists at all. A field walk would assign over
+      // the `TomObject` members and no observer would ever hear about it.
+      final point = ObservablePoint();
+      final seen = <String>[];
+      // Retained deliberately: observers are held weakly, so an unassigned
+      // handle can be collected and the callback stop firing.
+      final handle = point.label >> (observable) => seen.add(observable.get());
+
+      tomReflectionInfo.setValues(point, {'label': 'origin'});
+
+      expect(seen, ['origin']);
+      point.label.removeObserver(handle);
+    });
+
+    test('absent: a class that is not a TomClass is walked as usual', () {
+      // The other half of the pair — the delegation is a branch, and a branch
+      // that always fires is indistinguishable from no branch.
+      final person = SimplePerson()..name = 'Ann';
+
+      expect(tomReflectionInfo.getValues(person), containsPair('name', 'Ann'));
+    });
+
+    test('createInstanceFromJson reaches the delegation through setValues', () {
+      // A TomClass declares `fromJson(String)` as an ordinary method, not as a
+      // named constructor, so the constructor lookup misses it and the default
+      // path runs — which then hits the TomClass branch of `setValues`. The
+      // two hooks compose rather than competing.
+      final mirror = tomReflector.reflectType(ObservablePoint) as ClassMirror;
+
+      final built = tomReflectionInfo.createInstanceFromJson<ObservablePoint>(
+        mirror,
+        {'label': 'origin', 'x': 7},
+      );
+
+      expect(built.label.get(), 'origin');
+      expect(built.x.get(), 7);
+    });
+  });
+
+  group('when two hooks disagree, the precedence is pinned', () {
+    // Each class here carries two hooks that would produce different results,
+    // so the assertion is not "a hook ran" but "*this* hook ran". Without
+    // these, the order is an accident of how the `if`s happen to be stacked,
+    // and reordering them — which the central-dispatch rework in tcinc1117
+    // sets out to do — would be invisible to the suite.
+
+    ClassMirror mirrorOf(Type t) => tomReflector.reflectType(t) as ClassMirror;
+
+    test('outbound: TomClass beats the jsonEncode getter', () {
+      final holder = ObservableWithJsonHooks();
+      holder.label | 'origin';
+
+      expect(
+        tomReflectionInfo.getValues(holder),
+        {'label': 'origin'},
+        reason: 'the `o is TomClass` test is ahead of the hook lookup',
+      );
+    });
+
+    test('inbound: TomClass beats the jsonDecode method', () {
+      final holder = ObservableWithJsonHooks();
+
+      tomReflectionInfo.setValues(holder, {'label': 'origin'});
+
+      expect(holder.label.get(), 'origin');
+      expect(
+        holder.label.get(),
+        isNot('decoded by the hook'),
+        reason: 'the jsonDecode hook must not have run',
+      );
+    });
+
+    test('outbound: the jsonEncode getter beats a plain toJson method', () {
+      expect(tomReflectionInfo.getValues(EncodeAndToJsonHolder()), {
+        'from': 'jsonEncode',
+      });
+    });
+
+    test('inbound: the fromJson constructor beats the jsonDecode method', () {
+      final built = tomReflectionInfo
+          .createInstanceFromJson<FromJsonAndDecodeHolder>(
+            mirrorOf(FromJsonAndDecodeHolder),
+            {'source': 'payload'},
+          );
+
+      expect(built.source, 'fromJson');
+    });
+
+    test('inbound: reaching setValues directly runs jsonDecode instead', () {
+      // Same class, same payload, different entry point, different hook. That
+      // the answer depends on which method the caller happened to reach for is
+      // the asymmetry tcinc1117 exists to remove; pinning it here means the
+      // removal shows up as a failing test rather than as a silent change.
+      final holder = tomReflectionInfo.setValues(FromJsonAndDecodeHolder(), {
+        'source': 'payload',
+      });
+
+      expect(holder.source, 'jsonDecode');
+    });
+
+    test('inbound: a fromJson-only class is field-walked by setValues', () {
+      // The documented asymmetry, from the other side: `fromJson` is a
+      // construction-time hook and there is nothing to construct when the
+      // object already exists, so `setValues` walks the fields instead.
+      //
+      // The fixture is the hook that always throws, because it is the only
+      // way to tell the two paths apart — a working `fromJson` would produce
+      // the same values the walk does, and the test would pass either way.
+      final holder = tomReflectionInfo.setValues(ThrowingFromJsonHolder(), {
+        'name': 'Ann',
+      });
+
+      expect(holder.name, 'Ann');
+    });
+  });
+
+  group('toJson is not an outbound hook of the reflective path', () {
+    // Recorded as it stands, not as it should stand. `getValues` consults
+    // `TomClass` and the `jsonEncode` getter and nothing else, so a type that
+    // renders itself through `toJson` — whether it says so nominally by
+    // implementing `TomJsonSerializable` or structurally by just having the
+    // method — is serialized by walking its fields, and its own rendering is
+    // discarded. The server endpoint pipeline compensates with a hook chain of
+    // its own (`endpoint_pipeline.dart`), which is why this has not bitten in
+    // practice, and also why it is worth pinning: the compensation is what
+    // hides it.
+    //
+    // tcinc1117 makes `getValues` honour both. These two tests are written to
+    // fail when it does — deliberately. A change that big should not be able
+    // to land while the suite stays green, and the failure is the notification
+    // that the expectations below, and the doc they mirror, are now wrong.
+
+    test('a TomJsonSerializable is field-walked, not asked', () {
+      final dto = SelfSerializingDto()..status = 'up';
+
+      expect(
+        tomReflectionInfo.getValues(dto),
+        {'status': 'up'},
+        reason: 'the interface is not consulted by getValues today',
+      );
+      expect(dto.toJson(), {'ok': 'up'}, reason: 'and it would say otherwise');
+    });
+
+    test('a plain toJson method is field-walked too', () {
+      final holder = PlainToJsonHolder()..status = 'up';
+
+      expect(tomReflectionInfo.getValues(holder), {'status': 'up'});
+    });
+
+    test('convertToJsonString inherits the same answer', () {
+      // The string entry point adds no chain of its own; it is `jsonEncode` of
+      // whatever `getValues` produced.
+      final dto = SelfSerializingDto()..status = 'up';
+
+      expect(tomReflectionInfo.convertToJsonString(dto), '{"status":"up"}');
     });
   });
 
