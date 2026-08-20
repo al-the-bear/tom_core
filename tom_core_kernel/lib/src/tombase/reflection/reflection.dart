@@ -279,13 +279,41 @@ class TomReflectionInfo {
     );
   }
 
+  /// Whether [setValues] rejects a key that names no declaration on the target.
+  ///
+  /// False by default, which is what the shared [tomReflectionInfo] uses: on
+  /// the wire, tolerating unknown keys is a feature. A newer client talking to
+  /// an older server, or a stored document holding fields since removed, sends
+  /// keys the target no longer declares, and failing the whole payload for
+  /// them would make the format non-forward-compatible.
+  ///
+  /// Where the payload is under the caller's own control that tolerance is a
+  /// liability instead, because it hides the commonest deserialization bug
+  /// there is — a renamed field, or a typo, silently dropped. Construct a
+  /// strict converter there:
+  ///
+  /// ```dart
+  /// final strict = TomReflectionInfo(strictUnknownFields: true);
+  /// strict.setValues(person, {'nickname': 'Jo'});
+  /// // throws reflection.set.unknown_field
+  /// ```
+  ///
+  /// It is a property of the converter rather than of the call so that nested
+  /// objects inherit it: the walk recurses through [createInstanceFromJson] on
+  /// this same instance, so a strict converter is strict all the way down.
+  ///
+  /// It governs unknown keys only. A key naming a member that exists but
+  /// cannot be written is an error in both modes — see [_handleMissingField].
+  final bool strictUnknownFields;
+
   /// Creates a converter over the global [tomReflector].
   ///
   /// It takes no reflector, and that is not an omission — see the class
-  /// documentation for why a second one cannot exist. Use the shared
-  /// [tomReflectionInfo] instance in preference to constructing your own;
-  /// the class carries no instance state at all.
-  TomReflectionInfo();
+  /// documentation for why a second one cannot exist. Prefer the shared
+  /// [tomReflectionInfo] instance; construct your own only to choose a
+  /// different [strictUnknownFields], which is the whole of the instance
+  /// state.
+  TomReflectionInfo({this.strictUnknownFields = false});
 
   // ---------------------------------------------------------------------------
   // Type Resolution Methods
@@ -1033,7 +1061,7 @@ class TomReflectionInfo {
     if (imGet != null && imSet != null) {
       _setComplexValue(im, cm, imGet, entry);
     } else {
-      _handleMissingField(imGet, entry);
+      _handleMissingField(cm, imGet, imSet, entry);
     }
   }
 
@@ -1063,26 +1091,55 @@ class TomReflectionInfo {
     return false;
   }
 
-  /// Handles cases where a field getter exists but no setter.
+  /// Handles an entry the field walk could not assign, of which there are two
+  /// unrelated kinds.
   ///
-  /// This typically indicates a static, final, or private field.
+  /// **The member exists but cannot be written** ([imGet] found, [imSet] not):
+  /// a static, final or private declaration. Always an error, in both modes —
+  /// the caller named a field this class has and asked for a value it will
+  /// never hold.
+  ///
+  /// **No such member** (neither found): an unknown key. Silently traced, or
+  /// rejected when [strictUnknownFields] is set; see that field for why the
+  /// default is tolerance.
+  ///
+  /// A setter without a getter reaches the second case and is deliberately not
+  /// reported as unknown — the member does exist, the walk simply has no
+  /// return type to resolve the value against. Calling that "unknown field"
+  /// would send the reader looking for a declaration that is right there.
   void _handleMissingField(
+    ClassMirror cm,
     MethodMirror? imGet,
+    MethodMirror? imSet,
     MapEntry<String, dynamic> entry,
   ) {
     if (imGet != null) {
       throw TomReflectorException(
         "reflection.set.unexpected_condition_final_static_private",
-        "Unexpected condition in set values: $imGet ${entry.key} is ${entry.value} "
-            "of type ${entry.value.runtimeType}, declaration is probably static, final or private.",
+        "TomReflectionInfo.setValues: '${cm.simpleName}.${entry.key}' cannot "
+            "be written — the value is ${entry.value} of type "
+            "${entry.value.runtimeType} and the declaration is probably "
+            "static, final or private.",
+        parameters: {"key": entry.key},
         autoLog: true,
       );
-    } else {
-      if (debugSwitchLogReflectionDetailsValues) {
-        tomLog.trace(
-          "Found value/node ${entry.key} = ${entry.value} in values which do not correspond to declarations",
-        );
-      }
+    }
+
+    if (imSet == null && strictUnknownFields) {
+      throw TomReflectorException(
+        "reflection.set.unknown_field",
+        "TomReflectionInfo.setValues: '${cm.simpleName}' declares no field "
+            "'${entry.key}', and this converter is strict about unknown "
+            "fields. The value was ${limited(entry.value, 80)}.",
+        parameters: {"key": entry.key},
+        autoLog: true,
+      );
+    }
+
+    if (debugSwitchLogReflectionDetailsValues) {
+      tomLog.trace(
+        "Found value/node ${entry.key} = ${entry.value} in values which do not correspond to declarations",
+      );
     }
   }
 
@@ -1464,6 +1521,13 @@ class TomReflectionInfo {
         setValues(value, entry.value as Map<String, dynamic>);
       }
       return true;
+    } on TomReflectorException {
+      // Past the guard above, this strategy applies: the field holds an object
+      // and the payload is a map for it. Our own exception is that nested
+      // deserialization's verdict on the payload, not a signal to try the next
+      // strategy — swallowing it would demote a precise diagnosis to a field
+      // silently left as it was.
+      rethrow;
     } catch (error) {
       return false;
     }
@@ -1483,6 +1547,12 @@ class TomReflectionInfo {
       final value = createInstanceFromJson(pm, entry.value);
       im.invokeSetter(entry.key, value);
       return true;
+    } on TomReflectorException {
+      // The last strategy in the chain, and the only failures it should absorb
+      // are the ones that say "not applicable" — a member with no mirror, a
+      // return type that is not a class. A [TomReflectorException] says the
+      // payload itself is wrong, and there is nothing after this to try.
+      rethrow;
     } catch (error) {
       if (debugSwitchLogReflectionDetailsValues) {
         tomLog.trace(

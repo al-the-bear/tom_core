@@ -521,6 +521,129 @@ void main() {
     });
   });
 
+  // Why unknown keys have two behaviours rather than one: on the wire,
+  // tolerance is a feature — a newer client talking to an older server sends
+  // keys the target no longer declares, and failing the whole payload for them
+  // would make the format non-forward-compatible. Where the caller owns the
+  // payload, that same tolerance hides the commonest deserialization bug there
+  // is: a renamed field, or a typo, silently dropped. So the default stays
+  // lenient and the strictness is opt in, chosen per converter.
+  group('tomReflectionInfo.setValues - Unknown keys', () {
+    test('should ignore an unknown key by default', () {
+      final person = SimplePerson();
+      tomReflectionInfo.setValues(person, {'name': 'John', 'headcount': 2.5});
+      expect(person.name, 'John', reason: 'the known key is still applied');
+      expect(person.age, 0);
+      expect(person.salary, 0.0);
+    });
+
+    test('should ignore an unknown key holding a complex value by default', () {
+      final person = SimplePerson();
+      tomReflectionInfo.setValues(person, {
+        'nope': {'a': 1},
+      });
+      expect(person.name, '');
+    });
+
+    test('should reject an unknown key when the converter is strict', () {
+      final strict = TomReflectionInfo(strictUnknownFields: true);
+      expect(
+        () => strict.setValues(SimplePerson(), {'headcount': 2.5}),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.unknown_field',
+          ),
+        ),
+      );
+    });
+
+    // A primitive value reaches the same place by a different route:
+    // `_trySetPrimitiveValue` calls the setter first and swallows the failure,
+    // so the check has to hold for both kinds of value.
+    test('should reject an unknown key holding a primitive when strict', () {
+      final strict = TomReflectionInfo(strictUnknownFields: true);
+      expect(
+        () => strict.setValues(SimplePerson(), {'nickname': 'Jo'}),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.unknown_field',
+          ),
+        ),
+      );
+    });
+
+    // The key alone does not locate the mistake: the same payload is applied to
+    // several classes, and "unknown field 'id'" leaves the reader to guess
+    // which one rejected it.
+    test('should name both the key and the class it was applied to', () {
+      final strict = TomReflectionInfo(strictUnknownFields: true);
+      expect(
+        () => strict.setValues(SimplePerson(), {'nickname': 'Jo'}),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.defaultUserMessage,
+            'defaultUserMessage',
+            allOf(contains('nickname'), contains('SimplePerson')),
+          ),
+        ),
+      );
+    });
+
+    // Strictness is a property of the converter, not of the call, so a nested
+    // object built during the walk inherits it — the recursion re-enters
+    // through this same instance.
+    test('should apply strictness to a nested object', () {
+      final strict = TomReflectionInfo(strictUnknownFields: true);
+      expect(
+        () => strict.setValues(PersonWithAddress(), {
+          'name': 'John',
+          'address': {'street': 'Main', 'bogus': 1},
+        }),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.unknown_field',
+          ),
+        ),
+      );
+    });
+
+    test('should accept the same nested payload by default', () {
+      final person = PersonWithAddress();
+      tomReflectionInfo.setValues(person, {
+        'name': 'John',
+        'address': {'street': 'Main', 'bogus': 1},
+      });
+      expect(person.address?.street, 'Main');
+    });
+
+    // The sibling branch, which is not about unknown keys at all and is
+    // unaffected by the flag: the key names a member that exists but cannot be
+    // written. `hashCode` is a getter on every object and has no setter.
+    test('should reject a key naming an unwritable member in both modes', () {
+      for (final converter in [
+        tomReflectionInfo,
+        TomReflectionInfo(strictUnknownFields: true),
+      ]) {
+        expect(
+          () => converter.setValues(SimplePerson(), {'hashCode': 7}),
+          throwsA(
+            isA<TomReflectorException>().having(
+              (e) => e.key,
+              'key',
+              'reflection.set.unexpected_condition_final_static_private',
+            ),
+          ),
+        );
+      }
+    });
+  });
+
   group('tomReflectionInfo.setValues - DateTime', () {
     test('should set DateTime from ISO string', () {
       final holder = DateTimeHolder();
@@ -2241,10 +2364,11 @@ void main() {
     // testable is the consequence the split was hiding: what a caller sees
     // when the reflector does not know the type.
 
-    test('a converter of your own is the same converter', () {
-      // Standing in for "the constructor no longer offers a choice", which is
-      // a compile-time fact. What is observable is that a locally built
-      // converter has nothing to differ about: same registry, same answers.
+    test('a converter of your own reflects against the same registry', () {
+      // Standing in for "the constructor offers no choice of reflector", which
+      // is a compile-time fact. What is observable is that a locally built
+      // converter answers identically: same registry, same answers. It can
+      // differ in `strictUnknownFields` — and in nothing else.
       final own = TomReflectionInfo();
       final person = SimplePerson()
         ..name = 'Ada'

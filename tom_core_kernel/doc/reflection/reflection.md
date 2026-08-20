@@ -155,6 +155,10 @@ final TomReflectionInfo tomReflectionInfo = TomReflectionInfo();
 is no second reflector to pass: the generator emits mirror data only for a
 *direct* subclass of `Reflection`, and `TomReflector` is that subclass.
 
+It does take one option, `strictUnknownFields`, which is the whole of its
+instance state and the only reason to build your own converter rather than use
+the shared one — see [Unknown Keys](#unknown-keys).
+
 ## Annotations
 
 ### @tomReflector
@@ -251,6 +255,53 @@ tomReflectionInfo.setValues(person, {
 final person = Person();
 tomReflectionInfo.convertFromJsonString(person, '{"name": "Alice", "age": 25}');
 ```
+
+### Unknown Keys
+
+A key that names no field on the target is **ignored by default**. The rest of
+the map is applied and the object is returned as if nothing were wrong:
+
+```dart
+final person = Person();
+tomReflectionInfo.setValues(person, {'name': 'Alice', 'headcount': 3});
+// name == 'Alice'; 'headcount' is dropped without a word
+```
+
+That is deliberate, and it is a property of the wire rather than of this
+module: a newer client talking to an older server, or a stored document holding
+fields that have since been removed, sends keys the target no longer declares.
+Rejecting the whole payload for them would make the format
+non-forward-compatible.
+
+Where the payload is under your own control the same tolerance works against
+you, because it hides the commonest deserialization bug there is — a renamed
+field, or a typo, silently dropped. Construct a strict converter for those call
+sites:
+
+```dart
+final strict = TomReflectionInfo(strictUnknownFields: true);
+strict.setValues(person, {'name': 'Alice', 'headcount': 3});
+// throws TomReflectorException: reflection.set.unknown_field
+//   "Person declares no field 'headcount' …"
+```
+
+`strictUnknownFields` is the whole of the converter's instance state, and it is
+carried by the converter rather than passed per call so that nesting inherits
+it: the walk recurses through `createInstanceFromJson` on the same instance, so
+a strict converter is strict all the way down a nested payload. The shared
+`tomReflectionInfo` is never strict — build your own where you want the checks,
+typically in tests and wherever both ends of the payload are yours.
+
+Two neighbouring cases are **not** governed by the flag:
+
+- A key naming a member that exists but cannot be written — a `static`, `final`
+  or private declaration — is an error in both modes
+  (`reflection.set.unexpected_condition_final_static_private`). You addressed a
+  field this class has and asked for a value it will never hold.
+- A key naming a setter that has no matching getter is ignored in both modes.
+  The member does exist, so it is not an unknown field; the walk simply has no
+  declared return type to resolve a non-primitive value against. A primitive
+  value reaches such a setter normally.
 
 ### TomClass Integration
 
@@ -757,7 +808,8 @@ apart.
 | `reflector.classmirror.not_found_for_map_value` | Map value type not found |
 | `reflector.classmirror.not_found_for_iterable_value` | List element type not found |
 | `reflector.classmirror.ambiguous_simple_name` | The simple name matches more than one annotated class |
-| `reflection.set.unexpected_condition_final_static_private` | Field has a getter but no setter (static, final or private) |
+| `reflection.set.unexpected_condition_final_static_private` | Field has a getter but no setter (static, final or private) — names the class and the field |
+| `reflection.set.unknown_field` | The key names no field on the target class, and the converter was built with `strictUnknownFields: true`. The default converter ignores such keys silently — see [Unknown Keys](#unknown-keys) |
 | `reflection.set.unexpected_type` | Unexpected value type during deserialization |
 | `reflection.set.unexpected_string_type` | String value for non-DateTime field |
 | `reflection.set.datetime_must_be_filled_from_string_in_map` | Non-String element in a `Map<String, DateTime>`-style field |
