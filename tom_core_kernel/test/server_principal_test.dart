@@ -68,37 +68,37 @@ void main() {
   });
 
   group('The meet — unconfigured deployment (the degradation path)', () {
-    test(
-      'SP10: with no server principal the user grant is returned untouched '
-      '[2026-07-28] (OK)',
-      () {
-        const control = TomEntitlementAccess(['feature.tasks']);
-        final user = _principal(entitlements: ['feature.tasks']);
+    test('SP10: with no server principal the user grant is returned untouched '
+        '[2026-07-28] (OK)', () {
+      const control = TomEntitlementAccess(['feature.tasks']);
+      final user = _principal(entitlements: ['feature.tasks']);
 
-        expect(control.resolveAuthState(user), TomAuthState.full);
-        expect(control.checkAccessibility(user), isTrue);
-      },
-    );
+      expect(control.resolveAuthState(user), TomAuthState.full);
+      expect(control.checkAccessibility(user), isTrue);
+    });
 
-    test(
-      'SP11: an unentitled user is still denied without a server principal '
-      '[2026-07-28] (OK)',
-      () {
-        const control = TomEntitlementAccess(['feature.tasks']);
-        final user = _principal(entitlements: ['feature.other']);
+    test('SP11: an unentitled user is still denied without a server principal '
+        '[2026-07-28] (OK)', () {
+      const control = TomEntitlementAccess(['feature.tasks']);
+      final user = _principal(entitlements: ['feature.other']);
 
-        expect(control.resolveAuthState(user), TomAuthState.none);
-        expect(control.checkAccessibility(user), isFalse);
-      },
-    );
+      expect(control.resolveAuthState(user), TomAuthState.none);
+      expect(control.checkAccessibility(user), isFalse);
+    });
 
     test(
       'SP12: a role control is unaffected by the absence of a server principal '
       '[2026-07-28] (OK)',
       () {
         const control = TomRoleAccess(['admin']);
-        expect(control.checkAccessibility(_principal(roles: ['admin'])), isTrue);
-        expect(control.checkAccessibility(_principal(roles: ['user'])), isFalse);
+        expect(
+          control.checkAccessibility(_principal(roles: ['admin'])),
+          isTrue,
+        );
+        expect(
+          control.checkAccessibility(_principal(roles: ['user'])),
+          isFalse,
+        );
       },
     );
   });
@@ -146,19 +146,16 @@ void main() {
       },
     );
 
-    test(
-      'SP23: the meet never widens — an unentitled user stays denied on an '
-      'entitled deployment [2026-07-28] (OK)',
-      () {
-        TomServerPrincipal.install(_principal(entitlements: ['feature.tasks']));
-        const control = TomEntitlementAccess(['feature.tasks']);
+    test('SP23: the meet never widens — an unentitled user stays denied on an '
+        'entitled deployment [2026-07-28] (OK)', () {
+      TomServerPrincipal.install(_principal(entitlements: ['feature.tasks']));
+      const control = TomEntitlementAccess(['feature.tasks']);
 
-        expect(
-          control.resolveAuthState(_principal(entitlements: const [])),
-          TomAuthState.none,
-        );
-      },
-    );
+      expect(
+        control.resolveAuthState(_principal(entitlements: const [])),
+        TomAuthState.none,
+      );
+    });
 
     test(
       'SP24: a control that expresses no deployment opinion is uncapped — an '
@@ -167,7 +164,10 @@ void main() {
         TomServerPrincipal.install(_principal(entitlements: ['feature.other']));
         const control = TomRoleAccess(['admin']);
 
-        expect(control.checkAccessibility(_principal(roles: ['admin'])), isTrue);
+        expect(
+          control.checkAccessibility(_principal(roles: ['admin'])),
+          isTrue,
+        );
       },
     );
   });
@@ -203,21 +203,18 @@ void main() {
       }
     });
 
-    test(
-      'SP31: checkAccessibility is the binary view of the same meet '
-      '[2026-07-28] (OK)',
-      () {
-        TomServerPrincipal.install(_principal(entitlements: ['x']));
-        for (final (userGrade, serverGrade, expected) in ladder) {
-          final control = _LadderControl(userGrade, serverGrade);
-          expect(
-            control.checkAccessibility(_principal()),
-            expected.showsContent,
-            reason: 'binary view of min($userGrade, $serverGrade)',
-          );
-        }
-      },
-    );
+    test('SP31: checkAccessibility is the binary view of the same meet '
+        '[2026-07-28] (OK)', () {
+      TomServerPrincipal.install(_principal(entitlements: ['x']));
+      for (final (userGrade, serverGrade, expected) in ladder) {
+        final control = _LadderControl(userGrade, serverGrade);
+        expect(
+          control.checkAccessibility(_principal()),
+          expected.showsContent,
+          reason: 'binary view of min($userGrade, $serverGrade)',
+        );
+      }
+    });
 
     test(
       'SP32: a two-state control degenerates to a plain AND [2026-07-28] (OK)',
@@ -258,7 +255,9 @@ void main() {
 
         // Deployment entitled to both → the user keeps full.
         TomServerPrincipal.install(
-          _principal(entitlements: ['feature.tasks.write', 'feature.tasks.read']),
+          _principal(
+            entitlements: ['feature.tasks.write', 'feature.tasks.read'],
+          ),
         );
         expect(control.resolveAuthState(user), TomAuthState.full);
 
@@ -274,24 +273,25 @@ void main() {
       },
     );
 
-    test(
-      'SP41: a graded ladder with no server principal keeps its uncapped '
-      'verdict [2026-07-28] (OK)',
-      () {
-        final control = TomGradedAccess(
-          full: const TomEntitlementAccess([r'^feature\.tasks\.write$']),
-          read: const TomEntitlementAccess([r'^feature\.tasks\.read$']),
-        );
-        expect(
-          control.resolveAuthState(_principal(entitlements: ['feature.tasks.read'])),
-          TomAuthState.read,
-        );
-        expect(
-          control.resolveAuthState(_principal(entitlements: ['feature.tasks.write'])),
-          TomAuthState.full,
-        );
-      },
-    );
+    test('SP41: a graded ladder with no server principal keeps its uncapped '
+        'verdict [2026-07-28] (OK)', () {
+      final control = TomGradedAccess(
+        full: const TomEntitlementAccess([r'^feature\.tasks\.write$']),
+        read: const TomEntitlementAccess([r'^feature\.tasks\.read$']),
+      );
+      expect(
+        control.resolveAuthState(
+          _principal(entitlements: ['feature.tasks.read']),
+        ),
+        TomAuthState.read,
+      );
+      expect(
+        control.resolveAuthState(
+          _principal(entitlements: ['feature.tasks.write']),
+        ),
+        TomAuthState.full,
+      );
+    });
   });
 }
 

@@ -57,26 +57,22 @@ class _RecordingLogOutput extends TomLogOutput {
 
 /// English bundle: every [TodoStatus] value plus one [TodoPriority] value.
 Map<String, dynamic> englishBundle() => {
-      'global': {
-        'todostatus': {
-          'open': 'Open',
-          'inreview': 'In review',
-          'done': 'Done',
-        },
-        'todopriority': {'high': 'High'},
-      },
-    };
+  'global': {
+    'todostatus': {'open': 'Open', 'inreview': 'In review', 'done': 'Done'},
+    'todopriority': {'high': 'High'},
+  },
+};
 
 /// German bundle: the same keys, different text.
 Map<String, dynamic> germanBundle() => {
-      'global': {
-        'todostatus': {
-          'open': 'Offen',
-          'inreview': 'In Prüfung',
-          'done': 'Erledigt',
-        },
-      },
-    };
+  'global': {
+    'todostatus': {
+      'open': 'Offen',
+      'inreview': 'In Prüfung',
+      'done': 'Erledigt',
+    },
+  },
+};
 
 /// The missing-label warnings [recorder] has seen, excluding the message that
 /// announces the warnings have been cut off.
@@ -86,7 +82,8 @@ Iterable<String> missingLabelWarnings(_RecordingLogOutput recorder) =>
 /// Installs [bundle] as the application-wide text resources.
 void installBundle(Map<String, dynamic> bundle) {
   TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(bundle));
+    TomTextResourceProvider.from(bundle),
+  );
 }
 
 void main() {
@@ -159,16 +156,20 @@ void main() {
       // where runtimeType reads as the rewritten class name.
       const value = TodoStatus.inReview;
       final declaredName = value.toString().split('.').first;
-      expect(TomObservableEnum.enumTypeSegment(value),
-          equals(declaredName.toLowerCase()));
+      expect(
+        TomObservableEnum.enumTypeSegment(value),
+        equals(declaredName.toLowerCase()),
+      );
       expect(TomObservableEnum.enumTypeSegment(value), equals('todostatus'));
     });
 
     test('an enum may declare its segment through TomEnumResourceSegment', () {
       // 'shipping', not 'shippingstate' — so the value can only have come from
       // resourceSegment.
-      expect(TomObservableEnum.enumTypeSegment(ShippingState.shipped),
-          equals('shipping'));
+      expect(
+        TomObservableEnum.enumTypeSegment(ShippingState.shipped),
+        equals('shipping'),
+      );
       expect(
         TomObservableEnum.resourceKeysFor(ShippingState.shipped),
         equals(['global.shipping.shipped']),
@@ -178,11 +179,13 @@ void main() {
     test('a declared segment resolves text like any other', () {
       installBundle({
         'global': {
-          'shipping': {'shipped': 'On its way'}
-        }
+          'shipping': {'shipped': 'On its way'},
+        },
       });
-      final state =
-          TomObservableEnum(ShippingState.shipped, values: ShippingState.values);
+      final state = TomObservableEnum(
+        ShippingState.shipped,
+        values: ShippingState.values,
+      );
       expect(state.displayText, equals('On its way'));
       expect(state.displayKey, equals('global.shipping.shipped'));
     });
@@ -193,17 +196,19 @@ void main() {
       // once the release compiler rewrites the type name.
       expect(
         () => TomObservableEnum.enumTypeSegment(LegacyFlag.on),
-        throwsA(isA<TomObservableException>()
-            .having(
-              (e) => e.key,
-              'key',
-              equals('observable.enum_segment.unstable_type_name'),
-            )
-            .having(
-              (e) => e.toString(),
-              'message',
-              contains('TomEnumResourceSegment'),
-            )),
+        throwsA(
+          isA<TomObservableException>()
+              .having(
+                (e) => e.key,
+                'key',
+                equals('observable.enum_segment.unstable_type_name'),
+              )
+              .having(
+                (e) => e.toString(),
+                'message',
+                contains('TomEnumResourceSegment'),
+              ),
+        ),
       );
     });
   });
@@ -218,15 +223,19 @@ void main() {
     // for the omitted case: the compiler is the test.
 
     test('rejects a set to a value outside the permitted list', () {
-      final status = TomObservableEnum(TodoStatus.open,
-          values: const [TodoStatus.open, TodoStatus.done]);
+      final status = TomObservableEnum(
+        TodoStatus.open,
+        values: const [TodoStatus.open, TodoStatus.done],
+      );
       expect(
         () => status | TodoStatus.inReview,
-        throwsA(isA<TomObservableException>().having(
-          (e) => e.key,
-          'key',
-          equals('observable.enum_value.not_in_values'),
-        )),
+        throwsA(
+          isA<TomObservableException>().having(
+            (e) => e.key,
+            'key',
+            equals('observable.enum_value.not_in_values'),
+          ),
+        ),
       );
       // The rejected write left the cell alone.
       expect(~status, equals(TodoStatus.open));
@@ -234,17 +243,25 @@ void main() {
     });
 
     test('the rejection covers every write path, not just the operator', () {
-      final status =
-          TomObservableEnum(TodoStatus.open, values: const [TodoStatus.open]);
-      expect(() => status.set(TodoStatus.done),
-          throwsA(isA<TomObservableException>()));
-      expect(() => status << TodoStatus.done,
-          throwsA(isA<TomObservableException>()));
+      final status = TomObservableEnum(
+        TodoStatus.open,
+        values: const [TodoStatus.open],
+      );
+      expect(
+        () => status.set(TodoStatus.done),
+        throwsA(isA<TomObservableException>()),
+      );
+      expect(
+        () => status << TodoStatus.done,
+        throwsA(isA<TomObservableException>()),
+      );
     });
 
     test('a rejected write notifies nobody', () {
-      final status = TomObservableEnum(TodoStatus.open,
-          values: const [TodoStatus.open, TodoStatus.done]);
+      final status = TomObservableEnum(
+        TodoStatus.open,
+        values: const [TodoStatus.open, TodoStatus.done],
+      );
       var notifications = 0;
       final observer = status >> (_) => notifications++;
 
@@ -261,19 +278,25 @@ void main() {
       // The shape the old `values` default produced silently: a cell whose own
       // option list does not contain its own value.
       expect(
-        () => TomObservableEnum(TodoStatus.inReview,
-            values: const [TodoStatus.open]),
-        throwsA(isA<TomObservableException>().having(
-          (e) => e.toString(),
-          'message',
-          allOf(contains('inReview'), contains('open')),
-        )),
+        () => TomObservableEnum(
+          TodoStatus.inReview,
+          values: const [TodoStatus.open],
+        ),
+        throwsA(
+          isA<TomObservableException>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('inReview'), contains('open')),
+          ),
+        ),
       );
     });
 
     test('a subset is a legitimate option list, and it is enforced', () {
-      final status = TomObservableEnum(TodoStatus.open,
-          values: const [TodoStatus.open, TodoStatus.inReview]);
+      final status = TomObservableEnum(
+        TodoStatus.open,
+        values: const [TodoStatus.open, TodoStatus.inReview],
+      );
       expect(status.displayTexts, equals(['Open', 'In review']));
       status | TodoStatus.inReview;
       expect(status.displayText, equals('In review'));
@@ -283,8 +306,10 @@ void main() {
     test('the option list stays in step with the value', () {
       // The invariant the two gaps broke between them: whatever the cell holds
       // is one of the options it offers.
-      final status =
-          TomObservableEnum(TodoStatus.open, values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.open,
+        values: TodoStatus.values,
+      );
       for (final value in TodoStatus.values) {
         status | value;
         expect(status.values, contains(~status));
@@ -298,35 +323,43 @@ void main() {
   // ===========================================================================
   group('TomObservableEnum resolution', () {
     test('resolves display text from the bundle', () {
-      final status = TomObservableEnum(TodoStatus.inReview,
-          values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.inReview,
+        values: TodoStatus.values,
+      );
       expect(status.displayText, equals('In review'));
     });
 
     test('resolves the labels of all values in declaration order', () {
-      final status =
-          TomObservableEnum(TodoStatus.open, values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.open,
+        values: TodoStatus.values,
+      );
       expect(status.displayTexts, equals(['Open', 'In review', 'Done']));
     });
 
     test('reports the key that resolved', () {
-      final status =
-          TomObservableEnum(TodoStatus.done, values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.done,
+        values: TodoStatus.values,
+      );
       expect(status.displayKey, equals('global.todostatus.done'));
     });
 
     test('prefers a scoped override over the global key', () {
       installBundle({
         'global': {
-          'todostatus': {'open': 'Open'}
+          'todostatus': {'open': 'Open'},
         },
         'checkout': {
-          'todostatus': {'open': 'Not yet ordered'}
+          'todostatus': {'open': 'Not yet ordered'},
         },
       });
       TomScope.withScope('checkout', () {
-        final status =
-            TomObservableEnum(TodoStatus.open, values: TodoStatus.values);
+        final status = TomObservableEnum(
+          TodoStatus.open,
+          values: TodoStatus.values,
+        );
         expect(status.displayText, equals('Not yet ordered'));
         expect(status.displayKey, equals('checkout.todostatus.open'));
       });
@@ -334,16 +367,20 @@ void main() {
 
     test('falls back to the global key when the scope has no override', () {
       TomScope.withScope('checkout', () {
-        final status =
-            TomObservableEnum(TodoStatus.done, values: TodoStatus.values);
+        final status = TomObservableEnum(
+          TodoStatus.done,
+          values: TodoStatus.values,
+        );
         expect(status.displayText, equals('Done'));
         expect(status.displayKey, equals('global.todostatus.done'));
       });
     });
 
     test('follows the value when it is set', () {
-      final status =
-          TomObservableEnum(TodoStatus.open, values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.open,
+        values: TodoStatus.values,
+      );
       expect(status.displayText, equals('Open'));
       status | TodoStatus.done;
       expect(status.displayText, equals('Done'));
@@ -359,15 +396,19 @@ void main() {
     // `doc/api_reference/api_summary_observable.md`. Asserted exactly, so the
     // documented form cannot drift away from the code.
     test('renders as ~<value name> (<display text>)', () {
-      final status =
-          TomObservableEnum(TodoStatus.inReview, values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.inReview,
+        values: TodoStatus.values,
+      );
 
       expect(status.toString(), equals('~inReview (In review)'));
     });
 
     test('carries both halves: the stable name and the localized label', () {
-      final status =
-          TomObservableEnum(TodoStatus.done, values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.done,
+        values: TodoStatus.values,
+      );
       expect(status.toString(), equals('~done (Done)'));
 
       // Switching locale changes only the parenthesised half. The bare name is
@@ -380,11 +421,13 @@ void main() {
     test('a missing label degrades to the raw name, never to blank', () {
       installBundle({
         'global': {
-          'todostatus': {'open': 'Open'}
-        }
+          'todostatus': {'open': 'Open'},
+        },
       });
-      final status =
-          TomObservableEnum(TodoStatus.done, values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.done,
+        values: TodoStatus.values,
+      );
 
       expect(status.toString(), equals('~done (done)'));
     });
@@ -395,8 +438,10 @@ void main() {
   // ===========================================================================
   group('TomObservableEnum locales', () {
     test('renders the text of whichever bundle is installed', () {
-      final status = TomObservableEnum(TodoStatus.inReview,
-          values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.inReview,
+        values: TodoStatus.values,
+      );
       expect(status.displayText, equals('In review'));
 
       installBundle(germanBundle());
@@ -407,8 +452,10 @@ void main() {
     });
 
     test('notifies observers when the bundle changes, not just the value', () {
-      final status = TomObservableEnum(TodoStatus.open,
-          values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.open,
+        values: TodoStatus.values,
+      );
       final seen = <String>[];
       // Retain the observer — observers are held weakly.
       final observer = status >> (_) => seen.add(status.displayText);
@@ -423,8 +470,10 @@ void main() {
     });
 
     test('stops reacting to the bundle after detachFromResources', () {
-      final status =
-          TomObservableEnum(TodoStatus.open, values: TodoStatus.values);
+      final status = TomObservableEnum(
+        TodoStatus.open,
+        values: TodoStatus.values,
+      );
       var notifications = 0;
       final observer = status >> (_) => notifications++;
 
@@ -446,26 +495,34 @@ void main() {
   group('TomObservableEnum missing keys', () {
     test('degrades to the raw enum name when no key resolves', () {
       // The English bundle has no 'todopriority.low'.
-      final priority =
-          TomObservableEnum(TodoPriority.low, values: TodoPriority.values);
+      final priority = TomObservableEnum(
+        TodoPriority.low,
+        values: TodoPriority.values,
+      );
       expect(priority.displayText, equals('low'));
     });
 
     test('reports the global key as the one that should be added', () {
-      final priority =
-          TomObservableEnum(TodoPriority.low, values: TodoPriority.values);
+      final priority = TomObservableEnum(
+        TodoPriority.low,
+        values: TodoPriority.values,
+      );
       expect(priority.displayKey, equals('global.todopriority.low'));
     });
 
     test('resolveTextOrNull returns null instead of the fallback', () {
       expect(TomObservableEnum.resolveTextOrNull(TodoPriority.low), isNull);
-      expect(TomObservableEnum.resolveTextOrNull(TodoPriority.high),
-          equals('High'));
+      expect(
+        TomObservableEnum.resolveTextOrNull(TodoPriority.high),
+        equals('High'),
+      );
     });
 
     test('degrades per value — present labels still resolve', () {
-      final priority =
-          TomObservableEnum(TodoPriority.low, values: TodoPriority.values);
+      final priority = TomObservableEnum(
+        TodoPriority.low,
+        values: TodoPriority.values,
+      );
       expect(priority.displayTexts, equals(['low', 'High']));
     });
 
@@ -486,8 +543,10 @@ void main() {
 
       // 599 further distinct keys, one per scope.
       for (var i = 0; i < 599; i++) {
-        TomScope.withScope('scope$i',
-            () => TomObservableEnum.resolveText(TodoPriority.low));
+        TomScope.withScope(
+          'scope$i',
+          () => TomObservableEnum.resolveText(TodoPriority.low),
+        );
       }
       expect(missingLabelWarnings(recorder), hasLength(512));
       expect(
@@ -502,14 +561,16 @@ void main() {
     });
 
     test('a bundle that adds the key repairs the label without rebuilding', () {
-      final priority =
-          TomObservableEnum(TodoPriority.low, values: TodoPriority.values);
+      final priority = TomObservableEnum(
+        TodoPriority.low,
+        values: TodoPriority.values,
+      );
       expect(priority.displayText, equals('low'));
 
       installBundle({
         'global': {
-          'todopriority': {'low': 'Low'}
-        }
+          'todopriority': {'low': 'Low'},
+        },
       });
       expect(priority.displayText, equals('Low'));
     });

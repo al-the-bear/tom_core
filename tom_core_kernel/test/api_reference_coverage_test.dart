@@ -71,9 +71,9 @@ String _directoryName(Directory entry) =>
 /// Module directory names under `lib/src/tombase/`, sorted.
 ///
 /// This is the anchor set: it is the code, so it cannot itself be out of date.
-List<String> _modules() =>
-    Directory('lib/src/tombase').listSync().whereType<Directory>().map(_directoryName).toList()
-      ..sort();
+List<String> _modules() => Directory(
+  'lib/src/tombase',
+).listSync().whereType<Directory>().map(_directoryName).toList()..sort();
 
 /// Names of the per-module guide directories under `doc/`, sorted.
 List<String> _guides() =>
@@ -105,14 +105,16 @@ List<String> _summaries() {
 }
 
 /// Names of the sample folders under `example/samples/`, sorted.
-List<String> _samples() =>
-    Directory('example/samples').listSync().whereType<Directory>().map(_directoryName).toList()
-      ..sort();
+List<String> _samples() => Directory(
+  'example/samples',
+).listSync().whereType<Directory>().map(_directoryName).toList()..sort();
 
 void main() {
   group('doc mirrors lib/src/tombase', () {
     test('every module has an API summary', () {
-      final missing = _modules().where((m) => !_summaries().contains(m)).toList();
+      final missing = _modules()
+          .where((m) => !_summaries().contains(m))
+          .toList();
 
       expect(
         missing,
@@ -170,9 +172,12 @@ void main() {
     });
 
     test('the index links every API summary', () {
-      final index = File('doc/api_reference/api_summary_index.md').readAsStringSync();
-      final unlisted =
-          _summaries().where((s) => !index.contains('api_summary_$s.md')).toList();
+      final index = File(
+        'doc/api_reference/api_summary_index.md',
+      ).readAsStringSync();
+      final unlisted = _summaries()
+          .where((s) => !index.contains('api_summary_$s.md'))
+          .toList();
 
       expect(
         unlisted,
@@ -203,7 +208,10 @@ void main() {
     test('every sample folder has a module', () {
       final modules = _modules();
       final orphaned = _samples()
-          .where((s) => !modules.contains(s) && !_reExportedSampleFolders.contains(s))
+          .where(
+            (s) =>
+                !modules.contains(s) && !_reExportedSampleFolders.contains(s),
+          )
           .toList();
 
       expect(
@@ -220,7 +228,11 @@ void main() {
     test('the master runner imports every sample folder', () {
       final runner = File('example/run_all_samples.dart').readAsStringSync();
       final unwired = _samples()
-          .where((s) => !runner.contains("import 'samples/$s/00_run_all_examples.dart'"))
+          .where(
+            (s) => !runner.contains(
+              "import 'samples/$s/00_run_all_examples.dart'",
+            ),
+          )
           .toList();
 
       expect(

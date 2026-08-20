@@ -85,86 +85,64 @@ void main() {
     });
 
     test('should return typed value when stored in zone', () {
-      runZoned(
-        () {
-          final result = getFromCurrentZone<String>();
-          expect(result, equals('test-value'));
-        },
-        zoneValues: {String: 'test-value'},
-      );
+      runZoned(() {
+        final result = getFromCurrentZone<String>();
+        expect(result, equals('test-value'));
+      }, zoneValues: {String: 'test-value'});
     });
 
-    test('should return null when no value is stored under the requested key',
-        () {
-      runZoned(
-        () {
+    test(
+      'should return null when no value is stored under the requested key',
+      () {
+        runZoned(() {
           // Nothing is stored under `int`, so this returns null at the key
           // lookup — the `is T` guard never runs. Distinguished from the test
           // below, which exercises the guard instead.
           final result = getFromCurrentZone<int>();
           expect(result, isNull);
-        },
-        zoneValues: {String: 'test-value'},
-      );
-    });
+        }, zoneValues: {String: 'test-value'});
+      },
+    );
 
     test('should return null when the value under the key is not a T', () {
-      runZoned(
-        () {
-          // The key *is* present, so this reaches the `is T` guard — the
-          // second and weaker of the two filters. `getObjectFromCurrentZone`
-          // has no guard and hands the same value back, which is what makes
-          // the two filters distinguishable.
-          expect(getFromCurrentZone<String>(), isNull);
-          expect(getObjectFromCurrentZone(String), equals(42));
-        },
-        zoneValues: {String: 42},
-      );
+      runZoned(() {
+        // The key *is* present, so this reaches the `is T` guard — the
+        // second and weaker of the two filters. `getObjectFromCurrentZone`
+        // has no guard and hands the same value back, which is what makes
+        // the two filters distinguishable.
+        expect(getFromCurrentZone<String>(), isNull);
+        expect(getObjectFromCurrentZone(String), equals(42));
+      }, zoneValues: {String: 42});
     });
 
     test('should work with custom class types', () {
       final testConfig = _TestConfig('production', 8080);
-      runZoned(
-        () {
-          final result = getFromCurrentZone<_TestConfig>();
-          expect(result, isNotNull);
-          expect(result!.environment, equals('production'));
-          expect(result.port, equals(8080));
-        },
-        zoneValues: {_TestConfig: testConfig},
-      );
+      runZoned(() {
+        final result = getFromCurrentZone<_TestConfig>();
+        expect(result, isNotNull);
+        expect(result!.environment, equals('production'));
+        expect(result.port, equals(8080));
+      }, zoneValues: {_TestConfig: testConfig});
     });
 
     test('should work with nested zones', () {
-      runZoned(
-        () {
-          runZoned(
-            () {
-              final outer = getFromCurrentZone<String>();
-              final inner = getFromCurrentZone<int>();
-              expect(outer, equals('outer-value'));
-              expect(inner, equals(42));
-            },
-            zoneValues: {int: 42},
-          );
-        },
-        zoneValues: {String: 'outer-value'},
-      );
+      runZoned(() {
+        runZoned(() {
+          final outer = getFromCurrentZone<String>();
+          final inner = getFromCurrentZone<int>();
+          expect(outer, equals('outer-value'));
+          expect(inner, equals(42));
+        }, zoneValues: {int: 42});
+      }, zoneValues: {String: 'outer-value'});
     });
 
     test('should return innermost zone value when shadowed', () {
-      runZoned(
-        () {
-          runZoned(
-            () {
-              final result = getFromCurrentZone<String>();
-              expect(result, equals('inner-value'));
-            },
-            zoneValues: {String: 'inner-value'},
-          );
-        },
-        zoneValues: {String: 'outer-value'},
-      );
+      runZoned(() {
+        runZoned(() {
+          final result = getFromCurrentZone<String>();
+          expect(result, equals('inner-value'));
+        }, zoneValues: {String: 'inner-value'});
+      }, zoneValues: {String: 'outer-value'});
     });
   });
 
@@ -175,35 +153,26 @@ void main() {
     });
 
     test('should return untyped value when stored in zone', () {
-      runZoned(
-        () {
-          final result = getObjectFromCurrentZone(String);
-          expect(result, equals('test-value'));
-        },
-        zoneValues: {String: 'test-value'},
-      );
+      runZoned(() {
+        final result = getObjectFromCurrentZone(String);
+        expect(result, equals('test-value'));
+      }, zoneValues: {String: 'test-value'});
     });
 
     test('should return value without type checking', () {
-      runZoned(
-        () {
-          final result = getObjectFromCurrentZone(_TestConfig);
-          expect(result, isA<_TestConfig>());
-        },
-        zoneValues: {_TestConfig: _TestConfig('dev', 3000)},
-      );
+      runZoned(() {
+        final result = getObjectFromCurrentZone(_TestConfig);
+        expect(result, isA<_TestConfig>());
+      }, zoneValues: {_TestConfig: _TestConfig('dev', 3000)});
     });
 
     test('should key on the exact Type, like getFromCurrentZone', () {
-      runZoned(
-        () {
-          // Dropping the `is T` guard does not relax the key lookup: the
-          // untyped accessor is exactly as exact-key as the typed one.
-          expect(getObjectFromCurrentZone(_ZoneDerived), isNotNull);
-          expect(getObjectFromCurrentZone(_ZoneBase), isNull);
-        },
-        zoneValues: {_ZoneDerived: _ZoneDerived()},
-      );
+      runZoned(() {
+        // Dropping the `is T` guard does not relax the key lookup: the
+        // untyped accessor is exactly as exact-key as the typed one.
+        expect(getObjectFromCurrentZone(_ZoneDerived), isNotNull);
+        expect(getObjectFromCurrentZone(_ZoneBase), isNull);
+      }, zoneValues: {_ZoneDerived: _ZoneDerived()});
     });
   });
 
@@ -223,66 +192,57 @@ void main() {
   // =========================================================================
 
   group('zone key identity', () {
-    test('a value stored under a subtype key is invisible to its supertype',
-        () {
-      runZoned(
-        () {
+    test(
+      'a value stored under a subtype key is invisible to its supertype',
+      () {
+        runZoned(() {
           expect(getFromCurrentZone<_ZoneDerived>(), isNotNull);
           // A `_ZoneDerived` *is* a `_ZoneBase`, so the `is T` guard would
           // admit it. The key lookup never gets that far.
           expect(getFromCurrentZone<_ZoneBase>(), isNull);
-        },
-        zoneValues: {_ZoneDerived: _ZoneDerived()},
-      );
-    });
+        }, zoneValues: {_ZoneDerived: _ZoneDerived()});
+      },
+    );
 
-    test('a value stored under a supertype key is invisible to its subtype',
-        () {
-      runZoned(
-        () {
+    test(
+      'a value stored under a supertype key is invisible to its subtype',
+      () {
+        runZoned(() {
           // The stored object is a `_ZoneDerived`, but it was filed under
           // `_ZoneBase`. Asking for the runtime type of the value one holds is
           // the natural mistake, and it fails.
           expect(getFromCurrentZone<_ZoneBase>()?.name, equals('derived'));
           expect(getFromCurrentZone<_ZoneDerived>(), isNull);
-        },
-        zoneValues: {_ZoneBase: _ZoneDerived()},
-      );
-    });
+        }, zoneValues: {_ZoneBase: _ZoneDerived()});
+      },
+    );
 
-    test('an implementation key is invisible to the interface it implements',
-        () {
-      runZoned(
-        () {
+    test(
+      'an implementation key is invisible to the interface it implements',
+      () {
+        runZoned(() {
           expect(getFromCurrentZone<_ZoneService>(), isNull);
-        },
-        zoneValues: {_ZoneServiceImpl: _ZoneServiceImpl()},
-      );
-    });
+        }, zoneValues: {_ZoneServiceImpl: _ZoneServiceImpl()});
+      },
+    );
 
     test('Object is not a wildcard key', () {
-      runZoned(
-        () {
-          // Every stored value is an `Object`, so a subtype-scanning lookup
-          // would return the first one. This is the sharpest demonstration
-          // that no scanning happens.
-          expect(getFromCurrentZone<Object>(), isNull);
-        },
-        zoneValues: {String: 'stored'},
-      );
+      runZoned(() {
+        // Every stored value is an `Object`, so a subtype-scanning lookup
+        // would return the first one. This is the sharpest demonstration
+        // that no scanning happens.
+        expect(getFromCurrentZone<Object>(), isNull);
+      }, zoneValues: {String: 'stored'});
     });
 
     test('a nullable type argument is a different key from its base type', () {
-      runZoned(
-        () {
-          expect(getFromCurrentZone<String>(), equals('stored'));
-          // `String?` and `String` are different `Type` objects. Writing the
-          // nullable form because the *result* is nullable is an easy slip,
-          // and it never finds anything.
-          expect(getFromCurrentZone<String?>(), isNull);
-        },
-        zoneValues: {String: 'stored'},
-      );
+      runZoned(() {
+        expect(getFromCurrentZone<String>(), equals('stored'));
+        // `String?` and `String` are different `Type` objects. Writing the
+        // nullable form because the *result* is nullable is an easy slip,
+        // and it never finds anything.
+        expect(getFromCurrentZone<String?>(), isNull);
+      }, zoneValues: {String: 'stored'});
     });
 
     test('type arguments are part of the key', () {
@@ -294,7 +254,9 @@ void main() {
           expect(getFromCurrentZone<List>(), isNull);
           expect(getFromCurrentZone<List<num>>(), isNull);
         },
-        zoneValues: {List<int>: <int>[1, 2]},
+        zoneValues: {
+          List<int>: <int>[1, 2],
+        },
       );
     });
   });
@@ -325,13 +287,13 @@ void main() {
     test('should pass original error to onError handler', () async {
       Object? capturedError;
       try {
-        await runChecked(
-          () async => throw FormatException('bad format'),
-          (error, stack) {
-            capturedError = error;
-            return _CustomException('wrapped');
-          },
-        );
+        await runChecked(() async => throw FormatException('bad format'), (
+          error,
+          stack,
+        ) {
+          capturedError = error;
+          return _CustomException('wrapped');
+        });
       } catch (_) {}
 
       expect(capturedError, isA<FormatException>());
@@ -340,13 +302,10 @@ void main() {
     test('should pass stack trace to onError handler', () async {
       StackTrace? capturedStack;
       try {
-        await runChecked(
-          () async => throw Exception('error'),
-          (error, stack) {
-            capturedStack = stack;
-            return _CustomException('wrapped');
-          },
-        );
+        await runChecked(() async => throw Exception('error'), (error, stack) {
+          capturedStack = stack;
+          return _CustomException('wrapped');
+        });
       } catch (_) {}
 
       expect(capturedStack, isNotNull);
@@ -397,13 +356,13 @@ void main() {
     test('should pass original error to onError handler', () {
       Object? capturedError;
       try {
-        runCheckedSync(
-          () => throw ArgumentError('bad argument'),
-          (error, stack) {
-            capturedError = error;
-            return _CustomException('wrapped');
-          },
-        );
+        runCheckedSync(() => throw ArgumentError('bad argument'), (
+          error,
+          stack,
+        ) {
+          capturedError = error;
+          return _CustomException('wrapped');
+        });
       } catch (_) {}
 
       expect(capturedError, isA<ArgumentError>());
@@ -412,13 +371,10 @@ void main() {
     test('should pass stack trace to onError handler', () {
       StackTrace? capturedStack;
       try {
-        runCheckedSync(
-          () => throw Exception('error'),
-          (error, stack) {
-            capturedStack = stack;
-            return _CustomException('wrapped');
-          },
-        );
+        runCheckedSync(() => throw Exception('error'), (error, stack) {
+          capturedStack = stack;
+          return _CustomException('wrapped');
+        });
       } catch (_) {}
 
       expect(capturedStack, isNotNull);
@@ -598,15 +554,17 @@ void main() {
 
   group('tomGetStackTraceAsTuple', () {
     test('should return both string and list representations', () {
-      final (traceString, traceList) =
-          tomGetStackTraceAsTuple(StackTrace.current);
+      final (traceString, traceList) = tomGetStackTraceAsTuple(
+        StackTrace.current,
+      );
       expect(traceString, isA<String>());
       expect(traceList, isA<List<String>>());
     });
 
     test('should have consistent data between string and list', () {
-      final (traceString, traceList) =
-          tomGetStackTraceAsTuple(StackTrace.current);
+      final (traceString, traceList) = tomGetStackTraceAsTuple(
+        StackTrace.current,
+      );
       final joinedList = traceList.join('\n');
       expect(traceString, equals(joinedList));
     });
@@ -676,7 +634,8 @@ void main() {
         expect(
           joined,
           isNot(contains(member)),
-          reason: '$member is on the stack only because the trace was '
+          reason:
+              '$member is on the stack only because the trace was '
               'captured inside this library',
         );
       }
@@ -792,11 +751,13 @@ void main() {
       test('rejects 841, one minute past the bound', () {
         expect(
           () => convertMinutesToUtcOffset(841),
-          throwsA(isA<TomFormattingException>().having(
-            (e) => e.key,
-            'key',
-            'formatting.utc_offset.out_of_range',
-          )),
+          throwsA(
+            isA<TomFormattingException>().having(
+              (e) => e.key,
+              'key',
+              'formatting.utc_offset.out_of_range',
+            ),
+          ),
         );
       });
 
@@ -858,8 +819,11 @@ void main() {
 
       test('should use provided UUID when specified', () {
         final customUuid = '12345678-1234-1234-1234-123456789012';
-        final exception =
-            TomException('test.error.key', 'message', uuid: customUuid);
+        final exception = TomException(
+          'test.error.key',
+          'message',
+          uuid: customUuid,
+        );
         expect(exception.uuid, equals(customUuid));
       });
 
@@ -917,15 +881,19 @@ void main() {
         expect(
           exception.stack,
           isNotNull,
-          reason: 'the raw trace is what printStackTrace re-formats, so it '
+          reason:
+              'the raw trace is what printStackTrace re-formats, so it '
               'has to exist even when the caller supplied none',
         );
       });
 
       test('should keep a provided stack unchanged', () {
         final provided = _captureDeepStack();
-        final exception =
-            TomException('test.error.key', 'message', stack: provided);
+        final exception = TomException(
+          'test.error.key',
+          'message',
+          stack: provided,
+        );
         expect(exception.stack, same(provided));
       });
 
@@ -951,8 +919,10 @@ void main() {
       });
 
       test('should include message in string representation', () {
-        final exception =
-            TomException('test.error.key', 'This is the error message');
+        final exception = TomException(
+          'test.error.key',
+          'This is the error message',
+        );
         expect(exception.toString(), contains('This is the error message'));
       });
 
@@ -1024,14 +994,20 @@ void main() {
       });
 
       test('should handle null parameters', () {
-        final exception =
-            TomException('test.error.key', 'message', parameters: null);
+        final exception = TomException(
+          'test.error.key',
+          'message',
+          parameters: null,
+        );
         expect(exception.parameters, isNull);
       });
 
       test('should handle empty parameters map', () {
-        final exception =
-            TomException('test.error.key', 'message', parameters: {});
+        final exception = TomException(
+          'test.error.key',
+          'message',
+          parameters: {},
+        );
         expect(exception.parameters, isEmpty);
       });
 
@@ -1111,11 +1087,15 @@ void main() {
         // the common case — logged its trace under `null-null` while the
         // EXCEPTION line above carried the real id. Nothing could then join a
         // trace to the failure it came from.
-        final exception =
-            TomException('test.error.critical', 'boom', autoLog: true);
+        final exception = TomException(
+          'test.error.critical',
+          'boom',
+          autoLog: true,
+        );
 
-        final trace = captured.messages
-            .firstWhere((m) => m.contains('EXCEPTION_STACKTRACE:'));
+        final trace = captured.messages.firstWhere(
+          (m) => m.contains('EXCEPTION_STACKTRACE:'),
+        );
         expect(trace, contains(exception.uuid));
         expect(
           trace,
@@ -1132,8 +1112,9 @@ void main() {
           autoLog: true,
         );
 
-        final trace = captured.messages
-            .firstWhere((m) => m.contains('EXCEPTION_STACKTRACE:'));
+        final trace = captured.messages.firstWhere(
+          (m) => m.contains('EXCEPTION_STACKTRACE:'),
+        );
         expect(trace, contains('${exception.uuid}-req-77'));
       });
     });
@@ -1242,7 +1223,8 @@ void main() {
             (m) => m.contains('_constructExceptionAtKnownSite'),
           ),
           isTrue,
-          reason: 'printStackTrace must report where the exception was '
+          reason:
+              'printStackTrace must report where the exception was '
               'constructed, not where it was formatted',
         );
       });
@@ -1269,8 +1251,11 @@ void main() {
         // Wrapping code forwards whatever trace it caught, and an async error
         // created without one yields `StackTrace.empty`. Reporting such an
         // exception must not itself throw.
-        final exception =
-            TomException('test.error.key', 'message', stack: StackTrace.empty);
+        final exception = TomException(
+          'test.error.key',
+          'message',
+          stack: StackTrace.empty,
+        );
 
         expect(exception.printStackTrace, returnsNormally);
         expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
@@ -1297,19 +1282,24 @@ void main() {
         expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
       });
 
-      test('should not substitute the reporting site for an unusable stack',
-          () {
-        final exception = TomException('test.error.key', 'message');
-        exception.stack = 42;
-        exception.printStackTrace();
+      test(
+        'should not substitute the reporting site for an unusable stack',
+        () {
+          final exception = TomException('test.error.key', 'message');
+          exception.stack = 42;
+          exception.printStackTrace();
 
-        // Capturing `StackTrace.current` as a fallback would print the call
-        // path of the *report*, which names none of the code that failed —
-        // a plausible-looking trace pointing at the wrong place. An unusable
-        // stack means no trace is known, so none is shown.
-        expect(captured.messages.last, isNot(contains('printStackTrace')));
-        expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
-      });
+          // Capturing `StackTrace.current` as a fallback would print the call
+          // path of the *report*, which names none of the code that failed —
+          // a plausible-looking trace pointing at the wrong place. An unusable
+          // stack means no trace is known, so none is shown.
+          expect(captured.messages.last, isNot(contains('printStackTrace')));
+          expect(
+            captured.messages.last.trim(),
+            endsWith('exception stacktrace'),
+          );
+        },
+      );
 
       test('should prefer an explicitly passed stack over the capture', () {
         final exception = TomException(
@@ -1333,10 +1323,7 @@ void main() {
         // With depth 0 the trace portion is empty, so only the prefix message
         // remains — i.e. no stack-frame location lines are appended.
         expect(captured.messages, isNotEmpty);
-        expect(
-          captured.messages.last.trim(),
-          endsWith('exception stacktrace'),
-        );
+        expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
       });
     });
   });
@@ -1443,11 +1430,13 @@ void main() {
       expect(captured.messages, isEmpty);
     });
 
-    test('should log nothing when the message is empty and so is the trace',
-        () {
-      tomPrintStackTrace(StackTrace.current, message: '', depth: 0);
-      expect(captured.messages, isEmpty);
-    });
+    test(
+      'should log nothing when the message is empty and so is the trace',
+      () {
+        tomPrintStackTrace(StackTrace.current, message: '', depth: 0);
+        expect(captured.messages, isEmpty);
+      },
+    );
 
     test('should still log the trace when only the message is empty', () {
       // An empty message must suppress only itself, never the trace it would
@@ -1479,8 +1468,9 @@ void main() {
     });
 
     test('tomGetStackTraceAsTuple returns both representations empty', () {
-      final (traceString, traceList) =
-          tomGetStackTraceAsTuple(StackTrace.empty);
+      final (traceString, traceList) = tomGetStackTraceAsTuple(
+        StackTrace.empty,
+      );
       expect(traceString, isEmpty);
       expect(traceList, isEmpty);
     });
@@ -1491,22 +1481,24 @@ void main() {
       expect(tomGetStackTraceAsList(StackTrace.empty, 5), isEmpty);
     });
 
-    test('an async error carrying no trace is formatted, not thrown on',
-        () async {
-      // The situation the empty case exists for, reproduced end to end rather
-      // than asserted against the constant — this is what makes the test a
-      // guard on real behaviour instead of on a chosen input.
-      late StackTrace caught;
-      try {
-        await Future<void>.error(Exception('created without a trace'));
-      } catch (_, stack) {
-        caught = stack;
-      }
+    test(
+      'an async error carrying no trace is formatted, not thrown on',
+      () async {
+        // The situation the empty case exists for, reproduced end to end rather
+        // than asserted against the constant — this is what makes the test a
+        // guard on real behaviour instead of on a chosen input.
+        late StackTrace caught;
+        try {
+          await Future<void>.error(Exception('created without a trace'));
+        } catch (_, stack) {
+          caught = stack;
+        }
 
-      expect(caught, same(StackTrace.empty));
-      expect(() => tomGetStackTraceAsList(caught), returnsNormally);
-      expect(tomGetStackTraceAsList(caught), isEmpty);
-    });
+        expect(caught, same(StackTrace.empty));
+        expect(() => tomGetStackTraceAsList(caught), returnsNormally);
+        expect(tomGetStackTraceAsList(caught), isEmpty);
+      },
+    );
   });
 
   // =========================================================================
@@ -1531,8 +1523,10 @@ void main() {
     });
 
     test('tomGetStackTraceAsTuple returns empty for depth 0', () {
-      final (traceString, traceList) =
-          tomGetStackTraceAsTuple(StackTrace.current, 0);
+      final (traceString, traceList) = tomGetStackTraceAsTuple(
+        StackTrace.current,
+        0,
+      );
       expect(traceString, isEmpty);
       expect(traceList, isEmpty);
     });

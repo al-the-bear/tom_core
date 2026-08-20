@@ -301,16 +301,20 @@ void main() {
 
       observable.unmute();
       expect(observable.isMuted, isFalse);
-      expect(observer.notifyCount, equals(1)); // Should notify on unmute if dirty
+      expect(
+        observer.notifyCount,
+        equals(1),
+      ); // Should notify on unmute if dirty
     });
 
     test('>> operator adds callback observer', () {
       final observable = TomObservable();
       int callbackCount = 0;
 
-      observable >> (obs) {
-        callbackCount++;
-      };
+      observable >>
+          (obs) {
+            callbackCount++;
+          };
 
       observable.notifyObservers();
       expect(callbackCount, equals(1));
@@ -323,9 +327,11 @@ void main() {
       final observable = TomObservable();
       int callbackCount = 0;
 
-      final observer = observable >> (obs) {
-        callbackCount++;
-      };
+      final observer =
+          observable >>
+          (obs) {
+            callbackCount++;
+          };
 
       observable.notifyObservers();
       expect(callbackCount, equals(1));
@@ -385,8 +391,10 @@ void main() {
       var best = -1;
       for (var run = 0; run < 5; run++) {
         final observable = TomObservable();
-        final observers =
-            List.generate(count, (_) => TestObserver<TomObservable>());
+        final observers = List.generate(
+          count,
+          (_) => TestObserver<TomObservable>(),
+        );
         final stopwatch = Stopwatch()..start();
         for (final observer in observers) {
           observable.addObserver(observer);
@@ -398,43 +406,55 @@ void main() {
       return best;
     }
 
-    test('registering 10,000 observers costs ~4x registering 2,500, not ~16x',
-        () {
-      registrationMicros(500); // warm the JIT before the readings that count
+    test(
+      'registering 10,000 observers costs ~4x registering 2,500, not ~16x',
+      () {
+        registrationMicros(500); // warm the JIT before the readings that count
 
-      final small = registrationMicros(2500);
-      final large = registrationMicros(10000);
+        final small = registrationMicros(2500);
+        final large = registrationMicros(10000);
 
-      // A zero reading would make the ratio meaningless; one microsecond is
-      // below anything measurable here, so floor the divisor.
-      final ratio = large / (small < 1 ? 1 : small);
+        // A zero reading would make the ratio meaningless; one microsecond is
+        // below anything measurable here, so floor the divisor.
+        final ratio = large / (small < 1 ? 1 : small);
 
-      expect(ratio, lessThan(8.0),
-          reason: 'quadrupling the observer count multiplied the registration '
+        expect(
+          ratio,
+          lessThan(8.0),
+          reason:
+              'quadrupling the observer count multiplied the registration '
               'time by ${ratio.toStringAsFixed(1)}x '
               '(${small}us for 2500 -> ${large}us for 10000). Linear growth is '
               '~4x; anything approaching 16x means the registration path is '
-              'still scanning the observer list.');
-    });
+              'still scanning the observer list.',
+        );
+      },
+    );
 
-    test('every one of 10,000 registered observers is notified exactly once',
-        () {
-      final observable = TomObservable();
-      final observers =
-          List.generate(10000, (_) => TestObserver<TomObservable>());
-      for (final observer in observers) {
-        observable.addObserver(observer);
-      }
+    test(
+      'every one of 10,000 registered observers is notified exactly once',
+      () {
+        final observable = TomObservable();
+        final observers = List.generate(
+          10000,
+          (_) => TestObserver<TomObservable>(),
+        );
+        for (final observer in observers) {
+          observable.addObserver(observer);
+        }
 
-      observable.notifyObservers();
+        observable.notifyObservers();
 
-      expect(observers.where((o) => o.notifyCount != 1), isEmpty);
-    });
+        expect(observers.where((o) => o.notifyCount != 1), isEmpty);
+      },
+    );
 
     test('re-registering all 10,000 attaches none of them a second time', () {
       final observable = TomObservable();
-      final observers =
-          List.generate(10000, (_) => TestObserver<TomObservable>());
+      final observers = List.generate(
+        10000,
+        (_) => TestObserver<TomObservable>(),
+      );
       for (final observer in observers) {
         observable.addObserver(observer);
       }
@@ -451,10 +471,11 @@ void main() {
       final observable = TomObservable();
       final order = <int>[];
       final observers = List.generate(
-          200,
-          (index) => TomFunctionObserver<TomObservable>((_) {
-                order.add(index);
-              }));
+        200,
+        (index) => TomFunctionObserver<TomObservable>((_) {
+          order.add(index);
+        }),
+      );
       for (final observer in observers) {
         observable.addObserver(observer);
       }
@@ -479,51 +500,57 @@ void main() {
       expect(second.notifyCount, equals(1));
     });
 
-    test('removing one of two ==-equal observers leaves the other attached',
-        () {
-      final observable = TomObservable();
-      final kept = AlwaysEqualObserver();
-      final dropped = AlwaysEqualObserver();
-      observable.addObserver(kept);
-      observable.addObserver(dropped);
+    test(
+      'removing one of two ==-equal observers leaves the other attached',
+      () {
+        final observable = TomObservable();
+        final kept = AlwaysEqualObserver();
+        final dropped = AlwaysEqualObserver();
+        observable.addObserver(kept);
+        observable.addObserver(dropped);
 
-      observable.removeObserver(dropped);
-      observable.notifyObservers();
+        observable.removeObserver(dropped);
+        observable.notifyObservers();
 
-      expect(kept.notifyCount, equals(1));
-      expect(dropped.notifyCount, equals(0));
-    });
+        expect(kept.notifyCount, equals(1));
+        expect(dropped.notifyCount, equals(0));
+      },
+    );
 
-    test('collecting registered observers does not disturb the survivors',
-        () async {
-      // The pruning path is the one place where a handle has to be found in
-      // the set *after* its target is gone, so it is worth exercising even
-      // though the collector cannot be commanded.
-      final observable = TomObservable();
-      final retained = TestObserver<TomObservable>();
-      observable.addObserver(retained);
+    test(
+      'collecting registered observers does not disturb the survivors',
+      () async {
+        // The pruning path is the one place where a handle has to be found in
+        // the set *after* its target is gone, so it is worth exercising even
+        // though the collector cannot be commanded.
+        final observable = TomObservable();
+        final retained = TestObserver<TomObservable>();
+        observable.addObserver(retained);
 
-      final probe = registerTransientObserver(observable);
-      for (var i = 0; i < 500; i++) {
-        registerTransientObserver(observable);
-      }
+        final probe = registerTransientObserver(observable);
+        for (var i = 0; i < 500; i++) {
+          registerTransientObserver(observable);
+        }
 
-      if (!await collectGarbageUntilCleared(probe)) {
-        markTestSkipped('the VM did not collect the dropped observers, so '
-            'there is nothing here to observe');
-        return;
-      }
+        if (!await collectGarbageUntilCleared(probe)) {
+          markTestSkipped(
+            'the VM did not collect the dropped observers, so '
+            'there is nothing here to observe',
+          );
+          return;
+        }
 
-      observable.notifyObservers(); // sees the dead handles and prunes them
-      expect(retained.notifyCount, equals(1));
+        observable.notifyObservers(); // sees the dead handles and prunes them
+        expect(retained.notifyCount, equals(1));
 
-      final late = TestObserver<TomObservable>();
-      observable.addObserver(late);
-      observable.notifyObservers();
+        final late = TestObserver<TomObservable>();
+        observable.addObserver(late);
+        observable.notifyObservers();
 
-      expect(late.notifyCount, equals(1));
-      expect(retained.notifyCount, equals(2));
-    });
+        expect(late.notifyCount, equals(1));
+        expect(retained.notifyCount, equals(2));
+      },
+    );
   });
 
   group('>> is typed to the observable it is applied to', () {
@@ -531,8 +558,7 @@ void main() {
       final count = TomInt(0);
       final observer = count >> (obs) {};
 
-      expect(
-          staticTypeOf(observer), equals(TomFunctionObserver<TomInt>));
+      expect(staticTypeOf(observer), equals(TomFunctionObserver<TomInt>));
     });
 
     test('the callback receives the observable at the receiver type', () {
@@ -564,8 +590,10 @@ void main() {
       final names = TomList<TomString>();
       final observer = names >> (obs) {};
 
-      expect(staticTypeOf(observer),
-          equals(TomFunctionObserver<TomList<TomString>>));
+      expect(
+        staticTypeOf(observer),
+        equals(TomFunctionObserver<TomList<TomString>>),
+      );
     });
 
     test('a callback written against the base type is still accepted', () {
@@ -902,8 +930,10 @@ void main() {
 
       expect(rebuilt.title.get(), equals("release"));
       // Scalar list elements reconstructed as TomString with the right values.
-      expect(rebuilt.tags.map((e) => e.get()).toList(),
-          equals(["frontend", "design"]));
+      expect(
+        rebuilt.tags.map((e) => e.get()).toList(),
+        equals(["frontend", "design"]),
+      );
       // Nested-TomClass list elements reconstructed from their maps.
       expect(rebuilt.subtasks.length, equals(1));
       expect(rebuilt.subtasks.first.title.get(), equals("write tests"));
@@ -944,18 +974,12 @@ void main() {
 
     test('throws on direct set()', () {
       final person = TestPerson();
-      expect(
-        () => person.set({}),
-        throwsA(isA<TomObservableException>()),
-      );
+      expect(() => person.set({}), throwsA(isA<TomObservableException>()));
     });
 
     test('throws on direct get()', () {
       final person = TestPerson();
-      expect(
-        () => person.get(),
-        throwsA(isA<TomObservableException>()),
-      );
+      expect(() => person.get(), throwsA(isA<TomObservableException>()));
     });
   });
 
@@ -1106,7 +1130,11 @@ void main() {
 
     test('where filters elements', () {
       final list = TomList<TomInt>();
-      list.append(TomInt(1)).append(TomInt(2)).append(TomInt(3)).append(TomInt(4));
+      list
+          .append(TomInt(1))
+          .append(TomInt(2))
+          .append(TomInt(3))
+          .append(TomInt(4));
 
       final even = list.where((e) => ~e % 2 == 0);
       expect(even.length, equals(2));
@@ -1130,10 +1158,7 @@ void main() {
 
     test('throws on direct set()', () {
       final list = TomList<TomInt>();
-      expect(
-        () => list.set([]),
-        throwsA(isA<TomObservableException>()),
-      );
+      expect(() => list.set([]), throwsA(isA<TomObservableException>()));
     });
 
     test('set() throws in every state, and leaves the list untouched', () {
@@ -1391,10 +1416,7 @@ void main() {
 
     test('throws on direct set()', () {
       final map = TomMap<String, TomInt>();
-      expect(
-        () => map.set({}),
-        throwsA(isA<TomObservableException>()),
-      );
+      expect(() => map.set({}), throwsA(isA<TomObservableException>()));
     });
 
     test('mute mutes all values', () {
@@ -1593,8 +1615,16 @@ void main() {
         TomOZonedDateTime(TomOZonedDateTime.noZonedDateTime),
         TomZonedDateTime.fromDateTime(instant),
       ),
-      ('TomNOZonedTime', TomNOZonedTime(null), TomZonedTime.fromDateTime(instant)),
-      ('TomNOZonedDate', TomNOZonedDate(null), TomZonedDate.fromDateTime(instant)),
+      (
+        'TomNOZonedTime',
+        TomNOZonedTime(null),
+        TomZonedTime.fromDateTime(instant),
+      ),
+      (
+        'TomNOZonedDate',
+        TomNOZonedDate(null),
+        TomZonedDate.fromDateTime(instant),
+      ),
       (
         'TomNOZonedDateTime',
         TomNOZonedDateTime(null),
@@ -1715,13 +1745,14 @@ void main() {
           TomZonedDate(year: 2030, month: 1, day: 2, timezone: TomTimezone.utc);
       written.optionalTime |
           TomZonedTime(hour: 7, minute: 5, timezone: TomTimezone.utc);
-      written.optionalDateTime | TomZonedDateTime(
-        year: 2031,
-        month: 3,
-        day: 4,
-        hour: 9,
-        timezone: TomTimezone.utc,
-      );
+      written.optionalDateTime |
+          TomZonedDateTime(
+            year: 2031,
+            month: 3,
+            day: 4,
+            hour: 9,
+            timezone: TomTimezone.utc,
+          );
 
       final read = TestZonedMembers();
       read.setValues(written.getValues());
@@ -1846,8 +1877,10 @@ void main() {
       final instant = DateTime.utc(2024, 6, 15, 10, 30);
 
       o.setValues({
-        'stamps': ['${TomDateTime.serializationPrefix}'
-            '${instant.toIso8601String()}'],
+        'stamps': [
+          '${TomDateTime.serializationPrefix}'
+              '${instant.toIso8601String()}',
+        ],
       });
 
       expect(o.stamps, hasLength(1));
@@ -1882,8 +1915,11 @@ void main() {
           ).toString(),
         ],
         'times': [
-          TomZonedTime(hour: 14, minute: 30, timezone: TomTimezone.utc)
-              .toString(),
+          TomZonedTime(
+            hour: 14,
+            minute: 30,
+            timezone: TomTimezone.utc,
+          ).toString(),
         ],
         'dateTimes': [
           TomZonedDateTime(
@@ -1899,12 +1935,18 @@ void main() {
       final read = TestZonedElements();
       read.setValues(written.getValues());
 
-      expect(read.dates.first.get().toUtc(),
-          equals(written.dates.first.get().toUtc()));
-      expect(read.times.first.get().toUtc(),
-          equals(written.times.first.get().toUtc()));
-      expect(read.dateTimes.first.get().toUtc(),
-          equals(written.dateTimes.first.get().toUtc()));
+      expect(
+        read.dates.first.get().toUtc(),
+        equals(written.dates.first.get().toUtc()),
+      );
+      expect(
+        read.times.first.get().toUtc(),
+        equals(written.times.first.get().toUtc()),
+      );
+      expect(
+        read.dateTimes.first.get().toUtc(),
+        equals(written.dateTimes.first.get().toUtc()),
+      );
     });
   });
 
@@ -1922,7 +1964,8 @@ void main() {
       expect(
         o.getMembers().keys,
         isNot(contains('_label')),
-        reason: 'reflection never yields a private accessor, so the private '
+        reason:
+            'reflection never yields a private accessor, so the private '
             'field name cannot become a member key',
       );
     });
@@ -1990,7 +2033,8 @@ void main() {
 
       range >> (obs) => notifyCount++;
 
-      range.startTime | TomZonedTime(hour: 9, minute: 0, timezone: TomTimezone.utc);
+      range.startTime |
+          TomZonedTime(hour: 9, minute: 0, timezone: TomTimezone.utc);
       expect(notifyCount, equals(1));
     });
   });
@@ -2008,7 +2052,8 @@ void main() {
 
       range >> (obs) => notifyCount++;
 
-      range.startDateTime | TomZonedDateTime.fromDateTime(DateTime(2024, 1, 1, 10, 0));
+      range.startDateTime |
+          TomZonedDateTime.fromDateTime(DateTime(2024, 1, 1, 10, 0));
       expect(notifyCount, equals(1));
     });
   });
@@ -2140,18 +2185,20 @@ void main() {
   // of a TomInt holding 42, which is precisely why the doc could go stale
   // without a test noticing.
   group('toString()', () {
-    test('a TomClass subclass inherits the map form, it does not re-add the ~',
-        () {
-      // The range types are TomClass subclasses and declare no toString of
-      // their own, so they must render as the member map. Asserted
-      // structurally rather than against a frozen literal: the member *values*
-      // of an empty range are the subject of tcincb51 and will change, but the
-      // inherited *form* is what this test is for.
-      final range = TomDateRange();
-      expect(range.toString(), equals(range.getValues().toString()));
-      expect(range.toString(), startsWith('{startDate: '));
-      expect(range.toString(), isNot(startsWith('~')));
-    });
+    test(
+      'a TomClass subclass inherits the map form, it does not re-add the ~',
+      () {
+        // The range types are TomClass subclasses and declare no toString of
+        // their own, so they must render as the member map. Asserted
+        // structurally rather than against a frozen literal: the member *values*
+        // of an empty range are the subject of tcincb51 and will change, but the
+        // inherited *form* is what this test is for.
+        final range = TomDateRange();
+        expect(range.toString(), equals(range.getValues().toString()));
+        expect(range.toString(), startsWith('{startDate: '));
+        expect(range.toString(), isNot(startsWith('~')));
+      },
+    );
 
     test('TomObject renders as ~<value>', () {
       expect(TomString("hello").toString(), equals('~hello'));
@@ -2178,7 +2225,6 @@ void main() {
       expect(map.toString(), equals('~{a: ~1}'));
     });
 
-
     test('TomClass rendering agrees with getValues(), nested and zoned', () {
       // `toString()` goes through `tomReflectionInfo.getValues(this)` while
       // `getValues()` is TomClass's own `_serializeMember` walk — two separate
@@ -2190,13 +2236,19 @@ void main() {
       customer.address.city | 'Berlin';
 
       expect(customer.toString(), equals(customer.getValues().toString()));
-      expect(customer.toString(), contains('address: {street: , city: Berlin'),
-          reason: 'a nested class recurses rather than printing its type');
+      expect(
+        customer.toString(),
+        contains('address: {street: , city: Berlin'),
+        reason: 'a nested class recurses rather than printing its type',
+      );
 
       final zoned = TestZonedMembers();
       expect(zoned.toString(), equals(zoned.getValues().toString()));
-      expect(zoned.toString(), contains('@D@'),
-          reason: 'zoned members keep their wire prefix');
+      expect(
+        zoned.toString(),
+        contains('@D@'),
+        reason: 'zoned members keep their wire prefix',
+      );
     });
 
     test('TomClass renders its reflected values', () {
@@ -2264,21 +2316,23 @@ void main() {
     });
 
     group('lifecycle listeners', () {
-      test('fires onBeforeClear before clearing and onAfterReset after install',
-          () {
-        final list = TomList<TomInt>();
-        list.append(TomInt(1)).append(TomInt(2));
-        final listener = _RecordingLifecycleListener();
-        list.addLifecycleListener(listener);
+      test(
+        'fires onBeforeClear before clearing and onAfterReset after install',
+        () {
+          final list = TomList<TomInt>();
+          list.append(TomInt(1)).append(TomInt(2));
+          final listener = _RecordingLifecycleListener();
+          list.addLifecycleListener(listener);
 
-        list.resetWith([TomInt(9)]);
+          list.resetWith([TomInt(9)]);
 
-        // onBeforeClear saw the original contents (list still intact).
-        expect(listener.beforeClearLength, equals(2));
-        // onAfterReset saw the fully populated new contents.
-        expect(listener.afterResetLength, equals(1));
-        expect(listener.callOrder, equals(['before', 'after']));
-      });
+          // onBeforeClear saw the original contents (list still intact).
+          expect(listener.beforeClearLength, equals(2));
+          // onAfterReset saw the fully populated new contents.
+          expect(listener.afterResetLength, equals(1));
+          expect(listener.callOrder, equals(['before', 'after']));
+        },
+      );
 
       test('removeLifecycleListener stops further callbacks', () {
         final list = TomList<TomInt>();
@@ -2291,19 +2345,21 @@ void main() {
         expect(listener.callOrder, isEmpty);
       });
 
-      test('snapshots listeners so a listener may unregister during callback',
-          () {
-        final list = TomList<TomInt>();
-        late _SelfRemovingLifecycleListener listener;
-        listener = _SelfRemovingLifecycleListener(() {
-          list.removeLifecycleListener(listener);
-        });
-        list.addLifecycleListener(listener);
+      test(
+        'snapshots listeners so a listener may unregister during callback',
+        () {
+          final list = TomList<TomInt>();
+          late _SelfRemovingLifecycleListener listener;
+          listener = _SelfRemovingLifecycleListener(() {
+            list.removeLifecycleListener(listener);
+          });
+          list.addLifecycleListener(listener);
 
-        // Must not throw a concurrent-modification error.
-        expect(() => list.resetWith([TomInt(1)]), returnsNormally);
-        expect(listener.beforeCalls, equals(1));
-      });
+          // Must not throw a concurrent-modification error.
+          expect(() => list.resetWith([TomInt(1)]), returnsNormally);
+          expect(listener.beforeCalls, equals(1));
+        },
+      );
     });
   });
 
@@ -2433,7 +2489,10 @@ void main() {
       final list = seeded([1, 2, 3]);
 
       final fallback = TomInt(-1);
-      final result = list.firstWhere((e) => e.get() > 10, orElse: () => fallback);
+      final result = list.firstWhere(
+        (e) => e.get() > 10,
+        orElse: () => fallback,
+      );
 
       expect(identical(result, fallback), isTrue);
     });
@@ -2464,19 +2523,13 @@ void main() {
     test('getValues throws TomObservableException when a member throws', () {
       final subject = TestThrowingMember();
 
-      expect(
-        () => subject.getValues(),
-        throwsA(isA<TomObservableException>()),
-      );
+      expect(() => subject.getValues(), throwsA(isA<TomObservableException>()));
     });
 
     test('toJson propagates the member serialization failure', () {
       final subject = TestThrowingMember();
 
-      expect(
-        () => subject.toJson(),
-        throwsA(isA<TomObservableException>()),
-      );
+      expect(() => subject.toJson(), throwsA(isA<TomObservableException>()));
     });
   });
 
@@ -2525,8 +2578,11 @@ void main() {
               // Asserted on the parameter rather than the message: the wrapped
               // TypeError's own text happens to mention `String` too, so a
               // message-only check would survive dropping the type entirely.
-              .having((e) => e.parameters?['valueType'], 'parameters.valueType',
-                  'String'),
+              .having(
+                (e) => e.parameters?['valueType'],
+                'parameters.valueType',
+                'String',
+              ),
         ),
       );
     });
@@ -2536,16 +2592,30 @@ void main() {
 
       expect(
         () => item.setValues({
-          'tags': ['ok', 42]
+          'tags': ['ok', 42],
         }),
         throwsA(
           isA<TomObservableException>()
-              .having((e) => e.defaultUserMessage, 'message', contains("'tags'"))
               .having(
-                  (e) => e.defaultUserMessage, 'message', contains('element 1'))
-              .having((e) => e.defaultUserMessage, 'message', contains('TomInt'))
-              .having((e) => e.defaultUserMessage, 'message',
-                  contains('TomString'))
+                (e) => e.defaultUserMessage,
+                'message',
+                contains("'tags'"),
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('element 1'),
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('TomInt'),
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('TomString'),
+              )
               .having((e) => e.parameters?['index'], 'parameters.index', 1),
         ),
       );
@@ -2554,12 +2624,12 @@ void main() {
     test('a mistyped list element leaves the existing elements intact', () {
       final item = TestTaggedItem();
       item.setValues({
-        'tags': ['a', 'b']
+        'tags': ['a', 'b'],
       });
 
       expect(
         () => item.setValues({
-          'tags': ['c', 42]
+          'tags': ['c', 42],
         }),
         throwsA(isA<TomObservableException>()),
       );
@@ -2574,7 +2644,7 @@ void main() {
 
       expect(
         () => customer.setValues({
-          'address': {'zipCode': 12345}
+          'address': {'zipCode': 12345},
         }),
         throwsA(isA<TomObservableException>()),
       );
@@ -2609,7 +2679,7 @@ void main() {
       final item = seeded();
 
       item.setOrMergeValues({
-        'rates': [3.0]
+        'rates': [3.0],
       }, true);
 
       expect(item.rates.map((e) => e.get()), equals([1.0, 2.0, 3.0]));
@@ -2621,7 +2691,7 @@ void main() {
       // The contrast that gives the merge flag its meaning: same payload, same
       // member, opposite outcome.
       item.setValues({
-        'rates': [3.0]
+        'rates': [3.0],
       });
 
       expect(item.rates.map((e) => e.get()), equals([3.0]));
@@ -2631,7 +2701,7 @@ void main() {
       final item = seeded();
 
       item.setOrMergeValues({
-        'surcharges': {'handling': 2.0}
+        'surcharges': {'handling': 2.0},
       }, true);
 
       expect(
@@ -2644,7 +2714,7 @@ void main() {
       final item = seeded();
 
       item.setValues({
-        'surcharges': {'handling': 2.0}
+        'surcharges': {'handling': 2.0},
       });
 
       expect(
@@ -2657,7 +2727,7 @@ void main() {
       final item = seeded();
 
       item.setOrMergeValues({
-        'surcharges': {'tax': 9.0}
+        'surcharges': {'tax': 9.0},
       }, true);
 
       expect(item.surcharges['tax']!.get(), equals(9.0));
@@ -2690,7 +2760,7 @@ void main() {
       item.addObserver(observer);
 
       item.setOrMergeValues({
-        'rates': [3.0]
+        'rates': [3.0],
       }, true);
       observer.reset();
       item.rates.last | 30.0;
@@ -2720,14 +2790,14 @@ void main() {
       final item = TestTaggedItem();
       item.setValues({
         'subtasks': [
-          {'title': 'first'}
-        ]
+          {'title': 'first'},
+        ],
       });
 
       item.setOrMergeValues({
         'subtasks': [
-          {'title': 'second'}
-        ]
+          {'title': 'second'},
+        ],
       }, true);
 
       expect(
@@ -2740,14 +2810,14 @@ void main() {
       final inventory = TestInventory();
       inventory.setValues({
         'item': {
-          'rates': [1.0]
-        }
+          'rates': [1.0],
+        },
       });
 
       inventory.setOrMergeValues({
         'item': {
-          'rates': [2.0]
-        }
+          'rates': [2.0],
+        },
       }, true);
 
       expect(inventory.item.rates.map((e) => e.get()), equals([1.0, 2.0]));
@@ -2757,14 +2827,14 @@ void main() {
       final inventory = TestInventory();
       inventory.setValues({
         'item': {
-          'rates': [1.0]
-        }
+          'rates': [1.0],
+        },
       });
 
       inventory.setValues({
         'item': {
-          'rates': [2.0]
-        }
+          'rates': [2.0],
+        },
       });
 
       expect(inventory.item.rates.map((e) => e.get()), equals([2.0]));
@@ -3387,39 +3457,43 @@ void main() {
       expect(observer.notifyCount, equals(1));
     });
 
-    test('a nested batch that changes nothing leaves the outer batch clean',
-        () {
-      final observable = TomObservable();
-      final observer = TestObserver<TomObservable>();
-      observable.addObserver(observer);
+    test(
+      'a nested batch that changes nothing leaves the outer batch clean',
+      () {
+        final observable = TomObservable();
+        final observer = TestObserver<TomObservable>();
+        observable.addObserver(observer);
 
-      observable.mute();
-      observable.mute();
-      observable.unmute();
-      observable.unmute();
+        observable.mute();
+        observable.mute();
+        observable.unmute();
+        observable.unmute();
 
-      expect(observer.notifyCount, equals(0));
-    });
+        expect(observer.notifyCount, equals(0));
+      },
+    );
 
-    test('unmute on an unmuted observable is a no-op, not a negative depth',
-        () {
-      final observable = TomObservable();
-      final observer = TestObserver<TomObservable>();
-      observable.addObserver(observer);
+    test(
+      'unmute on an unmuted observable is a no-op, not a negative depth',
+      () {
+        final observable = TomObservable();
+        final observer = TestObserver<TomObservable>();
+        observable.addObserver(observer);
 
-      observable.unmute();
-      expect(observable.isMuted, isFalse);
-      expect(observer.notifyCount, equals(0));
+        observable.unmute();
+        expect(observable.isMuted, isFalse);
+        expect(observer.notifyCount, equals(0));
 
-      // The stray unmute must not have left the depth at -1, which would make
-      // the next mute() fail to actually mute.
-      observable.mute();
-      expect(observable.isMuted, isTrue);
-      observable.notifyObservers();
-      expect(observer.notifyCount, equals(0));
-      observable.unmute();
-      expect(observer.notifyCount, equals(1));
-    });
+        // The stray unmute must not have left the depth at -1, which would make
+        // the next mute() fail to actually mute.
+        observable.mute();
+        expect(observable.isMuted, isTrue);
+        observable.notifyObservers();
+        expect(observer.notifyCount, equals(0));
+        observable.unmute();
+        expect(observer.notifyCount, equals(1));
+      },
+    );
   });
 
   // ==========================================================================
@@ -3438,36 +3512,46 @@ void main() {
       return list;
     }
 
-    test('replaceRange inside an outer mute notifies once, at the outer unmute',
-        () {
-      final list = seeded([1, 2, 3]);
-      final observer = TestObserver<TomList<TomInt>>();
-      list.addObserver(observer);
+    test(
+      'replaceRange inside an outer mute notifies once, at the outer unmute',
+      () {
+        final list = seeded([1, 2, 3]);
+        final observer = TestObserver<TomList<TomInt>>();
+        list.addObserver(observer);
 
-      list.mute();
-      list.replaceRange(1, 2, [TomInt(9)]);
-      expect(observer.notifyCount, equals(0),
-          reason: 'the outer mute is still held');
+        list.mute();
+        list.replaceRange(1, 2, [TomInt(9)]);
+        expect(
+          observer.notifyCount,
+          equals(0),
+          reason: 'the outer mute is still held',
+        );
 
-      list.unmute();
-      expect(observer.notifyCount, equals(1));
-    });
+        list.unmute();
+        expect(observer.notifyCount, equals(1));
+      },
+    );
 
-    test('retainWhere inside an outer mute notifies once, at the outer unmute',
-        () {
-      final list = seeded([1, 2, 3]);
-      final observer = TestObserver<TomList<TomInt>>();
-      list.addObserver(observer);
+    test(
+      'retainWhere inside an outer mute notifies once, at the outer unmute',
+      () {
+        final list = seeded([1, 2, 3]);
+        final observer = TestObserver<TomList<TomInt>>();
+        list.addObserver(observer);
 
-      list.mute();
-      list.retainWhere((e) => e.get() != 2);
-      expect(observer.notifyCount, equals(0),
-          reason: 'the outer mute is still held');
+        list.mute();
+        list.retainWhere((e) => e.get() != 2);
+        expect(
+          observer.notifyCount,
+          equals(0),
+          reason: 'the outer mute is still held',
+        );
 
-      list.unmute();
-      expect(observer.notifyCount, equals(1));
-      expect(list.length, equals(2));
-    });
+        list.unmute();
+        expect(observer.notifyCount, equals(1));
+        expect(list.length, equals(2));
+      },
+    );
 
     test('replaceRange and retainWhere in one batch notify once in total', () {
       final list = seeded([1, 2, 3, 4]);
@@ -3483,20 +3567,22 @@ void main() {
       expect(observer.notifyCount, equals(1));
     });
 
-    test('TomMap.update inside an outer mute notifies once, at the outer unmute',
-        () {
-      final map = TomMap<String, TomInt>();
-      map['a'] = TomInt(1);
-      final observer = TestObserver<TomMap<String, TomInt>>();
-      map.addObserver(observer);
+    test(
+      'TomMap.update inside an outer mute notifies once, at the outer unmute',
+      () {
+        final map = TomMap<String, TomInt>();
+        map['a'] = TomInt(1);
+        final observer = TestObserver<TomMap<String, TomInt>>();
+        map.addObserver(observer);
 
-      map.mute();
-      map.update('a', (v) => TomInt(2));
-      expect(observer.notifyCount, equals(0));
+        map.mute();
+        map.update('a', (v) => TomInt(2));
+        expect(observer.notifyCount, equals(0));
 
-      map.unmute();
-      expect(observer.notifyCount, equals(1));
-    });
+        map.unmute();
+        expect(observer.notifyCount, equals(1));
+      },
+    );
 
     test('TomMap.updateAll inside an outer mute notifies once', () {
       final map = TomMap<String, TomInt>();
@@ -3556,8 +3642,11 @@ void main() {
       added.addObserver(observer);
       added.mute();
       added.set(3);
-      expect(observer.notifyCount, equals(0),
-          reason: 'depth must not have gone negative during the batch');
+      expect(
+        observer.notifyCount,
+        equals(0),
+        reason: 'depth must not have gone negative during the batch',
+      );
       added.unmute();
       expect(observer.notifyCount, equals(1));
     });
@@ -3573,8 +3662,11 @@ void main() {
       list.remove(removed);
       list.unmute();
 
-      expect(removed.isMuted, isFalse,
-          reason: 'the batch muted it, so the batch must release it');
+      expect(
+        removed.isMuted,
+        isFalse,
+        reason: 'the batch muted it, so the batch must release it',
+      );
       expect(kept.isMuted, isFalse);
 
       final observer = TestObserver<TomInt>();
@@ -3605,10 +3697,12 @@ void main() {
 
       customer.mute();
       customer.unmute();
-      expect(customer.isMuted, isTrue,
-          reason: 'the outer mute is still held');
-      expect(customer.address.city.isMuted, isTrue,
-          reason: 'the outer mute still holds the cascade');
+      expect(customer.isMuted, isTrue, reason: 'the outer mute is still held');
+      expect(
+        customer.address.city.isMuted,
+        isTrue,
+        reason: 'the outer mute still holds the cascade',
+      );
 
       customer.unmute();
       expect(customer.isMuted, isFalse);
@@ -3662,8 +3756,11 @@ void main() {
       );
 
       expect(list.isMuted, isFalse);
-      expect(element.isMuted, isFalse,
-          reason: 'the cascade must be released too');
+      expect(
+        element.isMuted,
+        isFalse,
+        reason: 'the cascade must be released too',
+      );
     });
 
     test('batch nests', () {
@@ -3675,8 +3772,11 @@ void main() {
         observable.batch(() {
           observable.notifyObservers();
         });
-        expect(observer.notifyCount, equals(0),
-            reason: 'the inner batch must not release the outer one');
+        expect(
+          observer.notifyCount,
+          equals(0),
+          reason: 'the inner batch must not release the outer one',
+        );
       });
 
       expect(observer.notifyCount, equals(1));
@@ -3689,8 +3789,7 @@ void main() {
 
       list.batchSelf(() {
         expect(list.isMuted, isTrue);
-        expect(element.isMuted, isFalse,
-            reason: 'batchSelf does not cascade');
+        expect(element.isMuted, isFalse, reason: 'batchSelf does not cascade');
       });
 
       expect(list.isMuted, isFalse);
@@ -3724,9 +3823,13 @@ void main() {
         });
 
         final wrapped = item.surcharges['handling'];
-        expect(wrapped, isA<TomDouble>(),
-            reason: 'a JSON double has a first-class leaf; it must not fall '
-                'through to tomNull');
+        expect(
+          wrapped,
+          isA<TomDouble>(),
+          reason:
+              'a JSON double has a first-class leaf; it must not fall '
+              'through to tomNull',
+        );
         expect(wrapped!.get(), equals(4.25));
       });
 
@@ -3861,8 +3964,10 @@ void main() {
 
         expect(restored.price.get(), equals(19.99));
         expect(restored.discount.get(), equals(1.5));
-        expect(restored.rates.map((e) => e.get()).toList(),
-            equals([0.5, 1.25]));
+        expect(
+          restored.rates.map((e) => e.get()).toList(),
+          equals([0.5, 1.25]),
+        );
       });
 
       test('an integral double survives the JSON round trip as a double', () {
@@ -4027,7 +4132,10 @@ void main() {
       });
 
       test('a Set keeps two maps with equal contents apart', () {
-        expect({mapOf({'a': 1}), mapOf({'a': 1})}, hasLength(2));
+        expect({
+          mapOf({'a': 1}),
+          mapOf({'a': 1}),
+        }, hasLength(2));
       });
 
       test('contents are compared by unwrapping the values', () {
@@ -4128,19 +4236,22 @@ void main() {
         expect(castObserver.notifyCount, equals(0));
       });
 
-      test('removing from the cast leaves the source observing the element', () {
-        final source = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
-        final cast = TomList.castFrom<TomInt, TomInt>(source);
-        final sourceObserver = TestObserver<TomList<TomInt>>();
-        source.addObserver(sourceObserver);
+      test(
+        'removing from the cast leaves the source observing the element',
+        () {
+          final source = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+          final cast = TomList.castFrom<TomInt, TomInt>(source);
+          final sourceObserver = TestObserver<TomList<TomInt>>();
+          source.addObserver(sourceObserver);
 
-        final shared = cast[0];
-        cast.remove(shared);
-        shared | 99;
+          final shared = cast[0];
+          cast.remove(shared);
+          shared | 99;
 
-        expect(source.length, equals(2));
-        expect(sourceObserver.notifyCount, equals(1));
-      });
+          expect(source.length, equals(2));
+          expect(sourceObserver.notifyCount, equals(1));
+        },
+      );
 
       test('the element type can be widened', () {
         final source = TomList<TomInt>()..add(TomInt(1));
@@ -4230,8 +4341,9 @@ void main() {
       test('the value type can be widened', () {
         final source = mapOf({'a': 1});
 
-        final widened =
-            TomMap.castFrom<String, TomInt, String, TomObject>(source);
+        final widened = TomMap.castFrom<String, TomInt, String, TomObject>(
+          source,
+        );
 
         expect(widened, isA<TomMap<String, TomObject>>());
         expect(identical(widened['a'], source['a']), isTrue);
@@ -4331,7 +4443,10 @@ void main() {
         // let getOrNull walk past that guard and return the live registry.
         final person = TestPerson();
 
-        expect(() => person.getOrNull(), throwsA(isA<TomObservableException>()));
+        expect(
+          () => person.getOrNull(),
+          throwsA(isA<TomObservableException>()),
+        );
       });
     });
 
@@ -4344,14 +4459,16 @@ void main() {
         return list;
       }
 
-      test('getOrNull returns a copy, so adding to it does not reach the list',
-          () {
-        final list = seeded([1, 2, 3]);
+      test(
+        'getOrNull returns a copy, so adding to it does not reach the list',
+        () {
+          final list = seeded([1, 2, 3]);
 
-        list.getOrNull()!.add(TomInt(4));
+          list.getOrNull()!.add(TomInt(4));
 
-        expect(list.length, equals(3));
-      });
+          expect(list.length, equals(3));
+        },
+      );
 
       test('getOrNull notifies nobody, because it changed nothing', () {
         final list = seeded([1, 2]);
@@ -4453,7 +4570,8 @@ void main() {
       expect(
         value.toUtc(),
         equals(epoch),
-        reason: '$name must denote the Unix epoch regardless of the '
+        reason:
+            '$name must denote the Unix epoch regardless of the '
             "machine's timezone (TZ here is "
             '${DateTime.now().timeZoneName}, offset '
             '${DateTime.now().timeZoneOffset})',
@@ -4625,16 +4743,18 @@ void main() {
         name.removeObserver(observer);
       });
 
-      test('is available on a nullable cell, including a write back to null',
-          () {
-        final nickname = TomNString(null);
+      test(
+        'is available on a nullable cell, including a write back to null',
+        () {
+          final nickname = TomNString(null);
 
-        expect(nickname << "Johnny", same(nickname));
-        expect(~nickname, equals("Johnny"));
+          expect(nickname << "Johnny", same(nickname));
+          expect(~nickname, equals("Johnny"));
 
-        nickname << null;
-        expect(nickname.isNull, isTrue);
-      });
+          nickname << null;
+          expect(nickname.isNull, isTrue);
+        },
+      );
     });
 
     group('on a TomList', () {
@@ -4663,22 +4783,28 @@ void main() {
         rows.removeObserver(observer);
       });
 
-      test('detaches the outgoing elements, so they no longer notify the list',
-          () {
-        final outgoing = TomString('a');
-        final rows = TomList<TomString>()..append(outgoing);
+      test(
+        'detaches the outgoing elements, so they no longer notify the list',
+        () {
+          final outgoing = TomString('a');
+          final rows = TomList<TomString>()..append(outgoing);
 
-        rows << [TomString('x')];
+          rows << [TomString('x')];
 
-        int notifications = 0;
-        final observer = rows >> (obs) => notifications++;
-        outgoing | 'changed';
+          int notifications = 0;
+          final observer = rows >> (obs) => notifications++;
+          outgoing | 'changed';
 
-        expect(notifications, isZero,
-            reason: 'an element that has left the list must not keep '
-                'notifying it');
-        rows.removeObserver(observer);
-      });
+          expect(
+            notifications,
+            isZero,
+            reason:
+                'an element that has left the list must not keep '
+                'notifying it',
+          );
+          rows.removeObserver(observer);
+        },
+      );
 
       test('attaches the incoming elements, so they do notify the list', () {
         final incoming = TomString('x');
@@ -4699,7 +4825,9 @@ void main() {
         // `_notifyIfChangedSince`.
         final a = TomString('a');
         final b = TomString('b');
-        final rows = TomList<TomString>()..append(a)..append(b);
+        final rows = TomList<TomString>()
+          ..append(a)
+          ..append(b);
         int notifications = 0;
         final observer = rows >> (obs) => notifications++;
 
@@ -4779,8 +4907,10 @@ void main() {
         final person = TestPerson();
         person.name | 'John';
 
-        expect(() => person << {'name': 'Jane'},
-            throwsA(isA<TomObservableException>()));
+        expect(
+          () => person << {'name': 'Jane'},
+          throwsA(isA<TomObservableException>()),
+        );
         expect(~person.name, equals('John'));
       });
     });
@@ -4801,80 +4931,109 @@ void main() {
     void expectKey(String key, void Function() trigger) {
       expect(
         trigger,
-        throwsA(isA<TomObservableException>()
-            .having((e) => e.key, 'key', equals(key))),
+        throwsA(
+          isA<TomObservableException>().having(
+            (e) => e.key,
+            'key',
+            equals(key),
+          ),
+        ),
       );
     }
 
     group('raised by TomClass', () {
       test('set, get and << on the class itself', () {
-        expectKey('observable.class_state.set_not_allowed',
-            () => TestPerson().set({}));
         expectKey(
-            'observable.class_state.get_not_allowed', () => TestPerson().get());
-        expectKey('observable.class_state.set_not_allowed',
-            () => TestPerson() << {'name': 'Jane'});
+          'observable.class_state.set_not_allowed',
+          () => TestPerson().set({}),
+        );
+        expectKey(
+          'observable.class_state.get_not_allowed',
+          () => TestPerson().get(),
+        );
+        expectKey(
+          'observable.class_state.set_not_allowed',
+          () => TestPerson() << {'name': 'Jane'},
+        );
       });
 
       test('a member rejecting the value setValues offered it', () {
-        expectKey('observable.class_set_values.member_assignment_failed',
-            () => TestPerson().setValues({'age': 'not a number'}));
+        expectKey(
+          'observable.class_set_values.member_assignment_failed',
+          () => TestPerson().setValues({'age': 'not a number'}),
+        );
       });
 
       test('a member throwing while getValues reads it', () {
-        expectKey('observable.class_get_values.member_serialization_failed',
-            () => TestThrowingMember().getValues());
+        expectKey(
+          'observable.class_get_values.member_serialization_failed',
+          () => TestThrowingMember().getValues(),
+        );
       });
 
       test('a list member given a non-list', () {
-        expectKey('observable.class_set_list_member.not_a_list',
-            () => TestTaggedItem().setValues({'tags': 'not a list'}));
+        expectKey(
+          'observable.class_set_list_member.not_a_list',
+          () => TestTaggedItem().setValues({'tags': 'not a list'}),
+        );
       });
 
       test('a TomClass list element given a non-map', () {
-        expectKey('observable.class_set_list_member.not_a_map',
-            () => TestTaggedItem().setValues({
-                  'subtasks': ['not a map']
-                }));
+        expectKey(
+          'observable.class_set_list_member.not_a_map',
+          () => TestTaggedItem().setValues({
+            'subtasks': ['not a map'],
+          }),
+        );
       });
 
       test('a list element deserializing to the wrong type', () {
         expectKey(
-            'observable.class_set_list_member.invalid_element_type',
-            () => TestTaggedItem().setValues({
-                  'tags': [1]
-                }));
+          'observable.class_set_list_member.invalid_element_type',
+          () => TestTaggedItem().setValues({
+            'tags': [1],
+          }),
+        );
       });
 
       test('a map member given a non-map', () {
-        expectKey('observable.class_set_map_member.not_a_map',
-            () => TestPricedItem().setValues({'surcharges': 'not a map'}));
+        expectKey(
+          'observable.class_set_map_member.not_a_map',
+          () => TestPricedItem().setValues({'surcharges': 'not a map'}),
+        );
       });
     });
 
     group('raised by TomList', () {
       test('set on the list itself', () {
-        expectKey('observable.list_state.set_not_allowed',
-            () => TomList<TomString>().set([]));
+        expectKey(
+          'observable.list_state.set_not_allowed',
+          () => TomList<TomString>().set([]),
+        );
       });
 
       test('growing the list by assigning length', () {
-        expectKey('observable.list_state.length_cannot_grow',
-            () => TomList<TomString>().length = 2);
+        expectKey(
+          'observable.list_state.length_cannot_grow',
+          () => TomList<TomString>().length = 2,
+        );
       });
     });
 
     group('raised by TomMap', () {
       test('set on the map itself', () {
-        expectKey('observable.map_state.set_not_allowed',
-            () => TomMap<String, TomInt>().set({}));
+        expectKey(
+          'observable.map_state.set_not_allowed',
+          () => TomMap<String, TomInt>().set({}),
+        );
       });
 
       test('update on an absent key with no ifAbsent', () {
         expectKey(
-            'observable.map_state.update_key_not_found_no_ifabsent',
-            () => TomMap<String, TomInt>()
-                .update('missing', (value) => TomInt(1)));
+          'observable.map_state.update_key_not_found_no_ifabsent',
+          () =>
+              TomMap<String, TomInt>().update('missing', (value) => TomInt(1)),
+        );
       });
     });
   });
@@ -4887,8 +5046,13 @@ void main() {
     test('| throws and leaves the sentinel intact', () {
       expect(
         () => tomNull | 'clobbered',
-        throwsA(isA<TomObservableException>().having(
-            (e) => e.key, 'key', equals('observable.null_sentinel.set_not_allowed'))),
+        throwsA(
+          isA<TomObservableException>().having(
+            (e) => e.key,
+            'key',
+            equals('observable.null_sentinel.set_not_allowed'),
+          ),
+        ),
       );
 
       // The point of the todo that produced this test: before the fix the
@@ -4898,30 +5062,41 @@ void main() {
     });
 
     test('set and << are refused too, not just the | operator', () {
-      expect(() => tomNull.set('clobbered'),
-          throwsA(isA<TomObservableException>()));
-      expect(() => tomNull << 'clobbered',
-          throwsA(isA<TomObservableException>()));
-      expect(~tomNull, equals('tomNull'));
-    });
-
-    test('a rejected write is invisible to a reader holding the same instance',
-        () {
-      // `tomNull` is one process-wide instance handed to every caller, so two
-      // holders are necessarily aliases. That aliasing is the hazard the
-      // immutability removes: a successful write through one holder was
-      // formerly observed through every other, anywhere in the program.
-      final holderA = tomNull;
-      final holderB = tomNull;
-      expect(identical(holderA, holderB), isTrue);
-
       expect(
-          () => holderA.set('clobbered'), throwsA(isA<TomObservableException>()));
-
-      expect(~holderB, equals('tomNull'),
-          reason: 'a write refused through one alias must not reach another');
+        () => tomNull.set('clobbered'),
+        throwsA(isA<TomObservableException>()),
+      );
+      expect(
+        () => tomNull << 'clobbered',
+        throwsA(isA<TomObservableException>()),
+      );
       expect(~tomNull, equals('tomNull'));
     });
+
+    test(
+      'a rejected write is invisible to a reader holding the same instance',
+      () {
+        // `tomNull` is one process-wide instance handed to every caller, so two
+        // holders are necessarily aliases. That aliasing is the hazard the
+        // immutability removes: a successful write through one holder was
+        // formerly observed through every other, anywhere in the program.
+        final holderA = tomNull;
+        final holderB = tomNull;
+        expect(identical(holderA, holderB), isTrue);
+
+        expect(
+          () => holderA.set('clobbered'),
+          throwsA(isA<TomObservableException>()),
+        );
+
+        expect(
+          ~holderB,
+          equals('tomNull'),
+          reason: 'a write refused through one alias must not reach another',
+        );
+        expect(~tomNull, equals('tomNull'));
+      },
+    );
 
     test('the sentinel keeps its identity, so `identical` tests still work', () {
       // The fix had two candidate shapes; the todo left the choice to whichever

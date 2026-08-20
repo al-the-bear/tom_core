@@ -51,8 +51,9 @@ final RegExp _thrownKeyPattern = RegExp('"(beanlocator\\.[a-z_.]+)"');
 final RegExp _bulletPattern = RegExp(r'^- `(beanlocator\.[a-z_.]+)`:\s*(.*)$');
 
 /// A key as it appears in a markdown table row: ``| `key` | meaning |``.
-final RegExp _tableRowPattern =
-    RegExp(r'^\|\s*`(beanlocator\.[a-z_.]+)`\s*\|(.*)\|\s*$');
+final RegExp _tableRowPattern = RegExp(
+  r'^\|\s*`(beanlocator\.[a-z_.]+)`\s*\|(.*)\|\s*$',
+);
 
 /// Whether [line] is part of a doc comment rather than code.
 bool _isDocComment(String line) => line.trimLeft().startsWith('///');
@@ -63,7 +64,9 @@ bool _isDocComment(String line) => line.trimLeft().startsWith('///');
 /// cannot stand in for throwing it — otherwise the anchor set would be defined
 /// partly by one of the two lists it is supposed to check.
 Set<String> _thrownKeys() {
-  final code = File(_sourcePath).readAsLinesSync().where((l) => !_isDocComment(l));
+  final code = File(
+    _sourcePath,
+  ).readAsLinesSync().where((l) => !_isDocComment(l));
 
   return {
     for (final line in code)
@@ -126,14 +129,10 @@ Map<String, String> _dartdocKeys() {
       .map((l) => l.replaceFirst(RegExp(r'^\s*/// ?'), ''))
       .toList();
 
-  return _entries(
-    block,
-    (line) {
-      final match = _bulletPattern.firstMatch(line);
-      return match == null ? null : MapEntry(match.group(1)!, match.group(2)!);
-    },
-    (line) => line.startsWith('  ') && line.trim().isNotEmpty,
-  );
+  return _entries(block, (line) {
+    final match = _bulletPattern.firstMatch(line);
+    return match == null ? null : MapEntry(match.group(1)!, match.group(2)!);
+  }, (line) => line.startsWith('  ') && line.trim().isNotEmpty);
 }
 
 /// The keys documented in the prose table, mapped to their descriptions.
@@ -202,8 +201,9 @@ void main() {
 
     test('the dartdoc lists no key the module does not throw', () {
       final thrown = _thrownKeys();
-      final orphaned = _dartdocKeys().keys.where((k) => !thrown.contains(k)).toList()
-        ..sort();
+      final orphaned =
+          _dartdocKeys().keys.where((k) => !thrown.contains(k)).toList()
+            ..sort();
 
       expect(
         orphaned,
@@ -232,8 +232,8 @@ void main() {
 
     test('the prose table lists no key the module does not throw', () {
       final thrown = _thrownKeys();
-      final orphaned = _proseKeys().keys.where((k) => !thrown.contains(k)).toList()
-        ..sort();
+      final orphaned =
+          _proseKeys().keys.where((k) => !thrown.contains(k)).toList()..sort();
 
       expect(
         orphaned,

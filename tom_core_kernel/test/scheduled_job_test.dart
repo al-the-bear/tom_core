@@ -28,8 +28,7 @@ import 'scheduled_job_test.reflection.dart';
 /// reference to the instance it will run — it has to observe from the outside.
 final Map<String, List<TomJobRun?>> executions = {};
 
-void _record(String job, TomJobRun? run) =>
-    (executions[job] ??= []).add(run);
+void _record(String job, TomJobRun? run) => (executions[job] ??= []).add(run);
 
 @tomReflector
 @TomScheduledJob(cron: '0 3 * * *')
@@ -316,9 +315,9 @@ void main() {
   group('calendar expressions', () {
     // =========================================================================
     test('day-of-month, counted from the end, at a time of day', () {
-      final schedule =
-          TomScheduledJobs.discover(where: only({'MonthEndClose'})).single
-              .schedule;
+      final schedule = TomScheduledJobs.discover(
+        where: only({'MonthEndClose'}),
+      ).single.schedule;
 
       expect(
         schedule.nextFireAfter(DateTime.utc(2026, 3, 1)),
@@ -327,9 +326,9 @@ void main() {
     });
 
     test('ordinal weekday, with a month interval and an anchor', () {
-      final schedule =
-          TomScheduledJobs.discover(where: only({'QuarterlyReview'})).single
-              .schedule;
+      final schedule = TomScheduledJobs.discover(
+        where: only({'QuarterlyReview'}),
+      ).single.schedule;
 
       // Anchored on February, every third month: February, May, August,
       // November. The second Tuesday of February 2026 is the 10th.
@@ -363,37 +362,63 @@ void main() {
       );
     }
 
-    test('no trigger at all', () =>
-        expectScanFailure('NoTriggerJob', 'scheduled_job.no_schedule'));
+    test(
+      'no trigger at all',
+      () => expectScanFailure('NoTriggerJob', 'scheduled_job.no_schedule'),
+    );
 
-    test('two triggers', () =>
-        expectScanFailure('TwoTriggerJob', 'scheduled_job.multiple_schedules'));
+    test(
+      'two triggers',
+      () => expectScanFailure(
+        'TwoTriggerJob',
+        'scheduled_job.multiple_schedules',
+      ),
+    );
 
-    test('an unparseable cron expression', () =>
-        expectScanFailure('BadCronJob', 'scheduled_job.invalid_cron'));
+    test(
+      'an unparseable cron expression',
+      () => expectScanFailure('BadCronJob', 'scheduled_job.invalid_cron'),
+    );
 
-    test('a calendar expression with an impossible value', () =>
-        expectScanFailure('BadCalendarJob', 'scheduled_job.invalid_calendar'));
+    test(
+      'a calendar expression with an impossible value',
+      () =>
+          expectScanFailure('BadCalendarJob', 'scheduled_job.invalid_calendar'),
+    );
 
-    test('a calendar expression that is not an expression', () =>
-        expectScanFailure(
-          'UnparseableCalendarJob',
-          'scheduled_job.invalid_calendar',
-        ));
+    test(
+      'a calendar expression that is not an expression',
+      () => expectScanFailure(
+        'UnparseableCalendarJob',
+        'scheduled_job.invalid_calendar',
+      ),
+    );
 
-    test('a class that is not a TomCommand', () =>
-        expectScanFailure('NotACommandJob', 'scheduled_job.not_a_command'));
+    test(
+      'a class that is not a TomCommand',
+      () => expectScanFailure('NotACommandJob', 'scheduled_job.not_a_command'),
+    );
 
-    test('a class with no no-argument constructor', () => expectScanFailure(
-      'NeedsCollaboratorsJob',
-      'scheduled_job.not_constructible',
-    ));
+    test(
+      'a class with no no-argument constructor',
+      () => expectScanFailure(
+        'NeedsCollaboratorsJob',
+        'scheduled_job.not_constructible',
+      ),
+    );
 
-    test('an out-of-range policy', () =>
-        expectScanFailure('BadPolicyJob', 'scheduled_job.invalid_policy'));
+    test(
+      'an out-of-range policy',
+      () => expectScanFailure('BadPolicyJob', 'scheduled_job.invalid_policy'),
+    );
 
-    test('an event job with no source', () =>
-        expectScanFailure('UnsourcedEventJob', 'scheduled_job.no_event_source'));
+    test(
+      'an event job with no source',
+      () => expectScanFailure(
+        'UnsourcedEventJob',
+        'scheduled_job.no_event_source',
+      ),
+    );
 
     test('two classes claiming one job name', () {
       expect(
@@ -458,10 +483,10 @@ void main() {
         where: only({'NightlyReconciliation'}),
       );
 
-      expect(scheduler.jobs.keys, containsAll(<String>[
-        'configured',
-        'NightlyReconciliation',
-      ]));
+      expect(
+        scheduler.jobs.keys,
+        containsAll(<String>['configured', 'NightlyReconciliation']),
+      );
 
       await scheduler.tick();
       clock.advance(const Duration(hours: 2));
@@ -548,30 +573,32 @@ void main() {
       expect(executions['PlainCommandJob'], hasLength(1));
     });
 
-    test('an event job runs once per emitted event, carrying its payload',
-        () async {
-      final events = StreamController<Object?>();
-      addTearDown(events.close);
-      final clock = FakeClock(DateTime.utc(2026, 3, 1));
-      final scheduler = schedulerOver(TomMemoryJobStore(), clock);
-      addTearDown(scheduler.close);
+    test(
+      'an event job runs once per emitted event, carrying its payload',
+      () async {
+        final events = StreamController<Object?>();
+        addTearDown(events.close);
+        final clock = FakeClock(DateTime.utc(2026, 3, 1));
+        final scheduler = schedulerOver(TomMemoryJobStore(), clock);
+        addTearDown(scheduler.close);
 
-      TomScheduledJobs.registerAll(
-        scheduler,
-        where: only({'OnInvoiceIssued'}),
-        eventSource: (name) =>
-            name == 'OnInvoiceIssued' ? events.stream : null,
-      );
+        TomScheduledJobs.registerAll(
+          scheduler,
+          where: only({'OnInvoiceIssued'}),
+          eventSource: (name) =>
+              name == 'OnInvoiceIssued' ? events.stream : null,
+        );
 
-      events.add('invoice-42');
-      await pumpEventQueue();
-      await scheduler.tick();
-      await pumpEventQueue();
+        events.add('invoice-42');
+        await pumpEventQueue();
+        await scheduler.tick();
+        await pumpEventQueue();
 
-      final runs = executions['OnInvoiceIssued']!;
-      expect(runs, hasLength(1));
-      expect(runs.single!.payload, 'invoice-42');
-    });
+        final runs = executions['OnInvoiceIssued']!;
+        expect(runs, hasLength(1));
+        expect(runs.single!.payload, 'invoice-42');
+      },
+    );
   });
 }
 

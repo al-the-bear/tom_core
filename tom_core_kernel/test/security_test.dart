@@ -238,7 +238,10 @@ void main() {
         // Regression: groups must reflect the `groups` argument, not a
         // copy-paste of `resourceKeys` (former user_principal_aci.dart bug).
         expect(aci.groups, containsAll(['engineering', 'qa']));
-        expect(aci.entitlements, containsAll(['feature.read', 'feature.write']));
+        expect(
+          aci.entitlements,
+          containsAll(['feature.read', 'feature.write']),
+        );
         expect(aci.resourceKeys, containsAll(['user.email', 'user.phone']));
       });
     });
@@ -249,10 +252,7 @@ void main() {
         var aci = TomAccessControlInformation(roles: ['admin']);
 
         // Act & Assert
-        expect(
-          () => aci.roles.add('user'),
-          throwsA(isA<UnsupportedError>()),
-        );
+        expect(() => aci.roles.add('user'), throwsA(isA<UnsupportedError>()));
       });
 
       test('should return unmodifiable groups list', () {
@@ -337,7 +337,10 @@ void main() {
         );
 
         // Assert
-        expect(cli.enabledModules, containsAll(['core', 'reporting', 'analytics']));
+        expect(
+          cli.enabledModules,
+          containsAll(['core', 'reporting', 'analytics']),
+        );
         expect(cli.quotas['api_calls'], equals(1000));
         expect(cli.quotas['storage_mb'], equals(500));
       });
@@ -477,9 +480,7 @@ void main() {
       });
 
       test('should return username', () {
-        var principal = TomPrincipal(
-          user: TomUser(id: 1, username: 'myuser'),
-        );
+        var principal = TomPrincipal(user: TomUser(id: 1, username: 'myuser'));
         expect(principal.username, equals('myuser'));
       });
     });
@@ -594,10 +595,7 @@ void main() {
 
     group('toString', () {
       test('should return formatted string with counts', () {
-        var role = TomRole(
-          name: 'testRole',
-          entitlements: ['e1', 'e2', 'e3'],
-        );
+        var role = TomRole(name: 'testRole', entitlements: ['e1', 'e2', 'e3']);
         var result = role.toString();
         expect(result, contains('testRole'));
         expect(result, contains('3 entitlements'));
@@ -681,9 +679,7 @@ void main() {
             TomRole(name: 'admin'),
             TomRole(name: 'user'),
           ],
-          groups: [
-            TomGroup(name: 'engineering'),
-          ],
+          groups: [TomGroup(name: 'engineering')],
           entitlements: [
             TomEntitlement(name: 'feature.read'),
             TomEntitlement(name: 'feature.write'),
@@ -762,7 +758,9 @@ void main() {
           roles: [
             TomRole(name: 'admin', groupMemberShips: ['staff']),
           ],
-          groups: [TomGroup(name: 'staff', entitlements: ['staff.badge'])],
+          groups: [
+            TomGroup(name: 'staff', entitlements: ['staff.badge']),
+          ],
         );
         var userAci = TomAccessControlInformation(roles: ['admin']);
 
@@ -796,15 +794,13 @@ void main() {
         // Arrange — admin.manage includes admin.read, which grants a key.
         var definition = TomAccessControlDefinition(
           entitlements: [
-            TomEntitlement(
-              name: 'admin.manage',
-              entitlements: ['admin.read'],
-            ),
+            TomEntitlement(name: 'admin.manage', entitlements: ['admin.read']),
             TomEntitlement(name: 'admin.read', resourceKeys: ['admin.view']),
           ],
         );
-        var userAci =
-            TomAccessControlInformation(entitlements: ['admin.manage']);
+        var userAci = TomAccessControlInformation(
+          entitlements: ['admin.manage'],
+        );
 
         // Act
         var result = definition.completeFromDefinition(userAci);
@@ -939,11 +935,7 @@ void main() {
         expect(result.groups, containsAll(['staff', 'employees']));
         expect(
           result.entitlements,
-          containsAll([
-            'admin.manage',
-            'feature.read',
-            'admin.read',
-          ]),
+          containsAll(['admin.manage', 'feature.read', 'admin.read']),
         );
         expect(
           result.resourceKeys,
@@ -961,7 +953,10 @@ void main() {
     group('toString', () {
       test('should return formatted string with counts', () {
         var definition = TomAccessControlDefinition(
-          roles: [TomRole(name: 'r1'), TomRole(name: 'r2')],
+          roles: [
+            TomRole(name: 'r1'),
+            TomRole(name: 'r2'),
+          ],
           entitlements: [TomEntitlement(name: 'e1')],
         );
         var result = definition.toString();
@@ -1129,10 +1124,7 @@ void main() {
         TomResourceKeyProtection.globalSettingProtectionDefault = true;
 
         // Assert
-        expect(
-          TomResourceKeyProtection.globalSettingProtectionDefault,
-          isTrue,
-        );
+        expect(TomResourceKeyProtection.globalSettingProtectionDefault, isTrue);
       });
     });
 
@@ -1222,9 +1214,17 @@ void main() {
         TomResourceKeyProtection.globalSettingProtectionDefault = true;
 
         // Act - with int
-        var intResult = TomResourceKeyProtection.protect<int>(100000, -1, 'salary');
+        var intResult = TomResourceKeyProtection.protect<int>(
+          100000,
+          -1,
+          'salary',
+        );
         // Act - with bool
-        var boolResult = TomResourceKeyProtection.protect<bool>(true, false, 'sensitive');
+        var boolResult = TomResourceKeyProtection.protect<bool>(
+          true,
+          false,
+          'sensitive',
+        );
 
         // Assert
         expect(intResult, equals(-1));
@@ -1382,14 +1382,16 @@ void main() {
       expect(access.checkAccessibility(principal), isFalse);
     });
 
-    test('should deny access when access declares no roles (empty candidates)',
-        () {
-      // Pins the shared _principalAciContainsAny contract: an empty candidate
-      // list can never match, regardless of what the principal holds.
-      var access = const TomRoleAccess([]);
-      var principal = createTestPrincipal(roles: ['admin']);
-      expect(access.checkAccessibility(principal), isFalse);
-    });
+    test(
+      'should deny access when access declares no roles (empty candidates)',
+      () {
+        // Pins the shared _principalAciContainsAny contract: an empty candidate
+        // list can never match, regardless of what the principal holds.
+        var access = const TomRoleAccess([]);
+        var principal = createTestPrincipal(roles: ['admin']);
+        expect(access.checkAccessibility(principal), isFalse);
+      },
+    );
   });
 
   group('TomGroupAccess', () {
@@ -1406,7 +1408,9 @@ void main() {
 
     test('should grant access when principal has matching group', () {
       var access = const TomGroupAccess(['engineering']);
-      var principal = createTestPrincipalWithGroups(groups: ['engineering', 'qa']);
+      var principal = createTestPrincipalWithGroups(
+        groups: ['engineering', 'qa'],
+      );
       expect(access.checkAccessibility(principal), isTrue);
     });
 
@@ -1424,12 +1428,14 @@ void main() {
       expect(access.checkAccessibility(principal), isFalse);
     });
 
-    test('should deny access when access declares no groups (empty candidates)',
-        () {
-      var access = const TomGroupAccess([]);
-      var principal = createTestPrincipalWithGroups(groups: ['engineering']);
-      expect(access.checkAccessibility(principal), isFalse);
-    });
+    test(
+      'should deny access when access declares no groups (empty candidates)',
+      () {
+        var access = const TomGroupAccess([]);
+        var principal = createTestPrincipalWithGroups(groups: ['engineering']);
+        expect(access.checkAccessibility(principal), isFalse);
+      },
+    );
   });
 
   group('TomEntitlementAccess', () {
@@ -1502,10 +1508,7 @@ void main() {
     test('should throw when registering duplicate handler', () {
       // Arrange
       const handlerName = 'testDuplicateHandler';
-      TomCustomAccess.registerHandler(
-        handlerName,
-        (principal, id) => true,
-      );
+      TomCustomAccess.registerHandler(handlerName, (principal, id) => true);
 
       // Act & Assert
       expect(
@@ -1526,10 +1529,7 @@ void main() {
 
     test('should return true for handlerExists when registered', () {
       const handlerName = 'testExistsHandler';
-      TomCustomAccess.registerHandler(
-        handlerName,
-        (principal, id) => true,
-      );
+      TomCustomAccess.registerHandler(handlerName, (principal, id) => true);
       expect(TomCustomAccess.handlerExists(handlerName), isTrue);
     });
 
@@ -1576,10 +1576,7 @@ void main() {
     test('should verifyHandler return true for registered handler', () {
       const handlerName = 'verifyTestHandler';
       TomCustomAccess.registerHandler(handlerName, (p, id) => true);
-      var access = const TomCustomAccess(
-        handler: handlerName,
-        resourceId: 'x',
-      );
+      var access = const TomCustomAccess(handler: handlerName, resourceId: 'x');
       expect(access.verifyHandler(), isTrue);
     });
 
@@ -1640,33 +1637,49 @@ void main() {
 
     group('narrow', () {
       test('returns the more restrictive of the two states', () {
-        expect(TomAuthState.full.narrow(TomAuthState.read),
-            equals(TomAuthState.read));
-        expect(TomAuthState.read.narrow(TomAuthState.full),
-            equals(TomAuthState.read));
-        expect(TomAuthState.disabled.narrow(TomAuthState.none),
-            equals(TomAuthState.none));
+        expect(
+          TomAuthState.full.narrow(TomAuthState.read),
+          equals(TomAuthState.read),
+        );
+        expect(
+          TomAuthState.read.narrow(TomAuthState.full),
+          equals(TomAuthState.read),
+        );
+        expect(
+          TomAuthState.disabled.narrow(TomAuthState.none),
+          equals(TomAuthState.none),
+        );
       });
 
       test('is idempotent for equal states', () {
-        expect(TomAuthState.read.narrow(TomAuthState.read),
-            equals(TomAuthState.read));
+        expect(
+          TomAuthState.read.narrow(TomAuthState.read),
+          equals(TomAuthState.read),
+        );
       });
     });
 
     group('widen', () {
       test('returns the less restrictive of the two states', () {
-        expect(TomAuthState.read.widen(TomAuthState.full),
-            equals(TomAuthState.full));
-        expect(TomAuthState.full.widen(TomAuthState.read),
-            equals(TomAuthState.full));
-        expect(TomAuthState.none.widen(TomAuthState.disabled),
-            equals(TomAuthState.disabled));
+        expect(
+          TomAuthState.read.widen(TomAuthState.full),
+          equals(TomAuthState.full),
+        );
+        expect(
+          TomAuthState.full.widen(TomAuthState.read),
+          equals(TomAuthState.full),
+        );
+        expect(
+          TomAuthState.none.widen(TomAuthState.disabled),
+          equals(TomAuthState.disabled),
+        );
       });
 
       test('is idempotent for equal states', () {
-        expect(TomAuthState.full.widen(TomAuthState.full),
-            equals(TomAuthState.full));
+        expect(
+          TomAuthState.full.widen(TomAuthState.full),
+          equals(TomAuthState.full),
+        );
       });
     });
   });
@@ -1679,8 +1692,10 @@ void main() {
 
     test('resolves to full when no adapter is set (development mode)', () {
       TomAuthorization.reset();
-      expect(TomAuthorization.resolveAuth('any.path'),
-          equals(TomAuthState.full));
+      expect(
+        TomAuthorization.resolveAuth('any.path'),
+        equals(TomAuthState.full),
+      );
     });
 
     test('delegates to the installed adapter', () {
@@ -1688,13 +1703,19 @@ void main() {
         'checkout.email': TomAuthState.read,
         'checkout.secret': TomAuthState.none,
       });
-      expect(TomAuthorization.resolveAuth('checkout.email'),
-          equals(TomAuthState.read));
-      expect(TomAuthorization.resolveAuth('checkout.secret'),
-          equals(TomAuthState.none));
+      expect(
+        TomAuthorization.resolveAuth('checkout.email'),
+        equals(TomAuthState.read),
+      );
+      expect(
+        TomAuthorization.resolveAuth('checkout.secret'),
+        equals(TomAuthState.none),
+      );
       // Unknown paths fall back to the adapter default (full here).
-      expect(TomAuthorization.resolveAuth('unknown'),
-          equals(TomAuthState.full));
+      expect(
+        TomAuthorization.resolveAuth('unknown'),
+        equals(TomAuthState.full),
+      );
     });
 
     test('reset removes the adapter', () {
@@ -1741,31 +1762,36 @@ void main() {
 
     group('applyMode', () {
       test('controlsAll replaces the member state with the group state', () {
-        TomAuthorization.adapter =
-            _FakeAuthAdapter({'g': TomAuthState.read});
-        final group =
-            TomAuthorizationGroup('g', mode: AuthGroupMode.controlsAll);
+        TomAuthorization.adapter = _FakeAuthAdapter({'g': TomAuthState.read});
+        final group = TomAuthorizationGroup(
+          'g',
+          mode: AuthGroupMode.controlsAll,
+        );
         expect(group.applyMode(TomAuthState.full), equals(TomAuthState.read));
         expect(group.applyMode(TomAuthState.none), equals(TomAuthState.read));
       });
 
       test('controlsWidest narrows the member to the group ceiling', () {
-        TomAuthorization.adapter =
-            _FakeAuthAdapter({'g': TomAuthState.read});
-        final group =
-            TomAuthorizationGroup('g', mode: AuthGroupMode.controlsWidest);
+        TomAuthorization.adapter = _FakeAuthAdapter({'g': TomAuthState.read});
+        final group = TomAuthorizationGroup(
+          'g',
+          mode: AuthGroupMode.controlsWidest,
+        );
         // Member wider than group → narrowed to group.
         expect(group.applyMode(TomAuthState.full), equals(TomAuthState.read));
         // Member already narrower → unchanged.
-        expect(group.applyMode(TomAuthState.disabled),
-            equals(TomAuthState.disabled));
+        expect(
+          group.applyMode(TomAuthState.disabled),
+          equals(TomAuthState.disabled),
+        );
       });
 
       test('controlsNarrowest widens the member to the group floor', () {
-        TomAuthorization.adapter =
-            _FakeAuthAdapter({'g': TomAuthState.read});
-        final group =
-            TomAuthorizationGroup('g', mode: AuthGroupMode.controlsNarrowest);
+        TomAuthorization.adapter = _FakeAuthAdapter({'g': TomAuthState.read});
+        final group = TomAuthorizationGroup(
+          'g',
+          mode: AuthGroupMode.controlsNarrowest,
+        );
         // Member narrower than group → widened to group.
         expect(group.applyMode(TomAuthState.none), equals(TomAuthState.read));
         // Member already wider → unchanged.
@@ -1802,14 +1828,18 @@ void main() {
       });
 
       test('mostRestrictive returns full for an empty group', () {
-        expect(TomAuthorizationGroup('g').mostRestrictive,
-            equals(TomAuthState.full));
+        expect(
+          TomAuthorizationGroup('g').mostRestrictive,
+          equals(TomAuthState.full),
+        );
       });
     });
 
     test('toString includes groupId and mode', () {
-      final group =
-          TomAuthorizationGroup('shipping', mode: AuthGroupMode.controlsAll);
+      final group = TomAuthorizationGroup(
+        'shipping',
+        mode: AuthGroupMode.controlsAll,
+      );
       expect(group.toString(), contains('shipping'));
       expect(group.toString(), contains('controlsAll'));
     });
@@ -1821,8 +1851,10 @@ void main() {
   group('TomAuthorizer', () {
     test('defaults to authorizerNarrowsOnly strategy', () {
       final authorizer = TomAuthorizer(resolve: (r) => r);
-      expect(authorizer.strategy,
-          equals(TomAuthorizerStrategy.authorizerNarrowsOnly));
+      expect(
+        authorizer.strategy,
+        equals(TomAuthorizerStrategy.authorizerNarrowsOnly),
+      );
     });
 
     test('authorizerNarrowsOnly never widens the resource auth', () {
@@ -1831,8 +1863,10 @@ void main() {
         resolve: (_) => TomAuthState.full,
       );
       // Authorizer wants full but resource is read → stays read.
-      expect(authorizer.effectiveAuth(TomAuthState.read),
-          equals(TomAuthState.read));
+      expect(
+        authorizer.effectiveAuth(TomAuthState.read),
+        equals(TomAuthState.read),
+      );
     });
 
     test('authorizerNarrowsOnly applies further restriction', () {
@@ -1840,8 +1874,10 @@ void main() {
         strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
         resolve: (_) => TomAuthState.disabled,
       );
-      expect(authorizer.effectiveAuth(TomAuthState.full),
-          equals(TomAuthState.disabled));
+      expect(
+        authorizer.effectiveAuth(TomAuthState.full),
+        equals(TomAuthState.disabled),
+      );
     });
 
     test('authorizerDecides returns the authorizer result verbatim', () {
@@ -1850,38 +1886,53 @@ void main() {
         resolve: (_) => TomAuthState.full,
       );
       // Even though resource is none, authorizerDecides can widen.
-      expect(authorizer.effectiveAuth(TomAuthState.none),
-          equals(TomAuthState.full));
+      expect(
+        authorizer.effectiveAuth(TomAuthState.none),
+        equals(TomAuthState.full),
+      );
     });
 
     test('fixed always returns the fixed state regardless of resource', () {
       final authorizer = TomAuthorizer.fixed(TomAuthState.disabled);
-      expect(authorizer.effectiveAuth(TomAuthState.full),
-          equals(TomAuthState.disabled));
-      expect(authorizer.effectiveAuth(TomAuthState.none),
-          equals(TomAuthState.disabled));
+      expect(
+        authorizer.effectiveAuth(TomAuthState.full),
+        equals(TomAuthState.disabled),
+      );
+      expect(
+        authorizer.effectiveAuth(TomAuthState.none),
+        equals(TomAuthState.disabled),
+      );
     });
 
     group('fromAction', () {
       test('hidden widget stays hidden', () {
-        final authorizer =
-            TomAuthorizer.fromAction(actionAuth: () => TomAuthState.full);
-        expect(authorizer.effectiveAuth(TomAuthState.none),
-            equals(TomAuthState.none));
+        final authorizer = TomAuthorizer.fromAction(
+          actionAuth: () => TomAuthState.full,
+        );
+        expect(
+          authorizer.effectiveAuth(TomAuthState.none),
+          equals(TomAuthState.none),
+        );
       });
 
       test('full widget + action none → disabled', () {
-        final authorizer =
-            TomAuthorizer.fromAction(actionAuth: () => TomAuthState.none);
-        expect(authorizer.effectiveAuth(TomAuthState.full),
-            equals(TomAuthState.disabled));
+        final authorizer = TomAuthorizer.fromAction(
+          actionAuth: () => TomAuthState.none,
+        );
+        expect(
+          authorizer.effectiveAuth(TomAuthState.full),
+          equals(TomAuthState.disabled),
+        );
       });
 
       test('otherwise narrows to the most restrictive', () {
-        final authorizer =
-            TomAuthorizer.fromAction(actionAuth: () => TomAuthState.read);
-        expect(authorizer.effectiveAuth(TomAuthState.full),
-            equals(TomAuthState.read));
+        final authorizer = TomAuthorizer.fromAction(
+          actionAuth: () => TomAuthState.read,
+        );
+        expect(
+          authorizer.effectiveAuth(TomAuthState.full),
+          equals(TomAuthState.read),
+        );
       });
     });
   });
@@ -1898,13 +1949,18 @@ void main() {
       expect(controller.apply(TomAuthState.read), equals(TomAuthState.read));
     });
 
-    test('apply narrows when the resolver returns a more restrictive state', () {
-      final controller = TomUIStateController(
-        resolve: (current, data) => TomAuthState.disabled,
-      );
-      expect(controller.apply(TomAuthState.full),
-          equals(TomAuthState.disabled));
-    });
+    test(
+      'apply narrows when the resolver returns a more restrictive state',
+      () {
+        final controller = TomUIStateController(
+          resolve: (current, data) => TomAuthState.disabled,
+        );
+        expect(
+          controller.apply(TomAuthState.full),
+          equals(TomAuthState.disabled),
+        );
+      },
+    );
 
     test('apply forwards the data argument to the resolver', () {
       Object? seen;
@@ -1924,36 +1980,48 @@ void main() {
   // ===========================================================================
   group('TomAccessControl.resolveAuthState', () {
     test('default maps a granting binary control to full', () {
-      expect(const TomPublicAccess().resolveAuthState(null),
-          equals(TomAuthState.full));
+      expect(
+        const TomPublicAccess().resolveAuthState(null),
+        equals(TomAuthState.full),
+      );
     });
 
     test('default maps a denying binary control to none', () {
-      expect(const TomNoAccess().resolveAuthState(null),
-          equals(TomAuthState.none));
+      expect(
+        const TomNoAccess().resolveAuthState(null),
+        equals(TomAuthState.none),
+      );
     });
 
     test('role access resolves to full when the role is present', () {
       final principal = createTestPrincipal(roles: ['admin']);
-      expect(const TomRoleAccess(['admin']).resolveAuthState(principal),
-          equals(TomAuthState.full));
+      expect(
+        const TomRoleAccess(['admin']).resolveAuthState(principal),
+        equals(TomAuthState.full),
+      );
     });
 
     test('role access resolves to none when the role is absent', () {
       final principal = createTestPrincipal(roles: ['user']);
-      expect(const TomRoleAccess(['admin']).resolveAuthState(principal),
-          equals(TomAuthState.none));
+      expect(
+        const TomRoleAccess(['admin']).resolveAuthState(principal),
+        equals(TomAuthState.none),
+      );
     });
 
-    test('checkAccessibility stays the binary source of truth (backward compat)',
-        () {
-      // The default resolveAuthState is derived from the unchanged binary API.
-      expect(const TomPublicAccess().checkAccessibility(null), isTrue);
-      expect(const TomNoAccess().checkAccessibility(null), isFalse);
-      expect(const TomPublicAccess().resolveAuthState(null).isInteractive,
-          isTrue);
-      expect(const TomNoAccess().resolveAuthState(null).isVisible, isFalse);
-    });
+    test(
+      'checkAccessibility stays the binary source of truth (backward compat)',
+      () {
+        // The default resolveAuthState is derived from the unchanged binary API.
+        expect(const TomPublicAccess().checkAccessibility(null), isTrue);
+        expect(const TomNoAccess().checkAccessibility(null), isFalse);
+        expect(
+          const TomPublicAccess().resolveAuthState(null).isInteractive,
+          isTrue,
+        );
+        expect(const TomNoAccess().resolveAuthState(null).isVisible, isFalse);
+      },
+    );
   });
 
   // ===========================================================================
@@ -1964,47 +2032,78 @@ void main() {
     const denying = TomNoAccess();
 
     test('full when the full control grants', () {
-      final access =
-          TomGradedAccess(full: granting, read: granting, disabled: granting);
+      final access = TomGradedAccess(
+        full: granting,
+        read: granting,
+        disabled: granting,
+      );
       expect(access.resolveAuthState(null), equals(TomAuthState.full));
     });
 
     test('read when full denies but read grants', () {
-      final access =
-          TomGradedAccess(full: denying, read: granting, disabled: granting);
+      final access = TomGradedAccess(
+        full: denying,
+        read: granting,
+        disabled: granting,
+      );
       expect(access.resolveAuthState(null), equals(TomAuthState.read));
     });
 
     test('disabled when only the disabled control grants', () {
-      final access =
-          TomGradedAccess(full: denying, read: denying, disabled: granting);
+      final access = TomGradedAccess(
+        full: denying,
+        read: denying,
+        disabled: granting,
+      );
       expect(access.resolveAuthState(null), equals(TomAuthState.disabled));
     });
 
     test('none when nothing grants', () {
-      final access =
-          TomGradedAccess(full: denying, read: denying, disabled: denying);
+      final access = TomGradedAccess(
+        full: denying,
+        read: denying,
+        disabled: denying,
+      );
       expect(access.resolveAuthState(null), equals(TomAuthState.none));
     });
 
-    test('read and disabled default to full so a full grant reads and sees', () {
-      // Only the full control supplied: a granting full grant is interactive.
-      expect(TomGradedAccess(full: granting).resolveAuthState(null),
-          equals(TomAuthState.full));
-      // A denying full with no read/disabled override collapses to none.
-      expect(TomGradedAccess(full: denying).resolveAuthState(null),
-          equals(TomAuthState.none));
-    });
+    test(
+      'read and disabled default to full so a full grant reads and sees',
+      () {
+        // Only the full control supplied: a granting full grant is interactive.
+        expect(
+          TomGradedAccess(full: granting).resolveAuthState(null),
+          equals(TomAuthState.full),
+        );
+        // A denying full with no read/disabled override collapses to none.
+        expect(
+          TomGradedAccess(full: denying).resolveAuthState(null),
+          equals(TomAuthState.none),
+        );
+      },
+    );
 
     test('checkAccessibility collapses to "shows content" (read or full)', () {
-      final readOnly =
-          TomGradedAccess(full: denying, read: granting, disabled: granting);
-      expect(readOnly.checkAccessibility(null), isTrue,
-          reason: 'a read state shows content');
-      final disabledOnly =
-          TomGradedAccess(full: denying, read: denying, disabled: granting);
-      expect(disabledOnly.checkAccessibility(null), isFalse,
-          reason: 'a disabled state hides content');
+      final readOnly = TomGradedAccess(
+        full: denying,
+        read: granting,
+        disabled: granting,
+      );
+      expect(
+        readOnly.checkAccessibility(null),
+        isTrue,
+        reason: 'a read state shows content',
+      );
+      final disabledOnly = TomGradedAccess(
+        full: denying,
+        read: denying,
+        disabled: granting,
+      );
+      expect(
+        disabledOnly.checkAccessibility(null),
+        isFalse,
+        reason: 'a disabled state hides content',
+      );
     });
 
     test('grades role access against the principal', () {
@@ -2012,12 +2111,18 @@ void main() {
         full: const TomRoleAccess(['editor']),
         read: const TomRoleAccess(['viewer']),
       );
-      expect(access.resolveAuthState(createTestPrincipal(roles: ['editor'])),
-          equals(TomAuthState.full));
-      expect(access.resolveAuthState(createTestPrincipal(roles: ['viewer'])),
-          equals(TomAuthState.read));
-      expect(access.resolveAuthState(createTestPrincipal(roles: ['nobody'])),
-          equals(TomAuthState.none));
+      expect(
+        access.resolveAuthState(createTestPrincipal(roles: ['editor'])),
+        equals(TomAuthState.full),
+      );
+      expect(
+        access.resolveAuthState(createTestPrincipal(roles: ['viewer'])),
+        equals(TomAuthState.read),
+      );
+      expect(
+        access.resolveAuthState(createTestPrincipal(roles: ['nobody'])),
+        equals(TomAuthState.none),
+      );
     });
   });
 
@@ -2049,18 +2154,23 @@ void main() {
           resourceKeys: ['user.email'],
         );
 
-        final (publicInfo, privateInfo) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
+        final (
+          publicInfo,
+          privateInfo,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
           principal,
           null,
           'US',
           'en',
         );
 
-        final token =
-            _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo);
-        final restored =
-            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+        final token = _FakeClientJwtToken(
+          payload: publicInfo,
+          secretData: privateInfo,
+        );
+        final restored = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          token,
+        );
 
         expect(restored.username, equals('alice'));
         expect(restored.authenticated, isTrue);
@@ -2079,36 +2189,46 @@ void main() {
       });
 
       test(
-          'C-5: carries per-resource roles through the token so re-login applies '
-          'them', () {
-        // A principal whose role differs per resource (Alice: owner of X,
-        // viewer of Y). The authorization token must carry that map so a fresh
-        // login (re-parse of the token) sees the current grants — G-AUTHZ-5.
-        final alice = createTestPrincipal(
-          username: 'alice',
-          resourceRoles: {'project.X': 'owner', 'project.Y': 'viewer'},
-        );
+        'C-5: carries per-resource roles through the token so re-login applies '
+        'them',
+        () {
+          // A principal whose role differs per resource (Alice: owner of X,
+          // viewer of Y). The authorization token must carry that map so a fresh
+          // login (re-parse of the token) sees the current grants — G-AUTHZ-5.
+          final alice = createTestPrincipal(
+            username: 'alice',
+            resourceRoles: {'project.X': 'owner', 'project.Y': 'viewer'},
+          );
 
-        final (publicInfo, privateInfo) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
-          alice,
-          null,
-          'US',
-          'en',
-        );
+          final (
+            publicInfo,
+            privateInfo,
+          ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+            alice,
+            null,
+            'US',
+            'en',
+          );
 
-        // The per-resource roles ride in the encrypted (private) payload.
-        expect(privateInfo['resourceRoles'],
-            equals({'project.X': 'owner', 'project.Y': 'viewer'}));
+          // The per-resource roles ride in the encrypted (private) payload.
+          expect(
+            privateInfo['resourceRoles'],
+            equals({'project.X': 'owner', 'project.Y': 'viewer'}),
+          );
 
-        final token =
-            _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo);
-        final restored =
-            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+          final token = _FakeClientJwtToken(
+            payload: publicInfo,
+            secretData: privateInfo,
+          );
+          final restored =
+              TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
 
-        expect(restored.aci.resourceRoles,
-            equals({'project.X': 'owner', 'project.Y': 'viewer'}));
-      });
+          expect(
+            restored.aci.resourceRoles,
+            equals({'project.X': 'owner', 'project.Y': 'viewer'}),
+          );
+        },
+      );
 
       test('a guest username round-trips as not authenticated', () {
         final guest = createTestPrincipal(
@@ -2116,18 +2236,23 @@ void main() {
           username: TomUser.guestUsername,
         );
 
-        final (publicInfo, privateInfo) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
+        final (
+          publicInfo,
+          privateInfo,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
           guest,
           null,
           null,
           null,
         );
 
-        final token =
-            _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo);
-        final restored =
-            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+        final token = _FakeClientJwtToken(
+          payload: publicInfo,
+          secretData: privateInfo,
+        );
+        final restored = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          token,
+        );
 
         expect(restored.username, equals(TomUser.guestUsername));
         expect(restored.authenticated, isFalse);
@@ -2149,8 +2274,9 @@ void main() {
         // ids, the attributes map, and the entire secretData — is absent.
         final token = _FakeClientJwtToken(payload: {'username': 'bob'});
 
-        final restored =
-            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+        final restored = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          token,
+        );
 
         expect(restored.username, equals('bob'));
         expect(restored.authenticated, isTrue);
@@ -2177,8 +2303,9 @@ void main() {
           },
         );
 
-        final restored =
-            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+        final restored = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          token,
+        );
 
         expect(restored.username, equals('carol'));
         expect(restored.user.attributes, isEmpty);
@@ -2232,22 +2359,28 @@ void main() {
         expect(aci.resourceKeys, equals(['key.y']));
       });
 
-      test('clearTokens leaves the singleton with no identity to hand back', () {
-        final jwt = _makeJwt({'username': 'frank'});
-        TomBearerAuthentication.setTokens(jwt, jwt, false);
-        expect(TomBearerAuthentication.getPrincipal().username, equals('frank'));
+      test(
+        'clearTokens leaves the singleton with no identity to hand back',
+        () {
+          final jwt = _makeJwt({'username': 'frank'});
+          TomBearerAuthentication.setTokens(jwt, jwt, false);
+          expect(
+            TomBearerAuthentication.getPrincipal().username,
+            equals('frank'),
+          );
 
-        TomBearerAuthentication.clearTokens();
+          TomBearerAuthentication.clearTokens();
 
-        expect(TomBearerAuthentication.token, isNull);
-        expect(TomBearerAuthentication.authorizationToken, isNull);
-        expect(TomBearerAuthentication.clientJwtToken, isNull);
-        expect(TomBearerAuthentication.clientAuthorizationJwtToken, isNull);
-        expect(
-          () => TomBearerAuthentication.getPrincipal(),
-          throwsA(isA<StateError>()),
-        );
-      });
+          expect(TomBearerAuthentication.token, isNull);
+          expect(TomBearerAuthentication.authorizationToken, isNull);
+          expect(TomBearerAuthentication.clientJwtToken, isNull);
+          expect(TomBearerAuthentication.clientAuthorizationJwtToken, isNull);
+          expect(
+            () => TomBearerAuthentication.getPrincipal(),
+            throwsA(isA<StateError>()),
+          );
+        },
+      );
 
       test('clientTimezone survives the round trip', () {
         // Written as "clientTimezone" and read back under the same name: the
@@ -2256,15 +2389,16 @@ void main() {
         final principal = createTestPrincipal();
         principal.clientTimezone = 'Europe/Berlin';
 
-        final (publicInfo, privateInfo) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
+        final (
+          publicInfo,
+          privateInfo,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
           principal,
           null,
           'DE',
           'de',
         );
-        final restored =
-            TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        final restored = TomBearerAuthentication.convertTokenPayloadToPrincipal(
           _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo),
         );
 
@@ -2280,15 +2414,14 @@ void main() {
         int attempt = 0,
         int attemptsAllowed = 3,
         Duration validIn = const Duration(minutes: 5),
-      }) =>
-          Tom2FAChallenge(
-            type: 'totp',
-            hint: 'device',
-            attempt: attempt,
-            attemptsAllowed: attemptsAllowed,
-            expiresAt: DateTime.now().toUtc().add(validIn),
-            clientData: const {'digits': 6},
-          );
+      }) => Tom2FAChallenge(
+        type: 'totp',
+        hint: 'device',
+        attempt: attempt,
+        attemptsAllowed: attemptsAllowed,
+        expiresAt: DateTime.now().toUtc().add(validIn),
+        clientData: const {'digits': 6},
+      );
 
       test('a challenge round-trips through the public claims', () {
         final original = challenge(attempt: 1);
@@ -2375,8 +2508,10 @@ void main() {
       });
 
       test('a challenge is projected into the token payload', () {
-        final (publicInfo, privateInfo) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
+        final (
+          publicInfo,
+          privateInfo,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
           createTestPrincipal(requires2FA: true, twoFactorType: 'totp'),
           null,
           'US',
@@ -2390,8 +2525,10 @@ void main() {
         expect(publicInfo[Tom2FAClaims.hint], equals('device'));
         expect(publicInfo[Tom2FAClaims.attemptsAllowed], equals(3));
         // The verification blob is server-only: encrypted section, never public.
-        expect(privateInfo[Tom2FAClaims.verificationData],
-            equals({'nonce': 'n-1'}));
+        expect(
+          privateInfo[Tom2FAClaims.verificationData],
+          equals({'nonce': 'n-1'}),
+        );
         expect(publicInfo, isNot(contains(Tom2FAClaims.verificationData)));
       });
 
@@ -2399,8 +2536,10 @@ void main() {
       // carries the real ACI, so what must stop it from authorizing anything is
       // the single `authenticated` flag every access check consults.
       test('a principal owing a factor is not authenticated', () {
-        final (publicInfo, privateInfo) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
+        final (
+          publicInfo,
+          privateInfo,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
           createTestPrincipal(
             username: 'alice',
             roles: ['admin'],
@@ -2413,8 +2552,7 @@ void main() {
           challenge: challenge(),
         );
 
-        final restored =
-            TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        final restored = TomBearerAuthentication.convertTokenPayloadToPrincipal(
           _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo),
         );
 
@@ -2426,8 +2564,10 @@ void main() {
       });
 
       test('reporting the factor satisfied clears the claims and the blob', () {
-        final (publicInfo, privateInfo) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
+        final (
+          publicInfo,
+          privateInfo,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
           createTestPrincipal(requires2FA: true, twoFactorType: 'totp'),
           null,
           'US',
@@ -2443,8 +2583,7 @@ void main() {
         // is dropped and a mechanism secret cannot outlive its challenge.
         expect(privateInfo, isNot(contains(Tom2FAClaims.verificationData)));
 
-        final restored =
-            TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        final restored = TomBearerAuthentication.convertTokenPayloadToPrincipal(
           _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo),
         );
         expect(restored.authenticated, isTrue);
@@ -2454,8 +2593,10 @@ void main() {
       // Fail-safe by construction: omitting `twoFactorSatisfied` produces an
       // unusable interim token, never an over-privileged one.
       test('forgetting to report satisfaction keeps the factor owed', () {
-        final (publicInfo, _) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
+        final (
+          publicInfo,
+          _,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
           createTestPrincipal(requires2FA: true, twoFactorType: 'totp'),
           null,
           'US',
@@ -2514,24 +2655,28 @@ void main() {
           Tom2FAEnrolmentClaims.skipSpendsGrace: skipSpendsGrace,
         };
         if (type.isEmpty) return base;
-        return base
-          ..addAll({
-            Tom2FAEnrolmentClaims.type: type,
-            Tom2FAEnrolmentClaims.hint: '',
-            Tom2FAEnrolmentClaims.attempt: 0,
-            Tom2FAEnrolmentClaims.attemptsAllowed: 3,
-            Tom2FAEnrolmentClaims.expiresAt:
-                DateTime.now().toUtc().add(validIn).toIso8601String(),
-            Tom2FAEnrolmentClaims.clientData: clientData,
-          });
+        return base..addAll({
+          Tom2FAEnrolmentClaims.type: type,
+          Tom2FAEnrolmentClaims.hint: '',
+          Tom2FAEnrolmentClaims.attempt: 0,
+          Tom2FAEnrolmentClaims.attemptsAllowed: 3,
+          Tom2FAEnrolmentClaims.expiresAt: DateTime.now()
+              .toUtc()
+              .add(validIn)
+              .toIso8601String(),
+          Tom2FAEnrolmentClaims.clientData: clientData,
+        });
       }
 
       test('the choosing stop carries the offer but no mechanism', () {
         final pending = Tom2FAPendingEnrolment.fromClaims(claims());
 
         expect(pending, isNotNull);
-        expect(pending!.hasOffer, isFalse,
-            reason: 'no mechanism picked yet, so the client renders a chooser');
+        expect(
+          pending!.hasOffer,
+          isFalse,
+          reason: 'no mechanism picked yet, so the client renders a chooser',
+        );
         expect(pending.offeredTypes, equals(['totp', 'sms']));
         expect(pending.skippable, isTrue);
         expect(pending.skipSpendsGrace, isFalse);
@@ -2541,14 +2686,16 @@ void main() {
       });
 
       test('the confirming stop carries the mechanism and its client data', () {
-        final pending = Tom2FAPendingEnrolment.fromClaims(claims(
-          type: 'totp',
-          clientData: const {
-            'secret': 'GEZDGNBVGY3TQOJQ',
-            'otpauthUri': 'otpauth://totp/App:alice?secret=GEZDGNBVGY3TQOJQ',
-            'digits': 6,
-          },
-        ));
+        final pending = Tom2FAPendingEnrolment.fromClaims(
+          claims(
+            type: 'totp',
+            clientData: const {
+              'secret': 'GEZDGNBVGY3TQOJQ',
+              'otpauthUri': 'otpauth://totp/App:alice?secret=GEZDGNBVGY3TQOJQ',
+              'digits': 6,
+            },
+          ),
+        );
 
         expect(pending, isNotNull);
         expect(pending!.hasOffer, isTrue);
@@ -2561,8 +2708,9 @@ void main() {
 
       test('skipSpendsGrace distinguishes a charged skip from a free one', () {
         final free = Tom2FAPendingEnrolment.fromClaims(claims());
-        final charged =
-            Tom2FAPendingEnrolment.fromClaims(claims(skipSpendsGrace: true));
+        final charged = Tom2FAPendingEnrolment.fromClaims(
+          claims(skipSpendsGrace: true),
+        );
 
         expect(free!.skipSpendsGrace, isFalse);
         expect(charged!.skipSpendsGrace, isTrue);
@@ -2586,7 +2734,8 @@ void main() {
               ..[Tom2FAEnrolmentClaims.expiresAt] = 'not-a-date',
           ),
           isNull,
-          reason: 'a begun offer with no readable expiry could be confirmed '
+          reason:
+              'a begun offer with no readable expiry could be confirmed '
               'forever, and its panel could not say when it lapses',
         );
         expect(
@@ -2645,8 +2794,16 @@ void main() {
 
     test('reproduces the RFC 4226 HOTP vectors', () {
       const expected = [
-        '755224', '287082', '359152', '969429', '338314',
-        '254676', '287922', '162583', '399871', '520489',
+        '755224',
+        '287082',
+        '359152',
+        '969429',
+        '338314',
+        '254676',
+        '287922',
+        '162583',
+        '399871',
+        '520489',
       ];
       for (var counter = 0; counter < expected.length; counter++) {
         expect(
@@ -2679,14 +2836,16 @@ void main() {
     // arithmetic to be obvious.
     test('counts UTC seconds into RFC 6238 time steps', () {
       expect(
-        TomTotp.counterFor(
-            at: DateTime.utc(1970, 1, 1, 0, 0, 59)),
+        TomTotp.counterFor(at: DateTime.utc(1970, 1, 1, 0, 0, 59)),
         equals(1),
       );
       expect(
         TomTotp.counterFor(
-            at: DateTime.fromMillisecondsSinceEpoch(1111111109 * 1000,
-                isUtc: true)),
+          at: DateTime.fromMillisecondsSinceEpoch(
+            1111111109 * 1000,
+            isUtc: true,
+          ),
+        ),
         equals(37037036),
       );
     });
@@ -2707,8 +2866,10 @@ void main() {
     });
 
     test('codeFor derives the code for an instant from the base32 secret', () {
-      final at = DateTime.fromMillisecondsSinceEpoch(1111111109 * 1000,
-          isUtc: true);
+      final at = DateTime.fromMillisecondsSinceEpoch(
+        1111111109 * 1000,
+        isUtc: true,
+      );
       expect(
         TomTotp.codeFor(rfcSecretBase32, at: at, digits: 8),
         equals('07081804'),
@@ -2760,7 +2921,7 @@ class _FakeAuthAdapter implements TomAuthorizationAdapter {
 /// Minimal [TomAuthorizable] used to populate authorization groups in tests.
 class _FakeAuthorizable implements TomAuthorizable {
   _FakeAuthorizable(this._id, {TomAuthState auth = TomAuthState.full})
-      : _auth = auth;
+    : _auth = auth;
 
   final String _id;
   final TomAuthState _auth;
@@ -2786,11 +2947,8 @@ class _FakeClientJwtToken extends TomClientJwtToken {
   _FakeClientJwtToken({
     Map<String, dynamic>? payload,
     Map<String, dynamic>? secretData,
-  })  : _payload = payload,
-        super(
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.sig',
-          decrypt: false,
-        ) {
+  }) : _payload = payload,
+       super('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.sig', decrypt: false) {
     this.secretData = secretData;
   }
 

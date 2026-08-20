@@ -180,7 +180,9 @@ void main() {
 
   group('indentEncoder', () {
     test('should use 2-space indentation', () {
-      final data = {'nested': {'value': 1}};
+      final data = {
+        'nested': {'value': 1},
+      };
       final result = indentEncoder.convert(data);
 
       expect(result, contains('  "nested"'));
@@ -378,34 +380,36 @@ void main() {
         expect(base['items'], equals([1, 2, 3]));
       });
 
-      test('should not throw when override array is shorter than base (§44)',
-          () {
-        // The base array has more map elements than the override — a normal
-        // "override only the first N" config-layering case. Before the fix the
-        // merge loop indexed overrideMapArray[i] past its end and threw
-        // RangeError.
-        final base = <String, dynamic>{
-          'servers': [
-            <String, Object>{'host': 'a', 'port': 1},
-            <String, Object>{'host': 'b', 'port': 2},
-            <String, Object>{'host': 'c', 'port': 3},
-          ],
-        };
-        final override = <String, dynamic>{
-          'servers': [
-            <String, Object>{'host': 'A'},
-          ],
-        };
+      test(
+        'should not throw when override array is shorter than base (§44)',
+        () {
+          // The base array has more map elements than the override — a normal
+          // "override only the first N" config-layering case. Before the fix the
+          // merge loop indexed overrideMapArray[i] past its end and threw
+          // RangeError.
+          final base = <String, dynamic>{
+            'servers': [
+              <String, Object>{'host': 'a', 'port': 1},
+              <String, Object>{'host': 'b', 'port': 2},
+              <String, Object>{'host': 'c', 'port': 3},
+            ],
+          };
+          final override = <String, dynamic>{
+            'servers': [
+              <String, Object>{'host': 'A'},
+            ],
+          };
 
-        expect(() => mergeMapsOneSided(base, override), returnsNormally);
+          expect(() => mergeMapsOneSided(base, override), returnsNormally);
 
-        final servers = base['servers'] as List;
-        expect(servers.length, equals(3));
-        expect(servers[0]['host'], equals('A')); // merged from override
-        expect(servers[0]['port'], equals(1)); // preserved from base
-        expect(servers[1]['host'], equals('b')); // untouched (no override)
-        expect(servers[2]['host'], equals('c')); // untouched (no override)
-      });
+          final servers = base['servers'] as List;
+          expect(servers.length, equals(3));
+          expect(servers[0]['host'], equals('A')); // merged from override
+          expect(servers[0]['port'], equals(1)); // preserved from base
+          expect(servers[1]['host'], equals('b')); // untouched (no override)
+          expect(servers[2]['host'], equals('c')); // untouched (no override)
+        },
+      );
 
       test('a differing scalar element is replaced by the override', () {
         // The most ordinary layering operation there is: change one entry of a
@@ -504,8 +508,7 @@ void main() {
         expect(base['items'], equals(['plain']));
       });
 
-      test('a narrowly typed base list accepts an override of another type',
-          () {
+      test('a narrowly typed base list accepts an override of another type', () {
         // A Dart list literal is reified at its element type, so `<int>[1, 2]`
         // is a List<int> and cannot hold a String. Writing the override
         // element into the base list in place would throw a TypeError here;
@@ -579,18 +582,20 @@ void main() {
         expect(base['x'], equals(5));
       });
 
-      test('keeps base scalar when override tries to merge an array over it',
-          () {
-        final base = <String, dynamic>{'x': 5};
-        final override = <String, dynamic>{
-          'x': [1, 2],
-        };
+      test(
+        'keeps base scalar when override tries to merge an array over it',
+        () {
+          final base = <String, dynamic>{'x': 5};
+          final override = <String, dynamic>{
+            'x': [1, 2],
+          };
 
-        mergeMapsOneSided(base, override);
+          mergeMapsOneSided(base, override);
 
-        // Cannot merge an array into a scalar — base is left unchanged.
-        expect(base['x'], equals(5));
-      });
+          // Cannot merge an array into a scalar — base is left unchanged.
+          expect(base['x'], equals(5));
+        },
+      );
     });
 
     group('decoded JSON inputs (§45)', () {
@@ -677,8 +682,7 @@ void main() {
 
         mergeMapsOneSided(base, override);
 
-        final overrideLeaf =
-            ((override['a'] as Map)['b'] as Map)['c'] as List;
+        final overrideLeaf = ((override['a'] as Map)['b'] as Map)['c'] as List;
         (overrideLeaf[0] as Map)['d'] = 99;
 
         final baseLeaf = ((base['a'] as Map)['b'] as Map)['c'] as List;
@@ -849,9 +853,7 @@ void main() {
 
     test('should process nested map values', () {
       final tree = <String, Object>{
-        'config': <String, Object>{
-          'endpoint': r'${HOST}/v1',
-        },
+        'config': <String, Object>{'endpoint': r'${HOST}/v1'},
       };
 
       traverseAndProcess(
@@ -860,10 +862,7 @@ void main() {
         (s) => s.replaceAll(r'${HOST}', 'api.example.com'),
       );
 
-      expect(
-        (tree['config'] as Map)['endpoint'],
-        equals('api.example.com/v1'),
-      );
+      expect((tree['config'] as Map)['endpoint'], equals('api.example.com/v1'));
     });
 
     test('should process string arrays', () {
@@ -904,11 +903,7 @@ void main() {
     test('should not process non-matching strings', () {
       final tree = <String, Object>{'name': 'unchanged', 'value': 'also same'};
 
-      traverseAndProcess(
-        tree,
-        (s) => s.contains(r'${'),
-        (s) => 'REPLACED',
-      );
+      traverseAndProcess(tree, (s) => s.contains(r'${'), (s) => 'REPLACED');
 
       expect(tree['name'], equals('unchanged'));
       expect(tree['value'], equals('also same'));
@@ -917,11 +912,7 @@ void main() {
     test('should handle empty tree', () {
       final tree = <String, Object>{};
 
-      traverseAndProcess(
-        tree,
-        (s) => true,
-        (s) => 'REPLACED',
-      );
+      traverseAndProcess(tree, (s) => true, (s) => 'REPLACED');
 
       expect(tree.isEmpty, isTrue);
     });
@@ -930,9 +921,7 @@ void main() {
       final tree = <String, Object>{
         'a': <String, Object>{
           'b': <String, Object>{
-            'c': <String, Object>{
-              'd': r'${VAR}',
-            },
+            'c': <String, Object>{'d': r'${VAR}'},
           },
         },
       };
@@ -1161,13 +1150,13 @@ void main() {
       final tree = <String, dynamic>{'special@key': 'value', 'normal': 'data'};
       final createdKeys = <String>[];
 
-      traverseAndCreate(
-        tree,
-        (name) => name.contains('@'),
-        (key, value, location) {
-          createdKeys.add(key);
-        },
-      );
+      traverseAndCreate(tree, (name) => name.contains('@'), (
+        key,
+        value,
+        location,
+      ) {
+        createdKeys.add(key);
+      });
 
       expect(createdKeys, contains('special@key'));
       expect(createdKeys.length, equals(1));
@@ -1175,19 +1164,17 @@ void main() {
 
     test('should traverse nested maps', () {
       final tree = <String, dynamic>{
-        'outer': <String, dynamic>{
-          'inner@key': 'value',
-        },
+        'outer': <String, dynamic>{'inner@key': 'value'},
       };
       final foundKeys = <String>[];
 
-      traverseAndCreate(
-        tree,
-        (name) => name.contains('@'),
-        (key, value, location) {
-          foundKeys.add(key);
-        },
-      );
+      traverseAndCreate(tree, (name) => name.contains('@'), (
+        key,
+        value,
+        location,
+      ) {
+        foundKeys.add(key);
+      });
 
       expect(foundKeys, contains('inner@key'));
     });
@@ -1201,13 +1188,13 @@ void main() {
       };
       final foundKeys = <String>[];
 
-      traverseAndCreate(
-        tree,
-        (name) => name.contains('@'),
-        (key, value, location) {
-          foundKeys.add(key);
-        },
-      );
+      traverseAndCreate(tree, (name) => name.contains('@'), (
+        key,
+        value,
+        location,
+      ) {
+        foundKeys.add(key);
+      });
 
       expect(foundKeys, contains('item@1'));
       expect(foundKeys, contains('item@2'));
@@ -1217,13 +1204,13 @@ void main() {
       final tree = <String, dynamic>{'ref@pattern': 'targetValue'};
       Map<String, dynamic>? capturedLocation;
 
-      traverseAndCreate(
-        tree,
-        (name) => name.contains('@'),
-        (key, value, location) {
-          capturedLocation = location;
-        },
-      );
+      traverseAndCreate(tree, (name) => name.contains('@'), (
+        key,
+        value,
+        location,
+      ) {
+        capturedLocation = location;
+      });
 
       expect(capturedLocation, isNotNull);
       expect(capturedLocation, same(tree));
@@ -1237,13 +1224,13 @@ void main() {
       };
       final foundKeys = <String>[];
 
-      traverseAndCreate(
-        tree,
-        (name) => name.contains('@'),
-        (key, value, location) {
-          foundKeys.add(key);
-        },
-      );
+      traverseAndCreate(tree, (name) => name.contains('@'), (
+        key,
+        value,
+        location,
+      ) {
+        foundKeys.add(key);
+      });
 
       expect(foundKeys, equals(['string@key']));
     });
@@ -1386,9 +1373,7 @@ void main() {
 
     test('should wrap non-map terminal value', () {
       final tree = <String, dynamic>{
-        'config': <String, dynamic>{
-          'port': 8080,
-        },
+        'config': <String, dynamic>{'port': 8080},
       };
 
       final result = getPathFromTree(tree, 'config.port', 'portValue');
@@ -1408,9 +1393,7 @@ void main() {
     });
 
     test('should throw for path through non-map', () {
-      final tree = <String, dynamic>{
-        'value': 'string',
-      };
+      final tree = <String, dynamic>{'value': 'string'};
 
       expect(
         () => getPathFromTree(tree, 'value.nested', 'result'),
@@ -1568,22 +1551,25 @@ void main() {
         expect(getObjectFromTree(tree, 'only'), equals('value'));
       });
 
-      test('an empty path throws a segment-naming exception, not an anomaly', () {
-        // ''.split('.') is [''] — one segment, not zero — so the loop is
-        // skipped and the terminal read reports the missing key by position.
-        final tree = <String, dynamic>{'a': 1};
+      test(
+        'an empty path throws a segment-naming exception, not an anomaly',
+        () {
+          // ''.split('.') is [''] — one segment, not zero — so the loop is
+          // skipped and the terminal read reports the missing key by position.
+          final tree = <String, dynamic>{'a': 1};
 
-        expect(
-          () => getObjectFromTree(tree, ''),
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'message',
-              allOf(contains('position 0'), isNot(contains('anomaly'))),
+          expect(
+            () => getObjectFromTree(tree, ''),
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'message',
+                allOf(contains('position 0'), isNot(contains('anomaly'))),
+              ),
             ),
-          ),
-        );
-      });
+          );
+        },
+      );
     });
 
     group('present-but-null values (§79)', () {
@@ -1672,9 +1658,7 @@ void main() {
 
   group('processTree', () {
     test('should resolve profile-based references', () {
-      final tree = <String, dynamic>{
-        'config@profiles.db@production': '@',
-      };
+      final tree = <String, dynamic>{'config@profiles.db@production': '@'};
 
       processTree(tree, (keyName, path, profileName) {
         expect(keyName, equals('config'));
@@ -1687,15 +1671,10 @@ void main() {
     });
 
     test('should spread values with ... directive', () {
-      final tree = <String, dynamic>{
-        'spread@source.data@profile': '...',
-      };
+      final tree = <String, dynamic>{'spread@source.data@profile': '...'};
 
       processTree(tree, (keyName, path, profileName) {
-        return <String, dynamic>{
-          'newKey1': 'value1',
-          'newKey2': 'value2',
-        };
+        return <String, dynamic>{'newKey1': 'value1', 'newKey2': 'value2'};
       });
 
       expect(tree['newKey1'], equals('value1'));
@@ -1720,9 +1699,7 @@ void main() {
     });
 
     test('should replace with entire tree for other directives', () {
-      final tree = <String, dynamic>{
-        'data@source@profile': 'replace',
-      };
+      final tree = <String, dynamic>{'data@source@profile': 'replace'};
 
       processTree(tree, (keyName, path, profileName) {
         return <String, dynamic>{
@@ -1736,9 +1713,7 @@ void main() {
 
     test('should process nested references', () {
       final tree = <String, dynamic>{
-        'outer': <String, dynamic>{
-          'ref@path@profile': '@',
-        },
+        'outer': <String, dynamic>{'ref@path@profile': '@'},
       };
 
       processTree(tree, (keyName, path, profileName) {
@@ -1891,8 +1866,10 @@ void main() {
         expect(
           () => processTree(
             tree,
-            (keyName, path, profileName) =>
-                <String, dynamic>{'other': 1, 'another': 2},
+            (keyName, path, profileName) => <String, dynamic>{
+              'other': 1,
+              'another': 2,
+            },
           ),
           throwsA(
             isA<Exception>().having(
@@ -2125,7 +2102,9 @@ void main() {
     group('nested structures', () {
       test('should clean nested maps recursively', () {
         final dirty = {
-          'outer': {'inner': {'value': 'deep'}},
+          'outer': {
+            'inner': {'value': 'deep'},
+          },
         };
         final clean = makeCleanJsonMap(dirty);
 
@@ -2175,10 +2154,7 @@ void main() {
 
     group('filtering non-JSON types', () {
       test('should filter out DateTime values', () {
-        final dirty = {
-          'name': 'Test',
-          'created': DateTime(2024, 1, 1),
-        };
+        final dirty = {'name': 'Test', 'created': DateTime(2024, 1, 1)};
         final clean = makeCleanJsonMap(dirty);
 
         expect(clean['name'], equals('Test'));
@@ -2186,10 +2162,7 @@ void main() {
       });
 
       test('should filter out custom objects', () {
-        final dirty = {
-          'valid': 'value',
-          'invalid': Object(),
-        };
+        final dirty = {'valid': 'value', 'invalid': Object()};
         final clean = makeCleanJsonMap(dirty);
 
         expect(clean['valid'], equals('value'));
@@ -2274,10 +2247,7 @@ void main() {
       // The point of the change: null and not-encodable were the same signal,
       // and must not be again.
       test('should keep dropping non-encodable values beside a null', () {
-        final dirty = {
-          'cleared': null,
-          'dropped': DateTime(2024, 1, 1),
-        };
+        final dirty = {'cleared': null, 'dropped': DateTime(2024, 1, 1)};
         final clean = makeCleanJsonMap(dirty);
 
         expect(clean.containsKey('cleared'), isTrue);
@@ -2314,10 +2284,7 @@ void main() {
       });
 
       test('should return empty map if all values are invalid', () {
-        final dirty = {
-          'a': DateTime(2024, 1, 1),
-          'b': Object(),
-        };
+        final dirty = {'a': DateTime(2024, 1, 1), 'b': Object()};
         final clean = makeCleanJsonMap(dirty);
 
         expect(clean.isEmpty, isTrue);

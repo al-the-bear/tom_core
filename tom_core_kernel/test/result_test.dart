@@ -152,8 +152,7 @@ void main() {
       });
 
       test('missing success key is inferred from absence of error', () {
-        final back =
-            TomResult<int>.fromJson(const {'value': 7});
+        final back = TomResult<int>.fromJson(const {'value': 7});
         expect(back.isSuccess, isTrue);
         expect(back.value, equals(7));
       });

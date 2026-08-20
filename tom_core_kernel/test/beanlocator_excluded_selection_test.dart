@@ -91,7 +91,8 @@ void main() {
       expect(
         failure!.parameters?['type'],
         equals(WebOnlyService),
-        reason: 'the environment-narrowed interface still resolves here, so '
+        reason:
+            'the environment-narrowed interface still resolves here, so '
             'the platform-narrowed one is the only possible failure',
       );
     });

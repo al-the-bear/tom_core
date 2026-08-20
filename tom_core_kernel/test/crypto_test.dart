@@ -48,12 +48,15 @@ void main() {
         expect(salt1, isNot(equals(salt2)));
       });
 
-      test('should generate different hashes for same password due to different salts', () {
-        final (hash1, _) = TomPasswordHasher.hashPassword('samePassword');
-        final (hash2, _) = TomPasswordHasher.hashPassword('samePassword');
+      test(
+        'should generate different hashes for same password due to different salts',
+        () {
+          final (hash1, _) = TomPasswordHasher.hashPassword('samePassword');
+          final (hash2, _) = TomPasswordHasher.hashPassword('samePassword');
 
-        expect(hash1, isNot(equals(hash2)));
-      });
+          expect(hash1, isNot(equals(hash2)));
+        },
+      );
 
       test('should generate hex-encoded salt and hash', () {
         final (hash, _) = TomPasswordHasher.hashPassword('hexTest');
@@ -69,8 +72,11 @@ void main() {
       test('should return true for correct password', () {
         final (hash, spec) = TomPasswordHasher.hashPassword('correctPassword');
 
-        final isValid =
-            TomPasswordHasher.verifyPassword('correctPassword', hash, spec);
+        final isValid = TomPasswordHasher.verifyPassword(
+          'correctPassword',
+          hash,
+          spec,
+        );
 
         expect(isValid, isTrue);
       });
@@ -78,8 +84,11 @@ void main() {
       test('should return false for incorrect password', () {
         final (hash, spec) = TomPasswordHasher.hashPassword('originalPassword');
 
-        final isValid =
-            TomPasswordHasher.verifyPassword('wrongPassword', hash, spec);
+        final isValid = TomPasswordHasher.verifyPassword(
+          'wrongPassword',
+          hash,
+          spec,
+        );
 
         expect(isValid, isFalse);
       });
@@ -145,7 +154,10 @@ void main() {
       });
 
       test('should generate different salts on each call', () {
-        final salts = List.generate(10, (_) => TomPasswordHasher.generateSalt(16));
+        final salts = List.generate(
+          10,
+          (_) => TomPasswordHasher.generateSalt(16),
+        );
         final uniqueSalts = salts.toSet();
 
         expect(uniqueSalts.length, equals(salts.length));
@@ -231,7 +243,10 @@ void main() {
     group('makeArgon2Params', () {
       test('should create Argon2i parameters', () {
         final salt = TomPasswordHasher.generateSalt(16);
-        final params = TomPasswordHasher.makeArgon2Params('2i,13,4,65536,4,128', salt);
+        final params = TomPasswordHasher.makeArgon2Params(
+          '2i,13,4,65536,4,128',
+          salt,
+        );
 
         expect(params.desiredKeyLength, equals(128));
         expect(params.iterations, equals(4));
@@ -241,14 +256,20 @@ void main() {
 
       test('should create Argon2d parameters', () {
         final salt = TomPasswordHasher.generateSalt(16);
-        final params = TomPasswordHasher.makeArgon2Params('2d,13,4,65536,4,128', salt);
+        final params = TomPasswordHasher.makeArgon2Params(
+          '2d,13,4,65536,4,128',
+          salt,
+        );
 
         expect(params.desiredKeyLength, equals(128));
       });
 
       test('should create Argon2id parameters', () {
         final salt = TomPasswordHasher.generateSalt(16);
-        final params = TomPasswordHasher.makeArgon2Params('2id,13,4,65536,4,128', salt);
+        final params = TomPasswordHasher.makeArgon2Params(
+          '2id,13,4,65536,4,128',
+          salt,
+        );
 
         expect(params.desiredKeyLength, equals(128));
       });
@@ -260,7 +281,9 @@ void main() {
         final originalSpec = '2i,13,4,65536,4,128';
         final params = TomPasswordHasher.makeArgon2Params(originalSpec, salt);
 
-        final (specString, saltString) = TomPasswordHasher.parameterString(params);
+        final (specString, saltString) = TomPasswordHasher.parameterString(
+          params,
+        );
 
         expect(specString, equals(originalSpec));
         expect(saltString, equals(salt));
@@ -293,15 +316,18 @@ void main() {
         expect(encrypted, isNot(equals(Uint8List.fromList(plaintext))));
       });
 
-      test('should produce different ciphertext each time due to OAEP padding', () {
-        final plaintext = Uint8List.fromList(utf8.encode('Test data'));
-        
-        final encrypted1 = rsaEncrypt(publicKey, plaintext);
-        final encrypted2 = rsaEncrypt(publicKey, plaintext);
+      test(
+        'should produce different ciphertext each time due to OAEP padding',
+        () {
+          final plaintext = Uint8List.fromList(utf8.encode('Test data'));
 
-        // OAEP uses random padding, so same plaintext produces different ciphertext
-        expect(encrypted1, isNot(equals(encrypted2)));
-      });
+          final encrypted1 = rsaEncrypt(publicKey, plaintext);
+          final encrypted2 = rsaEncrypt(publicKey, plaintext);
+
+          // OAEP uses random padding, so same plaintext produces different ciphertext
+          expect(encrypted1, isNot(equals(encrypted2)));
+        },
+      );
 
       test('should handle empty data', () {
         final encrypted = rsaEncrypt(publicKey, Uint8List(0));
@@ -321,7 +347,7 @@ void main() {
       test('should decrypt encrypted data correctly', () {
         final plaintext = 'Secret message for RSA test';
         final plaintextBytes = Uint8List.fromList(utf8.encode(plaintext));
-        
+
         final encrypted = rsaEncrypt(publicKey, plaintextBytes);
         final decrypted = rsaDecrypt(privateKey, encrypted);
 
@@ -337,7 +363,7 @@ void main() {
 
       test('should round-trip binary data correctly', () {
         final binaryData = Uint8List.fromList([0, 1, 127, 128, 255, 100, 50]);
-        
+
         final encrypted = rsaEncrypt(publicKey, binaryData);
         final decrypted = rsaDecrypt(privateKey, encrypted);
 
@@ -347,7 +373,7 @@ void main() {
       test('should round-trip unicode text correctly', () {
         final text = '日本語テスト🔐中文测试';
         final plaintextBytes = Uint8List.fromList(utf8.encode(text));
-        
+
         final encrypted = rsaEncrypt(publicKey, plaintextBytes);
         final decrypted = rsaDecrypt(privateKey, encrypted);
 
@@ -366,7 +392,7 @@ void main() {
 
       test('should create deterministic signature for same data', () {
         final data = Uint8List.fromList(utf8.encode('Consistent data'));
-        
+
         final signature1 = rsaSign(privateKey, data);
         final signature2 = rsaSign(privateKey, data);
 
@@ -377,7 +403,7 @@ void main() {
       test('should create different signatures for different data', () {
         final data1 = Uint8List.fromList(utf8.encode('Data 1'));
         final data2 = Uint8List.fromList(utf8.encode('Data 2'));
-        
+
         final signature1 = rsaSign(privateKey, data1);
         final signature2 = rsaSign(privateKey, data2);
 
@@ -408,7 +434,7 @@ void main() {
       test('should reject modified signature', () {
         final data = Uint8List.fromList(utf8.encode('Test data'));
         final signature = rsaSign(privateKey, data);
-        
+
         // Modify the signature
         final modifiedSignature = Uint8List.fromList(signature);
         modifiedSignature[0] = (modifiedSignature[0] + 1) % 256;
@@ -636,14 +662,16 @@ AQAB
 
     group('removePemHeaderAndFooter', () {
       test('should remove public key headers', () {
-        final pem = '-----BEGIN PUBLIC KEY-----\nAQAB\n-----END PUBLIC KEY-----';
+        final pem =
+            '-----BEGIN PUBLIC KEY-----\nAQAB\n-----END PUBLIC KEY-----';
         final content = RsaKeyHelper.removePemHeaderAndFooter(pem);
 
         expect(content, equals('AQAB'));
       });
 
       test('should remove private key headers', () {
-        final pem = '-----BEGIN PRIVATE KEY-----\nAQAB\n-----END PRIVATE KEY-----';
+        final pem =
+            '-----BEGIN PRIVATE KEY-----\nAQAB\n-----END PRIVATE KEY-----';
         final content = RsaKeyHelper.removePemHeaderAndFooter(pem);
 
         expect(content, equals('AQAB'));
@@ -770,19 +798,17 @@ AQAB
       });
 
       test('should accept custom expiration', () {
-        final token = TomServerJwtToken(
-          {'test': 'data'},
-          expiresIn: const Duration(days: 7),
-        );
+        final token = TomServerJwtToken({
+          'test': 'data',
+        }, expiresIn: const Duration(days: 7));
 
         expect(token.expiresIn, equals(const Duration(days: 7)));
       });
 
       test('should accept custom not before duration', () {
-        final token = TomServerJwtToken(
-          {'test': 'data'},
-          notBefore: const Duration(minutes: 5),
-        );
+        final token = TomServerJwtToken({
+          'test': 'data',
+        }, notBefore: const Duration(minutes: 5));
 
         expect(token.notBefore, equals(const Duration(minutes: 5)));
       });
@@ -858,15 +884,18 @@ AQAB
         expect(payload['encrypted'], isA<String>());
       });
 
-      test('should not include encrypted field when encryptedData is empty', () {
-        final token = TomServerJwtToken({'userId': '123'});
-        final jwtString = token.getJWT('issuer');
+      test(
+        'should not include encrypted field when encryptedData is empty',
+        () {
+          final token = TomServerJwtToken({'userId': '123'});
+          final jwtString = token.getJWT('issuer');
 
-        final decoded = jwt.JWT.decode(jwtString);
-        final payload = decoded.payload as Map<String, dynamic>;
+          final decoded = jwt.JWT.decode(jwtString);
+          final payload = decoded.payload as Map<String, dynamic>;
 
-        expect(payload.containsKey('encrypted'), isFalse);
-      });
+          expect(payload.containsKey('encrypted'), isFalse);
+        },
+      );
     });
   });
 
@@ -938,13 +967,19 @@ AQAB
       test('should decrypt and return encrypted data', () {
         final serverToken = TomServerJwtToken(
           {'userId': '123'},
-          encryptedData: {'permissions': ['read', 'write'], 'apiKey': 'abc123'},
+          encryptedData: {
+            'permissions': ['read', 'write'],
+            'apiKey': 'abc123',
+          },
         );
         final jwtString = serverToken.getJWT('issuer');
         final clientToken = TomClientJwtToken(jwtString);
 
         expect(clientToken.secretData, isNotNull);
-        expect(clientToken.secretData!['permissions'], equals(['read', 'write']));
+        expect(
+          clientToken.secretData!['permissions'],
+          equals(['read', 'write']),
+        );
         expect(clientToken.secretData!['apiKey'], equals('abc123'));
       });
 
@@ -984,7 +1019,10 @@ AQAB
         expect(clientToken.payload!['userId'], equals('user-uuid-12345'));
         expect(clientToken.payload!['email'], equals('test@example.com'));
         expect(clientToken.payload!['roles'], equals(['admin', 'user']));
-        expect(clientToken.secretData!['sessionId'], equals('session-secret-xyz'));
+        expect(
+          clientToken.secretData!['sessionId'],
+          equals('session-secret-xyz'),
+        );
         expect(
           clientToken.secretData!['permissions'],
           equals(['read', 'write', 'delete']),
@@ -1007,7 +1045,7 @@ AQAB
       test('should respect globalSettingShowContentInToString', () {
         final serverToken = TomServerJwtToken({'userId': 'secret'});
         final jwtString = serverToken.getJWT('issuer');
-        
+
         TomClientJwtToken.globalSettingShowContentInToString = true;
         final clientToken = TomClientJwtToken(jwtString);
         final strWithContent = clientToken.toString();
@@ -1092,10 +1130,7 @@ AQAB
       // Store hash reference in JWT (but not the actual hash for security)
       final serverToken = TomServerJwtToken(
         {'userId': 'user123'},
-        encryptedData: {
-          'passwordHashSpec': spec,
-          'hasPasswordHash': true,
-        },
+        encryptedData: {'passwordHashSpec': spec, 'hasPasswordHash': true},
       );
       final jwtString = serverToken.getJWT('auth-server');
 
@@ -1104,7 +1139,10 @@ AQAB
       expect(clientToken.secretData!['hasPasswordHash'], isTrue);
 
       // Later, verify password using stored hash
-      expect(TomPasswordHasher.verifyPassword('userPassword123', hash, spec), isTrue);
+      expect(
+        TomPasswordHasher.verifyPassword('userPassword123', hash, spec),
+        isTrue,
+      );
     });
   });
 }

@@ -42,8 +42,10 @@ void main() {
         TomScope.withScope('app', () {
           TomScope.withScope('checkout', () {
             TomScope.withScope('orderForm', () {
-              expect(TomScope.current.getScopePath(),
-                  equals('app.checkout.orderForm'));
+              expect(
+                TomScope.current.getScopePath(),
+                equals('app.checkout.orderForm'),
+              );
             });
           });
         });
@@ -101,10 +103,7 @@ void main() {
         final root = TomScopeBase(scopeId: 'app', parentScope: null);
         final mid = TomScopeBase(scopeId: 'checkout', parentScope: root);
         final leaf = TomScopeBase(scopeId: 'orderForm', parentScope: mid);
-        expect(
-          TomScope.buildScopePath(leaf),
-          equals('app.checkout.orderForm'),
-        );
+        expect(TomScope.buildScopePath(leaf), equals('app.checkout.orderForm'));
       });
 
       // Bug §50 / tests §34a: only the actual root sentinel (defaultScope) is
@@ -119,15 +118,18 @@ void main() {
         expect(TomScope.buildScopePath(leaf), equals('app.default.child'));
       });
 
-      test('a scope named "default" parented to defaultScope keeps its segment', () {
-        // Chain: named('default') -> defaultScope. The sentinel is skipped by
-        // identity; the same-named domain scope is not the sentinel, so it stays.
-        final named = TomScopeBase(
-          scopeId: 'default',
-          parentScope: TomScope.defaultScope,
-        );
-        expect(TomScope.buildScopePath(named), equals('default'));
-      });
+      test(
+        'a scope named "default" parented to defaultScope keeps its segment',
+        () {
+          // Chain: named('default') -> defaultScope. The sentinel is skipped by
+          // identity; the same-named domain scope is not the sentinel, so it stays.
+          final named = TomScopeBase(
+            scopeId: 'default',
+            parentScope: TomScope.defaultScope,
+          );
+          expect(TomScope.buildScopePath(named), equals('default'));
+        },
+      );
 
       test('withScope("default") yields a "default" path segment', () {
         final path = TomScope.withScope(
@@ -180,8 +182,9 @@ void main() {
 
     test('the custom mixin scope integrates with InScopeBuilder', () {
       final section = _MixinScope(scopeId: 'section');
-      final wrapped = InScopeBuilder(scope: section)
-          .wrap0<String>(() => TomScope.current.getScopePath());
+      final wrapped = InScopeBuilder(
+        scope: section,
+      ).wrap0<String>(() => TomScope.current.getScopePath());
       expect(wrapped(), equals('section'));
     });
 
@@ -223,15 +226,18 @@ void main() {
         builder = InScopeBuilder();
       });
       // Called outside the original zone — wrap0 must restore the scope.
-      final wrapped = builder.wrap0<String>(() => TomScope.current.getScopePath());
+      final wrapped = builder.wrap0<String>(
+        () => TomScope.current.getScopePath(),
+      );
       expect(wrapped(), equals('captured'));
     });
 
     test('uses an explicitly supplied scope over current', () {
       final explicit = TomScopeBase(scopeId: 'explicit', parentScope: null);
       final builder = InScopeBuilder(scope: explicit);
-      final wrapped =
-          builder.wrap0<String>(() => TomScope.current.getScopePath());
+      final wrapped = builder.wrap0<String>(
+        () => TomScope.current.getScopePath(),
+      );
       expect(wrapped(), equals('explicit'));
     });
 
@@ -252,7 +258,8 @@ void main() {
         builder = InScopeBuilder();
       });
       final w2 = builder.wrap2<String, int, int>(
-          (a, b) => '${TomScope.current.getScopePath()}:${a + b}');
+        (a, b) => '${TomScope.current.getScopePath()}:${a + b}',
+      );
       final w3 = builder.wrap3<int, int, int, int>((a, b, c) {
         expect(TomScope.current.getScopePath(), equals('captured'));
         return a + b + c;
@@ -288,8 +295,9 @@ void main() {
       TomScope.withScope('captured', () {
         builder = InScopeBuilder();
       });
-      final wrapped =
-          builder.wrap1n<String, int>((a) => TomScope.current.getScopePath());
+      final wrapped = builder.wrap1n<String, int>(
+        (a) => TomScope.current.getScopePath(),
+      );
       expect(wrapped, isNotNull);
       expect(wrapped!(1), equals('captured'));
     });

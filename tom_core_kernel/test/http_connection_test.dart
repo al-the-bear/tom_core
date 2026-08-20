@@ -169,10 +169,14 @@ void main() {
       // tcca16: the map is shared by every consumer of the library, so a single
       // caller writing it would silently reroute method lookup process-wide.
       test('is unmodifiable', () {
-        expect(() => TomHttpMethod.methods['GET'] = TomHttpMethod.post,
-            throwsUnsupportedError);
         expect(
-            () => TomHttpMethod.methods.remove('GET'), throwsUnsupportedError);
+          () => TomHttpMethod.methods['GET'] = TomHttpMethod.post,
+          throwsUnsupportedError,
+        );
+        expect(
+          () => TomHttpMethod.methods.remove('GET'),
+          throwsUnsupportedError,
+        );
         expect(() => TomHttpMethod.methods.clear(), throwsUnsupportedError);
         expect(TomHttpMethod.methods['GET'], equals(TomHttpMethod.get));
       });
@@ -425,7 +429,10 @@ void main() {
         final parsed = TomMimeType.parse('text/html;charset=ISO-8859-1');
 
         expect(parsed.charset, equals('ISO-8859-1'));
-        expect(parsed, equals(TomMimeType('text', 'html', charset: 'ISO-8859-1')));
+        expect(
+          parsed,
+          equals(TomMimeType('text', 'html', charset: 'ISO-8859-1')),
+        );
       });
 
       test('leaves charset null when the header names none', () {
@@ -459,15 +466,17 @@ void main() {
         expect(parsed.charset, isNull);
       });
 
-      test('still rejects a media type with multiple slashes and parameters',
-          () {
-        // The parameter section must not become a way to smuggle a malformed
-        // media type past the check.
-        expect(
-          () => TomMimeType.parse('application/json/extra;charset=UTF-8'),
-          throwsA(isA<TomMimeTypeException>()),
-        );
-      });
+      test(
+        'still rejects a media type with multiple slashes and parameters',
+        () {
+          // The parameter section must not become a way to smuggle a malformed
+          // media type past the check.
+          expect(
+            () => TomMimeType.parse('application/json/extra;charset=UTF-8'),
+            throwsA(isA<TomMimeTypeException>()),
+          );
+        },
+      );
     });
 
     group('isText', () {
@@ -655,28 +664,30 @@ void main() {
         expect({left: 'v'}[right], equals('v'));
       });
 
-      test('equal codecs hash equally though the lists are distinct objects',
-          () {
-        // `Object.hash` on a List hashes the list *object*, so two values with
-        // equal codec content hashed differently while `==` compared them
-        // element-wise — the same contract break as charset, one field over.
-        final left = TomMimeType(
-          'video',
-          'mp4',
-          charset: null,
-          codecs: ['avc1', 'mp4a'],
-        );
-        final right = TomMimeType(
-          'video',
-          'mp4',
-          charset: null,
-          codecs: ['avc1', 'mp4a'],
-        );
+      test(
+        'equal codecs hash equally though the lists are distinct objects',
+        () {
+          // `Object.hash` on a List hashes the list *object*, so two values with
+          // equal codec content hashed differently while `==` compared them
+          // element-wise — the same contract break as charset, one field over.
+          final left = TomMimeType(
+            'video',
+            'mp4',
+            charset: null,
+            codecs: ['avc1', 'mp4a'],
+          );
+          final right = TomMimeType(
+            'video',
+            'mp4',
+            charset: null,
+            codecs: ['avc1', 'mp4a'],
+          );
 
-        expect(left == right, isTrue);
-        expect(left.hashCode, equals(right.hashCode));
-        expect({left, right}, hasLength(1));
-      });
+          expect(left == right, isTrue);
+          expect(left.hashCode, equals(right.hashCode));
+          expect({left, right}, hasLength(1));
+        },
+      );
     });
 
     group('isEqualType', () {
@@ -872,11 +883,7 @@ void main() {
 
     group('register', () {
       test('should register an API', () {
-        final api = TomApi(
-          id: 'testApi',
-          name: 'Test API',
-          endpoints: [],
-        );
+        final api = TomApi(id: 'testApi', name: 'Test API', endpoints: []);
 
         registry.register(api);
 
@@ -885,11 +892,7 @@ void main() {
       });
 
       test('should replace API with same id', () {
-        final api1 = TomApi(
-          id: 'testApi',
-          name: 'Original API',
-          endpoints: [],
-        );
+        final api1 = TomApi(id: 'testApi', name: 'Original API', endpoints: []);
         final api2 = TomApi(
           id: 'testApi',
           name: 'Replacement API',
@@ -905,11 +908,7 @@ void main() {
 
     group('bracket operator []', () {
       test('should return API by id', () {
-        final api = TomApi(
-          id: 'testApi',
-          name: 'Test API',
-          endpoints: [],
-        );
+        final api = TomApi(id: 'testApi', name: 'Test API', endpoints: []);
         registry.register(api);
 
         final retrieved = registry['testApi'];
@@ -927,11 +926,7 @@ void main() {
 
     group('bracket assignment operator []=', () {
       test('should register API using assignment', () {
-        final api = TomApi(
-          id: 'testApi',
-          name: 'Test API',
-          endpoints: [],
-        );
+        final api = TomApi(id: 'testApi', name: 'Test API', endpoints: []);
 
         registry['testApi'] = api;
 
@@ -981,10 +976,7 @@ void main() {
   group('TomApi', () {
     group('constructor', () {
       test('should create API with required fields only', () {
-        final api = TomApi(
-          id: 'minimalApi',
-          endpoints: [],
-        );
+        final api = TomApi(id: 'minimalApi', endpoints: []);
 
         expect(api.id, equals('minimalApi'));
         expect(api.name, isNull);
@@ -1020,10 +1012,7 @@ void main() {
           id: 'testEndpoint',
           method: TomHttpMethod.get,
         );
-        final api = TomApi(
-          id: 'apiWithEndpoints',
-          endpoints: [endpoint],
-        );
+        final api = TomApi(id: 'apiWithEndpoints', endpoints: [endpoint]);
 
         expect(api.endpoints.containsKey('testEndpoint'), isTrue);
         expect(api.endpoints['testEndpoint'], equals(endpoint));
@@ -1038,10 +1027,7 @@ void main() {
           id: 'myEndpoint',
           method: TomHttpMethod.post,
         );
-        final api = TomApi(
-          id: 'testApi',
-          endpoints: [endpoint],
-        );
+        final api = TomApi(id: 'testApi', endpoints: [endpoint]);
 
         final retrieved = api['myEndpoint'];
 
@@ -1049,10 +1035,7 @@ void main() {
       });
 
       test('should throw TomEndpointException for unknown endpoint', () {
-        final api = TomApi(
-          id: 'testApi',
-          endpoints: [],
-        );
+        final api = TomApi(id: 'testApi', endpoints: []);
 
         expect(
           () => api['unknownEndpoint'],
@@ -1063,10 +1046,7 @@ void main() {
 
     group('bracket assignment operator []=', () {
       test('should add endpoint using assignment', () {
-        final api = TomApi(
-          id: 'testApi',
-          endpoints: [],
-        );
+        final api = TomApi(id: 'testApi', endpoints: []);
         final endpoint = TomApiEndpoint(
           id: 'newEndpoint',
           method: TomHttpMethod.get,
@@ -1171,9 +1151,15 @@ void main() {
       test('one shared const policy backs many endpoints', () {
         const authenticated = TomAuthenticatedAccess();
         final a = TomApiEndpoint(
-          id: 'a', method: TomHttpMethod.get, access: authenticated);
+          id: 'a',
+          method: TomHttpMethod.get,
+          access: authenticated,
+        );
         final b = TomApiEndpoint(
-          id: 'b', method: TomHttpMethod.get, access: authenticated);
+          id: 'b',
+          method: TomHttpMethod.get,
+          access: authenticated,
+        );
 
         expect(identical(a.access, b.access), isTrue);
       });
@@ -1185,10 +1171,7 @@ void main() {
           id: 'testEndpoint',
           method: TomHttpMethod.get,
         );
-        final api = TomApi(
-          id: 'parentApi',
-          endpoints: [endpoint],
-        );
+        final api = TomApi(id: 'parentApi', endpoints: [endpoint]);
 
         expect(endpoint.api, equals(api));
       });
@@ -1199,10 +1182,7 @@ void main() {
           method: TomHttpMethod.get,
         );
 
-        expect(
-          () => endpoint.api,
-          throwsA(isA<TomEndpointException>()),
-        );
+        expect(() => endpoint.api, throwsA(isA<TomEndpointException>()));
       });
     });
 
@@ -1422,8 +1402,10 @@ void main() {
         // real declaration rather than a stand-in.
         final read =
             tomUserPreferencesApi[tomUserPreferencesReadEndpointId]
-                as TomApiEndpoint<TomUserPreferenceDto,
-                    TomUserPreferenceKeyRequest>;
+                as TomApiEndpoint<
+                  TomUserPreferenceDto,
+                  TomUserPreferenceKeyRequest
+                >;
 
         expect(
           read
@@ -1531,8 +1513,11 @@ void main() {
         );
 
         expect(seen, same(scoped));
-        expect(TomClientRemoteContext.current, isNull,
-            reason: 'the scope must not outlive the body');
+        expect(
+          TomClientRemoteContext.current,
+          isNull,
+          reason: 'the scope must not outlive the body',
+        );
       });
 
       test('overrides an already-set process context, then restores it', () {
@@ -1554,10 +1539,12 @@ void main() {
       });
 
       test('nests, innermost wins', () {
-        final outer =
-            TomClientRemoteContext(Uri.parse('https://outer.example.com'));
-        final inner =
-            TomClientRemoteContext(Uri.parse('https://inner.example.com'));
+        final outer = TomClientRemoteContext(
+          Uri.parse('https://outer.example.com'),
+        );
+        final inner = TomClientRemoteContext(
+          Uri.parse('https://inner.example.com'),
+        );
 
         final seen = TomClientRemoteContext.runWithContext(outer, () {
           final innerSeen = TomClientRemoteContext.runWithContext(
@@ -1571,14 +1558,17 @@ void main() {
       });
 
       test('spans asynchronous gaps inside the body', () async {
-        final scoped =
-            TomClientRemoteContext(Uri.parse('https://scoped.example.com'));
+        final scoped = TomClientRemoteContext(
+          Uri.parse('https://scoped.example.com'),
+        );
 
-        final seen = await TomClientRemoteContext.runWithContext(scoped,
-            () async {
-          await Future<void>.delayed(Duration.zero);
-          return TomClientRemoteContext.current;
-        });
+        final seen = await TomClientRemoteContext.runWithContext(
+          scoped,
+          () async {
+            await Future<void>.delayed(Duration.zero);
+            return TomClientRemoteContext.current;
+          },
+        );
 
         expect(seen, same(scoped));
       });
@@ -1586,10 +1576,12 @@ void main() {
 
     group('resetCurrent', () {
       test('clears the context so setCurrent can run again', () {
-        final first =
-            TomClientRemoteContext(Uri.parse('https://first.example.com'));
-        final second =
-            TomClientRemoteContext(Uri.parse('https://second.example.com'));
+        final first = TomClientRemoteContext(
+          Uri.parse('https://first.example.com'),
+        );
+        final second = TomClientRemoteContext(
+          Uri.parse('https://second.example.com'),
+        );
         TomClientRemoteContext.setCurrent(first);
 
         TomClientRemoteContext.resetCurrent();
@@ -1675,20 +1667,22 @@ void main() {
         expect(specs.headers['X-Trace'], equals('abc'));
       });
 
-      test('the spec owns its headers rather than aliasing the caller\'s map',
-          () {
-        final source = <String, String>{'Content-Type': 'application/json'};
-        final specs = TomServerCallSpecs(
-          'POST',
-          Uri.parse('https://api.example.com/users'),
-          headers: source,
-        );
+      test(
+        'the spec owns its headers rather than aliasing the caller\'s map',
+        () {
+          final source = <String, String>{'Content-Type': 'application/json'};
+          final specs = TomServerCallSpecs(
+            'POST',
+            Uri.parse('https://api.example.com/users'),
+            headers: source,
+          );
 
-        specs.headers['X-Trace'] = 'abc';
+          specs.headers['X-Trace'] = 'abc';
 
-        expect(source.containsKey('X-Trace'), isFalse);
-        expect(specs.headers['Content-Type'], equals('application/json'));
-      });
+          expect(source.containsKey('X-Trace'), isFalse);
+          expect(specs.headers['Content-Type'], equals('application/json'));
+        },
+      );
     });
   });
 
@@ -1794,15 +1788,17 @@ void main() {
         expect(load.bodyFields, equals({'key': 'value'}));
       });
 
-      test('an absent form body stays absent rather than becoming an empty one',
-          () {
-        // An empty map is a body: it counts towards the single-body rule and
-        // applyLoadValues writes it to the request. Copying null into `{}`
-        // would quietly give every load a form body.
-        final load = TomServerCallLoad(stringBody: 'text');
+      test(
+        'an absent form body stays absent rather than becoming an empty one',
+        () {
+          // An empty map is a body: it counts towards the single-body rule and
+          // applyLoadValues writes it to the request. Copying null into `{}`
+          // would quietly give every load a form body.
+          final load = TomServerCallLoad(stringBody: 'text');
 
-        expect(load.bodyFields, isNull);
-      });
+          expect(load.bodyFields, isNull);
+        },
+      );
     });
 
     group('immutability', () {
@@ -1823,34 +1819,50 @@ void main() {
         expect(
           file.existsSync(),
           isTrue,
-          reason: 'Expected to find $path relative to ${Directory.current.path}',
+          reason:
+              'Expected to find $path relative to ${Directory.current.path}',
         );
         final source = file.readAsStringSync();
 
         final classStart = source.indexOf('class TomServerCallLoad {');
-        expect(classStart, greaterThan(-1),
-            reason: 'TomServerCallLoad is no longer declared in $path');
-        final constructorStart =
-            source.indexOf('TomServerCallLoad({', classStart);
-        expect(constructorStart, greaterThan(classStart),
-            reason: 'TomServerCallLoad has no generative constructor');
-        final fieldSection =
-            source.substring(classStart, constructorStart);
+        expect(
+          classStart,
+          greaterThan(-1),
+          reason: 'TomServerCallLoad is no longer declared in $path',
+        );
+        final constructorStart = source.indexOf(
+          'TomServerCallLoad({',
+          classStart,
+        );
+        expect(
+          constructorStart,
+          greaterThan(classStart),
+          reason: 'TomServerCallLoad has no generative constructor',
+        );
+        final fieldSection = source.substring(classStart, constructorStart);
 
         // Field declarations only: `<type> <name>;` at class-body indentation.
-        final declarations = RegExp(r'^  ((?:final )?)([\w<>,? ]+?) (\w+);$',
-                multiLine: true)
-            .allMatches(fieldSection);
-        expect(declarations, isNotEmpty,
-            reason: 'No field declarations matched — the pattern has drifted');
+        final declarations = RegExp(
+          r'^  ((?:final )?)([\w<>,? ]+?) (\w+);$',
+          multiLine: true,
+        ).allMatches(fieldSection);
+        expect(
+          declarations,
+          isNotEmpty,
+          reason: 'No field declarations matched — the pattern has drifted',
+        );
 
         final mutable = [
           for (final m in declarations)
             if (m.group(1)!.isEmpty) m.group(3)!,
         ];
-        expect(mutable, isEmpty,
-            reason: 'These fields are settable after construction, so the '
-                'constructor check no longer holds for the object: $mutable');
+        expect(
+          mutable,
+          isEmpty,
+          reason:
+              'These fields are settable after construction, so the '
+              'constructor check no longer holds for the object: $mutable',
+        );
       });
     });
   });
@@ -1905,8 +1917,7 @@ void main() {
         expect(error.headers['x-trace'], equals('abc'));
       });
 
-      test('an error built from a response without headers accepts a header',
-          () {
+      test('an error built from a response without headers accepts a header', () {
         // The path that actually occurs: `send` hands the response's header map
         // straight to the error, and a response carrying no headers supplies a
         // const one. Fixing only the parameter default would leave this case —
@@ -1916,18 +1927,20 @@ void main() {
         expect(() => error.headers['x-trace'] = 'abc', returnsNormally);
       });
 
-      test('the error owns its headers rather than aliasing the caller\'s map',
-          () {
-        // `send` passes the live response header map. If the error aliased it,
-        // annotating an error would silently rewrite the response it came from.
-        final source = <String, Object>{'content-type': 'application/json'};
-        final error = TomServerCallError(headers: source);
+      test(
+        'the error owns its headers rather than aliasing the caller\'s map',
+        () {
+          // `send` passes the live response header map. If the error aliased it,
+          // annotating an error would silently rewrite the response it came from.
+          final source = <String, Object>{'content-type': 'application/json'};
+          final error = TomServerCallError(headers: source);
 
-        error.headers['x-trace'] = 'abc';
+          error.headers['x-trace'] = 'abc';
 
-        expect(source.containsKey('x-trace'), isFalse);
-        expect(error.headers['content-type'], equals('application/json'));
-      });
+          expect(source.containsKey('x-trace'), isFalse);
+          expect(error.headers['content-type'], equals('application/json'));
+        },
+      );
     });
 
     group('x-tom-error body decoding', () {
@@ -1943,7 +1956,8 @@ void main() {
         final error = TomServerCallError(
           statusCode: 403,
           headers: {'x-tom-error': 'true'},
-          response: '{"errorKey":"access.check.denied","uuid":"srv-1",'
+          response:
+              '{"errorKey":"access.check.denied","uuid":"srv-1",'
               '"requestUuid":"req-1","autoLog":true,"clientRethrow":true}',
         );
 
@@ -2117,8 +2131,12 @@ void main() {
         // ignored — which is why a reset has to exist: without one, the first
         // initialize in a process is final and no later test can install its
         // own default.
-        final first = _MockClientFactory(_MockClient((_) async => _streamed('1')));
-        final second = _MockClientFactory(_MockClient((_) async => _streamed('2')));
+        final first = _MockClientFactory(
+          _MockClient((_) async => _streamed('1')),
+        );
+        final second = _MockClientFactory(
+          _MockClient((_) async => _streamed('2')),
+        );
 
         TomHttpClientFactory.resetGlobalHttpClientFactory();
         TomHttpClientFactory.initialize(first);
@@ -2176,7 +2194,9 @@ void main() {
 
     group('delegation', () {
       test('resolves through a delegate that does create clients', () {
-        final producer = _MockClientFactory(_MockClient((_) async => _streamed('x')));
+        final producer = _MockClientFactory(
+          _MockClient((_) async => _streamed('x')),
+        );
         final delegating = TomHttpClientFactory()
           ..instanceClientFactory = producer;
 
@@ -2210,9 +2230,14 @@ void main() {
         // would poison an object that had been repaired.
         final a = TomHttpClientFactory();
         a.instanceClientFactory = a;
-        expect(() => a.getClient(), throwsA(isA<TomServerConnectionException>()));
+        expect(
+          () => a.getClient(),
+          throwsA(isA<TomServerConnectionException>()),
+        );
 
-        final producer = _MockClientFactory(_MockClient((_) async => _streamed('x')));
+        final producer = _MockClientFactory(
+          _MockClient((_) async => _streamed('x')),
+        );
         a.instanceClientFactory = producer;
 
         expect(a.getClient(), same(producer.getClient()));
@@ -2341,7 +2366,10 @@ void main() {
         bodyFields: {'username': 'john', 'password': 'secret'},
       );
 
-      expect(load.bodyFields, equals({'username': 'john', 'password': 'secret'}));
+      expect(
+        load.bodyFields,
+        equals({'username': 'john', 'password': 'secret'}),
+      );
       expect(load.stringBody, isNull);
       expect(load.byteBody, isNull);
     });
@@ -2356,10 +2384,7 @@ void main() {
     });
 
     test('should create load with content length', () {
-      final load = TomServerCallLoad(
-        stringBody: 'test',
-        contentLength: 4,
-      );
+      final load = TomServerCallLoad(stringBody: 'test', contentLength: 4);
 
       expect(load.contentLength, equals(4));
     });
@@ -2392,7 +2417,9 @@ void main() {
     });
 
     test('should create error with internal error', () {
-      final error = TomServerCallError(internalError: TomServerCallError.jsonDecodingError);
+      final error = TomServerCallError(
+        internalError: TomServerCallError.jsonDecodingError,
+      );
 
       expect(error.internalError, equals(TomServerCallError.jsonDecodingError));
       expect(error.hasError, isTrue);
@@ -2418,30 +2445,21 @@ void main() {
     });
 
     test('should create error with redirect status', () {
-      final error = TomServerCallError(
-        statusCode: 302,
-        isRedirect: true,
-      );
+      final error = TomServerCallError(statusCode: 302, isRedirect: true);
 
       expect(error.isRedirect, isTrue);
     });
 
     test('should create error with exception', () {
       final exception = FormatException('Invalid format');
-      final error = TomServerCallError(
-        statusCode: 500,
-        exception: exception,
-      );
+      final error = TomServerCallError(statusCode: 500, exception: exception);
 
       expect(error.exception, isA<FormatException>());
     });
 
     test('should create error with stack trace', () {
       final stackTrace = StackTrace.current;
-      final error = TomServerCallError(
-        statusCode: 500,
-        stackTrace: stackTrace,
-      );
+      final error = TomServerCallError(statusCode: 500, stackTrace: stackTrace);
 
       expect(error.stackTrace, isNotNull);
     });
@@ -2582,16 +2600,14 @@ void main() {
     // Specs with bearer auth disabled so applySpecValues() never touches the
     // TomBearerAuthentication singleton (it is not initialised in this suite).
     TomServerCallSpecs specs([String method = 'POST']) => TomServerCallSpecs(
-          method,
-          Uri.parse('https://api.example.com/data'),
-          includeBearerAuthentication: false,
-        );
+      method,
+      Uri.parse('https://api.example.com/data'),
+      includeBearerAuthentication: false,
+    );
 
     group('bearer authentication header', () {
-      TomServerCallSpecs authenticatedSpecs() => TomServerCallSpecs(
-            'GET',
-            Uri.parse('https://api.example.com/data'),
-          );
+      TomServerCallSpecs authenticatedSpecs() =>
+          TomServerCallSpecs('GET', Uri.parse('https://api.example.com/data'));
 
       tearDown(TomBearerAuthentication.clearTokens);
 
@@ -2606,7 +2622,10 @@ void main() {
           authenticatedSpecs(),
         );
 
-        expect(call.abortableRequest.headers.containsKey('Authorization'), isFalse);
+        expect(
+          call.abortableRequest.headers.containsKey('Authorization'),
+          isFalse,
+        );
       });
 
       test('sends the stored token when someone has signed in', () {
@@ -2618,7 +2637,10 @@ void main() {
           authenticatedSpecs(),
         );
 
-        expect(call.abortableRequest.headers['Authorization'], equals('Bearer $jwt'));
+        expect(
+          call.abortableRequest.headers['Authorization'],
+          equals('Bearer $jwt'),
+        );
       });
     });
 
@@ -2646,34 +2668,35 @@ void main() {
         );
       });
 
-      test('a rejected second send leaves the request it refused untouched', () {
-        // Rejecting the call but keeping its effect is the worst of both: the
-        // object would describe a request that was never made, so a caller
-        // inspecting it after catching the error — or a later reset() that
-        // reuses the request — reads a body the server never saw.
-        final client = _MockClient((_) async => _streamed('hello'));
-        final call = TomServerCall(client, specs())
-          ..send(TomServerCallLoad(stringBody: 'first'));
+      test(
+        'a rejected second send leaves the request it refused untouched',
+        () {
+          // Rejecting the call but keeping its effect is the worst of both: the
+          // object would describe a request that was never made, so a caller
+          // inspecting it after catching the error — or a later reset() that
+          // reuses the request — reads a body the server never saw.
+          final client = _MockClient((_) async => _streamed('hello'));
+          final call = TomServerCall(client, specs())
+            ..send(TomServerCallLoad(stringBody: 'first'));
 
-        expect(
-          () => call.send(
-            TomServerCallLoad(stringBody: 'second', encoding: latin1),
-          ),
-          throwsA(isA<TomServerConnectionException>()),
-        );
+          expect(
+            () => call.send(
+              TomServerCallLoad(stringBody: 'second', encoding: latin1),
+            ),
+            throwsA(isA<TomServerConnectionException>()),
+          );
 
-        expect(call.abortableRequest.body, equals('first'));
-        expect(call.abortableRequest.encoding, same(utf8));
-        expect(client.sendCount, equals(1));
-      });
-
+          expect(call.abortableRequest.body, equals('first'));
+          expect(call.abortableRequest.encoding, same(utf8));
+          expect(client.sendCount, equals(1));
+        },
+      );
     });
 
     group('read / readAsString', () {
       test('read returns the response body as bytes', () async {
         final client = _MockClient((_) async => _streamed('hello bytes'));
-        final call = TomServerCall(client, specs())
-          ..send(TomServerCallLoad());
+        final call = TomServerCall(client, specs())..send(TomServerCallLoad());
 
         final bytes = await call.read();
 
@@ -2683,8 +2706,7 @@ void main() {
 
       test('readAsString decodes the body with the given encoding', () async {
         final client = _MockClient((_) async => _streamed('héllo'));
-        final call = TomServerCall(client, specs())
-          ..send(TomServerCallLoad());
+        final call = TomServerCall(client, specs())..send(TomServerCallLoad());
 
         expect(await call.readAsString(utf8), equals('héllo'));
       });
@@ -2698,8 +2720,7 @@ void main() {
 
       test('reading twice throws a connection exception', () async {
         final client = _MockClient((_) async => _streamed('once'));
-        final call = TomServerCall(client, specs())
-          ..send(TomServerCallLoad());
+        final call = TomServerCall(client, specs())..send(TomServerCallLoad());
 
         await call.read();
         expect(call.read(), throwsA(isA<TomServerConnectionException>()));
@@ -2727,8 +2748,9 @@ void main() {
         }
 
         final fromRead = await keyOfSecondRead((call) => call.read());
-        final fromString =
-            await keyOfSecondRead((call) => call.readAsString(utf8));
+        final fromString = await keyOfSecondRead(
+          (call) => call.readAsString(utf8),
+        );
 
         expect(fromRead, equals('server.send.illegal_state_only_read_once'));
         expect(fromString, equals(fromRead));
@@ -2747,8 +2769,7 @@ void main() {
             request: req,
           ),
         );
-        final call = TomServerCall(client, specs())
-          ..send(TomServerCallLoad());
+        final call = TomServerCall(client, specs())..send(TomServerCallLoad());
 
         expect(await call.getResponseStatusCode(), equals(201));
         expect(await call.getResponseHeaders(), containsPair('x-tom', 'yes'));
@@ -2772,8 +2793,7 @@ void main() {
     group('reset', () {
       test('clears state so the call can be sent again', () async {
         final client = _MockClient((_) async => _streamed('again'));
-        final call = TomServerCall(client, specs())
-          ..send(TomServerCallLoad());
+        final call = TomServerCall(client, specs())..send(TomServerCallLoad());
         await call.read();
 
         call.reset();
@@ -2821,8 +2841,7 @@ void main() {
             200,
           ),
         );
-        final call = TomServerCall(client, specs())
-          ..send(TomServerCallLoad());
+        final call = TomServerCall(client, specs())..send(TomServerCallLoad());
 
         await expectLater(
           call.read(),
@@ -2841,45 +2860,46 @@ void main() {
       /// Specs carrying a deadline short enough to keep the suite quick.
       TomServerCallSpecs timedSpecs([
         Duration timeout = const Duration(milliseconds: 50),
-      ]) =>
-          TomServerCallSpecs(
-            'GET',
-            Uri.parse('https://api.example.com/data'),
-            includeBearerAuthentication: false,
-            timeout: timeout,
-          );
+      ]) => TomServerCallSpecs(
+        'GET',
+        Uri.parse('https://api.example.com/data'),
+        includeBearerAuthentication: false,
+        timeout: timeout,
+      );
 
       test('specs carry no timeout unless one is asked for', () {
         expect(specs().timeout, isNull);
       });
 
-      test('a response that never arrives throws TomRequestTimeoutException',
-          () async {
-        // The client never completes: this is the hang the deadline exists for.
-        final client = _MockClient((_) => Completer<StreamedResponse>().future);
-        final call = TomServerCall(client, timedSpecs())
-          ..send(TomServerCallLoad());
+      test(
+        'a response that never arrives throws TomRequestTimeoutException',
+        () async {
+          // The client never completes: this is the hang the deadline exists for.
+          final client = _MockClient(
+            (_) => Completer<StreamedResponse>().future,
+          );
+          final call = TomServerCall(client, timedSpecs())
+            ..send(TomServerCallLoad());
 
-        await expectLater(
-          call.read(),
-          throwsA(
-            isA<TomRequestTimeoutException>().having(
-              (e) => e.key,
-              'key',
-              equals('server.send.request_timeout'),
+          await expectLater(
+            call.read(),
+            throwsA(
+              isA<TomRequestTimeoutException>().having(
+                (e) => e.key,
+                'key',
+                equals('server.send.request_timeout'),
+              ),
             ),
-          ),
-        );
-      });
+          );
+        },
+      );
 
       test('a body that never finishes streaming also times out', () async {
         // Headers arrive, then the body stalls — the deadline must span both
         // stages, not just the wait for the response.
         final client = _MockClient(
-          (_) async => StreamedResponse(
-            StreamController<List<int>>().stream,
-            200,
-          ),
+          (_) async =>
+              StreamedResponse(StreamController<List<int>>().stream, 200),
         );
         final call = TomServerCall(client, timedSpecs())
           ..send(TomServerCallLoad());
@@ -2890,20 +2910,29 @@ void main() {
         );
       });
 
-      test('timing out aborts the request so the connection is released',
-          () async {
-        final client = _MockClient((_) => Completer<StreamedResponse>().future);
-        final call = TomServerCall(client, timedSpecs())
-          ..send(TomServerCallLoad());
+      test(
+        'timing out aborts the request so the connection is released',
+        () async {
+          final client = _MockClient(
+            (_) => Completer<StreamedResponse>().future,
+          );
+          final call = TomServerCall(client, timedSpecs())
+            ..send(TomServerCallLoad());
 
-        await expectLater(call.read(), throwsA(isA<TomRequestTimeoutException>()));
-        expect(call.abortTrigger.isCompleted, isTrue);
-      });
+          await expectLater(
+            call.read(),
+            throwsA(isA<TomRequestTimeoutException>()),
+          );
+          expect(call.abortTrigger.isCompleted, isTrue);
+        },
+      );
 
       test('a response inside the deadline is returned normally', () async {
         final client = _MockClient((_) async => _streamed('in time'));
-        final call = TomServerCall(client, timedSpecs(const Duration(seconds: 30)))
-          ..send(TomServerCallLoad());
+        final call = TomServerCall(
+          client,
+          timedSpecs(const Duration(seconds: 30)),
+        )..send(TomServerCallLoad());
 
         expect(await call.readAsString(utf8), equals('in time'));
       });
@@ -2916,8 +2945,7 @@ void main() {
         final client = _MockClient(
           (_) => Future<StreamedResponse>.error(RequestAbortedException()),
         );
-        final call = TomServerCall(client, specs())
-          ..send(TomServerCallLoad());
+        final call = TomServerCall(client, specs())..send(TomServerCallLoad());
 
         await expectLater(
           call.read(),
@@ -2925,47 +2953,51 @@ void main() {
         );
       });
 
-      test('an endpoint declaration carries its timeout into the call specs',
-          () async {
-        final api = TomApi(
-          id: 'timeoutApi',
-          uri: '/api',
-          endpoints: [
-            TomApiEndpoint<String, String>(
-              id: 'slow',
-              uri: '/slow',
-              method: TomHttpMethod.get,
-              timeout: const Duration(seconds: 7),
-            ),
-          ],
-        );
+      test(
+        'an endpoint declaration carries its timeout into the call specs',
+        () async {
+          final api = TomApi(
+            id: 'timeoutApi',
+            uri: '/api',
+            endpoints: [
+              TomApiEndpoint<String, String>(
+                id: 'slow',
+                uri: '/slow',
+                method: TomHttpMethod.get,
+                timeout: const Duration(seconds: 7),
+              ),
+            ],
+          );
 
-        final endpoint =
-            TomServerEndpoint.createApiServerEndpoint<String, String>(
-          api['slow'],
-          baseUri: Uri.parse('https://api.example.com'),
-        );
+          final endpoint =
+              TomServerEndpoint.createApiServerEndpoint<String, String>(
+                api['slow'],
+                baseUri: Uri.parse('https://api.example.com'),
+              );
 
-        expect(endpoint.specs.timeout, equals(const Duration(seconds: 7)));
-      });
+          expect(endpoint.specs.timeout, equals(const Duration(seconds: 7)));
+        },
+      );
     });
 
     group('via TomServerChannel.prepareCall', () {
-      test('a channel-prepared call round-trips through the mock client',
-          () async {
-        final client = _MockClient((_) async => _streamed('channel-body'));
-        final channel = TomServerChannel(
-          'api.example.com',
-          443,
-          clientFactory: _MockClientFactory(client),
-        );
+      test(
+        'a channel-prepared call round-trips through the mock client',
+        () async {
+          final client = _MockClient((_) async => _streamed('channel-body'));
+          final channel = TomServerChannel(
+            'api.example.com',
+            443,
+            clientFactory: _MockClientFactory(client),
+          );
 
-        final call = channel.prepareCall(specs());
-        final body = await call.send(TomServerCallLoad()).readAsString(utf8);
+          final call = channel.prepareCall(specs());
+          final body = await call.send(TomServerCallLoad()).readAsString(utf8);
 
-        expect(body, equals('channel-body'));
-        expect(call.client, same(client));
-      });
+          expect(body, equals('channel-body'));
+          expect(call.client, same(client));
+        },
+      );
     });
   });
 
@@ -3068,11 +3100,12 @@ void main() {
         ],
       );
 
-      final endpoint = TomServerEndpoint.createApiServerEndpoint<String, String>(
-        api['byId'],
-        baseUri: Uri.parse('https://api.example.com'),
-        parameters: {'itemId': 42, 'language': 'de'},
-      );
+      final endpoint =
+          TomServerEndpoint.createApiServerEndpoint<String, String>(
+            api['byId'],
+            baseUri: Uri.parse('https://api.example.com'),
+            parameters: {'itemId': 42, 'language': 'de'},
+          );
 
       expect(
         endpoint.specs.url.toString(),
@@ -3096,14 +3129,17 @@ void main() {
         ],
       );
 
-      final endpoint = TomServerEndpoint.createApiServerEndpoint<String, String>(
-        api['byId'],
-        baseUri: Uri.parse('https://api.example.com'),
-        parameters: {'itemId': 42},
-      );
+      final endpoint =
+          TomServerEndpoint.createApiServerEndpoint<String, String>(
+            api['byId'],
+            baseUri: Uri.parse('https://api.example.com'),
+            parameters: {'itemId': 42},
+          );
 
-      expect(endpoint.specs.url.toString(),
-          equals('https://api.example.com/api/items/42'));
+      expect(
+        endpoint.specs.url.toString(),
+        equals('https://api.example.com/api/items/42'),
+      );
     });
 
     test('refuses to build an endpoint whose path capture has no value', () {
@@ -3147,10 +3183,11 @@ void main() {
         ],
       );
 
-      final endpoint = TomServerEndpoint.createApiServerEndpoint<String, String>(
-        api['thing'],
-        baseUri: Uri.parse('https://api.example.com/gateway'),
-      );
+      final endpoint =
+          TomServerEndpoint.createApiServerEndpoint<String, String>(
+            api['thing'],
+            baseUri: Uri.parse('https://api.example.com/gateway'),
+          );
 
       expect(endpoint.specs.url.path, equals('/gateway/api/v1/thing'));
     });
@@ -3248,8 +3285,10 @@ void main() {
       expect(error!.hasError, isTrue);
       expect(error.statusCode, equals(409));
       expect(error.statusCodeResponse, isA<EndpointFailure>());
-      expect((error.statusCodeResponse! as EndpointFailure).reason,
-          equals('duplicate'));
+      expect(
+        (error.statusCodeResponse! as EndpointFailure).reason,
+        equals('duplicate'),
+      );
       expect(response.id, isEmpty);
     });
 
@@ -3508,25 +3547,27 @@ void main() {
       expect(refresher.refreshCount, equals(1));
     });
 
-    test('throws TomAuthExpiredException when expiry persists after retry',
-        () async {
-      final refresher = _ScriptedRefresher(succeeds: true);
-      final calls = <int>[];
-      await expectLater(
-        tomRunWithAuthRetry<int>(
-          send: scriptedSender([401, 401], calls),
-          statusOf: (r) => r,
-          refresher: refresher,
-          errorKeyOf: (_) => 'auth.token_dead',
-        ),
-        throwsA(
-          isA<TomAuthExpiredException>()
-              .having((e) => e.statusCode, 'statusCode', 401)
-              .having((e) => e.key, 'key', 'auth.token_dead'),
-        ),
-      );
-      expect(refresher.refreshCount, equals(1));
-    });
+    test(
+      'throws TomAuthExpiredException when expiry persists after retry',
+      () async {
+        final refresher = _ScriptedRefresher(succeeds: true);
+        final calls = <int>[];
+        await expectLater(
+          tomRunWithAuthRetry<int>(
+            send: scriptedSender([401, 401], calls),
+            statusOf: (r) => r,
+            refresher: refresher,
+            errorKeyOf: (_) => 'auth.token_dead',
+          ),
+          throwsA(
+            isA<TomAuthExpiredException>()
+                .having((e) => e.statusCode, 'statusCode', 401)
+                .having((e) => e.key, 'key', 'auth.token_dead'),
+          ),
+        );
+        expect(refresher.refreshCount, equals(1));
+      },
+    );
 
     test('uses the default error key when errorKeyOf is omitted', () async {
       final refresher = _ScriptedRefresher(succeeds: true);
@@ -3537,24 +3578,29 @@ void main() {
           refresher: refresher,
         ),
         throwsA(
-          isA<TomAuthExpiredException>()
-              .having((e) => e.key, 'key', 'auth.session_expired'),
+          isA<TomAuthExpiredException>().having(
+            (e) => e.key,
+            'key',
+            'auth.session_expired',
+          ),
         ),
       );
     });
 
-    test('passes a non-expiry error status through without refreshing',
-        () async {
-      final refresher = _ScriptedRefresher();
-      final calls = <int>[];
-      final result = await tomRunWithAuthRetry<int>(
-        send: scriptedSender([403], calls),
-        statusOf: (r) => r,
-        refresher: refresher,
-      );
-      expect(result, equals(403));
-      expect(refresher.refreshCount, equals(0));
-    });
+    test(
+      'passes a non-expiry error status through without refreshing',
+      () async {
+        final refresher = _ScriptedRefresher();
+        final calls = <int>[];
+        final result = await tomRunWithAuthRetry<int>(
+          send: scriptedSender([403], calls),
+          statusOf: (r) => r,
+          refresher: refresher,
+        );
+        expect(result, equals(403));
+        expect(refresher.refreshCount, equals(0));
+      },
+    );
 
     test('propagates an error thrown by the refresher', () async {
       final refresher = _ScriptedRefresher(throwsError: true);

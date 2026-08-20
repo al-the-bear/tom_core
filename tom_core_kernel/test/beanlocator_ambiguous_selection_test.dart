@@ -53,7 +53,8 @@ void main() {
       expect(failure!.parameters?['type'], equals(DuplicatedService));
 
       // Both losers must be named: "one of these two" is the whole diagnosis.
-      final named = '${failure.parameters?['first']} '
+      final named =
+          '${failure.parameters?['first']} '
           '${failure.parameters?['second']}';
       expect(named, contains('FirstDuplicatedService'));
       expect(named, contains('SecondDuplicatedService'));

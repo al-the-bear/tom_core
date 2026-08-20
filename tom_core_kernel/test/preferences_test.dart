@@ -30,38 +30,41 @@ T decodeStored<T extends Object>(String json, [String key = 'ui.value']) =>
     );
 
 Matcher throwsCodecKey(String key) => throwsA(
-      isA<TomUserPreferenceCodecException>()
-          .having((error) => error.key, 'key', key),
-    );
+  isA<TomUserPreferenceCodecException>().having(
+    (error) => error.key,
+    'key',
+    key,
+  ),
+);
 
 /// The `cause` a refusal reports, which is what a caller switches on when the
 /// prose is for a human and the branch is for a program.
 Matcher throwsCodecCause(String key, String cause) => throwsA(
-      isA<TomUserPreferenceCodecException>()
-          .having((error) => error.key, 'key', key)
-          .having((error) => error.parameters?['cause'], 'cause', cause),
-    );
+  isA<TomUserPreferenceCodecException>()
+      .having((error) => error.key, 'key', key)
+      .having((error) => error.parameters?['cause'], 'cause', cause),
+);
 
 /// Asserts the sentence a caller is actually given, because the remedy is the
 /// point of these refusals — a message naming the wrong fix costs more time
 /// than no message at all.
 Matcher throwsCodecMessage(String key, Matcher message) => throwsA(
-      isA<TomUserPreferenceCodecException>()
-          .having((error) => error.key, 'key', key)
-          .having(
-            (error) => error.defaultUserMessage,
-            'defaultUserMessage',
-            message,
-          ),
-    );
+  isA<TomUserPreferenceCodecException>()
+      .having((error) => error.key, 'key', key)
+      .having(
+        (error) => error.defaultUserMessage,
+        'defaultUserMessage',
+        message,
+      ),
+);
 
 /// The `cause` a key refusal reports — the clause of the rule that was
 /// broken, which is what tells a caller what to change.
 Matcher throwsKeyCause(String cause) => throwsA(
-      isA<TomUserPreferenceKeyException>()
-          .having((error) => error.key, 'key', 'preferences.key.invalid')
-          .having((error) => error.parameters?['cause'], 'cause', cause),
-    );
+  isA<TomUserPreferenceKeyException>()
+      .having((error) => error.key, 'key', 'preferences.key.invalid')
+      .having((error) => error.parameters?['cause'], 'cause', cause),
+);
 
 /// Timestamps that name the instant they mean — the reader cannot be wrong
 /// about them, whatever zone it runs in.
@@ -423,13 +426,15 @@ void main() {
     // an annotation — advice a Set, a Map keyed by int and a NaN cannot act
     // on. These tests hold each refusal to its own diagnosis.
     group('the refusal names the cause it can actually detect', () {
-      test('a non-finite element is the JSON problem it is, not a shape one',
-          () {
-        expect(
-          () => TomUserPreferenceCodec.encodeValue(<double>[1.0, double.nan]),
-          throwsCodecCause('preferences.encode.not_json', 'element_not_json'),
-        );
-      });
+      test(
+        'a non-finite element is the JSON problem it is, not a shape one',
+        () {
+          expect(
+            () => TomUserPreferenceCodec.encodeValue(<double>[1.0, double.nan]),
+            throwsCodecCause('preferences.encode.not_json', 'element_not_json'),
+          );
+        },
+      );
 
       test('and says which element and what to store instead', () {
         expect(
@@ -451,10 +456,7 @@ void main() {
       test('a Map keyed by anything but String says so', () {
         expect(
           () => TomUserPreferenceCodec.encodeValue(<int, String>{1: 'one'}),
-          throwsCodecCause(
-            'preferences.encode.failed',
-            'map_key_not_string',
-          ),
+          throwsCodecCause('preferences.encode.failed', 'map_key_not_string'),
         );
       });
 
@@ -474,24 +476,21 @@ void main() {
 
       test('an element that is not a scalar is its own cause', () {
         expect(
-          () => TomUserPreferenceCodec.encodeValue(
-            <UnreflectedPreference>[UnreflectedPreference()],
-          ),
+          () => TomUserPreferenceCodec.encodeValue(<UnreflectedPreference>[
+            UnreflectedPreference(),
+          ]),
           throwsCodecCause('preferences.encode.failed', 'element_not_scalar'),
         );
       });
 
       test('and says outright that annotating the element does not help', () {
         expect(
-          () => TomUserPreferenceCodec.encodeValue(
-            <UnreflectedPreference>[UnreflectedPreference()],
-          ),
+          () => TomUserPreferenceCodec.encodeValue(<UnreflectedPreference>[
+            UnreflectedPreference(),
+          ]),
           throwsCodecMessage(
             'preferences.encode.failed',
-            allOf(
-              contains('UnreflectedPreference'),
-              contains('does not help'),
-            ),
+            allOf(contains('UnreflectedPreference'), contains('does not help')),
           ),
         );
       });
@@ -789,22 +788,24 @@ void main() {
       expect(value, isA<double>());
     });
 
-    test('the refusal names both types, so the caller knows which is wrong',
-        () {
-      final stored = TomUserPreferenceCodec.encode('ui.lastSeen', 3);
+    test(
+      'the refusal names both types, so the caller knows which is wrong',
+      () {
+        final stored = TomUserPreferenceCodec.encode('ui.lastSeen', 3);
 
-      try {
-        TomUserPreferenceCodec.decode<String>(stored);
-        fail('A mismatched read must not succeed');
-      } on TomUserPreferenceCodecException catch (error) {
-        expect(error.parameters?['key'], 'ui.lastSeen');
-        expect(error.parameters?['stored'], TomUserPreferenceCodec.intType);
-        expect(
-          error.parameters?['requested'],
-          TomUserPreferenceCodec.stringType,
-        );
-      }
-    });
+        try {
+          TomUserPreferenceCodec.decode<String>(stored);
+          fail('A mismatched read must not succeed');
+        } on TomUserPreferenceCodecException catch (error) {
+          expect(error.parameters?['key'], 'ui.lastSeen');
+          expect(error.parameters?['stored'], TomUserPreferenceCodec.intType);
+          expect(
+            error.parameters?['requested'],
+            TomUserPreferenceCodec.stringType,
+          );
+        }
+      },
+    );
   });
 
   // tcinc164: a non-scalar was stored under `value.runtimeType.toString()` — a
@@ -849,8 +850,10 @@ void main() {
       // `BoxPreference<dynamic>` on the way back, so a generic preference
       // written by one half could never be read by the other. The registry
       // knows the class, not the instantiation.
-      expect(TomUserPreferenceCodec.typeNameOf(BoxPreference<int>()),
-          'BoxPreference');
+      expect(
+        TomUserPreferenceCodec.typeNameOf(BoxPreference<int>()),
+        'BoxPreference',
+      );
       expect(
         TomUserPreferenceCodec.typeNameOf(BoxPreference<int>()),
         TomUserPreferenceCodec.typeNameForType(BoxPreference),
@@ -891,16 +894,26 @@ void main() {
       // by-value one, so the five names a `Type` resolves to are the five a
       // value resolves to. That is what lets a caller read a preference back
       // by type without knowing anything about how it was written.
-      expect(TomUserPreferenceCodec.typeNameForType(String),
-          TomUserPreferenceCodec.stringType);
-      expect(TomUserPreferenceCodec.typeNameForType(int),
-          TomUserPreferenceCodec.intType);
-      expect(TomUserPreferenceCodec.typeNameForType(double),
-          TomUserPreferenceCodec.doubleType);
-      expect(TomUserPreferenceCodec.typeNameForType(bool),
-          TomUserPreferenceCodec.boolType);
-      expect(TomUserPreferenceCodec.typeNameForType(DateTime),
-          TomUserPreferenceCodec.dateTimeType);
+      expect(
+        TomUserPreferenceCodec.typeNameForType(String),
+        TomUserPreferenceCodec.stringType,
+      );
+      expect(
+        TomUserPreferenceCodec.typeNameForType(int),
+        TomUserPreferenceCodec.intType,
+      );
+      expect(
+        TomUserPreferenceCodec.typeNameForType(double),
+        TomUserPreferenceCodec.doubleType,
+      );
+      expect(
+        TomUserPreferenceCodec.typeNameForType(bool),
+        TomUserPreferenceCodec.boolType,
+      );
+      expect(
+        TomUserPreferenceCodec.typeNameForType(DateTime),
+        TomUserPreferenceCodec.dateTimeType,
+      );
     });
 
     test('the registry names a scalar exactly as its own row does', () {
@@ -936,8 +949,10 @@ void main() {
       );
 
       expect(stored.valueType, 'DisplayPreference');
-      expect(TomUserPreferenceCodec.decode<DisplayPreference>(stored).fontSize,
-          18);
+      expect(
+        TomUserPreferenceCodec.decode<DisplayPreference>(stored).fontSize,
+        18,
+      );
     });
 
     test('a row labelled as a scalar but holding an object says so', () {
@@ -973,37 +988,47 @@ void main() {
       );
     });
 
-    test('a subclass value is named by its runtime class, not its supertype',
-        () {
-      // `typeNameOf` sees the instance, so it answers `SubPreference`.
-      // `typeNameForType` can only see what it was handed. Both are correct
-      // answers — to different questions.
-      expect(
-        TomUserPreferenceCodec.typeNameOf(SubPreference()),
-        'SubPreference',
-      );
-      expect(
-        TomUserPreferenceCodec.typeNameForType(BasePreference),
-        'BasePreference',
-      );
-    });
+    test(
+      'a subclass value is named by its runtime class, not its supertype',
+      () {
+        // `typeNameOf` sees the instance, so it answers `SubPreference`.
+        // `typeNameForType` can only see what it was handed. Both are correct
+        // answers — to different questions.
+        expect(
+          TomUserPreferenceCodec.typeNameOf(SubPreference()),
+          'SubPreference',
+        );
+        expect(
+          TomUserPreferenceCodec.typeNameForType(BasePreference),
+          'BasePreference',
+        );
+      },
+    );
 
-    test('so a value stored as a subclass is not readable as its supertype',
-        () {
-      // The consequence, and the reason it is worth documenting rather than
-      // repairing: reading a `SubPreference` row as a `BasePreference` would
-      // silently drop the members only the subclass declares, so refusing is
-      // the intended strictness. Store a preference under the class it is
-      // declared as.
-      final stored = TomUserPreferenceCodec.encode('ui.pref', SubPreference());
+    test(
+      'so a value stored as a subclass is not readable as its supertype',
+      () {
+        // The consequence, and the reason it is worth documenting rather than
+        // repairing: reading a `SubPreference` row as a `BasePreference` would
+        // silently drop the members only the subclass declares, so refusing is
+        // the intended strictness. Store a preference under the class it is
+        // declared as.
+        final stored = TomUserPreferenceCodec.encode(
+          'ui.pref',
+          SubPreference(),
+        );
 
-      expect(stored.valueType, 'SubPreference');
-      expect(
-        () => TomUserPreferenceCodec.decode<BasePreference>(stored),
-        throwsCodecKey('preferences.decode.type_mismatch'),
-      );
-      expect(TomUserPreferenceCodec.decode<SubPreference>(stored).label, 'sub');
-    });
+        expect(stored.valueType, 'SubPreference');
+        expect(
+          () => TomUserPreferenceCodec.decode<BasePreference>(stored),
+          throwsCodecKey('preferences.decode.type_mismatch'),
+        );
+        expect(
+          TomUserPreferenceCodec.decode<SubPreference>(stored).label,
+          'sub',
+        );
+      },
+    );
 
     test('an instantiated generic type has no stored identity of its own', () {
       // The registry is keyed by *declaration*: it holds an entry for
@@ -1135,8 +1160,7 @@ void main() {
       );
     });
 
-    test('an unannotated enum is refused, with advice that can be followed',
-        () {
+    test('an unannotated enum is refused, with advice that can be followed', () {
       // The rule is the one every non-scalar already follows, so there is no
       // separate thing to learn: annotate it. Before tcinc164 this failed one
       // call later, from `encodeValue`, with a message telling the caller to
@@ -1193,24 +1217,26 @@ void main() {
       );
     });
 
-    test('a read that reflection cannot complete still fails as a codec error',
-        () {
-      // Found by the enum work rather than sought: the old enum read escaped
-      // as a raw `ReflectionNoSuchMethodError`, because the reflected branch
-      // did not wrap its instantiation. Removing the enum cause would have
-      // left the same leak open for a class, which this pins shut — the module
-      // promises a single exception type and this is the last path that broke
-      // it.
-      final stored = TomUserPreferenceCodec.encode(
-        'ui.constructed',
-        ConstructedPreference(3),
-      );
+    test(
+      'a read that reflection cannot complete still fails as a codec error',
+      () {
+        // Found by the enum work rather than sought: the old enum read escaped
+        // as a raw `ReflectionNoSuchMethodError`, because the reflected branch
+        // did not wrap its instantiation. Removing the enum cause would have
+        // left the same leak open for a class, which this pins shut — the module
+        // promises a single exception type and this is the last path that broke
+        // it.
+        final stored = TomUserPreferenceCodec.encode(
+          'ui.constructed',
+          ConstructedPreference(3),
+        );
 
-      expect(
-        () => TomUserPreferenceCodec.decode<ConstructedPreference>(stored),
-        throwsCodecKey('preferences.decode.failed'),
-      );
-    });
+        expect(
+          () => TomUserPreferenceCodec.decode<ConstructedPreference>(stored),
+          throwsCodecKey('preferences.decode.failed'),
+        );
+      },
+    );
   });
 
   // tcinc167: a list of strings — pinned items, recent files, enabled feature
@@ -1221,16 +1247,16 @@ void main() {
   // answered `List<int>`, which reads as support.
   group('TomUserPreferenceCodec — a collection of scalars is a value', () {
     test('a List<String> round-trips', () {
-      final stored = TomUserPreferenceCodec.encode(
-        'ui.pinned',
-        <String>['alpha', 'beta'],
-      );
+      final stored = TomUserPreferenceCodec.encode('ui.pinned', <String>[
+        'alpha',
+        'beta',
+      ]);
 
       expect(stored.valueType, 'List<String>');
-      expect(
-        TomUserPreferenceCodec.decode<List<String>>(stored),
-        ['alpha', 'beta'],
-      );
+      expect(TomUserPreferenceCodec.decode<List<String>>(stored), [
+        'alpha',
+        'beta',
+      ]);
     });
 
     test('a Map<String, String> round-trips', () {
@@ -1240,10 +1266,10 @@ void main() {
       );
 
       expect(stored.valueType, 'Map<String, String>');
-      expect(
-        TomUserPreferenceCodec.decode<Map<String, String>>(stored),
-        {'home': 'Start', 'away': 'Guest'},
-      );
+      expect(TomUserPreferenceCodec.decode<Map<String, String>>(stored), {
+        'home': 'Start',
+        'away': 'Guest',
+      });
     });
 
     test('the stored text is a plain JSON array, with no wrapper', () {
@@ -1317,10 +1343,9 @@ void main() {
       // has to hold one level down too — otherwise the same value means a
       // different instant per device as soon as it is put in a list.
       final local = DateTime.utc(2026, 3, 4, 5, 6, 7).toLocal();
-      final stored = TomUserPreferenceCodec.encode(
-        'ui.recent',
-        <DateTime>[local],
-      );
+      final stored = TomUserPreferenceCodec.encode('ui.recent', <DateTime>[
+        local,
+      ]);
 
       expect(stored.valueType, 'List<DateTime>');
       expect(stored.value, contains('Z'));
@@ -1390,10 +1415,7 @@ void main() {
       // The widening the scalar path already allows, applied one level down:
       // JSON writes 1.0 as 1, so a row a non-Dart client wrote is integral
       // even though the preference is a list of doubles.
-      expect(
-        decodeStored<List<double>>('[1, 2]', 'ui.scales'),
-        [1.0, 2.0],
-      );
+      expect(decodeStored<List<double>>('[1, 2]', 'ui.scales'), [1.0, 2.0]);
     });
 
     test('a collection is not readable as a collection of another type', () {
@@ -1449,7 +1471,9 @@ void main() {
         <Object>['a', 1],
         <dynamic>[],
         <int, String>{1: 'a'},
-        <String, Object>{'a': <String>['nested']},
+        <String, Object>{
+          'a': <String>['nested'],
+        },
         <String>{'a'},
       ]) {
         expect(
@@ -1470,28 +1494,29 @@ void main() {
       expect(message, contains('DateTime'));
     });
 
-    test('a list of reflected objects is refused rather than half-supported',
-        () {
-      // Tempting to allow, and deliberately not: the read would have to build
-      // each element from a class named nowhere in the stored type, and
-      // `decode<List<DisplayPreference>>` has no route from its type argument
-      // back to the registry entry. A reflected class whose *member* is a list
-      // is the supported way to store this.
-      expect(
-        () => TomUserPreferenceCodec.encode(
-          'ui.displays',
-          <DisplayPreference>[DisplayPreference()],
-        ),
-        throwsCodecKey('preferences.type.unsupported_collection'),
-      );
-    });
+    test(
+      'a list of reflected objects is refused rather than half-supported',
+      () {
+        // Tempting to allow, and deliberately not: the read would have to build
+        // each element from a class named nowhere in the stored type, and
+        // `decode<List<DisplayPreference>>` has no route from its type argument
+        // back to the registry entry. A reflected class whose *member* is a list
+        // is the supported way to store this.
+        expect(
+          () => TomUserPreferenceCodec.encode(
+            'ui.displays',
+            <DisplayPreference>[DisplayPreference()],
+          ),
+          throwsCodecKey('preferences.type.unsupported_collection'),
+        );
+      },
+    );
   });
 
   // The key is a URL path segment, so it is not free text. These tests hold
   // the rule that says what it may be, and the reasons for its two least
   // obvious clauses — the leading letter and the ASCII restriction.
-  group('TomUserPreferenceKeys — a key has to survive being a path segment',
-      () {
+  group('TomUserPreferenceKeys — a key has to survive being a path segment', () {
     test('the framework\'s own keys satisfy the rule', () {
       // A rule its author's own vocabulary fails is a rule that gets an
       // exception list, and then a second one.
@@ -1523,10 +1548,7 @@ void main() {
       // Not a contrived input: it is what TomUserPreferenceKeyRequest()'s own
       // default produces, so any caller that forgets to set one sends it.
       expect(TomUserPreferenceKeys.isValid(''), isFalse);
-      expect(
-        () => TomUserPreferenceKeys.validate(''),
-        throwsKeyCause('empty'),
-      );
+      expect(() => TomUserPreferenceKeys.validate(''), throwsKeyCause('empty'));
     });
 
     test('a key containing a separator is refused', () {
@@ -1570,20 +1592,22 @@ void main() {
       }
     });
 
-    test('a non-ASCII key is refused, because two spellings can look the same',
-        () {
-      // The module's opening problem, one layer down: `ü` has a composed and a
-      // decomposed Unicode form that render identically, so one visible key
-      // can be two stored keys — the silent split the vocabulary exists to
-      // prevent, and one no reader would ever see in a diff.
-      final composed = 'grüsse'; // ü as one code point
-      final decomposed = 'grüsse'; // u + combining diaeresis
+    test(
+      'a non-ASCII key is refused, because two spellings can look the same',
+      () {
+        // The module's opening problem, one layer down: `ü` has a composed and a
+        // decomposed Unicode form that render identically, so one visible key
+        // can be two stored keys — the silent split the vocabulary exists to
+        // prevent, and one no reader would ever see in a diff.
+        final composed = 'grüsse'; // ü as one code point
+        final decomposed = 'grüsse'; // u + combining diaeresis
 
-      expect(composed == decomposed, isFalse);
-      expect(TomUserPreferenceKeys.isValid(composed), isFalse);
-      expect(TomUserPreferenceKeys.isValid(decomposed), isFalse);
-      expect(TomUserPreferenceKeys.isValid('日本語'), isFalse);
-    });
+        expect(composed == decomposed, isFalse);
+        expect(TomUserPreferenceKeys.isValid(composed), isFalse);
+        expect(TomUserPreferenceKeys.isValid(decomposed), isFalse);
+        expect(TomUserPreferenceKeys.isValid('日本語'), isFalse);
+      },
+    );
 
     test('a key longer than the stored column is refused', () {
       // 191 is not arbitrary: it is `tom_user_preference.preference_key`'s
@@ -1746,10 +1770,7 @@ void main() {
     });
 
     test('the DTO carries the key it was encoded under', () {
-      expect(
-        TomUserPreferenceCodec.encode('ui.theme', 'dark').key,
-        'ui.theme',
-      );
+      expect(TomUserPreferenceCodec.encode('ui.theme', 'dark').key, 'ui.theme');
     });
 
     test('the timestamp is passed through, never invented', () {
@@ -1944,10 +1965,12 @@ void main() {
       );
 
       final json = tomReflectionInfo.convertToJsonString(dto);
-      final restored = tomReflectionInfo.createInstanceFromJson(
-        tomReflector.reflectType(TomUserPreferenceDto) as ClassMirror,
-        jsonDecode(json) as Map<String, dynamic>,
-      ) as TomUserPreferenceDto;
+      final restored =
+          tomReflectionInfo.createInstanceFromJson(
+                tomReflector.reflectType(TomUserPreferenceDto) as ClassMirror,
+                jsonDecode(json) as Map<String, dynamic>,
+              )
+              as TomUserPreferenceDto;
 
       expect(restored.updatedAt!.isUtc, isTrue);
       expect(
@@ -2163,10 +2186,7 @@ void main() {
       // resolves an endpoint by id gets the same object the contract exports.
       registerTomUserPreferencesApi();
 
-      expect(
-        tomRemoteApis.apis.containsKey(tomUserPreferencesApiId),
-        isTrue,
-      );
+      expect(tomRemoteApis.apis.containsKey(tomUserPreferencesApiId), isTrue);
       expect(
         identical(
           tomRemoteApis[tomUserPreferencesApiId],

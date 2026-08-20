@@ -126,7 +126,6 @@ class RecordingDisposable implements TomDisposable {
   void dispose() => log.add('disposable');
 }
 
-
 // =============================================================================
 // TomDisposable Tests
 // =============================================================================
@@ -208,7 +207,6 @@ void main() {
       });
     });
   });
-
 
   // ===========================================================================
   // TomShutdownCleanup Tests
@@ -360,10 +358,7 @@ void main() {
         final cleanup = TomShutdownCleanup();
 
         // Act & Assert - should not throw
-        expect(
-          () => cleanup.addSignal(ProcessSignal.sigusr1),
-          returnsNormally,
-        );
+        expect(() => cleanup.addSignal(ProcessSignal.sigusr1), returnsNormally);
       });
 
       test('should accept ProcessSignal.sigusr2', () {
@@ -371,10 +366,7 @@ void main() {
         final cleanup = TomShutdownCleanup();
 
         // Act & Assert - should not throw
-        expect(
-          () => cleanup.addSignal(ProcessSignal.sigusr2),
-          returnsNormally,
-        );
+        expect(() => cleanup.addSignal(ProcessSignal.sigusr2), returnsNormally);
       });
     });
 
@@ -746,14 +738,17 @@ void main() {
       expect(target.disposedFlag, isTrue);
     });
 
-    test('resolves a custom-named method inherited from a superclass (§52)', () {
-      final target = InheritsShutdown();
+    test(
+      'resolves a custom-named method inherited from a superclass (§52)',
+      () {
+        final target = InheritsShutdown();
 
-      final adaptor = TomCloseAdaptor(target, 'shutdown');
-      adaptor.close();
+        final adaptor = TomCloseAdaptor(target, 'shutdown');
+        adaptor.close();
 
-      expect(target.shutdownCalled, isTrue);
-    });
+        expect(target.shutdownCalled, isTrue);
+      },
+    );
 
     test('throws when the resolved method requires a parameter', () {
       expect(
@@ -768,18 +763,21 @@ void main() {
       );
     });
 
-    test('throws when no close/dispose method exists anywhere in the chain', () {
-      expect(
-        () => TomCloseAdaptor(NoCloseTarget()),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains("didn't find a close method"),
+    test(
+      'throws when no close/dispose method exists anywhere in the chain',
+      () {
+        expect(
+          () => TomCloseAdaptor(NoCloseTarget()),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains("didn't find a close method"),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   });
 
   // ===========================================================================

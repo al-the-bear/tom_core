@@ -129,7 +129,8 @@ void main() {
       expect(
         TomBean<RankedService>().get().tier(),
         equals('tier-1'),
-        reason: 'the platform-only, environment-only and unconstrained '
+        reason:
+            'the platform-only, environment-only and unconstrained '
             'candidates all match too, and none of them may win',
       );
     });
@@ -173,34 +174,42 @@ void main() {
       expect(TomBean.getBeanByType(RankedTierFourService), isNull);
     });
 
-    test('re-selects on a later pass rather than keeping the first binding',
-        () {
-      discoverBeansIn(prodEnvironment, platformWeb);
-      expect(TomBean.getBeanByType(RankedService), isA<RankedTierOneService>());
+    test(
+      're-selects on a later pass rather than keeping the first binding',
+      () {
+        discoverBeansIn(prodEnvironment, platformWeb);
+        expect(
+          TomBean.getBeanByType(RankedService),
+          isA<RankedTierOneService>(),
+        );
 
-      discoverBeansIn(devEnvironment, platformMacos);
+        discoverBeansIn(devEnvironment, platformMacos);
 
-      expect(
-        TomBean.getBeanByType(RankedService),
-        isA<RankedTierFourService>(),
-        reason: 'selection must follow the current runtime, not the first one '
-            'discovery ever saw',
-      );
-    });
+        expect(
+          TomBean.getBeanByType(RankedService),
+          isA<RankedTierFourService>(),
+          reason:
+              'selection must follow the current runtime, not the first one '
+              'discovery ever saw',
+        );
+      },
+    );
   });
 
   // ==========================================================================
   // Selector interaction: the environment genuinely selects
   // ==========================================================================
   group('environment selector', () {
-    test('two implementors differing only by environment resolve differently',
-        () {
-      discoverBeansIn(prodEnvironment, platformMacos);
-      expect(TomBean<GreetingService>().get().greet(), equals('production'));
+    test(
+      'two implementors differing only by environment resolve differently',
+      () {
+        discoverBeansIn(prodEnvironment, platformMacos);
+        expect(TomBean<GreetingService>().get().greet(), equals('production'));
 
-      discoverBeansIn(devEnvironment, platformMacos);
-      expect(TomBean<GreetingService>().get().greet(), equals('development'));
-    });
+        discoverBeansIn(devEnvironment, platformMacos);
+        expect(TomBean<GreetingService>().get().greet(), equals('development'));
+      },
+    );
 
     test('the environment selects independently of the platform', () {
       // Same environment, different platform: neither candidate constrains the
@@ -244,7 +253,8 @@ void main() {
       expect(
         TomBean<RankedService>().get().tier(),
         equals('tier-1'),
-        reason: 'the active environment names "prod" and the tier-1 candidate '
+        reason:
+            'the active environment names "prod" and the tier-1 candidate '
             'is annotated for "prod" — which instance carries the name is not '
             'something a deployment gets to control',
       );
@@ -310,7 +320,8 @@ void main() {
       expect(
         TomBean<GreetingService>().get().greet(),
         equals('stub'),
-        reason: 'the prod candidate matches the active environment and must '
+        reason:
+            'the prod candidate matches the active environment and must '
             'not displace an implementation already bound',
       );
     });

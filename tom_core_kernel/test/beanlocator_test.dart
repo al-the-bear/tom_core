@@ -336,10 +336,7 @@ void main() {
         // Try to get it as the wrong type.
         final bean = TomBean<int>.fromName('typeMismatchBean');
 
-        expect(
-          () => bean.get(),
-          throwsA(isA<TomBeanLocatorException>()),
-        );
+        expect(() => bean.get(), throwsA(isA<TomBeanLocatorException>()));
       });
     });
   });
@@ -349,9 +346,9 @@ void main() {
   // ==========================================================================
   group('installByEnvironment', () {
     Map<String, EnvBackend Function()> factories() => {
-          'prod': LiveEnvBackend.new,
-          'test': TestEnvBackend.new,
-        };
+      'prod': LiveEnvBackend.new,
+      'test': TestEnvBackend.new,
+    };
 
     test('installs the implementation named by the explicit environment', () {
       TomBean.installByEnvironment<EnvBackend>(
@@ -375,19 +372,16 @@ void main() {
     test('runs only the selected environment factory', () {
       var liveBuilt = false;
       var testBuilt = false;
-      TomBean.installByEnvironment<EnvBackend>(
-        {
-          'prod': () {
-            liveBuilt = true;
-            return LiveEnvBackend();
-          },
-          'test': () {
-            testBuilt = true;
-            return TestEnvBackend();
-          },
+      TomBean.installByEnvironment<EnvBackend>({
+        'prod': () {
+          liveBuilt = true;
+          return LiveEnvBackend();
         },
-        environment: 'test',
-      );
+        'test': () {
+          testBuilt = true;
+          return TestEnvBackend();
+        },
+      }, environment: 'test');
 
       expect(testBuilt, isTrue);
       expect(liveBuilt, isFalse, reason: 'unselected factory must not run');
@@ -511,10 +505,15 @@ void main() {
 
     test('overrideWithType replaces a binding discovery made', () {
       initializeBeanContext();
-      expect(TomBean<DiscoveredConcreteService>().get().ping(),
-          equals('concrete'));
+      expect(
+        TomBean<DiscoveredConcreteService>().get().ping(),
+        equals('concrete'),
+      );
 
-      TomBean.overrideWithType(DiscoveredConcreteService, MockConcreteService());
+      TomBean.overrideWithType(
+        DiscoveredConcreteService,
+        MockConcreteService(),
+      );
 
       expect(TomBean<DiscoveredConcreteService>().get().ping(), equals('mock'));
     });
@@ -523,8 +522,12 @@ void main() {
       initializeBeanContext();
 
       expect(
-        keyOfThrow(() => TomBean.withType(
-            DiscoveredConcreteService, MockConcreteService())),
+        keyOfThrow(
+          () => TomBean.withType(
+            DiscoveredConcreteService,
+            MockConcreteService(),
+          ),
+        ),
         equals('beanlocator.initialization.duplicate_bean_with_type'),
         reason: 'the guard is the whole reason the override has to be named',
       );
@@ -539,7 +542,10 @@ void main() {
       final resolved = TomBean<DiscoveredConcreteService>();
       expect(resolved.get().ping(), equals('concrete'));
 
-      TomBean.overrideWithType(DiscoveredConcreteService, MockConcreteService());
+      TomBean.overrideWithType(
+        DiscoveredConcreteService,
+        MockConcreteService(),
+      );
 
       expect(resolved.get().ping(), equals('concrete'));
       expect(TomBean<DiscoveredConcreteService>().get().ping(), equals('mock'));
@@ -562,7 +568,10 @@ void main() {
       // puts in setUp, and it empties the registry — so an override has to be
       // re-applied after every pass, not merely applied once.
       initializeBeanContext();
-      TomBean.overrideWithType(DiscoveredConcreteService, MockConcreteService());
+      TomBean.overrideWithType(
+        DiscoveredConcreteService,
+        MockConcreteService(),
+      );
 
       TomBean.resetBeanContext();
       initializeBeanContext();
@@ -588,8 +597,7 @@ void main() {
       TomBean.withName('config', AnotherService('real'));
 
       expect(
-        keyOfThrow(
-            () => TomBean.withName('config', AnotherService('stub'))),
+        keyOfThrow(() => TomBean.withName('config', AnotherService('stub'))),
         equals('beanlocator.initialization.duplicate_bean_with_name'),
       );
     });
@@ -645,25 +653,28 @@ void main() {
       expect(
         config.get().value,
         equals('late'),
-        reason: 'the handle resolves once the registration lands, which is '
+        reason:
+            'the handle resolves once the registration lands, which is '
             'exactly why startup had no business failing on it',
       );
     });
 
-    test('a named handle registered with the wrong type still fails startup',
-        () {
-      // The skip is narrow: it covers "not registered yet", not "named
-      // resolution is unchecked". Here the name *is* registered, so the
-      // question is answerable at boot — and the answer is a type mismatch,
-      // which no later registration will repair.
-      TomBean.withName('wrongType', TestServiceImpl());
-      final handle = TomBean<int>.fromName('wrongType');
+    test(
+      'a named handle registered with the wrong type still fails startup',
+      () {
+        // The skip is narrow: it covers "not registered yet", not "named
+        // resolution is unchecked". Here the name *is* registered, so the
+        // question is answerable at boot — and the answer is a type mismatch,
+        // which no later registration will repair.
+        TomBean.withName('wrongType', TestServiceImpl());
+        final handle = TomBean<int>.fromName('wrongType');
 
-      expect(
-        keyOfThrow(initializeBeanContext),
-        equals('beanlocator.bean_access.bean_not_found_by_type'),
-      );
-    });
+        expect(
+          keyOfThrow(initializeBeanContext),
+          equals('beanlocator.bean_access.bean_not_found_by_type'),
+        );
+      },
+    );
 
     test('a handle created after a pass is validated by the next one', () {
       // Validation must not depend on which side of an initializeBeanContext
@@ -710,39 +721,41 @@ void main() {
       expect(
         failure.parameters?['subject'],
         contains('$EnvNarrowedConcreteService'),
-        reason: 'the failure must name the bean whose selector asked for the '
+        reason:
+            'the failure must name the bean whose selector asked for the '
             'environment, not merely that some environment was missing',
       );
     });
 
-    test('installByEnvironment raises the locator exception, naming the type',
-        () {
-      final failure = errorOfThrow(
-        () => TomBean.installByEnvironment<EnvBackend>({
-          'prod': LiveEnvBackend.new,
-        }),
-      );
+    test(
+      'installByEnvironment raises the locator exception, naming the type',
+      () {
+        final failure = errorOfThrow(
+          () => TomBean.installByEnvironment<EnvBackend>({
+            'prod': LiveEnvBackend.new,
+          }),
+        );
 
-      expect(
-        failure,
-        isNotNull,
-        reason: 'a bare Exception escaped the locator exception contract',
-      );
-      expect(
-        failure!.key,
-        equals('beanlocator.environment.runtime_environment_not_initialized'),
-      );
-      expect(failure.parameters?['subject'], equals('$EnvBackend'));
-    });
+        expect(
+          failure,
+          isNotNull,
+          reason: 'a bare Exception escaped the locator exception contract',
+        );
+        expect(
+          failure!.key,
+          equals('beanlocator.environment.runtime_environment_not_initialized'),
+        );
+        expect(failure.parameters?['subject'], equals('$EnvBackend'));
+      },
+    );
 
     test('an explicit environment needs no configured runtime', () {
       // The guard must only fire where the environment is actually consulted:
       // naming the environment at the call site answers the question the
       // runtime would have been asked.
-      TomBean.installByEnvironment<EnvBackend>(
-        {'test': TestEnvBackend.new},
-        environment: 'test',
-      );
+      TomBean.installByEnvironment<EnvBackend>({
+        'test': TestEnvBackend.new,
+      }, environment: 'test');
 
       expect(TomBean<EnvBackend>().get(), isA<TestEnvBackend>());
     });
@@ -783,12 +796,15 @@ void main() {
       expect(identical(bean.get(), service), isTrue);
     });
 
-    test('throws no_bean_found_uninitialized when nothing matches the type', () {
-      expect(
-        keyOfThrow(() => TomBean<AnotherService>().get()),
-        equals('beanlocator.bean_access.no_bean_found_uninitialized'),
-      );
-    });
+    test(
+      'throws no_bean_found_uninitialized when nothing matches the type',
+      () {
+        expect(
+          keyOfThrow(() => TomBean<AnotherService>().get()),
+          equals('beanlocator.bean_access.no_bean_found_uninitialized'),
+        );
+      },
+    );
   });
 
   // ==========================================================================
@@ -870,10 +886,9 @@ void main() {
     test('installByEnvironment with no matching factory', () {
       expect(
         keyOfThrow(
-          () => TomBean.installByEnvironment<EnvBackend>(
-            {'prod': LiveEnvBackend.new},
-            environment: 'staging',
-          ),
+          () => TomBean.installByEnvironment<EnvBackend>({
+            'prod': LiveEnvBackend.new,
+          }, environment: 'staging'),
         ),
         equals('beanlocator.environment.no_factory_for_environment'),
       );
@@ -885,10 +900,9 @@ void main() {
   // ==========================================================================
   group('installByEnvironment handle', () {
     test('the returned handle resolves the installed implementation', () {
-      final handle = TomBean.installByEnvironment<EnvBackend>(
-        {'test': TestEnvBackend.new},
-        environment: 'test',
-      );
+      final handle = TomBean.installByEnvironment<EnvBackend>({
+        'test': TestEnvBackend.new,
+      }, environment: 'test');
 
       expect(handle.get(), isA<TestEnvBackend>());
       expect(handle().mode(), equals('test'));

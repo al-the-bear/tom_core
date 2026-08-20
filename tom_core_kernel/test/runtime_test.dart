@@ -38,17 +38,17 @@ class MockPlatformUtils extends TomPlatformUtils {
     bool isIos = false,
     String browserLocation = '',
     String isolateName = 'test-isolate',
-  })  : _isDesktop = isDesktop,
-        _isMobile = isMobile,
-        _isWeb = isWeb,
-        _isWindows = isWindows,
-        _isLinux = isLinux,
-        _isMacOs = isMacOs,
-        _isFuchsia = isFuchsia,
-        _isAndroid = isAndroid,
-        _isIos = isIos,
-        _browserLocation = browserLocation,
-        _isolateName = isolateName;
+  }) : _isDesktop = isDesktop,
+       _isMobile = isMobile,
+       _isWeb = isWeb,
+       _isWindows = isWindows,
+       _isLinux = isLinux,
+       _isMacOs = isMacOs,
+       _isFuchsia = isFuchsia,
+       _isAndroid = isAndroid,
+       _isIos = isIos,
+       _browserLocation = browserLocation,
+       _isolateName = isolateName;
 
   @override
   bool isDesktop() => _isDesktop;
@@ -102,36 +102,32 @@ class MockPlatformUtils extends TomPlatformUtils {
 /// A mock platform simulating a desktop macOS environment.
 class MacOsDesktopPlatformUtils extends MockPlatformUtils {
   MacOsDesktopPlatformUtils()
-      : super(
-          isDesktop: true,
-          isMobile: false,
-          isWeb: false,
-          isMacOs: true,
-          isWindows: false,
-          isLinux: false,
-        );
+    : super(
+        isDesktop: true,
+        isMobile: false,
+        isWeb: false,
+        isMacOs: true,
+        isWindows: false,
+        isLinux: false,
+      );
 }
 
 /// A mock platform simulating a mobile Android environment.
 class AndroidMobilePlatformUtils extends MockPlatformUtils {
   AndroidMobilePlatformUtils()
-      : super(
-          isDesktop: false,
-          isMobile: true,
-          isWeb: false,
-          isAndroid: true,
-          isIos: false,
-        );
+    : super(
+        isDesktop: false,
+        isMobile: true,
+        isWeb: false,
+        isAndroid: true,
+        isIos: false,
+      );
 }
 
 /// A mock platform simulating a web browser environment.
 class WebBrowserPlatformUtils extends MockPlatformUtils {
   WebBrowserPlatformUtils({super.browserLocation = 'https://example.com'})
-      : super(
-          isDesktop: false,
-          isMobile: false,
-          isWeb: true,
-        );
+    : super(isDesktop: false, isMobile: false, isWeb: true);
 }
 
 void main() {
@@ -157,7 +153,10 @@ void main() {
         TomPlatformUtils.envVars['API_URL'] = 'https://api.example.com';
         TomPlatformUtils.envVars['DEBUG'] = 'true';
 
-        expect(TomPlatformUtils.envVars['API_URL'], equals('https://api.example.com'));
+        expect(
+          TomPlatformUtils.envVars['API_URL'],
+          equals('https://api.example.com'),
+        );
         expect(TomPlatformUtils.envVars['DEBUG'], equals('true'));
       });
 
@@ -401,7 +400,9 @@ void main() {
 
       test('should return full URL with query parameters', () {
         TomPlatformUtils.setCurrentPlatform(
-          MockPlatformUtils(browserLocation: 'https://app.com?token=abc&page=1'),
+          MockPlatformUtils(
+            browserLocation: 'https://app.com?token=abc&page=1',
+          ),
         );
 
         expect(
@@ -421,9 +422,7 @@ void main() {
       });
 
       test('should return empty string when no isolate name set', () {
-        TomPlatformUtils.setCurrentPlatform(
-          MockPlatformUtils(isolateName: ''),
-        );
+        TomPlatformUtils.setCurrentPlatform(MockPlatformUtils(isolateName: ''));
 
         expect(TomPlatformUtils.current.getIsolateName(), equals(''));
       });
@@ -431,7 +430,10 @@ void main() {
       test('should return default test-isolate name', () {
         TomPlatformUtils.setCurrentPlatform(MockPlatformUtils());
 
-        expect(TomPlatformUtils.current.getIsolateName(), equals('test-isolate'));
+        expect(
+          TomPlatformUtils.current.getIsolateName(),
+          equals('test-isolate'),
+        );
       });
     });
 
@@ -451,7 +453,8 @@ void main() {
       test('should capture multiple output messages in order', () {
         final platform = MockPlatformUtils();
         TomPlatformUtils.setCurrentPlatform(platform);
-        platform.outputMessages.clear(); // Clear logging output from setCurrentPlatform
+        platform.outputMessages
+            .clear(); // Clear logging output from setCurrentPlatform
 
         platform.out('First');
         platform.out('Second');
@@ -493,7 +496,8 @@ void main() {
       test('should keep output and error messages separate', () {
         final platform = MockPlatformUtils();
         TomPlatformUtils.setCurrentPlatform(platform);
-        platform.outputMessages.clear(); // Clear logging output from setCurrentPlatform
+        platform.outputMessages
+            .clear(); // Clear logging output from setCurrentPlatform
 
         platform.out('Regular message');
         platform.outError('Error message');
@@ -588,10 +592,7 @@ void main() {
       test('should use default browser location', () {
         final platform = WebBrowserPlatformUtils();
 
-        expect(
-          platform.getBrowserLocation(),
-          equals('https://example.com'),
-        );
+        expect(platform.getBrowserLocation(), equals('https://example.com'));
       });
     });
   });
@@ -645,7 +646,10 @@ void main() {
       test('should return static envVars map', () {
         TomPlatformUtils.envVars = {'FALLBACK_KEY': 'fallback_value'};
 
-        expect(fallback.getTomEnvVars()['FALLBACK_KEY'], equals('fallback_value'));
+        expect(
+          fallback.getTomEnvVars()['FALLBACK_KEY'],
+          equals('fallback_value'),
+        );
       });
     });
 
@@ -654,28 +658,19 @@ void main() {
     // -------------------------------------------------------------------------
     group('isDesktop', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.isDesktop(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.isDesktop(), throwsA(isA<UnimplementedError>()));
       });
     });
 
     group('isMobile', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.isMobile(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.isMobile(), throwsA(isA<UnimplementedError>()));
       });
     });
 
     group('isWeb', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.isWeb(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.isWeb(), throwsA(isA<UnimplementedError>()));
       });
     });
 
@@ -684,37 +679,25 @@ void main() {
     // -------------------------------------------------------------------------
     group('isWindows', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.isWindows(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.isWindows(), throwsA(isA<UnimplementedError>()));
       });
     });
 
     group('isLinux', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.isLinux(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.isLinux(), throwsA(isA<UnimplementedError>()));
       });
     });
 
     group('isMacOs', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.isMacOs(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.isMacOs(), throwsA(isA<UnimplementedError>()));
       });
     });
 
     group('isFuchsia', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.isFuchsia(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.isFuchsia(), throwsA(isA<UnimplementedError>()));
       });
     });
 
@@ -723,19 +706,13 @@ void main() {
     // -------------------------------------------------------------------------
     group('isAndroid', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.isAndroid(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.isAndroid(), throwsA(isA<UnimplementedError>()));
       });
     });
 
     group('isIos', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.isIos(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.isIos(), throwsA(isA<UnimplementedError>()));
       });
     });
 
@@ -744,10 +721,7 @@ void main() {
     // -------------------------------------------------------------------------
     group('httpClient', () {
       test('should throw UnimplementedError', () {
-        expect(
-          () => fallback.httpClient(),
-          throwsA(isA<UnimplementedError>()),
-        );
+        expect(() => fallback.httpClient(), throwsA(isA<UnimplementedError>()));
       });
     });
   });
@@ -850,9 +824,12 @@ void main() {
 
     test('should call initializer when initialize() is called', () {
       var called = false;
-      final env = TomEnvironment('init-env', initializer: (e) {
-        called = true;
-      });
+      final env = TomEnvironment(
+        'init-env',
+        initializer: (e) {
+          called = true;
+        },
+      );
 
       expect(called, isFalse);
       env.initialize();
@@ -957,7 +934,10 @@ void main() {
         expect(TomRuntime.getCurrentEnvironment().env, equals('env-active'));
 
         // Requesting a non-existent name must switch to the named fallback.
-        TomRuntime.setCurrentEnvironment('nonexistent-xyz', 'env-fallback-test');
+        TomRuntime.setCurrentEnvironment(
+          'nonexistent-xyz',
+          'env-fallback-test',
+        );
         expect(
           TomRuntime.getCurrentEnvironment().env,
           equals('env-fallback-test'),
@@ -997,7 +977,11 @@ void main() {
         TomPlatformUtils.envVars['env'] = 'dev-test';
 
         const prod = TomEnvironment('prod-test');
-        const dev = TomEnvironment('dev-test', parent: prod, isDevelopment: true);
+        const dev = TomEnvironment(
+          'dev-test',
+          parent: prod,
+          isDevelopment: true,
+        );
 
         TomRuntime.addEnvironment(prod);
         TomRuntime.addEnvironment(dev);

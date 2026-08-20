@@ -53,14 +53,13 @@ void main() {
       _ScriptedSend send,
       TomAuthRefresher refresher, {
       TomAuthRetryPolicy? policy,
-    }) =>
-        tomRunWithAuthRetry<(int, String?)>(
-          send: send.call,
-          statusOf: (r) => r.$1,
-          errorKeyOf: (r) => r.$2,
-          refresher: refresher,
-          policy: policy,
-        );
+    }) => tomRunWithAuthRetry<(int, String?)>(
+      send: send.call,
+      statusOf: (r) => r.$1,
+      errorKeyOf: (r) => r.$2,
+      refresher: refresher,
+      policy: policy,
+    );
 
     test('a 2xx is returned unchanged, with no refresh', () async {
       final send = _ScriptedSend([(200, null)]);
@@ -73,59 +72,69 @@ void main() {
       expect(refresher.calls, 0);
     });
 
-    test('a non-expiry error (403) is returned as-is, with no refresh',
-        () async {
-      final send = _ScriptedSend([(403, 'app.access.forbidden')]);
-      final refresher = _FakeRefresher();
+    test(
+      'a non-expiry error (403) is returned as-is, with no refresh',
+      () async {
+        final send = _ScriptedSend([(403, 'app.access.forbidden')]);
+        final refresher = _FakeRefresher();
 
-      final result = await run(send, refresher);
+        final result = await run(send, refresher);
 
-      expect(result.$1, 403);
-      expect(send.calls, 1);
-      expect(refresher.calls, 0);
-    });
+        expect(result.$1, 403);
+        expect(send.calls, 1);
+        expect(refresher.calls, 0);
+      },
+    );
 
-    test('a 401 refreshes once and retries, returning the recovered response',
-        () async {
-      final send = _ScriptedSend([(401, 'auth.token.expired'), (200, null)]);
-      final refresher = _FakeRefresher();
+    test(
+      'a 401 refreshes once and retries, returning the recovered response',
+      () async {
+        final send = _ScriptedSend([(401, 'auth.token.expired'), (200, null)]);
+        final refresher = _FakeRefresher();
 
-      final result = await run(send, refresher);
+        final result = await run(send, refresher);
 
-      expect(result.$1, 200);
-      expect(refresher.calls, 1);
-      expect(send.calls, 2); // original + exactly one retry.
-    });
+        expect(result.$1, 200);
+        expect(refresher.calls, 1);
+        expect(send.calls, 2); // original + exactly one retry.
+      },
+    );
 
-    test('a 401 that persists after refresh throws TomAuthExpiredException',
-        () async {
-      final send = _ScriptedSend([
-        (401, 'auth.token.expired'),
-        (401, 'auth.token.invalid'),
-      ]);
-      final refresher = _FakeRefresher();
+    test(
+      'a 401 that persists after refresh throws TomAuthExpiredException',
+      () async {
+        final send = _ScriptedSend([
+          (401, 'auth.token.expired'),
+          (401, 'auth.token.invalid'),
+        ]);
+        final refresher = _FakeRefresher();
 
-      await expectLater(
-        run(send, refresher),
-        throwsA(isA<TomAuthExpiredException>()
-            .having((e) => e.key, 'key', 'auth.token.invalid')
-            .having((e) => e.statusCode, 'statusCode', 401)),
-      );
-      expect(refresher.calls, 1); // one refresh, then it gives up — no loop.
-      expect(send.calls, 2);
-    });
+        await expectLater(
+          run(send, refresher),
+          throwsA(
+            isA<TomAuthExpiredException>()
+                .having((e) => e.key, 'key', 'auth.token.invalid')
+                .having((e) => e.statusCode, 'statusCode', 401),
+          ),
+        );
+        expect(refresher.calls, 1); // one refresh, then it gives up — no loop.
+        expect(send.calls, 2);
+      },
+    );
 
-    test('a refresher that reports "nothing to refresh" surfaces the original',
-        () async {
-      final send = _ScriptedSend([(401, 'auth.token.expired')]);
-      final refresher = _FakeRefresher(succeed: false);
+    test(
+      'a refresher that reports "nothing to refresh" surfaces the original',
+      () async {
+        final send = _ScriptedSend([(401, 'auth.token.expired')]);
+        final refresher = _FakeRefresher(succeed: false);
 
-      final result = await run(send, refresher);
+        final result = await run(send, refresher);
 
-      expect(result.$1, 401);
-      expect(refresher.calls, 1);
-      expect(send.calls, 1); // no retry when the refresher can't refresh.
-    });
+        expect(result.$1, 401);
+        expect(refresher.calls, 1);
+        expect(send.calls, 1); // no retry when the refresher can't refresh.
+      },
+    );
 
     test('a throwing refresher propagates its own error', () async {
       final send = _ScriptedSend([(401, 'auth.token.expired')]);

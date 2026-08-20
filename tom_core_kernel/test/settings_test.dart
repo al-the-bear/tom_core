@@ -313,10 +313,7 @@ void main() {
 
         // Assert
         expect(result.config['enabledFeatures'], isA<List>());
-        expect(
-          (result.config['enabledFeatures'] as List).length,
-          equals(3),
-        );
+        expect((result.config['enabledFeatures'] as List).length, equals(3));
       });
     });
 
@@ -366,9 +363,7 @@ void main() {
 
         test('should check role membership', () {
           // Arrange
-          final result = TomGetSettingsResult(
-            roles: ['editor', 'contributor'],
-          );
+          final result = TomGetSettingsResult(roles: ['editor', 'contributor']);
 
           // Assert
           expect(result.roles.contains('editor'), isTrue);
@@ -382,14 +377,21 @@ void main() {
           );
 
           // Assert
-          expect(result.roles.where((r) => r.startsWith('read')).length, equals(3));
+          expect(
+            result.roles.where((r) => r.startsWith('read')).length,
+            equals(3),
+          );
         });
       });
 
       group('entitlements', () {
         test('should store and retrieve user entitlements', () {
           // Arrange
-          final entitlements = ['create-report', 'delete-user', 'view-analytics'];
+          final entitlements = [
+            'create-report',
+            'delete-user',
+            'view-analytics',
+          ];
           final result = TomGetSettingsResult(entitlements: entitlements);
 
           // Assert
@@ -399,9 +401,7 @@ void main() {
 
         test('should check entitlement presence', () {
           // Arrange
-          final result = TomGetSettingsResult(
-            entitlements: ['read', 'write'],
-          );
+          final result = TomGetSettingsResult(entitlements: ['read', 'write']);
 
           // Assert
           expect(result.entitlements.contains('read'), isTrue);
@@ -774,19 +774,22 @@ void main() {
         expect(result.config['theme'], equals('dark'));
       });
 
-      test('groups/roles/entitlements/resourceKeys are mutable empty lists by default', () {
-        final result = TomGetSettingsResult();
+      test(
+        'groups/roles/entitlements/resourceKeys are mutable empty lists by default',
+        () {
+          final result = TomGetSettingsResult();
 
-        result.groups.add('staff');
-        result.roles.add('admin');
-        result.entitlements.add('read');
-        result.resourceKeys.add('dashboard');
+          result.groups.add('staff');
+          result.roles.add('admin');
+          result.entitlements.add('read');
+          result.resourceKeys.add('dashboard');
 
-        expect(result.groups, equals(['staff']));
-        expect(result.roles, equals(['admin']));
-        expect(result.entitlements, equals(['read']));
-        expect(result.resourceKeys, equals(['dashboard']));
-      });
+          expect(result.groups, equals(['staff']));
+          expect(result.roles, equals(['admin']));
+          expect(result.entitlements, equals(['read']));
+          expect(result.resourceKeys, equals(['dashboard']));
+        },
+      );
 
       test('two default-constructed results do not share collection state', () {
         // A shared const (or any shared) default would leak mutations across
@@ -940,11 +943,11 @@ void main() {
               'level2': {
                 'level3': {
                   'level4': {
-                    'level5': {'value': 'deep'}
-                  }
-                }
-              }
-            }
+                    'level5': {'value': 'deep'},
+                  },
+                },
+              },
+            },
           },
         );
 

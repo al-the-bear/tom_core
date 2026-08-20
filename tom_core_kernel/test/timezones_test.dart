@@ -126,30 +126,42 @@ void main() {
     });
 
     group('findTimezone', () {
-      test('should throw TomTimezoneException when name does not match offset', () {
-        expect(
-          () => TomTimezone.findTimezone('UTC', 60),
-          throwsA(isA<TomTimezoneException>()),
-        );
-      });
+      test(
+        'should throw TomTimezoneException when name does not match offset',
+        () {
+          expect(
+            () => TomTimezone.findTimezone('UTC', 60),
+            throwsA(isA<TomTimezoneException>()),
+          );
+        },
+      );
 
-      test('should throw TomTimezoneException for America/New_York with wrong offset', () {
-        expect(
-          () => TomTimezone.findTimezone('America/New_York', 0),
-          throwsA(isA<TomTimezoneException>()),
-        );
-      });
+      test(
+        'should throw TomTimezoneException for America/New_York with wrong offset',
+        () {
+          expect(
+            () => TomTimezone.findTimezone('America/New_York', 0),
+            throwsA(isA<TomTimezoneException>()),
+          );
+        },
+      );
 
       test('should return timezone when name and offset match', () {
         final utcTz = TomTimezone.fromName('UTC');
-        final tzResult = TomTimezone.findTimezone('UTC', utcTz!.timezoneOffsetMin);
+        final tzResult = TomTimezone.findTimezone(
+          'UTC',
+          utcTz!.timezoneOffsetMin,
+        );
         expect(tzResult, isNotNull);
         expect(tzResult!.timezone, equals('UTC'));
       });
 
       test('should return Asia/Tokyo when name and offset match', () {
         final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
-        final tzResult = TomTimezone.findTimezone('Asia/Tokyo', tokyoTz!.timezoneOffsetMin);
+        final tzResult = TomTimezone.findTimezone(
+          'Asia/Tokyo',
+          tokyoTz!.timezoneOffsetMin,
+        );
         expect(tzResult, isNotNull);
         expect(tzResult!.timezone, equals('Asia/Tokyo'));
       });
@@ -167,11 +179,14 @@ void main() {
 
       // Bug §55: name-only lookup (offset null) must return the named zone
       // instead of throwing a name/offset-mismatch exception.
-      test('should return named zone when name is given and offset is null', () {
-        final tzResult = TomTimezone.findTimezone('Asia/Tokyo', null);
-        expect(tzResult, isNotNull);
-        expect(tzResult!.timezone, equals('Asia/Tokyo'));
-      });
+      test(
+        'should return named zone when name is given and offset is null',
+        () {
+          final tzResult = TomTimezone.findTimezone('Asia/Tokyo', null);
+          expect(tzResult, isNotNull);
+          expect(tzResult!.timezone, equals('Asia/Tokyo'));
+        },
+      );
 
       test('should return UTC when name is "UTC" and offset is null', () {
         final tzResult = TomTimezone.findTimezone('UTC', null);
@@ -232,25 +247,35 @@ void main() {
         expect(tokyo.getUtcOffsetOn(DateTime.utc(2024, 7, 15)), equals(540));
       });
 
-      test('should return different offsets for New York in winter vs summer', () {
-        final newYork = TomTimezone.fromName('America/New_York')!;
-        // Winter (EST): -300 minutes (-5 hours)
-        final winterOffset = newYork.getUtcOffsetOn(DateTime.utc(2024, 1, 15));
-        // Summer (EDT): -240 minutes (-4 hours)
-        final summerOffset = newYork.getUtcOffsetOn(DateTime.utc(2024, 7, 15));
-        expect(winterOffset, equals(-300));
-        expect(summerOffset, equals(-240));
-      });
+      test(
+        'should return different offsets for New York in winter vs summer',
+        () {
+          final newYork = TomTimezone.fromName('America/New_York')!;
+          // Winter (EST): -300 minutes (-5 hours)
+          final winterOffset = newYork.getUtcOffsetOn(
+            DateTime.utc(2024, 1, 15),
+          );
+          // Summer (EDT): -240 minutes (-4 hours)
+          final summerOffset = newYork.getUtcOffsetOn(
+            DateTime.utc(2024, 7, 15),
+          );
+          expect(winterOffset, equals(-300));
+          expect(summerOffset, equals(-240));
+        },
+      );
 
-      test('should return different offsets for Berlin in winter vs summer', () {
-        final berlin = TomTimezone.fromName('Europe/Berlin')!;
-        // Winter (CET): +60 minutes (+1 hour)
-        final winterOffset = berlin.getUtcOffsetOn(DateTime.utc(2024, 1, 15));
-        // Summer (CEST): +120 minutes (+2 hours)
-        final summerOffset = berlin.getUtcOffsetOn(DateTime.utc(2024, 7, 15));
-        expect(winterOffset, equals(60));
-        expect(summerOffset, equals(120));
-      });
+      test(
+        'should return different offsets for Berlin in winter vs summer',
+        () {
+          final berlin = TomTimezone.fromName('Europe/Berlin')!;
+          // Winter (CET): +60 minutes (+1 hour)
+          final winterOffset = berlin.getUtcOffsetOn(DateTime.utc(2024, 1, 15));
+          // Summer (CEST): +120 minutes (+2 hours)
+          final summerOffset = berlin.getUtcOffsetOn(DateTime.utc(2024, 7, 15));
+          expect(winterOffset, equals(60));
+          expect(summerOffset, equals(120));
+        },
+      );
     });
 
     group('toTZDateTime', () {
@@ -530,14 +555,20 @@ void main() {
     group('toString', () {
       test('should include timezone in string representation', () {
         final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
-        final tt = TomTimezoned.fromDateTime(DateTime.utc(2024, 6, 15, 12, 30), tokyoTz);
+        final tt = TomTimezoned.fromDateTime(
+          DateTime.utc(2024, 6, 15, 12, 30),
+          tokyoTz,
+        );
         final str = tt.toString();
         expect(str.contains('Asia/Tokyo'), isTrue);
       });
 
       test('toString output should be parseable by isTomTimezonedString', () {
         final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
-        final tt = TomTimezoned.fromDateTime(DateTime.utc(2024, 6, 15, 12, 30), tokyoTz);
+        final tt = TomTimezoned.fromDateTime(
+          DateTime.utc(2024, 6, 15, 12, 30),
+          tokyoTz,
+        );
         final str = tt.toString();
         expect(TomTimezoned.isTomTimezonedString(str), isTrue);
       });
@@ -551,19 +582,29 @@ void main() {
         );
       });
 
-      test('should return true for valid TomTimezoned string with complex timezone', () {
-        expect(
-          TomTimezoned.isTomTimezonedString('2024-06-15T12:30:00.000Z_-04:00_America/New_York'),
-          isTrue,
-        );
-      });
+      test(
+        'should return true for valid TomTimezoned string with complex timezone',
+        () {
+          expect(
+            TomTimezoned.isTomTimezonedString(
+              '2024-06-15T12:30:00.000Z_-04:00_America/New_York',
+            ),
+            isTrue,
+          );
+        },
+      );
 
-      test('should return true for valid TomTimezoned string with trailing space', () {
-        expect(
-          TomTimezoned.isTomTimezonedString('2024-06-15T12:30:00.000Z_+09:00_Asia/Tokyo '),
-          isTrue,
-        );
-      });
+      test(
+        'should return true for valid TomTimezoned string with trailing space',
+        () {
+          expect(
+            TomTimezoned.isTomTimezonedString(
+              '2024-06-15T12:30:00.000Z_+09:00_Asia/Tokyo ',
+            ),
+            isTrue,
+          );
+        },
+      );
 
       test('should return false for invalid string', () {
         expect(TomTimezoned.isTomTimezonedString('invalid'), isFalse);
@@ -583,7 +624,10 @@ void main() {
 
       test('should convert to DateTime in Tokyo timezone', () {
         final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
-        final tt = TomTimezoned.fromDateTime(DateTime.utc(2024, 6, 15, 3, 0), tokyoTz);
+        final tt = TomTimezoned.fromDateTime(
+          DateTime.utc(2024, 6, 15, 3, 0),
+          tokyoTz,
+        );
         final localDt = tt.toDateTime();
         // 3 AM UTC = 12 PM Tokyo
         expect(localDt.hour, equals(12));
@@ -612,13 +656,23 @@ void main() {
 
       test('should create date with Europe/Paris timezone', () {
         final parisTz = TomTimezone.fromName('Europe/Paris');
-        final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: parisTz);
+        final date = TomZonedDate(
+          year: 2024,
+          month: 6,
+          day: 15,
+          timezone: parisTz,
+        );
         expect(date.timezone.timezone, equals('Europe/Paris'));
       });
 
       test('should create date with America/Los_Angeles timezone', () {
         final laTz = TomTimezone.fromName('America/Los_Angeles');
-        final date = TomZonedDate(year: 2024, month: 12, day: 25, timezone: laTz);
+        final date = TomZonedDate(
+          year: 2024,
+          month: 12,
+          day: 25,
+          timezone: laTz,
+        );
         expect(date.timezone.timezone, equals('America/Los_Angeles'));
         expect(date.year, equals(2024));
         expect(date.month, equals(12));
@@ -653,14 +707,24 @@ void main() {
 
       test('should include timezone in output', () {
         final berlinTz = TomTimezone.fromName('Europe/Berlin');
-        final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: berlinTz);
+        final date = TomZonedDate(
+          year: 2024,
+          month: 6,
+          day: 15,
+          timezone: berlinTz,
+        );
         final str = date.toString();
         expect(str.contains('Europe/Berlin'), isTrue);
       });
 
       test('toString output should be parseable by parseFromString', () {
         final berlinTz = TomTimezone.fromName('Europe/Berlin');
-        final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: berlinTz);
+        final date = TomZonedDate(
+          year: 2024,
+          month: 6,
+          day: 15,
+          timezone: berlinTz,
+        );
         final str = date.toString();
         expect(TomZonedDate.isTomZonedDateString(str), isTrue);
         final parsed = TomZonedDate.parseFromString(str);
@@ -673,20 +737,40 @@ void main() {
 
     group('isTomZonedDateString', () {
       test('should return true for valid TomZonedDate string with UTC', () {
-        expect(TomZonedDate.isTomZonedDateString('@D@2024-06-15T00:00:00.000Z_Z_UTC'), isTrue);
+        expect(
+          TomZonedDate.isTomZonedDateString(
+            '@D@2024-06-15T00:00:00.000Z_Z_UTC',
+          ),
+          isTrue,
+        );
       });
 
       test('should return true for TomZonedDate with complex timezone', () {
-        expect(TomZonedDate.isTomZonedDateString('@D@2024-06-15T00:00:00.000Z_-07:00_America/Los_Angeles'), isTrue);
+        expect(
+          TomZonedDate.isTomZonedDateString(
+            '@D@2024-06-15T00:00:00.000Z_-07:00_America/Los_Angeles',
+          ),
+          isTrue,
+        );
       });
 
       test('should return true for TomZonedDate with trailing space', () {
-        expect(TomZonedDate.isTomZonedDateString('@D@2024-06-15T00:00:00.000Z_+09:00_Asia/Tokyo '), isTrue);
+        expect(
+          TomZonedDate.isTomZonedDateString(
+            '@D@2024-06-15T00:00:00.000Z_+09:00_Asia/Tokyo ',
+          ),
+          isTrue,
+        );
       });
 
       test('should return false for invalid string', () {
         expect(TomZonedDate.isTomZonedDateString('invalid'), isFalse);
-        expect(TomZonedDate.isTomZonedDateString('@X@2024-06-15T12:30:00.000Z_Z_UTC'), isFalse);
+        expect(
+          TomZonedDate.isTomZonedDateString(
+            '@X@2024-06-15T12:30:00.000Z_Z_UTC',
+          ),
+          isFalse,
+        );
       });
     });
 
@@ -698,7 +782,10 @@ void main() {
       test('should return false for DateTime with time components', () {
         expect(TomZonedDate.isDate(DateTime.utc(2024, 6, 15, 12)), isFalse);
         expect(TomZonedDate.isDate(DateTime.utc(2024, 6, 15, 0, 30)), isFalse);
-        expect(TomZonedDate.isDate(DateTime.utc(2024, 6, 15, 0, 0, 1)), isFalse);
+        expect(
+          TomZonedDate.isDate(DateTime.utc(2024, 6, 15, 0, 0, 1)),
+          isFalse,
+        );
       });
     });
   });
@@ -774,7 +861,13 @@ void main() {
 
       test('toString output should be parseable by parseFromString', () {
         final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
-        final time = TomZonedTime(hour: 14, minute: 30, second: 45, millisecond: 123, timezone: tokyoTz);
+        final time = TomZonedTime(
+          hour: 14,
+          minute: 30,
+          second: 45,
+          millisecond: 123,
+          timezone: tokyoTz,
+        );
         final str = time.toString();
         expect(TomZonedTime.isTomZonedTimeString(str), isTrue);
         final parsed = TomZonedTime.parseFromString(str);
@@ -788,20 +881,40 @@ void main() {
 
     group('isTomZonedTimeString', () {
       test('should return true for valid TomZonedTime string with UTC', () {
-        expect(TomZonedTime.isTomZonedTimeString('@T@1970-01-01T14:30:45.000Z_Z_UTC'), isTrue);
+        expect(
+          TomZonedTime.isTomZonedTimeString(
+            '@T@1970-01-01T14:30:45.000Z_Z_UTC',
+          ),
+          isTrue,
+        );
       });
 
       test('should return true for TomZonedTime with complex timezone', () {
-        expect(TomZonedTime.isTomZonedTimeString('@T@1970-01-01T09:00:00.000Z_+09:00_Asia/Tokyo'), isTrue);
+        expect(
+          TomZonedTime.isTomZonedTimeString(
+            '@T@1970-01-01T09:00:00.000Z_+09:00_Asia/Tokyo',
+          ),
+          isTrue,
+        );
       });
 
       test('should return true for TomZonedTime with trailing space', () {
-        expect(TomZonedTime.isTomZonedTimeString('@T@1970-01-01T09:00:00.000Z_+09:00_Asia/Tokyo '), isTrue);
+        expect(
+          TomZonedTime.isTomZonedTimeString(
+            '@T@1970-01-01T09:00:00.000Z_+09:00_Asia/Tokyo ',
+          ),
+          isTrue,
+        );
       });
 
       test('should return false for invalid string', () {
         expect(TomZonedTime.isTomZonedTimeString('invalid'), isFalse);
-        expect(TomZonedTime.isTomZonedTimeString('@D@2024-06-15T00:00:00.000Z_Z_UTC'), isFalse);
+        expect(
+          TomZonedTime.isTomZonedTimeString(
+            '@D@2024-06-15T00:00:00.000Z_Z_UTC',
+          ),
+          isFalse,
+        );
       });
     });
 
@@ -820,11 +933,11 @@ void main() {
       test('should return DateTime with correct time on given date', () {
         final nyTz = TomTimezone.fromName('America/New_York')!;
         final standup = TomZonedTime(hour: 9, minute: 0, timezone: nyTz);
-        
+
         // Apply to a specific date
         final march10 = DateTime(2024, 3, 10);
         final result = standup.inTimezoneOn(march10);
-        
+
         expect(result.year, equals(2024));
         expect(result.month, equals(3));
         expect(result.day, equals(10));
@@ -835,29 +948,33 @@ void main() {
       test('should handle DST transition correctly', () {
         final nyTz = TomTimezone.fromName('America/New_York')!;
         final time = TomZonedTime(hour: 9, minute: 0, timezone: nyTz);
-        
+
         // March 10, 2024 - DST starts (clocks spring forward at 2 AM)
         final dstDay = DateTime(2024, 3, 10);
         final resultDst = time.inTimezoneOn(dstDay);
-        
+
         // January 15, 2024 - Standard time
         final standardDay = DateTime(2024, 1, 15);
         final resultStandard = time.inTimezoneOn(standardDay);
-        
+
         // Both should show 9:00 local time, but different UTC
         expect(resultDst.hour, equals(9));
         expect(resultStandard.hour, equals(9));
-        
+
         // DST offset is -4:00, Standard is -5:00
         expect(resultDst.timeZoneOffset.inHours, equals(-4));
         expect(resultStandard.timeZoneOffset.inHours, equals(-5));
       });
 
       test('should work with UTC timezone', () {
-        final utcTime = TomZonedTime(hour: 14, minute: 30, timezone: TomTimezone.utc);
+        final utcTime = TomZonedTime(
+          hour: 14,
+          minute: 30,
+          timezone: TomTimezone.utc,
+        );
         final someDate = DateTime(2024, 6, 15);
         final result = utcTime.inTimezoneOn(someDate);
-        
+
         expect(result.year, equals(2024));
         expect(result.month, equals(6));
         expect(result.day, equals(15));
@@ -869,13 +986,16 @@ void main() {
       test('should preserve seconds and milliseconds', () {
         final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
         final time = TomZonedTime(
-          hour: 14, minute: 30, second: 45, millisecond: 123,
+          hour: 14,
+          minute: 30,
+          second: 45,
+          millisecond: 123,
           timezone: tokyo,
         );
-        
+
         final date = DateTime(2024, 6, 15);
         final result = time.inTimezoneOn(date);
-        
+
         expect(result.second, equals(45));
         expect(result.millisecond, equals(123));
       });
@@ -886,11 +1006,14 @@ void main() {
     test('should create TomTimezoned with local time converted to UTC', () {
       final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
       final tt = TomTimezoned(
-        year: 2024, month: 6, day: 15,
-        hour: 14, minute: 30,
+        year: 2024,
+        month: 6,
+        day: 15,
+        hour: 14,
+        minute: 30,
         timezone: tokyo,
       );
-      
+
       // Tokyo is UTC+9, so 14:30 Tokyo = 05:30 UTC
       expect(tt.localHour, equals(14));
       expect(tt.localMinute, equals(30));
@@ -901,7 +1024,7 @@ void main() {
 
     test('should default to UTC timezone', () {
       final tt = TomTimezoned(year: 2024, month: 6, day: 15, hour: 12);
-      
+
       expect(tt.timezone.timezone, equals('UTC'));
       expect(tt.hour, equals(12));
       expect(tt.localHour, equals(12));
@@ -911,11 +1034,14 @@ void main() {
       final nyTz = TomTimezone.fromName('America/New_York')!;
       // June 15, 2024 - NY is in EDT (UTC-4)
       final tt = TomTimezoned(
-        year: 2024, month: 6, day: 15,
-        hour: 10, minute: 0,
+        year: 2024,
+        month: 6,
+        day: 15,
+        hour: 10,
+        minute: 0,
         timezone: nyTz,
       );
-      
+
       // 10:00 EDT = 14:00 UTC
       expect(tt.localHour, equals(10));
       expect(tt.hour, equals(14)); // UTC
@@ -925,11 +1051,14 @@ void main() {
       final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
       // Early morning in Tokyo = previous day in UTC
       final tt = TomTimezoned(
-        year: 2024, month: 6, day: 15,
-        hour: 2, minute: 0,
+        year: 2024,
+        month: 6,
+        day: 15,
+        hour: 2,
+        minute: 0,
         timezone: tokyo,
       );
-      
+
       // 02:00 June 15 Tokyo = 17:00 June 14 UTC
       expect(tt.localDay, equals(15));
       expect(tt.localHour, equals(2));
@@ -1022,7 +1151,13 @@ void main() {
 
     group('toString', () {
       test('should return string with correct prefix', () {
-        final dt = TomZonedDateTime(year: 2024, month: 6, day: 15, hour: 14, minute: 30);
+        final dt = TomZonedDateTime(
+          year: 2024,
+          month: 6,
+          day: 15,
+          hour: 14,
+          minute: 30,
+        );
         final str = dt.toString();
         expect(str.startsWith(TomZonedDateTime.serializationPrefix), isTrue);
         expect(str.contains('2024-06-15'), isTrue);
@@ -1031,7 +1166,14 @@ void main() {
 
       test('should include timezone in output', () {
         final berlinTz = TomTimezone.fromName('Europe/Berlin');
-        final dt = TomZonedDateTime(year: 2024, month: 6, day: 15, hour: 14, minute: 30, timezone: berlinTz);
+        final dt = TomZonedDateTime(
+          year: 2024,
+          month: 6,
+          day: 15,
+          hour: 14,
+          minute: 30,
+          timezone: berlinTz,
+        );
         final str = dt.toString();
         expect(str.contains('Europe/Berlin'), isTrue);
       });
@@ -1039,8 +1181,13 @@ void main() {
       test('toString output should be parseable by parseFromString', () {
         final berlinTz = TomTimezone.fromName('Europe/Berlin');
         final dt = TomZonedDateTime(
-          year: 2024, month: 6, day: 15, 
-          hour: 14, minute: 30, second: 45, millisecond: 123,
+          year: 2024,
+          month: 6,
+          day: 15,
+          hour: 14,
+          minute: 30,
+          second: 45,
+          millisecond: 123,
           timezone: berlinTz,
         );
         final str = dt.toString();
@@ -1059,20 +1206,40 @@ void main() {
 
     group('isTomZonedDateTimeString', () {
       test('should return true for valid TomZonedDateTime string with UTC', () {
-        expect(TomZonedDateTime.isTomZonedDateTimeString('@X@2024-06-15T14:30:00.000Z_Z_UTC'), isTrue);
+        expect(
+          TomZonedDateTime.isTomZonedDateTimeString(
+            '@X@2024-06-15T14:30:00.000Z_Z_UTC',
+          ),
+          isTrue,
+        );
       });
 
       test('should return true for TomZonedDateTime with complex timezone', () {
-        expect(TomZonedDateTime.isTomZonedDateTimeString('@X@2024-06-15T14:30:00.000Z_-04:00_America/New_York'), isTrue);
+        expect(
+          TomZonedDateTime.isTomZonedDateTimeString(
+            '@X@2024-06-15T14:30:00.000Z_-04:00_America/New_York',
+          ),
+          isTrue,
+        );
       });
 
       test('should return true for TomZonedDateTime with trailing space', () {
-        expect(TomZonedDateTime.isTomZonedDateTimeString('@X@2024-06-15T14:30:00.000Z_+09:00_Asia/Tokyo '), isTrue);
+        expect(
+          TomZonedDateTime.isTomZonedDateTimeString(
+            '@X@2024-06-15T14:30:00.000Z_+09:00_Asia/Tokyo ',
+          ),
+          isTrue,
+        );
       });
 
       test('should return false for invalid string', () {
         expect(TomZonedDateTime.isTomZonedDateTimeString('invalid'), isFalse);
-        expect(TomZonedDateTime.isTomZonedDateTimeString('@D@2024-06-15T00:00:00.000Z_Z_UTC'), isFalse);
+        expect(
+          TomZonedDateTime.isTomZonedDateTimeString(
+            '@D@2024-06-15T00:00:00.000Z_Z_UTC',
+          ),
+          isFalse,
+        );
       });
     });
 
@@ -1305,7 +1472,10 @@ void main() {
         expect(nyDt.localMinute, equals(tzNy.minute));
 
         // Both TZDateTimes represent the same instant
-        expect(tzTokyo.millisecondsSinceEpoch, equals(tzNy.millisecondsSinceEpoch));
+        expect(
+          tzTokyo.millisecondsSinceEpoch,
+          equals(tzNy.millisecondsSinceEpoch),
+        );
       });
 
       test('should convert to same timezone (no-op)', () {
@@ -1432,11 +1602,7 @@ void main() {
         final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
         final utc = TomTimezone.utc;
 
-        final tokyoTime = TomZonedTime(
-          hour: 14,
-          minute: 30,
-          timezone: tokyo,
-        );
+        final tokyoTime = TomZonedTime(hour: 14, minute: 30, timezone: tokyo);
 
         final utcTime = tokyoTime.convertToTimezone(utc);
 
@@ -1451,11 +1617,7 @@ void main() {
         final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
 
         // 23:00 UTC = 08:00 next day in Tokyo
-        final utcTime = TomZonedTime(
-          hour: 23,
-          minute: 0,
-          timezone: utc,
-        );
+        final utcTime = TomZonedTime(hour: 23, minute: 0, timezone: utc);
 
         final tokyoTime = utcTime.convertToTimezone(tokyo);
 
@@ -1537,8 +1699,10 @@ void main() {
         final backToTokyo = toLa.convertToTimezone(tokyo);
 
         // All should represent the same instant
-        expect(original.toUtc().millisecondsSinceEpoch,
-            equals(backToTokyo.toUtc().millisecondsSinceEpoch));
+        expect(
+          original.toUtc().millisecondsSinceEpoch,
+          equals(backToTokyo.toUtc().millisecondsSinceEpoch),
+        );
         expect(backToTokyo.localHour, equals(original.localHour));
       });
     });
@@ -1591,4 +1755,3 @@ void main() {
     });
   });
 }
-

@@ -298,46 +298,62 @@ void main() {
     // propagate correctly" across async work, which would make the choice
     // between them a correctness question rather than a typing one.
     group('async propagation is identical in both run variants', () {
-      test('the synchronous variant keeps the context across an await', () async {
-        final context = TomExecutionContext({
-          'traceId': TomContextEntry<String>(() => 'trace-1'),
-        });
+      test(
+        'the synchronous variant keeps the context across an await',
+        () async {
+          final context = TomExecutionContext({
+            'traceId': TomContextEntry<String>(() => 'trace-1'),
+          });
 
-        final result = await context.runInContext(() async {
-          final before =
-              TomExecutionContext.getValueFromCurrentZone<String>('traceId');
-          await Future<void>.delayed(Duration.zero);
-          final after =
-              TomExecutionContext.getValueFromCurrentZone<String>('traceId');
-          return [before, after];
-        });
+          final result = await context.runInContext(() async {
+            final before = TomExecutionContext.getValueFromCurrentZone<String>(
+              'traceId',
+            );
+            await Future<void>.delayed(Duration.zero);
+            final after = TomExecutionContext.getValueFromCurrentZone<String>(
+              'traceId',
+            );
+            return [before, after];
+          });
 
-        expect(result, equals(['trace-1', 'trace-1']));
-      });
+          expect(result, equals(['trace-1', 'trace-1']));
+        },
+      );
 
-      test('a callback scheduled from a synchronous body still sees the context',
-          () async {
-        // The exact shape the old warning called out: a void body that fires
-        // off async work. The context reaches the callback even though it runs
-        // after runInContext has already returned.
-        final context = TomExecutionContext({
-          'traceId': TomContextEntry<String>(() => 'trace-1'),
-        });
+      test(
+        'a callback scheduled from a synchronous body still sees the context',
+        () async {
+          // The exact shape the old warning called out: a void body that fires
+          // off async work. The context reaches the callback even though it runs
+          // after runInContext has already returned.
+          final context = TomExecutionContext({
+            'traceId': TomContextEntry<String>(() => 'trace-1'),
+          });
 
-        final seen = <String?>[];
-        context.runInContext(() {
-          // unawaited() only marks the drop as intentional for the linter; the
-          // dropped future is the point of the test.
-          unawaited(Future<void>.delayed(Duration.zero).then((_) {
-            seen.add(
-                TomExecutionContext.getValueFromCurrentZone<String>('traceId'));
-          }));
-        });
+          final seen = <String?>[];
+          context.runInContext(() {
+            // unawaited() only marks the drop as intentional for the linter; the
+            // dropped future is the point of the test.
+            unawaited(
+              Future<void>.delayed(Duration.zero).then((_) {
+                seen.add(
+                  TomExecutionContext.getValueFromCurrentZone<String>(
+                    'traceId',
+                  ),
+                );
+              }),
+            );
+          });
 
-        expect(seen, isEmpty, reason: 'the call returned before the callback');
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-        expect(seen, equals(['trace-1']));
-      });
+          expect(
+            seen,
+            isEmpty,
+            reason: 'the call returned before the callback',
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          expect(seen, equals(['trace-1']));
+        },
+      );
     });
 
     group('getEntry', () {
@@ -384,7 +400,9 @@ void main() {
 
         String? result;
         context.runInContext(() {
-          result = TomExecutionContext.getValueFromCurrentZone<String>('userId');
+          result = TomExecutionContext.getValueFromCurrentZone<String>(
+            'userId',
+          );
         });
 
         expect(result, equals('user-123'));
@@ -395,14 +413,18 @@ void main() {
 
         String? result;
         context.runInContext(() {
-          result = TomExecutionContext.getValueFromCurrentZone<String>('missing');
+          result = TomExecutionContext.getValueFromCurrentZone<String>(
+            'missing',
+          );
         });
 
         expect(result, isNull);
       });
 
       test('should return null when no context in zone', () {
-        final result = TomExecutionContext.getValueFromCurrentZone<String>('anyKey');
+        final result = TomExecutionContext.getValueFromCurrentZone<String>(
+          'anyKey',
+        );
 
         expect(result, isNull);
       });
@@ -414,15 +436,22 @@ void main() {
         // without that entry — which is why a bare null-check failure is not
         // enough to diagnose the cause.
         expect(getFromCurrentZone<TomExecutionContext>(), isNull);
-        expect(TomExecutionContext.getValueFromCurrentZone<String>('userId'),
-            isNull);
+        expect(
+          TomExecutionContext.getValueFromCurrentZone<String>('userId'),
+          isNull,
+        );
 
         TomExecutionContext({}).runInContext(() {
-          expect(getFromCurrentZone<TomExecutionContext>(), isNotNull,
-              reason: 'the context is present here');
-          expect(TomExecutionContext.getValueFromCurrentZone<String>('userId'),
-              isNull,
-              reason: 'but the entry is not — same null, different cause');
+          expect(
+            getFromCurrentZone<TomExecutionContext>(),
+            isNotNull,
+            reason: 'the context is present here',
+          );
+          expect(
+            TomExecutionContext.getValueFromCurrentZone<String>('userId'),
+            isNull,
+            reason: 'but the entry is not — same null, different cause',
+          );
         });
       });
     });
@@ -446,11 +475,16 @@ void main() {
         String? byName;
         context.runInContext(() {
           byType = getFromCurrentZone<String>();
-          byName = TomExecutionContext.getValueFromCurrentZone<String>('userId');
+          byName = TomExecutionContext.getValueFromCurrentZone<String>(
+            'userId',
+          );
         });
 
-        expect(byType, isNull,
-            reason: 'the zone holds no String key, only Type keys');
+        expect(
+          byType,
+          isNull,
+          reason: 'the zone holds no String key, only Type keys',
+        );
         expect(byName, equals('12345'));
       });
 
@@ -477,13 +511,17 @@ void main() {
         String? viaEntryName;
         context.runInContext(() {
           viaContainer = getFromCurrentZone<TomZoneValues>()?['requestId'];
-          viaEntryName =
-              TomExecutionContext.getValueFromCurrentZone<String>('requestId');
+          viaEntryName = TomExecutionContext.getValueFromCurrentZone<String>(
+            'requestId',
+          );
         }, zoneValues: {'requestId': 'req-7'});
 
         expect(viaContainer, equals('req-7'));
-        expect(viaEntryName, isNull,
-            reason: 'zoneValues are not entries of the context map');
+        expect(
+          viaEntryName,
+          isNull,
+          reason: 'zoneValues are not entries of the context map',
+        );
       });
 
       test('a zone value key is not installed in the zone under itself', () {
@@ -520,31 +558,39 @@ void main() {
         expect(user, equals('12345'));
       });
 
-      test('a Type key passed as a zone value is not reachable by its type', () {
-        // The higher-consequence form of the same surprise. `zoneValues:
-        // {TomPrincipal: p}` is the *correct* idiom for runZoned — this file
-        // uses it that way in the TomContextProviders group below — so it is
-        // easy to carry over to runInContext, where it silently installs
-        // nothing and every provider falls back to its default.
-        final principal = TomPrincipal(organization: 'acme');
-        final context = TomExecutionContext({});
+      test(
+        'a Type key passed as a zone value is not reachable by its type',
+        () {
+          // The higher-consequence form of the same surprise. `zoneValues:
+          // {TomPrincipal: p}` is the *correct* idiom for runZoned — this file
+          // uses it that way in the TomContextProviders group below — so it is
+          // easy to carry over to runInContext, where it silently installs
+          // nothing and every provider falls back to its default.
+          final principal = TomPrincipal(organization: 'acme');
+          final context = TomExecutionContext({});
 
-        TomPrincipal? viaType;
-        Object? viaContainer;
-        String? organization;
-        context.runInContext(() {
-          viaType = getFromCurrentZone<TomPrincipal>();
-          viaContainer =
-              getFromCurrentZone<TomZoneValues>()?[TomPrincipal];
-          organization = TomContextProviders.getOrganization();
-        }, zoneValues: {TomPrincipal: principal});
+          TomPrincipal? viaType;
+          Object? viaContainer;
+          String? organization;
+          context.runInContext(() {
+            viaType = getFromCurrentZone<TomPrincipal>();
+            viaContainer = getFromCurrentZone<TomZoneValues>()?[TomPrincipal];
+            organization = TomContextProviders.getOrganization();
+          }, zoneValues: {TomPrincipal: principal});
 
-        expect(viaType, isNull,
-            reason: 'the Type key goes into the container, not the zone');
-        expect(identical(viaContainer, principal), isTrue);
-        expect(organization, equals('default'),
-            reason: 'providers read the zone, so they never see the principal');
-      });
+          expect(
+            viaType,
+            isNull,
+            reason: 'the Type key goes into the container, not the zone',
+          );
+          expect(identical(viaContainer, principal), isTrue);
+          expect(
+            organization,
+            equals('default'),
+            reason: 'providers read the zone, so they never see the principal',
+          );
+        },
+      );
 
       // The two properties that justify the container indirection. Neither is
       // achievable by handing the caller's map straight to runZoned: raw zone
@@ -610,12 +656,21 @@ void main() {
           addedLeaked = values?['added'];
         });
 
-        expect(inheritedByInner, equals('outer'),
-            reason: 'the write made before nesting is inherited');
-        expect(outerAfter, equals('outer'),
-            reason: "the inner run's overwrite stayed inside it");
-        expect(addedLeaked, isNull,
-            reason: 'a key added by the inner run never escaped');
+        expect(
+          inheritedByInner,
+          equals('outer'),
+          reason: 'the write made before nesting is inherited',
+        );
+        expect(
+          outerAfter,
+          equals('outer'),
+          reason: "the inner run's overwrite stayed inside it",
+        );
+        expect(
+          addedLeaked,
+          isNull,
+          reason: 'a key added by the inner run never escaped',
+        );
       });
     });
 
@@ -638,17 +693,26 @@ void main() {
         });
 
         expect(context.contextMap['tenant']?.type, equals(dynamic));
-        expect(context.getEntry<String>('tenant'), isNull,
-            reason: 'getEntry requires entry.type == T exactly');
-        expect(context.getEntry<dynamic>('tenant')?.value, equals('acme'),
-            reason: 'the value is there — only the typed read misses it');
+        expect(
+          context.getEntry<String>('tenant'),
+          isNull,
+          reason: 'getEntry requires entry.type == T exactly',
+        );
+        expect(
+          context.getEntry<dynamic>('tenant')?.value,
+          equals('acme'),
+          reason: 'the value is there — only the typed read misses it',
+        );
       });
 
       test('the same raw expression infers the value type outside the map', () {
         final entry = TomContextEntry(() => 'acme');
 
-        expect(entry.type, equals(String),
-            reason: 'no downward context, so inference comes from the value');
+        expect(
+          entry.type,
+          equals(String),
+          reason: 'no downward context, so inference comes from the value',
+        );
       });
 
       test('a parameterised entry is read back by its value type', () {
@@ -658,7 +722,9 @@ void main() {
 
         String? tenant;
         context.runInContext(() {
-          tenant = TomExecutionContext.getValueFromCurrentZone<String>('tenant');
+          tenant = TomExecutionContext.getValueFromCurrentZone<String>(
+            'tenant',
+          );
         });
 
         expect(context.contextMap['tenant']?.type, equals(String));
@@ -674,8 +740,11 @@ void main() {
           'tenant': TomContextEntry<String>(() => 'acme'),
         });
 
-        expect(context.getEntry<Object>('tenant'), isNull,
-            reason: 'Object is a supertype of String, and still misses');
+        expect(
+          context.getEntry<Object>('tenant'),
+          isNull,
+          reason: 'Object is a supertype of String, and still misses',
+        );
         expect(context.getEntry<int>('tenant'), isNull);
         expect(context.getEntry<String>('tenant')?.value, equals('acme'));
       });
@@ -866,7 +935,9 @@ void main() {
     group('constructor with existingValues', () {
       test('should merge existing values', () {
         final existing = TomZoneValues({'parent1': 'parentVal1'});
-        final child = TomZoneValues({'child1': 'childVal1'}, existingValues: existing);
+        final child = TomZoneValues({
+          'child1': 'childVal1',
+        }, existingValues: existing);
 
         expect(child['parent1'], equals('parentVal1'));
         expect(child['child1'], equals('childVal1'));
@@ -874,7 +945,9 @@ void main() {
 
       test('should allow child to override parent values', () {
         final existing = TomZoneValues({'shared': 'parentValue'});
-        final child = TomZoneValues({'shared': 'childValue'}, existingValues: existing);
+        final child = TomZoneValues({
+          'shared': 'childValue',
+        }, existingValues: existing);
 
         expect(child['shared'], equals('childValue'));
       });
@@ -1042,10 +1115,10 @@ void main() {
     });
 
     test('should return default values when no principal', () {
-      final org =
-          tomExecutionContext.contextMap['organization']?.contextFunction();
-      final lang =
-          tomExecutionContext.contextMap['language']?.contextFunction();
+      final org = tomExecutionContext.contextMap['organization']
+          ?.contextFunction();
+      final lang = tomExecutionContext.contextMap['language']
+          ?.contextFunction();
 
       expect(org, equals('default'));
       expect(lang, equals('en'));

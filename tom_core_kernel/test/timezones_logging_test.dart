@@ -76,11 +76,13 @@ void main() {
       );
     });
 
-    test('tccc3-04: the database itself loaded, so no failure was reported',
-        () {
-      // Guards the loud branch against firing on a normal run: an ERROR here
-      // would mean "no locations loaded", which plainly is not the case.
-      expect(TomTimezone.timezones.length, greaterThan(100));
-    });
+    test(
+      'tccc3-04: the database itself loaded, so no failure was reported',
+      () {
+        // Guards the loud branch against firing on a normal run: an ERROR here
+        // would mean "no locations loaded", which plainly is not the case.
+        expect(TomTimezone.timezones.length, greaterThan(100));
+      },
+    );
   });
 }

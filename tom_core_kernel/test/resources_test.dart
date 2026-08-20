@@ -20,11 +20,14 @@ void main() {
     // Constructor Tests
     // -------------------------------------------------------------------------
     group('constructor', () {
-      test('should create provider with empty resources when no loader is set', () {
-        TomTextResourceProvider.loader = null;
-        final provider = TomTextResourceProvider();
-        expect(provider.resources, isEmpty);
-      });
+      test(
+        'should create provider with empty resources when no loader is set',
+        () {
+          TomTextResourceProvider.loader = null;
+          final provider = TomTextResourceProvider();
+          expect(provider.resources, isEmpty);
+        },
+      );
 
       test('should create provider using loader function when set', () {
         TomTextResourceProvider.loader = () => {'key': 'value'};
@@ -46,9 +49,7 @@ void main() {
 
     group('TomTextResourceProvider.load', () {
       test('should create provider from custom loader function', () {
-        final provider = TomTextResourceProvider.load(
-          () => {'custom': 'data'},
-        );
+        final provider = TomTextResourceProvider.load(() => {'custom': 'data'});
         expect(provider.resources, equals({'custom': 'data'}));
       });
 
@@ -62,11 +63,13 @@ void main() {
       });
 
       test('should support nested map structures', () {
-        final provider = TomTextResourceProvider.load(() => {
-          'level1': {
-            'level2': {'level3': 'deep value'},
+        final provider = TomTextResourceProvider.load(
+          () => {
+            'level1': {
+              'level2': {'level3': 'deep value'},
+            },
           },
-        });
+        );
         expect(
           provider.resources['level1']['level2']['level3'],
           equals('deep value'),
@@ -132,17 +135,24 @@ void main() {
         expect(identical(provider1, provider2), isTrue);
       });
 
-      test('should create instance using loader if set and no instance exists', () {
-        TomTextResourceProvider.loader = () => {'loaded': 'resource'};
-        // Force reset singleton by setting explicitly
-        TomTextResourceProvider.setAppResourceProvider(TomTextResourceProvider());
-        final provider = TomTextResourceProvider.getAppResources();
-        expect(provider.resources, equals({'loaded': 'resource'}));
-      });
+      test(
+        'should create instance using loader if set and no instance exists',
+        () {
+          TomTextResourceProvider.loader = () => {'loaded': 'resource'};
+          // Force reset singleton by setting explicitly
+          TomTextResourceProvider.setAppResourceProvider(
+            TomTextResourceProvider(),
+          );
+          final provider = TomTextResourceProvider.getAppResources();
+          expect(provider.resources, equals({'loaded': 'resource'}));
+        },
+      );
 
       test('should return same provider on subsequent calls', () {
         TomTextResourceProvider.loader = () => {'test': 'value'};
-        TomTextResourceProvider.setAppResourceProvider(TomTextResourceProvider());
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider(),
+        );
         final first = TomTextResourceProvider.getAppResources();
         final second = TomTextResourceProvider.getAppResources();
         expect(identical(first, second), isTrue);
@@ -177,12 +187,15 @@ void main() {
         expect(provider.exists('messages.goodbye'), isFalse);
       });
 
-      test('should return false for deeply nested path that does not exist', () {
-        final provider = TomTextResourceProvider.from({
-          'level1': {'level2': 'value'},
-        });
-        expect(provider.exists('level1.level2.level3'), isFalse);
-      });
+      test(
+        'should return false for deeply nested path that does not exist',
+        () {
+          final provider = TomTextResourceProvider.from({
+            'level1': {'level2': 'value'},
+          });
+          expect(provider.exists('level1.level2.level3'), isFalse);
+        },
+      );
 
       test('should return true for deeply nested path that exists', () {
         final provider = TomTextResourceProvider.from({
@@ -217,12 +230,15 @@ void main() {
         expect(provider.exists('items'), isFalse);
       });
 
-      test('should return false when path contains non-existent intermediate key', () {
-        final provider = TomTextResourceProvider.from({
-          'root': {'child': 'value'},
-        });
-        expect(provider.exists('root.missing.child'), isFalse);
-      });
+      test(
+        'should return false when path contains non-existent intermediate key',
+        () {
+          final provider = TomTextResourceProvider.from({
+            'root': {'child': 'value'},
+          });
+          expect(provider.exists('root.missing.child'), isFalse);
+        },
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -259,9 +275,7 @@ void main() {
       });
 
       test('should return key when intermediate path is not a map', () {
-        final provider = TomTextResourceProvider.from({
-          'screens': 'not a map',
-        });
+        final provider = TomTextResourceProvider.from({'screens': 'not a map'});
         expect(
           provider.getText('screens.home.title'),
           equals('screens.home.title'),
@@ -284,9 +298,7 @@ void main() {
       });
 
       test('should return string with unicode characters', () {
-        final provider = TomTextResourceProvider.from({
-          'unicode': '日本語テキスト',
-        });
+        final provider = TomTextResourceProvider.from({'unicode': '日本語テキスト'});
         expect(provider.getText('unicode'), equals('日本語テキスト'));
       });
 
@@ -439,11 +451,14 @@ void main() {
     // Constructor Tests
     // -------------------------------------------------------------------------
     group('constructor', () {
-      test('should create provider with empty resources when no loader is set', () {
-        TomConfigResourceProvider.loader = null;
-        final provider = TomConfigResourceProvider();
-        expect(provider.resources, isEmpty);
-      });
+      test(
+        'should create provider with empty resources when no loader is set',
+        () {
+          TomConfigResourceProvider.loader = null;
+          final provider = TomConfigResourceProvider();
+          expect(provider.resources, isEmpty);
+        },
+      );
 
       test('should create provider using loader function when set', () {
         TomConfigResourceProvider.loader = () => {'setting': true};
@@ -481,11 +496,13 @@ void main() {
       });
 
       test('should support nested map structures', () {
-        final provider = TomConfigResourceProvider.load(() => {
-          'database': {
-            'connection': {'pool': 10},
+        final provider = TomConfigResourceProvider.load(
+          () => {
+            'database': {
+              'connection': {'pool': 10},
+            },
           },
-        });
+        );
         expect(
           provider.resources['database']['connection']['pool'],
           equals(10),
@@ -635,12 +652,15 @@ void main() {
         expect(provider.exists('nested'), isTrue);
       });
 
-      test('should return false when path contains non-existent intermediate key', () {
-        final provider = TomConfigResourceProvider.from({
-          'root': {'child': 'value'},
-        });
-        expect(provider.exists('root.missing.child'), isFalse);
-      });
+      test(
+        'should return false when path contains non-existent intermediate key',
+        () {
+          final provider = TomConfigResourceProvider.from({
+            'root': {'child': 'value'},
+          });
+          expect(provider.exists('root.missing.child'), isFalse);
+        },
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -818,26 +838,29 @@ void main() {
     });
 
     group('provider independence', () {
-      test('should allow text and config providers to coexist independently', () {
-        final textProvider = TomTextResourceProvider.from({
-          'label': 'Text Label',
-        });
-        final configProvider = TomConfigResourceProvider.from({
-          'setting': 42,
-        });
+      test(
+        'should allow text and config providers to coexist independently',
+        () {
+          final textProvider = TomTextResourceProvider.from({
+            'label': 'Text Label',
+          });
+          final configProvider = TomConfigResourceProvider.from({
+            'setting': 42,
+          });
 
-        TomTextResourceProvider.setAppResourceProvider(textProvider);
-        TomConfigResourceProvider.setAppConfigProvider(configProvider);
+          TomTextResourceProvider.setAppResourceProvider(textProvider);
+          TomConfigResourceProvider.setAppConfigProvider(configProvider);
 
-        expect(
-          TomTextResourceProvider.getAppResources().getText('label'),
-          equals('Text Label'),
-        );
-        expect(
-          TomConfigResourceProvider.getAppConfig().getText('setting'),
-          equals(42),
-        );
-      });
+          expect(
+            TomTextResourceProvider.getAppResources().getText('label'),
+            equals('Text Label'),
+          );
+          expect(
+            TomConfigResourceProvider.getAppConfig().getText('setting'),
+            equals(42),
+          );
+        },
+      );
 
       test('should have separate singleton instances', () {
         TomTextResourceProvider.setAppResourceProvider(
@@ -876,14 +899,17 @@ void main() {
         expect(provider.exists('a.b'), isTrue);
       });
 
-      test('object family returns a non-String value at a hierarchical path', () {
-        final provider = TomTextResourceProvider.from({
-          'app': {'retries': 3},
-        });
-        expect(provider.getObject('app.retries'), equals(3));
-        expect(provider.getObjectOrNull('app.retries'), equals(3));
-        expect(provider.existsObject('app.retries'), isTrue);
-      });
+      test(
+        'object family returns a non-String value at a hierarchical path',
+        () {
+          final provider = TomTextResourceProvider.from({
+            'app': {'retries': 3},
+          });
+          expect(provider.getObject('app.retries'), equals(3));
+          expect(provider.getObjectOrNull('app.retries'), equals(3));
+          expect(provider.existsObject('app.retries'), isTrue);
+        },
+      );
 
       test('object family surfaces a non-String tree hit that the text family '
           'reports absent', () {
@@ -908,7 +934,10 @@ void main() {
         final text = TomTextResourceProvider.from(map);
 
         // exists / existsObject and getText / getObject share the object rule.
-        expect(config.exists('api.timeout'), equals(text.existsObject('api.timeout')));
+        expect(
+          config.exists('api.timeout'),
+          equals(text.existsObject('api.timeout')),
+        );
         expect(config.exists('missing'), equals(text.existsObject('missing')));
         expect(config.getText('flag'), equals(text.getObject('flag')));
         expect(config.getText('missing'), equals(text.getObject('missing')));

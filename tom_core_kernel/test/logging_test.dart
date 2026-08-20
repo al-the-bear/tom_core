@@ -116,7 +116,10 @@ void main() {
       });
 
       test('should have off equal to none', () {
-        expect(TomLogLevel.off.levelPattern, equals(TomLogLevel.none.levelPattern));
+        expect(
+          TomLogLevel.off.levelPattern,
+          equals(TomLogLevel.none.levelPattern),
+        );
       });
     });
 
@@ -129,15 +132,18 @@ void main() {
         expect(errors.matches(TomLogLevel.info), isFalse);
       });
 
-      test('should have production combining info, warn, errors, and status', () {
-        final production = TomLogLevel.production;
-        expect(production.matches(TomLogLevel.info), isTrue);
-        expect(production.matches(TomLogLevel.warn), isTrue);
-        expect(production.matches(TomLogLevel.error), isTrue);
-        expect(production.matches(TomLogLevel.status), isTrue);
-        expect(production.matches(TomLogLevel.debug), isFalse);
-        expect(production.matches(TomLogLevel.trace), isFalse);
-      });
+      test(
+        'should have production combining info, warn, errors, and status',
+        () {
+          final production = TomLogLevel.production;
+          expect(production.matches(TomLogLevel.info), isTrue);
+          expect(production.matches(TomLogLevel.warn), isTrue);
+          expect(production.matches(TomLogLevel.error), isTrue);
+          expect(production.matches(TomLogLevel.status), isTrue);
+          expect(production.matches(TomLogLevel.debug), isFalse);
+          expect(production.matches(TomLogLevel.trace), isFalse);
+        },
+      );
 
       test('should have extended combining production, debug, and traffic', () {
         final extended = TomLogLevel.extended;
@@ -180,7 +186,8 @@ void main() {
       });
 
       test('should combine multiple levels', () {
-        final combined = TomLogLevel.trace + TomLogLevel.debug + TomLogLevel.info;
+        final combined =
+            TomLogLevel.trace + TomLogLevel.debug + TomLogLevel.info;
         expect(combined.matches(TomLogLevel.trace), isTrue);
         expect(combined.matches(TomLogLevel.debug), isTrue);
         expect(combined.matches(TomLogLevel.info), isTrue);
@@ -219,7 +226,8 @@ void main() {
       });
 
       test('should support chained removal', () {
-        final result = TomLogLevel.production - TomLogLevel.info - TomLogLevel.warn;
+        final result =
+            TomLogLevel.production - TomLogLevel.info - TomLogLevel.warn;
         expect(result.matches(TomLogLevel.info), isFalse);
         expect(result.matches(TomLogLevel.warn), isFalse);
         expect(result.matches(TomLogLevel.error), isTrue);
@@ -410,13 +418,19 @@ void main() {
     group('setLogLevel', () {
       test('should set the log level', () {
         logger.setLogLevel(TomLogLevel.trace);
-        expect(logger.logLevel.levelPattern, equals(TomLogLevel.trace.levelPattern));
+        expect(
+          logger.logLevel.levelPattern,
+          equals(TomLogLevel.trace.levelPattern),
+        );
       });
 
       test('should update log level when called multiple times', () {
         logger.setLogLevel(TomLogLevel.trace);
         logger.setLogLevel(TomLogLevel.info);
-        expect(logger.logLevel.levelPattern, equals(TomLogLevel.info.levelPattern));
+        expect(
+          logger.logLevel.levelPattern,
+          equals(TomLogLevel.info.levelPattern),
+        );
       });
     });
 
@@ -424,14 +438,20 @@ void main() {
       test('should push log level and update current level', () {
         logger.setLogLevel(TomLogLevel.production);
         logger.pushLogLevel(TomLogLevel.trace);
-        expect(logger.logLevel.levelPattern, equals(TomLogLevel.trace.levelPattern));
+        expect(
+          logger.logLevel.levelPattern,
+          equals(TomLogLevel.trace.levelPattern),
+        );
       });
 
       test('should allow multiple pushes', () {
         logger.pushLogLevel(TomLogLevel.info);
         logger.pushLogLevel(TomLogLevel.debug);
         logger.pushLogLevel(TomLogLevel.trace);
-        expect(logger.logLevel.levelPattern, equals(TomLogLevel.trace.levelPattern));
+        expect(
+          logger.logLevel.levelPattern,
+          equals(TomLogLevel.trace.levelPattern),
+        );
       });
     });
 
@@ -617,13 +637,19 @@ void main() {
       test('should add name level', () {
         logger.addNameLevel('MyClass', TomLogLevel.trace);
         expect(logger.getNameLevel('MyClass'), isNotNull);
-        expect(logger.getNameLevel('MyClass')!.levelPattern, equals(TomLogLevel.trace.levelPattern));
+        expect(
+          logger.getNameLevel('MyClass')!.levelPattern,
+          equals(TomLogLevel.trace.levelPattern),
+        );
       });
 
       test('should overwrite existing name level', () {
         logger.addNameLevel('MyClass', TomLogLevel.trace);
         logger.addNameLevel('MyClass', TomLogLevel.debug);
-        expect(logger.getNameLevel('MyClass')!.levelPattern, equals(TomLogLevel.debug.levelPattern));
+        expect(
+          logger.getNameLevel('MyClass')!.levelPattern,
+          equals(TomLogLevel.debug.levelPattern),
+        );
       });
     });
 
@@ -654,7 +680,10 @@ void main() {
     group('setLogLevelByName', () {
       test('should set log level for valid name', () {
         logger.setLogLevelByName('TRACE');
-        expect(logger.logLevel.levelPattern, equals(TomLogLevel.trace.levelPattern));
+        expect(
+          logger.logLevel.levelPattern,
+          equals(TomLogLevel.trace.levelPattern),
+        );
       });
 
       test('should not change level for empty string', () {
@@ -665,15 +694,24 @@ void main() {
 
       test('should handle case insensitivity', () {
         logger.setLogLevelByName('debug');
-        expect(logger.logLevel.levelPattern, equals(TomLogLevel.debug.levelPattern));
+        expect(
+          logger.logLevel.levelPattern,
+          equals(TomLogLevel.debug.levelPattern),
+        );
       });
     });
 
     group('setLogLevelExceptions', () {
       test('should set log level exceptions from pattern', () {
         logger.setLogLevelExceptions('MyClass=DEBUG,OtherClass=TRACE');
-        expect(logger.getNameLevel('MyClass')!.levelPattern, equals(TomLogLevel.debug.levelPattern));
-        expect(logger.getNameLevel('OtherClass')!.levelPattern, equals(TomLogLevel.trace.levelPattern));
+        expect(
+          logger.getNameLevel('MyClass')!.levelPattern,
+          equals(TomLogLevel.debug.levelPattern),
+        );
+        expect(
+          logger.getNameLevel('OtherClass')!.levelPattern,
+          equals(TomLogLevel.trace.levelPattern),
+        );
       });
 
       test('should not fail for empty pattern', () {
@@ -683,7 +721,10 @@ void main() {
 
       test('should handle single entry', () {
         logger.setLogLevelExceptions('SingleClass=INFO');
-        expect(logger.getNameLevel('SingleClass')!.levelPattern, equals(TomLogLevel.info.levelPattern));
+        expect(
+          logger.getNameLevel('SingleClass')!.levelPattern,
+          equals(TomLogLevel.info.levelPattern),
+        );
       });
     });
 
@@ -708,7 +749,10 @@ void main() {
   group('TomLogOutput', () {
     group('globalSettingRemoteLogEndpoint', () {
       test('should have default value of /remotelog', () {
-        expect(TomLogOutput.globalSettingRemoteLogEndpoint, equals('/remotelog'));
+        expect(
+          TomLogOutput.globalSettingRemoteLogEndpoint,
+          equals('/remotelog'),
+        );
       });
     });
 
@@ -724,7 +768,10 @@ void main() {
       });
 
       test('should call function and convert result', () {
-        expect(output.convertToString(() => 'lazy value'), equals('lazy value'));
+        expect(
+          output.convertToString(() => 'lazy value'),
+          equals('lazy value'),
+        );
       });
 
       test('should use logRepresentation for TomLoggable objects', () {
@@ -738,7 +785,13 @@ void main() {
       });
 
       test('should handle nested function calls', () {
-        expect(output.convertToString(() => () => 'nested'), equals('nested'));
+        expect(
+          output.convertToString(
+            () =>
+                () => 'nested',
+          ),
+          equals('nested'),
+        );
       });
 
       test('should handle integer values', () {
@@ -825,7 +878,10 @@ void main() {
         );
 
         expect(message.sender, equals('test-sender'));
-        expect(message.loggerLevel, equals(TomLogLevel.production.levelPattern));
+        expect(
+          message.loggerLevel,
+          equals(TomLogLevel.production.levelPattern),
+        );
         expect(message.logLevel, equals(TomLogLevel.info.levelPattern));
         expect(message.level, equals('INFO   '));
         expect(message.message, equals('test message'));
@@ -861,7 +917,10 @@ void main() {
           '2026-01-02T12:00:00.000',
           null,
         );
-        expect(message.toString(), equals('TomRemoteLogMessage main INFO    test'));
+        expect(
+          message.toString(),
+          equals('TomRemoteLogMessage main INFO    test'),
+        );
       });
     });
   });
@@ -1021,8 +1080,10 @@ void main() {
         expect(result.hasError, isTrue);
         // A refusal is invisible to the operator unless the server says so in
         // its own log stream — the client only learns of it in the response.
-        expect(mockOutput.lastLogLevel?.levelPattern,
-            equals(TomLogLevel.error.levelPattern));
+        expect(
+          mockOutput.lastLogLevel?.levelPattern,
+          equals(TomLogLevel.error.levelPattern),
+        );
         expect(mockOutput.lastMessage, contains('invalid-timestamp'));
         expect(mockOutput.lastIsolateName, equals('client-001_worker-1'));
       });
@@ -1098,8 +1159,10 @@ void main() {
           expect(field, isNot(contains('\u001b')));
         }
         // The visible text is preserved, only the control chars are removed.
-        expect(mockOutput.lastMessage,
-            equals('line oneFORGED 2099 INFO injected line'));
+        expect(
+          mockOutput.lastMessage,
+          equals('line oneFORGED 2099 INFO injected line'),
+        );
         expect(mockOutput.lastIsolateName, equals('client-001_worker-1'));
         expect(mockOutput.lastLevel, equals('INFO'));
         expect(mockOutput.lastOrigin, equals('TestClass.method'));
@@ -1119,16 +1182,15 @@ void main() {
       /// Mirrors the private `TomRemoteLogServer._truncationMarker`.
       const marker = '…[truncated]';
 
-      TomRemoteLogMessage messageWith(String text) =>
-          TomRemoteLogMessage.of(
-            TomLogLevel.production.levelPattern,
-            TomLogLevel.info.levelPattern,
-            'INFO   ',
-            text,
-            'worker-1',
-            '2026-01-02T12:00:00.000',
-            'TestClass.method',
-          );
+      TomRemoteLogMessage messageWith(String text) => TomRemoteLogMessage.of(
+        TomLogLevel.production.levelPattern,
+        TomLogLevel.info.levelPattern,
+        'INFO   ',
+        text,
+        'worker-1',
+        '2026-01-02T12:00:00.000',
+        'TestClass.method',
+      );
 
       test('marks an ASCII field truncated at the cap', () {
         final server = TomRemoteLogServer();
@@ -1140,8 +1202,10 @@ void main() {
         // of the bound is that nothing downstream sees more than this.
         expect(logged.length, equals(maxFieldLength));
         expect(logged, endsWith(marker));
-        expect(logged.substring(0, logged.length - marker.length),
-            equals('a' * (maxFieldLength - marker.length)));
+        expect(
+          logged.substring(0, logged.length - marker.length),
+          equals('a' * (maxFieldLength - marker.length)),
+        );
       });
 
       test('passes a field of exactly the cap through unmarked', () {
@@ -1213,8 +1277,10 @@ void main() {
           expect(field.length, equals(maxFieldLength));
           expect(field, endsWith(marker));
         }
-        expect(fields.fold<int>(0, (sum, f) => sum + f.length),
-            lessThanOrEqualTo(fields.length * maxFieldLength));
+        expect(
+          fields.fold<int>(0, (sum, f) => sum + f.length),
+          lessThanOrEqualTo(fields.length * maxFieldLength),
+        );
       });
 
       test('does not mark a field shortened only by control stripping', () {
@@ -1249,8 +1315,14 @@ void main() {
           'TestClass.method',
         );
 
-        expect(message.loggerLevel.levelPattern, equals(TomLogLevel.production.levelPattern));
-        expect(message.logLevel.levelPattern, equals(TomLogLevel.info.levelPattern));
+        expect(
+          message.loggerLevel.levelPattern,
+          equals(TomLogLevel.production.levelPattern),
+        );
+        expect(
+          message.logLevel.levelPattern,
+          equals(TomLogLevel.info.levelPattern),
+        );
         expect(message.level, equals('INFO   '));
         expect(message.message, equals('test message'));
         expect(message.isolateName, equals('worker'));
@@ -1372,7 +1444,10 @@ void main() {
   group('TomRemoteLogOutput', () {
     group('globalSettingFallbackOutput', () {
       test('should be TomConsoleLogOutput by default', () {
-        expect(TomRemoteLogOutput.globalSettingFallbackOutput, isA<TomConsoleLogOutput>());
+        expect(
+          TomRemoteLogOutput.globalSettingFallbackOutput,
+          isA<TomConsoleLogOutput>(),
+        );
       });
     });
 
@@ -1412,33 +1487,36 @@ void main() {
         expect(fallbackOutput.lastMessage, equals('test message'));
       });
 
-      test('should send to the remote endpoint when one is configured', () async {
-        final endpoint = _MockLogEndpoint();
-        TomRemoteLogOutput.remoteEndpoint = endpoint;
-        addTearDown(() => TomRemoteLogOutput.remoteEndpoint = null);
+      test(
+        'should send to the remote endpoint when one is configured',
+        () async {
+          final endpoint = _MockLogEndpoint();
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+          addTearDown(() => TomRemoteLogOutput.remoteEndpoint = null);
 
-        final remoteOutput = TomRemoteLogOutput();
-        final fixedTime = DateTime(2026, 1, 2, 10, 0, 0);
+          final remoteOutput = TomRemoteLogOutput();
+          final fixedTime = DateTime(2026, 1, 2, 10, 0, 0);
 
-        remoteOutput.output(
-          TomLogLevel.production,
-          TomLogLevel.info,
-          'INFO   ',
-          'hello remote',
-          'main',
-          fixedTime,
-          'Origin.method',
-        );
+          remoteOutput.output(
+            TomLogLevel.production,
+            TomLogLevel.info,
+            'INFO   ',
+            'hello remote',
+            'main',
+            fixedTime,
+            'Origin.method',
+          );
 
-        await endpoint.sent.future;
+          await endpoint.sent.future;
 
-        expect(endpoint.sendCount, equals(1));
-        expect(endpoint.lastMessage?.message, equals('hello remote'));
-        expect(endpoint.lastMessage?.isolateName, equals('main'));
-        expect(endpoint.lastMessage?.origin, equals('Origin.method'));
-        // The remote path must not touch the local fallback on success.
-        expect(fallbackOutput.outputCalled, isFalse);
-      });
+          expect(endpoint.sendCount, equals(1));
+          expect(endpoint.lastMessage?.message, equals('hello remote'));
+          expect(endpoint.lastMessage?.isolateName, equals('main'));
+          expect(endpoint.lastMessage?.origin, equals('Origin.method'));
+          // The remote path must not touch the local fallback on success.
+          expect(fallbackOutput.outputCalled, isFalse);
+        },
+      );
 
       test('should fall back locally when the remote send throws', () async {
         final endpoint = _MockLogEndpoint(throwOnSend: true);
@@ -1468,39 +1546,41 @@ void main() {
         expect(fallbackOutput.outputCalled, isTrue);
       });
 
-      test('re-entrancy guard sends to fallback without calling the endpoint',
-          () {
-        final endpoint = _MockLogEndpoint();
-        TomRemoteLogOutput.remoteEndpoint = endpoint;
-        addTearDown(() => TomRemoteLogOutput.remoteEndpoint = null);
+      test(
+        're-entrancy guard sends to fallback without calling the endpoint',
+        () {
+          final endpoint = _MockLogEndpoint();
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+          addTearDown(() => TomRemoteLogOutput.remoteEndpoint = null);
 
-        final remoteOutput = TomRemoteLogOutput();
-        final fixedTime = DateTime(2026, 1, 2, 10, 0, 0);
+          final remoteOutput = TomRemoteLogOutput();
+          final fixedTime = DateTime(2026, 1, 2, 10, 0, 0);
 
-        // Simulate already being inside a remote-logging operation.
-        runZoned(
-          () {
-            remoteOutput.output(
-              TomLogLevel.production,
-              TomLogLevel.info,
-              'INFO   ',
-              'reentrant',
-              'main',
-              fixedTime,
-              null,
-            );
-          },
-          zoneValues: {
-            TomLoggingContext: TomLoggingContext(inRemoteLogging: true),
-          },
-        );
+          // Simulate already being inside a remote-logging operation.
+          runZoned(
+            () {
+              remoteOutput.output(
+                TomLogLevel.production,
+                TomLogLevel.info,
+                'INFO   ',
+                'reentrant',
+                'main',
+                fixedTime,
+                null,
+              );
+            },
+            zoneValues: {
+              TomLoggingContext: TomLoggingContext(inRemoteLogging: true),
+            },
+          );
 
-        // The guard short-circuits to the fallback synchronously and never
-        // re-enters the endpoint.
-        expect(endpoint.sendCount, equals(0));
-        expect(fallbackOutput.outputCalled, isTrue);
-        expect(fallbackOutput.lastMessage, equals('reentrant'));
-      });
+          // The guard short-circuits to the fallback synchronously and never
+          // re-enters the endpoint.
+          expect(endpoint.sendCount, equals(0));
+          expect(fallbackOutput.outputCalled, isTrue);
+          expect(fallbackOutput.lastMessage, equals('reentrant'));
+        },
+      );
     });
 
     group('resilience', () {
@@ -1513,7 +1593,8 @@ void main() {
         TomRemoteLogOutput.globalSettingMaxSendRetries = 0;
         TomRemoteLogOutput.globalSettingRetryBackoff = Duration.zero;
         TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 0;
-        TomRemoteLogOutput.globalSettingReplayStore = TomInMemoryLogReplayStore();
+        TomRemoteLogOutput.globalSettingReplayStore =
+            TomInMemoryLogReplayStore();
         TomRemoteLogOutput.clearReplayQueue();
       });
 
@@ -1523,7 +1604,8 @@ void main() {
         TomRemoteLogOutput.globalSettingMaxSendRetries = 0;
         TomRemoteLogOutput.globalSettingRetryBackoff = Duration.zero;
         TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 0;
-        TomRemoteLogOutput.globalSettingReplayStore = TomInMemoryLogReplayStore();
+        TomRemoteLogOutput.globalSettingReplayStore =
+            TomInMemoryLogReplayStore();
         TomRemoteLogOutput.clearReplayQueue();
       });
 
@@ -1557,36 +1639,41 @@ void main() {
       });
 
       group('returned-error routing', () {
-        test('a transport error is written to the fallback, not dropped',
-            () async {
-          // The transport channel: the request reached a server that answered
-          // with a non-2xx status, so TomServerCallError is populated and the
-          // payload is untouched.
-          final endpoint = _MockLogEndpoint(
-              script: const [_SendOutcome.returnTransportError]);
-          TomRemoteLogOutput.remoteEndpoint = endpoint;
+        test(
+          'a transport error is written to the fallback, not dropped',
+          () async {
+            // The transport channel: the request reached a server that answered
+            // with a non-2xx status, so TomServerCallError is populated and the
+            // payload is untouched.
+            final endpoint = _MockLogEndpoint(
+              script: const [_SendOutcome.returnTransportError],
+            );
+            TomRemoteLogOutput.remoteEndpoint = endpoint;
 
-          await emit(TomRemoteLogOutput(), 'transport-failed record');
+            await emit(TomRemoteLogOutput(), 'transport-failed record');
 
-          // One attempt — the retry budget is 0 in this group's setUp — and
-          // then the record is surfaced locally rather than lost.
-          expect(endpoint.sendCount, equals(1));
-          expect(fallbackOutput.outputCalled, isTrue);
-          expect(fallbackOutput.lastMessage, equals('transport-failed record'));
+            // One attempt — the retry budget is 0 in this group's setUp — and
+            // then the record is surfaced locally rather than lost.
+            expect(endpoint.sendCount, equals(1));
+            expect(fallbackOutput.outputCalled, isTrue);
+            expect(
+              fallbackOutput.lastMessage,
+              equals('transport-failed record'),
+            );
 
-          final warning = fallbackOutput.messages.firstWhere(
-            (m) => m.startsWith('Could not send log message'),
-            orElse: () => '',
-          );
-          // The status is what distinguishes this failure from the payload
-          // rejection below; without asserting it, the same test would pass
-          // against a sender that only ever read the other channel — which is
-          // precisely how the transport-only defect survived.
-          expect(warning, contains('Status: 500'));
-        });
+            final warning = fallbackOutput.messages.firstWhere(
+              (m) => m.startsWith('Could not send log message'),
+              orElse: () => '',
+            );
+            // The status is what distinguishes this failure from the payload
+            // rejection below; without asserting it, the same test would pass
+            // against a sender that only ever read the other channel — which is
+            // precisely how the transport-only defect survived.
+            expect(warning, contains('Status: 500'));
+          },
+        );
 
-        test('a payload rejection on an HTTP success is not a success',
-            () async {
+        test('a payload rejection on an HTTP success is not a success', () async {
           // The rejection that carries no transport signal whatsoever: the
           // request succeeded, the server answered 200, and the refusal is in
           // the body. A sender that reads only TomServerCallError sees nothing
@@ -1595,7 +1682,8 @@ void main() {
           TomRemoteLogOutput.globalSettingMaxSendRetries = 3;
           TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
           final endpoint = _MockLogEndpoint(
-              script: const [_SendOutcome.returnServerRejection]);
+            script: const [_SendOutcome.returnServerRejection],
+          );
           TomRemoteLogOutput.remoteEndpoint = endpoint;
 
           await emit(TomRemoteLogOutput(), 'payload-rejected record');
@@ -1621,68 +1709,78 @@ void main() {
           expect(warning, isNot(contains('Status:')));
         });
 
-        test('an unreachable endpoint is not reported as a server rejection',
-            () async {
-          // Since TomServerEndpoint translates "no response arrived" into a
-          // returned error rather than a throw, an outage and a server-side
-          // rejection reach this output through the same branch. Both must
-          // route the record to the fallback — but the warning that accompanies
-          // it has to say which one happened, or the operator reading the log
-          // during an outage is told the server refused a record that no
-          // server ever saw.
-          final endpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.noResponse]);
-          TomRemoteLogOutput.remoteEndpoint = endpoint;
+        test(
+          'an unreachable endpoint is not reported as a server rejection',
+          () async {
+            // Since TomServerEndpoint translates "no response arrived" into a
+            // returned error rather than a throw, an outage and a server-side
+            // rejection reach this output through the same branch. Both must
+            // route the record to the fallback — but the warning that accompanies
+            // it has to say which one happened, or the operator reading the log
+            // during an outage is told the server refused a record that no
+            // server ever saw.
+            final endpoint = _MockLogEndpoint(
+              script: const [_SendOutcome.noResponse],
+            );
+            TomRemoteLogOutput.remoteEndpoint = endpoint;
 
-          await emit(TomRemoteLogOutput(), 'record during outage');
+            await emit(TomRemoteLogOutput(), 'record during outage');
 
-          // Not dropped: the resilience contract is unchanged by *how* the
-          // failure is signalled.
-          expect(endpoint.sendCount, equals(1));
-          expect(fallbackOutput.lastMessage, equals('record during outage'));
+            // Not dropped: the resilience contract is unchanged by *how* the
+            // failure is signalled.
+            expect(endpoint.sendCount, equals(1));
+            expect(fallbackOutput.lastMessage, equals('record during outage'));
 
-          final warning = fallbackOutput.messages.firstWhere(
-            (m) => m.startsWith('Could not send log message'),
-            orElse: () => '',
-          );
-          expect(warning, contains('Connection refused'));
-          expect(warning, isNot(contains('rejected')));
-        });
+            final warning = fallbackOutput.messages.firstWhere(
+              (m) => m.startsWith('Could not send log message'),
+              orElse: () => '',
+            );
+            expect(warning, contains('Connection refused'));
+            expect(warning, isNot(contains('rejected')));
+          },
+        );
       });
 
       group('retry with backoff', () {
         test('retries until a transient failure recovers', () async {
           TomRemoteLogOutput.globalSettingMaxSendRetries = 3;
-          final endpoint = _MockLogEndpoint(script: const [
-            _SendOutcome.throwError,
-            _SendOutcome.throwError,
-            _SendOutcome.ok,
-          ]);
+          final endpoint = _MockLogEndpoint(
+            script: const [
+              _SendOutcome.throwError,
+              _SendOutcome.throwError,
+              _SendOutcome.ok,
+            ],
+          );
           TomRemoteLogOutput.remoteEndpoint = endpoint;
 
           await emit(TomRemoteLogOutput(), 'eventually ok');
 
           // Two failures then success = three sends; no fallback needed.
           expect(endpoint.sendCount, equals(3));
-          expect(endpoint.accepted.map((m) => m.message),
-              equals(['eventually ok']));
+          expect(
+            endpoint.accepted.map((m) => m.message),
+            equals(['eventually ok']),
+          );
           expect(fallbackOutput.outputCalled, isFalse);
         });
 
-        test('gives up after exhausting the retry budget and falls back',
-            () async {
-          TomRemoteLogOutput.globalSettingMaxSendRetries = 2;
-          final endpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
-          TomRemoteLogOutput.remoteEndpoint = endpoint;
+        test(
+          'gives up after exhausting the retry budget and falls back',
+          () async {
+            TomRemoteLogOutput.globalSettingMaxSendRetries = 2;
+            final endpoint = _MockLogEndpoint(
+              script: const [_SendOutcome.throwError],
+            );
+            TomRemoteLogOutput.remoteEndpoint = endpoint;
 
-          await emit(TomRemoteLogOutput(), 'always fails');
+            await emit(TomRemoteLogOutput(), 'always fails');
 
-          // First attempt + 2 retries = 3 sends, all failing.
-          expect(endpoint.sendCount, equals(3));
-          expect(fallbackOutput.outputCalled, isTrue);
-          expect(fallbackOutput.lastMessage, equals('always fails'));
-        });
+            // First attempt + 2 retries = 3 sends, all failing.
+            expect(endpoint.sendCount, equals(3));
+            expect(fallbackOutput.outputCalled, isTrue);
+            expect(fallbackOutput.lastMessage, equals('always fails'));
+          },
+        );
 
         test('backoff waits between retries', () async {
           TomRemoteLogOutput.globalSettingMaxSendRetries = 2;
@@ -1690,11 +1788,13 @@ void main() {
           // third (successful) attempt. A lower-bound assertion stays robust.
           const backoff = Duration(milliseconds: 20);
           TomRemoteLogOutput.globalSettingRetryBackoff = backoff;
-          final endpoint = _MockLogEndpoint(script: const [
-            _SendOutcome.throwError,
-            _SendOutcome.throwError,
-            _SendOutcome.ok,
-          ]);
+          final endpoint = _MockLogEndpoint(
+            script: const [
+              _SendOutcome.throwError,
+              _SendOutcome.throwError,
+              _SendOutcome.ok,
+            ],
+          );
           TomRemoteLogOutput.remoteEndpoint = endpoint;
 
           final stopwatch = Stopwatch()..start();
@@ -1708,7 +1808,8 @@ void main() {
             null,
           );
           // Wait until the third attempt lands (or a generous timeout).
-          while (endpoint.sendCount < 3 && stopwatch.elapsedMilliseconds < 5000) {
+          while (endpoint.sendCount < 3 &&
+              stopwatch.elapsedMilliseconds < 5000) {
             await Future<void>.delayed(const Duration(milliseconds: 5));
           }
           stopwatch.stop();
@@ -1722,67 +1823,92 @@ void main() {
       });
 
       group('replay queue', () {
-        test('buffers a failed record and drains it on the next send',
-            () async {
-          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
-          final endpoint = _MockLogEndpoint(script: const [
-            _SendOutcome.throwError, // first record fails -> queued
-            _SendOutcome.ok, // drain of queued record succeeds
-            _SendOutcome.ok, // then the second record itself
-          ]);
-          TomRemoteLogOutput.remoteEndpoint = endpoint;
+        test(
+          'buffers a failed record and drains it on the next send',
+          () async {
+            TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+            final endpoint = _MockLogEndpoint(
+              script: const [
+                _SendOutcome.throwError, // first record fails -> queued
+                _SendOutcome.ok, // drain of queued record succeeds
+                _SendOutcome.ok, // then the second record itself
+              ],
+            );
+            TomRemoteLogOutput.remoteEndpoint = endpoint;
 
-          final out = TomRemoteLogOutput();
-          await emit(out, 'first');
-          expect(TomRemoteLogOutput.replayQueueLength, equals(1));
+            final out = TomRemoteLogOutput();
+            await emit(out, 'first');
+            expect(TomRemoteLogOutput.replayQueueLength, equals(1));
 
-          await emit(out, 'second');
+            await emit(out, 'second');
 
-          // The queued 'first' drains before 'second' is sent, in order.
-          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
-          expect(endpoint.accepted.map((m) => m.message),
-              equals(['first', 'second']));
-        });
+            // The queued 'first' drains before 'second' is sent, in order.
+            expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+            expect(
+              endpoint.accepted.map((m) => m.message),
+              equals(['first', 'second']),
+            );
+          },
+        );
 
-        test('delivers overlapping records once each, in emission order',
-            () async {
-          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
-          // Two records pile up while the endpoint is unreachable.
-          TomRemoteLogOutput.remoteEndpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+        test(
+          'delivers overlapping records once each, in emission order',
+          () async {
+            TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+            // Two records pile up while the endpoint is unreachable.
+            TomRemoteLogOutput.remoteEndpoint = _MockLogEndpoint(
+              script: const [_SendOutcome.throwError],
+            );
 
-          final out = TomRemoteLogOutput();
-          await emit(out, 'q1');
-          await emit(out, 'q2');
-          expect(TomRemoteLogOutput.replayQueueLength, equals(2));
+            final out = TomRemoteLogOutput();
+            await emit(out, 'q1');
+            await emit(out, 'q2');
+            expect(TomRemoteLogOutput.replayQueueLength, equals(2));
 
-          // The endpoint recovers, and two further records are emitted back
-          // to back. output() is `void ... async`, so the caller cannot await
-          // it: the second call starts while the first is still suspended in
-          // its drain. That overlap is the case under test, which is why the
-          // `emit` helper (it settles between records) is bypassed here.
-          final recovered =
-              _MockLogEndpoint(script: const [_SendOutcome.ok]);
-          TomRemoteLogOutput.remoteEndpoint = recovered;
-          out.output(TomLogLevel.production, TomLogLevel.info, 'INFO   ', 'c1',
-              'main', fixedTime, null);
-          out.output(TomLogLevel.production, TomLogLevel.info, 'INFO   ', 'c2',
-              'main', fixedTime, null);
-          await Future<void>.delayed(Duration.zero);
+            // The endpoint recovers, and two further records are emitted back
+            // to back. output() is `void ... async`, so the caller cannot await
+            // it: the second call starts while the first is still suspended in
+            // its drain. That overlap is the case under test, which is why the
+            // `emit` helper (it settles between records) is bypassed here.
+            final recovered = _MockLogEndpoint(script: const [_SendOutcome.ok]);
+            TomRemoteLogOutput.remoteEndpoint = recovered;
+            out.output(
+              TomLogLevel.production,
+              TomLogLevel.info,
+              'INFO   ',
+              'c1',
+              'main',
+              fixedTime,
+              null,
+            );
+            out.output(
+              TomLogLevel.production,
+              TomLogLevel.info,
+              'INFO   ',
+              'c2',
+              'main',
+              fixedTime,
+              null,
+            );
+            await Future<void>.delayed(Duration.zero);
 
-          // Each record reaches the collector exactly once — a record still in
-          // the queue when a concurrent drain starts must not be sent twice —
-          // and the backlog stays ahead of the live records that displaced it.
-          expect(recovered.accepted.map((m) => m.message),
-              equals(['q1', 'q2', 'c1', 'c2']));
-          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
-        });
+            // Each record reaches the collector exactly once — a record still in
+            // the queue when a concurrent drain starts must not be sent twice —
+            // and the backlog stays ahead of the live records that displaced it.
+            expect(
+              recovered.accepted.map((m) => m.message),
+              equals(['q1', 'q2', 'c1', 'c2']),
+            );
+            expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+          },
+        );
 
         test('drops the oldest record on overflow', () async {
           TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 2;
           // Every send throws so nothing drains and the queue keeps filling.
-          final endpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          final endpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
           TomRemoteLogOutput.remoteEndpoint = endpoint;
 
           final out = TomRemoteLogOutput();
@@ -1795,22 +1921,26 @@ void main() {
 
           // Recover the endpoint and flush: only the surviving two replay.
           endpoint.accepted.clear();
-          TomRemoteLogOutput.remoteEndpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.ok]);
+          TomRemoteLogOutput.remoteEndpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.ok],
+          );
           final recovered =
               TomRemoteLogOutput.remoteEndpoint as _MockLogEndpoint;
           await emit(out, 'r4');
 
           expect(TomRemoteLogOutput.replayQueueLength, equals(0));
-          expect(recovered.accepted.map((m) => m.message),
-              equals(['r2', 'r3', 'r4']));
+          expect(
+            recovered.accepted.map((m) => m.message),
+            equals(['r2', 'r3', 'r4']),
+          );
         });
 
         test('stops draining when the endpoint is still down', () async {
           TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
           // Records keep failing, so the queue never drains.
-          final endpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          final endpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
           TomRemoteLogOutput.remoteEndpoint = endpoint;
 
           final out = TomRemoteLogOutput();
@@ -1829,14 +1959,14 @@ void main() {
         // A message factory that stamps the payload into every field we
         // serialize, so a round-trip through disk is fully verifiable.
         TomRemoteLogMessage record(String message) => TomRemoteLogMessage.of(
-              TomLogLevel.production.levelPattern,
-              TomLogLevel.info.levelPattern,
-              'INFO   ',
-              message,
-              'main',
-              '2026-01-02T10:00:00.000',
-              'origin.$message',
-            );
+          TomLogLevel.production.levelPattern,
+          TomLogLevel.info.levelPattern,
+          'INFO   ',
+          message,
+          'main',
+          '2026-01-02T10:00:00.000',
+          'origin.$message',
+        );
 
         setUp(() {
           tempDir = Directory.systemTemp.createTempSync('tom_log_replay_');
@@ -1847,8 +1977,7 @@ void main() {
         });
 
         test('file store supports the full store contract', () {
-          final store =
-              TomFileLogReplayStore('${tempDir.path}/queue.json');
+          final store = TomFileLogReplayStore('${tempDir.path}/queue.json');
 
           expect(store.length, equals(0));
           expect(store.oldest, isNull);
@@ -1858,8 +1987,10 @@ void main() {
           store.append(record('c'));
 
           expect(store.length, equals(3));
-          expect(store.snapshot().map((m) => m.message),
-              equals(['a', 'b', 'c']));
+          expect(
+            store.snapshot().map((m) => m.message),
+            equals(['a', 'b', 'c']),
+          );
           expect(store.oldest?.message, equals('a'));
 
           store.removeOldest();
@@ -1901,8 +2032,10 @@ void main() {
           expect(reloaded.first.level, equals('INFO   '));
           expect(reloaded.first.isolateName, equals('main'));
           expect(reloaded.first.origin, equals('origin.a'));
-          expect(reloaded.first.loggerLevel,
-              equals(TomLogLevel.production.levelPattern));
+          expect(
+            reloaded.first.loggerLevel,
+            equals(TomLogLevel.production.levelPattern),
+          );
         });
 
         test('a bounded trim persists across a restart', () {
@@ -1924,10 +2057,12 @@ void main() {
           TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
 
           // First process: endpoint is down, so records queue to disk.
-          TomRemoteLogOutput.globalSettingReplayStore =
-              TomFileLogReplayStore(path);
-          TomRemoteLogOutput.remoteEndpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          TomRemoteLogOutput.globalSettingReplayStore = TomFileLogReplayStore(
+            path,
+          );
+          TomRemoteLogOutput.remoteEndpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
           final firstOut = TomRemoteLogOutput();
           await emit(firstOut, 'a');
           await emit(firstOut, 'b');
@@ -1935,8 +2070,9 @@ void main() {
 
           // Simulate a restart: a brand-new store instance at the same path
           // reloads the records the previous process buffered.
-          TomRemoteLogOutput.globalSettingReplayStore =
-              TomFileLogReplayStore(path);
+          TomRemoteLogOutput.globalSettingReplayStore = TomFileLogReplayStore(
+            path,
+          );
           expect(TomRemoteLogOutput.replayQueueLength, equals(2));
 
           // The endpoint recovers; the next emit drains the buffered records
@@ -1947,8 +2083,10 @@ void main() {
           await emit(secondOut, 'c');
 
           expect(TomRemoteLogOutput.replayQueueLength, equals(0));
-          expect(recovered.accepted.map((m) => m.message),
-              equals(['a', 'b', 'c']));
+          expect(
+            recovered.accepted.map((m) => m.message),
+            equals(['a', 'b', 'c']),
+          );
         });
 
         group('corrupt file recovery', () {
@@ -1982,8 +2120,10 @@ void main() {
             // The loss is reported rather than silent, naming the file and
             // why it could not be read.
             expect(fallbackOutput.messages.join('\n'), contains(path));
-            expect(fallbackOutput.messages.join('\n'),
-                contains('could not be read'));
+            expect(
+              fallbackOutput.messages.join('\n'),
+              contains('could not be read'),
+            );
             // The bad content is preserved for diagnosis instead of being
             // overwritten by the next persist.
             expect(quarantine().existsSync(), isTrue);
@@ -1997,10 +2137,14 @@ void main() {
             final store = TomFileLogReplayStore(path);
 
             expect(store.length, equals(0));
-            expect(fallbackOutput.messages.join('\n'),
-                contains('could not be read'));
-            expect(quarantine().readAsStringSync(),
-                equals('[{"message":"a"},'));
+            expect(
+              fallbackOutput.messages.join('\n'),
+              contains('could not be read'),
+            );
+            expect(
+              quarantine().readAsStringSync(),
+              equals('[{"message":"a"},'),
+            );
           });
 
           test('starts empty when the top level is not a list', () {
@@ -2009,8 +2153,10 @@ void main() {
             final store = TomFileLogReplayStore(path);
 
             expect(store.length, equals(0));
-            expect(fallbackOutput.messages.join('\n'),
-                contains('could not be read'));
+            expect(
+              fallbackOutput.messages.join('\n'),
+              contains('could not be read'),
+            );
             expect(quarantine().existsSync(), isTrue);
           });
 
@@ -2019,7 +2165,8 @@ void main() {
             final good = _encodeForTest(record('a'));
             final alsoGood = _encodeForTest(record('b'));
             File(path).writeAsStringSync(
-                jsonEncode([1, good, 'nonsense', alsoGood, null]));
+              jsonEncode([1, good, 'nonsense', alsoGood, null]),
+            );
 
             final store = TomFileLogReplayStore(path);
 
@@ -2033,8 +2180,7 @@ void main() {
             expect(quarantine().existsSync(), isTrue);
           });
 
-          test('re-persists what it recovered so the next restart sees it',
-              () {
+          test('re-persists what it recovered so the next restart sees it', () {
             final good = _encodeForTest(record('kept'));
             File(path).writeAsStringSync(jsonEncode([good, 'junk']));
 
@@ -2044,22 +2190,26 @@ void main() {
             // A restart must see the salvaged record: recovery is only real if
             // it survives, and the damaged original is gone by then.
             final afterRestart = TomFileLogReplayStore(path);
-            expect(afterRestart.snapshot().map((m) => m.message),
-                equals(['kept']));
+            expect(
+              afterRestart.snapshot().map((m) => m.message),
+              equals(['kept']),
+            );
           });
 
-          test('reports nothing and quarantines nothing for a healthy file',
-              () {
-            final store = TomFileLogReplayStore(path);
-            store.append(record('a'));
+          test(
+            'reports nothing and quarantines nothing for a healthy file',
+            () {
+              final store = TomFileLogReplayStore(path);
+              store.append(record('a'));
 
-            fallbackOutput.messages.clear();
-            final reopened = TomFileLogReplayStore(path);
+              fallbackOutput.messages.clear();
+              final reopened = TomFileLogReplayStore(path);
 
-            expect(reopened.snapshot().map((m) => m.message), equals(['a']));
-            expect(fallbackOutput.messages, isEmpty);
-            expect(quarantine().existsSync(), isFalse);
-          });
+              expect(reopened.snapshot().map((m) => m.message), equals(['a']));
+              expect(fallbackOutput.messages, isEmpty);
+              expect(quarantine().existsSync(), isFalse);
+            },
+          );
 
           test('an empty file is not treated as corruption', () {
             // A zero-byte file is what `touch` or a create-then-crash leaves;
@@ -2120,28 +2270,33 @@ void main() {
           TomPlatformUtils.setCurrentPlatform(previousPlatform);
         });
 
-        test('an unconfigured endpoint with a throwing fallback is reported',
-            () async {
-          // No endpoint at all: output() hands the record straight to the
-          // fallback and returns. Because output() is `void ... async`, a
-          // throw here does not merely disappear — it completes the returned
-          // future with an error nobody awaits, which is an unhandled async
-          // error rather than a controlled loss.
-          TomRemoteLogOutput.remoteEndpoint = null;
+        test(
+          'an unconfigured endpoint with a throwing fallback is reported',
+          () async {
+            // No endpoint at all: output() hands the record straight to the
+            // fallback and returns. Because output() is `void ... async`, a
+            // throw here does not merely disappear — it completes the returned
+            // future with an error nobody awaits, which is an unhandled async
+            // error rather than a controlled loss.
+            TomRemoteLogOutput.remoteEndpoint = null;
 
-          await emit(TomRemoteLogOutput(), 'record with no endpoint');
+            await emit(TomRemoteLogOutput(), 'record with no endpoint');
 
-          expect(platform.errors, hasLength(1));
-          expect(platform.errors.single, contains('record with no endpoint'));
-          expect(
-              platform.errors.single, contains('fallback output is broken'));
-        });
+            expect(platform.errors, hasLength(1));
+            expect(platform.errors.single, contains('record with no endpoint'));
+            expect(
+              platform.errors.single,
+              contains('fallback output is broken'),
+            );
+          },
+        );
 
         test('a failed send with a throwing fallback is reported', () async {
           // The full path: the send fails, the record is routed to the
           // fallback, and the fallback throws too.
-          final endpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          final endpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
           TomRemoteLogOutput.remoteEndpoint = endpoint;
 
           await emit(TomRemoteLogOutput(), 'record with a broken fallback');
@@ -2149,11 +2304,12 @@ void main() {
           expect(platform.errors, hasLength(1));
           // The report carries the record, so the operator sees *what* was
           // lost and not only that something was.
-          expect(platform.errors.single,
-              contains('record with a broken fallback'));
-          // ...and the fallback's own error, which is the thing to fix.
           expect(
-              platform.errors.single, contains('fallback output is broken'));
+            platform.errors.single,
+            contains('record with a broken fallback'),
+          );
+          // ...and the fallback's own error, which is the thing to fix.
+          expect(platform.errors.single, contains('fallback output is broken'));
         });
 
         test('the report is emitted once per broken fallback', () async {
@@ -2198,40 +2354,51 @@ void main() {
           final out = TomRemoteLogOutput();
 
           expect(
-            () => out.output(TomLogLevel.production, TomLogLevel.info,
-                'INFO   ', 'must not throw', 'main', fixedTime, null),
+            () => out.output(
+              TomLogLevel.production,
+              TomLogLevel.info,
+              'INFO   ',
+              'must not throw',
+              'main',
+              fixedTime,
+              null,
+            ),
             returnsNormally,
           );
           await Future<void>.delayed(Duration.zero);
         });
 
-        test('a fallback that rejects only one record uses its own recovery',
-            () async {
-          // Not every broken fallback is broken for everything: a sink can
-          // choke on one payload and still accept a short note about it. That
-          // is what the inner recovery write is for, and it must not be
-          // mistaken for a dead fallback — a per-record fault reported once
-          // per process would be silenced for every later record.
-          final selective =
-              _SelectivelyThrowingLogOutput(rejecting: 'indigestible record');
-          TomRemoteLogOutput.globalSettingFallbackOutput = selective;
-          final endpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
-          TomRemoteLogOutput.remoteEndpoint = endpoint;
+        test(
+          'a fallback that rejects only one record uses its own recovery',
+          () async {
+            // Not every broken fallback is broken for everything: a sink can
+            // choke on one payload and still accept a short note about it. That
+            // is what the inner recovery write is for, and it must not be
+            // mistaken for a dead fallback — a per-record fault reported once
+            // per process would be silenced for every later record.
+            final selective = _SelectivelyThrowingLogOutput(
+              rejecting: 'indigestible record',
+            );
+            TomRemoteLogOutput.globalSettingFallbackOutput = selective;
+            final endpoint = _MockLogEndpoint(
+              script: const [_SendOutcome.throwError],
+            );
+            TomRemoteLogOutput.remoteEndpoint = endpoint;
 
-          await emit(TomRemoteLogOutput(), 'indigestible record');
+            await emit(TomRemoteLogOutput(), 'indigestible record');
 
-          // The fallback is alive, so nothing escalates to the platform.
-          expect(platform.errors, isEmpty);
-          expect(
-            selective.accepted,
-            contains(startsWith('Could not send log message')),
-          );
-          expect(
-            selective.accepted,
-            contains(startsWith('Exception occurred when trying to log')),
-          );
-        });
+            // The fallback is alive, so nothing escalates to the platform.
+            expect(platform.errors, isEmpty);
+            expect(
+              selective.accepted,
+              contains(startsWith('Could not send log message')),
+            );
+            expect(
+              selective.accepted,
+              contains(startsWith('Exception occurred when trying to log')),
+            );
+          },
+        );
       });
     });
   });
@@ -2402,15 +2569,17 @@ void main() {
   // =========================================================================
 
   group('TomIsolateLogging', () {
-    test('startLoggingToCreator swaps tomLog.logOutput to TomCreatorLogOutput',
-        () {
-      final original = tomLog.logOutput;
-      addTearDown(() => tomLog.logOutput = original);
+    test(
+      'startLoggingToCreator swaps tomLog.logOutput to TomCreatorLogOutput',
+      () {
+        final original = tomLog.logOutput;
+        addTearDown(() => tomLog.logOutput = original);
 
-      TomIsolateLogging.startLoggingToCreator();
+        TomIsolateLogging.startLoggingToCreator();
 
-      expect(tomLog.logOutput, isA<TomCreatorLogOutput>());
-    });
+        expect(tomLog.logOutput, isA<TomCreatorLogOutput>());
+      },
+    );
   });
 
   // =========================================================================
@@ -2465,15 +2634,15 @@ TomLoggingWorkerContext _testLoggingContext() {
 /// hand-craft a replay file (including a damaged one) without going through
 /// the store, whose encoder is private.
 Map<String, Object?> _encodeForTest(TomRemoteLogMessage message) => {
-      'sender': message.sender,
-      'timeStamp': message.timeStamp,
-      'loggerLevel': message.loggerLevel,
-      'logLevel': message.logLevel,
-      'level': message.level,
-      'message': message.message,
-      'isolateName': message.isolateName,
-      'origin': message.origin,
-    };
+  'sender': message.sender,
+  'timeStamp': message.timeStamp,
+  'loggerLevel': message.loggerLevel,
+  'logLevel': message.logLevel,
+  'level': message.level,
+  'message': message.message,
+  'isolateName': message.isolateName,
+  'origin': message.origin,
+};
 
 /// A fallback output that fails on every call, standing in for a reporting
 /// channel that is itself broken.
@@ -2650,14 +2819,15 @@ const String _serverRejectionReason = 'disk full';
 class _MockLogEndpoint
     extends TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult> {
   _MockLogEndpoint({bool throwOnSend = false, List<_SendOutcome>? script})
-      : script = script ??
-            (throwOnSend
-                ? const [_SendOutcome.throwError]
-                : const [_SendOutcome.ok]),
-        super(
-          TomServerChannel('localhost', 80),
-          TomServerCallSpecs('POST', Uri.parse('http://localhost/remotelog')),
-        );
+    : script =
+          script ??
+          (throwOnSend
+              ? const [_SendOutcome.throwError]
+              : const [_SendOutcome.ok]),
+      super(
+        TomServerChannel('localhost', 80),
+        TomServerCallSpecs('POST', Uri.parse('http://localhost/remotelog')),
+      );
 
   /// Per-call outcomes; the last entry repeats once the script is exhausted.
   final List<_SendOutcome> script;
@@ -2694,10 +2864,7 @@ class _MockLogEndpoint
         );
       case _SendOutcome.returnServerRejection:
         // No TomServerCallError at all: the call itself went perfectly.
-        return (
-          TomRemoteLogResult.withError(_serverRejectionReason),
-          null,
-        );
+        return (TomRemoteLogResult.withError(_serverRejectionReason), null);
       case _SendOutcome.noResponse:
         // Exactly the shape TomServerEndpoint.send returns for an unreachable
         // server: no status, no body, the underlying failure in `exception`.

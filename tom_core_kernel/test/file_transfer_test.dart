@@ -243,9 +243,9 @@ void main() {
     /// libraries; documentation mentions them in backticks instead.
     Set<String> thrownKeys() => {
       for (final path in sourcePaths)
-        ...RegExp(r"'(file_transfer\.\w+)'")
-            .allMatches(readSource(path))
-            .map((m) => m.group(1)!),
+        ...RegExp(
+          r"'(file_transfer\.\w+)'",
+        ).allMatches(readSource(path)).map((m) => m.group(1)!),
     };
 
     /// Every key named in the bullet list on [TomFileTransferException].
@@ -256,17 +256,23 @@ void main() {
       final start = source.indexOf(listStart);
       final end = source.indexOf(listEnd);
       expect(start, greaterThanOrEqualTo(0), reason: 'Key list header moved');
-      expect(end, greaterThan(start), reason: 'Key list no longer precedes the class');
+      expect(
+        end,
+        greaterThan(start),
+        reason: 'Key list no longer precedes the class',
+      );
       return RegExp(r'`(file_transfer\.\w+)`')
           .allMatches(source.substring(start, end))
           .map((m) => m.group(1)!)
           .toSet();
     }
 
-    test('every thrown key is documented and every documented key is thrown',
-        () {
-      expect(documentedKeys(), equals(thrownKeys()));
-    });
+    test(
+      'every thrown key is documented and every documented key is thrown',
+      () {
+        expect(documentedKeys(), equals(thrownKeys()));
+      },
+    );
 
     test('the contract is the five keys the layer actually raises', () {
       // Spelled out so that adding a throw site is a deliberate act: the test
@@ -294,13 +300,15 @@ void main() {
       expect(await _collect(source.open()), utf8.encode('hello'));
     });
 
-    test('bytes() snapshots the buffer so a later mutation cannot leak in',
-        () async {
-      final buffer = <int>[1, 2, 3];
-      final source = TomFileSource.bytes('blob.bin', buffer);
-      buffer[0] = 99;
-      expect(await _collect(source.open()), [1, 2, 3]);
-    });
+    test(
+      'bytes() snapshots the buffer so a later mutation cannot leak in',
+      () async {
+        final buffer = <int>[1, 2, 3];
+        final source = TomFileSource.bytes('blob.bin', buffer);
+        buffer[0] = 99;
+        expect(await _collect(source.open()), [1, 2, 3]);
+      },
+    );
 
     test('the media type is guessed from the extension', () {
       expect(
@@ -322,8 +330,11 @@ void main() {
 
     test('an explicit media type wins over the guess', () {
       expect(
-        TomFileSource.bytes('doc.pdf', const [], mediaType: 'text/plain')
-            .mediaType,
+        TomFileSource.bytes(
+          'doc.pdf',
+          const [],
+          mediaType: 'text/plain',
+        ).mediaType,
         'text/plain',
       );
     });
@@ -528,9 +539,8 @@ void main() {
     late TomHttpFileTransferClient client;
 
     setUpAll(
-      () => TomHttpClientFactory.setGlobalHttpClientFactory(
-        _TestClientFactory(),
-      ),
+      () =>
+          TomHttpClientFactory.setGlobalHttpClientFactory(_TestClientFactory()),
     );
 
     setUp(() async {
@@ -543,18 +553,20 @@ void main() {
       await server.stop();
     });
 
-    test('uploads a file and returns the server-generated descriptor',
-        () async {
-      final stored = await client.upload(
-        slot: 'invoices/4711/scan',
-        source: TomFileSource.bytes('scan.pdf', utf8.encode('%PDF-1.7')),
-      );
-      expect(stored.key, 'test/0');
-      expect(stored.byteCount, 8);
-      expect(stored.fileName, 'scan.pdf');
-      expect(stored.mediaType, TomMimeType.pdf.toHeaderValue());
-      expect(server.seenPaths.single, '/invoices/4711/scan');
-    });
+    test(
+      'uploads a file and returns the server-generated descriptor',
+      () async {
+        final stored = await client.upload(
+          slot: 'invoices/4711/scan',
+          source: TomFileSource.bytes('scan.pdf', utf8.encode('%PDF-1.7')),
+        );
+        expect(stored.key, 'test/0');
+        expect(stored.byteCount, 8);
+        expect(stored.fileName, 'scan.pdf');
+        expect(stored.mediaType, TomMimeType.pdf.toHeaderValue());
+        expect(server.seenPaths.single, '/invoices/4711/scan');
+      },
+    );
 
     test('streams a large upload without buffering it whole', () async {
       // 2 MiB produced lazily in 64 KiB pieces: if the client buffered, the
@@ -600,10 +612,8 @@ void main() {
         slot: 'a',
         source: TomFileSource.stream(
           fileName: 'x.bin',
-          open: () => Stream.fromIterable([
-            utf8.encode('ab'),
-            utf8.encode('cd'),
-          ]),
+          open: () =>
+              Stream.fromIterable([utf8.encode('ab'), utf8.encode('cd')]),
         ),
         onProgress: progress.add,
       );
@@ -648,12 +658,14 @@ void main() {
       );
     });
 
-    test('the download stream is lazy — nothing is sent until it is listened to',
-        () async {
-      client.download('a');
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(server.seenPaths, isEmpty);
-    });
+    test(
+      'the download stream is lazy — nothing is sent until it is listened to',
+      () async {
+        client.download('a');
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(server.seenPaths, isEmpty);
+      },
+    );
 
     test('describe answers from HEAD without transferring the file', () async {
       final stored = await client.upload(
@@ -669,28 +681,30 @@ void main() {
       expect(await client.describe('missing'), isNull);
     });
 
-    test('a HEAD that describes nothing is a protocol error, not empty metadata',
-        () async {
-      // The fourth `invalid_descriptor` site: a 200 with neither the descriptor
-      // header nor the key/length pair. Answering `null` here would be
-      // indistinguishable from "no file stored", so a server that has not
-      // implemented the headers would look like an empty slot forever.
-      await client.upload(
-        slot: 'a',
-        source: TomFileSource.bytes('x.bin', const [1]),
-      );
-      server.headWithoutDescriptor = true;
-      await expectLater(
-        client.describe('a'),
-        throwsA(
-          isA<TomFileTransferException>().having(
-            (e) => e.key,
-            'key',
-            'file_transfer.invalid_descriptor',
+    test(
+      'a HEAD that describes nothing is a protocol error, not empty metadata',
+      () async {
+        // The fourth `invalid_descriptor` site: a 200 with neither the descriptor
+        // header nor the key/length pair. Answering `null` here would be
+        // indistinguishable from "no file stored", so a server that has not
+        // implemented the headers would look like an empty slot forever.
+        await client.upload(
+          slot: 'a',
+          source: TomFileSource.bytes('x.bin', const [1]),
+        );
+        server.headWithoutDescriptor = true;
+        await expectLater(
+          client.describe('a'),
+          throwsA(
+            isA<TomFileTransferException>().having(
+              (e) => e.key,
+              'key',
+              'file_transfer.invalid_descriptor',
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('remove deletes and reports whether anything was there', () async {
       await client.upload(
@@ -702,21 +716,23 @@ void main() {
       expect(await client.describe('a'), isNull);
     });
 
-    test('a non-2xx response becomes a rejected error carrying the status',
-        () async {
-      server.forcedStatus = HttpStatus.forbidden;
-      await expectLater(
-        client.upload(
-          slot: 'a',
-          source: TomFileSource.bytes('x.bin', const [1]),
-        ),
-        throwsA(
-          isA<TomFileTransferException>()
-              .having((e) => e.key, 'key', 'file_transfer.rejected')
-              .having((e) => e.parameters?['statusCode'], 'statusCode', 403),
-        ),
-      );
-    });
+    test(
+      'a non-2xx response becomes a rejected error carrying the status',
+      () async {
+        server.forcedStatus = HttpStatus.forbidden;
+        await expectLater(
+          client.upload(
+            slot: 'a',
+            source: TomFileSource.bytes('x.bin', const [1]),
+          ),
+          throwsA(
+            isA<TomFileTransferException>()
+                .having((e) => e.key, 'key', 'file_transfer.rejected')
+                .having((e) => e.parameters?['statusCode'], 'statusCode', 403),
+          ),
+        );
+      },
+    );
 
     test('cancelling mid-download aborts the transfer', () async {
       await client.upload(
@@ -803,66 +819,71 @@ void main() {
       expect(server.bytes.containsKey('/a'), isTrue);
     });
 
-    test('a header provider is consulted per request, not captured once',
-        () async {
-      // The reason the seam is a callback and not a map: a credential rotates,
-      // and a client built at startup must present the *current* one — which is
-      // exactly what makes a refresh-and-retry able to succeed.
-      var issued = 0;
-      final rotating = TomHttpFileTransferClient(
-        baseUri: server.baseUri,
-        headerProvider: () => {'Authorization': 'Bearer token-${++issued}'},
-      );
-      addTearDown(rotating.close);
+    test(
+      'a header provider is consulted per request, not captured once',
+      () async {
+        // The reason the seam is a callback and not a map: a credential rotates,
+        // and a client built at startup must present the *current* one — which is
+        // exactly what makes a refresh-and-retry able to succeed.
+        var issued = 0;
+        final rotating = TomHttpFileTransferClient(
+          baseUri: server.baseUri,
+          headerProvider: () => {'Authorization': 'Bearer token-${++issued}'},
+        );
+        addTearDown(rotating.close);
 
-      final source = TomFileSource.bytes('x.bin', const [1]);
-      await rotating.upload(slot: 'a', source: source);
-      await rotating.upload(slot: 'a', source: source);
+        final source = TomFileSource.bytes('x.bin', const [1]);
+        await rotating.upload(slot: 'a', source: source);
+        await rotating.upload(slot: 'a', source: source);
 
-      expect(server.seenAuthorization,
-          ['Bearer token-1', 'Bearer token-2']);
-    });
+        expect(server.seenAuthorization, ['Bearer token-1', 'Bearer token-2']);
+      },
+    );
 
-    test('a provider Authorization header replaces the built-in bearer',
-        () async {
-      // Two credentials on one request is the ambiguity the seam removes: when
-      // the application names the header, its answer is the only one sent.
-      TomBearerAuthentication.setTokens(_authJwt, _authzJwt, false);
-      addTearDown(TomBearerAuthentication.clearTokens);
+    test(
+      'a provider Authorization header replaces the built-in bearer',
+      () async {
+        // Two credentials on one request is the ambiguity the seam removes: when
+        // the application names the header, its answer is the only one sent.
+        TomBearerAuthentication.setTokens(_authJwt, _authzJwt, false);
+        addTearDown(TomBearerAuthentication.clearTokens);
 
-      final explicit = TomHttpFileTransferClient(
-        baseUri: server.baseUri,
-        headerProvider: () => {
-          'Authorization':
-              'Bearer ${TomBearerAuthentication.authorizationToken}',
-        },
-      );
-      addTearDown(explicit.close);
-      await explicit.upload(
-        slot: 'a',
-        source: TomFileSource.bytes('x.bin', const [1]),
-      );
+        final explicit = TomHttpFileTransferClient(
+          baseUri: server.baseUri,
+          headerProvider: () => {
+            'Authorization':
+                'Bearer ${TomBearerAuthentication.authorizationToken}',
+          },
+        );
+        addTearDown(explicit.close);
+        await explicit.upload(
+          slot: 'a',
+          source: TomFileSource.bytes('x.bin', const [1]),
+        );
 
-      expect(server.seenAuthorization.single, 'Bearer $_authzJwt');
-    });
+        expect(server.seenAuthorization.single, 'Bearer $_authzJwt');
+      },
+    );
 
-    test('the built-in bearer still applies when the provider names no header',
-        () async {
-      TomBearerAuthentication.setTokens(_authJwt, _authzJwt, false);
-      addTearDown(TomBearerAuthentication.clearTokens);
+    test(
+      'the built-in bearer still applies when the provider names no header',
+      () async {
+        TomBearerAuthentication.setTokens(_authJwt, _authzJwt, false);
+        addTearDown(TomBearerAuthentication.clearTokens);
 
-      final tagged = TomHttpFileTransferClient(
-        baseUri: server.baseUri,
-        headerProvider: () => const {'x-request': 'r1'},
-      );
-      addTearDown(tagged.close);
-      await tagged.upload(
-        slot: 'a',
-        source: TomFileSource.bytes('x.bin', const [1]),
-      );
+        final tagged = TomHttpFileTransferClient(
+          baseUri: server.baseUri,
+          headerProvider: () => const {'x-request': 'r1'},
+        );
+        addTearDown(tagged.close);
+        await tagged.upload(
+          slot: 'a',
+          source: TomFileSource.bytes('x.bin', const [1]),
+        );
 
-      expect(server.seenAuthorization.single, 'Bearer $_authJwt');
-    });
+        expect(server.seenAuthorization.single, 'Bearer $_authJwt');
+      },
+    );
 
     test('a base path prefixes every slot', () async {
       final prefixed = TomHttpFileTransferClient(

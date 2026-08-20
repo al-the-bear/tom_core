@@ -35,7 +35,10 @@ void main() {
       TomResourceRoleRegistry.register('owner', TomAuthState.full);
       final snapshot = TomResourceRoleRegistry.mapping;
       expect(snapshot, {'owner': TomAuthState.full});
-      expect(() => snapshot['editor'] = TomAuthState.full, throwsUnsupportedError);
+      expect(
+        () => snapshot['editor'] = TomAuthState.full,
+        throwsUnsupportedError,
+      );
     });
   });
 
@@ -112,16 +115,18 @@ void main() {
       expect(mayEdit('project.Z'), isFalse); // no role → denied
     });
 
-    test('installs on the TomAuthorization singleton for UI-wide resolution',
-        () {
-      final alice = TomAccessControlInformation(
-        resourceRoles: {'project.X': 'owner', 'project.Y': 'viewer'},
-      );
-      TomAuthorization.adapter = TomResourceRoleAdapter(alice.resourceRoles);
+    test(
+      'installs on the TomAuthorization singleton for UI-wide resolution',
+      () {
+        final alice = TomAccessControlInformation(
+          resourceRoles: {'project.X': 'owner', 'project.Y': 'viewer'},
+        );
+        TomAuthorization.adapter = TomResourceRoleAdapter(alice.resourceRoles);
 
-      expect(TomAuthorization.resolveAuth('project.X'), TomAuthState.full);
-      expect(TomAuthorization.resolveAuth('project.Y'), TomAuthState.read);
-      expect(TomAuthorization.resolveAuth('project.Z'), TomAuthState.none);
-    });
+        expect(TomAuthorization.resolveAuth('project.X'), TomAuthState.full);
+        expect(TomAuthorization.resolveAuth('project.Y'), TomAuthState.read);
+        expect(TomAuthorization.resolveAuth('project.Z'), TomAuthState.none);
+      },
+    );
   });
 }

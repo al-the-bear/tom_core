@@ -284,12 +284,12 @@ class TestWorkerContext extends TomWorkerContext {
   bool workerInitialized = false;
 
   TestWorkerContext({String namePrefix = 'Test'})
-      : super(
-          const TomEnvironment('test', isTest: true),
-          platformLinux,
-          [],
-          namePrefix,
-        );
+    : super(
+        const TomEnvironment('test', isTest: true),
+        platformLinux,
+        [],
+        namePrefix,
+      );
 
   @override
   Future<void> initializeWorker(TomWorker worker) async {
@@ -320,12 +320,12 @@ class ReadIsolateHookFlagCommand extends TomCommand {
 /// demonstrates.
 class IsolateInitProbeContext extends TomWorkerContext {
   IsolateInitProbeContext({String namePrefix = 'IsolateInit'})
-      : super(
-          const TomEnvironment('test', isTest: true),
-          platformLinux,
-          [],
-          namePrefix,
-        );
+    : super(
+        const TomEnvironment('test', isTest: true),
+        platformLinux,
+        [],
+        namePrefix,
+      );
 
   @override
   Future<void> initializeIsolate() async {
@@ -336,12 +336,12 @@ class IsolateInitProbeContext extends TomWorkerContext {
 /// Worker context that adds an executor during initialization.
 class ExecutorWorkerContext extends TomWorkerContext {
   ExecutorWorkerContext()
-      : super(
-          const TomEnvironment('test', isTest: true),
-          platformLinux,
-          [],
-          'Exec',
-        );
+    : super(
+        const TomEnvironment('test', isTest: true),
+        platformLinux,
+        [],
+        'Exec',
+      );
 
   @override
   Future<void> initializeWorker(TomWorker worker) async {
@@ -391,11 +391,11 @@ class FailingInitContext extends TomWorkerContext {
     this.failure = InitFailure.none,
     String namePrefix = 'FailInit',
   }) : super(
-          const TomEnvironment('test', isTest: true),
-          platformLinux,
-          [],
-          namePrefix,
-        );
+         const TomEnvironment('test', isTest: true),
+         platformLinux,
+         [],
+         namePrefix,
+       );
 
   @override
   Future<void> initializeIsolate() async {
@@ -566,10 +566,7 @@ void main() {
         expect(await FixedValueCommand(42).execute(), equals(42));
         expect(await FixedValueCommand(3.14).execute(), equals(3.14));
         expect(await FixedValueCommand(true).execute(), equals(true));
-        expect(
-          await FixedValueCommand([1, 2, 3]).execute(),
-          equals([1, 2, 3]),
-        );
+        expect(await FixedValueCommand([1, 2, 3]).execute(), equals([1, 2, 3]));
         expect(
           await FixedValueCommand({'key': 'value'}).execute(),
           equals({'key': 'value'}),
@@ -646,8 +643,7 @@ void main() {
         await expectLater(context.initializeIsolate(), completes);
       });
 
-      test('initializeIsolate runs in the worker, not in the creator',
-          () async {
+      test('initializeIsolate runs in the worker, not in the creator', () async {
         // The other initializeIsolate tests all pin a refusal — a throw aborts
         // the spawn, a hang trips readyTimeout. This one pins the success path,
         // and with it the asymmetry that makes the success path awkward to
@@ -662,15 +658,21 @@ void main() {
         final ranInWorker = await worker.executeCommand(
           ReadIsolateHookFlagCommand(),
         );
-        expect(ranInWorker, isTrue,
-            reason: 'the hook must have run before the worker accepts work');
+        expect(
+          ranInWorker,
+          isTrue,
+          reason: 'the hook must have run before the worker accepts work',
+        );
 
         // The same top-level variable, read here, is still false: top-level
         // state is per-isolate. This is the half that traps readers — a field
         // on the context would look identical from the creator's side, which
         // is to say indistinguishable from a hook that never ran.
-        expect(isolateHookRan, isFalse,
-            reason: 'the creator must not see the worker isolate\'s state');
+        expect(
+          isolateHookRan,
+          isFalse,
+          reason: 'the creator must not see the worker isolate\'s state',
+        );
       });
 
       test('a throwing initializeWorker aborts the spawn', () async {
@@ -696,95 +698,98 @@ void main() {
         );
       });
 
-      test('a throwing initializeWorker leaves no live isolate behind',
-          () async {
+      test('a throwing initializeWorker leaves no live isolate behind', () async {
         // spawn never returns a TomWorker here, so the caller has no handle to
         // close(). If spawn did not tear the isolate down itself, it would sit
         // in its message loop holding its ports for the life of the process.
         final exits = ReceivePort();
-        final seen = await exitsWhileSpawning(
-          () async {
-            try {
-              await TomWorker.spawn(
-                TomWorker.startRemoteIsolate,
-                FailingInitContext(
-                  exits.sendPort,
-                  failure: InitFailure.workerHookThrows,
-                ),
-              );
-            } on StateError {
-              // The refusal itself is asserted by the previous test.
-            }
-          },
-          exits,
-        );
+        final seen = await exitsWhileSpawning(() async {
+          try {
+            await TomWorker.spawn(
+              TomWorker.startRemoteIsolate,
+              FailingInitContext(
+                exits.sendPort,
+                failure: InitFailure.workerHookThrows,
+              ),
+            );
+          } on StateError {
+            // The refusal itself is asserted by the previous test.
+          }
+        }, exits);
 
         expect(seen, contains('exited'));
       });
 
-      test('a throwing initializeIsolate aborts the spawn instead of hanging',
-          () async {
-        final exits = ReceivePort();
-        addTearDown(() {
+      test(
+        'a throwing initializeIsolate aborts the spawn instead of hanging',
+        () async {
+          final exits = ReceivePort();
+          addTearDown(() {
+            try {
+              exits.close();
+            } on Object {
+              // Already closed by the helper.
+            }
+          });
+
+          // initializeIsolate runs inside the worker isolate, where a throw
+          // cannot unwind to the creator: it ends the isolate's entry point, the
+          // ready signal is never sent, and an unguarded spawn would wait for it
+          // forever. The failure has to travel back as a message instead.
+          await expectLater(
+            TomWorker.spawn(
+              TomWorker.startRemoteIsolate,
+              FailingInitContext(
+                exits.sendPort,
+                failure: InitFailure.isolateHookThrows,
+              ),
+            ).timeout(Duration(seconds: 10)),
+            throwsA(isA<TomWorkerException>()),
+          );
+        },
+      );
+
+      test(
+        'the isolate-side refusal carries the reason and the worker name',
+        () async {
+          final exits = ReceivePort();
+          addTearDown(() {
+            try {
+              exits.close();
+            } on Object {
+              // Already closed by the helper.
+            }
+          });
+
+          // The exception is rebuilt in the creator, so without the isolate's own
+          // message the caller would be told only that initialization failed —
+          // not by what, nor in which of several workers.
           try {
-            exits.close();
-          } on Object {
-            // Already closed by the helper.
+            await TomWorker.spawn(
+              TomWorker.startRemoteIsolate,
+              FailingInitContext(
+                exits.sendPort,
+                failure: InitFailure.isolateHookThrows,
+                namePrefix: 'NamedFail',
+              ),
+            ).timeout(Duration(seconds: 10));
+            fail('a throwing initializeIsolate must abort the spawn');
+          } on TomWorkerException catch (e) {
+            expect(e.key, equals('isolate.initialize_isolate_failed.spawn'));
+            expect(
+              e.parameters?['error'],
+              contains('initializeIsolate refused'),
+            );
+            expect(e.parameters?['isolateName'], startsWith('NamedFail'));
           }
-        });
+        },
+      );
 
-        // initializeIsolate runs inside the worker isolate, where a throw
-        // cannot unwind to the creator: it ends the isolate's entry point, the
-        // ready signal is never sent, and an unguarded spawn would wait for it
-        // forever. The failure has to travel back as a message instead.
-        await expectLater(
-          TomWorker.spawn(
-            TomWorker.startRemoteIsolate,
-            FailingInitContext(
-              exits.sendPort,
-              failure: InitFailure.isolateHookThrows,
-            ),
-          ).timeout(Duration(seconds: 10)),
-          throwsA(isA<TomWorkerException>()),
-        );
-      });
-
-      test('the isolate-side refusal carries the reason and the worker name',
-          () async {
-        final exits = ReceivePort();
-        addTearDown(() {
-          try {
-            exits.close();
-          } on Object {
-            // Already closed by the helper.
-          }
-        });
-
-        // The exception is rebuilt in the creator, so without the isolate's own
-        // message the caller would be told only that initialization failed —
-        // not by what, nor in which of several workers.
-        try {
-          await TomWorker.spawn(
-            TomWorker.startRemoteIsolate,
-            FailingInitContext(
-              exits.sendPort,
-              failure: InitFailure.isolateHookThrows,
-              namePrefix: 'NamedFail',
-            ),
-          ).timeout(Duration(seconds: 10));
-          fail('a throwing initializeIsolate must abort the spawn');
-        } on TomWorkerException catch (e) {
-          expect(e.key, equals('isolate.initialize_isolate_failed.spawn'));
-          expect(e.parameters?['error'], contains('initializeIsolate refused'));
-          expect(e.parameters?['isolateName'], startsWith('NamedFail'));
-        }
-      });
-
-      test('a throwing initializeIsolate leaves no live isolate behind',
-          () async {
-        final exits = ReceivePort();
-        final seen = await exitsWhileSpawning(
-          () async {
+      test(
+        'a throwing initializeIsolate leaves no live isolate behind',
+        () async {
+          final exits = ReceivePort();
+          final seen = await exitsWhileSpawning(() async {
             try {
               await TomWorker.spawn(
                 TomWorker.startRemoteIsolate,
@@ -796,12 +801,11 @@ void main() {
             } on TomWorkerException {
               // The refusal itself is asserted by the previous tests.
             }
-          },
-          exits,
-        );
+          }, exits);
 
-        expect(seen, contains('exited'));
-      });
+          expect(seen, contains('exited'));
+        },
+      );
 
       test('a hanging initializeIsolate fails the spawn once readyTimeout '
           'expires', () async {
@@ -836,60 +840,59 @@ void main() {
         );
       });
 
-      test('the ready timeout names the worker and the bound it exceeded',
-          () async {
-        final exits = ReceivePort();
-        addTearDown(() {
-          try {
-            exits.close();
-          } on Object {
-            // Already closed by the helper.
-          }
-        });
+      test(
+        'the ready timeout names the worker and the bound it exceeded',
+        () async {
+          final exits = ReceivePort();
+          addTearDown(() {
+            try {
+              exits.close();
+            } on Object {
+              // Already closed by the helper.
+            }
+          });
 
-        // "Timed out" on its own tells the caller nothing actionable: which of
-        // several workers stalled, and whether the bound was simply too tight
-        // for this workload, are the two questions the message has to answer.
-        try {
-          await TomWorker.spawn(
-            TomWorker.startRemoteIsolate,
-            FailingInitContext(
-              exits.sendPort,
-              failure: InitFailure.isolateHookHangs,
-              namePrefix: 'SlowInit',
-            ),
-            readyTimeout: Duration(milliseconds: 500),
-          ).timeout(Duration(seconds: 10));
-          fail('a hanging initializeIsolate must abort the spawn');
-        } on TomWorkerException catch (e) {
-          expect(e.key, equals('isolate.ready_timeout.spawn'));
-          expect(e.parameters?['isolateName'], startsWith('SlowInit'));
-          expect(e.parameters?['readyTimeout'], equals('0:00:00.500000'));
-        }
-      });
+          // "Timed out" on its own tells the caller nothing actionable: which of
+          // several workers stalled, and whether the bound was simply too tight
+          // for this workload, are the two questions the message has to answer.
+          try {
+            await TomWorker.spawn(
+              TomWorker.startRemoteIsolate,
+              FailingInitContext(
+                exits.sendPort,
+                failure: InitFailure.isolateHookHangs,
+                namePrefix: 'SlowInit',
+              ),
+              readyTimeout: Duration(milliseconds: 500),
+            ).timeout(Duration(seconds: 10));
+            fail('a hanging initializeIsolate must abort the spawn');
+          } on TomWorkerException catch (e) {
+            expect(e.key, equals('isolate.ready_timeout.spawn'));
+            expect(e.parameters?['isolateName'], startsWith('SlowInit'));
+            expect(e.parameters?['readyTimeout'], equals('0:00:00.500000'));
+          }
+        },
+      );
 
       test('a timed-out spawn leaves no live isolate behind', () async {
         // The hung isolate is unreachable — spawn returned no TomWorker — so if
         // the timeout only failed the future, the isolate would stay parked in
         // its hook for the life of the process.
         final exits = ReceivePort();
-        final seen = await exitsWhileSpawning(
-          () async {
-            try {
-              await TomWorker.spawn(
-                TomWorker.startRemoteIsolate,
-                FailingInitContext(
-                  exits.sendPort,
-                  failure: InitFailure.isolateHookHangs,
-                ),
-                readyTimeout: Duration(milliseconds: 500),
-              ).timeout(Duration(seconds: 10));
-            } on TomWorkerException {
-              // The refusal itself is asserted by the previous tests.
-            }
-          },
-          exits,
-        );
+        final seen = await exitsWhileSpawning(() async {
+          try {
+            await TomWorker.spawn(
+              TomWorker.startRemoteIsolate,
+              FailingInitContext(
+                exits.sendPort,
+                failure: InitFailure.isolateHookHangs,
+              ),
+              readyTimeout: Duration(milliseconds: 500),
+            ).timeout(Duration(seconds: 10));
+          } on TomWorkerException {
+            // The refusal itself is asserted by the previous tests.
+          }
+        }, exits);
 
         expect(seen, contains('exited'));
       });
@@ -961,31 +964,33 @@ void main() {
         }
       });
 
-      test('the pool passes its readyTimeout down to the workers it spawns',
-          () async {
-        final exits = ReceivePort();
-        addTearDown(exits.close);
+      test(
+        'the pool passes its readyTimeout down to the workers it spawns',
+        () async {
+          final exits = ReceivePort();
+          addTearDown(exits.close);
 
-        // The pool owns every spawn its callers ever make, so a bound it did
-        // not forward would be a bound nobody could set.
-        await expectLater(
-          TomWorkerPool.withSize(
-            1,
-            FailingInitContext(
-              exits.sendPort,
-              failure: InitFailure.isolateHookHangs,
+          // The pool owns every spawn its callers ever make, so a bound it did
+          // not forward would be a bound nobody could set.
+          await expectLater(
+            TomWorkerPool.withSize(
+              1,
+              FailingInitContext(
+                exits.sendPort,
+                failure: InitFailure.isolateHookHangs,
+              ),
+              readyTimeout: Duration(milliseconds: 500),
+            ).timeout(Duration(seconds: 10)),
+            throwsA(
+              isA<TomWorkerException>().having(
+                (e) => e.key,
+                'key',
+                equals('isolate.ready_timeout.spawn'),
+              ),
             ),
-            readyTimeout: Duration(milliseconds: 500),
-          ).timeout(Duration(seconds: 10)),
-          throwsA(
-            isA<TomWorkerException>().having(
-              (e) => e.key,
-              'key',
-              equals('isolate.ready_timeout.spawn'),
-            ),
-          ),
-        );
-      });
+          );
+        },
+      );
     });
   });
 
@@ -1098,8 +1103,7 @@ void main() {
     });
 
     group('sendToCreator', () {
-      test('should throw TomWorkerException when called from main isolate',
-          () {
+      test('should throw TomWorkerException when called from main isolate', () {
         expect(
           () => TomWorker.sendToCreator('test'),
           throwsA(isA<TomWorkerException>()),
@@ -1120,13 +1124,15 @@ void main() {
     });
 
     group('executeInCreator', () {
-      test('should throw TomWorkerException when called from main isolate',
-          () async {
-        expect(
-          () => TomWorker.executeInCreator('test'),
-          throwsA(isA<TomWorkerException>()),
-        );
-      });
+      test(
+        'should throw TomWorkerException when called from main isolate',
+        () async {
+          expect(
+            () => TomWorker.executeInCreator('test'),
+            throwsA(isA<TomWorkerException>()),
+          );
+        },
+      );
 
       test('should throw exception with correct key', () async {
         try {
@@ -1179,8 +1185,7 @@ void main() {
         worker2.close();
       });
 
-      test('should name workers prefix + zero-based 3-digit counter',
-          () async {
+      test('should name workers prefix + zero-based 3-digit counter', () async {
         // The counter is read before it is incremented and `setUp` resets it,
         // so the first worker of a test is `<prefix>000`, not `<prefix>001`.
         final first = await TomWorker.spawn(
@@ -1214,30 +1219,35 @@ void main() {
     });
 
     group('startRemoteIsolate', () {
-      test('throws TomWorkerException when the context has no send port',
-          () async {
-        // A context built directly (not through spawn) has no send port, so
-        // starting an isolate with it must fail with the documented key. The
-        // guard fires inside an async body, surfacing as a zone error rather
-        // than a synchronous throw, so capture it with runZonedGuarded.
-        final context = TestWorkerContext(namePrefix: 'NoPort');
-        Object? asyncError;
+      test(
+        'throws TomWorkerException when the context has no send port',
+        () async {
+          // A context built directly (not through spawn) has no send port, so
+          // starting an isolate with it must fail with the documented key. The
+          // guard fires inside an async body, surfacing as a zone error rather
+          // than a synchronous throw, so capture it with runZonedGuarded.
+          final context = TestWorkerContext(namePrefix: 'NoPort');
+          Object? asyncError;
 
-        await runZonedGuarded(() async {
-          TomWorker.startRemoteIsolate(context);
-          await Future.delayed(const Duration(milliseconds: 10));
-        }, (error, stack) {
-          asyncError = error;
-        });
+          await runZonedGuarded(
+            () async {
+              TomWorker.startRemoteIsolate(context);
+              await Future.delayed(const Duration(milliseconds: 10));
+            },
+            (error, stack) {
+              asyncError = error;
+            },
+          );
 
-        expect(asyncError, isA<TomWorkerException>());
-        expect(
-          (asyncError as TomWorkerException).key,
-          equals(
-            'isolate.state_error.attempt_to_start_isolate_but_sendport_is_null',
-          ),
-        );
-      });
+          expect(asyncError, isA<TomWorkerException>());
+          expect(
+            (asyncError as TomWorkerException).key,
+            equals(
+              'isolate.state_error.attempt_to_start_isolate_but_sendport_is_null',
+            ),
+          );
+        },
+      );
     });
 
     group('executeCommand', () {
@@ -1245,10 +1255,7 @@ void main() {
 
       setUp(() async {
         final context = TestWorkerContext();
-        worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+        worker = await TomWorker.spawn(TomWorker.startRemoteIsolate, context);
       });
 
       tearDown(() {
@@ -1302,10 +1309,7 @@ void main() {
 
       setUp(() async {
         final context = TestWorkerContext();
-        worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+        worker = await TomWorker.spawn(TomWorker.startRemoteIsolate, context);
       });
 
       tearDown(() {
@@ -1357,28 +1361,30 @@ void main() {
         worker.close();
       });
 
-      test('is NOT answered while a synchronous command blocks the isolate',
-          () async {
-        final context = TestWorkerContext(namePrefix: 'PingBlocked');
-        final worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+      test(
+        'is NOT answered while a synchronous command blocks the isolate',
+        () async {
+          final context = TestWorkerContext(namePrefix: 'PingBlocked');
+          final worker = await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            context,
+          );
 
-        // A tight compute loop never yields, so the ping cannot be read until
-        // the loop ends. This is why supervision probes idle workers only —
-        // probing here would force-kill a worker that is healthy and computing.
-        // ping() itself makes no isBusy check, so a direct caller meets it.
-        final pending = worker.executeCommand(BlockingCommand(1000));
+          // A tight compute loop never yields, so the ping cannot be read until
+          // the loop ends. This is why supervision probes idle workers only —
+          // probing here would force-kill a worker that is healthy and computing.
+          // ping() itself makes no isBusy check, so a direct caller meets it.
+          final pending = worker.executeCommand(BlockingCommand(1000));
 
-        expect(await worker.ping(const Duration(milliseconds: 150)), isFalse);
-        // The worker was healthy all along: its command still resolves, and a
-        // later ping is answered once the isolate is free again.
-        expect(await pending, equals('blocked'));
-        expect(await worker.ping(const Duration(seconds: 5)), isTrue);
+          expect(await worker.ping(const Duration(milliseconds: 150)), isFalse);
+          // The worker was healthy all along: its command still resolves, and a
+          // later ping is answered once the isolate is free again.
+          expect(await pending, equals('blocked'));
+          expect(await worker.ping(const Duration(seconds: 5)), isTrue);
 
-        worker.close();
-      });
+          worker.close();
+        },
+      );
     });
 
     group('superviseExit', () {
@@ -1388,40 +1394,51 @@ void main() {
       // with no pool involved, because that is the supported answer for a
       // caller who is not using a pool.
 
-      test('fails an in-flight command on a bare worker when the isolate dies',
-          () async {
-        final context = TestWorkerContext(namePrefix: 'SupervisedBare');
-        final worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+      test(
+        'fails an in-flight command on a bare worker when the isolate dies',
+        () async {
+          final context = TestWorkerContext(namePrefix: 'SupervisedBare');
+          final worker = await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            context,
+          );
 
-        final order = <String>[];
-        worker.superviseExit(() => order.add('onDeath'));
+          final order = <String>[];
+          worker.superviseExit(() => order.add('onDeath'));
 
-        // Without supervision this future would never complete.
-        try {
-          await worker.executeCommand(SuicideCommand());
-          fail('a command on a dead isolate must not resolve');
-        } on TomWorkerDiedException {
-          order.add('caller');
-        }
+          // Without supervision this future would never complete.
+          try {
+            await worker.executeCommand(SuicideCommand());
+            fail('a command on a dead isolate must not resolve');
+          } on TomWorkerDiedException {
+            order.add('caller');
+          }
 
-        // Ordering is load-bearing, not incidental. The request completers are
-        // Completer.sync(), so completeError resumes the awaiting caller
-        // BEFORE _handleUnexpectedDeath reaches the onDeath callback three
-        // lines later. A caller that inspects supervisor-maintained state the
-        // instant it catches this exception therefore reads it stale — which
-        // is why the pool's recovery is polled rather than checked once.
-        expect(order, equals(['caller']),
-            reason: 'the caller resumes before the supervisor callback runs');
+          // Ordering is load-bearing, not incidental. The request completers are
+          // Completer.sync(), so completeError resumes the awaiting caller
+          // BEFORE _handleUnexpectedDeath reaches the onDeath callback three
+          // lines later. A caller that inspects supervisor-maintained state the
+          // instant it catches this exception therefore reads it stale — which
+          // is why the pool's recovery is polled rather than checked once.
+          expect(
+            order,
+            equals(['caller']),
+            reason: 'the caller resumes before the supervisor callback runs',
+          );
 
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        expect(order, equals(['caller', 'onDeath']),
-            reason: 'the onDeath callback must run on an unexpected exit');
-        expect(worker.isClosed, isTrue,
-            reason: 'an unexpectedly dead worker marks itself closed');
-      });
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          expect(
+            order,
+            equals(['caller', 'onDeath']),
+            reason: 'the onDeath callback must run on an unexpected exit',
+          );
+          expect(
+            worker.isClosed,
+            isTrue,
+            reason: 'an unexpectedly dead worker marks itself closed',
+          );
+        },
+      );
 
       test('does not fire onDeath for an orderly close', () async {
         final context = TestWorkerContext(namePrefix: 'SupervisedOrderly');
@@ -1494,23 +1511,25 @@ void main() {
         );
       });
 
-      test('sendExecutorToIsolate after close throws instead of dropping',
-          () async {
-        final context = TestWorkerContext(namePrefix: 'ClosedExecutor');
-        final worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+      test(
+        'sendExecutorToIsolate after close throws instead of dropping',
+        () async {
+          final context = TestWorkerContext(namePrefix: 'ClosedExecutor');
+          final worker = await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            context,
+          );
 
-        worker.close();
+          worker.close();
 
-        // The send would land on a port whose isolate is shutting down: the
-        // executor is silently lost and the caller believes it registered.
-        expect(
-          () => worker.sendExecutorToIsolate(TestStringExecutor()),
-          throwsA(isA<TomWorkerException>()),
-        );
-      });
+          // The send would land on a port whose isolate is shutting down: the
+          // executor is silently lost and the caller believes it registered.
+          expect(
+            () => worker.sendExecutorToIsolate(TestStringExecutor()),
+            throwsA(isA<TomWorkerException>()),
+          );
+        },
+      );
 
       test('the refusal names the worker whose command was rejected', () async {
         final context = TestWorkerContext(namePrefix: 'ClosedNamed');
@@ -1614,25 +1633,27 @@ void main() {
     });
 
     group('sendExecutorToIsolate', () {
-      test('sent executor processes a non-TomCommand message end-to-end',
-          () async {
-        final context = TestWorkerContext();
-        final worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+      test(
+        'sent executor processes a non-TomCommand message end-to-end',
+        () async {
+          final context = TestWorkerContext();
+          final worker = await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            context,
+          );
 
-        worker.sendExecutorToIsolate(TestStringExecutor());
-        // Give the isolate a moment to register the executor before dispatch.
-        await Future.delayed(Duration(milliseconds: 50));
+          worker.sendExecutorToIsolate(TestStringExecutor());
+          // Give the isolate a moment to register the executor before dispatch.
+          await Future.delayed(Duration(milliseconds: 50));
 
-        // A plain String is not a TomCommand, so the isolate routes it through
-        // the registered executor, which prefixes "Processed: ".
-        final result = await worker.executeCommand('payload');
-        expect(result, equals('Processed: payload'));
+          // A plain String is not a TomCommand, so the isolate routes it through
+          // the registered executor, which prefixes "Processed: ".
+          final result = await worker.executeCommand('payload');
+          expect(result, equals('Processed: payload'));
 
-        worker.close();
-      });
+          worker.close();
+        },
+      );
     });
 
     group('unhandled messages', () {
@@ -1681,28 +1702,30 @@ void main() {
         worker.close();
       });
 
-      test('a later executor still handles what an earlier one declines',
-          () async {
-        final context = TestWorkerContext(namePrefix: 'Chain');
-        final worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+      test(
+        'a later executor still handles what an earlier one declines',
+        () async {
+          final context = TestWorkerContext(namePrefix: 'Chain');
+          final worker = await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            context,
+          );
 
-        // Order matters: the declining executor must not short-circuit the
-        // chain into the unhandled answer while a later one can still handle
-        // the message.
-        worker.sendExecutorToIsolate(NoOpExecutor());
-        worker.sendExecutorToIsolate(TestStringExecutor());
-        await Future.delayed(Duration(milliseconds: 50));
+          // Order matters: the declining executor must not short-circuit the
+          // chain into the unhandled answer while a later one can still handle
+          // the message.
+          worker.sendExecutorToIsolate(NoOpExecutor());
+          worker.sendExecutorToIsolate(TestStringExecutor());
+          await Future.delayed(Duration(milliseconds: 50));
 
-        final result = await worker
-            .executeCommand('payload')
-            .timeout(Duration(seconds: 5));
-        expect(result, equals('Processed: payload'));
+          final result = await worker
+              .executeCommand('payload')
+              .timeout(Duration(seconds: 5));
+          expect(result, equals('Processed: payload'));
 
-        worker.close();
-      });
+          worker.close();
+        },
+      );
 
       test('the worker stays usable after an unhandled message', () async {
         final context = TestWorkerContext(namePrefix: 'StillUsable');
@@ -1741,62 +1764,68 @@ void main() {
         worker.close();
       });
 
-      test('sendToCreator delivers a message to a creator-side executor',
-          () async {
-        final inbox = InboxExecutor();
-        TomWorker.addExecutor(inbox);
+      test(
+        'sendToCreator delivers a message to a creator-side executor',
+        () async {
+          final inbox = InboxExecutor();
+          TomWorker.addExecutor(inbox);
 
-        final context = TestWorkerContext(namePrefix: 'Ping');
-        final worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+          final context = TestWorkerContext(namePrefix: 'Ping');
+          final worker = await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            context,
+          );
 
-        final ack = await worker.executeCommand(PingCreatorCommand('hi'));
-        // sendToCreator is one-way; the executor runs after the command returns.
-        expect(ack, equals('sent'));
-        await Future.delayed(Duration(milliseconds: 30));
+          final ack = await worker.executeCommand(PingCreatorCommand('hi'));
+          // sendToCreator is one-way; the executor runs after the command returns.
+          expect(ack, equals('sent'));
+          await Future.delayed(Duration(milliseconds: 30));
 
-        expect(inbox.received, equals(['hi']));
+          expect(inbox.received, equals(['hi']));
 
-        worker.close();
-      });
+          worker.close();
+        },
+      );
 
-      test('executeInCreator resolves with a creator-thrown exception as value',
-          () async {
-        // When the creator-side command throws, the creator sends the exception
-        // object back as the response payload (not a RemoteError), so the
-        // worker completes normally with that exception as the value — pinning
-        // the non-error branch of the shared response-completion helper.
-        final context = TestWorkerContext(namePrefix: 'CreatorThrow');
-        final worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+      test(
+        'executeInCreator resolves with a creator-thrown exception as value',
+        () async {
+          // When the creator-side command throws, the creator sends the exception
+          // object back as the response payload (not a RemoteError), so the
+          // worker completes normally with that exception as the value — pinning
+          // the non-error branch of the shared response-completion helper.
+          final context = TestWorkerContext(namePrefix: 'CreatorThrow');
+          final worker = await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            context,
+          );
 
-        final result = await worker.executeCommand(DelegateThrowToCreator());
-        expect(result, isA<Exception>());
+          final result = await worker.executeCommand(DelegateThrowToCreator());
+          expect(result, isA<Exception>());
 
-        worker.close();
-      });
+          worker.close();
+        },
+      );
 
-      test('a null creator result comes back as the noResult sentinel',
-          () async {
-        // The two directions substitute different things for a null result:
-        // worker-bound gives the string "null", creator-bound gives the
-        // sentinel. Pinning the creator side keeps the pair from silently
-        // converging on one of the two.
-        final context = TestWorkerContext(namePrefix: 'CreatorNull');
-        final worker = await TomWorker.spawn(
-          TomWorker.startRemoteIsolate,
-          context,
-        );
+      test(
+        'a null creator result comes back as the noResult sentinel',
+        () async {
+          // The two directions substitute different things for a null result:
+          // worker-bound gives the string "null", creator-bound gives the
+          // sentinel. Pinning the creator side keeps the pair from silently
+          // converging on one of the two.
+          final context = TestWorkerContext(namePrefix: 'CreatorNull');
+          final worker = await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            context,
+          );
 
-        final result = await worker.executeCommand(DelegateNullToCreator());
-        expect(result, same(TomExecutor.noResult));
+          final result = await worker.executeCommand(DelegateNullToCreator());
+          expect(result, same(TomExecutor.noResult));
 
-        worker.close();
-      });
+          worker.close();
+        },
+      );
 
       test('executeInCreator resolves with noResult when the creator has no '
           'executor registered', () async {
@@ -1971,23 +2000,25 @@ void main() {
         );
       });
 
-      test('a supervision timeout is only validated when supervision is on',
-          () async {
-        final context = TestWorkerContext(namePrefix: 'UnsupTimeout');
+      test(
+        'a supervision timeout is only validated when supervision is on',
+        () async {
+          final context = TestWorkerContext(namePrefix: 'UnsupTimeout');
 
-        // healthCheckTimeout has a default, so an unsupervised caller never
-        // chose it and must not be failed by it. Nothing reads it here.
-        final pool = await TomWorkerPool.withSize(
-          1,
-          context,
-          healthCheckTimeout: Duration.zero,
-        );
+          // healthCheckTimeout has a default, so an unsupervised caller never
+          // chose it and must not be failed by it. Nothing reads it here.
+          final pool = await TomWorkerPool.withSize(
+            1,
+            context,
+            healthCheckTimeout: Duration.zero,
+          );
 
-        expect(pool.isSupervised, isFalse);
-        expect(await pool.execute(ComputeCommand(2, 3)), equals(5));
+          expect(pool.isSupervised, isFalse);
+          expect(await pool.execute(ComputeCommand(2, 3)), equals(5));
 
-        pool.close();
-      });
+          pool.close();
+        },
+      );
     });
 
     group('execute', () {
@@ -2084,8 +2115,11 @@ void main() {
         while (pool.workerCount < 2 && DateTime.now().isBefore(deadline)) {
           await Future<void>.delayed(const Duration(milliseconds: 20));
         }
-        expect(pool.workerCount, equals(2),
-            reason: 'pool should respawn a replacement worker after a death');
+        expect(
+          pool.workerCount,
+          equals(2),
+          reason: 'pool should respawn a replacement worker after a death',
+        );
 
         // And the recovered pool still executes work correctly.
         final result = await pool.execute(ComputeCommand(7, 8));
@@ -2094,48 +2128,58 @@ void main() {
         pool.close();
       });
 
-      test('periodic health checks leave healthy idle workers untouched',
-          () async {
-        final context = TestWorkerContext(namePrefix: 'HealthyPing');
-        final pool = await TomWorkerPool.withSize(
-          2,
-          context,
-          healthCheckInterval: const Duration(milliseconds: 20),
-        );
+      test(
+        'periodic health checks leave healthy idle workers untouched',
+        () async {
+          final context = TestWorkerContext(namePrefix: 'HealthyPing');
+          final pool = await TomWorkerPool.withSize(
+            2,
+            context,
+            healthCheckInterval: const Duration(milliseconds: 20),
+          );
 
-        // Let several health-check ticks run over idle workers.
-        await Future<void>.delayed(const Duration(milliseconds: 120));
+          // Let several health-check ticks run over idle workers.
+          await Future<void>.delayed(const Duration(milliseconds: 120));
 
-        expect(pool.workerCount, equals(2),
-            reason: 'healthy workers must not be killed by pings');
-        final result = await pool.execute(ComputeCommand(4, 5));
-        expect(result, equals(9));
+          expect(
+            pool.workerCount,
+            equals(2),
+            reason: 'healthy workers must not be killed by pings',
+          );
+          final result = await pool.execute(ComputeCommand(4, 5));
+          expect(result, equals(9));
 
-        pool.close();
-      });
+          pool.close();
+        },
+      );
 
-      test('supervision never probes a worker running synchronous work',
-          () async {
-        // The payoff of probing idle workers only. A busy worker is out of the
-        // free list, so the health pass cannot reserve it — even though the
-        // command blocks the isolate for eight times the ping timeout, which
-        // would force-kill the worker if it were probed while busy.
-        final context = TestWorkerContext(namePrefix: 'BusySync');
-        final pool = await TomWorkerPool.withSize(
-          1,
-          context,
-          healthCheckInterval: const Duration(milliseconds: 20),
-          healthCheckTimeout: const Duration(milliseconds: 100),
-        );
+      test(
+        'supervision never probes a worker running synchronous work',
+        () async {
+          // The payoff of probing idle workers only. A busy worker is out of the
+          // free list, so the health pass cannot reserve it — even though the
+          // command blocks the isolate for eight times the ping timeout, which
+          // would force-kill the worker if it were probed while busy.
+          final context = TestWorkerContext(namePrefix: 'BusySync');
+          final pool = await TomWorkerPool.withSize(
+            1,
+            context,
+            healthCheckInterval: const Duration(milliseconds: 20),
+            healthCheckTimeout: const Duration(milliseconds: 100),
+          );
 
-        final result = await pool.execute(BlockingCommand(800));
+          final result = await pool.execute(BlockingCommand(800));
 
-        expect(result, equals('blocked'),
-            reason: 'a computing worker must not be killed as unresponsive');
-        expect(pool.workerCount, equals(1));
+          expect(
+            result,
+            equals('blocked'),
+            reason: 'a computing worker must not be killed as unresponsive',
+          );
+          expect(pool.workerCount, equals(1));
 
-        pool.close();
-      });
+          pool.close();
+        },
+      );
     });
 
     group('close', () {
