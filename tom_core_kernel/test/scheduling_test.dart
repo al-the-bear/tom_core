@@ -3416,9 +3416,6 @@ void main() {
   // Every behaviour required of the port is asserted against *both*
   // implementations, so the file lock cannot quietly diverge from the in-memory
   // one that most tests use as a stand-in.
-  // Every behaviour required of the port is asserted against *both*
-  // implementations, so the file lock cannot quietly diverge from the in-memory
-  // one that most tests use as a stand-in.
   runTomLeaseLockContract(
     'TomMemoryLeaseLock',
     (clock) async => TomMemoryLeaseLock(clock: clock),
