@@ -38,13 +38,13 @@ dependencies:
     path: ../tom_core_d4rt
 ```
 
-This package generates its bridge code with `build_runner` (the `d4rtgen`
-builder configured in `buildkit.yaml`). After fetching dependencies, regenerate
-the bridges:
+This package generates its bridge code with the `d4rtgen` CLI, driven by the
+`d4rtgen:` section of `buildkit.yaml` — not by `build_runner`. After fetching
+dependencies, regenerate the bridges from the package directory:
 
 ```bash
 dart pub get
-dart run build_runner build --delete-conflicting-outputs
+d4rtgen --scan . --not-recursive
 ```
 
 See [`doc/build.md`](doc/build.md) for the full build and binary-compilation
