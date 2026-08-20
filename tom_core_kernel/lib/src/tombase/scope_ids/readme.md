@@ -14,7 +14,7 @@ namespace instances (e.g. one form per detail row).
 | ---- | -------------- |
 | `TomScope` | Scope contract; `withScope`, `current`, `defaultScope`, `buildScopePath`. |
 | `TomScopeBase` / `TomScopeMixin` | Default implementation and the mixin behind it. |
-| `InScopeBuilder` | Fluent helper for running work inside a scope. |
+| `InScopeBuilder` | Captures the active scope and wraps callbacks so they run in it when invoked later. |
 
 ## Quick start
 

@@ -134,7 +134,7 @@ Functions `runChecked`, `runCheckedSync`, `tomPrintStackTrace`,
 | Class | Purpose |
 | ----- | ------- |
 | `TomScope`, `TomScopeBase`, `TomScopeMixin` | Scope identity and mixin. |
-| `InScopeBuilder` | Builds in-scope identifiers. |
+| `InScopeBuilder` | Wraps callbacks to run in a captured scope. |
 
 ### security — access control, authentication, authorization, principals
 

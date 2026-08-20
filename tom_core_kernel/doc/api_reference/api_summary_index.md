@@ -255,7 +255,7 @@ declarations are omitted.
 | `TomScope` | abstract class | Scope identity contract with zone-current access and path building. |
 | `TomScopeBase` | class | Concrete `TomScope` using `TomScopeMixin`. |
 | `TomScopeMixin` | mixin | Adds scope identity/parenting to any `Object`. |
-| `InScopeBuilder` | class | Runs a body within a nested scope. |
+| `InScopeBuilder` | class | Captures a scope and wraps callbacks so they run in it when invoked later. |
 
 ### Security (`lib/src/tombase/security/`)
 
