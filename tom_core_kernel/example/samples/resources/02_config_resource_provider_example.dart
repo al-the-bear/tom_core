@@ -416,6 +416,7 @@ void run() {
   print('\n✓ All configuration resource provider examples passed!\n');
 }
 
+/// Standalone entry point.
 void main() {
   requireAsserts();
   run();

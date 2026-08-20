@@ -198,6 +198,7 @@ void run() {
   ConfigLoaderExample.example6ConfigLoader();
 }
 
+/// Standalone entry point.
 void main() {
   requireAsserts();
   run();
