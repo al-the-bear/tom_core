@@ -1894,6 +1894,70 @@ void main() {
       });
     });
 
+    // A `none` member is hidden — it does not exist from the user's
+    // perspective, so it must not exist for inspection either. Every helper
+    // has to agree on that, or callers get a group that simultaneously has
+    // members and is empty.
+    group('hidden members are invisible to every inspection helper', () {
+      TomAuthorizationGroup buildGroup() => TomAuthorizationGroup('g')
+        ..register(_FakeAuthorizable('visible', auth: TomAuthState.read))
+        ..register(_FakeAuthorizable('hidden', auth: TomAuthState.none));
+
+      test('members omits hidden members', () {
+        expect(buildGroup().members.map((m) => m.tomId), equals(['visible']));
+      });
+
+      test('memberCount counts only visible members', () {
+        expect(buildGroup().memberCount, equals(1));
+      });
+
+      test('findMember does not find a hidden member', () {
+        final group = buildGroup();
+        expect(group.findMember('hidden'), isNull);
+        expect(group.findMember('visible'), isNotNull);
+      });
+
+      test('a group whose members are all hidden reports empty', () {
+        final group = TomAuthorizationGroup('g')
+          ..register(_FakeAuthorizable('a', auth: TomAuthState.none))
+          ..register(_FakeAuthorizable('b', auth: TomAuthState.none));
+        expect(group.isEmpty, isTrue);
+        expect(group.isNotEmpty, isFalse);
+        expect(group.memberCount, isZero);
+        expect(group.members, isEmpty);
+      });
+
+      test('a hidden member becoming visible restores it to every helper', () {
+        final member = _MutableAuthorizable('a', TomAuthState.none);
+        final group = TomAuthorizationGroup('g')..register(member);
+        expect(group.isEmpty, isTrue);
+        expect(group.findMember('a'), isNull);
+
+        member.auth = TomAuthState.read;
+
+        expect(group.isEmpty, isFalse);
+        expect(group.memberCount, equals(1));
+        expect(group.findMember('a'), same(member));
+      });
+
+      // Registration bookkeeping must NOT go through the visibility filter:
+      // a hidden member is still registered, and whoever registered it must
+      // still be able to take it back out.
+      test('a hidden member can still be unregistered', () {
+        final hidden = _MutableAuthorizable('hidden', TomAuthState.none);
+        final group = TomAuthorizationGroup('g')..register(hidden);
+
+        group.unregister(hidden);
+        // Revealing it is what makes the removal observable: an unregister
+        // that had gone through the visibility filter would have missed it,
+        // and the member would come back from the dead here.
+        hidden.auth = TomAuthState.full;
+
+        expect(group.isEmpty, isTrue);
+        expect(group.findMember('hidden'), isNull);
+      });
+    });
+
     group('applyMode', () {
       test('controlsAll replaces the member state with the group state', () {
         TomAuthorization.adapter = _FakeAuthAdapter({'g': TomAuthState.read});
@@ -3290,6 +3354,24 @@ class _FakeAuthorizable implements TomAuthorizable {
 
   @override
   TomAuthState get effectiveAuthState => _auth;
+}
+
+/// A [TomAuthorizable] whose state can change after registration, so tests can
+/// hide and reveal a member without re-registering it.
+class _MutableAuthorizable implements TomAuthorizable {
+  _MutableAuthorizable(this._id, this.auth);
+
+  final String _id;
+  TomAuthState auth;
+
+  @override
+  String? get tomId => _id;
+
+  @override
+  TomAuthorizationGroup? get tomGroup => null;
+
+  @override
+  TomAuthState get effectiveAuthState => auth;
 }
 
 /// A [TomClientJwtToken] whose [payload] and [secretData] are fully controlled,

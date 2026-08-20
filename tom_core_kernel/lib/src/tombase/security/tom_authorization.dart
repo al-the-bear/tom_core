@@ -158,47 +158,63 @@ class TomAuthorizationGroup {
   });
 
   /// Registers a [TomAuthorizable] element with this group.
+  ///
+  /// Registration is independent of visibility: an element whose
+  /// [TomAuthorizable.effectiveAuthState] is [TomAuthState.none] is registered
+  /// like any other, it simply does not show up in [members] while hidden.
   void register(TomAuthorizable element) {
     _members.add(WeakReference(element));
   }
 
   /// Unregisters an element from this group.
+  ///
+  /// Works on the raw registrations rather than on [members], so a hidden
+  /// element can still be removed by whoever put it there.
   void unregister(TomAuthorizable element) {
     _members.removeWhere((ref) => identical(ref.target, element));
   }
 
-  /// All currently registered members (excludes garbage-collected elements).
-  Iterable<TomAuthorizable> get members sync* {
-    final toRemove = <WeakReference<TomAuthorizable>>[];
+  /// The group's visible members: every live registration whose
+  /// [TomAuthorizable.effectiveAuthState] is not [TomAuthState.none].
+  ///
+  /// A hidden member does not exist from the user's perspective, so it does
+  /// not exist for inspection either. This is the *single* place that filter
+  /// is applied — [memberCount], [isEmpty], [isNotEmpty], [findMember],
+  /// [isUniform] and [mostRestrictive] are all defined in terms of this
+  /// getter, which is what stops them from disagreeing about who is in the
+  /// group. Registration bookkeeping ([register] / [unregister]) deliberately
+  /// bypasses it.
+  ///
+  /// The result is a snapshot rather than a lazy view. Building it eagerly is
+  /// what lets every caller prune garbage-collected registrations — including
+  /// the callers ([isEmpty], [findMember]) that stop reading after the first
+  /// hit and would otherwise never reach the pruning step.
+  Iterable<TomAuthorizable> get members {
+    final stale = <WeakReference<TomAuthorizable>>[];
+    final visible = <TomAuthorizable>[];
     for (final ref in _members) {
       final target = ref.target;
       if (target == null) {
-        toRemove.add(ref);
-      } else {
-        yield target;
+        stale.add(ref);
+      } else if (target.effectiveAuthState != TomAuthState.none) {
+        visible.add(target);
       }
     }
-    _members.removeAll(toRemove);
+    _members.removeAll(stale);
+    return visible;
   }
 
-  /// Number of registered members.
-  int get memberCount {
-    _cleanupStaleReferences();
-    return _members.length;
-  }
+  /// Number of visible members — see [members].
+  int get memberCount => members.length;
 
-  /// Whether the group has no live members (after pruning stale references).
-  bool get isEmpty {
-    _cleanupStaleReferences();
-    return _members.isEmpty;
-  }
+  /// Whether the group has no visible members — see [members].
+  ///
+  /// A group all of whose members are hidden reports empty: there is nothing
+  /// there for the user to see, which is the question callers are asking.
+  bool get isEmpty => members.isEmpty;
 
-  /// Whether the group has at least one live member.
+  /// Whether the group has at least one visible member — see [members].
   bool get isNotEmpty => !isEmpty;
-
-  void _cleanupStaleReferences() {
-    _members.removeWhere((ref) => ref.target == null);
-  }
 
   /// Resolves the full canonical path for this group.
   String resolveGroupPath() {
@@ -229,14 +245,11 @@ class TomAuthorizationGroup {
 
   /// Whether all visible members share the same effective auth state.
   ///
-  /// Returns `true` if:
-  /// - The group is empty, or
-  /// - All members have identical [effectiveAuthState] values
+  /// Returns `true` for a group with no visible members — see [members].
   bool get isUniform {
     TomAuthState? firstState;
     for (final member in members) {
       final state = member.effectiveAuthState;
-      if (state == TomAuthState.none) continue; // Skip hidden members
       if (firstState == null) {
         firstState = state;
       } else if (state != firstState) {
@@ -246,21 +259,22 @@ class TomAuthorizationGroup {
     return true;
   }
 
-  /// The most restrictive effective auth state among all visible members.
+  /// The most restrictive effective auth state among the visible members.
   ///
-  /// Returns [TomAuthState.full] if the group is empty or all members are hidden.
-  /// State ordering from most to least restrictive: none < disabled < read < full.
+  /// Returns [TomAuthState.full] when there are no visible members — see
+  /// [members]. State ordering from most to least restrictive:
+  /// `none < disabled < read < full`.
   TomAuthState get mostRestrictive {
     var result = TomAuthState.full;
     for (final member in members) {
-      final state = member.effectiveAuthState;
-      if (state == TomAuthState.none) continue; // Skip hidden members
-      result = result.narrow(state);
+      result = result.narrow(member.effectiveAuthState);
     }
     return result;
   }
 
-  /// Finds a member by [tomId] within this group.
+  /// Finds a visible member by [tomId] within this group — see [members].
+  ///
+  /// Returns `null` for a member that is registered but hidden.
   TomAuthorizable? findMember(String tomId) {
     for (final member in members) {
       if (member.tomId == tomId) return member;

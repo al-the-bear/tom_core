@@ -156,11 +156,24 @@ void run() {
   final mostRestrictive = group.mostRestrictive; // disabled wins
   final found = group.findMember('city');
 
-  print('   memberCount: ${group.memberCount}');
+  final countBeforeHidden = group.memberCount;
+
+  // A member the user cannot see is not a member as far as inspection goes.
+  // It stays registered — `unregister` still works on it — but every helper
+  // looks straight past it, so the count and the lookups agree with what is
+  // actually on screen.
+  final taxId = _FixedAuthorizable('taxId', TomAuthState.none, tomGroup: group);
+  group.register(taxId);
+  final countWithHidden = group.memberCount;
+  final hiddenLookup = group.findMember('taxId');
+
+  print('   memberCount: $countBeforeHidden');
   print('   isUniform (read, read): $uniformBefore');
   print('   isUniform (read, read, disabled): $uniformAfter');
   print('   mostRestrictive: $mostRestrictive');
   print('   findMember("city")?.tomId: ${found?.tomId}');
+  print('   memberCount after registering a hidden member: $countWithHidden');
+  print('   findMember("taxId") (hidden): $hiddenLookup');
   print('');
 
   // ===========================================================================
@@ -248,6 +261,10 @@ void run() {
   assert(!uniformAfter);
   assert(mostRestrictive == TomAuthState.disabled);
   assert(found?.tomId == 'city');
+  // Registering a hidden member changes neither the count nor the lookups.
+  assert(countBeforeHidden == 3);
+  assert(countWithHidden == 3);
+  assert(hiddenLookup == null);
 
   // Example 5: authorizer strategies
   assert(fixedResult == TomAuthState.disabled);

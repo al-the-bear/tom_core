@@ -129,6 +129,21 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomAuthorizationGroup`'s inspection helpers now agree with each other
+  about who is in the group.** `isUniform` and `mostRestrictive` skipped
+  members whose `effectiveAuthState` is `none`; `members`, `memberCount`,
+  `isEmpty` / `isNotEmpty` and `findMember` counted them. A group could
+  therefore report members that `mostRestrictive` refused to see, and
+  `findMember` would hand back an element the user is not allowed to know
+  exists. `members` is now the single place the visibility filter is applied
+  and every other helper is defined in terms of it, so the disagreement cannot
+  reappear one helper at a time. Consequences worth knowing: a group whose
+  members are *all* hidden now reports `isEmpty`, and `memberCount` /
+  `findMember` resolve `effectiveAuthState` where they previously did not.
+  `register` / `unregister` deliberately keep working on the raw
+  registrations — a hidden member is still tracked, and still removable by
+  whoever added it.
+
 - **`Tom2FAChallenge.expiresAt` and `Tom2FAPendingEnrolment.expiresAt` are now
   actually normalised to UTC, as both types said they were.** The constructors
   assigned the parameter straight through, so a caller that passed a local
@@ -363,6 +378,16 @@ anyone who was writing them.
   asserted the old behaviour and was replaced.
 
 ### Tests
+
+- **Every `TomAuthorizationGroup` inspection helper is pinned against a hidden
+  member.** One case per helper — `members`, `memberCount`, `findMember`, and
+  the `isEmpty` / `isNotEmpty` pair over an all-hidden group — each of which
+  failed before the change. A fifth reveals a hidden member after the fact and
+  asserts it returns to every helper, so the filter is proven to be evaluated
+  per call rather than latched at registration. The sixth is the guard the
+  other five need: unregistering a *hidden* member and then revealing it must
+  not resurrect it, which is what fails if registration bookkeeping is routed
+  through the visibility filter along with everything else.
 
 - **The UTC normalisation of both 2FA expiries is pinned at the constructor.**
   One case per class builds a challenge / offer from a local `DateTime` and

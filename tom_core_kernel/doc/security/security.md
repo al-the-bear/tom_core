@@ -337,14 +337,23 @@ member's own state via `applyMode(memberState)`:
 | `controlsWidest` | Group state is the **ceiling** (narrows the member) |
 | `controlsNarrowest` | Group state is the **floor** (widens the member) |
 
-Inspection helpers (all skip hidden `none` members):
+Inspection helpers all report on **visible** membership: a member whose
+`effectiveAuthState` is `none` does not exist from the user's perspective, so
+it does not exist for inspection either. `members` is the single place that
+filter lives — every other helper is defined in terms of it, which is what
+stops them from disagreeing about who is in the group.
 
 | Member | Description |
 | ------ | ----------- |
-| `members` / `memberCount` / `isEmpty` / `isNotEmpty` | Live membership (stale refs pruned) |
+| `members` | Snapshot of the live, visible members (stale refs pruned) |
+| `memberCount` / `isEmpty` / `isNotEmpty` | Size of that snapshot — a group whose members are all hidden reports empty |
 | `isUniform` | `true` if all visible members share one `effectiveAuthState` |
-| `mostRestrictive` | The most restrictive `effectiveAuthState` among visible members (`full` if none) |
-| `findMember(tomId)` | The member with the given id, or `null` |
+| `mostRestrictive` | The most restrictive `effectiveAuthState` among visible members (`full` if there are none) |
+| `findMember(tomId)` | The **visible** member with the given id, or `null` |
+
+Registration is the deliberate exception: `register` / `unregister` work on the
+raw registrations, so a hidden member is still tracked and can still be
+removed by whoever added it.
 
 ### TomAuthorization (Global Singleton)
 

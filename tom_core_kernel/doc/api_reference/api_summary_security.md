@@ -520,10 +520,10 @@ TomAuthorizationGroup(String groupId, {AuthGroupMode mode = AuthGroupMode.contro
 | -------- | ---- | ----------- |
 | `groupId` | `String` | The group ID. |
 | `mode` | `AuthGroupMode` | How this group's auth state applies to its members. |
-| `members` | `Iterable<TomAuthorizable>` | All currently registered members (excludes garbage-collected elements). |
-| `memberCount` | `int` | Number of registered members (after pruning stale references). |
-| `isEmpty` | `bool` | Whether the group has no live members. |
-| `isNotEmpty` | `bool` | Whether the group has at least one live member. |
+| `members` | `Iterable<TomAuthorizable>` | Snapshot of the live, visible members — excludes garbage-collected elements and members whose `effectiveAuthState` is `none`. The single filter every other inspection helper is built on. |
+| `memberCount` | `int` | Number of visible members. |
+| `isEmpty` | `bool` | Whether the group has no visible members (true when every member is hidden). |
+| `isNotEmpty` | `bool` | Whether the group has at least one visible member. |
 | `authState` | `TomAuthState` | The authorization state resolved for this group's path. |
 | `isUniform` | `bool` | Whether all visible members share the same effective auth state. |
 | `mostRestrictive` | `TomAuthState` | The most restrictive effective auth state among all visible members. |
@@ -532,11 +532,11 @@ TomAuthorizationGroup(String groupId, {AuthGroupMode mode = AuthGroupMode.contro
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `register(TomAuthorizable element)` | `void` | Registers an element with this group. |
-| `unregister(TomAuthorizable element)` | `void` | Unregisters an element from this group. |
+| `register(TomAuthorizable element)` | `void` | Registers an element with this group. Hidden elements register like any other. |
+| `unregister(TomAuthorizable element)` | `void` | Unregisters an element. Works on the raw registrations, so hidden elements can still be removed. |
 | `resolveGroupPath()` | `String` | Resolves the full canonical `<scopePath>.<groupId>` path. |
 | `applyMode(TomAuthState memberState)` | `TomAuthState` | Applies this group's mode to a member's state. |
-| `findMember(String tomId)` | `TomAuthorizable?` | Finds a member by [tomId] within this group. |
+| `findMember(String tomId)` | `TomAuthorizable?` | Finds a *visible* member by `tomId`; `null` for one that is registered but hidden. |
 | `toString()` | `String` | *(override)* `'TomAuthorizationGroup(groupId, mode: mode)'`. |
 
 ### TomAuthorizationAdapter
