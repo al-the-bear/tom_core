@@ -22,7 +22,13 @@
 /// 3. A run interrupted mid-execution, where re-offering is the job's call.
 /// 4. The pause that no store can rule out, and the fencing token that survives
 ///    it when the effect genuinely cannot be made idempotent.
+///
+/// The last one steps back from the duplicate to the policy that spaces them:
+/// how far apart retries actually fall, and why the curve settles below the
+/// ceiling rather than on it.
 library;
+
+import 'dart:math';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -398,6 +404,116 @@ class _FencedLedger {
 }
 
 // =============================================================================
+// EXAMPLE 5: The Curve, And Why Its Ceiling Is Not Where You Left It
+// =============================================================================
+
+/// How far apart the retries of example 1 actually are, and the one arithmetic
+/// surprise in `TomRetryPolicy`.
+///
+/// Example 1 turned jitter off and moved the clock by hand, because *when* the
+/// retry landed was not what it was about. This is: the spacing is the part of
+/// the policy operators tune under an incident, and it has a shape that four
+/// field defaults do not convey.
+///
+/// The surprise is that the exponential curve **plateaus below `maxBackoff`**,
+/// at `maxBackoff / (1 + jitter)`, and jitter fills the remaining gap. The
+/// obvious implementation — grow, then jitter, then clamp — keeps the same
+/// ceiling and destroys the spread exactly where it matters: a long outage
+/// drives every node's every job to the ceiling together, and clamping there
+/// hands them all the *same* retry instant, which is the thundering herd jitter
+/// was added to prevent. Reserving the headroom up front keeps the full spread
+/// at saturation, and the price is a plateau that sits a jitter's width low.
+///
+/// This example reads [TomRetryPolicy.backoffFor] directly rather than running
+/// a scheduler. The wiring is example 1's subject; the arithmetic is this one's,
+/// and putting a clock in front of it would only hide it.
+class BackoffCurveExample {
+  static List<Duration> steepCurve = [];
+  static Duration plateau = Duration.zero;
+  static Duration lowestJittered = const Duration(days: 1);
+  static Duration highestJittered = Duration.zero;
+  static List<Duration> defaultCurve = [];
+
+  /// Deliberately extreme, so the plateau arrives on the second attempt and is
+  /// visible in four numbers instead of ten.
+  static const TomRetryPolicy _steep = TomRetryPolicy(
+    maxAttempts: 6,
+    initialBackoff: Duration(seconds: 10),
+    multiplier: 10,
+    maxBackoff: Duration(minutes: 1),
+    jitter: 0.5,
+  );
+
+  static Future<void> example5TheCurveAndItsCeiling() async {
+    // Without a Random, backoff is the bare curve: no jitter is applied, which
+    // is what makes a policy testable at all.
+    steepCurve = [
+      1,
+      2,
+      3,
+      4,
+    ].map((attempt) => _steep.backoffFor(attempt)).toList();
+    plateau = _steep.backoffFor(30);
+
+    // With one, the same attempt spreads. Enough draws that "jitter reaches the
+    // ceiling" is a fact about the arithmetic rather than about a lucky seed:
+    // missing the top 1% twenty thousand times running has a probability of
+    // about 1e-88.
+    final random = Random(1);
+    lowestJittered = const Duration(days: 1);
+    highestJittered = Duration.zero;
+    for (var draw = 0; draw < 20000; draw++) {
+      final backoff = _steep.backoffFor(3, random);
+      if (backoff < lowestJittered) lowestJittered = backoff;
+      if (backoff > highestJittered) highestJittered = backoff;
+    }
+
+    // And the same shape under the defaults, which is the curve most jobs get.
+    defaultCurve = List.generate(
+      8,
+      (index) => const TomRetryPolicy().backoffFor(index + 1),
+    );
+
+    assert(
+      steepCurve.map((backoff) => backoff.inSeconds).join(',') ==
+          '10,40,40,40',
+      'Ten seconds, then ten times that — except 100s is past the plateau, so '
+      'attempt 2 already saturates. The curve is exponential until it is not; '
+      'multiplier decides how fast you get to the ceiling, not how high it is',
+    );
+    assert(
+      plateau == const Duration(seconds: 40) &&
+          plateau.inMicroseconds ==
+              _steep.maxBackoff.inMicroseconds ~/ (1 + _steep.jitter),
+      'The plateau is 40s under a 60s ceiling — a third of the way down. Read '
+      'maxBackoff as "the furthest a retry can ever be", not "where the curve '
+      'settles"; with jitter at 0.5 those are 20 seconds apart',
+    );
+    assert(
+      lowestJittered >= const Duration(seconds: 40) &&
+          highestJittered <= _steep.maxBackoff,
+      'Jitter is added upward only and never past the ceiling: no retry is '
+      'earlier than the backoff the policy promised, and none is later than '
+      'maxBackoff. Both halves matter — an earlier retry would undo the '
+      'backoff, a later one would break the bound operators plan against',
+    );
+    assert(
+      highestJittered >= const Duration(milliseconds: 59_400),
+      'And the reserved headroom is used: the spread at saturation runs the '
+      'full 40s..60s, which is the point of reserving it. Clamp-after-jitter '
+      'would put every saturated job on 60s exactly',
+    );
+    assert(
+      defaultCurve.map((backoff) => backoff.inSeconds).join(',') ==
+          '30,60,120,240,480,960,1636,1636',
+      'The default curve doubles from 30s for six attempts and then plateaus '
+      'at 27m16s — the same rule, arriving slowly enough that a job hitting it '
+      'has been failing for over an hour',
+    );
+  }
+}
+
+// =============================================================================
 // RUN ALL EXAMPLES
 // =============================================================================
 
@@ -406,6 +522,7 @@ Future<void> run() async {
   await ReservedAndLostExample.example2ReservedAndLost();
   await InterruptedMidExecutionExample.example3InterruptedMidExecution();
   await FencingTokenExample.example4TheFencingToken();
+  await BackoffCurveExample.example5TheCurveAndItsCeiling();
 }
 
 Future<void> main() {

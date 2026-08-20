@@ -476,6 +476,227 @@ class OneShotAlreadyPastExample {
 }
 
 // =============================================================================
+// EXAMPLE 6: A Cron Job In Motion
+// =============================================================================
+
+/// The schedule kind most readers arrive with, driven by the scheduler rather
+/// than merely asked a question.
+///
+/// Example 1 read a window off `TomCronSchedule.nextFireAfter`. That shows the
+/// expression parses; it does not show a cron job *running*, and the two are
+/// worth separating because everything a cron job inherits — the durable
+/// look-ahead row, the window handed to the body, the next window planned as the
+/// current one completes — comes from the scheduler and not from the expression.
+///
+/// The second half is the cron rule that is got wrong more than any other, and
+/// it lives here rather than in a doc note because it is only convincing as a
+/// list of dates.
+class CronInMotionExample {
+  static List<DateTime> ran = [];
+  static DateTime? nextPlanned;
+  static List<int> orDays = [];
+  static List<int> mondayDays = [];
+
+  static Future<void> example6ACronJobInMotion() async {
+    ran = [];
+    final clock = FakeClock(DateTime.utc(2026, 3, 2, 1));
+    final store = TomMemoryJobStore();
+    final scheduler = _scheduler(store, clock, []);
+
+    scheduler.register(
+      TomJobDefinition(
+        name: 'nightly-vacuum',
+        // 03:00 every day — the expression nine cron jobs in ten actually are.
+        schedule: TomCronSchedule('0 3 * * *'),
+        body: (run) => RecordInto(ran, run.scheduledFor),
+      ),
+    );
+
+    // 01:00: nothing is due, but the 03:00 window is written down.
+    await scheduler.tick();
+    await settle();
+
+    // Two nights, each reached by moving the clock rather than waiting for it.
+    // Five minutes *past* the window on purpose: a tick is a poll, so it almost
+    // never lands on a window exactly, and that gap is what makes the first
+    // assertion below say something.
+    clock.advance(const Duration(hours: 2, minutes: 5));
+    await scheduler.tick();
+    await settle();
+    clock.advance(const Duration(hours: 24));
+    await scheduler.tick();
+    await settle();
+
+    // Nullable, and read without a `single` that could throw: if the look-ahead
+    // row were missing, the assertion below is what should say so.
+    final pending = (await store.all())
+        .where((run) => run.state == TomJobRunState.pending)
+        .toList();
+    nextPlanned = pending.length == 1 ? pending.single.scheduledFor : null;
+
+    scheduler.close();
+
+    // --- The day fields are OR'd, not AND'ed --------------------------------
+    // Both day fields restricted means "day-of-month OR day-of-week", which is
+    // POSIX and is the opposite of the intersection most readers expect. It is
+    // only visible when *both* are restricted: the moment either is `*`, the
+    // union collapses to the other one and the two readings agree, which is
+    // exactly why the mistake survives so long in a codebase.
+    orDays = _marchDaysOf('0 12 */2 3 MON', 12);
+    mondayDays = _marchDaysOf('0 12 * 3 MON', 5);
+
+    assert(
+      ran.length == 2 &&
+          ran.first == DateTime.utc(2026, 3, 2, 3) &&
+          ran.last == DateTime.utc(2026, 3, 3, 3),
+      'Two nights, each dated to its own 03:00 — the body is handed the window '
+      'it was due for, not the instant the tick happened to reach it',
+    );
+    assert(
+      nextPlanned == DateTime.utc(2026, 3, 4, 3),
+      'And the third night is already a durable row before it is due. A cron '
+      'job is not re-derived at fire time; it is planned ahead, which is what '
+      'lets a restart between two nights still know what it owed',
+    );
+    assert(
+      orDays.join(',') == '1,2,3,5,7,9,11,13,15,16,17,19',
+      'Odd days OR Mondays: the 2nd and the 16th are in there for being '
+      'Mondays, not for being odd. Under the intersection reading the list '
+      'would be Mondays that are also odd — the 9th, and little else',
+    );
+    assert(
+      mondayDays.join(',') == '2,9,16,23,30',
+      'With day-of-month left as `*` there is nothing to union with, so the '
+      'same job reads as plain "Mondays". This is the case that makes the rule '
+      'easy to miss: it is the common one, and both readings agree on it',
+    );
+  }
+
+  /// The first [take] days in March 2026 that [expression] fires on.
+  static List<int> _marchDaysOf(String expression, int take) {
+    final schedule = TomCronSchedule(expression);
+    final days = <int>[];
+    var at = DateTime.utc(2026, 3, 1);
+    for (var i = 0; i < take; i++) {
+      final next = schedule.nextFireAfter(at);
+      if (next == null) break;
+      days.add(next.day);
+      at = next;
+    }
+    return days;
+  }
+}
+
+// =============================================================================
+// EXAMPLE 7: The Rule Cron Cannot Spell
+// =============================================================================
+
+/// `TomCalendarSchedule.weekdayOfMonth`, and the two things about an ordinal
+/// that a sentence of prose keeps failing to settle.
+///
+/// Cron's day-of-week field can say "Friday". It cannot say "the *last* Friday",
+/// because that is a fact about the month rather than about the day, and cron
+/// fields do not see months. The calendar schedule exists for exactly the rules
+/// that need that extra context — and its two sharp edges are both about the
+/// ordinal:
+///
+/// - **`-1` is the last occurrence, not the fifth.** Most months have four of a
+///   given weekday and some have five, so "last" and "5th" are different rules
+///   that agree only occasionally.
+/// - **An ordinal a month does not have simply does not fire** — the month is
+///   skipped in silence, rather than clamping to the nearest occurrence.
+class CalendarWeekdayExample {
+  static List<DateTime> quarterlyFridays = [];
+  static String? described;
+  static List<DateTime> fifthMondays = [];
+  static List<DateTime> lastMondays = [];
+
+  static Future<void> example7TheRuleCronCannotSpell() async {
+    // The last Friday of every third month at 18:00, anchored on March — a
+    // quarterly close, spelled once.
+    final quarterly = TomCalendarSchedule.weekdayOfMonth(
+      weekday: DateTime.friday,
+      ordinal: -1,
+      hour: 18,
+      monthInterval: 3,
+      anchorMonth: 3,
+    );
+    described = quarterly.describe();
+
+    quarterlyFridays = [];
+    var at = DateTime.utc(2026, 3, 2, 9, 30);
+    for (var i = 0; i < 4; i++) {
+      at = quarterly.nextFireAfter(at)!;
+      quarterlyFridays.add(at);
+    }
+
+    // The 5th Monday of every month — a rule that is unsatisfiable in most of
+    // them.
+    final fifthMonday = TomCalendarSchedule.weekdayOfMonth(
+      weekday: DateTime.monday,
+      ordinal: 5,
+    );
+    fifthMondays = [];
+    var when = DateTime.utc(2026, 3, 1);
+    for (var i = 0; i < 3; i++) {
+      when = fifthMonday.nextFireAfter(when)!;
+      fifthMondays.add(when);
+    }
+
+    // The same weekday under `-1`, walked over the same stretch of calendar, so
+    // the two rules can be read side by side rather than described.
+    final lastMonday = TomCalendarSchedule.weekdayOfMonth(
+      weekday: DateTime.monday,
+      ordinal: -1,
+    );
+    lastMondays = [];
+    var each = DateTime.utc(2026, 3, 1);
+    for (var i = 0; i < 3; i++) {
+      each = lastMonday.nextFireAfter(each)!;
+      lastMondays.add(each);
+    }
+
+    assert(
+      quarterlyFridays.map((day) => day.toIso8601String()).join(' ') ==
+          '2026-03-27T18:00:00.000Z 2026-06-26T18:00:00.000Z '
+              '2026-09-25T18:00:00.000Z 2026-12-25T18:00:00.000Z',
+      'March, June, September, December — the month cycle is measured on an '
+      'absolute month index, so a quarterly schedule stays on its quarters '
+      'across the year boundary instead of restarting every January',
+    );
+    assert(
+      quarterlyFridays.every((day) => day.weekday == DateTime.friday),
+      'And every one of them is a Friday, on four different days of the month: '
+      'the 27th, 26th, 25th and 25th. No day-of-month rule could have produced '
+      'that set, which is the whole reason this factory exists',
+    );
+    assert(
+      described == 'calendar(last weekday 5, every 3 months, 18:00)',
+      'Schedules describe themselves, which is what makes a neverFires alert '
+      '(example 5) actionable',
+    );
+    assert(
+      fifthMondays.map((day) => day.toIso8601String()).join(' ') ==
+          '2026-03-30T00:00:00.000Z 2026-06-29T00:00:00.000Z '
+              '2026-08-31T00:00:00.000Z',
+      'April, May and July are skipped outright — they have four Mondays, and '
+      'a 5th occurrence a month does not have does not fire. Note what this is '
+      'NOT: it does not clamp to the 4th Monday. If you wanted the last one, '
+      'ordinal -1 is the rule that says so, and it fires every month',
+    );
+    assert(
+      lastMondays.map((day) => day.toIso8601String()).join(' ') ==
+          '2026-03-30T00:00:00.000Z 2026-04-27T00:00:00.000Z '
+              '2026-05-25T00:00:00.000Z',
+      'Which is what -1 does: three consecutive months, no gaps. It coincides '
+      'with the 5th Monday in March — the one month here that has five — and '
+      'diverges in April and May. Two rules that agree on the months you '
+      'happen to test are still two rules',
+    );
+  }
+}
+
+// =============================================================================
 // RUN ALL EXAMPLES
 // =============================================================================
 
@@ -485,6 +706,8 @@ Future<void> run() async {
   await MissedWindowPolicyExample.example3WhatAPolicyGoverns();
   await OneShotSurvivesExample.example4AOneShotSurvivesAnOutage();
   await OneShotAlreadyPastExample.example5AOneShotAlreadyPast();
+  await CronInMotionExample.example6ACronJobInMotion();
+  await CalendarWeekdayExample.example7TheRuleCronCannotSpell();
 }
 
 Future<void> main() {
