@@ -587,6 +587,14 @@ scheduler raises a `neverFires` alert carrying the schedule, once per job rather
 than once per tick. Without it, a job that can never run would be
 indistinguishable from one that is merely not due yet.
 
+That alert is only trustworthy if `null` means *never* rather than *not within
+the window*, so the cron search horizon is nine years and the calendar one the
+same nine years in months. Four would seem to cover a leap cycle, but February
+29th skips 2100 — divisible by 100, not by 400 — so the widest gap between two
+of them is the eight years from 2096 to 2104, and a search starting on the first
+of those needs one year more than the gap. A shorter horizon would report a
+perfectly satisfiable job as `neverFires`.
+
 ## Recovering an Interrupted Run
 
 A claim that outlives `leaseTimeout` means its holder is gone. What to do with

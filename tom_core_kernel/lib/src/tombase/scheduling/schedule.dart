@@ -146,9 +146,18 @@ abstract class TomSchedule {
 class TomCronSchedule extends TomSchedule {
   /// How far ahead [nextFireAfter] searches before concluding "never".
   ///
-  /// Four years so that a February 29th expression resolves rather than
-  /// reporting `null` on a common year.
-  static const int _searchYears = 5;
+  /// Nine years, which is what lets `null` be read as *never* rather than *not
+  /// within the window*. The rarest date a cron expression can name is February
+  /// 29th, and the longest gap between two of them is **eight** years, not
+  /// four: 2100 is divisible by 100 but not by 400, so the leap day skips from
+  /// 2096 to 2104. The limit is anchored on the search start's own month and
+  /// day and the scan is half-open, so a search beginning *on* a February 29th
+  /// needs one year more than the gap it crosses — hence nine.
+  ///
+  /// Every other combination of fields recurs at least once a year, so nine
+  /// covers the whole expression language and a `null` means the expression is
+  /// unsatisfiable (`0 0 30 2 *`) rather than merely distant.
+  static const int _searchYears = 9;
 
   static const Map<String, String> _macros = {
     '@yearly': '0 0 1 1 *',
@@ -512,7 +521,12 @@ enum TomCalendarRule {
 /// "daily" means.
 class TomCalendarSchedule extends TomSchedule {
   /// How far ahead [nextFireAfter] searches before concluding "never".
-  static const int _searchMonths = 60;
+  ///
+  /// Nine years, in months, for the reason given on [TomCronSchedule]'s
+  /// horizon: `dayOfMonth(29, monthInterval: 12, anchorMonth: 2)` names
+  /// February 29th, so this class has to clear the same eight-year gap across a
+  /// century that is not a leap year.
+  static const int _searchMonths = 108;
 
   /// Which rule this schedule applies, and therefore which fields are set.
   ///

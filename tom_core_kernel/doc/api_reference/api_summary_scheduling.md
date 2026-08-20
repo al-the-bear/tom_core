@@ -163,7 +163,7 @@ factory TomCronSchedule(String expression)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `nextFireAfter` | `DateTime? nextFireAfter(DateTime from)` | *(override)* Searches forward for a matching minute; returns `null` if none exists within the search horizon (e.g. February 30th). |
+| `nextFireAfter` | `DateTime? nextFireAfter(DateTime from)` | *(override)* Searches forward for a matching minute. Returns `null` only for an expression that can never match (e.g. February 30th): the nine-year horizon clears the widest gap a satisfiable expression can produce, the eight years between February 29th 2096 and 2104. |
 | `describe` | `String describe()` | *(override)* `cron(<expression>)`. |
 
 ### TomCalendarSchedule
@@ -216,7 +216,7 @@ Both validate eagerly and throw `TomScheduleException` on an out-of-range value
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `nextFireAfter` | `DateTime? nextFireAfter(DateTime from)` | *(override)* Walks forward month by month within the search horizon. |
+| `nextFireAfter` | `DateTime? nextFireAfter(DateTime from)` | *(override)* Walks forward month by month within the search horizon — 108 months, the same nine years `TomCronSchedule` uses, since a yearly rule anchored on February can name the 29th. |
 | `describe` | `String describe()` | *(override)* A readable rendering of the rule. |
 
 ### TomIntervalSchedule

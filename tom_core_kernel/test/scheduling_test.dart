@@ -456,6 +456,37 @@ void main() {
         );
       });
 
+      // The next three pin the search horizon, which is the module's answer to
+      // "when do we give up". They matter together: the first two are the two
+      // hardest cases a satisfiable expression can pose, and the third is the
+      // only shape that may legitimately give up — so passing all three is what
+      // lets `null` be read as *never* rather than *not within the window*.
+      test('finds February 29th when the search starts on one', () {
+        // The limit is anchored on the start's own month and day and the scan
+        // is half-open, so this case needs a horizon one year longer than the
+        // four-year gap it crosses — it is why the horizon is not four years.
+        expect(
+          TomCronSchedule(
+            '0 0 29 2 *',
+          ).nextFireAfter(DateTime.utc(2024, 2, 29)),
+          DateTime.utc(2028, 2, 29),
+        );
+      });
+
+      test('finds February 29th across a century that is not a leap year', () {
+        // The worst case the expression language can pose, and what fixes the
+        // horizon at nine years: 2100 is divisible by 100 but not 400, so the
+        // leap day skips from 2096 straight to 2104 — eight years — and
+        // starting *on* the 2096 one costs the extra year the half-open limit
+        // needs. An eight-year horizon returns null here.
+        expect(
+          TomCronSchedule(
+            '0 0 29 2 *',
+          ).nextFireAfter(DateTime.utc(2096, 2, 29)),
+          DateTime.utc(2104, 2, 29),
+        );
+      });
+
       test('returns null for an expression that can never match', () {
         expect(
           TomCronSchedule('0 0 30 2 *').nextFireAfter(DateTime.utc(2026)),
@@ -701,6 +732,21 @@ void main() {
         expect(
           cal.nextFireAfter(DateTime.utc(2026, 11, 1)),
           DateTime.utc(2027, 2, 1),
+        );
+      });
+
+      test('finds February 29th across a century that is not a leap year', () {
+        // A yearly rule anchored on February can name the 29th, so this class
+        // has to clear the same eight-year gap `TomCronSchedule` does — 2100 is
+        // divisible by 100 but not 400 and so is not a leap year.
+        final cal = TomCalendarSchedule.dayOfMonth(
+          29,
+          monthInterval: 12,
+          anchorMonth: 2,
+        );
+        expect(
+          cal.nextFireAfter(DateTime.utc(2096, 2, 29)),
+          DateTime.utc(2104, 2, 29),
         );
       });
 
