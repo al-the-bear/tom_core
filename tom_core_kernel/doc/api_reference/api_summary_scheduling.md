@@ -203,10 +203,10 @@ Both validate eagerly and throw `TomScheduleException` on an out-of-range value
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `rule` | `TomCalendarRule` | Which of the two forms this schedule uses. |
-| `dayOfMonth` | `int` | Day of month; negative counts back from the month's end. |
-| `weekday` | `int` | `DateTime.monday`…`DateTime.sunday`. |
-| `ordinal` | `int` | Which occurrence of `weekday` in the month; `-1` for the last. |
+| `rule` | `TomCalendarRule` | Which of the two forms this schedule uses, and therefore which fields below are set. The fields the rule does not use are `null`, never a stand-in value. |
+| `dayOfMonth` | `int?` | Day of month; negative counts back from the month's end. `null` under `weekdayOfMonth`. |
+| `weekday` | `int?` | `DateTime.monday`…`DateTime.sunday`. `null` under `dayOfMonth`. |
+| `ordinal` | `int?` | Which occurrence of `weekday` in the month; `-1` for the last. `null` under `dayOfMonth`. |
 | `monthInterval` | `int` | Fire every *n*-th month (1 = monthly, 3 = quarterly). |
 | `anchorMonth` | `int` | The month the interval grid is aligned to. |
 | `hour` | `int` | Fire hour. |

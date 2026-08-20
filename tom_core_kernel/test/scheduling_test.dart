@@ -595,6 +595,29 @@ void main() {
   // ===========================================================================
 
   group('TomCalendarSchedule', () {
+    test('leaves the fields its rule does not use null', () {
+      // One class serves two rules, so half the fields are inapplicable on any
+      // given instance. They are null rather than filled in: a placeholder
+      // `ordinal` of 1 would be indistinguishable from a genuine
+      // first-occurrence schedule, and a caller reading it has no way to tell
+      // that it was never asked for. `rule` stays the discriminator; the nulls
+      // are what make disagreeing with it impossible.
+      final byDay = TomCalendarSchedule.dayOfMonth(15);
+      expect(byDay.rule, TomCalendarRule.dayOfMonth);
+      expect(byDay.dayOfMonth, 15);
+      expect(byDay.weekday, isNull);
+      expect(byDay.ordinal, isNull);
+
+      final byWeekday = TomCalendarSchedule.weekdayOfMonth(
+        weekday: DateTime.tuesday,
+        ordinal: -1,
+      );
+      expect(byWeekday.rule, TomCalendarRule.weekdayOfMonth);
+      expect(byWeekday.weekday, DateTime.tuesday);
+      expect(byWeekday.ordinal, -1);
+      expect(byWeekday.dayOfMonth, isNull);
+    });
+
     group('dayOfMonth', () {
       test('fires on a positive day', () {
         final cal = TomCalendarSchedule.dayOfMonth(10, hour: 9);

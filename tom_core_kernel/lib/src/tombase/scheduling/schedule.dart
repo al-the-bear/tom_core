@@ -514,25 +514,33 @@ class TomCalendarSchedule extends TomSchedule {
   /// How far ahead [nextFireAfter] searches before concluding "never".
   static const int _searchMonths = 60;
 
-  /// Which rule this schedule applies.
+  /// Which rule this schedule applies, and therefore which fields are set.
+  ///
+  /// One class serves both rules, so the fields the chosen rule does not use
+  /// are `null` rather than filled with a stand-in. A placeholder [ordinal] of
+  /// `1` would read as a genuine first-occurrence schedule and give a caller no
+  /// way to notice it was never asked for; `null` cannot be mistaken for an
+  /// answer, which is what stops a reader disagreeing with this field.
   final TomCalendarRule rule;
 
-  /// For [TomCalendarRule.dayOfMonth]: the day, counted from the start of the
-  /// month when positive and from its end when negative (`-1` = last day).
+  /// The day of the month, or `null` under [TomCalendarRule.weekdayOfMonth].
+  ///
+  /// Counted from the start of the month when positive and from its end when
+  /// negative (`-1` = last day).
   ///
   /// A positive day that does not exist in a given month (the 31st of April)
   /// simply does not fire that month — it is **not** clamped, because a
   /// month-end job that silently ran on the 30th would be indistinguishable
   /// from one that ran on time.
-  final int dayOfMonth;
+  final int? dayOfMonth;
 
-  /// For [TomCalendarRule.weekdayOfMonth]: the weekday, using Dart's
-  /// `DateTime.monday`..`DateTime.sunday` (1-7).
-  final int weekday;
+  /// The weekday as `DateTime.monday`..`DateTime.sunday` (1-7), or `null` under
+  /// [TomCalendarRule.dayOfMonth].
+  final int? weekday;
 
-  /// For [TomCalendarRule.weekdayOfMonth]: which occurrence, `1`-`5` counting
-  /// forward or `-1` for the last occurrence in the month.
-  final int ordinal;
+  /// Which occurrence of [weekday] — `1`-`5` counting forward, or `-1` for the
+  /// last in the month — or `null` under [TomCalendarRule.dayOfMonth].
+  final int? ordinal;
 
   /// Every how many months the schedule repeats, counted from [anchorMonth].
   final int monthInterval;
@@ -578,8 +586,8 @@ class TomCalendarSchedule extends TomSchedule {
     return TomCalendarSchedule._(
       rule: TomCalendarRule.dayOfMonth,
       dayOfMonth: dayOfMonth,
-      weekday: DateTime.monday,
-      ordinal: 1,
+      weekday: null,
+      ordinal: null,
       monthInterval: _checkInterval(monthInterval),
       anchorMonth: _checkMonth(anchorMonth),
       hour: _checkHour(hour),
@@ -616,7 +624,7 @@ class TomCalendarSchedule extends TomSchedule {
     }
     return TomCalendarSchedule._(
       rule: TomCalendarRule.weekdayOfMonth,
-      dayOfMonth: 1,
+      dayOfMonth: null,
       weekday: weekday,
       ordinal: ordinal,
       monthInterval: _checkInterval(monthInterval),
@@ -704,7 +712,10 @@ class TomCalendarSchedule extends TomSchedule {
     final lastDay = _daysInMonth(year, month);
     int day;
     if (rule == TomCalendarRule.dayOfMonth) {
-      day = dayOfMonth > 0 ? dayOfMonth : lastDay + dayOfMonth + 1;
+      // Non-null by construction: the factory that sets this rule is the only
+      // one that sets the field, and vice versa below.
+      final requested = dayOfMonth!;
+      day = requested > 0 ? requested : lastDay + requested + 1;
       if (day < 1 || day > lastDay) return null;
     } else {
       day = _weekdayOccurrence(year, month, lastDay);
@@ -715,18 +726,23 @@ class TomCalendarSchedule extends TomSchedule {
 
   /// The day-of-month of the [ordinal]-th [weekday] in the given month, or
   /// `-1` when the month has no such occurrence.
+  ///
+  /// Only reached under [TomCalendarRule.weekdayOfMonth], which is what makes
+  /// both fields non-null here.
   int _weekdayOccurrence(int year, int month, int lastDay) {
-    if (ordinal == -1) {
+    final which = ordinal!;
+    final wanted = weekday!;
+    if (which == -1) {
       for (var day = lastDay; day >= 1; day--) {
-        if (DateTime.utc(year, month, day).weekday == weekday) return day;
+        if (DateTime.utc(year, month, day).weekday == wanted) return day;
       }
       return -1;
     }
     var seen = 0;
     for (var day = 1; day <= lastDay; day++) {
-      if (DateTime.utc(year, month, day).weekday == weekday) {
+      if (DateTime.utc(year, month, day).weekday == wanted) {
         seen++;
-        if (seen == ordinal) return day;
+        if (seen == which) return day;
       }
     }
     return -1;
@@ -746,9 +762,8 @@ class TomCalendarSchedule extends TomSchedule {
         ? 'monthly'
         : 'every $monthInterval months';
     if (rule == TomCalendarRule.dayOfMonth) {
-      final which = dayOfMonth > 0
-          ? 'day $dayOfMonth'
-          : 'day $dayOfMonth from month end';
+      final day = dayOfMonth!;
+      final which = day > 0 ? 'day $day' : 'day $day from month end';
       return 'calendar($which, $every, $time)';
     }
     final which = ordinal == -1 ? 'last' : 'occurrence $ordinal';
