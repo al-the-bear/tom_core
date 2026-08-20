@@ -2548,6 +2548,7 @@ void main() {
           ['lead'],
           ['feature.x'],
           ['key.y'],
+          resourceRoles: {'project.apollo': 'owner'},
         );
 
         final aci = TomBearerAuthentication.getPrincipal().aci;
@@ -2555,6 +2556,42 @@ void main() {
         expect(aci.roles, equals(['lead']));
         expect(aci.entitlements, equals(['feature.x']));
         expect(aci.resourceKeys, equals(['key.y']));
+        expect(aci.resourceRoles, equals({'project.apollo': 'owner'}));
+      });
+
+      test('updatePrincipal clears resourceRoles when they are omitted', () {
+        // The trap the documentation warns about. `resourceRoles` is the only
+        // optional parameter, so a caller that leaves it out still compiles —
+        // and because the call replaces the ACI rather than merging into it,
+        // the principal's per-resource grants are gone. A periodic refresh
+        // written that way drops them on every tick.
+        final jwt = _makeJwt({'username': 'erin', 'userId': 8});
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+
+        TomBearerAuthentication.updatePrincipal(
+          ['team-a'],
+          ['lead'],
+          ['feature.x'],
+          ['key.y'],
+          resourceRoles: {'project.apollo': 'owner'},
+        );
+        expect(
+          TomBearerAuthentication.getPrincipal().aci.resourceRoles,
+          equals({'project.apollo': 'owner'}),
+        );
+
+        // The same call, one argument short.
+        TomBearerAuthentication.updatePrincipal(
+          ['team-a'],
+          ['lead'],
+          ['feature.x'],
+          ['key.y'],
+        );
+
+        expect(
+          TomBearerAuthentication.getPrincipal().aci.resourceRoles,
+          isEmpty,
+        );
       });
 
       test(

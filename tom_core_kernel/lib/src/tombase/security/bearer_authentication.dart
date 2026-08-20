@@ -425,6 +425,15 @@ class TomBearerAuthentication {
   /// a full re-authentication. Useful when permissions change during
   /// a session.
   ///
+  /// **Replaces the ACI; it does not merge into it.** Every collection is set
+  /// to exactly what this call is given, so pass the full set the principal
+  /// should end up with rather than a delta. [resourceRoles] is the one to
+  /// watch: it is the only optional parameter, so omitting it compiles and
+  /// silently clears every per-resource grant the principal held. Since
+  /// `TomResourceRoleAdapter` resolves an ungranted resource to
+  /// `TomAuthState.none`, the visible effect is UI vanishing rather than an
+  /// error.
+  ///
   /// - [groups]: Updated list of group memberships
   /// - [roles]: Updated list of roles
   /// - [entitlements]: Updated list of entitlements

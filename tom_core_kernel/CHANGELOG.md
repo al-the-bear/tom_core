@@ -129,6 +129,23 @@ anyone who was writing them.
 
 ### Changed
 
+- **No documented `updatePrincipal` call silently wipes the principal's
+  per-resource grants any more.** The method replaces the ACI rather than
+  merging into it, and `resourceRoles` is its only optional parameter — so a
+  four-argument call compiles and clears every per-resource grant the principal
+  held. Best Practice 7 showed exactly that inside a `refreshPermissions()`
+  running on a timer, which drops the grants on every tick; because
+  `TomResourceRoleAdapter` resolves an ungranted resource to `none`, the symptom
+  is UI disappearing a few seconds after login with nothing in the logs. Best
+  Practice 7 now passes `resourceRoles` and explains the replace-not-merge
+  semantics, the `updatePrincipal` dartdoc leads with them, and the printed
+  "Example call" in `04_bearer_authentication_example.dart` — a fourth copy of
+  the same four-argument shape — shows the fifth argument and the warning.
+  `security_test.dart` now pins the contract: the existing "replaces the ACI"
+  test asserts `resourceRoles` round-trips, and a new test asserts that omitting
+  it clears a grant the principal was holding. Documentation and test coverage
+  only; the behaviour is unchanged.
+
 - **The resource-key protection docs no longer show a snippet that protects
   nothing.** `TomResourceKeyProtection.globalSettingProtectionDefault` defaults
   to `false`, and `isProtectedFor` returns `false` before consulting any key

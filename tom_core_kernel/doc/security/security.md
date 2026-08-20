@@ -1107,11 +1107,20 @@ void refreshPermissions() async {
     newAci.roles,
     newAci.entitlements,
     newAci.resourceKeys,
+    // Optional to the compiler, not in practice: the call replaces the ACI,
+    // so omitting this clears every per-resource grant on every refresh.
+    resourceRoles: newAci.resourceRoles,
   );
 }
 ```
 
----
+Pass all five collections every time. [`updatePrincipal` replaces the
+ACI](#token-management) rather than merging into it, and `resourceRoles` is the
+only one that can be left out without a compile error — so a refresh that
+forgets it silently drops the principal's per-resource grants, and
+[`TomResourceRoleAdapter`](#per-resource-roles-the-shipped-adapter) resolves an
+ungranted resource to `none`. Run that on a timer and the symptom is UI that
+disappears a few seconds after login, with nothing in the logs.
 
 ---
 

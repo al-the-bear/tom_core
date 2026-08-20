@@ -257,8 +257,14 @@ class BearerAuthenticationExample {
     print('     [\'group1\', \'group2\'],  // Updated groups');
     print('     [\'admin\', \'user\'],     // Updated roles');
     print('     [\'feature.*\'],         // Updated entitlements');
-    print('     [\'user.email\'],         // Updated resource keys');
+    print('     [\'user.email\'],        // Updated resource keys');
+    print('     resourceRoles: {\'project.apollo\': \'owner\'},');
     print('   );');
+    print('');
+    print('   The call REPLACES the ACI, it does not merge into it.');
+    print('   Pass all five collections every time: resourceRoles is the');
+    print('   only optional one, so omitting it compiles and silently');
+    print('   clears every per-resource grant the principal held.');
   }
 
   // --------------------------------------------------------------------------
