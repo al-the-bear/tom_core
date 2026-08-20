@@ -140,6 +140,17 @@ anyone who was writing them.
 
 ### Changed
 
+- **The security API mirror lists all six two-factor classes.** Its table of
+  contents, class hierarchy and `two_factor.dart` overview each named three —
+  `Tom2FAClaims`, `Tom2FAChallenge`, `TomTotp` — while the reference body
+  documented six. `Tom2FAEnrolmentClaims`, `Tom2FAPendingEnrolment` and
+  `Tom2FAMethodDescriptor` were therefore unreachable by anyone navigating from
+  the top, which is the whole enrolment half of the two-pass login: a reader
+  finding only the challenge pair concludes the framework cannot enrol a user
+  who has no factor yet. All three lists now agree, and the omission was
+  confirmed to be exactly these three by diffing every public type declared in
+  `lib/src/tombase/security/` against the mirror.
+
 - **The meet's worked example now declares the identifiers it turns on.** The
   security guide's central explanation of why a control the user satisfies can
   still resolve to `none` used `user` and `server` without binding either, and

@@ -43,6 +43,9 @@ per-principal-per-resource role resolution.
   - [TomBearerAuthentication](#tombearerauthentication)
   - [Tom2FAClaims](#tom2faclaims)
   - [Tom2FAChallenge](#tom2fachallenge)
+  - [Tom2FAEnrolmentClaims](#tom2faenrolmentclaims)
+  - [Tom2FAPendingEnrolment](#tom2fapendingenrolment)
+  - [Tom2FAMethodDescriptor](#tom2famethoddescriptor)
   - [TomTotp](#tomtotp)
   - [TomServerPrincipal](#tomserverprincipal)
   - [TomOAuthProviderDto](#tomoauthproviderdto)
@@ -103,14 +106,21 @@ map. `authentication_authorization.dart` carries the login DTOs
 `bearer_authentication.dart` manages JWT tokens and principal conversion via
 `TomBearerAuthentication`.
 
-`two_factor.dart` holds the shared half of the two-pass login: `Tom2FAClaims`
-(the claim names a pending challenge travels under), `Tom2FAChallenge` (its wire
-shape, carried in the interim token's public claims), and `TomTotp` (the RFC
-4226/6238 derivation primitives plus the base32 codec). These live in the kernel
-because three tiers must agree about them exactly — the server issuing and
-verifying, enrolment tooling handing out a secret, and the client driving the
-second-factor UI. The server-side orchestration (adaptor registry, mechanisms,
-the two passes) is `tom_core_server`'s authentication module.
+`two_factor.dart` holds the shared half of the two-pass login, in two parallel
+pairs plus two singles. The **challenge** pair covers the user who already has a
+factor: `Tom2FAClaims` (the claim names a pending challenge travels under) and
+`Tom2FAChallenge` (its wire shape, carried in the interim token's public
+claims). The **enrolment** pair is the exact analogue one step earlier, for the
+user who has no factor yet: `Tom2FAEnrolmentClaims` and
+`Tom2FAPendingEnrolment`, which covers both stops of that leg — choosing a
+mechanism and confirming it. `Tom2FAMethodDescriptor` is how a mechanism names
+itself to a user being asked to choose, in resource keys rather than literal
+text; and `TomTotp` is the RFC 4226/6238 derivation primitives plus the base32
+codec. These live in the kernel because three tiers must agree about them
+exactly — the server issuing and verifying, enrolment tooling handing out a
+secret, and the client driving the second-factor UI. The server-side
+orchestration (adaptor registry, mechanisms, the two passes) is
+`tom_core_server`'s authentication module.
 
 `oauth_contract.dart` (C-9) holds the wire contract for external-identity login:
 the DTOs (`TomOAuthProviderDto`, `TomOAuthAuthorizationRequest`,
@@ -150,6 +160,9 @@ Object
 ├── TomBearerAuthentication
 ├── Tom2FAClaims                             (private constructor)
 ├── Tom2FAChallenge
+├── Tom2FAEnrolmentClaims                    (private constructor)
+├── Tom2FAPendingEnrolment
+├── Tom2FAMethodDescriptor                   (@tomReflector)
 ├── TomTotp                                  (private constructor)
 ├── TomServerPrincipal                       (private constructor)
 ├── TomOAuthProviderDto                      (@tomReflector)
