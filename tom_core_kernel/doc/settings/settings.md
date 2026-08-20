@@ -132,6 +132,7 @@ TomGetSettingsResult({
   String? application,
   String? country,
   String? language,
+  String? timezone,
   String? clientLanguage,
   String? clientCountry,
   String? clientTimeZone,
@@ -204,9 +205,25 @@ TomGetSettingsResult buildSettings(User user, Tenant tenant) {
 |----------|------|---------|-------------|
 | `country` | `String?` | `null` | Server-side country code |
 | `language` | `String?` | `null` | Server-side language code |
+| `timezone` | `String?` | `null` | Server-side timezone (IANA format) |
 | `clientCountry` | `String?` | `null` | Client's preferred country (ISO 3166-1) |
 | `clientLanguage` | `String?` | `null` | Client's preferred language (ISO 639-1) |
 | `clientTimeZone` | `String?` | `null` | Client's timezone (IANA format) |
+
+The three localization concepts are each carried as a **pair**: the server
+states what it decided, the client states what it asked for. A consumer reads
+the server field first and falls back to the client one, and compares the two
+when it needs to know it was overridden:
+
+```dart
+final effectiveZone = settings.timezone ?? settings.clientTimeZone;
+final zoneOverridden =
+    settings.timezone != null && settings.timezone != settings.clientTimeZone;
+```
+
+A `null` server field means the server expressed no opinion — which is not the
+same as agreeing with the client, and is why the fallback and the
+override-detection are two different expressions.
 
 ## Usage Examples
 

@@ -101,7 +101,7 @@ class TomGetSettingsMessage {
 /// | Resources | [texts], [config] |
 /// | Authorization | [groups], [roles], [entitlements], [resourceKeys] |
 /// | Context | [organization], [process], [application] |
-/// | Localization | [country], [language], [clientCountry], [clientLanguage], [clientTimeZone] |
+/// | Localization | [country], [language], [timezone], [clientCountry], [clientLanguage], [clientTimeZone] |
 ///
 /// ## Example
 ///
@@ -214,6 +214,30 @@ class TomGetSettingsResult {
   /// May differ from [clientLanguage] based on server configuration.
   String? language;
 
+  /// Server-determined timezone setting.
+  ///
+  /// The IANA timezone identifier the server resolved for this session — set
+  /// when the deployment pins a timezone (a tenant fixed to one, say) or when
+  /// it declines the client's request. May differ from [clientTimeZone] based
+  /// on server configuration.
+  ///
+  /// This completes the server/client pairing the other two localization
+  /// concepts already had. Without it a client could not tell whether the
+  /// timezone it got back was its own preference echoed or a server decision,
+  /// because there was only ever one field to read. Compare the two to detect
+  /// an override:
+  ///
+  /// ```dart
+  /// final effective = result.timezone ?? result.clientTimeZone;
+  /// final overridden =
+  ///     result.timezone != null && result.timezone != result.clientTimeZone;
+  /// ```
+  ///
+  /// `null` means the server expressed no opinion, which is not the same as
+  /// agreeing with the client — see [country] and [language] for the same
+  /// convention.
+  String? timezone;
+
   /// Client's preferred country code.
   ///
   /// The country setting as determined by or requested from the client.
@@ -254,6 +278,7 @@ class TomGetSettingsResult {
     this.application,
     this.country,
     this.language,
+    this.timezone,
     this.clientLanguage,
     this.clientCountry,
     this.clientTimeZone,

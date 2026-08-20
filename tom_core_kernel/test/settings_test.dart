@@ -142,6 +142,7 @@ void main() {
         expect(result.application, isNull);
         expect(result.country, isNull);
         expect(result.language, isNull);
+        expect(result.timezone, isNull);
         expect(result.clientCountry, isNull);
         expect(result.clientLanguage, isNull);
         expect(result.clientTimeZone, isNull);
@@ -169,6 +170,7 @@ void main() {
           application: 'main-app',
           country: 'US',
           language: 'en',
+          timezone: 'America/Chicago',
           clientCountry: 'GB',
           clientLanguage: 'en-GB',
           clientTimeZone: 'Europe/London',
@@ -186,6 +188,7 @@ void main() {
         expect(result.application, equals('main-app'));
         expect(result.country, equals('US'));
         expect(result.language, equals('en'));
+        expect(result.timezone, equals('America/Chicago'));
         expect(result.clientCountry, equals('GB'));
         expect(result.clientLanguage, equals('en-GB'));
         expect(result.clientTimeZone, equals('Europe/London'));
@@ -530,6 +533,14 @@ void main() {
           expect(result.language, equals('en'));
         });
 
+        test('should store server-determined timezone', () {
+          // Arrange
+          final result = TomGetSettingsResult(timezone: 'Europe/Berlin');
+
+          // Assert
+          expect(result.timezone, equals('Europe/Berlin'));
+        });
+
         test('should handle ISO 3166-1 country codes', () {
           // Arrange & Act
           final resultUS = TomGetSettingsResult(country: 'US');
@@ -638,11 +649,62 @@ void main() {
           expect(result.language, isNot(equals(result.clientLanguage)));
         });
 
+        test('should allow different server and client timezone', () {
+          // Arrange
+          final result = TomGetSettingsResult(
+            timezone: 'UTC',
+            clientTimeZone: 'Europe/Berlin',
+          );
+
+          // Assert
+          expect(result.timezone, equals('UTC'));
+          expect(result.clientTimeZone, equals('Europe/Berlin'));
+          expect(result.timezone, isNot(equals(result.clientTimeZone)));
+        });
+
+        // The point of having both timezone fields: a consumer can tell an
+        // override apart from an echo. With only `clientTimeZone` to read,
+        // both look identical.
+        test('should distinguish a timezone override from server silence', () {
+          // Arrange
+          final overridden = TomGetSettingsResult(
+            timezone: 'UTC',
+            clientTimeZone: 'Europe/Berlin',
+          );
+          final serverSilent = TomGetSettingsResult(
+            clientTimeZone: 'Europe/Berlin',
+          );
+
+          // Assert — the server's decision wins where it made one.
+          expect(
+            overridden.timezone ?? overridden.clientTimeZone,
+            equals('UTC'),
+          );
+          expect(
+            overridden.timezone != null &&
+                overridden.timezone != overridden.clientTimeZone,
+            isTrue,
+          );
+
+          // Assert — a null timezone is "no opinion", not agreement, so the
+          // client's preference stands and nothing was overridden.
+          expect(
+            serverSilent.timezone ?? serverSilent.clientTimeZone,
+            equals('Europe/Berlin'),
+          );
+          expect(
+            serverSilent.timezone != null &&
+                serverSilent.timezone != serverSilent.clientTimeZone,
+            isFalse,
+          );
+        });
+
         test('should support full localization configuration', () {
           // Arrange
           final result = TomGetSettingsResult(
             country: 'US',
             language: 'en',
+            timezone: 'America/New_York',
             clientCountry: 'DE',
             clientLanguage: 'de',
             clientTimeZone: 'Europe/Berlin',
@@ -651,6 +713,7 @@ void main() {
           // Assert
           expect(result.country, equals('US'));
           expect(result.language, equals('en'));
+          expect(result.timezone, equals('America/New_York'));
           expect(result.clientCountry, equals('DE'));
           expect(result.clientLanguage, equals('de'));
           expect(result.clientTimeZone, equals('Europe/Berlin'));
@@ -824,6 +887,7 @@ void main() {
           application: 'portal',
           country: 'US',
           language: 'en',
+          timezone: 'UTC',
           clientCountry: 'GB',
           clientLanguage: 'en',
           clientTimeZone: 'America/New_York',
@@ -846,6 +910,7 @@ void main() {
         expect(restored.application, equals('portal'));
         expect(restored.country, equals('US'));
         expect(restored.language, equals('en'));
+        expect(restored.timezone, equals('UTC'));
         expect(restored.clientCountry, equals('GB'));
         expect(restored.clientLanguage, equals('en'));
         expect(restored.clientTimeZone, equals('America/New_York'));
@@ -870,6 +935,7 @@ void main() {
         expect(restored.application, isNull);
         expect(restored.country, isNull);
         expect(restored.language, isNull);
+        expect(restored.timezone, isNull);
         expect(restored.clientCountry, isNull);
         expect(restored.clientLanguage, isNull);
         expect(restored.clientTimeZone, isNull);
@@ -1133,7 +1199,8 @@ void main() {
   group('settings over TomServerEndpoint', () {
     /// Builds the endpoint exactly as the module documentation does, over a
     /// client that answers [body] with [statusCode].
-    (TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>,
+    (
+      TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>,
       _RecordingClient,
     )
     documentedEndpoint(String body, {int statusCode = 200}) {

@@ -111,6 +111,7 @@ class FullResultExample {
       organization: 'acme-corp',
       application: 'admin-portal',
       language: 'en',
+      timezone: 'UTC',
       clientTimeZone: 'America/New_York',
     );
 
@@ -300,6 +301,54 @@ class SettingsEndpointExample {
 }
 
 // =============================================================================
+// EXAMPLE 10: Reading Localization as Server/Client Pairs
+// =============================================================================
+
+/// Each of the three localization concepts is carried as a pair: the server
+/// field states what the server decided, the client field what the client
+/// asked for. A consumer resolves the effective value with `server ?? client`,
+/// and compares the two when it needs to know it was overridden.
+///
+/// A `null` server field means the server expressed no opinion — not that it
+/// agreed with the client. That is why the fallback and the override check are
+/// two different expressions and not one.
+class LocalizationPairsExample {
+  static String? effectiveCountry;
+  static String? effectiveLanguage;
+  static String? effectiveTimeZone;
+  static bool timeZoneOverridden = false;
+  static bool languageOverridden = false;
+
+  static void example10LocalizationPairs() {
+    // The client asked for Berlin time and German; the server pinned the
+    // session to UTC but let the language request stand.
+    final result = TomGetSettingsResult(
+      country: 'DE',
+      timezone: 'UTC',
+      clientCountry: 'DE',
+      clientLanguage: 'de',
+      clientTimeZone: 'Europe/Berlin',
+    );
+
+    effectiveCountry = result.country ?? result.clientCountry;
+    effectiveLanguage = result.language ?? result.clientLanguage;
+    effectiveTimeZone = result.timezone ?? result.clientTimeZone;
+
+    timeZoneOverridden =
+        result.timezone != null && result.timezone != result.clientTimeZone;
+    languageOverridden =
+        result.language != null && result.language != result.clientLanguage;
+
+    assert(effectiveCountry == 'DE', 'Server and client agree on the country');
+    assert(effectiveLanguage == 'de', 'Server was silent, so the client wins');
+    assert(effectiveTimeZone == 'UTC', 'Server pinned the zone, so it wins');
+
+    assert(timeZoneOverridden, 'The server decided against the client zone');
+    assert(!languageOverridden, 'Silence is not an override');
+  }
+}
+
+// =============================================================================
 // RUN ALL EXAMPLES
 // =============================================================================
 
@@ -313,6 +362,7 @@ void run() {
   CheckRolesExample.example7CheckRoles();
   CheckEntitlementsExample.example8CheckEntitlements();
   SettingsEndpointExample.example9BuildEndpoint();
+  LocalizationPairsExample.example10LocalizationPairs();
 }
 
 void main() {

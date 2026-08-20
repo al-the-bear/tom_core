@@ -22,8 +22,8 @@ the authorization token that authenticates the settings request.
 `TomGetSettingsResult` carries the server's response: text and configuration
 resources, the user's authorization context (groups, roles, entitlements,
 resource keys), the application context (organization, process, application),
-and localization preferences (server- and client-side country/language plus the
-client timezone). Both classes are annotated with `@tomReflector` for reflected
+and localization preferences (server- and client-side country, language and
+timezone). Both classes are annotated with `@tomReflector` for reflected
 serialization.
 
 ## Class Hierarchy
@@ -76,6 +76,7 @@ TomGetSettingsResult({
   String? application,
   String? country,
   String? language,
+  String? timezone,
   String? clientLanguage,
   String? clientCountry,
   String? clientTimeZone,
@@ -106,9 +107,17 @@ answered as the empty string. Consumers must null-check rather than reach for
 | `application` | `String?` | The application identifier selecting the configuration to use (default `null`). |
 | `country` | `String?` | Server-determined country code for localization (default `null`). |
 | `language` | `String?` | Server-determined language code for localization (default `null`). |
+| `timezone` | `String?` | Server-determined IANA timezone identifier for the session (default `null`). |
 | `clientCountry` | `String?` | Client's preferred country code, ISO 3166-1 alpha-2 (default `null`). |
 | `clientLanguage` | `String?` | Client's preferred language code, ISO 639-1 (default `null`). |
 | `clientTimeZone` | `String?` | Client's IANA timezone identifier (e.g. `America/New_York`) (default `null`). |
+
+Localization is carried in server/client pairs — `country`/`clientCountry`,
+`language`/`clientLanguage`, `timezone`/`clientTimeZone`. The server field is
+the decision, the client field the request; `server ?? client` yields the
+effective value, and the two differing (with the server field non-`null`) is how
+a consumer detects an override. A `null` server field means no opinion was
+expressed, not agreement.
 
 ## Global Functions and Constants
 

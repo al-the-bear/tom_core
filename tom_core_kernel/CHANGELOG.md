@@ -9,6 +9,20 @@ anyone who was writing them.
 
 ### Added
 
+- **`TomGetSettingsResult.timezone` — the missing half of the timezone pair
+  (tcinc300).** The result's localization block is built in server/client pairs
+  so a consumer can tell an override from an echo: the server states what it
+  decided, the client what it asked for, and comparing the two answers "was I
+  overridden?". Two of the three concepts had both halves —
+  `country`/`clientCountry`, `language`/`clientLanguage` — while timezone had
+  only `clientTimeZone`. A server that pinned a session's zone had nowhere to
+  say so, and a client reading `clientTimeZone` could not tell whether it was
+  looking at its own preference echoed back or a server decision. The new field
+  is declared beside `country` and `language`, follows the same `null`-means-no-
+  opinion convention, and completes the 3+3 set `TomPrincipal` already carried.
+  Purely additive: every existing constructor call and every field read is
+  unchanged.
+
 - **`08_server_principal_meet_example.dart`.** The meet — every authorization
   decision's second operand — was the one central security concept with no
   runnable sample, and the prose's worked example for it was illustrative only.
