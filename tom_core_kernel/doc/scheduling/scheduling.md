@@ -180,7 +180,11 @@ implementations ship, one of them with two constructors:
 Three behaviours worth knowing:
 
 - **Cron day fields are OR-ed**, per POSIX: with both day-of-month and
-  day-of-week restricted, a day matching *either* fires.
+  day-of-week restricted, a day matching *either* fires. A step counts as a
+  restriction — `*/2` names half the days — so `0 0 */2 * *` is odd days, and
+  `0 0 */2 * MON` is odd days *or* Mondays. Only a bare `*`, or the equivalent
+  `*/1`, leaves a day field unrestricted. Vixie cron differs here, reading
+  every `*/n` as unrestricted and ANDing instead.
 - **Intervals do not drift.** The grid is absolute, so a scheduler that was down
   for an hour resumes on the original grid rather than restarting from the
   moment it woke up.

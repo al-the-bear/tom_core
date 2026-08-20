@@ -128,6 +128,12 @@ abstract class TomSchedule {
 /// [TomCalendarSchedule] exists partly so that intersecting rules have a
 /// spelling that means what it looks like.
 ///
+/// A **step restricts**, which decides where that rule lands: `0 0 */2 * *`
+/// fires on odd days, and `0 0 */2 * MON` is odd days *or* Mondays. Only a
+/// bare `*` — or `*/1`, the same thing spelled with a no-op step — leaves a
+/// day field unrestricted. Vixie cron differs here, reading every `*/n` as
+/// unrestricted and so ANDing that example into odd Mondays.
+///
 /// **There is no seconds field.** Not on either end — a six-field expression is
 /// rejected rather than guessed at, because the two common conventions put
 /// seconds at opposite ends and a misread expression fires 60× too often. A
@@ -188,11 +194,13 @@ class TomCronSchedule extends TomSchedule {
   final Set<int> _months;
   final Set<int> _daysOfWeek;
 
-  /// Whether the day-of-month field was `*` — decides the OR/AND question.
-  final bool _dayOfMonthWildcard;
+  /// Whether the day-of-month field restricts nothing — decides the OR
+  /// question in [_matchesDay]. See [_isUnrestricted].
+  final bool _dayOfMonthUnrestricted;
 
-  /// Whether the day-of-week field was `*` — decides the OR/AND question.
-  final bool _dayOfWeekWildcard;
+  /// Whether the day-of-week field restricts nothing — decides the OR
+  /// question in [_matchesDay]. See [_isUnrestricted].
+  final bool _dayOfWeekUnrestricted;
 
   TomCronSchedule._(
     this.expression,
@@ -201,8 +209,8 @@ class TomCronSchedule extends TomSchedule {
     this._daysOfMonth,
     this._months,
     this._daysOfWeek,
-    this._dayOfMonthWildcard,
-    this._dayOfWeekWildcard,
+    this._dayOfMonthUnrestricted,
+    this._dayOfWeekUnrestricted,
   );
 
   /// Parses [expression], throwing [TomScheduleException] if it is not a valid
@@ -262,13 +270,31 @@ class TomCronSchedule extends TomSchedule {
       months,
       // Both 0 and 7 spell Sunday; normalise so matching only has to check 0.
       daysOfWeek.map((d) => d == 7 ? 0 : d).toSet(),
-      _isWildcard(fields[2]),
-      _isWildcard(fields[4]),
+      _isUnrestricted(fields[2]),
+      _isUnrestricted(fields[4]),
     );
   }
 
-  static bool _isWildcard(String field) =>
-      field == '*' || field.startsWith('*/');
+  /// Whether [field] as written restricts nothing, which is what decides the
+  /// OR question in [_matchesDay].
+  ///
+  /// A step expression restricts. POSIX words the day rule as applying when
+  /// both day fields are "not `*`", and `*/2` is not `*` — it names half the
+  /// days. Reading it as unrestricted computes that restriction and then
+  /// throws it away, which makes `0 0 */2 * *` fire *every* day.
+  ///
+  /// `*/1` is the one step that does not restrict: it is a wildcard with a
+  /// redundant step, expands to every value, and counting it as a restriction
+  /// would pull the other day field into an OR its author plainly did not ask
+  /// for. The line is therefore drawn at how the field is *written* — a plain
+  /// wildcard, with or without the no-op step — and not at which values it
+  /// happens to cover, so an explicit `1-31` restricts like any other range.
+  ///
+  /// This is stricter than Vixie cron, which tests only a field's first
+  /// character and so counts every `*/n` as unrestricted. Under that reading
+  /// `0 0 */2 * MON` means odd days *and* Mondays; under the POSIX wording,
+  /// which is the rule this class documents, it means odd days *or* Mondays.
+  static bool _isUnrestricted(String field) => field == '*' || field == '*/1';
 
   /// Expands one cron field into the concrete set of values it matches.
   static Set<int> _parseField(
@@ -443,14 +469,15 @@ class TomCronSchedule extends TomSchedule {
   }
 
   /// Applies the POSIX day rule: OR when both day fields are restricted,
-  /// otherwise whichever one is restricted.
+  /// otherwise whichever one is restricted. See [_isUnrestricted] for where
+  /// that line falls.
   bool _matchesDay(DateTime candidate) {
-    if (_dayOfMonthWildcard && _dayOfWeekWildcard) return true;
+    if (_dayOfMonthUnrestricted && _dayOfWeekUnrestricted) return true;
     // Dart's weekday is Mon=1..Sun=7; cron's is Sun=0..Sat=6.
     final dowMatch = _daysOfWeek.contains(candidate.weekday % 7);
     final domMatch = _daysOfMonth.contains(candidate.day);
-    if (_dayOfMonthWildcard) return dowMatch;
-    if (_dayOfWeekWildcard) return domMatch;
+    if (_dayOfMonthUnrestricted) return dowMatch;
+    if (_dayOfWeekUnrestricted) return domMatch;
     return domMatch || dowMatch;
   }
 

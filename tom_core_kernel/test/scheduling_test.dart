@@ -476,18 +476,74 @@ void main() {
     });
 
     group('day-of-month / day-of-week', () {
-      test('ORs the two fields when both are restricted (POSIX)', () {
-        // 2026-03-01 is a Sunday, so Mondays are the 2nd, 9th, 16th, 23rd, 30th.
-        final cron = TomCronSchedule('0 0 15 3 MON');
-        final fires = <DateTime>[];
-        var cursor = DateTime.utc(2026, 3, 1);
-        for (var i = 0; i < 6; i++) {
+      // March 2026 is the reference month throughout this group: the 1st is a
+      // Sunday, so the Mondays are 2, 9, 16, 23, 30, and cron weekdays
+      // {0, 2, 4, 6} (Sun, Tue, Thu, Sat) fall on 1, 3, 5, 7, 8, 10, ...
+      //
+      // The walk starts on the last day of February so that midnight on the
+      // 1st is still ahead of the cursor — `nextFireAfter` is exclusive, and
+      // starting at 2026-03-01T00:00 would skip that day's fire.
+      // The year is part of the stop condition, not just the month: a
+      // sparse expression runs out of March and the next fire is the same
+      // month a year later, which would otherwise be recorded as a repeat of
+      // a day already seen.
+      List<int> marchDays(String expression, {int take = 6}) {
+        final cron = TomCronSchedule(expression);
+        final days = <int>[];
+        var cursor = DateTime.utc(2026, 2, 28);
+        for (var i = 0; i < take; i++) {
           final next = cron.nextFireAfter(cursor);
-          if (next == null || next.month != 3) break;
-          fires.add(next);
+          if (next == null || next.year != 2026 || next.month != 3) break;
+          days.add(next.day);
           cursor = next;
         }
-        expect(fires.map((d) => d.day), [2, 9, 15, 16, 23, 30]);
+        return days;
+      }
+
+      test('ORs the two fields when both are restricted (POSIX)', () {
+        expect(marchDays('0 0 15 3 MON'), [2, 9, 15, 16, 23, 30]);
+      });
+
+      // -----------------------------------------------------------------------
+      // A step expression restricts the field.
+      //
+      // POSIX words the OR rule as applying when both day fields are "not *",
+      // and `*/2` is not `*` — it names half the days. Treating it as an
+      // unrestricted field discards the restriction after computing it, which
+      // makes `0 0 */2 * *` fire every day: a job runs twice as often as its
+      // author asked, silently, in the one schedule kind whose whole value is
+      // that its expression means what cron says it means.
+      // -----------------------------------------------------------------------
+      test('a day-of-month step restricts the field rather than opening it '
+          'up', () {
+        // Odd days only. Two "wildcard" fields would fire every day.
+        expect(marchDays('0 0 */2 3 *'), [1, 3, 5, 7, 9, 11]);
+      });
+
+      test('a day-of-week step restricts the field rather than opening it '
+          'up', () {
+        // Cron weekdays 0, 2, 4, 6 — Sunday, Tuesday, Thursday, Saturday.
+        expect(marchDays('0 0 * 3 */2'), [1, 3, 5, 7, 8, 10]);
+      });
+
+      test('a day-of-month step ORs with a restricted day-of-week', () {
+        // Odd days OR Mondays. The 2nd is a Monday and even, so it appears
+        // only if the OR is applied rather than the step being discarded.
+        expect(marchDays('0 0 */2 3 MON', take: 8), [1, 2, 3, 5, 7, 9, 11, 13]);
+      });
+
+      test('a day-of-week step ORs with a restricted day-of-month', () {
+        // The 2nd is a Monday, so it is outside the {Sun, Tue, Thu, Sat} set
+        // and reaches the result only through the day-of-month field.
+        expect(marchDays('0 0 2 3 */2'), [1, 2, 3, 5, 7, 8]);
+      });
+
+      test('a step of 1 leaves the field unrestricted', () {
+        // `*/1` is spelled as a wildcard and expands to every value, so it
+        // imposes no restriction and does not pull the other field into an OR.
+        // Mondays only — an OR would give every day.
+        expect(marchDays('0 0 */1 3 MON', take: 5), [2, 9, 16, 23, 30]);
+        expect(marchDays('0 0 15 3 */1', take: 5), [15]);
       });
 
       test('applies only day-of-week when day-of-month is wildcard', () {
