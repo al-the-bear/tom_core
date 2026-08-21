@@ -90,15 +90,27 @@ final _allowedSectionRefs = <RegExp>[
 // Where to look
 // -----------------------------------------------------------------------------
 
-/// Trees whose contents a package consumer can read.
-const _scannedDirectories = ['lib', 'test', 'example', 'doc'];
+/// Trees whose contents a package consumer can read, scanned recursively.
+///
+/// `tool/` is here for its shell scripts: a `bug §52` in a comment is exactly
+/// as unresolvable to the reader of a script as to the reader of a library.
+const _scannedDirectories = ['lib', 'test', 'example', 'doc', 'tool'];
+
+/// The package root, scanned **non-recursively** for the documents that sit
+/// beside `pubspec.yaml` — `README.md` above all, which is the pub.dev landing
+/// page and so the most-read artefact the package has.
+///
+/// Non-recursive on purpose. A recursive root scan would pull in
+/// `_copilot_guidelines/` — development docs, where naming the work item is
+/// the correct thing to do — along with build and log directories.
+const _scannedRoot = '.';
 
 /// Files exempt from the scan, and why each one is.
 ///
 /// - This file states the patterns it forbids, so it matches all of them.
 /// - `CHANGELOG.md` is a history document by definition; naming the work item
-///   behind an entry is what a changelog is *for*. It is not under [_scannedDirectories]
-///   and is listed here only to record that the exemption is deliberate.
+///   behind an entry is what a changelog is *for*. It sits in [_scannedRoot],
+///   so this exemption is what actually keeps it out.
 /// - `doc/analyzer_analysis.json` is generated: it snapshots dartdoc text, so
 ///   it carries whatever the sources carried at generation time and is fixed by
 ///   regenerating, never by editing.
@@ -117,32 +129,47 @@ final _testkitId = RegExp(r'\btccc\d+(-\d+)?\b');
 // The scan
 // -----------------------------------------------------------------------------
 
+/// Extensions carrying prose a reader is expected to believe.
+const _scannedExtensions = ['.dart', '.md', '.sh'];
+
 /// Returns `'<path>:<line>: <text>'` for every line matching [patterns].
 List<String> _scan(List<RegExp> patterns) {
   final offenders = <String>[];
 
-  for (final directory in _scannedDirectories) {
-    final dir = Directory(directory);
-    if (!dir.existsSync()) continue;
-
-    for (final entity in dir.listSync(recursive: true)) {
-      if (entity is! File) continue;
-      final path = entity.path;
-      if (!path.endsWith('.dart') && !path.endsWith('.md')) continue;
-      if (_isExempt(path)) continue;
-
-      final lines = entity.readAsLinesSync();
-      for (var i = 0; i < lines.length; i++) {
-        final line = lines[i];
-        if (!patterns.any((p) => p.hasMatch(line))) continue;
-        if (_allowedSectionRefs.any((p) => p.hasMatch(line))) continue;
-        if (_testkitId.hasMatch(line)) continue;
-        offenders.add('$path:${i + 1}: ${line.trim()}');
-      }
+  for (final entity in _filesToScan()) {
+    // Root entries arrive as './README.md'; the trees arrive as 'lib/…'. The
+    // offender list is what a developer reads when this fires, so make the two
+    // look the same.
+    final path = entity.path.replaceFirst(RegExp(r'^\./'), '');
+    final lines = entity.readAsLinesSync();
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      if (!patterns.any((p) => p.hasMatch(line))) continue;
+      if (_allowedSectionRefs.any((p) => p.hasMatch(line))) continue;
+      if (_testkitId.hasMatch(line)) continue;
+      offenders.add('$path:${i + 1}: ${line.trim()}');
     }
   }
 
   return offenders;
+}
+
+/// Every file in scope: the recursive trees plus the root's own documents.
+List<File> _filesToScan() {
+  final entities = <FileSystemEntity>[
+    for (final directory in _scannedDirectories)
+      if (Directory(directory).existsSync())
+        ...Directory(directory).listSync(recursive: true),
+    ...Directory(_scannedRoot).listSync(),
+  ];
+
+  return [
+    for (final entity in entities)
+      if (entity is File &&
+          _scannedExtensions.any(entity.path.endsWith) &&
+          !_isExempt(entity.path))
+        entity,
+  ];
 }
 
 const _workItemReason =
