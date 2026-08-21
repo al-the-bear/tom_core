@@ -815,6 +815,29 @@ anyone who was writing them.
 
 ### Tests
 
+- **New guard: `timezone_throw_contract_test.dart` (tcinc331).** One table
+  lists the reasons `findTimezone` throws; each entry carries the call that
+  provokes the failure and the words the documentation must use to warn about
+  it. Both halves are driven from that table, so a mode cannot be listed
+  without being executed and an executed mode cannot go undescribed — a
+  keyword scan alone would pass against wording the code has outgrown, and a
+  behaviour test alone is what the module already had while the description
+  drifted.
+
+  The two markdown files are checked passage by passage rather than as a
+  whole, because the omission was a single trailing comment and a file-wide
+  search finds the missing half somewhere else and reports nothing. A comment
+  sitting on a call is read on its own line for the same reason: reading it
+  with its block let a neighbouring line about `fromName` returning `null` for
+  a name *not found* supply words that said nothing about `findTimezone`.
+  Whitespace is folded before matching, so the guard constrains what the prose
+  says and not where it wraps.
+
+  `timezones_test.dart` gains the two cases its `findTimezone` group lacked —
+  an unknown name with an offset and without one. The group enumerated eight
+  others, and that gap is why the behaviour could go undocumented with nothing
+  failing.
+
 - **The platform-selection guard now follows the imports (tcinc330).** A sixth
   case walks each arm of the conditional import through the `timezone` package
   and rejects any `dart:` library the arm's own condition does not guarantee —
@@ -1213,6 +1236,26 @@ anyone who was writing them.
   is where the window it opens belongs.
 
 ### Documentation
+
+- **`findTimezone`'s documented failure modes were half its real ones
+  (tcinc331).** The method throws for two unrelated reasons — a name the
+  database does not hold, and a name whose current offset is not the one the
+  caller supplied — and one `throw` serves both, which is what made them easy
+  to describe as one. Its dartdoc named only the offset mismatch, twice, and
+  the narrative guide annotated the call with `Throws if mismatch`.
+
+  The unknown-name half is the one that matters, because the neighbouring
+  lookup does the opposite: `fromName('Mars/Olympus')` returns `null` where
+  `findTimezone('Mars/Olympus', null)` throws on the same name. A reader who
+  meets `fromName` first will expect `null`, and a description covering only
+  the mismatch confirms them in it. The guide's "Null Returns" section stated
+  the generalisation outright — "Lookup methods return `null` for unknown
+  values" — with `findTimezone` the one lookup it does not hold for.
+
+  All four sites now name both reasons and the contrast with `fromName`. The
+  return contract was completed in the same pass: a name-null lookup yields
+  `null` when no zone sits at the requested offset, which the dartdoc and the
+  API mirror both omitted.
 
 - **The timezoned platform description named the wrong entry point for native
   (tcinc329).** `doc/timezoned/timezoned.md` had the server reaching the

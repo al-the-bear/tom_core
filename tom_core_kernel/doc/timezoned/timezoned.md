@@ -127,7 +127,8 @@ final utcMinus5 = TomTimezone.firstWithOffset(-300); // -05:00
 final allPlus9 = TomTimezone.allWithOffset(540);     // All +09:00 timezones
 
 // With offset validation
-final tz = TomTimezone.findTimezone('America/New_York', -300); // Throws if mismatch
+final ny = TomTimezone.findTimezone('America/New_York', -300);
+// findTimezone throws: unknown name, or an offset that does not match
 ```
 
 ### UTC Offset Operations
@@ -397,7 +398,8 @@ print(afterDST.toString()); // Offset is -04:00
 
 ### TomTimezoneException
 
-Thrown when timezone validation fails:
+Thrown when a name is not in the database, or when a supplied offset does not
+match the zone's current one:
 
 ```dart
 try {
@@ -405,16 +407,26 @@ try {
 } on TomTimezoneException catch (e) {
   print(e.defaultUserMessage);
 }
+
+// An unknown name throws too, with or without an offset to disagree with —
+// where fromName would simply return null.
+TomTimezone.findTimezone('Mars/Olympus', null);
 ```
 
 ### Null Returns
 
-Lookup methods return `null` for unknown values:
+Most lookups return `null` for unknown values:
 
 ```dart
 final tz = TomTimezone.fromName('Invalid/Zone');       // null
 final offset = TomTimezone.firstWithOffset(99999);     // null
 ```
+
+`findTimezone` is the one that does not. A name that is not in the database
+raises `TomTimezoneException` rather than returning `null`, as does a name whose
+current offset does not match a value supplied alongside it. Choose between the
+two on that difference: `fromName` to ask whether a zone exists, `findTimezone`
+when its absence is a fault.
 
 ### Format Exceptions
 

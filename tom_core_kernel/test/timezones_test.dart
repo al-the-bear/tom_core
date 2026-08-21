@@ -193,6 +193,27 @@ void main() {
         expect(tzResult, isNotNull);
         expect(tzResult!.timezone, equals('UTC'));
       });
+
+      // An unknown name is a fault here, not an empty answer: fromName returns
+      // null for the same name. Both offset shapes are pinned because a
+      // name-only lookup looks like the case that would be let through.
+      test('should throw TomTimezoneException for an unknown name', () {
+        expect(
+          () => TomTimezone.findTimezone('Mars/Olympus', 0),
+          throwsA(isA<TomTimezoneException>()),
+        );
+      });
+
+      test(
+        'should throw TomTimezoneException for an unknown name when offset is null',
+        () {
+          expect(TomTimezone.fromName('Mars/Olympus'), isNull);
+          expect(
+            () => TomTimezone.findTimezone('Mars/Olympus', null),
+            throwsA(isA<TomTimezoneException>()),
+          );
+        },
+      );
     });
 
     group('convertMinutesToUtcOffset', () {

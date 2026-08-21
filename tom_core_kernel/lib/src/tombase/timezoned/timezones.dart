@@ -306,21 +306,33 @@ class TomTimezone {
     return _timezoneByOffset[utcOffsetMinutes];
   }
 
-  /// Finds a timezone by name and validates its UTC offset.
+  /// Finds a timezone by name, optionally validating its UTC offset.
   ///
-  /// This method provides a stricter lookup that verifies the timezone's
-  /// current offset matches the expected value. Throws [TomTimezoneException]
-  /// if the name and offset don't match.
+  /// This is the strict lookup: where [fromName] answers "is this zone here?"
+  /// with a zone or `null`, this one treats a name it cannot honour as an
+  /// error. Supplying an offset adds a second thing that can be wrong, and both
+  /// raise [TomTimezoneException].
   ///
   /// [name] The timezone name (optional).
   /// [utcOffsetMinutes] The expected UTC offset in minutes (optional).
   ///
   /// Returns:
-  /// - The matching timezone if name and offset are valid
-  /// - First timezone with the given offset if name is null
+  /// - The named zone, when it exists and — if an offset was given — its
+  ///   current offset is that offset
+  /// - The first zone at [utcOffsetMinutes] if [name] is null, or `null` when
+  ///   no zone is at that offset
   /// - `null` if both parameters are null
   ///
-  /// Throws [TomTimezoneException] if name exists but offset doesn't match.
+  /// Throws [TomTimezoneException] in two cases:
+  /// - [name] is not found in the database. This happens whether or not an
+  ///   offset was supplied, so a name-only lookup throws too — unlike
+  ///   [fromName], which returns `null` for the same name.
+  /// - [name] is found but its current offset does not match
+  ///   [utcOffsetMinutes].
+  ///
+  /// The offset compared is the zone's offset *now*, so a zone that observes
+  /// daylight saving matches a different value in summer than in winter. Use
+  /// [getUtcOffsetOn] to ask about a particular date.
   ///
   /// Example:
   /// ```dart
@@ -329,6 +341,9 @@ class TomTimezone {
   ///
   /// // Throws: UTC doesn't have offset 60
   /// TomTimezone.findTimezone('UTC', 60); // TomTimezoneException
+  ///
+  /// // Throws: no such zone, even with no offset to disagree with
+  /// TomTimezone.findTimezone('Mars/Olympus', null); // TomTimezoneException
   /// ```
   static TomTimezone? findTimezone(String? name, int? utcOffsetMinutes) {
     _initialize();
