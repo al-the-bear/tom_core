@@ -186,6 +186,7 @@ package lives in that package's own `tool/`.
 | Tool | What it does |
 | ---- | ------------ |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits every `## Table of Contents` in the tree against its own document |
+| [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 
 ```bash
 python3 tool/check_doc_tocs.py                # the whole repository
@@ -200,6 +201,21 @@ easily catch, and a presence check passes it silently.
 Documents drift from their contents whenever a section is added without the
 list being touched, so the check is worth running after editing any document
 that has one.
+
+```bash
+python3 tool/check_doc_inventories.py         # every completion document
+python3 tool/check_doc_inventories.py --fix   # re-measure and write back
+```
+
+The completion documents in the `_ai` layer open by naming a module's directory
+and how much is in it, then tabulate it a file at a time. Those numbers are
+measurements taken by hand, so every commit to a module can falsify them, and
+nothing about editing a module brings its completion document into view. The
+check re-measures: it reports line counts that have moved, tabulated files that
+no longer exist, files on disk the table omits, and opening claims that
+disagree with the directory. `--fix` writes the measurements back; the two
+faults it leaves alone are adding and retiring rows, because each needs a
+sentence saying what the file carries.
 
 ## License
 
