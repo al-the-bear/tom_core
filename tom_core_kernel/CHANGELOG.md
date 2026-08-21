@@ -154,6 +154,17 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomShutdownCleanup.addSignal` is idempotent per signal (tcinc319).** It
+  appended a watcher unconditionally, so naming a signal twice installed two
+  subscriptions on the same broadcast stream and one arrival drove the handler
+  twice. The cleanup itself stayed correct — it runs once — but the operator saw
+  the signal reported twice and was told, on its very first arrival, that
+  shutdown "has already been performed". The trap was easy to walk into: the
+  constructor registers SIGHUP and SIGINT, so `addSignal(ProcessSignal.sigint)`
+  was enough to produce it. The retained subscriptions are now keyed by signal
+  rather than held in a list, which makes "at most one watcher per signal" a
+  property of the structure instead of a check to remember.
+
 - **One spelling of "timezone" across the kernel, and one spelling in the token
   (tcinc301).** The concept was written three ways in code that hands it from
   one type to the next: `TomUser.timeZone`, `TomPrincipal.timezone` /

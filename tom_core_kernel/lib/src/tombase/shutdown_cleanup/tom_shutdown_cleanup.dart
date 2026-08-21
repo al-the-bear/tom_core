@@ -435,7 +435,12 @@ class TomShutdownCleanup {
   /// Active OS-signal watcher subscriptions, retained so they can be cancelled
   /// by [dispose]/[cancelAll] — otherwise each watcher keeps the process alive
   /// and leaks for the instance's whole life.
-  final List<StreamSubscription<ProcessSignal>> _signalSubscriptions = [];
+  ///
+  /// Keyed by signal rather than held in a list, so that "at most one watcher
+  /// per signal" is a property of the structure instead of a rule [addSignal]
+  /// has to remember to check.
+  final Map<ProcessSignal, StreamSubscription<ProcessSignal>>
+  _signalSubscriptions = {};
 
   /// Adds a custom signal handler to be executed during shutdown.
   ///
@@ -471,6 +476,14 @@ class TomShutdownCleanup {
   /// By default, SIGHUP and SIGINT are already registered.
   /// Use this method to add additional signals like SIGTERM.
   ///
+  /// Idempotent per signal: registering one that is already watched does
+  /// nothing. Without that, the second watcher would drive the cleanup a
+  /// second time on every arrival — harmless to the cleanup itself, which runs
+  /// once, but it makes a single Ctrl-C report itself twice and claim on its
+  /// own first arrival that shutdown had already been performed. Since the
+  /// constructor registers SIGHUP and SIGINT, that collision is one an ordinary
+  /// caller can walk into simply by naming a default.
+  ///
   /// [processSignal] - The signal to start listening for.
   ///
   /// ## Example
@@ -479,7 +492,10 @@ class TomShutdownCleanup {
   /// tomShutdownCleanup.addSignal(ProcessSignal.sigterm);
   /// ```
   void addSignal(ProcessSignal processSignal) {
-    _signalSubscriptions.add(processSignal.watch().listen(_signalHandler));
+    _signalSubscriptions.putIfAbsent(
+      processSignal,
+      () => processSignal.watch().listen(_signalHandler),
+    );
   }
 
   /// Cancels every registered OS-signal watcher subscription.
@@ -488,7 +504,7 @@ class TomShutdownCleanup {
   /// its SIGHUP/SIGINT (and any [addSignal]-registered) watchers. Safe to call
   /// more than once; the subscription list is emptied.
   Future<void> cancelAll() async {
-    for (final subscription in _signalSubscriptions) {
+    for (final subscription in _signalSubscriptions.values) {
       await subscription.cancel();
     }
     _signalSubscriptions.clear();

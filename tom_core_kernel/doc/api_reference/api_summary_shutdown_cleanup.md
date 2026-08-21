@@ -130,7 +130,7 @@ TomShutdownCleanup()
 | `addSignalHandler` | `void addSignalHandler(TomSignalHandler handler)` | Adds a custom signal handler, executed first (before closables and disposables). |
 | `addClosable` | `void addClosable(TomClosable closable)` | Adds a closable object, closed after signal handlers but before disposables. |
 | `addDisposable` | `void addDisposable(TomDisposable disposable)` | Adds a disposable object, disposed last. |
-| `addSignal` | `void addSignal(ProcessSignal processSignal)` | Registers an additional OS signal to listen for (SIGHUP and SIGINT are registered by default). |
+| `addSignal` | `void addSignal(ProcessSignal processSignal)` | Registers an additional OS signal to listen for (SIGHUP and SIGINT are registered by default). Idempotent per signal — a repeat registration does nothing. |
 | `cancelAll` | `Future<void> cancelAll()` | Cancels every registered OS-signal watcher subscription; safe to call more than once. |
 | `dispose` | `Future<void> dispose()` | Tears the instance down by cancelling its signal watchers (delegates to `cancelAll`). |
 | `start` | `void start()` | Emits a diagnostic log line confirming the cleanup system is in use; performs no initialization. |

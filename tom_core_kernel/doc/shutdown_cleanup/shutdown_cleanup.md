@@ -170,6 +170,10 @@ By default, `TomShutdownCleanup` listens for:
 tomShutdownCleanup.addSignal(ProcessSignal.sigterm);
 ```
 
+Naming a signal that is already watched — one of the two defaults above, or one
+added earlier — does nothing. Registering is safe to repeat, so code that arms
+its own signals need not first work out which ones are already covered.
+
 #### start() — an optional log breadcrumb
 
 `start()` does not start anything. Signal listening is armed by the

@@ -504,6 +504,31 @@ void main() {
 
         expect(ran, isFalse);
       });
+
+      test('registering the same signal twice reports one shutdown', () async {
+        // A second watcher on the same signal does not corrupt the cleanup —
+        // `_executed` sees to that — but it does drive the handler twice, so
+        // one Ctrl-C reports itself twice and claims on its own first arrival
+        // that shutdown "has already been performed". The operator-visible
+        // output is therefore the assertion, rather than a count of how many
+        // times the handler ran.
+        //
+        // The signal is SIGUSR1 rather than the SIGINT the constructor itself
+        // registers, because a real SIGINT would reach the whole test runner
+        // and the process-wide `tomShutdownCleanup` along with it. The
+        // constructor registers through this same method, so the duplicate it
+        // could collide with is caught by the same mechanism.
+        final lines = <String>[];
+        await _capturePrintsAsync(lines, () async {
+          final cleanup = _newCleanup();
+          cleanup.addSignal(ProcessSignal.sigusr1);
+          cleanup.addSignal(ProcessSignal.sigusr1);
+
+          await _sendAndSettle(ProcessSignal.sigusr1);
+        });
+
+        expect(lines, equals(['Received SIGUSR1', 'Shutdown performed']));
+      });
     }, skip: _signalSendingSkipReason);
 
     group('start', () {
@@ -1159,6 +1184,24 @@ void main() {
 /// Runs [body] while collecting every `print` line into [sink].
 void _capturePrints(List<String> sink, void Function() body) {
   runZoned(
+    body,
+    zoneSpecification: ZoneSpecification(
+      print: (self, parent, zone, line) => sink.add(line),
+    ),
+  );
+}
+
+/// Runs the asynchronous [body] while collecting every `print` line into
+/// [sink], completing once [body] has.
+///
+/// The signal-driven tests need this rather than [_capturePrints] because
+/// their output arrives from a stream listener: the registration, the send and
+/// the delivery all have to happen inside the capturing zone.
+Future<void> _capturePrintsAsync(
+  List<String> sink,
+  Future<void> Function() body,
+) {
+  return runZoned(
     body,
     zoneSpecification: ZoneSpecification(
       print: (self, parent, zone, line) => sink.add(line),
