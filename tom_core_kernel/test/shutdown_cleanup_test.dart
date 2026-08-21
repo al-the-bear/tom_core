@@ -137,6 +137,27 @@ class RecordingDisposable implements TomDisposable {
   void dispose() => log.add('disposable');
 }
 
+/// Records its own [name] on close, so that several of them in one phase show
+/// the order that phase ran in — which [RecordingClosable] cannot, since every
+/// instance writes the same word.
+class NamedClosable implements TomClosable {
+  NamedClosable(this.name, this.log);
+  final String name;
+  final List<String> log;
+  @override
+  void close() => log.add(name);
+}
+
+/// Records its own [name] on dispose. The disposable counterpart to
+/// [NamedClosable].
+class NamedDisposable implements TomDisposable {
+  NamedDisposable(this.name, this.log);
+  final String name;
+  final List<String> log;
+  @override
+  void dispose() => log.add(name);
+}
+
 // =============================================================================
 // Test Helpers
 // =============================================================================
@@ -157,6 +178,46 @@ TomShutdownCleanup _newCleanup() {
   // under test.
   addTearDown(cleanup.dispose);
   return cleanup;
+}
+
+/// Reason the tests that send this process a real OS signal cannot run, or
+/// `null` when they can. Windows has no SIGUSR1/SIGUSR2 to send.
+final String? _signalSendingSkipReason = Platform.isWindows
+    ? 'sends SIGUSR1/SIGUSR2, which Windows does not have'
+    : null;
+
+/// A cleanup that is safe to drive from a real signal.
+///
+/// Silent because the signal-driven path prints its status messages, and those
+/// belong to the `performShutdown` group rather than to the console of every
+/// run.
+TomShutdownCleanup _sendableCleanup() => _newCleanup()..silent = true;
+
+/// Sends [signal] to this process and returns once it has been delivered.
+///
+/// The wait is on delivery, not on a duration: this subscribes to [signal]
+/// itself and returns when *that* subscription fires. So the negative case —
+/// asserting some cleanup did not react — rests on the signal having actually
+/// arrived rather than on a sleep having been long enough.
+///
+/// That subscription does double duty. SIGUSR1 and SIGUSR2 terminate a process
+/// that is not watching them, so the very regression these tests exist to
+/// catch — an `addSignal` that installs no watcher — would kill the whole test
+/// runner rather than fail one test. Subscribing here takes the default
+/// disposition out of play. It subscribes *after* the code under test has, so
+/// that where delivery order matters the watcher under test is served first.
+Future<void> _sendAndSettle(ProcessSignal signal) async {
+  final delivered = Completer<void>();
+  final witness = signal.watch().listen((_) {
+    if (!delivered.isCompleted) delivered.complete();
+  });
+  addTearDown(witness.cancel);
+
+  Process.killPid(pid, signal);
+  await delivered.future.timeout(const Duration(seconds: 10));
+  // One further turn of the event loop, so that any listener notified behind
+  // the witness has also run before the caller asserts.
+  await Future<void>.delayed(Duration.zero);
 }
 
 // =============================================================================
@@ -247,194 +308,185 @@ void main() {
 
   group('TomShutdownCleanup', () {
     group('constructor', () {
-      test('should create instance without errors', () {
-        // Act & Assert - should not throw
-        expect(() => _newCleanup(), returnsNormally);
-      });
+      test('each call yields a fresh instance, and never the global', () {
+        // Two halves of one mistake. A constructor that handed back a shared
+        // instance would make every registration in this file outlive the
+        // test that made it; if the shared instance were the process-wide
+        // tomShutdownCleanup, it would outlive the run.
+        final first = _newCleanup();
+        final second = _newCleanup();
 
-      test('should create distinct instances', () {
-        // Act
-        final cleanup1 = _newCleanup();
-        final cleanup2 = _newCleanup();
-
-        // Assert
-        expect(identical(cleanup1, cleanup2), isFalse);
+        expect(identical(first, second), isFalse);
+        expect(identical(first, tomShutdownCleanup), isFalse);
       });
     });
 
+    // Registering something is only observable through the shutdown that runs
+    // it, so each of the three groups below registers, calls
+    // `performShutdown()`, and asserts what came back. Each asks what is
+    // distinctive to its own method: that the entry is reached at all, that
+    // entries of one kind run in the order they were registered, and how a
+    // repeat registration behaves. What the three phases have in common —
+    // their order relative to each other, the once-only guard, failure
+    // isolation, the diagnostics, paused and silent — belongs to the
+    // `performShutdown` group and is not restated here.
+
     group('addDisposable', () {
-      test('should add disposable to cleanup list', () {
-        // Arrange
+      test('the registered disposable is disposed', () {
         final cleanup = _newCleanup();
         final disposable = TestDisposable();
+        cleanup.addDisposable(disposable);
 
-        // Act & Assert - should not throw
-        expect(() => cleanup.addDisposable(disposable), returnsNormally);
+        cleanup.performShutdown();
+
+        expect(disposable.disposed, isTrue);
       });
 
-      test('should accept multiple disposables', () {
-        // Arrange
+      test('several disposables run in registration order', () {
+        final log = <String>[];
         final cleanup = _newCleanup();
-        final disposable1 = TestDisposable();
-        final disposable2 = TestDisposable();
-        final disposable3 = TestDisposable();
+        cleanup.addDisposable(NamedDisposable('first', log));
+        cleanup.addDisposable(NamedDisposable('second', log));
+        cleanup.addDisposable(NamedDisposable('third', log));
 
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.addDisposable(disposable1);
-          cleanup.addDisposable(disposable2);
-          cleanup.addDisposable(disposable3);
-        }, returnsNormally);
+        cleanup.performShutdown();
+
+        expect(log, equals(['first', 'second', 'third']));
       });
 
-      test('should accept same disposable multiple times', () {
-        // Arrange
+      test('the same disposable registered twice is disposed twice', () {
+        // Registration appends; it does not deduplicate. So the caller owns
+        // the arithmetic: a disposable that cannot survive being disposed
+        // twice must be registered once.
         final cleanup = _newCleanup();
         final disposable = TestDisposable();
+        cleanup.addDisposable(disposable);
+        cleanup.addDisposable(disposable);
 
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.addDisposable(disposable);
-          cleanup.addDisposable(disposable);
-        }, returnsNormally);
+        cleanup.performShutdown();
+
+        expect(disposable.disposeCount, equals(2));
       });
     });
 
     group('addClosable', () {
-      test('should add closable to cleanup list', () {
-        // Arrange
+      test('the registered closable is closed', () {
         final cleanup = _newCleanup();
         final closable = TestClosable();
+        cleanup.addClosable(closable);
 
-        // Act & Assert - should not throw
-        expect(() => cleanup.addClosable(closable), returnsNormally);
+        cleanup.performShutdown();
+
+        expect(closable.closed, isTrue);
       });
 
-      test('should accept multiple closables', () {
-        // Arrange
+      test('several closables run in registration order', () {
+        final log = <String>[];
         final cleanup = _newCleanup();
-        final closable1 = TestClosable();
-        final closable2 = TestClosable();
-        final closable3 = TestClosable();
+        cleanup.addClosable(NamedClosable('first', log));
+        cleanup.addClosable(NamedClosable('second', log));
+        cleanup.addClosable(NamedClosable('third', log));
 
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.addClosable(closable1);
-          cleanup.addClosable(closable2);
-          cleanup.addClosable(closable3);
-        }, returnsNormally);
+        cleanup.performShutdown();
+
+        expect(log, equals(['first', 'second', 'third']));
       });
 
-      test('should accept same closable multiple times', () {
-        // Arrange
+      test('the same closable registered twice is closed twice', () {
         final cleanup = _newCleanup();
         final closable = TestClosable();
+        cleanup.addClosable(closable);
+        cleanup.addClosable(closable);
 
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.addClosable(closable);
-          cleanup.addClosable(closable);
-        }, returnsNormally);
+        cleanup.performShutdown();
+
+        expect(closable.closeCount, equals(2));
       });
     });
 
     group('addSignalHandler', () {
-      test('should add signal handler to cleanup list', () {
-        // Arrange
+      test('the handler runs and receives the signal', () {
+        // The signal is the one thing a handler gets that a closable and a
+        // disposable do not, so a handler that runs but is handed the wrong
+        // signal is still broken.
         final cleanup = _newCleanup();
-        // ignore: unused_local_variable
-        var handlerCalled = false;
+        final received = <ProcessSignal>[];
+        cleanup.addSignalHandler(received.add);
 
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.addSignalHandler((signal) {
-            handlerCalled = true;
-          });
-        }, returnsNormally);
+        cleanup.performShutdown(signal: ProcessSignal.sigterm);
+
+        expect(received, equals([ProcessSignal.sigterm]));
       });
 
-      test('should accept multiple signal handlers', () {
-        // Arrange
+      test('several handlers run in registration order', () {
+        final log = <String>[];
         final cleanup = _newCleanup();
-        var count = 0;
+        cleanup.addSignalHandler((signal) => log.add('first'));
+        cleanup.addSignalHandler((signal) => log.add('second'));
+        cleanup.addSignalHandler((signal) => log.add('third'));
 
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.addSignalHandler((signal) => count++);
-          cleanup.addSignalHandler((signal) => count++);
-          cleanup.addSignalHandler((signal) => count++);
-        }, returnsNormally);
+        cleanup.performShutdown();
+
+        expect(log, equals(['first', 'second', 'third']));
       });
 
-      test('should accept empty handler', () {
-        // Arrange
+      test('a handler that does nothing does not stop the ones behind it', () {
+        final log = <String>[];
         final cleanup = _newCleanup();
+        cleanup.addSignalHandler((signal) {});
+        cleanup.addSignalHandler((signal) => log.add('reached'));
 
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.addSignalHandler((signal) {});
-        }, returnsNormally);
+        cleanup.performShutdown();
+
+        expect(log, equals(['reached']));
       });
     });
 
+    // `addSignal` is the one registration whose effect `performShutdown()`
+    // cannot show, because its effect is on the OS rather than on a list: the
+    // process starts reacting to a signal it previously ignored. The
+    // subscription it stores is private, so the only honest way to observe it
+    // is to send the signal — which is also the module's entire reason to
+    // exist, and is otherwise exercised nowhere.
     group('addSignal', () {
-      test('should accept ProcessSignal.sigterm', () {
-        // Arrange
-        final cleanup = _newCleanup();
+      test('the registered signal drives the cleanup', () async {
+        final cleanup = _sendableCleanup();
+        final ran = Completer<void>();
+        cleanup.addSignalHandler((signal) => ran.complete());
+        cleanup.addSignal(ProcessSignal.sigusr1);
 
-        // Act & Assert - should not throw
-        expect(() => cleanup.addSignal(ProcessSignal.sigterm), returnsNormally);
+        await _sendAndSettle(ProcessSignal.sigusr1);
+
+        expect(ran.isCompleted, isTrue);
       });
 
-      test('should accept ProcessSignal.sigusr1', () {
-        // Arrange
-        final cleanup = _newCleanup();
+      test('the handlers are told which signal arrived', () async {
+        // A watcher hard-wired to one signal, or one that forwarded the
+        // default instead of the signal it caught, would pass the test above
+        // and fail this one.
+        final cleanup = _sendableCleanup();
+        final received = <ProcessSignal>[];
+        cleanup.addSignalHandler(received.add);
+        cleanup.addSignal(ProcessSignal.sigusr2);
 
-        // Act & Assert - should not throw
-        expect(() => cleanup.addSignal(ProcessSignal.sigusr1), returnsNormally);
+        await _sendAndSettle(ProcessSignal.sigusr2);
+
+        expect(received, equals([ProcessSignal.sigusr2]));
       });
 
-      test('should accept ProcessSignal.sigusr2', () {
-        // Arrange
-        final cleanup = _newCleanup();
+      test('a signal that was never registered is ignored', () async {
+        final cleanup = _sendableCleanup();
+        var ran = false;
+        cleanup.addSignalHandler((signal) => ran = true);
+        cleanup.addSignal(ProcessSignal.sigusr1);
 
-        // Act & Assert - should not throw
-        expect(() => cleanup.addSignal(ProcessSignal.sigusr2), returnsNormally);
+        await _sendAndSettle(ProcessSignal.sigusr2);
+
+        expect(ran, isFalse);
       });
-    });
+    }, skip: _signalSendingSkipReason);
 
     group('start', () {
-      test('should execute without errors', () {
-        // Arrange
-        final cleanup = _newCleanup();
-
-        // Act & Assert - should not throw
-        expect(() => cleanup.start(), returnsNormally);
-      });
-
-      test('should be callable multiple times', () {
-        // Arrange
-        final cleanup = _newCleanup();
-
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.start();
-          cleanup.start();
-          cleanup.start();
-        }, returnsNormally);
-      });
-
-      test('should work after adding handlers', () {
-        // Arrange
-        final cleanup = _newCleanup();
-        cleanup.addClosable(TestClosable());
-        cleanup.addDisposable(TestDisposable());
-        cleanup.addSignalHandler((signal) {});
-
-        // Act & Assert - should not throw
-        expect(() => cleanup.start(), returnsNormally);
-      });
-
       // The contract the two tests below pin: start() is a log breadcrumb,
       // not an arming step. The constructor registers the SIGHUP/SIGINT
       // listeners, so cleanup must behave identically whether start() is
@@ -486,35 +538,33 @@ void main() {
     });
 
     group('mixed handlers', () {
-      test('should accept all handler types together', () {
-        // Arrange
+      test('phase order wins over the order things were registered in', () {
+        // Registering the three kinds interleaved is the realistic case — a
+        // module registers whatever it owns as it initialises. Doing so must
+        // not reorder the phases, and must not scramble the sequence within a
+        // phase either. Both halves of that are in the one expectation below:
+        // the two handlers still precede the two closables, and inside each
+        // phase the entries keep the order they were registered in.
+        final log = <String>[];
         final cleanup = _newCleanup();
-        final closable = TestClosable();
-        final disposable = TestDisposable();
+        cleanup.addDisposable(NamedDisposable('disposable', log));
+        cleanup.addSignalHandler((signal) => log.add('handler 1'));
+        cleanup.addClosable(NamedClosable('closable 1', log));
+        cleanup.addSignalHandler((signal) => log.add('handler 2'));
+        cleanup.addClosable(NamedClosable('closable 2', log));
 
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.addSignalHandler((signal) {});
-          cleanup.addClosable(closable);
-          cleanup.addDisposable(disposable);
-          cleanup.start();
-        }, returnsNormally);
-      });
+        cleanup.performShutdown();
 
-      test('should accept handlers in any order', () {
-        // Arrange
-        final cleanup = _newCleanup();
-        final closable = TestClosable();
-        final disposable = TestDisposable();
-
-        // Act & Assert - should not throw
-        expect(() {
-          cleanup.addDisposable(disposable);
-          cleanup.addSignalHandler((signal) {});
-          cleanup.addClosable(closable);
-          cleanup.addSignalHandler((signal) {});
-          cleanup.addClosable(TestClosable());
-        }, returnsNormally);
+        expect(
+          log,
+          equals([
+            'handler 1',
+            'handler 2',
+            'closable 1',
+            'closable 2',
+            'disposable',
+          ]),
+        );
       });
     });
   });
@@ -601,48 +651,19 @@ void main() {
 
   group('Edge Cases', () {
     group('empty state', () {
-      test('should handle cleanup with no registered handlers', () {
-        // Arrange
+      test('a shutdown with nothing registered is quiet, not a no-op', () {
+        // Nothing registered is the normal state of an instance that was
+        // built and then never used, and every phase iterating an empty list
+        // is what has to happen. What makes it worth an assertion is the
+        // console: a shutdown with no work to report must report nothing, or
+        // every application that never registers anything grows a line of
+        // output it cannot explain.
+        final lines = <String>[];
         final cleanup = _newCleanup();
 
-        // Act & Assert - should not throw
-        expect(() => cleanup.start(), returnsNormally);
-      });
-    });
+        _capturePrints(lines, cleanup.performShutdown);
 
-    group('error handling', () {
-      test('should create throwing disposable without error', () {
-        // Arrange & Act
-        final disposable = ThrowingDisposable();
-
-        // Assert
-        expect(disposable, isA<TomDisposable>());
-      });
-
-      test('should create throwing closable without error', () {
-        // Arrange & Act
-        final closable = ThrowingClosable();
-
-        // Assert
-        expect(closable, isA<TomClosable>());
-      });
-
-      test('should add throwing disposable to cleanup', () {
-        // Arrange
-        final cleanup = _newCleanup();
-        final disposable = ThrowingDisposable();
-
-        // Act & Assert - should not throw
-        expect(() => cleanup.addDisposable(disposable), returnsNormally);
-      });
-
-      test('should add throwing closable to cleanup', () {
-        // Arrange
-        final cleanup = _newCleanup();
-        final closable = ThrowingClosable();
-
-        // Act & Assert - should not throw
-        expect(() => cleanup.addClosable(closable), returnsNormally);
+        expect(lines, isEmpty);
       });
     });
 
@@ -658,37 +679,27 @@ void main() {
         }
       });
 
-      test('should maintain independent state per instance', () {
-        // Arrange
-        final cleanup1 = _newCleanup();
-        final cleanup2 = _newCleanup();
-        final closable = TestClosable();
+      test('one instance shutting down does not run the other', () {
+        // The three registration lists are instance fields, and an
+        // application that keeps a cleanup per subsystem relies on that:
+        // tearing one subsystem down must leave the others running.
+        final firstLog = <String>[];
+        final secondLog = <String>[];
+        final first = _newCleanup();
+        final second = _newCleanup();
+        first.addClosable(NamedClosable('first', firstLog));
+        second.addClosable(NamedClosable('second', secondLog));
 
-        // Act
-        cleanup1.addClosable(closable);
+        first.performShutdown();
 
-        // Assert - adding to one shouldn't affect the other
-        // Both should work independently
-        expect(() => cleanup1.start(), returnsNormally);
-        expect(() => cleanup2.start(), returnsNormally);
-      });
-    });
+        expect(firstLog, equals(['first']));
+        expect(secondLog, isEmpty);
 
-    group('chaining operations', () {
-      test('should support method chaining pattern', () {
-        // Arrange
-        final cleanup = _newCleanup();
-        final closable = TestClosable();
-        final disposable = TestDisposable();
+        // And the second is still able to run afterwards — the once-only
+        // guard belongs to the instance that spent it, not to the class.
+        second.performShutdown();
 
-        // Act & Assert - should complete without errors
-        cleanup.addClosable(closable);
-        cleanup.addDisposable(disposable);
-        cleanup.addSignalHandler((signal) {});
-        cleanup.addSignal(ProcessSignal.sigterm);
-        cleanup.start();
-
-        expect(true, isTrue); // Reached here without errors
+        expect(secondLog, equals(['second']));
       });
     });
   });
@@ -1064,26 +1075,36 @@ void main() {
   });
 
   group('dispose / cancelAll', () {
-    test('dispose cancels signal subscriptions without throwing', () async {
-      final cleanup = _newCleanup();
+    test(
+      'dispose stops the instance reacting to its signals',
+      () async {
+        // The subscription list is private, so "cancelled" is only observable
+        // the same way "registered" is: by sending the signal and seeing what
+        // does not happen.
+        final cleanup = _sendableCleanup();
+        var ran = false;
+        cleanup.addSignalHandler((signal) => ran = true);
+        cleanup.addSignal(ProcessSignal.sigusr1);
 
-      await expectLater(cleanup.dispose(), completes);
-    });
+        await cleanup.dispose();
+        await _sendAndSettle(ProcessSignal.sigusr1);
+
+        expect(ran, isFalse);
+      },
+      skip: _signalSendingSkipReason,
+    );
 
     test('cancelAll is safe to call repeatedly', () async {
+      // Cancelling an already-cancelled subscription is the failure this
+      // guards, and it would surface as a throw rather than as a wrong value
+      // — so completing without one is the whole assertion. Every test in
+      // this file relies on it: _newCleanup registers dispose as a teardown,
+      // which runs even for the tests that already disposed deliberately.
       final cleanup = _newCleanup();
       cleanup.addSignal(ProcessSignal.sigterm);
 
       await cleanup.cancelAll();
       await expectLater(cleanup.cancelAll(), completes);
-    });
-
-    test('many instances can each be disposed', () async {
-      final instances = List.generate(10, (_) => _newCleanup());
-
-      for (final instance in instances) {
-        await expectLater(instance.dispose(), completes);
-      }
     });
   });
 }
