@@ -422,6 +422,35 @@ rather than describing the chain as "tamper-evident" and leaving it there:
 
 Both are closed by anchoring.
 
+### A damaged entry is not a tampered one
+
+The three findings above are accusations, and a reader that fills in a field it
+could not find manufactures one. So `TomAuditEntry.fromJson` defaults nothing —
+an absent, mistyped or empty `index`, `hash`, `previousHash` or `record` raises
+`TomAuditException` and the line is refused:
+
+- a defaulted `hash` reads back as an entry whose hash does not match its
+  contents, reported as **content changed** — the trail says a record was
+  edited when in fact a field went missing, and the investigation starts in the
+  wrong place;
+- a defaulted `previousHash` claims the entry began a chain. Mid-chain that is a
+  **link mismatch**; at the head it is no finding at all, because the entry is
+  self-consistent against the link it was handed. Damage verifies as health,
+  which is the direction that costs the guarantee rather than merely
+  misdirecting.
+
+`parseAuditLines` wraps the refusal as `audit.parse.malformed_line` with the
+line number, so its promise — anything unreadable is reported — now covers the
+whole entry rather than only its JSON syntax. Head recovery in
+`TomFileAuditSink` benefits from the same rule: a final line that parses as
+JSON but has lost a chain field is treated exactly like a half-written one, so
+the sink falls back to the previous file instead of adopting an empty hash and
+linking every subsequent entry onto it.
+
+The relational sink needs no equivalent guard: `previous_hash` and `hash` are
+`CHAR(64) NOT NULL` in the shipped DDL, so the database refuses what the file
+format cannot.
+
 ## Anchoring the Chain Head
 
 An anchor is a claim — *chain `writer` had `entryCount` entries whose head was

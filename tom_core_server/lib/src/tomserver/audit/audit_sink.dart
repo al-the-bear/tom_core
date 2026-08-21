@@ -141,10 +141,29 @@ class TomAuditEntry {
 
   /// Rebuilds an entry from [json] as written by [toJson].
   ///
-  /// A missing `index` is rejected rather than defaulted. Guessing it would
-  /// mean guessing the entry's position in the chain, and a guessed position is
-  /// exactly what anchor verification must not be built on: the wrong default
-  /// would turn a truncated trail into a merely short one.
+  /// Every field is required. Nothing here is defaulted, because a default
+  /// does not produce a vague entry — it produces a **specific accusation**
+  /// about a record nobody touched, and an investigation that starts from the
+  /// wrong finding goes somewhere else entirely:
+  ///
+  /// - A guessed `index` guesses the entry's position, which is precisely what
+  ///   anchor verification is built on — it would turn a truncated trail into
+  ///   a merely short one.
+  /// - A defaulted `hash` reads back as an entry whose stored hash does not
+  ///   match its contents, which [verifyAuditChain] reports as *content
+  ///   changed after writing*: the signature of an edited record.
+  /// - A defaulted `previousHash` claims the entry began a chain. Mid-chain
+  ///   that is a link mismatch — *an entry was removed or reordered here* —
+  ///   and at the head it is not a finding at all: the entry is self-consistent
+  ///   against the link it was handed, so damage verifies as health.
+  ///
+  /// The hashes are also refused when present but empty, since the empty string
+  /// was the old default and an empty hash is not a short hash but an absent
+  /// one. The unnamed constructor cannot enforce any of this — it is `const` —
+  /// so this factory is where storage that has been damaged, hand-edited or
+  /// written by something other than [toJson] is turned away. That is what lets
+  /// [parseAuditLines] promise that a line it cannot read is reported rather
+  /// than silently reinterpreted.
   factory TomAuditEntry.fromJson(Map<String, Object?> json) {
     final index = json['index'];
     if (index is! int) {
@@ -153,14 +172,46 @@ class TomAuditEntry {
         'Audit entry has no chain index, so its position cannot be known.',
       );
     }
+    final previousHash = _requiredHash(
+      json,
+      'previousHash',
+      'audit.entry.missing_previous_hash',
+      'Audit entry has no link to its predecessor, so its place in the chain '
+          'cannot be checked.',
+    );
+    final hash = _requiredHash(
+      json,
+      'hash',
+      'audit.entry.missing_hash',
+      'Audit entry has no hash, so nothing states what its contents were.',
+    );
+    final record = json['record'];
+    if (record is! Map) {
+      throw TomAuditException(
+        'audit.entry.missing_record',
+        'Audit entry has no record, so there is nothing to attest to.',
+      );
+    }
     return TomAuditEntry(
-      record: TomAuditRecord.fromJson(
-        (json['record'] as Map).cast<String, Object?>(),
-      ),
-      previousHash: json['previousHash'] as String? ?? tomAuditGenesisHash,
-      hash: json['hash'] as String? ?? '',
+      record: TomAuditRecord.fromJson(record.cast<String, Object?>()),
+      previousHash: previousHash,
+      hash: hash,
       index: index,
     );
+  }
+
+  /// Reads a chain-hash field from [json], refusing anything that is not one.
+  static String _requiredHash(
+    Map<String, Object?> json,
+    String field,
+    String key,
+    String message,
+  ) {
+    final value = json[field];
+    if (value is! String || value.isEmpty) {
+      throw TomAuditException(key, message, parameters: {'field': field});
+    }
+    return value;
   }
 
   /// The entry as one line of JSON, with no embedded newline.

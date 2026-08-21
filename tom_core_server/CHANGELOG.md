@@ -2,6 +2,40 @@
 
 ### Behaviour Changes
 
+- **`TomAuditEntry.fromJson` defaults no field; a damaged entry is refused
+  rather than reinterpreted (tcinc343).** The factory rejected a missing
+  `index` — and explained at length why guessing a position was unacceptable —
+  then read `hash` as `json['hash'] as String? ?? ''` and `previousHash` as
+  `... ?? tomAuditGenesisHash`. The same reasoning was never applied to the two
+  fields the chain is actually made of.
+
+  Each default converted a *malformed* entry into a *specific accusation*. With
+  no `hash`, the entry read back as one whose stored hash does not match its
+  contents, which `verifyAuditChain` reports as **content changed after
+  writing**: the signature of an edited record, on a record nobody touched.
+  With no `previousHash`, the entry claimed to have begun a chain — mid-chain a
+  **link mismatch**, and at the head no finding at all, since it was
+  self-consistent against the link it had been handed. That last case is the
+  one that costs the guarantee rather than merely misdirecting an
+  investigation: damage verified as health.
+
+  Two consequences beyond the read path. `parseAuditLines` documents that
+  anything it cannot read is reported, and a line that parsed as JSON but had
+  lost a hash slipped past that promise; it no longer does. And
+  `TomFileAuditSink` head recovery adopted `''` as the chain head from such a
+  final line, linking every subsequent entry onto a hash no entry has, so the
+  break landed at the restart boundary and read as tampering — recovery now
+  treats the line like a half-written one and falls back to the previous file.
+
+  `hash` and `previousHash` are also refused when present but empty, since the
+  empty string was the old default and an empty hash is an absent one rather
+  than a short one. `record` was already refused, but as a `TypeError`; it now
+  raises `audit.entry.missing_record`, so all four fields leave the factory by
+  the same door. New keys: `audit.entry.missing_hash`,
+  `audit.entry.missing_previous_hash`, `audit.entry.missing_record`. The
+  relational sink needed no equivalent change — its DDL declares both hash
+  columns `CHAR(64) NOT NULL`.
+
 - **`TomFileAuditAnchorStore.read` returns only the requested writer's anchors
   (tcinc342).** The store names a file after the writer, sanitising the name so
   that a writer called `../../etc` produces a strange file name rather than a

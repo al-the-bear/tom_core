@@ -346,9 +346,22 @@ factory TomAuditEntry.fromJson(Map<String, Object?> json)
 ```
 
 `chain` is the preferred constructor: it computes the hash rather than accepting
-one. `fromJson` rejects a missing `index` with a `TomAuditException` rather than
-defaulting it, since a guessed position would turn a truncated trail into a
-merely short one.
+one. `fromJson` defaults nothing — every field is required, and an absent,
+mistyped or (for the hashes) empty one raises a `TomAuditException`. A default
+would not produce a vague entry but a specific accusation about a record nobody
+touched:
+
+| Field | Key | What defaulting it claimed |
+| ----- | --- | -------------------------- |
+| `index` | `audit.entry.missing_index` | A guessed position, which is what anchor verification is built on — a truncated trail would read as a merely short one. |
+| `hash` | `audit.entry.missing_hash` | `''`, so the entry reads back as one whose hash does not match its contents: *content changed after writing*. |
+| `previousHash` | `audit.entry.missing_previous_hash` | Genesis, so the entry claims to have begun a chain. Mid-chain that is a link mismatch; at the head it is not a finding at all, and damage verifies as health. |
+| `record` | `audit.entry.missing_record` | Nothing — it already failed, but as a `TypeError`, so one field of four left the factory by a different door. |
+
+The unnamed constructor is `const` and so cannot enforce any of this; `fromJson`
+is the boundary at which damaged, hand-edited or foreign-written storage is
+turned away, and it is what lets `parseAuditLines` promise that a line it cannot
+read is reported rather than silently reinterpreted.
 
 #### Static Methods
 
@@ -1131,7 +1144,7 @@ TomAuditTriggerRow()
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
 | `verifyAuditChain` | `TomAuditChainVerification verifyAuditChain(Iterable<TomAuditEntry> entries, {String startHash = tomAuditGenesisHash})` | Checks that `entries` form an unbroken chain from `startHash`, reporting a broken link, an edited record or a renumbered chain separately. The index check is not redundant: the index sits outside the hashed payload, so it is the one field an attacker can rewrite without breaking a hash. |
-| `parseAuditLines` | `List<TomAuditEntry> parseAuditLines(Iterable<String> lines)` | Parses JSON-Lines audit storage, skipping blank lines and throwing `TomAuditException` on a line that is not a valid entry — a malformed line is itself a finding. |
+| `parseAuditLines` | `List<TomAuditEntry> parseAuditLines(Iterable<String> lines)` | Parses JSON-Lines audit storage, skipping blank lines and throwing `TomAuditException` on a line that is not a valid entry — a malformed line is itself a finding. The guarantee covers the whole entry, not just its JSON syntax, because `TomAuditEntry.fromJson` defaults no field. |
 | `auditDiff` | `({Map<String, Object?> before, Map<String, Object?> after}) auditDiff(Map<String, Object?> before, Map<String, Object?> after)` | The changed fields only, as the narrowed pair a `TomAuditRecord` carries; a key present in just one of the two counts as changed. Free-standing because the repository is the only layer holding both images. |
 | `verifyAgainstAnchor` | `TomAuditAnchorVerification verifyAgainstAnchor(Iterable<TomAuditEntry> entries, TomAuditAnchor anchor, {String? writer, TomAuditAnchorVerifier? verifier})` | Checks that `entries` — possibly a retention-pruned suffix — are consistent with `anchor`. Pass `writer` to assert the chain identity and `verifier` to require a signature; omitting `verifier` checks the position only. Every comparison goes through `TomAuditEntry.index`, not a list offset. |
 | `auditTrailTable` | `TomFrameworkTable auditTrailTable(String table)` | The audit trail table declared once: the `CREATE TABLE` the sink issues, its entry `INSERT` and the column list of every read all derive from this descriptor. |

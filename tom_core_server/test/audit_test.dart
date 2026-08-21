@@ -690,6 +690,115 @@ void main() {
         ),
       );
     });
+
+    // The same reasoning the index guard is built on, applied to the two
+    // fields the chain is actually made of. A default here does not produce a
+    // vague entry — it produces a *specific accusation* about a record nobody
+    // touched, which is worse than refusing to read the line at all.
+    group('the chain fields are required, not defaulted', () {
+      /// [entry]'s JSON with [field] removed, as a damaged line would arrive.
+      Map<String, Object?> without(TomAuditEntry entry, String field) =>
+          (jsonDecode(entry.toJsonLine()) as Map).cast<String, Object?>()
+            ..remove(field);
+
+      TomAuditEntry first(String id) =>
+          TomAuditEntry.chain(_record(id), tomAuditGenesisHash, index: 0);
+
+      test('an entry with no hash is rejected rather than read as edited', () {
+        // Defaulted to '', the entry reads back as one whose stored hash does
+        // not match its contents — which `verifyAuditChain` reports as
+        // "content changed after writing". An investigation that starts from
+        // "this record was edited" goes somewhere else entirely.
+        for (final broken in <Object?>[null, '', 42]) {
+          final json = without(first('r1'), 'hash');
+          if (broken != null) json['hash'] = broken;
+          expect(
+            () => TomAuditEntry.fromJson(json),
+            throwsA(
+              isA<TomAuditException>().having(
+                (e) => e.key,
+                'key',
+                'audit.entry.missing_hash',
+              ),
+            ),
+            reason: 'hash: $broken',
+          );
+        }
+      });
+
+      test(
+        'an entry with no previous hash is rejected, not read as genesis',
+        () {
+          // Defaulting to genesis claims the entry began a chain. Mid-chain that
+          // is a link mismatch — "an entry was removed or reordered here" — and
+          // at the head it is not a finding at all; see the next test.
+          for (final broken in <Object?>[null, '', 42]) {
+            final json = without(first('r1'), 'previousHash');
+            if (broken != null) json['previousHash'] = broken;
+            expect(
+              () => TomAuditEntry.fromJson(json),
+              throwsA(
+                isA<TomAuditException>().having(
+                  (e) => e.key,
+                  'key',
+                  'audit.entry.missing_previous_hash',
+                ),
+              ),
+              reason: 'previousHash: $broken',
+            );
+          }
+        },
+      );
+
+      test('a lone damaged entry no longer verifies as a healthy first', () {
+        // The silent direction, and the one that costs the guarantee rather
+        // than merely misdirecting an investigation. A single entry that lost
+        // its link defaulted to genesis, was self-consistent against that
+        // genesis link — the hash covers the link, and the link it was hashed
+        // with was the one supplied — and so passed verification outright.
+        // Damage read back as health.
+        expect(
+          () => TomAuditEntry.fromJson(without(first('r1'), 'previousHash')),
+          throwsA(isA<TomAuditException>()),
+        );
+      });
+
+      test('a hashless line is a malformed line', () {
+        // The point of the whole change: `parseAuditLines` promises that
+        // anything it cannot read is reported, and until the guards existed a
+        // line that parsed as JSON but was not an entry slipped past it.
+        for (final field in ['hash', 'previousHash']) {
+          expect(
+            () => parseAuditLines([jsonEncode(without(first('r1'), field))]),
+            throwsA(
+              isA<TomAuditException>().having(
+                (e) => e.key,
+                'key',
+                'audit.parse.malformed_line',
+              ),
+            ),
+            reason: 'missing $field',
+          );
+        }
+      });
+
+      test('an entry with no record is refused the same way', () {
+        // Not a defaulting defect — an absent record already failed — but it
+        // failed as a `TypeError`, so one field of four left the factory by a
+        // different door. `parseAuditLines` catches everything and hid the
+        // difference; a direct caller saw it.
+        expect(
+          () => TomAuditEntry.fromJson(without(first('r1'), 'record')),
+          throwsA(
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.entry.missing_record',
+            ),
+          ),
+        );
+      });
+    });
   });
 
   group('TomMemoryAuditSink', () {
@@ -786,6 +895,43 @@ void main() {
         expect(second.verify().isValid, isTrue);
       },
     );
+
+    test('head recovery never adopts an unreadable final line', () {
+      // Recovery reads the newest file's last line, and a line it cannot read
+      // sends it to the previous file — deliberately, because a half-written
+      // final line is what a crash mid-write leaves behind. A line that parses
+      // as JSON but has lost a chain field must take that same path: the
+      // alternative, which is what a defaulted hash produced, is a live sink
+      // whose head is the empty string, linking every subsequent entry onto a
+      // hash no entry has. The break would then sit at the restart boundary
+      // and read as tampering.
+      final good = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 0,
+      );
+      final next = TomAuditEntry.chain(_record('r2'), good.hash, index: 1);
+      File(
+        '${dir.path}/audit-2026-07-28-000001.jsonl',
+      ).writeAsStringSync('${good.toJsonLine()}\n');
+
+      final live = File('${dir.path}/audit-2026-07-28.jsonl');
+      // A truncated line is the control: the two damages must recover alike.
+      final damaged = {
+        'lost a chain field': jsonEncode(
+          (jsonDecode(next.toJsonLine()) as Map).cast<String, Object?>()
+            ..remove('hash'),
+        ),
+        'truncated mid-write': next.toJsonLine().substring(0, 40),
+      };
+      for (final entry in damaged.entries) {
+        live.writeAsStringSync('${entry.value}\n');
+        final sink = TomFileAuditSink(directory: dir);
+        addTearDown(sink.close);
+        expect(sink.headHash, good.hash, reason: entry.key);
+        expect(sink.entryCount, 1, reason: entry.key);
+      }
+    });
 
     test(
       'count-based retention deletes whole files, keeping a valid suffix',
