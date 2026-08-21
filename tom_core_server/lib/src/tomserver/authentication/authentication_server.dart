@@ -777,12 +777,17 @@ class TomAuthenticationServer {
 
   /// Branches the login into enrolment: an interim token offering every
   /// permitted mechanism this deployment can actually set up.
+  ///
+  /// `async` so the "nothing here can be enrolled" refusal is a rejected future
+  /// rather than a synchronous throw. Today the sole call site is inside an
+  /// `async` body, which captures it either way; the declared return type is
+  /// the contract a second call site would rely on.
   Future<TomAuthenticationResult> _offerEnrolment(
     TomAuthenticationInfo authInfo,
     TomAuthenticationMessage m,
     Tom2FADecision decision,
     List<String> offerable,
-  ) {
+  ) async {
     final enrollable = [
       for (final type in offerable)
         if (Tom2FARegistry.enrolmentSupportFor(type) != null) type,

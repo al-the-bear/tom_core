@@ -327,6 +327,19 @@ class _StubDirectory implements TomExternalIdentityDirectory {
   }
 }
 
+/// A directory that implements only the lookup, so the *framework's* default
+/// `provisionFromExternalIdentity` is the one under test.
+///
+/// [_StubDirectory] cannot serve here: it `implements` the interface and so
+/// carries its own refusal, which is not the one a deployment meets.
+class _LookupOnlyDirectory extends TomExternalIdentityDirectory {
+  @override
+  Future<TomAuthenticationInfo?> authenticatedPrincipalFor(
+    String username,
+    TomAuthenticationData authData,
+  ) async => null;
+}
+
 /// A password service, so the pass-through and the token-parity comparison have
 /// something real to compare against.
 class _PasswordService implements TomAuthenticationService {
@@ -1879,6 +1892,36 @@ void main() {
         );
       },
     );
+
+    // The test above refuses through the stub's own override. This one calls
+    // the framework's default -- what a deployment actually meets when it turns
+    // auto-provisioning on and implements only the lookup -- and asserts *how*
+    // it refuses. Declaring a `Future` and throwing out of the call are
+    // different contracts: a caller that only ever awaits would never see the
+    // second, and would take the throw past every handler it had installed.
+    test('the default provisioning refusal is the future, not the call', () {
+      final directory = _LookupOnlyDirectory();
+
+      late final Future<TomAuthenticationInfo> pending;
+      expect(
+        () => pending = directory.provisionFromExternalIdentity(
+          const TomExternalIdentity(issuer: _issuer, subject: 'sub-1'),
+          _authData(),
+        ),
+        returnsNormally,
+        reason: 'a Future-returning method must not throw synchronously',
+      );
+      expect(
+        pending,
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.oauth.provisioning-unsupported',
+          ),
+        ),
+      );
+    });
 
     // Enabling external login must not mean disabling passwords.
     test('a password credential is handed to the delegate untouched', () async {

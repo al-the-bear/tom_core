@@ -96,10 +96,15 @@ abstract class TomExternalIdentityDirectory {
   /// [TomOAuthProvisioning.autoProvision]. The default implementation refuses,
   /// so a deployment that turns auto-provisioning on without implementing this
   /// gets a clear error rather than a silently half-created account.
+  ///
+  /// `async` although nothing here awaits: the refusal must reach the caller as
+  /// a rejected future, the way an override's failure would. This method is
+  /// public and overridable, so its callers are not enumerable — one that only
+  /// ever awaits would take a synchronous throw straight past its handler.
   Future<TomAuthenticationInfo> provisionFromExternalIdentity(
     TomExternalIdentity identity,
     TomAuthenticationData authData,
-  ) {
+  ) async {
     throw LoginException(
       'login.error.oauth.provisioning-unsupported',
       'Provider auto-provisioning is configured, but this deployment\'s '
@@ -335,7 +340,12 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
   }
 
   /// Hands a non-OAuth credential to [delegate].
-  Future<TomAuthenticationInfo> _passThrough(TomAuthenticationData authData) {
+  ///
+  /// `async` so the "no delegate" refusal is a rejected future rather than a
+  /// synchronous throw, which its declared return type already promises.
+  Future<TomAuthenticationInfo> _passThrough(
+    TomAuthenticationData authData,
+  ) async {
     final next = delegate;
     if (next == null) {
       throw LoginException(
