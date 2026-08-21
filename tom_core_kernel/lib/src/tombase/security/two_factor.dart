@@ -503,11 +503,17 @@ class Tom2FAPendingEnrolment {
   /// material to go stale, so a chooser left open is a UX question, not a
   /// security one.
   ///
+  /// A *begun* offer with no [expiresAt] is the opposite case and answers true.
+  /// [fromClaims] never builds one, so this is the backstop for a directly
+  /// constructed value; it answers as the server would, because a panel that
+  /// showed a live confirmation form for a state the server refuses is worse
+  /// than one that says the offer lapsed.
+  ///
   /// [now] may be in either zone: `isBefore` compares instants, not wall
   /// clocks, so no normalisation is needed on either side.
   bool isExpired([DateTime? now]) {
     final deadline = expiresAt;
-    if (deadline == null) return false;
+    if (deadline == null) return hasOffer;
     return !(now ?? DateTime.now()).isBefore(deadline);
   }
 

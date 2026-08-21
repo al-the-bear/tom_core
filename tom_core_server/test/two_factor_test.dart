@@ -2348,6 +2348,119 @@ void main() {
   });
 
   // ===========================================================================
+  // THE DEADLINE IS THE ONLY THING BOUNDING A BEGUN ENROLMENT
+  // ===========================================================================
+
+  /// A begun enrolment is a generated secret sitting in a token, confirmable by
+  /// whoever holds it. Two things stop that being permanent: the attempt
+  /// counter and [Tom2FAEnrolmentClaims.expiresAt]. The offer itself travels in
+  /// the token's *encrypted* half, so a client cannot touch it — but the expiry
+  /// travels in the public payload, which nothing on the bearer path verifies
+  /// ([TomClientJwtToken] decodes rather than verifies). Reading an unreadable
+  /// deadline as "no deadline" would therefore hand a client an unbounded
+  /// confirmation window for the asking.
+  group('Tom2FAEnrolmentState expiry decoding', () {
+    /// The public payload and encrypted section of a genuinely begun
+    /// enrolment, as the authentication server's token issue would write them.
+    (Map<String, dynamic>, Map<String, dynamic>) begun({DateTime? now}) {
+      final state =
+          Tom2FAEnrolmentState(
+            offeredTypes: const ['totp'],
+            skippable: true,
+          ).withOffer(
+            const Tom2FAEnrolmentOffer(
+              type: 'totp',
+              hint: 'authenticator',
+              enrolmentData: {'secret': 'S3CR3T'},
+              validity: Duration(minutes: 10),
+            ),
+            now: now ?? DateTime.utc(2026, 1, 1, 12),
+          );
+      return (
+        state.toClaims().cast<String, dynamic>(),
+        state.secretClaims!.cast<String, dynamic>(),
+      );
+    }
+
+    test('an honest begun state round-trips with its deadline intact', () {
+      final (payload, secret) = begun();
+
+      final state = Tom2FAEnrolmentState.fromClaims(payload, secret);
+
+      expect(state!.hasOffer, isTrue);
+      expect(state.expiresAt, equals(DateTime.utc(2026, 1, 1, 12, 10)));
+      expect(state.isExpired(DateTime.utc(2026, 1, 1, 12, 9)), isFalse);
+      expect(state.isExpired(DateTime.utc(2026, 1, 1, 12, 11)), isTrue);
+    });
+
+    test('a begun state whose expiry claim was dropped is refused', () {
+      final (payload, secret) = begun();
+      payload.remove(Tom2FAEnrolmentClaims.expiresAt);
+
+      expect(
+        () => Tom2FAEnrolmentState.fromClaims(payload, secret),
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.enrolment-offer-invalid',
+          ),
+        ),
+        reason:
+            'the offer is authentic (encrypted) but its bound is not, so a '
+            'missing deadline is a client having removed the one claim that '
+            'closes the window',
+      );
+    });
+
+    test('a begun state whose expiry claim is malformed is refused', () {
+      for (final raw in <Object?>['', 'soon', 'null', 0, false, <String>[]]) {
+        final (payload, secret) = begun();
+        payload[Tom2FAEnrolmentClaims.expiresAt] = raw;
+
+        expect(
+          () => Tom2FAEnrolmentState.fromClaims(payload, secret),
+          throwsA(isA<LoginException>()),
+          reason: '$raw (${raw.runtimeType}) is not a readable instant',
+        );
+      }
+    });
+
+    test('the offered shape still decodes without any deadline', () {
+      // The rule is about a *begun* enrolment. A user still choosing has no
+      // window to close, and demanding one would break the choosing stop.
+      final payload = Tom2FAEnrolmentState(
+        offeredTypes: const ['totp'],
+        skippable: true,
+      ).toClaims().cast<String, dynamic>();
+
+      final state = Tom2FAEnrolmentState.fromClaims(payload);
+
+      expect(state!.hasOffer, isFalse);
+      expect(state.expiresAt, isNull);
+      expect(state.isExpired(), isFalse);
+    });
+
+    test('a begun state with no deadline reports itself expired', () {
+      // Defence in depth for the paths that construct a state directly rather
+      // than decoding one. A null deadline may only ever mean "still
+      // choosing"; on a begun state it must fail closed, not open.
+      final state = Tom2FAEnrolmentState(
+        offeredTypes: const ['totp'],
+        offer: const Tom2FAEnrolmentOffer(type: 'totp'),
+      );
+
+      expect(state.expiresAt, isNull);
+      expect(state.isExpired(), isTrue);
+      expect(
+        state.isExpired(DateTime.utc(1970)),
+        isTrue,
+        reason: 'no instant is inside a window that was never opened',
+      );
+    });
+  });
+
+  // ===========================================================================
   // THE FOUR SHAPES A DEPLOYMENT CAN BE IN
   // ===========================================================================
 
@@ -2933,6 +3046,109 @@ void main() {
 
       expect(result.error, 'login.error.2fa.enrolment-offer-invalid');
       expect(enrollable.confirmed, 0);
+    });
+
+    /// The confirmation window, exercised at the boundary it exists to draw.
+    ///
+    /// The expiry claim is editable from outside — the bearer path decodes the
+    /// token rather than verifying it — so these three tests are the same
+    /// tamper with three different values: a deadline in the past, no deadline
+    /// at all, and a deadline that is not an instant. All three must refuse,
+    /// because the alternative to refusing is a generated secret that stays
+    /// confirmable for as long as somebody keeps the token.
+    group('the confirmation window is not the client\'s to move', () {
+      /// A begun enrolment whose public expiry claim has been rewritten to
+      /// [value], as a client holding the interim token could rewrite it.
+      Future<TomClientJwtToken> tamperedOffer(Object? value) async {
+        policy(Tom2FARequirement.required);
+        final (_, token) = await login();
+        final begun = await server.beginTwoFactorEnrolment(
+          _message(password: 'app'),
+          enrolmentToken: token,
+        );
+
+        final tampered = TomClientJwtToken(begun.authorizationToken);
+        if (value == null) {
+          tampered.payload!.remove(Tom2FAEnrolmentClaims.expiresAt);
+        } else {
+          tampered.payload![Tom2FAEnrolmentClaims.expiresAt] = value;
+        }
+        return tampered;
+      }
+
+      test('a lapsed offer cannot be confirmed', () async {
+        final lapsed = await tamperedOffer(
+          DateTime.now()
+              .toUtc()
+              .subtract(const Duration(seconds: 1))
+              .toIso8601String(),
+        );
+
+        final result = await server.completeTwoFactorEnrolment(
+          _message(password: _EnrollableAdaptor.confirmation),
+          enrolmentToken: lapsed,
+        );
+
+        expect(result.error, 'login.error.2fa.enrolment-expired');
+        expect(result.authorizationToken, isEmpty);
+        expect(
+          enrollable.confirmed,
+          0,
+          reason: 'the window closes before the adaptor is consulted',
+        );
+        expect(await store.enrolmentsFor(contextOfAlice()), isEmpty);
+      });
+
+      test('an offer with its deadline removed cannot be confirmed', () async {
+        final unbounded = await tamperedOffer(null);
+
+        final result = await server.completeTwoFactorEnrolment(
+          _message(password: _EnrollableAdaptor.confirmation),
+          enrolmentToken: unbounded,
+        );
+
+        expect(result.error, 'login.error.2fa.enrolment-offer-invalid');
+        expect(result.authorizationToken, isEmpty);
+        expect(enrollable.confirmed, 0);
+        expect(await store.enrolmentsFor(contextOfAlice()), isEmpty);
+      });
+
+      test(
+        'an offer with an unreadable deadline cannot be confirmed',
+        () async {
+          final unreadable = await tamperedOffer('whenever');
+
+          final result = await server.completeTwoFactorEnrolment(
+            _message(password: _EnrollableAdaptor.confirmation),
+            enrolmentToken: unreadable,
+          );
+
+          expect(result.error, 'login.error.2fa.enrolment-offer-invalid');
+          expect(enrollable.confirmed, 0);
+          expect(await store.enrolmentsFor(contextOfAlice()), isEmpty);
+        },
+      );
+
+      // Skipping and re-choosing read the same claims through the same
+      // decoder, so an unbounded offer must be refused there too rather than
+      // being a quieter way past the same check.
+      test('every enrolment pass refuses an unbounded offer', () async {
+        final unbounded = await tamperedOffer(null);
+
+        for (final pass in <Future<TomAuthenticationResult> Function()>[
+          () => server.beginTwoFactorEnrolment(
+            _message(password: 'app'),
+            enrolmentToken: unbounded,
+          ),
+          () => server.skipTwoFactorEnrolment(
+            _message(),
+            enrolmentToken: unbounded,
+          ),
+        ]) {
+          final result = await pass();
+          expect(result.error, 'login.error.2fa.enrolment-offer-invalid');
+        }
+      });
     });
 
     test('an enrolment pass outside a request zone fails cleanly', () async {

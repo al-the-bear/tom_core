@@ -48,6 +48,7 @@ import 'dart:convert';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/types_operator.dart';
+import '../little_things/server_exception.dart';
 import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'two_factor.dart';
@@ -326,10 +327,22 @@ class Tom2FAEnrolmentState {
   bool get hasOffer => offer != null;
 
   /// Whether the confirmation window has closed as of [now] (default: the
-  /// current instant). Always false in the offered shape, which has no window.
+  /// current instant).
+  ///
+  /// A null [expiresAt] means two different things in the two shapes, and the
+  /// answer differs accordingly. In the **offered** shape there is no window to
+  /// close, so this is false. In the **begun** shape the deadline is the only
+  /// thing that stops a generated secret being confirmable forever, so its
+  /// absence is not "no limit" but a state that should never have been built —
+  /// and the safe reading of a window that was never opened is that no instant
+  /// is inside it.
+  ///
+  /// [fromClaims] rejects such a token outright rather than relying on this, so
+  /// in practice a begun state always has a deadline. This is the backstop for
+  /// the paths that construct one directly.
   bool isExpired([DateTime? now]) {
     final deadline = expiresAt;
-    if (deadline == null) return false;
+    if (deadline == null) return hasOffer;
     return !(now ?? DateTime.now().toUtc()).toUtc().isBefore(deadline);
   }
 
@@ -411,11 +424,29 @@ class Tom2FAEnrolmentState {
   /// than a half-built confirmation — the user is asked to choose again, which
   /// is the only safe reading.
   ///
+  /// An unreadable **expiry** on a *begun* enrolment is the one thing this
+  /// method refuses outright, with `login.error.2fa.enrolment-offer-invalid`.
+  /// Degrading it the way an unreadable offer degrades is not available: the
+  /// offer travels in the token's encrypted half and so is authentic, while the
+  /// deadline travels in the public payload, which nothing on the bearer path
+  /// verifies. Reading a missing deadline as "no deadline" would therefore let
+  /// a client delete one claim and hold a confirmable secret indefinitely, and
+  /// inventing one from the offer's own validity would let it renew the window
+  /// on every request. Refusing costs an honest user a restarted enrolment;
+  /// the alternatives cost a credential nobody is watching.
+  ///
   /// Every boolean claim is read with [Tom2FAClaims.isTrue], the same rule the
   /// kernel's [Tom2FAPendingEnrolment.fromClaims] applies. The two decode the
   /// *same claims from the same token* — one to drive the UI, one to authorise
   /// the enrolment passes — so a disagreement about what `skippable` means
-  /// would show up as a skip button that the server then refuses.
+  /// would show up as a skip button that the server then refuses. They agree on
+  /// the deadline too, by the same argument and with the same effect: the
+  /// kernel returns `null` (it has no error channel and only has to decline to
+  /// render a panel), this one throws (it must fail the pass).
+  ///
+  /// Throws [LoginException] with `login.error.2fa.enrolment-offer-invalid`
+  /// when a begun enrolment's expiry claim is absent or is not a parsable
+  /// instant.
   static Tom2FAEnrolmentState? fromClaims(
     Map<String, dynamic>? payload, [
     Map<String, dynamic>? secretData,
@@ -448,15 +479,23 @@ class Tom2FAEnrolmentState {
     }
 
     final expiresAtRaw = payload[Tom2FAEnrolmentClaims.expiresAt];
+    final expiresAt = expiresAtRaw is String
+        ? DateTime.tryParse(expiresAtRaw)
+        : null;
+    if (expiresAt == null) {
+      throw LoginException(
+        'login.error.2fa.enrolment-offer-invalid',
+        'The pending enrolment carries no usable expiry',
+      );
+    }
+
     final attempt = payload[Tom2FAEnrolmentClaims.attempt];
     return Tom2FAEnrolmentState(
       offeredTypes: offeredTypes,
       skippable: skippable,
       skipSpendsGrace: skipSpendsGrace,
       offer: offer,
-      expiresAt: expiresAtRaw is String
-          ? DateTime.tryParse(expiresAtRaw)
-          : null,
+      expiresAt: expiresAt,
       attempt: attempt is int ? attempt : 0,
     );
   }

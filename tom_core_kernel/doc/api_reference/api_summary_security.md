@@ -1284,7 +1284,7 @@ Tom2FAPendingEnrolment({
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `isExpired([DateTime? now])` | `bool` | Whether the offer has lapsed as of `now` (defaults to the current instant; either zone will do, the comparison is between instants). **Always false while choosing** — there is no generated material to go stale, so a chooser left open is a UX question, not a security one. |
+| `isExpired([DateTime? now])` | `bool` | Whether the offer has lapsed as of `now` (defaults to the current instant; either zone will do, the comparison is between instants). **Always false while choosing** — there is no generated material to go stale, so a chooser left open is a UX question, not a security one. **Always true for a begun offer with no `expiresAt`**, the opposite case: there the deadline is what stops generated material being confirmable indefinitely, so its absence reads as lapsed rather than unbounded. [fromClaims] never builds one, so this is the backstop for a hand-built value, and it answers as the server's `Tom2FAEnrolmentState` does — a panel that offered a confirmation the server has already decided to refuse would be worse than one that says the offer lapsed. |
 | `toString()` | `String` | *(override)* Attempt budget, skippability and expiry, for logs; renders the chosen mechanism once [hasOffer], and the offered list while still choosing. Carries no enrolment secret. |
 
 #### Static Methods

@@ -3273,6 +3273,28 @@ void main() {
         expect(choosing.isExpired(), isFalse);
       });
 
+      // The mirror of the above, and the reason a null deadline cannot simply
+      // mean "no limit": on a begun offer the deadline is the only thing that
+      // stops generated material being confirmable forever. fromClaims already
+      // refuses such a payload, so this is the backstop for a hand-built value
+      // -- and it must answer as the server does, or the panel would offer a
+      // confirmation the server has already decided to refuse.
+      test('a begun offer with no expiry counts as lapsed', () {
+        final begun = Tom2FAPendingEnrolment(
+          offeredTypes: const ['totp'],
+          type: 'totp',
+        );
+
+        expect(begun.hasOffer, isTrue);
+        expect(begun.expiresAt, isNull);
+        expect(begun.isExpired(), isTrue);
+        expect(
+          begun.isExpired(DateTime.utc(1970)),
+          isTrue,
+          reason: 'no instant is inside a window that was never opened',
+        );
+      });
+
       test('toString prints the expiry in UTC', () {
         final local = DateTime.now().add(const Duration(minutes: 5));
         final pending = Tom2FAPendingEnrolment(type: 'totp', expiresAt: local);

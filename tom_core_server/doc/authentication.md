@@ -521,7 +521,7 @@ The client reads its side through the kernel:
 a mechanism* (`offeredTypes` populated, no offer yet) from *confirm this one*
 (an offer with its `clientData` and attempt counter).
 
-Four properties of the round trip are worth stating outright, because each one
+Five properties of the round trip are worth stating outright, because each one
 is a decision that could have gone the other way:
 
 - **It is stateless.** The pending enrolment lives entirely in the interim
@@ -542,6 +542,15 @@ is a decision that could have gone the other way:
   them for a second code a moment later would prove nothing. A wrong code spends
   one attempt and hands the same offer back, exactly as a wrong challenge answer
   does.
+- **A begun offer without a deadline is not an offer.** `enrolmentExpiresAt` is
+  one of two things bounding a generated secret that is sitting in a token
+  (the other is the attempt counter), so a token that announces an offer but
+  carries no readable expiry is refused with
+  `login.error.2fa.enrolment-offer-invalid` rather than read as unbounded. The
+  cost of refusing is an enrolment the user restarts; the cost of the other
+  reading is a confirmable secret with nothing left to close it. Statelessness
+  is what makes the rule necessary: with no server-side record of the offer,
+  the claim is the only bound there is.
 
 The first factor a user confirms is stored with `isPrimary: true`, so the next
 login has something to challenge without anyone having to nominate it.
@@ -949,7 +958,7 @@ Expiry, the attempt counter and adaptor dispatch are generic and handled once in
 | `login.error.2fa.delivery-failed` | A delivered code could not be handed to its transport, so no challenge was issued | None |
 | `login.error.2fa.no-destination` | Enrolment was begun for a delivered code with no address on record to confirm | None |
 | `login.error.2fa.enrolment-code-invalid` | The confirmation code did not match the one just sent; nothing is stored | A re-issued offer, until attempts run out |
-| `login.error.2fa.enrolment-offer-invalid` | The enrolment offer is unusable — no destination for a delivered code, or a confirmation on a token on which nothing was begun | None |
+| `login.error.2fa.enrolment-offer-invalid` | The enrolment offer is unusable — no destination for a delivered code, a confirmation on a token on which nothing was begun, or a begun offer whose `enrolmentExpiresAt` claim is absent or unreadable | None |
 
 The enrolment passes add their own, all of them from
 `TomAuthenticationServer` rather than from a mechanism:

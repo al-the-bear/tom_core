@@ -810,7 +810,7 @@ Tom2FAEnrolmentState({
 | `skippable` | `bool` | Whether the offer may be declined. Server-signed, so a client that decides for itself that it may decline achieves nothing. |
 | `skipSpendsGrace` | `bool` | Whether declining costs a grace login — true for a `required` decision softened by grace, false for an `optional` one. |
 | `offer` | `Tom2FAEnrolmentOffer?` | The chosen mechanism's offer, or `null` while the user is still choosing. |
-| `expiresAt` | `DateTime?` | When the offer stops being confirmable. |
+| `expiresAt` | `DateTime?` | When the offer stops being confirmable. Null only while the user is still choosing: a begun offer always has one, because the claim is the sole bound on a generated secret that lives in a token and nowhere else. |
 | `attempt` | `int` | How many confirmations have been spent. |
 | `hasOffer` | `bool` | Whether a mechanism has been chosen — the two states a client renders differently. |
 | `attemptsRemaining` | `int` | `offer.attemptsAllowed - attempt`, floored at zero. |
@@ -820,12 +820,12 @@ Tom2FAEnrolmentState({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `isExpired` | `bool isExpired({DateTime? now})` | Whether the offer has lapsed. |
+| `isExpired` | `bool isExpired([DateTime? now])` | Whether the offer has lapsed. False in the offered shape, which has no window to close; true for a *begun* state that somehow has no deadline, since a window that was never opened contains no instant. `fromClaims` refuses such a token outright, so this is the backstop for a directly constructed state. |
 | `withOffer` | `Tom2FAEnrolmentState withOffer(Tom2FAEnrolmentOffer chosen, {DateTime? now})` | The state after a mechanism is chosen. Restarts the attempt counter — the attempts belong to the offer, so choosing a different mechanism starts a fresh budget. |
 | `withConsumedAttempt` | `Tom2FAEnrolmentState withConsumedAttempt()` | The state after one confirmation has been spent. |
 | `toClaims` | `Map<String, Object?> toClaims()` | The public half, for the interim token's claims. |
 | `secretClaims` | `Map<String, Object?>?` | The encrypted half — the offer's `enrolmentData` — or `null` when nothing has been chosen. |
-| `fromClaims` | `static Tom2FAEnrolmentState? fromClaims(Map<String, dynamic>? payload, [Map<String, dynamic>? secretData])` | Reads a pending enrolment back out of a token, or `null` when it carries none. An offer that cannot be decrypted degrades to the *offered* shape rather than throwing, so an undecryptable token sends the user back to the choice instead of failing the login. Every boolean claim is read with `Tom2FAClaims.isTrue` (either wire encoding), the same rule the kernel's `Tom2FAPendingEnrolment.fromClaims` applies — the two decode the same token, one to render the UI and one to authorise the enrolment passes, so they must not disagree about what `skippable` says. |
+| `fromClaims` | `static Tom2FAEnrolmentState? fromClaims(Map<String, dynamic>? payload, [Map<String, dynamic>? secretData])` | Reads a pending enrolment back out of a token, or `null` when it carries none. An offer that cannot be decrypted degrades to the *offered* shape rather than throwing, so an undecryptable token sends the user back to the choice instead of failing the login. Every boolean claim is read with `Tom2FAClaims.isTrue` (either wire encoding), the same rule the kernel's `Tom2FAPendingEnrolment.fromClaims` applies — the two decode the same token, one to render the UI and one to authorise the enrolment passes, so they must not disagree about what `skippable` says. An unreadable **expiry** on a begun offer is the one input it refuses outright, throwing `LoginException('login.error.2fa.enrolment-offer-invalid')`: the offer travels encrypted and so is authentic, while its deadline travels in the public payload, and reading a missing deadline as *no deadline* would leave a generated secret confirmable for as long as somebody keeps the token. The kernel twin declines the same payload by returning `null` — it renders a panel rather than authorising a pass, so it has no error to raise. |
 
 ### Tom2FAEnrolmentStore
 
