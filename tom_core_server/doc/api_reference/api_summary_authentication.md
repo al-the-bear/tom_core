@@ -20,6 +20,7 @@ server's own self-login against an auth server.
   - [Tom2FAChallengeSpec](#tom2fachallengespec)
   - [Tom2FASubmission](#tom2fasubmission)
   - [Tom2FAService](#tom2faservice)
+  - [Tom2FAPrerequisite](#tom2faprerequisite)
   - [Tom2FARegistry](#tom2faregistry)
   - [Tom2FARequirement](#tom2farequirement)
   - [Tom2FADecision](#tom2fadecision)
@@ -123,8 +124,11 @@ predates policies; `TomRole2FAPolicy` states a requirement per role and takes th
 strictest match. `Tom2FADecision.offerableMechanisms` intersects the permitted
 keys with `Tom2FARegistry.registeredTypes`, so a policy naming an unregistered
 mechanism fails at the branch that decides the login rather than as a null
-adaptor later. A policy that also implements `Tom2FAGraceAccounting` is told
-when a grace login is spent.
+adaptor later. Registration therefore carries the whole weight of "can run",
+which is why an adaptor that declares an unmet `Tom2FAPrerequisite` — a mailed
+code in a deployment with no `TomEmailService` — is kept *out* of the registry
+by the scan instead of being offered and failing mid-login. A policy that also
+implements `Tom2FAGraceAccounting` is told when a grace login is spent.
 
 Anything but `Tom2FARequirement.disabled` runs the login in two passes. Pass 1
 asks the `Tom2FAService` registered in `Tom2FARegistry` for the chosen mechanism
@@ -163,7 +167,10 @@ sends it synchronously through the Messaging module's `TomEmailService` /
 `TomSmsService`, and recognises it again with a constant-time compare. They are
 the mechanisms that exercise the encrypted half of the challenge split, and they
 also implement `Tom2FAEnrolmentSupport`: enrolling a delivered code means proving
-the user can read what is sent to the destination.
+the user can read what is sent to the destination. Because they need a
+collaborator, they also implement `Tom2FAPrerequisite` — a deployment that
+installed no `TomEmailService` never has `'email'` registered, and so is never
+offered it.
 
 `TomServerSelfLogin` covers the separate case of the deployment authenticating
 *as itself*: it presents a `TomServiceCredential` over a
@@ -211,12 +218,18 @@ TomSqlDatasourceRepository<TomExternalIdentityToken, int>
 Tom2FAService  (@tomReflector, abstract)
     ├── TomTotp2FAService  (implements, @Tom2FAAdaptor('totp'),
     │                       + Tom2FAEnrolmentSupport)
-    └── TomDeliveredCode2FAService  (implements, + Tom2FAEnrolmentSupport)
-            ├── TomEmailCode2FAService  (extends, @Tom2FAAdaptor('email'))
-            └── TomSmsCode2FAService    (extends, @Tom2FAAdaptor('sms'))
+    └── TomDeliveredCode2FAService<S>  (implements, + Tom2FAEnrolmentSupport,
+            │                           + Tom2FAPrerequisite)
+            ├── TomEmailCode2FAService  (extends <TomEmailService>,
+            │                            @Tom2FAAdaptor('email'))
+            └── TomSmsCode2FAService    (extends <TomSmsService>,
+                                         @Tom2FAAdaptor('sms'))
 
 Tom2FAEnrolmentSupport  (abstract, mixed into an enrollable Tom2FAService)
     ├── TomTotp2FAService           (implements)
+    └── TomDeliveredCode2FAService  (implements)
+
+Tom2FAPrerequisite  (abstract, opt-in on an adaptor that needs a collaborator)
     └── TomDeliveredCode2FAService  (implements)
 
 Tom2FAPolicy  (abstract)
@@ -520,6 +533,30 @@ through a login implements `Tom2FAEnrolmentSupport` in addition.
 | `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | Issues a challenge for `context`, or throws `LoginException` when this user cannot be challenged at all (no enrolled device, no configured secret). |
 | `verifySubmission` | `Future<bool> verifySubmission(Tom2FAContext context, Tom2FASubmission submission)` | Whether `submission` correctly answers the challenge. Returns `false` for a wrong answer; throws only when verification could not be *performed*. |
 
+### Tom2FAPrerequisite
+
+What an adaptor implements when it can only work if something *else* was
+installed — a mail service, an SMS gateway, a push credential. A separate
+interface rather than a member on `Tom2FAService`, for the reason
+`Tom2FAEnrolmentSupport` is separate from it: most mechanisms need nothing
+beyond themselves, and a base contract whose implementations almost all answer
+`null` teaches callers to stop reading the answer.
+
+`Tom2FARegistry.registerAnnotated` asks and skips a candidate that answers;
+`Tom2FARegistry.register` does not ask, because naming an adaptor in a call is
+asking for it. The asymmetry is the point — the complaint this interface
+answers is about the *automatic* registration nobody asked for, which is what
+puts a mechanism the deployment cannot run into
+`Tom2FADecision.offerableMechanisms`.
+
+- **Abstract**
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `unmetPrerequisite` | `String?` | What this deployment did not install, phrased for the operator who has to install it — or `null` when the adaptor can run. A reason rather than a bool because a mechanism that quietly disappears is the hardest kind of absence to debug: every lookup answers `null`, which is also what a mechanism nobody ever wrote answers. Read at registration, so it must be cheap and synchronous; anything needing I/O belongs in `Tom2FAService.issueChallenge`, where a failure is a login outcome rather than a deployment shape. |
+
 ### Tom2FARegistry
 
 Resolves a mechanism key to the adaptor that implements it. Populated on first
@@ -533,6 +570,13 @@ whose generated reflection has not been initialized yet, the registry says so
 once in the log and stays armed, so the scan happens as soon as reflection
 arrives; hand-registered adaptors resolve throughout.
 
+The scan also asks each candidate `Tom2FAPrerequisite.unmetPrerequisite` and
+**skips** the ones that answer, logging what was missing. A deployment that
+ships mail or SMS codes must therefore install its `TomEmailService` /
+`TomSmsService` beans during start-up, **before the first login**: a successful
+scan is not repeated, so a mechanism skipped for a not-yet-installed
+collaborator stays absent for the life of the process.
+
 #### Static Properties
 
 | Property | Type | Description |
@@ -545,10 +589,10 @@ arrives; hand-registered adaptors resolve throughout.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `register` | `static void register(String type, Tom2FAService service)` | Registers `service` under `type`. Throws `Tom2FAException` (`authentication.2fa.duplicate_adaptor`) if a different adaptor is already registered for `type`; re-registering the identical instance is a no-op. |
+| `register` | `static void register(String type, Tom2FAService service)` | Registers `service` under `type`. Throws `Tom2FAException` (`authentication.2fa.duplicate_adaptor`) if a different adaptor is already registered for `type`; re-registering the identical instance is a no-op. `Tom2FAPrerequisite` is deliberately **not** consulted: naming an adaptor in a call is asking for it, and a deployment that builds its adaptors before its collaborators needs that escape. |
 | `lookup` | `static Tom2FAService? lookup(String type)` | The adaptor for `type`, or `null` when the mechanism is unknown here. Triggers the annotation scan on first use. |
 | `enrolmentSupportFor` | `static Tom2FAEnrolmentSupport? enrolmentSupportFor(String type)` | The adaptor for `type` when it can also be enrolled, else `null` — the one place the `is` check is made, so callers ask "can this be set up here?" rather than reproducing the test. |
-| `registerAnnotated` | `static void registerAnnotated(Iterable<ClassMirror> candidates)` | Registers every class in `candidates` carrying a `Tom2FAAdaptor` annotation. Throws `Tom2FAException` on the first unusable candidate (`authentication.2fa.adaptor_instantiation_failed`, `authentication.2fa.adaptor_does_not_implement_service`), naming it — an adaptor set that is wrong is wrong at start-up. A call that throws registers nothing and leaves registrations made before it untouched, so a retried scan meets the same registry the first attempt found. |
+| `registerAnnotated` | `static void registerAnnotated(Iterable<ClassMirror> candidates)` | Registers every class in `candidates` carrying a `Tom2FAAdaptor` annotation. Throws `Tom2FAException` on the first unusable candidate (`authentication.2fa.adaptor_instantiation_failed`, `authentication.2fa.adaptor_does_not_implement_service`), naming it — an adaptor set that is wrong is wrong at start-up. A call that throws registers nothing and leaves registrations made before it untouched, so a retried scan meets the same registry the first attempt found. A candidate whose `Tom2FAPrerequisite.unmetPrerequisite` is non-null is the other case and is **skipped**, loudly, rather than thrown on: a server with no mail relay is a legitimate deployment, and refusing to start would make one uninstalled channel cost it every other mechanism it wired. |
 | `reset` | `static void reset()` | Drops every registration and forces a re-scan on next use. For tests. |
 
 ### Tom2FARequirement
@@ -593,7 +637,7 @@ Tom2FADecision({
 | `requirement` | `Tom2FARequirement` | What this login owes. |
 | `allowedMechanisms` | `List<String>` | The mechanism keys this principal may use, in **preference order** — the first is chosen when nothing else narrows it. Unmodifiable. |
 | `graceLogins` | `int` | How many more times this principal may decline a `required` factor. `0` means none. |
-| `offerableMechanisms` | `List<String>` | `allowedMechanisms` intersected with `Tom2FARegistry.registeredTypes`. Permission and availability are separate questions — a policy says what a user *may* use, the registry says what this process *can* run — and intersecting them here turns a wiring fault into `login.error.2fa.unsupported-mechanism` at the login rather than a null adaptor further on. |
+| `offerableMechanisms` | `List<String>` | `allowedMechanisms` intersected with `Tom2FARegistry.registeredTypes`. Permission and availability are separate questions — a policy says what a user *may* use, the registry says what this process *can* run — and intersecting them here turns a wiring fault into `login.error.2fa.unsupported-mechanism` at the login rather than a null adaptor further on. Registration is the only thing consulted, which is why an adaptor that cannot run here (`Tom2FAPrerequisite`) is never registered in the first place. |
 | `isSatisfiedWithoutFactor` | `bool` | `true` only for `disabled`. The single test the server makes, so a policy meaning "no factor" says it once. |
 
 ### Tom2FAPolicy
@@ -1023,11 +1067,20 @@ salt and the SHA-256 of `salt + code`, never the code, because the map travels
 in a token the client holds. Delivery happens *before* the spec is built and
 synchronously (`TomTemplatedMessageService.deliverNow`, not the outbox) — a code
 that outlives its challenge is worse than none, so an undelivered code fails the
-login rather than becoming a prompt nobody can answer. Subclasses supply four
-things: `type`, `destinationOnRecord`, `maskDestination` and `deliver`.
+login rather than becoming a prompt nobody can answer. Subclasses supply six
+things: `type`, `destinationOnRecord`, `maskDestination`, `deliver`,
+`resolveDeliveryService` and `deliveryServiceType`.
 
-- **Implements:** `Tom2FAService`, `Tom2FAEnrolmentSupport`
+The type parameter `S` is the delivery service the channel sends through, named
+so that `requireDeliveryService` hands the subclass its own service back without
+a cast. It is also what makes this family a `Tom2FAPrerequisite`: a code
+mechanism with nothing to send through cannot be offered, and that has to be
+answerable at registration rather than discovered at the challenge.
+
+- **Implements:** `Tom2FAService`, `Tom2FAEnrolmentSupport`,
+  `Tom2FAPrerequisite`
 - **Abstract**
+- **Type parameters:** `S extends Object` — the delivery service
 
 #### Static Properties
 
@@ -1053,11 +1106,15 @@ things: `type`, `destinationOnRecord`, `maskDestination` and `deliver`.
 | `enrolmentAttemptsAllowed` | `int` | *(abstract)* How many confirmation attempts one enrolment offer tolerates. |
 | `enrolmentValidity` | `Duration` | *(abstract)* How long an enrolment offer stays confirmable. |
 | `descriptor` | `Tom2FAMethodDescriptor` | *(override)* `Tom2FAMethodDescriptor.scoped(type)` — resource keys only, no literal text. |
+| `deliveryServiceType` | `Type` | *(abstract)* The bean type `resolveDeliveryService` looks for. A `Type` rather than a string so the "install this" diagnostics survive a rename: every message that has to name what is missing interpolates it. |
+| `unmetPrerequisite` | `String?` | *(override)* `null`, unless this deployment installed no `deliveryServiceType` — in which case the adaptor could accept a challenge and send no code, so the scan leaves the mechanism out of the registry and logs this line. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `resolveDeliveryService` | `S? resolveDeliveryService()` | *(abstract)* The service this adaptor sends through, or `null` when the deployment installed none. Resolved per call rather than held: the registry constructs the adaptor before a deployment has necessarily finished installing its beans, so a service captured in a field would be captured as `null` and stay that way. |
+| `requireDeliveryService` | `S requireDeliveryService()` | The delivery service, or a `Tom2FAException` (`authentication.2fa.<type>.no_service`) naming what is missing. Reached only when the prerequisite was bypassed — an adaptor registered by hand, or a service uninstalled after the scan — which is a wiring fault either way, so it is not client-throwable: the caller learns the login failed while the operator gets a logged, named cause. |
 | `destinationOnRecord` | `String? destinationOnRecord(Tom2FAContext context)` | *(abstract)* The destination on the **user record**, or `null`. The asserted address; enrolment is what turns it into a proven one. |
 | `maskDestination` | `String maskDestination(String destination)` | *(abstract)* `destination` reduced to what is safe to show a caller who has not yet proved anything. |
 | `deliver` | `Future<void> deliver(Tom2FAContext context, {required String destination, required String code, required String templateKey, required Duration validity})` | *(abstract)* Sends `code` through this adaptor's channel. Must complete only once a transport has accepted the message, and must throw otherwise. |
@@ -1077,12 +1134,15 @@ things: `type`, `destinationOnRecord`, `maskDestination` and `deliver`.
 ### TomEmailCode2FAService
 
 A one-time code delivered by email (`@Tom2FAAdaptor('email')`, `@tomReflector`).
-Resolves `TomEmailService` from the bean locator at call time; a deployment that
-registered none gets `Tom2FAException('authentication.2fa.email.no_service')`,
-which is a wiring fault and not a delivery failure. The address comes from the
-user's confirmed `'email'` enrolment, falling back to `TomUser.email`.
+Resolves `TomEmailService` from the bean locator at call time. A deployment that
+registered none does not normally reach the adaptor at all — the unmet
+prerequisite keeps `'email'` out of the registry, so it is never offered;
+reached anyway (registered by hand, or the service uninstalled after the scan)
+it gets `Tom2FAException('authentication.2fa.email.no_service')`, which is a
+wiring fault and not a delivery failure. The address comes from the user's
+confirmed `'email'` enrolment, falling back to `TomUser.email`.
 
-- **Extends:** `TomDeliveredCode2FAService`
+- **Extends:** `TomDeliveredCode2FAService<TomEmailService>`
 
 #### Constructors
 
@@ -1105,10 +1165,17 @@ TomEmailCode2FAService()
 | `globalSettingEnrolmentAttemptsAllowed` | `int` | Defaults to `3`. |
 | `globalSettingEnrolmentValidity` | `Duration` | Defaults to 15 minutes. |
 
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `deliveryServiceType` | `Type` | *(override)* `TomEmailService` — what the skip message tells an operator to install. |
+
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `resolveDeliveryService` | `TomEmailService? resolveDeliveryService()` | *(override)* `TomEmailService.resolve()` — the installed bean, or `null`. |
 | `destinationOnRecord` | `String? destinationOnRecord(Tom2FAContext context)` | *(override)* `TomUser.email`. |
 | `maskDestination` | `String maskDestination(String destination)` | *(override)* Delegates to `maskEmailAddress`. |
 | `deliver` | `Future<void> deliver(Tom2FAContext context, {...})` | *(override)* Renders `templateKey` through `TomEmailService.deliverNow`, addressed with the user's display name when the record has one. |
@@ -1117,13 +1184,16 @@ TomEmailCode2FAService()
 ### TomSmsCode2FAService
 
 A one-time code delivered by SMS (`@Tom2FAAdaptor('sms')`, `@tomReflector`).
-Resolves `TomSmsService` from the bean locator at call time
-(`authentication.2fa.sms.no_service` when absent). The number comes from the
-user's confirmed `'sms'` enrolment, falling back to `TomUser.mobile` and then
-`TomUser.phone` — the same order `TomSmsRequest.toPrincipal` uses, so a code and
-a notification reach the same handset.
+Resolves `TomSmsService` from the bean locator at call time; absent, the
+mechanism is skipped at the scan rather than offered, and
+`authentication.2fa.sms.no_service` is what a bypassed prerequisite raises. The
+two channels are judged separately, so a deployment that sends mail but has no
+SMS contract keeps its mail codes. The number comes from the user's confirmed
+`'sms'` enrolment, falling back to `TomUser.mobile` and then `TomUser.phone` —
+the same order `TomSmsRequest.toPrincipal` uses, so a code and a notification
+reach the same handset.
 
-- **Extends:** `TomDeliveredCode2FAService`
+- **Extends:** `TomDeliveredCode2FAService<TomSmsService>`
 
 #### Constructors
 
@@ -1146,10 +1216,17 @@ TomSmsCode2FAService()
 | `globalSettingEnrolmentAttemptsAllowed` | `int` | Defaults to `3`. |
 | `globalSettingEnrolmentValidity` | `Duration` | Defaults to 10 minutes. |
 
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `deliveryServiceType` | `Type` | *(override)* `TomSmsService` — what the skip message tells an operator to install. |
+
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `resolveDeliveryService` | `TomSmsService? resolveDeliveryService()` | *(override)* `TomSmsService.resolve()` — the installed bean, or `null`. |
 | `destinationOnRecord` | `String? destinationOnRecord(Tom2FAContext context)` | *(override)* The first non-blank of `TomUser.mobile`, `TomUser.phone`. |
 | `maskDestination` | `String maskDestination(String destination)` | *(override)* Delegates to `maskPhoneNumber`. |
 | `deliver` | `Future<void> deliver(Tom2FAContext context, {...})` | *(override)* Renders `templateKey` through `TomSmsService.deliverNow`. |

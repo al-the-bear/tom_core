@@ -34,6 +34,7 @@ principal into an authentication token and an authorization token.
 | `Tom2FAAdaptor` | annotation (`@tomReflector`) | Marks a 2FA adaptor for a mechanism `type` |
 | `Tom2FAService` | abstract (`@tomReflector`) | The contract a second-factor mechanism implements: issue a challenge, verify a submission |
 | `Tom2FARegistry` | class (statics only) | Maps a mechanism `type` to its adaptor; scans `@Tom2FAAdaptor` classes on first use |
+| `Tom2FAPrerequisite` | abstract | What an adaptor implements to say it cannot run here; the scan skips it and logs why |
 | `Tom2FAContext` | class | What the adaptor is told about the login: the principal and its request context |
 | `Tom2FAChallengeSpec` | class | What an adaptor returns from `issueChallenge` — hint, client blob, verification blob, attempts, validity |
 | `Tom2FASubmission` | class | What an adaptor is handed on `verifySubmission` — the submitted factor plus its challenge |
@@ -332,6 +333,11 @@ and derives two more:
   that registers no such adaptor — into `login.error.2fa.unsupported-mechanism`
   at the login, rather than a null adaptor ten frames further on.
 
+  Registration carries the whole weight of "can run". That is why an adaptor
+  that would need a collaborator this deployment never installed is kept *out*
+  of the registry rather than registered and found wanting later — see
+  [Mechanisms that need something installed](#mechanisms-that-need-something-installed).
+
 **What each requirement does to a login with no enrolment** is the part that is
 not visible from the enum:
 
@@ -629,6 +635,12 @@ adaptors are picked up as soon as reflection arrives rather than being written
 off for the life of the process; explicitly registered adaptors resolve the
 whole time.
 
+The scan also asks each annotated candidate whether it can run *here*, and
+leaves out the ones that cannot — which is why a deployment that mails codes
+has to install its `TomEmailService` before the first login, not merely before
+the first code. See
+[Mechanisms that need something installed](#mechanisms-that-need-something-installed).
+
 **3 — Install an enrolment store**, so users can set a factor up themselves:
 
 ```dart
@@ -714,6 +726,70 @@ has advanced — so the loop above simply repeats. On a wrong code with no
 attempts left, or a lapsed challenge, there is no token and the client must
 restart at pass 1.
 
+### Mechanisms that need something installed
+
+Some mechanisms cannot work alone. A mailed code needs a `TomEmailService`, a
+texted one needs a `TomSmsService`, and a deployment that installed neither has
+no way to send anything — while the adaptors themselves ship annotated, so the
+scan finds them in *every* reflected program whether or not anybody asked for
+mail.
+
+Left at that, the failure lands in the worst possible place. `registeredTypes`
+is the only thing `Tom2FADecision.offerableMechanisms` consults, so an adaptor
+that merely *exists* is an adaptor that is *offered*; the user picks `email`,
+the login issues the challenge, and the adaptor only then discovers there is
+nothing to send through. What it raises is a `Tom2FAException`, which is not
+client-throwable — so the user is shown an opaque failure halfway through
+signing in, having been offered an option that never could have worked.
+
+An adaptor answers the question in advance by implementing
+`Tom2FAPrerequisite`:
+
+```dart
+abstract class Tom2FAPrerequisite {
+  /// What this deployment did not install, or `null` when the adaptor can run.
+  String? get unmetPrerequisite;
+}
+```
+
+`TomDeliveredCode2FAService` already implements it — its answer is "no
+`TomEmailService` is installed, so no `"email"` code could be sent" — so an
+adaptor extending that base inherits the behaviour by supplying
+`resolveDeliveryService()` and `deliveryServiceType`. Anything else opts in by
+implementing the one getter.
+
+**The scan skips; it does not refuse.** A server with no mail relay is a
+legitimate deployment, not a broken one, and throwing would make one
+uninstalled channel cost that deployment every *other* mechanism it wired —
+turning a supported shape into a total 2FA outage. So the candidate is left out
+of the registry, the scan carries on, and the reason is logged:
+
+```text
+2FA adaptor scan: mechanism "email" (TomEmailCode2FAService) was not registered
+because no TomEmailService is installed, so no "email" code could be sent. It
+will not be offered to any principal. Install what it needs before the first
+login, or remove the mechanism from your policies.
+```
+
+The answer is a *reason* rather than a flag for exactly that line's sake. A
+mechanism that quietly disappears is the hardest kind of absence to debug —
+every lookup answers `null`, which is also what a mechanism nobody ever wrote
+answers — so the log names both halves: which mechanism went, and what to
+install to get it back.
+
+`Tom2FARegistry.register` is deliberately **not** gated. Naming an adaptor in a
+call is asking for it, and a deployment that builds its adaptors before its
+collaborators needs that escape; the problem the prerequisite answers is the
+*automatic* registration nobody asked for.
+
+**Install collaborators during start-up, before the first login.** The scan
+runs once, lazily, and a successful scan is not repeated. An adaptor whose
+service is not installed *yet* is indistinguishable from one whose service was
+never installed at all, so it is skipped — and the mechanism then stays absent
+for the life of the process, however many `TomEmailService` beans arrive
+afterwards. Ordering is the deployment's duty; the logged skip is what makes a
+mis-ordered start-up a one-line diagnosis rather than a hunt.
+
 ### Codes delivered by email or SMS
 
 Two mechanisms ship alongside TOTP: `TomEmailCode2FAService` (`'email'`) and
@@ -730,6 +806,13 @@ templates. Nothing else:
 TomBean.withType(TomEmailService, TomEmailService(outbox: outbox, texts: texts));
 TomBean.withType(TomSmsService, TomSmsService(outbox: outbox, texts: texts));
 ```
+
+Install them **before the first login**, not merely before the first code: the
+adaptor that finds no service at the moment the registry is scanned is left out
+of the registry for the life of the process, and the mechanism is then never
+offered. Install one and not the other and you keep exactly the channel you
+wired — the two are judged separately. See
+[Mechanisms that need something installed](#mechanisms-that-need-something-installed).
 
 ```yaml
 # The four templates, resource-keyed like all user-facing text (G-RES-1).
@@ -848,14 +931,31 @@ cannot keep handing out the old ones.
 ### Writing your own mechanism
 
 For another *delivered* channel — a push notification, a voice call — extend
-`TomDeliveredCode2FAService` and supply the four things that differ:
+`TomDeliveredCode2FAService` and supply the things that differ. The type
+argument is the service the channel sends through, which is also what makes the
+mechanism [skippable when nobody installed
+one](#mechanisms-that-need-something-installed):
 
 ```dart
 @tomReflector
 @Tom2FAAdaptor('push')
-class MyPushCode2FAService extends TomDeliveredCode2FAService {
+class MyPushCode2FAService
+    extends TomDeliveredCode2FAService<MyPushGateway> {
   @override
   String get type => 'push';
+
+  // Resolved per call, never held in a field: the registry builds the adaptor
+  // before a deployment has necessarily finished installing its beans, so a
+  // captured service would be captured as null and stay that way.
+  @override
+  MyPushGateway? resolveDeliveryService() {
+    final installed = TomBean.getBeanByType(MyPushGateway);
+    return installed is MyPushGateway ? installed : null;
+  }
+
+  // A Type, not a name, so the "install this" diagnostics survive a rename.
+  @override
+  Type get deliveryServiceType => MyPushGateway;
 
   // From your own store, not TomUser.attributes — those are projected into the
   // token's public claims.
@@ -876,9 +976,11 @@ class MyPushCode2FAService extends TomDeliveredCode2FAService {
     required String templateKey,
     required Duration validity,
   }) =>
-      // Throws if the gateway refuses — which is what makes the challenge fail
-      // instead of a code silently never arriving.
-      myPushGateway.send(
+      // requireDeliveryService() rather than the field: it throws a named,
+      // logged Tom2FAException if the gateway was uninstalled after the scan.
+      // The send itself throws if the gateway refuses — which is what makes the
+      // challenge fail instead of a code silently never arriving.
+      requireDeliveryService().send(
         destination,
         text: myTexts.text(
           '$templateKey.text',
@@ -1547,8 +1649,22 @@ verifies a submission; nothing else. `Tom2FARegistry` scans
 `@Tom2FAAdaptor`-annotated classes the first time it is consulted; `register` /
 `lookup` / `registeredTypes` / `registerAnnotated` drive it explicitly, and
 `availableMethods` / `enrollableMethods` / `enrolmentSupportFor` derive the
-catalogs from what is registered. See
-[Two-Factor Authentication](#two-factor-authentication).
+catalogs from what is registered. The scan skips an annotated candidate whose
+`Tom2FAPrerequisite.unmetPrerequisite` names something this deployment did not
+install; `register` is unconditional. See
+[Two-Factor Authentication](#two-factor-authentication) and
+[Mechanisms that need something installed](#mechanisms-that-need-something-installed).
+
+### `Tom2FAPrerequisite`
+
+The one-getter interface an adaptor implements when it can only run if
+something *else* was installed — a mail service, an SMS gateway, a push
+credential. `unmetPrerequisite` answers a reason string rather than a flag, so
+the skip can be logged with what to install;
+`TomDeliveredCode2FAService` implements it in terms of `deliveryServiceType`.
+Consulted only by the automatic scan, which is where mechanisms nobody asked
+for come from. See
+[Mechanisms that need something installed](#mechanisms-that-need-something-installed).
 
 ### `Tom2FAPolicy` / `Tom2FADecision` / `Tom2FARequirement`
 
@@ -1597,8 +1713,13 @@ the framework's CSPRNG (rejection-sampled, so no modulo bias), seal it as a
 salt plus a SHA-256 into `verificationData`, deliver it synchronously, and
 recognise it again with a constant-time compare. It also implements
 `Tom2FAEnrolmentSupport`, where enrolment means proving the user can read what
-is sent to the destination. A subclass supplies four things: `type`,
-`destinationOnRecord`, `maskDestination` and `deliver`. The statics
+is sent to the destination. Its type parameter is the delivery service the
+channel sends through, which also makes it a `Tom2FAPrerequisite`: a code
+mechanism with nothing to send through is left out of the registry rather than
+discovered at the challenge. A subclass supplies six things: `type`,
+`destinationOnRecord`, `maskDestination`, `deliver`, `resolveDeliveryService`
+and `deliveryServiceType`; `requireDeliveryService` is what `deliver` sends
+through. The statics
 `generateNumericCode`, `sealCode`, `matchesSealedCode` and `constantTimeEquals`
 are public because two adaptors and their tests use them.
 
@@ -1607,9 +1728,12 @@ are public because two adaptors and their tests use them.
 The two shipped delivered-code mechanisms, registered under `'email'` and
 `'sms'`. They resolve `TomEmailService` / `TomSmsService` from the bean locator
 at call time and render `email.two_factor_code.*` / `sms.two_factor_code.*`
-(and the matching `…_enrolment` templates). A missing service is a
-`Tom2FAException`, not a delivery failure. See
-[Codes delivered by email or SMS](#codes-delivered-by-email-or-sms).
+(and the matching `…_enrolment` templates). A missing service normally keeps
+the mechanism out of the registry altogether; reached anyway — registered by
+hand, or uninstalled after the scan — it is a `Tom2FAException`, not a delivery
+failure. See [Codes delivered by email or SMS](#codes-delivered-by-email-or-sms)
+and
+[Mechanisms that need something installed](#mechanisms-that-need-something-installed).
 
 ### Adaptor annotations
 

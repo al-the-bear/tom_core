@@ -561,6 +561,49 @@ void main() {
       expect(email, isA<Tom2FAEnrolmentSupport>());
       expect(text, isA<Tom2FAEnrolmentSupport>());
     });
+
+    // -----------------------------------------------------------------------
+    // Prerequisites
+    // -----------------------------------------------------------------------
+
+    // The throw above is the last line of defence, and it is a bad place to
+    // discover a missing mail relay: it happens inside a login the user has
+    // already begun. The same question asked at registration keeps the
+    // mechanism out of every offer, so the login never reaches the throw.
+    test('both declare the service they send through as a prerequisite', () {
+      expect(email, isA<Tom2FAPrerequisite>());
+      expect(text, isA<Tom2FAPrerequisite>());
+    });
+
+    test('nothing is missing while the services are installed', () {
+      expect(email.unmetPrerequisite, isNull);
+      expect(text.unmetPrerequisite, isNull);
+    });
+
+    // Named types rather than "a delivery service": the operator reading this
+    // line has to know which bean to install, and the two channels are
+    // installed separately.
+    test('an absent service is reported by the type to install', () {
+      TomBean.resetBeanContext();
+
+      expect(email.unmetPrerequisite, contains('TomEmailService'));
+      expect(email.unmetPrerequisite, contains('email'));
+      expect(text.unmetPrerequisite, contains('TomSmsService'));
+      expect(text.unmetPrerequisite, contains('sms'));
+    });
+
+    // One channel installed is one channel offered. A deployment that sends
+    // mail but has no SMS contract keeps its mail codes.
+    test('the two channels are judged separately', () {
+      TomBean.resetBeanContext();
+      TomBean.withType(
+        TomEmailService,
+        TomEmailService(outbox: outbox, texts: _texts()),
+      );
+
+      expect(email.unmetPrerequisite, isNull);
+      expect(text.unmetPrerequisite, isNotNull);
+    });
   });
 
   // ===========================================================================

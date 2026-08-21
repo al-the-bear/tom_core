@@ -230,6 +230,46 @@ abstract class Tom2FAService {
   );
 }
 
+/// What an adaptor implements when it can only work if something *else* was
+/// installed — a mail service, an SMS gateway, a push credential.
+///
+/// A separate interface rather than a member on [Tom2FAService], for the reason
+/// `Tom2FAEnrolmentSupport` is separate from it: most mechanisms need nothing
+/// beyond themselves, and a base contract whose implementations almost all
+/// answer `null` teaches callers to stop reading the answer. `is` makes "could
+/// this adaptor run here?" a question with a real answer.
+///
+/// ## Where it is consulted, and where it is not
+///
+/// [Tom2FARegistry.registerAnnotated] asks, and skips a candidate that answers.
+/// That is the whole point: the shipped delivered-code adaptors register
+/// themselves by annotation, so without this they install into every reflected
+/// program — including one that never asked for mail — and the deployment then
+/// offers a mechanism it cannot run.
+///
+/// [Tom2FARegistry.register] does **not** ask. Naming an adaptor in a call is
+/// asking for it, and a deployment that builds its adaptors before its
+/// collaborators needs that escape; the complaint this interface answers is
+/// about the *automatic* registration nobody asked for.
+///
+/// ## What the answer is for
+///
+/// A reason, not a bool, because a mechanism that quietly disappears is the
+/// hardest kind of absence to debug — every lookup answers `null`, which is
+/// also what a mechanism nobody ever wrote answers. The string is logged as the
+/// skip happens, so an operator who wonders where `email` went is told what to
+/// install rather than that something was unavailable.
+abstract class Tom2FAPrerequisite {
+  /// What this deployment did not install, phrased for the operator who has to
+  /// install it — or `null` when the adaptor can run.
+  ///
+  /// Read at registration, so it must be cheap and synchronous: a bean lookup,
+  /// a settings read. Anything that needs I/O to answer belongs in
+  /// [Tom2FAService.issueChallenge], where a failure is a login outcome rather
+  /// than a deployment shape.
+  String? get unmetPrerequisite;
+}
+
 // =============================================================================
 // REGISTRY
 // =============================================================================
@@ -242,6 +282,20 @@ abstract class Tom2FAService {
 /// idempotent per key and rejects a second, different adaptor for the same key —
 /// two mechanisms answering to `'totp'` is a wiring bug, and silently picking
 /// one would make the failure surface much later and much less clearly.
+///
+/// ## Install collaborators before the first login
+///
+/// The scan runs once, lazily, the first time anything reads the registry — and
+/// it asks each candidate whether it can run here ([Tom2FAPrerequisite]). An
+/// adaptor whose collaborator is not installed *yet* is indistinguishable from
+/// one whose collaborator was never installed at all, so it is skipped, and a
+/// successful scan is not repeated: the mechanism stays absent for the life of
+/// the process.
+///
+/// So a deployment that ships mail or SMS codes must install its
+/// `TomEmailService` / `TomSmsService` beans **during start-up, before the
+/// first login**. The skip is logged with what was missing, which is what turns
+/// "why does nobody get an e-mail code?" into a one-line answer.
 class Tom2FARegistry {
   Tom2FARegistry._();
 
@@ -333,6 +387,11 @@ class Tom2FARegistry {
   /// Throws [Tom2FAException] if a *different* adaptor is already registered for
   /// [type]. Re-registering the identical instance is a no-op, so a double boot
   /// is harmless.
+  ///
+  /// [Tom2FAPrerequisite] is deliberately **not** consulted here — see that
+  /// interface for why. Naming an adaptor in a call is asking for it; the scan
+  /// asks on nobody's behalf, which is the only place the question needs
+  /// answering.
   static void register(String type, Tom2FAService service) {
     final existing = _adaptors[type];
     if (existing != null && !identical(existing, service)) {
@@ -429,6 +488,14 @@ class Tom2FARegistry {
   /// that is wrong is wrong at start-up, not at the login that happens to need
   /// the missing mechanism.
   ///
+  /// A candidate whose [Tom2FAPrerequisite.unmetPrerequisite] is non-null is a
+  /// different case and is **skipped**, loudly, rather than thrown on. A server
+  /// with no mail relay is a legitimate deployment, not a broken one, and
+  /// refusing to start it would make one uninstalled channel cost the
+  /// deployment every other mechanism it has. What must not happen — and what
+  /// the skip prevents — is the mechanism being *offered*: registration is the
+  /// only thing [Tom2FADecision.offerableMechanisms] consults.
+  ///
   /// That holds for the registry a caller can still see afterwards, not only
   /// for the throw: a failed call registers nothing, and leaves registrations
   /// made before it untouched. Both halves matter now that a failed scan is
@@ -462,6 +529,17 @@ class Tom2FARegistry {
                 '"${annotation.type}") but does not implement Tom2FAService',
             autoLog: true,
           );
+        }
+        // Skipped, not thrown on: a deployment that installed no mail relay is
+        // a legitimate one, and it must not lose the mechanisms it *did* wire.
+        if (adaptor case Tom2FAPrerequisite(:final unmetPrerequisite?)) {
+          tomLog.warn(
+            '2FA adaptor scan: mechanism "${annotation.type}" ($candidate) was '
+            'not registered because $unmetPrerequisite. It will not be offered '
+            'to any principal. Install what it needs before the first login, '
+            'or remove the mechanism from your policies.',
+          );
+          continue;
         }
         register(annotation.type, adaptor);
       }

@@ -181,6 +181,20 @@ class _FakeAdaptor implements Tom2FAService {
   }
 }
 
+/// An adaptor that needs something the deployment may not have installed.
+///
+/// Stands in for the shipped delivered-code adaptors in the registry's own
+/// tests, because what the scan does with an unmet prerequisite has to hold for
+/// *any* adaptor that declares one — a deployment's own push-approval mechanism
+/// as much as the two that ship here — and a test written against the mail
+/// adaptor would only pin the shipped case.
+class _GatedAdaptor extends _FakeAdaptor implements Tom2FAPrerequisite {
+  _GatedAdaptor({this.unmetPrerequisite});
+
+  @override
+  final String? unmetPrerequisite;
+}
+
 /// A mechanism that can also be *set up*, so the enrolment passes can be driven
 /// without the clock TOTP needs.
 ///
@@ -1013,6 +1027,98 @@ void main() {
     });
   });
 
+  // ===========================================================================
+  // WHAT THE SCAN SKIPS
+  // ===========================================================================
+
+  /// Refusing a *malformed* adaptor and skipping an *unusable* one are two
+  /// different judgements, and the scan has to make both.
+  ///
+  /// A class annotated `@Tom2FAAdaptor` that cannot be constructed is wrong
+  /// however the deployment is wired, so it stops the scan. An adaptor that is
+  /// perfectly well-formed but needs a collaborator this deployment never
+  /// installed is not wrong — a server with no mail relay is a legitimate
+  /// shape — and the only useful thing to do with it is leave the mechanism out
+  /// of the registry, where every offer is derived from.
+  group('an adaptor with an unmet prerequisite', () {
+    setUp(Tom2FARegistry.reset);
+    tearDown(Tom2FARegistry.reset);
+
+    /// A candidate for [type] that declares [unmet] as what it is missing.
+    _CandidateMirror gated(String type, {String? unmet}) => _CandidateMirror(
+      'GatedAdaptor',
+      metadata: [Tom2FAAdaptor(type)],
+      instantiate: () => _GatedAdaptor(unmetPrerequisite: unmet),
+    );
+
+    test('is left out of the registry rather than registered', () {
+      Tom2FARegistry.registerAnnotated([
+        gated('carrier-pigeon', unmet: 'no loft is installed'),
+      ]);
+
+      expect(Tom2FARegistry.lookup('carrier-pigeon'), isNull);
+      expect(Tom2FARegistry.registeredTypes, isNot(contains('carrier-pigeon')));
+    });
+
+    test('registers as usual once nothing is missing', () {
+      Tom2FARegistry.registerAnnotated([gated('carrier-pigeon')]);
+
+      expect(Tom2FARegistry.lookup('carrier-pigeon'), isA<_GatedAdaptor>());
+    });
+
+    // Skipping and refusing must not be the same act. A missing mail relay
+    // cannot be allowed to cost the deployment its TOTP, which would turn a
+    // supported shape into a total 2FA outage.
+    test('does not stop the scan', () {
+      Tom2FARegistry.registerAnnotated([
+        gated('carrier-pigeon', unmet: 'no loft is installed'),
+        _CandidateMirror(
+          'GoodAdaptor',
+          metadata: const [Tom2FAAdaptor('fake')],
+          instantiate: _FakeAdaptor.new,
+        ),
+      ]);
+
+      expect(Tom2FARegistry.lookup('fake'), isA<_FakeAdaptor>());
+    });
+
+    // A mechanism that silently disappears is the hardest kind of absence to
+    // debug: every lookup answers null, and null is also what a mechanism
+    // nobody ever wrote answers. The line has to name both halves -- which
+    // mechanism went, and what to install to get it back.
+    test('says which mechanism went and what was missing', () {
+      final log = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      tomLog.logOutput = log;
+      addTearDown(() => tomLog.logOutput = previous);
+
+      Tom2FARegistry.registerAnnotated([
+        gated('carrier-pigeon', unmet: 'no loft is installed'),
+      ]);
+
+      final skipped = log.messages
+          .where((m) => m.contains('carrier-pigeon'))
+          .toList();
+      expect(skipped, hasLength(1));
+      expect(skipped.single, contains('no loft is installed'));
+    });
+
+    // The complaint the prerequisite answers is about *automatic* registration:
+    // the shipped adaptors install themselves into deployments that never asked
+    // for them. Naming one in a register() call is asking for it, and a
+    // deployment that installs its collaborators after its adaptors must keep
+    // that escape.
+    test('is registered anyway when a deployment asks for it by hand', () {
+      final adaptor = _GatedAdaptor(unmetPrerequisite: 'no loft is installed');
+      Tom2FARegistry.register('carrier-pigeon', adaptor);
+
+      expect(
+        identical(Tom2FARegistry.lookup('carrier-pigeon'), adaptor),
+        isTrue,
+      );
+    });
+  });
+
   // The RFC vectors for the derivation itself live with the derivation, in
   // `tom_core_kernel/test/security_test.dart` (group `TomTotp`). What is tested
   // here is only what this adaptor adds on top: policy — the secret source, the
@@ -1801,13 +1907,16 @@ void main() {
     /// `allowedMechanisms` says "this deployment installed none of them", which
     /// a null lookup ten frames later cannot say.
     /// The "permitted but not installed" mechanisms below are `push` and
-    /// `carrier-pigeon`, deliberately — **not** `sms`.
+    /// `carrier-pigeon`, deliberately — **not** `totp`.
     ///
     /// The registry's automatic scan walks the whole reflected program, and this
     /// suite reflects the server barrel, which ships `@Tom2FAAdaptor`-annotated
-    /// adaptors for `totp`, `sms` and `email`. Those three are therefore
-    /// genuinely installed here, so naming one of them as the uninstallable
-    /// mechanism would assert the opposite of what the framework does.
+    /// adaptors for `totp`, `sms` and `email`. TOTP needs nothing but itself, so
+    /// it is genuinely installed here and naming it as the uninstallable
+    /// mechanism would assert the opposite of what the framework does. `sms` and
+    /// `email` are absent for a different reason — see the delivery-service test
+    /// below — and are no better as stand-ins, because they would then be
+    /// testing the prerequisite rather than the intersection.
     test(
       'offerable mechanisms are the permitted ones that are registered',
       () async {
@@ -1837,6 +1946,70 @@ void main() {
         expect(decision.offerableMechanisms, isEmpty, reason: 'but unusable');
       },
     );
+
+    // "Installed" is more than "registered". The mail adaptor ships annotated,
+    // so the scan finds it in every reflected program -- including one that
+    // never installed a TomEmailService, where it can be looked up and cannot
+    // send anything.
+    //
+    // Offered anyway, that is the exact failure the intersection exists to
+    // prevent, only later: the login accepts the mechanism, issues the
+    // challenge, and the adaptor then raises a Tom2FAException, which is not
+    // client-throwable -- so the user is shown an opaque failure halfway
+    // through signing in rather than a list that never held the impossible
+    // option.
+    test(
+      'a mechanism whose delivery service is absent is not offered',
+      () async {
+        initializeReflection();
+        // The premise: no TomEmailService bean, which is what the shipped mail
+        // adaptor resolves at every send.
+        TomBean.resetBeanContext();
+        Tom2FARegistry.reset();
+        Tom2FARegistry.register('fake', _FakeAdaptor());
+
+        final policy = TomRole2FAPolicy(
+          defaultRequirement: Tom2FARequirement.required,
+          mechanisms: [TomEmailCode2FAService.mechanismType, 'fake'],
+        );
+        final decision = await policy.decideFor(contextFor());
+
+        expect(
+          decision.allowedMechanisms,
+          [TomEmailCode2FAService.mechanismType, 'fake'],
+          reason:
+              'the policy permits it either way -- permission is not ability',
+        );
+        expect(decision.offerableMechanisms, ['fake']);
+      },
+    );
+
+    // The same premise reached the other way round: `mechanisms: null` means
+    // "everything registered", which is the wording that put the impossible
+    // option in front of a user without anybody naming it.
+    test('and a policy that names nothing does not pick it up', () async {
+      initializeReflection();
+      TomBean.resetBeanContext();
+      Tom2FARegistry.reset();
+
+      final decision = await TomRole2FAPolicy(
+        defaultRequirement: Tom2FARequirement.required,
+      ).decideFor(contextFor());
+
+      expect(
+        decision.allowedMechanisms,
+        contains(TomTotp2FAService.mechanismType),
+        reason: 'a mechanism that needs nothing is still picked up',
+      );
+      expect(
+        decision.allowedMechanisms,
+        isNot(contains(TomEmailCode2FAService.mechanismType)),
+      );
+      expect(
+        decision.allowedMechanisms,
+        isNot(contains(TomSmsCode2FAService.mechanismType)),
+      );
+    });
 
     test('a decision cannot be edited after the policy made it', () async {
       final decision = await const TomPrincipalFlag2FAPolicy().decideFor(

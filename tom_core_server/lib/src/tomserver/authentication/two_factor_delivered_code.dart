@@ -92,8 +92,15 @@ import 'two_factor_enrolment.dart';
 /// subclass needs a no-argument constructor and must resolve its collaborators
 /// (the messaging service, the enrolment store) at call time rather than in its
 /// constructor.
-abstract class TomDeliveredCode2FAService
-    implements Tom2FAService, Tom2FAEnrolmentSupport {
+///
+/// [S] is the delivery service the channel sends through, named as a type
+/// parameter so [requireDeliveryService] hands the subclass its own service
+/// back without a cast. It is also what makes this mechanism shape a
+/// [Tom2FAPrerequisite]: a code mechanism with nothing to send through cannot
+/// be offered, and that has to be answerable at registration rather than
+/// discovered at the challenge.
+abstract class TomDeliveredCode2FAService<S extends Object>
+    implements Tom2FAService, Tom2FAEnrolmentSupport, Tom2FAPrerequisite {
   /// The key the destination is filed under in [Tom2FAEnrolment.secretData] and
   /// in [Tom2FAEnrolmentOffer.enrolmentData].
   static const String destinationKey = 'destination';
@@ -164,6 +171,48 @@ abstract class TomDeliveredCode2FAService
   /// inbox to open — and shown to whoever holds the interim token, which is why
   /// it is a mask and not the address.
   String maskDestination(String destination);
+
+  /// The service this adaptor sends through, or `null` when the deployment
+  /// installed none.
+  ///
+  /// Resolved per call rather than held, for the reason the class dartdoc gives:
+  /// the adaptor is constructed by the registry before a deployment has
+  /// necessarily finished installing its beans, so a service captured in a
+  /// field would be captured as `null` and stay that way.
+  S? resolveDeliveryService();
+
+  /// The bean type [resolveDeliveryService] looks for.
+  ///
+  /// A [Type] rather than a string so the diagnostics survive a rename: every
+  /// message that has to tell an operator what to install interpolates this.
+  Type get deliveryServiceType;
+
+  /// Nothing, unless this deployment installed no [deliveryServiceType] — in
+  /// which case this adaptor could accept a challenge and send no code.
+  @override
+  String? get unmetPrerequisite => resolveDeliveryService() == null
+      ? 'no $deliveryServiceType is installed, so no "$type" code could be sent'
+      : null;
+
+  /// The delivery service, or a [Tom2FAException] naming what is missing.
+  ///
+  /// Reached only when the prerequisite was bypassed — an adaptor registered by
+  /// hand, or a service uninstalled after the scan. A wiring fault either way,
+  /// which is why it is a [Tom2FAException]: not client-throwable, so the
+  /// caller learns only that the login failed while the operator gets a logged,
+  /// named cause.
+  S requireDeliveryService() {
+    final service = resolveDeliveryService();
+    if (service == null) {
+      throw Tom2FAException(
+        'authentication.2fa.$type.no_service',
+        'Mechanism "$type" is registered but no $deliveryServiceType is '
+            'installed, so no code can be sent.',
+        autoLog: true,
+      );
+    }
+    return service;
+  }
 
   /// Sends [code] to [destination] through this adaptor's channel.
   ///
@@ -545,7 +594,8 @@ abstract class TomDeliveredCode2FAService
 /// to [TomUser.email].
 @tomReflector
 @Tom2FAAdaptor(TomEmailCode2FAService.mechanismType)
-class TomEmailCode2FAService extends TomDeliveredCode2FAService {
+class TomEmailCode2FAService
+    extends TomDeliveredCode2FAService<TomEmailService> {
   /// The mechanism key this adaptor answers to.
   static const String mechanismType = 'email';
 
@@ -619,6 +669,12 @@ class TomEmailCode2FAService extends TomDeliveredCode2FAService {
   String maskDestination(String destination) => maskEmailAddress(destination);
 
   @override
+  TomEmailService? resolveDeliveryService() => TomEmailService.resolve();
+
+  @override
+  Type get deliveryServiceType => TomEmailService;
+
+  @override
   Future<void> deliver(
     Tom2FAContext context, {
     required String destination,
@@ -626,18 +682,7 @@ class TomEmailCode2FAService extends TomDeliveredCode2FAService {
     required String templateKey,
     required Duration validity,
   }) async {
-    final service = TomEmailService.resolve();
-    if (service == null) {
-      // A wiring fault, not a login outcome: [Tom2FAException] is not
-      // client-throwable, so the caller learns only that the login failed while
-      // the operator gets a logged, named cause.
-      throw Tom2FAException(
-        'authentication.2fa.email.no_service',
-        'Mechanism "$mechanismType" is registered but no TomEmailService is '
-            'installed, so no code can be sent.',
-        autoLog: true,
-      );
-    }
+    final service = requireDeliveryService();
     final user = context.principal.user;
     final name = [
       user.firstname,
@@ -703,7 +748,7 @@ class TomEmailCode2FAService extends TomDeliveredCode2FAService {
 /// seconds, and a one-time code should live no longer than it needs to.
 @tomReflector
 @Tom2FAAdaptor(TomSmsCode2FAService.mechanismType)
-class TomSmsCode2FAService extends TomDeliveredCode2FAService {
+class TomSmsCode2FAService extends TomDeliveredCode2FAService<TomSmsService> {
   /// The mechanism key this adaptor answers to.
   static const String mechanismType = 'sms';
 
@@ -768,6 +813,12 @@ class TomSmsCode2FAService extends TomDeliveredCode2FAService {
   String maskDestination(String destination) => maskPhoneNumber(destination);
 
   @override
+  TomSmsService? resolveDeliveryService() => TomSmsService.resolve();
+
+  @override
+  Type get deliveryServiceType => TomSmsService;
+
+  @override
   Future<void> deliver(
     Tom2FAContext context, {
     required String destination,
@@ -775,15 +826,7 @@ class TomSmsCode2FAService extends TomDeliveredCode2FAService {
     required String templateKey,
     required Duration validity,
   }) async {
-    final service = TomSmsService.resolve();
-    if (service == null) {
-      throw Tom2FAException(
-        'authentication.2fa.sms.no_service',
-        'Mechanism "$mechanismType" is registered but no TomSmsService is '
-            'installed, so no code can be sent.',
-        autoLog: true,
-      );
-    }
+    final service = requireDeliveryService();
     await service.deliverNow(
       TomSmsRequest(
         templateKey: templateKey,
