@@ -523,55 +523,28 @@ void main() {
   // Global Instance Tests
   // ===========================================================================
 
+  // The global is shared by the whole process and offers no unregister path,
+  // so anything registered on it here would still be registered when the last
+  // test in this file runs. That rules out exercising its behaviour: the tests
+  // would pay a permanent cost for coverage the groups above already provide
+  // against instances that get torn down.
+  //
+  // What remains is what only the global can be asked — that it exists with
+  // the right type, and that it ships in the state an application expects to
+  // find it in. Both are reads.
   group('tomShutdownCleanup (global instance)', () {
-    test('should be a TomShutdownCleanup instance', () {
-      // Assert
+    test('is a TomShutdownCleanup', () {
       expect(tomShutdownCleanup, isA<TomShutdownCleanup>());
     });
 
-    test('should be accessible and non-null', () {
-      // Assert
-      expect(tomShutdownCleanup, isNotNull);
-    });
-
-    test('should support addClosable method', () {
-      // Arrange
-      final closable = TestClosable();
-
-      // Act & Assert - should not throw
-      expect(() => tomShutdownCleanup.addClosable(closable), returnsNormally);
-    });
-
-    test('should support addDisposable method', () {
-      // Arrange
-      final disposable = TestDisposable();
-
-      // Act & Assert - should not throw
-      expect(
-        () => tomShutdownCleanup.addDisposable(disposable),
-        returnsNormally,
-      );
-    });
-
-    test('should support addSignalHandler method', () {
-      // Act & Assert - should not throw
-      expect(
-        () => tomShutdownCleanup.addSignalHandler((signal) {}),
-        returnsNormally,
-      );
-    });
-
-    test('should support addSignal method', () {
-      // Act & Assert - should not throw
-      expect(
-        () => tomShutdownCleanup.addSignal(ProcessSignal.sigterm),
-        returnsNormally,
-      );
-    });
-
-    test('should support start method', () {
-      // Act & Assert - should not throw
-      expect(() => tomShutdownCleanup.start(), returnsNormally);
+    test('ships ready to run: neither paused nor silent', () {
+      // These two fields are public and mutable, and the global is the one
+      // instance nobody constructs — so its defaults are whatever the field
+      // initializers say. A global that shipped paused would skip the
+      // signal-driven cleanup in every application that relies on it, and one
+      // that shipped silent would skip it without saying so.
+      expect(tomShutdownCleanup.paused, isFalse);
+      expect(tomShutdownCleanup.silent, isFalse);
     });
   });
 
