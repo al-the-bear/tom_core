@@ -448,6 +448,78 @@ void main() {
       );
       expect(result.status, TomAuditAnchorStatus.signatureInvalid);
     });
+
+    group('precedence when several checks fail at once', () {
+      // Every test above arranges for exactly one thing to be wrong, so none of
+      // them says which answer wins when two are. That is the interesting case
+      // in practice — a caller who passed the wrong writer usually gets a
+      // broken chain and a failing signature for free — and the answer is a
+      // promise `verifyAgainstAnchor` makes in its dartdoc: most specific
+      // first, writer then signature then chain then position. Pinning it here
+      // is what keeps that dartdoc from drifting back out of agreement with the
+      // code, which is exactly how it drifted the first time.
+      //
+      // One fixture fails writer, signature and chain simultaneously; each test
+      // withholds the argument that enables the highest-priority check, so the
+      // next answer down has to surface. Together they fix a total order rather
+      // than three unrelated facts.
+      late List<TomAuditEntry> damaged;
+      late TomAuditAnchor anchor;
+
+      setUp(() {
+        final entries = _chain(3);
+        // A gap: index 1 is missing, so the chain does not verify.
+        damaged = [entries[0], entries[2]];
+        anchor = _anchorAt(
+          entries,
+          writer: 'node-b',
+        ).signedWith(const _FakeSigner('retired'));
+      });
+
+      test('the wrong writer outranks a bad signature and a broken chain', () {
+        final result = verifyAgainstAnchor(
+          damaged,
+          anchor,
+          writer: 'node-a',
+          verifier: const _FakeVerifier({'current'}),
+        );
+        expect(result.status, TomAuditAnchorStatus.writerMismatch);
+        expect(result.isInconclusive, isTrue);
+        // The chain verification runs before any of the guards and is reported
+        // whichever guard fires, so the caller still learns the chain is
+        // damaged — they are simply not told that *instead* of being told they
+        // compared against the wrong chain.
+        expect(result.chain.isValid, isFalse);
+      });
+
+      test('a bad signature outranks a broken chain', () {
+        final result = verifyAgainstAnchor(
+          damaged,
+          anchor,
+          verifier: const _FakeVerifier({'current'}),
+        );
+        expect(result.status, TomAuditAnchorStatus.signatureInvalid);
+        expect(result.chain.isValid, isFalse);
+      });
+
+      test('a broken chain is what is left once the anchor is trusted', () {
+        final result = verifyAgainstAnchor(damaged, anchor, writer: 'node-b');
+        expect(result.status, TomAuditAnchorStatus.chainBroken);
+      });
+
+      test('a broken chain outranks the position checks', () {
+        // Without the damage this window would read as `truncated`: the anchor
+        // covers five entries and the window ends at index 2. A broken chain
+        // makes that reading meaningless, because the indices it is derived
+        // from are the ones under suspicion.
+        final entries = _chain(5);
+        final result = verifyAgainstAnchor([
+          entries[0],
+          entries[2],
+        ], _anchorAt(entries));
+        expect(result.status, TomAuditAnchorStatus.chainBroken);
+      });
+    });
   });
 
   group('RSA anchor signing', () {

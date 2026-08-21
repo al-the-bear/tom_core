@@ -298,6 +298,32 @@
 
 ### Documentation
 
+- **`verifyAgainstAnchor`'s dartdoc describes the order the code actually runs,
+  and tests now hold it there (tcinc347).** The comment said the checks are
+  ordered "by which failure stops meaning anything: a chain that is not
+  internally valid tells you nothing about an anchor" — chain first,
+  authenticity second. The code runs the reverse: writer, then signature, then
+  chain validity, then position. The implemented order is the better one and is
+  what stays; the prose was the outlier, and it disagreed with `doc/audit.md`'s
+  own account too.
+
+  The reason is *most specific answer first*. These conditions usually fail
+  together — an anchor for the wrong chain does not hash-match either — so
+  reporting the most specific one names the mistake that was made rather than a
+  consequence of it, and an operator told `writerMismatch` fixes the query
+  instead of hunting a rewrite that never happened. The chain verification is
+  still computed before any of the checks and is reported on
+  `TomAuditAnchorVerification.chain` whichever status wins, so short-circuiting
+  costs the caller precedence, never the chain result.
+
+  Nothing tested the precedence, which is how the comment drifted in the first
+  place: every existing test arranged for exactly one thing to be wrong. Four
+  tests now fail writer, signature and chain simultaneously and withhold one
+  argument at a time, fixing a total order rather than three isolated facts;
+  reordering the guards fails them. `doc/audit.md` and the API summary state the
+  order alongside the status table, where a reader meets the statuses without
+  being told that only one of them comes back.
+
 - **`doc/audit.md` gains a *Reads Are Not Audited* section, and the trail's
   library comment states the position outright (tcinc340).** Removing
   `includeReads` leaves a question the reader will still ask — "then how do I

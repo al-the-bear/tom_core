@@ -381,9 +381,19 @@ class TomAuditAnchorVerification {
 /// every comparison goes through [TomAuditEntry.index] rather than through an
 /// entry's offset in the list.
 ///
-/// The order of the checks is the order in which a failure stops meaning
-/// anything: a chain that is not internally valid tells you nothing about an
-/// anchor, and an anchor that is not authentic tells you nothing about a chain.
+/// The checks run in a fixed order — **writer, then signature, then chain
+/// validity, then position** — and that order is *most specific answer first*.
+/// Several of these conditions usually fail together: compare a window against
+/// an anchor for a different chain and the chain check fails too, because the
+/// hashes were never meant to line up. Reporting the most specific one names
+/// the mistake the caller actually made. A caller told `chainBroken` when the
+/// real problem is that they passed the wrong writer goes looking for tampering
+/// in a trail that is intact.
+///
+/// The chain verification itself is computed up front, before any of these
+/// checks, and is reported on [TomAuditAnchorVerification.chain] whichever one
+/// answers — so short-circuiting on a more specific status never costs the
+/// caller the chain result, only its precedence.
 ///
 /// Pass [writer] to assert the entries really are the chain the anchor names;
 /// pass [verifier] to require the anchor's signature. Omitting [verifier] checks

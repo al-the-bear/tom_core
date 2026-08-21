@@ -505,6 +505,16 @@ what an operator alert should key on, not the enum directly.
 | `beforeRetention` | inconclusive | the anchored position was pruned; nothing left to compare |
 | `writerMismatch` | inconclusive | the anchor describes a different chain |
 
+Only one status comes back, and these conditions routinely fail together — an
+anchor for the wrong chain will not hash-match either, so it fails the chain
+check as well. The checks therefore run in a fixed order, **writer, then
+signature, then chain validity, then position**, and the first failure is the
+one reported. The order is most-specific-first: it names the mistake that was
+actually made rather than a consequence of it, so an operator told
+`writerMismatch` fixes the query instead of investigating a rewrite that never
+happened. The chain's own verification is computed regardless and is always
+available on `TomAuditAnchorVerification.chain`, whichever status is returned.
+
 `signatureInvalid` counts as tampering because a forged anchor and a
 misconfigured key are indistinguishable from the verifier's side, and treating
 the ambiguity as "fine" means the check has silently stopped checking.
