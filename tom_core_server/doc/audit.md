@@ -31,20 +31,54 @@ remembering to ask.
 
 ## Overview
 
-| Type | Kind | Purpose |
-| ---- | ---- | ------- |
-| `TomAuditRecord` | class | One auditable action: actor, action, target, outcome, before/after |
-| `TomAuditActor` | class | Who acted — resolved from the `TomPrincipal`, or `SYSTEM` |
-| `TomAuditAction` / `TomAuditOutcome` | enums | `create`/`update`/`delete`/`read`/`execute`; `succeeded`/`failed`/`denied` |
-| `TomAudited` | annotation | The *declaration*: opt an endpoint or entity in, out, or redact fields |
-| `TomAuditPolicy` | class | The resolved effective policy for one entity type |
-| `TomAuditTrail` | class | The static facade the chokepoints call |
-| `TomAuditSink` | abstract class | Where entries go |
-| `TomMemoryAuditSink` / `TomFileAuditSink` | classes | Bounded in-memory sink; append-only rotating file sink |
-| `TomSqlAuditSink` | class | One row per entry in a `TomDataSource`, with row-prefix retention |
-| `TomAuditWriteOnceCheck` | class | What a deployment's audit table actually permits, as observed |
-| `TomAuditEntry` | class | A record plus its position in the hash chain |
-| `TomAuditChainVerification` | class | The result of verifying a chain |
+The module has **four layers**, and every type belongs to exactly one. Each
+layer answers a different question, and the questions are worth reading in
+order, because each one only arises once the previous is settled:
+
+| Layer | The question it answers |
+| ----- | ----------------------- |
+| **Record** | What is written down? |
+| **Trail** | When is it written down, and what triggers it? |
+| **Sink** | Where does it go, and how is it made tamper-evident? |
+| **Anchor** | How do we know the *whole* store was not rewritten? |
+
+The last one is the layer a reader is least likely to know they need. A hash
+chain proves that nobody edited an entry *within* the trail it is stored in,
+but a forger who rewrites the chain from the edit onwards — or truncates its
+end — leaves something internally consistent; see [what the chain alone cannot
+see](#what-the-chain-alone-cannot-see). Only a claim about the head, published
+where the audited server cannot reach it, closes that, which is why anchoring
+is a peer of the other three layers rather than an option on the sink.
+
+| Layer | Type | Kind | Purpose |
+| ----- | ---- | ---- | ------- |
+| Record | `TomAuditRecord` | class | One auditable action: actor, action, target, outcome, before/after |
+| Record | `TomAuditActor` | class | Who acted — resolved from the `TomPrincipal`, or `SYSTEM` |
+| Record | `TomAuditAction` / `TomAuditOutcome` | enums | `create`/`update`/`delete`/`read`/`execute`; `succeeded`/`failed`/`denied` |
+| Record | `TomAuditRecordIdGenerator` | class | Issues the record ids; fixed-width, so a string sort is a write-order sort |
+| Trail | `TomAuditTrail` | class | The static facade the chokepoints call |
+| Trail | `TomAudited` | annotation | The *declaration*: opt an endpoint or entity in, out, or redact fields |
+| Trail | `TomAuditPolicy` / `tomAuditRedactedPlaceholder` | class / constant | The resolved effective policy for one entity type, and what a redacted value reads as |
+| Trail | `TomAuditBypass` | class | The zone marker behind `runUnaudited`, so the trail's own writes do not audit themselves |
+| Trail | `auditDiff` | function | The changed fields only, as the narrowed before/after pair a record carries |
+| Sink | `TomAuditSink` | abstract class | Where entries go |
+| Sink | `TomAuditEntry` | class | A record plus its position in the hash chain |
+| Sink | `TomMemoryAuditSink` / `TomFileAuditSink` | classes | Bounded in-memory sink; append-only rotating file sink |
+| Sink | `TomSqlAuditSink` | class | One row per entry in a `TomDataSource`, with row-prefix retention |
+| Sink | `verifyAuditChain` / `TomAuditChainVerification` | function / class | Verifying a chain, and the result of doing so |
+| Sink | `parseAuditLines` / `tomAuditGenesisHash` | function / constant | Reading JSON-Lines storage back; the sixty-four zeros a chain starts from |
+| Sink | `auditTrailTable` / `auditTrailTableDdl` / `defaultAuditTrailTable` | functions / constant | The relational trail's schema, declared once and derived from |
+| Sink | `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` | functions | The optional database-side guards that refuse `UPDATE` / `DELETE` |
+| Sink | `TomAuditWriteOnceCheck` | class | What a deployment's audit table actually permits, as observed |
+| Sink | `TomAuditTrailRow` / `TomAuditHeadRow` / `TomAuditSeqRow` / `TomAuditTriggerRow` | classes | The reflected row shapes `TomSqlAuditSink` reads through |
+| Sink | `TomAuditException` | class | A sink that could not store a record |
+| Anchor | `TomAuditAnchor` | class | A claim about where one chain stood: `writer`, `entryCount`, `headHash`, `createdAt` |
+| Anchor | `verifyAgainstAnchor` / `TomAuditAnchorVerification` / `TomAuditAnchorStatus` | function / classes | Checking a chain against an anchor, and what the answer means |
+| Anchor | `TomAuditAnchorSigner` / `TomAuditAnchorVerifier` | abstract classes | The signing seam — the key material is the deployment's |
+| Anchor | `TomRsaAuditAnchorSigner` / `TomRsaAuditAnchorVerifier` | classes | The shipped RSA implementation of that seam |
+| Anchor | `TomAuditAnchorStore` | abstract class | An append-only archive of published anchors, kept where the audited server cannot rewrite it |
+| Anchor | `TomMemoryAuditAnchorStore` / `TomFileAuditAnchorStore` | classes | The test store; the local-file store |
+| Anchor | `TomAuditAnchorPublisher` | class | Publishes anchors for a sink's chain on a timer — per node, not per cluster |
 
 ## Audit Is Not Logging
 
@@ -822,19 +856,27 @@ and therefore auditable in its own right.
 
 - **`TomAuditRecord` / `TomAuditActor` / `TomAuditAction` / `TomAuditOutcome`**
   — the record shape and its JSON round-trip.
+- **`TomAuditRecordIdGenerator`** — `next`; the record ids, fixed-width so that
+  sorting them sorts by write order.
 - **`TomAudited` / `TomAuditPolicy` / `tomAuditRedactedPlaceholder`** — the
   declaration and its resolved form.
 - **`TomAuditTrail`** — `install` / `uninstall` / `record` / `recordMutation` /
   `recordAction` / `policyFor` / `runUnaudited`; the only thing the chokepoints
   touch.
+- **`TomAuditBypass`** — the zone marker `runUnaudited` installs.
 - **`auditDiff`** — computes the changed-fields-only before/after pair.
 - **`TomAuditSink` / `TomMemoryAuditSink` / `TomFileAuditSink` /
   `TomSqlAuditSink`** — storage.
-- **`TomAuditWriteOnceCheck` / `auditTrailTableDdl` /
-  `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl`** — the
-  relational trail's schema and its write-once probe.
+- **`TomAuditWriteOnceCheck` / `auditTrailTable` / `auditTrailTableDdl` /
+  `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` /
+  `defaultAuditTrailTable`** — the relational trail's schema, declared once, and
+  its write-once probe.
+- **`TomAuditTrailRow` / `TomAuditHeadRow` / `TomAuditSeqRow` /
+  `TomAuditTriggerRow`** — the reflected row shapes `TomSqlAuditSink` reads
+  through.
 - **`TomAuditEntry` / `verifyAuditChain` / `parseAuditLines` /
-  `TomAuditChainVerification`** — the hash chain and its verification.
+  `TomAuditChainVerification` / `tomAuditGenesisHash`** — the hash chain and its
+  verification.
 - **`TomAuditAnchor` / `verifyAgainstAnchor` / `TomAuditAnchorStatus` /
   `TomAuditAnchorVerification`** — the external anchor and what it proves.
 - **`TomAuditAnchorSigner` / `TomAuditAnchorVerifier` /
