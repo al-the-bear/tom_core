@@ -187,6 +187,7 @@ package lives in that package's own `tool/`.
 | ---- | ------------ |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits every `## Table of Contents` in the tree against its own document |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
+| [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 
 ```bash
 python3 tool/check_doc_tocs.py                # the whole repository
@@ -216,6 +217,21 @@ no longer exist, files on disk the table omits, and opening claims that
 disagree with the directory. `--fix` writes the measurements back; the two
 faults it leaves alone are adding and retiring rows, because each needs a
 sentence saying what the file carries.
+
+```bash
+python3 tool/check_dartdoc_refs.py                 # the whole repository
+python3 tool/check_dartdoc_refs.py tom_core_server # one subtree
+```
+
+A `[name]` in a `///` comment renders as a link when it resolves and as plain
+text when it does not, so renaming a member turns every reference to it into
+prose without anything failing. The obvious detector, the `comment_references`
+lint, is the wrong tool here: it flags 150-odd *correct* references to real
+classes in sibling files, and satisfying it would mean adding imports that exist
+only for prose, several of them cycles. This check takes the part of the problem
+that has no such ambiguity — a private name can only ever resolve inside its own
+library, so whether it exists is answerable from that library alone. That is
+also exactly the shape a rename leaves behind.
 
 ## License
 

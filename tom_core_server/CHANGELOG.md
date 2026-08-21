@@ -333,6 +333,21 @@
 
 ### Documentation
 
+- **`TomFileAuditSink.files` points at `_recoverHead`, a method that exists
+  (tcinc349).** The paragraph explaining why the file order is computed rather
+  than read off the names listed the readers that depend on it, and named one of
+  them `[_recoverHeadHash]`. There is no such member. The square brackets make
+  it a dartdoc reference, so it resolved to nothing and rendered as plain text
+  — in the one paragraph covering the module's least obvious behaviour, that
+  construction recovers both the head hash and the entry count from the newest
+  existing file.
+
+  A repository-wide check now holds this: `tool/check_dartdoc_refs.py` reports
+  dartdoc references to private names that exist nowhere in their library, and
+  it found two more of the same defect in `tom_flutter_ui`. Deliberately narrow
+  — see the repository README for why the `comment_references` lint is not the
+  tool for this, and what it would cost to satisfy.
+
 - **`verifyAgainstAnchor`'s dartdoc describes the order the code actually runs,
   and tests now hold it there (tcinc347).** The comment said the checks are
   ordered "by which failure stops meaning anything: a chain that is not

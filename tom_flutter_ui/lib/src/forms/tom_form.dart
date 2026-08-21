@@ -45,8 +45,8 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// detect it has an ancestor in the form tree even when the user
   /// didn't pass an explicit [parentForm] — required so a user-initiated
   /// `save()` on a nested form can know it must NOT clobber the outer
-  /// form's transactional baseline (see [hasFormAncestor] /
-  /// [_resolveCommitBaselines]).
+  /// form's transactional baseline (see [hasFormAncestor], and the
+  /// nested-save semantics documented on [save]).
   TomForm? _enclosingForm;
 
   /// Records that this form is owned by a list-form (or other child

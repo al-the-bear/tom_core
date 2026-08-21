@@ -1,23 +1,23 @@
 /// Phase 6 — `TomErrorBoundary`.
 ///
-/// Catches widget-build errors raised inside [child] (and any descendant
-/// builder error reported through the [FlutterError.onError] hook) and
-/// renders a fallback UI instead of letting the error propagate up to
-/// the global error widget.
+/// Catches widget-build errors raised anywhere in the guarded subtree and
+/// renders a fallback UI instead of letting them reach the global error
+/// widget.
 ///
 /// Today every demo re-implements a version of this — Phase 6 promotes
 /// it to a first-class framework piece.
 ///
-/// The widget intercepts errors at two layers:
-///
-/// 1. The [FlutterError.onError] hook is wrapped while the boundary is
-///    mounted. Errors flagged with the boundary's [_TomErrorBoundaryMarker]
-///    library are caught; everything else is forwarded to the previous
-///    handler (so global error reporting still works).
-/// 2. The [child] is wrapped in an [ErrorWidget.builder] that captures
-///    framework-time build errors that produce [ErrorWidget] in release
-///    mode but throw in debug; the overlay is repainted via
-///    [setState].
+/// Interception is one mechanism, and the indirection in it is what makes
+/// *nested* boundaries correct. [ErrorWidget.builder] is global, so it cannot
+/// belong to a boundary: with several mounted, whichever installed last would
+/// own the hook and would receive every subtree's errors. Instead the builder
+/// is installed once — ref-counted across all mounted boundaries, so the
+/// original is preserved for the lifetime of the outermost one — and it
+/// returns a reporter widget at the failing slot. That reporter is built *in
+/// the failing subtree*, so it can walk up the element tree to the nearest
+/// enclosing boundary and hand the error to that one. Mount order stops
+/// mattering, and a list of dozens of boundaries contains each row's failure
+/// to its own row.
 ///
 /// The fallback UI is configurable via [fallbackBuilder]; when omitted,
 /// a Material-themed error card is shown.

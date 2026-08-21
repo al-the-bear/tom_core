@@ -597,7 +597,7 @@ class TomFileAuditSink implements TomAuditSink {
   /// Ordered by day and then by rotation sequence, with the day's *current*
   /// (unrotated) file last for its day, because it is the newest. The order is
   /// computed rather than left to the file names: everything that reads a trail
-  /// back — [readAll], [verify], [_recoverHeadHash] and the retention pass —
+  /// back — [readAll], [verify], [_recoverHead] and the retention pass —
   /// depends on this being write order, and inferring it from a lexicographic
   /// name sort would make that guarantee hostage to the naming scheme.
   List<File> get files {

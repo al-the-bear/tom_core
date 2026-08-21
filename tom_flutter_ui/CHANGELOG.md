@@ -42,6 +42,23 @@
   a mode had to import `tom_core_kernel` as well. Importing `tom_flutter_ui` is
   now sufficient for the group type and its mode enum together.
 
+### Documentation
+
+- **`TomErrorBoundary`'s library comment describes the interception the widget
+  performs (tcinc349).** It claimed two layers, the first of which was a wrapped
+  `FlutterError.onError` hook catching errors "flagged with the boundary's
+  `_TomErrorBoundaryMarker`". `FlutterError.onError` is never assigned anywhere
+  in the file and no marker type exists — the dangling reference was the visible
+  end of a paragraph describing a mechanism that had been replaced. There is one
+  layer: a ref-counted global `ErrorWidget.builder` returning a reporter widget
+  that walks the element tree to its nearest enclosing boundary, which is what
+  makes nested boundaries route correctly regardless of mount order. That is now
+  what the comment says, including why the indirection is there.
+- **`TomForm._enclosingForm` points somewhere real.** It referred the reader to
+  `[_resolveCommitBaselines]` for the nested-save rule; no such member exists,
+  and the rule lives in `save`'s "Nested-save semantics" paragraph, which the
+  comment now names.
+
 ## 1.1.0
 
 Adapts the widget set to the Flutter 3.44 scroll/reorder API changes. **This is
