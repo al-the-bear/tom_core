@@ -343,6 +343,38 @@ List<TomAuditEntry> parseAuditLines(Iterable<String> lines) {
 /// allowed to look like it succeeded — so a sink that swallows its own storage
 /// errors defeats the guarantee for everything above it. Failing means
 /// completing the returned future with an error, in every case; see [write].
+///
+/// ### Reading a trail back is deliberately not part of this interface
+///
+/// A sink is a **writer**. [write], [headHash], [entryCount], [close] and
+/// [flushAndClose] are the whole of what a caller may do to an arbitrary sink;
+/// reading entries back, or verifying them, is not among them. That is a
+/// decision rather than an oversight, and this paragraph exists because an
+/// omission nobody wrote down reads like one.
+///
+/// Each implementation exposes its own read-back instead, in the shape its
+/// storage actually has: [TomMemoryAuditSink.verify] and
+/// [TomFileAuditSink.readAll] / [TomFileAuditSink.verify] are synchronous
+/// because the entries are already in memory or in a local file, while
+/// `TomSqlAuditSink.readAll` / `TomSqlAuditSink.verify` are asynchronous
+/// because they are a query. Hoisting those onto one signature would have to
+/// pick the asynchronous shape for all three, and would advertise `readAll()`
+/// on a trail table of ten million rows as though it were a reasonable thing
+/// to call.
+///
+/// Nothing is lost by leaving it out, because the *analysis* is already
+/// storage-neutral: [verifyAuditChain] and `verifyAgainstAnchor` take a
+/// `List<TomAuditEntry>`, not a sink. An operator reads the trail back the way
+/// that particular storage is read — they know which one they deployed — and
+/// hands the entries to the same checker whichever sink produced them.
+///
+/// What *is* uniform is the pair an anchor needs. [headHash] and [entryCount]
+/// are on this interface precisely because [TomAuditAnchor.of] must work
+/// against whatever sink happens to be installed without knowing its concrete
+/// type; that is the one cross-sink read the module performs, and it is
+/// served. A reporting API over stored trails — queries by actor, target or
+/// time window — is a deferred feature of the module, not something this
+/// interface is quietly waiting to grow.
 abstract class TomAuditSink implements TomClosable {
   /// Persists [record], returning the entry as stored.
   ///
@@ -470,6 +502,9 @@ class TomMemoryAuditSink implements TomAuditSink {
   /// When entries have been dropped the check starts from the oldest retained
   /// entry's own link rather than from genesis, so a bounded sink reports the
   /// integrity of what it still has instead of a false break at the front.
+  ///
+  /// Synchronous, and **not** a [TomAuditSink] member: read-back is per
+  /// implementation by design, for the reasons set out on that interface.
   TomAuditChainVerification verify() => verifyAuditChain(
     _entries,
     startHash: _entries.isEmpty ? _headHash : _entries.first.previousHash,
@@ -659,6 +694,9 @@ class TomFileAuditSink implements TomAuditSink {
   }
 
   /// Reads every retained entry, oldest first.
+  ///
+  /// Synchronous, and **not** a [TomAuditSink] member: read-back is per
+  /// implementation by design, for the reasons set out on that interface.
   List<TomAuditEntry> readAll() => [
     for (final file in files) ...parseAuditLines(file.readAsLinesSync()),
   ];
@@ -668,6 +706,8 @@ class TomFileAuditSink implements TomAuditSink {
   /// Retention may have removed the head of the chain, so verification starts
   /// from what survives — the point is to detect edits within the retained
   /// window, not to complain about a deletion the policy asked for.
+  ///
+  /// Synchronous, like [readAll], and not on [TomAuditSink] either.
   TomAuditChainVerification verify() {
     final entries = readAll();
     return verifyAuditChain(

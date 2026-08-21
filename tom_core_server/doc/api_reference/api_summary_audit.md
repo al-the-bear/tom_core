@@ -433,6 +433,22 @@ none of them sits inside a `try`. Implementations mark `write` `async` rather
 than raising from the synchronous part of the body, which puts the rule in the
 declaration where a guard added later inherits it.
 
+**Reading a trail back is deliberately not part of this interface.** A sink is
+a *writer*, and the members below — `write`, `headHash`, `entryCount`, `close`,
+`flushAndClose` — are the whole of what a caller may do to an arbitrary sink.
+Each implementation exposes its own read-back in the shape
+its storage has — `TomMemoryAuditSink.verify` and `TomFileAuditSink.readAll` /
+`verify` synchronously, `TomSqlAuditSink.readAll` / `verify` asynchronously
+because they are a query — and hoisting those onto one signature would impose
+the asynchronous shape on all three while advertising `readAll()` on a
+ten-million-row trail table as a reasonable call. Nothing is lost, because the
+analysis is storage-neutral already: `verifyAuditChain` and
+`verifyAgainstAnchor` take a `List<TomAuditEntry>`, not a sink. What *is*
+uniform is the pair an anchor needs — `headHash` and `entryCount` are here
+precisely because `TomAuditAnchor.of` must work against whatever sink is
+installed. A reporting API over stored trails is a deferred feature of the
+module, not a gap this interface is waiting to grow into.
+
 - **Implements:** `TomClosable` (abstract)
 
 #### Properties
@@ -481,7 +497,7 @@ TomMemoryAuditSink({int maxEntries = 1000})
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Chains `record` onto the head, appends it, and drops the oldest entries once `maxEntries` is exceeded. |
-| `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries, starting from the oldest retained link rather than genesis so a bounded sink does not report a false break at the front. |
+| `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries, starting from the oldest retained link rather than genesis so a bounded sink does not report a false break at the front. Synchronous, and not a `TomAuditSink` member — read-back is per implementation by design. |
 | `clear` | `void clear()` | Discards every retained entry and resets the chain. Test-support only. |
 | `close` | `void close()` | *(override)* No-op. |
 | `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Nothing to drain — `write` stores the entry before its future completes and there is no queue behind it. |
@@ -531,8 +547,8 @@ TomFileAuditSink({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `readAll` | `List<TomAuditEntry> readAll()` | Reads every retained entry across all files, oldest first. |
-| `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries starting from the oldest retained link, so a retention deletion is not reported as a break. |
+| `readAll` | `List<TomAuditEntry> readAll()` | Reads every retained entry across all files, oldest first. Synchronous, and not a `TomAuditSink` member — read-back is per implementation by design. |
+| `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries starting from the oldest retained link, so a retention deletion is not reported as a break. Synchronous, like `readAll`, and not on `TomAuditSink` either. |
 | `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Appends one JSON line to the current UTC day's file, opening the next day's file when the day has turned over — which is not a rotation, so no sequence number is spent — rotating on overflow and applying retention as needed. Writes are serialised through an internal queue, and each is flushed before it returns. The returned future carries `audit.sink.closed` when the sink is closed and `audit.sink.write_failed` when storage refused it — once each, and never as a throw from the call. A failed write drops the file handle, so the sink resumes recording as soon as the path it died on works again. |
 | `close` | `void close()` | *(override)* Closes the file handle. Every `write` that has *returned* already flushed, so nothing completed is at risk; a record still in the queue is refused with `audit.sink.closed`, because `TomClosable` requires this method to return synchronously and no synchronous method can wait for a queue. The refusal is also what keeps a queued record from reopening the file the sink has just closed. |
 | `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Closes the sink to new records, waits for the queued ones to be written and flushed, then closes the handle. The route that stores what `close` has to refuse. |
@@ -1062,8 +1078,8 @@ start-up than on the first audited action.
 | ------ | --------- | ----------- |
 | `open` | `Future<void> open()` | Provisions the table, runs the write-once probe, and recovers the chain head. Idempotent and awaited by every write; a failed open clears the memo so the next write retries. Warns on a rewritable table, or throws `TomAuditException` when `requireWriteOnce` is set. |
 | `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Inserts one row, serialised through an internal queue so the `(writer, previous_hash)` constraint never has to fire. The returned future carries a `TomAuditException` when the sink is closed or the insert fails; the call itself does not throw. |
-| `readAll` | `Future<List<TomAuditEntry>> readAll()` | Reads every retained entry of this writer's chain, ordered by `seq`, oldest first. Throws `TomAuditException` on a row whose record text will not parse. |
-| `verify` | `Future<TomAuditChainVerification> verify()` | Verifies the retained entries starting from the oldest retained link, so a retention sweep is not reported as a break. |
+| `readAll` | `Future<List<TomAuditEntry>> readAll()` | Reads every retained entry of this writer's chain, ordered by `seq`, oldest first. Throws `TomAuditException` on a row whose record text will not parse. Asynchronous because it is a query, and not a `TomAuditSink` member — read-back is per implementation by design. Reads *every* row, so prefer a bounded window on a large trail. |
+| `verify` | `Future<TomAuditChainVerification> verify()` | Verifies the retained entries starting from the oldest retained link, so a retention sweep is not reported as a break. Asynchronous, like `readAll` whose whole result it consumes, and not on `TomAuditSink` either. |
 | `purgeBefore` | `Future<int> purgeBefore(DateTime before)` | Deletes this writer's entries recorded before `before`, returning the row count. The cutoff is resolved to a *sequence* boundary first, because deleting by timestamp could punch a hole under clock skew. |
 | `purgeToMaxEntries` | `Future<int> purgeToMaxEntries(int maxEntries)` | Keeps the newest `maxEntries` entries of this writer's chain and deletes the prefix in front of them, returning the row count. Throws `TomAuditException` for a negative limit. |
 | `verifyWriteOnce` | `Future<TomAuditWriteOnceCheck> verifyWriteOnce()` | Observes what the connected user and the table's `BEFORE` triggers actually permit. Called by `open`; exposed so a health check or operator tool can ask without opening a second sink. |

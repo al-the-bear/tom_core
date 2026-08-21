@@ -124,6 +124,40 @@ void main() {
       expect(anchor.headHash, tomAuditGenesisHash);
     });
 
+    test(
+      'anchors any installed sink through the interface, no downcast',
+      () async {
+        // Pins the claim TomAuditSink's dartdoc rests on. Read-back is
+        // deliberately *not* on that interface, and the justification is that
+        // nothing needs it there: the one cross-sink read the module performs is
+        // this one, and it wants only headHash and entryCount. The sinks below
+        // are held at the interface type on purpose -- if either member is ever
+        // moved off TomAuditSink, this test stops compiling, which is a louder
+        // failure than the prose quietly becoming false.
+        final directory = Directory.systemTemp.createTempSync(
+          'audit_anchor_if',
+        );
+        addTearDown(() => directory.deleteSync(recursive: true));
+
+        final sinks = <String, TomAuditSink>{
+          'memory': TomMemoryAuditSink(),
+          'file': TomFileAuditSink(directory: directory),
+        };
+
+        for (final MapEntry(key: name, value: sink) in sinks.entries) {
+          await sink.write(_record('r0'));
+          await sink.write(_record('r1'));
+
+          final anchor = TomAuditAnchor.of(sink, writer: 'node-a');
+          expect(anchor.entryCount, 2, reason: name);
+          expect(anchor.headHash, sink.headHash, reason: name);
+          expect(anchor.headHash, isNot(tomAuditGenesisHash), reason: name);
+
+          await sink.flushAndClose();
+        }
+      },
+    );
+
     test('round-trips through JSON, signature and all', () {
       final anchor = _anchorAt(_chain(3)).signedWith(const _FakeSigner('k1'));
       final back = TomAuditAnchor.fromJson(

@@ -388,6 +388,12 @@ class TomSqlAuditSink implements TomAuditSink {
   }
 
   /// Reads every retained entry of this writer's chain, oldest first.
+  ///
+  /// Asynchronous — it is a query — and **not** a [TomAuditSink] member:
+  /// read-back is per implementation by design, for the reasons set out on
+  /// that interface. Note what this reads: *every* row of the chain, so on a
+  /// large trail prefer [purgeBefore]-bounded windows or a direct query to
+  /// calling it on a routine schedule.
   Future<List<TomAuditEntry>> readAll() async {
     await open();
     final rows = await datasource.executeQuery<TomAuditTrailRow>(
@@ -403,6 +409,9 @@ class TomSqlAuditSink implements TomAuditSink {
   /// Retention may have removed the head of the chain, so verification starts
   /// from what survives — the point is to detect edits within the retained
   /// window, not to complain about a deletion the policy asked for.
+  ///
+  /// Asynchronous, like [readAll] whose whole result it consumes, and not on
+  /// [TomAuditSink] either.
   Future<TomAuditChainVerification> verify() async {
     final entries = await readAll();
     return verifyAuditChain(

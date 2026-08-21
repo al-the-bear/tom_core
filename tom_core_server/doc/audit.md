@@ -252,6 +252,35 @@ retention has deleted the file that held one — a reused number would let a new
 file take an older file's name, and read-back order would stop matching write
 order.
 
+### Reading a trail back is per sink, deliberately
+
+`TomAuditSink` declares a writer's surface — `write`, `headHash`, `entryCount`,
+`close`, `flushAndClose` — and reading entries back is not among them. Each
+implementation exposes read-back separately instead, in the shape its storage
+actually has:
+
+| Sink | Read-back | Verification |
+| --- | --- | --- |
+| `TomMemoryAuditSink` | `entries`, `records` (getters) | `TomAuditChainVerification verify()` |
+| `TomFileAuditSink` | `List<TomAuditEntry> readAll()` | `TomAuditChainVerification verify()` |
+| `TomSqlAuditSink` | `Future<List<TomAuditEntry>> readAll()` | `Future<TomAuditChainVerification> verify()` |
+
+So `verify()` is synchronous on two sinks and asynchronous on the third, and
+that is not an inconsistency to be tidied away. Uniforming the three would have
+to pick the asynchronous signature for all of them, and would put `readAll()`
+on the interface — advertising a whole-table read of a ten-million-row trail as
+an ordinary call.
+
+Nothing is lost by the omission, because the analysis is storage-neutral
+already: `verifyAuditChain` and `verifyAgainstAnchor` take a
+`List<TomAuditEntry>`, not a sink. An operator reads the trail back the way
+their storage is read, and hands the entries to the same checker whichever sink
+produced them.
+
+The one cross-sink read the module itself performs *is* on the interface:
+`TomAuditAnchor.of(sink, ...)` needs `headHash` and `entryCount` from whatever
+sink is installed, without knowing its concrete type, and gets them.
+
 ## The Relational Sink
 
 ```dart
@@ -396,9 +425,14 @@ position in the chain counted from genesis, which is *not* the same number as
 its offset in whatever a reader happens to hold once retention has pruned a
 prefix.
 
-`verifyAuditChain` / `sink.verify()` return a `TomAuditChainVerification` naming
-the offset at which a chain first breaks, and distinguishing three failures
-because they mean different things:
+Each sink's own `verify()` is a convenience over one function — it reads that
+sink's entries back and calls `verifyAuditChain` on them — which is why its
+signature differs per sink; see [Reading a trail back is per
+sink](#reading-a-trail-back-is-per-sink-deliberately).
+
+`verifyAuditChain(entries)` returns a `TomAuditChainVerification` naming the
+offset at which a chain first breaks, and distinguishes three failures because
+they mean different things:
 
 | Detail | What happened |
 | --- | --- |
@@ -753,7 +787,14 @@ and therefore auditable in its own right.
 
 ## Not Yet Implemented
 
-- Query/export of the trail (overlaps CE-RP reporting — see `csex11`).
+- **An audit reporting API, and an application over it** — queries by actor,
+  target, outcome or time window, and export of the result (overlaps CE-RP
+  reporting — see `csex11`). This is the deferred feature that
+  [Reading a trail back is per
+  sink](#reading-a-trail-back-is-per-sink-deliberately) points at: a reporting
+  surface is where paged, filtered, storage-aware reads belong, not
+  `TomAuditSink`. Until it exists, an operator reads a trail back through the
+  concrete sink they deployed.
 - Anchor stores for specific external services (object storage with a
   deny-delete policy, a countersigning service). The `TomAuditAnchorStore` seam
   is here; the implementations are deployment-specific by nature.
