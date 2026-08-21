@@ -898,6 +898,17 @@ and therefore auditable in its own right.
 - Anchor stores for specific external services (object storage with a
   deny-delete policy, a countersigning service). The `TomAuditAnchorStore` seam
   is here; the implementations are deployment-specific by nature.
+- **Scheduled verification, and anywhere for a finding to go.**
+  `TomAuditAnchorPublisher` is the only periodic actor in the module: it
+  *writes* anchors on a timer and nothing reads them back. A divergence is
+  therefore detected when somebody runs `verifyAgainstAnchor`, and not
+  before — which, for the one attack anchoring exists to catch, can be months.
+  `TomAuditAnchorVerification` is likewise just a value returned to its caller,
+  so there is no seam a `diverged` status is routed through. The check itself
+  is shown under [Anchoring the Chain Head](#anchoring-the-chain-head); putting
+  it on a cadence, and deciding what a divergence should reach, is left
+  entirely to the deployment. Unlike the two items above, this one is an
+  omission rather than a deliberate seam.
 
 ## Dependencies
 
