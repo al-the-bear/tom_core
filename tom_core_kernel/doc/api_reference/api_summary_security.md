@@ -234,6 +234,13 @@ TomAccessControlInformation({
 Controls system capabilities independent of user rights — subscription-based
 limits and feature flags (enabled modules and quotas).
 
+The values come from the application's authentication service, on the principal
+it returns from a login, and from nowhere else; neither the kernel nor
+`tom_core_server` holds a subscription store. They travel in the **public** half
+of the JWT as the `subscription_enabledModules` / `subscription_quotas` claims,
+so they are a login-time snapshot and their figures are readable by whoever
+holds the token.
+
 #### Constructors
 
 ```dart

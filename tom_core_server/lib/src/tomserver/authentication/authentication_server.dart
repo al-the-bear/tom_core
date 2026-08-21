@@ -86,6 +86,23 @@ class TomAuthenticationData {
 /// throw a [LoginException]. The default implementation,
 /// [TomDummyAuthenticationService], accepts everything and is for scaffolding
 /// only.
+///
+/// ## The implementation is the only source of what the principal asserts
+///
+/// Everything the returned [TomPrincipal] carries is the implementation's
+/// answer: the identity and its numeric ids, the locale, the access-control
+/// information, and the client limits — [TomPrincipal.cli], the enabled modules
+/// and quotas the client's subscription grants. [TomAuthenticationServer]
+/// resolves none of it. It reads no subscription store and consults no
+/// environment; it encodes what it was handed into the tokens and stops there.
+/// So there is exactly one authority for what a client has bought, and it is
+/// the same one that decides what the user may do — which is what lets the two
+/// be checked against each other without asking which is more current.
+///
+/// The one exception is [TomPrincipal.timezone], which the server overwrites
+/// from the user's stored preference once the credential is accepted. It is an
+/// exception because it is a server-held *preference* rather than a fact about
+/// the identity being asserted; see `_applyStoredTimezone`.
 @tomReflector
 abstract class TomAuthenticationService {
   /// Authenticates [authData], returning the principal and its access rights,
@@ -384,7 +401,10 @@ class TomAuthenticationServer {
       timezone: m.clientTimezone,
     );
     try {
-      // TODO: is this where we get the principals cli from? Or is this obtained from the environment?
+      // This call is where the principal's client limits come from — the
+      // subscription rides on the principal the service returns, and the server
+      // adds nothing to it. See the TomAuthenticationService contract above for
+      // why that is the whole answer and not merely the current behaviour.
       var authInfo =
           await (guestLogin
                   ? globalSettingGuestAuthenticationService

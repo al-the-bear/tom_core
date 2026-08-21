@@ -55,7 +55,9 @@ TomPrincipal _principal(
   TomAuthenticationData a, {
   List<String> roles = const [],
   bool? authenticated,
+  TomClientLimitsInformation? cli,
 }) => TomPrincipal(
+  cli: cli,
   authenticated: authenticated ?? (a.username != 'GUEST'),
   context: {},
   requires2FA: false,
@@ -344,6 +346,72 @@ void main() {
         expect(authz.secretData!['roles'], contains('admin'));
       },
     );
+
+    // Where the principal's client limits come from was once an open question
+    // in the login path itself. These two pin the answer: the service is the
+    // only source, and the server neither invents a subscription nor drops the
+    // one it was handed.
+    test(
+      'the subscription the service put on the principal reaches the token',
+      () async {
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            _RecordingAuthService(
+              build: (a) => TomAuthenticationInfo(
+                _principal(
+                  a,
+                  cli: TomClientLimitsInformation(
+                    enabledModules: ['core', 'reporting'],
+                    quotas: {'api_calls': 1000},
+                  ),
+                ),
+                TomAccessControlDefinition(),
+              ),
+            );
+
+        final result = await TomAuthenticationServer().authenticatePass1(
+          _message(),
+        );
+
+        // Public half, deliberately: the quotas are readable by anyone holding
+        // the token, which is why they are a ceiling and not a secret.
+        final auth = TomClientJwtToken(
+          result.authenticationToken,
+          decrypt: false,
+        );
+        expect(auth.payload?['subscription_enabledModules'], [
+          'core',
+          'reporting',
+        ]);
+        expect(auth.payload?['subscription_quotas'], {'api_calls': 1000});
+
+        // And it survives the round-trip, so a pass that rebuilds the principal
+        // from its own interim token still knows what the client bought.
+        final rebuilt = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          auth,
+        );
+        expect(rebuilt.cli.enabledModules, ['core', 'reporting']);
+        expect(rebuilt.cli.quotas, {'api_calls': 1000});
+      },
+    );
+
+    test('the server invents no subscription of its own', () async {
+      TomAuthenticationServer
+          .globalSettingUserAuthenticationService = _RecordingAuthService(
+        build: (a) =>
+            TomAuthenticationInfo(_principal(a), TomAccessControlDefinition()),
+      );
+
+      final result = await TomAuthenticationServer().authenticatePass1(
+        _message(),
+      );
+
+      final auth = TomClientJwtToken(
+        result.authenticationToken,
+        decrypt: false,
+      );
+      expect(auth.payload?['subscription_enabledModules'], isEmpty);
+      expect(auth.payload?['subscription_quotas'], isEmpty);
+    });
 
     test('authenticatePass1 routes to the user service', () async {
       final userService = _RecordingAuthService(

@@ -138,6 +138,49 @@ class MyAuthService implements TomAuthenticationService {
 `application`, `process`, `client`) and *who* (`username`), plus the credential
 (`key`) and client locale (`language` / `country` / `timezone`).
 
+### Your service is the only source of what the principal asserts
+
+Everything the returned principal carries is your answer, and the server
+resolves none of it. That includes the part it is easy to assume the framework
+fills in: `principal.cli`, the client limits — the `enabledModules` and `quotas`
+the client's subscription grants. There is no subscription store in
+`tom_core_server` and no environment lookup behind it. If your service does not
+put the limits on the principal, the principal has none, and the tokens will say
+so.
+
+```dart
+final principal = TomPrincipal(
+  // ... identity, ids, locale ...
+  aci: TomAccessControlInformation(roles: user.roles),
+  cli: TomClientLimitsInformation(
+    enabledModules: subscription.modules,   // what the client bought
+    quotas: subscription.quotas,
+  ),
+);
+```
+
+This is deliberate rather than unfinished. The ACI says what this *user* may do
+and the CLI says what this *client* has bought; both must allow an action, so
+letting them be answered by two different authorities would raise the question
+of which one is more current at exactly the moment it must not be asked. One
+service resolves both, in one call, against one view of the account.
+
+Two consequences worth knowing before you rely on it. The limits are a
+**login-time snapshot** — they ride in the *public* half of the JWT as the
+`subscription_enabledModules` / `subscription_quotas` claims and are read back
+into `principal.cli` when a token is parsed, and there is no updater for them
+the way `updatePrincipal` can replace the ACI, so a subscription change takes
+effect on the user's next login. And because that half is public, the quota
+figures are readable by anyone holding the token: they are a ceiling to enforce
+against, not a secret. Nothing in the framework counts usage or refuses the
+1001st call — carrying the ceiling to where the application can read it is the
+whole of what the kernel does.
+
+The single exception to "your service is the only source" is
+`principal.timezone`, which the server overwrites from the user's stored
+preference once the credential is accepted, because that is a server-held
+preference rather than a fact about the identity being asserted.
+
 ## Wiring the Server
 
 Register the service(s) and (optionally) the JWT issuer through the static

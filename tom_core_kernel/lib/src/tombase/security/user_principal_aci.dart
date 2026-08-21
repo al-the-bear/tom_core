@@ -178,7 +178,22 @@ class TomAccessControlInformation {
 ///   // Allow API call
 /// }
 /// ```
-// TODO: determine where to get this from...
+///
+/// ## Where the values come from
+///
+/// The application's authentication service, on the principal it returns from a
+/// login, and from nowhere else — the same call that answers the
+/// [TomAccessControlInformation], so that what a client bought and what a user
+/// may do are decided together against one view of the account. Neither the
+/// kernel nor `tom_core_server` holds a subscription store or reads the
+/// environment for these.
+///
+/// From there they travel in the **public** half of the JWT, as the claims
+/// `subscription_enabledModules` and `subscription_quotas`, and are read back
+/// into [TomPrincipal.cli] when a token is parsed. Two consequences: they are a
+/// login-time snapshot, with no mid-session updater of the kind that can replace
+/// the ACI, so a subscription change lands on the next login; and being public,
+/// the quota figures are readable by whoever holds the token.
 class TomClientLimitsInformation {
   final List<String> _enabledModules = [];
 

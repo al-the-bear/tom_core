@@ -332,7 +332,13 @@ Like the ACI, it is read-only once constructed — the constructor copies its
 arguments and the getters return unmodifiable views, so a caller cannot raise
 its own ceiling by writing to the object it was handed.
 
-**Where the values come from.** They ride in the **public** half of the JWT, as
+**Where the values come from.** The application's authentication service builds
+them, on the principal it returns from a login, and nothing else does — the same
+call that answers the ACI, so that what a client bought and what a user may do
+are decided together against one view of the account. Neither the kernel nor
+`tom_core_server` holds a subscription store or reads the environment for these.
+
+From there they ride in the **public** half of the JWT, as
 the claims `subscription_enabledModules` and `subscription_quotas`, and are read
 back into `principal.cli` when the token is parsed. Two consequences follow, and
 both matter in practice. First, they are a **login-time snapshot**: a principal's
