@@ -49,7 +49,7 @@ TomShutdownCleanup
 Interface for objects that need cleanup logic executed when the process
 terminates. `dispose` is called automatically by `TomShutdownCleanup`.
 
-- **Extends:** none (abstract class).
+- **Kind:** abstract class, used as an interface.
 
 #### Methods
 
@@ -62,7 +62,7 @@ terminates. `dispose` is called automatically by `TomShutdownCleanup`.
 Interface for objects that need to be closed when the process terminates. `close`
 is called automatically by `TomShutdownCleanup`.
 
-- **Extends:** none (abstract class).
+- **Kind:** abstract class, used as an interface.
 
 #### Methods
 
