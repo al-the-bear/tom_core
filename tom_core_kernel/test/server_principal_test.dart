@@ -36,30 +36,26 @@ void main() {
   tearDown(TomServerPrincipal.clear);
 
   group('TomServerPrincipal (the ambient holder)', () {
-    test('SP01: starts unconfigured [2026-07-28] (OK)', () {
+    test('starts unconfigured', () {
       expect(TomServerPrincipal.isConfigured, isFalse);
       expect(TomServerPrincipal.current, isNull);
     });
 
-    test('SP02: install makes the principal current [2026-07-28] (OK)', () {
+    test('install makes the principal current', () {
       final server = _principal(entitlements: ['feature.tasks']);
       TomServerPrincipal.install(server);
       expect(TomServerPrincipal.isConfigured, isTrue);
       expect(TomServerPrincipal.current, same(server));
     });
 
-    test(
-      'SP03: install replaces an existing principal, as a token refresh must '
-      '[2026-07-28] (OK)',
-      () {
-        TomServerPrincipal.install(_principal(entitlements: ['a']));
-        final refreshed = _principal(entitlements: ['b']);
-        TomServerPrincipal.install(refreshed);
-        expect(TomServerPrincipal.current, same(refreshed));
-      },
-    );
+    test('install replaces an existing principal, as a token refresh must', () {
+      TomServerPrincipal.install(_principal(entitlements: ['a']));
+      final refreshed = _principal(entitlements: ['b']);
+      TomServerPrincipal.install(refreshed);
+      expect(TomServerPrincipal.current, same(refreshed));
+    });
 
-    test('SP04: clear returns the process to uncapped [2026-07-28] (OK)', () {
+    test('clear returns the process to uncapped', () {
       TomServerPrincipal.install(_principal(entitlements: ['a']));
       TomServerPrincipal.clear();
       expect(TomServerPrincipal.isConfigured, isFalse);
@@ -68,8 +64,7 @@ void main() {
   });
 
   group('The meet — unconfigured deployment (the degradation path)', () {
-    test('SP10: with no server principal the user grant is returned untouched '
-        '[2026-07-28] (OK)', () {
+    test('with no server principal the user grant is returned untouched', () {
       const control = TomEntitlementAccess(['feature.tasks']);
       final user = _principal(entitlements: ['feature.tasks']);
 
@@ -77,8 +72,7 @@ void main() {
       expect(control.checkAccessibility(user), isTrue);
     });
 
-    test('SP11: an unentitled user is still denied without a server principal '
-        '[2026-07-28] (OK)', () {
+    test('an unentitled user is still denied without a server principal', () {
       const control = TomEntitlementAccess(['feature.tasks']);
       final user = _principal(entitlements: ['feature.other']);
 
@@ -87,8 +81,7 @@ void main() {
     });
 
     test(
-      'SP12: a role control is unaffected by the absence of a server principal '
-      '[2026-07-28] (OK)',
+      'a role control is unaffected by the absence of a server principal',
       () {
         const control = TomRoleAccess(['admin']);
         expect(
@@ -104,23 +97,18 @@ void main() {
   });
 
   group('The meet — the deployment caps the user', () {
-    test(
-      'SP20: a deployment entitled to the feature leaves a full user at full '
-      '[2026-07-28] (OK)',
-      () {
-        TomServerPrincipal.install(_principal(entitlements: ['feature.tasks']));
-        const control = TomEntitlementAccess(['feature.tasks']);
+    test('a deployment entitled to the feature leaves a full user at full', () {
+      TomServerPrincipal.install(_principal(entitlements: ['feature.tasks']));
+      const control = TomEntitlementAccess(['feature.tasks']);
 
-        expect(
-          control.resolveAuthState(_principal(entitlements: ['feature.tasks'])),
-          TomAuthState.full,
-        );
-      },
-    );
+      expect(
+        control.resolveAuthState(_principal(entitlements: ['feature.tasks'])),
+        TomAuthState.full,
+      );
+    });
 
     test(
-      'SP21: a deployment NOT entitled to the feature drops a full user to none '
-      '[2026-07-28] (OK)',
+      'a deployment NOT entitled to the feature drops a full user to none',
       () {
         TomServerPrincipal.install(_principal(entitlements: ['feature.other']));
         const control = TomEntitlementAccess(['feature.tasks']);
@@ -131,23 +119,20 @@ void main() {
       },
     );
 
-    test(
-      'SP22: an empty server entitlement set denies everything — it is not the '
-      'same as no server principal [2026-07-28] (OK)',
-      () {
-        TomServerPrincipal.install(_principal(entitlements: const []));
-        const control = TomEntitlementAccess(['feature.tasks']);
-        final user = _principal(entitlements: ['feature.tasks']);
+    test('an empty server entitlement set denies everything — it is not the '
+        'same as no server principal', () {
+      TomServerPrincipal.install(_principal(entitlements: const []));
+      const control = TomEntitlementAccess(['feature.tasks']);
+      final user = _principal(entitlements: ['feature.tasks']);
 
-        expect(control.resolveAuthState(user), TomAuthState.none);
+      expect(control.resolveAuthState(user), TomAuthState.none);
 
-        TomServerPrincipal.clear();
-        expect(control.resolveAuthState(user), TomAuthState.full);
-      },
-    );
+      TomServerPrincipal.clear();
+      expect(control.resolveAuthState(user), TomAuthState.full);
+    });
 
-    test('SP23: the meet never widens — an unentitled user stays denied on an '
-        'entitled deployment [2026-07-28] (OK)', () {
+    test('the meet never widens — an unentitled user stays denied on an '
+        'entitled deployment', () {
       TomServerPrincipal.install(_principal(entitlements: ['feature.tasks']));
       const control = TomEntitlementAccess(['feature.tasks']);
 
@@ -157,19 +142,13 @@ void main() {
       );
     });
 
-    test(
-      'SP24: a control that expresses no deployment opinion is uncapped — an '
-      'unrelated server grant cannot veto a role check [2026-07-28] (OK)',
-      () {
-        TomServerPrincipal.install(_principal(entitlements: ['feature.other']));
-        const control = TomRoleAccess(['admin']);
+    test('a control that expresses no deployment opinion is uncapped — an '
+        'unrelated server grant cannot veto a role check', () {
+      TomServerPrincipal.install(_principal(entitlements: ['feature.other']));
+      const control = TomRoleAccess(['admin']);
 
-        expect(
-          control.checkAccessibility(_principal(roles: ['admin'])),
-          isTrue,
-        );
-      },
-    );
+      expect(control.checkAccessibility(_principal(roles: ['admin'])), isTrue);
+    });
   });
 
   group('The meet — the four-state ladder', () {
@@ -191,7 +170,7 @@ void main() {
       (TomAuthState.none, TomAuthState.none, TomAuthState.none),
     ];
 
-    test('SP30: min(user, server) over every pair [2026-07-28] (OK)', () {
+    test('min(user, server) over every pair', () {
       TomServerPrincipal.install(_principal(entitlements: ['x']));
       for (final (userGrade, serverGrade, expected) in ladder) {
         final control = _LadderControl(userGrade, serverGrade);
@@ -203,8 +182,7 @@ void main() {
       }
     });
 
-    test('SP31: checkAccessibility is the binary view of the same meet '
-        '[2026-07-28] (OK)', () {
+    test('checkAccessibility is the binary view of the same meet', () {
       TomServerPrincipal.install(_principal(entitlements: ['x']));
       for (final (userGrade, serverGrade, expected) in ladder) {
         final control = _LadderControl(userGrade, serverGrade);
@@ -216,33 +194,29 @@ void main() {
       }
     });
 
-    test(
-      'SP32: a two-state control degenerates to a plain AND [2026-07-28] (OK)',
-      () {
-        for (final userAllows in [true, false]) {
-          for (final serverAllows in [true, false]) {
-            TomServerPrincipal.install(
-              _principal(entitlements: serverAllows ? ['feature.x'] : const []),
-            );
-            const control = TomEntitlementAccess(['feature.x']);
-            final user = _principal(
-              entitlements: userAllows ? ['feature.x'] : const [],
-            );
-            expect(
-              control.checkAccessibility(user),
-              userAllows && serverAllows,
-              reason: 'user=$userAllows AND server=$serverAllows',
-            );
-          }
+    test('a two-state control degenerates to a plain AND', () {
+      for (final userAllows in [true, false]) {
+        for (final serverAllows in [true, false]) {
+          TomServerPrincipal.install(
+            _principal(entitlements: serverAllows ? ['feature.x'] : const []),
+          );
+          const control = TomEntitlementAccess(['feature.x']);
+          final user = _principal(
+            entitlements: userAllows ? ['feature.x'] : const [],
+          );
+          expect(
+            control.checkAccessibility(user),
+            userAllows && serverAllows,
+            reason: 'user=$userAllows AND server=$serverAllows',
+          );
         }
-      },
-    );
+      }
+    });
   });
 
   group('The meet — graded controls', () {
     test(
-      'SP40: a graded ladder is capped at the deployment grade, not per level '
-      '[2026-07-28] (OK)',
+      'a graded ladder is capped at the deployment grade, not per level',
       () {
         // full needs `feature.tasks.write`, read needs `feature.tasks.read`.
         final control = TomGradedAccess(
@@ -273,8 +247,8 @@ void main() {
       },
     );
 
-    test('SP41: a graded ladder with no server principal keeps its uncapped '
-        'verdict [2026-07-28] (OK)', () {
+    test('a graded ladder with no server principal keeps its uncapped '
+        'verdict', () {
       final control = TomGradedAccess(
         full: const TomEntitlementAccess([r'^feature\.tasks\.write$']),
         read: const TomEntitlementAccess([r'^feature\.tasks\.read$']),

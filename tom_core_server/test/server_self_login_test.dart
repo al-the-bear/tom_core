@@ -77,70 +77,76 @@ void main() {
   tearDown(TomServerPrincipal.clear);
 
   group('TomServiceCredential.fromConfiguration', () {
-    test(
-      'SL01: reads a fully configured deployment identity [2026-07-28] (OK)',
-      () {
-        final credential = TomServiceCredential.fromConfiguration(
-          _configured(),
-        );
-        expect(credential, isNotNull);
-        expect(credential!.username, 'svc-app');
-        expect(credential.credential, 's3cret');
-        expect(credential.loginUri.host, 'auth.test');
-        expect(credential.loginUri.port, 8081);
-        expect(credential.organization, 'org');
-      },
-    );
+    test('reads a fully configured deployment identity', () {
+      final credential = TomServiceCredential.fromConfiguration(_configured());
+      expect(credential, isNotNull);
+      expect(credential!.username, 'svc-app');
+      expect(credential.credential, 's3cret');
+      expect(credential.loginUri.host, 'auth.test');
+      expect(credential.loginUri.port, 8081);
+      expect(credential.organization, 'org');
+    });
 
-    test('SL02: an untouched configuration yields null [2026-07-28] (OK)', () {
+    test('an untouched configuration yields null', () {
       expect(TomServiceCredential.fromConfiguration(_Config()), isNull);
     });
 
-    test(
-      'SL03: a partially configured deployment yields null rather than half a '
-      'credential [2026-07-28] (OK)',
-      () {
-        expect(
-          TomServiceCredential.fromConfiguration(
-            _Config()..authServerLoginUri = 'http://auth.test/auth/login',
-          ),
-          isNull,
-        );
-        expect(
-          TomServiceCredential.fromConfiguration(
-            _configured()..serviceAccountCredential = '',
-          ),
-          isNull,
-        );
-        expect(
-          TomServiceCredential.fromConfiguration(
-            _configured()..serviceAccountName = '   ',
-          ),
-          isNull,
-        );
-        expect(
-          TomServiceCredential.fromConfiguration(
-            // Whitespace is the shape an unset `${SERVICE_CREDENTIAL}` leaves
-            // behind in a templated configuration -- present, non-empty, and
-            // not a secret. Read literally it passes the "is this configured?"
-            // test and buys a login that cannot succeed, then reports it as a
-            // *rejected* credential rather than a missing one.
-            _configured()..serviceAccountCredential = '   ',
-          ),
-          isNull,
-        );
-      },
-    );
+    test('a partially configured deployment yields null rather than half a '
+        'credential', () {
+      expect(
+        TomServiceCredential.fromConfiguration(
+          _Config()..authServerLoginUri = 'http://auth.test/auth/login',
+        ),
+        isNull,
+      );
+      expect(
+        TomServiceCredential.fromConfiguration(
+          _configured()..serviceAccountCredential = '',
+        ),
+        isNull,
+      );
+      expect(
+        TomServiceCredential.fromConfiguration(
+          _configured()..serviceAccountName = '   ',
+        ),
+        isNull,
+      );
+      expect(
+        TomServiceCredential.fromConfiguration(
+          // Whitespace is the shape an unset `${SERVICE_CREDENTIAL}` leaves
+          // behind in a templated configuration -- present, non-empty, and
+          // not a secret. Read literally it passes the "is this configured?"
+          // test and buys a login that cannot succeed, then reports it as a
+          // *rejected* credential rather than a missing one.
+          _configured()..serviceAccountCredential = '   ',
+        ),
+        isNull,
+      );
+    });
 
-    test('SL06: whitespace within a real credential is presented as written '
-        '[2026-08-21] (OK)', () {
+    test('an unusable URI yields null', () {
+      expect(
+        TomServiceCredential.fromConfiguration(
+          _configured(uri: 'not a uri at all'),
+        ),
+        isNull,
+      );
+      expect(
+        TomServiceCredential.fromConfiguration(_configured(uri: '/auth/login')),
+        isNull,
+        reason: 'a path without scheme and host cannot be dialled',
+      );
+    });
+
+    test('whitespace within a real credential is presented as written', () {
       // The credential is trimmed to decide whether one was *configured*, and
       // nowhere else. A secret is opaque: if the auth server expects a
       // trailing space then that space has to reach it, and a framework that
       // quietly reshaped the value would turn a correct deployment into a
       // rejected login -- which the redaction policy then makes
-      // undiagnosable. That is the same fault as the one above, inverted.
-      // `_blankToNull` splits `smtpPassword` the same way.
+      // undiagnosable. That is the all-whitespace credential of the
+      // partial-configuration test, inverted. `_blankToNull` splits
+      // `smtpPassword` the same way.
       final credential = TomServiceCredential.fromConfiguration(
         _configured(credential: ' s3cret '),
       );
@@ -150,8 +156,8 @@ void main() {
       expect(body['password'], ' s3cret ');
     });
 
-    test('SL07: the locale fields are the message type defaults, not a second '
-        'copy of them [2026-08-21] (OK)', () {
+    test('the locale fields are the message type defaults, not a second copy '
+        'of them', () {
       final body =
           jsonDecode(
                 TomServiceCredential.fromConfiguration(
@@ -182,21 +188,7 @@ void main() {
       expect(body['clientTimezone'], defaults.clientTimezone);
     });
 
-    test('SL04: an unusable URI yields null [2026-07-28] (OK)', () {
-      expect(
-        TomServiceCredential.fromConfiguration(
-          _configured(uri: 'not a uri at all'),
-        ),
-        isNull,
-      );
-      expect(
-        TomServiceCredential.fromConfiguration(_configured(uri: '/auth/login')),
-        isNull,
-        reason: 'a path without scheme and host cannot be dialled',
-      );
-    });
-
-    test('SL05: toString never leaks the credential [2026-07-28] (OK)', () {
+    test('toString never leaks the credential', () {
       final text = TomServiceCredential.fromConfiguration(
         _configured(),
       )!.toString();
@@ -206,44 +198,42 @@ void main() {
   });
 
   group('TomServerSelfLogin.logIn', () {
-    test(
-      'SL10: posts the credential to the configured login URI [2026-07-28] (OK)',
-      () async {
-        final transport = _FakeTransport(_kernelSpelling(_serviceToken()));
-        await TomServerSelfLogin.logIn(
-          TomServiceCredential.fromConfiguration(_configured())!,
-          transport: transport,
-        );
-
-        expect(transport.sentTo.toString(), 'http://auth.test:8081/auth/login');
-        final sent = jsonDecode(transport.sentBody!) as Map<String, dynamic>;
-        expect(sent['userName'], 'svc-app');
-        expect(sent['password'], 's3cret');
-        expect(sent['organization'], 'org');
-      },
-    );
-
-    test('SL11: reconstructs the deployment principal, entitlements and all '
-        '[2026-07-28] (OK)', () async {
-      final transport = _FakeTransport(
-        _kernelSpelling(
-          _serviceToken(entitlements: ['feature.tasks', 'feature.reports']),
-        ),
-      );
-      final principal = await TomServerSelfLogin.logIn(
+    test('posts the credential to the configured login URI', () async {
+      final transport = _FakeTransport(_kernelSpelling(_serviceToken()));
+      await TomServerSelfLogin.logIn(
         TomServiceCredential.fromConfiguration(_configured())!,
         transport: transport,
       );
 
-      expect(principal.user.username, 'svc-app');
-      expect(
-        principal.aci.entitlements,
-        containsAll(['feature.tasks', 'feature.reports']),
-      );
+      expect(transport.sentTo.toString(), 'http://auth.test:8081/auth/login');
+      final sent = jsonDecode(transport.sentBody!) as Map<String, dynamic>;
+      expect(sent['userName'], 'svc-app');
+      expect(sent['password'], 's3cret');
+      expect(sent['organization'], 'org');
     });
 
-    test('SL12: accepts the short authToken/authzToken spelling too '
-        '[2026-07-28] (OK)', () async {
+    test(
+      'reconstructs the deployment principal, entitlements and all',
+      () async {
+        final transport = _FakeTransport(
+          _kernelSpelling(
+            _serviceToken(entitlements: ['feature.tasks', 'feature.reports']),
+          ),
+        );
+        final principal = await TomServerSelfLogin.logIn(
+          TomServiceCredential.fromConfiguration(_configured())!,
+          transport: transport,
+        );
+
+        expect(principal.user.username, 'svc-app');
+        expect(
+          principal.aci.entitlements,
+          containsAll(['feature.tasks', 'feature.reports']),
+        );
+      },
+    );
+
+    test('accepts the short authToken/authzToken spelling too', () async {
       final transport = _FakeTransport(
         _shortSpelling(_serviceToken(entitlements: ['feature.tasks'])),
       );
@@ -254,7 +244,7 @@ void main() {
       expect(principal.aci.entitlements, contains('feature.tasks'));
     });
 
-    test('SL13: a rejected credential throws [2026-07-28] (OK)', () async {
+    test('a rejected credential throws', () async {
       final transport = _FakeTransport('{"error":"nope"}', status: 401);
       await expectLater(
         TomServerSelfLogin.logIn(
@@ -271,8 +261,7 @@ void main() {
       );
     });
 
-    test('SL14: an unreachable auth server throws, it does not degrade '
-        '[2026-07-28] (OK)', () async {
+    test('an unreachable auth server throws, it does not degrade', () async {
       final transport = _FakeTransport('', throws: StateError('no route'));
       await expectLater(
         TomServerSelfLogin.logIn(
@@ -289,7 +278,7 @@ void main() {
       );
     });
 
-    test('SL15: a tokenless success body throws [2026-07-28] (OK)', () async {
+    test('a tokenless success body throws', () async {
       final transport = _FakeTransport('{"error":""}');
       await expectLater(
         TomServerSelfLogin.logIn(
@@ -306,7 +295,7 @@ void main() {
       );
     });
 
-    test('SL16: a non-JSON body throws [2026-07-28] (OK)', () async {
+    test('a non-JSON body throws', () async {
       final transport = _FakeTransport('<html>gateway timeout</html>');
       await expectLater(
         TomServerSelfLogin.logIn(
@@ -326,12 +315,12 @@ void main() {
     // The last thing between a response and a principal, and the one failure
     // that arrives from *inside* another library. The body is well-formed and
     // both token fields are present and non-empty, so `_readTokens` passes —
-    // and then the string is not a JWT. SL16 covers a body that is not JSON;
-    // this is the different case of a well-formed body whose token field is
-    // rubbish, which an auth server behind a misconfigured proxy produces. It
-    // must still come back keyed, not as whatever `dart_jsonwebtoken` threw.
-    test('SL17: a token field that is not a JWT throws '
-        '[2026-08-22] (OK)', () async {
+    // and then the string is not a JWT. The test above covers a body that is
+    // not JSON; this is the different case of a well-formed body whose token
+    // field is rubbish, which an auth server behind a misconfigured proxy
+    // produces. It must still come back keyed, not as whatever
+    // `dart_jsonwebtoken` threw.
+    test('a token field that is not a JWT throws', () async {
       final transport = _FakeTransport(_kernelSpelling('not-a-jwt'));
       await expectLater(
         TomServerSelfLogin.logIn(
@@ -357,8 +346,7 @@ void main() {
     // `TypeError`, not a `StateError`, and from a third library again. One key
     // covers the family precisely because the caller's move is the same for
     // every member of it.
-    test('SL18: a token whose payload is not an object throws '
-        '[2026-08-22] (OK)', () async {
+    test('a token whose payload is not an object throws', () async {
       String seg(String s) =>
           base64Url.encode(utf8.encode(s)).replaceAll('=', '');
       final token =
@@ -381,8 +369,7 @@ void main() {
   });
 
   group('TomServerSelfLogin.loginAndInstall', () {
-    test('SL20: a configured deployment installs its own principal '
-        '[2026-07-28] (OK)', () async {
+    test('a configured deployment installs its own principal', () async {
       final transport = _FakeTransport(
         _kernelSpelling(_serviceToken(entitlements: ['feature.tasks'])),
       );
@@ -400,25 +387,22 @@ void main() {
       );
     });
 
-    test(
-      'SL21: an unconfigured deployment is a silent no-op — nothing is sent and '
-      'nothing is installed [2026-07-28] (OK)',
-      () async {
-        final transport = _FakeTransport(_kernelSpelling(_serviceToken()));
+    test('an unconfigured deployment is a silent no-op — nothing is sent and '
+        'nothing is installed', () async {
+      final transport = _FakeTransport(_kernelSpelling(_serviceToken()));
 
-        final installed = await TomServerSelfLogin.loginAndInstall(
-          _Config(),
-          transport: transport,
-        );
+      final installed = await TomServerSelfLogin.loginAndInstall(
+        _Config(),
+        transport: transport,
+      );
 
-        expect(installed, isFalse);
-        expect(transport.callCount, 0, reason: 'no call may be attempted');
-        expect(TomServerPrincipal.isConfigured, isFalse);
-      },
-    );
+      expect(installed, isFalse);
+      expect(transport.callCount, 0, reason: 'no call may be attempted');
+      expect(TomServerPrincipal.isConfigured, isFalse);
+    });
 
-    test('SL22: a configured deployment that cannot log in throws rather than '
-        'running uncapped [2026-07-28] (OK)', () async {
+    test('a configured deployment that cannot log in throws rather than '
+        'running uncapped', () async {
       final transport = _FakeTransport('{}', status: 503);
       await expectLater(
         TomServerSelfLogin.loginAndInstall(_configured(), transport: transport),
@@ -433,32 +417,35 @@ void main() {
   });
 
   group('End to end: the installed principal caps user grants', () {
-    test('SL30: a deployment entitled to read only caps a full user to read '
-        '[2026-07-28] (OK)', () async {
-      await TomServerSelfLogin.loginAndInstall(
-        _configured(),
-        transport: _FakeTransport(
-          _kernelSpelling(_serviceToken(entitlements: ['feature.tasks.read'])),
-        ),
-      );
+    test(
+      'a deployment entitled to read only caps a full user to read',
+      () async {
+        await TomServerSelfLogin.loginAndInstall(
+          _configured(),
+          transport: _FakeTransport(
+            _kernelSpelling(
+              _serviceToken(entitlements: ['feature.tasks.read']),
+            ),
+          ),
+        );
 
-      final control = TomGradedAccess(
-        full: const TomEntitlementAccess([r'^feature\.tasks\.write$']),
-        read: const TomEntitlementAccess([r'^feature\.tasks\.read$']),
-      );
-      final user = TomPrincipal(
-        authenticated: true,
-        user: TomUser(id: 1, username: 'alice'),
-        aci: TomAccessControlInformation(
-          entitlements: ['feature.tasks.write', 'feature.tasks.read'],
-        ),
-      );
+        final control = TomGradedAccess(
+          full: const TomEntitlementAccess([r'^feature\.tasks\.write$']),
+          read: const TomEntitlementAccess([r'^feature\.tasks\.read$']),
+        );
+        final user = TomPrincipal(
+          authenticated: true,
+          user: TomUser(id: 1, username: 'alice'),
+          aci: TomAccessControlInformation(
+            entitlements: ['feature.tasks.write', 'feature.tasks.read'],
+          ),
+        );
 
-      expect(control.resolveAuthState(user), TomAuthState.read);
-    });
+        expect(control.resolveAuthState(user), TomAuthState.read);
+      },
+    );
 
-    test('SL31: an unconfigured deployment leaves the same user at full '
-        '[2026-07-28] (OK)', () async {
+    test('an unconfigured deployment leaves the same user at full', () async {
       await TomServerSelfLogin.loginAndInstall(
         _Config(),
         transport: _FakeTransport('{}'),
