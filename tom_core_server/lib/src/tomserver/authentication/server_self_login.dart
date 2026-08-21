@@ -94,13 +94,30 @@ class TomServiceCredential {
   /// at startup for a value the operator may be mid-way through rolling out is
   /// worse than running uncapped. [TomServerSelfLogin.loginAndInstall] logs the
   /// skip at info level so the state is visible.
+  ///
+  /// "Blank" includes whitespace for all three, the credential included: an
+  /// unsubstituted `${SERVICE_CREDENTIAL}` leaves whitespace behind in some
+  /// templating setups, and a whitespace credential read literally would pass
+  /// this test and buy a login that cannot succeed -- reported as a *rejected*
+  /// credential rather than a missing one, which is the harder of the two to
+  /// diagnose because the redaction policy hides the value that would have
+  /// explained it.
+  ///
+  /// The trim decides *whether one was configured* and nothing else: the value
+  /// is carried through as written. A secret is opaque, so if the auth server
+  /// expects a trailing space then that space has to reach it, and reshaping it
+  /// here would turn a correct deployment into the same undiagnosable rejected
+  /// login, inverted. `TomSmtpSettings.fromConfiguration` splits the analogous
+  /// `smtpPassword` the same way.
   static TomServiceCredential? fromConfiguration(
     TomBaseServerConfiguration config,
   ) {
     final uriText = config.authServerLoginUri?.trim() ?? '';
     final username = config.serviceAccountName?.trim() ?? '';
     final credential = config.serviceAccountCredential ?? '';
-    if (uriText.isEmpty || username.isEmpty || credential.isEmpty) return null;
+    if (uriText.isEmpty || username.isEmpty || credential.trim().isEmpty) {
+      return null;
+    }
 
     final uri = Uri.tryParse(uriText);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;

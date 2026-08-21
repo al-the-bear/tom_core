@@ -1174,6 +1174,24 @@ credential cannot authenticate, and failing startup over a value the operator
 may be mid-way through rolling out is worse than running uncapped. The info-level
 log is what makes the state visible.
 
+"Blank" in that first row means **whitespace as well as empty, for all three
+required values including the credential**, and the credential is the one where
+it matters most. An unsubstituted `${SERVICE_CREDENTIAL}` leaves whitespace
+behind in some templating setups; read literally that is a configured deployment
+with a secret, so the server takes the third row — it attempts a login, the login
+is refused, and startup fails reporting a *rejected* credential. That is the
+harder of the two diagnoses, because the redaction policy correctly hides the
+value that would have explained it. Whitespace is a missing credential and is
+reported as one.
+
+The trim decides *whether* a credential was configured, and nothing else: the
+value itself reaches the auth server exactly as written. A secret is opaque, so
+if the auth server expects a trailing space then that space has to be presented,
+and quietly reshaping the value would turn a correct deployment into the same
+undiagnosable rejected login — the identical fault, inverted.
+`TomSmtpSettings.fromConfiguration` splits the analogous `smtpPassword` the same
+way.
+
 A long-running deployment re-authenticates before its service token expires and
 calls `TomServerPrincipal.install` again — that is intended. Note the direction
 of `TomServerPrincipal.clear()`: it *widens* access, so it is never the right

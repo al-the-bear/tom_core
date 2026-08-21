@@ -118,8 +118,37 @@ void main() {
           ),
           isNull,
         );
+        expect(
+          TomServiceCredential.fromConfiguration(
+            // Whitespace is the shape an unset `${SERVICE_CREDENTIAL}` leaves
+            // behind in a templated configuration -- present, non-empty, and
+            // not a secret. Read literally it passes the "is this configured?"
+            // test and buys a login that cannot succeed, then reports it as a
+            // *rejected* credential rather than a missing one.
+            _configured()..serviceAccountCredential = '   ',
+          ),
+          isNull,
+        );
       },
     );
+
+    test('SL06: whitespace within a real credential is presented as written '
+        '[2026-08-21] (OK)', () {
+      // The credential is trimmed to decide whether one was *configured*, and
+      // nowhere else. A secret is opaque: if the auth server expects a
+      // trailing space then that space has to reach it, and a framework that
+      // quietly reshaped the value would turn a correct deployment into a
+      // rejected login -- which the redaction policy then makes
+      // undiagnosable. That is the same fault as the one above, inverted.
+      // `_blankToNull` splits `smtpPassword` the same way.
+      final credential = TomServiceCredential.fromConfiguration(
+        _configured(credential: ' s3cret '),
+      );
+      expect(credential, isNotNull);
+      expect(credential!.credential, ' s3cret ');
+      final body = jsonDecode(credential.toRequestBody()) as Map;
+      expect(body['password'], ' s3cret ');
+    });
 
     test('SL04: an unusable URI yields null [2026-07-28] (OK)', () {
       expect(
