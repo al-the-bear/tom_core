@@ -594,6 +594,42 @@ switched on by installing a sink at startup:
 TomAuditTrail.install(TomFileAuditSink(Directory('/var/audit/app')));
 ```
 
+### Every failure arrives on the returned future
+
+`write` returns a `Future`, and **every** way it can fail completes that future
+with an error — including the failures a sink can see before it has done any
+work, such as being closed. None of them is thrown from the call itself.
+
+This is a contract about where to put the handler, and getting it wrong is
+silent. A caller who awaits inside a `try` is safe either way, which is why the
+distinction goes unnoticed; a caller who does anything else is not:
+
+```dart
+// All three are complete handling of a future's failure. None is in a `try`.
+unawaited(sink.write(record).catchError(reportAuditFailure));
+await Future.wait([for (final r in batch) sink.write(r)]);
+final pending = sink.write(record); // handled by whoever awaits it later
+```
+
+A `write` that could also throw before returning its future would make each of
+these a coin flip on *which* failure occurred. The one that escaped would
+escape onto whatever stack was running, and for a fail-closed trail that turns
+"your record was not stored, decide what to do" into an uncaught error in the
+middle of the audited action — a worse outcome than the storage failure it is
+reporting. Implementations therefore mark `write` `async` rather than raising
+from the synchronous part of the body, so the rule lives in the declaration and
+a guard added later inherits it.
+
+The same reasoning applies to failures arriving **twice**. `File.openWrite` is
+lazy, so a path the file sink cannot open reports the failure both on the flush
+the sink awaits — which becomes the caller's `audit.sink.write_failed` — and on
+the file handle's own completion, which has no listener. The sink closes the
+broken handle to consume that second copy; without it, a caller who handled the
+failure exactly as documented would still see an unhandled asynchronous error
+for it. Closing also drops the handle, which is what lets the sink resume
+recording once the directory it died on is repaired, rather than failing
+against a dead handle for the life of the process.
+
 ### Shutting a sink down
 
 Both persistent sinks serialise their writes through an internal queue, so at

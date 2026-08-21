@@ -75,8 +75,8 @@ renaming and applying age- and count-based retention; `TomSqlAuditSink` writes
 one row per entry into a `TomDataSource` and prunes a contiguous prefix through
 `purgeBefore` / `purgeToMaxEntries`. All three recover their head on reopen, so
 a restart continues the chain rather than beginning a second one. Auditing is
-fail-closed: a sink that cannot store a record raises `TomAuditException`, and
-the audited action fails with it.
+fail-closed: a sink that cannot store a record completes its `write` future with
+a `TomAuditException`, and the audited action fails with it.
 
 The relational sink adds the deployment concerns a table has and a file does
 not. Its schema is declared once as `auditTrailTable`, from which
@@ -420,9 +420,18 @@ const TomAuditChainVerification({
 
 ### TomAuditSink
 
-Where a `TomAuditRecord` is persisted. `write` is expected to **throw** when it
+Where a `TomAuditRecord` is persisted. `write` is expected to **fail** when it
 cannot store the record: the trail is fail-closed, so a sink that swallows its
 own storage errors defeats the guarantee for everything above it.
+
+Failing means **completing the returned future with an error** — in every case,
+including the ones an implementation can see before doing any work, such as a
+closed sink. The return type is what a caller protects against:
+`sink.write(r).catchError(...)`, `Future.wait([...])` and an unawaited write
+with a `.then(onError:)` are all complete handling of a future's failure, and
+none of them sits inside a `try`. Implementations mark `write` `async` rather
+than raising from the synchronous part of the body, which puts the rule in the
+declaration where a guard added later inherits it.
 
 - **Implements:** `TomClosable` (abstract)
 
@@ -437,7 +446,7 @@ own storage errors defeats the guarantee for everything above it.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | Persists `record` and returns the entry as stored; throws when it cannot. |
+| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | Persists `record` and returns the entry as stored. Every failure, refusals included, arrives as an error on the returned future — never as a throw from the call itself. |
 | `close` | `void close()` | *(override)* Closes the sink **without** waiting for records already queued. Inherits `TomClosable`'s synchronous contract, so a queued record cannot be waited for: it is refused with `audit.sink.closed` rather than dropped or written anyway. |
 | `flushAndClose` | `Future<void> flushAndClose()` | Waits for every queued record to be stored, then closes. Nothing enqueued before the call is refused. Idempotent, and safe to call after `close`. Use this wherever an `await` is available. |
 
@@ -519,7 +528,7 @@ TomFileAuditSink({
 | ------ | --------- | ----------- |
 | `readAll` | `List<TomAuditEntry> readAll()` | Reads every retained entry across all files, oldest first. |
 | `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries starting from the oldest retained link, so a retention deletion is not reported as a break. |
-| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Appends one JSON line, rotating and applying retention as needed. Writes are serialised through an internal queue, and each is flushed before it returns. Throws `TomAuditException` when the sink is closed or the write fails. |
+| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Appends one JSON line, rotating and applying retention as needed. Writes are serialised through an internal queue, and each is flushed before it returns. The returned future carries `audit.sink.closed` when the sink is closed and `audit.sink.write_failed` when storage refused it — once each, and never as a throw from the call. A failed write drops the file handle, so the sink resumes recording as soon as the path it died on works again. |
 | `close` | `void close()` | *(override)* Closes the file handle. Every `write` that has *returned* already flushed, so nothing completed is at risk; a record still in the queue is refused with `audit.sink.closed`, because `TomClosable` requires this method to return synchronously and no synchronous method can wait for a queue. The refusal is also what keeps a queued record from reopening the file the sink has just closed. |
 | `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Closes the sink to new records, waits for the queued ones to be written and flushed, then closes the handle. The route that stores what `close` has to refuse. |
 
@@ -1046,7 +1055,7 @@ start-up than on the first audited action.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `open` | `Future<void> open()` | Provisions the table, runs the write-once probe, and recovers the chain head. Idempotent and awaited by every write; a failed open clears the memo so the next write retries. Warns on a rewritable table, or throws `TomAuditException` when `requireWriteOnce` is set. |
-| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Inserts one row, serialised through an internal queue so the `(writer, previous_hash)` constraint never has to fire. Throws `TomAuditException` when the sink is closed or the insert fails. |
+| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Inserts one row, serialised through an internal queue so the `(writer, previous_hash)` constraint never has to fire. The returned future carries a `TomAuditException` when the sink is closed or the insert fails; the call itself does not throw. |
 | `readAll` | `Future<List<TomAuditEntry>> readAll()` | Reads every retained entry of this writer's chain, ordered by `seq`, oldest first. Throws `TomAuditException` on a row whose record text will not parse. |
 | `verify` | `Future<TomAuditChainVerification> verify()` | Verifies the retained entries starting from the oldest retained link, so a retention sweep is not reported as a break. |
 | `purgeBefore` | `Future<int> purgeBefore(DateTime before)` | Deletes this writer's entries recorded before `before`, returning the row count. The cutoff is resolved to a *sequence* boundary first, because deleting by timestamp could punch a hole under clock skew. |

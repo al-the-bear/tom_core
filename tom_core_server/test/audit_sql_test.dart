@@ -244,4 +244,54 @@ void main() {
       );
     });
   });
+
+  // The file sink's counterpart lives in `audit_test.dart`; the reasoning is
+  // there. It is asserted twice because it is a promise of `TomAuditSink`
+  // rather than of either implementation, and a caller holding the abstract
+  // type has no way to ask which one it got.
+  group('write reports failure through the future it returns', () {
+    test('refusing a record does not throw at the call site', () {
+      final sink = TomSqlAuditSink(_UnusedDataSource(), writer: 'node-a');
+      sink.close();
+
+      // Not `expect(() => sink.write(r), throwsA(...))`: that form passes
+      // whichever channel the error takes, and the channel is the subject.
+      late final Future<TomAuditEntry> refused;
+      expect(() => refused = sink.write(_record()), returnsNormally);
+      expect(
+        refused,
+        throwsA(
+          isA<TomAuditException>().having(
+            (e) => e.key,
+            'key',
+            'audit.sink.closed',
+          ),
+        ),
+      );
+    });
+  });
+}
+
+/// A record with no content of interest — these tests never store one.
+TomAuditRecord _record() => TomAuditRecord(
+  id: 'r1',
+  timestamp: DateTime.utc(2026, 7, 28, 10, 30),
+  actor: TomAuditActor.system,
+  action: TomAuditAction.update,
+  target: 'Widget',
+  outcome: TomAuditOutcome.succeeded,
+);
+
+/// A data source that must never be reached.
+///
+/// A closed sink is refused before it looks at storage, so any statement
+/// arriving here means the guard did not run — which is a louder failure than
+/// a wrong assertion, and the reason this fake answers nothing rather than
+/// answering emptily.
+class _UnusedDataSource implements TomDataSource {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw StateError(
+    'A closed audit sink reached its data source for '
+    '${invocation.memberName}.',
+  );
 }

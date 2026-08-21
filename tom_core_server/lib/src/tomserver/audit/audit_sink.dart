@@ -338,12 +338,30 @@ List<TomAuditEntry> parseAuditLines(Iterable<String> lines) {
 
 /// Where a [TomAuditRecord] is persisted.
 ///
-/// [write] is expected to **throw** when it cannot store the record. The trail
+/// [write] is expected to **fail** when it cannot store the record. The trail
 /// is fail-closed — an action whose audit record could not be stored is not
 /// allowed to look like it succeeded — so a sink that swallows its own storage
-/// errors defeats the guarantee for everything above it.
+/// errors defeats the guarantee for everything above it. Failing means
+/// completing the returned future with an error, in every case; see [write].
 abstract class TomAuditSink implements TomClosable {
   /// Persists [record], returning the entry as stored.
+  ///
+  /// **Every failure arrives through the returned future**, including the ones
+  /// an implementation can see before it has done any work — a closed sink, a
+  /// rejected record, a misconfiguration. Implementations should mark this
+  /// method `async` rather than raise from the synchronous part of the body:
+  /// `async` puts the rule in the declaration, where a guard added later
+  /// inherits it, instead of in each guard, where it has to be remembered.
+  ///
+  /// The rule matters because the return type is what a caller protects
+  /// against. `sink.write(r).catchError(...)`, `Future.wait([...])` and an
+  /// `unawaited` write with a `.then(onError:)` are all complete handling of a
+  /// future's failure and none of them is inside a `try`. A method that can
+  /// also throw before the future exists makes each of them a coin flip on
+  /// which failure occurred, and the one that escapes escapes on whatever
+  /// stack was running — which for a fail-closed trail is the audited action
+  /// dying of an error it thought it had handled, rather than being told its
+  /// record was not stored.
   Future<TomAuditEntry> write(TomAuditRecord record);
 
   /// The hash of the most recently written entry.
@@ -649,8 +667,16 @@ class TomFileAuditSink implements TomAuditSink {
     );
   }
 
+  /// `async` so that the guard below fails the *future* rather than the call.
+  ///
+  /// An `async` body runs synchronously until its first `await`, of which
+  /// there is none before the enqueue, so ordering is exactly as it was — what
+  /// changes is only where the refusal is delivered. Marking the method is
+  /// preferred over returning `Future.error` at the one guard, because it is
+  /// the declaration that carries the rule: a later guard added anywhere in
+  /// this body inherits it instead of having to remember it.
   @override
-  Future<TomAuditEntry> write(TomAuditRecord record) {
+  Future<TomAuditEntry> write(TomAuditRecord record) async {
     if (_closed) throw _closedException();
     final result = _queue.then((_) => _writeSerialised(record));
     // Keep the queue alive on failure: one failed write must not wedge the
@@ -694,6 +720,7 @@ class TomFileAuditSink implements TomAuditSink {
       // down when in fact the sink was closed underneath them.
       rethrow;
     } catch (e, stack) {
+      _discardBrokenHandle();
       throw TomAuditException(
         'audit.sink.write_failed',
         'Could not write the audit record to ${_currentFile?.path}: $e',
@@ -705,6 +732,37 @@ class TomFileAuditSink implements TomAuditSink {
     _headHash = entry.hash;
     _entryCount++;
     return entry;
+  }
+
+  /// Drops the file handle after a failed write, and consumes its error.
+  ///
+  /// Two reasons, and neither is tidiness.
+  ///
+  /// **Dropping it** is what lets the sink recover. `_ensureOpen` returns
+  /// early while a handle exists, so a handle kept after a failed write is
+  /// consulted by every later record — which would go on failing against the
+  /// dead handle long after the operator fixed the directory it died on, and
+  /// with a `Bad state: StreamSink is closed` in place of the filesystem error
+  /// that says what is actually wrong. A transient storage fault would become
+  /// a permanent one, silently, in the component whose whole purpose is to
+  /// still be recording when things go wrong.
+  ///
+  /// **Closing it** is what keeps the failure inside the future it was
+  /// reported on. `openWrite` is lazy, so a path that cannot be opened fails
+  /// the `flush` above — which becomes the caller's `write_failed` — *and* the
+  /// handle's own completion, which nobody listens to. That second copy of an
+  /// already-reported failure surfaces as an unhandled asynchronous error in
+  /// the zone that called [write], so a caller who handled the failure exactly
+  /// as documented still gets an uncaught error for it.
+  ///
+  /// The close is ignored rather than awaited: waiting would make one caller's
+  /// failure delay the next caller's write, and there is nothing to learn from
+  /// it — the error it carries is the one being thrown on the line below.
+  void _discardBrokenHandle() {
+    final broken = _sink;
+    if (broken == null) return;
+    _sink = null;
+    broken.close().ignore();
   }
 
   /// Ensures a file is open with room for [additionalBytes], rotating first if

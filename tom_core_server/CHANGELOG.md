@@ -2,6 +2,43 @@
 
 ### Behaviour Changes
 
+- **Audit sinks report every `write` failure through the returned future
+  (tcinc344).** `TomFileAuditSink.write` and `TomSqlAuditSink.write` both
+  declared `Future<TomAuditEntry>` and both opened with a bare
+  `if (_closed) throw _closedException()`, so a write to a closed sink threw
+  **at the call site**, before a future existed — while the same method's other
+  failure, `audit.sink.write_failed`, arrived through the future as documented.
+  One method, two error channels, chosen by which failure occurred.
+
+  The return type is what a caller protects against.
+  `sink.write(r).catchError(...)`, `Future.wait([...])` and an unawaited write
+  handed to a later `await` are all complete handling of a future's failure and
+  none of them sits inside a `try`; each was silently the wrong protection for
+  half of what `write` could do. The escaping refusal landed on whatever stack
+  was running, which for a fail-closed trail replaces "your record was not
+  stored, decide what to do" with an uncaught error inside the audited action.
+  Both methods are now `async`, which puts the rule in the declaration so a
+  guard added later inherits it; ordering is unchanged, since an `async` body
+  runs synchronously up to its first `await` and the enqueue precedes any.
+  `TomAuditSink.write` states the rule for custom sinks.
+
+  Callers of `TomAuditTrail.record` were never affected: `record` is `async`
+  and captured the synchronous throw. The blast radius was code holding a sink
+  directly.
+
+  Two related leaks out of the same channel, in `TomFileAuditSink`, both found
+  by the tests written for the above. `File.openWrite` is lazy, so a path that
+  cannot be opened failed the awaited flush — correctly becoming the caller's
+  `write_failed` — *and* the file handle's own completion, which had no
+  listener and surfaced as an unhandled asynchronous error in the calling zone:
+  a caller who handled the failure exactly as documented still got an uncaught
+  error for it. And the dead handle was kept, so `_ensureOpen`'s early return
+  fed every later record to it — the sink failed for the life of the process
+  with `Bad state: StreamSink is closed` in place of the filesystem error that
+  said what was wrong, long after the directory was repaired. A failed write
+  now closes and drops the handle, which consumes the duplicate and lets the
+  sink resume recording once the path works again.
+
 - **`TomAuditEntry.fromJson` defaults no field; a damaged entry is refused
   rather than reinterpreted (tcinc343).** The factory rejected a missing
   `index` — and explained at length why guessing a position was unacceptable —

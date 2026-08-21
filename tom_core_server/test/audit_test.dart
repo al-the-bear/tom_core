@@ -982,12 +982,145 @@ void main() {
         final sink = TomFileAuditSink(directory: dir);
         await sink.write(_record('r1'));
         sink.close();
-        expect(
-          () => sink.write(_record('r2')),
+        await expectLater(
+          sink.write(_record('r2')),
           throwsA(isA<TomAuditException>()),
         );
       },
     );
+
+    // The refusal above and the storage failure below are two failures of one
+    // method, and a method that returns a `Future` states where its failures
+    // arrive: in the future. A caller who has the future — because they passed
+    // it to `Future.wait`, chained `.catchError` onto it, or handed it to a
+    // helper that awaits later — has taken the protection the signature offers
+    // and is entitled to have it work. A `throw` before the future exists is
+    // outside that protection: it lands at the call site, where an unawaited
+    // write has no `try` around it, and the fail-closed trail's one job — the
+    // caller learns the record was not stored — is instead an uncaught error
+    // on whatever stack happened to be running.
+    group('write reports every failure through the future it returns', () {
+      test('refusing a record does not throw at the call site', () {
+        final sink = TomFileAuditSink(directory: dir);
+        sink.close();
+
+        // Deliberately not `expect(() => sink.write(r), throwsA(...))`: that
+        // form passes whichever channel the error takes, and the channel is
+        // the whole subject. The future has to be obtainable first.
+        late final Future<TomAuditEntry> refused;
+        expect(() => refused = sink.write(_record('r1')), returnsNormally);
+        expect(
+          refused,
+          throwsA(
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.sink.closed',
+            ),
+          ),
+        );
+      });
+
+      test('.catchError alone is enough to handle a refusal', () async {
+        // The shape a caller writes when the audit write is fire-and-forget:
+        // no enclosing `try`, because the future was supposed to carry it.
+        final sink = TomFileAuditSink(directory: dir);
+        sink.close();
+
+        Object? caught;
+        await sink
+            .write(_record('r1'))
+            .then<void>((_) {}, onError: (Object e) => caught = e);
+        expect(
+          caught,
+          isA<TomAuditException>().having(
+            (e) => e.key,
+            'key',
+            'audit.sink.closed',
+          ),
+        );
+      });
+
+      test('a storage failure is delivered once, and only there', () async {
+        // Two claims, and the second is the one that hides. `write_failed`
+        // has always been delivered through the future — but `openWrite` is
+        // lazy, so a path that cannot be opened fails both the `flush` the
+        // sink awaits *and* the handle's own `done` future. The second copy
+        // had no listener, so it surfaced as an unhandled asynchronous error
+        // in whatever zone called `write`: a caller that handled the failure
+        // exactly as documented would still see its zone error handler fire,
+        // for a failure that was already reported and already dealt with.
+        final blocked = Directory('${dir.path}/blocked');
+        final unhandled = <Object>[];
+        // The write is awaited *inside* the guarded zone and its outcome
+        // carried out through this completer. Awaiting from outside would
+        // report nothing useful: a future belongs to the error zone it was
+        // created in, so a listener registered outside that zone never sees
+        // the error at all.
+        final outcome = Completer<Object?>();
+
+        runZonedGuarded(() {
+          final sink = TomFileAuditSink(directory: blocked);
+          // Replaced *after* construction, which creates the directory and
+          // lists it to recover the head. The sink now holds a path that is
+          // a file, so opening the log for append cannot succeed.
+          blocked.deleteSync(recursive: true);
+          File(blocked.path).writeAsStringSync('not a directory');
+          unawaited(
+            sink
+                .write(_record('r1'))
+                .then<void>(
+                  (_) => outcome.complete(null),
+                  onError: (Object e) => outcome.complete(e),
+                ),
+          );
+        }, (error, stack) => unhandled.add(error));
+
+        expect(
+          await outcome.future,
+          isA<TomAuditException>().having(
+            (e) => e.key,
+            'key',
+            'audit.sink.write_failed',
+          ),
+        );
+        // The stray copy arrives a turn or two after the reported one.
+        await pumpEventQueue();
+        expect(
+          unhandled,
+          isEmpty,
+          reason: 'the failure escaped the future it was supposed to arrive on',
+        );
+      });
+
+      test(
+        'a sink recovers once the path it failed on becomes writable',
+        () async {
+          // The other half of what a failed write has to do with the handle it
+          // was holding. `_ensureOpen` returns early while a handle exists, so
+          // one kept after a failure is consulted by every later record — and
+          // the sink would go on refusing long after the operator fixed the
+          // directory, turning a transient storage fault into a permanent one
+          // in the component that exists to still be recording when things go
+          // wrong.
+          final blocked = Directory('${dir.path}/blocked');
+          final sink = TomFileAuditSink(directory: blocked);
+          addTearDown(sink.close);
+          blocked.deleteSync(recursive: true);
+          File(blocked.path).writeAsStringSync('not a directory');
+
+          await expectLater(
+            sink.write(_record('r1')),
+            throwsA(isA<TomAuditException>()),
+          );
+
+          File(blocked.path).deleteSync();
+          blocked.createSync();
+          await sink.write(_record('r2'));
+          expect(sink.readAll().map((e) => e.record.id), ['r2']);
+        },
+      );
+    });
 
     test('concurrent writes still produce a verifiable chain', () async {
       final sink = TomFileAuditSink(directory: dir);

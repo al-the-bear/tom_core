@@ -333,8 +333,11 @@ class TomSqlAuditSink implements TomAuditSink {
         : (hash: rows.first.hash, entryCount: rows.first.entryIndex + 1);
   }
 
+  /// `async` so that the guard below fails the *future* rather than the call —
+  /// see the note on the file sink's [TomFileAuditSink.write], which carries
+  /// the same marking for the same reason.
   @override
-  Future<TomAuditEntry> write(TomAuditRecord record) {
+  Future<TomAuditEntry> write(TomAuditRecord record) async {
     if (_closed) throw _closedException();
     final result = _queue.then((_) => _writeSerialised(record));
     // Keep the queue alive on failure: one failed write must not wedge the
