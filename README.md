@@ -167,6 +167,7 @@ package lives in that package's own `tool/`.
 | ---- | ------------ |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits every `## Table of Contents` in the tree against its own document |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
+| [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
@@ -199,6 +200,36 @@ no longer exist, files on disk the table omits, and opening claims that
 disagree with the directory. `--fix` writes the measurements back; the two
 faults it leaves alone are adding and retiring rows, because each needs a
 sentence saying what the file carries.
+
+```bash
+python3 tool/check_doc_error_keys.py                 # every "Error keys" section
+python3 tool/check_doc_error_keys.py tom_core_server # one project's documents
+python3 tool/check_doc_error_keys.py --list          # print each census
+```
+
+A module's error keys are its public vocabulary of failure, and the section is
+written as a reference a client author branches on. So a key that is raised and
+not listed is a branch nobody knows to write, and a key that is listed and not
+raised is a branch that can never be taken. Both are silent — neither the
+compiler nor any test notices, because the section lives in another repository
+from the code it describes. The check reports them as `ABSENT` and `UNKNOWN`.
+
+Deciding what counts as an error key cannot be done from the shape of a string
+literal, because plenty of dotted lowercase literals are configuration keys,
+claim names or table names. So it works in two passes: the first argument of
+every `SomethingException(` establishes a key, those keys establish their
+*families*, and any other dotted literal of an established family counts too.
+The second pass is what catches the keys that reach a client without being
+thrown — handed to a result object, assigned to an `error` field, returned by a
+local `_error` helper. Deriving the families from the raises rather than listing
+them keeps the rule general while still excluding `oauth.providers`, a
+configuration key whose family no exception establishes.
+
+This table has proved as prone to decay as the inventories: one hand census
+found six glosses describing the wrong condition, and a later one found thirteen
+keys missing outright — including an entire family, every failure an external
+login can report. A hand census also invents keys, which is why `UNKNOWN` is
+worth reporting at all.
 
 ```bash
 python3 tool/check_dartdoc_refs.py                 # the whole repository
