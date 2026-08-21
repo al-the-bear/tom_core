@@ -1087,6 +1087,22 @@ void main() {
       expect(lines, isEmpty);
     });
 
+    test('a manual call that does real work still prints no status', () {
+      // The quiet-when-empty case is covered under `empty state`; this is the
+      // one that could regress independently, because a status message gated
+      // on the wrong condition would show up only once there was work to
+      // announce. Non-silent on purpose: `silent` must not be what is keeping
+      // this quiet.
+      final lines = <String>[];
+      final cleanup = _newCleanup();
+      cleanup.addClosable(TestClosable());
+      cleanup.addDisposable(RecordingDisposable(<String>[]));
+
+      _capturePrints(lines, cleanup.performShutdown);
+
+      expect(lines, isEmpty);
+    });
+
     test('manual call ignores paused (only the signal path honours it)', () {
       final cleanup = _newCleanup();
       final closable = TestClosable();

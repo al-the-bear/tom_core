@@ -174,6 +174,67 @@ Naming a signal that is already watched — one of the two defaults above, or on
 added earlier — does nothing. Registering is safe to repeat, so code that arms
 its own signals need not first work out which ones are already covered.
 
+#### Running cleanup without a signal — performShutdown()
+
+A signal is one way into the cleanup, not the only one. `performShutdown()`
+runs the three phases immediately, which is how a test, a hosted runtime, or a
+process that decides to stop on its own terms triggers teardown:
+
+```dart
+tomShutdownCleanup.performShutdown();
+```
+
+The optional `signal:` argument is forwarded to the registered signal handlers
+for those that branch on it; it defaults to `SIGINT` and names nothing that
+actually arrived. The signal path calls the same method with `fromSignal: true`,
+and that flag — not the presence of a real signal — is what selects the
+right-hand column below:
+
+| | `performShutdown()` | An arriving signal |
+| --- | --- | --- |
+| Runs while [`paused`](#paused-and-silent) is set | yes, `paused` is ignored | no, the signal is dropped |
+| Prints `Received …` / `Shutdown performed` | never | unless [`silent`](#paused-and-silent) |
+| Reports an entry that throws | unless `silent` | unless `silent` |
+
+Either way the cleanup runs **once** per instance: whichever route arrives
+first does the work and the other finds it done. A signal arriving after a
+manual shutdown still announces itself and then reports that shutdown has
+already been performed.
+
+#### paused and silent
+
+Two flags on the instance, both `false` by default.
+
+`paused` makes arriving signals do nothing. Note what it does *not* do: the
+watchers stay installed, so the signal is still delivered here and still
+withheld from the operating system's default handling — it is simply ignored on
+arrival. Under `paused`, then, Ctrl+C neither cleans up nor stops the program.
+That is the intent; the flag exists for interactive REPLs that do their own
+Ctrl+C handling and need this instance to keep out of the way. Manual
+`performShutdown()` is unaffected.
+
+`silent` suppresses output. That covers the two status messages, which only the
+signal path emits anyway, and the per-entry failure diagnostics, which both
+paths emit — so a silent instance stays quiet about a cleanup that throws. See
+[Limitations](#limitations) for what that costs.
+
+#### Tearing an instance down — dispose() and cancelAll()
+
+`cancelAll()` cancels every signal watcher the instance holds: the two the
+constructor installed and any added with `addSignal()`. `dispose()` is the same
+operation under the name callers look for — it delegates and adds nothing.
+Both are safe to call more than once.
+
+Call one of them for **any instance whose lifetime is shorter than the
+process**. A live watcher keeps the process alive, so an undisposed instance
+stops the program from exiting, and the symptom is a hang rather than an error.
+The global `tomShutdownCleanup` is the exception: it is meant to last as long
+as the program, so it is never disposed.
+
+Neither method runs the cleanup. Disposing releases the instance's watchers; it
+does not close the closables registered on it. Call `performShutdown()` first
+if the resources still need releasing.
+
 #### start() — an optional log breadcrumb
 
 `start()` does not start anything. Signal listening is armed by the
@@ -237,9 +298,10 @@ debugCleanup.addSignalHandler((signal) {
 ```
 
 A custom instance created for the life of the program, as above, needs nothing
-further. One with a bounded lifetime must be disposed when that lifetime ends —
-constructing it armed SIGHUP/SIGINT watchers, and a live watcher keeps the
-process alive, so an undisposed instance stops the program from exiting:
+further. One with a bounded lifetime must be
+[disposed](#tearing-an-instance-down--dispose-and-cancelall) when that lifetime
+ends — constructing it armed SIGHUP/SIGINT watchers, and a live watcher keeps
+the process alive:
 
 ```dart
 await debugCleanup.dispose();
