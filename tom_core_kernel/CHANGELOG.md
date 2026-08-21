@@ -787,6 +787,22 @@ anyone who was writing them.
 
 ### Tests
 
+- **New guard: `timezoned_platform_selection_test.dart` (tcinc329).** The
+  module picks its initializer with a conditional import whose first line is
+  the *default* arm, not the native one — so every VM target, server and CLI
+  and test runner and Flutter alike, takes `init_tz_flutter.dart`, and
+  `init_tz.dart` is reached only where neither `dart:io` nor `dart:js` exists.
+  The file names say the opposite, and that reading is unfalsifiable from
+  either side alone: the source is correct and mentions no platforms, the prose
+  names platforms and quotes no condition. The guard holds the two together —
+  the `import` and `export` arms must stay identical (the source asks for this
+  in a comment and nothing else enforced it), each arm's dartdoc must name the
+  role the selection gives it, any quotation of the import block must be
+  verbatim, every `package:timezone/…` library the documents name must be one
+  the module imports, and every "*this entry point on that platform*" claim
+  must name a library that platform's own arm actually reaches. Each scan
+  carries the package's usual non-vacuity check.
+
 - **New guard: `serialized_form_is_not_rebuilt_test.dart` (tcinc327).**
   `toString()` returns the complete serialized form, prefix included, but both
   halves are public and both look like ingredients, so joining a value's
@@ -1155,6 +1171,20 @@ anyone who was writing them.
   is where the window it opens belongs.
 
 ### Documentation
+
+- **The timezoned platform description named the wrong entry point for native
+  (tcinc329).** `doc/timezoned/timezoned.md` had the server reaching the
+  `timezone` package through `standalone.dart`. It does not. The conditional
+  import's first line is its default arm, taken only when no condition holds,
+  and every VM target has `dart.library.io` — so the server, the CLI and the
+  test runner all run `init_tz_flutter.dart` and load embedded data from
+  `package:timezone/data/latest.dart`, exactly as Flutter does. `init_tz.dart`,
+  which sits first and carries the plainest name, is selected by nothing the
+  package is built for. The passage now states the rule the import encodes and
+  names the library each arm imports. Reading order matters here in a way the
+  prose never signalled, so the correction is stated in terms of the condition
+  rather than the platform — the file names are the trap, and describing the
+  selection through them walks straight into it.
 
 - **shutdown_cleanup no longer teaches async teardown that the framework drops
   (tcinc322).** Teardown is synchronous throughout — every entry is called

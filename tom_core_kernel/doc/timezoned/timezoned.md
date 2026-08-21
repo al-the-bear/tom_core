@@ -551,8 +551,14 @@ import 'init_tz.dart'
     if (dart.library.js) 'init_tz_web.dart';
 ```
 
-So the `timezone` package is reached through a different entry point per
-platform — `standalone.dart` on native, `data/latest.dart` under Flutter,
-`browser.dart` on the web. Nothing in the calling code changes, but a
-platform whose database has not been loaded fails at the first lookup rather
-than at import.
+The first line is the **default** arm, not the native one. Every VM target —
+server, CLI, test runner and Flutter alike — has `dart.library.io` and so takes
+`init_tz_flutter.dart`; the web takes `init_tz_web.dart` on `dart.library.js`;
+and `init_tz.dart`, despite sitting first and carrying the plainest name, is
+selected only where neither library exists.
+
+So the `timezone` package is reached through `data/latest.dart` on native, the
+same `data/latest.dart` under Flutter — one arm serves both — and
+`browser.dart` on the web. Nothing in the calling code changes, but a platform
+whose database has not been loaded fails at the first lookup rather than at
+import.
