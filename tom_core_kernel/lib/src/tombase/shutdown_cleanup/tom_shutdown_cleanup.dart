@@ -10,6 +10,11 @@
 /// - [TomClosable]: Objects that implement a `close()` method
 /// - [TomSignalHandler]: Custom signal handlers for specialized cleanup logic
 ///
+/// All three are **synchronous**. Nothing awaits what a handler, a `close()`
+/// or a `dispose()` returns, so teardown that has to await belongs in the
+/// application's own control flow rather than here — see [TomClosable.close]
+/// for what becomes of a `Future` returned from one of them.
+///
 /// ## Quick Start
 ///
 /// Registering a resource is the whole setup. Signal listening is already
@@ -48,6 +53,11 @@ import '../reflection/reflection.dart';
 ///
 /// Called when a registered signal is received by the process.
 /// The [onData] parameter contains the specific signal that was received.
+///
+/// Returns `void`, and that return value is discarded rather than awaited. An
+/// `async` handler therefore compiles and then runs only as far as its first
+/// `await` before the shutdown moves on to the next entry. See
+/// [TomClosable.close].
 typedef TomSignalHandler = void Function(ProcessSignal onData);
 
 // =============================================================================
@@ -83,6 +93,10 @@ abstract class TomDisposable {
   /// This method is called automatically during shutdown cleanup.
   /// Implementations should release all resources and perform
   /// any necessary cleanup operations.
+  ///
+  /// **Must complete synchronously** — a returned `Future` is discarded, not
+  /// awaited. See [TomClosable.close] for what that costs and what to write
+  /// instead.
   void dispose();
 }
 
@@ -115,6 +129,20 @@ abstract class TomClosable {
   /// This method is called automatically during shutdown cleanup.
   /// Implementations should close all connections, streams, or
   /// other resources that require explicit closing.
+  ///
+  /// **Must complete synchronously.** The shutdown calls this through a
+  /// `void Function()` and does not await what comes back, so an `async`
+  /// implementation — which the compiler accepts, because in return position
+  /// every type is a subtype of `void` — runs only as far as its first
+  /// `await`. The remainder resumes on a later turn of the event loop, one the
+  /// process may not survive; and anything it throws misses the per-entry
+  /// failure report, because that catch is around the call rather than around
+  /// the future it returned.
+  ///
+  /// Teardown that genuinely has to await belongs in the application's own
+  /// asynchronous control flow. Register a signal handler that records the
+  /// request — completing a `Completer`, setting a flag — and do the awaiting
+  /// where an `await` is honoured.
   void close();
 }
 

@@ -57,6 +57,10 @@ void main() {
 
 ### Interfaces
 
+Both are synchronous, and deliberately so — see
+[Teardown is never awaited](#teardown-is-never-awaited) before writing an
+`async` implementation of either, because the compiler will accept one.
+
 #### TomDisposable
 
 Interface for objects that need cleanup via a `dispose()` method.
@@ -309,25 +313,43 @@ await debugCleanup.dispose();
 
 ### Server Application Pattern
 
+Closing an `HttpServer` gracefully is asynchronous, and
+[nothing here is awaited](#teardown-is-never-awaited) — so the handler does not
+attempt it. Its whole job is to *signal*, synchronously, that shutdown was
+requested; the awaiting happens back in the server's own control flow, where an
+`await` means what it says:
+
 ```dart
 class MyServer {
   late HttpServer _server;
-  
-  Future<void> start() async {
+  final Completer<void> _stopRequested = Completer<void>();
+
+  Future<void> run() async {
     _server = await HttpServer.bind('localhost', 8080);
-    
-    // Register server for graceful shutdown
-    tomShutdownCleanup.addSignalHandler((signal) async {
-      print('Shutting down server...');
-      await _server.close(force: false);
+
+    // Synchronous, and complete by the time it returns.
+    tomShutdownCleanup.addSignalHandler((signal) {
+      if (!_stopRequested.isCompleted) _stopRequested.complete();
     });
-    
+
+    unawaited(_serve());
+    await _stopRequested.future;
+
+    print('Shutting down server...');
+    await _server.close(force: false);
+  }
+
+  Future<void> _serve() async {
     await for (final request in _server) {
       handleRequest(request);
     }
   }
 }
 ```
+
+The cost of the indirection is one `Completer`; what it buys is that
+`_server.close()` is genuinely waited for before `run()` returns and the
+process goes.
 
 ## Execution Order
 
@@ -338,6 +360,41 @@ When a signal is received, cleanup operations execute in this order:
 3. **Disposables** - Objects added via `addDisposable()`
 
 Within each category, items are processed in the order they were registered.
+
+### Teardown is never awaited
+
+Every entry is called through a plain `void Function(…)`, and the shutdown does
+not wait for what comes back. That applies to all three phases alike: a signal
+handler, a `close()` and a `dispose()` are each called, and the shutdown moves
+straight on to the next entry.
+
+An `async` entry therefore **compiles and does not work as it reads**:
+
+```dart
+// Not what it looks like.
+tomShutdownCleanup.addSignalHandler((signal) async {
+  await flushJournal();   // <- the shutdown has already moved on
+  await closeSockets();   // <- may never run at all
+});
+```
+
+Dart accepts the `async` body because in return position every type is a
+subtype of `void`, so nothing warns. What happens instead is:
+
+- the body runs synchronously **only up to its first `await`**, and the phase
+  continues from there;
+- the remainder resumes on a later turn of the event loop — a turn a shutting
+  down process may not be there for;
+- anything it throws after that first `await` misses the per-entry failure
+  report entirely, because that catch is around the *call*, not around the
+  future the call returned. The error surfaces as an unhandled asynchronous
+  error with nothing left to say which phase or which entry produced it.
+
+So keep the entries synchronous, and drive awaited teardown from your own
+control flow: let a handler record that shutdown was requested, and do the
+awaiting where an `await` is honoured. The
+[Server Application Pattern](#server-application-pattern) below is that shape
+in full.
 
 ## Best Practices
 
@@ -385,9 +442,19 @@ tomShutdownCleanup.addSignalHandler((signal) {
 
 ### 4. Don't Block Indefinitely
 
-Cleanup operations should complete quickly. For async operations, consider timeouts:
+Every entry runs on the shutdown's own thread of control, one after another, so
+a slow entry delays every entry behind it. Prefer the bounded, synchronous form
+of an operation where the resource offers one:
 
 ```dart
+// flushSync(), not flush() — see "Teardown is never awaited" above.
+tomShutdownCleanup.addClosable(journal);
+```
+
+Note that the obvious way to bound a slow step does not work here:
+
+```dart
+// Inert. Nothing awaits the handler, so nothing waits for the race either.
 tomShutdownCleanup.addSignalHandler((signal) async {
   await Future.any([
     slowCleanupOperation(),
@@ -395,6 +462,12 @@ tomShutdownCleanup.addSignalHandler((signal) async {
   ]);
 });
 ```
+
+The phase returns the moment that body reaches its first `await`, so the
+timeout bounds nothing — it merely looks as though it does. A deadline needs
+somewhere that actually waits, which means the application's own control flow:
+signal from the handler and impose the timeout there, as under
+[Server Application Pattern](#server-application-pattern).
 
 ### 5. Reach for TomCloseAdaptor Last, Not First
 
@@ -417,6 +490,7 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(store, config.teardownMethod));
 
 ## Limitations
 
+- Teardown is synchronous throughout: a `Future` returned from a signal handler, a `close()` or a `dispose()` is discarded rather than awaited, and the compiler cannot flag it because `void` accepts any return type — see [Teardown is never awaited](#teardown-is-never-awaited)
 - The cleanup system uses `print()` for logging during shutdown (not the full logging system) to ensure output even if logging is affected
 - `silent` suppresses the failure diagnostics along with the status messages, so a silent instance says nothing when a cleanup throws — the cleanup still continues, but the reason it failed is gone
 - A failure's stack trace is cut to its top ten frames, enough to identify the failing `close()`/`dispose()` but not to follow a deep call chain

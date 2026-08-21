@@ -50,6 +50,31 @@ class ThrowingClosable implements TomClosable {
   }
 }
 
+/// Closable whose teardown is asynchronous.
+///
+/// `Future<void> close()` is a legal override of `void close()` — in return
+/// position every type is a subtype of `void` — which is why this mistake
+/// compiles and why no analyzer flags it.
+class AsyncClosable implements TomClosable {
+  bool flushed = false;
+
+  @override
+  Future<void> close() async {
+    await Future<void>.delayed(Duration.zero);
+    flushed = true;
+  }
+}
+
+/// Closable whose asynchronous teardown fails *after* its first suspension, so
+/// the throw lands inside the returned future rather than at the call itself.
+class AsyncThrowingClosable implements TomClosable {
+  @override
+  Future<void> close() async {
+    await Future<void>.delayed(Duration.zero);
+    throw Exception('Async close failed');
+  }
+}
+
 // =============================================================================
 // Reflected targets for TomCloseAdaptor (own + inherited members)
 // =============================================================================
@@ -610,6 +635,78 @@ void main() {
             'disposable',
           ]),
         );
+      });
+    });
+
+    // Both interfaces and the handler typedef return `void`, and the phase
+    // calls them through a `void Function(T)`. Dart accepts an `async` body
+    // there, so the mistake compiles; these two tests pin what it then does.
+    // They are the executable form of the claims the module doc and the module
+    // readme now make, so if teardown ever becomes awaited both should fail —
+    // and both documents have to change with them.
+    group('asynchronous entries', () {
+      test('a Future returned from close() is not awaited', () async {
+        // The synchronous closable is the control. Both are registered on one
+        // instance and closed in the same phase, so its flag proves the phase
+        // ran — without it, `flushed` being false would be equally consistent
+        // with a shutdown that closed nothing at all.
+        final synchronous = TestClosable();
+        final asynchronous = AsyncClosable();
+        final cleanup = _newCleanup();
+        cleanup.addClosable(synchronous);
+        cleanup.addClosable(asynchronous);
+
+        cleanup.performShutdown();
+
+        expect(synchronous.closed, isTrue);
+        expect(
+          asynchronous.flushed,
+          isFalse,
+          reason: 'the phase moved on before the async close resumed',
+        );
+
+        // Unawaited is not the same as unrun. The work does finish — one turn
+        // of the event loop later, which in a real shutdown is a turn the
+        // process may not still be there for.
+        await Future<void>.delayed(Duration.zero);
+        expect(asynchronous.flushed, isTrue);
+      });
+
+      test('a Future that fails escapes the per-entry report', () async {
+        // The per-entry try/catch wraps the call, and an async body's throw
+        // happens after the call has already returned. So the failure misses
+        // the `Failed to call closable ...` diagnostic entirely and surfaces
+        // as an unhandled asynchronous error, with nothing left to name the
+        // phase or the entry that produced it.
+        //
+        // The synchronous thrower alongside it is the control: it fails in the
+        // same phase of the same shutdown and *is* reported, which is what
+        // makes the async one's absence from the report mean something rather
+        // than showing only that the capture was not wired up.
+        final lines = <String>[];
+        final errors = <Object>[];
+        final cleanup = _newCleanup();
+        cleanup.addClosable(ThrowingClosable());
+        cleanup.addClosable(AsyncThrowingClosable());
+
+        await runZonedGuarded(
+          () async {
+            cleanup.performShutdown();
+            await Future<void>.delayed(Duration.zero);
+            await Future<void>.delayed(Duration.zero);
+          },
+          (error, stackTrace) => errors.add(error),
+          zoneSpecification: ZoneSpecification(
+            print: (self, parent, zone, line) => lines.add(line),
+          ),
+        )!;
+
+        expect(lines, hasLength(1), reason: 'only the sync failure reported');
+        expect(lines.single, contains('Close failed'));
+        expect(lines.single, isNot(contains('Async close failed')));
+
+        expect(errors, hasLength(1));
+        expect(errors.single.toString(), contains('Async close failed'));
       });
     });
   });

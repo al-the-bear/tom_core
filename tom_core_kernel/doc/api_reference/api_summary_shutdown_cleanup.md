@@ -24,7 +24,10 @@ for SIGHUP and SIGINT (and any additional signals added via `addSignal`) and, on
 the first signal — or on a manual `performShutdown` call — runs three cleanup
 phases in order: registered signal handlers, then closables (`TomClosable`), then
 disposables (`TomDisposable`). Each callout is isolated so a failing handler
-never blocks the rest, and cleanup runs at most once per instance. `TomClosable`
+never blocks the rest, and cleanup runs at most once per instance. All three
+phases are **synchronous**: an entry is called through a `void`-returning
+function and whatever it returns is discarded, so an `async` handler, `close()`
+or `dispose()` compiles but runs only as far as its first `await`. `TomClosable`
 and `TomDisposable` are the interfaces objects implement to participate;
 `TomCloseAdaptor` uses reflection to wrap objects that expose a `close()` /
 `dispose()` (or custom-named) method without implementing those interfaces. The
@@ -55,7 +58,7 @@ terminates. `dispose` is called automatically by `TomShutdownCleanup`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `dispose` | `void dispose()` | Disposes of resources held by this object; called automatically during shutdown cleanup. |
+| `dispose` | `void dispose()` | Disposes of resources held by this object; called automatically during shutdown cleanup. Must complete synchronously — a returned `Future` is discarded. |
 
 ### TomClosable
 
@@ -68,7 +71,7 @@ is called automatically by `TomShutdownCleanup`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `close` | `void close()` | Closes resources (connections, streams, etc.) held by this object; called automatically during shutdown cleanup. |
+| `close` | `void close()` | Closes resources (connections, streams, etc.) held by this object; called automatically during shutdown cleanup. Must complete synchronously — a returned `Future` is discarded, and a throw after its first `await` misses the per-entry failure report. |
 
 ### TomCloseAdaptor
 
@@ -139,5 +142,5 @@ TomShutdownCleanup()
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `TomSignalHandler` | `typedef TomSignalHandler = void Function(ProcessSignal onData)` | Handler function type for processing system signals; the `onData` parameter carries the received signal. |
+| `TomSignalHandler` | `typedef TomSignalHandler = void Function(ProcessSignal onData)` | Handler function type for processing system signals; the `onData` parameter carries the received signal. The return value is discarded, so an `async` handler runs only as far as its first `await`. |
 | `tomShutdownCleanup` | `final TomShutdownCleanup tomShutdownCleanup` | Global default `TomShutdownCleanup` instance, automatically listening for SIGHUP and SIGINT. |

@@ -24,8 +24,13 @@ signal handlers and runs them when the process shuts down, so resources
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 class CacheService implements TomClosable {
+  final IOSink _journal;
+  CacheService(this._journal);
+
+  // Synchronous on purpose: nothing awaits what close() returns, so an
+  // `async` body here would run only as far as its first `await`.
   @override
-  Future<void> close() async => print('cache flushed');
+  void close() => _journal.writeln('cache flushed');
 }
 
 void main() {
@@ -33,9 +38,14 @@ void main() {
   // order when a shutdown signal arrives. Listening for SIGHUP and SIGINT
   // is already active — the instance arms it on construction — so this
   // registration is the entire setup.
-  tomShutdownCleanup.addClosable(CacheService());
+  tomShutdownCleanup.addClosable(CacheService(stderr));
 }
 ```
+
+Teardown here is **synchronous throughout** — handlers, `close()` and
+`dispose()` alike. Anything that has to await belongs in your own control
+flow; see
+[Teardown is never awaited](../../../../doc/shutdown_cleanup/shutdown_cleanup.md#teardown-is-never-awaited).
 
 ---
 

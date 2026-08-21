@@ -1052,6 +1052,37 @@ anyone who was writing them.
 
 ### Documentation
 
+- **shutdown_cleanup no longer teaches async teardown that the framework drops
+  (tcinc322).** Teardown is synchronous throughout — every entry is called
+  through a `void`-returning function and whatever it returns is discarded —
+  yet three documentation sites presented `async` cleanup as a working pattern
+  with no caveat: the module readme's quick start implemented `TomClosable`
+  with `Future<void> close() async`, the prose's Server Application Pattern
+  awaited `HttpServer.close()` inside a signal handler, and a best practice
+  recommended bounding slow cleanup with `await Future.any([…, Future.delayed
+  (…)])`. None of it works, and nothing warns: Dart accepts an `async` body
+  wherever `void` is expected, because in return position every type is a
+  subtype of `void`. A reader following any of the three believed they had an
+  ordered async shutdown and had a body that ran to its first `await` and was
+  abandoned there.
+
+  All three are now synchronous. The server pattern instead has the handler
+  complete a `Completer` and does the awaited `close()` back in the
+  application's own control flow, which is the shape that actually works; the
+  timeout advice keeps the `Future.any` snippet but as the counter-example it
+  is, with an explanation of why the deadline bounds nothing. A new
+  "Teardown is never awaited" section under Execution Order states the rule
+  once for all three phases, `TomClosable.close` and `TomDisposable.dispose`
+  and the `TomSignalHandler` typedef say it in their dartdoc, and the API
+  mirror and the Limitations list carry it too.
+
+  The section also names a consequence that was nowhere documented: a throw
+  *after* an async entry's first `await` misses the per-entry failure report
+  entirely, because that catch wraps the call rather than the returned future.
+  It surfaces as an unhandled asynchronous error with nothing left to identify
+  the phase or the entry. Two tests pin both halves of the behaviour, so if the
+  contracts ever become awaited the documents are forced to change with them.
+
 - **`doc/settings/settings.md` now documents the constructor, the defaults and
   the reflected shape (tcinc299).** The module's main prose document showed
   results only as things that arrive from a server, never as things anyone
