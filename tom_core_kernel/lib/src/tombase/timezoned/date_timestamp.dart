@@ -450,34 +450,38 @@ class TomZonedDate extends TomTimezoned {
          timezone: timezone,
        );
 
-  /// Creates a [TomZonedDate] from an existing [DateTime].
+  /// Creates a [TomZonedDate] for the calendar day on which [dtx] falls in
+  /// [timezone].
   ///
-  /// The DateTime is assumed to already be in UTC. The date portion
-  /// from the UTC DateTime is used.
+  /// [dtx] names an instant; a date names a calendar day. The instant is read
+  /// in [timezone] to find out which day it is *there*, and the result is
+  /// anchored to midnight of that day — the same value the primary
+  /// constructor produces for those date components. Any time-of-day carried
+  /// by [dtx] is therefore discarded, which is what makes the result a date
+  /// rather than a timestamp that happens to be typed as one.
   ///
-  /// [dtx] The DateTime to extract the date from.
-  /// [timezone] The timezone to associate (defaults to UTC).
+  /// The day depends on the timezone: 22:30 UTC is already the next day in
+  /// Berlin, so passing that instant with `Europe/Berlin` yields the later
+  /// day, not the UTC one.
+  ///
+  /// [dtx] The instant to take the calendar day from; may be local or UTC.
+  /// [timezone] The timezone the day is read in (defaults to UTC).
   ///
   /// Example:
   /// ```dart
-  /// final now = DateTime.now();
   /// final todayInTokyo = TomZonedDate.fromDateTime(
-  ///   now,
+  ///   DateTime.now(),
   ///   TomTimezone.fromName('Asia/Tokyo'),
   /// );
+  /// print(todayInTokyo.localHour); // 0
   /// ```
   factory TomZonedDate.fromDateTime(DateTime dtx, [TomTimezone? timezone]) {
-    final dt = dtx.isUtc ? dtx : dtx.toUtc();
     final tz_ = timezone ?? TomTimezone.utc;
-    return TomZonedDate._fromUtcValues(
-      utcYear: dt.year,
-      utcMonth: dt.month,
-      utcDay: dt.day,
-      utcHour: dt.hour,
-      utcMinute: dt.minute,
-      utcSecond: dt.second,
-      utcMillisecond: dt.millisecond,
-      utcMicrosecond: dt.microsecond,
+    final local = tz.TZDateTime.from(dtx, tz_.location);
+    return TomZonedDate(
+      year: local.year,
+      month: local.month,
+      day: local.day,
       timezone: tz_,
     );
   }
@@ -547,6 +551,12 @@ class TomZonedDate extends TomTimezoned {
   ///
   /// Returns `true` if all time components (hour, minute, second,
   /// millisecond, microsecond) are zero.
+  ///
+  /// The components are read in whatever frame [dt] carries, because a plain
+  /// [DateTime] offers no other. A [TomZonedDate] stores UTC while its
+  /// anchoring is local, so those two frames disagree for every zone off UTC:
+  /// pass `value.toDateTime()`, which is the value in its own timezone, and
+  /// not the value itself.
   static bool isDate(DateTime dt) {
     return dt.hour == 0 &&
         dt.minute == 0 &&
@@ -697,24 +707,30 @@ class TomZonedTime extends TomTimezoned {
          timezone: timezone,
        );
 
-  /// Creates a [TomZonedTime] from an existing [DateTime].
+  /// Creates a [TomZonedTime] for the wall-clock time [dtx] shows in
+  /// [timezone].
   ///
-  /// The time portion from the UTC-converted DateTime is used.
+  /// [dtx] names an instant; a time names a position within a day. The
+  /// instant is read in [timezone] to find the clock reading *there*, and the
+  /// date it fell on is replaced by the epoch anchor — the same value the
+  /// primary constructor produces for those time components. Discarding the
+  /// date is what makes the result a time of day rather than a timestamp that
+  /// happens to be typed as one.
   ///
-  /// [dtx] The DateTime to extract the time from.
-  /// [timezone] The timezone to associate (defaults to UTC).
+  /// The reading depends on the timezone: 13:47 UTC is 15:47 in Berlin during
+  /// CEST, and it is the Berlin reading that a Berlin time-of-day means.
+  ///
+  /// [dtx] The instant to take the clock reading from; may be local or UTC.
+  /// [timezone] The timezone the reading is taken in (defaults to UTC).
   factory TomZonedTime.fromDateTime(DateTime dtx, [TomTimezone? timezone]) {
-    final dt = dtx.toUtc();
     final tz_ = timezone ?? TomTimezone.utc;
-    return TomZonedTime._fromUtcValues(
-      utcYear: dt.year,
-      utcMonth: dt.month,
-      utcDay: dt.day,
-      utcHour: dt.hour,
-      utcMinute: dt.minute,
-      utcSecond: dt.second,
-      utcMillisecond: dt.millisecond,
-      utcMicrosecond: dt.microsecond,
+    final local = tz.TZDateTime.from(dtx, tz_.location);
+    return TomZonedTime(
+      hour: local.hour,
+      minute: local.minute,
+      second: local.second,
+      millisecond: local.millisecond,
+      microsecond: local.microsecond,
       timezone: tz_,
     );
   }
@@ -770,6 +786,12 @@ class TomZonedTime extends TomTimezoned {
   /// Checks if a [DateTime] represents a time-only value.
   ///
   /// Returns `true` if the date components are 1970-01-01 (Unix epoch).
+  ///
+  /// The components are read in whatever frame [dt] carries, because a plain
+  /// [DateTime] offers no other. A [TomZonedTime] stores UTC while its epoch
+  /// anchor is local, so those two frames disagree for every zone off UTC:
+  /// pass `value.toDateTime()`, which is the value in its own timezone, and
+  /// not the value itself.
   static bool isTime(DateTime dt) {
     return dt.year == 1970 && dt.month == 1 && dt.day == 1;
   }

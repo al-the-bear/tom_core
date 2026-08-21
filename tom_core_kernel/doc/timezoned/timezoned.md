@@ -226,6 +226,10 @@ final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
 // Create with components
 final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: tokyo);
 
+// Create from an instant: which calendar day is this, in Tokyo?
+final today = TomZonedDate.fromDateTime(DateTime.now(), tokyo);
+print(today.localHour); // 0 — the time of day is discarded
+
 // Parse from string
 final parsed = TomZonedDate.parseFromString(
   '@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo'
@@ -234,6 +238,14 @@ final parsed = TomZonedDate.parseFromString(
 // Check if a DateTime is date-only
 if (TomZonedDate.isDate(someDateTime)) { ... }
 ```
+
+`fromDateTime` asks its question of the *target* timezone, so the day it picks
+can differ from the UTC one: 22:30 UTC is already tomorrow in Tokyo.
+
+`isDate` takes a plain `DateTime` and so can only read the frame that value
+carries. A `TomZonedDate` stores UTC while its midnight anchor is local, and off
+UTC the two disagree — hand it `date.toDateTime()`, the value in its own
+timezone, rather than the value itself.
 
 ### TomZonedTime
 
@@ -245,6 +257,10 @@ final nyTz = TomTimezone.fromName('America/New_York')!;
 // Create with components
 final standup = TomZonedTime(hour: 9, minute: 0, timezone: nyTz);
 
+// Create from an instant: what does the New York clock read?
+final rightNow = TomZonedTime.fromDateTime(DateTime.now(), nyTz);
+print(rightNow.localYear); // 1970 — the date is re-anchored to the epoch
+
 // Parse from string
 final parsed = TomZonedTime.parseFromString(
   '@T@1970-01-01T14:00:00.000Z_-05:00_America/New_York'
@@ -253,6 +269,9 @@ final parsed = TomZonedTime.parseFromString(
 // Check if a DateTime is time-only
 if (TomZonedTime.isTime(someDateTime)) { ... }
 ```
+
+`isTime` carries the same caveat as `isDate`: it reads whatever frame the
+`DateTime` carries, so pass `time.toDateTime()` rather than the value.
 
 #### Getting Local Time on Different Dates
 

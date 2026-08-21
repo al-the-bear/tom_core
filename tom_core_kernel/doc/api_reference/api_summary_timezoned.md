@@ -157,6 +157,10 @@ factory TomZonedDate.fromDateTime(DateTime dtx, [TomTimezone? timezone])
 factory TomZonedDate.parseFromString(String formattedString)
 ```
 
+`fromDateTime` reads `dtx` in `timezone` to find the calendar day it falls on
+*there* and anchors to midnight of that day, discarding the time of day — so it
+produces the same value the primary constructor would for those components.
+
 `parseFromString` throws `FormatException` for an invalid `@D@` string or unknown
 zone.
 
@@ -171,7 +175,7 @@ zone.
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `isTomZonedDateString(String s)` | `bool` | Whether `s` is a valid `@D@`-prefixed date string. |
-| `isDate(DateTime dt)` | `bool` | Whether `dt` has all-zero time components (date-only). |
+| `isDate(DateTime dt)` | `bool` | Whether `dt` has all-zero time components (date-only), read in `dt`'s own frame — pass `value.toDateTime()`, not the value. |
 
 #### Methods
 
@@ -205,6 +209,10 @@ factory TomZonedTime.fromDateTime(DateTime dtx, [TomTimezone? timezone])
 factory TomZonedTime.parseFromString(String formattedString)
 ```
 
+`fromDateTime` reads `dtx` in `timezone` to find the wall-clock time it shows
+*there* and re-anchors the date to 1970-01-01, discarding the incoming date — so
+it produces the same value the primary constructor would for those components.
+
 `parseFromString` throws `FormatException` for an invalid `@T@` string or unknown
 zone.
 
@@ -219,7 +227,7 @@ zone.
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `isTomZonedTimeString(String s)` | `bool` | Whether `s` is a valid `@T@`-prefixed time string. |
-| `isTime(DateTime dt)` | `bool` | Whether `dt`'s date is the Unix epoch (time-only). |
+| `isTime(DateTime dt)` | `bool` | Whether `dt`'s date is the Unix epoch (time-only), read in `dt`'s own frame — pass `value.toDateTime()`, not the value. |
 
 #### Methods
 

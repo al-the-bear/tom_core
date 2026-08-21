@@ -171,6 +171,32 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomZonedDate.fromDateTime` and `TomZonedTime.fromDateTime` enforce their
+  type's anchoring (tcinc324).** Both copied every component of the incoming
+  `DateTime` straight through, so neither type's defining invariant survived
+  the call: a `TomZonedDate` built this way carried a time of day, and a
+  `TomZonedTime` carried a calendar date — a `@T@` string reading `2026-08-11`.
+  Both malformed values still matched their `isTom…String` predicate, so they
+  round-tripped through storage undetected, and the shipped example built one
+  on every run. The anchoring was stated as a property of the type in five
+  places; it is now a property of the value. Each factory reads the instant in
+  the target timezone and then delegates to its own primary constructor, so
+  "midnight, there" and "1970-01-01, there" have one definition and DST
+  normalization behaves identically whichever way the value was built. Reading
+  in the *target* zone is the part that carries meaning: 22:30 UTC is already
+  the next day in Berlin, and a date-only value asks which day it is there.
+  `TomZonedDateTime.fromDateTime` is unchanged — that type anchors nothing, so
+  keeping every component is correct, and a test now says so deliberately.
+  Callers that were relying on the components surviving were relying on a value
+  of the wrong type; use `TomZonedDateTime` for those.
+
+  The dartdoc of `isDate` and `isTime` gained the frame they read in. Both take
+  a plain `DateTime` and so can only judge it in whatever frame it carries,
+  while the anchoring they test for is local — off UTC the two disagree, and
+  `isDate(someZonedDate)` returns `false` for a perfectly well-formed date.
+  Pass `value.toDateTime()`. The predicates are unchanged; the trap now has a
+  sign on it.
+
 - **`TomShutdownCleanup.addSignal` is idempotent per signal (tcinc319).** It
   appended a watcher unconditionally, so naming a signal twice installed two
   subscriptions on the same broadcast stream and one arrival drove the handler

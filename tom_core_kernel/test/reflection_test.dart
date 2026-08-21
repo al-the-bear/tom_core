@@ -838,13 +838,18 @@ void main() {
   group('tomReflectionInfo.setValues - TomZoned types', () {
     test('should set TomZonedDate from string', () {
       final holder = ZonedDateTimeHolder();
+      // Midnight on 15 June in Berlin is 22:00 on the 14th in UTC, which is
+      // what the type serializes — the same encoding the round-trip test
+      // below expects back out. The date it names is therefore the 15th in
+      // the local frame and the 14th in the stored one.
       tomReflectionInfo.setValues(holder, {
-        'zonedDate': '@D@2024-06-15T00:00:00.000Z_+02:00_Europe/Berlin',
+        'zonedDate': '@D@2024-06-14T22:00:00.000Z_+02:00_Europe/Berlin',
       });
       expect(holder.zonedDate, isNotNull);
-      expect(holder.zonedDate!.year, 2024);
-      expect(holder.zonedDate!.month, 6);
-      expect(holder.zonedDate!.day, 15);
+      expect(holder.zonedDate!.localYear, 2024);
+      expect(holder.zonedDate!.localMonth, 6);
+      expect(holder.zonedDate!.localDay, 15);
+      expect(holder.zonedDate!.day, 14);
       expect(holder.zonedDate!.timezone.timezone, 'Europe/Berlin');
     });
 

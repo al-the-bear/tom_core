@@ -695,6 +695,106 @@ void main() {
         final date = TomZonedDate.fromDateTime(dt, sgTz);
         expect(date.timezone.timezone, equals('Asia/Singapore'));
       });
+
+      // The type's defining invariant, which this factory has to establish
+      // rather than inherit from whatever DateTime it was handed.
+      test('should discard the time components of the incoming DateTime', () {
+        final date = TomZonedDate.fromDateTime(
+          DateTime.utc(2026, 8, 11, 13, 47, 5, 123, 456),
+        );
+        expect(date.localYear, equals(2026));
+        expect(date.localMonth, equals(8));
+        expect(date.localDay, equals(11));
+        expect(date.localHour, isZero);
+        expect(date.localMinute, isZero);
+        expect(date.localSecond, isZero);
+        expect(date.localMillisecond, isZero);
+        expect(date.localMicrosecond, isZero);
+      });
+
+      test('should anchor to local midnight in a non-UTC timezone', () {
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final date = TomZonedDate.fromDateTime(
+          DateTime.utc(2026, 8, 11, 13, 47, 5, 123),
+          berlinTz,
+        );
+        expect(date.localHour, isZero);
+        expect(date.localMinute, isZero);
+        expect(date.localSecond, isZero);
+        expect(date.localMillisecond, isZero);
+      });
+
+      test('should keep the calendar day of the target timezone', () {
+        // 22:30 UTC is already the next day in Berlin (CEST, +02:00). The
+        // question a date-only type answers is "which calendar day is this,
+        // *there*", so the answer is the 12th; reading the UTC date would
+        // give the 11th. This is the case that separates the two readings,
+        // which is why it is asserted apart from the truncation above.
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final date = TomZonedDate.fromDateTime(
+          DateTime.utc(2026, 8, 11, 22, 30),
+          berlinTz,
+        );
+        expect(date.localYear, equals(2026));
+        expect(date.localMonth, equals(8));
+        expect(date.localDay, equals(12));
+      });
+
+      test('should agree with the primary constructor', () {
+        // Two routes to one value. If they disagree, one of them is wrong and
+        // no assertion naming only components can say which.
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final fromParts = TomZonedDate(
+          year: 2026,
+          month: 8,
+          day: 11,
+          timezone: berlinTz,
+        );
+        final fromInstant = TomZonedDate.fromDateTime(
+          DateTime.utc(2026, 8, 11, 13, 47),
+          berlinTz,
+        );
+        expect(fromInstant.toString(), equals(fromParts.toString()));
+      });
+
+      test('should accept a local DateTime, not only a UTC one', () {
+        // `DateTime.now()` is local, and the shipped examples pass it in.
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final date = TomZonedDate.fromDateTime(
+          DateTime(2026, 8, 11, 13, 47).toUtc(),
+          berlinTz,
+        );
+        expect(date.localHour, isZero);
+        expect(date.localMinute, isZero);
+      });
+
+      test('should round-trip through its serialized form', () {
+        // parseFromString feeds the parsed instant back through this factory,
+        // so an anchoring the factory does not preserve is one that storage
+        // silently loses.
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final original = TomZonedDate(
+          year: 2026,
+          month: 8,
+          day: 11,
+          timezone: berlinTz,
+        );
+        final parsed = TomZonedDate.parseFromString(original.toString());
+        expect(parsed.toString(), equals(original.toString()));
+        expect(parsed.localDay, equals(11));
+        expect(parsed.localHour, isZero);
+      });
+
+      test('should produce a value its own predicate accepts', () {
+        // `isDate` reads the components of the DateTime it is given, so the
+        // value has to be offered in its local frame — `toDateTime()`.
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final date = TomZonedDate.fromDateTime(
+          DateTime.utc(2026, 8, 11, 13, 47, 5),
+          berlinTz,
+        );
+        expect(TomZonedDate.isDate(date.toDateTime()), isTrue);
+      });
     });
 
     group('toString', () {
@@ -841,6 +941,77 @@ void main() {
         final dt = DateTime.utc(2024, 6, 15, 10, 30);
         final time = TomZonedTime.fromDateTime(dt, kolkataTz);
         expect(time.timezone.timezone, equals('Asia/Kolkata'));
+      });
+
+      // The mirror of the date invariant: a time-only value carries no date,
+      // so whatever date arrived has to be replaced by the epoch anchor.
+      test('should re-anchor the date to the Unix epoch', () {
+        final time = TomZonedTime.fromDateTime(
+          DateTime.utc(2026, 8, 11, 13, 47, 5, 123, 456),
+        );
+        expect(time.localYear, equals(1970));
+        expect(time.localMonth, equals(1));
+        expect(time.localDay, equals(1));
+        expect(time.localHour, equals(13));
+        expect(time.localMinute, equals(47));
+        expect(time.localSecond, equals(5));
+        expect(time.localMillisecond, equals(123));
+        expect(time.localMicrosecond, equals(456));
+      });
+
+      test('should keep the wall-clock time of the target timezone', () {
+        // 13:47 UTC is 15:47 in Berlin during CEST. A time-of-day value in
+        // Berlin is the Berlin reading, not the UTC one.
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final time = TomZonedTime.fromDateTime(
+          DateTime.utc(2026, 8, 11, 13, 47, 5),
+          berlinTz,
+        );
+        expect(time.localYear, equals(1970));
+        expect(time.localMonth, equals(1));
+        expect(time.localDay, equals(1));
+        expect(time.localHour, equals(15));
+        expect(time.localMinute, equals(47));
+        expect(time.localSecond, equals(5));
+      });
+
+      test('should agree with the primary constructor', () {
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final fromParts = TomZonedTime(
+          hour: 15,
+          minute: 47,
+          second: 5,
+          timezone: berlinTz,
+        );
+        final fromInstant = TomZonedTime.fromDateTime(
+          DateTime.utc(2026, 8, 11, 13, 47, 5),
+          berlinTz,
+        );
+        expect(fromInstant.toString(), equals(fromParts.toString()));
+      });
+
+      test('should round-trip through its serialized form', () {
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final original = TomZonedTime(
+          hour: 15,
+          minute: 47,
+          second: 5,
+          millisecond: 123,
+          timezone: berlinTz,
+        );
+        final parsed = TomZonedTime.parseFromString(original.toString());
+        expect(parsed.toString(), equals(original.toString()));
+        expect(parsed.localHour, equals(15));
+        expect(parsed.localYear, equals(1970));
+      });
+
+      test('should produce a value its own predicate accepts', () {
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final time = TomZonedTime.fromDateTime(
+          DateTime.utc(2026, 8, 11, 13, 47, 5),
+          berlinTz,
+        );
+        expect(TomZonedTime.isTime(time.toDateTime()), isTrue);
       });
     });
 
@@ -1146,6 +1317,25 @@ void main() {
         final dartDt = DateTime.utc(2024, 10, 1, 12, 0);
         final dt = TomZonedDateTime.fromDateTime(dartDt, cairoTz);
         expect(dt.timezone.timezone, equals('Africa/Cairo'));
+      });
+
+      test('should keep every component — this type anchors nothing', () {
+        // The sibling factories truncate because their types promise an
+        // anchoring. This one promises none, so truncating here would be the
+        // bug. Stated as a test so the symmetry is deliberate.
+        final berlinTz = TomTimezone.fromName('Europe/Berlin');
+        final dt = TomZonedDateTime.fromDateTime(
+          DateTime.utc(2026, 8, 11, 13, 47, 5, 123, 456),
+          berlinTz,
+        );
+        expect(dt.localYear, equals(2026));
+        expect(dt.localMonth, equals(8));
+        expect(dt.localDay, equals(11));
+        expect(dt.localHour, equals(15));
+        expect(dt.localMinute, equals(47));
+        expect(dt.localSecond, equals(5));
+        expect(dt.localMillisecond, equals(123));
+        expect(dt.localMicrosecond, equals(456));
       });
     });
 

@@ -63,7 +63,9 @@ class ZonedDateTimeExample {
 
     print('   - Date has time component: $hasTimeComponent');
 
-    // Check using isDate static method
+    // Check using isDate static method. It reads whatever frame the DateTime
+    // carries, so to ask it about a TomZonedDate pass `value.toDateTime()` —
+    // see example 5.
     final dateOnly = DateTime(2024, 6, 15, 0, 0, 0);
     final withTime = DateTime(2024, 6, 15, 14, 30, 0);
 
@@ -146,7 +148,8 @@ class ZonedDateTimeExample {
     print('\n5. Creating from DateTime:');
 
     final london = TomTimezone.fromName('Europe/London')!;
-    final existingDate = DateTime.utc(2024, 7, 14);
+    // Carries a time of day, which a date-only value has no room for.
+    final existingDate = DateTime.utc(2024, 7, 14, 9, 20, 30);
 
     final zonedDate = TomZonedDate.fromDateTime(existingDate, london);
 
@@ -154,21 +157,37 @@ class ZonedDateTimeExample {
     print(
       '   - As TomZonedDate: ${zonedDate.localYear}-${zonedDate.localMonth}-${zonedDate.localDay}',
     );
+    print('   - Time of day dropped: ${zonedDate.localHour}:00');
     print('   - Timezone: ${zonedDate.timezone.timezone}');
 
     // For time
-    final existingTime = DateTime.utc(1970, 1, 1, 15, 45, 30);
+    final existingTime = DateTime.utc(2024, 7, 14, 15, 45, 30);
     final zonedTime = TomZonedTime.fromDateTime(existingTime, london);
 
     print('   - Original time DateTime: $existingTime');
     print(
       '   - As TomZonedTime: ${zonedTime.localHour}:${zonedTime.localMinute}:${zonedTime.localSecond}',
     );
+    print('   - Date re-anchored to: ${zonedTime.localYear}');
 
     // Assertions
     assert(
       zonedDate.timezone.timezone == 'Europe/London',
       'Timezone should be London',
+    );
+    // Each factory establishes its own type's anchoring rather than copying
+    // whatever the incoming DateTime happened to carry.
+    assert(zonedDate.localHour == 0, 'A date is anchored to local midnight');
+    assert(
+      TomZonedDate.isDate(zonedDate.toDateTime()),
+      'A date must satisfy its own predicate in its own timezone',
+    );
+    // 15:45:30 UTC reads as 16:45:30 in London during BST.
+    assert(zonedTime.localHour == 16, 'A time keeps the local clock reading');
+    assert(zonedTime.localYear == 1970, 'A time is anchored to the epoch');
+    assert(
+      TomZonedTime.isTime(zonedTime.toDateTime()),
+      'A time must satisfy its own predicate in its own timezone',
     );
   }
 
@@ -304,6 +323,13 @@ class ZonedDateTimeExample {
     assert(
       nowTime.timezone.timezone == 'Europe/Berlin',
       'Should be Berlin timezone',
+    );
+    // One instant, three types, three different amounts of it kept.
+    assert(nowDate.localHour == 0, 'The date drops the time of day');
+    assert(nowTime.localYear == 1970, 'The time drops the date');
+    assert(
+      nowDateTime.localYear == nowDate.localYear,
+      'The full type keeps both, and agrees with the date on the day',
     );
   }
 
