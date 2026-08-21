@@ -1446,6 +1446,8 @@ and why each check is not optional:
 | The code exchange presents the verifier the challenge was derived from | (the provider rejects the exchange) |
 | The claims carry `iss` equal to the configured issuer | `oauth.flow.issuer_mismatch` |
 | The claims carry `aud` containing the configured client id | `oauth.flow.audience_mismatch` |
+| The `id_token` carries an `exp`, and has not passed it | `oauth.flow.missing_expiry` · `oauth.flow.id_token_expired` |
+| The `id_token`'s `nbf`, when it sends one, has arrived | `oauth.flow.id_token_not_yet_valid` |
 | The claims carry a subject | `oauth.flow.missing_subject` |
 
 An unknown, expired and already-spent state are deliberately **indistinguishable
@@ -1454,6 +1456,40 @@ valid.
 
 The `id_token` signature is **not** checked, and that is a deliberate limitation
 rather than an oversight — see [Status and Limitations](#status-and-limitations).
+
+**Freshness is checked, and is a different question from that one.** The reason
+the signature may go unchecked is about *authenticity* — the token came down the
+server's own TLS back channel, so nobody could have substituted it. Nothing in
+that argument says the token is *current*, and a token can be unquestionably the
+issuer's and hours out of date. So `exp` is verified, and `nbf` when the provider
+sends one.
+
+Both are read against a tolerance, `clockSkewSeconds`, which defaults to 60 and
+is configured per provider:
+
+```yaml
+oauth:
+  providers:
+    slow-clock-idp:
+      clockSkewSeconds: 300
+```
+
+The tolerance is what stops the check turning ordinary NTP drift into a failed
+login, and it is per provider because the drift being tolerated belongs to one
+specific IdP — widening it for the badly-synchronised one must not loosen every
+other. `clockSkewSeconds: 0` is a legitimate setting; negative is
+`oauth.config.invalid_clock_skew`.
+
+An `id_token` with **no** `exp` is refused rather than read as never expiring:
+OIDC Core §2 requires the claim, so its absence is a non-conformant provider, and
+treating "cannot check" as "check passed" would make the verification true only
+of providers that chose to cooperate.
+
+`iat` is deliberately **not** a rejection. It answers "how long ago was this
+minted", which only becomes a refusal once a deployment states a maximum age —
+a policy this module does not hold, and one the provider has already expressed
+on its own terms as `exp`. A deployment that wants one is asking for OIDC
+`max_age` / `auth_time`, which is a separate decision.
 
 Providers that predate OIDC return no `id_token`; for those, configure
 `userInfoEndpoint` and the flow fetches the claims with the access token
@@ -1642,7 +1678,7 @@ without the application registering anything.
 
 | Key | Meaning |
 | --- | ------- |
-| `oauth.config.missing_value` · `oauth.config.not_a_map` · `oauth.config.provider_not_a_map` · `oauth.config.unknown_provisioning` | The `oauth.providers` block is malformed. Startup-time. |
+| `oauth.config.missing_value` · `oauth.config.not_a_map` · `oauth.config.provider_not_a_map` · `oauth.config.unknown_provisioning` · `oauth.config.invalid_clock_skew` | The `oauth.providers` block is malformed. Startup-time. |
 | `oauth.config.unknown_provider` | A request named a provider that is not configured. |
 | `oauth.config.state_store_not_a_map` · `oauth.config.unknown_state_store` · `oauth.config.missing_state_store_datasource` · `oauth.config.invalid_state_store_ttl` | The `oauth.stateStore` block is malformed. Startup-time, and never defaulted away. |
 | `oauth.state_store.unknown_datasource` | The SQL state store names a data source that is not registered. Startup-time. |
@@ -1650,6 +1686,7 @@ without the application registering anything.
 | `oauth.callback.provider_error` | The provider itself refused (e.g. the user pressed cancel). |
 | `oauth.flow.missing_code` · `oauth.flow.token_exchange_rejected` | The redirect carried no code, or the token endpoint refused the exchange. |
 | `oauth.flow.issuer_mismatch` · `oauth.flow.audience_mismatch` · `oauth.flow.missing_subject` · `oauth.flow.malformed_id_token` | The claims failed verification. |
+| `oauth.flow.missing_expiry` · `oauth.flow.id_token_expired` · `oauth.flow.id_token_not_yet_valid` | The `id_token` is outside its own validity window, or carries none. Read against the provider's `clockSkewSeconds`. |
 | `oauth.flow.no_claims_source` · `oauth.flow.no_access_token` | The provider returned neither an `id_token` nor a usable `userInfoEndpoint` call. |
 | `oauth.provider.http_error` · `oauth.provider.malformed_json` | The provider's HTTP call failed or answered with something that is not a JSON object. |
 | `login.error.oauth.no-local-account` | Authenticated, but unlinked, and the provider is configured to refuse. |
@@ -1886,7 +1923,14 @@ resolves the pending record for its context and calls
   **not** safe for an implicit flow or for any token that arrived by way of the
   browser, neither of which this module performs. Adding JWKS fetching and
   signature verification is the natural next step for a deployment that wants
-  defence in depth.
+  defence in depth. This limitation is about *authenticity* only — the token's
+  `exp` and `nbf` **are** checked, because freshness does not follow from
+  authenticity; see [The handshake](#the-handshake).
+- **The `id_token`'s age is not policed, only its expiry.** `iat` is read by
+  nothing: a maximum-age policy is a decision this module does not take, and
+  `exp` is the provider's own statement of how long the token is good for. A
+  deployment that needs "re-authenticate if the session is older than an hour"
+  is asking for OIDC `max_age` / `auth_time`, which is not implemented.
 - **`TomOAuthMemoryStateStore` is the default state store, and is per-process.**
   Pending authorizations live for ten minutes in one isolate's memory, which is
   correct for a single-node deployment and wrong behind a load balancer that may

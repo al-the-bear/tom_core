@@ -44,6 +44,36 @@
 /// This reasoning stops holding the moment an ID token is accepted from
 /// anywhere else — a front-channel redirect, a client-supplied parameter, a
 /// cached copy. Nothing in this module does that, and nothing added to it may.
+///
+/// ## Freshness is checked, and is a separate question
+///
+/// The argument above is about **authenticity**: who minted this token, and
+/// could anyone have substituted it in transit. It says nothing about
+/// **freshness**, and the two do not follow from one another — a token can be
+/// unquestionably the issuer's and hours out of date. So `exp` is verified, and
+/// `nbf` when the provider sends one, against
+/// [TomOAuthProviderConfig.clockSkew] (one minute by default).
+///
+/// It is checked even though, on this back channel, a stale token would mean
+/// the provider is misbehaving rather than that anyone is attacking. Two
+/// reasons. `exp` is the one claim that costs nothing to verify and is the
+/// standard's own requirement of a relying party; and the moment an ID token
+/// reaches this code from a second source — which the section above forbids but
+/// cannot enforce — an unchecked expiry stops being a shortcut and becomes a
+/// replay hole. The skew tolerance is what keeps the check from turning
+/// ordinary clock drift into a failed login.
+///
+/// A token with no `exp` at all is refused rather than treated as unbounded:
+/// OIDC Core §2 requires the claim, so its absence is a non-conformant provider,
+/// and reading "cannot check" as "check passed" would make the verification true
+/// only of providers that chose to cooperate.
+///
+/// `iat` is deliberately **not** turned into a rejection. It answers "how long
+/// ago was this minted", which is only a refusal once a deployment states a
+/// maximum age — a policy this module does not hold, and one the provider has
+/// already expressed on its own terms as `exp`. An OIDC `max_age` /
+/// `auth_time` policy is the natural place for that decision, and it is a
+/// different decision from this one.
 library;
 
 import 'dart:convert';
@@ -706,8 +736,20 @@ class TomOAuthFlow {
     return _decodeJsonObject(body, 'user-info response');
   }
 
-  /// Checks the two claims TLS does not cover — see the library documentation
-  /// for why these two and not the signature.
+  /// Checks the claims TLS does not cover — see the library documentation for
+  /// why these and not the signature.
+  ///
+  /// Two independent questions. *Who minted this* is answered by `iss` and
+  /// `aud`; *is it still valid* is answered by `exp` and `nbf`, both read
+  /// against [TomOAuthProviderConfig.clockSkew]. The argument that lets the
+  /// signature go unchecked is about authenticity over an already-authenticated
+  /// channel and says nothing whatever about freshness, so freshness is checked
+  /// on its own terms.
+  ///
+  /// `iat` is read by nobody here, deliberately. It answers "how long ago was
+  /// this minted", which becomes a rejection only once a deployment states a
+  /// maximum age — a policy this module does not hold, and one the provider has
+  /// already expressed in its own terms as `exp`.
   void _verifyIdTokenClaims(
     TomOAuthProviderConfig provider,
     Map<String, Object?> claims,
@@ -734,6 +776,72 @@ class TomOAuthFlow {
             "client id for provider '${provider.id}'.",
       );
     }
+    _verifyIdTokenFreshness(provider, claims);
+  }
+
+  /// Checks that the token is inside its own validity window.
+  ///
+  /// A missing `exp` refuses rather than passing: OIDC Core §2 makes the claim
+  /// required, so its absence is a non-conformant provider and not a token that
+  /// never expires. Treating "cannot check" as "check passed" would leave the
+  /// verification true only of providers that happened to cooperate.
+  void _verifyIdTokenFreshness(
+    TomOAuthProviderConfig provider,
+    Map<String, Object?> claims,
+  ) {
+    final now = DateTime.now().toUtc();
+    final skew = provider.clockSkew;
+
+    final expiresAt = _numericDate(provider, claims, 'exp');
+    if (expiresAt == null) {
+      throw TomOAuthException(
+        'oauth.flow.missing_expiry',
+        "The id_token from provider '${provider.id}' carries no 'exp' claim, "
+            'so its freshness cannot be established. OIDC Core §2 requires it.',
+      );
+    }
+    if (now.isAfter(expiresAt.add(skew))) {
+      throw TomOAuthException(
+        'oauth.flow.id_token_expired',
+        "The id_token from provider '${provider.id}' expired at "
+            '${expiresAt.toIso8601String()}, more than ${skew.inSeconds}s ago.',
+      );
+    }
+
+    // `nbf` is optional (OIDC Core §2), so absence is ordinary. Present and in
+    // the future is not: the provider is saying this token is not yet usable.
+    final notBefore = _numericDate(provider, claims, 'nbf');
+    if (notBefore != null && now.isBefore(notBefore.subtract(skew))) {
+      throw TomOAuthException(
+        'oauth.flow.id_token_not_yet_valid',
+        "The id_token from provider '${provider.id}' is not valid before "
+            '${notBefore.toIso8601String()}, more than ${skew.inSeconds}s away.',
+      );
+    }
+  }
+
+  /// The claim [name] as a NumericDate (RFC 7519 §2), or `null` when absent.
+  ///
+  /// A numeric string is accepted as well as a number, because providers
+  /// stringify these often enough that refusing the spelling would be refusing
+  /// a perfectly good token. Anything else throws: a `exp` of `"tomorrow"`
+  /// cannot be compared, and silently ignoring it would skip the check.
+  DateTime? _numericDate(
+    TomOAuthProviderConfig provider,
+    Map<String, Object?> claims,
+    String name,
+  ) {
+    final raw = claims[name];
+    if (raw == null) return null;
+    final seconds = raw is num ? raw.toInt() : int.tryParse('$raw');
+    if (seconds == null) {
+      throw TomOAuthException(
+        'oauth.flow.malformed_id_token',
+        "The id_token from provider '${provider.id}' carries a '$name' claim "
+            "of '$raw', which is not a NumericDate.",
+      );
+    }
+    return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
   }
 
   /// Projects the provider's claims onto a [TomExternalIdentity] through the

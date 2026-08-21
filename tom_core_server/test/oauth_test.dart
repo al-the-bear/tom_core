@@ -34,6 +34,7 @@ const String _clientId = 'tom-core-server-test';
 TomOAuthProviderConfig _oidcProvider({
   TomOAuthProvisioning provisioning = TomOAuthProvisioning.refuse,
   bool usePkce = true,
+  Duration clockSkew = const Duration(seconds: 60),
 }) => TomOAuthProviderConfig(
   id: 'stub',
   issuer: _issuer,
@@ -47,6 +48,7 @@ TomOAuthProviderConfig _oidcProvider({
   provisioning: provisioning,
   displayNameKey: 'oauth.stub.name',
   iconKey: 'oauth.stub.icon',
+  clockSkew: clockSkew,
 );
 
 /// A provider that returns only an access token, which is the plain OAuth 2.0
@@ -77,18 +79,33 @@ String _idToken(Map<String, Object?> claims) {
       '.';
 }
 
+/// A NumericDate (RFC 7519 §2): whole seconds since the epoch, UTC.
+int _numericDate(Duration fromNow) =>
+    DateTime.now().toUtc().add(fromNow).millisecondsSinceEpoch ~/ 1000;
+
 /// The claim set a well-behaved provider returns.
+///
+/// `exp` is always present, because OIDC Core §2 makes it required and a
+/// fixture that omitted it would describe a provider no deployment should
+/// accept. Move it with [expires]; the tests that need it absent or malformed
+/// write their claim map out by hand.
 Map<String, Object?> _claims({
   String subject = 'sub-1',
   String email = 'alice@example.test',
   String? issuer,
   Object? audience,
+  Duration expires = const Duration(minutes: 5),
+  Object? notBefore,
+  Object? issuedAt,
 }) => <String, Object?>{
   'iss': issuer ?? _issuer,
   'aud': audience ?? _clientId,
   'sub': subject,
   'email': email,
   'name': 'Alice Example',
+  'exp': _numericDate(expires),
+  if (notBefore != null) 'nbf': notBefore,
+  if (issuedAt != null) 'iat': issuedAt,
 };
 
 /// The stub provider: the one HTTP seam, answering from a script.
@@ -476,6 +493,52 @@ void main() {
       // Resource keys are derived, so the ordinary provider configures none.
       expect(google.displayNameKey, 'oauth.google.name');
       expect(google.iconKey, 'oauth.google.icon');
+    });
+
+    test('the clock-skew tolerance is a per-provider setting', () {
+      TomOAuthProviderConfig read(Map<Object?, Object?> extra) =>
+          TomOAuthProviderConfig.fromMap('p', {
+            'issuer': _issuer,
+            'authorizationEndpoint': '$_issuer/authorize',
+            'tokenEndpoint': '$_issuer/token',
+            'clientId': _clientId,
+            'redirectUri': 'https://app.example.test/oauth/callback',
+            ...extra,
+          });
+
+      // A minute is the customary tolerance, and it is a default rather than a
+      // constant because one badly-synced provider must not force every other
+      // one wider.
+      expect(read({}).clockSkew, const Duration(seconds: 60));
+      expect(
+        read({'clockSkewSeconds': 5}).clockSkew,
+        const Duration(seconds: 5),
+      );
+      // Nought is a real answer -- "my clocks are NTP-synced, refuse anything
+      // stale" -- so it must not read as "unset, use the default".
+      expect(read({'clockSkewSeconds': 0}).clockSkew, Duration.zero);
+      // Negative would tighten expiry past the token's own claim, which is
+      // never what an operator meant to type.
+      expect(
+        () => read({'clockSkewSeconds': -1}),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.config.invalid_clock_skew',
+          ),
+        ),
+      );
+      expect(
+        () => read({'clockSkewSeconds': 'a minute'}),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.config.invalid_clock_skew',
+          ),
+        ),
+      );
     });
 
     test('accepts scopes written the way providers document them', () {
@@ -1019,7 +1082,11 @@ void main() {
         _oidcProvider(),
         _StubTransport(
           tokenResponse: {
-            'id_token': _idToken({'iss': _issuer, 'aud': _clientId}),
+            'id_token': _idToken({
+              'iss': _issuer,
+              'aud': _clientId,
+              'exp': _numericDate(const Duration(minutes: 5)),
+            }),
           },
         ),
       );
@@ -1035,6 +1102,124 @@ void main() {
           ),
         ),
       );
+    });
+
+    // Freshness is a separate question from authenticity. The signature is not
+    // verified because TLS already answers "did this come from the issuer"; no
+    // part of that argument answers "is it still valid", so `exp` is checked.
+    group('id_token freshness', () {
+      /// Completes one exchange over a token carrying [claims].
+      Future<TomOAuthExchange> complete(
+        Map<String, Object?> claims, {
+        Duration clockSkew = const Duration(seconds: 60),
+      }) async {
+        final flow = _flow(
+          _oidcProvider(clockSkew: clockSkew),
+          _StubTransport(tokenResponse: {'id_token': _idToken(claims)}),
+        );
+        final begun = await flow.beginAuthorization(_authorizationRequest());
+        return flow.completeAuthorization(code: 'c', state: begun.state);
+      }
+
+      Matcher throwsKey(String key) =>
+          throwsA(isA<TomOAuthException>().having((e) => e.key, 'key', key));
+
+      test('an expired id_token is refused', () async {
+        await expectLater(
+          complete(_claims(expires: const Duration(minutes: -5))),
+          throwsKey('oauth.flow.id_token_expired'),
+        );
+      });
+
+      // The skew tolerance exists for exactly this: the provider's clock and
+      // ours disagree by seconds, and a login must not fail for it.
+      test(
+        'an id_token just past expiry is accepted within the skew',
+        () async {
+          final exchange = await complete(
+            _claims(expires: const Duration(seconds: -30)),
+          );
+          expect(exchange.identity.subject, 'sub-1');
+        },
+      );
+
+      test('a tightened skew refuses what the default would accept', () async {
+        await expectLater(
+          complete(
+            _claims(expires: const Duration(seconds: -30)),
+            clockSkew: Duration.zero,
+          ),
+          throwsKey('oauth.flow.id_token_expired'),
+        );
+      });
+
+      test('a widened skew accepts what the default would refuse', () async {
+        final exchange = await complete(
+          _claims(expires: const Duration(minutes: -4)),
+          clockSkew: const Duration(minutes: 5),
+        );
+        expect(exchange.identity.subject, 'sub-1');
+      });
+
+      // Not "accepted because unbounded": a token with no `exp` cannot be
+      // checked at all, and OIDC Core §2 requires the claim, so its absence is
+      // a non-conformant provider rather than a token that never expires.
+      test('an id_token with no expiry is refused', () async {
+        await expectLater(
+          complete({'iss': _issuer, 'aud': _clientId, 'sub': 'sub-1'}),
+          throwsKey('oauth.flow.missing_expiry'),
+        );
+      });
+
+      test('an exp that is not a NumericDate is refused', () async {
+        await expectLater(
+          complete({
+            'iss': _issuer,
+            'aud': _clientId,
+            'sub': 'sub-1',
+            'exp': 'tomorrow',
+          }),
+          throwsKey('oauth.flow.malformed_id_token'),
+        );
+      });
+
+      // Providers stringify NumericDates often enough that rejecting the
+      // spelling rather than the value would be a false refusal.
+      test('an exp written as a numeric string is read, not refused', () async {
+        final exchange = await complete({
+          'iss': _issuer,
+          'aud': _clientId,
+          'sub': 'sub-1',
+          'exp': '${_numericDate(const Duration(minutes: 5))}',
+        });
+        expect(exchange.identity.subject, 'sub-1');
+      });
+
+      test('an id_token that is not yet valid is refused', () async {
+        await expectLater(
+          complete(
+            _claims(notBefore: _numericDate(const Duration(minutes: 5))),
+          ),
+          throwsKey('oauth.flow.id_token_not_yet_valid'),
+        );
+      });
+
+      test('an nbf inside the skew is accepted', () async {
+        final exchange = await complete(
+          _claims(notBefore: _numericDate(const Duration(seconds: 30))),
+        );
+        expect(exchange.identity.subject, 'sub-1');
+      });
+
+      // `iat` is deliberately not a rejection: how old is too old is a
+      // max-age policy this module does not take, and `exp` is the claim the
+      // provider used to express its own answer.
+      test('an old iat does not refuse a token that has not expired', () async {
+        final exchange = await complete(
+          _claims(issuedAt: _numericDate(const Duration(days: -1))),
+        );
+        expect(exchange.identity.subject, 'sub-1');
+      });
     });
 
     test('an error the provider reports is surfaced, not ignored', () async {

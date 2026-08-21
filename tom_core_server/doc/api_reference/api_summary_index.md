@@ -121,7 +121,7 @@ surface documented here.
 | `TomOAuthAuthenticationService` | class | An authentication service for authorization-code logins; delegates every other credential. |
 | `TomOAuthCredential` | class | The code + state pair carried in `TomAuthenticationData.key`. |
 | `TomExternalIdentityDirectory` | abstract class | What the deployment supplies: local account lookup and first-login provisioning. |
-| `TomOAuthProviderConfig` | class | One provider as data: endpoints, client credentials, claim names, provisioning. |
+| `TomOAuthProviderConfig` | class | One provider as data: endpoints, client credentials, claim names, provisioning, clock-skew tolerance. |
 | `TomOAuthProviders` | class | The configured provider set, read from `oauth.providers`. |
 | `TomOAuthProvisioning` | enum | What a first external login with no local account does: `refuse` or `autoProvision`. |
 | `TomOAuthFlow` | class | The authorization-code + PKCE handshake. |

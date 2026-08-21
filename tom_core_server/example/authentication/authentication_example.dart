@@ -3,8 +3,9 @@
 /// Demonstrates the [TomAuthenticationService] contract end to end without a
 /// running HTTP server or database: building [TomAuthenticationData], resolving
 /// it through a service into a [TomAuthenticationInfo], rejecting a login with a
-/// [LoginException], reading the adaptor-annotation configuration, and choosing
-/// the pending-authorization store through [TomOAuthStateStoreSettings].
+/// [LoginException], reading the adaptor-annotation configuration, choosing the
+/// pending-authorization store through [TomOAuthStateStoreSettings], and setting
+/// how much clock skew an ID token's expiry is read against.
 ///
 /// Run with `dart run example/authentication/authentication_example.dart`.
 /// The same behaviour is covered by `test/authentication_test.dart`.
@@ -140,7 +141,26 @@ Future<void> run() async {
     '${providers['calendar'].authorizationParameters}',
   );
 
-  // Example 7: a grant is held against the external identity that consented to
+  // Example 7: how stale an ID token may be is configuration too. The flow does
+  // not verify the token's signature -- it came down the server's own TLS back
+  // channel, so nobody could have substituted it -- but that argument is about
+  // authenticity and says nothing about freshness, so `exp` is checked anyway.
+  // The tolerance is per provider, because the drift being forgiven belongs to
+  // one specific IdP.
+  final clocks = TomOAuthProviders.fromConfiguration(
+    TomServerConfigResourceProvider.from({
+      'oauth': {
+        'providers': {
+          'well_synced': _providerConfig,
+          'slow_clock': {..._providerConfig, 'clockSkewSeconds': 300},
+        },
+      },
+    }),
+  );
+  print('default skew:              ${clocks['well_synced'].clockSkew}');
+  print('widened skew:              ${clocks['slow_clock'].clockSkew}');
+
+  // Example 8: a grant is held against the external identity that consented to
   // it, and it never outlives the link. `unlink` deletes both — the user
   // pressed "disconnect", so the deployment must not still hold a live
   // credential for their mailbox.
@@ -190,6 +210,8 @@ Future<void> run() async {
   assert(providers['calendar'].authorizationParameters.length == 2);
   // One IdP, two registrations: the issuer does not tell them apart.
   assert(providers['login_only'].issuer == providers['calendar'].issuer);
+  assert(clocks['well_synced'].clockSkew == const Duration(seconds: 60));
+  assert(clocks['slow_clock'].clockSkew == const Duration(minutes: 5));
   assert(held.hasRefreshToken);
   assert(!held.isExpired());
   assert(!'$held'.contains('rt-long-lived'));

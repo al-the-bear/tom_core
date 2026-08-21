@@ -247,6 +247,21 @@ class TomOAuthProviderConfig {
   /// the redirect somewhere else.
   final Map<String, String> authorizationParameters;
 
+  /// How far this provider's clock may run ahead of or behind ours before an
+  /// `id_token`'s `exp` and `nbf` are believed. One minute by default.
+  ///
+  /// Freshness is checked against a wall clock neither party controls, so a
+  /// token minted a moment ago can look expired here purely because the two
+  /// machines disagree. A tolerance is the difference between "the token is
+  /// stale" and "the clocks are", and a minute is the customary answer — wide
+  /// enough for ordinary NTP drift, far narrower than any token's lifetime.
+  ///
+  /// Per provider rather than global because the drift being tolerated is one
+  /// specific provider's: a deployment must be able to widen the tolerance for
+  /// the one badly-synchronised IdP without loosening every other. `Duration.zero`
+  /// is a legitimate setting for a deployment confident in its own clocks.
+  final Duration clockSkew;
+
   /// Creates a provider configuration.
   const TomOAuthProviderConfig({
     required this.id,
@@ -267,7 +282,11 @@ class TomOAuthProviderConfig {
     this.iconKey = '',
     this.storeTokens = false,
     this.authorizationParameters = const {},
+    this.clockSkew = defaultClockSkew,
   });
+
+  /// The tolerance applied when a provider configures none.
+  static const Duration defaultClockSkew = Duration(seconds: 60);
 
   /// Reads one provider from its configuration map.
   ///
@@ -324,7 +343,28 @@ class TomOAuthProviderConfig {
         id,
         map['authorizationParameters'],
       ),
+      clockSkew: _clockSkewOf(id, map['clockSkewSeconds']),
     );
+  }
+
+  /// Reads `clockSkewSeconds`, which must be a whole number of seconds and not
+  /// negative.
+  ///
+  /// Absent is distinguished from `0`: nought is an operator saying "my clocks
+  /// are synchronised, refuse anything stale", which is a different instruction
+  /// from having said nothing. Negative would tighten expiry *past* the token's
+  /// own claim and is never what anyone meant to type.
+  static Duration _clockSkewOf(String id, Object? raw) {
+    if (raw == null) return defaultClockSkew;
+    final seconds = raw is num ? raw.toInt() : int.tryParse('$raw');
+    if (seconds == null || seconds < 0) {
+      throw TomOAuthException(
+        'oauth.config.invalid_clock_skew',
+        "OAuth provider '$id' must declare 'clockSkewSeconds' as a whole "
+            "number of seconds that is not negative, but it was '$raw'.",
+      );
+    }
+    return Duration(seconds: seconds);
   }
 
   /// Reads the extra authorization parameters, which must be a map of scalars.

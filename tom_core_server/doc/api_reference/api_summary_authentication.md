@@ -1448,11 +1448,14 @@ TomOAuthException(String key, String defaultUserMessage, {bool clientThrow = fal
 
 Keys raised: `oauth.config.missing_value`, `oauth.config.not_a_map`,
 `oauth.config.provider_not_a_map`, `oauth.config.unknown_provider`,
-`oauth.config.unknown_provisioning`, `oauth.flow.unknown_state`,
+`oauth.config.unknown_provisioning`, `oauth.config.invalid_clock_skew`,
+`oauth.flow.unknown_state`,
 `oauth.flow.missing_code`, `oauth.flow.token_exchange_rejected`,
 `oauth.flow.no_claims_source`, `oauth.flow.no_access_token`,
 `oauth.flow.issuer_mismatch`, `oauth.flow.audience_mismatch`,
 `oauth.flow.missing_subject`, `oauth.flow.malformed_id_token`,
+`oauth.flow.missing_expiry`, `oauth.flow.id_token_expired`,
+`oauth.flow.id_token_not_yet_valid`,
 `oauth.provider.http_error`, `oauth.provider.malformed_json`.
 
 ### TomOAuthProvisioning
@@ -1503,6 +1506,7 @@ const TomOAuthProviderConfig({
   String iconKey = '',
   bool storeTokens = false,
   Map<String, String> authorizationParameters = const {},
+  Duration clockSkew = TomOAuthProviderConfig.defaultClockSkew,
 })
 
 factory TomOAuthProviderConfig.fromMap(String id, Map<Object?, Object?> map)
@@ -1520,6 +1524,12 @@ Two fields exist for delegated access rather than for login:
 | ----- | ----- |
 | `storeTokens` | Whether a completed exchange's `TomOAuthTokenGrant` is *retained*. `false` by default, and opt-in per provider exactly as scopes are: a deployment that only wanted "Sign in with …" must never end up holding a third-party refresh token. The grant is always *surfaced* on `TomOAuthExchange.tokens` regardless — this governs storage, not capability. |
 | `authorizationParameters` | Extra query parameters merged into the authorization redirect, for the provider-specific opt-ins a grant needs (Google returns no refresh token without `access_type=offline`). Applied **before** the flow's own parameters, so a configuration typo cannot replace `state`, `redirect_uri` or the PKCE challenge. Must be a map of scalars — `oauth.config.parameters_not_a_map` / `oauth.config.parameter_not_a_scalar` otherwise. |
+
+One field exists for the clocks:
+
+| Field | Notes |
+| ----- | ----- |
+| `clockSkew` | How far this provider's clock may run ahead of or behind ours before the `id_token`'s `exp` and `nbf` are believed. `defaultClockSkew` (60 s) unless configured. YAML key `clockSkewSeconds`; `0` is a legitimate setting and is distinguished from absent, negative or non-numeric is `oauth.config.invalid_clock_skew`. Per provider because the drift being tolerated belongs to one specific IdP — widening it for the badly-synchronised one must not loosen every other. |
 
 #### Methods
 
@@ -1781,10 +1791,10 @@ factory TomOAuthFlow.fromBeans()
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `beginAuthorization` | `Future<TomOAuthAuthorizationDto> beginAuthorization(TomOAuthAuthorizationRequest request)` | Records the pending authorization and answers where to send the browser. Preserves any query the provider's authorization endpoint already carries (some tenanted providers encode the tenant there). |
-| `completeAuthorization` | `Future<TomOAuthExchange> completeAuthorization({required String code, required String state})` | Spends the pending record, exchanges the code, verifies the claims, and answers who the provider says this is. |
+| `completeAuthorization` | `Future<TomOAuthExchange> completeAuthorization({required String code, required String state})` | Spends the pending record, exchanges the code, verifies the claims, and answers who the provider says this is. Verification covers both *who minted this* (`iss`, `aud`) and *is it still valid* (`exp`, and `nbf` when sent, against the provider's `clockSkew`) — the second does not follow from the first, and is checked even though the signature is not. |
 | `refreshGrant` | `Future<TomOAuthTokenGrant> refreshGrant({required String providerId, required TomOAuthTokenGrant grant})` | Exchanges the grant's refresh token for a fresh one. **Not a login**: no `TomAuthenticationService`, no 2FA policy, no session, no principal. Throws `oauth.flow.no_refresh_token` when the grant carries none — the caller must send the user through consent again, which is a different action rather than a slower one. |
 | `accessTokenFor` | `Future<TomOAuthTokenGrant?> accessTokenFor({required String providerId, required String subject, Duration minimumValidity = const Duration(seconds: 30), TomOAuthTokenStore? store})` | A live access token for the identity, refreshed and written back when it is within `minimumValidity` of expiry. `null` when nothing is held, when the held grant expired unrefreshably, or when no store is installed — the cue to send the user through consent. A failed *refresh* throws, because a provider rejecting a token it issued is an event an operator needs to see rather than an empty answer a job retries forever. |
-| `decodeIdTokenClaims` | `static Map<String, Object?> decodeIdTokenClaims(String idToken)` | The `id_token` payload. The **signature is not verified** — see [Status and Limitations](../authentication.md#status-and-limitations). |
+| `decodeIdTokenClaims` | `static Map<String, Object?> decodeIdTokenClaims(String idToken)` | The `id_token` payload, decoded only. The **signature is not verified** — see [Status and Limitations](../authentication.md#status-and-limitations) — and neither is `exp`: this is the decoder, not the verifier. `completeAuthorization` checks freshness after calling it; a caller reaching for this method directly gets neither check. |
 
 ### TomOAuthTokenGrant
 
