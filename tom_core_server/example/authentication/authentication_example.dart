@@ -9,6 +9,12 @@
 /// account's external identities as detached snapshots, and watching a grant
 /// that can never again mint a token be deleted rather than kept.
 ///
+/// The three flows this file only configures are demonstrated end to end by its
+/// siblings, each of which runs connection-free against a scripted seam:
+/// `two_factor_login_example.dart` (the two-pass login),
+/// `two_factor_enrolment_example.dart` (the round trip that sets a factor up)
+/// and `oauth_login_example.dart` (the authorization-code handshake).
+///
 /// Run with `dart run example/authentication/authentication_example.dart`.
 /// The same behaviour is covered by `test/authentication_test.dart`.
 library;
