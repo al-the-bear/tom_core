@@ -815,6 +815,17 @@ anyone who was writing them.
 
 ### Tests
 
+- **The serialization suite could not tell the two offsets apart (tcinc332).**
+  Its authority case parsed an `Asia/Tokyo` string, and Tokyo has no DST — its
+  offset now and its offset at any instant are the same `+09:00`, so the
+  assertion held equally under "restates the offset from the zone now" and
+  under "recomputes it for the value's instant". The one zone that could not
+  distinguish the rules was the one being asked. A new case picks a DST zone
+  and an instant in whichever season the suite is *not* running in, asserts
+  that the two readings differ before comparing anything, and then pins the
+  serialized field to the current offset and the round-tripped instant, zone
+  and derived offset to the value's own.
+
 - **New guard: `timezone_throw_contract_test.dart` (tcinc331).** One table
   lists the reasons `findTimezone` throws; each entry carries the call that
   provokes the failure and the words the documentation must use to warn about
@@ -1236,6 +1247,24 @@ anyone who was writing them.
   is where the window it opens belongs.
 
 ### Documentation
+
+- **The serialized offset was described as belonging to the value's instant
+  (tcinc332).** It belongs to the moment the string was written.
+  `TomTimezoned.toString()` renders the zone through
+  `TomTimezone.toString()`, which reads `timezoneOffsetMin` — the offset
+  *now* — so a January `America/New_York` value serialized in July carries
+  `-04:00` where the same value written in January carries `-05:00`. Round
+  tripping is unaffected, because the parse never reads that field, but the
+  documents said something stronger than that and something untrue: that the
+  offset was recomputed for the value's instant.
+
+  Two things had run together. On parse the offset field is simply ignored —
+  the UTC part and the zone name are all that is read back, and the `local*`
+  reading is derived from those two through the IANA database, which is what
+  makes a stale or wrong offset harmless. That is a statement about *reading*,
+  and it had been carried over into the offset that gets *written*, where it
+  does not hold. The serialization guide, the module's wire-format description
+  and the `@T@` sample now separate the two.
 
 - **`findTimezone`'s documented failure modes were half its real ones
   (tcinc331).** The method throws for two unrelated reasons — a name the

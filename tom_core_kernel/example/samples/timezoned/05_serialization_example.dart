@@ -173,13 +173,14 @@ class SerializationExample {
     // Note: parseFromString expects the @T@ prefix.
     //
     // A time-only TomZonedTime is anchored to the epoch date 1970-01-01, and
-    // parseFromString recomputes the zone offset from the IANA database for
-    // that instant (the offset embedded in the string is informational). On
-    // 1970-01-01 Europe/London was UTC+1 year-round — the 1968–1971 British
-    // Standard Time experiment — so 09:30 London is UTC 08:30 with a +01:00
-    // offset, exactly as the framework serializes it (see example 3). Using
-    // the naive `09:30Z / +00:00` would parse back to 10:30 local, because the
-    // authoritative database offset (+01:00) wins over the wrong embedded one.
+    // parseFromString ignores the offset embedded in the string: it reads the
+    // UTC instant and the zone name, and derives the local reading from those
+    // two through the IANA database. On 1970-01-01 Europe/London was UTC+1
+    // year-round — the 1968–1971 British Standard Time experiment — so 09:30
+    // London is UTC 08:30, exactly as the framework serializes it (see
+    // example 3). Using the naive `09:30Z / +00:00` would parse back to 10:30
+    // local, because the database offset for that instant decides the reading
+    // and the embedded one has no say.
     final parseString = '@T@1970-01-01T08:30:00.000Z_+01:00_Europe/London';
     final parsedTime = TomZonedTime.parseFromString(parseString);
 

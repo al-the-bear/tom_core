@@ -327,8 +327,16 @@ The offset is written for readability — it lets a stored value be understood
 without a timezone database to hand — but it is not consulted when parsing. The
 zone name is authoritative: the offset is derived from it, and because the IANA
 database revises historical offsets, an offset stored under an older database
-is not evidence about the value. Re-serializing restates the offset from the
-zone.
+is not evidence about the value.
+
+Re-serializing restates the offset from the zone as it stands *now*, not as it
+stood at the value's instant — `toString()` reads `timezoneOffsetMin`. For a
+DST zone the two differ half the year, so a round trip in the other season
+changes the offset field: a January `America/New_York` value written again in
+July reads `-04:00` where it went in `-05:00`. The instant, the zone and every
+`local*` reading are untouched, since none of them comes from that field. Where
+the offset at the value's own instant is wanted, `TomTimezone.toStringOn(when)`
+and `getUtcOffsetOn(when)` compute it.
 
 ### Examples
 

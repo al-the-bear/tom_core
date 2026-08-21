@@ -2188,13 +2188,59 @@ void main() {
       // The offset is a second rendering of information the zone already
       // carries, and the IANA database revises historical offsets, so an
       // incoming offset is not evidence about the value and is not checked
-      // against the zone. Re-serializing restates it from the zone.
+      // against the zone. Re-serializing restates it from the zone — which
+      // offset the zone gives is the next test's subject.
       final dt = TomZonedDateTime.parseFromString(
         '@X@2024-06-15T05:30:00.000Z_-11:30_Asia/Tokyo',
       );
       expect(dt.timezone.timezone, equals('Asia/Tokyo'));
       expect(dt.hour, equals(5));
       expect(dt.toString(), contains('_+09:00_Asia/Tokyo'));
+    });
+
+    test('restates the offset from the zone now, not from the instant', () {
+      // Asia/Tokyo above cannot tell the two apart: it has no DST, so its
+      // offset now and its offset at the value's instant are the same number.
+      // A DST zone separates them, and the answer is the offset *now* —
+      // `TomTimezone.toString()` reads `timezoneOffsetMin`, which is the
+      // current offset. So a value's serialized offset field depends on when
+      // the string was written, and a round trip can change it.
+      final newYork = TomTimezone.fromName('America/New_York')!;
+      final now = newYork.getCurrentUtcOffset();
+
+      // Whichever season we are in, the other one has a different offset.
+      final year = DateTime.now().toUtc().year;
+      final instant = [
+        DateTime.utc(year, 1, 15, 12),
+        DateTime.utc(year, 7, 15, 12),
+      ].firstWhere((when) => newYork.getUtcOffsetOn(when) != now);
+      final atInstant = newYork.getUtcOffsetOn(instant);
+
+      // Non-vacuity: the two readings must actually differ, or the assertion
+      // below would hold under either rule.
+      expect(atInstant, isNot(equals(now)));
+
+      final value = TomZonedDateTime.fromDateTime(instant, newYork);
+      final serialized = value.toString();
+
+      expect(
+        serialized,
+        contains('_${TomTimezone.convertMinutesToUtcOffset(now)}_'),
+        reason: 'the serialized offset is the zone\'s offset now',
+      );
+      expect(
+        serialized,
+        isNot(contains(TomTimezone.convertMinutesToUtcOffset(atInstant))),
+        reason: 'it is not the offset at the value\'s instant',
+      );
+
+      // Nothing is lost by it: the instant and the zone survive the round
+      // trip, and the local reading is derived from them — never from the
+      // offset field, which the parse does not read.
+      final restored = TomZonedDateTime.parseFromString(serialized);
+      expect(restored.microsecondsSinceEpoch, value.microsecondsSinceEpoch);
+      expect(restored.timezone.timezone, equals('America/New_York'));
+      expect(restored.timezone.getUtcOffsetOn(instant), equals(atInstant));
     });
 
     test('toString is the whole form, prefix included', () {
