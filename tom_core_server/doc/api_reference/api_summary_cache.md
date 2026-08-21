@@ -27,7 +27,10 @@ bounded (`maximumEntries` set, LRU eviction). Two background timers can be
 installed: a deletion timer that drops expired entries and a clearance timer that
 empties the whole cache. The static `…NameCache` / `…TypeCache` helpers look the
 cache up through `TomCacheManager` and, in a worker isolate that does not hold
-the cache, forward the operation to the main isolate.
+the cache, forward the operation to the main isolate. A forwarded operation that
+fails there fails here too: a read of a cache that exists nowhere raises rather
+than answering `null`, and a store into one raises rather than reporting the `0`
+that means success.
 
 `TomCacheManager` holds the named `TomCache` instances for an isolate and decides
 whether operations run locally or are forwarded. `TomCacheException` is raised

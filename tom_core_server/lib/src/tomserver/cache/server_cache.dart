@@ -353,6 +353,11 @@ class TomCache {
   /// [T], or — in an isolate that owns no caches and cannot forward — if the
   /// named cache does not exist. In a worker isolate that does not hold the
   /// cache, the read is forwarded to the main isolate.
+  ///
+  /// A forwarded read that fails on the main isolate — because no cache of that
+  /// name exists there either — throws here too, rather than answering `null`:
+  /// "there is no such cache" is a configuration mistake and must not be
+  /// mistaken for "the cache is empty".
   static Future<T?> fromNameCache<T>(String cacheName, String key) async {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
@@ -407,6 +412,10 @@ class TomCache {
   /// entry. In a worker isolate that does not hold the cache the store is
   /// forwarded to the main isolate;
   /// otherwise a missing cache throws [TomCacheException]. Always returns `0`.
+  ///
+  /// A forwarded store that fails on the main isolate throws here too. A write
+  /// that reports success while the value went nowhere is the worst of the
+  /// available outcomes, since the mistake only surfaces at some later read.
   static Future<int> toNameCache(
     String cacheName,
     String key,
@@ -451,6 +460,7 @@ class TomCache {
   ///
   /// In a worker isolate that does not hold the cache the removal is forwarded
   /// to the main isolate; otherwise a missing cache throws [TomCacheException].
+  /// A forwarded removal that fails on the main isolate throws here too.
   /// Always returns `0`.
   static Future<int> removeFromNameCache(String cacheName, String key) async {
     var cache = TomCacheManager.getCache(cacheName);

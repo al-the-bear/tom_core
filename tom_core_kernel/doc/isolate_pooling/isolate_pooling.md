@@ -115,7 +115,7 @@ class. For the complete surface with full signatures see
 | Method | Description |
 |--------|-------------|
 | `sendToCreator()` | Send a message to the creator (fire-and-forget); throws in the creator |
-| `executeInCreator()` | Execute a command in the creator and await result, or `TomExecutor.noResult` if nothing there handled it; throws in the creator |
+| `executeInCreator()` | Execute a command in the creator and await result, or `TomExecutor.noResult` if nothing there handled it; rethrows a creator-side failure; throws in the creator |
 | `canSendToCreator()` | Whether a backchannel is available — answers on either side rather than throwing |
 
 #### Static Properties
@@ -636,24 +636,40 @@ class DatabaseWorkerContext extends TomWorkerContext {
 
 ### 3. Error Handling
 
-A command that throws inside the worker surfaces as a `RemoteError`. A worker
-that *dies* while a command is in flight surfaces as a `TomWorkerDiedException`
-— on any worker that is supervised, whether you registered
-[`superviseExit`](#supervising-a-bare-worker) yourself or let a supervised pool
-do it for you. Only an *un*supervised worker leaves the future hanging forever.
+A command that throws rethrows on the caller's side, carrying the original
+exception object — so `on MyDomainException` matches exactly as it would had the
+command run locally. This holds in **both** directions: `executeCommand` towards
+the worker and `executeInCreator` back towards the creator behave the same, so a
+caller never has to know which isolate it is running in before it can tell a
+failure from an answer.
+
+A worker that *dies* while a command is in flight surfaces as a
+`TomWorkerDiedException` — on any worker that is supervised, whether you
+registered [`superviseExit`](#supervising-a-bare-worker) yourself or let a
+supervised pool do it for you. Only an *un*supervised worker leaves the future
+hanging forever.
 
 ```dart
 try {
   final result = await worker.executeCommand(command);
-} on RemoteError catch (e) {
-  // The command failed, but the worker is still healthy.
-  print('Worker error: $e');
+} on InventoryUnavailable catch (e) {
+  // The command failed with a failure of its own; the worker is still healthy.
+  print('No stock for ${e.sku}');
 } on TomWorkerDiedException catch (e) {
   // The worker is gone; the command's fate is unknown, so decide whether
   // re-running it is safe before retrying.
   print('Worker died: $e');
 }
 ```
+
+**One exception to the type guarantee.** Not everything can cross an isolate
+port — an exception holding a closure or a `ReceivePort` is rejected by `send`.
+Such a failure arrives as a `RemoteError` built from the original's
+`toString()`: still a throw, still naming what went wrong, but no longer matched
+by an `on` clause for its own type. The substitution exists because the `send`
+that discovers the problem runs inside a port handler, where a throw would be
+caught by nobody and would leave the request unanswered forever. Keep failure
+types plain data if their type has to survive the trip.
 
 ### 4. Avoid Common Pitfalls
 

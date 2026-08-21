@@ -13,6 +13,57 @@ TomClientJwtToken _token(
 TomPrincipal _principal(String username) =>
     TomPrincipal(user: TomUser(username: username), authenticated: true);
 
+/// Minimal context for a worker spawned by the round-trip group below.
+class _CacheWorkerContext extends TomWorkerContext {
+  _CacheWorkerContext()
+    : super(
+        const TomEnvironment('test', isTest: true),
+        platformLinux,
+        [],
+        'AC',
+      );
+}
+
+/// Runs inside a WORKER isolate and reports which of the cache's three answers
+/// it received.
+///
+/// The outcomes are collapsed to a string on purpose. What the round trip has
+/// to prove is that the worker can still *tell them apart* — an expiry that
+/// arrives as a `null` is the defect this exists to catch, and returning the
+/// principal itself would make the two look alike again at the far end.
+class ProbeCacheCommand extends TomCommand {
+  final TomClientJwtToken token;
+
+  ProbeCacheCommand(this.token);
+
+  @override
+  Future<Object?> execute() async {
+    // A worker that answered from a local map would prove nothing about the
+    // forwarding path, so record that this really is the off-isolate branch.
+    if (TomWorker.isMainIsolate) return 'not-a-worker';
+    try {
+      final principal = await TomAuthorizationCache.getPrincipal(token);
+      return principal == null ? 'miss' : 'hit:${principal.username}';
+    } on TomAuthorizationCacheException catch (e) {
+      return 'expired:${e.key}';
+    } catch (e) {
+      return 'other:${e.runtimeType}';
+    }
+  }
+}
+
+/// Runs inside a WORKER isolate and forwards a store to the creator.
+class StoreThroughWorkerCommand extends TomCommand {
+  final TomClientJwtToken token;
+  final TomPrincipal principal;
+
+  StoreThroughWorkerCommand(this.token, this.principal);
+
+  @override
+  Future<Object?> execute() async =>
+      'stored:${await TomAuthorizationCache.storePrincipal(token, principal)}';
+}
+
 void main() {
   // The cache runs in the main isolate by default; keep it that way for the
   // synchronous, single-isolate behaviour under test.
@@ -128,6 +179,78 @@ void main() {
         ),
         throwsA(isA<TomWorkerException>()),
       );
+    });
+  });
+
+  // The branch-selection group above proves only which branch was taken. This
+  // one runs the forwarding for real, in a spawned isolate with the creator-side
+  // executor registered, because the defect it guards against lives in the
+  // transport rather than in either branch: an expiry raised on the creator used
+  // to arrive in the worker as an ordinary value, fail the `is TomPrincipal`
+  // test, and leave `getPrincipal` returning `null`. Both signals then looked
+  // like a miss exactly where the request pipeline runs.
+  group('TomAuthorizationCache (worker isolate round trip)', () {
+    final executor = TomAuthorizationCacheExecutor();
+    late TomWorker worker;
+
+    setUp(() async {
+      TomWorker.addExecutor(executor);
+      worker = await TomWorker.spawn(
+        TomWorker.startRemoteIsolate,
+        _CacheWorkerContext(),
+      );
+    });
+
+    tearDown(() {
+      worker.close();
+      // The registry is process-global, so withdraw exactly this registration;
+      // clearExecutors would discard whatever else the process had installed.
+      TomWorker.removeExecutor(executor);
+    });
+
+    test('an expired entry reaches the worker as an expiry', () async {
+      final token = _token('erin', validFor: const Duration(hours: -1));
+      await TomAuthorizationCache.storePrincipal(token, _principal('erin'));
+
+      final answer = await worker
+          .executeCommand(ProbeCacheCommand(token))
+          .timeout(const Duration(seconds: 10));
+
+      expect(answer, 'expired:tomclient.authorization_cache.expired_principal');
+    });
+
+    test('an unknown token still reaches the worker as a miss', () async {
+      // The companion to the case above: if every answer became an expiry the
+      // first assertion would pass for the wrong reason.
+      final answer = await worker
+          .executeCommand(ProbeCacheCommand(_token('nobody-at-all')))
+          .timeout(const Duration(seconds: 10));
+
+      expect(answer, 'miss');
+    });
+
+    test('a live entry reaches the worker as the principal', () async {
+      final token = _token('frank');
+      await TomAuthorizationCache.storePrincipal(token, _principal('frank'));
+
+      final answer = await worker
+          .executeCommand(ProbeCacheCommand(token))
+          .timeout(const Duration(seconds: 10));
+
+      expect(answer, 'hit:frank');
+    });
+
+    test('a worker-side store lands in the creator cache', () async {
+      // Closes the loop: the write forwards too, so the read above is not the
+      // only half of the pair that crosses the boundary.
+      final token = _token('grace');
+      final stored = await worker
+          .executeCommand(StoreThroughWorkerCommand(token, _principal('grace')))
+          .timeout(const Duration(seconds: 10));
+      expect(stored, 'stored:0');
+
+      final cached = await TomAuthorizationCache.getPrincipal(token);
+      expect(cached!.username, 'grace');
     });
   });
 

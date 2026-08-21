@@ -87,8 +87,16 @@ class TomAuthorizationCache {
   /// entry exists (a cache miss).
   ///
   /// Throws [TomAuthorizationCacheException] when an entry exists but has
-  /// expired — the caller should treat that as a prompt to re-authorize. When
-  /// called from a worker isolate the lookup is forwarded to the main isolate.
+  /// expired — the caller should treat that as a prompt to re-authorize.
+  ///
+  /// When called from a worker isolate the lookup is forwarded to the main
+  /// isolate, and all three answers survive the trip: a hit returns the
+  /// principal, a miss returns `null`, and an expiry rethrows on this side.
+  /// Callers therefore need no isolate-dependent handling — which matters
+  /// because the two non-hit answers mean opposite things ("no principal yet,
+  /// go resolve one" versus "there was one and it has aged out"), and merging
+  /// them would send a stale session back through resolution instead of
+  /// re-authorization.
   static Future<TomPrincipal?> getPrincipal(
     TomClientJwtToken authenticationToken,
   ) async {
@@ -109,10 +117,14 @@ class TomAuthorizationCache {
         }
       }
     } else {
+      // An expiry raised on the creator side arrives here as a throw and
+      // propagates untouched, so this branch only has to separate a hit from a
+      // miss. A miss reaches us as TomExecutor.noResult rather than `null`,
+      // because executeInCreator substitutes the sentinel for a `null` result.
       Object? cachedResult = await TomWorker.executeInCreator(
         TomAuthorizationCacheRetrieveMessage(authenticationToken),
       );
-      if (cachedResult != null && cachedResult is TomPrincipal) {
+      if (cachedResult is TomPrincipal) {
         return cachedResult;
       }
     }

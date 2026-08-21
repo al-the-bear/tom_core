@@ -12,12 +12,11 @@
 /// - Fire-and-forget messages with TomWorker.sendToCreator()
 /// - Handling creator-side messages with a TomExecutor
 /// - Customizing startup via TomWorkerContext.initializeWorker
-/// - Error propagation: a command that throws surfaces as a RemoteError
+/// - Error propagation: a command that throws rethrows on the caller's side,
+///   as the same exception type, in both directions
 /// - Recognizing TomExecutor.noResult, the answer a creator gives when nothing
 ///   on its side claimed the message
 library;
-
-import 'dart:isolate' show RemoteError;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -122,11 +121,50 @@ class DelegateUnclaimedToCreator extends TomCommand {
       await TomWorker.executeInCreator('nothing on the creator handles this');
 }
 
-/// A command that throws, to demonstrate error propagation.
+/// A domain failure with a type of its own, thrown by the commands below.
+///
+/// A distinct type is what makes the demonstration worth anything: any
+/// transport can report "something went wrong", but only one that carries the
+/// exception itself lets the caller write `on InventoryUnavailable` and branch
+/// on which failure it was.
+class InventoryUnavailable implements Exception {
+  final String sku;
+
+  InventoryUnavailable(this.sku);
+
+  @override
+  String toString() => 'InventoryUnavailable($sku)';
+}
+
+/// A command that throws inside the WORKER, to demonstrate error propagation.
 class WorkerThrowingCommand extends TomCommand {
   @override
+  Future<Object?> execute() async => throw InventoryUnavailable('sku-worker');
+}
+
+/// A command that throws on the CREATOR side, reached through the back-channel.
+class CreatorThrowingCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async => throw InventoryUnavailable('sku-creator');
+}
+
+/// Delegates a throwing command to the creator and reports what came back.
+///
+/// The failure is caught here rather than left to unwind so that the result
+/// describes the creator-bound hop alone; letting it escape would send it over
+/// the worker-bound hop as well, and the far end could not tell which hop
+/// produced what it saw.
+class DelegateThrowToCreator extends TomCommand {
+  @override
   Future<Object?> execute() async {
-    throw Exception('deliberate worker failure');
+    try {
+      final resolved = await TomWorker.executeInCreator(
+        CreatorThrowingCommand(),
+      );
+      return 'returned-as-value:${resolved.runtimeType}';
+    } on InventoryUnavailable catch (e) {
+      return 'rethrown:${e.sku}';
+    }
   }
 }
 
@@ -211,21 +249,41 @@ Future<void> run() async {
   // -------------------------------------------------------------------------
   // Example 4: Error propagation
   // -------------------------------------------------------------------------
-  print('4. A throwing command surfaces as a RemoteError:');
+  print('4. A throwing command rethrows, keeping its type:');
 
+  // Recording the *result* of the call as well, not only what was caught: an
+  // assertion that inspects a variable only ever written by a catch block is
+  // satisfied just as well by nothing being thrown at all.
   Object? caught;
   try {
-    await worker.executeCommand(WorkerThrowingCommand());
+    caught = await worker.executeCommand(WorkerThrowingCommand());
   } catch (e) {
     caught = e;
   }
 
-  print('   caught: ${caught.runtimeType}\n');
+  final caughtFailure = caught is InventoryUnavailable ? caught : null;
+
+  print('   caught: ${caught.runtimeType}');
+  print('   sku:    ${caughtFailure?.sku}\n');
 
   // -------------------------------------------------------------------------
-  // Example 5: Nothing on the creator claimed the message
+  // Example 5: The same contract in the other direction
   // -------------------------------------------------------------------------
-  print('5. A message no creator-side executor claims:');
+  // Worth its own example because the two directions are separate code paths.
+  // If only one of them carried failures as failures, every caller would have
+  // to know which isolate it was running in before it could tell an error from
+  // an answer -- and the one that guessed wrong would degrade a reported
+  // failure into whatever its fallback for an unrecognized result happens to be.
+  print('5. A creator-side throw reaches the worker as a throw:');
+
+  final creatorFailure = await worker.executeCommand(DelegateThrowToCreator());
+
+  print('   worker observed: $creatorFailure\n');
+
+  // -------------------------------------------------------------------------
+  // Example 6: Nothing on the creator claimed the message
+  // -------------------------------------------------------------------------
+  print('6. A message no creator-side executor claims:');
 
   final unclaimed = await worker.executeCommand(DelegateUnclaimedToCreator());
 
@@ -270,10 +328,17 @@ Future<void> run() async {
   assert(inbox.received.length == 1);
   assert(inbox.received.first == 'worker-online');
 
-  // Example 4: thrown command becomes a RemoteError on the future.
-  assert(caught is RemoteError);
+  // Example 4: a thrown command completes the future with an error, and the
+  // exception arrives with its own type rather than as a description of one.
+  assert(caughtFailure != null);
+  assert(caughtFailure?.sku == 'sku-worker');
 
-  // Example 5: an unclaimed message is answered with the sentinel, and the
+  // Example 5: the creator-bound hop behaves identically. "returned-as-value"
+  // would mean the exception had arrived as an ordinary result, which is
+  // indistinguishable from a successful answer.
+  assert(creatorFailure == 'rethrown:sku-creator');
+
+  // Example 6: an unclaimed message is answered with the sentinel, and the
   // sentinel survives both hops as the same canonical instance.
   assert(wasUnclaimed);
 

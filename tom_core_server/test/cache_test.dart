@@ -10,6 +10,61 @@ TomCache _cache(String name, {int? maximumEntries}) => TomCache(
   maximumEntries: maximumEntries,
 );
 
+/// Minimal context for a worker spawned by the round-trip group below.
+class _CacheWorkerContext extends TomWorkerContext {
+  _CacheWorkerContext()
+    : super(
+        const TomEnvironment('test', isTest: true),
+        platformLinux,
+        [],
+        'CA',
+      );
+}
+
+/// Runs inside a WORKER isolate and reports how a forwarded read came back.
+///
+/// The three returns are the three answers the read can have. Collapsing them
+/// to strings is deliberate: what the round trip must show is that the worker
+/// can still *tell them apart*, and a creator-side failure that arrives as an
+/// ordinary value looks exactly like a miss at this end.
+class ProbeCacheReadCommand extends TomCommand {
+  final String cacheName;
+
+  ProbeCacheReadCommand(this.cacheName);
+
+  @override
+  Future<Object?> execute() async {
+    if (TomWorker.isMainIsolate) return 'not-a-worker';
+    try {
+      final value = await TomCache.fromNameCache<String>(cacheName, 'k');
+      return value == null ? 'miss' : 'hit:$value';
+    } on TomCacheException catch (e) {
+      return 'failed:${e.key}';
+    } catch (e) {
+      return 'other:${e.runtimeType}';
+    }
+  }
+}
+
+/// Runs inside a WORKER isolate and reports how a forwarded store came back.
+class ProbeCacheStoreCommand extends TomCommand {
+  final String cacheName;
+
+  ProbeCacheStoreCommand(this.cacheName);
+
+  @override
+  Future<Object?> execute() async {
+    if (TomWorker.isMainIsolate) return 'not-a-worker';
+    try {
+      return 'stored:${await TomCache.toNameCache(cacheName, 'k', 'from-worker')}';
+    } on TomCacheException catch (e) {
+      return 'failed:${e.key}';
+    } catch (e) {
+      return 'other:${e.runtimeType}';
+    }
+  }
+}
+
 void main() {
   // Start every test from a clean registry. We run in the main isolate, so the
   // manager serves caches locally (useInThisIsolate == true).
@@ -321,6 +376,88 @@ void main() {
         throwsA(isA<TomWorkerException>()),
       );
     });
+  });
+
+  // The group above proves only which branch was taken. This one runs the
+  // forwarding for real, because the interesting failures live in the transport:
+  // a creator-side "no such cache" used to come back as an ordinary value, so a
+  // forwarded read reported a miss and — worse — a forwarded store reported
+  // success, for a cache that exists nowhere.
+  group('Worker-isolate forwarding round trip', () {
+    late TomWorker worker;
+
+    setUp(() async {
+      worker = await TomWorker.spawn(
+        TomWorker.startRemoteIsolate,
+        _CacheWorkerContext(),
+      );
+    });
+
+    tearDown(() => worker.close());
+
+    test(
+      'a forwarded read of a cache the creator holds returns the value',
+      () async {
+        TomCacheManager.addCache(_cache('shared'));
+        await TomCache.toNameCache('shared', 'k', 'v');
+
+        final answer = await worker
+            .executeCommand(ProbeCacheReadCommand('shared'))
+            .timeout(const Duration(seconds: 10));
+
+        expect(answer, 'hit:v');
+      },
+    );
+
+    test('a forwarded read of a key the creator lacks is a miss', () async {
+      // The companion to the failure case: without it, a fix that turned every
+      // answer into a failure would still look correct.
+      TomCacheManager.addCache(_cache('shared'));
+
+      final answer = await worker
+          .executeCommand(ProbeCacheReadCommand('shared'))
+          .timeout(const Duration(seconds: 10));
+
+      expect(answer, 'miss');
+    });
+
+    test('a creator-side failure reaches the worker as a failure', () async {
+      // No cache of this name anywhere, so the creator throws. That must not
+      // arrive looking like an empty cache.
+      final answer = await worker
+          .executeCommand(ProbeCacheReadCommand('nowhere'))
+          .timeout(const Duration(seconds: 10));
+
+      expect(answer, 'failed:error.cache_retrieve.not_found');
+    });
+
+    test(
+      'a forwarded store into a missing cache fails rather than lying',
+      () async {
+        final answer = await worker
+            .executeCommand(ProbeCacheStoreCommand('nowhere'))
+            .timeout(const Duration(seconds: 10));
+
+        expect(answer, 'failed:error.cache_store.not_found');
+      },
+    );
+
+    test(
+      'a forwarded store into a cache the creator holds lands there',
+      () async {
+        TomCacheManager.addCache(_cache('shared'));
+
+        final answer = await worker
+            .executeCommand(ProbeCacheStoreCommand('shared'))
+            .timeout(const Duration(seconds: 10));
+
+        expect(answer, 'stored:0');
+        expect(
+          await TomCache.fromNameCache<String>('shared', 'k'),
+          'from-worker',
+        );
+      },
+    );
   });
 
   group('Cross-isolate command objects (executed locally)', () {

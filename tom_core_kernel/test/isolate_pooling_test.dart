@@ -199,24 +199,77 @@ class InboxExecutor extends TomExecutor {
   }
 }
 
+/// A failure type nothing else in this file throws.
+///
+/// The type is the point. Both directions promise that the awaiting side can
+/// `catch` the very exception the other isolate threw, and only a
+/// distinguishable type can show that — an assertion against `Exception` would
+/// be satisfied just as well by a stringified stand-in.
+class MarkedFailure implements Exception {
+  final String marker;
+
+  MarkedFailure(this.marker);
+
+  @override
+  String toString() => 'MarkedFailure($marker)';
+}
+
+/// A command that throws a [MarkedFailure] inside the WORKER isolate.
+class ThrowingMarkedCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async => throw MarkedFailure('worker boom');
+}
+
+/// A failure that cannot cross an isolate port, because it holds a
+/// [ReceivePort].
+///
+/// Ports are among the few things `SendPort.send` refuses outright, which makes
+/// this the cheapest way to reach the degraded branch of the failure payload —
+/// the one that has to exist because a `send` throwing inside a port handler is
+/// caught by nobody and would strand the request forever.
+class UnsendableFailure implements Exception {
+  final ReceivePort port = ReceivePort();
+
+  @override
+  String toString() => 'UnsendableFailure(marker: unsendable-boom)';
+}
+
+/// A command that throws an [UnsendableFailure] inside the WORKER isolate.
+class ThrowingUnsendableCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async => throw UnsendableFailure();
+}
+
 /// A command that throws when run on the CREATOR side via the back-channel.
 class ThrowingCreatorCommand extends TomCommand {
   @override
-  Future<Object?> execute() async {
-    throw Exception('creator boom');
-  }
+  Future<Object?> execute() async => throw MarkedFailure('creator boom');
 }
 
 /// Runs in the worker and delegates a throwing command to the creator.
 ///
-/// The creator catches the throw and returns the exception object as the
-/// response payload (not a [RemoteError]), so [TomWorker.executeInCreator]
-/// resolves *normally* with that exception as its value — the documented
-/// behaviour of the creator→worker response path.
+/// The creator catches the throw and answers with a failure payload, so
+/// [TomWorker.executeInCreator] *rethrows* — the exception does not arrive as
+/// an ordinary value that a caller could mistake for a result.
+///
+/// The throw is caught here rather than allowed to unwind so that the
+/// assertion concerns the creator-bound hop alone: letting it escape would send
+/// it back over the worker-bound hop too, and a test watching only the far end
+/// could not tell which of the two produced what it saw. The three returns name
+/// the three outcomes that hop can have.
 class DelegateThrowToCreator extends TomCommand {
   @override
   Future<Object?> execute() async {
-    return await TomWorker.executeInCreator(ThrowingCreatorCommand());
+    try {
+      final resolved = await TomWorker.executeInCreator(
+        ThrowingCreatorCommand(),
+      );
+      return 'resolved-normally:${resolved.runtimeType}';
+    } on MarkedFailure catch (e) {
+      return 'rethrown:${e.marker}';
+    } catch (e) {
+      return 'wrong-type:${e.runtimeType}';
+    }
   }
 }
 
@@ -1579,11 +1632,70 @@ void main() {
           context,
         );
 
-        // The worker isolate catches the throw and sends back a RemoteError,
-        // which must complete the awaiting future with an error.
+        // The worker isolate catches the throw and answers with a failure
+        // payload, which must complete the awaiting future with an error.
         await expectLater(
           worker.executeCommand(ThrowingCommand('boom')),
-          throwsA(isA<RemoteError>()),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('boom'),
+            ),
+          ),
+        );
+
+        worker.close();
+      });
+
+      test('the caller catches the type the worker threw', () async {
+        // Not merely "an error": the failure payload carries the exception
+        // object, so `on MarkedFailure` matches on this side. A caller that can
+        // only inspect a string cannot branch on which failure it was.
+        final context = TestWorkerContext(namePrefix: 'ThrowingTyped');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        await expectLater(
+          worker.executeCommand(ThrowingMarkedCommand()),
+          throwsA(
+            isA<MarkedFailure>().having(
+              (e) => e.marker,
+              'marker',
+              'worker boom',
+            ),
+          ),
+        );
+
+        worker.close();
+      });
+
+      test('an unsendable exception degrades to a RemoteError', () async {
+        // The object cannot cross the port, and the send that discovers this
+        // happens inside a port handler where a throw would be caught by
+        // nobody — the request would simply never be answered. So the failure
+        // is re-packaged as strings and the caller still gets an error, just a
+        // less specific one, with the original `toString` preserved so the
+        // report still names what went wrong.
+        final context = TestWorkerContext(namePrefix: 'ThrowingUnsendable');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        await expectLater(
+          worker
+              .executeCommand(ThrowingUnsendableCommand())
+              .timeout(Duration(seconds: 5)),
+          throwsA(
+            isA<RemoteError>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('unsendable-boom'),
+            ),
+          ),
         );
 
         worker.close();
@@ -1787,25 +1899,23 @@ void main() {
         },
       );
 
-      test(
-        'executeInCreator resolves with a creator-thrown exception as value',
-        () async {
-          // When the creator-side command throws, the creator sends the exception
-          // object back as the response payload (not a RemoteError), so the
-          // worker completes normally with that exception as the value — pinning
-          // the non-error branch of the shared response-completion helper.
-          final context = TestWorkerContext(namePrefix: 'CreatorThrow');
-          final worker = await TomWorker.spawn(
-            TomWorker.startRemoteIsolate,
-            context,
-          );
+      test('executeInCreator rethrows a creator-thrown exception', () async {
+        // A creator-side throw must reach the worker as a throw. The two
+        // outcomes the other returns rule out are the ones that matter: an
+        // exception arriving as an ordinary *value* is indistinguishable from a
+        // result, and a stringified stand-in cannot be caught by type — which
+        // is how a caller tells one failure apart from another.
+        final context = TestWorkerContext(namePrefix: 'CreatorThrow');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
 
-          final result = await worker.executeCommand(DelegateThrowToCreator());
-          expect(result, isA<Exception>());
+        final result = await worker.executeCommand(DelegateThrowToCreator());
+        expect(result, equals('rethrown:creator boom'));
 
-          worker.close();
-        },
-      );
+        worker.close();
+      });
 
       test(
         'a null creator result comes back as the noResult sentinel',

@@ -327,6 +327,33 @@ class _TomIsolateResponse {
   _TomIsolateResponse(this.id, this.response);
 }
 
+/// Internal marker that a command threw, rather than returned, in the other
+/// isolate.
+///
+/// Both response wrappers carry a plain [Object], so without a marker a caught
+/// exception sent back as the response would be indistinguishable from a result
+/// the command deliberately returned. The awaiting side unwraps this and
+/// completes its future with an *error*, so a caller sees the same throw it
+/// would have seen had the command run locally.
+///
+/// [error] is the thrown object itself wherever the port accepts it, so the
+/// caller can still `catch` it by type — the whole point of propagating a
+/// failure rather than a description of one. When it is not sendable the
+/// sender substitutes a [RemoteError] built from its `toString()`; see
+/// [TomWorker._sendFailure].
+class _TomRemoteFailure {
+  /// The thrown object, or a [RemoteError] standing in for an unsendable one.
+  final Object error;
+
+  /// The stack trace captured where the failure was thrown, as a string.
+  ///
+  /// A [StackTrace] is not guaranteed to cross a port, and the string form is
+  /// all the awaiting side needs to reconstruct one for its error completion.
+  final String stack;
+
+  const _TomRemoteFailure(this.error, this.stack);
+}
+
 /// Internal report that a worker isolate failed to initialize itself.
 ///
 /// [TomWorkerContext.initializeIsolate] runs inside the new isolate, so an
@@ -883,7 +910,12 @@ class TomWorker {
           "Failed execute message from Isolate $message $executor from $name to ${Isolate.current.debugName}",
         );
         tomPrintStackTrace(s);
-        _commands.send(_TomCreatorResponse(message.id, exception));
+        _sendFailure(
+          _commands,
+          (payload) => _TomCreatorResponse(message.id, payload),
+          exception,
+          s,
+        );
       }
     } else if (_executors.isNotEmpty) {
       TomExecutor? executor;
@@ -913,19 +945,58 @@ class TomWorker {
 
   /// Resolves [completer] from a command [response] received over a port.
   ///
-  /// A [RemoteError] payload signals that the command threw in the other
-  /// isolate, so the awaiting future is completed with an error; any other
-  /// payload is the successful result. Shared by the two response handlers
-  /// (worker→creator and creator→worker) so both channels resolve pending
-  /// requests identically.
+  /// A [_TomRemoteFailure] payload signals that the command threw in the other
+  /// isolate, so the awaiting future is completed with an error carrying the
+  /// original exception; any other payload is the successful result. Shared by
+  /// the two response handlers (worker→creator and creator→worker) so both
+  /// channels resolve pending requests identically — a caller cannot tell from
+  /// its `await` which direction the command travelled.
   static void _completeFromResponse(
     Completer<Object?> completer,
     Object response,
   ) {
-    if (response is RemoteError) {
-      completer.completeError(response);
+    if (response is _TomRemoteFailure) {
+      completer.completeError(
+        response.error,
+        StackTrace.fromString(response.stack),
+      );
     } else {
       completer.complete(response);
+    }
+  }
+
+  /// Sends [error] back over [port] as a failure, so the awaiting side rethrows.
+  ///
+  /// [respond] wraps the payload in whichever response envelope the channel
+  /// uses ([_TomCreatorResponse] or [_TomIsolateResponse]); everything else
+  /// about reporting a failure is identical in both directions and lives here.
+  ///
+  /// The thrown object is sent as-is where the port accepts it, so the caller
+  /// can `catch` it by type. Not every object can cross a port, though — a
+  /// closure, a [ReceivePort] or anything holding one is rejected — and the
+  /// `send` that discovers this happens inside a port handler, where a throw
+  /// would be caught by nobody and would leave the request unanswered forever.
+  /// So an unsendable failure is retried as a [RemoteError] built from its
+  /// `toString()`: the caller loses the type but still gets an error naming
+  /// what went wrong, which beats waiting on a future that never completes.
+  static void _sendFailure(
+    SendPort port,
+    Object Function(Object payload) respond,
+    Object error,
+    StackTrace stack,
+  ) {
+    final stackText = stack.toString();
+    try {
+      port.send(respond(_TomRemoteFailure(error, stackText)));
+    } catch (_) {
+      port.send(
+        respond(
+          _TomRemoteFailure(
+            RemoteError(error.toString(), stackText),
+            stackText,
+          ),
+        ),
+      );
     }
   }
 
@@ -1023,9 +1094,12 @@ class TomWorker {
             return;
           }
           sendPort.send(_TomIsolateResponse(message.id, result ?? "null"));
-        } catch (e) {
-          sendPort.send(
-            _TomIsolateResponse(message.id, RemoteError(e.toString(), '')),
+        } catch (e, s) {
+          _sendFailure(
+            sendPort,
+            (payload) => _TomIsolateResponse(message.id, payload),
+            e,
+            s,
           );
         }
       } else if (message is _TomCreatorResponse) {
@@ -1152,6 +1226,29 @@ class TomWorker {
   /// the opposite direction makes — [executeCommand] uses the string `"null"`
   /// — so the two are not interchangeable.
   ///
+  /// A command that *throws* on the creator side rethrows here, with the
+  /// original exception object, so the failure can be caught by type exactly as
+  /// if the command had run locally:
+  ///
+  /// ```dart
+  /// try {
+  ///   final principal = await TomWorker.executeInCreator(LookUpCommand(token));
+  /// } on TomAuthorizationCacheException {
+  ///   // The creator-side handler threw; this is not a result.
+  /// }
+  /// ```
+  ///
+  /// Distinguishing a thrown failure from a returned result matters more than
+  /// it may appear: a caller that treats every answer as a value has no way to
+  /// tell "this went wrong" from "this is the answer", and silently degrades a
+  /// reported failure into whatever its fallback for an unrecognised result is.
+  ///
+  /// The exception arrives with its own type wherever it can cross the port.
+  /// An exception that cannot be sent — one holding a closure or a port —
+  /// arrives as a [RemoteError] built from its `toString()` instead: still a
+  /// throw, still naming the failure, but no longer matched by an `on` clause
+  /// for its original type.
+  ///
   /// Throws [TomWorkerException] if called from the main isolate.
   ///
   /// Example:
@@ -1200,6 +1297,14 @@ class TomWorker {
   /// explicit sentinel to carry "absent" across the boundary. Note that the
   /// creator-bound direction differs: [executeInCreator] substitutes
   /// [TomExecutor.noResult] instead.
+  ///
+  /// A command that *throws* inside the worker rethrows here, with the original
+  /// exception object, so the failure can be caught by type exactly as if the
+  /// command had run locally. An exception that cannot cross the port — one
+  /// holding a closure or a port — arrives as a [RemoteError] built from its
+  /// `toString()` instead: still a throw, but no longer matched by an `on`
+  /// clause for its original type. [executeInCreator] carries failures the same
+  /// way, so the contract does not depend on which direction a command travels.
   ///
   /// Throws [TomWorkerException] if this worker has been closed — the same
   /// fail-fast [TomWorkerPool.execute] gives for the identical mistake one

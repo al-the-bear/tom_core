@@ -41,7 +41,9 @@ Sources: `lib/src/tomserver/authorization/authorization_cache.dart`,
 `authorization_cache.dart` caches the `TomPrincipal` resolved for an
 authentication token so the authorization lookup runs once per token; the cache
 lives in the main isolate and worker isolates forward store/retrieve commands to
-it via cross-isolate messages serviced by `TomAuthorizationCacheExecutor`.
+it via cross-isolate messages serviced by `TomAuthorizationCacheExecutor`. The
+forwarding is transparent: a hit, a miss and an expiry are reported the same way
+on either side of the isolate boundary, so a caller cannot tell where it runs.
 
 `graded_authorization.dart` adds the four-state authorization model
 (`TomAuthState.none`/`disabled`/`read`/`full`): `TomResourceGrant` persists a
@@ -152,7 +154,7 @@ TomAuthorizationCache()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getPrincipal` | `static Future<TomPrincipal?> getPrincipal(TomClientJwtToken authenticationToken)` | Returns the cached principal, or `null` on a cache miss. Throws `TomAuthorizationCacheException` when the entry has expired. |
+| `getPrincipal` | `static Future<TomPrincipal?> getPrincipal(TomClientJwtToken authenticationToken)` | Returns the cached principal, or `null` on a cache miss. Throws `TomAuthorizationCacheException` when the entry has expired. Called from a worker isolate the lookup is forwarded to the main isolate, and all three answers survive the trip -- a hit returns the principal, a miss returns `null`, an expiry rethrows -- so callers need no isolate-dependent handling. |
 | `storePrincipal` | `static Future<int> storePrincipal(TomClientJwtToken authenticationToken, TomPrincipal authorizedPrincipal)` | Stores the principal under the token, using the token's `validUntil` claim as expiry. Always returns `0`. |
 
 ### TomAuthorizationCacheStoreMessage
