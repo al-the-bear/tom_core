@@ -190,12 +190,21 @@ anyone who was writing them.
   Callers that were relying on the components surviving were relying on a value
   of the wrong type; use `TomZonedDateTime` for those.
 
-  The dartdoc of `isDate` and `isTime` gained the frame they read in. Both take
-  a plain `DateTime` and so can only judge it in whatever frame it carries,
-  while the anchoring they test for is local — off UTC the two disagree, and
-  `isDate(someZonedDate)` returns `false` for a perfectly well-formed date.
-  Pass `value.toDateTime()`. The predicates are unchanged; the trap now has a
-  sign on it.
+- **`TomZonedDate.isDate` and `TomZonedTime.isTime` judge a zoned value in its
+  own timezone (tcinc325).** Both read the components inherited from
+  `DateTime`, which by the module's storage rule are the UTC ones, while the
+  anchoring they test for — midnight for a date, the epoch for a time — is
+  defined in the zone the value carries. Off UTC the two frames disagree, so
+  each predicate rejected the very type it is named after:
+  `TomZonedDate(year: 2024, month: 6, day: 15, timezone: tokyo)` stores
+  15:00 the previous afternoon and failed `isDate`; `TomZonedTime(hour: 0,
+  minute: 30, timezone: tokyo)` stores 1969-12-31 and failed `isTime`. A
+  `TomTimezoned` is now read through `toDateTime()` first, which is the frame
+  its anchoring was stated in; any other `DateTime` carries one frame and is
+  read as it stands, so the plain-`DateTime` behaviour is untouched. The
+  predicates keep their `DateTime` parameter and stay usable as a shape test
+  on unclassified values — they simply no longer contradict themselves on
+  values the library itself produces.
 
 - **`TomShutdownCleanup.addSignal` is idempotent per signal (tcinc319).** It
   appended a watcher unconditionally, so naming a signal twice installed two

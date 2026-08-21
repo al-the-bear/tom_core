@@ -242,10 +242,10 @@ if (TomZonedDate.isDate(someDateTime)) { ... }
 `fromDateTime` asks its question of the *target* timezone, so the day it picks
 can differ from the UTC one: 22:30 UTC is already tomorrow in Tokyo.
 
-`isDate` takes a plain `DateTime` and so can only read the frame that value
-carries. A `TomZonedDate` stores UTC while its midnight anchor is local, and off
-UTC the two disagree — hand it `date.toDateTime()`, the value in its own
-timezone, rather than the value itself.
+`isDate` reads a `TomTimezoned` in the timezone that value carries, which is the
+frame its midnight anchor is defined in, so every well-formed `TomZonedDate`
+passes wherever it is anchored — even though the UTC components it stores are
+not midnight. Any other `DateTime` is read as it stands.
 
 ### TomZonedTime
 
@@ -270,8 +270,9 @@ final parsed = TomZonedTime.parseFromString(
 if (TomZonedTime.isTime(someDateTime)) { ... }
 ```
 
-`isTime` carries the same caveat as `isDate`: it reads whatever frame the
-`DateTime` carries, so pass `time.toDateTime()` rather than the value.
+`isTime` reads a `TomTimezoned` in its own timezone just as `isDate` does, so a
+`TomZonedTime` passes even where the epoch anchor puts the stored date on
+1969-12-31 or 1970-01-02.
 
 #### Getting Local Time on Different Dates
 

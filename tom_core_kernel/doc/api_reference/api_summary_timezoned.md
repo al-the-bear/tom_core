@@ -175,7 +175,7 @@ zone.
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `isTomZonedDateString(String s)` | `bool` | Whether `s` is a valid `@D@`-prefixed date string. |
-| `isDate(DateTime dt)` | `bool` | Whether `dt` has all-zero time components (date-only), read in `dt`'s own frame — pass `value.toDateTime()`, not the value. |
+| `isDate(DateTime dt)` | `bool` | Whether `dt` has all-zero time components (date-only). A `TomTimezoned` is read in the timezone it carries, so every well-formed `TomZonedDate` passes. |
 
 #### Methods
 
@@ -227,7 +227,7 @@ zone.
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `isTomZonedTimeString(String s)` | `bool` | Whether `s` is a valid `@T@`-prefixed time string. |
-| `isTime(DateTime dt)` | `bool` | Whether `dt`'s date is the Unix epoch (time-only), read in `dt`'s own frame — pass `value.toDateTime()`, not the value. |
+| `isTime(DateTime dt)` | `bool` | Whether `dt`'s date is the Unix epoch (time-only). A `TomTimezoned` is read in the timezone it carries, so every well-formed `TomZonedTime` passes. |
 
 #### Methods
 

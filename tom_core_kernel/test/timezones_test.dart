@@ -786,14 +786,12 @@ void main() {
       });
 
       test('should produce a value its own predicate accepts', () {
-        // `isDate` reads the components of the DateTime it is given, so the
-        // value has to be offered in its local frame — `toDateTime()`.
         final berlinTz = TomTimezone.fromName('Europe/Berlin');
         final date = TomZonedDate.fromDateTime(
           DateTime.utc(2026, 8, 11, 13, 47, 5),
           berlinTz,
         );
-        expect(TomZonedDate.isDate(date.toDateTime()), isTrue);
+        expect(TomZonedDate.isDate(date), isTrue);
       });
     });
 
@@ -886,6 +884,68 @@ void main() {
           TomZonedDate.isDate(DateTime.utc(2024, 6, 15, 0, 0, 1)),
           isFalse,
         );
+      });
+
+      test('should accept a TomZonedDate in a non-UTC timezone', () {
+        // The canonical construction. Midnight in Tokyo is 15:00 the previous
+        // afternoon in UTC, and UTC is the frame these values store, so
+        // judging the stored components would reject the very type the
+        // predicate is named after.
+        final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
+        final date = TomZonedDate(
+          year: 2024,
+          month: 6,
+          day: 15,
+          timezone: tokyoTz,
+        );
+        expect(date.hour, equals(15)); // the stored frame
+        expect(TomZonedDate.isDate(date), isTrue);
+      });
+
+      test('should accept a TomZonedDate west of UTC too', () {
+        // Westward the stored day is the same but the stored hour is not.
+        final laTz = TomTimezone.fromName('America/Los_Angeles');
+        final date = TomZonedDate(
+          year: 2024,
+          month: 6,
+          day: 15,
+          timezone: laTz,
+        );
+        expect(date.hour, equals(7));
+        expect(TomZonedDate.isDate(date), isTrue);
+      });
+
+      test(
+        'should give the same answer for a value and its local DateTime',
+        () {
+          // The two ways of asking must not disagree; if they can, the caller
+          // has to know which frame the predicate reads, and that is the trap.
+          final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
+          final date = TomZonedDate(
+            year: 2024,
+            month: 6,
+            day: 15,
+            timezone: tokyoTz,
+          );
+          expect(
+            TomZonedDate.isDate(date),
+            equals(TomZonedDate.isDate(date.toDateTime())),
+          );
+        },
+      );
+
+      test('should reject a zoned value that carries a time of day', () {
+        // Reading the local frame must not make everything pass.
+        final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
+        final dt = TomZonedDateTime(
+          year: 2024,
+          month: 6,
+          day: 15,
+          hour: 14,
+          minute: 30,
+          timezone: tokyoTz,
+        );
+        expect(TomZonedDate.isDate(dt), isFalse);
       });
     });
   });
@@ -1011,7 +1071,7 @@ void main() {
           DateTime.utc(2026, 8, 11, 13, 47, 5),
           berlinTz,
         );
-        expect(TomZonedTime.isTime(time.toDateTime()), isTrue);
+        expect(TomZonedTime.isTime(time), isTrue);
       });
     });
 
@@ -1097,6 +1157,52 @@ void main() {
       test('should return false for DateTime with non-epoch date', () {
         expect(TomZonedTime.isTime(DateTime.utc(2024, 6, 15, 14, 30)), isFalse);
         expect(TomZonedTime.isTime(DateTime.utc(1970, 1, 2, 14, 30)), isFalse);
+      });
+
+      test(
+        'should accept a TomZonedTime whose stored date is not the epoch',
+        () {
+          // 00:30 in Tokyo is 15:30 on 1969-12-31 in UTC, so the stored frame
+          // disagrees with the epoch anchor by a whole year — the sharpest form
+          // of the disagreement, and the type's own canonical construction.
+          final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
+          final time = TomZonedTime(hour: 0, minute: 30, timezone: tokyoTz);
+          expect(time.year, equals(1969)); // the stored frame
+          expect(TomZonedTime.isTime(time), isTrue);
+        },
+      );
+
+      test('should accept a TomZonedTime west of UTC too', () {
+        // Westward the stored date runs past the epoch instead of before it.
+        final laTz = TomTimezone.fromName('America/Los_Angeles');
+        final time = TomZonedTime(hour: 23, minute: 30, timezone: laTz);
+        expect(time.day, equals(2));
+        expect(TomZonedTime.isTime(time), isTrue);
+      });
+
+      test(
+        'should give the same answer for a value and its local DateTime',
+        () {
+          final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
+          final time = TomZonedTime(hour: 0, minute: 30, timezone: tokyoTz);
+          expect(
+            TomZonedTime.isTime(time),
+            equals(TomZonedTime.isTime(time.toDateTime())),
+          );
+        },
+      );
+
+      test('should reject a zoned value that carries a real date', () {
+        final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
+        final dt = TomZonedDateTime(
+          year: 2024,
+          month: 6,
+          day: 15,
+          hour: 14,
+          minute: 30,
+          timezone: tokyoTz,
+        );
+        expect(TomZonedTime.isTime(dt), isFalse);
       });
     });
 

@@ -349,6 +349,16 @@ class TomTimezoned extends DateTime {
   }
 }
 
+/// Returns [dt] as its own timezone sees it.
+///
+/// A [TomTimezoned] stores UTC while its anchoring — midnight for a date, the
+/// epoch for a time — is defined in the zone it carries, so the components it
+/// inherits from [DateTime] are a storage detail and the wrong thing to
+/// classify it by. `toDateTime()` is the value in the frame its anchoring was
+/// stated in. Any other [DateTime] carries a single frame, which is therefore
+/// already the right one.
+DateTime _inOwnFrame(DateTime dt) => dt is TomTimezoned ? dt.toDateTime() : dt;
+
 /// A timezone-aware date value (without time components).
 ///
 /// [TomZonedDate] represents a calendar date associated with a specific timezone.
@@ -547,22 +557,29 @@ class TomZonedDate extends TomTimezoned {
     ).hasMatch(s);
   }
 
-  /// Checks if a [DateTime] represents a date-only value.
+  /// Checks whether [dt] represents a date-only value.
   ///
   /// Returns `true` if all time components (hour, minute, second,
   /// millisecond, microsecond) are zero.
   ///
-  /// The components are read in whatever frame [dt] carries, because a plain
-  /// [DateTime] offers no other. A [TomZonedDate] stores UTC while its
-  /// anchoring is local, so those two frames disagree for every zone off UTC:
-  /// pass `value.toDateTime()`, which is the value in its own timezone, and
-  /// not the value itself.
+  /// A [TomTimezoned] is read in the timezone it carries, which is the frame
+  /// its anchoring is defined in — so every well-formed [TomZonedDate] passes,
+  /// wherever it is anchored. Any other [DateTime] is read as it stands.
+  ///
+  /// Example:
+  /// ```dart
+  /// final tokyo = TomTimezone.fromName('Asia/Tokyo');
+  /// final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: tokyo);
+  /// print(date.hour);                // 15 — midnight in Tokyo, stored as UTC
+  /// print(TomZonedDate.isDate(date)); // true
+  /// ```
   static bool isDate(DateTime dt) {
-    return dt.hour == 0 &&
-        dt.minute == 0 &&
-        dt.second == 0 &&
-        dt.millisecond == 0 &&
-        dt.microsecond == 0;
+    final local = _inOwnFrame(dt);
+    return local.hour == 0 &&
+        local.minute == 0 &&
+        local.second == 0 &&
+        local.millisecond == 0 &&
+        local.microsecond == 0;
   }
 
   /// Converts this date to another timezone.
@@ -783,17 +800,24 @@ class TomZonedTime extends TomTimezoned {
     ).hasMatch(s);
   }
 
-  /// Checks if a [DateTime] represents a time-only value.
+  /// Checks whether [dt] represents a time-only value.
   ///
   /// Returns `true` if the date components are 1970-01-01 (Unix epoch).
   ///
-  /// The components are read in whatever frame [dt] carries, because a plain
-  /// [DateTime] offers no other. A [TomZonedTime] stores UTC while its epoch
-  /// anchor is local, so those two frames disagree for every zone off UTC:
-  /// pass `value.toDateTime()`, which is the value in its own timezone, and
-  /// not the value itself.
+  /// A [TomTimezoned] is read in the timezone it carries, which is the frame
+  /// its anchoring is defined in — so every well-formed [TomZonedTime] passes,
+  /// wherever it is anchored. Any other [DateTime] is read as it stands.
+  ///
+  /// Example:
+  /// ```dart
+  /// final tokyo = TomTimezone.fromName('Asia/Tokyo');
+  /// final time = TomZonedTime(hour: 0, minute: 30, timezone: tokyo);
+  /// print(time.year);                 // 1969 — 00:30 Tokyo is the day before
+  /// print(TomZonedTime.isTime(time)); // true
+  /// ```
   static bool isTime(DateTime dt) {
-    return dt.year == 1970 && dt.month == 1 && dt.day == 1;
+    final local = _inOwnFrame(dt);
+    return local.year == 1970 && local.month == 1 && local.day == 1;
   }
 
   /// Converts this time to another timezone.

@@ -63,9 +63,9 @@ class ZonedDateTimeExample {
 
     print('   - Date has time component: $hasTimeComponent');
 
-    // Check using isDate static method. It reads whatever frame the DateTime
-    // carries, so to ask it about a TomZonedDate pass `value.toDateTime()` —
-    // see example 5.
+    // Check using isDate static method. A plain DateTime carries one frame and
+    // is read as it stands; a TomZonedDate is read in its own timezone — see
+    // example 5.
     final dateOnly = DateTime(2024, 6, 15, 0, 0, 0);
     final withTime = DateTime(2024, 6, 15, 14, 30, 0);
 
@@ -179,15 +179,15 @@ class ZonedDateTimeExample {
     // whatever the incoming DateTime happened to carry.
     assert(zonedDate.localHour == 0, 'A date is anchored to local midnight');
     assert(
-      TomZonedDate.isDate(zonedDate.toDateTime()),
-      'A date must satisfy its own predicate in its own timezone',
+      TomZonedDate.isDate(zonedDate),
+      'A date must satisfy its own predicate',
     );
     // 15:45:30 UTC reads as 16:45:30 in London during BST.
     assert(zonedTime.localHour == 16, 'A time keeps the local clock reading');
     assert(zonedTime.localYear == 1970, 'A time is anchored to the epoch');
     assert(
-      TomZonedTime.isTime(zonedTime.toDateTime()),
-      'A time must satisfy its own predicate in its own timezone',
+      TomZonedTime.isTime(zonedTime),
+      'A time must satisfy its own predicate',
     );
   }
 
