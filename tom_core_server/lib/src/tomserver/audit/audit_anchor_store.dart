@@ -50,6 +50,14 @@ abstract class TomAuditAnchorStore implements TomClosable {
   Future<void> append(TomAuditAnchor anchor);
 
   /// Every stored anchor for [writer], oldest first.
+  ///
+  /// Only that writer's. An implementation that groups anchors by some
+  /// derivation of the name — a file per writer, a partition key — must still
+  /// filter on the writer recorded in each anchor, because such derivations
+  /// are rarely injective and the caller cannot see where the grouping put
+  /// things. Anchors from another chain are worse than no anchor at all: they
+  /// make [latest] answer the routine check with a position that belongs to a
+  /// different trail.
   Future<List<TomAuditAnchor>> read(String writer);
 
   /// The most recently published anchor for [writer], or `null`.
@@ -118,6 +126,14 @@ class TomFileAuditAnchorStore extends TomAuditAnchorStore {
   /// The writer name is sanitised into the file name rather than trusted:
   /// it reaches this far from configuration, and a writer called `../../etc`
   /// must produce a strange file name, not a write outside [directory].
+  ///
+  /// The mapping is deliberately **not injective** — `node/a` and `node_a`
+  /// name the same file — and [read] is written knowing it. Making it
+  /// injective would mean encoding the original name into the file name
+  /// (escaping, or a hash suffix), which buys a tidier directory listing at
+  /// the cost of file names an operator can no longer match to a node by
+  /// eye. The store already records the writer inside every line, so the
+  /// file name does not have to carry that weight.
   File fileFor(String writer) {
     final safe = writer.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     return File(p.join(directory.path, '$filePrefix-$safe.jsonl'));
@@ -132,6 +148,22 @@ class TomFileAuditAnchorStore extends TomAuditAnchorStore {
     );
   }
 
+  /// Every stored anchor for [writer], oldest first.
+  ///
+  /// Filtered by the writer recorded *in each anchor*, not by the file it was
+  /// found in, because [fileFor] is lossy: two writer names can share one file
+  /// and the file therefore holds two chains. Returning both would mean
+  /// [latest] hands the routine check an anchor describing a different trail —
+  /// which reads as tampering on a healthy chain when the foreign position is
+  /// ahead, and, when it is behind the retained window, as `beforeRetention`:
+  /// no finding at all, so a genuine rewrite passes the check unexamined.
+  ///
+  /// The filter is applied *after* parsing, and that ordering is load-bearing.
+  /// Matching the writer in the raw text first would be faster and would skip
+  /// the malformed lines that do not look like ours — but a line too damaged
+  /// to parse is a line too damaged to attribute, and the archive's whole
+  /// claim is that its contents cannot be edited. Every line is parsed so that
+  /// every line is checked.
   @override
   Future<List<TomAuditAnchor>> read(String writer) async {
     final file = fileFor(writer);
@@ -142,11 +174,10 @@ class TomFileAuditAnchorStore extends TomAuditAnchorStore {
       lineNumber++;
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
+      final TomAuditAnchor anchor;
       try {
-        anchors.add(
-          TomAuditAnchor.fromJson(
-            (jsonDecode(trimmed) as Map).cast<String, Object?>(),
-          ),
+        anchor = TomAuditAnchor.fromJson(
+          (jsonDecode(trimmed) as Map).cast<String, Object?>(),
         );
       } on Object catch (e) {
         // A damaged anchor line is itself a finding — the archive is supposed
@@ -159,6 +190,7 @@ class TomFileAuditAnchorStore extends TomAuditAnchorStore {
           rootException: e,
         );
       }
+      if (anchor.writer == writer) anchors.add(anchor);
     }
     return anchors;
   }

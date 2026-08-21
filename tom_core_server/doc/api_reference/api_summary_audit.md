@@ -828,7 +828,7 @@ audited server, and it wants the narrowest possible permission.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `append` | `Future<void> append(TomAuditAnchor anchor)` | Appends `anchor`; must throw rather than silently drop, so a publisher can tell a publication from a swallowed error. |
-| `read` | `Future<List<TomAuditAnchor>> read(String writer)` | Every stored anchor for `writer`, oldest first. |
+| `read` | `Future<List<TomAuditAnchor>> read(String writer)` | Every stored anchor for `writer`, oldest first — and **only** that writer's. An implementation that groups by some derivation of the name must still filter on the writer recorded in each anchor, since such derivations are rarely injective. A foreign anchor is worse than none: it makes `latest` answer the routine check with a position from another trail. |
 | `latest` | `Future<TomAuditAnchor?> latest(String writer)` | The most recently published anchor for `writer`, or `null`. The one a routine check uses: it pins the furthest verifiable position. |
 | `close` | `void close()` | *(override)* No-op by default. |
 
@@ -889,9 +889,9 @@ TomFileAuditAnchorStore({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `fileFor` | `File fileFor(String writer)` | The file holding `writer`'s anchors. The writer name is sanitised into the file name rather than trusted, so a writer called `../../etc` produces a strange name and not a write outside `directory`. |
+| `fileFor` | `File fileFor(String writer)` | The file holding `writer`'s anchors. The writer name is sanitised into the file name rather than trusted, so a writer called `../../etc` produces a strange name and not a write outside `directory`. The mapping is deliberately **not injective** — `node/a` and `node_a` share a file — and `read` filters accordingly. |
 | `append` | `Future<void> append(TomAuditAnchor anchor)` | *(override)* Appends one flushed JSON line to the anchor's writer file. |
-| `read` | `Future<List<TomAuditAnchor>> read(String writer)` | *(override)* Parses the writer's file, skipping blank lines and returning `const []` when it does not exist. A damaged line raises `TomAuditException` rather than being skipped — the archive is supposed to be the thing that cannot be edited. |
+| `read` | `Future<List<TomAuditAnchor>> read(String writer)` | *(override)* Parses the writer's file, skipping blank lines and returning `const []` when it does not exist. Returns only anchors whose recorded `writer` matches, since a lossy file name can put two chains in one file. The filter runs **after** parsing: a line too damaged to parse is too damaged to attribute, so every line is still checked and a damaged one raises `TomAuditException` whichever writer wrote it. |
 
 ### TomAuditAnchorPublisher
 

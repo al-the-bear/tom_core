@@ -611,6 +611,140 @@ void main() {
           .writeAsStringSync('{ not an anchor\n', mode: FileMode.append);
       expect(() => store.read('node-a'), throwsA(isA<TomAuditException>()));
     });
+
+    // Two writer names that sanitise to one file name. The sanitisation is
+    // right and stays — it is what stops a writer called `../../etc` from
+    // escaping the directory — but it is lossy, and a lossy name mapping used
+    // as if it were injective puts two chains in one file.
+    group('writers whose names collide after sanitisation', () {
+      test(
+        'read returns only the requested writer, as the memory store does',
+        () async {
+          final store = TomFileAuditAnchorStore(directory: dir);
+          expect(
+            store.fileFor('node/a').path,
+            store.fileFor('node_a').path,
+            reason: 'the premise: these two names share one file',
+          );
+
+          await store.append(_anchorAt(_chain(1), writer: 'node/a'));
+          await store.append(_anchorAt(_chain(9), writer: 'node_a'));
+          await store.append(_anchorAt(_chain(2), writer: 'node/a'));
+
+          expect(
+            (await store.read('node/a')).map((a) => a.writer),
+            everyElement('node/a'),
+          );
+          expect(await store.read('node/a'), hasLength(2));
+          expect(await store.read('node_a'), hasLength(1));
+
+          // The two shipped stores must answer the same question, or `read` means
+          // one thing in a test and another in production — which is the way a
+          // defect survives a green suite.
+          final memory = TomMemoryAuditAnchorStore();
+          await memory.append(_anchorAt(_chain(1), writer: 'node/a'));
+          await memory.append(_anchorAt(_chain(9), writer: 'node_a'));
+          await memory.append(_anchorAt(_chain(2), writer: 'node/a'));
+          expect(
+            (await store.read('node/a')).map((a) => a.entryCount),
+            (await memory.read('node/a')).map((a) => a.entryCount),
+          );
+        },
+      );
+
+      test(
+        'latest returns this writer\'s newest anchor, not the file\'s',
+        () async {
+          final store = TomFileAuditAnchorStore(directory: dir);
+          await store.append(_anchorAt(_chain(2), writer: 'node/a'));
+          // Appended last, so it is the final line of the shared file — which is
+          // what an unfiltered `latest` hands back.
+          await store.append(_anchorAt(_chain(99), writer: 'node_a'));
+
+          final latest = await store.latest('node/a');
+          expect(latest!.writer, 'node/a');
+          expect(latest.entryCount, 2);
+        },
+      );
+
+      test('a routine check against latest does not raise a false alarm', () async {
+        // The damage this does in practice. `latest` feeds the documented
+        // routine check, so a foreign anchor is compared against a chain it
+        // never described. Both call shapes are asserted because the collision
+        // breaks them differently: with `writer:` the check reports
+        // `writerMismatch`, and without it the foreign entry count reads as
+        // `truncated` — tampering, on a trail nobody touched. Truncation is the
+        // one thing a hash chain cannot detect by itself, so it is exactly the
+        // finding an operator has been told to trust.
+        final entries = _chain(3);
+        final store = TomFileAuditAnchorStore(directory: dir);
+        await store.append(
+          TomAuditAnchor(
+            writer: 'node/a',
+            entryCount: 3,
+            headHash: entries.last.hash,
+            createdAt: DateTime.utc(2026, 7, 28, 11),
+          ),
+        );
+        await store.append(_anchorAt(_chain(99), writer: 'node_a'));
+        final latest = (await store.latest('node/a'))!;
+
+        final scoped = verifyAgainstAnchor(entries, latest, writer: 'node/a');
+        expect(scoped.status, TomAuditAnchorStatus.matched);
+        expect(scoped.indicatesTampering, isFalse);
+
+        final unscoped = verifyAgainstAnchor(entries, latest);
+        expect(unscoped.status, TomAuditAnchorStatus.matched);
+        expect(unscoped.indicatesTampering, isFalse);
+      });
+
+      test(
+        'a routine check against latest still catches a real rewrite',
+        () async {
+          // The other direction, and the worse one. A false alarm costs trust;
+          // this costs the guarantee. The foreign anchor here pins a position
+          // older than the retained window, so the unscoped check reads
+          // `beforeRetention` — neither a match nor a finding. The routine check
+          // quietly declines to check, and a genuinely rewritten trail passes it
+          // with nothing reported.
+          final retained = _chain(4, startIndex: 40, startHash: 'pruned-head');
+          final store = TomFileAuditAnchorStore(directory: dir);
+          await store.append(
+            TomAuditAnchor(
+              writer: 'node/a',
+              entryCount: 44,
+              headHash: 'the-head-that-was-published',
+              createdAt: DateTime.utc(2026, 7, 28, 11),
+            ),
+          );
+          await store.append(_anchorAt(_chain(3), writer: 'node_a'));
+          final latest = (await store.latest('node/a'))!;
+
+          for (final verification in [
+            verifyAgainstAnchor(retained, latest, writer: 'node/a'),
+            verifyAgainstAnchor(retained, latest),
+          ]) {
+            expect(verification.status, TomAuditAnchorStatus.diverged);
+            expect(verification.indicatesTampering, isTrue);
+          }
+        },
+      );
+
+      test('a damaged line is reported whichever writer wrote it', () async {
+        // Filtering must happen *after* parsing, never by matching the writer
+        // in the raw text: a line too damaged to parse is a line too damaged to
+        // attribute, and skipping it because it does not look like ours would
+        // turn the archive's one integrity check into a no-op for exactly the
+        // lines that failed it.
+        final store = TomFileAuditAnchorStore(directory: dir);
+        await store.append(_anchorAt(_chain(1), writer: 'node/a'));
+        store
+            .fileFor('node_a')
+            .writeAsStringSync('{ not an anchor\n', mode: FileMode.append);
+
+        expect(() => store.read('node/a'), throwsA(isA<TomAuditException>()));
+      });
+    });
   });
 
   group('TomAuditAnchorPublisher', () {

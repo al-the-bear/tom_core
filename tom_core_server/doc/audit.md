@@ -513,6 +513,16 @@ application's own scratch space is what determines whether anything has been
 anchored at all. `TomMemoryAuditAnchorStore` is for tests and anchors nothing —
 it dies with the process it was attesting to.
 
+The file store names a file after the writer, sanitising the name so a writer
+called `../../etc` cannot escape the directory. That sanitisation is lossy —
+`node/a` and `node_a` land in the same file — so `read` filters on the writer
+recorded inside each anchor rather than trusting the file it found it in. This
+matters because `latest` feeds the routine check above: an anchor from another
+chain reads as tampering when its position is ahead of the trail, and as
+`beforeRetention` when it is behind, which is no finding at all and would let a
+genuine rewrite pass unexamined. Any custom store owes the same guarantee —
+group anchors however you like, but filter on what the anchor says it is.
+
 There is deliberately **no SQL anchor store**. Anchoring the trail into the same
 database that holds it is one credential and one blast radius: ceremony without
 a guarantee.

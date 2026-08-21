@@ -2,6 +2,31 @@
 
 ### Behaviour Changes
 
+- **`TomFileAuditAnchorStore.read` returns only the requested writer's anchors
+  (tcinc342).** The store names a file after the writer, sanitising the name so
+  that a writer called `../../etc` produces a strange file name rather than a
+  write outside the directory. The sanitisation is correct and stays; the
+  defect was using a lossy mapping as if it were injective. `node/a` and
+  `node_a` share one file, and `read` returned every line in it — so two chains
+  came back as one, while `TomMemoryAuditAnchorStore` filtered and the two
+  shipped stores disagreed about what `read(writer)` meant.
+
+  `latest` is what makes this more than untidy: it is the anchor the documented
+  routine check uses, so the check was handed a position belonging to a
+  different trail. When the foreign position is ahead of the chain the verdict
+  is `truncated` — tampering reported on a trail nobody touched, and truncation
+  is precisely the finding an operator has been told to trust because a hash
+  chain cannot detect it alone. When the foreign position is *behind* the
+  retained window the verdict is `beforeRetention`: neither a match nor a
+  finding, so the check quietly declines to check and a genuine rewrite passes
+  it. The false alarm costs trust; the silent pass costs the guarantee.
+
+  `read` now filters on the writer recorded in each anchor, matching the memory
+  store. The filter runs after parsing, not as a text match on the raw line: a
+  line too damaged to parse is too damaged to attribute, and skipping it
+  because it does not look like ours would disable the archive's one integrity
+  check for exactly the lines that failed it.
+
 - **An audit sink that is closed no longer writes; `flushAndClose()` is the way
   to keep what was queued (tcinc341).** Both persistent sinks serialise writes
   through an internal queue and checked `_closed` only at enqueue time. A
