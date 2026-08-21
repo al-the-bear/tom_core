@@ -18,7 +18,7 @@ import 'base_server_configuration.dart';
 /// A key configured explicitly as `null` takes branch 1, not branch 2: the
 /// provider reports it as present, because an explicit `null` is a deliberate
 /// act and a default exists to cover an *absent* key (the same reason a
-/// nullable `null` default is honoured — bug §64). So `TomConfig<int?>` reads
+/// nullable `null` default is honoured). So `TomConfig<int?>` reads
 /// it as `null`, while `TomConfig<int>` fails the cast and throws naming the
 /// key. Failing loudly is intended: silently substituting the default would
 /// discard the very setting the operator wrote.
@@ -36,7 +36,7 @@ class TomConfig<T> {
 
   /// Whether a default was supplied via [TomConfig.withDefault]. Tracked
   /// separately from `_defaultValue != null` so a *nullable* `null` default is
-  /// honoured rather than treated as "no default" (bug §64).
+  /// honoured rather than treated as "no default".
   bool _hasDefault = false;
 
   /// Resolves an **obligatory** property [key] from the active provider.

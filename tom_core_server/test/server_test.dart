@@ -252,7 +252,7 @@ void main() {
   });
 
   // Pins the default error-mapping contract documented on TomServer.errorHandler
-  // (tests §44): every thrown error becomes an HTTP-500 JSON response carrying
+  // every thrown error becomes an HTTP-500 JSON response carrying
   // `x-tom-error: true` and an `errorType`; a TomException contributes
   // `errorKey`/`uuid`/`autoLog`/`requestUuid`; a TomServerException additionally
   // contributes `clientThrow`. No behaviour change — characterization only.

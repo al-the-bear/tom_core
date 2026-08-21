@@ -1340,7 +1340,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       // (`lastGeneratedId`) — authoritative and connection-correct. Only fall
       // back to a separate `SELECT LAST_INSERT_ID()` when the driver exposes no
       // generated key, since that follow-up query is session-scoped and returns
-      // 0 if it runs on a different connection than the insert (bug §71). A
+      // 0 if it runs on a different connection than the insert. A
       // caller-supplied key is used as-is.
       // In the else branch `isUnsavedKey` is false, so the key is non-null.
       final K rowKey = isUnsavedKey(primaryKey)

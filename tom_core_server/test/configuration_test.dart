@@ -93,7 +93,7 @@ void main() {
       expect(subtree['host'], 'localhost');
     });
 
-    group('explicitly null properties (§79)', () {
+    group('explicitly null properties', () {
       test('a null dotted property exists and reads as null', () {
         final p = TomServerConfigResourceProvider.from({
           'server': {'replica': null},
@@ -167,7 +167,7 @@ void main() {
       expect(config.get(), 1); // still the originally-resolved value
     });
 
-    test('a nullable null default resolves to null, not a throw (bug §64)', () {
+    test('a nullable null default resolves to null, not a throw', () {
       _install({});
       // withDefault(key, null) over a nullable T must honour the supplied null
       // default rather than treating it as "no default" and throwing.
@@ -182,14 +182,14 @@ void main() {
       );
     });
 
-    test('an explicitly null value reaches a nullable T (§79)', () {
+    test('an explicitly null value reaches a nullable T', () {
       _install({
         'server': {'replica': null},
       });
       expect(TomConfig<String?>('server.replica').get(), isNull);
     });
 
-    test('an explicitly null value does not fall back to the default (§79)', () {
+    test('an explicitly null value does not fall back to the default', () {
       // Defaults cover an *absent* key. A key the operator deliberately set to
       // null is present, so substituting the default would discard exactly the
       // setting they wrote -- it throws instead, naming the key.
@@ -213,35 +213,34 @@ void main() {
       expect(config.captured.containsKey('PATH'), isTrue);
     });
 
-    test('constructing a configuration leaves the provider resources unchanged'
-        ' (bug §62)', () {
-      _install({'kept': 'resource'});
-      final provider = TomServerConfigResourceProvider.getServerConfig();
-      final before = provider.resources.keys.toSet();
-      _CapturingConfig(
-        [],
-      ); // merges env/.env/args into a copy, not the provider
-      // The OS environment (PATH et al.) must not have leaked into the provider.
-      expect(provider.resources.keys.toSet(), before);
-      expect(provider.resources.containsKey('PATH'), isFalse);
-    });
-
     test(
-      'a nested provider subtree is not mutated by construction (bug §62)',
+      'constructing a configuration leaves the provider resources unchanged',
       () {
-        _install({
-          'server': {'port': 8080},
-        });
+        _install({'kept': 'resource'});
         final provider = TomServerConfigResourceProvider.getServerConfig();
-        _CapturingConfig(['server.host=example']);
-        // The deep copy means the provider's nested map keeps only its own keys,
-        // regardless of how overrides are shaped.
-        expect((provider.resources['server'] as Map).keys.toSet(), {'port'});
+        final before = provider.resources.keys.toSet();
+        _CapturingConfig(
+          [],
+        ); // merges env/.env/args into a copy, not the provider
+        // The OS environment (PATH et al.) must not have leaked into the provider.
+        expect(provider.resources.keys.toSet(), before);
+        expect(provider.resources.containsKey('PATH'), isFalse);
       },
     );
 
+    test('a nested provider subtree is not mutated by construction', () {
+      _install({
+        'server': {'port': 8080},
+      });
+      final provider = TomServerConfigResourceProvider.getServerConfig();
+      _CapturingConfig(['server.host=example']);
+      // The deep copy means the provider's nested map keeps only its own keys,
+      // regardless of how overrides are shaped.
+      expect((provider.resources['server'] as Map).keys.toSet(), {'port'});
+    });
+
     test('the captured values are a copy, mutating them leaves the provider'
-        ' untouched (bug §62)', () {
+        ' untouched', () {
       _install({
         'server': {'port': 8080},
       });
@@ -276,7 +275,7 @@ void main() {
       },
     );
 
-    test('the default bind host is empty (anyIPv4-eligible) (bug §63)', () {
+    test('the default bind host is empty (anyIPv4-eligible)', () {
       _install({});
       // An empty host routes TomServer.start to InternetAddress.anyIPv4; the
       // previous "t"/"0" defaults were invalid addresses.

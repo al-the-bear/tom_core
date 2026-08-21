@@ -452,7 +452,7 @@ class FixtureTaskRecord {
   int? priority;
 
   /// A bool column, to cover the Dart `bool` → MariaDB `TINYINT(1)` (`1`/`0`)
-  /// bind translation (bug §72) end-to-end.
+  /// bind translation end-to-end.
   @TomDbColumn(columnName: 'done')
   bool? done;
 }

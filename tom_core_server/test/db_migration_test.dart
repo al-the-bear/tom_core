@@ -10,7 +10,7 @@ import 'package:test/test.dart';
 /// binding, the [TomDbVersion] row type, and the two exception types — plus the
 /// filename parsing / ordering logic ([TomDbMigrations.parseMigrationFileName]
 /// and [TomDbMigrations.orderMigrationNames]) extracted from the walk so the
-/// version-ordering (bug §21) and anchored-name validation (bug §22) are
+/// version-ordering and anchored-name validation are
 /// unit-testable.
 void main() {
   // C-16 production-safety default: with no environment initialized on
@@ -74,7 +74,7 @@ void main() {
     });
   });
 
-  // Bug §22: the validation pattern must be anchored to the whole basename, so
+  // The validation pattern must be anchored to the whole basename, so
   // a name that merely *contains* the pattern, or whose description holds a
   // digit, is rejected rather than silently misparsed.
   group('TomDbMigrations.parseMigrationFileName', () {
@@ -90,8 +90,8 @@ void main() {
       expect(parsed.description, 'add_index');
     });
 
-    test('rejects a name with surrounding text (§22a)', () {
-      // Before §22 the unanchored regex accepted this as version 5 / "temp".
+    test('rejects a name with surrounding text', () {
+      // An unanchored regex would accept this as version 5 / "temp".
       expect(
         () => TomDbMigrations.parseMigrationFileName('notes_[5]-temp'),
         throwsA(
@@ -104,9 +104,9 @@ void main() {
       );
     });
 
-    test('rejects a description containing a digit (§22b)', () {
-      // Before §22 the description group stopped at the first digit, silently
-      // truncating to "add_orders_" instead of rejecting.
+    test('rejects a description containing a digit', () {
+      // A description group that stops at the first digit would silently
+      // truncate this to "add_orders_" instead of rejecting it.
       expect(
         () => TomDbMigrations.parseMigrationFileName('[1]-add_orders_2024'),
         throwsA(isA<TomDbMigrationException>()),
@@ -121,7 +121,7 @@ void main() {
     });
   });
 
-  // Bug §21: ordering must be by the numeric version, not lexicographic, so a
+  // Ordering must be by the numeric version, not lexicographic, so a
   // schema with more than nine versions still runs in numeric order.
   group('TomDbMigrations.orderMigrationNames', () {
     test('orders by numeric version, so [2] precedes [10]', () {
@@ -144,13 +144,13 @@ void main() {
     });
   });
 
-  // Bug §69: a multi-statement migration script was sent as ONE command, which
-  // the underlying mysql_client only half-reads — it consumes the first result
-  // set and leaves the rest, desyncing the single shared connection so every
-  // later read returns stale data (the first-boot seed saw an empty users
-  // table even though the migration had committed the rows). The fix splits the
-  // script into individual statements; these tests pin that splitter.
-  group('MariadbMigrationAdaptor.splitSqlStatements (bug §69)', () {
+  // A multi-statement migration script must be split into individual
+  // statements before it is sent. The underlying mysql_client only half-reads a
+  // multi-statement command — it consumes the first result set and leaves the
+  // rest, desyncing the single shared connection so every later read returns
+  // stale data (a first-boot seed sees an empty users table even though the
+  // migration committed its rows). These tests pin that splitter.
+  group('MariadbMigrationAdaptor.splitSqlStatements', () {
     test('splits a multi-statement script into its statements', () {
       const sql =
           'CREATE TABLE a (id INT);\n'

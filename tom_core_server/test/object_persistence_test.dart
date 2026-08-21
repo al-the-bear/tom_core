@@ -172,16 +172,16 @@ void main() {
     });
   });
 
-  // Bug §28: a unary operator (Not / And / Or / Group / IsNull) must collect its
-  // operands' *fields* in getFields, not their parameter names. The bug had the
-  // override delegate to getParameters, so getFields over any tree containing a
-  // grouped/conjoined predicate leaked the parameter names and dropped the
+  // A unary operator (Not / And / Or / Group / IsNull) must collect its
+  // operands' *fields* in getFields, not their parameter names. Delegating the
+  // override to getParameters instead makes getFields over any tree containing
+  // a grouped/conjoined predicate leak the parameter names and drop the
   // columns.
-  group('unary operator getFields (bug §28)', () {
+  group('unary operator getFields', () {
     test('Not collects the column field, not the parameter name', () {
       final col = _column('users', 'age');
       final pred = b.not(b.gte(b.intF('age', col), b.p<TomDbInt>('min')));
-      // Before §28 this returned {'min'} (the parameter) and dropped the column.
+      // Delegating to getParameters would return {'min'} and drop the column.
       expect(pred.getFields(dialect), {'users.age'});
     });
 
@@ -206,14 +206,14 @@ void main() {
     });
   });
 
-  // Bug §68: `TomSqlDatasourceRepository.save` produced broken SQL — the
-  // INSERT/UPDATE `TomLiteralSelect` was built without its `parameters`, so the
-  // `:name -> ?` substitution never ran and nothing bound; the UPDATE had no
-  // WHERE clause (it would update every row), used the field name instead of
-  // the column name in `SET`, and the insert/update decision misfired for a
-  // non-nullable sentinel int key. These tests pin the pure SQL builders the
-  // fixed `save` delegates to.
-  group('save SQL builders (bug §68)', () {
+  // `TomSqlDatasourceRepository.save` delegates to pure SQL builders, and these
+  // tests pin them. Each assertion covers a way the generated SQL can be wrong
+  // while still looking plausible: a `TomLiteralSelect` built without its
+  // `parameters` never runs the `:name -> ?` substitution and binds nothing; an
+  // UPDATE without a WHERE clause rewrites every row; `SET` naming the field
+  // rather than the column addresses a column that does not exist; and the
+  // insert/update decision has to hold for a non-nullable sentinel int key.
+  group('save SQL builders', () {
     TomColumnInformation namedColumn(
       String columnName,
       String declaredName, {
@@ -282,13 +282,12 @@ void main() {
       expect(TomSqlDatasourceRepository.isUnsavedKey('abc'), isFalse);
     });
 
-    // Bug §72: `save` read the primary key with `getVariableValue(toSave) as K`.
-    // For an entity with a *nullable* surrogate key (`int?`) left null on its
-    // first insert, that cast was `null as int`, which throws
-    // `Null is not a subtype of int` — before `isUnsavedKey` ever ran. Every
-    // INSERT of such an entity failed (the app sample's `createProject` 500'd).
-    // `readPrimaryKey` reads as nullable so the unsaved-null case survives to
-    // the INSERT/UPDATE decision.
+    // `save` must read the primary key as *nullable*. An entity with a nullable
+    // surrogate key (`int?`) is null on its first insert, so a
+    // `getVariableValue(toSave) as K` cast would be `null as int` and throw
+    // `Null is not a subtype of int` before `isUnsavedKey` ever ran — failing
+    // every INSERT of such an entity. `readPrimaryKey` reads as nullable so the
+    // unsaved-null case survives to the INSERT/UPDATE decision.
     test(
       'readPrimaryKey reads a null nullable surrogate key without throwing',
       () {
@@ -306,10 +305,11 @@ void main() {
     });
   });
 
-  // Bug §29: getPersistentColumns memoises `null` for a non-reflectable type,
-  // but the cache-hit fast path cast `null` to a non-nullable list. The first
-  // call returned null; the second threw a TypeError off the cache.
-  group('TomAnnotationAnalyzer.getPersistentColumns (bug §29)', () {
+  // getPersistentColumns memoises `null` for a non-reflectable type, so the
+  // cache-hit fast path has to read that entry back as nullable. Casting it to
+  // a non-nullable list makes the first call return null and the second throw a
+  // TypeError off the cache.
+  group('TomAnnotationAnalyzer.getPersistentColumns', () {
     test('returns null on every call for a non-reflectable type', () {
       // _NotAnEntity is not registered with tomReflector, so the analyzer caches
       // null. A second call must read that cached null back as null, not throw.
@@ -496,5 +496,5 @@ void main() {
 }
 
 /// A plain type with no persistence reflection, used to drive the analyzer's
-/// non-reflectable / null-memoisation path (bug §29).
+/// non-reflectable / null-memoisation path.
 class _NotAnEntity {}

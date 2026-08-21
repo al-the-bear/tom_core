@@ -82,7 +82,7 @@ void main() async {
       expect(rows, hasLength(1));
       expect(rows.single.title, 'map me');
       expect(rows.single.priority, 7);
-      // The Dart bool round-trips through the TINYINT(1) column (bug §72).
+      // The Dart bool round-trips through the TINYINT(1) column.
       expect(rows.single.done, isTrue);
       // The AUTO_INCREMENT surrogate is read back as a non-null int.
       expect(rows.single.id, isNotNull);

@@ -248,7 +248,8 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// `null` or blank disables server self-login.
   String? serviceAccountName;
 
-  /// The service account's secret — **secret-bearing** per §5.16.
+  /// The service account's secret — **secret-bearing** per
+  /// `codespecs_mapping.md` §5.16.
   ///
   /// Its *declaration* lives here (so the shape and the source key are known);
   /// its **value is never authored**. It is supplied out-of-band at deploy time
@@ -314,7 +315,8 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// unauthenticated relay.
   String? smtpUsername;
 
-  /// The mail server password — **secret-bearing** per §5.16.
+  /// The mail server password — **secret-bearing** per
+  /// `codespecs_mapping.md` §5.16.
   ///
   /// Its *declaration* lives here (so the shape and the source key are known);
   /// its **value is never authored**. It is supplied out-of-band at deploy time
@@ -379,7 +381,8 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// startup rather than as an unroutable request at 03:00.
   String? smsEndpoint;
 
-  /// The gateway credential — **secret-bearing** per §5.16.
+  /// The gateway credential — **secret-bearing** per
+  /// `codespecs_mapping.md` §5.16.
   ///
   /// Its *declaration* lives here; its **value is never authored**. Supplied
   /// out-of-band at deploy time through the ordinary CE-CF precedence chain,
@@ -428,7 +431,8 @@ utj3flRQDLaDAl91lySpAjUp9aM8
 
   /// The bind host. Empty (the default) makes [TomServer.start] listen on
   /// [InternetAddress.anyIPv4]; set a concrete host to bind a specific address.
-  /// (The previous `"t"`/`"0"` defaults were invalid addresses — bug §63.)
+  /// The default must stay a genuine address or the empty string; a
+  /// placeholder such as `"t"` or `"0"` binds nothing.
   String host = "";
 
   int isolateCount = 10;
@@ -466,7 +470,7 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// [args]. Command-line arguments therefore win. The copy is essential: the
   /// merges below mutate their first argument in place, so merging into the
   /// provider's own `resources` would permanently inject the environment, the
-  /// `.env` file and the CLI args into the process-wide provider (bug §62).
+  /// `.env` file and the CLI args into the process-wide provider.
   /// [deepCopyJsonTree] is the kernel's primitive for exactly this; a shallow
   /// `Map.from` would leave every nested subtree shared and defeat the copy.
   static Map<String, Object?> getDefaultValues(List<String> args) {

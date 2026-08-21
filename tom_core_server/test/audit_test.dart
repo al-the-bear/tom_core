@@ -228,14 +228,14 @@ void main() {
       expect(back.detail, 'because');
     });
 
-    // Bug §75. `before`/`after` are filled straight from an entity's fields, so
-    // whatever a column holds arrives here — and the record is JSON-encoded
-    // three times over (the chain hash, the file sink's line, the SQL sink's
-    // column). A value `jsonEncode` cannot represent therefore did not merely
-    // spoil the record: `_audit` is deliberately uncaught, so the *mutation*
-    // raised. An audited entity with a `DateTime` column could not be updated
-    // or deleted at all.
-    group('non-encodable values in before/after (bug §75)', () {
+    // `before`/`after` are filled straight from an entity's fields, so whatever
+    // a column holds arrives here — and the record is JSON-encoded three times
+    // over (the chain hash, the file sink's line, the SQL sink's column). A
+    // value `jsonEncode` cannot represent therefore does not merely spoil the
+    // record: `_audit` is deliberately uncaught, so the *mutation* raises.
+    // Auditing an entity must not depend on its columns happening to be JSON
+    // primitives, and a `DateTime` column is the ordinary case.
+    group('before/after values are normalised to what jsonEncode accepts', () {
       test('a DateTime is normalised to its ISO-8601 form', () {
         final at = DateTime.utc(2026, 8, 2, 5);
         final record = _record('r1', before: {'createdAt': at});

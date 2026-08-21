@@ -241,8 +241,7 @@ class TomAuditRecord {
        before = Map.unmodifiable(_encodableValues(before)),
        after = Map.unmodifiable(_encodableValues(after));
 
-  /// [values] with every entry converted to something `jsonEncode` accepts
-  /// (bug §75).
+  /// [values] with every entry converted to something `jsonEncode` accepts.
   ///
   /// The images are filled straight from an entity's fields, so whatever a
   /// column holds arrives here — and the record is JSON-encoded three times
@@ -253,10 +252,12 @@ class TomAuditRecord {
   /// constructor too, so the conversion has to be idempotent — it is, because
   /// everything it produces is already encodable and passes through untouched.
   ///
-  /// Before this, an audited entity with a `DateTime` column could not be
-  /// updated or deleted at all: the repository's `_audit` is deliberately
-  /// uncaught, so a trail that could not encode the before-image did not lose
-  /// the record, it failed the mutation.
+  /// The invariant has to hold here rather than at the writers because the
+  /// repository's `_audit` is deliberately uncaught: a value the trail cannot
+  /// encode would not merely spoil the record, it would fail the mutation being
+  /// audited. An entity with a `DateTime` column is the ordinary case, not an
+  /// exotic one, so nothing about auditing an entity may depend on its columns
+  /// happening to be JSON primitives.
   static Map<String, Object?> _encodableValues(Map<String, Object?> values) {
     if (values.isEmpty) return const {};
     return {

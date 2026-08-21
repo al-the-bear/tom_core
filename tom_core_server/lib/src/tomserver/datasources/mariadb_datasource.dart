@@ -112,14 +112,14 @@ class MariadbPreparedStatement<T extends Object>
   /// `int`/`double`/`DateTime` keeps its native value. They must **not** be
   /// rendered through the SQL-literal renderer (`objectOp`), which would
   /// double-encode them over the binary protocol — a `null` would bind the text
-  /// `"NULL"` and a string would carry literal quote characters (bug §65).
+  /// `"NULL"` and a string would carry literal quote characters.
   ///
   /// A [TomDbType] box is the one value that is *not* bound raw: it is the SQL
   /// representation a column's `toDbConverter` produces (e.g. an enum mapped to
   /// a `TomDbString`), and the driver only understands primitives. Binding the
   /// box directly would marshal it through its `toString()` —
   /// `"TomDbType TomDbString full"` — which the server rejects (an `ENUM`
-  /// column truncates it to `''`, error 1265; bug §70). Unwrapping the box to
+  /// column truncates it to `''`, error 1265). Unwrapping the box to
   /// its primitive here keeps that kernel→driver translation at the single
   /// data-source boundary that owns it. Returns an empty list when [params] is
   /// `null`.
@@ -139,16 +139,16 @@ class MariadbPreparedStatement<T extends Object>
   /// MariaDB has no native boolean type — `BOOLEAN` is an alias for
   /// `TINYINT(1)` stored as `1`/`0`. The driver serializes a bound Dart `bool`
   /// as the *string* `'true'`/`'false'`, which the server rejects for an
-  /// integer column ("Incorrect integer value: 'false'", error 1366; bug §72).
+  /// integer column ("Incorrect integer value: 'false'", error 1366).
   /// Translating `bool`→`int` here keeps that kernel→driver mapping at the
   /// single data-source boundary that already owns the [TomDbType] unwrap.
   ///
   /// MariaDB has no zone-aware `DATETIME` either, and the driver serializes a
   /// bound [DateTime] through its `toString()` — which for a UTC instant ends in
   /// `Z`. The server rejects the suffix ("Incorrect datetime value:
-  /// '2000-01-01 00:00:00.000Z'", error 1292; bug §73), so before this
-  /// conversion a `DateTime.utc(...)` could not be written to a datetime column
-  /// at all.
+  /// '2000-01-01 00:00:00.000Z'", error 1292), so a `DateTime` must reach the
+  /// driver with no zone designator — `DateTime.utc(...)` is the ordinary case,
+  /// not an exotic one.
   ///
   /// Converted with [DateTime.toLocal] rather than by stripping the suffix,
   /// because the two are not the same value. The read side parses a suffix-less
@@ -1352,8 +1352,8 @@ class MariaDbXADatasource extends MariaDbDatasource {
         "Ending XA database transaction of ${getParticipantId()} failed $error",
       );
       // The branch can no longer be committed after a failed end/prepare; clear
-      // it so a new transaction can start instead of wedging the data source
-      // (bug §66). On success `_txId` is kept — `commit` still needs it.
+      // it so a new transaction can start instead of wedging the data
+      // source. On success `_txId` is kept — `commit` still needs it.
       _txId = null;
       return false;
     }
@@ -1385,7 +1385,7 @@ class MariaDbXADatasource extends MariaDbDatasource {
     } finally {
       // Always clear the branch id — even on a failed rollback — so the next
       // startTransaction is allowed. Leaving it set wedges the data source after
-      // its first rolled-back transaction (bug §66).
+      // its first rolled-back transaction.
       _txId = null;
     }
   }

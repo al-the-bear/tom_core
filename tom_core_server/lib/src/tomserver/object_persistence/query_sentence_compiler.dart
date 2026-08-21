@@ -1847,7 +1847,7 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       case DateTime:
       case TomZonedDateTime:
       case TomNDateTime:
-        // The `return` is load-bearing (bug §74). Without it the node was
+        // The `return` is load-bearing. Without it the node was
         // constructed and dropped, control fell out of the switch, and a
         // timestamp column with no explicit `columnType:` was reported as
         // untypeable — so no query sentence could carry a date predicate

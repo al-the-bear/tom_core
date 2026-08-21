@@ -333,6 +333,24 @@
 
 ### Documentation
 
+- **The source and the test suite state their rules instead of narrating past
+  defects (tcinc351).** 85 lines across 27 files carried a bare `§N` — `(bug
+  §75)` on the audit record's encodability pass, `Bug §22:` above the migration
+  filename group, `Before §68 the Map<String,Object?> entry is not a
+  Map<String,Object>`. The numbers index sections of a quest working document
+  that ships with neither this package nor its tests, so a reader had no way to
+  resolve them, and a reader who could would have found a build log rather than
+  a rule. Test names were the sharpest case: a group called `non-encodable
+  values in before/after (bug §75)` reports an index entry when it fails, not
+  the contract that broke. Every site now states the current behaviour and its
+  reason; the references that do name a document (``codespecs_mapping.md
+  §5.16``, `RFC 7636 §1`) are unchanged, and three that named one implicitly now
+  say so.
+
+  A repository-wide check holds this: `tool/check_section_refs.py` reports any
+  `§` reference in `lib/`, `test/` or `example/` whose sentence does not name
+  what it indexes. `tom_core_server` is clean.
+
 - **`doc/audit.md` installs a sink with a call that compiles (tcinc350).** The
   "install a sink at start-up" line read
   `TomAuditTrail.install(TomFileAuditSink(Directory('/var/audit/app')))`.

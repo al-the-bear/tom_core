@@ -36,9 +36,10 @@
 /// endpoint returning rows can export — and so that when the envelope lands it
 /// is adapted to this shape rather than the renderers being rewritten.
 ///
-/// The one thing §5.28 names that is **not** here is **charts** (series and
-/// axes). Two of the three output formats cannot express a chart at all, so a
-/// chart model would be a field that only the PDF renderer ever read. When
+/// The one thing `codespecs_mapping.md` §5.28 names that is **not** here is
+/// **charts** (series and axes). Two of the three output formats cannot
+/// express a chart at all, so a chart model would be a field that only the
+/// PDF renderer ever read. When
 /// charts are specified they belong beside this type, not inside it.
 /// ## Why there are two ways to build a section
 ///

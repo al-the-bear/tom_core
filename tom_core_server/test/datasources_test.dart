@@ -191,8 +191,8 @@ void main() {
   // TomSelect/TomCount/TomDelete's generateQuery into pure helpers so the
   // keyword logic can be asserted without a reflected entity (this package's
   // test suite does not bootstrap reflection). generateQuery delegates to these,
-  // so the integration behaviour is covered transitively (bug §67).
-  group('TomGeneratedQuery SQL clause rendering (bug §67)', () {
+  // so the integration behaviour is covered transitively.
+  group('TomGeneratedQuery SQL clause rendering', () {
     test('distinctPrefix renders "DISTINCT " only when distinct', () {
       expect(TomGeneratedQuery.distinctPrefix(true), 'DISTINCT ');
       expect(TomGeneratedQuery.distinctPrefix(false), '');
@@ -265,7 +265,7 @@ void main() {
     );
   });
 
-  group('MariadbPreparedStatement.buildPositionalParameters (bug §65)', () {
+  group('MariadbPreparedStatement.buildPositionalParameters', () {
     test('binds values raw, in placeholder order', () {
       final bound = MariadbPreparedStatement.buildPositionalParameters(
         ['name', 'age'],
@@ -274,7 +274,7 @@ void main() {
       expect(bound, ['John', 42]);
     });
 
-    // Bug §72: MariaDB has no native boolean (`BOOLEAN` = `TINYINT(1)`); the
+    // MariaDB has no native boolean (`BOOLEAN` = `TINYINT(1)`); the
     // driver serializes a bound Dart `bool` as the string 'true'/'false', which
     // the server rejects for an integer column ("Incorrect integer value:
     // 'false'", error 1366). The bind boundary translates bool -> 1/0.
@@ -319,7 +319,7 @@ void main() {
       );
     });
 
-    test('a TomDbType box binds its primitive, not its toString (bug §70)', () {
+    test('a TomDbType box binds its primitive, not its toString', () {
       // A column's toDbConverter produces a boxed SQL value (e.g. an enum
       // mapped to TomDbString); the driver only accepts primitives. Binding
       // the box raw would marshal "TomDbType TomDbString full" and the server
@@ -340,11 +340,11 @@ void main() {
       expect(bound, [null]);
     });
 
-    // Bug §73: the driver serializes a bound DateTime through `toString()`,
-    // which for a UTC instant appends `Z` — '2000-01-01 00:00:00.000Z'. MariaDB
-    // has no zone-aware DATETIME and rejects the suffix outright ("Incorrect
-    // datetime value", error 1292), so before this a `DateTime.utc(...)` could
-    // not be persisted at all.
+    // The driver serializes a bound DateTime through `toString()`, which for a
+    // UTC instant appends `Z` — '2000-01-01 00:00:00.000Z'. MariaDB has no
+    // zone-aware DATETIME and rejects the suffix outright ("Incorrect datetime
+    // value", error 1292), so a DateTime must reach the driver with no zone
+    // designator or it cannot be persisted at all.
     //
     // Converted rather than merely stripped of its `Z`: the read side parses a
     // suffix-less column value as *local* (`DateTime.parse`), so stripping would
@@ -538,7 +538,7 @@ void main() {
     });
   });
 
-  group('MariadbPreparedStatement.normalizeGeneratedId (bug §71)', () {
+  group('MariadbPreparedStatement.normalizeGeneratedId', () {
     // crud_repository.save reads a freshly inserted row's surrogate key from
     // the insert's own result (lastInsertID), not a follow-up
     // SELECT LAST_INSERT_ID() that can land on a different connection and
@@ -559,13 +559,13 @@ void main() {
     });
   });
 
-  // §42(c) driver discovery (createDatasourceOf resolving mariadb/mariadb_xa,
+  // Driver discovery (createDatasourceOf resolving mariadb/mariadb_xa,
   // the unknown-type and duplicate-driver guards) is deferred: it scans
   // tomReflector.annotatedClasses, which raises "Reflection has not been
   // initialized" in this suite (no generated reflection is bootstrapped here).
   // That belongs to an integration-level test with reflection wired up.
 
-  group('TomDataSourceInfo.initializeDatasourceInfo config guard (bug §68)', () {
+  group('TomDataSourceInfo.initializeDatasourceInfo config guard', () {
     setUp(() => TomDataSourceInfo.datasources.clear());
     tearDown(() => TomDataSourceInfo.datasources.clear());
 
@@ -581,8 +581,9 @@ void main() {
         };
         final result = await TomDataSourceInfo.initializeDatasourceInfo(config);
         expect(result, 1);
-        // Before §68 the Map<String,Object?> entry is not a Map<String,Object>, so
-        // it is skipped and 'alias' is never registered.
+        // A `Map<String, Object?>` entry is not a `Map<String, Object>`, so the
+        // initializer has to match on the nullable-value type or an alias
+        // written that way is silently skipped and never registered.
         expect(TomDataSourceInfo.getDataSourceInfo('alias'), same(base));
       },
     );
@@ -669,7 +670,7 @@ void main() {
     });
   });
 
-  group('MariaDbXADatasource transaction lifecycle (bug §66)', () {
+  group('MariaDbXADatasource transaction lifecycle', () {
     test(
       'rollback clears the branch id so the next startTransaction is allowed',
       () async {
@@ -677,10 +678,11 @@ void main() {
         // No connection: executeCommand fails, startTransaction returns false, but
         // the branch id is now set.
         await ds.startTransaction();
-        // Before §66 rollback leaves the branch id set, so the next
-        // startTransaction throws "There is already an active transaction". After
-        // the fix it is cleared, so a second start is allowed (still returns false
-        // for the missing connection, but must not throw).
+        // Rollback must clear the branch id even when the underlying command
+        // failed, or the next startTransaction throws "There is already an
+        // active transaction" and the data source is wedged. A second start is
+        // therefore allowed here (it still returns false for the missing
+        // connection, but must not throw).
         await ds.rollback();
         await expectLater(ds.startTransaction(), completion(isFalse));
       },

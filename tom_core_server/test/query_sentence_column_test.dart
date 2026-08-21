@@ -1,14 +1,13 @@
 /// Tests for how [TomQuerySentenceCompiler] types the **columns** named in a
-/// query sentence (bug §74).
+/// query sentence.
 ///
 /// A sentence addresses a column by name and the compiler has to decide which
 /// `DbCol` node represents it. It decides twice: first from an explicit
 /// `@TomDbColumn(columnType: ...)` when one is given, and otherwise from the
 /// field's *declared Dart type*. The two paths are separate switches over
 /// separate values, so a type can be handled by one and not the other — and
-/// that is exactly the shape of bug §74, where a `DateTime` field with no
-/// explicit `columnType` fell through the declared-type switch and the compiler
-/// reported it as untypeable.
+/// a `DateTime` field with no explicit `columnType` must not fall through the
+/// declared-type switch and leave the compiler reporting it as untypeable.
 ///
 /// Connection-free: only the entity's annotations are read, so
 /// [FixtureExportRecord] needs no table. It is the fixture used here rather
@@ -35,7 +34,7 @@ void main() {
   TomSelect select(String sentence) =>
       compiler.compileQuerySentence(sentence) as TomSelect;
 
-  group('column typing from the declared Dart type (bug §74)', () {
+  group('column typing from the declared Dart type', () {
     // One test per column family, because the defect was a single missing
     // `return` in one arm of the switch: a test that only proved *some* column
     // compiles would have passed throughout.

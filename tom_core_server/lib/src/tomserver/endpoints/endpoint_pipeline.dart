@@ -1424,8 +1424,8 @@ class TomEndpointRouting {
             }
             // Convert only after the whole tag set is known, so a registry
             // endpoint inherits the class-level @TomApiImplementation's API-wide
-            // errorHandler / logRequestsDefault for anything it does not override
-            // (bug §69). For an inline TomEndpoint, `ai` is null and the class
+            // errorHandler / logRequestsDefault for anything it does not
+            // override. For an inline TomEndpoint, `ai` is null and the class
             // annotation is ignored.
             final TomEndpoint tep = tepTag!.convertToTomEndpoint(ai);
             // C-12 / G-API-3: a handler-side `TomAccessControl` annotation (`tea`)

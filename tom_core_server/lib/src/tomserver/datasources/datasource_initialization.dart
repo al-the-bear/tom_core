@@ -48,7 +48,7 @@ abstract class TomPreparedStatement<T extends Object> {
   /// Read from the insert's *own* result, this is the authoritative source for
   /// a freshly inserted row's surrogate key — unlike a follow-up
   /// `SELECT LAST_INSERT_ID()`, which is session-scoped and returns `0` if it
-  /// happens to run on a different connection than the insert (bug §71).
+  /// happens to run on a different connection than the insert.
   int? get lastGeneratedId => null;
 }
 
@@ -201,7 +201,7 @@ class TomDataSourceInfo {
         // `YamlMap` (`Map<dynamic, dynamic>`) or `Map<String, dynamic>` /
         // `Map<String, Object?>` — none of which is a `Map<String, Object>` for
         // the runtime `is` check (`dynamic`/`Object?` ⊄ `Object`), so the old
-        // reified guard silently skipped every real config entry (bug §68).
+        // reified guard silently skipped every real config entry.
         // Normalise to `Map<String, dynamic>` with String keys before
         // registering.
         final raw = entry.value as Map;

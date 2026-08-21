@@ -85,7 +85,7 @@ void main() {
       () async {
         // A cache with no default lifetime stores an entry with deletionTime null.
         // Such an entry never expires on its own and must be returned by a read
-        // (the "cache forever" contract — see bug §59).
+        // (the "cache forever" contract).
         TomCacheManager.addCache(
           TomCache('nottl', deletionIntervalSeconds: null),
         );
@@ -183,7 +183,7 @@ void main() {
 
     test('storing a TomCacheEntry verbatim keeps LRU/eviction correct', () async {
       // A TomCacheEntry passed as the value must be routed through putEntry and
-      // linked into the MRU chain (bug §60), not written to the backing map
+      // linked into the MRU chain, not written to the backing map
       // directly — otherwise the next read corrupts/throws and no eviction runs.
       TomCacheManager.addCache(_cache('be', maximumEntries: 2));
       await TomCache.toNameCache('be', 'a', TomCacheEntry(1, DateTime(2999)));
@@ -203,9 +203,11 @@ void main() {
     test(
       'deletion sweep evicts expired entries without breaking the MRU chain',
       () async {
-        // Bounded cache + a 1s deletion timer. Before bug §61 was fixed the timer
-        // mutated the backing map directly, leaving the MRU chain dangling; after
-        // it, the sweep evicts via removeEntry so subsequent put/eviction stay sane.
+        // Bounded cache + a 1s deletion timer. The sweep has to evict through
+        // removeEntry rather than mutating the backing map directly: the map and
+        // the MRU chain are two views of the same entries, so a direct mutation
+        // leaves the chain pointing at evicted nodes and every later
+        // put/eviction walks a dangling list.
         final cache = TomCache(
           'sweep',
           deletionIntervalSeconds: 1,
@@ -247,7 +249,7 @@ void main() {
 
     test('clearance sweep empties the cache and leaves it reusable', () async {
       // Bounded cache + a 1s clearance timer. The clear must reset the MRU chain
-      // (bug §61) so the cache is immediately reusable and still bounded.
+      // so the cache is immediately reusable and still bounded.
       final cache = TomCache(
         'clear',
         deletionIntervalSeconds: null,

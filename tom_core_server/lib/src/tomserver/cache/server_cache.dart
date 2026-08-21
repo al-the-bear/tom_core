@@ -312,7 +312,7 @@ class TomCache {
         for (var key in entriesToDelete) {
           // Evict via removeEntry so the MRU chain is unlinked too; a direct
           // _cache.remove leaves dangling _next/_before/_first/_last pointers
-          // in a bounded cache (bug §61).
+          // in a bounded cache.
           removeEntry(key);
         }
       },
@@ -332,7 +332,7 @@ class TomCache {
         );
         // Reset the MRU chain along with the backing map so a bounded cache is
         // left in a consistent empty state, not with dangling head/tail
-        // pointers (bug §61).
+        // pointers.
         _cache.clear();
         _first = null;
         _last = null;

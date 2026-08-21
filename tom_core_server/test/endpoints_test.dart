@@ -76,11 +76,11 @@ void main() {
     });
   });
 
-  // §43(a) / bug §69: a registry endpoint must inherit the class-level
+  // A registry endpoint must inherit the class-level
   // @TomApiImplementation's API-wide errorHandler / logRequestsDefault for any
   // value it does not itself override. convertToTomEndpoint resolves the route
   // from tomRemoteApis (no reflection needed), so the merge is unit-testable.
-  group('TomApiEndpointImplementation.convertToTomEndpoint merge (bug §69)', () {
+  group('TomApiEndpointImplementation.convertToTomEndpoint merge', () {
     late TomErrorHandler apiHandler;
     late TomErrorHandler endpointHandler;
 
@@ -114,8 +114,8 @@ void main() {
         logRequestsDefault: false,
       );
       final endpoint = impl.convertToTomEndpoint(api);
-      // Before §69 the class-level values were inert: errorHandler fell straight
-      // through to TomDefaultErrorHandler and logRequests stayed null.
+      // Without the merge the class-level values are inert: errorHandler falls
+      // straight through to TomDefaultErrorHandler and logRequests stays null.
       expect(identical(endpoint.errorHandler, apiHandler), isTrue);
       expect(endpoint.logRequests, isFalse);
     });
@@ -161,9 +161,9 @@ void main() {
     });
   });
 
-  // §43(b) the per-request pipeline (TomEndpointHandler.handleMethodCall:
-  // parameter binding, access-control gating, transaction wrap/commit/rollback,
-  // invocation/conversion error routing) and §43(c) router assembly
+  // The per-request pipeline (TomEndpointHandler.handleMethodCall: parameter
+  // binding, access-control gating, transaction wrap/commit/rollback,
+  // invocation/conversion error routing) and router assembly
   // (TomEndpointRouting.initializeRouter / scanClasses / createRoutesForEndpoint
   // and their TomEndpointPipelineException paths) are deferred: every entry
   // point needs a TomEndpointHandler, which requires real InstanceMirror /
@@ -248,7 +248,7 @@ void main() {
     });
   });
 
-  // §37 / cross-tier routing fix: shelf_router's RouterEntry parser recognises
+  // Cross-tier routing: shelf_router's RouterEntry parser recognises
   // only `<param>` placeholders; a `{param}` template is RegExp.escaped to a
   // literal path segment and never matches a real id, so the route 404s. The
   // registry declares URIs with `{name}`, so the router builder translates them
@@ -278,7 +278,7 @@ void main() {
     });
   });
 
-  // §37 / cross-tier routing fix: a method whose parameter is a bare primitive
+  // Cross-tier routing: a method whose parameter is a bare primitive
   // (e.g. `String id` / `int id`) is bound from the URL — either a shelf-matched
   // `<name>` path capture (exposed as a String in Request.params) or, for a
   // route like `GET /projects?workspaceId=`, a query-string value of the same

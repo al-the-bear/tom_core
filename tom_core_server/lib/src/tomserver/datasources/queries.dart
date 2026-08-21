@@ -153,8 +153,8 @@ abstract class TomGeneratedQuery extends TomQuery {
   /// [top] `<= 0` and no [offset] is asked for).
   ///
   /// MariaDB/MySQL cap rows with `LIMIT n` and skip with `LIMIT n OFFSET m`; the
-  /// Informix-style `FIRST n` this replaces is not valid MariaDB syntax
-  /// (bug §67). There is no bare `OFFSET`, so an offset without a cap is
+  /// Informix-style `FIRST n` this replaces is not valid MariaDB syntax.
+  /// There is no bare `OFFSET`, so an offset without a cap is
   /// rejected rather than silently dropped (see [TomPageRequest.assertWindow]).
   ///
   /// Both bounds are rendered as literal integers rather than bound parameters,
@@ -172,7 +172,7 @@ abstract class TomGeneratedQuery extends TomQuery {
   ///
   /// Every term carries its own direction, so a mixed-direction sort renders as
   /// written. The keywords are `ASC` / `DESC`; the spelled-out
-  /// `ASCENDING` / `DESCENDING` forms this replaces are not valid SQL (bug §67).
+  /// `ASCENDING` / `DESCENDING` forms this replaces are not valid SQL.
   ///
   /// The terms' [TomSortField.field]s are emitted verbatim, so callers pass
   /// *resolved* column expressions — a name that came from outside must have
@@ -190,7 +190,7 @@ abstract class TomGeneratedQuery extends TomQuery {
   /// A distinct count is expressed as `COUNT(DISTINCT col1, col2, ...)`; the
   /// previous `COUNT(DISTINCT(*))` is a MariaDB syntax error — `*` cannot follow
   /// `DISTINCT` inside `COUNT`. Falls back to `COUNT(*)` when there are no
-  /// columns to distinguish on (bug §67).
+  /// columns to distinguish on.
   static String countProjection(bool distinct, List<String> columnExprs) {
     if (!distinct || columnExprs.isEmpty) return 'COUNT(*)';
     return 'COUNT(DISTINCT ${columnExprs.join(', ')})';
@@ -348,10 +348,10 @@ class TomDelete extends TomGeneratedQuery {
   @override
   String generateQuery(TomStandardSqlDialect t) {
     // MariaDB `DELETE` is single-table and supports neither `DISTINCT` nor a
-    // column projection — only an optional `ORDER BY … ASC|DESC` and `LIMIT n`
-    // (bug §67). The order-by names are unqualified (single table), and there is
-    // no `OFFSET`: `DELETE … LIMIT n OFFSET m` is not MariaDB syntax, so a
-    // delete takes no offset either.
+    // column projection — only an optional `ORDER BY … ASC|DESC` and
+    // `LIMIT n`. The order-by names are unqualified (single table), and
+    // there is no `OFFSET`: `DELETE … LIMIT n OFFSET m` is not MariaDB
+    // syntax, so a delete takes no offset either.
     return "DELETE FROM ${TomAnnotationAnalyzer.findTable(types[0])!.table}"
         " WHERE ${query.generate(t)}"
         "${TomGeneratedQuery.orderByClause(sort)}"

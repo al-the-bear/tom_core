@@ -189,6 +189,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way |
+| [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
 
 ```bash
 python3 tool/check_doc_tocs.py                # the whole repository
@@ -259,6 +260,30 @@ Names resolve within the document's own package only. Without an import graph
 there is no telling a real cross-package reference from a collision, and
 collisions dominate — the `User` a document sketches inside its own fence is not
 some other package's `User`.
+
+```bash
+python3 tool/check_section_refs.py                  # the whole repository
+python3 tool/check_section_refs.py tom_core_server  # one subtree
+```
+
+A `§` reference is fine when the sentence says what it indexes — ``per
+`codespecs_mapping.md` §5.16``, `RFC 7636 §1` — and a fault when it stands bare:
+`(bug §75)`, `Before §22 the unanchored regex accepted this`. The bare numbers
+index sections of the quest plans, working documents that ship with neither a
+package nor its tests, so a reader of the shipped artefact cannot resolve them
+and a reader who could would find a build log rather than a rule. A test name is
+the sharpest case: it is read as a specification, and `bug §75` specifies
+nothing, so a failure reports an index entry instead of the contract that broke.
+
+The check covers `lib/`, `test/` and `example/` — the three directories whose
+contents leave the workspace. Plans and other markdown are not scanned, because
+cross-referencing its own sections is what a plan is for. What counts as naming
+the document is deliberately literal: the text immediately left of the sign must
+end in an `.md` filename, an `RFC <n>`, or one of the specification names used
+here. That rule is cheap to satisfy correctly — write the document name you
+meant — and cannot be satisfied by accident, which is what makes it worth gating
+on. `tom_core_server` is clean; the other packages are not yet, so run it with a
+subtree argument.
 
 ## License
 
