@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -9,6 +11,24 @@ TomClientJwtToken _token(
 }) => TomClientJwtToken(
   TomServerJwtToken({'userId': userId}, expiresIn: validFor).getJWT('tom'),
 );
+
+/// Builds a client token carrying [payload] verbatim.
+///
+/// [TomServerJwtToken] always writes a well-formed `validUntil`, so it cannot
+/// produce the tokens the guard exists for. A client can: `TomClientJwtToken`
+/// decodes without verifying, which is what makes the payload untrusted input
+/// in the first place, so a hand-assembled token is the honest fixture here —
+/// the signature is never inspected on this path and a real forgery would be
+/// rejected earlier, by bearer authentication.
+TomClientJwtToken _tokenWithPayload(Map<String, Object?> payload) {
+  String segment(Object value) =>
+      base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
+  final header = segment({'alg': 'HS256', 'typ': 'JWT'});
+  return TomClientJwtToken(
+    '$header.${segment(payload)}.not-a-real-signature',
+    decrypt: false,
+  );
+}
 
 TomPrincipal _principal(String username) =>
     TomPrincipal(user: TomUser(username: username), authenticated: true);
@@ -60,8 +80,17 @@ class StoreThroughWorkerCommand extends TomCommand {
   StoreThroughWorkerCommand(this.token, this.principal);
 
   @override
-  Future<Object?> execute() async =>
-      'stored:${await TomAuthorizationCache.storePrincipal(token, principal)}';
+  Future<Object?> execute() async {
+    if (TomWorker.isMainIsolate) return 'not-a-worker';
+    try {
+      return 'stored:'
+          '${await TomAuthorizationCache.storePrincipal(token, principal)}';
+    } on TomAuthorizationCacheException catch (e) {
+      return 'rejected:${e.key}';
+    } catch (e) {
+      return 'other:${e.runtimeType}';
+    }
+  }
 }
 
 void main() {
@@ -136,6 +165,114 @@ void main() {
         );
       },
     );
+  });
+
+  // The token is client-supplied, so `validUntil` is untrusted input and every
+  // shape of it has to land somewhere deliberate. The entry's lifetime *is* the
+  // token's, so there is no safe default to fall back on: a lifetime invented
+  // here would keep a principal cached after the token authorizing it expired.
+  group('TomAuthorizationCache.storePrincipal (malformed validUntil)', () {
+    test('rejects a token that carries no validUntil claim', () async {
+      final token = _tokenWithPayload({'userId': 'ivan'});
+
+      await expectLater(
+        () => TomAuthorizationCache.storePrincipal(token, _principal('ivan')),
+        throwsA(
+          isA<TomAuthorizationCacheException>().having(
+            (e) => e.key,
+            'key',
+            'tomclient.authorization_cache.missing_valid_until',
+          ),
+        ),
+      );
+    });
+
+    test('rejects a validUntil that is not a string', () async {
+      // A JSON payload can carry any type, so the claim being present says
+      // nothing about it being readable.
+      final token = _tokenWithPayload({'userId': 'ivy', 'validUntil': 1787});
+
+      await expectLater(
+        () => TomAuthorizationCache.storePrincipal(token, _principal('ivy')),
+        throwsA(
+          isA<TomAuthorizationCacheException>().having(
+            (e) => e.key,
+            'key',
+            'tomclient.authorization_cache.missing_valid_until',
+          ),
+        ),
+      );
+    });
+
+    test('rejects a validUntil that is not a date', () async {
+      final token = _tokenWithPayload({
+        'userId': 'igor',
+        'validUntil': 'tomorrow-ish',
+      });
+
+      await expectLater(
+        () => TomAuthorizationCache.storePrincipal(token, _principal('igor')),
+        throwsA(
+          isA<TomAuthorizationCacheException>().having(
+            (e) => e.key,
+            'key',
+            'tomclient.authorization_cache.invalid_valid_until',
+          ),
+        ),
+      );
+    });
+
+    test('names the claim and the token in the failure', () async {
+      // The complaint this guard answers was diagnosability: the old TypeError
+      // named neither, so the message is part of the contract, not decoration.
+      final token = _tokenWithPayload({
+        'userId': 'irene',
+        'validUntil': 'tomorrow-ish',
+      });
+
+      Object? caught;
+      try {
+        await TomAuthorizationCache.storePrincipal(token, _principal('irene'));
+      } catch (e) {
+        caught = e;
+      }
+
+      final message = (caught as TomAuthorizationCacheException).parameters;
+      expect(message?['claim'], 'validUntil');
+      expect(message?['value'], 'tomorrow-ish');
+      expect(message?['token'], startsWith(token.tokenString.substring(0, 20)));
+    });
+
+    test('stores nothing when the claim is rejected', () async {
+      // The guard has to run before the map is touched: a half-completed write
+      // would leave an entry with a lifetime nobody chose, which is the outcome
+      // refusing the write exists to avoid.
+      final token = _tokenWithPayload({'userId': 'ida'});
+
+      await expectLater(
+        () => TomAuthorizationCache.storePrincipal(token, _principal('ida')),
+        throwsA(isA<TomAuthorizationCacheException>()),
+      );
+
+      expect(await TomAuthorizationCache.getPrincipal(token), isNull);
+    });
+
+    test('accepts a well-formed validUntil supplied by a client', () async {
+      // The companion case: the guard must not reject the tokens this server
+      // actually issues, and the parsed instant must be the one in the claim.
+      final expiry = DateTime.now().add(const Duration(hours: 3));
+      final token = _tokenWithPayload({
+        'userId': 'iris',
+        'validUntil': expiry.toIso8601String(),
+      });
+
+      expect(
+        await TomAuthorizationCache.storePrincipal(token, _principal('iris')),
+        0,
+      );
+      final cached = await TomAuthorizationCache.getPrincipal(token);
+      expect(cached!.username, 'iris');
+    });
   });
 
   group('Cross-isolate command objects', () {
@@ -301,25 +438,74 @@ void main() {
         );
       },
     );
+
+    test('a worker-side store of a malformed token is refused', () async {
+      // The guard lives on the creator side, so a worker only learns that its
+      // store was refused if the refusal travels back. Nothing else in this
+      // group would notice it not travelling: storePrincipal answers `0` on
+      // the way out regardless, so the worker reads a store that never
+      // happened as a store that did — the same failure shape as the expiry
+      // that used to be lost, one method along.
+      final token = _tokenWithPayload({'userId': 'ivan'});
+
+      final answer = await worker
+          .executeCommand(StoreThroughWorkerCommand(token, _principal('ivan')))
+          .timeout(const Duration(seconds: 10));
+
+      expect(
+        answer,
+        'rejected:tomclient.authorization_cache.missing_valid_until',
+      );
+      expect(await TomAuthorizationCache.getPrincipal(token), isNull);
+    });
   });
 
   group('TomAuthorizationCacheExecutor', () {
     final executor = TomAuthorizationCacheExecutor();
 
-    test('handles a store message and returns true', () {
+    test('handles a store message, returning the store to be awaited', () async {
+      // The future is returned rather than discarded so that a refusal reaches
+      // the worker that asked for the store; the value it settles to is
+      // storePrincipal's `0`, which matters only in that it is not null and so
+      // is not read as an unclaimed command.
+      final token = _token('carol');
       final result = executor.execute(
-        TomAuthorizationCacheStoreMessage(_token('carol'), _principal('carol')),
+        TomAuthorizationCacheStoreMessage(token, _principal('carol')),
       );
-      expect(result, isTrue);
+      expect(await (result as Future<int>), 0);
+      expect(
+        (await TomAuthorizationCache.getPrincipal(token))!.username,
+        'carol',
+      );
+    });
+
+    test('surfaces a refused store as a throw the caller can await', () async {
+      final result = executor.execute(
+        TomAuthorizationCacheStoreMessage(
+          _tokenWithPayload({'userId': 'jane'}),
+          _principal('jane'),
+        ),
+      );
+      await expectLater(
+        result as Future<Object?>,
+        throwsA(
+          isA<TomAuthorizationCacheException>().having(
+            (e) => e.key,
+            'key',
+            'tomclient.authorization_cache.missing_valid_until',
+          ),
+        ),
+      );
     });
 
     test(
       'handles a retrieve message, resolving to the stored principal',
       () async {
         final token = _token('dave');
-        executor.execute(
-          TomAuthorizationCacheStoreMessage(token, _principal('dave')),
-        );
+        await (executor.execute(
+              TomAuthorizationCacheStoreMessage(token, _principal('dave')),
+            )
+            as Future<int>);
         final result = executor.execute(
           TomAuthorizationCacheRetrieveMessage(token),
         );

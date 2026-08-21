@@ -2,13 +2,20 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-/// Raised by [TomAuthorizationCache] when a cached principal cannot be
-/// returned — currently when a matching entry exists but its expiry has
-/// already passed.
+/// Raised by [TomAuthorizationCache] when a principal cannot be returned or
+/// cached. Three conditions carry three keys, because they call for three
+/// different responses:
 ///
-/// The distinct type lets a caller catch it specifically: an expired
-/// principal is a signal that the client should re-authorize, as opposed to a
-/// cache miss (which simply returns `null`).
+/// | Key | Meaning |
+/// | --- | ------- |
+/// | `tomclient.authorization_cache.expired_principal` | A matching entry exists but its expiry has passed. The client should re-authorize. |
+/// | `tomclient.authorization_cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
+/// | `tomclient.authorization_cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
+///
+/// The distinct type lets a caller catch these specifically: an expired
+/// principal is a signal to re-authorize, as opposed to a cache miss (which
+/// simply returns `null`), and the two `validUntil` keys report a malformed
+/// token rather than anything about the principal.
 class TomAuthorizationCacheException extends TomException {
   TomAuthorizationCacheException(
     super.key,
@@ -135,8 +142,66 @@ class TomAuthorizationCache {
     return null;
   }
 
+  /// Reads the entry's expiry from the token's `validUntil` payload claim.
+  ///
+  /// Throws [TomAuthorizationCacheException] when the claim is absent or not a
+  /// string (`missing_valid_until`), or when it is a string that is not an ISO
+  /// 8601 instant (`invalid_valid_until`). Both name the claim, the value seen
+  /// and the token.
+  ///
+  /// The token comes from a client, so this is a boundary: the claim is
+  /// untrusted input rather than internal data, and the three shapes above are
+  /// what a caller can actually present.
+  ///
+  /// Refusing the write is the only safe answer, which is why there is no
+  /// fallback lifetime. The entry's lifetime *is* the token's — that is the
+  /// whole reason the claim is read — so a default invented here would keep a
+  /// principal cached after the token authorizing it had expired, and every
+  /// later request bearing that token would be served from the cache instead
+  /// of being re-authorized.
+  static DateTime _expiryFromToken(TomClientJwtToken authenticationToken) {
+    final Object? payload = authenticationToken.token.payload;
+    final Object? claim = payload is Map ? payload['validUntil'] : null;
+    final String tokenExcerpt = limited(authenticationToken.tokenString, 100);
+
+    if (claim is! String) {
+      throw TomAuthorizationCacheException(
+        "tomclient.authorization_cache.missing_valid_until",
+        "Authentication token carries no readable validUntil claim, so the "
+            "principal cannot be cached",
+        parameters: {
+          'claim': 'validUntil',
+          'value': claim,
+          'token': tokenExcerpt,
+        },
+      );
+    }
+
+    // tryParse rather than parse: the FormatException would name the value but
+    // not the claim it came from, and this is the one frame that still knows.
+    final DateTime? parsed = DateTime.tryParse(claim);
+    if (parsed == null) {
+      throw TomAuthorizationCacheException(
+        "tomclient.authorization_cache.invalid_valid_until",
+        "Authentication token carries a validUntil claim that is not an ISO "
+            "8601 instant, so the principal cannot be cached",
+        parameters: {
+          'claim': 'validUntil',
+          'value': claim,
+          'token': tokenExcerpt,
+        },
+      );
+    }
+    return parsed;
+  }
+
   /// Stores [authorizedPrincipal] under [authenticationToken], using the
   /// token's `validUntil` payload claim as the entry's expiry.
+  ///
+  /// Throws [TomAuthorizationCacheException] when that claim is missing or
+  /// unreadable; nothing is cached in that case, and the caller keeps resolving
+  /// the principal per request. See [_expiryFromToken] for why there is no
+  /// fallback expiry.
   ///
   /// When called from a worker isolate the store is forwarded to the main
   /// isolate. Always returns `0`.
@@ -145,9 +210,7 @@ class TomAuthorizationCache {
     TomPrincipal authorizedPrincipal,
   ) async {
     if (TomWorker.isMainIsolate) {
-      DateTime expiry = DateTime.parse(
-        authenticationToken.token.payload["validUntil"],
-      );
+      DateTime expiry = _expiryFromToken(authenticationToken);
       tomLog.trace(
         "Storing principal ${limited(authenticationToken.tokenString, 100)} with expiry $expiry",
       );
@@ -189,6 +252,11 @@ class TomAuthorizationCacheRetrieveMessage {
 /// and [TomAuthorizationCacheRetrieveMessage] commands forwarded from worker
 /// isolates, delegating to [TomAuthorizationCache]. Returns
 /// [TomExecutor.noResult] for any other command.
+///
+/// Both handled commands return the delegate's future rather than awaiting it
+/// here, so a creator-side failure — an expired entry on a retrieve, an
+/// unreadable `validUntil` on a store — reaches the asking worker as a throw
+/// instead of being swallowed on this side.
 class TomAuthorizationCacheExecutor extends TomExecutor {
   @override
   Object execute(Object command) {
@@ -196,12 +264,17 @@ class TomAuthorizationCacheExecutor extends TomExecutor {
       tomLog.trace(
         "Storing authorizedPrincipal ${limited(command.authenticationToken.tokenString, 100)} in main Isolate",
       );
-      // ignore: discarded_futures
-      TomAuthorizationCache.storePrincipal(
+      // Returned rather than discarded, for the same reason the retrieve below
+      // is: the transport awaits whatever comes back, so a returned future
+      // carries a refusal to the worker as a throw, while a discarded one
+      // leaves the worker reading `0` -- success -- for a store that never
+      // happened. The value it settles to is storePrincipal's own `0`; nothing
+      // reads it, but it is not null, so executeInCreator does not mistake it
+      // for an unclaimed command.
+      return TomAuthorizationCache.storePrincipal(
         command.authenticationToken,
         command.authorizedPrincipal,
       );
-      return true;
     }
     if (command is TomAuthorizationCacheRetrieveMessage) {
       tomLog.trace(

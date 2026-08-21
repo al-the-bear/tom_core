@@ -24,7 +24,7 @@ application-side resolver involved.
 | `TomAuthorizationCacheEntry` | One cached principal with its expiry bookkeeping. |
 | `TomAuthorizationCacheStoreMessage` · `TomAuthorizationCacheRetrieveMessage` | Cross-isolate commands carrying a store/retrieve to the main isolate. |
 | `TomAuthorizationCacheExecutor` | `TomExecutor` that runs those commands in the creator isolate. |
-| `TomAuthorizationCacheException` | Raised on cache faults. |
+| `TomAuthorizationCacheException` | Raised on cache faults: an expired entry on read, or a token whose `validUntil` claim is unreadable on write (refused rather than cached under an invented expiry). |
 | `TomPrincipalResourceGrant` · `PrincipalResourceGrantStore` · `TomPrincipalResourceRoleResolver` | The `(principalId, resourceKey, role)` row, its read seam, and the fold into a `resourceKey → role` map (strongest role wins). |
 | `TomPrincipalDelegation` · `TomDelegationMode` · `TomDelegationResolver` | Share / absence / intentional delegation of a delegator's roles, and the resolver folding them over the delegate's direct grants. Never transitive. |
 | `TomResourceGrant` · `TomAuthStateCodec` · `TomGradedAccessControlInformation` | The graded `(role, resourceKey)` record, its stored representation, and the resolved graded view over the kernel's binary fallback. |

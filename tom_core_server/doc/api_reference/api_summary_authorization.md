@@ -99,11 +99,24 @@ Enum: TomDelegationMode
 
 ### TomAuthorizationCacheException
 
-Raised by `TomAuthorizationCache` when a cached principal cannot be returned
-(currently: a matching entry exists but has expired). The distinct type lets a
-caller catch it specifically and re-authorize.
+Raised by `TomAuthorizationCache` when a principal cannot be returned or cached.
+Three conditions carry three keys, because they call for three different
+responses.
 
 - **Extends:** `TomException`
+
+#### Error keys
+
+| Key | Meaning |
+| --- | ------- |
+| `tomclient.authorization_cache.expired_principal` | A matching entry exists but its expiry has passed. The client should re-authorize. |
+| `tomclient.authorization_cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
+| `tomclient.authorization_cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
+
+The two `validUntil` keys report a malformed token rather than anything about
+the principal. Each carries three exception parameters -- the name of the claim,
+the value found in it, and an excerpt of the token -- so the diagnosis does not
+depend on the stack.
 
 #### Constructors
 
@@ -155,7 +168,7 @@ TomAuthorizationCache()
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getPrincipal` | `static Future<TomPrincipal?> getPrincipal(TomClientJwtToken authenticationToken)` | Returns the cached principal, or `null` on a cache miss. Throws `TomAuthorizationCacheException` when the entry has expired. Called from a worker isolate the lookup is forwarded to the main isolate, and all three answers survive the trip -- a hit returns the principal, a miss returns `null`, an expiry rethrows -- so callers need no isolate-dependent handling. |
-| `storePrincipal` | `static Future<int> storePrincipal(TomClientJwtToken authenticationToken, TomPrincipal authorizedPrincipal)` | Stores the principal under the token, using the token's `validUntil` claim as expiry. Always returns `0`. |
+| `storePrincipal` | `static Future<int> storePrincipal(TomClientJwtToken authenticationToken, TomPrincipal authorizedPrincipal)` | Stores the principal under the token, using the token's `validUntil` claim as expiry. Throws `TomAuthorizationCacheException` (`missing_valid_until` / `invalid_valid_until`) when that claim is absent, not a string, or not an ISO 8601 instant -- there is no fallback lifetime, because an invented one would keep a principal cached past the expiry of the token authorizing it. Nothing is cached in that case and the caller keeps resolving the principal per request. Always returns `0` on success. |
 
 ### TomAuthorizationCacheStoreMessage
 
@@ -207,7 +220,7 @@ worker isolates, delegating to `TomAuthorizationCache`. Returns
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `execute` | `Object execute(Object command)` | *(override)* Dispatches store/retrieve messages to `TomAuthorizationCache`; returns `TomExecutor.noResult` otherwise. |
+| `execute` | `Object execute(Object command)` | *(override)* Dispatches store/retrieve messages to `TomAuthorizationCache`, returning the delegate's future rather than awaiting it -- so a creator-side failure (an expired entry on a retrieve, an unreadable `validUntil` on a store) reaches the asking worker as a throw. Returns `TomExecutor.noResult` otherwise. |
 
 ### TomAuthStateCodec
 

@@ -5,12 +5,14 @@
 /// reading it back, getting `null` for an unknown token (a cache miss), and the
 /// [TomAuthorizationCacheException] raised when a cached entry has expired. It
 /// also shows the cross-isolate command objects and the executor that services
-/// them.
+/// them, and the refusal to cache a token whose `validUntil` claim is
+/// unreadable.
 ///
 /// Run with `dart run example/authorization/authorization_example.dart`.
 /// The same behaviour is covered by `test/authorization_test.dart`.
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
@@ -70,15 +72,42 @@ Future<void> run() async {
   );
   final retrieve = TomAuthorizationCacheRetrieveMessage(aliceToken);
   final executor = TomAuthorizationCacheExecutor();
+  // Both handled commands hand back the cache call's future rather than
+  // awaiting it, so a creator-side refusal travels to the asking worker as a
+  // throw. Await it here as the transport would.
+  final stored = await (executor.execute(store) as Future<int>);
   print(
-    '4. executor store -> ${executor.execute(store)}, '
+    '4. executor store -> $stored, '
     'unknown command -> noResult: ${identical(executor.execute('nope'), TomExecutor.noResult)}',
   );
-  assert(executor.execute(store) == true);
+  assert(stored == 0);
   assert(identical(executor.execute('nope'), TomExecutor.noResult));
   // The retrieve command resolves (asynchronously) to the stored principal.
   final retrieved = await (executor.execute(retrieve) as Future<TomPrincipal?>);
   assert(retrieved?.username == 'alice');
+
+  // 5. A token whose validUntil claim is unreadable is refused rather than
+  //    cached under an invented expiry: the entry's lifetime IS the token's,
+  //    so a default here would outlive the token authorizing it. The refusal
+  //    names the claim and the token, so the log says what was wrong.
+  final malformed = TomClientJwtToken(
+    '${base64Url.encode(utf8.encode('{"alg":"HS256","typ":"JWT"}')).replaceAll('=', '')}'
+    '.${base64Url.encode(utf8.encode('{"userId":"mallory"}')).replaceAll('=', '')}'
+    '.unverified',
+    decrypt: false,
+  );
+  try {
+    await TomAuthorizationCache.storePrincipal(
+      malformed,
+      _principal('mallory'),
+    );
+    assert(false, 'a malformed validUntil must not be cached');
+  } on TomAuthorizationCacheException catch (e) {
+    print(
+      '5. malformed validUntil     : ${e.key} (claim ${e.parameters?['claim']})',
+    );
+  }
+  assert(await TomAuthorizationCache.getPrincipal(malformed) == null);
 }
 
 Future<void> main() async {
