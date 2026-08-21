@@ -34,7 +34,9 @@ prefix), `TomZonedTime` (time-only anchored at 1970-01-01, `@T@` prefix), and
 `ISO8601_OFFSET_TIMEZONE` and parses back with a matching `parseFromString` /
 `isTom…String` pair. The ISO section must end in `Z`, since it is the only part
 of the string that fixes a point in time; the offset that follows is derived
-from the zone, is written for readability, and is not read back.
+from the zone, is written for readability, and is not read back. Every produced
+string ends in a trailing space, appended by `TomTimezone.toString()`; the parse
+regexes tolerate its absence with `\s?`, but string equality does not.
 
 `TomTimezone` wraps the `timezone` package's `Location`: it looks zones up by
 name or UTC offset, computes offsets (including DST) at any instant, and
@@ -66,7 +68,8 @@ Object
 
 Base class for timezone-aware date/time values. Extends `DateTime`; the internal
 value is always stored in UTC, and `local*` accessors return the values in the
-associated `TomTimezone`. Serializes to `ISO8601_OFFSET_TIMEZONE`.
+associated `TomTimezone`. Serializes to `ISO8601_OFFSET_TIMEZONE`, ending in a
+trailing space.
 
 - **Extends:** `DateTime`
 
@@ -133,7 +136,7 @@ string or unknown zone.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getSerializationPrefix` | `String getSerializationPrefix()` | The serialization prefix for this type (empty for the base class; overridden by subclasses). For recognising a stored value's type before parsing — `toString()` already carries the prefix, so prepending this to it doubles it into a string no parser accepts. |
-| `toString` | `String toString()` | *(override)* The serialized string in `ISO8601_OFFSET_TIMEZONE` format. |
+| `toString` | `String toString()` | *(override)* The serialized string in `ISO8601_OFFSET_TIMEZONE` format, ending in a trailing space. |
 | `toDateTime` | `DateTime toDateTime()` | The local time representation (a `TZDateTime`) in the associated timezone. |
 
 ### TomZonedDate
@@ -183,7 +186,7 @@ zone.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getSerializationPrefix` | `String getSerializationPrefix()` | *(override)* Returns `@D@`. |
-| `toString` | `String toString()` | *(override)* The `@D@ISO8601_OFFSET_TIMEZONE` serialized string. |
+| `toString` | `String toString()` | *(override)* The `@D@ISO8601_OFFSET_TIMEZONE` serialized string, ending in a trailing space. |
 | `convertToTimezone` | `TomZonedDate convertToTimezone(TomTimezone targetTimezone)` | A new date at the same instant displayed in `targetTimezone`. |
 
 ### TomZonedTime
@@ -235,7 +238,7 @@ zone.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getSerializationPrefix` | `String getSerializationPrefix()` | *(override)* Returns `@T@`. |
-| `toString` | `String toString()` | *(override)* The `@T@ISO8601_OFFSET_TIMEZONE` serialized string. |
+| `toString` | `String toString()` | *(override)* The `@T@ISO8601_OFFSET_TIMEZONE` serialized string, ending in a trailing space. |
 | `convertToTimezone` | `TomZonedTime convertToTimezone(TomTimezone targetTimezone)` | A new time at the same instant displayed in `targetTimezone`. |
 | `inTimezoneOn` | `DateTime inTimezoneOn(DateTime when)` | Applies this local time to the date of `when`, yielding a `TZDateTime` (DST-aware). |
 
@@ -288,7 +291,7 @@ zone.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getSerializationPrefix` | `String getSerializationPrefix()` | *(override)* Returns `@X@`. |
-| `toString` | `String toString()` | *(override)* The `@X@ISO8601_OFFSET_TIMEZONE` serialized string. |
+| `toString` | `String toString()` | *(override)* The `@X@ISO8601_OFFSET_TIMEZONE` serialized string, ending in a trailing space. |
 | `convertToTimezone` | `TomZonedDateTime convertToTimezone(TomTimezone targetTimezone)` | A new datetime at the same UTC instant displayed in `targetTimezone`. |
 
 ### TomTimezoneException
@@ -355,8 +358,8 @@ None — the constructor is private. Obtain instances via `TomTimezone.utc`,
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `toString` | `String toString()` | *(override)* `{offset}_{timezone}` using the current offset. |
-| `toStringOn` | `String toStringOn(DateTime when)` | `{offset}_{timezone}` with the offset computed for `when` (DST-aware). |
+| `toString` | `String toString()` | *(override)* `{offset}_{timezone}` using the current offset, followed by one trailing space. This is where every serialized value gets its own final space. |
+| `toStringOn` | `String toStringOn(DateTime when)` | `{offset}_{timezone}` with the offset computed for `when` (DST-aware), followed by one trailing space as in `toString`. |
 | `getUtcOffsetOn` | `int getUtcOffsetOn(DateTime dt)` | The UTC offset in minutes at `dt`. |
 | `getUtcOffsetStringOn` | `String getUtcOffsetStringOn(DateTime dt)` | The formatted UTC offset string at `dt`. |
 | `getCurrentUtcOffset` | `int getCurrentUtcOffset()` | The current UTC offset in minutes. |

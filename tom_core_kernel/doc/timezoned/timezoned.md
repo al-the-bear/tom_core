@@ -155,10 +155,13 @@ newYork.getCurrentUtcOffsetString();  // Offset as string
 ```dart
 final newYork = TomTimezone.fromName('America/New_York')!;
 
-newYork.toString();                          // Current: '-05:00_America/New_York' or '-04:00_...'
-newYork.toStringOn(DateTime.utc(2024, 1, 15)); // '-05:00_America/New_York'
-newYork.toStringOn(DateTime.utc(2024, 7, 15)); // '-04:00_America/New_York'
+newYork.toString();                          // Current: '-05:00_America/New_York ' or '-04:00_... '
+newYork.toStringOn(DateTime.utc(2024, 1, 15)); // '-05:00_America/New_York '
+newYork.toStringOn(DateTime.utc(2024, 7, 15)); // '-04:00_America/New_York '
 ```
+
+Both end in a trailing space, which is where every serialized value gets its
+own — see [Serialization](#serialization).
 
 ### TZDateTime Interop
 
@@ -302,14 +305,28 @@ print(standupMarch11); // 2024-03-11 09:00:00.000-0400
 ### Format
 
 ```
-{PREFIX}ISO8601_UTC_OFFSET_TIMEZONE
+{PREFIX}{ISO8601}_{OFFSET}_{TIMEZONE}{SPACE}
 ```
+
+Three underscore-separated fields, carrying a prefix in front and a single
+space behind:
 
 - **PREFIX**: `@D@` (date), `@T@` (time), or `@X@` (datetime)
 - **ISO8601**: UTC datetime in ISO 8601 format, ending in a mandatory `Z`, with
   up to six fractional digits
 - **OFFSET**: UTC offset at serialization time (`Z`, `+09:00`, `-05:00`, etc.)
 - **TIMEZONE**: IANA timezone name
+- **SPACE**: one literal space, always present
+
+The trailing space is the part of the format that is easiest to lose, because
+nothing shows it. `TomTimezone.toString()` appends it, and since every zoned
+value renders its zone through that method, every string the module produces
+ends in a space — `'@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo '`, with the
+closing quote one character clear of the zone name. Reading is lenient: each
+parse regex ends in `\s?`, so a string without the space is still accepted.
+Equality is not. A stored value compared against a hand-written literal that
+omits the space will not match, and neither string is malformed, so nothing
+reports why.
 
 `toString()` produces the whole form, prefix included, and `parseFromString`
 reads it back as it stands. `getSerializationPrefix()` exists for the other
@@ -340,11 +357,14 @@ and `getUtcOffsetOn(when)` compute it.
 
 ### Examples
 
+Exactly as produced, trailing space included — the quotes are what make it
+visible:
+
 ```dart
-'@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo'  // TomZonedDateTime
-'@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo'  // TomZonedDate
-'@T@1970-01-01T14:00:00.000Z_+09:00_Asia/Tokyo'  // TomZonedTime
-'@X@2024-06-15T14:30:00.000Z_Z_UTC'              // UTC
+'@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo '  // TomZonedDateTime
+'@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo '  // TomZonedDate
+'@T@1970-01-01T14:00:00.000Z_+09:00_Asia/Tokyo '  // TomZonedTime
+'@X@2024-06-15T14:30:00.000Z_Z_UTC '              // UTC
 ```
 
 ### Parsing

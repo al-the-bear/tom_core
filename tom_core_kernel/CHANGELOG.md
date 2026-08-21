@@ -815,6 +815,22 @@ anyone who was writing them.
 
 ### Tests
 
+- **New guard: `serialized_form_trailing_space_test.dart` (tcinc333).** The
+  emitted bytes are the anchor: a table of all six ways the module renders a
+  value, each asserted to end in exactly one space, with the table's own size
+  checked so it cannot quietly shrink. Against that, a scan over the three
+  documents that state the format — the guide, the API mirror and the source
+  dartdoc — reads every format template (`ISO8601_OFFSET_TIMEZONE`,
+  `{offset}_{timezone}`) and requires the passage around it to name the space.
+
+  The passage is a markdown section or one member's dartdoc run, not the whole
+  file: a single mention elsewhere would otherwise cover every silent template
+  in the document, which is how a reader ends up in a section that never says
+  it. Whitespace is folded and three phrasings are accepted, so the guard
+  constrains what is said rather than how it is worded. It found eleven silent
+  sites where the report that prompted it had named two, and it is what will
+  say which documents must change if the space is ever removed.
+
 - **The serialization suite could not tell the two offsets apart (tcinc332).**
   Its authority case parsed an `Asia/Tokyo` string, and Tokyo has no DST — its
   offset now and its offset at any instant are the same `+09:00`, so the
@@ -1247,6 +1263,31 @@ anyone who was writing them.
   is where the window it opens belongs.
 
 ### Documentation
+
+- **The wire format was documented without its last character (tcinc333).**
+  Every string the module serializes ends in a space —
+  `TomTimezone.toString()` appends one, and every zoned value renders its zone
+  through that method — and eleven passages across three files gave the format
+  without saying so. The narrative guide's template, its four worked example
+  strings and its `TomTimezone` output lines; six rows and the overview of the
+  API mirror; and the `Format:` lines of `toString` and `toStringOn`, whose own
+  examples printed `'Z_UTC '` two lines below.
+
+  It is the one part of the format that cannot be seen. Parsing is lenient —
+  each regex ends in `\s?`, so a string without the space still reads — which
+  is exactly what keeps the omission cheap to make and expensive to meet: a
+  stored value compared against a documented literal is unequal, both strings
+  are well-formed, and nothing reports why. The guide now shows the examples
+  with the space inside the quotes, where the closing quote makes it visible.
+
+  The guide's template also read as four underscore-separated fields
+  (`{PREFIX}ISO8601_UTC_OFFSET_TIMEZONE`) against the three its own bullet list
+  named, the middle one being the single word "UTC offset". It is now
+  `{PREFIX}{ISO8601}_{OFFSET}_{TIMEZONE}{SPACE}`, with a bullet per field.
+
+  Whether the space should exist at all is a separate open question
+  (tcopen92); this pass makes the documents agree on what the format currently
+  is.
 
 - **The serialized offset was described as belonging to the value's instant
   (tcinc332).** It belongs to the moment the string was written.

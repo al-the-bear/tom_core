@@ -370,8 +370,13 @@ class TomTimezone {
 
   /// Returns a string representation of this timezone.
   ///
-  /// Format: `{offset}_{timezone}` where offset is in format `Z` for UTC
-  /// or `+HH:MM`/`-HH:MM` for other timezones.
+  /// Format: `{offset}_{timezone}` followed by one trailing space, where
+  /// offset is `Z` for UTC or `+HH:MM`/`-HH:MM` for other timezones.
+  ///
+  /// The space is part of the output, not an accident of printing: every
+  /// zoned value renders its zone through this method, so it is the final
+  /// character of every serialized string the module produces. Parsing
+  /// tolerates its absence; equality does not.
   ///
   /// Example:
   /// ```dart
@@ -385,8 +390,9 @@ class TomTimezone {
 
   /// Returns a string representation of this timezone at a specific date/time.
   ///
-  /// Format: `{offset}_{timezone}` where offset is calculated for the given
-  /// date, accounting for DST transitions.
+  /// Format: `{offset}_{timezone}` followed by one trailing space, as
+  /// [toString], with the offset calculated for the given date and
+  /// accounting for DST transitions.
   ///
   /// [when] The DateTime to calculate the offset for.
   ///
