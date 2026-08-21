@@ -12,11 +12,14 @@
 ///
 /// ## Quick Start
 ///
+/// Registering a resource is the whole setup. Signal listening is already
+/// active — [TomShutdownCleanup] registers SIGHUP and SIGINT in its
+/// constructor — so there is no arming step to remember or to get wrong.
+///
 /// ```dart
 /// // Use the default global instance
 /// tomShutdownCleanup.addClosable(myDatabaseConnection);
 /// tomShutdownCleanup.addDisposable(myStreamController);
-/// tomShutdownCleanup.start();
 /// ```
 ///
 /// See also:
@@ -230,11 +233,13 @@ class TomCloseAdaptor implements TomClosable {
 ///
 /// ## Basic Usage
 ///
+/// Registration is the only setup step; the constructor has already begun
+/// listening for SIGHUP and SIGINT.
+///
 /// ```dart
 /// // Use the global instance
 /// tomShutdownCleanup.addClosable(databaseConnection);
 /// tomShutdownCleanup.addDisposable(streamController);
-/// tomShutdownCleanup.start();
 /// ```
 ///
 /// ## Custom Signal Handlers
@@ -419,7 +424,9 @@ class TomShutdownCleanup {
   /// `start()` has no effect on shutdown behaviour. It only writes an
   /// informational `tomLog` entry, which is handy as a startup breadcrumb.
   void start() {
-    tomLog.info("Cleanup listener initialized");
+    // The wording is deliberate: the line records that the cleanup system is
+    // in use, and claims no initialization, because the call performs none.
+    tomLog.info("Shutdown cleanup in use");
   }
 }
 
@@ -430,13 +437,16 @@ class TomShutdownCleanup {
 /// Global default instance of [TomShutdownCleanup].
 ///
 /// Use this instance for most shutdown cleanup needs. It automatically
-/// listens for SIGHUP and SIGINT signals.
+/// listens for SIGHUP and SIGINT signals from the moment it is created, so
+/// registering a resource is all that is needed to have it cleaned up.
 ///
 /// ## Example
 ///
 /// ```dart
 /// tomShutdownCleanup.addClosable(myDatabase);
 /// tomShutdownCleanup.addDisposable(myController);
-/// tomShutdownCleanup.start();
 /// ```
+///
+/// [TomShutdownCleanup.start] is optional and is not part of this setup — it
+/// writes a log breadcrumb and nothing else.
 final TomShutdownCleanup tomShutdownCleanup = TomShutdownCleanup();

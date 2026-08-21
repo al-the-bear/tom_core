@@ -401,6 +401,55 @@ void main() {
         // Act & Assert - should not throw
         expect(() => cleanup.start(), returnsNormally);
       });
+
+      // The contract the two tests below pin: start() is a log breadcrumb,
+      // not an arming step. The constructor registers the SIGHUP/SIGINT
+      // listeners, so cleanup must behave identically whether start() is
+      // never called, called before registration, or called after it. Leaving
+      // this untested is what let four documentation sites drift into calling
+      // start() a setup step and prescribing where in the sequence to put it.
+
+      /// Registers one cleanup of each kind on [cleanup], recording the
+      /// category it belongs to into [log] when it runs.
+      void registerRecorders(TomShutdownCleanup cleanup, List<String> log) {
+        cleanup.addSignalHandler((signal) => log.add('handler'));
+        cleanup.addClosable(RecordingClosable(log));
+        cleanup.addDisposable(RecordingDisposable(log));
+      }
+
+      const expectedOrder = ['handler', 'closable', 'disposable'];
+
+      test('is not required for cleanup to run', () {
+        // Arrange
+        final log = <String>[];
+        final cleanup = TomShutdownCleanup();
+        registerRecorders(cleanup, log);
+
+        // Act - start() is never called anywhere in this test.
+        cleanup.performShutdown();
+
+        // Assert
+        expect(log, equals(expectedOrder));
+      });
+
+      test('changes nothing wherever it is called in the sequence', () {
+        // Arrange & Act - started before any registration.
+        final beforeLog = <String>[];
+        final before = TomShutdownCleanup()..start();
+        registerRecorders(before, beforeLog);
+        before.performShutdown();
+
+        // Arrange & Act - started after every registration.
+        final afterLog = <String>[];
+        final after = TomShutdownCleanup();
+        registerRecorders(after, afterLog);
+        after.start();
+        after.performShutdown();
+
+        // Assert - both match the no-start() outcome above.
+        expect(beforeLog, equals(expectedOrder));
+        expect(afterLog, equals(expectedOrder));
+      });
     });
 
     group('mixed handlers', () {

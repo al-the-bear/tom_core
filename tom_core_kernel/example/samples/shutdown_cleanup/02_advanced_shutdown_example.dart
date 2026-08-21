@@ -300,7 +300,9 @@ class AdvancedShutdownExample {
     print('     tomShutdownCleanup.addSignalHandler((signal) {');
     print('       print("Cleanup started due to \$signal");');
     print('     });');
-    print('     tomShutdownCleanup.start();  // Logs initialization');
+    print('');
+    print('   - Registration is the whole setup: the instance arms SIGHUP and');
+    print('     SIGINT in its constructor. start() is optional and only logs.');
   }
 
   // --------------------------------------------------------------------------

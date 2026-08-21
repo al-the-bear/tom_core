@@ -29,6 +29,10 @@ The system is designed to be fault-tolerant—if one cleanup operation fails, it
 
 ## Quick Start
 
+Registering a resource is the whole setup. There is no arming step: the global
+instance begins listening for SIGHUP and SIGINT when it is created, so a
+registered resource is already covered.
+
 ```dart
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -40,10 +44,8 @@ void main() {
   tomShutdownCleanup.addClosable(database);
   tomShutdownCleanup.addDisposable(cache);
   
-  // Start the cleanup listener
-  tomShutdownCleanup.start();
-  
   // Your application logic here...
+  // On Ctrl+C: database.close() then cache.dispose(), automatically.
 }
 ```
 
@@ -116,6 +118,21 @@ By default, `TomShutdownCleanup` listens for:
 tomShutdownCleanup.addSignal(ProcessSignal.sigterm);
 ```
 
+#### start() — an optional log breadcrumb
+
+`start()` does not start anything. Signal listening is armed by the
+constructor, so calling it or omitting it makes no difference to shutdown
+behaviour; the method writes one constant `tomLog.info` line and returns.
+
+```dart
+tomShutdownCleanup.start(); // Logs "Shutdown cleanup in use". Nothing else.
+```
+
+It is worth calling in a long-running server, where the line is useful
+evidence in the log that the process had cleanup wired up. It is not a setup
+step, it has no required position relative to the `add*` calls, and no example
+in this document uses it.
+
 ## Usage Examples
 
 ### Basic Resource Cleanup
@@ -127,7 +144,6 @@ void main() {
   
   tomShutdownCleanup.addClosable(db);
   tomShutdownCleanup.addClosable(redis);
-  tomShutdownCleanup.start();
   
   // Application runs...
   // On Ctrl+C: db.close() and redis.close() are called automatically
@@ -154,7 +170,6 @@ For specialized handling of different signals:
 ```dart
 // Main cleanup for standard signals
 tomShutdownCleanup.addClosable(mainDatabase);
-tomShutdownCleanup.start();
 
 // Separate handler for user-defined signals
 final debugCleanup = TomShutdownCleanup();
@@ -179,8 +194,6 @@ class MyServer {
       print('Shutting down server...');
       await _server.close(force: false);
     });
-    
-    tomShutdownCleanup.start();
     
     await for (final request in _server) {
       handleRequest(request);
@@ -231,18 +244,7 @@ tomShutdownCleanup.addSignalHandler((signal) {
 });
 ```
 
-### 4. Call start() Last
-
-Call `start()` after registering all handlers to get accurate logging:
-
-```dart
-tomShutdownCleanup.addClosable(db);
-tomShutdownCleanup.addDisposable(cache);
-tomShutdownCleanup.addSignalHandler(customHandler);
-tomShutdownCleanup.start(); // Call last
-```
-
-### 5. Don't Block Indefinitely
+### 4. Don't Block Indefinitely
 
 Cleanup operations should complete quickly. For async operations, consider timeouts:
 
@@ -255,7 +257,7 @@ tomShutdownCleanup.addSignalHandler((signal) async {
 });
 ```
 
-### 6. Use TomCloseAdaptor for Third-Party Objects
+### 5. Use TomCloseAdaptor for Third-Party Objects
 
 When working with objects you don't control:
 

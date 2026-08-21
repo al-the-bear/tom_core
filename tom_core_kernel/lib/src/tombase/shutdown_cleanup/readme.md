@@ -30,11 +30,10 @@ class CacheService implements TomClosable {
 
 void main() {
   // Register resources on the shared instance; they run in registration
-  // order when a shutdown signal arrives.
+  // order when a shutdown signal arrives. Listening for SIGHUP and SIGINT
+  // is already active — the instance arms it on construction — so this
+  // registration is the entire setup.
   tomShutdownCleanup.addClosable(CacheService());
-
-  // Begin listening for OS shutdown signals.
-  tomShutdownCleanup.start();
 }
 ```
 
