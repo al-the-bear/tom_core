@@ -2,6 +2,36 @@
 
 ### Behaviour Changes
 
+- **`@TomAudited(includeReads:)` is removed; reads were never audited and now
+  say so (tcinc340).** The parameter was documented in four places — the
+  `audit_trail` library comment's coverage table, `doc/audit.md`,
+  `api_summary_audit.md`, and the module's own `Patient` worked example — as
+  the switch that turns read auditing on. Nothing produced such a record.
+  `TomAuditAction.read` appeared exactly once in `lib/`, inside
+  `TomAuditPolicy.audits`, deciding whether a read *would* be audited; the
+  repository chokepoint calls `recordMutation` for create, update and delete
+  only, and `findById` / `findAll` / `count` reach no audit code at all.
+
+  It failed in the direction that matters. A deployment annotating its
+  regulated entity saw the annotation accepted and `audits(read)` report
+  `true`, and had no read trail. Withdrawing the parameter rather than
+  implementing it is the honest correction, because the missing piece is not
+  code: a read chokepoint must choose between one record per call and one per
+  row — per call loses which rows were seen, per row buries the trail — and
+  fail-closed then puts that write in front of every read of the entity. Those
+  are deployment judgements about latency and volume, and no framework default
+  can make them.
+
+  `TomAuditAction.read` stays in the enum, and `TomAuditTrail.recordAction`
+  still consults no policy, so an application that has made the decision can
+  record exactly what it wants. `audits` now answers `false` for `read` under
+  every annotation, with the branch written out rather than left to fall
+  through to `true` — a policy that claimed a read *is* audited when the
+  repository records none would be the same false promise reversed. The
+  endpoint-level `@TomAudited()`, which records an `execute` with its actor at
+  the boundary where "who asked" is unambiguous, is the route the docs now
+  point at first.
+
 - **`Tom2FAEnrolmentState.fromClaims` reads every boolean claim with
   `Tom2FAClaims.isTrue`, matching the kernel.** It read three claims three
   different ways relative to its client-side twin: `pendingEnrolment` by exact
@@ -71,6 +101,20 @@
   "just give me a page" call an error.
 
 ### Documentation
+
+- **`doc/audit.md` gains a *Reads Are Not Audited* section, and the trail's
+  library comment states the position outright (tcinc340).** Removing
+  `includeReads` leaves a question the reader will still ask — "then how do I
+  record who looked?" — and an absence answers it badly. Both documents now
+  name the two honest routes and rank them: `@TomAudited()` on the endpoint,
+  which is the usual answer, and `TomAuditTrail.recordAction`, for code that
+  knows which rows mattered and has accepted the volume cost.
+
+  The `read` enum member's dartdoc pointed at a declared-versus-automatic split
+  that no longer mentions reads; it now says plainly that nothing in the
+  framework produces the value and explains why it is kept. `tom_specs`'
+  CE-LG mapping carried the same parameter in five places and is corrected in
+  step: a SOM band saying reads count lands on the endpoint, not the entity.
 
 - **`doc/scheduling.md`'s table of contents lists "Reporting an Outcome for a
   Run You May Have Lost".** The section was added after the contents were

@@ -77,24 +77,26 @@ void main() async {
 
     tearDownAll(TestDatabase.reset);
 
-    test('an insert is audited as a create carrying the whole stored row',
-        () async {
-      final saved = await repo.save(_task('write tests', 3, done: true));
+    test(
+      'an insert is audited as a create carrying the whole stored row',
+      () async {
+        final saved = await repo.save(_task('write tests', 3, done: true));
 
-      final record = sink.records.single;
-      expect(record.action, TomAuditAction.create);
-      expect(record.target, 'FixtureTaskRecord');
-      expect(record.targetKey, '${saved.id}');
-      expect(record.outcome, TomAuditOutcome.succeeded);
-      // A create has no before-image; the whole stored row is the change.
-      expect(record.before, isEmpty);
-      expect(record.after['title'], 'write tests');
-      expect(record.after['priority'], 3);
-      expect(record.after['done'], isTrue);
-      // The database-assigned key is in the record, so the entry names the row
-      // it created rather than describing an anonymous insert.
-      expect(record.after['id'], saved.id);
-    });
+        final record = sink.records.single;
+        expect(record.action, TomAuditAction.create);
+        expect(record.target, 'FixtureTaskRecord');
+        expect(record.targetKey, '${saved.id}');
+        expect(record.outcome, TomAuditOutcome.succeeded);
+        // A create has no before-image; the whole stored row is the change.
+        expect(record.before, isEmpty);
+        expect(record.after['title'], 'write tests');
+        expect(record.after['priority'], 3);
+        expect(record.after['done'], isTrue);
+        // The database-assigned key is in the record, so the entry names the row
+        // it created rather than describing an anonymous insert.
+        expect(record.after['id'], saved.id);
+      },
+    );
 
     test('an update records only the fields that actually changed', () async {
       final saved = await repo.save(_task('draft', 1));
@@ -113,8 +115,7 @@ void main() async {
       expect(record.before.containsKey('priority'), isFalse);
     });
 
-    test('a save that changes nothing is still recorded as an action',
-        () async {
+    test('a save that changes nothing is still recorded as an action', () async {
       final saved = await repo.save(_task('stable', 2));
       sink.clear();
 
@@ -188,17 +189,30 @@ void main() async {
       );
     });
 
-    test('reads are not audited without a declaration', () async {
+    test('reads are never audited, annotated entity or not', () async {
       final saved = await repo.save(_task('quiet', 1));
+      // FixtureSecretRecord carries @TomAudited(redact: ['secret']) — the
+      // entity that most plausibly *would* want a read trail. It gets none
+      // either: there is no declaration that turns reads on, so the two
+      // repositories below must behave identically.
+      final savedSecret = await secrets.save(_secret('label', 'hunter2'));
       sink.clear();
 
       await repo.findById(saved.id!);
       await repo.findAll();
       await repo.count();
+      await secrets.findById(savedSecret.id!);
+      await secrets.findAll();
+      await secrets.count();
 
-      // Read auditing is off by default: a list endpoint over a thousand rows
-      // would otherwise write a thousand entries that say nothing.
       expect(sink.records, isEmpty);
+
+      // Non-vacuity: the same repositories, same sink, one mutation each —
+      // so the emptiness above is the read path staying silent, not the trail
+      // being uninstalled.
+      await repo.save(_task('loud', 2));
+      await secrets.save(_secret('other', 'sesame'));
+      expect(sink.records, hasLength(2));
     });
 
     test('the zone principal attributes the write, with no plumbing', () async {
@@ -223,14 +237,16 @@ void main() async {
       expect(record.requestId, requestId.uuid);
     });
 
-    test('a write outside a request is attributed to SYSTEM, never to null',
-        () async {
-      await repo.save(_task('background job', 1));
-      final record = sink.records.single;
-      expect(record.actor.username, TomAuditActor.systemUsername);
-      expect(record.actor.userId, isNull);
-      expect(record.requestId, isNull);
-    });
+    test(
+      'a write outside a request is attributed to SYSTEM, never to null',
+      () async {
+        await repo.save(_task('background job', 1));
+        final record = sink.records.single;
+        expect(record.actor.username, TomAuditActor.systemUsername);
+        expect(record.actor.userId, isNull);
+        expect(record.requestId, isNull);
+      },
+    );
 
     test('a declared redaction keeps the value out of the trail', () async {
       final saved = await secrets.save(_secret('api key', 'hunter2'));
@@ -262,11 +278,13 @@ void main() async {
       expect(await repo.findById(saved.id!), isNull);
     });
 
-    test('runUnaudited suppresses the chokepoint for the trail itself',
-        () async {
-      await TomAuditTrail.runUnaudited(() => repo.save(_task('internal', 1)));
-      expect(sink.records, isEmpty);
-    });
+    test(
+      'runUnaudited suppresses the chokepoint for the trail itself',
+      () async {
+        await TomAuditTrail.runUnaudited(() => repo.save(_task('internal', 1)));
+        expect(sink.records, isEmpty);
+      },
+    );
 
     test('the written entries form a verifiable chain', () async {
       final a = await repo.save(_task('a', 1));

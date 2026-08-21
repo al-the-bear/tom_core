@@ -67,17 +67,23 @@ Future<void> run() async {
     zoneValues: {TomPrincipal: principal, TomRequestId: TomRequestId()},
   );
   final attributed = sink.records.single;
-  print('   in-request actor          : ${attributed.actor.username} '
-      '(id ${attributed.actor.userId}, request ${attributed.requestId})');
+  print(
+    '   in-request actor          : ${attributed.actor.username} '
+    '(id ${attributed.actor.userId}, request ${attributed.requestId})',
+  );
   assert(attributed.actor.userId == 42);
 
   // 4. The declared-versus-automatic split. Mutations are audited by default —
-  //    forgetting to declare one would be a silent gap — while reads are not,
-  //    because auditing every row a list endpoint returns buries the entries
-  //    that matter.
+  //    forgetting to declare one would be a silent gap — while reads are never
+  //    audited at all, because auditing every row a list endpoint returns
+  //    buries the entries that matter.
   const byDefault = TomAuditPolicy.defaultPolicy;
-  print('4. default audits update     : ${byDefault.audits(TomAuditAction.update)}');
-  print('   default audits read       : ${byDefault.audits(TomAuditAction.read)}');
+  print(
+    '4. default audits update     : ${byDefault.audits(TomAuditAction.update)}',
+  );
+  print(
+    '   default audits read       : ${byDefault.audits(TomAuditAction.read)}',
+  );
   assert(byDefault.audits(TomAuditAction.update));
   assert(!byDefault.audits(TomAuditAction.read));
 
@@ -85,20 +91,50 @@ Future<void> run() async {
   // `TomAuditPolicy.from` is exactly what the reflector applies to the
   // annotation it finds on the type:
   //   @TomAudited(enabled: false)          -> opt the type out entirely
-  //   @TomAudited(includeReads: true)      -> audit reads too
   //   @TomAudited(redact: ['secret'])      -> keep a value out of the trail
   //   @TomAudited()  on an endpoint method -> audit that invocation
+  // There is no declaration that turns reads on. `audits(read)` is `false`
+  // under every annotation, because the read path records nothing for it to
+  // be true about.
   final optedOut = TomAuditPolicy.from(const TomAudited(enabled: false));
-  final withReads = TomAuditPolicy.from(const TomAudited(includeReads: true));
-  print('   opted-out audits update   : ${optedOut.audits(TomAuditAction.update)}');
-  print('   includeReads audits read  : ${withReads.audits(TomAuditAction.read)}');
+  final redacted = TomAuditPolicy.from(const TomAudited(redact: ['secret']));
+  print(
+    '   opted-out audits update   : ${optedOut.audits(TomAuditAction.update)}',
+  );
+  print(
+    '   any policy audits read    : '
+    '${[byDefault, optedOut, redacted].any((p) => p.audits(TomAuditAction.read))}',
+  );
   assert(!optedOut.audits(TomAuditAction.update));
-  assert(withReads.audits(TomAuditAction.read));
+  assert(
+    ![byDefault, optedOut, redacted].any((p) => p.audits(TomAuditAction.read)),
+  );
+
+  // Recording who looked is therefore explicit. `recordAction` consults no
+  // entity policy, so the caller that accepted the volume cost is the one that
+  // writes the entry — and it can say which rows mattered, which a chokepoint
+  // on `findAll` could not.
+  sink.clear();
+  await TomAuditTrail.recordAction(
+    action: TomAuditAction.read,
+    target: 'Patient',
+    targetKey: '7',
+    outcome: TomAuditOutcome.succeeded,
+    detail: 'case review',
+  );
+  print(
+    '   hand-recorded read        : ${sink.records.single.action.name} '
+    'of ${sink.records.single.target}#${sink.records.single.targetKey}',
+  );
+  assert(sink.records.single.action == TomAuditAction.read);
 
   // 5. Redaction is not a column grade: it keeps the value from existing in a
   //    *second* place at all. The field still shows as changed.
   final redacting = TomAuditPolicy.from(const TomAudited(redact: ['secret']));
-  final masked = redacting.applyRedaction({'label': 'api key', 'secret': 'hunter2'});
+  final masked = redacting.applyRedaction({
+    'label': 'api key',
+    'secret': 'hunter2',
+  });
   print('5. redacted                  : $masked');
   assert(masked['secret'] == tomAuditRedactedPlaceholder);
   assert(!masked.values.contains('hunter2'));
@@ -123,11 +159,13 @@ Future<void> run() async {
   //    auditing itself into an infinite regress. It is not a general opt-out —
   //    that is the visible, source-level @TomAudited(enabled: false).
   sink.clear();
-  await TomAuditTrail.runUnaudited(() => TomAuditTrail.recordAction(
-        action: TomAuditAction.create,
-        target: 'AuditTrailInternals',
-        outcome: TomAuditOutcome.succeeded,
-      ));
+  await TomAuditTrail.runUnaudited(
+    () => TomAuditTrail.recordAction(
+      action: TomAuditAction.create,
+      target: 'AuditTrailInternals',
+      outcome: TomAuditOutcome.succeeded,
+    ),
+  );
   print('7. records inside bypass     : ${sink.records.length}');
   assert(sink.records.isEmpty);
 
@@ -149,7 +187,9 @@ Future<void> run() async {
 
     // Reopening picks the chain up where it left off rather than restarting it.
     final reopened = TomFileAuditSink(directory: dir);
-    print('8. head hash recovered       : ${reopened.headHash.substring(0, 12)}…');
+    print(
+      '8. head hash recovered       : ${reopened.headHash.substring(0, 12)}…',
+    );
     print('   entries on disk           : ${reopened.readAll().length}');
     assert(reopened.readAll().length == 1);
     assert(reopened.verify().isValid);
@@ -236,8 +276,10 @@ Future<void> run() async {
     writer: 'node-a',
   );
   final anchor = await publisher.publishNow();
-  print('10. anchored                 : ${anchor.entryCount} entries @ '
-      '${anchor.headHash.substring(0, 12)}…');
+  print(
+    '10. anchored                 : ${anchor.entryCount} entries @ '
+    '${anchor.headHash.substring(0, 12)}…',
+  );
 
   // The wholesale rewrite: one record swapped, then every hash from there on
   // recomputed. This is the attack the chain alone cannot see.

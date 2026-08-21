@@ -162,7 +162,7 @@ the record's free-form `target` and `detail`.
 | `create` | A new record was created (a repository `INSERT`). |
 | `update` | An existing record was modified (a repository `UPDATE`). |
 | `delete` | A record was destroyed (a repository `DELETE`). |
-| `read` | A record was read; never automatic, only under `@TomAudited(includeReads: true)`. |
+| `read` | A record was read. Nothing in the framework produces this — no repository read is audited and no annotation makes one; a record carrying it exists because application code called `TomAuditTrail.recordAction`. |
 | `execute` | An action that is not a record mutation — an endpoint call, a job run, a report export. |
 
 ### TomAuditOutcome
@@ -516,11 +516,7 @@ method it opts that method's invocation into the trail, which is not automatic.
 #### Constructors
 
 ```dart
-const TomAudited({
-  bool enabled = true,
-  bool includeReads = false,
-  List<String> redact = const [],
-})
+const TomAudited({bool enabled = true, List<String> redact = const []})
 ```
 
 #### Properties
@@ -528,7 +524,6 @@ const TomAudited({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `enabled` | `bool` | Whether the annotated target is audited at all; only meaningful as `false`, the opt-out (final). |
-| `includeReads` | `bool` | Whether reads of the annotated entity are audited; off by default because read volume is unbounded (final). |
 | `redact` | `List<String>` | Field names whose values must never appear in a record's `before`/`after`; the record still shows that the field changed (final). |
 
 ### TomAuditPolicy
@@ -540,11 +535,7 @@ already applied. Resolution goes through the reflector, which is not free, so
 #### Constructors
 
 ```dart
-const TomAuditPolicy({
-  required bool enabled,
-  required bool includeReads,
-  required Set<String> redact,
-})
+const TomAuditPolicy({required bool enabled, required Set<String> redact})
 ```
 
 #### Factory Constructors
@@ -565,14 +556,13 @@ factory TomAuditPolicy.from(TomAudited annotation)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `enabled` | `bool` | Whether the type is audited at all (final). |
-| `includeReads` | `bool` | Whether reads of the type are audited (final). |
 | `redact` | `Set<String>` | The field names whose values are withheld from records (final). |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `audits` | `bool audits(TomAuditAction action)` | Whether `action` is audited under this policy; `read` only when `includeReads`, nothing when disabled. |
+| `audits` | `bool audits(TomAuditAction action)` | Whether `action` is audited under this policy: nothing when disabled, `read` never, everything else otherwise. |
 | `applyRedaction` | `Map<String, Object?> applyRedaction(Map<String, Object?> values)` | `values` with every redacted field replaced by `tomAuditRedactedPlaceholder`; returns `values` unchanged when nothing is redacted, so the common case costs no copy. |
 
 ### TomAuditBypass

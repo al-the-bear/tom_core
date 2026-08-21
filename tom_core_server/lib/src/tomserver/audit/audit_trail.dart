@@ -18,13 +18,37 @@
 /// | **Automatic** | every repository mutation — create, update, delete | Mutations are finite in volume, are what an auditor asks about, and pass through one chokepoint. Nothing to declare and nothing to forget. |
 /// | **Automatic** | every endpoint access **denial** | The one auditable event the repository cannot see, because the request never reached it. An attempted access is the entry an auditor scans for first. |
 /// | **Declared** | endpoint invocations, via `@TomAudited()` on the method | An endpoint call is not inherently auditable — most are reads. Which ones matter is a domain judgement, so it is declared. |
-/// | **Declared** | reads, via `@TomAudited(includeReads: true)` on the entity | Read auditing is per-entity and expensive. Regulated data wants it; a lookup table does not. |
 /// | **Opt-out** | `@TomAudited(enabled: false)` on the entity | An escape hatch for high-volume machine-written tables (sessions, job runs) whose mutations are noise. Explicit, so its absence is auditable too. |
 ///
 /// The asymmetry is deliberate. Mutation auditing is **on by default and
-/// declared off**; read and invocation auditing are **off by default and
-/// declared on**. Defaults should fail towards the safe answer, and for a
-/// mutation the safe answer is "recorded".
+/// declared off**; invocation auditing is **off by default and declared on**.
+/// Defaults should fail towards the safe answer, and for a mutation the safe
+/// answer is "recorded".
+///
+/// ## Reads are not audited
+///
+/// No repository read produces a record, and no annotation makes one. The read
+/// path — `findById`, `findAll`, `count` — reaches no audit code at all, and
+/// [TomAuditPolicy.audits] answers `false` for [TomAuditAction.read] whatever
+/// the entity declares.
+///
+/// That is a position, not an omission. A read chokepoint would have to choose
+/// between one record per call and one per row, and neither answer is right:
+/// per call loses which rows were seen, which is the only thing a read trail
+/// is for; per row turns a thousand-row list into a thousand entries that say
+/// less than an access log. Fail-closed then puts that write in front of every
+/// read of the entity. Those are deployment decisions about latency and
+/// volume, and a framework default cannot make them.
+///
+/// So a deployment that must record who looked has two honest routes.
+/// Annotate the **endpoint** with `@TomAudited()`: that records the invocation
+/// and its actor at the boundary where "who asked, for what" is unambiguous,
+/// and it is the route to reach for first. Or call
+/// [TomAuditTrail.recordAction] with [TomAuditAction.read] from the code that
+/// knows which rows mattered — it consults no policy, so the caller who has
+/// made the volume decision is the one who acts on it. Both are explicit at
+/// the point of use. What this module will not do is imply it has already
+/// decided on the deployment's behalf.
 ///
 /// One consequence worth stating outright: an update that changes no value is
 /// still recorded, with an empty diff. What is audited is the **action**, not
@@ -62,8 +86,9 @@ import 'audit_sink.dart';
 /// @TomDbTable(table: 'session')
 /// class Session { … }
 ///
-/// // Regulated data: record who *looked*, and never record the token itself.
-/// @TomAudited(includeReads: true, redact: ['accessToken'])
+/// // Regulated data: record every change, but never the token itself — not
+/// // even in the trail.
+/// @TomAudited(redact: ['accessToken'])
 /// @TomDbTable(table: 'patient')
 /// class Patient { … }
 ///
@@ -78,13 +103,6 @@ class TomAudited {
   /// annotation is already audited for mutations.
   final bool enabled;
 
-  /// Whether reads of the annotated entity are audited.
-  ///
-  /// Off by default because read volume is unbounded: a list endpoint over a
-  /// thousand rows would otherwise write a thousand entries that say nothing
-  /// an access log does not.
-  final bool includeReads;
-
   /// Field names whose values must never appear in a record's `before`/`after`.
   ///
   /// The trail is privileged storage — a C-4 column grade masks a value from
@@ -95,11 +113,7 @@ class TomAudited {
   final List<String> redact;
 
   /// Declares the audit policy for the annotated entity or endpoint method.
-  const TomAudited({
-    this.enabled = true,
-    this.includeReads = false,
-    this.redact = const [],
-  });
+  const TomAudited({this.enabled = true, this.redact = const []});
 }
 
 /// What a redacted value is recorded as.
@@ -118,45 +132,41 @@ class TomAuditPolicy {
   /// Whether the type is audited at all.
   final bool enabled;
 
-  /// Whether reads of the type are audited.
-  final bool includeReads;
-
   /// The field names whose values are withheld from records.
   final Set<String> redact;
 
   /// Creates a policy from its parts.
-  const TomAuditPolicy({
-    required this.enabled,
-    required this.includeReads,
-    required this.redact,
-  });
+  const TomAuditPolicy({required this.enabled, required this.redact});
 
   /// The policy a type with no `@TomAudited` annotation gets: mutations are
   /// audited, reads are not, nothing is redacted.
   static const TomAuditPolicy defaultPolicy = TomAuditPolicy(
     enabled: true,
-    includeReads: false,
     redact: {},
   );
 
   /// The policy an explicit opt-out produces.
   static const TomAuditPolicy disabled = TomAuditPolicy(
     enabled: false,
-    includeReads: false,
     redact: {},
   );
 
   /// Reads the policy off an annotation.
   factory TomAuditPolicy.from(TomAudited annotation) => TomAuditPolicy(
     enabled: annotation.enabled,
-    includeReads: annotation.includeReads,
     redact: annotation.redact.toSet(),
   );
 
   /// Whether [action] is audited under this policy.
+  ///
+  /// [TomAuditAction.read] is always `false`, and no annotation changes that —
+  /// see the library comment's *Reads are not audited*. The branch is written
+  /// out rather than left to fall through the `true` below, because a policy
+  /// that answered `true` for a read the repository never records would be the
+  /// same false promise in the opposite direction.
   bool audits(TomAuditAction action) {
     if (!enabled) return false;
-    if (action == TomAuditAction.read) return includeReads;
+    if (action == TomAuditAction.read) return false;
     return true;
   }
 
@@ -237,10 +247,8 @@ class TomAuditTrail {
   /// Runs [body] with auditing suppressed for everything it does.
   ///
   /// For the trail's own persistence path only — see [TomAuditBypass].
-  static Future<T> runUnaudited<T>(Future<T> Function() body) => runZoned(
-    body,
-    zoneValues: const {TomAuditBypass: TomAuditBypass()},
-  );
+  static Future<T> runUnaudited<T>(Future<T> Function() body) =>
+      runZoned(body, zoneValues: const {TomAuditBypass: TomAuditBypass()});
 
   /// The audit policy for entity type [type], resolved from its `@TomAudited`
   /// annotation and cached.

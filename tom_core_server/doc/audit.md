@@ -13,6 +13,7 @@ remembering to ask.
 - [The Audit Record](#the-audit-record)
 - [The Chokepoints](#the-chokepoints)
 - [Declared Versus Automatic](#declared-versus-automatic)
+- [Reads Are Not Audited](#reads-are-not-audited)
 - [The `@TomAudited` Annotation](#the-tomaudited-annotation)
 - [Attribution](#attribution)
 - [Sinks, Persistence and Retention](#sinks-persistence-and-retention)
@@ -122,20 +123,44 @@ central design decision:
 | Repository mutation (`create` / `update` / `delete`) | **Audited automatically** | `@TomAudited(enabled: false)` on the entity |
 | Endpoint access denial | **Audited automatically, always** | not configurable |
 | Endpoint invocation (`execute`) | Not audited | `@TomAudited()` on the endpoint method |
-| Repository read | Not audited | `@TomAudited(includeReads: true)` on the entity |
+| Repository read | **Never audited** | not configurable — see [Reads Are Not Audited](#reads-are-not-audited) |
 
 The asymmetry is the point:
 
 - **Mutations are on by default** because forgetting to declare one is a silent
   gap in the record, and a gap is exactly what an audit trail exists to prevent.
   Opting out is a deliberate, visible act.
-- **Reads and invocations are off by default** because most of them are routine
-  traffic. A list endpoint over a thousand rows would otherwise write a thousand
-  entries saying nothing, and a trail nobody can read is a trail nobody audits.
-  Which reads matter is a domain judgement, so the domain declares it.
+- **Invocations are off by default** because most of them are routine traffic,
+  and a trail nobody can read is a trail nobody audits. Which calls matter is a
+  domain judgement, so the domain declares it.
 - **Denials are unconditional** because they are the entry an auditor looks for
   first, and a system that let a component opt out of recording its own refusals
   would be answering "was this attempted?" with silence.
+
+## Reads Are Not Audited
+
+No repository read produces a record, under any annotation. `findById`,
+`findAll` and `count` reach no audit code, and `TomAuditPolicy.audits` returns
+`false` for `TomAuditAction.read` whatever the entity declares.
+
+This is a decision, not a gap. A read chokepoint has to choose between one
+record per call and one per row, and neither is right: per call loses which
+rows were seen, which is the only thing a read trail is for; per row turns a
+thousand-row list into a thousand entries that say less than an access log.
+Fail-closed then puts that write in front of every read of the entity. Those
+are deployment judgements about latency and volume, and no framework default
+can make them.
+
+Two honest routes remain for a deployment that must record who looked:
+
+| Route | What it records | When it fits |
+| ----- | --------------- | ------------ |
+| `@TomAudited()` on the **endpoint** | An `execute` record with the actor, at the boundary where "who asked, for what" is unambiguous | The usual answer. Reach for it first. |
+| `TomAuditTrail.recordAction(action: TomAuditAction.read, …)` | Exactly what the caller says, with the target and key it chooses | Application code that knows which rows mattered and has made the volume decision itself |
+
+`recordAction` consults no entity policy, so the second route stays open
+regardless of the annotation — the caller who accepted the cost is the one who
+writes the entry.
 
 ## The `@TomAudited` Annotation
 
@@ -159,7 +184,6 @@ abstract class AdminApi {
 | Parameter | Meaning |
 | --------- | ------- |
 | `enabled` | `false` opts the type out entirely (default `true`) |
-| `includeReads` | `true` audits reads as well as mutations (default `false`) |
 | `redact` | Field names whose *values* never enter the trail |
 
 `redact` is not a column grade. A C-4 column grade hides a value from the

@@ -34,8 +34,14 @@ enum TomAuditAction {
   /// A record was destroyed (a repository `DELETE`).
   delete,
 
-  /// A record was read. Never automatic — see [TomAuditAction] usage in the
-  /// declared-versus-automatic split.
+  /// A record was read.
+  ///
+  /// The only action nothing in the framework produces. No repository read is
+  /// audited and no annotation makes one audited — a record with this action
+  /// exists because application code called `TomAuditTrail.recordAction` and
+  /// said so. The value stays in the enum precisely so that call has a
+  /// truthful category to use; see the `audit_trail` library comment for why
+  /// the framework declines to make the choice itself.
   read,
 
   /// An action was invoked that is not itself a record mutation — an endpoint

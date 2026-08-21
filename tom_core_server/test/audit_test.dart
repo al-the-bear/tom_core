@@ -208,7 +208,8 @@ void main() {
         detail: 'because',
       );
       final back = TomAuditRecord.fromJson(
-        (jsonDecode(jsonEncode(record.toJson())) as Map).cast<String, Object?>(),
+        (jsonDecode(jsonEncode(record.toJson())) as Map)
+            .cast<String, Object?>(),
       );
       expect(back.id, record.id);
       expect(back.timestamp, record.timestamp);
@@ -247,10 +248,7 @@ void main() {
       });
 
       test('an enum is normalised to its name', () {
-        final record = _record(
-          'r1',
-          before: {'action': TomAuditAction.delete},
-        );
+        final record = _record('r1', before: {'action': TomAuditAction.delete});
         expect(record.before['action'], 'delete');
       });
 
@@ -268,17 +266,20 @@ void main() {
         expect(() => jsonEncode(record.toJson()), returnsNormally);
       });
 
-      test('an arbitrary object falls back to toString rather than raising', () {
-        // Recording an approximation of a changed field beats refusing the
-        // mutation: the trail's job is to say *that* the field changed, and a
-        // throw here would make the framework delete the operation instead.
-        final record = _record(
-          'r1',
-          before: {'zone': TomZonedDate(year: 2026, month: 8, day: 2)},
-        );
-        expect(record.before['zone'], isA<String>());
-        expect(() => jsonEncode(record.toJson()), returnsNormally);
-      });
+      test(
+        'an arbitrary object falls back to toString rather than raising',
+        () {
+          // Recording an approximation of a changed field beats refusing the
+          // mutation: the trail's job is to say *that* the field changed, and a
+          // throw here would make the framework delete the operation instead.
+          final record = _record(
+            'r1',
+            before: {'zone': TomZonedDate(year: 2026, month: 8, day: 2)},
+          );
+          expect(record.before['zone'], isA<String>());
+          expect(() => jsonEncode(record.toJson()), returnsNormally);
+        },
+      );
 
       test('encodable values are left exactly as they are', () {
         // The normalisation must stay a conversion of the values `jsonEncode`
@@ -362,12 +363,28 @@ void main() {
       expect(policy.audits(TomAuditAction.read), isFalse);
     });
 
-    test('includeReads is the declared opt-in for reads', () {
-      final policy = TomAuditPolicy.from(
-        const TomAudited(includeReads: true),
+    test('no policy audits reads, whatever the annotation declares', () {
+      // There is no read opt-in, and the point of the test is that there is no
+      // way to construct one. `enabled: true` is the most permissive policy
+      // the annotation can express; it still refuses reads.
+      final policies = <TomAuditPolicy>[
+        TomAuditPolicy.defaultPolicy,
+        TomAuditPolicy.disabled,
+        TomAuditPolicy.from(const TomAudited()),
+        TomAuditPolicy.from(const TomAudited(enabled: true)),
+        TomAuditPolicy.from(const TomAudited(enabled: false)),
+        TomAuditPolicy.from(const TomAudited(redact: ['x'])),
+        const TomAuditPolicy(enabled: true, redact: {}),
+      ];
+      for (final policy in policies) {
+        expect(policy.audits(TomAuditAction.read), isFalse);
+      }
+      // Non-vacuity: the same permissive policies do audit a mutation, so the
+      // loop above is refusing reads specifically and not refusing everything.
+      expect(
+        TomAuditPolicy.from(const TomAudited()).audits(TomAuditAction.update),
+        isTrue,
       );
-      expect(policy.audits(TomAuditAction.read), isTrue);
-      expect(policy.audits(TomAuditAction.update), isTrue);
     });
 
     test('enabled: false is the declared opt-out, and covers everything', () {
@@ -406,7 +423,7 @@ void main() {
       // unreflectable must not be a way out of the trail.
       final policy = TomAuditTrail.policyFor(String);
       expect(policy.enabled, isTrue);
-      expect(policy.includeReads, isFalse);
+      expect(policy.audits(TomAuditAction.read), isFalse);
     });
   });
 
@@ -427,10 +444,10 @@ void main() {
       final policy = TomAuditTrail.policyFor(FixtureSecretRecord);
       expect(policy.enabled, isTrue);
       expect(policy.redact, {'secret'});
-      expect(
-        policy.applyRedaction({'label': 'x', 'secret': 'hunter2'}),
-        {'label': 'x', 'secret': tomAuditRedactedPlaceholder},
-      );
+      expect(policy.applyRedaction({'label': 'x', 'secret': 'hunter2'}), {
+        'label': 'x',
+        'secret': tomAuditRedactedPlaceholder,
+      });
     });
 
     test('a declared opt-out is read off the annotation', () {
@@ -441,8 +458,10 @@ void main() {
 
     test('the resolved policy is cached per type', () {
       final first = TomAuditTrail.policyFor(FixtureSecretRecord);
-      expect(identical(TomAuditTrail.policyFor(FixtureSecretRecord), first),
-          isTrue);
+      expect(
+        identical(TomAuditTrail.policyFor(FixtureSecretRecord), first),
+        isTrue,
+      );
       TomAuditTrail.resetPolicyCache();
       expect(TomAuditTrail.policyFor(FixtureSecretRecord).redact, {'secret'});
     });
@@ -476,7 +495,11 @@ void main() {
     });
 
     test('an unbroken chain verifies', () {
-      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final a = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 0,
+      );
       final b = TomAuditEntry.chain(_record('r2'), a.hash, index: 1);
       final c = TomAuditEntry.chain(_record('r3'), b.hash, index: 2);
       final result = verifyAuditChain([a, b, c]);
@@ -486,7 +509,11 @@ void main() {
     });
 
     test('editing an entry after the fact is detected as a content change', () {
-      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final a = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 0,
+      );
       final b = TomAuditEntry.chain(
         _record('r2', after: {'x': 1}),
         a.hash,
@@ -506,7 +533,11 @@ void main() {
     });
 
     test('removing an entry is detected as a broken link', () {
-      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final a = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 0,
+      );
       final b = TomAuditEntry.chain(_record('r2'), a.hash, index: 1);
       final c = TomAuditEntry.chain(_record('r3'), b.hash, index: 2);
       // Drop b and hope nobody notices.
@@ -520,7 +551,11 @@ void main() {
       // The index is not hashed, so it is the one field that can be rewritten
       // without breaking a digest. Left unchecked it would slide the window an
       // anchor is compared against.
-      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final a = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 0,
+      );
       final b = TomAuditEntry.chain(_record('r2'), a.hash, index: 1);
       final renumbered = TomAuditEntry(
         record: b.record,
@@ -535,7 +570,11 @@ void main() {
     });
 
     test('reordering two entries is detected', () {
-      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final a = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 0,
+      );
       final b = TomAuditEntry.chain(_record('r2'), a.hash, index: 1);
       expect(verifyAuditChain([b, a]).isValid, isFalse);
     });
@@ -570,8 +609,11 @@ void main() {
       expect(
         () => parseAuditLines(['{not json']),
         throwsA(
-          isA<TomAuditException>()
-              .having((e) => e.key, 'key', 'audit.parse.malformed_line'),
+          isA<TomAuditException>().having(
+            (e) => e.key,
+            'key',
+            'audit.parse.malformed_line',
+          ),
         ),
       );
     });
@@ -603,10 +645,15 @@ void main() {
       // guessed position is exactly what anchor verification is built on: it
       // would turn a truncated trail into a merely short one, which is the one
       // damage the chain exists to make visible.
-      final complete = jsonDecode(
-        TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 7)
-            .toJsonLine(),
-      ) as Map;
+      final complete =
+          jsonDecode(
+                TomAuditEntry.chain(
+                  _record('r1'),
+                  tomAuditGenesisHash,
+                  index: 7,
+                ).toJsonLine(),
+              )
+              as Map;
 
       for (final broken in <Object?>[null, '7', 7.5]) {
         final json = complete.cast<String, Object?>();
@@ -614,8 +661,11 @@ void main() {
         expect(
           () => TomAuditEntry.fromJson(json),
           throwsA(
-            isA<TomAuditException>()
-                .having((e) => e.key, 'key', 'audit.entry.missing_index'),
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.entry.missing_index',
+            ),
           ),
           reason: 'index: $broken',
         );
@@ -629,8 +679,11 @@ void main() {
       expect(
         () => parseAuditLines(['{"record":{},"hash":"h"}']),
         throwsA(
-          isA<TomAuditException>()
-              .having((e) => e.key, 'key', 'audit.parse.malformed_line'),
+          isA<TomAuditException>().having(
+            (e) => e.key,
+            'key',
+            'audit.parse.malformed_line',
+          ),
         ),
       );
     });
@@ -714,39 +767,45 @@ void main() {
       expect(sink.verify().isValid, isTrue);
     });
 
-    test('a reopened sink continues the chain instead of starting a new one', () async {
-      final first = TomFileAuditSink(directory: dir);
-      await first.write(_record('r1'));
-      final head = first.headHash;
-      first.close();
+    test(
+      'a reopened sink continues the chain instead of starting a new one',
+      () async {
+        final first = TomFileAuditSink(directory: dir);
+        await first.write(_record('r1'));
+        final head = first.headHash;
+        first.close();
 
-      final second = TomFileAuditSink(directory: dir);
-      addTearDown(second.close);
-      expect(second.headHash, head);
-      await second.write(_record('r2'));
-      expect(second.readAll().map((e) => e.record.id), ['r1', 'r2']);
-      expect(second.verify().isValid, isTrue);
-    });
+        final second = TomFileAuditSink(directory: dir);
+        addTearDown(second.close);
+        expect(second.headHash, head);
+        await second.write(_record('r2'));
+        expect(second.readAll().map((e) => e.record.id), ['r1', 'r2']);
+        expect(second.verify().isValid, isTrue);
+      },
+    );
 
-    test('count-based retention deletes whole files, keeping a valid suffix', () async {
-      final sink = TomFileAuditSink(
-        directory: dir,
-        maxFileBytes: 300,
-        maxFiles: 2,
-      );
-      addTearDown(sink.close);
-      for (var i = 1; i <= 6; i++) {
-        await sink.write(_record('r$i'));
-      }
-      expect(sink.files.length, lessThanOrEqualTo(2));
-      final surviving = sink.readAll();
-      expect(surviving, isNotEmpty);
-      // The prefix is gone by policy; what remains still verifies, and the
-      // missing head is visible as a non-genesis starting link.
-      expect(sink.verify().isValid, isTrue);
-      expect(surviving.first.previousHash, isNot(tomAuditGenesisHash));
-      expect(surviving.last.record.id, 'r6');
-    });
+    test(
+      'count-based retention deletes whole files, keeping a valid suffix',
+      () async {
+        final sink = TomFileAuditSink(
+          directory: dir,
+          maxFileBytes: 300,
+          maxFiles: 2,
+        );
+        addTearDown(sink.close);
+        for (var i = 1; i <= 6; i++) {
+          await sink.write(_record('r$i'));
+        }
+        expect(sink.files.length, lessThanOrEqualTo(2));
+        final surviving = sink.readAll();
+        expect(surviving, isNotEmpty);
+        // The prefix is gone by policy; what remains still verifies, and the
+        // missing head is visible as a non-genesis starting link.
+        expect(sink.verify().isValid, isTrue);
+        expect(surviving.first.previousHash, isNot(tomAuditGenesisHash));
+        expect(surviving.last.record.id, 'r6');
+      },
+    );
 
     test('age-based retention removes files older than the window', () async {
       final sink = TomFileAuditSink(
@@ -759,24 +818,27 @@ void main() {
       await sink.write(_record('r2'));
       // Make the rotated file look old, then trigger another rotation pass.
       for (final file in sink.files) {
-        file.setLastModifiedSync(DateTime.now().subtract(
-          const Duration(days: 2),
-        ));
+        file.setLastModifiedSync(
+          DateTime.now().subtract(const Duration(days: 2)),
+        );
       }
       await sink.write(_record('r3'));
       await sink.write(_record('r4'));
       expect(sink.readAll().map((e) => e.record.id), isNot(contains('r1')));
     });
 
-    test('a closed sink refuses further records rather than dropping them', () async {
-      final sink = TomFileAuditSink(directory: dir);
-      await sink.write(_record('r1'));
-      sink.close();
-      expect(
-        () => sink.write(_record('r2')),
-        throwsA(isA<TomAuditException>()),
-      );
-    });
+    test(
+      'a closed sink refuses further records rather than dropping them',
+      () async {
+        final sink = TomFileAuditSink(directory: dir);
+        await sink.write(_record('r1'));
+        sink.close();
+        expect(
+          () => sink.write(_record('r2')),
+          throwsA(isA<TomAuditException>()),
+        );
+      },
+    );
 
     test('concurrent writes still produce a verifiable chain', () async {
       final sink = TomFileAuditSink(directory: dir);
@@ -839,8 +901,11 @@ void main() {
     test('recordMutation consults the type policy before writing', () async {
       final sink = TomMemoryAuditSink();
       TomAuditTrail.install(sink);
-      // String has no @TomAudited, so it gets the default policy: mutations
-      // are recorded, reads are not.
+      // String has no @TomAudited, so it gets the default policy — but the
+      // read below is dropped for a stronger reason than the default: no
+      // policy audits reads, so nothing reaching this gate with `read` is ever
+      // written. The sanctioned route past it is `recordAction`, which the
+      // next test exercises.
       await TomAuditTrail.recordMutation(
         entityType: String,
         action: TomAuditAction.update,
@@ -861,6 +926,28 @@ void main() {
       expect(record.targetKey, '7');
       expect(record.before, {'title': 'old'});
       expect(record.after, {'title': 'new'});
+    });
+
+    test('recordAction is the way a read reaches the trail', () async {
+      // The counterpart to the previous test. `audits(read)` being permanently
+      // false closes the automatic path, and the documentation promises this
+      // one stays open in exchange — an application that has decided what a
+      // read entry should say can still write it, because `recordAction`
+      // consults no entity policy at all.
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      await TomAuditTrail.recordAction(
+        action: TomAuditAction.read,
+        target: 'Patient',
+        targetKey: '7',
+        outcome: TomAuditOutcome.succeeded,
+        detail: 'case review',
+      );
+      final record = sink.records.single;
+      expect(record.action, TomAuditAction.read);
+      expect(record.target, 'Patient');
+      expect(record.targetKey, '7');
+      expect(record.detail, 'case review');
     });
 
     test('runUnaudited suppresses records inside its body only', () async {
