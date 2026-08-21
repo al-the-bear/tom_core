@@ -2351,6 +2351,28 @@ void main() {
       },
     );
 
+    // The counterpart to the test above, and the reason the login path keeps
+    // three outcomes rather than two: with no store installed there is nothing
+    // that *could* have recorded an enrolment, so the user is challenged on the
+    // policy's first choice. Reading that as "none enrolled" would push every
+    // deployment that never opted into the store through enrolment instead.
+    test('no store installed is a challenge, not an offer to enrol', () async {
+      // Drop the store this group installs; the policy has to be re-installed
+      // because resetting the context clears both.
+      TomBean.resetBeanContext();
+      policy(Tom2FARequirement.required);
+      expect(Tom2FAEnrolmentStore.resolve(), isNull, reason: 'premise');
+
+      final result = await server.authenticatePass1(_message());
+
+      expect(result.error, isEmpty);
+      expect(result.requires2FA, isTrue);
+      expect(result.requires2FAEnrolment, isFalse);
+      expect(result.twoFactorType, 'app');
+      expect(enrollable.issued, 1);
+      expect(enrollable.begun, 0);
+    });
+
     // A mechanism the policy permits but which cannot be set up here is not an
     // offer — advertising it would produce a chooser entry that fails the
     // moment it is picked.

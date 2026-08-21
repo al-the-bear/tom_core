@@ -509,9 +509,13 @@ class TomAuthenticationServer {
     // policy's first choice, so a user with several factors is challenged for
     // the one they nominated rather than for whichever the policy happens to
     // list first.
-    final type = enrolled == null || enrolled.isEmpty
-        ? offerable.first
-        : _primaryOf(enrolled).type;
+    //
+    // Only two of the three outcomes reach this line: empty returned above, so
+    // `null` here means *no store installed* and nothing else. That is what
+    // makes the fallback legitimate — a deployment that tracks no enrolments
+    // has no nomination to honour, so the policy's first choice is the only
+    // answer available. It is not a stand-in for "this user has none".
+    final type = enrolled == null ? offerable.first : _primaryOf(enrolled).type;
     // Non-null by construction: `offerable` is the intersection with the
     // registry's own keys, and `enrolled` was filtered against it.
     final adaptor = Tom2FARegistry.lookup(type)!;
