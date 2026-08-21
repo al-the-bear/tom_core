@@ -60,16 +60,21 @@ int? _versionOf(String basename) {
 
 /// Every migration basename in [directory].
 List<String> _basenames(String directory) =>
-    Directory(directory).listSync().whereType<File>().map((file) {
-      return file.uri.pathSegments.last;
-    }).where((name) => name.endsWith('.sql')).toList()
+    Directory(directory)
+        .listSync()
+        .whereType<File>()
+        .map((file) {
+          return file.uri.pathSegments.last;
+        })
+        .where((name) => name.endsWith('.sql'))
+        .toList()
       ..sort();
 
 /// Every version number contributed by [directory].
 List<int> _versions(String directory) => [
-      for (final name in _basenames(directory))
-        if (_versionOf(name) case final version?) version,
-    ];
+  for (final name in _basenames(directory))
+    if (_versionOf(name) case final version?) version,
+];
 
 void main() {
   group('two packages, one chain, no collision', () {
@@ -83,7 +88,8 @@ void main() {
       expect(
         ops.intersection(app),
         isEmpty,
-        reason: 'app_db/app_schema versions collide: the engine would record '
+        reason:
+            'app_db/app_schema versions collide: the engine would record '
             'the number as applied and silently never run the second file. '
             'One of the two packages has numbered outside its band — the '
             'app server owns [000]-[099], this package [$_opsBandFloor] and up',
@@ -99,7 +105,8 @@ void main() {
         expect(
           version,
           greaterThanOrEqualTo(_opsBandFloor),
-          reason: 'this package owns [$_opsBandFloor] and up; '
+          reason:
+              'this package owns [$_opsBandFloor] and up; '
               '[$version] is in the app server\'s band',
         );
       }
@@ -113,7 +120,8 @@ void main() {
         expect(
           version,
           lessThan(_opsBandFloor),
-          reason: 'the app server has numbered into the ops band: '
+          reason:
+              'the app server has numbered into the ops band: '
               '[$version] >= [$_opsBandFloor]. The bands exist so neither '
               'package has to know what the other has used — widen them '
               'deliberately or renumber, but do not overlap',
@@ -131,14 +139,16 @@ void main() {
       expect(_basenames(_appSchemaDir), isNotEmpty);
     });
 
-    test('the datasource and schema folders are the ones the engine matches on',
-        () {
-      // `<datasource>/<schema>` is the whole matching rule, so a renamed folder
-      // is a chain that quietly applies to nothing.
-      expect(Directory(_opsSchemaDir).existsSync(), isTrue);
-      expect(_opsSchemaDir, contains('app_db/app_schema'));
-      expect(_appSchemaDir, contains('app_db/app_schema'));
-    });
+    test(
+      'the datasource and schema folders are the ones the engine matches on',
+      () {
+        // `<datasource>/<schema>` is the whole matching rule, so a renamed folder
+        // is a chain that quietly applies to nothing.
+        expect(Directory(_opsSchemaDir).existsSync(), isTrue);
+        expect(_opsSchemaDir, contains('app_db/app_schema'));
+        expect(_appSchemaDir, contains('app_db/app_schema'));
+      },
+    );
 
     test('this package adds no second chain', () {
       // The sample's promise: no new database. A folder for another datasource

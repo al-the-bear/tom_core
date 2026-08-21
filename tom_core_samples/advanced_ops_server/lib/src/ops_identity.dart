@@ -121,9 +121,7 @@ final TomPrincipal opsServiceAccount = TomPrincipal(
 /// The deployment's own principal — the second operand of the meet.
 final TomPrincipal opsDeploymentPrincipal = TomPrincipal(
   user: TomUser(id: opsServiceUserId, username: 'advanced_ops_server'),
-  aci: TomAccessControlInformation(
-    entitlements: opsDeploymentEntitlements,
-  ),
+  aci: TomAccessControlInformation(entitlements: opsDeploymentEntitlements),
   authenticated: true,
 );
 
@@ -236,8 +234,5 @@ void installOpsDeploymentPrincipal() =>
 ///    they are forty unrelated deletions.
 Future<T> runAsOpsService<T>(Future<T> Function() body) => runZoned(
   body,
-  zoneValues: {
-    TomPrincipal: opsServiceAccount,
-    TomRequestId: TomRequestId(),
-  },
+  zoneValues: {TomPrincipal: opsServiceAccount, TomRequestId: TomRequestId()},
 );

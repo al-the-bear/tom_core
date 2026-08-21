@@ -33,26 +33,27 @@ OpsDigestSummary _summary(
   int open = 3,
   int overdue = 1,
   TomTextLocale? locale,
-}) =>
-    OpsDigestSummary(
-      userId: userId,
-      displayName: 'User $userId',
-      emailAddress: email,
-      openCount: open,
-      overdueCount: overdue,
-      locale: locale,
-    );
+}) => OpsDigestSummary(
+  userId: userId,
+  displayName: 'User $userId',
+  emailAddress: email,
+  openCount: open,
+  overdueCount: overdue,
+  locale: locale,
+);
 
 /// A digest pass over [outbox], rendering from the shipped `assets/text_*.yaml`.
 ///
 /// The real bundles rather than fixtures: the claim under test is that the
 /// digest sends what this deployment actually ships, and a fixture bundle would
 /// let a broken asset pass every test in the file.
-OpsDigestService _service(OpsDigestAudience audience, TomMessageOutbox outbox) =>
-    OpsDigestService(
-      audience: audience,
-      email: TomEmailService(outbox: outbox, texts: OpsTexts.resources()),
-    );
+OpsDigestService _service(
+  OpsDigestAudience audience,
+  TomMessageOutbox outbox,
+) => OpsDigestService(
+  audience: audience,
+  email: TomEmailService(outbox: outbox, texts: OpsTexts.resources()),
+);
 
 /// An item due at [due], assigned to nobody in particular.
 ItemRecord _item({DateTime? due}) => ItemRecord()
@@ -117,60 +118,63 @@ void main() {
     });
 
     test(
-        'a transport that fails once redelivers without recomposing the digest',
-        () async {
-      final audience = _FakeAudience([_summary(1)]);
-      final service = _service(audience, outbox);
-      transport.failNext = TomDeliveryException.transient(
-        'smtp',
-        'greylisted',
-      );
+      'a transport that fails once redelivers without recomposing the digest',
+      () async {
+        final audience = _FakeAudience([_summary(1)]);
+        final service = _service(audience, outbox);
+        transport.failNext = TomDeliveryException.transient(
+          'smtp',
+          'greylisted',
+        );
 
-      await runAsOpsService(
-        () => service.queueDigests(DateTime.utc(2026, 8, 2)),
-      );
-      await outbox.tick();
-      await pumpEventQueue();
-      // First attempt refused: nothing delivered, and the queue is holding the
-      // message rather than the job having failed.
-      expect(transport.count, 0);
+        await runAsOpsService(
+          () => service.queueDigests(DateTime.utc(2026, 8, 2)),
+        );
+        await outbox.tick();
+        await pumpEventQueue();
+        // First attempt refused: nothing delivered, and the queue is holding the
+        // message rather than the job having failed.
+        expect(transport.count, 0);
 
-      // The backoff belongs to the outbox's own retry policy, so advancing the
-      // clock is what makes the queued run due again — no second pass, no
-      // second composition.
-      clock.advance(const Duration(minutes: 2));
-      await outbox.tick();
-      await pumpEventQueue();
+        // The backoff belongs to the outbox's own retry policy, so advancing the
+        // clock is what makes the queued run due again — no second pass, no
+        // second composition.
+        clock.advance(const Duration(minutes: 2));
+        await outbox.tick();
+        await pumpEventQueue();
 
-      expect(transport.count, 1);
-      // The heart of it: the audience was read once. A second read would mean
-      // the digest had been rebuilt, and `TomRetryPolicy.none` on the job would
-      // be a mistake rather than a decision.
-      expect(audience.calls, 1);
-    });
+        expect(transport.count, 1);
+        // The heart of it: the audience was read once. A second read would mean
+        // the digest had been rebuilt, and `TomRetryPolicy.none` on the job would
+        // be a mistake rather than a decision.
+        expect(audience.calls, 1);
+      },
+    );
 
-    test('the message the second attempt sends is the one the first built',
-        () async {
-      final audience = _FakeAudience([_summary(1)]);
-      final service = _service(audience, outbox);
-      transport.failNext = TomDeliveryException.transient('smtp', 'busy');
+    test(
+      'the message the second attempt sends is the one the first built',
+      () async {
+        final audience = _FakeAudience([_summary(1)]);
+        final service = _service(audience, outbox);
+        transport.failNext = TomDeliveryException.transient('smtp', 'busy');
 
-      await runAsOpsService(
-        () => service.queueDigests(DateTime.utc(2026, 8, 2)),
-      );
-      await outbox.tick();
-      await pumpEventQueue();
-      clock.advance(const Duration(minutes: 2));
-      await outbox.tick();
-      await pumpEventQueue();
+        await runAsOpsService(
+          () => service.queueDigests(DateTime.utc(2026, 8, 2)),
+        );
+        await outbox.tick();
+        await pumpEventQueue();
+        clock.advance(const Duration(minutes: 2));
+        await outbox.tick();
+        await pumpEventQueue();
 
-      // Identity, not equivalence: the id is the queue key, so a delivered
-      // message carrying the composed id is the composed message.
-      expect(
-        transport.last?.id,
-        OpsDigestService.messageIdFor(1, DateTime.utc(2026, 8, 2)),
-      );
-    });
+        // Identity, not equivalence: the id is the queue key, so a delivered
+        // message carrying the composed id is the composed message.
+        expect(
+          transport.last?.id,
+          OpsDigestService.messageIdFor(1, DateTime.utc(2026, 8, 2)),
+        );
+      },
+    );
 
     test('recomposing the same window replaces the queued run rather than '
         'adding one', () async {
@@ -193,12 +197,8 @@ void main() {
       expect(transport.count, 1);
     });
 
-    test('a person without an address is skipped, not queued to fail',
-        () async {
-      final audience = _FakeAudience([
-        _summary(1),
-        _summary(2, email: '   '),
-      ]);
+    test('a person without an address is skipped, not queued to fail', () async {
+      final audience = _FakeAudience([_summary(1), _summary(2, email: '   ')]);
       final service = _service(audience, outbox);
 
       final report = await runAsOpsService(
@@ -248,25 +248,27 @@ void main() {
       expect(sink.records, isEmpty);
     });
 
-    test('a deployment without the digest grant never reads the audience',
-        () async {
-      TomServerPrincipal.clear();
-      TomServerPrincipal.install(
-        TomPrincipal(
-          user: TomUser(id: 7, username: 'unlicensed-deployment'),
-          aci: TomAccessControlInformation(entitlements: const []),
-          authenticated: true,
-        ),
-      );
-      final audience = _FakeAudience([_summary(1)]);
-      final service = _service(audience, outbox);
+    test(
+      'a deployment without the digest grant never reads the audience',
+      () async {
+        TomServerPrincipal.clear();
+        TomServerPrincipal.install(
+          TomPrincipal(
+            user: TomUser(id: 7, username: 'unlicensed-deployment'),
+            aci: TomAccessControlInformation(entitlements: const []),
+            authenticated: true,
+          ),
+        );
+        final audience = _FakeAudience([_summary(1)]);
+        final service = _service(audience, outbox);
 
-      await expectLater(
-        runAsOpsService(() => service.queueDigests(DateTime.utc(2026, 8, 2))),
-        throwsA(isA<TomPermanentJobFailure>()),
-      );
-      expect(audience.calls, 0);
-    });
+        await expectLater(
+          runAsOpsService(() => service.queueDigests(DateTime.utc(2026, 8, 2))),
+          throwsA(isA<TomPermanentJobFailure>()),
+        );
+        expect(audience.calls, 0);
+      },
+    );
   });
 
   group('the id is what makes a re-run idempotent', () {
@@ -302,10 +304,7 @@ void main() {
 
     test('the id is derived from the UTC day, not the host zone', () {
       final local = DateTime.utc(2026, 8, 2, 12).toLocal();
-      expect(
-        OpsDigestService.messageIdFor(1, local),
-        'digest-20260802-1',
-      );
+      expect(OpsDigestService.messageIdFor(1, local), 'digest-20260802-1');
     });
   });
 
@@ -395,13 +394,18 @@ void main() {
         _summary(1, overdue: 0),
         DateTime.utc(2026, 8, 2),
       );
-      expect(withOverdue.textBody?.content, contains('2 of them are past their due date'));
-      expect(withoutOverdue.textBody?.content, isNot(contains('past their due date')));
+      expect(
+        withOverdue.textBody?.content,
+        contains('2 of them are past their due date'),
+      );
+      expect(
+        withoutOverdue.textBody?.content,
+        isNot(contains('past their due date')),
+      );
     });
 
     test('says who sent it', () {
-      final message =
-          service.composeFor(_summary(1), DateTime.utc(2026, 8, 2));
+      final message = service.composeFor(_summary(1), DateTime.utc(2026, 8, 2));
       // Attribution in the body as well as the trail: the recipient of an
       // unexpected 06:00 mail should be able to tell what produced it.
       expect(message.textBody?.content, contains(opsServiceUsername));
@@ -421,7 +425,9 @@ void main() {
       );
       expect(withNext.textBody?.content, contains('falls due on 2026-08-09'));
       expect(
-        service.composeFor(_summary(1), DateTime.utc(2026, 8, 2)).textBody
+        service
+            .composeFor(_summary(1), DateTime.utc(2026, 8, 2))
+            .textBody
             ?.content,
         isNot(contains('falls due')),
       );
@@ -450,27 +456,29 @@ void main() {
       expect(english.textBody?.content, contains('Good morning'));
     });
 
-    test('a template the bundles do not carry fails before it is queued',
-        () async {
-      final service = OpsDigestService(
-        audience: _FakeAudience(const []),
-        email: TomEmailService(
-          outbox: outbox,
-          // An empty bundle set: what a deployment that forgot its assets has.
-          texts: TomLocalizedTextResources(
-            bundles: const {'en': {}},
-            defaultLocale: TomTextLocale('en'),
+    test(
+      'a template the bundles do not carry fails before it is queued',
+      () async {
+        final service = OpsDigestService(
+          audience: _FakeAudience(const []),
+          email: TomEmailService(
+            outbox: outbox,
+            // An empty bundle set: what a deployment that forgot its assets has.
+            texts: TomLocalizedTextResources(
+              bundles: const {'en': {}},
+              defaultLocale: TomTextLocale('en'),
+            ),
           ),
-        ),
-      );
+        );
 
-      // Loudly, and with nothing on the queue — a digest with a blank subject
-      // that was *delivered* cannot be taken back.
-      expect(
-        () => service.composeFor(_summary(1), DateTime.utc(2026, 8, 2)),
-        throwsA(isA<TomMessagingException>()),
-      );
-    });
+        // Loudly, and with nothing on the queue — a digest with a blank subject
+        // that was *delivered* cannot be taken back.
+        expect(
+          () => service.composeFor(_summary(1), DateTime.utc(2026, 8, 2)),
+          throwsA(isA<TomMessagingException>()),
+        );
+      },
+    );
   });
 
   group('the shipped text bundles', () {

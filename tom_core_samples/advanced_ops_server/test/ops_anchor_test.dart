@@ -24,8 +24,12 @@ import 'package:tom_core_server/tom_core_server.dart';
 import '../bin/ops_server_start.reflection.dart' show initializeReflection;
 
 /// The publisher over two in-memory ends.
-({OpsAnchoring anchoring, TomMemoryAuditAnchorStore store, TomMemoryAuditSink
-    sink}) _arrangement({Duration interval = const Duration(hours: 1)}) {
+({
+  OpsAnchoring anchoring,
+  TomMemoryAuditAnchorStore store,
+  TomMemoryAuditSink sink,
+})
+_arrangement({Duration interval = const Duration(hours: 1)}) {
   final sink = TomMemoryAuditSink();
   final store = TomMemoryAuditAnchorStore();
   return (
@@ -62,10 +66,11 @@ void main() {
       // Named rather than counted, so the failure message says *which* job
       // appeared — a bare `hasLength(3)` would report a number and leave the
       // reader to work out what it means.
-      expect(
-        discovered.map((job) => job.name).toSet(),
-        {opsPurgeJobName, opsReportJobName, opsDigestJobName},
-      );
+      expect(discovered.map((job) => job.name).toSet(), {
+        opsPurgeJobName,
+        opsReportJobName,
+        opsDigestJobName,
+      });
     });
 
     test('no declared job mentions anchoring', () {
@@ -97,22 +102,24 @@ void main() {
       expect(await arrangement.store.read(opsAuditWriter), hasLength(1));
     });
 
-    test('a second publication over an unchanged head is still recorded',
-        () async {
-      final arrangement = _arrangement();
-      addTearDown(arrangement.anchoring.close);
+    test(
+      'a second publication over an unchanged head is still recorded',
+      () async {
+        final arrangement = _arrangement();
+        addTearDown(arrangement.anchoring.close);
 
-      final first = await arrangement.anchoring.publishNow();
-      final second = await arrangement.anchoring.publishNow();
+        final first = await arrangement.anchoring.publishNow();
+        final second = await arrangement.anchoring.publishNow();
 
-      // Not redundant: an anchor over an unchanged head says *the head was
-      // still this at time T*, which is what bounds the window a later
-      // divergence could have happened in. Suppressing it would discard exactly
-      // that evidence to save a couple of megabytes a year.
-      expect(arrangement.store.anchors, hasLength(2));
-      expect(second.headHash, first.headHash);
-      expect(second.entryCount, first.entryCount);
-    });
+        // Not redundant: an anchor over an unchanged head says *the head was
+        // still this at time T*, which is what bounds the window a later
+        // divergence could have happened in. Suppressing it would discard exactly
+        // that evidence to save a couple of megabytes a year.
+        expect(arrangement.store.anchors, hasLength(2));
+        expect(second.headHash, first.headHash);
+        expect(second.entryCount, first.entryCount);
+      },
+    );
 
     test('the anchor moves with the trail', () async {
       final arrangement = _arrangement();
@@ -173,48 +180,52 @@ void main() {
       expect(arrangement.store.anchors, hasLength(1));
     });
 
-    test('the refusal is attributed to the service account, not SYSTEM',
-        () async {
-      final sink = TomMemoryAuditSink();
-      TomAuditTrail.install(sink);
-      TomServerPrincipal.clear();
-      TomServerPrincipal.install(
-        TomPrincipal(
-          user: TomUser(id: 7, username: 'unlicensed-deployment'),
-          aci: TomAccessControlInformation(entitlements: const []),
-          authenticated: true,
-        ),
-      );
-      final arrangement = _arrangement();
-      addTearDown(arrangement.anchoring.close);
+    test(
+      'the refusal is attributed to the service account, not SYSTEM',
+      () async {
+        final sink = TomMemoryAuditSink();
+        TomAuditTrail.install(sink);
+        TomServerPrincipal.clear();
+        TomServerPrincipal.install(
+          TomPrincipal(
+            user: TomUser(id: 7, username: 'unlicensed-deployment'),
+            aci: TomAccessControlInformation(entitlements: const []),
+            authenticated: true,
+          ),
+        );
+        final arrangement = _arrangement();
+        addTearDown(arrangement.anchoring.close);
 
-      try {
-        await arrangement.anchoring.start();
-      } on TomPermanentJobFailure {
-        // Asserted above; the interest here is the record.
-      }
+        try {
+          await arrangement.anchoring.start();
+        } on TomPermanentJobFailure {
+          // Asserted above; the interest here is the record.
+        }
 
-      // `SYSTEM` would mean the gate ran outside the ops zone — the same defect
-      // a job body that forgot `runAsOpsService` would have.
-      expect(sink.records.single.actor.username, opsServiceUsername);
-      expect(sink.records.single.target, 'OpsAuditAnchor');
-    });
+        // `SYSTEM` would mean the gate ran outside the ops zone — the same defect
+        // a job body that forgot `runAsOpsService` would have.
+        expect(sink.records.single.actor.username, opsServiceUsername);
+        expect(sink.records.single.target, 'OpsAuditAnchor');
+      },
+    );
   });
 
   group('the arrangement describes itself honestly', () {
-    test('a directory this server can reach is called a copy, not an anchor',
-        () {
-      final anchoring = _arrangement().anchoring;
-      addTearDown(anchoring.close);
+    test(
+      'a directory this server can reach is called a copy, not an anchor',
+      () {
+        final anchoring = _arrangement().anchoring;
+        addTearDown(anchoring.close);
 
-      // The honest default. An anchor is only worth the store's independence
-      // from the process it attests to, and a path handed in by configuration
-      // is not known to have it.
-      expect(anchoring.independentOfServer, isFalse);
-      expect(anchoring.describe(), contains('NOT declared independent'));
-      expect(anchoring.describe(), contains('a copy, not an anchor'));
-      expect(anchoring.describe(), contains(opsAuditWriter));
-    });
+        // The honest default. An anchor is only worth the store's independence
+        // from the process it attests to, and a path handed in by configuration
+        // is not known to have it.
+        expect(anchoring.independentOfServer, isFalse);
+        expect(anchoring.describe(), contains('NOT declared independent'));
+        expect(anchoring.describe(), contains('a copy, not an anchor'));
+        expect(anchoring.describe(), contains(opsAuditWriter));
+      },
+    );
 
     test('a deployment that asserts independence is described as anchored', () {
       final sink = TomMemoryAuditSink();

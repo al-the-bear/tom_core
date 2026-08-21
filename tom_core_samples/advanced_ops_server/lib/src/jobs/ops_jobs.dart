@@ -124,8 +124,9 @@ class OpsPurgeJob extends TomJobBase {
   timeout: Duration(minutes: 15),
 )
 class OpsReportJob extends TomJobBase {
-  final TomBean<OpsReportService> _service =
-      TomBean<OpsReportService>.fromName(opsReportServiceBean);
+  final TomBean<OpsReportService> _service = TomBean<OpsReportService>.fromName(
+    opsReportServiceBean,
+  );
 
   @override
   Future<Object?> execute() => runAsOpsService(() async {
@@ -159,8 +160,9 @@ class OpsReportJob extends TomJobBase {
   missedWindow: TomMissedWindowPolicy.skip,
 )
 class OpsDigestJob extends TomJobBase {
-  final TomBean<OpsDigestService> _service =
-      TomBean<OpsDigestService>.fromName(opsDigestServiceBean);
+  final TomBean<OpsDigestService> _service = TomBean<OpsDigestService>.fromName(
+    opsDigestServiceBean,
+  );
 
   @override
   Future<Object?> execute() => runAsOpsService(() async {

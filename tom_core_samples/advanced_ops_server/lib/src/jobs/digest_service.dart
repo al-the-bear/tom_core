@@ -74,9 +74,9 @@ import 'retention_service.dart';
 /// list of open states — silently *excludes* anything new, and a digest that
 /// under-reports is worse than one that over-reports: nobody notices work that
 /// was never mentioned.
-final Set<TodoStatus> openStatuses = TodoStatus.values
-    .toSet()
-    .difference(retainableTerminalStatuses);
+final Set<TodoStatus> openStatuses = TodoStatus.values.toSet().difference(
+  retainableTerminalStatuses,
+);
 
 /// One person's outstanding work, as the digest reports it.
 class OpsDigestSummary {
@@ -375,7 +375,9 @@ class OpsDigestService {
       templateKey: opsDigestTemplateKey,
       messageId: messageIdFor(summary.userId, window),
       from: sender,
-      to: [TomRecipient(summary.emailAddress, displayName: summary.displayName)],
+      to: [
+        TomRecipient(summary.emailAddress, displayName: summary.displayName),
+      ],
       locale: locale,
       parameters: {
         'product': productName,

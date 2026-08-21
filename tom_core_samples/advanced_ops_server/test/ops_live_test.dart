@@ -79,7 +79,9 @@ Future<void> _bootstrap() async {
   initializeRuntime();
   initializeServerResources();
   try {
-    await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
+    await TomDataSourceInfo.initializeDatasourceInfo(
+      datasourceLoaderFunction(),
+    );
     await TomBlobStoreInfo.initializeBlobStores(blobStoreLoaderFunction());
     registerAppDataScopes();
     registerAppColumnGrades();
@@ -156,65 +158,71 @@ void main() {
       TomServerPrincipal.clear();
     });
 
-    test('the pass destroys the seeded rows and the trail holds each one',
-        () async {
-      if (_unavailable()) return;
-      final service = OpsRetentionService(
-        store: const RepositoryRetentionStore(),
-        retention: const Duration(days: 1),
-      );
-
-      final report = await runAsOpsService(
-        () => service.purgeExpired(DateTime.utc(2026, 8, 2)),
-      );
-
-      expect(report.deleted, greaterThanOrEqualTo(3));
-
-      // The claim the connection-free suite cannot reach: the delete the loop
-      // issued produced an audit record, because it went through the repository
-      // chokepoint rather than around it.
-      final deletes = sink.records
-          .where((record) => record.action == TomAuditAction.delete)
-          .toList();
-      expect(deletes.length, report.deleted);
-      final titles = seeded.map((item) => item.title).toSet();
-      final recordedKeys =
-          deletes.map((record) => record.targetKey).whereType<String>().toSet();
-      for (final item in seeded) {
-        expect(
-          recordedKeys,
-          contains(item.id.toString()),
-          reason: 'no audit record names the row deleted for ${item.title}',
+    test(
+      'the pass destroys the seeded rows and the trail holds each one',
+      () async {
+        if (_unavailable()) return;
+        final service = OpsRetentionService(
+          store: const RepositoryRetentionStore(),
+          retention: const Duration(days: 1),
         );
-      }
-      expect(titles, hasLength(3));
-    });
 
-    test('each record carries the before-image a bulk delete could not',
-        () async {
-      if (_unavailable()) return;
-      final service = OpsRetentionService(
-        store: const RepositoryRetentionStore(),
-        retention: const Duration(days: 1),
-      );
+        final report = await runAsOpsService(
+          () => service.purgeExpired(DateTime.utc(2026, 8, 2)),
+        );
 
-      await runAsOpsService(
-        () => service.purgeExpired(DateTime.utc(2026, 8, 2)),
-      );
+        expect(report.deleted, greaterThanOrEqualTo(3));
 
-      final deletes = sink.records
-          .where((record) => record.action == TomAuditAction.delete)
-          .toList();
-      expect(deletes, isNotEmpty);
-      // The before-image is the whole reason the pass is row-by-row. A record
-      // without one names a row that is gone and says nothing about what it
-      // held — which is a log line, not an audit record.
-      expect(deletes.first.before, isNotEmpty);
-      expect(deletes.first.before['title'], startsWith('ops-live-'));
-      // A delete has no after-image; an empty map rather than null, because
-      // `TomAuditRecord` normalises both images to maps.
-      expect(deletes.first.after, isEmpty);
-    });
+        // The claim the connection-free suite cannot reach: the delete the loop
+        // issued produced an audit record, because it went through the repository
+        // chokepoint rather than around it.
+        final deletes = sink.records
+            .where((record) => record.action == TomAuditAction.delete)
+            .toList();
+        expect(deletes.length, report.deleted);
+        final titles = seeded.map((item) => item.title).toSet();
+        final recordedKeys = deletes
+            .map((record) => record.targetKey)
+            .whereType<String>()
+            .toSet();
+        for (final item in seeded) {
+          expect(
+            recordedKeys,
+            contains(item.id.toString()),
+            reason: 'no audit record names the row deleted for ${item.title}',
+          );
+        }
+        expect(titles, hasLength(3));
+      },
+    );
+
+    test(
+      'each record carries the before-image a bulk delete could not',
+      () async {
+        if (_unavailable()) return;
+        final service = OpsRetentionService(
+          store: const RepositoryRetentionStore(),
+          retention: const Duration(days: 1),
+        );
+
+        await runAsOpsService(
+          () => service.purgeExpired(DateTime.utc(2026, 8, 2)),
+        );
+
+        final deletes = sink.records
+            .where((record) => record.action == TomAuditAction.delete)
+            .toList();
+        expect(deletes, isNotEmpty);
+        // The before-image is the whole reason the pass is row-by-row. A record
+        // without one names a row that is gone and says nothing about what it
+        // held — which is a log line, not an audit record.
+        expect(deletes.first.before, isNotEmpty);
+        expect(deletes.first.before['title'], startsWith('ops-live-'));
+        // A delete has no after-image; an empty map rather than null, because
+        // `TomAuditRecord` normalises both images to maps.
+        expect(deletes.first.after, isEmpty);
+      },
+    );
 
     test('the deletes are attributed to the ops service account', () async {
       if (_unavailable()) return;
@@ -227,8 +235,9 @@ void main() {
         () => service.purgeExpired(DateTime.utc(2026, 8, 2)),
       );
 
-      final deletes = sink.records
-          .where((record) => record.action == TomAuditAction.delete);
+      final deletes = sink.records.where(
+        (record) => record.action == TomAuditAction.delete,
+      );
       // `SYSTEM` here would mean the row was destroyed by nobody in
       // particular — the outcome for a job body that forgot `runAsOpsService`,
       // and the one that makes a trail unanswerable afterwards.
@@ -261,7 +270,8 @@ void main() {
       expect(
         scoped.length,
         lessThan(unscoped.length),
-        reason: 'a scoped pass would report a clean, successful, entirely '
+        reason:
+            'a scoped pass would report a clean, successful, entirely '
             'fictional retention run',
       );
     });
@@ -315,29 +325,32 @@ void main() {
     });
   });
 
-  group('the framework tables the migration created are the ones it addresses',
-      () {
-    test('the scheduler can plan, claim and complete a run', () async {
-      if (_unavailable()) return;
-      final datasource =
-          TomDataSourceInfo.getDataSourceInfo('app_db')!.datasource;
-      final store = TomSqlJobStore(datasource, createSchema: false);
-      final scheduler = TomScheduler(
-        store: store,
-        dispatcher: const TomInlineJobDispatcher(),
-        ownerId: 'ops-live-test',
-        lock: TomSqlLeaseLock(datasource, createSchema: false),
-      );
-      addTearDown(scheduler.close);
+  group(
+    'the framework tables the migration created are the ones it addresses',
+    () {
+      test('the scheduler can plan, claim and complete a run', () async {
+        if (_unavailable()) return;
+        final datasource = TomDataSourceInfo.getDataSourceInfo(
+          'app_db',
+        )!.datasource;
+        final store = TomSqlJobStore(datasource, createSchema: false);
+        final scheduler = TomScheduler(
+          store: store,
+          dispatcher: const TomInlineJobDispatcher(),
+          ownerId: 'ops-live-test',
+          lock: TomSqlLeaseLock(datasource, createSchema: false),
+        );
+        addTearDown(scheduler.close);
 
-      // Registering validates every declaration against the live store; a
-      // column the framework addresses and the migration did not create fails
-      // here, which is the failure `ops_framework_schema_test.dart` predicts
-      // without a connection.
-      final definitions = TomScheduledJobs.registerAll(scheduler);
+        // Registering validates every declaration against the live store; a
+        // column the framework addresses and the migration did not create fails
+        // here, which is the failure `ops_framework_schema_test.dart` predicts
+        // without a connection.
+        final definitions = TomScheduledJobs.registerAll(scheduler);
 
-      expect(definitions, hasLength(3));
-      await scheduler.tick();
-    });
-  });
+        expect(definitions, hasLength(3));
+        await scheduler.tick();
+      });
+    },
+  );
 }

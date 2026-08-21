@@ -77,22 +77,24 @@ void main() {
       expect(store.keys, ['2026/08/02/completed-items.csv']);
     });
 
-    test('the stored object is the rendered bytes, not a promise of them',
-        () async {
-      final service = OpsReportService(
-        source: _FakeReportSource([_item(1, title: 'write the readme')]),
-        exports: exports,
-      );
+    test(
+      'the stored object is the rendered bytes, not a promise of them',
+      () async {
+        final service = OpsReportService(
+          source: _FakeReportSource([_item(1, title: 'write the readme')]),
+          exports: exports,
+        );
 
-      final outcome = await runAsOpsService(
-        () => service.publishReport(DateTime.utc(2026, 8, 2, 5)),
-      );
+        final outcome = await runAsOpsService(
+          () => service.publishReport(DateTime.utc(2026, 8, 2, 5)),
+        );
 
-      final text = store.textOf(outcome.stored.key);
-      expect(text, isNotNull);
-      expect(text, contains('write the readme'));
-      expect(outcome.stored.byteCount, greaterThan(0));
-    });
+        final text = store.textOf(outcome.stored.key);
+        expect(text, isNotNull);
+        expect(text, contains('write the readme'));
+        expect(outcome.stored.byteCount, greaterThan(0));
+      },
+    );
 
     test('the rendered rows are the rows the source returned', () async {
       final service = OpsReportService(

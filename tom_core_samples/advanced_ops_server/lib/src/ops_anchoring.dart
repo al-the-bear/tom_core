@@ -87,17 +87,16 @@ class OpsAnchoring {
     required TomAuditSink sink,
     Duration interval = opsAnchorInterval,
     bool independentOfServer = false,
-  }) =>
-      OpsAnchoring(
-        publisher: TomAuditAnchorPublisher(
-          sink: sink,
-          store: TomFileAuditAnchorStore(directory: directory),
-          writer: opsAuditWriter,
-          interval: interval,
-        ),
-        storeDescription: 'file:${directory.path}',
-        independentOfServer: independentOfServer,
-      );
+  }) => OpsAnchoring(
+    publisher: TomAuditAnchorPublisher(
+      sink: sink,
+      store: TomFileAuditAnchorStore(directory: directory),
+      writer: opsAuditWriter,
+      interval: interval,
+    ),
+    storeDescription: 'file:${directory.path}',
+    independentOfServer: independentOfServer,
+  );
 
   /// The framework publisher doing the work.
   final TomAuditAnchorPublisher publisher;
@@ -114,13 +113,13 @@ class OpsAnchoring {
   /// runs inside the ops zone so that a refusal is attributed to
   /// [opsServiceAccount] rather than to `SYSTEM`.
   Future<void> start() => runAsOpsService(() async {
-        await requireOpsCapability(
-          OpsCapabilities.publishAuditAnchor,
-          operation: 'OpsAuditAnchor',
-          entitlement: auditAnchorEntitlement,
-        );
-        await publisher.start();
-      });
+    await requireOpsCapability(
+      OpsCapabilities.publishAuditAnchor,
+      operation: 'OpsAuditAnchor',
+      entitlement: auditAnchorEntitlement,
+    );
+    await publisher.start();
+  });
 
   /// Publishes one anchor now, returning it.
   Future<TomAuditAnchor> publishNow() =>
@@ -136,7 +135,7 @@ class OpsAnchoring {
   /// output instead of discovering it during an investigation.
   String describe() => independentOfServer
       ? 'audit anchors -> $storeDescription (declared independent of this '
-          'server; chain "$opsAuditWriter")'
+            'server; chain "$opsAuditWriter")'
       : 'audit anchors -> $storeDescription (NOT declared independent of this '
-          'server — this is a copy, not an anchor; chain "$opsAuditWriter")';
+            'server — this is a copy, not an anchor; chain "$opsAuditWriter")';
 }

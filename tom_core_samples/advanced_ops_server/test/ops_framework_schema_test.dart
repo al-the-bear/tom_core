@@ -34,10 +34,7 @@ List<TomMigrationArtifact> _artifacts(String directory) {
     ..sort((a, b) => a.path.compareTo(b.path));
   return [
     for (final file in files)
-      TomMigrationArtifact(
-        file.uri.pathSegments.last,
-        file.readAsStringSync(),
-      ),
+      TomMigrationArtifact(file.uri.pathSegments.last, file.readAsStringSync()),
   ];
 }
 
@@ -48,9 +45,9 @@ List<TomMigrationArtifact> _artifacts(String directory) {
 /// folder sits in, so a check over half the chain would be checking a database
 /// that never exists.
 List<TomMigrationArtifact> _wholeChain() => [
-      ..._artifacts(_appSchemaDir),
-      ..._artifacts(_opsSchemaDir),
-    ];
+  ..._artifacts(_appSchemaDir),
+  ..._artifacts(_opsSchemaDir),
+];
 
 void main() {
   group('the hand-written DDL converges with the framework descriptors', () {
@@ -90,8 +87,9 @@ void main() {
   });
 
   group('the tables are created by the chain, not at start-up', () {
-    final sql = File('${_opsSchemaDir}[100]-ops_framework_tables.sql')
-        .readAsStringSync();
+    final sql = File(
+      '${_opsSchemaDir}[100]-ops_framework_tables.sql',
+    ).readAsStringSync();
 
     test('the migration creates all four framework tables', () {
       for (final table in [

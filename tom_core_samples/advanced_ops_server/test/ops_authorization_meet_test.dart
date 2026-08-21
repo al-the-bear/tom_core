@@ -42,9 +42,9 @@ void main() {
 
   group('the two operands are not the same set', () {
     test('the account holds exactly one grant the deployment does not', () {
-      final extra = opsServiceAccountEntitlements
-          .toSet()
-          .difference(opsDeploymentEntitlements.toSet());
+      final extra = opsServiceAccountEntitlements.toSet().difference(
+        opsDeploymentEntitlements.toSet(),
+      );
       // Spelled as a set difference rather than as a length check: the claim is
       // *which* grant differs, and an assertion that merely counted would still
       // pass if somebody swapped one entitlement for another.
@@ -97,7 +97,8 @@ void main() {
       expect(
         OpsCapabilities.reassignItems.checkAccessibility(opsServiceAccount),
         isFalse,
-        reason: 'min(full, none) is none — the deployment is not licensed for '
+        reason:
+            'min(full, none) is none — the deployment is not licensed for '
             '$itemReassignEntitlement however entitled the actor is',
       );
     });
@@ -211,30 +212,32 @@ void main() {
       );
     });
 
-    test('the refusal reaches the trail, attributed to the service account',
-        () async {
-      await runAsOpsService(() async {
-        try {
-          await requireOpsCapability(
-            OpsCapabilities.reassignItems,
-            operation: 'OpsReassign',
-            entitlement: itemReassignEntitlement,
-          );
-        } on TomPermanentJobFailure {
-          // The throw is asserted above; here the interest is the record it
-          // left behind on the way out.
-        }
-      });
+    test(
+      'the refusal reaches the trail, attributed to the service account',
+      () async {
+        await runAsOpsService(() async {
+          try {
+            await requireOpsCapability(
+              OpsCapabilities.reassignItems,
+              operation: 'OpsReassign',
+              entitlement: itemReassignEntitlement,
+            );
+          } on TomPermanentJobFailure {
+            // The throw is asserted above; here the interest is the record it
+            // left behind on the way out.
+          }
+        });
 
-      final record = sink.records.single;
-      expect(record.outcome, TomAuditOutcome.denied);
-      expect(record.target, 'OpsReassign');
-      expect(record.action, TomAuditAction.execute);
-      // `SYSTEM` would mean the zone was never established — which is exactly
-      // what happens to a job body that forgets `runAsOpsService`.
-      expect(record.actor.username, opsServiceUsername);
-      expect(record.detail, contains(itemReassignEntitlement));
-    });
+        final record = sink.records.single;
+        expect(record.outcome, TomAuditOutcome.denied);
+        expect(record.target, 'OpsReassign');
+        expect(record.action, TomAuditAction.execute);
+        // `SYSTEM` would mean the zone was never established — which is exactly
+        // what happens to a job body that forgets `runAsOpsService`.
+        expect(record.actor.username, opsServiceUsername);
+        expect(record.detail, contains(itemReassignEntitlement));
+      },
+    );
 
     test('a capability the deployment holds passes silently', () async {
       await runAsOpsService(
@@ -260,8 +263,7 @@ class _NullRetentionStore implements OpsRetentionStore {
   Future<List<ItemRecord>> expiredItems(
     DateTime cutoff, {
     required int limit,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<void> destroy(ItemRecord item) async =>
