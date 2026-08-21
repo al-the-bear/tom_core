@@ -264,9 +264,13 @@ class ZonedDateTimeExample {
       '   - TomZonedTime prefix: "${timeOnly.getSerializationPrefix()}" (@T@)',
     );
 
-    final dateTimeStr = '${dateTime.getSerializationPrefix()}$dateTime';
-    final dateOnlyStr = '${dateOnly.getSerializationPrefix()}$dateOnly';
-    final timeOnlyStr = '${timeOnly.getSerializationPrefix()}$timeOnly';
+    // Each rendering already begins with its own prefix, so toString() is the
+    // whole serialized form. getSerializationPrefix() is for recognising a
+    // type from a stored string, not for assembling one; prepending it here
+    // would double the prefix into something no parseFromString accepts.
+    final dateTimeStr = dateTime.toString();
+    final dateOnlyStr = dateOnly.toString();
+    final timeOnlyStr = timeOnly.toString();
 
     print('   - Full serialized DateTime: $dateTimeStr');
     print('   - Full serialized Date: $dateOnlyStr');
@@ -284,6 +288,18 @@ class ZonedDateTimeExample {
     assert(
       timeOnly.getSerializationPrefix() == '@T@',
       'Time prefix should be @T@',
+    );
+    assert(
+      TomZonedDateTime.isTomZonedDateTimeString(dateTimeStr),
+      'What is printed must be a string the parser accepts',
+    );
+    assert(
+      TomZonedDate.isTomZonedDateString(dateOnlyStr),
+      'What is printed must be a string the parser accepts',
+    );
+    assert(
+      TomZonedTime.isTomZonedTimeString(timeOnlyStr),
+      'What is printed must be a string the parser accepts',
     );
   }
 

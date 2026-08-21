@@ -2175,5 +2175,36 @@ void main() {
       expect(dt.hour, equals(5));
       expect(dt.toString(), contains('_+09:00_Asia/Tokyo'));
     });
+
+    test('toString is the whole form, prefix included', () {
+      // `getSerializationPrefix()` names the prefix a type uses; it is not an
+      // ingredient to be added to the rendering, which already carries it.
+      // Joining the two doubles the prefix into a string no parser accepts —
+      // a failure that shows up only when something reads the result back, and
+      // so never in code that merely prints it.
+      final tz = TomTimezone.utc;
+      final values = <TomTimezoned>[
+        TomZonedDateTime(year: 2024, month: 6, day: 15, hour: 12, timezone: tz),
+        TomZonedDate(year: 2024, month: 6, day: 15, timezone: tz),
+        TomZonedTime(hour: 12, timezone: tz),
+      ];
+
+      for (final value in values) {
+        final serialized = value.toString();
+        final prefix = value.getSerializationPrefix();
+        expect(prefix, isNotEmpty);
+        expect(serialized, startsWith(prefix));
+        expect(
+          TomTimezoned.isTomTimezonedString('$prefix$serialized'),
+          isFalse,
+        );
+      }
+
+      // The unprefixed base names no prefix at all, so there is nothing to add
+      // and nothing the doubling could produce.
+      final base = TomTimezoned.fromDateTime(DateTime.utc(2024, 6, 15, 12), tz);
+      expect(base.getSerializationPrefix(), isEmpty);
+      expect(TomTimezoned.isTomTimezonedString(base.toString()), isTrue);
+    });
   });
 }

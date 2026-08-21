@@ -133,7 +133,7 @@ string or unknown zone.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getSerializationPrefix` | `String getSerializationPrefix()` | The serialization prefix for this type (empty for the base class; overridden by subclasses). |
+| `getSerializationPrefix` | `String getSerializationPrefix()` | The serialization prefix for this type (empty for the base class; overridden by subclasses). For recognising a stored value's type before parsing — `toString()` already carries the prefix, so prepending this to it doubles it into a string no parser accepts. |
 | `toString` | `String toString()` | *(override)* The serialized string in `ISO8601_OFFSET_TIMEZONE` format. |
 | `toDateTime` | `DateTime toDateTime()` | The local time representation (a `TZDateTime`) in the associated timezone. |
 

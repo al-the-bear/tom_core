@@ -271,13 +271,27 @@ class ZonedDateTimeExample {
       timezone: TomTimezone.utc,
     );
 
+    // toString() already carries the prefix, so it is the whole serialized
+    // form. getSerializationPrefix() names that prefix for a caller who needs
+    // to recognise a type from a stored string; prepending it to the rendering
+    // would double the prefix into something no parseFromString accepts.
+    final serialized = dt.toString();
+
     print('   - Prefix: "${dt.getSerializationPrefix()}"');
-    print('   - Full serialized: ${dt.getSerializationPrefix()}$dt');
+    print('   - Full serialized: $serialized');
 
     // Assertions
     assert(
       dt.getSerializationPrefix() == '@X@',
       'TomZonedDateTime prefix should be @X@',
+    );
+    assert(
+      serialized.startsWith(dt.getSerializationPrefix()),
+      'The rendering already carries the prefix',
+    );
+    assert(
+      TomZonedDateTime.isTomZonedDateTimeString(serialized),
+      'What is printed must be a string the parser accepts',
     );
   }
 

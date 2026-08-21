@@ -310,6 +310,12 @@ print(standupMarch11); // 2024-03-11 09:00:00.000-0400
 - **OFFSET**: UTC offset at serialization time (`Z`, `+09:00`, `-05:00`, etc.)
 - **TIMEZONE**: IANA timezone name
 
+`toString()` produces the whole form, prefix included, and `parseFromString`
+reads it back as it stands. `getSerializationPrefix()` exists for the other
+direction — recognising which type a stored string holds before parsing it —
+and is not an ingredient: prepending it to a rendering that already carries it
+doubles the prefix into a string no parser accepts.
+
 The `Z` is the only part of the string that names a point in time, so it is
 required. A reading without it would have to be resolved against the zone of
 whatever machine happened to be parsing, and the same string would then name

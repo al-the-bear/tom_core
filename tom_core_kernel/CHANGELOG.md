@@ -787,6 +787,22 @@ anyone who was writing them.
 
 ### Tests
 
+- **New guard: `serialized_form_is_not_rebuilt_test.dart` (tcinc327).**
+  `toString()` returns the complete serialized form, prefix included, but both
+  halves are public and both look like ingredients, so joining a value's
+  `getSerializationPrefix()` to the value itself is an easy and entirely silent
+  mistake — the result is only wrong when something tries to read it back. The
+  scan forbids that join across `lib`, `test`, `example` and `doc`, matching on
+  a backreference so that joining one value's prefix to a *different* value,
+  which is a deliberate act, stays allowed. A second rule forbids a doubled
+  prefix reaching any artefact, wherever it came from. Both carry the
+  package's usual non-vacuity checks, and this one also self-tests its
+  patterns against four synthetic offenders and four legitimate uses, so a
+  pattern that stopped matching would fail rather than report a clean tree.
+  `timezones_test.dart` states the same rule at the library level: every
+  subtype's rendering starts with its own prefix, and prepending it again
+  yields a string the predicate rejects.
+
 - **The documented settings round trip is now executed, not just written
   down.** The settings suite exercised the two DTOs thoroughly and the exchange
   not at all — which is how a transport that never existed came to be
@@ -980,6 +996,19 @@ anyone who was writing them.
   field would show up.
 
 ### Examples
+
+- **The two timezoned samples that advertised a "full serialized" string were
+  printing one no parser accepts (tcinc327).** Both prepended
+  `getSerializationPrefix()` to the value's own rendering, which already
+  carries that prefix, so `02_zoned_datetime_example.dart` and
+  `03_zoned_date_time_example.dart` between them printed four doubled-prefix
+  strings under a label announcing them as the serialized form. Nothing failed,
+  because nothing read them back — which is precisely how a sample teaches a
+  format the library does not have. Both now print `toString()` alone and
+  assert that what they printed satisfies its own `isTom…String` predicate, so
+  a sample that stops printing a parseable string stops passing. The rule was
+  already written down in `05_serialization_example.dart`; it is now enforced
+  rather than only stated, by the new guard in **Tests**.
 
 - **The settings and bearer-authentication samples now build the endpoint that
   carries the exchange.** Neither sample touched the transport, so nothing in
