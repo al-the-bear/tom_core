@@ -1093,10 +1093,24 @@ The enrolment passes add their own, all of them from
 | `login.error.2fa.enrolment-required` | A skip was attempted on an offer the server did not mark skippable | None |
 
 A wrong code is an ordinary outcome and yields a failed
-`TomAuthenticationResult`. A *mis-wired deployment* — a duplicate adaptor, an
-annotated class that cannot be instantiated or does not implement
-`Tom2FAService` — is a `Tom2FAException` instead, raised at registration with
-`clientThrow: false` so it surfaces in the server log rather than to a caller.
+`TomAuthenticationResult`. A *mis-wired deployment* is a `Tom2FAException`
+instead, raised at registration with `clientThrow: false` so it surfaces in the
+server log rather than to a caller. These three are the keys a deployment is
+likeliest to meet first, because they fire at wiring time — before any user has
+typed anything:
+
+| Key | Meaning |
+| --- | ------- |
+| `authentication.2fa.duplicate_adaptor` | A *different* adaptor is already registered for the mechanism. Re-registering the identical instance is a no-op, so a double boot is harmless. Raised by `Tom2FARegistry.register` |
+| `authentication.2fa.adaptor_instantiation_failed` | An annotated class could not be constructed: its unnamed no-argument constructor threw, or it has none |
+| `authentication.2fa.adaptor_does_not_implement_service` | A class carries `@Tom2FAAdaptor` but does not implement `Tom2FAService` |
+
+The last two are raised by the `@Tom2FAAdaptor` scan, which is all-or-nothing:
+a failed `registerAnnotated` registers none of the candidates and restores the
+registrations that preceded it, so a retried scan cannot collide with leftovers
+from the attempt that failed. An adaptor skipped for an unmet
+`Tom2FAPrerequisite` is neither of these — that is a logged warning, not a
+failure, and the mechanisms that *were* wired stay registered.
 
 **What the attempt counter does and does not bound.** The counter lives in the
 token and advances only along the chain of re-issued tokens. A stateless server
@@ -1772,6 +1786,7 @@ without the application registering anything.
 | Key | Meaning |
 | --- | ------- |
 | `oauth.config.missing_value` · `oauth.config.not_a_map` · `oauth.config.provider_not_a_map` · `oauth.config.unknown_provisioning` · `oauth.config.invalid_clock_skew` | The `oauth.providers` block is malformed. Startup-time. |
+| `oauth.config.parameters_not_a_map` · `oauth.config.parameter_not_a_scalar` | A provider's `authorizationParameters` is not a map, or one of its values is a map or list where a query parameter can only carry a scalar. Startup-time — stringifying `{a: b}` into the redirect would surface later as a provider error whose text says nothing about the YAML that caused it. |
 | `oauth.config.unknown_provider` | A request named a provider that is not configured. |
 | `oauth.config.state_store_not_a_map` · `oauth.config.unknown_state_store` · `oauth.config.missing_state_store_datasource` · `oauth.config.invalid_state_store_ttl` | The `oauth.stateStore` block is malformed. Startup-time, and never defaulted away. |
 | `oauth.state_store.unknown_datasource` | The SQL state store names a data source that is not registered. Startup-time. |
@@ -1781,6 +1796,7 @@ without the application registering anything.
 | `oauth.flow.issuer_mismatch` · `oauth.flow.audience_mismatch` · `oauth.flow.missing_subject` · `oauth.flow.malformed_id_token` | The claims failed verification. |
 | `oauth.flow.missing_expiry` · `oauth.flow.id_token_expired` · `oauth.flow.id_token_not_yet_valid` | The `id_token` is outside its own validity window, or carries none. Read against the provider's `clockSkewSeconds`. |
 | `oauth.flow.no_claims_source` · `oauth.flow.no_access_token` | The provider returned neither an `id_token` nor a usable `userInfoEndpoint` call. |
+| `oauth.flow.no_refresh_token` | `refreshGrant` was given a grant that carries none. Not a login failure at all: the caller cannot recover by retrying, and must send the user through consent again — a different action, not a slower one. |
 | `oauth.provider.http_error` · `oauth.provider.malformed_json` | The provider's HTTP call failed or answered with something that is not a JSON object. |
 | `login.error.oauth.no-local-account` | Authenticated, but unlinked, and the provider is configured to refuse. |
 | `login.error.oauth.linked-account-missing` | The link outlived the account it pointed at. |
