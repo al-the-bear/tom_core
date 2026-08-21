@@ -373,7 +373,6 @@ void main() {
       // the annotation can express; it still refuses reads.
       final policies = <TomAuditPolicy>[
         TomAuditPolicy.defaultPolicy,
-        TomAuditPolicy.disabled,
         TomAuditPolicy.from(const TomAudited()),
         TomAuditPolicy.from(const TomAudited(enabled: true)),
         TomAuditPolicy.from(const TomAudited(enabled: false)),

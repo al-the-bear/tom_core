@@ -579,7 +579,6 @@ factory TomAuditPolicy.from(TomAudited annotation)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `defaultPolicy` | `static const TomAuditPolicy` | What a type with no `@TomAudited` annotation gets: mutations audited, reads not, nothing redacted. |
-| `disabled` | `static const TomAuditPolicy` | What an explicit opt-out produces. |
 
 #### Properties
 

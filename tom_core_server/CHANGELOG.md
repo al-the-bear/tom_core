@@ -2,6 +2,21 @@
 
 ### Behaviour Changes
 
+- **`TomAuditPolicy.disabled` is removed (tcinc352).** The constant was public
+  and documented, and nothing built a policy from it: the reflector's
+  `policyFor` resolves `@TomAudited(enabled: false)` through
+  `TomAuditPolicy.from`, so the one place a reader would expect the constant to
+  appear used something else. Its only Dart reference was a redundant entry in
+  a test's list of policies, two lines above the `from(TomAudited(enabled:
+  false))` that produces the identical policy.
+
+  It is removed rather than wired in, because the module's position is that
+  opting out should be explicit in source so its absence is auditable too. A
+  named off-switch invites the opt-out that leaves no annotation behind, and
+  `TomAuditBypass` already covers the one legitimate case — the trail's own
+  persistence path. Nothing accepts a caller-supplied `TomAuditPolicy`, so no
+  reachable behaviour changes; what goes is the affordance.
+
 - **`verifyAgainstAnchor` no longer lets a verifier's exception out, and the
   verifier contract says so (tcinc348).** `TomAuditAnchorVerifier` is an
   interface, and the library invites implementations that leave the process —

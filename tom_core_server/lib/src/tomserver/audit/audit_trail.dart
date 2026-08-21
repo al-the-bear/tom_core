@@ -145,12 +145,6 @@ class TomAuditPolicy {
     redact: {},
   );
 
-  /// The policy an explicit opt-out produces.
-  static const TomAuditPolicy disabled = TomAuditPolicy(
-    enabled: false,
-    redact: {},
-  );
-
   /// Reads the policy off an annotation.
   factory TomAuditPolicy.from(TomAudited annotation) => TomAuditPolicy(
     enabled: annotation.enabled,

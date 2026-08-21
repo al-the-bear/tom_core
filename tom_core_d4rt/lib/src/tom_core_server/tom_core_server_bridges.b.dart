@@ -4384,7 +4384,6 @@ BridgedClass _createTomAuditPolicyBridge() {
     },
     staticGetters: {
       'defaultPolicy': (visitor) => $tom_core_server_5.TomAuditPolicy.defaultPolicy,
-      'disabled': (visitor) => $tom_core_server_5.TomAuditPolicy.disabled,
     },
     constructorSignatures: {
       '': 'const TomAuditPolicy({required bool enabled, required Set<String> redact})',
@@ -4400,7 +4399,6 @@ BridgedClass _createTomAuditPolicyBridge() {
     },
     staticGetterSignatures: {
       'defaultPolicy': 'TomAuditPolicy get defaultPolicy',
-      'disabled': 'TomAuditPolicy get disabled',
     },
   );
 }
