@@ -170,10 +170,16 @@ abstract class TomClosable {
 /// - The method requires parameters
 class TomCloseAdaptor implements TomClosable {
   /// The object being adapted for closure.
-  Object closableObject;
+  ///
+  /// Fixed at construction. The constructor resolves the target's method
+  /// mirror and binds an instance mirror to *this* object, and [close] invokes
+  /// through that binding — so the adaptor is single-target by construction,
+  /// and this field always names the object [close] will actually close. To
+  /// close a different object, build a different adaptor.
+  final Object closableObject;
 
-  late MethodMirror _mm;
-  late InstanceMirror _im;
+  late final MethodMirror _mm;
+  late final InstanceMirror _im;
 
   /// Creates a new adaptor for the given object.
   ///
@@ -331,7 +337,7 @@ class TomShutdownCleanup {
   /// `dispose()` failure are the top ones.
   static const int _diagnosticStackDepth = 10;
 
-  late TomSignalHandler _signalHandler;
+  late final TomSignalHandler _signalHandler;
   bool _executed = false;
 
   /// When true, signal handling is paused and signals are ignored.

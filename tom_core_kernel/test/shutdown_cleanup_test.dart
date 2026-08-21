@@ -870,6 +870,43 @@ void main() {
         throwsA(isA<TomReflectorException>()),
       );
     });
+
+    // The adaptor is single-target by construction: the constructor binds an
+    // instance mirror to the object it was given, and close() invokes through
+    // that binding. `closableObject` is therefore `final` — reassigning it
+    // used to compile, change nothing, and leave the field disagreeing with
+    // the object close() would actually close. The compiler now owns that
+    // guarantee, so what remains testable is the invariant itself: the field
+    // and the invocation target are the same object.
+    test('closableObject names the object that close() actually closes', () {
+      final first = OwnCloseTarget();
+      final second = OwnCloseTarget();
+      final adaptor = TomCloseAdaptor(first);
+
+      expect(adaptor.closableObject, same(first));
+
+      adaptor.close();
+
+      expect(first.closed, isTrue);
+      expect(second.closed, isFalse);
+    });
+
+    test('two adaptors over two targets stay independent', () {
+      // The bound-once mirror is per-instance, not shared state on the class.
+      final first = OwnCloseTarget();
+      final second = OwnCloseTarget();
+      final firstAdaptor = TomCloseAdaptor(first);
+      final secondAdaptor = TomCloseAdaptor(second);
+
+      secondAdaptor.close();
+
+      expect(second.closed, isTrue);
+      expect(first.closed, isFalse);
+
+      firstAdaptor.close();
+
+      expect(first.closed, isTrue);
+    });
   });
 
   // ===========================================================================

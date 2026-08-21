@@ -95,7 +95,7 @@ close/dispose method is found, or if the method requires parameters.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `closableObject` | `Object` | The object being adapted for closure. |
+| `closableObject` | `final Object` | The object being adapted for closure. Fixed at construction — the adaptor binds its mirrors to this object once, so it always names the object `close()` will actually close. Build another adaptor to close another object. |
 
 #### Methods
 
