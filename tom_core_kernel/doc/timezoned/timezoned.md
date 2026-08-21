@@ -546,19 +546,27 @@ the initialization and lookup half of the module.
 `timezones.dart` picks its initializer at compile time:
 
 ```dart
-import 'init_tz.dart'
-    if (dart.library.io) 'init_tz_flutter.dart'
-    if (dart.library.js) 'init_tz_web.dart';
+import 'init_tz_embedded.dart' if (dart.library.js) 'init_tz_web.dart';
 ```
 
-The first line is the **default** arm, not the native one. Every VM target —
-server, CLI, test runner and Flutter alike — has `dart.library.io` and so takes
-`init_tz_flutter.dart`; the web takes `init_tz_web.dart` on `dart.library.js`;
-and `init_tz.dart`, despite sitting first and carrying the plainest name, is
-selected only where neither library exists.
+The first entry is the **default** arm, taken wherever the condition does not
+hold. Only the browser is singled out, because only the browser needs a
+different implementation: it has no bundled copy of the database and fetches
+one over the network. Everything else — server, CLI, test runner, Flutter on
+mobile and desktop — takes `init_tz_embedded.dart` and reads the copy that
+ships inside the `timezone` package.
 
 So the `timezone` package is reached through `data/latest.dart` on native, the
 same `data/latest.dart` under Flutter — one arm serves both — and
 `browser.dart` on the web. Nothing in the calling code changes, but a platform
 whose database has not been loaded fails at the first lookup rather than at
 import.
+
+The default arm carries a requirement the conditional arm does not, and it is
+the reason the embedded implementation is the one sitting there. An arm reached
+where no condition holds cannot assume any condition is true, so it may not
+touch `dart:io` any more than it may touch `dart:js`. `data/latest.dart` meets
+that bar — it is a constant and a decoder, with no file system and no network
+behind it. A `standalone`-flavoured entry point would not: it reads the
+database off disk and needs `dart:io`, which is precisely what a default arm
+cannot have.

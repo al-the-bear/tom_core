@@ -1,34 +1,38 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
 
-/// What the timezoned module's conditional import actually selects, and
-/// whether the documentation says the same thing.
+/// What the timezoned module's conditional import selects, whether the
+/// selected file can run where it is selected, and whether the documentation
+/// says the same thing.
 ///
 /// `timezones.dart` picks its initializer with a conditional import:
 ///
 /// ```dart
-/// import 'init_tz.dart'
-///     if (dart.library.io) 'init_tz_flutter.dart'
-///     if (dart.library.js) 'init_tz_web.dart';
+/// import 'init_tz_embedded.dart' if (dart.library.js) 'init_tz_web.dart';
 /// ```
 ///
-/// The first line is the **default** arm, not the native one. Every VM target —
-/// server, CLI, test runner and Flutter alike — has `dart.library.io`, so they
-/// all take `init_tz_flutter.dart`; `init_tz.dart` is reached only where
-/// neither `dart:io` nor `dart:js` exists. The file names invite the opposite
-/// reading, and the documentation took it: the platform table paired the
-/// server with `init_tz.dart` and credited it with a `timezone` entry point no
-/// file in the module imports.
+/// The first entry is the **default** arm, taken wherever no condition holds.
+/// That is the position with the strongest requirement in the whole construct
+/// and the easiest to misjudge: an arm reached where nothing can be assumed
+/// must assume nothing, so it may not touch `dart:io` any more than it may
+/// touch `dart:js`. The embedded database qualifies — it is a constant and a
+/// decoder — and it is the default for exactly that reason.
 ///
-/// That mistake is invisible from either side alone. The source is correct and
-/// says nothing about platforms; the prose is wrong and never mentions a
-/// condition. Only holding the two together shows it, which is what these
-/// tests do:
+/// Both mistakes this file guards against were invisible from one side alone.
+/// A default arm that pulled in `dart:io` looked fine in isolation, because
+/// nothing in the file names the condition that would exclude it, and it
+/// compiled everywhere anyone ever built. And prose that credited the wrong
+/// platform with the wrong entry point looked fine too, because the source is
+/// correct and says nothing about platforms while the prose names platforms
+/// and quotes no condition. So the tests hold the pieces together:
 ///
 /// - the `import` and `export` arms stay identical, which the source asks for
 ///   in a comment and nothing else enforces;
-/// - each arm's file describes the role the selection gives it;
+/// - each arm's file says which selection it serves;
+/// - no arm reaches a `dart:` library its own condition rules out, following
+///   the imports through the `timezone` package to find out;
 /// - the documentation quotes the block as written;
 /// - every `package:timezone/…` library the documentation names is one the
 ///   module imports;
@@ -51,20 +55,74 @@ void main() {
       expect(export.arms, import.arms);
     });
 
-    test('each arm holds the implementation its condition implies', () {
+    test('each arm says which selection it serves', () {
       final selection = _selection('import');
 
       expect(
         _dartdoc(selection.defaultArm),
-        contains('fallback'),
+        contains('default'),
         reason:
-            'The first line of a conditional import is the default arm, taken '
-            'only where no condition holds. Whatever file sits there is the '
-            'fallback and should say so — reading it as the native '
-            'implementation is exactly the mistake this group exists to catch.',
+            'The first entry of a conditional import is the default arm, taken '
+            'wherever no condition holds. Whatever file sits there should say '
+            'so, because nothing about its name or its contents reveals the '
+            'position it occupies — and that position carries a requirement '
+            'none of the other arms carry.',
       );
-      expect(_dartdoc(selection.arms['dart.library.io']!), contains('native'));
-      expect(_dartdoc(selection.arms['dart.library.js']!), contains('web'));
+
+      for (final arm in selection.arms.entries) {
+        final word = _armSelfDescription[arm.key];
+        expect(
+          word,
+          isNotNull,
+          reason:
+              'The conditional import grew an arm on ${arm.key} with no entry '
+              'in _armSelfDescription. Say what that arm ought to call itself, '
+              'or this test quietly stops covering it.',
+        );
+        expect(
+          _dartdoc(arm.value),
+          contains(word!),
+          reason:
+              '${arm.value} is selected on ${arm.key} but its dartdoc never '
+              'says so, leaving the file name as the only clue to where it '
+              'runs. File names are what misled the documentation before.',
+        );
+      }
+    });
+  });
+
+  // ===========================================================================
+  // Whether each arm can run where it is selected
+  // ===========================================================================
+  group('platform reachability', () {
+    test('no arm reaches a library its own condition rules out', () {
+      final selection = _selection('import');
+      final offenders = <String>[];
+      var filesWalked = 0;
+
+      for (final arm in _armsByCondition(selection).entries) {
+        final walk = _walkTimezoneImports(arm.value);
+        filesWalked += walk.visited.length;
+        final forbidden = _forbiddenUnder(arm.key);
+        for (final reached in walk.platformLibraries.entries) {
+          final banned = reached.value.where(forbidden.contains);
+          if (banned.isEmpty) continue;
+          offenders.add(
+            '${arm.value} (selected ${_describe(arm.key)}) reaches '
+            '${reached.key}, which imports ${banned.join(', ')}',
+          );
+        }
+      }
+
+      expect(
+        filesWalked,
+        greaterThan(selection.arms.length + 1),
+        reason:
+            'The walk visited no more files than the arms it started from, so '
+            'it is not following imports into the timezone package any more '
+            'and this test is checking nothing.',
+      );
+      expect(offenders, isEmpty, reason: _unreachableLibraryReason);
     });
   });
 
@@ -149,6 +207,14 @@ final _documents = <File>[
   File('doc/api_reference/api_summary_timezoned.md'),
 ];
 
+/// The word each conditional arm's dartdoc has to contain to have described
+/// where it runs. The default arm is not here — it is checked separately,
+/// because what it has to say is about its position, not about a platform.
+const _armSelfDescription = {
+  'dart.library.io': 'native',
+  'dart.library.js': 'browser',
+};
+
 /// One conditional directive: the default arm plus each `if (…)` arm.
 class _Selection {
   _Selection(this.defaultArm, this.arms);
@@ -182,16 +248,17 @@ _Selection _selection(String directive) {
   });
 }
 
+/// How a quotation of the conditional import begins, derived from the source
+/// so that renaming the default arm cannot leave the scans looking for a file
+/// that no longer exists — and silently finding nothing.
+String _importOpening() => "import '${_selection('import').defaultArm}'";
+
 /// The source's own rendering of the import, used to hold quotations to it.
 String _sourceImportBlock() {
   final lines = File(
     'lib/src/tombase/timezoned/timezones.dart',
   ).readAsLinesSync();
-  final start = lines.indexWhere(
-    (l) =>
-        _directive('import').hasMatch(l) ||
-        l.startsWith("import 'init_tz.dart'"),
-  );
+  final start = lines.indexWhere((l) => l.startsWith(_importOpening()));
   final end = lines.indexWhere((l) => l.trimRight().endsWith(';'), start);
   return lines.sublist(start, end + 1).join('\n');
 }
@@ -221,6 +288,142 @@ Set<String> _timezoneImportsIn(File file) => {
   for (final m in _timezoneImport.allMatches(file.readAsStringSync()))
     m.group(1)!,
 };
+
+// -----------------------------------------------------------------------------
+// Following the imports into the timezone package
+// -----------------------------------------------------------------------------
+
+/// Every arm of `selection`, keyed by the condition that selects it; the
+/// default arm is keyed `null`.
+Map<String?, String> _armsByCondition(_Selection selection) => {
+  null: selection.defaultArm,
+  for (final arm in selection.arms.entries) arm.key: arm.value,
+};
+
+String _describe(String? condition) =>
+    condition == null ? 'by default' : 'on $condition';
+
+/// The `dart:` libraries an arm selected by `condition` cannot rely on.
+///
+/// The default arm is the strict case: it is chosen precisely where none of
+/// the conditions hold, so *every* platform library is out of reach. The
+/// conditional arms may use what their own condition guarantees and nothing
+/// from the other side.
+Set<String> _forbiddenUnder(String? condition) => switch (condition) {
+  'dart.library.io' => _webLibraries,
+  'dart.library.js' => _nativeLibraries,
+  _ => {..._nativeLibraries, ..._webLibraries},
+};
+
+const _nativeLibraries = {
+  'dart:io',
+  'dart:isolate',
+  'dart:ffi',
+  'dart:mirrors',
+};
+const _webLibraries = {
+  'dart:js',
+  'dart:js_interop',
+  'dart:js_util',
+  'dart:html',
+};
+
+class _Walk {
+  _Walk(this.visited, this.platformLibraries);
+
+  /// Every file read, module files included.
+  final Set<String> visited;
+
+  /// Files that import a `dart:` library, and which ones.
+  final Map<String, Set<String>> platformLibraries;
+}
+
+final _anyImport = RegExp(r"import\s+'([^']+)'");
+
+/// Reads `fileName` and everything it reaches inside `package:timezone`.
+///
+/// The walk stops at every other package on purpose. What this conditional
+/// import chooses between is `timezone` entry points, and `timezone` is the
+/// dependency whose platform surface differs across them — descending into an
+/// unrelated package would only report that package's own conditional imports,
+/// which it resolves for itself.
+_Walk _walkTimezoneImports(String fileName) {
+  final visited = <String>{};
+  final platformLibraries = <String, Set<String>>{};
+  final queue = <File>[File('${_moduleDirectory.path}/$fileName')];
+
+  while (queue.isNotEmpty) {
+    final file = queue.removeLast();
+    final key = file.path;
+    if (!visited.add(key)) continue;
+
+    for (final match in _anyImport.allMatches(file.readAsStringSync())) {
+      final uri = match.group(1)!;
+      if (uri.startsWith('dart:')) {
+        (platformLibraries[_shortPath(key)] ??= <String>{}).add(uri);
+      } else if (uri.startsWith('package:timezone/')) {
+        queue.add(File('${_timezoneLib()}${uri.substring(17)}'));
+      } else if (!uri.startsWith('package:')) {
+        final resolved = File(
+          Uri.file(file.absolute.path).resolve(uri).toFilePath(),
+        );
+        if (resolved.existsSync()) queue.add(resolved);
+      }
+    }
+  }
+  return _Walk(visited, platformLibraries);
+}
+
+/// A reachable file named the way a reader would name it.
+String _shortPath(String path) {
+  final lib = _timezoneLib();
+  if (path.startsWith(lib)) {
+    return 'package:timezone/${path.substring(lib.length)}';
+  }
+  final here = Directory.current.path;
+  return path.startsWith(here) ? path.substring(here.length + 1) : path;
+}
+
+String? _timezoneLibCache;
+
+/// The `lib/` directory of the resolved `timezone` package, with a trailing
+/// separator.
+String _timezoneLib() => _timezoneLibCache ??= _resolveTimezoneLib();
+
+String _resolveTimezoneLib() {
+  final config = File('.dart_tool/package_config.json');
+  if (!config.existsSync()) {
+    throw StateError(
+      'No .dart_tool/package_config.json — run `dart pub get` before this '
+      'suite. Without it the imports cannot be resolved and the reachability '
+      'check would silently pass.',
+    );
+  }
+  final packages =
+      (jsonDecode(config.readAsStringSync())
+              as Map<String, dynamic>)['packages']
+          as List<dynamic>;
+  final timezone = packages.cast<Map<String, dynamic>>().firstWhere(
+    (pkg) => pkg['name'] == 'timezone',
+    orElse: () => throw StateError(
+      'The timezone package is not in package_config.json. If the module no '
+      'longer depends on it, this test file is obsolete.',
+    ),
+  );
+  // `rootUri` is relative to the config file when the package is a path
+  // dependency and absolute when it comes from the pub cache; resolving
+  // against the config's own URI covers both. Both URIs name directories and
+  // neither is guaranteed to say so, and `resolve` drops a final segment that
+  // has no trailing slash — so add one before resolving through it.
+  final root = Uri.file(
+    config.absolute.path,
+  ).resolve(_asDirectory(timezone['rootUri'] as String));
+  return root
+      .resolve(_asDirectory(timezone['packageUri'] as String))
+      .toFilePath();
+}
+
+String _asDirectory(String uri) => uri.endsWith('/') ? uri : '$uri/';
 
 // -----------------------------------------------------------------------------
 // Reading the documents
@@ -268,7 +471,7 @@ Map<String, String> _quotedImportBlocks() {
   for (final document in _documents) {
     final lines = document.readAsLinesSync();
     for (var i = 0; i < lines.length; i++) {
-      if (!lines[i].startsWith("import 'init_tz.dart'")) continue;
+      if (!lines[i].startsWith(_importOpening())) continue;
       final end = lines.indexWhere((l) => l.trimRight().endsWith(';'), i);
       quoted['${document.path}:${i + 1}'] = lines
           .sublist(i, end + 1)
@@ -281,11 +484,11 @@ Map<String, String> _quotedImportBlocks() {
 /// The condition that selects the arm serving a platform, or `null` for the
 /// default arm.
 ///
-/// Native and Flutter are the same answer on purpose: both have `dart:io`, so
-/// both take the `dart.library.io` arm. Treating them as separate rows is what
-/// produced the wrong table.
+/// Native and Flutter are the same answer on purpose, and that answer is the
+/// default arm: neither is singled out by a condition, so both are served by
+/// whatever serves everything else. Giving them separate rows is what produced
+/// the wrong table.
 String? _conditionFor(String platform) => switch (platform) {
-  'native' || 'Flutter' => 'dart.library.io',
   'web' || 'the web' => 'dart.library.js',
   _ => null,
 };
@@ -295,6 +498,14 @@ const _inventedLibraryReason =
     'imports. The reader cannot tell an entry point that was renamed from one '
     'that never existed, and either way the line describes a dependency the '
     'module does not have.';
+
+const _unreachableLibraryReason =
+    'An arm of the conditional import reaches a dart: library that is not '
+    'available where that arm is selected, so the arm cannot compile on the '
+    'platform it exists to serve. The default arm is the easiest one to get '
+    'wrong: it is taken where none of the conditions hold, which rules out '
+    'every platform library at once — including dart:io, which a `standalone` '
+    'or `file`-flavoured entry point of a dependency will pull in.';
 
 const _misattributedEntryPointReason =
     'A document credits a platform with a timezone entry point that the arm '

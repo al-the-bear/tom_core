@@ -9,17 +9,18 @@ import '../little_things/exception_base.dart';
 import '../little_things/formatting.dart' as formatting;
 
 // Imported for the synchronous lazy-init below, and re-exported because
-// `tomSetupTimezones` is part of the module's public surface: on web it is the
-// only way to load the database, and an import alone would not carry it
+// `tomSetupTimezones` is part of the module's public surface: in the browser it
+// is the only way to load the database, and an import alone would not carry it
 // through this library to the package barrel. The two lines repeat the same
 // platform configuration because an `export` does not bring names into scope
 // and an `import` does not pass them on; keep them in step.
-import 'init_tz.dart'
-    if (dart.library.io) 'init_tz_flutter.dart'
-    if (dart.library.js) 'init_tz_web.dart';
-export 'init_tz.dart'
-    if (dart.library.io) 'init_tz_flutter.dart'
-    if (dart.library.js) 'init_tz_web.dart';
+//
+// The embedded database is the default rather than a conditional arm because it
+// needs nothing from the platform, and the default arm is taken exactly where
+// no condition can be relied on. Only the browser needs a different
+// implementation — it has no bundled copy and fetches over the network instead.
+import 'init_tz_embedded.dart' if (dart.library.js) 'init_tz_web.dart';
+export 'init_tz_embedded.dart' if (dart.library.js) 'init_tz_web.dart';
 
 // see https://stackoverflow.com/questions/63666615/how-to-get-timezone-name-in-flutter
 

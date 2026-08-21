@@ -171,6 +171,34 @@ anyone who was writing them.
 
 ### Changed
 
+- **The timezoned initializer's default arm is the embedded database, and
+  `init_tz.dart` is gone (tcinc330).** The default arm of a conditional import
+  is taken wherever no condition holds, which makes it the one position that
+  can rely on nothing — and the file sitting there imported
+  `package:timezone/standalone.dart`, which reads the database off disk through
+  `dart:io`. It could not have compiled anywhere it was selected. Nothing ever
+  selected it: the VM took the `dart.library.io` arm and the browser took
+  `dart.library.js`, so a file that could not work was also never reached, and
+  the two faults hid each other. Its own two functions had already drifted
+  apart in the same silence — the async one read from the filesystem while the
+  sync one used the embedded copy, two data sources in one twenty-line file.
+
+  `init_tz_flutter.dart` is renamed `init_tz_embedded.dart` and promoted to the
+  default arm, and the `dart.library.io` arm is dropped as the redundancy it
+  became. The selection now reads `import 'init_tz_embedded.dart' if
+  (dart.library.js) 'init_tz_web.dart';` — embedded everywhere, fetched in the
+  browser. The new name describes the data source rather than a platform,
+  because the old one named the single platform it was *least* specific to: it
+  served the server, the CLI and the test runner just as much as Flutter, and
+  the documentation had already been misled by exactly that.
+
+  Two behavioural consequences, both improvements. A target with neither
+  `dart:io` nor `dart:js` — dart2wasm, where `dart.library.js` does not hold —
+  previously selected a file that could not compile and now gets a working
+  embedded database. And the module no longer has any path to
+  `package:timezone/standalone.dart`, so nothing in the kernel loads timezone
+  data off the filesystem.
+
 - **`TomZonedDate.fromDateTime` and `TomZonedTime.fromDateTime` enforce their
   type's anchoring (tcinc324).** Both copied every component of the incoming
   `DateTime` straight through, so neither type's defining invariant survived
@@ -787,6 +815,20 @@ anyone who was writing them.
 
 ### Tests
 
+- **The platform-selection guard now follows the imports (tcinc330).** A sixth
+  case walks each arm of the conditional import through the `timezone` package
+  and rejects any `dart:` library the arm's own condition does not guarantee —
+  the whole of `dart:io`, `dart:isolate`, `dart:ffi` and the web set for the
+  default arm, and the opposite platform's set for a conditional one. This is
+  the check that would have caught a default arm importing a filesystem-backed
+  entry point, and it caught exactly that when it was written. Resolution goes
+  through `.dart_tool/package_config.json` and fails loudly if that file is
+  absent, because an unresolvable import would otherwise look like a clean
+  result. The walk stops at every package other than `timezone`: the choice
+  this import makes is between `timezone` entry points, and descending into an
+  unrelated package would only report conditional imports it resolves for
+  itself.
+
 - **New guard: `timezoned_platform_selection_test.dart` (tcinc329).** The
   module picks its initializer with a conditional import whose first line is
   the *default* arm, not the native one — so every VM target, server and CLI
@@ -1174,17 +1216,13 @@ anyone who was writing them.
 
 - **The timezoned platform description named the wrong entry point for native
   (tcinc329).** `doc/timezoned/timezoned.md` had the server reaching the
-  `timezone` package through `standalone.dart`. It does not. The conditional
-  import's first line is its default arm, taken only when no condition holds,
-  and every VM target has `dart.library.io` — so the server, the CLI and the
-  test runner all run `init_tz_flutter.dart` and load embedded data from
-  `package:timezone/data/latest.dart`, exactly as Flutter does. `init_tz.dart`,
-  which sits first and carries the plainest name, is selected by nothing the
-  package is built for. The passage now states the rule the import encodes and
-  names the library each arm imports. Reading order matters here in a way the
-  prose never signalled, so the correction is stated in terms of the condition
-  rather than the platform — the file names are the trap, and describing the
-  selection through them walks straight into it.
+  `timezone` package through `standalone.dart`. It does not, and never did: the
+  server, the CLI, the test runner and Flutter all load embedded data from
+  `package:timezone/data/latest.dart`. The passage described the selection by
+  pairing platforms with file names, which is how it went wrong — the names
+  pointed the other way — so it now states the condition each arm is selected
+  by and the library each one imports. That framing is what made the dead
+  default arm visible, and it is fixed above.
 
 - **shutdown_cleanup no longer teaches async teardown that the framework drops
   (tcinc322).** Teardown is synchronous throughout — every entry is called

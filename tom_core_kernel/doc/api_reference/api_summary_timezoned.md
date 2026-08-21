@@ -23,8 +23,7 @@ initialization.
 Sources:
 - `lib/src/tombase/timezoned/date_timestamp.dart`
 - `lib/src/tombase/timezoned/timezones.dart`
-- `lib/src/tombase/timezoned/init_tz.dart`
-- `lib/src/tombase/timezoned/init_tz_flutter.dart`
+- `lib/src/tombase/timezoned/init_tz_embedded.dart`
 - `lib/src/tombase/timezoned/init_tz_web.dart`
 
 `TomTimezoned` extends `DateTime` and always stores its value in UTC, adding
@@ -376,8 +375,8 @@ None — the constructor is private. Obtain instances via `TomTimezone.utc`,
 | `tomSetupTimezonesSync` | `void tomSetupTimezonesSync()` | Loads the embedded database synchronously (native/Flutter). Backs `TomTimezone`'s synchronous lazy-init; on web it throws a `StateError` because there is no synchronous load path. |
 
 These two functions are provided by a platform-conditional import
-(`init_tz.dart` / `init_tz_flutter.dart` / `init_tz_web.dart`), so the active
-implementation is selected at compile time for the target platform.
+(`init_tz_embedded.dart` by default, `init_tz_web.dart` in the browser), so the
+active implementation is selected at compile time for the target platform.
 `timezones.dart` re-exports that same conditional configuration, which is what
 carries both names out to `package:tom_core_kernel/tom_core_kernel.dart` — an
 import alone would have kept them inside the module.
