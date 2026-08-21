@@ -188,6 +188,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits every `## Table of Contents` in the tree against its own document |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
+| [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way |
 
 ```bash
 python3 tool/check_doc_tocs.py                # the whole repository
@@ -232,6 +233,32 @@ only for prose, several of them cycles. This check takes the part of the problem
 that has no such ambiguity — a private name can only ever resolve inside its own
 library, so whether it exists is answerable from that library alone. That is
 also exactly the shape a rename leaves behind.
+
+```bash
+python3 tool/check_doc_samples.py                  # the whole repository
+python3 tool/check_doc_samples.py tom_core_server  # one subtree
+```
+
+It reports the two halves of one mistake: a constructor taking named parameters
+only, called positionally, and a constructor whose first parameter is a required
+positional, called with a named argument first. Either way the sample does not
+compile, and nothing about editing a signature brings the samples into view.
+
+The obvious guard — extract every ` ```dart ` fence and analyze it — is a much
+larger job than it sounds. There are 1770 fences here and most are fragments: no
+imports, undefined variables, a method body with no class around it. Making them
+compilable needs a harness per sample, and a check that expensive to satisfy gets
+switched off. This takes the part that is decidable from the text alone, because
+whether a call is positional or named is visible in the call and whether the
+constructor accepts that is visible in the signature. It is a narrow slice, but
+it is the slice that catches the copy-paste failure: a reader pastes the shortest
+snippet in the document, and the shortest snippet is the one nobody re-checked
+after the signature grew a named parameter.
+
+Names resolve within the document's own package only. Without an import graph
+there is no telling a real cross-package reference from a collision, and
+collisions dominate — the `User` a document sketches inside its own fence is not
+some other package's `User`.
 
 ## License
 

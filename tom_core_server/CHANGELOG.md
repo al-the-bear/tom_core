@@ -333,6 +333,23 @@
 
 ### Documentation
 
+- **`doc/audit.md` installs a sink with a call that compiles (tcinc350).** The
+  "install a sink at start-up" line read
+  `TomAuditTrail.install(TomFileAuditSink(Directory('/var/audit/app')))`.
+  `TomFileAuditSink` takes named parameters only, so the sample did not compile
+  — and the same document's other sample of the class already wrote
+  `directory:` correctly, which is what made this a slip rather than a stale
+  API. It sat in the document's shortest and most copyable snippet, which is
+  exactly the one a reader pastes. The two samples now agree.
+
+  A repository-wide check now holds this: `tool/check_doc_samples.py` reports
+  the two halves of the mistake — a named-only constructor called positionally,
+  and a required-positional constructor called with a named argument first.
+  Compiling all 1770 fences in the tree is not the guard, because most are
+  fragments with no imports and no surrounding program; this takes the slice
+  that is decidable from the text alone. See the repository README for the
+  bounds, in particular why names resolve within a document's own package only.
+
 - **`TomFileAuditSink.files` points at `_recoverHead`, a method that exists
   (tcinc349).** The paragraph explaining why the file order is computed rather
   than read off the names listed the readers that depend on it, and named one of

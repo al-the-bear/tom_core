@@ -639,7 +639,7 @@ returns immediately and every chokepoint behaves exactly as before. Auditing is
 switched on by installing a sink at startup:
 
 ```dart
-TomAuditTrail.install(TomFileAuditSink(Directory('/var/audit/app')));
+TomAuditTrail.install(TomFileAuditSink(directory: Directory('/var/audit/app')));
 ```
 
 ### Every failure arrives on the returned future
