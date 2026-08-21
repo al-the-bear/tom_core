@@ -666,6 +666,10 @@ TomTotp2FAService.globalSettingSecretResolver =
     (context) => secretStore.lookup(context.principal.username);
 ```
 
+That callback is a `TomTotpSecretResolver` — `FutureOr<String?> Function(
+Tom2FAContext)`, answering the base32 secret the user's authenticator app was
+provisioned with, or `null` when that user has none enrolled.
+
 The adaptor asks the store first and the resolver only when the store has
 nothing, which is what lets a deployment migrate one user at a time. With
 neither, every TOTP challenge fails with `login.error.2fa.not-enrolled` rather
@@ -1540,9 +1544,15 @@ Providers that predate OIDC return no `id_token`; for those, configure
 instead. A provider with neither fails clearly rather than producing an
 anonymous identity.
 
-`TomOAuthTokenTransport` is the one HTTP seam. Stubbing it — which is all
-`oauth_test.dart` does — leaves every other line of the flow executing exactly
-as it does against a real provider.
+`TomOAuthTokenTransport` is the one HTTP seam. `resolve()` answers the installed
+bean, or `TomHttpOAuthTokenTransport` — the live implementation over
+`package:http`, and a working default for the same reason the state store has
+one: talking to the provider is not optional. It turns any non-2xx answer into
+`oauth.provider.http_error` carrying the provider's own error body, which is the
+only thing that says *why* (`invalid_grant`, `redirect_uri_mismatch`); the body
+stays server-side. Stubbing the seam — which is all `oauth_test.dart` does —
+leaves every other line of the flow executing exactly as it does against a real
+provider.
 
 ### Delegated access: the provider's tokens
 
@@ -1558,7 +1568,18 @@ is revocable only by the user noticing. A deployment that only wants "Sign in
 with …" must never end up holding one.
 
 The grant is nonetheless handed back on every exchange, so "keeps nothing" is a
-statement about *storage* and not a capability withheld:
+statement about *storage* and not a capability withheld.
+
+`completeAuthorization` answers a **`TomOAuthExchange`**: a completed code
+exchange, and the four things a caller needs to know about one. `identity` is
+who the provider says this is; `pending` is the record the exchange consumed,
+which carries the login context the session must be issued in; `provider` is the
+registration it was completed against; and `tokens` is what the token endpoint
+returned, or `null` when it delegated nothing. `provider` is carried rather than
+re-derived because a login makes several decisions out of provider configuration
+at points far enough apart that two of them could resolve differently and
+disagree about which login this was — see
+[Two registrations against one IdP](#two-registrations-against-one-idp).
 
 ```dart
 final exchange = await flow.completeAuthorization(code: code, state: state);
@@ -1659,11 +1680,19 @@ another node fails as `oauth.flow.unknown_state`, indistinguishable from an
 expired or replayed state. The symptom is a deployment where external login
 works, but intermittently, and the log claims replay.
 
-`TomSqlOAuthStateStore` puts the record in `tom_oauth_state` — a framework
-table declared once as a `TomFrameworkTable` (see
+`TomSqlOAuthStateStore` puts the record in `tom_oauth_state` — the value of
+`defaultOAuthStateTable`, and a framework table declared once as a
+`TomFrameworkTable` by `oauthStateTable(table)` (see
 [Database Migration](db_migration.md#the-frameworks-own-tables)) and so covered
-by the same convergence checks as every other. Three decisions in it are worth
-stating outright:
+by the same convergence checks as every other. `oauthStateTableDdl(table)` is
+that declaration's `CREATE TABLE`, which is what `createSchema: true` issues and
+what a deployment building the schema itself can print. Declaring the shape once
+is what keeps the DDL, the column lists the store's statements interpolate and
+the model the convergence guard compares from drifting apart; the shipped
+migration under `example/authentication/migrations/` stays hand-written, because
+a migration is what a DBA applies and must remain readable, and
+`test/framework_schema_test.dart` fails if the two disagree. Three decisions in
+the shape are worth stating outright:
 
 * **The PKCE verifier is stored as written, not encrypted.** It is a
   single-use, ten-minute nonce whose only job is to prove that the party
@@ -1903,7 +1932,11 @@ Provider configuration as data, read from `oauth.providers`.
 ### `TomOAuthFlow` / `TomOAuthPkce` / `TomOAuthStateStore` / `TomOAuthTokenTransport`
 
 The handshake, the verifier/challenge pair, the pending-authorization records,
-and the one HTTP seam a stub provider replaces.
+and the one HTTP seam a stub provider replaces — `TomHttpOAuthTokenTransport`
+being the live implementation of that seam, over `package:http`, which
+`TomOAuthTokenTransport.resolve()` falls back to when no bean is installed.
+`TomOAuthExchange` is what a completed handshake answers: the asserted identity,
+the pending record it consumed, the provider registration, and the token grant.
 
 ### `TomSqlOAuthStateStore` / `TomOAuthStateStoreSettings`
 
@@ -1911,7 +1944,9 @@ The state store every node of a cluster shares, over the `tom_oauth_state`
 framework table, and the `oauth.stateStore` block that selects it. `store` /
 `peek` / `consume` / `purgeExpired`, with `consume` a single
 `DELETE … RETURNING` so a state stays single-use under concurrent completions —
-see [Where pending authorizations live](#where-pending-authorizations-live).
+see [Where pending authorizations live](#where-pending-authorizations-live). The
+table itself is declared by `oauthStateTable(table)`, named by default from
+`defaultOAuthStateTable`, with `oauthStateTableDdl(table)` its `CREATE TABLE`.
 
 ### `TomExternalIdentityStore` / `TomExternalIdentityLink`
 
