@@ -2050,4 +2050,130 @@ void main() {
       expect(tt.timezone.timezone, equals('Asia/Tokyo'));
     });
   });
+
+  group('serialized form', () {
+    // The instant section is the only part of the serialized form that names a
+    // point in time. Without its `Z` it names a wall-clock reading with no
+    // zone attached, and nothing else in the string supplies one — the offset
+    // that follows is derived from the zone and is not consulted. Accepting
+    // such a string means resolving it against whatever zone the host machine
+    // is in, which makes the parsed value depend on where it was parsed.
+    //
+    // These tests therefore assert rejection, which is the one answer that is
+    // the same on every host.
+    group('rejects an instant without its Z', () {
+      test('TomTimezoned', () {
+        const s = '2024-06-15T05:30:00.000_+09:00_Asia/Tokyo';
+        expect(TomTimezoned.isTomTimezonedString(s), isFalse);
+        expect(
+          () => TomTimezoned.parseFromString(s),
+          throwsA(isA<FormatException>()),
+        );
+      });
+
+      test('TomZonedDate', () {
+        const s = '@D@2024-06-14T15:00:00.000_+09:00_Asia/Tokyo';
+        expect(TomZonedDate.isTomZonedDateString(s), isFalse);
+        expect(
+          () => TomZonedDate.parseFromString(s),
+          throwsA(isA<FormatException>()),
+        );
+      });
+
+      test('TomZonedTime', () {
+        const s = '@T@1970-01-01T09:00:00.000_+09:00_Asia/Tokyo';
+        expect(TomZonedTime.isTomZonedTimeString(s), isFalse);
+        expect(
+          () => TomZonedTime.parseFromString(s),
+          throwsA(isA<FormatException>()),
+        );
+      });
+
+      test('TomZonedDateTime', () {
+        const s = '@X@2024-06-15T05:30:00.000_+09:00_Asia/Tokyo';
+        expect(TomZonedDateTime.isTomZonedDateTimeString(s), isFalse);
+        expect(
+          () => TomZonedDateTime.parseFromString(s),
+          throwsA(isA<FormatException>()),
+        );
+      });
+    });
+
+    test('reads the instant as UTC, whatever zone the host is in', () {
+      // The value this string names is fixed by its own `Z`, so the assertion
+      // below holds identically on a UTC host and on one at +09:00. That
+      // independence is the whole point of requiring the Z.
+      final dt = TomZonedDateTime.parseFromString(
+        '@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo',
+      );
+      expect(dt.hour, equals(5));
+      expect(dt.millisecondsSinceEpoch, equals(1718429400000));
+    });
+
+    test('accepting the format is the same question as parsing it', () {
+      // The predicates gate the parsers everywhere they are used, so a string
+      // the predicate accepts and the parser rejects would be a contradiction
+      // no caller could defend against. Resolving the zone is the deliberate
+      // exception: the predicate judges shape, not whether the zone exists.
+      const forms = [
+        '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo',
+        '2024-06-15T05:30:00Z_Z_UTC',
+        '2024-06-15T05:30:00.123456Z_-04:00_America/New_York',
+        '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo ',
+        '2024-06-15T05:30:00.000_+09:00_Asia/Tokyo',
+        '2024-06-15T05:30:00.000Z_Asia/Tokyo',
+        'not a serialized value',
+        '',
+      ];
+      for (final form in forms) {
+        final accepted = TomTimezoned.isTomTimezonedString(form);
+        var parsed = true;
+        try {
+          TomTimezoned.parseFromString(form);
+        } on FormatException {
+          parsed = false;
+        }
+        expect(parsed, equals(accepted), reason: 'disagreed on "$form"');
+      }
+      // Non-vacuity: the table must exercise both answers.
+      expect(TomTimezoned.isTomTimezonedString(forms.first), isTrue);
+      expect(TomTimezoned.isTomTimezonedString(forms.last), isFalse);
+    });
+
+    test('round-trips a value carrying microseconds', () {
+      // `toIso8601String` emits six fractional digits as soon as the
+      // microsecond component is non-zero, so a form that admits only three
+      // would reject values the library itself produces.
+      final tokyoTz = TomTimezone.fromName('Asia/Tokyo');
+      final original = TomZonedDateTime(
+        year: 2024,
+        month: 6,
+        day: 15,
+        hour: 5,
+        minute: 30,
+        millisecond: 123,
+        microsecond: 456,
+        timezone: tokyoTz,
+      );
+      final serialized = original.toString();
+      expect(serialized, contains('.123456Z'));
+      expect(TomZonedDateTime.isTomZonedDateTimeString(serialized), isTrue);
+      final restored = TomZonedDateTime.parseFromString(serialized);
+      expect(restored.microsecondsSinceEpoch, original.microsecondsSinceEpoch);
+      expect(restored.timezone.timezone, equals('Asia/Tokyo'));
+    });
+
+    test('takes the zone as authoritative and the offset as derived', () {
+      // The offset is a second rendering of information the zone already
+      // carries, and the IANA database revises historical offsets, so an
+      // incoming offset is not evidence about the value and is not checked
+      // against the zone. Re-serializing restates it from the zone.
+      final dt = TomZonedDateTime.parseFromString(
+        '@X@2024-06-15T05:30:00.000Z_-11:30_Asia/Tokyo',
+      );
+      expect(dt.timezone.timezone, equals('Asia/Tokyo'));
+      expect(dt.hour, equals(5));
+      expect(dt.toString(), contains('_+09:00_Asia/Tokyo'));
+    });
+  });
 }

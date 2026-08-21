@@ -305,9 +305,23 @@ print(standupMarch11); // 2024-03-11 09:00:00.000-0400
 ```
 
 - **PREFIX**: `@D@` (date), `@T@` (time), or `@X@` (datetime)
-- **ISO8601**: UTC datetime in ISO 8601 format
+- **ISO8601**: UTC datetime in ISO 8601 format, ending in a mandatory `Z`, with
+  up to six fractional digits
 - **OFFSET**: UTC offset at serialization time (`Z`, `+09:00`, `-05:00`, etc.)
 - **TIMEZONE**: IANA timezone name
+
+The `Z` is the only part of the string that names a point in time, so it is
+required. A reading without it would have to be resolved against the zone of
+whatever machine happened to be parsing, and the same string would then name
+different instants on different hosts; such a string is rejected by both the
+`is…String` predicates and `parseFromString`.
+
+The offset is written for readability — it lets a stored value be understood
+without a timezone database to hand — but it is not consulted when parsing. The
+zone name is authoritative: the offset is derived from it, and because the IANA
+database revises historical offsets, an offset stored under an older database
+is not evidence about the value. Re-serializing restates the offset from the
+zone.
 
 ### Examples
 

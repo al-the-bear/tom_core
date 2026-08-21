@@ -100,6 +100,13 @@ void run() {
   final validTime = '@T@1970-01-01T14:30:00.000Z_+09:00_Asia/Tokyo';
   final invalidFormat = '2024-06-15T14:30:00';
 
+  // The trailing Z on the ISO section is required: it is the only part of the
+  // string that fixes a point in time. Without it the reading would have to be
+  // resolved against the zone of whatever machine was parsing, so the same
+  // string would name different instants on different hosts. Such a string is
+  // rejected rather than guessed at.
+  final missingZ = '@X@2024-06-15T05:30:00.000_+09:00_Asia/Tokyo';
+
   final isValidDateTime = TomZonedDateTime.isTomZonedDateTimeString(
     validDateTime,
   );
@@ -108,6 +115,7 @@ void run() {
   final isInvalidDateTime = TomZonedDateTime.isTomZonedDateTimeString(
     invalidFormat,
   );
+  final isMissingZValid = TomZonedDateTime.isTomZonedDateTimeString(missingZ);
 
   print('   isTomZonedDateTimeString("$validDateTime"):');
   print('     $isValidDateTime');
@@ -119,7 +127,10 @@ void run() {
   print('     $isValidTime');
 
   print('   isTomZonedDateTimeString("$invalidFormat"):');
-  print('     $isInvalidDateTime\n');
+  print('     $isInvalidDateTime');
+
+  print('   isTomZonedDateTimeString("$missingZ"):');
+  print('     $isMissingZValid  (the ISO section must end in Z)\n');
 
   // -------------------------------------------------------------------------
   // Example 5: Safe parsing pattern
@@ -237,6 +248,7 @@ void run() {
   assert(isValidDate == true);
   assert(isValidTime == true);
   assert(isInvalidDateTime == false);
+  assert(isMissingZValid == false);
 
   // Example 5: Safe parsing
   assert(safeResult1 != null);

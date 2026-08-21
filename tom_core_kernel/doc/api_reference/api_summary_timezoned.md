@@ -33,7 +33,9 @@ specialized subclasses narrow the shape: `TomZonedDate` (date-only, `@D@`
 prefix), `TomZonedTime` (time-only anchored at 1970-01-01, `@T@` prefix), and
 `TomZonedDateTime` (full datetime, `@X@` prefix). Each serializes to
 `ISO8601_OFFSET_TIMEZONE` and parses back with a matching `parseFromString` /
-`isTom…String` pair.
+`isTom…String` pair. The ISO section must end in `Z`, since it is the only part
+of the string that fixes a point in time; the offset that follows is derived
+from the zone, is written for readability, and is not read back.
 
 `TomTimezone` wraps the `timezone` package's `Location`: it looks zones up by
 name or UTC offset, computes offsets (including DST) at any instant, and
@@ -110,7 +112,7 @@ string or unknown zone.
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `isTomTimezonedString(String s)` | `bool` | Whether `s` matches the base serialization format. |
+| `isTomTimezonedString(String s)` | `bool` | Whether `s` matches the base serialization format. Judges shape only — a well-formed string may still name a zone the database does not know, which `parseFromString` rejects. |
 
 #### Properties
 

@@ -206,6 +206,29 @@ anyone who was writing them.
   on unclassified values — they simply no longer contradict themselves on
   values the library itself produces.
 
+- **The serialized timezoned form requires its trailing `Z`, and the offset it
+  carries is not read back (tcinc326).** The `Z` was optional in all eight
+  patterns and the offset group was captured by every `parseFromString` and used
+  by none, so a string whose instant lacked the `Z` was read as a naive local
+  reading and converted with `.toUtc()` against whatever zone the host machine
+  was in — while the one field that could have disambiguated it was discarded.
+  `@X@2024-06-15T05:30:00.000_+09:00_Asia/Tokyo` yielded UTC hour 3 on a host at
+  +02:00 and hour 5 on a UTC host, silently. Requiring the `Z` was preferred to
+  reading the offset because the offset is *derived* from the zone rather than
+  independent of it: honouring both would make a contradictory string ambiguous,
+  where rejecting the Z-less one is the same answer on every machine. The offset
+  is still deliberately not validated against the zone — the IANA database
+  revises historical offsets, so a disagreement is evidence about the database,
+  not the value, and re-serializing restates the offset from the zone. Nothing
+  the library produces is affected: every value it writes carries the `Z`. The
+  exposure was hand-written, hand-edited and legacy stored data, which now fails
+  loudly at the boundary. The eight copies of the format became one builder with
+  four cached patterns, which makes "accepted by the predicate but rejected by
+  the parser" impossible by construction, and the fractional-second group widened
+  from three digits to six — `toIso8601String` emits six as soon as the
+  microsecond component is non-zero, so a value carrying microseconds previously
+  failed its own predicate.
+
 - **`TomShutdownCleanup.addSignal` is idempotent per signal (tcinc319).** It
   appended a watcher unconditionally, so naming a signal twice installed two
   subscriptions on the same broadcast stream and one arrival drove the handler

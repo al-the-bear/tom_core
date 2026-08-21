@@ -2,6 +2,89 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'timezones.dart';
 
+/// The instant section of the serialized form.
+///
+/// The trailing `Z` is required. It is the only thing in the whole serialized
+/// form that ties the reading to a point in time: the offset that follows is
+/// derived from the zone and is not consulted, and the zone alone cannot say
+/// which of its two readings a summer-time boundary meant. Without the `Z`,
+/// [DateTime.parse] would resolve the reading against whatever zone the host
+/// machine is in, so the same string would name different instants on
+/// different machines.
+///
+/// Six fractional digits are admitted because `toIso8601String` emits six as
+/// soon as the microsecond component is non-zero.
+const String _instantSection =
+    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z';
+
+/// The offset section of the serialized form.
+///
+/// A second rendering of what the zone already says, kept because it makes a
+/// stored value readable without a timezone database to hand.
+const String _offsetSection = r'Z|[+-]\d{2}:\d{2}';
+
+/// The IANA zone-name section of the serialized form.
+const String _zoneSection = r'[a-zA-Z0-9_/-]+';
+
+/// Builds the pattern matching a serialized value carrying [prefix].
+///
+/// One definition of the format, from which every type's pattern is derived —
+/// the alternative is a copy per type per use, and a copy that drifts is a
+/// string one half of the library will accept and the other half will refuse.
+///
+/// Group 1 is the instant, group 2 the offset, group 3 the zone name.
+RegExp _serializedForm(String prefix) => RegExp(
+  '^$prefix($_instantSection)_($_offsetSection)_($_zoneSection)\\s?\$',
+);
+
+/// The form of an unprefixed [TomTimezoned].
+final RegExp _timezonedForm = _serializedForm('');
+
+/// The form of a [TomZonedDate].
+final RegExp _zonedDateForm = _serializedForm(TomZonedDate.serializationPrefix);
+
+/// The form of a [TomZonedTime].
+final RegExp _zonedTimeForm = _serializedForm(TomZonedTime.serializationPrefix);
+
+/// The form of a [TomZonedDateTime].
+final RegExp _zonedDateTimeForm = _serializedForm(
+  TomZonedDateTime.serializationPrefix,
+);
+
+/// Reads the two sections of a serialized value that carry information.
+///
+/// The offset is deliberately not read. It restates the zone's offset at the
+/// instant, and the IANA database revises historical offsets, so an incoming
+/// offset is not evidence about the value; the zone decides, and serializing
+/// restates the offset from it.
+///
+/// [pattern] The form for the expected prefix, from [_serializedForm].
+/// [formattedString] The string to read.
+/// [typeName] Names the expected type in the exception, so a failure says
+/// which format the string failed to be.
+///
+/// Throws [FormatException] if the string is not in the form, or names a zone
+/// the timezone database does not know.
+({DateTime instant, TomTimezone timezone}) _readSerializedForm(
+  RegExp pattern,
+  String formattedString,
+  String typeName,
+) {
+  final match = pattern.firstMatch(formattedString.trim());
+  if (match == null) {
+    throw FormatException('Invalid $typeName string: $formattedString');
+  }
+  final zone = match.group(3)!;
+  final timezone = TomTimezone.fromName(zone);
+  if (timezone == null) {
+    throw FormatException(
+      "Unknown timezone '$zone' in $typeName string: $formattedString",
+    );
+  }
+  // The `Z` is mandatory, so this is a UTC value already.
+  return (instant: DateTime.parse(match.group(1)!), timezone: timezone);
+}
+
 /// Base class for timezone-aware date/time values.
 ///
 /// [TomTimezoned] extends [DateTime] to add timezone awareness. The internal
@@ -251,28 +334,12 @@ class TomTimezoned extends DateTime {
   /// print(tt.timezone.timezone); // 'Asia/Tokyo'
   /// ```
   factory TomTimezoned.parseFromString(String formattedString) {
-    if (!TomTimezoned.isTomTimezonedString(formattedString)) {
-      throw FormatException("Invalid TomTimezoned string: $formattedString");
-    }
-    // Format: ISO8601_offset_timezone
-    final match = RegExp(
-      r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?)_(Z|[+-]\d{2}:\d{2})_([a-zA-Z0-9_/-]+)\s?$",
-    ).firstMatch(formattedString.trim());
-    if (match == null) {
-      throw FormatException(
-        "Failed to parse TomTimezoned string: $formattedString",
-      );
-    }
-    String dateTimeStr = match.group(1)!;
-    String zone = match.group(3)!;
-    DateTime dt = DateTime.parse(dateTimeStr).toUtc();
-    final timezone = TomTimezone.fromName(zone);
-    if (timezone == null) {
-      throw FormatException(
-        "Unknown timezone '$zone' in TomTimezoned string: $formattedString",
-      );
-    }
-    return TomTimezoned.fromDateTime(dt, timezone);
+    final read = _readSerializedForm(
+      _timezonedForm,
+      formattedString,
+      'TomTimezoned',
+    );
+    return TomTimezoned.fromDateTime(read.instant, read.timezone);
   }
 
   /// Returns the string representation of this datetime.
@@ -287,10 +354,10 @@ class TomTimezoned extends DateTime {
   /// Checks if a string is in valid [TomTimezoned] format.
   ///
   /// Returns `true` if the string matches the expected serialization format.
+  /// This judges shape only; a well-formed string may still name a zone the
+  /// timezone database does not know, which [parseFromString] rejects.
   static bool isTomTimezonedString(String s) {
-    return RegExp(
-      r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z?_(Z|[+-]\d{2}:\d{2})_[a-zA-Z0-9_/-]+\s?$",
-    ).hasMatch(s);
+    return _timezonedForm.hasMatch(s.trim());
   }
 
   // =========================================================================
@@ -515,27 +582,12 @@ class TomZonedDate extends TomTimezoned {
   /// print(date.localDay);   // 15
   /// ```
   factory TomZonedDate.parseFromString(String formattedString) {
-    if (!TomZonedDate.isTomZonedDateString(formattedString)) {
-      throw FormatException("Invalid TomZonedDate string: $formattedString");
-    }
-    final match = RegExp(
-      r"^@D@(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?)_(Z|[+-]\d{2}:\d{2})_([a-zA-Z0-9_/-]+)\s?$",
-    ).firstMatch(formattedString.trim());
-    if (match == null) {
-      throw FormatException(
-        "Failed to parse TomZonedDate string: $formattedString",
-      );
-    }
-    String dateTimeStr = match.group(1)!;
-    String zone = match.group(3)!;
-    DateTime dt = DateTime.parse(dateTimeStr).toUtc();
-    final timezone = TomTimezone.fromName(zone);
-    if (timezone == null) {
-      throw FormatException(
-        "Unknown timezone '$zone' in TomZonedDate string: $formattedString",
-      );
-    }
-    return TomZonedDate.fromDateTime(dt, timezone);
+    final read = _readSerializedForm(
+      _zonedDateForm,
+      formattedString,
+      'TomZonedDate',
+    );
+    return TomZonedDate.fromDateTime(read.instant, read.timezone);
   }
 
   /// Returns the serialized string representation of this date.
@@ -550,11 +602,11 @@ class TomZonedDate extends TomTimezoned {
   /// Checks if a string is in valid [TomZonedDate] format.
   ///
   /// Returns `true` if the string starts with `@D@` and matches
-  /// the expected serialization format.
+  /// the expected serialization format. This judges shape only; a well-formed
+  /// string may still name a zone the timezone database does not know, which
+  /// [parseFromString] rejects.
   static bool isTomZonedDateString(String s) {
-    return RegExp(
-      r"^@D@\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z?_(Z|[+-]\d{2}:\d{2})_[a-zA-Z0-9_/-]+\s?$",
-    ).hasMatch(s);
+    return _zonedDateForm.hasMatch(s.trim());
   }
 
   /// Checks whether [dt] represents a date-only value.
@@ -761,27 +813,12 @@ class TomZonedTime extends TomTimezoned {
   ///
   /// Throws [FormatException] if the string format is invalid.
   factory TomZonedTime.parseFromString(String formattedString) {
-    if (!TomZonedTime.isTomZonedTimeString(formattedString)) {
-      throw FormatException("Invalid TomZonedTime string: $formattedString");
-    }
-    final match = RegExp(
-      r"^@T@(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?)_(Z|[+-]\d{2}:\d{2})_([a-zA-Z0-9_/-]+)\s?$",
-    ).firstMatch(formattedString.trim());
-    if (match == null) {
-      throw FormatException(
-        "Failed to parse TomZonedTime string: $formattedString",
-      );
-    }
-    String dateTimeStr = match.group(1)!;
-    String zone = match.group(3)!;
-    DateTime dt = DateTime.parse(dateTimeStr).toUtc();
-    final timezone = TomTimezone.fromName(zone);
-    if (timezone == null) {
-      throw FormatException(
-        "Unknown timezone '$zone' in TomZonedTime string: $formattedString",
-      );
-    }
-    return TomZonedTime.fromDateTime(dt, timezone);
+    final read = _readSerializedForm(
+      _zonedTimeForm,
+      formattedString,
+      'TomZonedTime',
+    );
+    return TomZonedTime.fromDateTime(read.instant, read.timezone);
   }
 
   /// Returns the serialized string representation of this time.
@@ -794,10 +831,11 @@ class TomZonedTime extends TomTimezoned {
   }
 
   /// Checks if a string is in valid [TomZonedTime] format.
+  ///
+  /// This judges shape only; a well-formed string may still name a zone the
+  /// timezone database does not know, which [parseFromString] rejects.
   static bool isTomZonedTimeString(String s) {
-    return RegExp(
-      r"^@T@\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z?_(Z|[+-]\d{2}:\d{2})_[a-zA-Z0-9_/-]+\s?$",
-    ).hasMatch(s);
+    return _zonedTimeForm.hasMatch(s.trim());
   }
 
   /// Checks whether [dt] represents a time-only value.
@@ -1082,36 +1120,20 @@ class TomZonedDateTime extends TomTimezoned {
   /// print(dt.timezone.timezone); // 'Asia/Tokyo'
   /// ```
   factory TomZonedDateTime.parseFromString(String formattedString) {
-    if (!TomZonedDateTime.isTomZonedDateTimeString(formattedString)) {
-      throw FormatException(
-        "Invalid TomZonedDateTime string: $formattedString",
-      );
-    }
-    final match = RegExp(
-      r"^@X@(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?)_(Z|[+-]\d{2}:\d{2})_([a-zA-Z0-9_/-]+)\s?$",
-    ).firstMatch(formattedString.trim());
-    if (match == null) {
-      throw FormatException(
-        "Failed to parse TomZonedDateTime string: $formattedString",
-      );
-    }
-    String dateTimeStr = match.group(1)!;
-    String zone = match.group(3)!;
-    DateTime dt = DateTime.parse(dateTimeStr).toUtc();
-    final timezone = TomTimezone.fromName(zone);
-    if (timezone == null) {
-      throw FormatException(
-        "Unknown timezone '$zone' in TomZonedDateTime string: $formattedString",
-      );
-    }
-    return TomZonedDateTime.fromDateTime(dt, timezone);
+    final read = _readSerializedForm(
+      _zonedDateTimeForm,
+      formattedString,
+      'TomZonedDateTime',
+    );
+    return TomZonedDateTime.fromDateTime(read.instant, read.timezone);
   }
 
   /// Checks if a string is in valid [TomZonedDateTime] format.
+  ///
+  /// This judges shape only; a well-formed string may still name a zone the
+  /// timezone database does not know, which [parseFromString] rejects.
   static bool isTomZonedDateTimeString(String s) {
-    return RegExp(
-      r"^@X@\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z?_(Z|[+-]\d{2}:\d{2})_[a-zA-Z0-9_/-]+\s?$",
-    ).hasMatch(s);
+    return _zonedDateTimeForm.hasMatch(s.trim());
   }
 
   /// Checks if a [DateTime] can be represented as a [TomZonedDateTime].
