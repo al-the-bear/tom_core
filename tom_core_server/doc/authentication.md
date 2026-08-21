@@ -2030,6 +2030,19 @@ resolves the pending record for its context and calls
   A deployment that must revoke on unlink calls the provider's endpoint itself
   (RFC 7009), which is one provider-specific HTTP call this module deliberately
   does not model.
+- **The server principal is installed once and never renewed.**
+  `TomServerSelfLogin.loginAndInstall` obtains the principal at start-up and
+  nothing re-logs in afterwards, so a long-lived process keeps capping its
+  scheduled work at whatever entitlements it held when it started. Clearing the
+  principal is not a workaround: `TomServerPrincipal.clear()` *widens* access
+  rather than narrowing it. A deployment that changes a server account's rights
+  restarts the process for now.
+- **`/oauth/callback` answers with a JSON authentication result**, although it
+  is the address the provider redirects a *browser* to. The token therefore
+  reaches the user's address bar and history, and a cancelled or expired
+  authorization renders as a result object rather than as a page. A deployment
+  that puts a person in front of this flow wraps the endpoint with its own
+  redirect.
 
 ## Dependencies
 
