@@ -1811,33 +1811,108 @@ void main() {
       );
     });
 
-    // The deployment's cue to send the user through consent again.
-    test(
-      'accessTokenFor answers null for an unrefreshable expired grant',
-      () async {
-        final flow = _flow(delegating(), _StubTransport());
-        final store = TomMemoryOAuthTokenStore();
-        await store.store(
-          _issuer,
-          'sub-1',
-          TomOAuthTokenGrant(
-            accessToken: 'at-1',
-            expiresAt: DateTime.now().toUtc().subtract(
-              const Duration(hours: 1),
-            ),
-          ),
-        );
+    // The deployment's cue to send the user through consent again — and the
+    // dead row goes with the answer, because a grant that can never mint a
+    // token again is not a credential this deployment holds.
+    test('accessTokenFor answers null for an unrefreshable expired grant, and '
+        'purges it', () async {
+      final flow = _flow(delegating(), _StubTransport());
+      final store = TomMemoryOAuthTokenStore();
+      await store.store(
+        _issuer,
+        'sub-1',
+        TomOAuthTokenGrant(
+          accessToken: 'at-1',
+          expiresAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+        ),
+      );
 
-        expect(
-          await flow.accessTokenFor(
-            providerId: 'stub',
-            subject: 'sub-1',
-            store: store,
+      expect(
+        await flow.accessTokenFor(
+          providerId: 'stub',
+          subject: 'sub-1',
+          store: store,
+        ),
+        isNull,
+      );
+      expect(await store.read(_issuer, 'sub-1'), isNull);
+    });
+
+    // A grant the provider gave no lifetime for is not dead — it is unknown,
+    // and guessing would throw away a token that still works.
+    test('accessTokenFor keeps a grant that declares no expiry', () async {
+      final flow = _flow(delegating(), _StubTransport());
+      final store = TomMemoryOAuthTokenStore();
+      await store.store(
+        _issuer,
+        'sub-1',
+        TomOAuthTokenGrant(accessToken: 'at-forever'),
+      );
+
+      final live = await flow.accessTokenFor(
+        providerId: 'stub',
+        subject: 'sub-1',
+        store: store,
+      );
+      expect(live?.accessToken, 'at-forever');
+      expect(await store.read(_issuer, 'sub-1'), isNotNull);
+    });
+
+    // The contrast that makes the purge safe to reason about: a *rejected*
+    // refresh is not proof the grant is dead. A provider outage answering
+    // `invalid_grant` must not destroy a credential a retry would have used, so
+    // that path throws and leaves the row alone.
+    test('a rejected refresh throws and keeps the grant', () async {
+      final flow = _flow(
+        delegating(),
+        _StubTransport(tokenResponse: {'error': 'temporarily_unavailable'}),
+      );
+      final store = TomMemoryOAuthTokenStore();
+      await store.store(
+        _issuer,
+        'sub-1',
+        TomOAuthTokenGrant(
+          accessToken: 'at-1',
+          refreshToken: 'rt-1',
+          expiresAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+        ),
+      );
+
+      await expectLater(
+        flow.accessTokenFor(providerId: 'stub', subject: 'sub-1', store: store),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.flow.token_exchange_rejected',
           ),
-          isNull,
-        );
-      },
-    );
+        ),
+      );
+      expect(await store.read(_issuer, 'sub-1'), isNotNull);
+    });
+
+    // Idempotent: the second caller to find the same dead grant must not fail
+    // because the first already removed it.
+    test('a dead grant purged twice is not an error', () async {
+      final flow = _flow(delegating(), _StubTransport());
+      final store = TomMemoryOAuthTokenStore();
+      await store.store(
+        _issuer,
+        'sub-1',
+        TomOAuthTokenGrant(
+          accessToken: 'at-1',
+          expiresAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+        ),
+      );
+
+      Future<TomOAuthTokenGrant?> ask() => flow.accessTokenFor(
+        providerId: 'stub',
+        subject: 'sub-1',
+        store: store,
+      );
+      expect(await ask(), isNull);
+      expect(await ask(), isNull);
+    });
   });
 
   group('provider token retention', () {

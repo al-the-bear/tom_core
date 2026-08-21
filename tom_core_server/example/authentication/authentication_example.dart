@@ -4,8 +4,9 @@
 /// running HTTP server or database: building [TomAuthenticationData], resolving
 /// it through a service into a [TomAuthenticationInfo], rejecting a login with a
 /// [LoginException], reading the adaptor-annotation configuration, choosing the
-/// pending-authorization store through [TomOAuthStateStoreSettings], and setting
-/// how much clock skew an ID token's expiry is read against.
+/// pending-authorization store through [TomOAuthStateStoreSettings], setting
+/// how much clock skew an ID token's expiry is read against, and watching a
+/// grant that can never again mint a token be deleted rather than kept.
 ///
 /// Run with `dart run example/authentication/authentication_example.dart`.
 /// The same behaviour is covered by `test/authentication_test.dart`.
@@ -196,6 +197,37 @@ Future<void> run() async {
     '${await tokens.read(identity.issuer, identity.subject)}',
   );
 
+  // Example 9: a grant that expired with no refresh token is deleted when
+  // `accessTokenFor` finds it, not merely reported as null. It can never mint
+  // another token, so it is a fact about the past rather than a credential --
+  // and a store that keeps it grows rows an operator cannot tell apart from
+  // live but idle ones. (A *rejected* refresh is kept and thrown on instead: a
+  // provider erroring during an outage is not proof the grant is dead.)
+  final flow = TomOAuthFlow(
+    providers: providers,
+    stateStore: TomOAuthMemoryStateStore(),
+    // Never reached below: the dead-grant path answers before any HTTP.
+    transport: const TomHttpOAuthTokenTransport(),
+  );
+  await tokens.store(
+    providers['calendar'].issuer,
+    'user-99',
+    TomOAuthTokenGrant(
+      accessToken: 'at-stale',
+      expiresAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+    ),
+  );
+  final dead = await flow.accessTokenFor(
+    providerId: 'calendar',
+    subject: 'user-99',
+    store: tokens,
+  );
+  print('dead grant answered:       $dead');
+  print(
+    'dead grant still stored:   '
+    '${await tokens.read(providers['calendar'].issuer, 'user-99') != null}',
+  );
+
   // Assertions
   assert(guest.principal.authenticated == false);
   assert(user.principal.authenticated == true);
@@ -217,6 +249,8 @@ Future<void> run() async {
   assert(!'$held'.contains('rt-long-lived'));
   assert(await tokens.read(identity.issuer, identity.subject) == null);
   assert(await identities.localUsernameFor(identity) == null);
+  assert(dead == null);
+  assert(await tokens.read(providers['calendar'].issuer, 'user-99') == null);
 }
 
 void main() => run();

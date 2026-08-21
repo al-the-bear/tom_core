@@ -1557,6 +1557,7 @@ What the store guarantees:
 | An operator can still triage | `token_scope`, `obtained_at`, `expires_at` sit beside it in the clear; none of them is authoritative |
 | One grant per identity | `UNIQUE KEY (issuer, subject)` — a second row would make which credential is presented depend on row order |
 | A credential never outlives its link | `TomExternalIdentityStore.unlink` deletes the grant *before* the link |
+| A credential never outlives its usefulness | `accessTokenFor` deletes a grant it finds expired with nothing to refresh it |
 
 Using it later is one call, and it is deliberately **not** on the authentication
 service:
@@ -1576,6 +1577,23 @@ otherwise refreshes it and writes the result back — the three steps every call
 would otherwise write, where the caller that writes them wrong writes back
 nothing and refreshes on every call until the provider's rate limiter objects.
 `refreshGrant` is the lower-level form for a caller holding a grant already.
+
+**A grant found expired with no refresh token is deleted, not merely reported as
+`null`.** It can never mint another token, so it is not a credential the
+deployment holds — it is a fact about the past, and a credential store is the
+wrong home for one. Leaving it would grow the table without bound, make every
+later call repeat the same read for the same answer, and leave an operator
+unable to tell a dead row from a live but idle one. The identity link still
+records that this user once consented; a deployment that wants a *history* of
+consent wants [the audit module](audit.md), not a table of unusable secrets.
+
+A **rejected refresh is deliberately not purged**, and the contrast is the point:
+a provider answering `invalid_grant` during an outage is not proof the grant is
+dead, and destroying a credential a retry would have used is worse than keeping
+one that is stale. That path throws `oauth.flow.token_exchange_rejected` instead,
+because a provider rejecting a refresh token it issued is something an operator
+needs to see rather than an empty answer a job retries forever. A grant that
+declares no expiry at all is never expired, so it is never purged.
 
 **Refreshing is not a login.** Neither method consults a
 `TomAuthenticationService`, asks the 2FA policy, touches a session or produces a

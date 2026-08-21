@@ -114,6 +114,12 @@ What that ownership consists of:
   *before* the link it belongs to. A third-party credential never outlives the
   link it was granted through, and the other order would leave an orphaned live
   credential behind.
+* **Deleted when dead.** `TomOAuthFlow.accessTokenFor` deletes a grant it finds
+  expired with no refresh token, rather than answering `null` and leaving it. It
+  can never mint another token, so it is a fact about the past, not a credential
+  — and the store would otherwise accumulate rows an operator cannot tell apart
+  from live but idle ones. A *rejected* refresh is kept and thrown on instead: a
+  provider erroring during an outage is not proof the grant is dead.
 * **Refreshed through the flow, never through the service.**
   `TomOAuthFlow.refreshGrant` and `TomOAuthFlow.accessTokenFor` are one HTTP call
   to a token endpoint on behalf of a user who consented some time ago. They

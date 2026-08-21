@@ -623,9 +623,29 @@ class TomOAuthFlow {
   /// Answers `null` when nothing is held for the identity, when the held grant
   /// has expired and cannot be refreshed, or when no [TomOAuthTokenStore] is
   /// installed at all — the deployment's cue to send the user through consent.
-  /// A failed *refresh* throws, because a provider that rejected a refresh token
-  /// it issued is an event an operator needs to see rather than an empty answer
-  /// a job retries forever.
+  ///
+  /// **A grant found expired and unrefreshable is deleted, not merely reported
+  /// as `null`.** It can never mint another token, so it is not a credential
+  /// this deployment holds — it is a fact about the past, and a credential store
+  /// is the wrong home for one. Leaving it would make the store grow without
+  /// bound, make every later call repeat the same read for the same answer, and
+  /// leave an operator unable to tell a dead row from a live but idle one. The
+  /// module already takes this position where it is most visible:
+  /// [TomExternalIdentityStore.unlink] deletes the grant with the link. Nothing
+  /// is lost that is wanted — the identity link still records that this user
+  /// once consented, and a deployment that wants a history of consent wants the
+  /// audit module, not a table of unusable secrets.
+  ///
+  /// A **rejected refresh is deliberately not purged**, and the contrast is the
+  /// point: a provider answering `invalid_grant` during an outage is not proof
+  /// the grant is dead, and destroying a credential a retry would have used is
+  /// worse than keeping one that is stale. That path throws instead, because a
+  /// provider rejecting a refresh token it issued is an event an operator needs
+  /// to see rather than an empty answer a job retries forever.
+  ///
+  /// A grant that declares **no** expiry is never expired and so is never
+  /// purged: the provider said nothing about a lifetime, and guessing one would
+  /// throw away a working token.
   Future<TomOAuthTokenGrant?> accessTokenFor({
     required String providerId,
     required String subject,
@@ -639,7 +659,13 @@ class TomOAuthFlow {
     final held = await tokenStore.read(provider.issuer, subject);
     if (held == null) return null;
     if (!held.expiresWithin(minimumValidity)) return held;
-    if (!held.hasRefreshToken) return null;
+    if (!held.hasRefreshToken) {
+      // Dead: expired with nothing to renew it. The delete is not swallowed if
+      // it fails -- a store that cannot delete is broken, and the caller that
+      // just read from it is entitled to hear so.
+      await tokenStore.delete(provider.issuer, subject);
+      return null;
+    }
 
     final refreshed = await refreshGrant(providerId: providerId, grant: held);
     await tokenStore.store(provider.issuer, subject, refreshed);
