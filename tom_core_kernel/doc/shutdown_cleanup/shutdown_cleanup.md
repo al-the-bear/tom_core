@@ -232,6 +232,15 @@ debugCleanup.addSignalHandler((signal) {
 });
 ```
 
+A custom instance created for the life of the program, as above, needs nothing
+further. One with a bounded lifetime must be disposed when that lifetime ends —
+constructing it armed SIGHUP/SIGINT watchers, and a live watcher keeps the
+process alive, so an undisposed instance stops the program from exiting:
+
+```dart
+await debugCleanup.dispose();
+```
+
 ### Server Application Pattern
 
 ```dart

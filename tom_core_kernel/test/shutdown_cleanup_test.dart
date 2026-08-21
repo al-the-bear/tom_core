@@ -138,6 +138,28 @@ class RecordingDisposable implements TomDisposable {
 }
 
 // =============================================================================
+// Test Helpers
+// =============================================================================
+
+/// Builds a [TomShutdownCleanup] that is torn down when the current test ends.
+///
+/// The constructor arms SIGHUP and SIGINT watchers, and a live watcher keeps
+/// the isolate alive — so a test that builds an instance and walks away leaves
+/// two subscriptions behind it. Routing every construction through here means
+/// no test has to remember, and none of them can quietly forget.
+///
+/// Must be called from inside a test body: [addTearDown] registers against the
+/// running test, and throws outside one.
+TomShutdownCleanup _newCleanup() {
+  final cleanup = TomShutdownCleanup();
+  // dispose() delegates to cancelAll(), which empties the subscription list —
+  // so this is harmless for the tests that dispose deliberately as the thing
+  // under test.
+  addTearDown(cleanup.dispose);
+  return cleanup;
+}
+
+// =============================================================================
 // TomDisposable Tests
 // =============================================================================
 
@@ -227,13 +249,13 @@ void main() {
     group('constructor', () {
       test('should create instance without errors', () {
         // Act & Assert - should not throw
-        expect(() => TomShutdownCleanup(), returnsNormally);
+        expect(() => _newCleanup(), returnsNormally);
       });
 
       test('should create distinct instances', () {
         // Act
-        final cleanup1 = TomShutdownCleanup();
-        final cleanup2 = TomShutdownCleanup();
+        final cleanup1 = _newCleanup();
+        final cleanup2 = _newCleanup();
 
         // Assert
         expect(identical(cleanup1, cleanup2), isFalse);
@@ -243,7 +265,7 @@ void main() {
     group('addDisposable', () {
       test('should add disposable to cleanup list', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final disposable = TestDisposable();
 
         // Act & Assert - should not throw
@@ -252,7 +274,7 @@ void main() {
 
       test('should accept multiple disposables', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final disposable1 = TestDisposable();
         final disposable2 = TestDisposable();
         final disposable3 = TestDisposable();
@@ -267,7 +289,7 @@ void main() {
 
       test('should accept same disposable multiple times', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final disposable = TestDisposable();
 
         // Act & Assert - should not throw
@@ -281,7 +303,7 @@ void main() {
     group('addClosable', () {
       test('should add closable to cleanup list', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final closable = TestClosable();
 
         // Act & Assert - should not throw
@@ -290,7 +312,7 @@ void main() {
 
       test('should accept multiple closables', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final closable1 = TestClosable();
         final closable2 = TestClosable();
         final closable3 = TestClosable();
@@ -305,7 +327,7 @@ void main() {
 
       test('should accept same closable multiple times', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final closable = TestClosable();
 
         // Act & Assert - should not throw
@@ -319,7 +341,7 @@ void main() {
     group('addSignalHandler', () {
       test('should add signal handler to cleanup list', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         // ignore: unused_local_variable
         var handlerCalled = false;
 
@@ -333,7 +355,7 @@ void main() {
 
       test('should accept multiple signal handlers', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         var count = 0;
 
         // Act & Assert - should not throw
@@ -346,7 +368,7 @@ void main() {
 
       test('should accept empty handler', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
 
         // Act & Assert - should not throw
         expect(() {
@@ -358,7 +380,7 @@ void main() {
     group('addSignal', () {
       test('should accept ProcessSignal.sigterm', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
 
         // Act & Assert - should not throw
         expect(() => cleanup.addSignal(ProcessSignal.sigterm), returnsNormally);
@@ -366,7 +388,7 @@ void main() {
 
       test('should accept ProcessSignal.sigusr1', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
 
         // Act & Assert - should not throw
         expect(() => cleanup.addSignal(ProcessSignal.sigusr1), returnsNormally);
@@ -374,7 +396,7 @@ void main() {
 
       test('should accept ProcessSignal.sigusr2', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
 
         // Act & Assert - should not throw
         expect(() => cleanup.addSignal(ProcessSignal.sigusr2), returnsNormally);
@@ -384,7 +406,7 @@ void main() {
     group('start', () {
       test('should execute without errors', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
 
         // Act & Assert - should not throw
         expect(() => cleanup.start(), returnsNormally);
@@ -392,7 +414,7 @@ void main() {
 
       test('should be callable multiple times', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
 
         // Act & Assert - should not throw
         expect(() {
@@ -404,7 +426,7 @@ void main() {
 
       test('should work after adding handlers', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         cleanup.addClosable(TestClosable());
         cleanup.addDisposable(TestDisposable());
         cleanup.addSignalHandler((signal) {});
@@ -433,7 +455,7 @@ void main() {
       test('is not required for cleanup to run', () {
         // Arrange
         final log = <String>[];
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         registerRecorders(cleanup, log);
 
         // Act - start() is never called anywhere in this test.
@@ -446,13 +468,13 @@ void main() {
       test('changes nothing wherever it is called in the sequence', () {
         // Arrange & Act - started before any registration.
         final beforeLog = <String>[];
-        final before = TomShutdownCleanup()..start();
+        final before = _newCleanup()..start();
         registerRecorders(before, beforeLog);
         before.performShutdown();
 
         // Arrange & Act - started after every registration.
         final afterLog = <String>[];
-        final after = TomShutdownCleanup();
+        final after = _newCleanup();
         registerRecorders(after, afterLog);
         after.start();
         after.performShutdown();
@@ -466,7 +488,7 @@ void main() {
     group('mixed handlers', () {
       test('should accept all handler types together', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final closable = TestClosable();
         final disposable = TestDisposable();
 
@@ -481,7 +503,7 @@ void main() {
 
       test('should accept handlers in any order', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final closable = TestClosable();
         final disposable = TestDisposable();
 
@@ -608,7 +630,7 @@ void main() {
     group('empty state', () {
       test('should handle cleanup with no registered handlers', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
 
         // Act & Assert - should not throw
         expect(() => cleanup.start(), returnsNormally);
@@ -634,7 +656,7 @@ void main() {
 
       test('should add throwing disposable to cleanup', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final disposable = ThrowingDisposable();
 
         // Act & Assert - should not throw
@@ -643,7 +665,7 @@ void main() {
 
       test('should add throwing closable to cleanup', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final closable = ThrowingClosable();
 
         // Act & Assert - should not throw
@@ -654,7 +676,7 @@ void main() {
     group('multiple instances', () {
       test('should allow creating many independent instances', () {
         // Arrange & Act
-        final instances = List.generate(10, (_) => TomShutdownCleanup());
+        final instances = List.generate(10, (_) => _newCleanup());
 
         // Assert
         expect(instances, hasLength(10));
@@ -665,8 +687,8 @@ void main() {
 
       test('should maintain independent state per instance', () {
         // Arrange
-        final cleanup1 = TomShutdownCleanup();
-        final cleanup2 = TomShutdownCleanup();
+        final cleanup1 = _newCleanup();
+        final cleanup2 = _newCleanup();
         final closable = TestClosable();
 
         // Act
@@ -682,7 +704,7 @@ void main() {
     group('chaining operations', () {
       test('should support method chaining pattern', () {
         // Arrange
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final closable = TestClosable();
         final disposable = TestDisposable();
 
@@ -916,7 +938,7 @@ void main() {
   group('performShutdown', () {
     test('runs handlers, then closables, then disposables in order', () {
       final log = <String>[];
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
       cleanup.addDisposable(RecordingDisposable(log));
       cleanup.addSignalHandler((signal) => log.add('handler'));
       cleanup.addClosable(RecordingClosable(log));
@@ -927,7 +949,7 @@ void main() {
     });
 
     test('executes only once across repeated calls (_executed)', () {
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
       final closable = TestClosable();
       final disposable = TestDisposable();
       cleanup.addClosable(closable);
@@ -943,7 +965,7 @@ void main() {
 
     test('isolates failures so later cleanups still run', () {
       final log = <String>[];
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
       // A throwing handler and a throwing closable must not prevent the
       // remaining closable/disposable from running.
       cleanup.addSignalHandler((signal) => throw Exception('handler boom'));
@@ -965,7 +987,7 @@ void main() {
 
     test('the failure diagnostic names the exception', () {
       final lines = <String>[];
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
       cleanup.addClosable(ThrowingClosable());
 
       _capturePrints(lines, cleanup.performShutdown);
@@ -976,7 +998,7 @@ void main() {
 
     test('the failure diagnostic names the phase and the entry', () {
       final lines = <String>[];
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
       cleanup.addDisposable(ThrowingDisposable());
 
       _capturePrints(lines, cleanup.performShutdown);
@@ -988,7 +1010,7 @@ void main() {
 
     test('the failure diagnostic carries a stack trace', () {
       final lines = <String>[];
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
       cleanup.addClosable(ThrowingClosable());
 
       _capturePrints(lines, cleanup.performShutdown);
@@ -1000,7 +1022,7 @@ void main() {
 
     test('silent suppresses the failure diagnostic too', () {
       final lines = <String>[];
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
       cleanup.addClosable(ThrowingClosable());
       cleanup.silent = true;
 
@@ -1010,7 +1032,7 @@ void main() {
     });
 
     test('manual call ignores paused (only the signal path honours it)', () {
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
       final closable = TestClosable();
       cleanup.addClosable(closable);
       cleanup.paused = true;
@@ -1023,7 +1045,7 @@ void main() {
 
     group('signal-driven path (fromSignal)', () {
       test('skips cleanup entirely while paused', () {
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final closable = TestClosable();
         cleanup.addClosable(closable);
         cleanup.paused = true;
@@ -1034,7 +1056,7 @@ void main() {
       });
 
       test('runs cleanup when not paused', () {
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         final closable = TestClosable();
         cleanup.addClosable(closable);
         cleanup.silent = true;
@@ -1046,7 +1068,7 @@ void main() {
 
       test('silent suppresses the status messages', () {
         final lines = <String>[];
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         cleanup.addClosable(TestClosable());
         cleanup.silent = true;
 
@@ -1057,7 +1079,7 @@ void main() {
 
       test('non-silent emits the received + performed status messages', () {
         final lines = <String>[];
-        final cleanup = TomShutdownCleanup();
+        final cleanup = _newCleanup();
         cleanup.addClosable(TestClosable());
 
         _capturePrints(lines, () => cleanup.performShutdown(fromSignal: true));
@@ -1070,13 +1092,13 @@ void main() {
 
   group('dispose / cancelAll', () {
     test('dispose cancels signal subscriptions without throwing', () async {
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
 
       await expectLater(cleanup.dispose(), completes);
     });
 
     test('cancelAll is safe to call repeatedly', () async {
-      final cleanup = TomShutdownCleanup();
+      final cleanup = _newCleanup();
       cleanup.addSignal(ProcessSignal.sigterm);
 
       await cleanup.cancelAll();
@@ -1084,7 +1106,7 @@ void main() {
     });
 
     test('many instances can each be disposed', () async {
-      final instances = List.generate(10, (_) => TomShutdownCleanup());
+      final instances = List.generate(10, (_) => _newCleanup());
 
       for (final instance in instances) {
         await expectLater(instance.dispose(), completes);

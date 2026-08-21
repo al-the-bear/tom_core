@@ -327,6 +327,11 @@ class TomCloseAdaptor implements TomClosable {
 /// customCleanup.addSignalHandler((signal) {
 ///   // Handle USR1 signal specifically
 /// });
+///
+/// // A custom instance that outlives the program needs nothing further. One
+/// // that does not — in a test, a sample, or any bounded scope — must be
+/// // disposed, because its watchers keep the process alive:
+/// await customCleanup.dispose();
 /// ```
 class TomShutdownCleanup {
   /// Frames kept from a failing cleanup's stack trace.
