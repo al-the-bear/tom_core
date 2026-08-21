@@ -269,7 +269,7 @@ final inNewYork = dt.convertToTimezone(newYork); // TomZonedDateTime
 
 ### TomZonedDate
 
-Date-only values (time components are zero). **Serialization prefix**: `@D@`
+Date-only values, anchored to the start of the day. **Serialization prefix**: `@D@`
 
 ```dart
 final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
@@ -296,10 +296,30 @@ final dateInNY = date.convertToTimezone(newYork); // TomZonedDate
 `fromDateTime` asks its question of the *target* timezone, so the day it picks
 can differ from the UTC one: 22:30 UTC is already tomorrow in Tokyo.
 
-`isDate` reads a `TomTimezoned` in the timezone that value carries, which is the
-frame its midnight anchor is defined in, so every well-formed `TomZonedDate`
-passes wherever it is anchored — even though the UTC components it stores are
-not midnight. Any other `DateTime` is read as it stands.
+`isDate` reads a value that knows its zone — a `TomTimezoned`, or any
+`TZDateTime` — in that zone, which is the frame the anchor is defined in, and
+compares it against the first instant of the local day. So every well-formed
+`TomZonedDate` passes wherever it is anchored, even though the UTC components it
+stores are not midnight. A plain `DateTime` carries no zone to be read in and is
+judged on its components alone.
+
+The anchor is local midnight almost always, but not quite, and the exception is
+worth knowing because it looks like corruption when you first meet it. A few
+zones spring forward *at* midnight — Chile, Cuba, Lebanon, Egypt, Paraguay and
+the Azores each do so once a year, seven zone-days in 2024 and five in 2025 —
+and on those days 00:00 never happens, so the day begins at 01:00:
+
+```dart
+final santiago = TomTimezone.fromName('America/Santiago')!;
+final date = TomZonedDate(year: 2024, month: 9, day: 8, timezone: santiago);
+print(date.localHour);            // 1, not 0 — midnight was skipped
+print(TomZonedDate.isDate(date)); // true — still the start of that day
+```
+
+Both constructors ask the timezone database for that instant instead of forcing
+the components to zero, so they agree with each other and the value round-trips
+through its serialized form. Code that tests for a date by checking
+`localHour == 0` disagrees with all of them on those days; call `isDate`.
 
 ### TomZonedTime
 

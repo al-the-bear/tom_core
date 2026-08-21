@@ -176,8 +176,9 @@ class ZonedDateTimeExample {
       'Timezone should be London',
     );
     // Each factory establishes its own type's anchoring rather than copying
-    // whatever the incoming DateTime happened to carry.
-    assert(zonedDate.localHour == 0, 'A date is anchored to local midnight');
+    // whatever the incoming DateTime happened to carry. In London the start of
+    // the day is midnight; see below for the zones where it is not.
+    assert(zonedDate.localHour == 0, 'In London the day starts at midnight');
     assert(
       TomZonedDate.isDate(zonedDate),
       'A date must satisfy its own predicate',
@@ -188,6 +189,40 @@ class ZonedDateTimeExample {
     assert(
       TomZonedTime.isTime(zonedTime),
       'A time must satisfy its own predicate',
+    );
+
+    // ---- the day that starts at one o'clock ----
+    // A date is anchored to the *start of the day*, which is midnight only
+    // where midnight exists. Chile springs forward at 00:00 on 2024-09-08, so
+    // that day begins at 01:00. Both routes to the value agree, and isDate
+    // accepts it — a hand-rolled `localHour == 0` check would not.
+    final santiago = TomTimezone.fromName('America/Santiago')!;
+    final skippedMidnight = TomZonedDate.fromDateTime(
+      DateTime.utc(2024, 9, 8, 15, 30),
+      santiago,
+    );
+    final builtFromParts = TomZonedDate(
+      year: 2024,
+      month: 9,
+      day: 8,
+      timezone: santiago,
+    );
+
+    print(
+      '   - Santiago 2024-09-08 starts at: '
+      '${skippedMidnight.localHour}:00 (midnight was skipped)',
+    );
+    print('   - Still a date: ${TomZonedDate.isDate(skippedMidnight)}');
+
+    assert(skippedMidnight.localDay == 8, 'Still the eighth');
+    assert(skippedMidnight.localHour == 1, 'The day starts an hour late');
+    assert(
+      TomZonedDate.isDate(skippedMidnight),
+      'The predicate must accept what the constructors produce',
+    );
+    assert(
+      skippedMidnight.toString() == builtFromParts.toString(),
+      'Both routes must reach the same value',
     );
   }
 

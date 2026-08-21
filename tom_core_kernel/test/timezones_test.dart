@@ -818,11 +818,15 @@ void main() {
 
     group('fromDateTime factory', () {
       test('should create TomZonedDate from DateTime', () {
+        // Read through the local accessors even though the default zone is
+        // UTC and the two frames coincide here. The inherited DateTime
+        // components are the UTC storage, which is a detail of how the value
+        // is kept rather than what it means.
         final dt = DateTime.utc(2024, 6, 15, 12, 30, 45);
         final date = TomZonedDate.fromDateTime(dt);
-        expect(date.year, equals(2024));
-        expect(date.month, equals(6));
-        expect(date.day, equals(15));
+        expect(date.localYear, equals(2024));
+        expect(date.localMonth, equals(6));
+        expect(date.localDay, equals(15));
       });
 
       test('should create TomZonedDate with Asia/Singapore timezone', () {
@@ -928,6 +932,76 @@ void main() {
           berlinTz,
         );
         expect(TomZonedDate.isDate(date), isTrue);
+      });
+
+      // The anchoring is "the start of the day there", and on a handful of
+      // zone-days that is not midnight: Chile springs forward at 00:00 on
+      // 2024-09-08, so the day begins at 01:00. Seven such zone-days exist in
+      // 2024 (Cairo, Asuncion, Coyhaique, Havana, Santiago, Beirut, Azores)
+      // and five in 2025. A test that only ever feeds a zone whose midnight
+      // exists cannot tell "anchored to the start of the day" apart from
+      // "hour forced to zero", and those two differ exactly here.
+      group('when the local midnight does not exist', () {
+        final santiago = TomTimezone.fromName('America/Santiago');
+
+        test('should anchor to the first instant the day actually has', () {
+          final date = TomZonedDate.fromDateTime(
+            DateTime.utc(2024, 9, 8, 15, 30),
+            santiago,
+          );
+          expect(date.localYear, equals(2024));
+          expect(date.localMonth, equals(9));
+          expect(date.localDay, equals(8));
+          expect(
+            date.localHour,
+            equals(1),
+            reason:
+                '00:00 does not exist in Santiago on 2024-09-08, so the day '
+                'starts at 01:00',
+          );
+          expect(date.localMinute, isZero);
+          expect(date.localSecond, isZero);
+        });
+
+        test('should still agree with the primary constructor', () {
+          // The reason the factory delegates rather than truncating: one
+          // definition of "the start of the day, there", so both routes
+          // normalize the missing midnight the same way.
+          final fromParts = TomZonedDate(
+            year: 2024,
+            month: 9,
+            day: 8,
+            timezone: santiago,
+          );
+          final fromInstant = TomZonedDate.fromDateTime(
+            DateTime.utc(2024, 9, 8, 15, 30),
+            santiago,
+          );
+          expect(fromInstant.toString(), equals(fromParts.toString()));
+        });
+
+        test('should still satisfy isDate', () {
+          // The predicate has to recognise what the constructor produces. It
+          // asks the database when the day began; insisting on a zero hour
+          // would reject this value, which is a well-formed date.
+          final date = TomZonedDate.fromDateTime(
+            DateTime.utc(2024, 9, 8, 15, 30),
+            santiago,
+          );
+          expect(TomZonedDate.isDate(date), isTrue);
+          expect(date.localHour, isNot(isZero));
+        });
+
+        test('should round-trip through its serialized form', () {
+          final date = TomZonedDate.fromDateTime(
+            DateTime.utc(2024, 9, 8, 15, 30),
+            santiago,
+          );
+          final parsed = TomZonedDate.parseFromString(date.toString());
+          expect(parsed.toString(), equals(date.toString()));
+          expect(parsed.localDay, equals(8));
+          expect(parsed.localHour, equals(1));
+        });
       });
     });
 
@@ -1083,6 +1157,55 @@ void main() {
         );
         expect(TomZonedDate.isDate(dt), isFalse);
       });
+
+      test('should accept a day whose midnight the zone skipped', () {
+        // The predicate's job is to recognise what the type produces. Chile
+        // springs forward at 00:00 on 2024-09-08, so the constructor anchors
+        // to 01:00 — the first instant the day has. Asking for zeroed
+        // components would call a canonically built date not a date.
+        final santiago = TomTimezone.fromName('America/Santiago');
+        final date = TomZonedDate(
+          year: 2024,
+          month: 9,
+          day: 8,
+          timezone: santiago,
+        );
+        expect(date.localHour, equals(1));
+        expect(TomZonedDate.isDate(date), isTrue);
+      });
+
+      test('should agree with itself across frames on a skipped midnight', () {
+        // The same invariant as the Tokyo case above, on the input that can
+        // break it: `toDateTime()` hands back a TZDateTime, which knows its
+        // zone and so gets the same question asked of it. A predicate that
+        // recognised the anchoring only through TomTimezoned would answer
+        // differently here, and the caller would have to know which of the
+        // two they were holding.
+        final santiago = TomTimezone.fromName('America/Santiago');
+        final date = TomZonedDate(
+          year: 2024,
+          month: 9,
+          day: 8,
+          timezone: santiago,
+        );
+        expect(
+          TomZonedDate.isDate(date),
+          equals(TomZonedDate.isDate(date.toDateTime())),
+        );
+      });
+
+      test('should still reject an off-anchor value in such a zone', () {
+        // Widening must not turn into "any hour in a DST zone passes".
+        final santiago = TomTimezone.fromName('America/Santiago');
+        final dt = TomZonedDateTime(
+          year: 2024,
+          month: 9,
+          day: 8,
+          hour: 2,
+          timezone: santiago,
+        );
+        expect(TomZonedDate.isDate(dt), isFalse);
+      });
     });
   });
 
@@ -1124,12 +1247,13 @@ void main() {
 
     group('fromDateTime factory', () {
       test('should create TomZonedTime from DateTime', () {
+        // Local accessors, for the same reason as the date factory above.
         final dt = DateTime.utc(2024, 6, 15, 14, 30, 45, 123);
         final time = TomZonedTime.fromDateTime(dt);
-        expect(time.hour, equals(14));
-        expect(time.minute, equals(30));
-        expect(time.second, equals(45));
-        expect(time.millisecond, equals(123));
+        expect(time.localHour, equals(14));
+        expect(time.localMinute, equals(30));
+        expect(time.localSecond, equals(45));
+        expect(time.localMillisecond, equals(123));
       });
 
       test('should create TomZonedTime with Asia/Kolkata timezone', () {
@@ -1202,12 +1326,64 @@ void main() {
       });
 
       test('should produce a value its own predicate accepts', () {
-        final berlinTz = TomTimezone.fromName('Europe/Berlin');
         final time = TomZonedTime.fromDateTime(
           DateTime.utc(2026, 8, 11, 13, 47, 5),
-          berlinTz,
+          TomTimezone.fromName('Europe/Berlin'),
         );
         expect(TomZonedTime.isTime(time), isTrue);
+      });
+
+      // The mirror of the date type's missing midnight. 1970-01-01 is a real
+      // local date in the zone, not a fixed UTC instant, so it is read with
+      // the offset the zone had *then*. Samoa is the clearest case: it was
+      // UTC-11 on 1970-01-01 and is UTC+13 today, having crossed the date
+      // line in 2011. Feeding a zone whose offset has never moved cannot tell
+      // "anchored in the zone's 1970" apart from "anchored at the UTC epoch".
+      group('when the zone stood elsewhere in 1970', () {
+        final apia = TomTimezone.fromName('Pacific/Apia');
+        final instant = DateTime.utc(2026, 8, 11, 13, 47, 5);
+
+        test('should keep the wall-clock reading and drop the date', () {
+          // 13:47 UTC is 02:47 the *next* day in Apia. A time-of-day keeps
+          // the clock reading and discards the day it fell on, including the
+          // fact that it had rolled over.
+          final time = TomZonedTime.fromDateTime(instant, apia);
+          expect(time.localHour, equals(2));
+          expect(time.localMinute, equals(47));
+          expect(time.localSecond, equals(5));
+          expect(time.localYear, equals(1970));
+          expect(time.localMonth, equals(1));
+          expect(time.localDay, equals(1));
+        });
+
+        test('should anchor with the offset the zone had in 1970', () {
+          // Read in the UTC frame the value is stored in. At Samoa's 1970
+          // offset of -11 the anchor stores 1970-01-01T13:47Z; at today's +13
+          // it would store 1969-12-31T13:47Z. The date is what separates
+          // them, which is why it is asserted rather than the hour.
+          final utc = TomZonedTime.fromDateTime(instant, apia).toUtc();
+          expect(utc.year, equals(1970));
+          expect(utc.month, equals(1));
+          expect(utc.day, equals(1));
+        });
+
+        test('should still agree with the primary constructor', () {
+          final fromParts = TomZonedTime(
+            hour: 2,
+            minute: 47,
+            second: 5,
+            timezone: apia,
+          );
+          final fromInstant = TomZonedTime.fromDateTime(instant, apia);
+          expect(fromInstant.toString(), equals(fromParts.toString()));
+        });
+
+        test('should still satisfy isTime', () {
+          expect(
+            TomZonedTime.isTime(TomZonedTime.fromDateTime(instant, apia)),
+            isTrue,
+          );
+        });
       });
     });
 

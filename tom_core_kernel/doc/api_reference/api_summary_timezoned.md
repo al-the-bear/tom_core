@@ -146,8 +146,8 @@ type — so converting a base value means rebuilding it as the subclass first.
 
 ### TomZonedDate
 
-A timezone-aware date value without time components; all time fields are midnight
-in the local timezone. Serializes with the `@D@` prefix.
+A timezone-aware date value without time components; it is anchored to the first
+instant of the day in the local timezone. Serializes with the `@D@` prefix.
 
 - **Extends:** `TomTimezoned`
 
@@ -167,8 +167,15 @@ factory TomZonedDate.parseFromString(String formattedString)
 ```
 
 `fromDateTime` reads `dtx` in `timezone` to find the calendar day it falls on
-*there* and anchors to midnight of that day, discarding the time of day — so it
+*there* and anchors to the start of that day, discarding the time of day — so it
 produces the same value the primary constructor would for those components.
+
+The start of a day is local midnight except on the handful of zone-days where a
+zone springs forward *at* midnight, when it is 01:00 because 00:00 never
+happens. Chile, Cuba, Lebanon, Egypt, Paraguay and the Azores each do this once
+a year — seven zone-days in 2024, five in 2025. Both constructors ask the
+timezone database rather than assuming, so both agree, and `isDate` recognises
+the result.
 
 `parseFromString` throws `FormatException` for an invalid `@D@` string or unknown
 zone.
@@ -184,7 +191,7 @@ zone.
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `isTomZonedDateString(String s)` | `bool` | Whether `s` is a valid `@D@`-prefixed date string. |
-| `isDate(DateTime dt)` | `bool` | Whether `dt` has all-zero time components (date-only). A `TomTimezoned` is read in the timezone it carries, so every well-formed `TomZonedDate` passes. |
+| `isDate(DateTime dt)` | `bool` | Whether `dt` sits at the start of a calendar day. A value that knows its zone — a `TomTimezoned` or any `TZDateTime` — is read in that zone and compared against the first instant of the local day, so every well-formed `TomZonedDate` passes, including one anchored at 01:00 because the zone skipped midnight. A plain `DateTime` carries no zone and is judged on all-zero time components. |
 
 #### Methods
 

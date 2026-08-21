@@ -171,6 +171,26 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomZonedDate.isDate` asks when the day began instead of assuming midnight
+  (tcinc338).** A date is anchored to the first instant of its local day, and on
+  a handful of zone-days that is not midnight: Chile, Cuba, Lebanon, Egypt,
+  Paraguay and the Azores each spring forward *at* 00:00 once a year — seven
+  zone-days in 2024, five in 2025 — so the day starts at 01:00 because midnight
+  never happens. Both constructors already handled this correctly, by asking the
+  timezone database rather than forcing the components to zero. The predicate
+  did not, so it answered `false` for values its own type's constructor had just
+  produced, and three documents claimed the opposite in as many words ("every
+  well-formed `TomZonedDate` passes, wherever it is anchored").
+
+  `isDate` now compares against the first instant of the local day, which is the
+  round trip of construction. It also recognises a bare `TZDateTime`, not only a
+  `TomTimezoned`: both know their zone, and `toDateTime()` hands back the
+  former, so treating them differently made `isDate(value)` and
+  `isDate(value.toDateTime())` disagree on exactly the days this fixes. Widening
+  is confined to values that are the start of a day — a `TomZonedDateTime` at
+  02:00 on a skipped-midnight day is still rejected. Plain `DateTime` arguments
+  carry no zone and are judged on all-zero components, unchanged.
+
 - **The timezoned initializer's default arm is the embedded database, and
   `init_tz.dart` is gone (tcinc330).** The default arm of a conditional import
   is taken wherever no condition holds, which makes it the one position that
@@ -814,6 +834,31 @@ anyone who was writing them.
   asserted the old behaviour and was replaced.
 
 ### Tests
+
+- **The two anchoring factories are tested where the ordinary day breaks
+  (tcinc338).** Eleven tests in `timezones_test.dart` pin what
+  `TomZonedDate.fromDateTime` and `TomZonedTime.fromDateTime` anchor to when
+  the obvious answer is wrong. Four feed `America/Santiago` on 2024-09-08,
+  where the zone springs forward at midnight: the value lands at 01:00, equals
+  what the primary constructor produces, satisfies `isDate`, and survives a
+  serialization round trip. Four feed `Pacific/Apia`, which stood at UTC-11 on
+  1970-01-01 and at UTC+13 today: the epoch anchor is the zone's *1970* local
+  date, not a fixed UTC instant, so the stored UTC day is 1970-01-01 only
+  because the offset of that era is used. Three more sit in the `isDate` group
+  and cover the widened predicate, including that a `TomZonedDateTime` at 02:00
+  in the same zone is still rejected — widening must not become "any hour in a
+  DST zone passes".
+
+  A zone whose midnight exists cannot distinguish "anchored to the start of the
+  day" from "hour forced to zero"; the two differ only on the seven zone-days
+  in 2024 and five in 2025 that skip midnight, which is why every earlier test
+  passed against a predicate that was wrong. Two assertions in the same groups
+  that read the inherited UTC components now read the local accessors, because
+  what they meant to check is the calendar reading, not the storage frame.
+  Mutation-checked against four drifts: `isDate` comparing components only,
+  `_zoneOf` without its `TZDateTime` branch (killed by the cross-frame
+  agreement test alone), the time factory anchoring at the UTC epoch, and it
+  anchoring the epoch with the zone's present-day offset.
 
 - **The offset index has a stated contract now (tcinc337).** Five tests in
   `timezones_test.dart` hold the behaviour the shelf-life caveat describes: a

@@ -426,10 +426,24 @@ class TomTimezoned extends DateTime {
 /// already the right one.
 DateTime _inOwnFrame(DateTime dt) => dt is TomTimezoned ? dt.toDateTime() : dt;
 
+/// The IANA zone [dt] knows itself to be in, or `null` if it carries none.
+///
+/// A [TomTimezoned] stores UTC and keeps its zone alongside; a [tz.TZDateTime]
+/// carries its location directly. A plain [DateTime] knows only whether it is
+/// UTC or "local", neither of which the timezone database can be asked
+/// questions about, so such values can only be judged on their components.
+tz.Location? _zoneOf(DateTime dt) {
+  if (dt is TomTimezoned) return dt.timezone.location;
+  if (dt is tz.TZDateTime) return dt.location;
+  return null;
+}
+
 /// A timezone-aware date value (without time components).
 ///
 /// [TomZonedDate] represents a calendar date associated with a specific timezone.
-/// All time components (hour, minute, second, etc.) are set to zero in the local timezone.
+/// The value is anchored to the first instant of that day in the local
+/// timezone — normally midnight, and 01:00 on the few zone-days where a
+/// spring-forward transition means midnight never happens.
 ///
 /// ## Serialization
 ///
@@ -463,8 +477,12 @@ class TomZonedDate extends TomTimezoned {
 
   /// Creates a [TomZonedDate] with the specified date components in the local timezone.
   ///
-  /// Time components are automatically set to midnight (00:00:00) in the local timezone.
-  /// The values are then converted to UTC for internal storage.
+  /// Time components are set to the start of that day in the local timezone
+  /// and the result is converted to UTC for internal storage. The start of the
+  /// day is midnight except where the zone springs forward at midnight — Chile
+  /// on 2024-09-08, Cuba, Lebanon, Egypt and the Azores each do this once a
+  /// year — in which case it is 01:00, because midnight does not exist there
+  /// that day. [isDate] accounts for this, so such a value is still a date.
   ///
   /// [year] The year in local time (defaults to 1970).
   /// [month] The month 1-12 in local time (defaults to 1).
@@ -532,10 +550,11 @@ class TomZonedDate extends TomTimezoned {
   ///
   /// [dtx] names an instant; a date names a calendar day. The instant is read
   /// in [timezone] to find out which day it is *there*, and the result is
-  /// anchored to midnight of that day — the same value the primary
-  /// constructor produces for those date components. Any time-of-day carried
-  /// by [dtx] is therefore discarded, which is what makes the result a date
-  /// rather than a timestamp that happens to be typed as one.
+  /// anchored to the start of that day — the same value the primary
+  /// constructor produces for those date components, including its handling of
+  /// a midnight that a spring-forward transition skips. Any time-of-day
+  /// carried by [dtx] is therefore discarded, which is what makes the result a
+  /// date rather than a timestamp that happens to be typed as one.
   ///
   /// The day depends on the timezone: 22:30 UTC is already the next day in
   /// Berlin, so passing that instant with `Europe/Berlin` yields the later
@@ -609,24 +628,51 @@ class TomZonedDate extends TomTimezoned {
     return _zonedDateForm.hasMatch(s.trim());
   }
 
-  /// Checks whether [dt] represents a date-only value.
+  /// Checks whether [dt] sits at the start of a calendar day.
   ///
-  /// Returns `true` if all time components (hour, minute, second,
-  /// millisecond, microsecond) are zero.
+  /// A value that knows its zone — a [TomTimezoned], or any `TZDateTime` — is
+  /// read in that zone and compared against the first instant of the local
+  /// day, so every well-formed [TomZonedDate] passes wherever it is anchored.
   ///
-  /// A [TomTimezoned] is read in the timezone it carries, which is the frame
-  /// its anchoring is defined in — so every well-formed [TomZonedDate] passes,
-  /// wherever it is anchored. Any other [DateTime] is read as it stands.
+  /// The first instant of a day is usually local midnight but not always: a
+  /// few zones spring forward *at* midnight, and on those days the day begins
+  /// at 01:00 because 00:00 never happens. [TomZonedDate] is built by asking
+  /// the timezone database for that instant, so a predicate insisting on zero
+  /// components would reject values its own constructor produces.
+  ///
+  /// A plain [DateTime] carries no zone to be read in, so it is judged as it
+  /// stands: `true` when its time components are all zero.
   ///
   /// Example:
   /// ```dart
   /// final tokyo = TomTimezone.fromName('Asia/Tokyo');
   /// final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: tokyo);
-  /// print(date.hour);                // 15 — midnight in Tokyo, stored as UTC
+  /// print(date.hour);                 // 15 — midnight in Tokyo, stored as UTC
   /// print(TomZonedDate.isDate(date)); // true
+  ///
+  /// // Chile springs forward at midnight on 2024-09-08.
+  /// final santiago = TomTimezone.fromName('America/Santiago');
+  /// final skipped =
+  ///     TomZonedDate(year: 2024, month: 9, day: 8, timezone: santiago);
+  /// print(skipped.localHour);            // 1 — the day starts an hour late
+  /// print(TomZonedDate.isDate(skipped)); // true
   /// ```
   static bool isDate(DateTime dt) {
     final local = _inOwnFrame(dt);
+    final zone = _zoneOf(dt);
+    if (zone != null) {
+      // Ask the database when the day began rather than assuming midnight.
+      // TZDateTime normalizes a local midnight that does not exist forward to
+      // the first instant that does, which is exactly what the constructor
+      // stored, so this comparison is the round trip of construction.
+      final startOfDay = tz.TZDateTime(
+        zone,
+        local.year,
+        local.month,
+        local.day,
+      );
+      return startOfDay.isAtSameMomentAs(dt);
+    }
     return local.hour == 0 &&
         local.minute == 0 &&
         local.second == 0 &&
