@@ -25,12 +25,9 @@
 ///   section, for the adaptor's own use on pass 2.
 ///
 /// Neither is interpreted by the framework. Expiry, the attempt counter and the
-/// dispatch are generic and handled once, in [TomAuthenticationServer]; the
-/// adaptor answers only the question it alone can answer — *is this submission
-/// the right one?*
-///
-/// Expiry, the attempt counter and the dispatch are generic and handled once by
-/// `TomAuthenticationServer`, which owns both passes.
+/// dispatch are generic and handled once, in [TomAuthenticationServer], which
+/// owns both passes; the adaptor answers only the question it alone can
+/// answer — *is this submission the right one?*
 library;
 
 import 'dart:async';
