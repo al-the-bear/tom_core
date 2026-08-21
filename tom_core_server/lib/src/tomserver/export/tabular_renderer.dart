@@ -151,10 +151,11 @@ class TomExportFormats {
 /// trailing `.0` so whole numbers do not read as approximations, and everything
 /// else is `toString()`.
 String tomFormatCellAsText(Object? value) => switch (value) {
-      null => '',
-      DateTime() => value.toIso8601String(),
-      double() => value == value.roundToDouble() && value.abs() < 1e15
-          ? value.toInt().toString()
-          : value.toString(),
-      _ => value.toString(),
-    };
+  null => '',
+  DateTime() => value.toIso8601String(),
+  double() =>
+    value == value.roundToDouble() && value.abs() < 1e15
+        ? value.toInt().toString()
+        : value.toString(),
+  _ => value.toString(),
+};

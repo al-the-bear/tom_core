@@ -413,7 +413,10 @@ void main() {
         (_) async => _answer('{"sid":"SM1","status":"queued"}'),
       );
       await t.transport.send(_sms());
-      expect(t.gateway.requests.single.headers['Authorization'], 'Bearer key-123');
+      expect(
+        t.gateway.requests.single.headers['Authorization'],
+        'Bearer key-123',
+      );
     });
 
     test('one request per recipient', () async {
@@ -555,24 +558,26 @@ void main() {
       );
     });
 
-    test('a transient answer stops the pass rather than partially sending',
-        () async {
-      // A rate limit applies to the account, not the number: continuing down
-      // the list would burn the rest of the recipients on the same refusal,
-      // and the retry would then send the first ones twice.
-      var call = 0;
-      final t = _transport((_) async {
-        call++;
-        return call == 2
-            ? _answer('{}', status: 429)
-            : _answer('{"sid":"SM$call","status":"queued"}');
-      });
-      await expectLater(
-        t.transport.send(_sms(to: ['+4179111', '+4179222', '+4179333'])),
-        throwsA(isA<TomDeliveryException>()),
-      );
-      expect(t.gateway.requests, hasLength(2));
-    });
+    test(
+      'a transient answer stops the pass rather than partially sending',
+      () async {
+        // A rate limit applies to the account, not the number: continuing down
+        // the list would burn the rest of the recipients on the same refusal,
+        // and the retry would then send the first ones twice.
+        var call = 0;
+        final t = _transport((_) async {
+          call++;
+          return call == 2
+              ? _answer('{}', status: 429)
+              : _answer('{"sid":"SM$call","status":"queued"}');
+        });
+        await expectLater(
+          t.transport.send(_sms(to: ['+4179111', '+4179222', '+4179333'])),
+          throwsA(isA<TomDeliveryException>()),
+        );
+        expect(t.gateway.requests, hasLength(2));
+      },
+    );
 
     test('a message over the segment cap never reaches the gateway', () async {
       // Permanent by construction: the text is not going to get shorter on a
@@ -693,8 +698,7 @@ void main() {
     });
 
     test('an unparseable endpoint fails at startup, naming the setting', () {
-      final configuration = _Configuration()
-        ..smsEndpoint = ':::not a url';
+      final configuration = _Configuration()..smsEndpoint = ':::not a url';
       expect(
         () => TomSmsGatewaySettings.fromConfiguration(configuration),
         throwsA(isA<TomMessagingException>()),
@@ -792,10 +796,7 @@ void main() {
       expect(t.gateway.requests, hasLength(1));
       final runs = await shared.store.all();
       expect(runs, hasLength(2));
-      expect(
-        runs.every((r) => r.state == TomJobRunState.succeeded),
-        isTrue,
-      );
+      expect(runs.every((r) => r.state == TomJobRunState.succeeded), isTrue);
     });
   });
 }

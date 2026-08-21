@@ -112,8 +112,11 @@ void main() {
 
     test('an annotation naming a store resolves that one', () {
       final archive = TomMemoryBlobStore();
-      TomBlobStoreInfo.register('scratch', TomMemoryBlobStore(),
-          asDefault: true);
+      TomBlobStoreInfo.register(
+        'scratch',
+        TomMemoryBlobStore(),
+        asDefault: true,
+      );
       TomBlobStoreInfo.register('archive', archive);
       expect(
         TomFileReferenceKeys.storeFor(const TomFileReference(store: 'archive')),
@@ -129,8 +132,11 @@ void main() {
           const TomFileReference(store: 'nosuchstore'),
         ),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.registry.unknown_store'),
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.registry.unknown_store',
+          ),
         ),
       );
     });
@@ -140,22 +146,25 @@ void main() {
     setUpAll(initializeReflection);
 
     test('resolves every file column of an entity, with its annotation', () {
-      final columns =
-          TomAnnotationAnalyzer.findFileColumns(FixtureDocumentRecord);
+      final columns = TomAnnotationAnalyzer.findFileColumns(
+        FixtureDocumentRecord,
+      );
       expect(
         columns.map((c) => c.declaredName),
         unorderedEquals(['attachment', 'secretAttachment']),
       );
 
-      final attachment =
-          columns.firstWhere((c) => c.declaredName == 'attachment');
+      final attachment = columns.firstWhere(
+        (c) => c.declaredName == 'attachment',
+      );
       expect(attachment.fileReference!.keyPrefix, 'fixture/attachment');
       expect(attachment.fileReference!.cascadeDelete, isTrue);
       expect(attachment.fileReference!.store, isNull);
       expect(attachment.getQueryFieldName(), 'attachment');
 
-      final secret =
-          columns.firstWhere((c) => c.declaredName == 'secretAttachment');
+      final secret = columns.firstWhere(
+        (c) => c.declaredName == 'secretAttachment',
+      );
       expect(secret.fileReference!.keyPrefix, 'fixture/secret');
       expect(secret.fileReference!.cascadeDelete, isFalse);
       // The key column is an ordinary column, so C-4 governs it as it governs

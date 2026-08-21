@@ -117,7 +117,9 @@ abstract class PrincipalResourceGrantStore {
   /// Returns every grant for the principal identified by [principalId]. Empty
   /// when the principal has no grants (every resource then resolves to
   /// [TomAuthState.none] — closed/safe).
-  Future<List<TomPrincipalResourceGrant>> grantsForPrincipal(String principalId);
+  Future<List<TomPrincipalResourceGrant>> grantsForPrincipal(
+    String principalId,
+  );
 }
 
 /// Resolves a principal's grant rows into the `resourceKey → roleName` map that
@@ -145,10 +147,9 @@ class TomPrincipalResourceRoleResolver {
   /// map. Duplicate resources collapse to the [strongerRole].
   Future<Map<String, String>> resolveResourceRoles(String principalId) async {
     final grants = await store.grantsForPrincipal(principalId);
-    return foldRoles(
-      [for (final grant in grants) MapEntry(grant.resourceKey, grant.role)],
-      strongerRole,
-    );
+    return foldRoles([
+      for (final grant in grants) MapEntry(grant.resourceKey, grant.role),
+    ], strongerRole);
   }
 
   /// Folds `resourceKey → roleName` [entries] into a map, collapsing duplicate
@@ -165,8 +166,9 @@ class TomPrincipalResourceRoleResolver {
     final result = <String, String>{};
     for (final entry in entries) {
       final existing = result[entry.key];
-      result[entry.key] =
-          existing == null ? entry.value : stronger(existing, entry.value);
+      result[entry.key] = existing == null
+          ? entry.value
+          : stronger(existing, entry.value);
     }
     return result;
   }
@@ -226,11 +228,13 @@ class InMemoryPrincipalResourceGrantStore
 
   /// Seeds the store with the full set of [grants] across all principals.
   InMemoryPrincipalResourceGrantStore(List<TomPrincipalResourceGrant> grants)
-      : _grants = grants;
+    : _grants = grants;
 
   @override
   Future<List<TomPrincipalResourceGrant>> grantsForPrincipal(
     String principalId,
-  ) async =>
-      [for (final g in _grants) if (g.principalId == principalId) g];
+  ) async => [
+    for (final g in _grants)
+      if (g.principalId == principalId) g,
+  ];
 }

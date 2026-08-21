@@ -182,13 +182,12 @@ abstract class TomBlobStore {
     required List<int> bytes,
     String mediaType = TomStoredBlob.defaultMediaType,
     String? fileName,
-  }) =>
-      put(
-        key: key,
-        bytes: Stream<List<int>>.value(bytes),
-        mediaType: mediaType,
-        fileName: fileName,
-      );
+  }) => put(
+    key: key,
+    bytes: Stream<List<int>>.value(bytes),
+    mediaType: mediaType,
+    fileName: fileName,
+  );
 
   /// Releases whatever the backend holds open. Idempotent; the default does
   /// nothing, because most backends hold nothing.
@@ -242,10 +241,10 @@ abstract class TomBlobStore {
   /// The error raised when [key] holds nothing — one spelling, so a caller can
   /// match on the key string and every backend agrees on it.
   static TomStorageException notFound(String key) => TomStorageException(
-        'storage.blob.not_found',
-        'No stored file exists for the requested key.',
-        parameters: {'key': key},
-      );
+    'storage.blob.not_found',
+    'No stored file exists for the requested key.',
+    parameters: {'key': key},
+  );
 }
 
 /// A store that keeps its contents in memory.

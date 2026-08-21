@@ -76,7 +76,9 @@ class TomDbDate extends TomDbType<TomZonedDate?> {
   /// Parses [s] via [TomZonedDate.parseFromString] (or `null` when [s] is
   /// `null`).
   static TomDbDate of(String? s) {
-    return s == null ? TomDbDate(null) : TomDbDate(TomZonedDate.parseFromString(s));
+    return s == null
+        ? TomDbDate(null)
+        : TomDbDate(TomZonedDate.parseFromString(s));
   }
 }
 
@@ -88,7 +90,9 @@ class TomDbTime extends TomDbType<TomZonedTime?> {
   /// Parses [s] via [TomZonedTime.parseFromString] (or `null` when [s] is
   /// `null`).
   static TomDbTime of(String? s) {
-    return s == null ? TomDbTime(null) : TomDbTime(TomZonedTime.parseFromString(s));
+    return s == null
+        ? TomDbTime(null)
+        : TomDbTime(TomZonedTime.parseFromString(s));
   }
 }
 

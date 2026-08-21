@@ -258,7 +258,10 @@ class TomPersistentExternalIdentityStore implements TomExternalIdentityStore {
     // user has an intact link and must re-consent — annoying. The other order
     // leaves a live third-party credential with nothing pointing at it, which
     // nothing will ever clean up.
-    await (_tokenStore ?? TomOAuthTokenStore.resolve())?.delete(issuer, subject);
+    await (_tokenStore ?? TomOAuthTokenStore.resolve())?.delete(
+      issuer,
+      subject,
+    );
     await repository.deleteByQuerySentence(
       'DELETE BY issuer = :issuer AND subject = :subject',
       {'issuer': issuer, 'subject': subject},
@@ -322,7 +325,10 @@ class TomMemoryExternalIdentityStore implements TomExternalIdentityStore {
 
   @override
   Future<void> unlink(String issuer, String subject) async {
-    await (_tokenStore ?? TomOAuthTokenStore.resolve())?.delete(issuer, subject);
+    await (_tokenStore ?? TomOAuthTokenStore.resolve())?.delete(
+      issuer,
+      subject,
+    );
     _links.remove(_keyOf(issuer, subject));
   }
 

@@ -43,10 +43,7 @@ import 'tabular_result.dart';
 /// Renders a tabular result as RFC 4180 CSV, one row at a time.
 class TomCsvRenderer extends TomTabularRenderer {
   /// Creates a CSV renderer.
-  const TomCsvRenderer({
-    this.fieldSeparator = ',',
-    this.byteOrderMark = true,
-  });
+  const TomCsvRenderer({this.fieldSeparator = ',', this.byteOrderMark = true});
 
   /// The character between fields. `,` by default; `;` for locales that use
   /// the comma as a decimal separator and whose spreadsheet defaults follow.
@@ -107,7 +104,8 @@ class TomCsvRenderer extends TomTabularRenderer {
   String _escape(String field) {
     final injectable = field.isNotEmpty && '=+-@'.contains(field[0]);
     final escaped = field.replaceAll('"', '""');
-    final needsQuotes = injectable ||
+    final needsQuotes =
+        injectable ||
         escaped != field ||
         field.contains(fieldSeparator) ||
         field.contains('\n') ||

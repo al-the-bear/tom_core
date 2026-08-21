@@ -232,10 +232,7 @@ class TomSqlJobStore implements TomJobStore {
     await ensureSchema();
     final rows = await _select(
       'WHERE job_name = :jobName AND scheduled_for = :scheduledFor LIMIT 1',
-      {
-        'jobName': jobName,
-        'scheduledFor': sqlInstant(scheduledFor),
-      },
+      {'jobName': jobName, 'scheduledFor': sqlInstant(scheduledFor)},
     );
     return rows.isEmpty ? null : rows.first;
   }
@@ -264,10 +261,7 @@ class TomSqlJobStore implements TomJobStore {
     final scanLimit = accept == null ? limit : limit * candidateFactor;
     final candidates = await _select(
       'WHERE state = :pending AND run_at <= :now ORDER BY seq LIMIT $scanLimit',
-      {
-        'pending': TomJobRunState.pending.name,
-        'now': sqlInstant(now),
-      },
+      {'pending': TomJobRunState.pending.name, 'now': sqlInstant(now)},
     );
 
     final claimed = <TomJobRun>[];
@@ -353,7 +347,8 @@ class TomSqlJobStore implements TomJobStore {
     }
 
     final stored = rows.isEmpty ? null : rows.first;
-    final landed = stored != null &&
+    final landed =
+        stored != null &&
         stored.state == TomJobRunState.running &&
         stored.claimedBy == owner &&
         stored.claimedAt == _asUtc(now);
@@ -526,9 +521,11 @@ class TomSqlJobStore implements TomJobStore {
     try {
       await nodes?.checkIn(now);
     } catch (error) {
-      tomLog.warn('TomSqlJobStore: could not announce this node in the '
-          'scheduler roll call; peers will judge it by its last check-in. '
-          'Cause: $error');
+      tomLog.warn(
+        'TomSqlJobStore: could not announce this node in the '
+        'scheduler roll call; peers will judge it by its last check-in. '
+        'Cause: $error',
+      );
     }
 
     final cutoff = now.subtract(leaseTimeout);
@@ -538,10 +535,7 @@ class TomSqlJobStore implements TomJobStore {
     final stale = await _select(
       'WHERE state = :running AND (claimed_at IS NULL OR claimed_at <= :cutoff)'
       ' ORDER BY seq',
-      {
-        'running': TomJobRunState.running.name,
-        'cutoff': sqlInstant(cutoff),
-      },
+      {'running': TomJobRunState.running.name, 'cutoff': sqlInstant(cutoff)},
     );
     final abandoned = await _withFailedNodesWork(stale, now);
 
@@ -622,10 +616,7 @@ class TomSqlJobStore implements TomJobStore {
       try {
         orphans = await _select(
           'WHERE state = :running AND claimed_by = :owner ORDER BY seq',
-          {
-            'running': TomJobRunState.running.name,
-            'owner': peer.nodeId,
-          },
+          {'running': TomJobRunState.running.name, 'owner': peer.nodeId},
         );
       } catch (error) {
         tomLog.warn(
@@ -703,25 +694,25 @@ class TomSqlJobStore implements TomJobStore {
   }
 
   static TomJobRun _runOf(TomJobRunRow row) => TomJobRun(
-        id: row.id,
-        jobName: row.jobName,
-        scheduledFor: parseSqlInstant(row.scheduledFor),
-        runAt: parseSqlInstant(row.runAt),
-        state: TomJobRunState.values.firstWhere(
-          (s) => s.name == row.state,
-          // An unrecognised state is corrupt data, not a crash: `pending` is
-          // the one value from which the scheduler can recover, and it matches
-          // what TomJobRun.fromJson does with the same input.
-          orElse: () => TomJobRunState.pending,
-        ),
-        attempt: row.attempt,
-        claimedBy: row.claimedBy,
-        claimedAt: parseOptionalSqlInstant(row.claimedAt),
-        startedAt: parseOptionalSqlInstant(row.startedAt),
-        lastError: row.lastError,
-        completedAt: parseOptionalSqlInstant(row.completedAt),
-        payload: _decodePayload(row.payload),
-      );
+    id: row.id,
+    jobName: row.jobName,
+    scheduledFor: parseSqlInstant(row.scheduledFor),
+    runAt: parseSqlInstant(row.runAt),
+    state: TomJobRunState.values.firstWhere(
+      (s) => s.name == row.state,
+      // An unrecognised state is corrupt data, not a crash: `pending` is
+      // the one value from which the scheduler can recover, and it matches
+      // what TomJobRun.fromJson does with the same input.
+      orElse: () => TomJobRunState.pending,
+    ),
+    attempt: row.attempt,
+    claimedBy: row.claimedBy,
+    claimedAt: parseOptionalSqlInstant(row.claimedAt),
+    startedAt: parseOptionalSqlInstant(row.startedAt),
+    lastError: row.lastError,
+    completedAt: parseOptionalSqlInstant(row.completedAt),
+    payload: _decodePayload(row.payload),
+  );
 
   /// Binds [run] to the queue table's columns.
   ///
@@ -731,20 +722,21 @@ class TomSqlJobStore implements TomJobStore {
   /// file stores raise. Every binding site is evaluated before the statement is
   /// sent, so the refusal still precedes any write.
   Map<String, dynamic> _bindOf(TomJobRun run) => {
-        'id': run.id,
-        'jobName': run.jobName,
-        'scheduledFor': sqlInstant(run.scheduledFor),
-        'runAt': sqlInstant(run.runAt),
-        'state': run.state.name,
-        'attempt': run.attempt,
-        'claimedBy': run.claimedBy,
-        'claimedAt': run.claimedAt == null ? null : sqlInstant(run.claimedAt!),
-        'startedAt': run.startedAt == null ? null : sqlInstant(run.startedAt!),
-        'lastError': run.lastError,
-        'completedAt':
-            run.completedAt == null ? null : sqlInstant(run.completedAt!),
-        'payload': TomJobStore.encodePayload(run),
-      };
+    'id': run.id,
+    'jobName': run.jobName,
+    'scheduledFor': sqlInstant(run.scheduledFor),
+    'runAt': sqlInstant(run.runAt),
+    'state': run.state.name,
+    'attempt': run.attempt,
+    'claimedBy': run.claimedBy,
+    'claimedAt': run.claimedAt == null ? null : sqlInstant(run.claimedAt!),
+    'startedAt': run.startedAt == null ? null : sqlInstant(run.startedAt!),
+    'lastError': run.lastError,
+    'completedAt': run.completedAt == null
+        ? null
+        : sqlInstant(run.completedAt!),
+    'payload': TomJobStore.encodePayload(run),
+  };
 
   static DateTime _asUtc(DateTime value) => value.isUtc ? value : value.toUtc();
 

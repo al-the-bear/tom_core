@@ -131,7 +131,10 @@ class TomSmsRequest {
     String? from,
     String? messageId,
   }) {
-    final number = _firstNonBlank([principal.user.mobile, principal.user.phone]);
+    final number = _firstNonBlank([
+      principal.user.mobile,
+      principal.user.phone,
+    ]);
     if (number == null) {
       throw TomMessagingException(
         'messaging.sms.principal.no_number',

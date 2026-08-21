@@ -55,13 +55,15 @@ List<TomAuditEntry> _chain(
   return entries;
 }
 
-TomAuditAnchor _anchorAt(List<TomAuditEntry> entries, {String writer = 'node-a'}) =>
-    TomAuditAnchor(
-      writer: writer,
-      entryCount: entries.isEmpty ? 0 : entries.last.index + 1,
-      headHash: entries.isEmpty ? tomAuditGenesisHash : entries.last.hash,
-      createdAt: DateTime.utc(2026, 7, 28, 11),
-    );
+TomAuditAnchor _anchorAt(
+  List<TomAuditEntry> entries, {
+  String writer = 'node-a',
+}) => TomAuditAnchor(
+  writer: writer,
+  entryCount: entries.isEmpty ? 0 : entries.last.index + 1,
+  headHash: entries.isEmpty ? tomAuditGenesisHash : entries.last.hash,
+  createdAt: DateTime.utc(2026, 7, 28, 11),
+);
 
 /// A signer that is trivially forgeable, to exercise the seam without the cost
 /// of RSA key generation in tests that are not about RSA.
@@ -129,8 +131,11 @@ void main() {
       expect(
         () => TomAuditAnchor.fromJson({'writer': 'node-a'}),
         throwsA(
-          isA<TomAuditException>()
-              .having((e) => e.key, 'key', 'audit.anchor.malformed'),
+          isA<TomAuditException>().having(
+            (e) => e.key,
+            'key',
+            'audit.anchor.malformed',
+          ),
         ),
       );
     });
@@ -140,9 +145,8 @@ void main() {
       // defaulted field here does not degrade a check — it fabricates one. Each
       // field is dropped on its own, because a guard that only fires when the
       // whole object is absent is not a guard on the field.
-      final complete = jsonDecode(
-        _anchorAt(_chain(2)).toJsonLine(),
-      ) as Map<String, Object?>;
+      final complete =
+          jsonDecode(_anchorAt(_chain(2)).toJsonLine()) as Map<String, Object?>;
 
       for (final field in const [
         'writer',
@@ -155,8 +159,11 @@ void main() {
             Map<String, Object?>.from(complete)..remove(field),
           ),
           throwsA(
-            isA<TomAuditException>()
-                .having((e) => e.key, 'key', 'audit.anchor.malformed'),
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.anchor.malformed',
+            ),
           ),
           reason: 'without $field',
         );
@@ -175,8 +182,11 @@ void main() {
             )..['entryCount'] = wrong,
           ),
           throwsA(
-            isA<TomAuditException>()
-                .having((e) => e.key, 'key', 'audit.anchor.malformed'),
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.anchor.malformed',
+            ),
           ),
           reason: 'entryCount: $wrong',
         );
@@ -222,14 +232,17 @@ void main() {
       expect(result.chain.isValid, isTrue);
     });
 
-    test('entries appended since the anchor read as extended, not diverged', () {
-      final entries = _chain(6);
-      final anchor = _anchorAt(entries.sublist(0, 3));
-      final result = verifyAgainstAnchor(entries, anchor);
-      expect(result.status, TomAuditAnchorStatus.extended);
-      expect(result.isMatch, isTrue);
-      expect(result.detail, contains('3 more since'));
-    });
+    test(
+      'entries appended since the anchor read as extended, not diverged',
+      () {
+        final entries = _chain(6);
+        final anchor = _anchorAt(entries.sublist(0, 3));
+        final result = verifyAgainstAnchor(entries, anchor);
+        expect(result.status, TomAuditAnchorStatus.extended);
+        expect(result.isMatch, isTrue);
+        expect(result.detail, contains('3 more since'));
+      },
+    );
 
     test('an empty chain matches an empty anchor', () {
       final result = verifyAgainstAnchor(const [], _anchorAt(const []));
@@ -262,7 +275,11 @@ void main() {
         expect(result.status, TomAuditAnchorStatus.diverged);
         expect(result.indicatesTampering, isTrue);
         expect(result.isMatch, isFalse);
-        expect(result.chain.isValid, isTrue, reason: 'the chain still verifies');
+        expect(
+          result.chain.isValid,
+          isTrue,
+          reason: 'the chain still verifies',
+        );
         expect(result.detail, contains('rewritten'));
       },
     );
@@ -421,7 +438,9 @@ void main() {
 
     test('an anchor signed by an unknown key is not trusted', () {
       final entries = _chain(3);
-      final anchor = _anchorAt(entries).signedWith(const _FakeSigner('retired'));
+      final anchor = _anchorAt(
+        entries,
+      ).signedWith(const _FakeSigner('retired'));
       final result = verifyAgainstAnchor(
         entries,
         anchor,
@@ -573,7 +592,10 @@ void main() {
     test('a writer name cannot escape the directory', () {
       final store = TomFileAuditAnchorStore(directory: dir);
       final file = store.fileFor('../../etc/passwd');
-      expect(file.parent.resolveSymbolicLinksSync(), dir.resolveSymbolicLinksSync());
+      expect(
+        file.parent.resolveSymbolicLinksSync(),
+        dir.resolveSymbolicLinksSync(),
+      );
     });
 
     test('an unknown writer reads as empty, not as an error', () async {
@@ -584,14 +606,10 @@ void main() {
     test('a damaged anchor line is a finding, not a skipped line', () async {
       final store = TomFileAuditAnchorStore(directory: dir);
       await store.append(_anchorAt(_chain(1)));
-      store.fileFor('node-a').writeAsStringSync(
-        '{ not an anchor\n',
-        mode: FileMode.append,
-      );
-      expect(
-        () => store.read('node-a'),
-        throwsA(isA<TomAuditException>()),
-      );
+      store
+          .fileFor('node-a')
+          .writeAsStringSync('{ not an anchor\n', mode: FileMode.append);
+      expect(() => store.read('node-a'), throwsA(isA<TomAuditException>()));
     });
   });
 
@@ -654,9 +672,7 @@ void main() {
         previous = entry.hash;
       }
       final file = dir.listSync().whereType<File>().single;
-      file.writeAsStringSync(
-        forged.map((e) => '${e.toJsonLine()}\n').join(),
-      );
+      file.writeAsStringSync(forged.map((e) => '${e.toJsonLine()}\n').join());
 
       final reopened = TomFileAuditSink(directory: dir);
       expect(reopened.verify().isValid, isTrue, reason: 'the forgery is clean');
@@ -702,25 +718,28 @@ void main() {
       sink.close();
     });
 
-    test('close anchors the final head instead of leaving it unanchored', () async {
-      final sink = TomMemoryAuditSink();
-      final store = TomMemoryAuditAnchorStore();
-      final publisher = TomAuditAnchorPublisher(
-        sink: sink,
-        store: store,
-        writer: 'node-a',
-        interval: const Duration(hours: 24),
-      );
-      await publisher.start();
-      await sink.write(_record('r0'));
-      publisher.close();
-      await Future<void>.delayed(Duration.zero);
+    test(
+      'close anchors the final head instead of leaving it unanchored',
+      () async {
+        final sink = TomMemoryAuditSink();
+        final store = TomMemoryAuditAnchorStore();
+        final publisher = TomAuditAnchorPublisher(
+          sink: sink,
+          store: store,
+          writer: 'node-a',
+          interval: const Duration(hours: 24),
+        );
+        await publisher.start();
+        await sink.write(_record('r0'));
+        publisher.close();
+        await Future<void>.delayed(Duration.zero);
 
-      expect(store.anchors, hasLength(2));
-      expect(store.anchors.last.entryCount, 1);
-      expect(store.anchors.last.headHash, sink.headHash);
-      sink.close();
-    });
+        expect(store.anchors, hasLength(2));
+        expect(store.anchors.last.entryCount, 1);
+        expect(store.anchors.last.headHash, sink.headHash);
+        sink.close();
+      },
+    );
 
     test('a store outage is logged, not thrown into the timer', () async {
       final sink = TomMemoryAuditSink();

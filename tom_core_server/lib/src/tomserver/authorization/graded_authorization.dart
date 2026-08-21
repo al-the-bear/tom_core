@@ -177,8 +177,8 @@ class TomGradedAccessControlInformation {
   TomGradedAccessControlInformation({
     Map<String, TomAuthState>? grades,
     TomAccessControlInformation? binary,
-  })  : _grades = {...?grades},
-        _binary = binary ?? TomAccessControlInformation();
+  }) : _grades = {...?grades},
+       _binary = binary ?? TomAccessControlInformation();
 
   /// Builds a graded view from grants loaded from the database.
   ///
@@ -193,8 +193,9 @@ class TomGradedAccessControlInformation {
     final grades = <String, TomAuthState>{};
     for (final grant in grants) {
       final existing = grades[grant.resourceKey];
-      grades[grant.resourceKey] =
-          existing == null ? grant.accessLevel : existing.widen(grant.accessLevel);
+      grades[grant.resourceKey] = existing == null
+          ? grant.accessLevel
+          : existing.widen(grant.accessLevel);
     }
     return TomGradedAccessControlInformation(grades: grades, binary: binary);
   }
@@ -216,11 +217,11 @@ class TomGradedAccessControlInformation {
   /// Materialises the explicit grades back into persistable grants for
   /// [roleName] — the inverse of [TomGradedAccessControlInformation.fromGrants].
   List<TomResourceGrant> toGrants(String roleName) => [
-        for (final entry in _grades.entries)
-          TomResourceGrant(
-            roleName: roleName,
-            resourceKey: entry.key,
-            accessLevel: entry.value,
-          ),
-      ];
+    for (final entry in _grades.entries)
+      TomResourceGrant(
+        roleName: roleName,
+        resourceKey: entry.key,
+        accessLevel: entry.value,
+      ),
+  ];
 }

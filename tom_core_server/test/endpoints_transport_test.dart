@@ -54,8 +54,7 @@ Request _formRequest(List<String> parts, {String? contentType}) => Request(
   'POST',
   Uri.parse('http://localhost/fixture/upload'),
   headers: {
-    'content-type':
-        contentType ?? 'multipart/form-data; boundary=$_boundary',
+    'content-type': contentType ?? 'multipart/form-data; boundary=$_boundary',
   },
   body: _formBody(parts),
   context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
@@ -92,27 +91,33 @@ void main() {
       expect(form.files.single.field, 'attachment');
     });
 
-    test('carries the file name, media type and bytes of a file part', () async {
-      final form = await TomMultipartForm.readForm(
-        _formRequest([
-          _filePart('attachment', 'q3.txt', 'text/plain', 'the numbers'),
-        ]),
-      );
-      final file = form!.file('attachment')!;
-      expect(file.fileName, 'q3.txt');
-      expect(file.mediaType, 'text/plain');
-      expect(utf8.decode(file.bytes), 'the numbers');
-      expect(file.byteCount, 'the numbers'.length);
-    });
+    test(
+      'carries the file name, media type and bytes of a file part',
+      () async {
+        final form = await TomMultipartForm.readForm(
+          _formRequest([
+            _filePart('attachment', 'q3.txt', 'text/plain', 'the numbers'),
+          ]),
+        );
+        final file = form!.file('attachment')!;
+        expect(file.fileName, 'q3.txt');
+        expect(file.mediaType, 'text/plain');
+        expect(utf8.decode(file.bytes), 'the numbers');
+        expect(file.byteCount, 'the numbers'.length);
+      },
+    );
 
-    test('treats an empty filename as no file name, not as an empty one', () async {
-      // A browser sends `filename=""` for an untouched file input. It is still
-      // a file part — the header says so — but there is no name to record.
-      final form = await TomMultipartForm.readForm(
-        _formRequest([_filePart('attachment', '', 'text/plain', '')]),
-      );
-      expect(form!.files.single.fileName, isNull);
-    });
+    test(
+      'treats an empty filename as no file name, not as an empty one',
+      () async {
+        // A browser sends `filename=""` for an untouched file input. It is still
+        // a file part — the header says so — but there is no name to record.
+        final form = await TomMultipartForm.readForm(
+          _formRequest([_filePart('attachment', '', 'text/plain', '')]),
+        );
+        expect(form!.files.single.fileName, isNull);
+      },
+    );
 
     test('returns null for a request that is not multipart at all', () async {
       final request = Request(
@@ -140,9 +145,7 @@ void main() {
       final request = Request(
         'POST',
         Uri.parse('http://localhost/fixture/upload'),
-        headers: {
-          'content-type': 'multipart/form-data; boundary=$_boundary',
-        },
+        headers: {'content-type': 'multipart/form-data; boundary=$_boundary'},
         // No closing delimiter and no part headers at all.
         body: 'not a multipart body',
       );
@@ -166,41 +169,47 @@ void main() {
       expect(form!.fields['tag'], 'second');
     });
 
-    test('a repeated file field keeps every file, and file() takes the first', () async {
-      final form = await TomMultipartForm.readForm(
-        _formRequest([
-          _filePart('page', 'a.txt', 'text/plain', 'A'),
-          _filePart('page', 'b.txt', 'text/plain', 'B'),
-        ]),
-      );
-      // The deliberate asymmetry with the text case: repeated file parts are
-      // distinct uploads, so silently keeping the last would discard data.
-      expect(form!.filesNamed('page'), hasLength(2));
-      expect(form.file('page')!.fileName, 'a.txt');
-    });
-
-    test('a file part over the ceiling is refused while it is being read', () async {
-      final previous = TomMultipartForm.globalSettingMaxFilePartBytes;
-      TomMultipartForm.globalSettingMaxFilePartBytes = 8;
-      addTearDown(
-        () => TomMultipartForm.globalSettingMaxFilePartBytes = previous,
-      );
-
-      await expectLater(
-        TomMultipartForm.readForm(
+    test(
+      'a repeated file field keeps every file, and file() takes the first',
+      () async {
+        final form = await TomMultipartForm.readForm(
           _formRequest([
-            _filePart('attachment', 'big.txt', 'text/plain', 'x' * 64),
+            _filePart('page', 'a.txt', 'text/plain', 'A'),
+            _filePart('page', 'b.txt', 'text/plain', 'B'),
           ]),
-        ),
-        throwsA(
-          isA<TomFormBindingException>().having(
-            (e) => e.key,
-            'key',
-            'form_binding.file_part_too_large',
+        );
+        // The deliberate asymmetry with the text case: repeated file parts are
+        // distinct uploads, so silently keeping the last would discard data.
+        expect(form!.filesNamed('page'), hasLength(2));
+        expect(form.file('page')!.fileName, 'a.txt');
+      },
+    );
+
+    test(
+      'a file part over the ceiling is refused while it is being read',
+      () async {
+        final previous = TomMultipartForm.globalSettingMaxFilePartBytes;
+        TomMultipartForm.globalSettingMaxFilePartBytes = 8;
+        addTearDown(
+          () => TomMultipartForm.globalSettingMaxFilePartBytes = previous,
+        );
+
+        await expectLater(
+          TomMultipartForm.readForm(
+            _formRequest([
+              _filePart('attachment', 'big.txt', 'text/plain', 'x' * 64),
+            ]),
           ),
-        ),
-      );
-    });
+          throwsA(
+            isA<TomFormBindingException>().having(
+              (e) => e.key,
+              'key',
+              'form_binding.file_part_too_large',
+            ),
+          ),
+        );
+      },
+    );
 
     test('an empty form is decoded, and says so', () async {
       final form = await TomMultipartForm.readForm(_formRequest([]));
@@ -214,8 +223,14 @@ void main() {
       );
       // The bytes are already in memory, so single-subscription semantics do
       // not apply — and the store may well read them more than once.
-      expect(await file.openRead().expand((c) => c).toList(), utf8.encode('payload'));
-      expect(await file.openRead().expand((c) => c).toList(), utf8.encode('payload'));
+      expect(
+        await file.openRead().expand((c) => c).toList(),
+        utf8.encode('payload'),
+      );
+      expect(
+        await file.openRead().expand((c) => c).toList(),
+        utf8.encode('payload'),
+      );
     });
   });
 
@@ -286,18 +301,21 @@ void main() {
       expect(form.fields['tag'], 'second');
     });
 
-    test('a body that does not percent-decode is a named client error', () async {
-      await expectLater(
-        TomMultipartForm.readUrlEncodedForm(urlEncoded('title=%zz')),
-        throwsA(
-          isA<TomFormBindingException>().having(
-            (e) => e.key,
-            'key',
-            'form_binding.malformed_url_encoded_body',
+    test(
+      'a body that does not percent-decode is a named client error',
+      () async {
+        await expectLater(
+          TomMultipartForm.readUrlEncodedForm(urlEncoded('title=%zz')),
+          throwsA(
+            isA<TomFormBindingException>().having(
+              (e) => e.key,
+              'key',
+              'form_binding.malformed_url_encoded_body',
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -478,18 +496,26 @@ void main() {
     test('the socket route is in the routing table', () {
       final routing = TomEndpointRouting();
       routing.initializeRouter();
-      expect(TomEndpointRouting.routingInfo.containsKey('/fixture/socket'), isTrue);
+      expect(
+        TomEndpointRouting.routingInfo.containsKey('/fixture/socket'),
+        isTrue,
+      );
     });
 
     test('its metadata records that it is a socket endpoint', () {
       final routing = TomEndpointRouting();
       routing.initializeRouter();
-      final handler = TomEndpointRouting.routingInfo['/fixture/socket']!.handler;
+      final handler =
+          TomEndpointRouting.routingInfo['/fixture/socket']!.handler;
       expect(handler.metadata.webSocket, isNotNull);
       // The HTTP siblings are unaffected — the field is what distinguishes
       // them, not a separate discovery path.
       expect(
-        TomEndpointRouting.routingInfo['/fixture/health']!.handler.metadata.webSocket,
+        TomEndpointRouting
+            .routingInfo['/fixture/health']!
+            .handler
+            .metadata
+            .webSocket,
         isNull,
       );
     });
@@ -497,7 +523,8 @@ void main() {
     test('handleWebSocketCall on a non-socket endpoint is refused', () async {
       final routing = TomEndpointRouting();
       routing.initializeRouter();
-      final handler = TomEndpointRouting.routingInfo['/fixture/health']!.handler;
+      final handler =
+          TomEndpointRouting.routingInfo['/fixture/health']!.handler;
       await expectLater(
         handler.handleWebSocketCall(
           Request('GET', Uri.parse('http://localhost/fixture/health')),
@@ -535,11 +562,7 @@ void main() {
           )
           .addMiddleware(tomDefaultAuthenticationMiddleware("test auth"))
           .addHandler(router.call);
-      server = await shelf_io.serve(
-        handler,
-        InternetAddress.loopbackIPv4,
-        0,
-      );
+      server = await shelf_io.serve(handler, InternetAddress.loopbackIPv4, 0);
     });
 
     tearDown(() async {
@@ -579,45 +602,51 @@ void main() {
       expect(body['bytes'], 'the numbers'.length);
     });
 
-    test('a declared formFields keeps an undeclared part out of the DTO', () async {
-      final client = HttpClient();
-      addTearDown(client.close);
-      final request = await client.postUrl(
-        Uri.parse('http://localhost:${server.port}/fixture/upload_declared'),
-      );
-      request.headers.set(
-        'content-type',
-        'multipart/form-data; boundary=$_boundary',
-      );
-      request.write(
-        _formBody([
-          _textPart('title', 'Quarterly report'),
-          _textPart('tags', 'should-not-arrive'),
-        ]),
-      );
-      final response = await request.close();
-      final body =
-          jsonDecode(await response.transform(utf8.decoder).join())
-              as Map<String, dynamic>;
-      expect(body['title'], 'Quarterly report');
-      expect(body['tags'], isEmpty);
-    });
+    test(
+      'a declared formFields keeps an undeclared part out of the DTO',
+      () async {
+        final client = HttpClient();
+        addTearDown(client.close);
+        final request = await client.postUrl(
+          Uri.parse('http://localhost:${server.port}/fixture/upload_declared'),
+        );
+        request.headers.set(
+          'content-type',
+          'multipart/form-data; boundary=$_boundary',
+        );
+        request.write(
+          _formBody([
+            _textPart('title', 'Quarterly report'),
+            _textPart('tags', 'should-not-arrive'),
+          ]),
+        );
+        final response = await request.close();
+        final body =
+            jsonDecode(await response.transform(utf8.decoder).join())
+                as Map<String, dynamic>;
+        expect(body['title'], 'Quarterly report');
+        expect(body['tags'], isEmpty);
+      },
+    );
 
-    test('a handler returning TomRedirect answers 303 with a Location', () async {
-      final client = HttpClient();
-      addTearDown(client.close);
-      // The redirect must be observed *unfollowed* — following it would assert
-      // on the target and say nothing about the redirect itself.
-      client.autoUncompress = false;
-      final request = await client.getUrl(
-        Uri.parse('http://localhost:${server.port}/fixture/moved'),
-      );
-      request.followRedirects = false;
-      final response = await request.close();
-      await response.drain<void>();
-      expect(response.statusCode, 303);
-      expect(response.headers.value('location'), '/fixture/health');
-    });
+    test(
+      'a handler returning TomRedirect answers 303 with a Location',
+      () async {
+        final client = HttpClient();
+        addTearDown(client.close);
+        // The redirect must be observed *unfollowed* — following it would assert
+        // on the target and say nothing about the redirect itself.
+        client.autoUncompress = false;
+        final request = await client.getUrl(
+          Uri.parse('http://localhost:${server.port}/fixture/moved'),
+        );
+        request.followRedirects = false;
+        final response = await request.close();
+        await response.drain<void>();
+        expect(response.statusCode, 303);
+        expect(response.headers.value('location'), '/fixture/health');
+      },
+    );
 
     test('a socket handler runs inside the request zone', () async {
       final socket = WebSocketChannel.connect(
@@ -640,7 +669,9 @@ void main() {
       );
       await socket.ready;
       final received = <String>[];
-      final done = socket.stream.listen((m) => received.add(m as String)).asFuture<void>();
+      final done = socket.stream
+          .listen((m) => received.add(m as String))
+          .asFuture<void>();
 
       socket.sink.add('hello');
       socket.sink.add('bye');

@@ -62,23 +62,27 @@ void main() {
       expect(p.get('from'), 'loader');
     });
 
-    test('the default constructor populates resources from the static loader',
-        () {
-      // The static loader feeds any provider created with the default
-      // constructor (including the lazy one made by getServerConfig). Null it
-      // again so it cannot leak into other tests' providers.
-      addTearDown(() => TomServerConfigResourceProvider.loader = null);
-      TomServerConfigResourceProvider.loader = () => {'seeded': 'yes'};
-      final p = TomServerConfigResourceProvider();
-      expect(p.get('seeded'), 'yes');
-    });
+    test(
+      'the default constructor populates resources from the static loader',
+      () {
+        // The static loader feeds any provider created with the default
+        // constructor (including the lazy one made by getServerConfig). Null it
+        // again so it cannot leak into other tests' providers.
+        addTearDown(() => TomServerConfigResourceProvider.loader = null);
+        TomServerConfigResourceProvider.loader = () => {'seeded': 'yes'};
+        final p = TomServerConfigResourceProvider();
+        expect(p.get('seeded'), 'yes');
+      },
+    );
 
-    test('the default constructor yields empty resources when no loader is set',
-        () {
-      TomServerConfigResourceProvider.loader = null;
-      final p = TomServerConfigResourceProvider();
-      expect(p.resources, isEmpty);
-    });
+    test(
+      'the default constructor yields empty resources when no loader is set',
+      () {
+        TomServerConfigResourceProvider.loader = null;
+        final p = TomServerConfigResourceProvider();
+        expect(p.resources, isEmpty);
+      },
+    );
 
     test('get returns the whole subtree map for a branch key', () {
       final p = TomServerConfigResourceProvider.from({
@@ -172,8 +176,10 @@ void main() {
 
     test('a non-null default still wins over an absent key', () {
       _install({});
-      expect(TomConfig<String?>.withDefault('absent', 'fallback').get(),
-          'fallback');
+      expect(
+        TomConfig<String?>.withDefault('absent', 'fallback').get(),
+        'fallback',
+      );
     });
 
     test('an explicitly null value reaches a nullable T (§79)', () {
@@ -183,8 +189,7 @@ void main() {
       expect(TomConfig<String?>('server.replica').get(), isNull);
     });
 
-    test('an explicitly null value does not fall back to the default (§79)',
-        () {
+    test('an explicitly null value does not fall back to the default (§79)', () {
       // Defaults cover an *absent* key. A key the operator deliberately set to
       // null is present, so substituting the default would discard exactly the
       // setting they wrote -- it throws instead, naming the key.
@@ -213,22 +218,27 @@ void main() {
       _install({'kept': 'resource'});
       final provider = TomServerConfigResourceProvider.getServerConfig();
       final before = provider.resources.keys.toSet();
-      _CapturingConfig([]); // merges env/.env/args into a copy, not the provider
+      _CapturingConfig(
+        [],
+      ); // merges env/.env/args into a copy, not the provider
       // The OS environment (PATH et al.) must not have leaked into the provider.
       expect(provider.resources.keys.toSet(), before);
       expect(provider.resources.containsKey('PATH'), isFalse);
     });
 
-    test('a nested provider subtree is not mutated by construction (bug §62)', () {
-      _install({
-        'server': {'port': 8080},
-      });
-      final provider = TomServerConfigResourceProvider.getServerConfig();
-      _CapturingConfig(['server.host=example']);
-      // The deep copy means the provider's nested map keeps only its own keys,
-      // regardless of how overrides are shaped.
-      expect((provider.resources['server'] as Map).keys.toSet(), {'port'});
-    });
+    test(
+      'a nested provider subtree is not mutated by construction (bug §62)',
+      () {
+        _install({
+          'server': {'port': 8080},
+        });
+        final provider = TomServerConfigResourceProvider.getServerConfig();
+        _CapturingConfig(['server.host=example']);
+        // The deep copy means the provider's nested map keeps only its own keys,
+        // regardless of how overrides are shaped.
+        expect((provider.resources['server'] as Map).keys.toSet(), {'port'});
+      },
+    );
 
     test('the captured values are a copy, mutating them leaves the provider'
         ' untouched (bug §62)', () {
@@ -241,25 +251,30 @@ void main() {
       expect((provider.resources['server'] as Map)['port'], 8080);
     });
 
-    test('.env overlays between env and args (resources < env < .env < args)',
-        () async {
-      final prevCwd = Directory.current;
-      final dir = await Directory.systemTemp.createTemp('tom_cfg_env');
-      try {
-        await File('${dir.path}/.env').writeAsString(
-          'r_key=fromEnvFile\nPATH=SENTINEL_PATH\na_key=fromEnvFile\n',
-        );
-        Directory.current = dir;
-        _install({'r_key': 'fromResource'});
-        final config = _CapturingConfig(['a_key=fromArgs']);
-        expect(config.captured['r_key'], 'fromEnvFile'); // .env beats resources
-        expect(config.captured['PATH'], 'SENTINEL_PATH'); // .env beats env
-        expect(config.captured['a_key'], 'fromArgs'); // args beat .env
-      } finally {
-        Directory.current = prevCwd;
-        if (await dir.exists()) await dir.delete(recursive: true);
-      }
-    });
+    test(
+      '.env overlays between env and args (resources < env < .env < args)',
+      () async {
+        final prevCwd = Directory.current;
+        final dir = await Directory.systemTemp.createTemp('tom_cfg_env');
+        try {
+          await File('${dir.path}/.env').writeAsString(
+            'r_key=fromEnvFile\nPATH=SENTINEL_PATH\na_key=fromEnvFile\n',
+          );
+          Directory.current = dir;
+          _install({'r_key': 'fromResource'});
+          final config = _CapturingConfig(['a_key=fromArgs']);
+          expect(
+            config.captured['r_key'],
+            'fromEnvFile',
+          ); // .env beats resources
+          expect(config.captured['PATH'], 'SENTINEL_PATH'); // .env beats env
+          expect(config.captured['a_key'], 'fromArgs'); // args beat .env
+        } finally {
+          Directory.current = prevCwd;
+          if (await dir.exists()) await dir.delete(recursive: true);
+        }
+      },
+    );
 
     test('the default bind host is empty (anyIPv4-eligible) (bug §63)', () {
       _install({});

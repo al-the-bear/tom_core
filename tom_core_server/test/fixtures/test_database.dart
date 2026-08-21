@@ -41,8 +41,8 @@ class TestDatabase {
 
   static String _env(String key, String fallback) =>
       Platform.environment[key]?.trim().isNotEmpty == true
-          ? Platform.environment[key]!.trim()
-          : fallback;
+      ? Platform.environment[key]!.trim()
+      : fallback;
 
   /// Database host (`TOM_CORE_SERVER_TEST_DB_HOST`, default `127.0.0.1`).
   static String get host => _env('TOM_CORE_SERVER_TEST_DB_HOST', '127.0.0.1');
@@ -67,15 +67,15 @@ class TestDatabase {
   /// The datasource configuration map for [datasourceName], in the shape
   /// [TomDataSourceInfo.initializeDatasourceInfo] consumes.
   static Map<String, dynamic> get datasourceConfig => <String, dynamic>{
-        datasourceName: <String, dynamic>{
-          'type': 'mariadb',
-          'username': username,
-          'password': password,
-          'host': host,
-          'port': port,
-          'databaseName': databaseName,
-        },
-      };
+    datasourceName: <String, dynamic>{
+      'type': 'mariadb',
+      'username': username,
+      'password': password,
+      'host': host,
+      'port': port,
+      'databaseName': databaseName,
+    },
+  };
 
   /// Whether a server is listening on [host]:[port].
   ///
@@ -378,8 +378,9 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     TomDataSourceInfo dsi,
     String schemaName,
   ) async {
-    await dsi.datasource
-        .executeCommand('DROP TABLE IF EXISTS ${schemaName}_versioning');
+    await dsi.datasource.executeCommand(
+      'DROP TABLE IF EXISTS ${schemaName}_versioning',
+    );
   }
 
   /// Aliases the framework's conventional `main` data source onto this
@@ -418,13 +419,13 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
   /// DDL.
   static Future<void> ensureTwoFactorEnrolmentTable(
     TomDataSourceInfo dsi,
-  ) async =>
-      _ensureEntityTable(dsi, TomUserTwoFactorEnrolment.createTableSql);
+  ) async => _ensureEntityTable(dsi, TomUserTwoFactorEnrolment.createTableSql);
 
   /// Empties `tom_user_two_factor_enrolment` between tests.
   static Future<void> truncateTwoFactorEnrolment(TomDataSourceInfo dsi) async {
-    await dsi.datasource
-        .executeCommand('TRUNCATE TABLE tom_user_two_factor_enrolment');
+    await dsi.datasource.executeCommand(
+      'TRUNCATE TABLE tom_user_two_factor_enrolment',
+    );
   }
 
   /// Creates the `tom_user_preference` table from the entity's own DDL.
@@ -440,8 +441,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
   /// (TCCB7).
   static Future<void> ensureExternalIdentityTable(
     TomDataSourceInfo dsi,
-  ) async =>
-      _ensureEntityTable(dsi, TomExternalIdentityLink.createTableSql);
+  ) async => _ensureEntityTable(dsi, TomExternalIdentityLink.createTableSql);
 
   /// Empties `tom_external_identity` between tests.
   static Future<void> truncateExternalIdentity(TomDataSourceInfo dsi) async {
@@ -452,15 +452,15 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
   /// (TCCB7).
   static Future<void> ensureExternalIdentityTokenTable(
     TomDataSourceInfo dsi,
-  ) async =>
-      _ensureEntityTable(dsi, TomExternalIdentityToken.createTableSql);
+  ) async => _ensureEntityTable(dsi, TomExternalIdentityToken.createTableSql);
 
   /// Empties `tom_external_identity_token` between tests.
   static Future<void> truncateExternalIdentityToken(
     TomDataSourceInfo dsi,
   ) async {
-    await dsi.datasource
-        .executeCommand('TRUNCATE TABLE tom_external_identity_token');
+    await dsi.datasource.executeCommand(
+      'TRUNCATE TABLE tom_external_identity_token',
+    );
   }
 
   /// Closes every registered data source and clears the process-wide registry,

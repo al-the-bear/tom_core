@@ -53,7 +53,6 @@ abstract class TomTransactionParticipant {
 /// runs once: after it commits or rolls back, [isRunning] is `false` and it can
 /// no longer accept participants.
 class TomTransaction {
-
   /// The scope this transaction is the current one of.
   ///
   /// Held by the transaction rather than looked up on conclusion, because
@@ -75,7 +74,7 @@ class TomTransaction {
   /// Whether the transaction is still open (not yet committed or rolled back).
   bool get isRunning => _isRunning;
 
-  TomTransaction._(this._scope, [this.isReadOnly=false]);
+  TomTransaction._(this._scope, [this.isReadOnly = false]);
 
   /// Enlists [ttp] in this transaction, calling its `startTransaction()` once.
   ///
@@ -187,7 +186,6 @@ class _TomTransactionScope {
 /// fanning out) must wrap each flow in [runInTransactionScope] to get the same
 /// isolation a request gets for free.
 abstract class TomTransactionManager {
-
   /// The scope used by code that is not inside any [runInTransactionScope].
   ///
   /// Deliberately shared rather than per-call: a single-flow program has exactly
@@ -235,7 +233,7 @@ abstract class TomTransactionManager {
   /// an existing one was returned — letting the caller that actually opened the
   /// transaction be the one responsible for concluding it. [isReadOnly] is only
   /// honoured when a new transaction is created.
-  static (TomTransaction, bool) startTransaction([bool isReadOnly=false]) {
+  static (TomTransaction, bool) startTransaction([bool isReadOnly = false]) {
     final scope = _scope;
     final existing = scope.current;
     if (existing != null) {
@@ -254,5 +252,4 @@ abstract class TomTransactionManager {
     final current = _scope.current;
     return current != null && current._isRunning;
   }
-
 }

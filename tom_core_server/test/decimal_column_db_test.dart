@@ -64,14 +64,11 @@ void main() async {
 
     /// Inserts one row directly, so the read under test is not also asserting
     /// the write path.
-    Future<void> insertRow(
-      String label,
-      String amount,
-      String quantity,
-    ) => ds.executeCommand(
-      'INSERT INTO fixture_amount (label, amount, quantity) '
-      "VALUES ('$label', $amount, $quantity)",
-    );
+    Future<void> insertRow(String label, String amount, String quantity) =>
+        ds.executeCommand(
+          'INSERT INTO fixture_amount (label, amount, quantity) '
+          "VALUES ('$label', $amount, $quantity)",
+        );
 
     test(
       'annotated entity with a DECIMAL column reads through executeQuery',

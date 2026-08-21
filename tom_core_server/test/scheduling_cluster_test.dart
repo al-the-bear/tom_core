@@ -95,10 +95,10 @@ class _ScriptedDataSource implements TomDataSource {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
-        'The scripted data source was asked for '
-        '${invocation.memberName}, which no test needs. Implement it here if '
-        'that changes.',
-      );
+    'The scripted data source was asked for '
+    '${invocation.memberName}, which no test needs. Implement it here if '
+    'that changes.',
+  );
 }
 
 /// A queue row in whatever state a test needs it in.
@@ -110,31 +110,30 @@ TomJobRunRow _row({
   String? claimedBy,
   DateTime? claimedAt,
   DateTime? startedAt,
-}) =>
-    TomJobRunRow()
-      ..id = id
-      ..jobName = jobName
-      ..scheduledFor = sqlInstant(scheduledFor)
-      ..runAt = sqlInstant(scheduledFor)
-      ..state = state.name
-      ..attempt = 1
-      ..claimedBy = claimedBy
-      ..claimedAt = claimedAt == null ? null : sqlInstant(claimedAt)
-      ..startedAt = startedAt == null ? null : sqlInstant(startedAt);
+}) => TomJobRunRow()
+  ..id = id
+  ..jobName = jobName
+  ..scheduledFor = sqlInstant(scheduledFor)
+  ..runAt = sqlInstant(scheduledFor)
+  ..state = state.name
+  ..attempt = 1
+  ..claimedBy = claimedBy
+  ..claimedAt = claimedAt == null ? null : sqlInstant(claimedAt)
+  ..startedAt = startedAt == null ? null : sqlInstant(startedAt);
 
 /// A transport-level failure, wrapped the way the MariaDB driver wraps one.
 Object _transportFailure([String message = 'socket closed']) => TomException(
-      'error.result_processing.executecommand_failed',
-      'ExecuteCommand failed',
-      rootException: MySQLClientException(message),
-    );
+  'error.result_processing.executecommand_failed',
+  'ExecuteCommand failed',
+  rootException: MySQLClientException(message),
+);
 
 /// A failure the server itself reported.
 Object _serverFailure([int code = 1213]) => TomException(
-      'error.result_processing.executecommand_failed',
-      'ExecuteCommand failed',
-      rootException: MySQLServerException('deadlock found', code),
-    );
+  'error.result_processing.executecommand_failed',
+  'ExecuteCommand failed',
+  rootException: MySQLServerException('deadlock found', code),
+);
 
 /// A roll call whose chosen calls throw instead of answering.
 ///
@@ -215,13 +214,18 @@ void main() {
       // recheck that always says "not claimed".
       scriptClaimFailing(_serverFailure());
 
-      await expectLater(store.claimDue(at, 'node-a'), throwsA(isA<TomException>()));
-      expect(datasource.queries, hasLength(1),
-          reason: 'a definite failure must not trigger a recheck');
+      await expectLater(
+        store.claimDue(at, 'node-a'),
+        throwsA(isA<TomException>()),
+      );
+      expect(
+        datasource.queries,
+        hasLength(1),
+        reason: 'a definite failure must not trigger a recheck',
+      );
     });
 
-    test('a transport failure that had committed is claimed after all',
-        () async {
+    test('a transport failure that had committed is claimed after all', () async {
       // The claim reached the server and committed; only the acknowledgement was
       // lost. Reporting this as a loss is the bug: the run would sit `running`,
       // owned by a node that believes it owns nothing, until the lease expired.
@@ -242,15 +246,17 @@ void main() {
       expect(claimed.single.state, TomJobRunState.running);
     });
 
-    test('a transport failure that had not committed leaves the run available',
-        () async {
-      scriptClaimFailing(_transportFailure());
-      datasource.queryAnswers.add([_row(scheduledFor: at)]);
+    test(
+      'a transport failure that had not committed leaves the run available',
+      () async {
+        scriptClaimFailing(_transportFailure());
+        datasource.queryAnswers.add([_row(scheduledFor: at)]);
 
-      // Not an error: the run is still `pending`, so the next pass — this node's
-      // or a peer's — will offer it again.
-      expect(await store.claimDue(at, 'node-a'), isEmpty);
-    });
+        // Not an error: the run is still `pending`, so the next pass — this node's
+        // or a peer's — will offer it again.
+        expect(await store.claimDue(at, 'node-a'), isEmpty);
+      },
+    );
 
     test("a peer's claim is not mistaken for ours", () async {
       scriptClaimFailing(_transportFailure());
@@ -283,13 +289,15 @@ void main() {
       expect(await store.claimDue(at, 'node-a'), isEmpty);
     });
 
-    test('a run that vanished between the scan and the recheck is not claimed',
-        () async {
-      scriptClaimFailing(_transportFailure());
-      datasource.queryAnswers.add(<Object>[]);
+    test(
+      'a run that vanished between the scan and the recheck is not claimed',
+      () async {
+        scriptClaimFailing(_transportFailure());
+        datasource.queryAnswers.add(<Object>[]);
 
-      expect(await store.claimDue(at, 'node-a'), isEmpty);
-    });
+        expect(await store.claimDue(at, 'node-a'), isEmpty);
+      },
+    );
 
     test('a recheck that also fails surfaces the original failure', () async {
       final original = _transportFailure('the original break');
@@ -298,24 +306,27 @@ void main() {
 
       // Still blind, so the honest answer is the failure that started it. The
       // lease timeout remains the backstop if the claim did land.
-      await expectLater(
-        store.claimDue(at, 'node-a'),
-        throwsA(same(original)),
-      );
+      await expectLater(store.claimDue(at, 'node-a'), throwsA(same(original)));
     });
   });
 
   group('classifying a failed write', () {
     test('a server-reported error is definitive', () {
-      expect(classifySqlFailure(MySQLServerException('duplicate key', 1062)),
-          TomSqlFailureMode.definite);
+      expect(
+        classifySqlFailure(MySQLServerException('duplicate key', 1062)),
+        TomSqlFailureMode.definite,
+      );
     });
 
     test('a driver-side error is ambiguous', () {
-      expect(classifySqlFailure(MySQLClientException('socket closed')),
-          TomSqlFailureMode.ambiguous);
-      expect(classifySqlFailure(MySQLProtocolException('bad packet')),
-          TomSqlFailureMode.ambiguous);
+      expect(
+        classifySqlFailure(MySQLClientException('socket closed')),
+        TomSqlFailureMode.ambiguous,
+      );
+      expect(
+        classifySqlFailure(MySQLProtocolException('bad packet')),
+        TomSqlFailureMode.ambiguous,
+      );
     });
 
     test('the verdict is found through the wrapping', () {
@@ -324,7 +335,9 @@ void main() {
       // failure ambiguous — including the ones it can be sure about.
       expect(classifySqlFailure(_serverFailure()), TomSqlFailureMode.definite);
       expect(
-          classifySqlFailure(_transportFailure()), TomSqlFailureMode.ambiguous);
+        classifySqlFailure(_transportFailure()),
+        TomSqlFailureMode.ambiguous,
+      );
     });
 
     test('anything unrecognised is ambiguous', () {
@@ -332,10 +345,14 @@ void main() {
       // transport failures is open-ended, the set of "the server answered" is
       // not. Guessing "ambiguous" costs one SELECT; guessing "definite" costs an
       // abandoned run.
-      expect(classifySqlFailure(const SocketException('reset by peer')),
-          TomSqlFailureMode.ambiguous);
-      expect(classifySqlFailure(StateError('connection closed')),
-          TomSqlFailureMode.ambiguous);
+      expect(
+        classifySqlFailure(const SocketException('reset by peer')),
+        TomSqlFailureMode.ambiguous,
+      );
+      expect(
+        classifySqlFailure(StateError('connection closed')),
+        TomSqlFailureMode.ambiguous,
+      );
       expect(classifySqlFailure(null), TomSqlFailureMode.ambiguous);
     });
 
@@ -355,19 +372,20 @@ void main() {
       required Duration silentFor,
       Duration interval = const Duration(seconds: 30),
       String nodeId = 'node-b',
-    }) =>
-        TomSchedulerNode(
-          nodeId: nodeId,
-          checkinAt: at.subtract(silentFor),
-          checkinInterval: interval,
-        );
+    }) => TomSchedulerNode(
+      nodeId: nodeId,
+      checkinAt: at.subtract(silentFor),
+      checkinInterval: interval,
+    );
 
-    bool failed(TomSchedulerNode node, {Duration selfSilentFor = Duration.zero}) =>
-        isSchedulerNodeFailed(
-          peer: node,
-          now: at,
-          lastSelfCheckin: at.subtract(selfSilentFor),
-        );
+    bool failed(
+      TomSchedulerNode node, {
+      Duration selfSilentFor = Duration.zero,
+    }) => isSchedulerNodeFailed(
+      peer: node,
+      now: at,
+      lastSelfCheckin: at.subtract(selfSilentFor),
+    );
 
     test('a peer inside its own interval is alive', () {
       expect(failed(peer(silentFor: const Duration(seconds: 20))), isFalse);
@@ -402,8 +420,11 @@ void main() {
       // cluster dead and stealing its work — the outage turning destructive at
       // the moment it ends.
       final silent = peer(silentFor: const Duration(minutes: 2));
-      expect(failed(silent), isTrue,
-          reason: 'a healthy accuser would call this peer failed');
+      expect(
+        failed(silent),
+        isTrue,
+        reason: 'a healthy accuser would call this peer failed',
+      );
       expect(
         failed(silent, selfSilentFor: const Duration(minutes: 2)),
         isFalse,
@@ -411,8 +432,7 @@ void main() {
       );
     });
 
-    test('a stalled node still accuses a peer that is later than its outage',
-        () {
+    test('a stalled node still accuses a peer that is later than its outage', () {
       // The guard grants peers the accuser's own lateness — not amnesty. A peer
       // silent for ten minutes was already gone before this node stalled.
       expect(
@@ -480,21 +500,26 @@ void main() {
       );
 
       expect(recovered.single.state, TomJobRunState.pending);
-      expect(datasource.commandParameters.single!['pending'],
-          TomJobRunState.pending.name);
-    });
-
-    test('an interrupted run goes back to the queue when its job asks', () async {
-      scriptStaleRun(started: true);
-
-      final recovered = await store.recoverAbandoned(
-        later,
-        const Duration(minutes: 15),
-        requestsRecovery: (_) => true,
+      expect(
+        datasource.commandParameters.single!['pending'],
+        TomJobRunState.pending.name,
       );
-
-      expect(recovered.single.state, TomJobRunState.pending);
     });
+
+    test(
+      'an interrupted run goes back to the queue when its job asks',
+      () async {
+        scriptStaleRun(started: true);
+
+        final recovered = await store.recoverAbandoned(
+          later,
+          const Duration(minutes: 15),
+          requestsRecovery: (_) => true,
+        );
+
+        expect(recovered.single.state, TomJobRunState.pending);
+      },
+    );
 
     test('an interrupted run is written off when its job does not', () async {
       // The default, and the conservative one: re-running a job that was halfway
@@ -513,8 +538,10 @@ void main() {
       expect(run.state, TomJobRunState.failed);
       expect(run.completedAt, later);
       expect(run.lastError, TomJobStore.recoveryDeclinedError);
-      expect(datasource.commandParameters.single!['error'],
-          TomJobStore.recoveryDeclinedError);
+      expect(
+        datasource.commandParameters.single!['error'],
+        TomJobStore.recoveryDeclinedError,
+      );
     });
 
     test('with no predicate an interrupted run is still re-queued', () async {
@@ -523,8 +550,10 @@ void main() {
       // scheduler — which can see the registry — always supplies the predicate.
       scriptStaleRun(started: true);
 
-      final recovered =
-          await store.recoverAbandoned(later, const Duration(minutes: 15));
+      final recovered = await store.recoverAbandoned(
+        later,
+        const Duration(minutes: 15),
+      );
 
       expect(recovered.single.state, TomJobRunState.pending);
     });
@@ -570,9 +599,11 @@ void main() {
     }
 
     /// Runs recovery over a store wired to [nodes] and returns what came back.
-    Future<List<TomJobRun>> recoverWith(_BrokenNodes nodes) =>
-        TomSqlJobStore(datasource, createSchema: false, nodes: nodes)
-            .recoverAbandoned(later, const Duration(minutes: 15));
+    Future<List<TomJobRun>> recoverWith(_BrokenNodes nodes) => TomSqlJobStore(
+      datasource,
+      createSchema: false,
+      nodes: nodes,
+    ).recoverAbandoned(later, const Duration(minutes: 15));
 
     test('a check-in that throws still leaves the run recovered', () async {
       // The first roll-call call on the pass, and the one whose failure is most
@@ -591,19 +622,24 @@ void main() {
       expect(recovered.single.state, TomJobRunState.pending);
     });
 
-    test('a roll call that cannot be read still leaves the run recovered',
-        () async {
-      scriptStaleRun();
+    test(
+      'a roll call that cannot be read still leaves the run recovered',
+      () async {
+        scriptStaleRun();
 
-      final recovered = await recoverWith(
-        _BrokenNodes(datasource: datasource, onFailedNodes: true),
-      );
+        final recovered = await recoverWith(
+          _BrokenNodes(datasource: datasource, onFailedNodes: true),
+        );
 
-      expect(recovered.single.id, 'run-1');
-      expect(recovered.single.state, TomJobRunState.pending);
-      expect(datasource.queries, hasLength(1),
-          reason: 'an unreadable roll call names no peer, so no peer is read');
-    });
+        expect(recovered.single.id, 'run-1');
+        expect(recovered.single.state, TomJobRunState.pending);
+        expect(
+          datasource.queries,
+          hasLength(1),
+          reason: 'an unreadable roll call names no peer, so no peer is read',
+        );
+      },
+    );
 
     test('a peer whose work cannot be read is left to lease expiry', () async {
       // The roll call named a failed peer, but the follow-up read of that
@@ -627,8 +663,11 @@ void main() {
       );
 
       expect(recovered.single.id, 'run-1');
-      expect(datasource.queries, hasLength(2),
-          reason: 'the peer was asked about before the read failed');
+      expect(
+        datasource.queries,
+        hasLength(2),
+        reason: 'the peer was asked about before the read failed',
+      );
     });
 
     test('a peer that cannot be forgotten is still recovered from', () async {
@@ -664,14 +703,14 @@ void main() {
   group('wiring that cannot work is refused up front', () {
     /// Matches the exception a named-data-source lookup raises for [key].
     Matcher refusesDatasource(String key) => throwsA(
-          isA<TomServerException>()
-              .having((e) => e.key, 'key', key)
-              .having(
-                (e) => e.parameters?['datasource'],
-                'datasource',
-                'no-such-datasource',
-              ),
-        );
+      isA<TomServerException>()
+          .having((e) => e.key, 'key', key)
+          .having(
+            (e) => e.parameters?['datasource'],
+            'datasource',
+            'no-such-datasource',
+          ),
+    );
 
     test('the job store refuses an unregistered data source', () {
       expect(
@@ -689,43 +728,46 @@ void main() {
 
     test('the roll call refuses an unregistered data source', () {
       expect(
-        () => TomSqlSchedulerNodes.named('no-such-datasource', nodeId: 'node-a'),
+        () =>
+            TomSqlSchedulerNodes.named('no-such-datasource', nodeId: 'node-a'),
         refusesDatasource('scheduling.nodes.unknown_datasource'),
       );
     });
 
-    test('a payload that is not JSON-encodable is refused before any statement',
-        () async {
-      // The encode happens while the bind map is being built, which is before
-      // `executeCommand` is called — so the queue never sees a row it would
-      // have to read back as unparseable. The scripted source proves it: it
-      // records every statement, and records none.
-      //
-      // The exception is the kernel's, not this layer's: every store refuses
-      // the same payloads under the same key, which is what lets a job be
-      // developed against the memory store and deployed against this one.
-      final datasource = _ScriptedDataSource();
-      final store = TomSqlJobStore(datasource, createSchema: false);
+    test(
+      'a payload that is not JSON-encodable is refused before any statement',
+      () async {
+        // The encode happens while the bind map is being built, which is before
+        // `executeCommand` is called — so the queue never sees a row it would
+        // have to read back as unparseable. The scripted source proves it: it
+        // records every statement, and records none.
+        //
+        // The exception is the kernel's, not this layer's: every store refuses
+        // the same payloads under the same key, which is what lets a job be
+        // developed against the memory store and deployed against this one.
+        final datasource = _ScriptedDataSource();
+        final store = TomSqlJobStore(datasource, createSchema: false);
 
-      await expectLater(
-        store.enqueue(
-          TomJobRun(
-            id: 'run-9',
-            jobName: 'export',
-            scheduledFor: at,
-            runAt: at,
-            payload: {'sink': Socket},
+        await expectLater(
+          store.enqueue(
+            TomJobRun(
+              id: 'run-9',
+              jobName: 'export',
+              scheduledFor: at,
+              runAt: at,
+              payload: {'sink': Socket},
+            ),
           ),
-        ),
-        throwsA(
-          isA<TomScheduleException>()
-              .having((e) => e.key, 'key', 'schedule.job.payload')
-              .having((e) => e.parameters?['job'], 'job', 'export')
-              .having((e) => e.parameters?['run'], 'run', 'run-9'),
-        ),
-      );
+          throwsA(
+            isA<TomScheduleException>()
+                .having((e) => e.key, 'key', 'schedule.job.payload')
+                .having((e) => e.parameters?['job'], 'job', 'export')
+                .having((e) => e.parameters?['run'], 'run', 'run-9'),
+          ),
+        );
 
-      expect(datasource.commands, isEmpty);
-    });
+        expect(datasource.commands, isEmpty);
+      },
+    );
   });
 }

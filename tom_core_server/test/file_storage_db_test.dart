@@ -41,7 +41,8 @@ import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/test_database.dart';
 
 /// A one-shot stream of [chunks] — the shape every `put` takes.
-Stream<List<int>> _stream(List<List<int>> chunks) => Stream.fromIterable(chunks);
+Stream<List<int>> _stream(List<List<int>> chunks) =>
+    Stream.fromIterable(chunks);
 
 /// A single-chunk stream of [text].
 Stream<List<int>> _text(String text) => _stream([utf8.encode(text)]);
@@ -57,8 +58,9 @@ Stream<List<int>> _failingStream(List<List<int>> chunks) async* {
 
 /// [count] bytes whose values depend on their position, so a round trip that
 /// silently reorders or truncates cannot pass.
-Uint8List _bytes(int count, [int seed = 0]) =>
-    Uint8List.fromList([for (var i = 0; i < count; i++) (i * 31 + seed) & 0xff]);
+Uint8List _bytes(int count, [int seed = 0]) => Uint8List.fromList([
+  for (var i = 0; i < count; i++) (i * 31 + seed) & 0xff,
+]);
 
 /// A resolver that grades exactly the fixture's secret column, leaving every
 /// other resource at [TomAuthState.full].
@@ -87,10 +89,10 @@ FixtureScopedDocumentRecord _scopedDocument(String title, int ownerId) =>
 /// The principal the `owner` data-scope resolver reads: its `id` is the value
 /// matched against the row's `owner_id`.
 TomPrincipal _principal(int id) => TomPrincipal(
-      user: TomUser(id: id, username: 'user$id'),
-      aci: TomAccessControlInformation(),
-      authenticated: true,
-    );
+  user: TomUser(id: id, username: 'user$id'),
+  aci: TomAccessControlInformation(),
+  authenticated: true,
+);
 
 /// Runs [body] as the principal with id [userId].
 ///
@@ -105,7 +107,7 @@ void main() async {
   final String? skipReason = reachable
       ? null
       : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-          'start one with tool/run_db_tests.sh';
+            'start one with tool/run_db_tests.sh';
 
   group('TomDatabaseBlobStore', () {
     late TomDataSourceInfo dsi;
@@ -127,59 +129,67 @@ void main() async {
 
     tearDownAll(TestDatabase.reset);
 
-    test('creates its schema on first use and round-trips a small blob',
-        () async {
-      final stored = await store.put(
-        key: 'db/small.txt',
-        bytes: _text('hello database'),
-        mediaType: 'text/plain',
-        fileName: 'small.txt',
-      );
+    test(
+      'creates its schema on first use and round-trips a small blob',
+      () async {
+        final stored = await store.put(
+          key: 'db/small.txt',
+          bytes: _text('hello database'),
+          mediaType: 'text/plain',
+          fileName: 'small.txt',
+        );
 
-      expect(stored.key, 'db/small.txt');
-      expect(stored.byteCount, 14);
-      expect(stored.mediaType, 'text/plain');
-      expect(stored.fileName, 'small.txt');
-      expect(utf8.decode(await store.getBytes('db/small.txt')),
-          'hello database');
-    });
+        expect(stored.key, 'db/small.txt');
+        expect(stored.byteCount, 14);
+        expect(stored.mediaType, 'text/plain');
+        expect(stored.fileName, 'small.txt');
+        expect(
+          utf8.decode(await store.getBytes('db/small.txt')),
+          'hello database',
+        );
+      },
+    );
 
-    test('describes and probes a stored blob without reading its bytes',
-        () async {
-      await store.put(
-        key: 'db/described.bin',
-        bytes: _stream([_bytes(300)]),
-        mediaType: 'application/octet-stream',
-        fileName: 'described.bin',
-      );
+    test(
+      'describes and probes a stored blob without reading its bytes',
+      () async {
+        await store.put(
+          key: 'db/described.bin',
+          bytes: _stream([_bytes(300)]),
+          mediaType: 'application/octet-stream',
+          fileName: 'described.bin',
+        );
 
-      final described = await store.describe('db/described.bin');
-      expect(described, isNotNull);
-      expect(described!.byteCount, 300);
-      expect(described.fileName, 'described.bin');
-      expect(described.mediaType, 'application/octet-stream');
-      expect(await store.exists('db/described.bin'), isTrue);
-      expect(await store.exists('db/absent.bin'), isFalse);
-      expect(await store.describe('db/absent.bin'), isNull);
-    });
+        final described = await store.describe('db/described.bin');
+        expect(described, isNotNull);
+        expect(described!.byteCount, 300);
+        expect(described.fileName, 'described.bin');
+        expect(described.mediaType, 'application/octet-stream');
+        expect(await store.exists('db/described.bin'), isTrue);
+        expect(await store.exists('db/absent.bin'), isFalse);
+        expect(await store.describe('db/absent.bin'), isNull);
+      },
+    );
 
-    test('splits a payload across chunk rows and streams them back in order',
-        () async {
-      // 4.5 chunks at the 1 KiB chunk size: an uneven tail, so a store that
-      // only handled exact multiples would fail here.
-      final payload = _bytes(4608, 7);
-      await store.put(key: 'db/chunked.bin', bytes: _stream([payload]));
+    test(
+      'splits a payload across chunk rows and streams them back in order',
+      () async {
+        // 4.5 chunks at the 1 KiB chunk size: an uneven tail, so a store that
+        // only handled exact multiples would fail here.
+        final payload = _bytes(4608, 7);
+        await store.put(key: 'db/chunked.bin', bytes: _stream([payload]));
 
-      final received = <List<int>>[];
-      await for (final chunk in store.get('db/chunked.bin')) {
-        received.add(chunk);
-      }
-      // Streamed, not assembled: the caller saw one event per stored chunk —
-      // four full 1 KiB rows and the 512-byte tail.
-      expect(received, hasLength(5));
-      expect(received.map((c) => c.length), [1024, 1024, 1024, 1024, 512]);
-      expect(received.expand((c) => c).toList(), payload);
-    });
+        final received = <List<int>>[];
+        await for (final chunk in store.get('db/chunked.bin')) {
+          received.add(chunk);
+        }
+        // Streamed, not assembled: the caller saw one event per stored chunk —
+        // four full 1 KiB rows and the 512-byte tail.
+        expect(received, hasLength(5));
+        expect(received.map((c) => c.length), [1024, 1024, 1024, 1024, 512]);
+        expect(received.expand((c) => c).toList(), payload);
+      },
+    );
 
     test('carries arbitrary bytes through unchanged', () async {
       // The base64 encoding exists because the driver decodes column values as
@@ -201,41 +211,53 @@ void main() async {
       );
     });
 
-    test('replacing a blob supersedes its chunks and keeps the store readable',
-        () async {
-      await store.put(key: 'db/replaced.txt', bytes: _text('first version'));
-      await store.put(key: 'db/replaced.txt', bytes: _text('second version'));
+    test(
+      'replacing a blob supersedes its chunks and keeps the store readable',
+      () async {
+        await store.put(key: 'db/replaced.txt', bytes: _text('first version'));
+        await store.put(key: 'db/replaced.txt', bytes: _text('second version'));
 
-      // The manifest is a single row keyed by the storage key, so the second
-      // write replaced the first rather than shadowing it: the descriptor
-      // reports the new length, and there is nothing of the old one left.
-      expect(
-        utf8.decode(await store.getBytes('db/replaced.txt')),
-        'second version',
-      );
-      expect((await store.describe('db/replaced.txt'))!.byteCount, 14);
-      // The superseded upload's chunk rows went with it — nothing to purge.
-      expect(await store.purgeOrphanedChunks(), 0);
-    });
+        // The manifest is a single row keyed by the storage key, so the second
+        // write replaced the first rather than shadowing it: the descriptor
+        // reports the new length, and there is nothing of the old one left.
+        expect(
+          utf8.decode(await store.getBytes('db/replaced.txt')),
+          'second version',
+        );
+        expect((await store.describe('db/replaced.txt'))!.byteCount, 14);
+        // The superseded upload's chunk rows went with it — nothing to purge.
+        expect(await store.purgeOrphanedChunks(), 0);
+      },
+    );
 
-    test('a failed write leaves the previous blob intact and no orphan rows',
-        () async {
-      await store.put(key: 'db/kept.txt', bytes: _text('the good copy'));
+    test(
+      'a failed write leaves the previous blob intact and no orphan rows',
+      () async {
+        await store.put(key: 'db/kept.txt', bytes: _text('the good copy'));
 
-      await expectLater(
-        store.put(
-          key: 'db/kept.txt',
-          bytes: _failingStream([utf8.encode('partial')]),
-        ),
-        throwsA(isA<TomStorageException>()
-            .having((e) => e.key, 'key', 'storage.blob.write_failed')),
-      );
+        await expectLater(
+          store.put(
+            key: 'db/kept.txt',
+            bytes: _failingStream([utf8.encode('partial')]),
+          ),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.write_failed',
+            ),
+          ),
+        );
 
-      // The manifest still names the committed upload...
-      expect(utf8.decode(await store.getBytes('db/kept.txt')), 'the good copy');
-      // ...and the failed write cleaned up after itself.
-      expect(await store.purgeOrphanedChunks(), 0);
-    });
+        // The manifest still names the committed upload...
+        expect(
+          utf8.decode(await store.getBytes('db/kept.txt')),
+          'the good copy',
+        );
+        // ...and the failed write cleaned up after itself.
+        expect(await store.purgeOrphanedChunks(), 0);
+      },
+    );
 
     test('purgeOrphanedChunks collects rows no manifest refers to', () async {
       await store.put(key: 'db/orphan.txt', bytes: _text('body'));
@@ -251,21 +273,28 @@ void main() async {
       expect(utf8.decode(await store.getBytes('db/orphan.txt')), 'body');
     });
 
-    test('deleting removes the blob and reports whether there was one',
-        () async {
-      await store.put(key: 'db/doomed.txt', bytes: _text('bye'));
-      expect(await store.delete('db/doomed.txt'), isTrue);
-      expect(await store.exists('db/doomed.txt'), isFalse);
-      expect(await store.delete('db/doomed.txt'), isFalse);
-      // Both tables, not just the visible one.
-      expect(await store.purgeOrphanedChunks(), 0);
-    });
+    test(
+      'deleting removes the blob and reports whether there was one',
+      () async {
+        await store.put(key: 'db/doomed.txt', bytes: _text('bye'));
+        expect(await store.delete('db/doomed.txt'), isTrue);
+        expect(await store.exists('db/doomed.txt'), isFalse);
+        expect(await store.delete('db/doomed.txt'), isFalse);
+        // Both tables, not just the visible one.
+        expect(await store.purgeOrphanedChunks(), 0);
+      },
+    );
 
     test('reading an absent key is a named not-found', () async {
       await expectLater(
         store.get('db/nothing.txt').toList(),
-        throwsA(isA<TomStorageException>()
-            .having((e) => e.key, 'key', 'storage.blob.not_found')),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.blob.not_found',
+          ),
+        ),
       );
     });
 
@@ -279,32 +308,46 @@ void main() async {
 
       await expectLater(
         store.get('db/truncated.bin').toList(),
-        throwsA(isA<TomStorageException>()
-            .having((e) => e.key, 'key', 'storage.blob.missing_chunk')),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.blob.missing_chunk',
+          ),
+        ),
       );
     });
 
-    test('.named resolves a registered data source, and refuses an unknown one',
-        () async {
-      final named = TomDatabaseBlobStore.named(TestDatabase.datasourceName);
-      await named.put(key: 'db/named.txt', bytes: _text('by name'));
-      expect(utf8.decode(await named.getBytes('db/named.txt')), 'by name');
+    test(
+      '.named resolves a registered data source, and refuses an unknown one',
+      () async {
+        final named = TomDatabaseBlobStore.named(TestDatabase.datasourceName);
+        await named.put(key: 'db/named.txt', bytes: _text('by name'));
+        expect(utf8.decode(await named.getBytes('db/named.txt')), 'by name');
 
-      expect(
-        () => TomDatabaseBlobStore.named('nosuchdatasource'),
-        throwsA(isA<TomStorageException>().having(
-          (e) => e.key,
-          'key',
-          'storage.database.unknown_datasource',
-        )),
-      );
-    });
+        expect(
+          () => TomDatabaseBlobStore.named('nosuchdatasource'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.database.unknown_datasource',
+            ),
+          ),
+        );
+      },
+    );
 
     test('a key the grammar rejects never reaches the database', () async {
       await expectLater(
         store.put(key: '../escape', bytes: _text('nope')),
-        throwsA(isA<TomStorageException>()
-            .having((e) => e.key, 'key', 'storage.blob.invalid_key')),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.blob.invalid_key',
+          ),
+        ),
       );
     });
   }, skip: skipReason);
@@ -334,27 +377,29 @@ void main() async {
 
     tearDownAll(TestDatabase.reset);
 
-    test('saveFile uploads the bytes and stores only the key in the row',
-        () async {
-      final saved = await repo.saveFile(
-        _document('quarterly'),
-        'attachment',
-        _text('report body'),
-        mediaType: 'text/plain',
-        fileName: 'report.txt',
-      );
+    test(
+      'saveFile uploads the bytes and stores only the key in the row',
+      () async {
+        final saved = await repo.saveFile(
+          _document('quarterly'),
+          'attachment',
+          _text('report body'),
+          mediaType: 'text/plain',
+          fileName: 'report.txt',
+        );
 
-      // The column holds a key of the annotation's shape, not the content.
-      expect(saved.attachment, startsWith('fixture/attachment/'));
-      expect(blobs.keys, [saved.attachment]);
-      expect(blobs.textOf(saved.attachment!), 'report body');
+        // The column holds a key of the annotation's shape, not the content.
+        expect(saved.attachment, startsWith('fixture/attachment/'));
+        expect(blobs.keys, [saved.attachment]);
+        expect(blobs.textOf(saved.attachment!), 'report body');
 
-      // And what came back from the database in that column is the same short
-      // string — the row carries the reference, the store carries the bytes.
-      final reloaded = await repo.findById(saved.id!);
-      expect(reloaded!.attachment, saved.attachment);
-      expect(reloaded.title, 'quarterly');
-    });
+        // And what came back from the database in that column is the same short
+        // string — the row carries the reference, the store carries the bytes.
+        final reloaded = await repo.findById(saved.id!);
+        expect(reloaded!.attachment, saved.attachment);
+        expect(reloaded.title, 'quarterly');
+      },
+    );
 
     test('openFile streams the bytes back through the row', () async {
       final saved = await repo.saveFile(
@@ -386,12 +431,14 @@ void main() async {
       expect(described.fileName, 'numbers.csv');
     });
 
-    test('describeFile is null for a row with no file, and for no row',
-        () async {
-      final saved = await repo.save(_document('empty'));
-      expect(await repo.describeFile(saved.id!, 'attachment'), isNull);
-      expect(await repo.describeFile(999999, 'attachment'), isNull);
-    });
+    test(
+      'describeFile is null for a row with no file, and for no row',
+      () async {
+        final saved = await repo.save(_document('empty'));
+        expect(await repo.describeFile(saved.id!, 'attachment'), isNull);
+        expect(await repo.describeFile(999999, 'attachment'), isNull);
+      },
+    );
 
     test('the column name works as well as the declared name', () async {
       // The router hands over whatever the API surface called the field; both
@@ -419,39 +466,52 @@ void main() async {
       // way, and a consumer needs only one error path.
       await expectLater(
         repo.openFile(1, 'title').toList(),
-        throwsA(isA<TomStorageException>().having(
-          (e) => e.key,
-          'key',
-          'storage.file_reference.unknown_column',
-        )),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.file_reference.unknown_column',
+          ),
+        ),
       );
       await expectLater(
         repo.saveFile(_document('x'), 'title', _text('body')),
-        throwsA(isA<TomStorageException>().having(
-          (e) => e.key,
-          'key',
-          'storage.file_reference.unknown_column',
-        )),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.file_reference.unknown_column',
+          ),
+        ),
       );
     });
 
-    test('a row with no file attached is different from an absent one',
-        () async {
-      final saved = await repo.save(_document('bare'));
-      await expectLater(
-        repo.openFile(saved.id!, 'attachment').toList(),
-        throwsA(isA<TomStorageException>()
-            .having((e) => e.key, 'key', 'storage.file_reference.no_file')),
-      );
-      await expectLater(
-        repo.openFile(999999, 'attachment').toList(),
-        throwsA(isA<TomStorageException>().having(
-          (e) => e.key,
-          'key',
-          'storage.file_reference.row_not_found',
-        )),
-      );
-    });
+    test(
+      'a row with no file attached is different from an absent one',
+      () async {
+        final saved = await repo.save(_document('bare'));
+        await expectLater(
+          repo.openFile(saved.id!, 'attachment').toList(),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.file_reference.no_file',
+            ),
+          ),
+        );
+        await expectLater(
+          repo.openFile(999999, 'attachment').toList(),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.file_reference.row_not_found',
+            ),
+          ),
+        );
+      },
+    );
 
     test('replacing a file deletes the one it superseded', () async {
       final first = await repo.saveFile(
@@ -461,7 +521,11 @@ void main() async {
       );
       final firstKey = first.attachment!;
 
-      final second = await repo.saveFile(first, 'attachment', _text('version two'));
+      final second = await repo.saveFile(
+        first,
+        'attachment',
+        _text('version two'),
+      );
 
       expect(second.attachment, isNot(firstKey));
       expect(blobs.keys, [second.attachment]);
@@ -540,84 +604,108 @@ void main() async {
     test('deleteAllById cascades for every named row', () async {
       final a = await repo.saveFile(_document('a'), 'attachment', _text('a'));
       final b = await repo.saveFile(_document('b'), 'attachment', _text('b'));
-      final kept =
-          await repo.saveFile(_document('c'), 'attachment', _text('c'));
+      final kept = await repo.saveFile(
+        _document('c'),
+        'attachment',
+        _text('c'),
+      );
 
       await repo.deleteAllById([a.id!, b.id!]);
 
       expect(blobs.keys, [kept.attachment]);
     });
 
-    test('a query-based delete cascades for exactly the rows it removed',
-        () async {
-      final doomed =
-          await repo.saveFile(_document('purge'), 'attachment', _text('gone'));
-      final kept =
-          await repo.saveFile(_document('keep'), 'attachment', _text('stays'));
+    test(
+      'a query-based delete cascades for exactly the rows it removed',
+      () async {
+        final doomed = await repo.saveFile(
+          _document('purge'),
+          'attachment',
+          _text('gone'),
+        );
+        final kept = await repo.saveFile(
+          _document('keep'),
+          'attachment',
+          _text('stays'),
+        );
 
-      await repo.deleteByQuerySentence(
-        'DELETE BY title = :title',
-        {'title': 'purge'},
-      );
+        await repo.deleteByQuerySentence('DELETE BY title = :title', {
+          'title': 'purge',
+        });
 
-      expect(await repo.findById(doomed.id!), isNull);
-      expect(await repo.findById(kept.id!), isNotNull);
-      expect(blobs.keys, [kept.attachment]);
-    });
+        expect(await repo.findById(doomed.id!), isNull);
+        expect(await repo.findById(kept.id!), isNotNull);
+        expect(blobs.keys, [kept.attachment]);
+      },
+    );
 
     group('under a C-4 grade', () {
       const authKey = 'fixture.document.secret_attachment';
 
-      test('a masked column refuses a download by name, not by absence',
-          () async {
-        final saved = await repo.saveFile(
-          _document('graded'),
-          'secretAttachment',
-          _text('classified'),
-        );
-
-        TomAuthorization.adapter = _GradeAdapter({authKey: TomAuthState.none});
-
-        // Not `no_file`: the file is there, the caller may not have it. The
-        // masked key reads back as null, so without this check the refusal
-        // would be indistinguishable from an empty column.
-        await expectLater(
-          repo.openFile(saved.id!, 'secretAttachment').toList(),
-          throwsA(isA<TomColumnAuthorizationException>().having(
-            (e) => e.key,
-            'key',
-            'column_authorization.read.field_forbidden',
-          )),
-        );
-        await expectLater(
-          repo.describeFile(saved.id!, 'secretAttachment'),
-          throwsA(isA<TomColumnAuthorizationException>().having(
-            (e) => e.key,
-            'key',
-            'column_authorization.read.field_forbidden',
-          )),
-        );
-      });
-
-      test('a read-only column refuses an upload before any bytes move',
-          () async {
-        TomAuthorization.adapter = _GradeAdapter({authKey: TomAuthState.read});
-
-        await expectLater(
-          repo.saveFile(
+      test(
+        'a masked column refuses a download by name, not by absence',
+        () async {
+          final saved = await repo.saveFile(
             _document('graded'),
             'secretAttachment',
             _text('classified'),
-          ),
-          throwsA(isA<TomColumnAuthorizationException>().having(
-            (e) => e.key,
-            'key',
-            'column_authorization.write.field_forbidden',
-          )),
-        );
-        // The refusal arrived before the transfer, so nothing was stored.
-        expect(blobs.keys, isEmpty);
-      });
+          );
+
+          TomAuthorization.adapter = _GradeAdapter({
+            authKey: TomAuthState.none,
+          });
+
+          // Not `no_file`: the file is there, the caller may not have it. The
+          // masked key reads back as null, so without this check the refusal
+          // would be indistinguishable from an empty column.
+          await expectLater(
+            repo.openFile(saved.id!, 'secretAttachment').toList(),
+            throwsA(
+              isA<TomColumnAuthorizationException>().having(
+                (e) => e.key,
+                'key',
+                'column_authorization.read.field_forbidden',
+              ),
+            ),
+          );
+          await expectLater(
+            repo.describeFile(saved.id!, 'secretAttachment'),
+            throwsA(
+              isA<TomColumnAuthorizationException>().having(
+                (e) => e.key,
+                'key',
+                'column_authorization.read.field_forbidden',
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
+        'a read-only column refuses an upload before any bytes move',
+        () async {
+          TomAuthorization.adapter = _GradeAdapter({
+            authKey: TomAuthState.read,
+          });
+
+          await expectLater(
+            repo.saveFile(
+              _document('graded'),
+              'secretAttachment',
+              _text('classified'),
+            ),
+            throwsA(
+              isA<TomColumnAuthorizationException>().having(
+                (e) => e.key,
+                'key',
+                'column_authorization.write.field_forbidden',
+              ),
+            ),
+          );
+          // The refusal arrived before the transfer, so nothing was stored.
+          expect(blobs.keys, isEmpty);
+        },
+      );
 
       test('a masked round trip does not orphan the live blob', () async {
         // The failure this defends against: a masked column reads back as
@@ -646,75 +734,86 @@ void main() async {
         expect(blobs.textOf(secretKey), 'classified');
       });
 
-      test('a per-row resolver grades the same column differently on two rows',
-          () async {
-        // The column-wide adapter above can say "nobody may write secret
-        // attachments". It cannot say "you may write the one on the row you
-        // own and only read the one on the row shared with you" — that grade
-        // is a property of the (principal, row) pair, and it is what a
-        // relational deployment actually has. `TomRowColumnAuthorization` is
-        // the seam for it; the file operations are the only paths that consult
-        // it, because they are the only ones that address a single row and can
-        // afford to await.
-        final writable = await repo.saveFile(
-          _document('row-writable'),
-          'secretAttachment',
-          _text('mine'),
-        );
-        final readOnly = await repo.saveFile(
-          _document('row-readonly'),
-          'secretAttachment',
-          _text('theirs'),
-        );
+      test(
+        'a per-row resolver grades the same column differently on two rows',
+        () async {
+          // The column-wide adapter above can say "nobody may write secret
+          // attachments". It cannot say "you may write the one on the row you
+          // own and only read the one on the row shared with you" — that grade
+          // is a property of the (principal, row) pair, and it is what a
+          // relational deployment actually has. `TomRowColumnAuthorization` is
+          // the seam for it; the file operations are the only paths that consult
+          // it, because they are the only ones that address a single row and can
+          // afford to await.
+          final writable = await repo.saveFile(
+            _document('row-writable'),
+            'secretAttachment',
+            _text('mine'),
+          );
+          final readOnly = await repo.saveFile(
+            _document('row-readonly'),
+            'secretAttachment',
+            _text('theirs'),
+          );
 
-        TomRowColumnAuthorization.register(
-          authKey,
-          (principal, rowId) async =>
-              rowId == writable.id ? TomAuthState.full : TomAuthState.read,
-        );
-        addTearDown(TomRowColumnAuthorization.reset);
+          TomRowColumnAuthorization.register(
+            authKey,
+            (principal, rowId) async =>
+                rowId == writable.id ? TomAuthState.full : TomAuthState.read,
+          );
+          addTearDown(TomRowColumnAuthorization.reset);
 
-        // The read-only row downloads — `read` shows content …
-        expect(
-          utf8.decode(await repo
-              .openFile(readOnly.id!, 'secretAttachment')
-              .expand((c) => c)
-              .toList()),
-          'theirs',
-        );
-        // … and refuses the upload, because `read` is not interactive.
-        await expectLater(
-          repo.saveFile(readOnly, 'secretAttachment', _text('overwrite')),
-          throwsA(isA<TomColumnAuthorizationException>().having(
-            (e) => e.key,
-            'key',
-            'column_authorization.write.field_forbidden',
-          )),
-        );
-        // … and refuses the *clear*, which is the write that would otherwise
-        // slip through: `clearFile` delegates to `save`, and `save` grades the
-        // column column-wide — which is not the answer for a per-row column. A
-        // principal allowed only to download the file must not be able to
-        // destroy it.
-        await expectLater(
-          repo.clearFile(readOnly, 'secretAttachment'),
-          throwsA(isA<TomColumnAuthorizationException>().having(
-            (e) => e.key,
-            'key',
-            'column_authorization.write.field_forbidden',
-          )),
-        );
-        expect(
-          blobs.textOf(readOnly.secretAttachment!),
-          'theirs',
-          reason: 'the refused clear left the stored blob untouched',
-        );
+          // The read-only row downloads — `read` shows content …
+          expect(
+            utf8.decode(
+              await repo
+                  .openFile(readOnly.id!, 'secretAttachment')
+                  .expand((c) => c)
+                  .toList(),
+            ),
+            'theirs',
+          );
+          // … and refuses the upload, because `read` is not interactive.
+          await expectLater(
+            repo.saveFile(readOnly, 'secretAttachment', _text('overwrite')),
+            throwsA(
+              isA<TomColumnAuthorizationException>().having(
+                (e) => e.key,
+                'key',
+                'column_authorization.write.field_forbidden',
+              ),
+            ),
+          );
+          // … and refuses the *clear*, which is the write that would otherwise
+          // slip through: `clearFile` delegates to `save`, and `save` grades the
+          // column column-wide — which is not the answer for a per-row column. A
+          // principal allowed only to download the file must not be able to
+          // destroy it.
+          await expectLater(
+            repo.clearFile(readOnly, 'secretAttachment'),
+            throwsA(
+              isA<TomColumnAuthorizationException>().having(
+                (e) => e.key,
+                'key',
+                'column_authorization.write.field_forbidden',
+              ),
+            ),
+          );
+          expect(
+            blobs.textOf(readOnly.secretAttachment!),
+            'theirs',
+            reason: 'the refused clear left the stored blob untouched',
+          );
 
-        // The writable row, same column, same principal: the upload lands.
-        final replaced =
-            await repo.saveFile(writable, 'secretAttachment', _text('replaced'));
-        expect(blobs.textOf(replaced.secretAttachment!), 'replaced');
-      });
+          // The writable row, same column, same principal: the upload lands.
+          final replaced = await repo.saveFile(
+            writable,
+            'secretAttachment',
+            _text('replaced'),
+          );
+          expect(blobs.textOf(replaced.secretAttachment!), 'replaced');
+        },
+      );
 
       test('a per-row resolver overrides the column-wide adapter, and the row '
           'projection stops masking the column', () async {
@@ -737,38 +836,47 @@ void main() async {
         addTearDown(TomRowColumnAuthorization.reset);
 
         final reloaded = await repo.findById(saved.id!);
-        expect(reloaded!.secretAttachment, saved.secretAttachment,
-            reason: 'the column-wide `none` no longer masks a per-row column');
         expect(
-          utf8.decode(await repo
-              .openFile(saved.id!, 'secretAttachment')
-              .expand((c) => c)
-              .toList()),
+          reloaded!.secretAttachment,
+          saved.secretAttachment,
+          reason: 'the column-wide `none` no longer masks a per-row column',
+        );
+        expect(
+          utf8.decode(
+            await repo
+                .openFile(saved.id!, 'secretAttachment')
+                .expand((c) => c)
+                .toList(),
+          ),
           'classified',
         );
       });
 
-      test('an unrestricted column is unaffected by a grade on its sibling',
-          () async {
-        var saved = await repo.saveFile(
-          _document('graded'),
-          'secretAttachment',
-          _text('classified'),
-        );
-        saved = await repo.saveFile(saved, 'attachment', _text('ordinary'));
+      test(
+        'an unrestricted column is unaffected by a grade on its sibling',
+        () async {
+          var saved = await repo.saveFile(
+            _document('graded'),
+            'secretAttachment',
+            _text('classified'),
+          );
+          saved = await repo.saveFile(saved, 'attachment', _text('ordinary'));
 
-        TomAuthorization.adapter = _GradeAdapter({authKey: TomAuthState.none});
+          TomAuthorization.adapter = _GradeAdapter({
+            authKey: TomAuthState.none,
+          });
 
-        expect(
-          utf8.decode(
-            await repo
-                .openFile(saved.id!, 'attachment')
-                .expand((c) => c)
-                .toList(),
-          ),
-          'ordinary',
-        );
-      });
+          expect(
+            utf8.decode(
+              await repo
+                  .openFile(saved.id!, 'attachment')
+                  .expand((c) => c)
+                  .toList(),
+            ),
+            'ordinary',
+          );
+        },
+      );
     });
   }, skip: skipReason);
 
@@ -849,7 +957,10 @@ void main() async {
       await _as(1, () async {
         expect(
           utf8.decode(
-            await repo.openFile(ownedId, 'attachment').expand((c) => c).toList(),
+            await repo
+                .openFile(ownedId, 'attachment')
+                .expand((c) => c)
+                .toList(),
           ),
           'private to one',
         );
@@ -858,8 +969,11 @@ void main() async {
         expect(described!.fileName, 'private.txt');
 
         final row = await repo.findById(ownedId);
-        final replaced =
-            await repo.saveFile(row!, 'attachment', _text('replaced by one'));
+        final replaced = await repo.saveFile(
+          row!,
+          'attachment',
+          _text('replaced by one'),
+        );
         expect(blobs.textOf(replaced.attachment!), 'replaced by one');
       });
     });
@@ -868,12 +982,15 @@ void main() async {
       await _as(2, () async {
         await expectLater(
           repo.openFile(ownedId, 'attachment').toList(),
-          throwsA(isA<TomStorageException>().having(
-            (e) => e.key,
-            'key',
-            'storage.file_reference.row_not_found',
-          )),
-          reason: 'principal 2 must not reach a row owned by principal 1, and '
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.file_reference.row_not_found',
+            ),
+          ),
+          reason:
+              'principal 2 must not reach a row owned by principal 1, and '
               'the refusal must not be a column-authorization error — that '
               'would say the row is there and only the field is withheld',
         );
@@ -889,33 +1006,35 @@ void main() async {
       });
     });
 
-    test('an out-of-scope row is indistinguishable from an absent one',
-        () async {
-      // The property that actually protects the row, and the reason the two
-      // read paths above do not raise an authorization error: if a caller can
-      // tell "yours but hidden" from "no such row", they can enumerate other
-      // principals' ids by probing. Both answers must be byte-identical.
-      await _as(2, () async {
-        expect(await repo.describeFile(ownedId, 'attachment'), isNull);
-        expect(await repo.describeFile(absentId, 'attachment'), isNull);
+    test(
+      'an out-of-scope row is indistinguishable from an absent one',
+      () async {
+        // The property that actually protects the row, and the reason the two
+        // read paths above do not raise an authorization error: if a caller can
+        // tell "yours but hidden" from "no such row", they can enumerate other
+        // principals' ids by probing. Both answers must be byte-identical.
+        await _as(2, () async {
+          expect(await repo.describeFile(ownedId, 'attachment'), isNull);
+          expect(await repo.describeFile(absentId, 'attachment'), isNull);
 
-        final outOfScope = await repo
-            .openFile(ownedId, 'attachment')
-            .toList()
-            .then<TomStorageException?>((_) => null)
-            .onError<TomStorageException>((e, _) => e);
-        final absent = await repo
-            .openFile(absentId, 'attachment')
-            .toList()
-            .then<TomStorageException?>((_) => null)
-            .onError<TomStorageException>((e, _) => e);
+          final outOfScope = await repo
+              .openFile(ownedId, 'attachment')
+              .toList()
+              .then<TomStorageException?>((_) => null)
+              .onError<TomStorageException>((e, _) => e);
+          final absent = await repo
+              .openFile(absentId, 'attachment')
+              .toList()
+              .then<TomStorageException?>((_) => null)
+              .onError<TomStorageException>((e, _) => e);
 
-        expect(outOfScope, isNotNull);
-        expect(absent, isNotNull);
-        expect(outOfScope!.key, absent!.key);
-        expect(outOfScope.defaultUserMessage, absent.defaultUserMessage);
-      });
-    });
+          expect(outOfScope, isNotNull);
+          expect(absent, isNotNull);
+          expect(outOfScope!.key, absent!.key);
+          expect(outOfScope.defaultUserMessage, absent.defaultUserMessage);
+        });
+      },
+    );
 
     test('an unauthenticated caller reaches no scoped file at all', () async {
       // No principal in the zone: the built-in `owner` resolver yields no
@@ -924,61 +1043,73 @@ void main() async {
       // and "no scoping" are one keystroke apart in the resolver.
       await expectLater(
         repo.openFile(ownedId, 'attachment').toList(),
-        throwsA(isA<TomStorageException>().having(
-          (e) => e.key,
-          'key',
-          'storage.file_reference.row_not_found',
-        )),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.file_reference.row_not_found',
+          ),
+        ),
       );
       expect(await repo.describeFile(ownedId, 'attachment'), isNull);
     });
 
-    test('saveFile refuses to write an out-of-scope row, and moves no bytes',
-        () async {
-      // The breach in the other direction: overwriting a file on a row you
-      // cannot read. Principal 2 cannot *load* the row, so it forges the
-      // reference — which is precisely what an attacker holding a guessed id
-      // would do.
-      final forged = _scopedDocument('hijacked', 2)..id = ownedId;
+    test(
+      'saveFile refuses to write an out-of-scope row, and moves no bytes',
+      () async {
+        // The breach in the other direction: overwriting a file on a row you
+        // cannot read. Principal 2 cannot *load* the row, so it forges the
+        // reference — which is precisely what an attacker holding a guessed id
+        // would do.
+        final forged = _scopedDocument('hijacked', 2)..id = ownedId;
 
-      await _as(2, () async {
-        await expectLater(
-          repo.saveFile(forged, 'attachment', _text('overwritten by two')),
-          throwsA(isA<TomDataScopeAuthorizationException>().having(
-            (e) => e.key,
-            'key',
-            'data_scope.write.out_of_scope',
-          )),
-          reason: 'a write names one specific row, so unlike a read it cannot '
-              'be answered by filtering it away — it has to be refused',
-        );
-      });
+        await _as(2, () async {
+          await expectLater(
+            repo.saveFile(forged, 'attachment', _text('overwritten by two')),
+            throwsA(
+              isA<TomDataScopeAuthorizationException>().having(
+                (e) => e.key,
+                'key',
+                'data_scope.write.out_of_scope',
+              ),
+            ),
+            reason:
+                'a write names one specific row, so unlike a read it cannot '
+                'be answered by filtering it away — it has to be refused',
+          );
+        });
 
-      // Refused before the transfer: the store still holds exactly the one
-      // blob the owner put there, with its original content.
-      expect(blobs.keys, [ownedKey]);
-      expect(blobs.textOf(ownedKey), 'private to one');
-    });
+        // Refused before the transfer: the store still holds exactly the one
+        // blob the owner put there, with its original content.
+        expect(blobs.keys, [ownedKey]);
+        expect(blobs.textOf(ownedKey), 'private to one');
+      },
+    );
 
-    test('saveFile refuses to create a row scoped to another principal',
-        () async {
-      await _as(2, () async {
-        await expectLater(
-          repo.saveFile(
-            _scopedDocument('planted', 1),
-            'attachment',
-            _text('planted by two'),
-          ),
-          throwsA(isA<TomDataScopeAuthorizationException>().having(
-            (e) => e.key,
-            'key',
-            'data_scope.write.insert_out_of_scope',
-          )),
-          reason: 'without the insert gate a principal could seed a row it '
-              'cannot itself read, and reach its file only through the owner',
-        );
-      });
-      expect(blobs.keys, [ownedKey]);
-    });
+    test(
+      'saveFile refuses to create a row scoped to another principal',
+      () async {
+        await _as(2, () async {
+          await expectLater(
+            repo.saveFile(
+              _scopedDocument('planted', 1),
+              'attachment',
+              _text('planted by two'),
+            ),
+            throwsA(
+              isA<TomDataScopeAuthorizationException>().having(
+                (e) => e.key,
+                'key',
+                'data_scope.write.insert_out_of_scope',
+              ),
+            ),
+            reason:
+                'without the insert gate a principal could seed a row it '
+                'cannot itself read, and reach its file only through the owner',
+          );
+        });
+        expect(blobs.keys, [ownedKey]);
+      },
+    );
   }, skip: skipReason);
 }

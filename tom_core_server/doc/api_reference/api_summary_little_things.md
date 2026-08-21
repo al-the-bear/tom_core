@@ -9,6 +9,7 @@ isolate attribution and request correlation to the kernel exception.
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
   - [TomServerException](#tomserverexception)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 

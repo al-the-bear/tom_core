@@ -31,10 +31,7 @@ class TomSortField {
   final TomSortDirection direction;
 
   /// Sorts on [field], ascending unless [direction] says otherwise.
-  const TomSortField(
-    this.field, {
-    this.direction = TomSortDirection.ascending,
-  });
+  const TomSortField(this.field, {this.direction = TomSortDirection.ascending});
 
   /// Sorts on [field] ascending.
   const TomSortField.asc(this.field) : direction = TomSortDirection.ascending;

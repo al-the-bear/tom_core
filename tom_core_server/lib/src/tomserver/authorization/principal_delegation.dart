@@ -179,7 +179,9 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
 abstract class PrincipalDelegationStore {
   /// Returns every delegation whose delegate is [delegateId]. Empty when none
   /// target the delegate (they then inherit no delegated roles).
-  Future<List<TomPrincipalDelegation>> delegationsForDelegate(String delegateId);
+  Future<List<TomPrincipalDelegation>> delegationsForDelegate(
+    String delegateId,
+  );
 }
 
 /// Resolves the roles a delegate receives via C-6 delegation and merges them
@@ -210,7 +212,7 @@ class TomDelegationResolver {
     this.directResolver, {
     String Function(String a, String b)? strongerRole,
   }) : strongerRole =
-            strongerRole ?? TomPrincipalResourceRoleResolver.registryStrength;
+           strongerRole ?? TomPrincipalResourceRoleResolver.registryStrength;
 
   /// Resolves the `resourceKey → roleName` map [delegateId] receives purely via
   /// delegations active at [at]. Empty when no active delegation targets them.
@@ -218,7 +220,9 @@ class TomDelegationResolver {
     String delegateId,
     DateTime at,
   ) async {
-    final delegations = await delegationStore.delegationsForDelegate(delegateId);
+    final delegations = await delegationStore.delegationsForDelegate(
+      delegateId,
+    );
     final entries = <MapEntry<String, String>>[];
     for (final delegation in delegations) {
       if (!delegation.isActiveAt(at)) continue;
@@ -236,10 +240,10 @@ class TomDelegationResolver {
   ) async {
     final direct = await directResolver.resolveResourceRoles(principalId);
     final delegated = await resolveDelegatedRoles(principalId, at);
-    return TomPrincipalResourceRoleResolver.foldRoles(
-      [...direct.entries, ...delegated.entries],
-      strongerRole,
-    );
+    return TomPrincipalResourceRoleResolver.foldRoles([
+      ...direct.entries,
+      ...delegated.entries,
+    ], strongerRole);
   }
 
   /// Convenience: resolve [principalId]'s effective roles at [at] and wrap them
@@ -268,8 +272,9 @@ class TomDelegationResolver {
         // Inherit the delegator's own direct roles (not their delegated ones:
         // delegation is not transitive), optionally narrowed to one resource
         // and/or overridden to a single role.
-        final inherited =
-            await directResolver.resolveResourceRoles(delegation.delegatorId);
+        final inherited = await directResolver.resolveResourceRoles(
+          delegation.delegatorId,
+        );
         return [
           for (final entry in inherited.entries)
             if (delegation.resourceKey == null ||
@@ -316,11 +321,13 @@ class InMemoryPrincipalDelegationStore implements PrincipalDelegationStore {
 
   /// Seeds the store with the full set of [delegations] across all delegates.
   InMemoryPrincipalDelegationStore(List<TomPrincipalDelegation> delegations)
-      : _delegations = delegations;
+    : _delegations = delegations;
 
   @override
   Future<List<TomPrincipalDelegation>> delegationsForDelegate(
     String delegateId,
-  ) async =>
-      [for (final d in _delegations) if (d.delegateId == delegateId) d];
+  ) async => [
+    for (final d in _delegations)
+      if (d.delegateId == delegateId) d,
+  ];
 }

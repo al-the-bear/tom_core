@@ -112,8 +112,8 @@ class Tom2FADecision {
     required this.requirement,
     List<String> allowedMechanisms = const [],
     this.graceLogins = 0,
-  })  : allowedMechanisms = List.unmodifiable(allowedMechanisms),
-        assert(graceLogins >= 0, 'graceLogins cannot be negative');
+  }) : allowedMechanisms = List.unmodifiable(allowedMechanisms),
+       assert(graceLogins >= 0, 'graceLogins cannot be negative');
 
   /// The permitted mechanisms that an adaptor is actually registered for, in
   /// the same preference order.
@@ -125,9 +125,7 @@ class Tom2FADecision {
   /// ten frames later, indistinguishable from a principal who named nothing.
   List<String> get offerableMechanisms {
     final registered = Tom2FARegistry.registeredTypes;
-    return List.unmodifiable(
-      allowedMechanisms.where(registered.contains),
-    );
+    return List.unmodifiable(allowedMechanisms.where(registered.contains));
   }
 
   /// Whether this login can proceed without a second factor.
@@ -135,7 +133,8 @@ class Tom2FADecision {
       requirement == Tom2FARequirement.disabled;
 
   @override
-  String toString() => '2FA $requirement via $allowedMechanisms'
+  String toString() =>
+      '2FA $requirement via $allowedMechanisms'
       '${graceLogins > 0 ? ' (grace $graceLogins)' : ''}';
 }
 
@@ -285,9 +284,8 @@ class TomRole2FAPolicy implements Tom2FAPolicy {
     this.defaultRequirement = Tom2FARequirement.disabled,
     List<String>? mechanisms,
     this.graceLogins = 0,
-  })  : requirementByRole = Map.unmodifiable(requirementByRole),
-        mechanisms =
-            mechanisms == null ? null : List.unmodifiable(mechanisms);
+  }) : requirementByRole = Map.unmodifiable(requirementByRole),
+       mechanisms = mechanisms == null ? null : List.unmodifiable(mechanisms);
 
   @override
   Future<Tom2FADecision> decideFor(Tom2FAContext context) async {
@@ -302,15 +300,11 @@ class TomRole2FAPolicy implements Tom2FAPolicy {
     final requirement = matched ?? defaultRequirement;
 
     if (requirement == Tom2FARequirement.disabled) {
-      return Tom2FADecision(
-        requirement: requirement,
-        graceLogins: graceLogins,
-      );
+      return Tom2FADecision(requirement: requirement, graceLogins: graceLogins);
     }
     return Tom2FADecision(
       requirement: requirement,
-      allowedMechanisms:
-          mechanisms ?? Tom2FARegistry.registeredTypes.toList(),
+      allowedMechanisms: mechanisms ?? Tom2FARegistry.registeredTypes.toList(),
       graceLogins: graceLogins,
     );
   }

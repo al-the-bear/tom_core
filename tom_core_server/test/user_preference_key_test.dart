@@ -35,10 +35,10 @@ class _UnreachableRepository
     implements TomSqlDatasourceRepository<TomUserPreference, int> {
   @override
   dynamic noSuchMethod(Invocation invocation) => fail(
-        'the repository was reached via '
-        '${invocation.memberName}: an illegal key must be refused before any '
-        'statement is built',
-      );
+    'the repository was reached via '
+    '${invocation.memberName}: an illegal key must be refused before any '
+    'statement is built',
+  );
 }
 
 /// The store over a repository nothing may reach.
@@ -73,7 +73,8 @@ void main() {
       expect(
         TomUserPreferenceKeys.maxLength,
         _declaredKeyColumnWidth(),
-        reason: 'a cap wider than the column stores keys truncated; a cap '
+        reason:
+            'a cap wider than the column stores keys truncated; a cap '
             'narrower than it refuses keys the column would hold',
       );
     });
@@ -108,8 +109,11 @@ void main() {
 
     test('setEncoded refuses an illegal key even with a valid pair', () {
       expect(
-        () => _store().setEncoded('has space', valueType: 'String',
-            valueJson: '"dark"'),
+        () => _store().setEncoded(
+          'has space',
+          valueType: 'String',
+          valueJson: '"dark"',
+        ),
         throwsKeyRefusal,
       );
     });

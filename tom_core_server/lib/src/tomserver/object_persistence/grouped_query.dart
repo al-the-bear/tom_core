@@ -77,7 +77,12 @@ abstract class TomAggregate<R, V> extends TomOperator<R> {
   ///
   /// Throws [TomQuerySyntaxException] when [alias] is not a plain SQL
   /// identifier, or when [V] is not a type the result mapper can materialise.
-  TomAggregate(this.function, this.operand, this.alias, {this.distinct = false}) {
+  TomAggregate(
+    this.function,
+    this.operand,
+    this.alias, {
+    this.distinct = false,
+  }) {
     valueType = V;
     if (!_aliasPattern.hasMatch(alias)) {
       throw TomQuerySyntaxException(
@@ -99,19 +104,15 @@ abstract class TomAggregate<R, V> extends TomOperator<R> {
   }
 
   @override
-  SqlString generate(TomStandardSqlDialect t) => t.aggregate(
-    function,
-    operand?.generate(t),
-    distinct: distinct,
-  );
+  SqlString generate(TomStandardSqlDialect t) =>
+      t.aggregate(function, operand?.generate(t), distinct: distinct);
 
   /// The projected form of this aggregate: `<function>(<operand>) AS <alias>`.
   SqlString generateProjection(TomStandardSqlDialect t) =>
       t.aliased(generate(t), alias);
 
   @override
-  List<TomOperator> get children =>
-      operand == null ? const [] : [operand!];
+  List<TomOperator> get children => operand == null ? const [] : [operand!];
 
   @override
   List<String> getParameters(TomStandardSqlDialect t) =>
@@ -140,8 +141,7 @@ abstract class TomAggregate<R, V> extends TomOperator<R> {
 /// whose counted column is `NULL` is included here and excluded there.
 class CountAll extends TomAggregate<TomDbInt, int> {
   /// Counts the rows of each group, projected as [alias].
-  CountAll(String alias)
-    : super(TomAggregateFunction.count, null, alias);
+  CountAll(String alias) : super(TomAggregateFunction.count, null, alias);
 }
 
 /// `COUNT(<value>)` — the number of non-null [value]s in the group, or of

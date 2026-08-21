@@ -80,8 +80,9 @@ void main() async {
       }
     }
 
-    List<String?> titles(Iterable<FixtureTaskRecord> rows) =>
-        [for (final row in rows) row.title];
+    List<String?> titles(Iterable<FixtureTaskRecord> rows) => [
+      for (final row in rows) row.title,
+    ];
 
     test('findAll returns the requested page in the requested order', () async {
       await seedFive();
@@ -105,7 +106,11 @@ void main() async {
       await seedFive();
       expect(
         await repo.findAll(
-          TomPageRequest.page(10, 2, sort: const [TomSortField.asc('priority')]),
+          TomPageRequest.page(
+            10,
+            2,
+            sort: const [TomSortField.asc('priority')],
+          ),
         ),
         isEmpty,
       );
@@ -114,9 +119,11 @@ void main() async {
     test('a sort-only request orders the whole result set', () async {
       await seedFive();
       expect(
-        titles(await repo.findAll(
-          TomPageRequest.sorted(const [TomSortField.desc('priority')]),
-        )),
+        titles(
+          await repo.findAll(
+            TomPageRequest.sorted(const [TomSortField.desc('priority')]),
+          ),
+        ),
         ['e', 'd', 'c', 'b', 'a'],
       );
     });
@@ -131,10 +138,14 @@ void main() async {
       await repo.save(_task('charlie', 1));
 
       expect(
-        titles(await repo.findAll(TomPageRequest.sorted(const [
-          TomSortField.desc('priority'),
-          TomSortField.asc('title'),
-        ]))),
+        titles(
+          await repo.findAll(
+            TomPageRequest.sorted(const [
+              TomSortField.desc('priority'),
+              TomSortField.asc('title'),
+            ]),
+          ),
+        ),
         ['alpha', 'beta', 'charlie', 'delta'],
       );
     });
@@ -148,24 +159,28 @@ void main() async {
       final second = await repo.findAll(TomPageRequest.page(1, 3));
       expect(first, hasLength(3));
       expect(second, hasLength(2));
-      expect(
-        {...titles(first), ...titles(second)},
-        {'a', 'b', 'c', 'd', 'e'},
-      );
+      expect({...titles(first), ...titles(second)}, {'a', 'b', 'c', 'd', 'e'});
     });
 
-    test('a caller sort that already settles the order is left alone',
-        () async {
-      // `priority` is unique here, so the appended key changes nothing — the
-      // point is that the caller's ordering still governs.
-      await seedFive();
-      expect(
-        titles(await repo.findAll(
-          TomPageRequest(limit: 2, sort: const [TomSortField.desc('priority')]),
-        )),
-        ['e', 'd'],
-      );
-    });
+    test(
+      'a caller sort that already settles the order is left alone',
+      () async {
+        // `priority` is unique here, so the appended key changes nothing — the
+        // point is that the caller's ordering still governs.
+        await seedFive();
+        expect(
+          titles(
+            await repo.findAll(
+              TomPageRequest(
+                limit: 2,
+                sort: const [TomSortField.desc('priority')],
+              ),
+            ),
+          ),
+          ['e', 'd'],
+        );
+      },
+    );
 
     test('findAllById windows the rows it was given', () async {
       await seedFive();
@@ -191,9 +206,9 @@ void main() async {
     test('findByQuery takes a page request', () async {
       await seedFive();
       final select =
-          TomQuerySentenceCompiler([FixtureTaskRecord]).compileQuerySentence(
-                'find by priority >= :floor',
-              )
+          TomQuerySentenceCompiler([
+                FixtureTaskRecord,
+              ]).compileQuerySentence('find by priority >= :floor')
               as TomSelect;
       final page = await repo.findByQuery(
         select,

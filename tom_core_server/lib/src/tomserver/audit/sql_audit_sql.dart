@@ -84,7 +84,8 @@ TomFrameworkTable auditTrailTable(String table) => TomFrameworkTable(
 );
 
 /// The DDL for the audit trail table [table].
-String auditTrailTableDdl(String table) => auditTrailTable(table).createTableDdl;
+String auditTrailTableDdl(String table) =>
+    auditTrailTable(table).createTableDdl;
 
 /// The name of the trigger that rejects `UPDATE` on [table].
 String auditTrailNoUpdateTriggerName(String table) => 'trg_${table}_no_update';
@@ -100,7 +101,8 @@ String auditTrailNoDeleteTriggerName(String table) => 'trg_${table}_no_delete';
 /// primary mechanism — a connection with `SUPER`/`TRIGGER` can drop it — but it
 /// closes the case the grant cannot, namely a deployment that has to serve the
 /// trail through a credential which already holds `UPDATE` on the schema.
-String auditTrailNoUpdateTriggerDdl(String table) => '''
+String auditTrailNoUpdateTriggerDdl(String table) =>
+    '''
 CREATE TRIGGER IF NOT EXISTS ${auditTrailNoUpdateTriggerName(table)}
 BEFORE UPDATE ON $table
 FOR EACH ROW
@@ -113,7 +115,8 @@ FOR EACH ROW
 /// tampering — `TomSqlAuditSink.purgeBefore` and `purgeToMaxEntries` both issue
 /// `DELETE` — so installing it is a decision to keep the trail forever, which
 /// is why it is separate from the update guard rather than bundled with it.
-String auditTrailNoDeleteTriggerDdl(String table) => '''
+String auditTrailNoDeleteTriggerDdl(String table) =>
+    '''
 CREATE TRIGGER IF NOT EXISTS ${auditTrailNoDeleteTriggerName(table)}
 BEFORE DELETE ON $table
 FOR EACH ROW

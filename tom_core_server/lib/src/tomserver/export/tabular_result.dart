@@ -110,13 +110,13 @@ enum TomColumnType {
   ///
   /// Used by adapters that infer columns from data rather than being told.
   static TomColumnType? forValue(Object? value) => switch (value) {
-        int() => TomColumnType.integer,
-        double() => TomColumnType.decimal,
-        String() => TomColumnType.text,
-        bool() => TomColumnType.boolean,
-        DateTime() => TomColumnType.timestamp,
-        _ => null,
-      };
+    int() => TomColumnType.integer,
+    double() => TomColumnType.decimal,
+    String() => TomColumnType.text,
+    bool() => TomColumnType.boolean,
+    DateTime() => TomColumnType.timestamp,
+    _ => null,
+  };
 }
 
 /// One typed column of a [TomTabularSection].
@@ -178,14 +178,13 @@ class TomTabularRow {
   factory TomTabularRow.fromMap(
     List<TomTabularColumn> columns,
     Map<String, Object?> values,
-  ) =>
-      TomTabularRow(
-        List<Object?>.generate(
-          columns.length,
-          (i) => values[columns[i].name],
-          growable: false,
-        ),
-      );
+  ) => TomTabularRow(
+    List<Object?>.generate(
+      columns.length,
+      (i) => values[columns[i].name],
+      growable: false,
+    ),
+  );
 
   /// The cell values, parallel to the section's columns.
   final List<Object?> cells;
@@ -204,11 +203,7 @@ class TomTabularRow {
 /// One titled table: typed columns over a stream of rows.
 class TomTabularSection {
   /// Creates a section.
-  TomTabularSection({
-    required this.columns,
-    required this.rows,
-    this.title,
-  }) {
+  TomTabularSection({required this.columns, required this.rows, this.title}) {
     if (columns.isEmpty) {
       throw TomExportException(
         'export.section.no_columns',
@@ -236,12 +231,11 @@ class TomTabularSection {
     List<TomTabularColumn> columns,
     Iterable<TomTabularRow> rows, {
     String? title,
-  }) =>
-      TomTabularSection(
-        columns: columns,
-        rows: Stream<TomTabularRow>.fromIterable(rows),
-        title: title,
-      );
+  }) => TomTabularSection(
+    columns: columns,
+    rows: Stream<TomTabularRow>.fromIterable(rows),
+    title: title,
+  );
 
   /// Creates a section over keyed maps, ordering each by [columns].
   ///
@@ -251,12 +245,11 @@ class TomTabularSection {
     List<TomTabularColumn> columns,
     Stream<Map<String, Object?>> rows, {
     String? title,
-  }) =>
-      TomTabularSection(
-        columns: columns,
-        rows: rows.map((values) => TomTabularRow.fromMap(columns, values)),
-        title: title,
-      );
+  }) => TomTabularSection(
+    columns: columns,
+    rows: rows.map((values) => TomTabularRow.fromMap(columns, values)),
+    title: title,
+  );
 
   /// Creates a section whose columns are **derived from the reflected entity**
   /// [T], and whose rows are read off each entity by reflection.
@@ -372,12 +365,7 @@ class TomTabularResult {
     required String title,
     required TomTabularSection section,
     Map<String, String> metadata = const {},
-  }) =>
-      TomTabularResult(
-        title: title,
-        sections: [section],
-        metadata: metadata,
-      );
+  }) => TomTabularResult(title: title, sections: [section], metadata: metadata);
 
   /// Creates a single-section result whose columns are derived from the
   /// reflected entity [T].
@@ -406,21 +394,20 @@ class TomTabularResult {
     Set<String> exclude = const {},
     Map<String, String> titles = const {},
     bool includeFileReferences = false,
-  }) =>
-      TomTabularResult(
-        title: title,
-        metadata: metadata,
-        sections: [
-          TomTabularSection.ofEntities<T>(
-            rows,
-            title: sectionTitle,
-            include: include,
-            exclude: exclude,
-            titles: titles,
-            includeFileReferences: includeFileReferences,
-          ),
-        ],
-      );
+  }) => TomTabularResult(
+    title: title,
+    metadata: metadata,
+    sections: [
+      TomTabularSection.ofEntities<T>(
+        rows,
+        title: sectionTitle,
+        include: include,
+        exclude: exclude,
+        titles: titles,
+        includeFileReferences: includeFileReferences,
+      ),
+    ],
+  );
 
   /// The document title: the PDF heading, the XLSX workbook title.
   final String title;
@@ -545,17 +532,14 @@ class _TomEntityProjection {
       );
     }
 
-    return _TomEntityProjection(
-      [
-        for (final column in ordered)
-          TomTabularColumn(
-            column.declaredName,
-            label: titles[column.declaredName],
-            type: columnTypeOf(column),
-          ),
-      ],
-      ordered,
-    );
+    return _TomEntityProjection([
+      for (final column in ordered)
+        TomTabularColumn(
+          column.declaredName,
+          label: titles[column.declaredName],
+          type: columnTypeOf(column),
+        ),
+    ], ordered);
   }
 
   /// The cell type for [column], from the type family its annotations declare.
@@ -577,12 +561,10 @@ class _TomEntityProjection {
       TomSqlTypeFamily.boolean => TomColumnType.boolean,
       TomSqlTypeFamily.dateTime ||
       TomSqlTypeFamily.date ||
-      TomSqlTypeFamily.time =>
-        TomColumnType.timestamp,
+      TomSqlTypeFamily.time => TomColumnType.timestamp,
       TomSqlTypeFamily.text ||
       TomSqlTypeFamily.binary ||
-      TomSqlTypeFamily.unknown =>
-        TomColumnType.text,
+      TomSqlTypeFamily.unknown => TomColumnType.text,
     };
     final dartType = column.column?.declaredDartType() ?? column.declaredType;
     return candidate.dartType == dartType ? candidate : TomColumnType.text;

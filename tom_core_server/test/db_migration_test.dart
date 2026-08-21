@@ -23,9 +23,10 @@ void main() {
         TomDbMigrations.resolveActiveEnvironment(),
         defaultTomEnvironment.env,
       );
-      final ordered = TomDbMigrations.orderMigrationNames(
-        ['[0]-schema', '[1]-demo_seed@dev'],
-      );
+      final ordered = TomDbMigrations.orderMigrationNames([
+        '[0]-schema',
+        '[1]-demo_seed@dev',
+      ]);
       // Under the default fallback, the @dev seed is skipped — production-safe.
       expect(
         TomDbMigrations.selectForEnvironment(
@@ -126,9 +127,11 @@ void main() {
     test('orders by numeric version, so [2] precedes [10]', () {
       // Lexicographically '[10]-...' sorts before '[2]-...'; numerically it must
       // come after.
-      final ordered = TomDbMigrations.orderMigrationNames(
-        ['[10]-c', '[2]-b', '[1]-a'],
-      );
+      final ordered = TomDbMigrations.orderMigrationNames([
+        '[10]-c',
+        '[2]-b',
+        '[1]-a',
+      ]);
       expect(ordered.map((e) => e.parsed.version), [1, 2, 10]);
       expect(ordered.map((e) => e.basename), ['[1]-a', '[2]-b', '[10]-c']);
     });
@@ -149,7 +152,8 @@ void main() {
   // script into individual statements; these tests pin that splitter.
   group('MariadbMigrationAdaptor.splitSqlStatements (bug §69)', () {
     test('splits a multi-statement script into its statements', () {
-      const sql = 'CREATE TABLE a (id INT);\n'
+      const sql =
+          'CREATE TABLE a (id INT);\n'
           'CREATE TABLE b (id INT);\n'
           'INSERT INTO a VALUES (1);';
       expect(MariadbMigrationAdaptor.splitSqlStatements(sql), [
@@ -160,17 +164,15 @@ void main() {
     });
 
     test('returns the single statement for a single-statement script', () {
-      expect(
-        MariadbMigrationAdaptor.splitSqlStatements('SELECT 1;'),
-        ['SELECT 1'],
-      );
+      expect(MariadbMigrationAdaptor.splitSqlStatements('SELECT 1;'), [
+        'SELECT 1',
+      ]);
     });
 
     test('drops the empty tail after a trailing semicolon', () {
-      expect(
-        MariadbMigrationAdaptor.splitSqlStatements('SELECT 1;\n\n'),
-        ['SELECT 1'],
-      );
+      expect(MariadbMigrationAdaptor.splitSqlStatements('SELECT 1;\n\n'), [
+        'SELECT 1',
+      ]);
     });
 
     test('keeps a semicolon inside a string literal in one statement', () {
@@ -231,15 +233,18 @@ void main() {
     });
 
     test('a single @env tag parses to a one-element list', () {
-      final parsed = TomDbMigrations.parseMigrationFileName('[3]-demo_seed@dev');
+      final parsed = TomDbMigrations.parseMigrationFileName(
+        '[3]-demo_seed@dev',
+      );
       expect(parsed.version, 3);
       expect(parsed.description, 'demo_seed');
       expect(parsed.environments, ['dev']);
     });
 
     test('a comma list parses to each environment in file order', () {
-      final parsed =
-          TomDbMigrations.parseMigrationFileName('[4]-perf_probe@dev,test');
+      final parsed = TomDbMigrations.parseMigrationFileName(
+        '[4]-perf_probe@dev,test',
+      );
       expect(parsed.description, 'perf_probe');
       expect(parsed.environments, ['dev', 'test']);
     });
@@ -319,11 +324,14 @@ void main() {
   // to other files.
   group('TomDbMigrations.resolveActiveEnvironment', () {
     test('reads the environment set on TomRuntime and drives selection', () {
-      final ordered = TomDbMigrations.orderMigrationNames(
-        ['[0]-schema', '[1]-demo_seed@dev'],
-      );
+      final ordered = TomDbMigrations.orderMigrationNames([
+        '[0]-schema',
+        '[1]-demo_seed@dev',
+      ]);
 
-      TomRuntime.addEnvironment(const TomEnvironment('dev', isDevelopment: true));
+      TomRuntime.addEnvironment(
+        const TomEnvironment('dev', isDevelopment: true),
+      );
       TomRuntime.addEnvironment(const TomEnvironment('prod'));
 
       TomRuntime.setCurrentEnvironment('dev');

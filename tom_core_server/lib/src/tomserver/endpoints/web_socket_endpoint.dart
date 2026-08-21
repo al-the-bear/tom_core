@@ -76,7 +76,10 @@ class TomWebSocketException extends TomServerException {
 ///
 /// A socket endpoint answers `GET` and nothing else, because that is what a
 /// WebSocket handshake is; [methods] is not offered for the same reason.
-class TomWebSocketEndpoint<requestType extends Object, resultType extends Object>
+class TomWebSocketEndpoint<
+  requestType extends Object,
+  resultType extends Object
+>
     implements TomEndpointBase<requestType, resultType> {
   /// The route path the socket is mounted at.
   final String uri;

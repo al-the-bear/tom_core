@@ -30,6 +30,7 @@ those roles (C-6), and the row scope that turns both into a `WHERE` clause.
   - [RepositoryPrincipalResourceGrantStore](#repositoryprincipalresourcegrantstore)
   - [InMemoryPrincipalResourceGrantStore](#inmemoryprincipalresourcegrantstore)
   - [TomResourceDataScope](#tomresourcedatascope)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 

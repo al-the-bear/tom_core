@@ -140,11 +140,7 @@ class TomSqlLeaseLock extends TomLeaseLock {
   }
 
   @override
-  Future<TomLease?> acquire(
-    String resource,
-    String owner,
-    Duration ttl,
-  ) async {
+  Future<TomLease?> acquire(String resource, String owner, Duration ttl) async {
     await ensureSchema();
     final now = clock().toUtc();
     final expiresAt = now.add(ttl);
@@ -153,15 +149,13 @@ class TomSqlLeaseLock extends TomLeaseLock {
     // the duplicate-key collision into a zero row count instead of an
     // exception, which is exactly the answer wanted: someone else owns the
     // resource row, go and look at it.
-    final created = await datasource.executeCommand(
-      _leases.insert('INSERT IGNORE', _acquireColumns),
-      {
-        'resource': resource,
-        'owner': owner,
-        'acquiredAt': sqlInstant(now),
-        'expiresAt': sqlInstant(expiresAt),
-      },
-    );
+    final created = await datasource
+        .executeCommand(_leases.insert('INSERT IGNORE', _acquireColumns), {
+          'resource': resource,
+          'owner': owner,
+          'acquiredAt': sqlInstant(now),
+          'expiresAt': sqlInstant(expiresAt),
+        });
     if (created == BigInt.one) {
       return TomLease(
         resource: resource,
@@ -276,11 +270,7 @@ class TomSqlLeaseLock extends TomLeaseLock {
     await datasource.executeCommand(
       'UPDATE $table SET released = 1, version = version + 1 '
       'WHERE resource = :resource AND owner = :owner AND token = :token',
-      {
-        'resource': lease.resource,
-        'owner': lease.owner,
-        'token': lease.token,
-      },
+      {'resource': lease.resource, 'owner': lease.owner, 'token': lease.token},
     );
   }
 
@@ -361,12 +351,12 @@ class _LeaseRecord {
   bool isHeldAt(DateTime now) => !released && now.isBefore(expiresAt);
 
   TomLease toLease() => TomLease(
-        resource: resource,
-        owner: owner,
-        token: token,
-        acquiredAt: acquiredAt,
-        expiresAt: expiresAt,
-      );
+    resource: resource,
+    owner: owner,
+    token: token,
+    acquiredAt: acquiredAt,
+    expiresAt: expiresAt,
+  );
 }
 
 /// One row of the lease table, as the result mapper materialises it.

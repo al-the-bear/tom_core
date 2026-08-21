@@ -28,10 +28,10 @@ import 'fixtures/reflection_fixture.reflection.dart';
 /// present). No principal/token is placed in the zone — the fixture endpoints
 /// are anonymous.
 Request _get(String path) => Request(
-      'GET',
-      Uri.parse('http://localhost$path'),
-      context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
-    );
+  'GET',
+  Uri.parse('http://localhost$path'),
+  context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
+);
 
 void main() {
   // One reflection bootstrap for the whole file (each test file is its own
@@ -55,8 +55,9 @@ void main() {
 
     test('an instance mirror can be built and invoked', () async {
       final instanceMirror = tomReflector.reflect(FixtureApiServer());
-      final result = await (instanceMirror.invoke('health', [])
-          as Future<Map<String, Object>>);
+      final result =
+          await (instanceMirror.invoke('health', [])
+              as Future<Map<String, Object>>);
       expect(result['status'], 'ok');
     });
   });
@@ -116,18 +117,27 @@ void main() {
 
     test('extracts the contract policy when the handler declares none', () {
       final md = methodNamed('contractGated');
-      expect(md.access, same(fixtureContractAccess),
-          reason: 'the policy must come from TomApiEndpoint.access');
-      expect(md.apiEndpoint, isNotNull,
-          reason: 'a registry-backed endpoint resolves its contract entry');
+      expect(
+        md.access,
+        same(fixtureContractAccess),
+        reason: 'the policy must come from TomApiEndpoint.access',
+      );
+      expect(
+        md.apiEndpoint,
+        isNotNull,
+        reason: 'a registry-backed endpoint resolves its contract entry',
+      );
     });
 
     test('a handler-side annotation overrides the contract policy', () {
       final md = methodNamed('overridden');
       // The branch with no coverage anywhere in the workspace before this test.
       expect(md.access, same(fixtureHandlerAccess));
-      expect(md.access, isNot(same(fixtureContractAccess)),
-          reason: 'a local tightening must not be overwritten by the contract');
+      expect(
+        md.access,
+        isNot(same(fixtureContractAccess)),
+        reason: 'a local tightening must not be overwritten by the contract',
+      );
       // The contract entry is still resolved — the handler outranks it, rather
       // than the lookup being skipped, which is what makes this an override.
       expect(md.apiEndpoint?.access, same(fixtureContractAccess));
@@ -136,16 +146,20 @@ void main() {
     test('an inline endpoint keeps the handler policy, with no contract', () {
       final md = methodNamed('inlineGated');
       expect(md.access, same(fixtureInlineAccess));
-      expect(md.apiEndpoint, isNull,
-          reason: 'an inline TomEndpoint has no registry entry to shadow it');
+      expect(
+        md.apiEndpoint,
+        isNull,
+        reason: 'an inline TomEndpoint has no registry entry to shadow it',
+      );
     });
 
     test('two TomAccessControl annotations on one method are rejected', () {
       // The conflicting-tag guard sits three lines above the resolution and
       // makes it well-defined: without it, "the handler's policy" would mean
       // whichever annotation the mirror happened to list last.
-      final mirror = tomReflector.reflectType(FixtureConflictingAccessService)
-          as ClassMirror;
+      final mirror =
+          tomReflector.reflectType(FixtureConflictingAccessService)
+              as ClassMirror;
       expect(
         () => TomEndpointRouting().getClassMethodMetadata(mirror),
         throwsA(
@@ -183,32 +197,40 @@ void main() {
       expect(body['app'], 'fixture');
     });
 
-    test('GET /fixture/unguarded is reachable under the default (open) policy',
-        () async {
-      final response = await router.call(_get('/fixture/unguarded'));
-      expect(response.statusCode, 200);
-      final body = jsonDecode(await response.readAsString());
-      expect(body['guarded'], isFalse);
-    });
+    test(
+      'GET /fixture/unguarded is reachable under the default (open) policy',
+      () async {
+        final response = await router.call(_get('/fixture/unguarded'));
+        expect(response.statusCode, 200);
+        final body = jsonDecode(await response.readAsString());
+        expect(body['guarded'], isFalse);
+      },
+    );
 
     test('createRoutesForEndpoint records mounted routes in routingInfo', () {
-      expect(TomEndpointRouting.routingInfo.containsKey('/fixture/health'),
-          isTrue);
-      expect(TomEndpointRouting.routingInfo.containsKey('/fixture/unguarded'),
-          isTrue);
+      expect(
+        TomEndpointRouting.routingInfo.containsKey('/fixture/health'),
+        isTrue,
+      );
+      expect(
+        TomEndpointRouting.routingInfo.containsKey('/fixture/unguarded'),
+        isTrue,
+      );
     });
 
-    test('an OPTIONS preflight on a mounted route returns without invoking',
-        () async {
-      final req = Request(
-        'OPTIONS',
-        Uri.parse('http://localhost/fixture/health'),
-        context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
-      );
-      final response = await router.call(req);
-      // handlePreflight answers preflight directly (no method invocation).
-      expect(response.statusCode, inInclusiveRange(200, 299));
-    });
+    test(
+      'an OPTIONS preflight on a mounted route returns without invoking',
+      () async {
+        final req = Request(
+          'OPTIONS',
+          Uri.parse('http://localhost/fixture/health'),
+          context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
+        );
+        final response = await router.call(req);
+        // handlePreflight answers preflight directly (no method invocation).
+        expect(response.statusCode, inInclusiveRange(200, 299));
+      },
+    );
   });
 
   group('healthcheck GET /health route', () {
@@ -225,17 +247,21 @@ void main() {
 
     tearDown(TomBean.resetBeanContext);
 
-    test('mounts /health and returns the analyzer status as plain text',
-        () async {
-      final response = await router.call(_get('/health'));
-      expect(response.statusCode, 200);
-      expect(await response.readAsString(), 'OK');
-    });
+    test(
+      'mounts /health and returns the analyzer status as plain text',
+      () async {
+        final response = await router.call(_get('/health'));
+        expect(response.statusCode, 200);
+        expect(await response.readAsString(), 'OK');
+      },
+    );
 
     test('reflects the configured HealthAnalyzer status', () async {
       TomHealthServer.globalSettingsHealthAnalyzer = _DegradedAnalyzer();
-      addTearDown(() => TomHealthServer.globalSettingsHealthAnalyzer =
-          DefaultHealthAnalyzer());
+      addTearDown(
+        () => TomHealthServer.globalSettingsHealthAnalyzer =
+            DefaultHealthAnalyzer(),
+      );
       // Rebuild so the route binds the same singleton server, whose health()
       // delegates to the now-degraded analyzer.
       final response = await router.call(_get('/health'));
@@ -253,16 +279,20 @@ void main() {
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
-      publicHandler = TomEndpointRouting.routingInfo['/fixture/health']!.handler;
+      publicHandler =
+          TomEndpointRouting.routingInfo['/fixture/health']!.handler;
       unguardedHandler =
           TomEndpointRouting.routingInfo['/fixture/unguarded']!.handler;
     });
 
     tearDown(TomBean.resetBeanContext);
 
-    test('a @TomPublicAccess endpoint grants access to an anonymous caller', () {
-      expect(publicHandler.checkAccess(null), isTrue);
-    });
+    test(
+      'a @TomPublicAccess endpoint grants access to an anonymous caller',
+      () {
+        expect(publicHandler.checkAccess(null), isTrue);
+      },
+    );
 
     test('an endpoint with no access annotation follows the open default', () {
       // globalSettingProtectionDefault is false -> checkAccess returns true.
@@ -271,23 +301,27 @@ void main() {
 
     test('checkAccess denies when global protection is switched on', () {
       TomResourceKeyProtection.globalSettingProtectionDefault = true;
-      addTearDown(() =>
-          TomResourceKeyProtection.globalSettingProtectionDefault = false);
+      addTearDown(
+        () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
+      );
       // metadata.access is null -> returns !globalSettingProtectionDefault.
       expect(unguardedHandler.checkAccess(null), isFalse);
     });
 
-    test('checkAutomaticAccess upgrades access for an unprotected interface',
-        () {
-      // Default (protection off): the interface is unprotected, so a prior
-      // false decision is upgraded to true.
-      expect(unguardedHandler.checkAutomaticAccess(false), isTrue);
-    });
+    test(
+      'checkAutomaticAccess upgrades access for an unprotected interface',
+      () {
+        // Default (protection off): the interface is unprotected, so a prior
+        // false decision is upgraded to true.
+        expect(unguardedHandler.checkAutomaticAccess(false), isTrue);
+      },
+    );
 
     test('checkAutomaticAccess keeps the denial when protection is on', () {
       TomResourceKeyProtection.globalSettingProtectionDefault = true;
-      addTearDown(() =>
-          TomResourceKeyProtection.globalSettingProtectionDefault = false);
+      addTearDown(
+        () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
+      );
       // Protection on with no principal -> interface is protected, method is
       // protected -> the false decision stands.
       expect(unguardedHandler.checkAutomaticAccess(false), isFalse);
@@ -322,8 +356,9 @@ void main() {
     test('a denial is recorded with no annotation and no opt-in', () async {
       // Switching global protection on denies the unannotated endpoint.
       TomResourceKeyProtection.globalSettingProtectionDefault = true;
-      addTearDown(() =>
-          TomResourceKeyProtection.globalSettingProtectionDefault = false);
+      addTearDown(
+        () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
+      );
 
       // The pipeline signals the refusal by throwing; the assertion that
       // matters is on the trail, which must hold the entry either way.
@@ -408,8 +443,11 @@ void main() {
       final arrivals = FixtureApiServer.transactionalArrivals;
       expect(arrivals[0], isNotNull, reason: 'the pipeline opened one');
       expect(arrivals[1], isNotNull);
-      expect(identical(arrivals[0], arrivals[1]), isFalse,
-          reason: 'each request gets its own current transaction');
+      expect(
+        identical(arrivals[0], arrivals[1]),
+        isFalse,
+        reason: 'each request gets its own current transaction',
+      );
     });
 
     test('the transaction survives an await inside the endpoint', () async {
@@ -418,12 +456,14 @@ void main() {
       final response = await router.call(_get('/fixture/transactional'));
       final body = jsonDecode(await response.readAsString());
       expect(body['stable'], isTrue);
-      expect(body['running'], isTrue,
-          reason: 'the pipeline concludes the transaction after the call');
+      expect(
+        body['running'],
+        isTrue,
+        reason: 'the pipeline concludes the transaction after the call',
+      );
     });
 
-    test('@TomTransactional(isReadOnly: true) reaches the transaction',
-        () async {
+    test('@TomTransactional(isReadOnly: true) reaches the transaction', () async {
       // The flag was declarable and discarded, so a read-only endpoint opened a
       // read-write transaction and no participant could ever act on it.
       final response = await router.call(_get('/fixture/transactional'));
@@ -431,12 +471,18 @@ void main() {
       expect(body['readOnly'], isTrue);
     });
 
-    test('a non-transactional endpoint leaves no current transaction', () async {
-      final response = await router.call(_get('/fixture/unguarded'));
-      expect(response.statusCode, 200);
-      expect(TomTransactionManager.getCurrentTransaction(), isNull,
-          reason: 'the request scope is not the caller\'s scope');
-    });
+    test(
+      'a non-transactional endpoint leaves no current transaction',
+      () async {
+        final response = await router.call(_get('/fixture/unguarded'));
+        expect(response.statusCode, 200);
+        expect(
+          TomTransactionManager.getCurrentTransaction(),
+          isNull,
+          reason: 'the request scope is not the caller\'s scope',
+        );
+      },
+    );
   });
 }
 

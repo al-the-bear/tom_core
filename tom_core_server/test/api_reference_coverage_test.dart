@@ -39,7 +39,9 @@ List<String> _modules() =>
     Directory('lib/src/tomserver')
         .listSync()
         .whereType<Directory>()
-        .map((entry) => entry.uri.pathSegments[entry.uri.pathSegments.length - 2])
+        .map(
+          (entry) => entry.uri.pathSegments[entry.uri.pathSegments.length - 2],
+        )
         .toList()
       ..sort();
 

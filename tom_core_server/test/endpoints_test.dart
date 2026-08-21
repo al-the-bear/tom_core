@@ -5,10 +5,10 @@ import 'package:test/test.dart';
 /// Builds a request carrying [params] as shelf_router path captures, the way a
 /// matched route exposes them via `Request.params`.
 Request _reqWithParams(Map<String, String> params) => Request(
-      'GET',
-      Uri.parse('http://localhost/items/42'),
-      context: {'shelf_router/params': params},
-    );
+  'GET',
+  Uri.parse('http://localhost/items/42'),
+  context: {'shelf_router/params': params},
+);
 
 /// Tests for the reflection-free surface of the endpoints module.
 ///
@@ -137,15 +137,18 @@ void main() {
       expect(endpoint.logRequests, isTrue);
     });
 
-    test('falls back to the default handler when neither level provides one', () {
-      const impl = TomApiEndpointImplementation(
-        apiId: 'orders',
-        endpointId: 'create',
-      );
-      final endpoint = impl.convertToTomEndpoint(null);
-      expect(endpoint.errorHandler, isA<TomDefaultErrorHandler>());
-      expect(endpoint.logRequests, isNull);
-    });
+    test(
+      'falls back to the default handler when neither level provides one',
+      () {
+        const impl = TomApiEndpointImplementation(
+          apiId: 'orders',
+          endpointId: 'create',
+        );
+        final endpoint = impl.convertToTomEndpoint(null);
+        expect(endpoint.errorHandler, isA<TomDefaultErrorHandler>());
+        expect(endpoint.logRequests, isNull);
+      },
+    );
 
     test('without an apiImplementation, logRequests stays null so the global '
         'default applies', () {
@@ -302,7 +305,9 @@ void main() {
     test('maps a bool parameter ("true" only)', () {
       expect(TomEndpointHandler.coercePrimitiveParameter(bool, 'true'), isTrue);
       expect(
-          TomEndpointHandler.coercePrimitiveParameter(bool, 'false'), isFalse);
+        TomEndpointHandler.coercePrimitiveParameter(bool, 'false'),
+        isFalse,
+      );
     });
 
     test('returns null for an unparsable numeric value', () {
@@ -344,28 +349,31 @@ void main() {
       expect(endpoint.urlParameterMapping, {'id': 'itemId'});
     });
 
-    test('convertToTomEndpoint carries the mapping from the registry entry', () {
-      tomRemoteApis['catalog'] = TomApi(
-        id: 'catalog',
-        uri: '/api/catalog',
-        endpoints: [
-          TomApiEndpoint<Object, Object>(
-            id: 'getItem',
-            uri: '/items/{id}',
-            method: TomHttpMethod.get,
-            urlParameterMapping: const {'id': 'itemId'},
-          ),
-        ],
-      );
-      addTearDown(() => tomRemoteApis.apis.remove('catalog'));
+    test(
+      'convertToTomEndpoint carries the mapping from the registry entry',
+      () {
+        tomRemoteApis['catalog'] = TomApi(
+          id: 'catalog',
+          uri: '/api/catalog',
+          endpoints: [
+            TomApiEndpoint<Object, Object>(
+              id: 'getItem',
+              uri: '/items/{id}',
+              method: TomHttpMethod.get,
+              urlParameterMapping: const {'id': 'itemId'},
+            ),
+          ],
+        );
+        addTearDown(() => tomRemoteApis.apis.remove('catalog'));
 
-      const impl = TomApiEndpointImplementation(
-        apiId: 'catalog',
-        endpointId: 'getItem',
-      );
-      final endpoint = impl.convertToTomEndpoint();
-      expect(endpoint.urlParameterMapping, {'id': 'itemId'});
-    });
+        const impl = TomApiEndpointImplementation(
+          apiId: 'catalog',
+          endpointId: 'getItem',
+        );
+        final endpoint = impl.convertToTomEndpoint();
+        expect(endpoint.urlParameterMapping, {'id': 'itemId'});
+      },
+    );
   });
 
   // The other half of G-API-2: the group above pins that the annotation

@@ -186,8 +186,9 @@ abstract class TomDeliveredCode2FAService
   /// Cached per instance rather than rebuilt per call, and per instance rather
   /// than in a static, because the descriptor depends on [type] — which
   /// a subclass supplies and a static in this base could not see.
-  late final Tom2FAMethodDescriptor _descriptor =
-      Tom2FAMethodDescriptor.scoped(type);
+  late final Tom2FAMethodDescriptor _descriptor = Tom2FAMethodDescriptor.scoped(
+    type,
+  );
 
   @override
   Tom2FAMethodDescriptor get descriptor => _descriptor;
@@ -394,10 +395,7 @@ abstract class TomDeliveredCode2FAService
       throw LoginException(
         'login.error.2fa.delivery-failed',
         'The one-time code could not be sent',
-        parameters: {
-          'mechanism': type,
-          'templateKey': templateKey,
-        },
+        parameters: {'mechanism': type, 'templateKey': templateKey},
         rootException: error,
         stack: stack,
         autoLog: true,
@@ -641,10 +639,10 @@ class TomEmailCode2FAService extends TomDeliveredCode2FAService {
       );
     }
     final user = context.principal.user;
-    final name = [user.firstname, user.lastname]
-        .whereType<String>()
-        .join(' ')
-        .trim();
+    final name = [
+      user.firstname,
+      user.lastname,
+    ].whereType<String>().join(' ').trim();
     await service.deliverNow(
       TomEmailRequest(
         templateKey: templateKey,
@@ -652,11 +650,7 @@ class TomEmailCode2FAService extends TomDeliveredCode2FAService {
           TomRecipient(destination, displayName: name.isEmpty ? null : name),
         ],
         locale: localeFor(context),
-        parameters: templateParameters(
-          context,
-          code: code,
-          validity: validity,
-        ),
+        parameters: templateParameters(context, code: code, validity: validity),
       ),
     );
   }
@@ -795,11 +789,7 @@ class TomSmsCode2FAService extends TomDeliveredCode2FAService {
         templateKey: templateKey,
         to: [TomRecipient(destination)],
         locale: localeFor(context),
-        parameters: templateParameters(
-          context,
-          code: code,
-          validity: validity,
-        ),
+        parameters: templateParameters(context, code: code, validity: validity),
       ),
     );
   }

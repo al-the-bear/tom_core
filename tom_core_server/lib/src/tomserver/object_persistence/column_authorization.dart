@@ -128,7 +128,7 @@ class TomColumnAuthorization {
     required String? Function(C) gradeOf,
     required bool Function(C) changed,
     required Never Function(C column, String authKey, TomAuthState grade)
-        onForbidden,
+    onForbidden,
     TomColumnAuthResolver? resolver,
   }) {
     final writable = <C>[];
@@ -191,10 +191,8 @@ class TomColumnAuthorization {
 ///
 /// [rowId] is the row's primary key as the repository read it; a `null` id means
 /// the row does not exist yet (an insert).
-typedef TomRowColumnAuthResolver = Future<TomAuthState> Function(
-  TomPrincipal? principal,
-  Object? rowId,
-);
+typedef TomRowColumnAuthResolver =
+    Future<TomAuthState> Function(TomPrincipal? principal, Object? rowId);
 
 /// Per-row column grades (C-4), for columns whose grade depends on *which row*
 /// is addressed rather than only on who is asking.

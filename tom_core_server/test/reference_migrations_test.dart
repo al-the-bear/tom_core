@@ -119,32 +119,32 @@ final List<_EntityPin> _entityPins = [
 final Map<String, String> _guardedElsewhere = {
   _migration('authentication', '[2]-create_tom_oauth_state.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
-          'against oauthStateTable(defaultOAuthStateTable)',
+      'against oauthStateTable(defaultOAuthStateTable)',
   _migration('audit', '[1]-create_tom_audit_trail.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
-          'audit_sql_test.dart compares the file to auditTrailTableDdl',
+      'audit_sql_test.dart compares the file to auditTrailTableDdl',
   _migration('audit', '[2]-guard_tom_audit_trail_no_update@hardened.sql'):
       'trigger, not a table — audit_sql_test.dart compares the file to '
-          'auditTrailNoUpdateTriggerDdl',
+      'auditTrailNoUpdateTriggerDdl',
   _migration('audit', '[3]-guard_tom_audit_trail_no_delete@immutable.sql'):
       'trigger, not a table — audit_sql_test.dart compares the file to '
-          'auditTrailNoDeleteTriggerDdl',
+      'auditTrailNoDeleteTriggerDdl',
   _migration('file_storage', '[1]-create_tom_blob.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
-          'against blobManifestTable(defaultBlobManifestTable)',
+      'against blobManifestTable(defaultBlobManifestTable)',
   _migration('file_storage', '[2]-create_tom_blob_chunk.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
-          'against blobChunkTable(defaultBlobChunkTable)',
+      'against blobChunkTable(defaultBlobChunkTable)',
   _migration('scheduling', '[1]-create_tom_job_run.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
-          'scheduling_schema_test.dart compares the file to jobRunTableDdl',
+      'scheduling_schema_test.dart compares the file to jobRunTableDdl',
   _migration('scheduling', '[2]-create_tom_lease.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
-          'scheduling_schema_test.dart compares the file to leaseTableDdl',
+      'scheduling_schema_test.dart compares the file to leaseTableDdl',
   _migration('scheduling', '[3]-create_tom_scheduler_node.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
-          'scheduling_schema_test.dart compares the file to '
-          'schedulerNodeTableDdl',
+      'scheduling_schema_test.dart compares the file to '
+      'schedulerNodeTableDdl',
 };
 
 /// Every `.sql` file actually shipped under `example/`, read from disk.
@@ -247,7 +247,10 @@ void main() {
       );
       expect(
         File(
-          _migration('authorization', '[3]-create_tom_principal_delegation.sql'),
+          _migration(
+            'authorization',
+            '[3]-create_tom_principal_delegation.sql',
+          ),
         ).readAsStringSync(),
         isNot(contains(drifted.trim())),
       );

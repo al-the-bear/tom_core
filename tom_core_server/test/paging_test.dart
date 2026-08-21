@@ -49,10 +49,10 @@ void main() {
 
     test('allOf maps a field list onto one shared direction', () {
       expect(
-        TomSortField.allOf(
-          const ['a', 'b'],
-          direction: TomSortDirection.descending,
-        ),
+        TomSortField.allOf(const [
+          'a',
+          'b',
+        ], direction: TomSortDirection.descending),
         const [TomSortField.desc('a'), TomSortField.desc('b')],
       );
     });
@@ -72,36 +72,48 @@ void main() {
 
     test('an empty request shapes nothing', () {
       expect(TomPageRequest().isUnpaged, isTrue);
-      expect(TomPageRequest.sorted(const [TomSortField.asc('a')]).isUnpaged,
-          isFalse);
+      expect(
+        TomPageRequest.sorted(const [TomSortField.asc('a')]).isUnpaged,
+        isFalse,
+      );
       expect(TomPageRequest(limit: 10).isUnpaged, isFalse);
     });
 
     test('needsStableSort is true exactly when a window is cut', () {
       // A sort-only request reads the whole set, so its order is already total
       // over what it returns; a window is the case that can repeat or skip rows.
-      expect(TomPageRequest.sorted(const [TomSortField.asc('a')])
-          .needsStableSort, isFalse);
+      expect(
+        TomPageRequest.sorted(const [TomSortField.asc('a')]).needsStableSort,
+        isFalse,
+      );
       expect(TomPageRequest(limit: 10).needsStableSort, isTrue);
     });
 
     test('rejects a negative bound', () {
-      expect(() => TomPageRequest(limit: -1),
-          throwsA(isA<TomQuerySyntaxException>()));
-      expect(() => TomPageRequest(offset: -1, limit: 5),
-          throwsA(isA<TomQuerySyntaxException>()));
+      expect(
+        () => TomPageRequest(limit: -1),
+        throwsA(isA<TomQuerySyntaxException>()),
+      );
+      expect(
+        () => TomPageRequest(offset: -1, limit: 5),
+        throwsA(isA<TomQuerySyntaxException>()),
+      );
     });
 
     test('rejects an offset with no limit', () {
       // MariaDB's grammar is `LIMIT n [OFFSET m]` — there is no bare OFFSET, so
       // this request would render as a statement that silently ignores the skip.
-      expect(() => TomPageRequest(offset: 20),
-          throwsA(isA<TomQuerySyntaxException>()));
+      expect(
+        () => TomPageRequest(offset: 20),
+        throwsA(isA<TomQuerySyntaxException>()),
+      );
     });
 
     test('withSort keeps the window', () {
-      final page = TomPageRequest(offset: 10, limit: 5)
-          .withSort(const [TomSortField.desc('a')]);
+      final page = TomPageRequest(
+        offset: 10,
+        limit: 5,
+      ).withSort(const [TomSortField.desc('a')]);
       expect(page.offset, 10);
       expect(page.limit, 5);
       expect(page.sort, const [TomSortField.desc('a')]);
@@ -114,29 +126,35 @@ void main() {
     });
 
     test('skip adds an OFFSET to the limit', () {
-      expect(sql('find first 5 skip 10 by title = :t'),
-          endsWith(' LIMIT 5 OFFSET 10'));
+      expect(
+        sql('find first 5 skip 10 by title = :t'),
+        endsWith(' LIMIT 5 OFFSET 10'),
+      );
     });
 
     test('offset is a synonym for skip, and top for first', () {
-      expect(sql('find top 5 offset 10 by title = :t'),
-          endsWith(' LIMIT 5 OFFSET 10'));
+      expect(
+        sql('find top 5 offset 10 by title = :t'),
+        endsWith(' LIMIT 5 OFFSET 10'),
+      );
     });
 
     test('a skip with no cap is rejected', () {
-      expect(() => compiler.compileQuerySentence('find skip 10 by title = :t'),
-          throwsA(isA<TomQuerySyntaxException>()));
+      expect(
+        () => compiler.compileQuerySentence('find skip 10 by title = :t'),
+        throwsA(isA<TomQuerySyntaxException>()),
+      );
     });
 
     test('naming the same option twice is a contradiction', () {
       expect(
-        () => compiler
-            .compileQuerySentence('find first 5 top 6 by title = :t'),
+        () => compiler.compileQuerySentence('find first 5 top 6 by title = :t'),
         throwsA(isA<TomQuerySyntaxException>()),
       );
       expect(
         () => compiler.compileQuerySentence(
-            'find first 5 skip 1 offset 2 by title = :t'),
+          'find first 5 skip 1 offset 2 by title = :t',
+        ),
         throwsA(isA<TomQuerySyntaxException>()),
       );
     });
@@ -146,8 +164,9 @@ void main() {
       // caller is reading, so a skipped count is a mistake rather than a
       // narrower question.
       expect(
-        () => compiler
-            .compileQuerySentence('count first 5 skip 10 by title = :t'),
+        () => compiler.compileQuerySentence(
+          'count first 5 skip 10 by title = :t',
+        ),
         throwsA(isA<TomQuerySyntaxException>()),
       );
     });
@@ -155,8 +174,9 @@ void main() {
     test('a delete takes no skip', () {
       // `DELETE ... LIMIT n OFFSET m` is not MariaDB syntax.
       expect(
-        () => compiler
-            .compileQuerySentence('delete first 5 skip 10 by title = :t'),
+        () => compiler.compileQuerySentence(
+          'delete first 5 skip 10 by title = :t',
+        ),
         throwsA(isA<TomQuerySyntaxException>()),
       );
     });
@@ -164,8 +184,10 @@ void main() {
 
   group('query sentence: sort direction', () {
     test('a bare field list orders ascending', () {
-      expect(sql('find by title = :t order by amount'),
-          contains('ORDER BY fixture_export.amount ASC'));
+      expect(
+        sql('find by title = :t order by amount'),
+        contains('ORDER BY fixture_export.amount ASC'),
+      );
     });
 
     test('a trailing direction still applies to the whole list', () {

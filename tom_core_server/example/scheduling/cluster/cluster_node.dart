@@ -125,11 +125,13 @@ Future<void> _steady(_Options options, TomDataSource datasource) async {
     }),
   );
 
-  scheduler.register(TomJobDefinition(
-    name: heartbeatJob,
-    schedule: TomIntervalSchedule(const Duration(seconds: 1)),
-    body: (run) => _ReportWindow(options.node, run.scheduledFor),
-  ));
+  scheduler.register(
+    TomJobDefinition(
+      name: heartbeatJob,
+      schedule: TomIntervalSchedule(const Duration(seconds: 1)),
+      body: (run) => _ReportWindow(options.node, run.scheduledFor),
+    ),
+  );
 
   await scheduler.start();
   await Future<void>.delayed(options.duration);
@@ -220,13 +222,10 @@ Future<void> _fenceTaker(_Options options, TomDataSource datasource) async {
 
   // Do not start racing before there is anything to race. Starting early would
   // let this node win the *uncontended* lease and invert the scenario.
-  final held = await _awaitCondition(
-    () async {
-      final info = await lock.inspect(fencedResource);
-      return info.isHeld && info.lease!.owner != options.node ? info : null;
-    },
-    'the peer to take the lease',
-  );
+  final held = await _awaitCondition(() async {
+    final info = await lock.inspect(fencedResource);
+    return info.isHeld && info.lease!.owner != options.node ? info : null;
+  }, 'the peer to take the lease');
   emit(options.node, options.scenario, 'observed-holder', {
     'owner': held.lease!.owner,
     'token': held.lease!.token,
@@ -235,15 +234,15 @@ Future<void> _fenceTaker(_Options options, TomDataSource datasource) async {
   // Every one of these refusals is a `null` from the database, not a thrown
   // error: a contended acquire is an ordinary answer, not an exception.
   var refusals = 0;
-  final lease = await _awaitCondition(
-    () async {
-      final taken =
-          await lock.acquire(fencedResource, options.node, const Duration(minutes: 5));
-      if (taken == null) refusals++;
-      return taken;
-    },
-    'the peer\'s lease to lapse',
-  );
+  final lease = await _awaitCondition(() async {
+    final taken = await lock.acquire(
+      fencedResource,
+      options.node,
+      const Duration(minutes: 5),
+    );
+    if (taken == null) refusals++;
+    return taken;
+  }, 'the peer\'s lease to lapse');
   emit(options.node, options.scenario, 'acquired', {
     'token': lease.token,
     'refusals': refusals,
@@ -274,12 +273,14 @@ Future<void> _takeoverVictim(_Options options, TomDataSource datasource) async {
   final store = TomSqlJobStore(datasource, createSchema: false);
   final window = DateTime.now().toUtc();
 
-  await store.enqueue(TomJobRun(
-    id: 'takeover-run',
-    jobName: takeoverJob,
-    scheduledFor: window,
-    runAt: window,
-  ));
+  await store.enqueue(
+    TomJobRun(
+      id: 'takeover-run',
+      jobName: takeoverJob,
+      scheduledFor: window,
+      runAt: window,
+    ),
+  );
 
   // `claimDue` is a *queue* operation, not a per-job one — it hands back
   // everything that is due, which here includes heartbeat windows the steady
@@ -294,8 +295,10 @@ Future<void> _takeoverVictim(_Options options, TomDataSource datasource) async {
     await store.release(other);
   }
   if (ours.length != 1) {
-    stderr.writeln('The victim expected to claim exactly one $takeoverJob run, '
-        'got ${ours.length}.');
+    stderr.writeln(
+      'The victim expected to claim exactly one $takeoverJob run, '
+      'got ${ours.length}.',
+    );
     exit(1);
   }
   final run = ours.single;
@@ -324,7 +327,10 @@ Future<void> _takeoverVictim(_Options options, TomDataSource datasource) async {
 /// expires" untestable, because something else would have decided first. Here
 /// the lease timeout is the only signal, so the elapsed time at recovery is a
 /// statement about the lease and nothing else.
-Future<void> _takeoverSurvivor(_Options options, TomDataSource datasource) async {
+Future<void> _takeoverSurvivor(
+  _Options options,
+  TomDataSource datasource,
+) async {
   final store = TomSqlJobStore(datasource, createSchema: false);
   final leaseTimeout = options.leaseTimeout;
 
@@ -332,21 +338,18 @@ Future<void> _takeoverSurvivor(_Options options, TomDataSource datasource) async
   // the database rather than from the clock — every elapsed figure this scenario
   // reports is then measured from the same stamp the store's own recovery
   // predicate compares against.
-  final claimed = await _awaitCondition(
-    () async {
-      final runs = await store.all();
-      for (final run in runs) {
-        if (run.jobName == takeoverJob &&
-            run.state == TomJobRunState.running &&
-            run.claimedBy != null &&
-            run.claimedBy != options.node) {
-          return run;
-        }
+  final claimed = await _awaitCondition(() async {
+    final runs = await store.all();
+    for (final run in runs) {
+      if (run.jobName == takeoverJob &&
+          run.state == TomJobRunState.running &&
+          run.claimedBy != null &&
+          run.claimedBy != options.node) {
+        return run;
       }
-      return null;
-    },
-    'the victim to claim the run',
-  );
+    }
+    return null;
+  }, 'the victim to claim the run');
   final claimedAt = claimed.claimedAt!;
   emit(options.node, options.scenario, 'observed-claim', {
     'runId': claimed.id,
@@ -398,7 +401,10 @@ Future<void> _takeoverSurvivor(_Options options, TomDataSource datasource) async
 /// Leaving without removing its own row is the case that matters. A node that
 /// calls `forget` on the way out is a tidy shutdown and proves nothing; the roll
 /// call exists for the node that does not get the chance.
-Future<void> _rollcallQuitter(_Options options, TomDataSource datasource) async {
+Future<void> _rollcallQuitter(
+  _Options options,
+  TomDataSource datasource,
+) async {
   final roll = _rollCall(datasource, options.node);
   await _awaitPeer(roll, options.requirePeer());
 
@@ -423,7 +429,10 @@ Future<void> _rollcallQuitter(_Options options, TomDataSource datasource) async 
 /// Reports the roster on every pass. The count of rows carrying the peer's id is
 /// the "rewritten, not appended" half of the claim: the peer checks in many
 /// times and must never occupy more than one row.
-Future<void> _rollcallWatcher(_Options options, TomDataSource datasource) async {
+Future<void> _rollcallWatcher(
+  _Options options,
+  TomDataSource datasource,
+) async {
   final roll = _rollCall(datasource, options.node);
   final peer = options.requirePeer();
   await _awaitPeer(roll, peer);
@@ -502,14 +511,11 @@ TomSqlSchedulerNodes _rollCall(TomDataSource datasource, String nodeId) =>
 /// satisfied by a node that has been dead for a minute.
 Future<void> _awaitPeer(TomSqlSchedulerNodes roll, String peer) async {
   await roll.checkIn(DateTime.now().toUtc());
-  await _awaitCondition(
-    () async {
-      await roll.checkIn(DateTime.now().toUtc());
-      final present = await roll.nodes();
-      return present.any((n) => n.nodeId == peer) ? present : null;
-    },
-    'peer "$peer" to appear in the roll call',
-  );
+  await _awaitCondition(() async {
+    await roll.checkIn(DateTime.now().toUtc());
+    final present = await roll.nodes();
+    return present.any((n) => n.nodeId == peer) ? present : null;
+  }, 'peer "$peer" to appear in the roll call');
 }
 
 /// Polls [probe] until it returns a non-null value, or gives up.
@@ -564,8 +570,9 @@ class _Options {
       node: node,
       scenario: scenario,
       duration: Duration(seconds: int.parse(values['seconds'] ?? '6')),
-      leaseTimeout:
-          Duration(milliseconds: int.parse(values['leaseTimeoutMs'] ?? '5000')),
+      leaseTimeout: Duration(
+        milliseconds: int.parse(values['leaseTimeoutMs'] ?? '5000'),
+      ),
       checkins: int.parse(values['checkins'] ?? '6'),
       peer: values['peer'] ?? '',
     );

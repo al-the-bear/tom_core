@@ -47,17 +47,16 @@ TomS3BlobStore _s3(
   bool pathStyle = true,
   int partSize = TomS3BlobStore.minimumPartSize,
   String? keyPrefix,
-}) =>
-    TomS3BlobStore(
-      endpoint: Uri.parse('https://s3.example.com'),
-      bucket: 'examplebucket',
-      region: 'us-east-1',
-      credentials: _exampleCredentials,
-      pathStyle: pathStyle,
-      partSize: partSize,
-      keyPrefix: keyPrefix,
-      client: MockClient(handler),
-    );
+}) => TomS3BlobStore(
+  endpoint: Uri.parse('https://s3.example.com'),
+  bucket: 'examplebucket',
+  region: 'us-east-1',
+  credentials: _exampleCredentials,
+  pathStyle: pathStyle,
+  partSize: partSize,
+  keyPrefix: keyPrefix,
+  client: MockClient(handler),
+);
 
 void main() {
   group('key grammar', () {
@@ -93,10 +92,7 @@ void main() {
     test('rejects a key longer than the shared maximum', () {
       final long = 'a' * (TomBlobStore.maxKeyLength + 1);
       expect(TomBlobStore.isValidKey(long), isFalse);
-      expect(
-        TomBlobStore.isValidKey('a' * TomBlobStore.maxKeyLength),
-        isTrue,
-      );
+      expect(TomBlobStore.isValidKey('a' * TomBlobStore.maxKeyLength), isTrue);
     });
 
     test('validateKey returns the key or throws storage.blob.invalid_key', () {
@@ -104,8 +100,11 @@ void main() {
       expect(
         () => TomBlobStore.validateKey('../escape'),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.blob.invalid_key'),
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.blob.invalid_key',
+          ),
         ),
       );
     });
@@ -118,8 +117,11 @@ void main() {
       expect(
         () => TomExportStore.validateKey('../escape'),
         throwsA(
-          isA<TomExportException>()
-              .having((e) => e.key, 'key', 'export.store.invalid_key'),
+          isA<TomExportException>().having(
+            (e) => e.key,
+            'key',
+            'export.store.invalid_key',
+          ),
         ),
       );
     });
@@ -144,18 +146,23 @@ void main() {
       expect(store.textOf('a/b.txt'), 'hello sky');
     });
 
-    test('describe answers null for an absent key; get throws not_found',
-        () async {
-      expect(await store.describe('missing'), isNull);
-      expect(await store.exists('missing'), isFalse);
-      expect(
-        () => store.getBytes('missing'),
-        throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.blob.not_found'),
-        ),
-      );
-    });
+    test(
+      'describe answers null for an absent key; get throws not_found',
+      () async {
+        expect(await store.describe('missing'), isNull);
+        expect(await store.exists('missing'), isFalse);
+        expect(
+          () => store.getBytes('missing'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.not_found',
+            ),
+          ),
+        );
+      },
+    );
 
     test('delete reports whether anything was there', () async {
       await store.putBytes(key: 'k', bytes: utf8.encode('x'));
@@ -224,8 +231,9 @@ void main() {
       expect(described!.mediaType, 'application/pdf');
       expect(described.fileName, 'Quarterly Report.pdf');
       expect(
-        File('${root.path}/doc.bin${TomDirectoryBlobStore.metadataSuffix}')
-            .existsSync(),
+        File(
+          '${root.path}/doc.bin${TomDirectoryBlobStore.metadataSuffix}',
+        ).existsSync(),
         isTrue,
       );
     });
@@ -254,8 +262,11 @@ void main() {
       await expectLater(
         store.put(key: 'k.bin', bytes: _failingStream([utf8.encode('half')])),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.blob.write_failed'),
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.blob.write_failed',
+          ),
         ),
       );
       expect(File('${root.path}/k.bin').existsSync(), isFalse);
@@ -276,8 +287,9 @@ void main() {
       expect(await store.delete('k.bin'), isTrue);
       expect(await store.delete('k.bin'), isFalse);
       expect(
-        File('${root.path}/k.bin${TomDirectoryBlobStore.metadataSuffix}')
-            .existsSync(),
+        File(
+          '${root.path}/k.bin${TomDirectoryBlobStore.metadataSuffix}',
+        ).existsSync(),
         isFalse,
       );
     });
@@ -286,8 +298,11 @@ void main() {
       expect(
         () => store.getBytes('../escape'),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.blob.invalid_key'),
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.blob.invalid_key',
+          ),
         ),
       );
     });
@@ -338,7 +353,7 @@ void main() {
         'Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request, '
         'SignedHeaders=host;range;x-amz-content-sha256;x-amz-date, '
         'Signature=f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c603'
-            '6bdb41',
+        '6bdb41',
       );
     });
 
@@ -360,8 +375,10 @@ void main() {
       expect(headers['x-amz-security-token'], 'token-value');
       expect(
         headers['authorization'],
-        contains('SignedHeaders=host;x-amz-content-sha256;'
-            'x-amz-date;x-amz-security-token'),
+        contains(
+          'SignedHeaders=host;x-amz-content-sha256;'
+          'x-amz-date;x-amz-security-token',
+        ),
       );
     });
 
@@ -396,8 +413,11 @@ void main() {
       expect(
         () => _s3((_) async => http.Response('', 200), partSize: 1024),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.s3.part_size_too_small'),
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.s3.part_size_too_small',
+          ),
         ),
       );
     });
@@ -436,13 +456,10 @@ void main() {
 
     test('virtual-host addressing puts the bucket in the host', () async {
       late http.Request seen;
-      final store = _s3(
-        (request) async {
-          seen = request;
-          return http.Response('', 200);
-        },
-        pathStyle: false,
-      );
+      final store = _s3((request) async {
+        seen = request;
+        return http.Response('', 200);
+      }, pathStyle: false);
       await store.putBytes(key: 'k.txt', bytes: utf8.encode('x'));
       expect(seen.url.host, 'examplebucket.s3.example.com');
       expect(seen.url.path, '/k.txt');
@@ -450,64 +467,71 @@ void main() {
 
     test('a key prefix namespaces every request', () async {
       late http.Request seen;
-      final store = _s3(
-        (request) async {
-          seen = request;
-          return http.Response('', 200);
-        },
-        keyPrefix: 'tenant-7',
-      );
+      final store = _s3((request) async {
+        seen = request;
+        return http.Response('', 200);
+      }, keyPrefix: 'tenant-7');
       await store.putBytes(key: 'k.txt', bytes: utf8.encode('x'));
       expect(seen.url.path, '/examplebucket/tenant-7/k.txt');
     });
 
-    test('an object larger than the part size becomes a multipart upload',
-        () async {
-      final requests = <http.Request>[];
-      final store = _s3((request) async {
-        requests.add(request);
-        if (request.method == 'POST' && request.url.query.contains('uploads')) {
-          return http.Response('<InitiateMultipartUploadResult>'
+    test(
+      'an object larger than the part size becomes a multipart upload',
+      () async {
+        final requests = <http.Request>[];
+        final store = _s3((request) async {
+          requests.add(request);
+          if (request.method == 'POST' &&
+              request.url.query.contains('uploads')) {
+            return http.Response(
+              '<InitiateMultipartUploadResult>'
               '<UploadId>upload-7</UploadId>'
-              '</InitiateMultipartUploadResult>', 200);
+              '</InitiateMultipartUploadResult>',
+              200,
+            );
+          }
+          if (request.method == 'PUT') {
+            return http.Response('', 200, headers: {'etag': '"etag-x"'});
+          }
+          return http.Response('<CompleteMultipartUploadResult/>', 200);
+        });
+
+        // 11 MiB in 1 MiB pieces against a 5 MiB part size: three parts, the last
+        // of them short, and the buffer never holds more than one part.
+        const mib = 1024 * 1024;
+        final stored = await store.put(
+          key: 'big.bin',
+          bytes: Stream.fromIterable([
+            for (var i = 0; i < 11; i++) _bytes(mib),
+          ]),
+        );
+
+        expect(stored.byteCount, 11 * mib);
+        expect(requests.first.method, 'POST');
+        expect(requests.first.url.query, contains('uploads'));
+
+        final parts = requests
+            .where((r) => r.method == 'PUT')
+            .map((r) => r.url.queryParameters['partNumber'])
+            .toList();
+        expect(parts, ['1', '2', '3']);
+        for (final part in requests.where((r) => r.method == 'PUT')) {
+          expect(part.url.queryParameters['uploadId'], 'upload-7');
         }
-        if (request.method == 'PUT') {
-          return http.Response('', 200, headers: {'etag': '"etag-x"'});
-        }
-        return http.Response('<CompleteMultipartUploadResult/>', 200);
-      });
+        expect(
+          requests
+              .where((r) => r.method == 'PUT')
+              .map((r) => r.bodyBytes.length),
+          [5 * mib, 5 * mib, mib],
+        );
 
-      // 11 MiB in 1 MiB pieces against a 5 MiB part size: three parts, the last
-      // of them short, and the buffer never holds more than one part.
-      const mib = 1024 * 1024;
-      final stored = await store.put(
-        key: 'big.bin',
-        bytes: Stream.fromIterable([for (var i = 0; i < 11; i++) _bytes(mib)]),
-      );
-
-      expect(stored.byteCount, 11 * mib);
-      expect(requests.first.method, 'POST');
-      expect(requests.first.url.query, contains('uploads'));
-
-      final parts = requests
-          .where((r) => r.method == 'PUT')
-          .map((r) => r.url.queryParameters['partNumber'])
-          .toList();
-      expect(parts, ['1', '2', '3']);
-      for (final part in requests.where((r) => r.method == 'PUT')) {
-        expect(part.url.queryParameters['uploadId'], 'upload-7');
-      }
-      expect(
-        requests.where((r) => r.method == 'PUT').map((r) => r.bodyBytes.length),
-        [5 * mib, 5 * mib, mib],
-      );
-
-      final complete = requests.last;
-      expect(complete.method, 'POST');
-      expect(complete.url.queryParameters['uploadId'], 'upload-7');
-      expect(complete.body, contains('<PartNumber>3</PartNumber>'));
-      expect(complete.body, contains('"etag-x"'));
-    });
+        final complete = requests.last;
+        expect(complete.method, 'POST');
+        expect(complete.url.queryParameters['uploadId'], 'upload-7');
+        expect(complete.body, contains('<PartNumber>3</PartNumber>'));
+        expect(complete.body, contains('"etag-x"'));
+      },
+    );
 
     test('a failure mid-upload aborts the multipart upload', () async {
       final requests = <http.Request>[];
@@ -576,36 +600,41 @@ void main() {
       );
     });
 
-    test('a part the store did not acknowledge with an ETag is refused',
-        () async {
-      final requests = <http.Request>[];
-      final store = _s3((request) async {
-        requests.add(request);
-        if (request.method == 'POST' && request.url.query.contains('uploads')) {
-          return http.Response('<UploadId>upload-3</UploadId>', 200);
-        }
-        // 200, no `etag` header: accepted, unidentifiable, uncompletable.
-        return http.Response('', 200);
-      });
+    test(
+      'a part the store did not acknowledge with an ETag is refused',
+      () async {
+        final requests = <http.Request>[];
+        final store = _s3((request) async {
+          requests.add(request);
+          if (request.method == 'POST' &&
+              request.url.query.contains('uploads')) {
+            return http.Response('<UploadId>upload-3</UploadId>', 200);
+          }
+          // 200, no `etag` header: accepted, unidentifiable, uncompletable.
+          return http.Response('', 200);
+        });
 
-      const mib = 1024 * 1024;
-      await expectLater(
-        store.put(
-          key: 'big.bin',
-          bytes: Stream.fromIterable([for (var i = 0; i < 6; i++) _bytes(mib)]),
-        ),
-        throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.s3.part_without_etag')
-              .having((e) => e.parameters?['partNumber'], 'partNumber', 1),
-        ),
-      );
+        const mib = 1024 * 1024;
+        await expectLater(
+          store.put(
+            key: 'big.bin',
+            bytes: Stream.fromIterable([
+              for (var i = 0; i < 6; i++) _bytes(mib),
+            ]),
+          ),
+          throwsA(
+            isA<TomStorageException>()
+                .having((e) => e.key, 'key', 'storage.s3.part_without_etag')
+                .having((e) => e.parameters?['partNumber'], 'partNumber', 1),
+          ),
+        );
 
-      // The failure travels the same abort path as any other mid-upload
-      // failure, so the bucket is not left paying for an orphaned upload.
-      expect(requests.last.method, 'DELETE');
-      expect(requests.last.url.queryParameters['uploadId'], 'upload-3');
-    });
+        // The failure travels the same abort path as any other mid-upload
+        // failure, so the bucket is not left paying for an orphaned upload.
+        expect(requests.last.method, 'DELETE');
+        expect(requests.last.url.queryParameters['uploadId'], 'upload-3');
+      },
+    );
 
     test('get streams the body and translates a 404', () async {
       final store = _s3((request) async {
@@ -618,8 +647,11 @@ void main() {
       expect(
         () => store.getBytes('missing.txt'),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.blob.not_found'),
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.blob.not_found',
+          ),
         ),
       );
     });
@@ -630,12 +662,16 @@ void main() {
         if (request.url.path.endsWith('missing.txt')) {
           return http.Response('', 404);
         }
-        return http.Response('', 200, headers: {
-          'content-type': 'application/pdf',
-          'content-length': '4096',
-          'last-modified': 'Wed, 21 Oct 2015 07:28:00 GMT',
-          TomS3BlobStore.fileNameHeader: 'report.pdf',
-        });
+        return http.Response(
+          '',
+          200,
+          headers: {
+            'content-type': 'application/pdf',
+            'content-length': '4096',
+            'last-modified': 'Wed, 21 Oct 2015 07:28:00 GMT',
+            TomS3BlobStore.fileNameHeader: 'report.pdf',
+          },
+        );
       });
       final described = await store.describe('k.pdf');
       expect(described!.mediaType, 'application/pdf');
@@ -688,29 +724,37 @@ void main() {
       expect(
         () => TomBlobStoreInfo.storeNamed('nope'),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.registry.unknown_store'),
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.registry.unknown_store',
+          ),
         ),
       );
       expect(
         () => TomBlobStoreInfo.defaultStore,
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.registry.no_default_store'),
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.registry.no_default_store',
+          ),
         ),
       );
       expect(TomBlobStoreInfo.hasDefaultStore, isFalse);
     });
 
-    test('a single configured store becomes the default without saying so',
-        () async {
-      final count = await TomBlobStoreInfo.initializeBlobStores({
-        'files': {'type': 'memory'},
-      });
-      expect(count, 1);
-      expect(TomBlobStoreInfo.defaultStoreName, 'files');
-      expect(TomBlobStoreInfo.defaultStore, isA<TomMemoryBlobStore>());
-    });
+    test(
+      'a single configured store becomes the default without saying so',
+      () async {
+        final count = await TomBlobStoreInfo.initializeBlobStores({
+          'files': {'type': 'memory'},
+        });
+        expect(count, 1);
+        expect(TomBlobStoreInfo.defaultStoreName, 'files');
+        expect(TomBlobStoreInfo.defaultStore, isA<TomMemoryBlobStore>());
+      },
+    );
 
     test('with several stores, `default: true` nominates one', () async {
       final root = await Directory.systemTemp.createTemp('tom_blob_cfg_test');
@@ -727,7 +771,8 @@ void main() {
     test('reads a configuration decoded from YAML', () async {
       // The shape that actually arrives at start-up: a `YamlMap`, which is a
       // `Map<dynamic, dynamic>` and matches no reified `Map<String, Object>`.
-      final document = loadYaml('''
+      final document =
+          loadYaml('''
 fileStores:
   s3archive:
     type: s3
@@ -738,7 +783,8 @@ fileStores:
     secretAccessKey: secret
     partSize: 5242880
     keyPrefix: tenant-7
-''') as YamlMap;
+''')
+              as YamlMap;
       final config = <String, dynamic>{
         for (final entry in (document['fileStores'] as YamlMap).entries)
           '${entry.key}': entry.value,
@@ -771,8 +817,11 @@ fileStores:
           'files': {'type': 'nosuchbackend'},
         }),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.registry.unknown_backend'),
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.registry.unknown_backend',
+          ),
         ),
       );
     });
@@ -810,7 +859,10 @@ fileStores:
     test('an export is stored in the blob store under the prefix', () async {
       final stored = await exports.store(
         key: '2026/07/sales.csv',
-        bytes: Stream.fromIterable([utf8.encode('a,b\n'), utf8.encode('1,2\n')]),
+        bytes: Stream.fromIterable([
+          utf8.encode('a,b\n'),
+          utf8.encode('1,2\n'),
+        ]),
         mediaType: 'text/csv',
       );
       // The caller's key comes back, not the prefixed one: the prefix is the
@@ -858,7 +910,11 @@ fileStores:
         throwsA(
           isA<TomExportException>()
               .having((e) => e.key, 'key', 'export.store.invalid_key')
-              .having((e) => e.parameters?['key'], 'key parameter', '../escape'),
+              .having(
+                (e) => e.parameters?['key'],
+                'key parameter',
+                '../escape',
+              ),
         ),
       );
     });

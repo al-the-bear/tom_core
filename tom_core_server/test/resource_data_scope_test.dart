@@ -34,10 +34,10 @@ TomColumnInformation _resourceKeyColumn(String table) {
 }
 
 TomPrincipal _principal(int id) => TomPrincipal(
-      user: TomUser(id: id, username: 'user$id'),
-      aci: TomAccessControlInformation(),
-      authenticated: true,
-    );
+  user: TomUser(id: id, username: 'user$id'),
+  aci: TomAccessControlInformation(),
+  authenticated: true,
+);
 
 TomPrincipalResourceGrant _grant(int principal, String resource, String role) =>
     TomPrincipalResourceGrant(
@@ -105,36 +105,46 @@ void main() {
       ))!;
 
   group('grant-driven read scope (RCC5 done-bar)', () {
-    test('two principals see disjoint row sets from their own grants',
-        () async {
-      _install([
-        _grant(1, 'project:alpha', 'owner'),
-        _grant(2, 'project:beta', 'owner'),
-      ]);
-      expect((await read(_principal(1))).parameters.values, ['project:alpha']);
-      expect((await read(_principal(2))).parameters.values, ['project:beta']);
-    });
+    test(
+      'two principals see disjoint row sets from their own grants',
+      () async {
+        _install([
+          _grant(1, 'project:alpha', 'owner'),
+          _grant(2, 'project:beta', 'owner'),
+        ]);
+        expect((await read(_principal(1))).parameters.values, [
+          'project:alpha',
+        ]);
+        expect((await read(_principal(2))).parameters.values, ['project:beta']);
+      },
+    );
 
-    test('a read grant admits the row, a full grant admits it too (decision 1)',
-        () async {
-      _install([
-        _grant(1, 'project:alpha', 'owner'),
-        _grant(1, 'project:beta', 'viewer'),
-      ]);
-      expect(
-        (await read(_principal(1))).parameters.values,
-        containsAll(<Object?>['project:alpha', 'project:beta']),
-      );
-    });
+    test(
+      'a read grant admits the row, a full grant admits it too (decision 1)',
+      () async {
+        _install([
+          _grant(1, 'project:alpha', 'owner'),
+          _grant(1, 'project:beta', 'viewer'),
+        ]);
+        expect(
+          (await read(_principal(1))).parameters.values,
+          containsAll(<Object?>['project:alpha', 'project:beta']),
+        );
+      },
+    );
 
-    test('a disabled-graded role does not admit the row (decision 1)',
-        () async {
-      _install([
-        _grant(1, 'project:alpha', 'owner'),
-        _grant(1, 'project:greyed', 'blocked'),
-      ]);
-      expect((await read(_principal(1))).parameters.values, ['project:alpha']);
-    });
+    test(
+      'a disabled-graded role does not admit the row (decision 1)',
+      () async {
+        _install([
+          _grant(1, 'project:alpha', 'owner'),
+          _grant(1, 'project:greyed', 'blocked'),
+        ]);
+        expect((await read(_principal(1))).parameters.values, [
+          'project:alpha',
+        ]);
+      },
+    );
 
     test('an unregistered role grants nothing (closed by default)', () async {
       _install([_grant(1, 'project:alpha', 'inventor')]);
@@ -158,19 +168,21 @@ void main() {
       expect(p.parameters, isEmpty);
     });
 
-    test('the resource keys are bound, never written into the SQL (C-7)',
-        () async {
-      _install([
-        _grant(1, 'project:alpha', 'owner'),
-        _grant(1, 'project:beta', 'viewer'),
-      ]);
-      final p = await read(_principal(1));
-      final sql = p.predicate.generate(dialect);
-      expect(sql, isNot(contains('project:alpha')));
-      expect(sql, isNot(contains('project:beta')));
-      expect(sql, contains('projects.resource_key IN ('));
-      expect(p.parameters.keys, everyElement(startsWith('__tomscope_')));
-    });
+    test(
+      'the resource keys are bound, never written into the SQL (C-7)',
+      () async {
+        _install([
+          _grant(1, 'project:alpha', 'owner'),
+          _grant(1, 'project:beta', 'viewer'),
+        ]);
+        final p = await read(_principal(1));
+        final sql = p.predicate.generate(dialect);
+        expect(sql, isNot(contains('project:alpha')));
+        expect(sql, isNot(contains('project:beta')));
+        expect(sql, contains('projects.resource_key IN ('));
+        expect(p.parameters.keys, everyElement(startsWith('__tomscope_')));
+      },
+    );
   });
 
   group('grant-driven write scope (RCC5 decision 2)', () {
@@ -198,48 +210,54 @@ void main() {
       );
     });
 
-    test('the writable key set is a membership check the repository can apply',
-        () async {
-      _install([
-        _grant(1, 'project:alpha', 'owner'),
-        _grant(1, 'project:beta', 'viewer'),
-      ]);
-      final writable = await TomDataScope.allowedValuesAsync(
-        scope,
-        _principal(1),
-        forWrite: true,
-      );
-      expect(TomDataScope.permits(writable, 'project:alpha'), isTrue);
-      expect(TomDataScope.permits(writable, 'project:beta'), isFalse);
-      expect(TomDataScope.permits(writable, 'project:unknown'), isFalse);
-    });
+    test(
+      'the writable key set is a membership check the repository can apply',
+      () async {
+        _install([
+          _grant(1, 'project:alpha', 'owner'),
+          _grant(1, 'project:beta', 'viewer'),
+        ]);
+        final writable = await TomDataScope.allowedValuesAsync(
+          scope,
+          _principal(1),
+          forWrite: true,
+        );
+        expect(TomDataScope.permits(writable, 'project:alpha'), isTrue);
+        expect(TomDataScope.permits(writable, 'project:beta'), isFalse);
+        expect(TomDataScope.permits(writable, 'project:unknown'), isFalse);
+      },
+    );
   });
 
   group('delegated grants widen the scope (C-6 through the resolver)', () {
     final at = DateTime.utc(2026, 8, 4, 12);
 
-    test('a share delegation makes the delegate see the delegator\'s resource',
-        () async {
-      _install(
-        [_grant(1, 'project:alpha', 'owner')],
-        delegations: [
-          TomPrincipalDelegation(
-            delegatorId: '1',
-            delegateId: '2',
-            mode: TomDelegationMode.share.name,
-            resourceKey: 'project:alpha',
-            role: 'viewer',
-          ),
-        ],
-        now: at,
-      );
-      expect((await read(_principal(2))).parameters.values, ['project:alpha']);
-      // Shared as a viewer, so the delegate may read it but not write it.
-      expect(
-        (await write(_principal(2))).predicate.generate(dialect),
-        b.boolOp(false).generate(dialect),
-      );
-    });
+    test(
+      'a share delegation makes the delegate see the delegator\'s resource',
+      () async {
+        _install(
+          [_grant(1, 'project:alpha', 'owner')],
+          delegations: [
+            TomPrincipalDelegation(
+              delegatorId: '1',
+              delegateId: '2',
+              mode: TomDelegationMode.share.name,
+              resourceKey: 'project:alpha',
+              role: 'viewer',
+            ),
+          ],
+          now: at,
+        );
+        expect((await read(_principal(2))).parameters.values, [
+          'project:alpha',
+        ]);
+        // Shared as a viewer, so the delegate may read it but not write it.
+        expect(
+          (await write(_principal(2))).predicate.generate(dialect),
+          b.boolOp(false).generate(dialect),
+        );
+      },
+    );
 
     test('a share at a full-graded role also admits the write', () async {
       _install(
@@ -279,59 +297,67 @@ void main() {
       );
     });
 
-    test('an absence delegation grants inside its window and not outside',
-        () async {
-      TomPrincipalDelegation absence() => TomPrincipalDelegation(
-            delegatorId: '1',
-            delegateId: '2',
-            mode: TomDelegationMode.absence.name,
-            validFrom: DateTime.utc(2026, 8, 1),
-            validTo: DateTime.utc(2026, 8, 10),
-          );
+    test(
+      'an absence delegation grants inside its window and not outside',
+      () async {
+        TomPrincipalDelegation absence() => TomPrincipalDelegation(
+          delegatorId: '1',
+          delegateId: '2',
+          mode: TomDelegationMode.absence.name,
+          validFrom: DateTime.utc(2026, 8, 1),
+          validTo: DateTime.utc(2026, 8, 10),
+        );
 
-      _install(
-        [_grant(1, 'project:alpha', 'owner')],
-        delegations: [absence()],
-        now: DateTime.utc(2026, 8, 4),
-      );
-      expect((await read(_principal(2))).parameters.values, ['project:alpha']);
+        _install(
+          [_grant(1, 'project:alpha', 'owner')],
+          delegations: [absence()],
+          now: DateTime.utc(2026, 8, 4),
+        );
+        expect((await read(_principal(2))).parameters.values, [
+          'project:alpha',
+        ]);
 
-      _install(
-        [_grant(1, 'project:alpha', 'owner')],
-        delegations: [absence()],
-        now: DateTime.utc(2026, 8, 20),
-      );
-      expect(
-        (await read(_principal(2))).predicate.generate(dialect),
-        b.boolOp(false).generate(dialect),
-      );
-    });
+        _install(
+          [_grant(1, 'project:alpha', 'owner')],
+          delegations: [absence()],
+          now: DateTime.utc(2026, 8, 20),
+        );
+        expect(
+          (await read(_principal(2))).predicate.generate(dialect),
+          b.boolOp(false).generate(dialect),
+        );
+      },
+    );
 
-    test('the delegate keeps their own direct grants alongside the shared one',
-        () async {
-      _install(
-        [
-          _grant(1, 'project:alpha', 'owner'),
-          _grant(2, 'project:beta', 'owner'),
-        ],
-        delegations: [
-          TomPrincipalDelegation(
-            delegatorId: '1',
-            delegateId: '2',
-            mode: TomDelegationMode.share.name,
-            resourceKey: 'project:alpha',
-            role: 'viewer',
-          ),
-        ],
-        now: at,
-      );
-      expect(
-        (await read(_principal(2))).parameters.values,
-        containsAll(<Object?>['project:alpha', 'project:beta']),
-      );
-      // Only the own resource is writable — the share is a viewer share.
-      expect((await write(_principal(2))).parameters.values, ['project:beta']);
-    });
+    test(
+      'the delegate keeps their own direct grants alongside the shared one',
+      () async {
+        _install(
+          [
+            _grant(1, 'project:alpha', 'owner'),
+            _grant(2, 'project:beta', 'owner'),
+          ],
+          delegations: [
+            TomPrincipalDelegation(
+              delegatorId: '1',
+              delegateId: '2',
+              mode: TomDelegationMode.share.name,
+              resourceKey: 'project:alpha',
+              role: 'viewer',
+            ),
+          ],
+          now: at,
+        );
+        expect(
+          (await read(_principal(2))).parameters.values,
+          containsAll(<Object?>['project:alpha', 'project:beta']),
+        );
+        // Only the own resource is writable — the share is a viewer share.
+        expect((await write(_principal(2))).parameters.values, [
+          'project:beta',
+        ]);
+      },
+    );
   });
 
   group('installation lifecycle', () {
@@ -362,40 +388,46 @@ void main() {
       expect((await read(_principal(1))).parameters.values, ['user1']);
     });
 
-    test('resolution runs unscoped so the grant reads cannot recurse',
-        () async {
-      var sawBypass = false;
-      final direct = TomPrincipalResourceRoleResolver(
-        _BypassProbeGrantStore(() => sawBypass = TomDataScope.isBypassed),
-      );
-      TomResourceDataScope.install(
-        TomDelegationResolver(
-          InMemoryPrincipalDelegationStore(const []),
-          direct,
-        ),
-      );
-      await read(_principal(1));
-      expect(sawBypass, isTrue);
-    });
+    test(
+      'resolution runs unscoped so the grant reads cannot recurse',
+      () async {
+        var sawBypass = false;
+        final direct = TomPrincipalResourceRoleResolver(
+          _BypassProbeGrantStore(() => sawBypass = TomDataScope.isBypassed),
+        );
+        TomResourceDataScope.install(
+          TomDelegationResolver(
+            InMemoryPrincipalDelegationStore(const []),
+            direct,
+          ),
+        );
+        await read(_principal(1));
+        expect(sawBypass, isTrue);
+      },
+    );
   });
 
   group('per-request caching', () {
-    test('runCached resolves the grants once for every query in the request',
-        () async {
-      final store = _CountingGrantStore([_grant(1, 'project:alpha', 'owner')]);
-      TomResourceDataScope.install(
-        TomDelegationResolver(
-          InMemoryPrincipalDelegationStore(const []),
-          TomPrincipalResourceRoleResolver(store),
-        ),
-      );
-      await TomResourceDataScope.runCached(() async {
-        await read(_principal(1));
-        await read(_principal(1));
-        await write(_principal(1));
-      });
-      expect(store.calls, 1);
-    });
+    test(
+      'runCached resolves the grants once for every query in the request',
+      () async {
+        final store = _CountingGrantStore([
+          _grant(1, 'project:alpha', 'owner'),
+        ]);
+        TomResourceDataScope.install(
+          TomDelegationResolver(
+            InMemoryPrincipalDelegationStore(const []),
+            TomPrincipalResourceRoleResolver(store),
+          ),
+        );
+        await TomResourceDataScope.runCached(() async {
+          await read(_principal(1));
+          await read(_principal(1));
+          await write(_principal(1));
+        });
+        expect(store.calls, 1);
+      },
+    );
 
     test('without runCached every resolution reads the grants', () async {
       final store = _CountingGrantStore([_grant(1, 'project:alpha', 'owner')]);
@@ -422,7 +454,9 @@ void main() {
         ),
       );
       await TomResourceDataScope.runCached(() async {
-        expect((await read(_principal(1))).parameters.values, ['project:alpha']);
+        expect((await read(_principal(1))).parameters.values, [
+          'project:alpha',
+        ]);
         expect((await read(_principal(2))).parameters.values, ['project:beta']);
       });
       expect(store.calls, 2);
@@ -457,7 +491,8 @@ void main() {
       expect(
         TomAnnotationAnalyzer.resourceScopeInputTables,
         equals(declared),
-        reason: 'resourceScopeInputTables must name exactly the tables the '
+        reason:
+            'resourceScopeInputTables must name exactly the tables the '
             'resource scope reads to compute itself',
       );
     });
@@ -510,6 +545,9 @@ class _CountingGrantStore implements PrincipalResourceGrantStore {
     String principalId,
   ) async {
     calls++;
-    return [for (final g in grants) if (g.principalId == principalId) g];
+    return [
+      for (final g in grants)
+        if (g.principalId == principalId) g,
+    ];
   }
 }

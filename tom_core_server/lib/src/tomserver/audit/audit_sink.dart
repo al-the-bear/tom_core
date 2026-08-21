@@ -513,7 +513,9 @@ class TomFileAuditSink implements TomAuditSink {
     if (rotated != null) {
       return (day: rotated.group(1)!, sequence: int.parse(rotated.group(2)!));
     }
-    final day = p.basenameWithoutExtension(name).substring(filePrefix.length + 1);
+    final day = p
+        .basenameWithoutExtension(name)
+        .substring(filePrefix.length + 1);
     return (day: day, sequence: _liveFileSequence);
   }
 
@@ -612,9 +614,7 @@ class TomFileAuditSink implements TomAuditSink {
     _currentFile = File(
       p.join(directory.path, '$filePrefix-${_today()}.jsonl'),
     );
-    _currentBytes = _currentFile!.existsSync()
-        ? _currentFile!.lengthSync()
-        : 0;
+    _currentBytes = _currentFile!.existsSync() ? _currentFile!.lengthSync() : 0;
     if (_currentBytes + additionalBytes > maxFileBytes) {
       _rotate();
       _currentBytes = 0;

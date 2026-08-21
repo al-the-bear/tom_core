@@ -160,7 +160,8 @@ class TomOAuthTokenGrant {
     return TomOAuthTokenGrant(
       accessToken: _stringOf(response['access_token']),
       refreshToken:
-          _nullableStringOf(response['refresh_token']) ?? previous?.refreshToken,
+          _nullableStringOf(response['refresh_token']) ??
+          previous?.refreshToken,
       tokenType: _nullableStringOf(response['token_type']) ?? 'Bearer',
       scope: _nullableStringOf(response['scope']) ?? previous?.scope ?? '',
       expiresAt: lifetime == null ? null : issuedAt.add(lifetime),

@@ -67,9 +67,9 @@ class TomS3BlobStore extends TomBlobStore {
     this.partSize = 8 * 1024 * 1024,
     this.keyPrefix,
     http.Client? client,
-  })  : signer = TomAwsV4Signer(credentials: credentials, region: region),
-        _client = client ?? http.Client(),
-        _ownsClient = client == null {
+  }) : signer = TomAwsV4Signer(credentials: credentials, region: region),
+       _client = client ?? http.Client(),
+       _ownsClient = client == null {
     if (partSize < minimumPartSize) {
       throw TomStorageException(
         'storage.s3.part_size_too_small',
@@ -156,8 +156,10 @@ class TomS3BlobStore extends TomBlobStore {
         byteCount += incoming.length;
         var offset = 0;
         while (offset < incoming.length) {
-          final take =
-              (partSize - buffer.length).clamp(0, incoming.length - offset);
+          final take = (partSize - buffer.length).clamp(
+            0,
+            incoming.length - offset,
+          );
           buffer.addAll(incoming.getRange(offset, offset + take));
           offset += take;
           if (buffer.length >= partSize) await uploadPart();
@@ -208,12 +210,14 @@ class TomS3BlobStore extends TomBlobStore {
     TomBlobStore.validateKey(key);
     final uri = _objectUri(key, const {});
     final request = http.Request('GET', uri)
-      ..headers.addAll(_requestHeaders(
-        method: 'GET',
-        uri: uri,
-        headers: const {},
-        payloadHash: TomAwsV4Signer.emptyPayloadHash,
-      ));
+      ..headers.addAll(
+        _requestHeaders(
+          method: 'GET',
+          uri: uri,
+          headers: const {},
+          payloadHash: TomAwsV4Signer.emptyPayloadHash,
+        ),
+      );
     final response = await _client.send(request);
     if (response.statusCode == 404) {
       // Drained so the connection returns to the pool rather than being held
@@ -291,8 +295,10 @@ class TomS3BlobStore extends TomBlobStore {
   ) async {
     final xml = StringBuffer('<CompleteMultipartUpload>');
     for (var i = 0; i < etags.length; i++) {
-      xml.write('<Part><PartNumber>${i + 1}</PartNumber>'
-          '<ETag>${etags[i]}</ETag></Part>');
+      xml.write(
+        '<Part><PartNumber>${i + 1}</PartNumber>'
+        '<ETag>${etags[i]}</ETag></Part>',
+      );
     }
     xml.write('</CompleteMultipartUpload>');
     final response = await _send(
@@ -308,10 +314,8 @@ class TomS3BlobStore extends TomBlobStore {
     }
   }
 
-  Future<void> _abortMultipartUpload(String key, String uploadId) => _send(
-        method: 'DELETE',
-        uri: _objectUri(key, {'uploadId': uploadId}),
-      );
+  Future<void> _abortMultipartUpload(String key, String uploadId) =>
+      _send(method: 'DELETE', uri: _objectUri(key, {'uploadId': uploadId}));
 
   Future<http.Response> _send({
     required String method,
@@ -322,14 +326,18 @@ class TomS3BlobStore extends TomBlobStore {
   }) async {
     final payload = body ?? const <int>[];
     final request = http.Request(method, uri)
-      ..headers.addAll(_requestHeaders(
-        method: method,
-        uri: uri,
-        headers: headers,
-        payloadHash: TomAwsV4Signer.hashPayload(payload),
-      ));
+      ..headers.addAll(
+        _requestHeaders(
+          method: method,
+          uri: uri,
+          headers: headers,
+          payloadHash: TomAwsV4Signer.hashPayload(payload),
+        ),
+      );
     if (body != null) request.bodyBytes = payload;
-    final response = await http.Response.fromStream(await _client.send(request));
+    final response = await http.Response.fromStream(
+      await _client.send(request),
+    );
     if (response.statusCode == 404 && allowNotFound) return response;
     if (response.statusCode >= 300) {
       throw _failure(method, uri.path, response.statusCode, response.body);
@@ -380,19 +388,18 @@ class TomS3BlobStore extends TomBlobStore {
     String key,
     int status,
     String body,
-  ) =>
-      TomStorageException(
-        'storage.s3.request_failed',
-        'The object store rejected the request.',
-        parameters: {
-          'operation': operation,
-          'key': key,
-          'status': status,
-          'code': _element(body, 'Code') ?? '',
-          'message': _element(body, 'Message') ?? '',
-        },
-        autoLog: true,
-      );
+  ) => TomStorageException(
+    'storage.s3.request_failed',
+    'The object store rejected the request.',
+    parameters: {
+      'operation': operation,
+      'key': key,
+      'status': status,
+      'code': _element(body, 'Code') ?? '',
+      'message': _element(body, 'Message') ?? '',
+    },
+    autoLog: true,
+  );
 
   /// The text of the first `<name>…</name>` element in [xml], or `null`.
   static String? _element(String xml, String name) =>
@@ -415,8 +422,18 @@ class TomS3BlobStore extends TomBlobStore {
   /// out of; throws a [FormatException] on anything else.
   static DateTime parseHttpDate(String value) {
     const months = {
-      'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
-      'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12,
+      'Jan': 1,
+      'Feb': 2,
+      'Mar': 3,
+      'Apr': 4,
+      'May': 5,
+      'Jun': 6,
+      'Jul': 7,
+      'Aug': 8,
+      'Sep': 9,
+      'Oct': 10,
+      'Nov': 11,
+      'Dec': 12,
     };
     // "Wed, 21 Oct 2015 07:28:00 GMT"
     final match = RegExp(

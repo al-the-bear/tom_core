@@ -39,7 +39,7 @@ void main() async {
   final String? skipReason = reachable
       ? null
       : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-          'start one with tool/run_db_tests.sh';
+            'start one with tool/run_db_tests.sh';
 
   group('TomDbMigrations.migrateDatabases (DB-backed)', () {
     late TomDataSourceInfo dsi;
@@ -54,9 +54,12 @@ void main() async {
     setUp(() async {
       // Start each test from a clean slate: drop the versioning table and the
       // table the fixture migration creates, so a re-run genuinely re-applies.
-      await dsi.datasource
-          .executeCommand('DROP TABLE IF EXISTS ${_schemaName}_versioning');
-      await dsi.datasource.executeCommand('DROP TABLE IF EXISTS fixture_widget');
+      await dsi.datasource.executeCommand(
+        'DROP TABLE IF EXISTS ${_schemaName}_versioning',
+      );
+      await dsi.datasource.executeCommand(
+        'DROP TABLE IF EXISTS fixture_widget',
+      );
     });
 
     tearDownAll(TestDatabase.reset);

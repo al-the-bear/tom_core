@@ -135,15 +135,13 @@ void main() {
       );
     });
 
-    test(
-      'SL05: toString never leaks the credential [2026-07-28] (OK)',
-      () {
-        final text =
-            TomServiceCredential.fromConfiguration(_configured())!.toString();
-        expect(text, contains('svc-app'));
-        expect(text, isNot(contains('s3cret')));
-      },
-    );
+    test('SL05: toString never leaks the credential [2026-07-28] (OK)', () {
+      final text = TomServiceCredential.fromConfiguration(
+        _configured(),
+      )!.toString();
+      expect(text, contains('svc-app'));
+      expect(text, isNot(contains('s3cret')));
+    });
   });
 
   group('TomServerSelfLogin.logIn', () {
@@ -164,42 +162,36 @@ void main() {
       },
     );
 
-    test(
-      'SL11: reconstructs the deployment principal, entitlements and all '
-      '[2026-07-28] (OK)',
-      () async {
-        final transport = _FakeTransport(
-          _kernelSpelling(
-            _serviceToken(entitlements: ['feature.tasks', 'feature.reports']),
-          ),
-        );
-        final principal = await TomServerSelfLogin.logIn(
-          TomServiceCredential.fromConfiguration(_configured())!,
-          transport: transport,
-        );
+    test('SL11: reconstructs the deployment principal, entitlements and all '
+        '[2026-07-28] (OK)', () async {
+      final transport = _FakeTransport(
+        _kernelSpelling(
+          _serviceToken(entitlements: ['feature.tasks', 'feature.reports']),
+        ),
+      );
+      final principal = await TomServerSelfLogin.logIn(
+        TomServiceCredential.fromConfiguration(_configured())!,
+        transport: transport,
+      );
 
-        expect(principal.user.username, 'svc-app');
-        expect(
-          principal.aci.entitlements,
-          containsAll(['feature.tasks', 'feature.reports']),
-        );
-      },
-    );
+      expect(principal.user.username, 'svc-app');
+      expect(
+        principal.aci.entitlements,
+        containsAll(['feature.tasks', 'feature.reports']),
+      );
+    });
 
-    test(
-      'SL12: accepts the short authToken/authzToken spelling too '
-      '[2026-07-28] (OK)',
-      () async {
-        final transport = _FakeTransport(
-          _shortSpelling(_serviceToken(entitlements: ['feature.tasks'])),
-        );
-        final principal = await TomServerSelfLogin.logIn(
-          TomServiceCredential.fromConfiguration(_configured())!,
-          transport: transport,
-        );
-        expect(principal.aci.entitlements, contains('feature.tasks'));
-      },
-    );
+    test('SL12: accepts the short authToken/authzToken spelling too '
+        '[2026-07-28] (OK)', () async {
+      final transport = _FakeTransport(
+        _shortSpelling(_serviceToken(entitlements: ['feature.tasks'])),
+      );
+      final principal = await TomServerSelfLogin.logIn(
+        TomServiceCredential.fromConfiguration(_configured())!,
+        transport: transport,
+      );
+      expect(principal.aci.entitlements, contains('feature.tasks'));
+    });
 
     test('SL13: a rejected credential throws [2026-07-28] (OK)', () async {
       final transport = _FakeTransport('{"error":"nope"}', status: 401);
@@ -218,26 +210,23 @@ void main() {
       );
     });
 
-    test(
-      'SL14: an unreachable auth server throws, it does not degrade '
-      '[2026-07-28] (OK)',
-      () async {
-        final transport = _FakeTransport('', throws: StateError('no route'));
-        await expectLater(
-          TomServerSelfLogin.logIn(
-            TomServiceCredential.fromConfiguration(_configured())!,
-            transport: transport,
+    test('SL14: an unreachable auth server throws, it does not degrade '
+        '[2026-07-28] (OK)', () async {
+      final transport = _FakeTransport('', throws: StateError('no route'));
+      await expectLater(
+        TomServerSelfLogin.logIn(
+          TomServiceCredential.fromConfiguration(_configured())!,
+          transport: transport,
+        ),
+        throwsA(
+          isA<TomServerSelfLoginException>().having(
+            (e) => e.key,
+            'key',
+            'server.selflogin.unreachable',
           ),
-          throwsA(
-            isA<TomServerSelfLoginException>().having(
-              (e) => e.key,
-              'key',
-              'server.selflogin.unreachable',
-            ),
-          ),
-        );
-      },
-    );
+        ),
+      );
+    });
 
     test('SL15: a tokenless success body throws [2026-07-28] (OK)', () async {
       final transport = _FakeTransport('{"error":""}');
@@ -275,27 +264,24 @@ void main() {
   });
 
   group('TomServerSelfLogin.loginAndInstall', () {
-    test(
-      'SL20: a configured deployment installs its own principal '
-      '[2026-07-28] (OK)',
-      () async {
-        final transport = _FakeTransport(
-          _kernelSpelling(_serviceToken(entitlements: ['feature.tasks'])),
-        );
+    test('SL20: a configured deployment installs its own principal '
+        '[2026-07-28] (OK)', () async {
+      final transport = _FakeTransport(
+        _kernelSpelling(_serviceToken(entitlements: ['feature.tasks'])),
+      );
 
-        final installed = await TomServerSelfLogin.loginAndInstall(
-          _configured(),
-          transport: transport,
-        );
+      final installed = await TomServerSelfLogin.loginAndInstall(
+        _configured(),
+        transport: transport,
+      );
 
-        expect(installed, isTrue);
-        expect(TomServerPrincipal.isConfigured, isTrue);
-        expect(
-          TomServerPrincipal.current!.aci.entitlements,
-          contains('feature.tasks'),
-        );
-      },
-    );
+      expect(installed, isTrue);
+      expect(TomServerPrincipal.isConfigured, isTrue);
+      expect(
+        TomServerPrincipal.current!.aci.entitlements,
+        contains('feature.tasks'),
+      );
+    });
 
     test(
       'SL21: an unconfigured deployment is a silent no-op — nothing is sent and '
@@ -314,80 +300,66 @@ void main() {
       },
     );
 
-    test(
-      'SL22: a configured deployment that cannot log in throws rather than '
-      'running uncapped [2026-07-28] (OK)',
-      () async {
-        final transport = _FakeTransport('{}', status: 503);
-        await expectLater(
-          TomServerSelfLogin.loginAndInstall(
-            _configured(),
-            transport: transport,
-          ),
-          throwsA(isA<TomServerSelfLoginException>()),
-        );
-        expect(
-          TomServerPrincipal.isConfigured,
-          isFalse,
-          reason: 'a failed login must leave no principal behind',
-        );
-      },
-    );
+    test('SL22: a configured deployment that cannot log in throws rather than '
+        'running uncapped [2026-07-28] (OK)', () async {
+      final transport = _FakeTransport('{}', status: 503);
+      await expectLater(
+        TomServerSelfLogin.loginAndInstall(_configured(), transport: transport),
+        throwsA(isA<TomServerSelfLoginException>()),
+      );
+      expect(
+        TomServerPrincipal.isConfigured,
+        isFalse,
+        reason: 'a failed login must leave no principal behind',
+      );
+    });
   });
 
   group('End to end: the installed principal caps user grants', () {
-    test(
-      'SL30: a deployment entitled to read only caps a full user to read '
-      '[2026-07-28] (OK)',
-      () async {
-        await TomServerSelfLogin.loginAndInstall(
-          _configured(),
-          transport: _FakeTransport(
-            _kernelSpelling(
-              _serviceToken(entitlements: ['feature.tasks.read']),
-            ),
-          ),
-        );
+    test('SL30: a deployment entitled to read only caps a full user to read '
+        '[2026-07-28] (OK)', () async {
+      await TomServerSelfLogin.loginAndInstall(
+        _configured(),
+        transport: _FakeTransport(
+          _kernelSpelling(_serviceToken(entitlements: ['feature.tasks.read'])),
+        ),
+      );
 
-        final control = TomGradedAccess(
-          full: const TomEntitlementAccess([r'^feature\.tasks\.write$']),
-          read: const TomEntitlementAccess([r'^feature\.tasks\.read$']),
-        );
-        final user = TomPrincipal(
-          authenticated: true,
-          user: TomUser(id: 1, username: 'alice'),
-          aci: TomAccessControlInformation(
-            entitlements: ['feature.tasks.write', 'feature.tasks.read'],
-          ),
-        );
+      final control = TomGradedAccess(
+        full: const TomEntitlementAccess([r'^feature\.tasks\.write$']),
+        read: const TomEntitlementAccess([r'^feature\.tasks\.read$']),
+      );
+      final user = TomPrincipal(
+        authenticated: true,
+        user: TomUser(id: 1, username: 'alice'),
+        aci: TomAccessControlInformation(
+          entitlements: ['feature.tasks.write', 'feature.tasks.read'],
+        ),
+      );
 
-        expect(control.resolveAuthState(user), TomAuthState.read);
-      },
-    );
+      expect(control.resolveAuthState(user), TomAuthState.read);
+    });
 
-    test(
-      'SL31: an unconfigured deployment leaves the same user at full '
-      '[2026-07-28] (OK)',
-      () async {
-        await TomServerSelfLogin.loginAndInstall(
-          _Config(),
-          transport: _FakeTransport('{}'),
-        );
+    test('SL31: an unconfigured deployment leaves the same user at full '
+        '[2026-07-28] (OK)', () async {
+      await TomServerSelfLogin.loginAndInstall(
+        _Config(),
+        transport: _FakeTransport('{}'),
+      );
 
-        final control = TomGradedAccess(
-          full: const TomEntitlementAccess([r'^feature\.tasks\.write$']),
-          read: const TomEntitlementAccess([r'^feature\.tasks\.read$']),
-        );
-        final user = TomPrincipal(
-          authenticated: true,
-          user: TomUser(id: 1, username: 'alice'),
-          aci: TomAccessControlInformation(
-            entitlements: ['feature.tasks.write', 'feature.tasks.read'],
-          ),
-        );
+      final control = TomGradedAccess(
+        full: const TomEntitlementAccess([r'^feature\.tasks\.write$']),
+        read: const TomEntitlementAccess([r'^feature\.tasks\.read$']),
+      );
+      final user = TomPrincipal(
+        authenticated: true,
+        user: TomUser(id: 1, username: 'alice'),
+        aci: TomAccessControlInformation(
+          entitlements: ['feature.tasks.write', 'feature.tasks.read'],
+        ),
+      );
 
-        expect(control.resolveAuthState(user), TomAuthState.full);
-      },
-    );
+      expect(control.resolveAuthState(user), TomAuthState.full);
+    });
   });
 }

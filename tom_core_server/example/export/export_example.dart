@@ -24,35 +24,35 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 /// The columns every step below renders, typed as the query layer types them.
 List<TomTabularColumn> columns() => [
-      TomTabularColumn('product', label: 'Product', width: 24),
-      TomTabularColumn('amount', label: 'Amount', type: TomColumnType.decimal),
-      TomTabularColumn('sold', label: 'Sold', type: TomColumnType.timestamp),
-      TomTabularColumn('active', label: 'Active', type: TomColumnType.boolean),
-    ];
+  TomTabularColumn('product', label: 'Product', width: 24),
+  TomTabularColumn('amount', label: 'Amount', type: TomColumnType.decimal),
+  TomTabularColumn('sold', label: 'Sold', type: TomColumnType.timestamp),
+  TomTabularColumn('active', label: 'Active', type: TomColumnType.boolean),
+];
 
 /// A small result. A real one differs only in where its row stream comes from.
 TomTabularResult salesResult() => TomTabularResult.single(
-      title: 'Sales',
-      metadata: {'Filter': 'region = EU', 'As of': '2026-07-28'},
-      section: TomTabularSection.ofMaps(
-        columns(),
-        Stream.fromIterable([
-          {
-            'product': 'Widget',
-            'amount': 19.5,
-            'sold': DateTime(2026, 7, 1),
-            'active': true,
-          },
-          {
-            'product': 'Gadget, large',
-            'amount': 4.0,
-            'sold': DateTime(2026, 7, 2, 14, 30),
-            'active': false,
-          },
-        ]),
-        title: 'Regions',
-      ),
-    );
+  title: 'Sales',
+  metadata: {'Filter': 'region = EU', 'As of': '2026-07-28'},
+  section: TomTabularSection.ofMaps(
+    columns(),
+    Stream.fromIterable([
+      {
+        'product': 'Widget',
+        'amount': 19.5,
+        'sold': DateTime(2026, 7, 1),
+        'active': true,
+      },
+      {
+        'product': 'Gadget, large',
+        'amount': 4.0,
+        'sold': DateTime(2026, 7, 2, 14, 30),
+        'active': false,
+      },
+    ]),
+    title: 'Regions',
+  ),
+);
 
 Future<void> run() async {
   // 1. The input is a *shape*, not a format. Rows are a stream because an
@@ -61,9 +61,11 @@ Future<void> run() async {
   //    Cells are positional to the columns — at a million rows, one list per
   //    row rather than one hash table is the whole memory budget.
   final result = salesResult();
-  print('1. result                    : ${result.title}, '
-      '${result.sections.length} section(s), '
-      '${result.sections.first.columns.length} columns');
+  print(
+    '1. result                    : ${result.title}, '
+    '${result.sections.length} section(s), '
+    '${result.sections.first.columns.length} columns',
+  );
   assert(result.metadata['Filter'] == 'region = EU');
 
   // 2. One abstraction, three formats. Each renderer answers the same four
@@ -71,9 +73,11 @@ Future<void> run() async {
   //    delivery channels below indifferent to which one ran.
   final formats = TomExportFormats.standard();
   for (final renderer in formats.renderers) {
-    print('2. ${renderer.formatId.padRight(5)} '
-        '${renderer.fileNameFor('sales').padRight(10)} '
-        'streams=${renderer.streamsRows}  ${renderer.mediaType}');
+    print(
+      '2. ${renderer.formatId.padRight(5)} '
+      '${renderer.fileNameFor('sales').padRight(10)} '
+      'streams=${renderer.streamsRows}  ${renderer.mediaType}',
+    );
   }
   assert(formats.formatIds.toSet().containsAll({'csv', 'xlsx', 'pdf'}));
 
@@ -107,8 +111,10 @@ Future<void> run() async {
   //    single-subscription stream, so rendering the same one twice would ask a
   //    consumed stream for rows it no longer has.
   final csv = utf8.decode(await collect(formats, salesResult(), 'csv'));
-  print('4. csv                       : '
-      '${csv.replaceAll('\r\n', ' | ').trim()}');
+  print(
+    '4. csv                       : '
+    '${csv.replaceAll('\r\n', ' | ').trim()}',
+  );
   //    A comma inside a value is quoted, not escaped away.
   assert(csv.contains('"Gadget, large"'));
 
@@ -122,13 +128,17 @@ Future<void> run() async {
       title: 'Injection',
       section: TomTabularSection.ofRows(
         [TomTabularColumn('note')],
-        [const TomTabularRow(['=1+1'])],
+        [
+          const TomTabularRow(['=1+1']),
+        ],
       ),
     ),
     'csv',
   );
-  print('5. formula neutralised       : '
-      '${utf8.decode(injected).contains('"\t=1+1"')}');
+  print(
+    '5. formula neutralised       : '
+    '${utf8.decode(injected).contains('"\t=1+1"')}',
+  );
   assert(utf8.decode(injected).contains('"\t=1+1"'));
 
   // 6. XLSX is a ZIP of XML parts, which is the one office format producible
@@ -136,8 +146,10 @@ Future<void> run() async {
   //    table, and ZIP data descriptors instead of up-front CRCs. Hence
   //    streamsRows stays true for the rich format too.
   final xlsx = await collect(formats, salesResult(), 'xlsx');
-  print('6. xlsx bytes                : ${xlsx.length} '
-      '(starts with "PK": ${xlsx[0] == 0x50 && xlsx[1] == 0x4B})');
+  print(
+    '6. xlsx bytes                : ${xlsx.length} '
+    '(starts with "PK": ${xlsx[0] == 0x50 && xlsx[1] == 0x4B})',
+  );
   assert(xlsx[0] == 0x50 && xlsx[1] == 0x4B);
 
   // 7. PDF is the exception, and says so. Its file structure ends with a table
@@ -146,15 +158,19 @@ Future<void> run() async {
   //    its ceiling rather than discovering it — and *fails* at the limit, since
   //    a silently shortened report is a wrong report that looks right.
   final pdf = await collect(formats, salesResult(), 'pdf');
-  print('7. pdf bytes                 : ${pdf.length} '
-      '(streams rows: ${formats.rendererFor('pdf').streamsRows})');
+  print(
+    '7. pdf bytes                 : ${pdf.length} '
+    '(streams rows: ${formats.rendererFor('pdf').streamsRows})',
+  );
   assert(utf8.decode(pdf.take(5).toList()) == '%PDF-');
 
   try {
     await const TomPdfRenderer(rowLimit: 1).render(salesResult()).drain<void>();
   } on TomExportException catch (e) {
-    print('   over the row limit        : ${e.key} '
-        '-> use ${e.parameters?['formats']}');
+    print(
+      '   over the row limit        : ${e.key} '
+      '-> use ${e.parameters?['formats']}',
+    );
     assert(e.key == 'export.pdf.row_limit_exceeded');
   }
 
@@ -170,8 +186,10 @@ Future<void> run() async {
   try {
     formats.rendererFor('ods');
   } on TomExportException catch (e) {
-    print('   unknown format            : ${e.key} '
-        '(have ${e.parameters?['available']})');
+    print(
+      '   unknown format            : ${e.key} '
+      '(have ${e.parameters?['available']})',
+    );
     assert(e.key == 'export.format.unknown');
   }
 
@@ -185,10 +203,16 @@ Future<void> run() async {
   final store = TomMemoryExportStore();
   final service = TomExportService(store: store);
 
-  final key = service.keyFor('sales', 'csv', partitionOn: DateTime(2026, 7, 28));
+  final key = service.keyFor(
+    'sales',
+    'csv',
+    partitionOn: DateTime(2026, 7, 28),
+  );
   final stored = await service.storeAs(salesResult(), 'csv', key: key);
-  print('9. stored                    : ${stored.key} '
-      '(${stored.byteCount} bytes, ${stored.mediaType})');
+  print(
+    '9. stored                    : ${stored.key} '
+    '(${stored.byteCount} bytes, ${stored.mediaType})',
+  );
   assert(stored.key == '2026/07/28/sales.csv');
   assert(await store.exists(key));
 
@@ -212,18 +236,23 @@ Future<void> run() async {
     baseName: 'Q3 sales',
   );
   print('10. content-type             : ${response.headers['content-type']}');
-  print('    disposition             : '
-      '${response.headers['content-disposition']}');
+  print(
+    '    disposition             : '
+    '${response.headers['content-disposition']}',
+  );
   print('    content-length          : ${response.headers['content-length']}');
   assert(response.headers['content-length'] == null);
 
   // 11. A file name reaches that header from a report title, which reaches it
   //     from a user. A quote or a newline in it would end the parameter and
   //     start another header — the download equivalent of an injection.
-  print('11. sanitised               : '
-      '"${TomExportService.sanitiseFileName('a".csv\r\nX-Evil: 1')}"');
-  assert(!TomExportService.sanitiseFileName('a".csv\r\nX-Evil: 1')
-      .contains('"'));
+  print(
+    '11. sanitised               : '
+    '"${TomExportService.sanitiseFileName('a".csv\r\nX-Evil: 1')}"',
+  );
+  assert(
+    !TomExportService.sanitiseFileName('a".csv\r\nX-Evil: 1').contains('"'),
+  );
 
   // 12. Storing without a configured store is a *configuration* error and says
   //     so. The store is optional because a server that only streams exports

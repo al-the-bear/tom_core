@@ -367,7 +367,11 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     }
     final principal = getFromCurrentZone<TomPrincipal>();
     final allowed = TomDataScopeRegistry.isAsync(scope.scope)
-        ? await TomDataScope.allowedValuesAsync(scope, principal, forWrite: true)
+        ? await TomDataScope.allowedValuesAsync(
+            scope,
+            principal,
+            forWrite: true,
+          )
         : TomDataScope.allowedValues(scope, principal, forWrite: true);
     if (!TomDataScope.permits(allowed, col.getVariableValue(entity))) {
       throw TomDataScopeAuthorizationException(
@@ -648,8 +652,9 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     // The primary key is read before the grade rather than after, because a
     // per-row grade needs to know which row is being written; on an insert
     // there is no row yet and the resolver is handed the unsaved key.
-    final primaryKey =
-        readPrimaryKey<K>(primaryKeyColumnInfo.getVariableValue(entity));
+    final primaryKey = readPrimaryKey<K>(
+      primaryKeyColumnInfo.getVariableValue(entity),
+    );
     await _assertColumnWritable(column, primaryKey);
     if (isUnsavedKey(primaryKey)) {
       await _assertInsertWritable(entity);
@@ -1075,10 +1080,7 @@ SELECT * FROM ${dbTable.table}
     final (where, params) = await _idListPredicate(ids);
     return _maskRows(
       await _runPrepared<T>(
-        _pagedSelect(
-          TomSelect(queryTypes, query: where),
-          _effectivePage(page),
-        ),
+        _pagedSelect(TomSelect(queryTypes, query: where), _effectivePage(page)),
         params,
       ),
     );
@@ -1212,7 +1214,8 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     final fields = [for (final c in columns) c.getQueryFieldName()];
     final paramNames = [for (final c in columns) c.declaredName];
     final placeholders = [for (final n in paramNames) ':$n'];
-    final sql = 'INSERT INTO $table ( ${fields.join(',')} )'
+    final sql =
+        'INSERT INTO $table ( ${fields.join(',')} )'
         ' VALUES ( ${placeholders.join(',')} )';
     return (sql, paramNames);
   }
@@ -1236,7 +1239,8 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     final paramNames = [for (final c in columns) c.declaredName];
     final pkName = primaryKey.declaredName;
     paramNames.add(pkName);
-    final sql = 'UPDATE $table SET ${assignments.join(',')}'
+    final sql =
+        'UPDATE $table SET ${assignments.join(',')}'
         ' WHERE ${primaryKey.getQueryFieldName()} = :$pkName';
     return (sql, paramNames);
   }
@@ -1246,8 +1250,9 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   @override
   Future<T> save(T toSave) async {
     final persistentColumns = TomAnnotationAnalyzer.getPersistentColumns(T)!;
-    final primaryKey =
-        readPrimaryKey<K>(primaryKeyColumnInfo.getVariableValue(toSave));
+    final primaryKey = readPrimaryKey<K>(
+      primaryKeyColumnInfo.getVariableValue(toSave),
+    );
     // The columns the statement writes: everything except the read-only ones
     // (the auto-increment primary key, audit-managed columns, …).
     final writable = [
@@ -1290,7 +1295,8 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     // They ask for the same row for different reasons; reading it once per
     // reason would multiply the cost of every update on an entity that uses
     // more than one.
-    final needsBaseline = !insert &&
+    final needsBaseline =
+        !insert &&
         (authColumns.isNotEmpty ||
             _fileColumns.isNotEmpty ||
             _audits(TomAuditAction.update));
@@ -1306,7 +1312,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
         onForbidden: (col, key, grade) => throw TomColumnAuthorizationException(
           'column_authorization.write.field_forbidden',
           'Column "${col.declaredName}" (resource "$key") is not writable at '
-          'your access level (${grade.name}).',
+              'your access level (${grade.name}).',
         ),
       );
       for (final col in decision.preserved) {
@@ -1316,8 +1322,8 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
 
     Object? dbValue(TomColumnInformation col) =>
         overrides.containsKey(col.declaredName)
-            ? overrides[col.declaredName]
-            : dbConvert(col, col.getVariableValue(toSave));
+        ? overrides[col.declaredName]
+        : dbConvert(col, col.getVariableValue(toSave));
 
     if (insert) {
       // INSERT
@@ -1358,8 +1364,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       );
     } else {
       // UPDATE
-      final (sql, paramNames) =
-          buildUpdateStatement(dbTable.table, writable, primaryKeyColumnInfo);
+      final (sql, paramNames) = buildUpdateStatement(
+        dbTable.table,
+        writable,
+        primaryKeyColumnInfo,
+      );
       _saveUpdateQuery ??= await datasourceInfo.datasource.prepareStatement<T>(
         TomLiteralSelect([T], query: sql, parameters: paramNames),
       );
@@ -1577,10 +1586,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     // filters the rows *before* they are aggregated.
     final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
-    return _runPrepared<TomGroupedRow>(
-      _scopedGrouped(query, scope),
-      effective,
-    );
+    return _runPrepared<TomGroupedRow>(_scopedGrouped(query, scope), effective);
   }
 
   /// Rejects a grouped query that touches a column the principal may not see

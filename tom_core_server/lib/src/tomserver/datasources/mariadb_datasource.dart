@@ -423,7 +423,7 @@ class MariaDbDatasource implements TomDataSource {
         throw MariadbDatasourceException(
           errorCode,
           "Unexpected and unsupported type for TomObject value: $declared for "
-              "member $memberName in $classMirror",
+          "member $memberName in $classMirror",
           parameters: {
             "type": classMirror.reflectedType,
             "fieldType": declared,
@@ -1158,7 +1158,10 @@ class MariaDbDatasource implements TomDataSource {
 
   @override
   Future<void> initialize(Map<String, dynamic> settings) async {
-    tomReflectionInfo.setValues<MariaDbDatasource>(this, normalizePort(settings));
+    tomReflectionInfo.setValues<MariaDbDatasource>(
+      this,
+      normalizePort(settings),
+    );
     await connect();
   }
 

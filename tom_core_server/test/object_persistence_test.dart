@@ -81,7 +81,9 @@ void main() {
       final ageCol = _column('users', 'age');
       final pred = b.and([
         b.group(b.gte(b.intF('age', ageCol), b.p<TomDbInt>('min'))),
-        b.group(b.like(b.textF('name', _column('users', 'name')), b.text('A%'))),
+        b.group(
+          b.like(b.textF('name', _column('users', 'name')), b.text('A%')),
+        ),
       ]);
       expect(
         pred.generate(dialect),
@@ -128,7 +130,8 @@ void main() {
     test('three bounds throws TomQuerySyntaxException', () {
       final col = _column('users', 'age');
       expect(
-        () => b.between(b.intF('age', col), [b.intOp(1), b.intOp(2), b.intOp(3)]),
+        () =>
+            b.between(b.intF('age', col), [b.intOp(1), b.intOp(2), b.intOp(3)]),
         throwsA(isA<TomQuerySyntaxException>()),
       );
     });
@@ -161,10 +164,7 @@ void main() {
     });
 
     test('module exceptions are TomServerException subtypes', () {
-      expect(
-        TomQuerySyntaxException('k', 'm'),
-        isA<TomServerException>(),
-      );
+      expect(TomQuerySyntaxException('k', 'm'), isA<TomServerException>());
       expect(
         TomAnnotationAnalyzerException('k', 'm'),
         isA<TomServerException>(),
@@ -187,10 +187,12 @@ void main() {
 
     test('And collects every operand column and no parameter names', () {
       final pred = b.and([
-        b.group(b.gte(b.intF('age', _column('users', 'age')),
-            b.p<TomDbInt>('min'))),
-        b.group(b.like(
-            b.textF('name', _column('users', 'name')), b.text('A%'))),
+        b.group(
+          b.gte(b.intF('age', _column('users', 'age')), b.p<TomDbInt>('min')),
+        ),
+        b.group(
+          b.like(b.textF('name', _column('users', 'name')), b.text('A%')),
+        ),
       ]);
       final fields = pred.getFields(dialect);
       expect(fields, containsAll(['users.age', 'users.name']));
@@ -231,21 +233,25 @@ void main() {
       );
     }
 
-    test('buildInsertStatement uses column names and :declaredName placeholders',
-        () {
-      final cols = [
-        namedColumn('user_name', 'userName'),
-        namedColumn('password_hash', 'passwordHash'),
-      ];
-      final (sql, params) =
-          TomSqlDatasourceRepository.buildInsertStatement('users', cols);
-      expect(
-        sql,
-        'INSERT INTO users ( user_name,password_hash )'
-        ' VALUES ( :userName,:passwordHash )',
-      );
-      expect(params, ['userName', 'passwordHash']);
-    });
+    test(
+      'buildInsertStatement uses column names and :declaredName placeholders',
+      () {
+        final cols = [
+          namedColumn('user_name', 'userName'),
+          namedColumn('password_hash', 'passwordHash'),
+        ];
+        final (sql, params) = TomSqlDatasourceRepository.buildInsertStatement(
+          'users',
+          cols,
+        );
+        expect(
+          sql,
+          'INSERT INTO users ( user_name,password_hash )'
+          ' VALUES ( :userName,:passwordHash )',
+        );
+        expect(params, ['userName', 'passwordHash']);
+      },
+    );
 
     test('buildUpdateStatement sets columns and adds a WHERE on the pk', () {
       final cols = [
@@ -253,8 +259,11 @@ void main() {
         namedColumn('password_hash', 'passwordHash'),
       ];
       final pk = namedColumn('id', 'id', isPk: true, readOnly: true);
-      final (sql, params) =
-          TomSqlDatasourceRepository.buildUpdateStatement('users', cols, pk);
+      final (sql, params) = TomSqlDatasourceRepository.buildUpdateStatement(
+        'users',
+        cols,
+        pk,
+      );
       expect(
         sql,
         'UPDATE users SET user_name = :userName,password_hash = :passwordHash'
@@ -280,10 +289,12 @@ void main() {
     // INSERT of such an entity failed (the app sample's `createProject` 500'd).
     // `readPrimaryKey` reads as nullable so the unsaved-null case survives to
     // the INSERT/UPDATE decision.
-    test('readPrimaryKey reads a null nullable surrogate key without throwing',
-        () {
-      expect(TomSqlDatasourceRepository.readPrimaryKey<int>(null), isNull);
-    });
+    test(
+      'readPrimaryKey reads a null nullable surrogate key without throwing',
+      () {
+        expect(TomSqlDatasourceRepository.readPrimaryKey<int>(null), isNull);
+      },
+    );
 
     test('readPrimaryKey returns a present int key unchanged', () {
       expect(TomSqlDatasourceRepository.readPrimaryKey<int>(7), 7);
@@ -410,10 +421,7 @@ void main() {
 
     test('dateTimeOp renders a single-quoted ISO-8601 timestamp', () {
       final ts = DateTime.utc(2026, 7, 15, 9, 30);
-      expect(
-        b.dateTimeOp(ts).generate(dialect),
-        "'${ts.toIso8601String()}'",
-      );
+      expect(b.dateTimeOp(ts).generate(dialect), "'${ts.toIso8601String()}'");
     });
 
     test('dateOp renders single-quoted YYYY-M-D without padding', () {

@@ -148,10 +148,7 @@ class TomPdfRenderer extends TomTabularRenderer {
           throw TomExportException(
             'export.pdf.row_limit_exceeded',
             'The report is too large to render as a PDF.',
-            parameters: {
-              'limit': '$rowLimit',
-              'formats': 'csv, xlsx',
-            },
+            parameters: {'limit': '$rowLimit', 'formats': 'csv, xlsx'},
           );
         }
         rows.add([
@@ -175,26 +172,20 @@ class TomPdfRenderer extends TomTabularRenderer {
       margin: const pw.EdgeInsets.only(bottom: 8),
       child: pw.Text(
         result.title,
-        style: pw.TextStyle(
-          fontSize: baseFontSize,
-          color: PdfColors.grey700,
-        ),
+        style: pw.TextStyle(fontSize: baseFontSize, color: PdfColors.grey700),
       ),
     );
   }
 
   /// The repeated page footer: `n / total`, right-aligned.
   pw.Widget _footer(pw.Context context) => pw.Container(
-        alignment: pw.Alignment.centerRight,
-        margin: const pw.EdgeInsets.only(top: 8),
-        child: pw.Text(
-          '${context.pageNumber} / ${context.pagesCount}',
-          style: pw.TextStyle(
-            fontSize: baseFontSize - 1,
-            color: PdfColors.grey700,
-          ),
-        ),
-      );
+    alignment: pw.Alignment.centerRight,
+    margin: const pw.EdgeInsets.only(top: 8),
+    child: pw.Text(
+      '${context.pageNumber} / ${context.pagesCount}',
+      style: pw.TextStyle(fontSize: baseFontSize - 1, color: PdfColors.grey700),
+    ),
+  );
 
   /// The document body: title, metadata block, then one table per section.
   List<pw.Widget> _body(
@@ -239,18 +230,15 @@ class TomPdfRenderer extends TomTabularRenderer {
 
   /// The `name: value` block describing how the result was produced.
   pw.Widget _metadataBlock(Map<String, String> metadata) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          for (final entry in metadata.entries)
-            pw.Text(
-              '${entry.key}: ${entry.value}',
-              style: pw.TextStyle(
-                fontSize: baseFontSize,
-                color: PdfColors.grey800,
-              ),
-            ),
-        ],
-      );
+    crossAxisAlignment: pw.CrossAxisAlignment.start,
+    children: [
+      for (final entry in metadata.entries)
+        pw.Text(
+          '${entry.key}: ${entry.value}',
+          style: pw.TextStyle(fontSize: baseFontSize, color: PdfColors.grey800),
+        ),
+    ],
+  );
 
   /// One section as a bordered table with a repeating header row.
   ///

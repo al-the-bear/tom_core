@@ -150,7 +150,11 @@ void main() {
         ..addColumn('widget', column('three'))
         ..renameColumn('widget', 'two', 'second', 'b');
       final table = builder.build().table('widget')!;
-      expect(table.columns.values.map((c) => c.name), ['one', 'second', 'three']);
+      expect(table.columns.values.map((c) => c.name), [
+        'one',
+        'second',
+        'three',
+      ]);
       expect(table.column('second')?.origin, 'b');
     });
 
@@ -229,7 +233,10 @@ CREATE TABLE IF NOT EXISTS widget (
 
     test('reads an inline PRIMARY KEY column modifier', () {
       final schema = replay([
-        artifact('[000]-create', 'CREATE TABLE widget (id BIGINT PRIMARY KEY);'),
+        artifact(
+          '[000]-create',
+          'CREATE TABLE widget (id BIGINT PRIMARY KEY);',
+        ),
       ]);
       expect(schema.table('widget')!.primaryKey, ['id']);
     });
@@ -271,7 +278,10 @@ CREATE TABLE widget (
         artifact('[001]-drop', 'ALTER TABLE widget DROP COLUMN gone;'),
         artifact('[002]-modify', 'ALTER TABLE widget MODIFY wide VARCHAR(20);'),
         artifact('[003]-change', 'ALTER TABLE widget CHANGE old fresh BIGINT;'),
-        artifact('[004]-rename', 'ALTER TABLE widget RENAME COLUMN gets TO got;'),
+        artifact(
+          '[004]-rename',
+          'ALTER TABLE widget RENAME COLUMN gets TO got;',
+        ),
       ]);
       final table = schema.table('widget')!;
       expect(table.column('gone'), isNull);
@@ -284,8 +294,11 @@ CREATE TABLE widget (
 
     test('applies DROP TABLE and RENAME TO', () {
       final schema = replay([
-        artifact('[000]-create', 'CREATE TABLE a (id BIGINT); '
-            'CREATE TABLE b (id BIGINT);'),
+        artifact(
+          '[000]-create',
+          'CREATE TABLE a (id BIGINT); '
+              'CREATE TABLE b (id BIGINT);',
+        ),
         artifact('[001]-drop', 'DROP TABLE IF EXISTS a;'),
         artifact('[002]-rename', 'ALTER TABLE b RENAME TO c;'),
       ]);
@@ -385,10 +398,7 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
       final schema = TomEntitySchemaReader.read([FixtureTaskRecord]);
       final table = schema.table('fixture_task')!;
       expect(table.origin, 'FixtureTaskRecord');
-      expect(
-        table.columns.keys.toSet(),
-        {'id', 'title', 'priority', 'done'},
-      );
+      expect(table.columns.keys.toSet(), {'id', 'title', 'priority', 'done'});
       expect(table.column('id')!.family, TomSqlTypeFamily.integer);
       expect(table.column('title')!.family, TomSqlTypeFamily.text);
       expect(table.column('priority')!.family, TomSqlTypeFamily.integer);
@@ -427,54 +437,56 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
     final check = TomSchemaConvergenceCheck(dialect: dialect);
 
     test('the check has a stable name a validator can register', () {
-      expect(
-        TomSchemaConvergenceCheck.checkName,
-        'ce-mg.schema-convergence',
-      );
+      expect(TomSchemaConvergenceCheck.checkName, 'ce-mg.schema-convergence');
     });
 
-    test('a converged chain reports agreement with no findings at all', () async {
-      final report = await check.checkSchema(
-        convergedMigrations,
-        fixtureDatasource,
-        fixtureSchema,
-        entityTypes: [FixtureTaskRecord],
-      );
-      expect(report.converged, isTrue, reason: report.describe());
-      expect(report.divergences, isEmpty, reason: report.describe());
-      expect(report.describe(), contains('converged'));
-    });
+    test(
+      'a converged chain reports agreement with no findings at all',
+      () async {
+        final report = await check.checkSchema(
+          convergedMigrations,
+          fixtureDatasource,
+          fixtureSchema,
+          entityTypes: [FixtureTaskRecord],
+        );
+        expect(report.converged, isTrue, reason: report.describe());
+        expect(report.divergences, isEmpty, reason: report.describe());
+        expect(report.describe(), contains('converged'));
+      },
+    );
 
-    test('the chain is environment-filtered exactly as the engine filters it',
-        () async {
-      // Under the production-safe default only the two untagged artifacts are
-      // in the chain; under `dev` the tagged seed joins them and — being data —
-      // still leaves the schema unchanged.
-      final production = await check.checkSchema(
-        convergedMigrations,
-        fixtureDatasource,
-        fixtureSchema,
-        entityTypes: [FixtureTaskRecord],
-      );
-      expect(production.chain, [
-        '[000]-create_fixture_task',
-        '[001]-add_task_flags',
-      ]);
+    test(
+      'the chain is environment-filtered exactly as the engine filters it',
+      () async {
+        // Under the production-safe default only the two untagged artifacts are
+        // in the chain; under `dev` the tagged seed joins them and — being data —
+        // still leaves the schema unchanged.
+        final production = await check.checkSchema(
+          convergedMigrations,
+          fixtureDatasource,
+          fixtureSchema,
+          entityTypes: [FixtureTaskRecord],
+        );
+        expect(production.chain, [
+          '[000]-create_fixture_task',
+          '[001]-add_task_flags',
+        ]);
 
-      final development = TomSchemaConvergenceCheck(
-        dialect: dialect,
-        environment: 'dev',
-      );
-      final report = await development.checkSchema(
-        convergedMigrations,
-        fixtureDatasource,
-        fixtureSchema,
-        entityTypes: [FixtureTaskRecord],
-      );
-      expect(report.chain, hasLength(3));
-      expect(report.chain.last, '[002]-fixture_seed@dev');
-      expect(report.converged, isTrue, reason: report.describe());
-    });
+        final development = TomSchemaConvergenceCheck(
+          dialect: dialect,
+          environment: 'dev',
+        );
+        final report = await development.checkSchema(
+          convergedMigrations,
+          fixtureDatasource,
+          fixtureSchema,
+          entityTypes: [FixtureTaskRecord],
+        );
+        expect(report.chain, hasLength(3));
+        expect(report.chain.last, '[002]-fixture_seed@dev');
+        expect(report.converged, isTrue, reason: report.describe());
+      },
+    );
 
     test('a divergent chain localises every disagreement', () async {
       final report = await check.checkSchema(
@@ -613,22 +625,29 @@ CREATE TABLE fixture_task (
       expect(report.divergences, isEmpty);
     });
 
-    test('checkAll walks the whole tree and reports per datasource/schema',
-        () async {
-      final reports = await check.checkAll(
-        convergedMigrations,
-        entityTypes: [FixtureTaskRecord],
-      );
-      expect(reports, hasLength(1));
-      expect(reports.single.datasource, fixtureDatasource);
-      expect(reports.single.schema, fixtureSchema);
-      expect(reports.single.converged, isTrue);
-    });
+    test(
+      'checkAll walks the whole tree and reports per datasource/schema',
+      () async {
+        final reports = await check.checkAll(
+          convergedMigrations,
+          entityTypes: [FixtureTaskRecord],
+        );
+        expect(reports, hasLength(1));
+        expect(reports.single.datasource, fixtureDatasource);
+        expect(reports.single.schema, fixtureSchema);
+        expect(reports.single.converged, isTrue);
+      },
+    );
 
-    test('a missing migrations directory yields no reports rather than throwing',
-        () async {
-      expect(await check.checkAll('test/fixtures/convergence/absent'), isEmpty);
-    });
+    test(
+      'a missing migrations directory yields no reports rather than throwing',
+      () async {
+        expect(
+          await check.checkAll('test/fixtures/convergence/absent'),
+          isEmpty,
+        );
+      },
+    );
 
     test('a malformed artifact name is rejected by the shared parser', () {
       // The check reads names through TomDbMigrations, so a name the engine

@@ -61,7 +61,8 @@ class TomEntitySchemaReader {
   /// does, so a type the repository can load is a type the check can see.
   static List<Type> discoverEntityTypes() => [
     for (final candidate in tomReflector.annotatedClasses)
-      if (candidate.metadata.any((m) => m is TomDbTable)) candidate.reflectedType,
+      if (candidate.metadata.any((m) => m is TomDbTable))
+        candidate.reflectedType,
   ];
 
   /// The entity types of [entityTypes] that map into [datasource] / [schema].
@@ -83,7 +84,8 @@ class TomEntitySchemaReader {
 
   static bool _belongsTo(TomDbTable? table, String datasource, String schema) {
     if (table == null) return false;
-    if (table.datasource.toLowerCase() != datasource.toLowerCase()) return false;
+    if (table.datasource.toLowerCase() != datasource.toLowerCase())
+      return false;
     final declared = table.schema;
     return declared == null || declared.toLowerCase() == schema.toLowerCase();
   }
@@ -383,8 +385,10 @@ class TomSchemaConvergenceCheck {
     }
     final ordered = TomDbMigrations.orderMigrationNames(files.keys);
     return [
-      for (final entry
-          in TomDbMigrations.selectForEnvironment(ordered, environment))
+      for (final entry in TomDbMigrations.selectForEnvironment(
+        ordered,
+        environment,
+      ))
         TomMigrationArtifact(
           entry.basename,
           files[entry.basename]!.readAsStringSync(),

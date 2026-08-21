@@ -38,8 +38,10 @@ void run() {
     endpointId: 'create',
     logRequests: true,
   );
-  print('2. api endpoint: ${apiEndpoint.apiId}.${apiEndpoint.endpointId} '
-      'logRequests=${apiEndpoint.logRequests}');
+  print(
+    '2. api endpoint: ${apiEndpoint.apiId}.${apiEndpoint.endpointId} '
+    'logRequests=${apiEndpoint.logRequests}',
+  );
   assert(apiEndpoint.apiId == 'orders');
 
   // 3. Class-level markers: a service to scan, an API implementation, and a
@@ -47,8 +49,10 @@ void run() {
   const service = tomService;
   const apiImpl = TomApiImplementation(apiId: 'orders');
   const ref = TomComponentReference(componentName: 'orderService');
-  print('3. service=$service apiImpl=${apiImpl.apiId} '
-      'ref=${ref.componentName} logDefault=${apiImpl.logRequestsDefault}');
+  print(
+    '3. service=$service apiImpl=${apiImpl.apiId} '
+    'ref=${ref.componentName} logDefault=${apiImpl.logRequestsDefault}',
+  );
   assert(apiImpl.logRequestsDefault == true);
   assert(ref.componentName == 'orderService');
 
@@ -76,8 +80,10 @@ void run() {
     consumes: TomMimeType.multipartFormData,
     formFields: ['title', 'tags'],
   );
-  print('6. form endpoint: ${formEndpoint.uri} '
-      'consumes=${formEndpoint.consumes} fields=${formEndpoint.formFields}');
+  print(
+    '6. form endpoint: ${formEndpoint.uri} '
+    'consumes=${formEndpoint.consumes} fields=${formEndpoint.formFields}',
+  );
   // Both HTML form shapes answer the same question; only the reading differs.
   assert(tomConsumesForm(formEndpoint.consumes));
   assert(tomConsumesForm(TomMimeType.urlEncoded));
@@ -99,8 +105,10 @@ void run() {
     ],
   );
   final attachment = form.file('attachment')!;
-  print('7. form: fields=${form.fields.keys.toList()} '
-      'file=${attachment.fileName} (${attachment.byteCount} bytes)');
+  print(
+    '7. form: fields=${form.fields.keys.toList()} '
+    'file=${attachment.fileName} (${attachment.byteCount} bytes)',
+  );
   assert(attachment.field == 'attachment');
   assert(form.file('missing') == null);
 
@@ -108,8 +116,10 @@ void run() {
   //    the status and the URL, and the pipeline builds the Response.
   final redirect = TomRedirect.seeOther('/documents/42');
   final redirectResponse = redirect.toResponse();
-  print('8. redirect => HTTP ${redirectResponse.statusCode} '
-      '-> ${redirectResponse.headers[TomHeader.location.toLowerCase()]}');
+  print(
+    '8. redirect => HTTP ${redirectResponse.statusCode} '
+    '-> ${redirectResponse.headers[TomHeader.location.toLowerCase()]}',
+  );
   assert(redirectResponse.statusCode == 303);
   assert(TomRedirect.permanent('/x').status == 308);
 
@@ -117,8 +127,10 @@ void run() {
   //    same TomEndpointBase the scan already keys on, and converts to a GET.
   const socketEndpoint = TomWebSocketEndpoint(uri: '/ws/ticker');
   final converted = socketEndpoint.convertToTomEndpoint();
-  print('9. socket endpoint: ${socketEndpoint.uri} '
-      'routes as ${converted.methods}');
+  print(
+    '9. socket endpoint: ${socketEndpoint.uri} '
+    'routes as ${converted.methods}',
+  );
   // Assigning it to the base type is the whole point: `tag is TomEndpointBase`
   // is what the pipeline's scan asks of every annotation it finds.
   const TomEndpointBase asBase = socketEndpoint;

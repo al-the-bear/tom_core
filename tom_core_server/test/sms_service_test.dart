@@ -28,7 +28,9 @@ TomLocalizedTextResources _texts() => TomLocalizedTextResources(
   bundles: {
     'en': {
       'sms': {
-        'two_factor': {'text': 'Your code is {code}. It expires in {minutes}m.'},
+        'two_factor': {
+          'text': 'Your code is {code}. It expires in {minutes}m.',
+        },
         'welcome': {'text': 'Welcome aboard, {firstname}.'},
         'long': {'text': 'x' * 400},
         'overdue': {'text': 'You have {count} overdue tasks.'},
@@ -95,7 +97,10 @@ void main() {
     test('builds the text from a resource key, on the sms channel', () {
       final message = service.render(code());
       expect(message.channel, TomMessageChannel.sms);
-      expect(message.textBody!.content, 'Your code is 123456. It expires in 5m.');
+      expect(
+        message.textBody!.content,
+        'Your code is 123456. It expires in 5m.',
+      );
       expect(message.subject, isNull, reason: 'an SMS has no subject');
       expect(message.bodies, hasLength(1), reason: 'and no HTML alternative');
     });
@@ -134,7 +139,10 @@ void main() {
           parameters: const {'code': '1', 'minutes': 1},
         ),
       );
-      expect(message.metadata[TomSmsTransport.senderIdMetadataKey], 'PERTENANT');
+      expect(
+        message.metadata[TomSmsTransport.senderIdMetadataKey],
+        'PERTENANT',
+      );
     });
 
     test('there is no way to spell a literal message through this API', () {
@@ -174,10 +182,7 @@ void main() {
   group('segment budget', () {
     test('a rendered message reports its segmentation', () {
       expect(service.segmentationOf(code()).segments, 1);
-      expect(
-        service.segmentationOf(code(templateKey: 'sms.long')).segments,
-        3,
-      );
+      expect(service.segmentationOf(code(templateKey: 'sms.long')).segments, 3);
     });
 
     test('over the cap fails at render, before anything is queued', () async {
@@ -293,13 +298,15 @@ void main() {
       expect(await outbox.store.all(), hasLength(1));
     });
 
-    test('a template fault arrives as a failed future, not a sync throw',
-        () async {
-      await expectLater(
-        service.send(code(templateKey: 'sms.nonexistent')),
-        throwsA(isA<TomMessagingException>()),
-      );
-    });
+    test(
+      'a template fault arrives as a failed future, not a sync throw',
+      () async {
+        await expectLater(
+          service.send(code(templateKey: 'sms.nonexistent')),
+          throwsA(isA<TomMessagingException>()),
+        );
+      },
+    );
   });
 
   // ===========================================================================

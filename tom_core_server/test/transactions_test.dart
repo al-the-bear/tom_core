@@ -89,8 +89,10 @@ void main() {
     test('first startTransaction creates a new transaction', () {
       final (txn, isNew) = TomTransactionManager.startTransaction();
       expect(isNew, isTrue);
-      expect(identical(TomTransactionManager.getCurrentTransaction(), txn),
-          isTrue);
+      expect(
+        identical(TomTransactionManager.getCurrentTransaction(), txn),
+        isTrue,
+      );
       expect(TomTransactionManager.transactional, isTrue);
     });
 
@@ -127,17 +129,19 @@ void main() {
   });
 
   group('commitTransaction', () {
-    test('commits then ends every participant and clears the manager',
-        () async {
-      final (txn, _) = TomTransactionManager.startTransaction();
-      final p = _RecordingParticipant('a');
-      await txn.registerParticipant(p);
-      final ok = await txn.commitTransaction();
-      expect(ok, isTrue);
-      expect(p.calls, ['start', 'commit', 'end']);
-      expect(txn.isRunning, isFalse);
-      expect(TomTransactionManager.getCurrentTransaction(), isNull);
-    });
+    test(
+      'commits then ends every participant and clears the manager',
+      () async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final p = _RecordingParticipant('a');
+        await txn.registerParticipant(p);
+        final ok = await txn.commitTransaction();
+        expect(ok, isTrue);
+        expect(p.calls, ['start', 'commit', 'end']);
+        expect(txn.isRunning, isFalse);
+        expect(TomTransactionManager.getCurrentTransaction(), isNull);
+      },
+    );
 
     test('commits then ends all participants in registration order', () async {
       final log = <String>[];
@@ -148,7 +152,14 @@ void main() {
       expect(ok, isTrue);
       // All commits run (in order) before any endTransaction, and both phases
       // follow registration order.
-      expect(log, ['a:start', 'b:start', 'a:commit', 'b:commit', 'a:end', 'b:end']);
+      expect(log, [
+        'a:start',
+        'b:start',
+        'a:commit',
+        'b:commit',
+        'a:end',
+        'b:end',
+      ]);
     });
 
     test('a vetoing participant turns the commit into a rollback', () async {
@@ -160,58 +171,78 @@ void main() {
       expect(TomTransactionManager.getCurrentTransaction(), isNull);
     });
 
-    test('a later veto also rolls back the participants that already committed',
-        () async {
-      final (txn, _) = TomTransactionManager.startTransaction();
-      final committed = _RecordingParticipant('a');
-      final vetoer = _RecordingParticipant('b', vetoCommit: true);
-      await txn.registerParticipant(committed);
-      await txn.registerParticipant(vetoer);
-      final ok = await txn.commitTransaction();
-      // The veto aborts the commit loop and rolls the whole transaction back,
-      // so the participant that already committed successfully is still rolled
-      // back and ended.
-      expect(ok, isTrue); // rollback's end calls all succeeded
-      expect(committed.calls, ['start', 'commit', 'rollback', 'end']);
-      expect(vetoer.calls, ['start', 'commit', 'rollback', 'end']);
-    });
+    test(
+      'a later veto also rolls back the participants that already committed',
+      () async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final committed = _RecordingParticipant('a');
+        final vetoer = _RecordingParticipant('b', vetoCommit: true);
+        await txn.registerParticipant(committed);
+        await txn.registerParticipant(vetoer);
+        final ok = await txn.commitTransaction();
+        // The veto aborts the commit loop and rolls the whole transaction back,
+        // so the participant that already committed successfully is still rolled
+        // back and ended.
+        expect(ok, isTrue); // rollback's end calls all succeeded
+        expect(committed.calls, ['start', 'commit', 'rollback', 'end']);
+        expect(vetoer.calls, ['start', 'commit', 'rollback', 'end']);
+      },
+    );
 
-    test('a failing endTransaction makes a clean commit report false', () async {
-      final (txn, _) = TomTransactionManager.startTransaction();
-      final p = _RecordingParticipant('a', endResult: false);
-      await txn.registerParticipant(p);
-      final ok = await txn.commitTransaction();
-      // The work committed, but the resource-release step failed, which the
-      // return value surfaces.
-      expect(ok, isFalse);
-      expect(p.calls, ['start', 'commit', 'end']);
-      expect(TomTransactionManager.getCurrentTransaction(), isNull);
-    });
+    test(
+      'a failing endTransaction makes a clean commit report false',
+      () async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final p = _RecordingParticipant('a', endResult: false);
+        await txn.registerParticipant(p);
+        final ok = await txn.commitTransaction();
+        // The work committed, but the resource-release step failed, which the
+        // return value surfaces.
+        expect(ok, isFalse);
+        expect(p.calls, ['start', 'commit', 'end']);
+        expect(TomTransactionManager.getCurrentTransaction(), isNull);
+      },
+    );
   });
 
   group('rollbackTransaction', () {
-    test('rolls back then ends every participant and clears the manager',
-        () async {
-      final (txn, _) = TomTransactionManager.startTransaction();
-      final p = _RecordingParticipant('a');
-      await txn.registerParticipant(p);
-      final ok = await txn.rollbackTransaction();
-      expect(ok, isTrue);
-      expect(p.calls, ['start', 'rollback', 'end']);
-      expect(txn.isRunning, isFalse);
-      expect(TomTransactionManager.getCurrentTransaction(), isNull);
-    });
+    test(
+      'rolls back then ends every participant and clears the manager',
+      () async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final p = _RecordingParticipant('a');
+        await txn.registerParticipant(p);
+        final ok = await txn.rollbackTransaction();
+        expect(ok, isTrue);
+        expect(p.calls, ['start', 'rollback', 'end']);
+        expect(txn.isRunning, isFalse);
+        expect(TomTransactionManager.getCurrentTransaction(), isNull);
+      },
+    );
 
-    test('rolls back then ends all participants in registration order', () async {
-      final log = <String>[];
-      final (txn, _) = TomTransactionManager.startTransaction();
-      await txn.registerParticipant(_RecordingParticipant('a', sharedLog: log));
-      await txn.registerParticipant(_RecordingParticipant('b', sharedLog: log));
-      final ok = await txn.rollbackTransaction();
-      expect(ok, isTrue);
-      expect(log,
-          ['a:start', 'b:start', 'a:rollback', 'b:rollback', 'a:end', 'b:end']);
-    });
+    test(
+      'rolls back then ends all participants in registration order',
+      () async {
+        final log = <String>[];
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(
+          _RecordingParticipant('a', sharedLog: log),
+        );
+        await txn.registerParticipant(
+          _RecordingParticipant('b', sharedLog: log),
+        );
+        final ok = await txn.rollbackTransaction();
+        expect(ok, isTrue);
+        expect(log, [
+          'a:start',
+          'b:start',
+          'a:rollback',
+          'b:rollback',
+          'a:end',
+          'b:end',
+        ]);
+      },
+    );
 
     test('a failing endTransaction makes rollback report false', () async {
       final (txn, _) = TomTransactionManager.startTransaction();
@@ -261,51 +292,52 @@ void main() {
   });
 
   group('runInTransactionScope', () {
-    test('two concurrent flows do not observe each other\'s transaction',
-        () async {
-      // The assertion this whole change exists for. Both flows are started
-      // before either finishes, and each yields at a point where the other is
-      // guaranteed to have opened its transaction — exactly what two requests
-      // interleaving in one isolate do. With a process-wide current
-      // transaction the second flow would receive the first one's handle with
-      // isNew == false, and whichever concluded first would commit the other's
-      // work.
-      final aOpened = Completer<void>();
-      final bOpened = Completer<void>();
+    test(
+      'two concurrent flows do not observe each other\'s transaction',
+      () async {
+        // The assertion this whole change exists for. Both flows are started
+        // before either finishes, and each yields at a point where the other is
+        // guaranteed to have opened its transaction — exactly what two requests
+        // interleaving in one isolate do. With a process-wide current
+        // transaction the second flow would receive the first one's handle with
+        // isNew == false, and whichever concluded first would commit the other's
+        // work.
+        final aOpened = Completer<void>();
+        final bOpened = Completer<void>();
 
-      Future<TomTransaction> flow(
-        Completer<void> mine,
-        Completer<void> theirs,
-        TomTransactionParticipant participant,
-      ) =>
-          TomTransactionManager.runInTransactionScope(() async {
-            final (txn, isNew) = TomTransactionManager.startTransaction();
-            expect(isNew, isTrue, reason: 'each flow opens its own transaction');
-            await enlistAmbiently(participant);
-            mine.complete();
-            await theirs.future;
-            // After the interleave the flow still sees its own transaction.
-            expect(
-              identical(TomTransactionManager.getCurrentTransaction(), txn),
-              isTrue,
-            );
-            await txn.commitTransaction();
-            return txn;
-          });
+        Future<TomTransaction> flow(
+          Completer<void> mine,
+          Completer<void> theirs,
+          TomTransactionParticipant participant,
+        ) => TomTransactionManager.runInTransactionScope(() async {
+          final (txn, isNew) = TomTransactionManager.startTransaction();
+          expect(isNew, isTrue, reason: 'each flow opens its own transaction');
+          await enlistAmbiently(participant);
+          mine.complete();
+          await theirs.future;
+          // After the interleave the flow still sees its own transaction.
+          expect(
+            identical(TomTransactionManager.getCurrentTransaction(), txn),
+            isTrue,
+          );
+          await txn.commitTransaction();
+          return txn;
+        });
 
-      final pa = _RecordingParticipant('a');
-      final pb = _RecordingParticipant('b');
-      final transactions = await Future.wait([
-        flow(aOpened, bOpened, pa),
-        flow(bOpened, aOpened, pb),
-      ]);
+        final pa = _RecordingParticipant('a');
+        final pb = _RecordingParticipant('b');
+        final transactions = await Future.wait([
+          flow(aOpened, bOpened, pa),
+          flow(bOpened, aOpened, pb),
+        ]);
 
-      expect(identical(transactions[0], transactions[1]), isFalse);
-      // Each participant joined exactly one transaction and was driven by it
-      // once — nobody was committed twice or by the wrong flow.
-      expect(pa.calls, ['start', 'commit', 'end']);
-      expect(pb.calls, ['start', 'commit', 'end']);
-    });
+        expect(identical(transactions[0], transactions[1]), isFalse);
+        // Each participant joined exactly one transaction and was driven by it
+        // once — nobody was committed twice or by the wrong flow.
+        expect(pa.calls, ['start', 'commit', 'end']);
+        expect(pb.calls, ['start', 'commit', 'end']);
+      },
+    );
 
     test('a transaction inside a scope is invisible outside it', () async {
       // A flow running outside the scope must find *nothing*, not the
@@ -327,8 +359,10 @@ void main() {
         () => TomTransactionManager.getCurrentTransaction(),
       );
       expect(inner, isNull);
-      expect(identical(TomTransactionManager.getCurrentTransaction(), outer),
-          isTrue);
+      expect(
+        identical(TomTransactionManager.getCurrentTransaction(), outer),
+        isTrue,
+      );
     });
 
     test('nesting scopes gives the inner one its own transaction', () async {
@@ -344,8 +378,10 @@ void main() {
         );
         expect(identical(inner, outer), isFalse);
         // Concluding the inner transaction left the outer scope untouched.
-        expect(identical(TomTransactionManager.getCurrentTransaction(), outer),
-            isTrue);
+        expect(
+          identical(TomTransactionManager.getCurrentTransaction(), outer),
+          isTrue,
+        );
         await outer.rollbackTransaction();
       });
     });
@@ -384,8 +420,9 @@ void main() {
         opened = txn;
         // Conclude from outside the scope entirely.
         await Zone.root.run(() => txn.commitTransaction());
-        scopeSawItCleared
-            .complete(TomTransactionManager.getCurrentTransaction() == null);
+        scopeSawItCleared.complete(
+          TomTransactionManager.getCurrentTransaction() == null,
+        );
       });
       expect(await scopeSawItCleared.future, isTrue);
       expect(opened.isRunning, isFalse);
@@ -393,16 +430,18 @@ void main() {
   });
 
   group('ambient enlistment', () {
-    test('a participant enlisting inside a scope joins that transaction',
-        () async {
-      final p = _RecordingParticipant('inside');
-      await TomTransactionManager.runInTransactionScope(() async {
-        final (txn, _) = TomTransactionManager.startTransaction();
-        expect(await enlistAmbiently(p), isTrue);
-        await txn.commitTransaction();
-      });
-      expect(p.calls, ['start', 'commit', 'end']);
-    });
+    test(
+      'a participant enlisting inside a scope joins that transaction',
+      () async {
+        final p = _RecordingParticipant('inside');
+        await TomTransactionManager.runInTransactionScope(() async {
+          final (txn, _) = TomTransactionManager.startTransaction();
+          expect(await enlistAmbiently(p), isTrue);
+          await txn.commitTransaction();
+        });
+        expect(p.calls, ['start', 'commit', 'end']);
+      },
+    );
 
     test('a participant enlisting outside every scope joins nothing', () async {
       final inside = _RecordingParticipant('inside');
@@ -431,10 +470,7 @@ void main() {
 
   group('TomTransactionException', () {
     test('is a TomServerException subtype', () {
-      expect(
-        TomTransactionException('k', 'm'),
-        isA<TomServerException>(),
-      );
+      expect(TomTransactionException('k', 'm'), isA<TomServerException>());
     });
 
     test('carries its key and default user message', () {

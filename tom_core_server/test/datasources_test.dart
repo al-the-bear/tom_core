@@ -36,8 +36,10 @@ void main() {
     });
 
     test('TomDbDateTime parses an ISO-8601 string', () {
-      expect(TomDbDateTime.of('2026-01-02T03:04:05').get(),
-          DateTime.parse('2026-01-02T03:04:05'));
+      expect(
+        TomDbDateTime.of('2026-01-02T03:04:05').get(),
+        DateTime.parse('2026-01-02T03:04:05'),
+      );
     });
 
     test('a null string yields a box holding null', () {
@@ -124,14 +126,17 @@ void main() {
     });
 
     test('between uses the two limits', () {
-      expect(d.between(a, [_Literal<TomDbInt>('1'), _Literal<TomDbInt>('9')]),
-          'a BETWEEN 1 AND 9');
+      expect(
+        d.between(a, [_Literal<TomDbInt>('1'), _Literal<TomDbInt>('9')]),
+        'a BETWEEN 1 AND 9',
+      );
     });
 
     test('isin joins the choices with commas', () {
       expect(
-          d.isin(a, [_Literal<TomDbInt>('1'), _Literal<TomDbInt>('2')]),
-          'a IN (1,2)');
+        d.isin(a, [_Literal<TomDbInt>('1'), _Literal<TomDbInt>('2')]),
+        'a IN (1,2)',
+      );
     });
 
     test('group wraps in parentheses', () {
@@ -165,14 +170,20 @@ void main() {
     });
 
     test('getParameters is empty by default', () {
-      expect(_Literal<TomDbInt>('x').getParameters(TomStandardSqlDialect()),
-          isEmpty);
+      expect(
+        _Literal<TomDbInt>('x').getParameters(TomStandardSqlDialect()),
+        isEmpty,
+      );
     });
 
     test('getFields reports referenced fields', () {
-      expect(_Literal<TomDbInt>('x', fields: {'col'}).getFields(
-          TomStandardSqlDialect()),
-          {'col'});
+      expect(
+        _Literal<TomDbInt>(
+          'x',
+          fields: {'col'},
+        ).getFields(TomStandardSqlDialect()),
+        {'col'},
+      );
     });
   });
 
@@ -202,41 +213,56 @@ void main() {
     test('limitClause rejects a window MariaDB cannot express', () {
       // No bare OFFSET in the LIMIT grammar, so a skip without a cap would be
       // silently dropped.
-      expect(() => TomGeneratedQuery.limitClause(0, 10),
-          throwsA(isA<TomQuerySyntaxException>()));
-      expect(() => TomGeneratedQuery.limitClause(5, -1),
-          throwsA(isA<TomQuerySyntaxException>()));
+      expect(
+        () => TomGeneratedQuery.limitClause(0, 10),
+        throwsA(isA<TomQuerySyntaxException>()),
+      );
+      expect(
+        () => TomGeneratedQuery.limitClause(5, -1),
+        throwsA(isA<TomQuerySyntaxException>()),
+      );
     });
 
     test('orderByClause uses "ASC"/"DESC", not "ASCENDING"/"DESCENDING"', () {
       expect(
-          TomGeneratedQuery.orderByClause(
-              TomSortField.allOf(const ['t.a', 't.b'],
-                  direction: TomSortDirection.descending)),
-          ' ORDER BY t.a DESC,t.b DESC');
-      expect(TomGeneratedQuery.orderByClause(const [TomSortField.asc('t.a')]),
-          ' ORDER BY t.a ASC');
+        TomGeneratedQuery.orderByClause(
+          TomSortField.allOf(const [
+            't.a',
+            't.b',
+          ], direction: TomSortDirection.descending),
+        ),
+        ' ORDER BY t.a DESC,t.b DESC',
+      );
+      expect(
+        TomGeneratedQuery.orderByClause(const [TomSortField.asc('t.a')]),
+        ' ORDER BY t.a ASC',
+      );
       expect(TomGeneratedQuery.orderByClause(const []), '');
     });
 
     test('orderByClause gives every term its own direction', () {
       expect(
-          TomGeneratedQuery.orderByClause(const [
-            TomSortField.desc('t.priority'),
-            TomSortField.asc('t.due_date'),
-          ]),
-          ' ORDER BY t.priority DESC,t.due_date ASC');
+        TomGeneratedQuery.orderByClause(const [
+          TomSortField.desc('t.priority'),
+          TomSortField.asc('t.due_date'),
+        ]),
+        ' ORDER BY t.priority DESC,t.due_date ASC',
+      );
     });
 
-    test('countProjection emits a valid COUNT(DISTINCT ...), never DISTINCT(*)',
-        () {
-      expect(TomGeneratedQuery.countProjection(false, []), 'COUNT(*)');
-      expect(TomGeneratedQuery.countProjection(true, ['u.id', 'u.name']),
-          'COUNT(DISTINCT u.id, u.name)');
-      // No columns to distinguish on -> falls back to COUNT(*), not the invalid
-      // COUNT(DISTINCT(*)).
-      expect(TomGeneratedQuery.countProjection(true, []), 'COUNT(*)');
-    });
+    test(
+      'countProjection emits a valid COUNT(DISTINCT ...), never DISTINCT(*)',
+      () {
+        expect(TomGeneratedQuery.countProjection(false, []), 'COUNT(*)');
+        expect(
+          TomGeneratedQuery.countProjection(true, ['u.id', 'u.name']),
+          'COUNT(DISTINCT u.id, u.name)',
+        );
+        // No columns to distinguish on -> falls back to COUNT(*), not the invalid
+        // COUNT(DISTINCT(*)).
+        expect(TomGeneratedQuery.countProjection(true, []), 'COUNT(*)');
+      },
+    );
   });
 
   group('MariadbPreparedStatement.buildPositionalParameters (bug §65)', () {
@@ -359,27 +385,31 @@ void main() {
     // of another and collapses repeated placeholders into one slot; a
     // whole-identifier scan in occurrence order fixes both.
 
-    test('a placeholder that prefixes another is not corrupted (:id vs :idx)',
-        () {
-      final (sql, params) = MariaDbDatasource.toPositionalStatement(
-        'a = :id AND b = :idx',
-      );
-      // replaceAll(":id","?") would turn ":idx" into "?x"; the tokeniser keeps
-      // each whole identifier, so both become independent `?` slots.
-      expect(sql, 'a = ? AND b = ?');
-      expect(params, ['id', 'idx']);
-    });
+    test(
+      'a placeholder that prefixes another is not corrupted (:id vs :idx)',
+      () {
+        final (sql, params) = MariaDbDatasource.toPositionalStatement(
+          'a = :id AND b = :idx',
+        );
+        // replaceAll(":id","?") would turn ":idx" into "?x"; the tokeniser keeps
+        // each whole identifier, so both become independent `?` slots.
+        expect(sql, 'a = ? AND b = ?');
+        expect(params, ['id', 'idx']);
+      },
+    );
 
-    test('a repeated placeholder gets one `?` slot (and entry) per occurrence',
-        () {
-      final (sql, params) = MariaDbDatasource.toPositionalStatement(
-        'x = :v OR y = :v',
-      );
-      // Two `?` slots need two bind entries; a single collapsed slot would
-      // desynchronise every following positional value.
-      expect(sql, 'x = ? OR y = ?');
-      expect(params, ['v', 'v']);
-    });
+    test(
+      'a repeated placeholder gets one `?` slot (and entry) per occurrence',
+      () {
+        final (sql, params) = MariaDbDatasource.toPositionalStatement(
+          'x = :v OR y = :v',
+        );
+        // Two `?` slots need two bind entries; a single collapsed slot would
+        // desynchronise every following positional value.
+        expect(sql, 'x = ? OR y = ?');
+        expect(params, ['v', 'v']);
+      },
+    );
 
     test('names are returned in textual `?` order, not declaration order', () {
       final (sql, params) = MariaDbDatasource.toPositionalStatement(
@@ -406,8 +436,7 @@ void main() {
       expect(params, isEmpty);
     });
 
-    test('a `:name`-looking substring inside a string literal is not a slot',
-        () {
+    test('a `:name`-looking substring inside a string literal is not a slot', () {
       // RCC6: a bound :p ANDed with an inlined 'x:y' literal must yield exactly
       // one `?`; the `:y` inside the quotes is literal text, not a placeholder.
       final (sql, params) = MariaDbDatasource.toPositionalStatement(
@@ -427,8 +456,7 @@ void main() {
       expect(params, ['p']);
     });
 
-    test('a backslash escape inside a literal is honoured (MariaDB default)',
-        () {
+    test('a backslash escape inside a literal is honoured (MariaDB default)', () {
       // The dialect escapes embedded quotes/backslashes; a `\\'` sequence keeps
       // the scan inside the literal so the following `:z` stays literal text.
       final (sql, params) = MariaDbDatasource.toPositionalStatement(
@@ -438,14 +466,16 @@ void main() {
       expect(params, ['p']);
     });
 
-    test('a `:name`-looking substring inside a double-quoted literal is safe',
-        () {
-      final (sql, params) = MariaDbDatasource.toPositionalStatement(
-        'a = "x:y" AND b = :p',
-      );
-      expect(sql, 'a = "x:y" AND b = ?');
-      expect(params, ['p']);
-    });
+    test(
+      'a `:name`-looking substring inside a double-quoted literal is safe',
+      () {
+        final (sql, params) = MariaDbDatasource.toPositionalStatement(
+          'a = "x:y" AND b = :p',
+        );
+        expect(sql, 'a = "x:y" AND b = ?');
+        expect(params, ['p']);
+      },
+    );
 
     test('a `:name`-looking substring inside a backtick identifier is safe '
         '(RCB10)', () {
@@ -485,8 +515,7 @@ void main() {
     });
   });
 
-  group('SqlPlaceholderScan.extractNames (RCC6, shared with crud_repository)',
-      () {
+  group('SqlPlaceholderScan.extractNames (RCC6, shared with crud_repository)', () {
     test('extractNames mirrors toPositional and skips literal content', () {
       // crud_repository._extractPlaceholderNames delegates here, so raw
       // statements prepared by the repository inherit the same quote-aware
@@ -498,20 +527,14 @@ void main() {
     });
 
     test('extractNames returns repeats in textual order', () {
-      expect(
-        SqlPlaceholderScan.extractNames('x = :v OR y = :v'),
-        ['v', 'v'],
-      );
+      expect(SqlPlaceholderScan.extractNames('x = :v OR y = :v'), ['v', 'v']);
     });
 
     test('extractNames skips a `:name`-looking backtick identifier (RCB10)', () {
       // The repository's raw-bind path inherits the same backtick awareness as
       // the datasource rewrite: `weird:col` is a quoted identifier, so only the
       // real bound :p is extracted.
-      expect(
-        SqlPlaceholderScan.extractNames('`weird:col` = :p'),
-        ['p'],
-      );
+      expect(SqlPlaceholderScan.extractNames('`weird:col` = :p'), ['p']);
     });
   });
 
@@ -546,30 +569,36 @@ void main() {
     setUp(() => TomDataSourceInfo.datasources.clear());
     tearDown(() => TomDataSourceInfo.datasources.clear());
 
-    test('a Map<String, Object?> entry is processed, not silently skipped', () async {
-      // delegateTo aliasing exercises the registration path without opening a
-      // real connection.
-      final base = TomDataSourceInfo('base', <String, dynamic>{});
-      TomDataSourceInfo.datasources['base'] = base;
-      final config = <String, dynamic>{
-        'alias': <String, Object?>{'delegateTo': 'base'},
-      };
-      final result = await TomDataSourceInfo.initializeDatasourceInfo(config);
-      expect(result, 1);
-      // Before §68 the Map<String,Object?> entry is not a Map<String,Object>, so
-      // it is skipped and 'alias' is never registered.
-      expect(TomDataSourceInfo.getDataSourceInfo('alias'), same(base));
-    });
+    test(
+      'a Map<String, Object?> entry is processed, not silently skipped',
+      () async {
+        // delegateTo aliasing exercises the registration path without opening a
+        // real connection.
+        final base = TomDataSourceInfo('base', <String, dynamic>{});
+        TomDataSourceInfo.datasources['base'] = base;
+        final config = <String, dynamic>{
+          'alias': <String, Object?>{'delegateTo': 'base'},
+        };
+        final result = await TomDataSourceInfo.initializeDatasourceInfo(config);
+        expect(result, 1);
+        // Before §68 the Map<String,Object?> entry is not a Map<String,Object>, so
+        // it is skipped and 'alias' is never registered.
+        expect(TomDataSourceInfo.getDataSourceInfo('alias'), same(base));
+      },
+    );
 
-    test('a YamlMap-style Map<dynamic, dynamic> entry is also processed', () async {
-      final base = TomDataSourceInfo('base2', <String, dynamic>{});
-      TomDataSourceInfo.datasources['base2'] = base;
-      final config = <String, dynamic>{
-        'alias2': <dynamic, dynamic>{'delegateTo': 'base2'},
-      };
-      await TomDataSourceInfo.initializeDatasourceInfo(config);
-      expect(TomDataSourceInfo.getDataSourceInfo('alias2'), same(base));
-    });
+    test(
+      'a YamlMap-style Map<dynamic, dynamic> entry is also processed',
+      () async {
+        final base = TomDataSourceInfo('base2', <String, dynamic>{});
+        TomDataSourceInfo.datasources['base2'] = base;
+        final config = <String, dynamic>{
+          'alias2': <dynamic, dynamic>{'delegateTo': 'base2'},
+        };
+        await TomDataSourceInfo.initializeDatasourceInfo(config);
+        expect(TomDataSourceInfo.getDataSourceInfo('alias2'), same(base));
+      },
+    );
 
     test('a non-map entry is ignored', () async {
       final result = await TomDataSourceInfo.initializeDatasourceInfo(
@@ -641,19 +670,21 @@ void main() {
   });
 
   group('MariaDbXADatasource transaction lifecycle (bug §66)', () {
-    test('rollback clears the branch id so the next startTransaction is allowed',
-        () async {
-      final ds = MariaDbXADatasource();
-      // No connection: executeCommand fails, startTransaction returns false, but
-      // the branch id is now set.
-      await ds.startTransaction();
-      // Before §66 rollback leaves the branch id set, so the next
-      // startTransaction throws "There is already an active transaction". After
-      // the fix it is cleared, so a second start is allowed (still returns false
-      // for the missing connection, but must not throw).
-      await ds.rollback();
-      await expectLater(ds.startTransaction(), completion(isFalse));
-    });
+    test(
+      'rollback clears the branch id so the next startTransaction is allowed',
+      () async {
+        final ds = MariaDbXADatasource();
+        // No connection: executeCommand fails, startTransaction returns false, but
+        // the branch id is now set.
+        await ds.startTransaction();
+        // Before §66 rollback leaves the branch id set, so the next
+        // startTransaction throws "There is already an active transaction". After
+        // the fix it is cleared, so a second start is allowed (still returns false
+        // for the missing connection, but must not throw).
+        await ds.rollback();
+        await expectLater(ds.startTransaction(), completion(isFalse));
+      },
+    );
 
     test('a failed endTransaction clears the branch id', () async {
       final ds = MariaDbXADatasource();

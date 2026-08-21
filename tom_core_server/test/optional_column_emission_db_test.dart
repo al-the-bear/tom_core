@@ -108,37 +108,38 @@ void main() async {
         expect(loaded.occurredAt, _occurred);
       });
 
-      test('stores an absent value as SQL NULL and reads it back as null',
-          () async {
-        final repo = FixtureOptionalColumnRepository();
+      test(
+        'stores an absent value as SQL NULL and reads it back as null',
+        () async {
+          final repo = FixtureOptionalColumnRepository();
 
-        // Every optional column left unset — the state the whole rule exists to
-        // make representable.
-        final saved = await repo.save(FixtureOptionalColumnRecord());
-        final loaded = await repo.findById(saved.id!);
+          // Every optional column left unset — the state the whole rule exists to
+          // make representable.
+          final saved = await repo.save(FixtureOptionalColumnRecord());
+          final loaded = await repo.findById(saved.id!);
 
-        expect(loaded, isNotNull);
-        expect(loaded!.name, isNull);
-        expect(loaded.ratio, isNull);
-        expect(loaded.quantity, isNull);
-        expect(loaded.active, isNull);
-        expect(loaded.occurredAt, isNull);
+          expect(loaded, isNotNull);
+          expect(loaded!.name, isNull);
+          expect(loaded.ratio, isNull);
+          expect(loaded.quantity, isNull);
+          expect(loaded.active, isNull);
+          expect(loaded.occurredAt, isNull);
 
-        // …and it is a real SQL NULL, not an empty string or a zero that reads
-        // back as absent. Asked of the database directly, because that is the
-        // only place the distinction survives.
-        final counts = await dsi.datasource.executeQuery<TomCountResult>(
-          'SELECT COUNT(*) AS count FROM fixture_nullable '
-          'WHERE name IS NULL AND ratio IS NULL AND quantity IS NULL '
-          'AND active IS NULL AND occurred_at IS NULL',
-          null,
-          TomCountResult,
-        );
-        expect(counts.single.count, 1);
-      });
+          // …and it is a real SQL NULL, not an empty string or a zero that reads
+          // back as absent. Asked of the database directly, because that is the
+          // only place the distinction survives.
+          final counts = await dsi.datasource.executeQuery<TomCountResult>(
+            'SELECT COUNT(*) AS count FROM fixture_nullable '
+            'WHERE name IS NULL AND ratio IS NULL AND quantity IS NULL '
+            'AND active IS NULL AND occurred_at IS NULL',
+            null,
+            TomCountResult,
+          );
+          expect(counts.single.count, 1);
+        },
+      );
 
-      test('an absent value survives being written over a present one',
-          () async {
+      test('an absent value survives being written over a present one', () async {
         final repo = FixtureOptionalColumnRepository();
 
         final saved = await repo.save(_populated());
@@ -184,23 +185,25 @@ void main() async {
         );
       });
 
-      test('read-back still works, which is why the asymmetry is easy to miss',
-          () async {
-        // Inserted directly: the observable arm has no write path, which is the
-        // previous test's subject.
-        await dsi.datasource.executeCommand(
-          "INSERT INTO fixture_nullable (name) VALUES ('widget')",
-        );
+      test(
+        'read-back still works, which is why the asymmetry is easy to miss',
+        () async {
+          // Inserted directly: the observable arm has no write path, which is the
+          // previous test's subject.
+          await dsi.datasource.executeCommand(
+            "INSERT INTO fixture_nullable (name) VALUES ('widget')",
+          );
 
-        final rows = await dsi.datasource.executeQuery<FixtureNullableRecord>(
-          'SELECT id, name, ratio, quantity, active, occurred_at '
-          'FROM fixture_nullable',
-        );
+          final rows = await dsi.datasource.executeQuery<FixtureNullableRecord>(
+            'SELECT id, name, ratio, quantity, active, occurred_at '
+            'FROM fixture_nullable',
+          );
 
-        // Mapping in is fine — so a spec author choosing observables for an
-        // entity would see it work, right up to the first save.
-        expect(rows.single.name.get(), 'widget');
-      });
+          // Mapping in is fine — so a spec author choosing observables for an
+          // entity would see it work, right up to the first save.
+          expect(rows.single.name.get(), 'widget');
+        },
+      );
     });
   }, skip: skipReason);
 }

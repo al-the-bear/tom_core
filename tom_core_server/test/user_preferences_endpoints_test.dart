@@ -169,8 +169,10 @@ void main() {
     test('the list endpoint has no handler of its own, and needs none', () {
       // It takes no key and cannot miss — an empty list is an answer. A handler
       // there could only translate faults that are genuinely faults.
-      expect(_declaredEndpointHandlers()[tomUserPreferencesListEndpointId],
-          isNull);
+      expect(
+        _declaredEndpointHandlers()[tomUserPreferencesListEndpointId],
+        isNull,
+      );
     });
   });
 }

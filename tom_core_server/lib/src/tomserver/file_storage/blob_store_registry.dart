@@ -37,10 +37,8 @@ import 'directory_blob_store.dart';
 import 's3_blob_store.dart';
 
 /// Builds a store of one backend type from its configured [settings].
-typedef TomBlobStoreFactory = FutureOr<TomBlobStore> Function(
-  String name,
-  Map<String, dynamic> settings,
-);
+typedef TomBlobStoreFactory =
+    FutureOr<TomBlobStore> Function(String name, Map<String, dynamic> settings);
 
 /// The process-wide registry of named, configured blob stores.
 class TomBlobStoreInfo {
@@ -188,7 +186,11 @@ class TomBlobStoreInfo {
       throw TomStorageException(
         'storage.registry.unknown_backend',
         'The configured file-store backend type is not registered.',
-        parameters: {'store': name, 'type': type, 'known': _backends.keys.toList()},
+        parameters: {
+          'store': name,
+          'type': type,
+          'known': _backends.keys.toList(),
+        },
       );
     }
     _store = await factory(name, settings);
@@ -248,8 +250,8 @@ class TomBlobStoreInfo {
   static int? _asInt(Object? raw) => raw is int
       ? raw
       : raw is String
-          ? int.tryParse(raw.trim())
-          : null;
+      ? int.tryParse(raw.trim())
+      : null;
 
   static TomStorageException _missing(String store, String setting) =>
       TomStorageException(

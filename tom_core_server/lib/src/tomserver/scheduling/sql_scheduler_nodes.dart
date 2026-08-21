@@ -130,8 +130,9 @@ DateTime schedulerNodeFailedAfter({
   Duration slack = defaultNodeFailureSlack,
 }) {
   final selfLateness = now.difference(lastSelfCheckin);
-  final allowance =
-      selfLateness > peer.checkinInterval ? selfLateness : peer.checkinInterval;
+  final allowance = selfLateness > peer.checkinInterval
+      ? selfLateness
+      : peer.checkinInterval;
   return peer.checkinAt.add(allowance).add(slack);
 }
 
@@ -141,13 +142,14 @@ bool isSchedulerNodeFailed({
   required DateTime now,
   required DateTime lastSelfCheckin,
   Duration slack = defaultNodeFailureSlack,
-}) =>
-    now.isAfter(schedulerNodeFailedAfter(
-      peer: peer,
-      now: now,
-      lastSelfCheckin: lastSelfCheckin,
-      slack: slack,
-    ));
+}) => now.isAfter(
+  schedulerNodeFailedAfter(
+    peer: peer,
+    now: now,
+    lastSelfCheckin: lastSelfCheckin,
+    slack: slack,
+  ),
+);
 
 /// The roll call, backed by a table in a [TomDataSource].
 ///
@@ -249,14 +251,11 @@ class TomSqlSchedulerNodes {
   /// Announces this node as alive at [now].
   Future<void> checkIn(DateTime now) async {
     await ensureSchema();
-    await datasource.executeCommand(
-      _roll.insert('REPLACE', _checkInColumns),
-      {
-        'nodeId': nodeId,
-        'checkinAt': sqlInstant(now),
-        'checkinInterval': checkinInterval.inMilliseconds,
-      },
-    );
+    await datasource.executeCommand(_roll.insert('REPLACE', _checkInColumns), {
+      'nodeId': nodeId,
+      'checkinAt': sqlInstant(now),
+      'checkinInterval': checkinInterval.inMilliseconds,
+    });
     _lastCheckin = now.isUtc ? now : now.toUtc();
   }
 
@@ -313,10 +312,10 @@ class TomSqlSchedulerNodes {
   }
 
   static TomSchedulerNode _nodeOf(TomSchedulerNodeRow row) => TomSchedulerNode(
-        nodeId: row.nodeId,
-        checkinAt: parseSqlInstant(row.checkinAt),
-        checkinInterval: Duration(milliseconds: row.checkinInterval),
-      );
+    nodeId: row.nodeId,
+    checkinAt: parseSqlInstant(row.checkinAt),
+    checkinInterval: Duration(milliseconds: row.checkinInterval),
+  );
 
   @override
   String toString() => 'TomSqlSchedulerNodes($table, node: $nodeId)';

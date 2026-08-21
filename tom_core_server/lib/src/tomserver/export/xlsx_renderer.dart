@@ -112,8 +112,10 @@ class TomXlsxRenderer extends TomTabularRenderer {
 
     final buffer = StringBuffer()..write('<row r="1">');
     for (var i = 0; i < section.columns.length; i++) {
-      buffer.write('<c r="${_ref(i, 1)}" s="1" t="inlineStr"><is><t>'
-          '${_escapeXml(section.columns[i].label)}</t></is></c>');
+      buffer.write(
+        '<c r="${_ref(i, 1)}" s="1" t="inlineStr"><is><t>'
+        '${_escapeXml(section.columns[i].label)}</t></is></c>',
+      );
     }
     buffer.write('</row>');
     yield buffer.toString();
@@ -154,16 +156,17 @@ class TomXlsxRenderer extends TomTabularRenderer {
       // column it landed in. Rendering the mismatch as text is deliberate: an
       // export that shows a surprising value is recoverable, one that fails
       // outright on the last row of a long report is not.
-      _ => '<c r="$ref" t="inlineStr"><is><t xml:space="preserve">'
-          '${_escapeXml(tomFormatCellAsText(value))}</t></is></c>',
+      _ =>
+        '<c r="$ref" t="inlineStr"><is><t xml:space="preserve">'
+            '${_escapeXml(tomFormatCellAsText(value))}</t></is></c>',
     };
   }
 
   /// Renders [value] as an XML number literal without a trailing `.0`.
   static String _number(num value) =>
       value is int || value == value.roundToDouble() && value.abs() < 1e15
-          ? value.toInt().toString()
-          : value.toString();
+      ? value.toInt().toString()
+      : value.toString();
 
   /// Converts [value] to an Excel date serial: days since 1899-12-30.
   ///
@@ -172,11 +175,13 @@ class TomXlsxRenderer extends TomTabularRenderer {
   /// a spreadsheet cell has no time zone, and the value a user typed is the
   /// value they should see back.
   static String _excelSerial(DateTime value) {
-    final days = DateTime.utc(value.year, value.month, value.day)
-        .difference(DateTime.utc(1899, 12, 30))
-        .inDays;
-    final fraction = (value.hour * 3600 + value.minute * 60 + value.second) /
-            86400.0 +
+    final days = DateTime.utc(
+      value.year,
+      value.month,
+      value.day,
+    ).difference(DateTime.utc(1899, 12, 30)).inDays;
+    final fraction =
+        (value.hour * 3600 + value.minute * 60 + value.second) / 86400.0 +
         value.millisecond / 86400000.0;
     if (fraction == 0) return '$days';
     return (days + fraction).toStringAsFixed(10);
@@ -246,7 +251,8 @@ class TomXlsxRenderer extends TomTabularRenderer {
         '$sheets</Types>';
   }
 
-  static const String _rootRels = '$_xmlDeclaration'
+  static const String _rootRels =
+      '$_xmlDeclaration'
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
       '<Relationship Id="rId1" Type="$_nsRel/officeDocument" Target="xl/workbook.xml"/>'
       '</Relationships>';
@@ -276,7 +282,8 @@ class TomXlsxRenderer extends TomTabularRenderer {
   }
 
   /// The minimal stylesheet: index 0 default, 1 bold header, 2 date-time.
-  static const String _styles = '$_xmlDeclaration'
+  static const String _styles =
+      '$_xmlDeclaration'
       '<styleSheet xmlns="$_nsMain">'
       '<numFmts count="1">'
       '<numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd\\ hh:mm:ss"/>'
@@ -364,9 +371,10 @@ class _ZipStreamWriter {
     final collector = _ByteCollector();
     final deflate = _level == 0
         ? null
-        : ZLibEncoder(raw: true, level: _level).startChunkedConversion(
-            collector,
-          );
+        : ZLibEncoder(
+            raw: true,
+            level: _level,
+          ).startChunkedConversion(collector);
     final crc = _Crc32();
 
     await for (final chunk in chunks) {
@@ -434,8 +442,10 @@ class _ZipStreamWriter {
     }
     yield _bytes([
       ..._u32(0x06054b50),
-      ..._u16(0), ..._u16(0),
-      ..._u16(_entries.length), ..._u16(_entries.length),
+      ..._u16(0),
+      ..._u16(0),
+      ..._u16(_entries.length),
+      ..._u16(_entries.length),
       ..._u32(_offset - start),
       ..._u32(start),
       ..._u16(0),
@@ -450,21 +460,25 @@ class _ZipStreamWriter {
   /// the bytes — and any caching keyed on a content hash. Readers show the
   /// entries as dated 1980-01-01; nothing depends on it.
   Uint8List _localHeader(List<int> nameBytes) => _bytes([
-        ..._u32(0x04034b50),
-        ..._u16(0x0014),
-        ..._u16(0x0808),
-        ..._u16(_level == 0 ? 0 : 8),
-        ..._u16(0), ..._u16(0),
-        ..._u32(0), ..._u32(0), ..._u32(0), // crc + sizes: in the descriptor
-        ..._u16(nameBytes.length),
-        ..._u16(0),
-        ...nameBytes,
-      ]);
+    ..._u32(0x04034b50),
+    ..._u16(0x0014),
+    ..._u16(0x0808),
+    ..._u16(_level == 0 ? 0 : 8),
+    ..._u16(0), ..._u16(0),
+    ..._u32(0), ..._u32(0), ..._u32(0), // crc + sizes: in the descriptor
+    ..._u16(nameBytes.length),
+    ..._u16(0),
+    ...nameBytes,
+  ]);
 
   static Uint8List _bytes(List<int> values) => Uint8List.fromList(values);
   static List<int> _u16(int v) => [v & 0xFF, (v >> 8) & 0xFF];
-  static List<int> _u32(int v) =>
-      [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
+  static List<int> _u32(int v) => [
+    v & 0xFF,
+    (v >> 8) & 0xFF,
+    (v >> 16) & 0xFF,
+    (v >> 24) & 0xFF,
+  ];
 }
 
 /// One archive entry's bookkeeping while it is being written.

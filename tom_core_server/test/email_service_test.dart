@@ -119,17 +119,20 @@ void main() {
       expect(TomTextLocale('de'), isNot(TomTextLocale('de', 'AT')));
     });
 
-    test('a principal\'s stored language wins over the device it signed in on', () {
-      final locale = TomTextLocale.fromPrincipal(
-        _principal(
-          language: 'de',
-          country: 'AT',
-          clientLanguage: 'en',
-          clientCountry: 'GB',
-        ),
-      );
-      expect(locale!.tag, 'de_AT');
-    });
+    test(
+      'a principal\'s stored language wins over the device it signed in on',
+      () {
+        final locale = TomTextLocale.fromPrincipal(
+          _principal(
+            language: 'de',
+            country: 'AT',
+            clientLanguage: 'en',
+            clientCountry: 'GB',
+          ),
+        );
+        expect(locale!.tag, 'de_AT');
+      },
+    );
 
     test('the device locale serves when nothing is stored', () {
       final locale = TomTextLocale.fromPrincipal(
@@ -154,7 +157,10 @@ void main() {
 
     test('resolves from the requested locale', () {
       expect(
-        texts.textOrNull('email.password_reset.text', locale: TomTextLocale('de')),
+        texts.textOrNull(
+          'email.password_reset.text',
+          locale: TomTextLocale('de'),
+        ),
         startsWith('Öffnen Sie'),
       );
     });
@@ -230,13 +236,20 @@ void main() {
       // `de_AT` carries only the subject. A render is right to fall through for
       // the body — that is what a translation in progress looks like — but a
       // completeness check must not call the gap a translation.
-      expect(texts.isTranslated('email.password_reset.subject', austrian),
-          isTrue);
-      expect(texts.isTranslated('email.password_reset.text', austrian), isFalse);
+      expect(
+        texts.isTranslated('email.password_reset.subject', austrian),
+        isTrue,
+      );
+      expect(
+        texts.isTranslated('email.password_reset.text', austrian),
+        isFalse,
+      );
       // ...whereas `exists` follows the chain and answers yes for both, which
       // is exactly why the two methods are separate.
-      expect(texts.exists('email.password_reset.text', locale: austrian),
-          isTrue);
+      expect(
+        texts.exists('email.password_reset.text', locale: austrian),
+        isTrue,
+      );
     });
 
     test('isTranslated answers false for a locale nobody wrote', () {
@@ -281,7 +294,10 @@ void main() {
       final message = service.render(reset());
       expect(message.subject, 'Reset your password, Erin');
       expect(message.textBody!.content, contains('https://example.com/r/1'));
-      expect(message.htmlBody!.content, contains('href="https://example.com/r/1"'));
+      expect(
+        message.htmlBody!.content,
+        contains('href="https://example.com/r/1"'),
+      );
       expect(message.channel, TomMessageChannel.email);
     });
 
@@ -305,9 +321,7 @@ void main() {
     });
 
     test('an absent HTML key leaves a single plain-text body', () {
-      final message = service.render(
-        reset(templateKey: 'email.welcome'),
-      );
+      final message = service.render(reset(templateKey: 'email.welcome'));
       expect(message.bodies, hasLength(1));
       expect(message.textBody!.content, 'Glad to have you.');
       expect(message.htmlBody, isNull);

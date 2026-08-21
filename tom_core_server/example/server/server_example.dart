@@ -19,8 +19,10 @@ Future<void> run() async {
   // 1. Each request gets a unique v4-UUID correlation id.
   final id1 = TomRequestId();
   final id2 = TomRequestId();
-  print('1. ${id1.uuid != id2.uuid ? 'distinct' : 'SAME'} request ids; '
-      'toString="${id1}"');
+  print(
+    '1. ${id1.uuid != id2.uuid ? 'distinct' : 'SAME'} request ids; '
+    'toString="${id1}"',
+  );
   assert(id1.uuid != id2.uuid);
   assert(id1.toString().startsWith('TomRequestId: '));
 
@@ -54,12 +56,12 @@ Future<void> run() async {
 
   // 6. contextSetupMiddleware merges entries into the request context.
   Object? seen;
-  final wrapped = contextSetupMiddleware('seed', {'demoKey': 'demoValue'})(
-    (req) {
-      seen = req.context['demoKey'];
-      return Response.ok('handled');
-    },
-  );
+  final wrapped = contextSetupMiddleware('seed', {'demoKey': 'demoValue'})((
+    req,
+  ) {
+    seen = req.context['demoKey'];
+    return Response.ok('handled');
+  });
   await wrapped(plain);
   print('6. contextSetupMiddleware injected demoKey=$seen');
   assert(seen == 'demoValue');

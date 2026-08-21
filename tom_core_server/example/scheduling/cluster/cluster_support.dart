@@ -54,8 +54,8 @@ const String takeoverJob = 'cluster-takeover';
 
 String _env(String key, String fallback) =>
     Platform.environment[key]?.trim().isNotEmpty == true
-        ? Platform.environment[key]!.trim()
-        : fallback;
+    ? Platform.environment[key]!.trim()
+    : fallback;
 
 /// Connection coordinates, defaulted to `docker-compose.test.yaml`.
 ///
@@ -63,16 +63,18 @@ String _env(String key, String fallback) =>
 /// MariaDB serves both and a developer who has already pointed the suite
 /// somewhere does not have to point the demo separately.
 Map<String, dynamic> get clusterDatasourceConfig => <String, dynamic>{
-      clusterDatasource: <String, dynamic>{
-        'type': 'mariadb',
-        'username': _env('TOM_CORE_SERVER_TEST_DB_USER', 'root'),
-        'password': _env('TOM_CORE_SERVER_TEST_DB_PASSWORD', 'password'),
-        'host': _env('TOM_CORE_SERVER_TEST_DB_HOST', '127.0.0.1'),
-        'port': int.parse(_env('TOM_CORE_SERVER_TEST_DB_PORT', '3309')),
-        'databaseName':
-            _env('TOM_CORE_SERVER_TEST_DB_NAME', 'tom_core_server_test'),
-      },
-    };
+  clusterDatasource: <String, dynamic>{
+    'type': 'mariadb',
+    'username': _env('TOM_CORE_SERVER_TEST_DB_USER', 'root'),
+    'password': _env('TOM_CORE_SERVER_TEST_DB_PASSWORD', 'password'),
+    'host': _env('TOM_CORE_SERVER_TEST_DB_HOST', '127.0.0.1'),
+    'port': int.parse(_env('TOM_CORE_SERVER_TEST_DB_PORT', '3309')),
+    'databaseName': _env(
+      'TOM_CORE_SERVER_TEST_DB_NAME',
+      'tom_core_server_test',
+    ),
+  },
+};
 
 /// Initialises reflection and opens the data source.
 ///
@@ -90,7 +92,8 @@ Future<void> disconnect() => TomDataSourceInfo.closeAll();
 
 /// The fenced resource's table. Created by the provisioner, not by a store —
 /// it belongs to the demo, not to the framework.
-const String fencedResourceDdl = '''
+const String fencedResourceDdl =
+    '''
 CREATE TABLE IF NOT EXISTS $fencedResourceTable (
   name   VARCHAR(191) NOT NULL,
   holder VARCHAR(191) NOT NULL,
@@ -142,11 +145,11 @@ class ClusterEvent {
 
   /// Reconstructs an event from one JSON line.
   factory ClusterEvent.fromJson(Map<String, Object?> json) => ClusterEvent(
-        json['node'] as String,
-        json['scenario'] as String,
-        json['event'] as String,
-        Map<String, Object?>.from(json['fields'] as Map),
-      );
+    json['node'] as String,
+    json['scenario'] as String,
+    json['event'] as String,
+    Map<String, Object?>.from(json['fields'] as Map),
+  );
 
   /// The node that observed it.
   final String node;
@@ -184,12 +187,14 @@ void emit(
   String name, [
   Map<String, Object?> fields = const {},
 ]) {
-  print(jsonEncode({
-    'node': node,
-    'scenario': scenario,
-    'event': name,
-    'fields': fields,
-  }));
+  print(
+    jsonEncode({
+      'node': node,
+      'scenario': scenario,
+      'event': name,
+      'fields': fields,
+    }),
+  );
 }
 
 /// Parses every event in [directory]'s `*.jsonl` files.

@@ -28,8 +28,8 @@ class TomFileReferenceKeys {
   /// that captured a store at first use would keep serving the previous test's.
   static TomBlobStore storeFor(TomFileReference reference) =>
       reference.store == null
-          ? TomBlobStoreInfo.defaultStore
-          : TomBlobStoreInfo.storeNamed(reference.store!);
+      ? TomBlobStoreInfo.defaultStore
+      : TomBlobStoreInfo.storeNamed(reference.store!);
 
   /// Mints a fresh key for a blob stored under [reference].
   ///

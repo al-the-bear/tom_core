@@ -16,8 +16,10 @@ import 'package:tom_core_server/tom_core_server.dart';
 void run() {
   // 1. A server exception carries the kernel TomException surface (key,
   //    user message) plus the originating isolate name.
-  final basic =
-      TomServerException('payment.charge.failed', 'The payment failed');
+  final basic = TomServerException(
+    'payment.charge.failed',
+    'The payment failed',
+  );
   print('1. key            => ${basic.key}');
   print('   isolateName    => ${basic.isolateName}');
   print('   clientThrow    => ${basic.clientThrow}');
@@ -42,8 +44,10 @@ void run() {
   //    correlates itself with the active request automatically.
   final requestId = TomRequestId();
   runZoned(() {
-    final correlated =
-        TomServerException('request.validate.bad_input', 'Bad input');
+    final correlated = TomServerException(
+      'request.validate.bad_input',
+      'Bad input',
+    );
     print('4. requestUuid (in zone) => ${correlated.requestUuid}');
     assert(correlated.requestUuid == requestId.uuid);
   }, zoneValues: {TomRequestId: requestId});

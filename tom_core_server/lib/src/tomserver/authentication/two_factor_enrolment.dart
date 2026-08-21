@@ -118,8 +118,8 @@ class Tom2FAEnrolment {
     DateTime? enrolledAt,
     this.isPrimary = false,
     Map<String, Object?> secretData = const {},
-  })  : enrolledAt = (enrolledAt ?? DateTime.now()).toUtc(),
-        secretData = Map.unmodifiable(secretData);
+  }) : enrolledAt = (enrolledAt ?? DateTime.now()).toUtc(),
+       secretData = Map.unmodifiable(secretData);
 
   /// This enrolment with selected fields replaced.
   Tom2FAEnrolment copyWith({
@@ -129,21 +129,21 @@ class Tom2FAEnrolment {
     DateTime? enrolledAt,
     bool? isPrimary,
     Map<String, Object?>? secretData,
-  }) =>
-      Tom2FAEnrolment(
-        type: type ?? this.type,
-        enrolmentId: enrolmentId ?? this.enrolmentId,
-        hint: hint ?? this.hint,
-        enrolledAt: enrolledAt ?? this.enrolledAt,
-        isPrimary: isPrimary ?? this.isPrimary,
-        secretData: secretData ?? this.secretData,
-      );
+  }) => Tom2FAEnrolment(
+    type: type ?? this.type,
+    enrolmentId: enrolmentId ?? this.enrolmentId,
+    hint: hint ?? this.hint,
+    enrolledAt: enrolledAt ?? this.enrolledAt,
+    isPrimary: isPrimary ?? this.isPrimary,
+    secretData: secretData ?? this.secretData,
+  );
 
   /// Names the enrolment without ever printing [secretData] — this value ends
   /// up in log lines, and a `toString` that helpfully dumped its fields would
   /// put a TOTP secret in the log the first time anyone debugged a login.
   @override
-  String toString() => 'Tom2FAEnrolment($type/$enrolmentId'
+  String toString() =>
+      'Tom2FAEnrolment($type/$enrolmentId'
       '${hint.isEmpty ? '' : ' "$hint"'}${isPrimary ? ', primary' : ''})';
 }
 
@@ -214,13 +214,13 @@ class Tom2FAEnrolmentOffer {
   /// one, and an offer that round-tripped without its server section could not
   /// be confirmed by the instance that received it.
   Map<String, Object?> toClaim() => {
-        _claimType: type,
-        _claimHint: hint,
-        _claimClientData: clientData,
-        _claimEnrolmentData: enrolmentData,
-        _claimAttemptsAllowed: attemptsAllowed,
-        _claimValiditySeconds: validity.inSeconds,
-      };
+    _claimType: type,
+    _claimHint: hint,
+    _claimClientData: clientData,
+    _claimEnrolmentData: enrolmentData,
+    _claimAttemptsAllowed: attemptsAllowed,
+    _claimValiditySeconds: validity.inSeconds,
+  };
 
   /// Reads back what [toClaim] wrote, or `null` when [claim] is not a
   /// well-formed offer.
@@ -240,8 +240,9 @@ class Tom2FAEnrolmentOffer {
       hint: claim[_claimHint] is String ? claim[_claimHint] as String : '',
       clientData: _mapOf(claim[_claimClientData]),
       enrolmentData: _mapOf(claim[_claimEnrolmentData]),
-      attemptsAllowed:
-          claim[_claimAttemptsAllowed] is int ? claim[_claimAttemptsAllowed] as int : 3,
+      attemptsAllowed: claim[_claimAttemptsAllowed] is int
+          ? claim[_claimAttemptsAllowed] as int
+          : 3,
       validity: Duration(
         seconds: validitySeconds is int ? validitySeconds : 600,
       ),
@@ -318,8 +319,8 @@ class Tom2FAEnrolmentState {
     this.offer,
     DateTime? expiresAt,
     this.attempt = 0,
-  })  : offeredTypes = List.unmodifiable(offeredTypes),
-        expiresAt = expiresAt?.toUtc();
+  }) : offeredTypes = List.unmodifiable(offeredTypes),
+       expiresAt = expiresAt?.toUtc();
 
   /// Whether a mechanism has been chosen and its material generated.
   bool get hasOffer => offer != null;
@@ -344,26 +345,28 @@ class Tom2FAEnrolmentState {
 
   /// This state with one more confirmation attempt consumed.
   Tom2FAEnrolmentState withConsumedAttempt() => Tom2FAEnrolmentState(
-        offeredTypes: offeredTypes,
-        skippable: skippable,
-        skipSpendsGrace: skipSpendsGrace,
-        offer: offer,
-        expiresAt: expiresAt,
-        attempt: attempt + 1,
-      );
+    offeredTypes: offeredTypes,
+    skippable: skippable,
+    skipSpendsGrace: skipSpendsGrace,
+    offer: offer,
+    expiresAt: expiresAt,
+    attempt: attempt + 1,
+  );
 
   /// This state advanced to the begun shape with [chosen]'s material.
   ///
   /// The attempt counter restarts: the attempts an offer allows belong to
   /// *that* offer, and choosing a different mechanism is a different offer.
-  Tom2FAEnrolmentState withOffer(Tom2FAEnrolmentOffer chosen, {DateTime? now}) =>
-      Tom2FAEnrolmentState(
-        offeredTypes: offeredTypes,
-        skippable: skippable,
-        skipSpendsGrace: skipSpendsGrace,
-        offer: chosen,
-        expiresAt: (now ?? DateTime.now()).toUtc().add(chosen.validity),
-      );
+  Tom2FAEnrolmentState withOffer(
+    Tom2FAEnrolmentOffer chosen, {
+    DateTime? now,
+  }) => Tom2FAEnrolmentState(
+    offeredTypes: offeredTypes,
+    skippable: skippable,
+    skipSpendsGrace: skipSpendsGrace,
+    offer: chosen,
+    expiresAt: (now ?? DateTime.now()).toUtc().add(chosen.validity),
+  );
 
   /// Projects this state onto the interim token's **public** claims (see
   /// [Tom2FAEnrolmentClaims]).
@@ -379,15 +382,14 @@ class Tom2FAEnrolmentState {
     };
     final chosen = offer;
     if (chosen == null) return claims;
-    return claims
-      ..addAll({
-        Tom2FAEnrolmentClaims.type: chosen.type,
-        Tom2FAEnrolmentClaims.hint: chosen.hint,
-        Tom2FAEnrolmentClaims.attempt: attempt,
-        Tom2FAEnrolmentClaims.attemptsAllowed: chosen.attemptsAllowed,
-        Tom2FAEnrolmentClaims.expiresAt: expiresAt?.toIso8601String(),
-        Tom2FAEnrolmentClaims.clientData: chosen.clientData,
-      });
+    return claims..addAll({
+      Tom2FAEnrolmentClaims.type: chosen.type,
+      Tom2FAEnrolmentClaims.hint: chosen.hint,
+      Tom2FAEnrolmentClaims.attempt: attempt,
+      Tom2FAEnrolmentClaims.attemptsAllowed: chosen.attemptsAllowed,
+      Tom2FAEnrolmentClaims.expiresAt: expiresAt?.toIso8601String(),
+      Tom2FAEnrolmentClaims.clientData: chosen.clientData,
+    });
   }
 
   /// The token's **encrypted** claims for this state, or `null` in the offered
@@ -396,8 +398,9 @@ class Tom2FAEnrolmentState {
   /// The whole offer, secret section included — which is precisely why it goes
   /// in the encrypted half: the confirmation must be checked against material
   /// the client could not have edited on the way past.
-  Map<String, Object?>? get secretClaims =>
-      offer == null ? null : {Tom2FAEnrolmentClaims.offerData: offer!.toClaim()};
+  Map<String, Object?>? get secretClaims => offer == null
+      ? null
+      : {Tom2FAEnrolmentClaims.offerData: offer!.toClaim()};
 
   /// Reads a state back from a token's public [payload] and its decrypted
   /// [secretData], or returns `null` when the token carries no enrolment.
@@ -451,8 +454,9 @@ class Tom2FAEnrolmentState {
       skippable: skippable,
       skipSpendsGrace: skipSpendsGrace,
       offer: offer,
-      expiresAt:
-          expiresAtRaw is String ? DateTime.tryParse(expiresAtRaw) : null,
+      expiresAt: expiresAtRaw is String
+          ? DateTime.tryParse(expiresAtRaw)
+          : null,
       attempt: attempt is int ? attempt : 0,
     );
   }
@@ -460,10 +464,11 @@ class Tom2FAEnrolmentState {
   /// Names the state without printing the offer's payloads — they carry the
   /// secret being enrolled, and this value reaches log lines.
   @override
-  String toString() => 'Tom2FAEnrolmentState(offered: $offeredTypes'
+  String toString() =>
+      'Tom2FAEnrolmentState(offered: $offeredTypes'
       '${skippable ? ', skippable' : ''}'
       '${offer == null ? '' : ', begun ${offer!.type} $attempt/'
-          '${offer!.attemptsAllowed}'})';
+                '${offer!.attemptsAllowed}'})';
 }
 
 // =============================================================================
@@ -817,7 +822,8 @@ class TomPersistent2FAEnrolmentStore implements Tom2FAEnrolmentStore {
     return matches.isEmpty ? null : matches.first;
   }
 
-  Tom2FAEnrolment _toEnrolment(TomUserTwoFactorEnrolment row) => Tom2FAEnrolment(
+  Tom2FAEnrolment _toEnrolment(TomUserTwoFactorEnrolment row) =>
+      Tom2FAEnrolment(
         type: row.mechanism,
         enrolmentId: row.enrolmentId,
         hint: row.hint,

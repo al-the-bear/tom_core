@@ -50,13 +50,15 @@ void main() {
       expect(TomDataScopeRegistry.resolverFor('nope'), isNull);
     });
 
-    test('owner resolver yields the principal id, group resolver the groups',
-        () {
-      final owner = TomDataScopeRegistry.resolverFor('owner')!;
-      final group = TomDataScopeRegistry.resolverFor('group')!;
-      expect(owner(_principal(7)), [7]);
-      expect(group(_principal(7, groups: ['a', 'b'])), ['a', 'b']);
-    });
+    test(
+      'owner resolver yields the principal id, group resolver the groups',
+      () {
+        final owner = TomDataScopeRegistry.resolverFor('owner')!;
+        final group = TomDataScopeRegistry.resolverFor('group')!;
+        expect(owner(_principal(7)), [7]);
+        expect(group(_principal(7, groups: ['a', 'b'])), ['a', 'b']);
+      },
+    );
 
     test('built-in resolvers deny a null (unauthenticated) principal', () {
       expect(TomDataScopeRegistry.resolverFor('owner')!(null), isEmpty);
@@ -81,8 +83,14 @@ void main() {
       final bob = TomDataScope.build(b, scope, col, _principal(2))!;
 
       // Identical predicate text — the value is a bound placeholder, not inline.
-      expect(alice.predicate.generate(dialect), 'tasks.owner_id IN (:__tomscope_0)');
-      expect(bob.predicate.generate(dialect), 'tasks.owner_id IN (:__tomscope_0)');
+      expect(
+        alice.predicate.generate(dialect),
+        'tasks.owner_id IN (:__tomscope_0)',
+      );
+      expect(
+        bob.predicate.generate(dialect),
+        'tasks.owner_id IN (:__tomscope_0)',
+      );
 
       // But the bound values differ: Alice sees id 1, Bob sees id 2.
       expect(alice.parameters, {'__tomscope_0': 1});
@@ -277,15 +285,18 @@ void main() {
       );
     });
 
-    test('the write-authorization exception carries a client-safe contract', () {
-      final e = TomDataScopeAuthorizationException(
-        'data_scope.write.out_of_scope',
-        'The requested row is not within your data scope.',
-      );
-      expect(e.key, 'data_scope.write.out_of_scope');
-      expect(e.clientThrow, isTrue);
-      expect(e, isA<TomServerException>());
-    });
+    test(
+      'the write-authorization exception carries a client-safe contract',
+      () {
+        final e = TomDataScopeAuthorizationException(
+          'data_scope.write.out_of_scope',
+          'The requested row is not within your data scope.',
+        );
+        expect(e.key, 'data_scope.write.out_of_scope');
+        expect(e.clientThrow, isTrue);
+        expect(e, isA<TomServerException>());
+      },
+    );
   });
 
   // RCB8: the async, union/OR data scope. Where the synchronous resolver renders
@@ -295,15 +306,20 @@ void main() {
   // database. Verified connection-free at the predicate level, exactly as the
   // synchronous scope is.
   group('async union scope registry (RCB8)', () {
-    test('registerAsync registers an async kind; isAsync/asyncResolverFor see it',
-        () {
-      expect(TomDataScopeRegistry.isAsync('visible'), isFalse);
-      TomDataScopeRegistry.registerAsync('visible', (p) async => [
+    test(
+      'registerAsync registers an async kind; isAsync/asyncResolverFor see it',
+      () {
+        expect(TomDataScopeRegistry.isAsync('visible'), isFalse);
+        TomDataScopeRegistry.registerAsync(
+          'visible',
+          (p) async => [
             [1],
-          ]);
-      expect(TomDataScopeRegistry.isAsync('visible'), isTrue);
-      expect(TomDataScopeRegistry.asyncResolverFor('visible'), isNotNull);
-    });
+          ],
+        );
+        expect(TomDataScopeRegistry.isAsync('visible'), isTrue);
+        expect(TomDataScopeRegistry.asyncResolverFor('visible'), isNotNull);
+      },
+    );
 
     test('reset clears async registrations too', () {
       TomDataScopeRegistry.registerAsync('visible', (p) async => const [[]]);
@@ -316,7 +332,12 @@ void main() {
       // A kind registered async is not visible to the sync resolver lookup, and
       // the built-in sync kinds are not async.
       expect(TomDataScopeRegistry.isAsync('owner'), isFalse);
-      TomDataScopeRegistry.registerAsync('visible', (p) async => const [[1]]);
+      TomDataScopeRegistry.registerAsync(
+        'visible',
+        (p) async => const [
+          [1],
+        ],
+      );
       expect(TomDataScopeRegistry.resolverFor('visible'), isNull);
       expect(TomDataScopeRegistry.isAsync('visible'), isTrue);
     });
@@ -349,8 +370,10 @@ void main() {
       final p = TomDataScope.anyOf(b, col, [
         [1, 2],
       ]);
-      expect(p.predicate.generate(dialect),
-          'projects.id IN (:__tomscope_0_0,:__tomscope_0_1)');
+      expect(
+        p.predicate.generate(dialect),
+        'projects.id IN (:__tomscope_0_0,:__tomscope_0_1)',
+      );
       expect(p.parameters, {'__tomscope_0_0': 1, '__tomscope_0_1': 2});
     });
 
@@ -378,13 +401,18 @@ void main() {
       // second id-set escape the base filter (a row leak). Grouping makes it
       // `base AND (a OR b)` — a single intersecting AND-operand.
       final base = TomDataScope.inList(
-          b, _column('projects', 'workspace_id', int), [9],
-          prefix: '__idlist_');
+        b,
+        _column('projects', 'workspace_id', int),
+        [9],
+        prefix: '__idlist_',
+      );
       final union = TomDataScope.anyOf(b, col, [
         [1],
         [3],
       ]);
-      final combined = b.and([base.predicate, union.predicate]).generate(dialect);
+      final combined = b
+          .and([base.predicate, union.predicate])
+          .generate(dialect);
       expect(combined, matches(RegExp(r'AND\s*\(.*OR.*\)')));
     });
   });
@@ -392,57 +420,75 @@ void main() {
   group('async union build + opt-out (TomDataScope.buildAsync, RCB8)', () {
     final col = _column('projects', 'id', int);
 
-    test('resolves the registered async resolver into the union predicate',
-        () async {
-      TomDataScopeRegistry.registerAsync('visible', (p) async => [
+    test(
+      'resolves the registered async resolver into the union predicate',
+      () async {
+        TomDataScopeRegistry.registerAsync(
+          'visible',
+          (p) async => [
             [p!.user.id], // owned
             [3], // shared
-          ]);
-      const scope = TomDbScope(field: 'id', scope: 'visible');
-      final p = await TomDataScope.buildAsync(b, scope, col, _principal(1));
-      expect(p, isNotNull);
-      expect(p!.parameters.values, containsAll(<Object?>[1, 3]));
-      expect(p.predicate.generate(dialect), contains(' OR '));
-    });
+          ],
+        );
+        const scope = TomDbScope(field: 'id', scope: 'visible');
+        final p = await TomDataScope.buildAsync(b, scope, col, _principal(1));
+        expect(p, isNotNull);
+        expect(p!.parameters.values, containsAll(<Object?>[1, 3]));
+        expect(p.predicate.generate(dialect), contains(' OR '));
+      },
+    );
 
     test('a resolver returning null opts out of scoping entirely', () async {
       TomDataScopeRegistry.registerAsync('visible', (p) async => null);
       const scope = TomDbScope(field: 'id', scope: 'visible');
-      expect(await TomDataScope.buildAsync(b, scope, col, _principal(1)), isNull);
-    });
-
-    test('a resolver returning no id-sets denies every row (deny-all)', () async {
-      TomDataScopeRegistry.registerAsync('visible', (p) async => const []);
-      const scope = TomDbScope(field: 'id', scope: 'visible');
-      final p = await TomDataScope.buildAsync(b, scope, col, _principal(1));
-      expect(p!.predicate.generate(dialect), b.boolOp(false).generate(dialect));
-    });
-
-    test('an unregistered async scope kind throws TomDataScopeException',
-        () async {
-      const scope = TomDbScope(field: 'id', scope: 'ghost-async');
       expect(
-        () => TomDataScope.buildAsync(b, scope, col, _principal(1)),
-        throwsA(
-          isA<TomDataScopeException>().having(
-            (e) => e.key,
-            'key',
-            'data_scope.build.unknown_async_scope',
-          ),
-        ),
+        await TomDataScope.buildAsync(b, scope, col, _principal(1)),
+        isNull,
       );
     });
+
+    test(
+      'a resolver returning no id-sets denies every row (deny-all)',
+      () async {
+        TomDataScopeRegistry.registerAsync('visible', (p) async => const []);
+        const scope = TomDbScope(field: 'id', scope: 'visible');
+        final p = await TomDataScope.buildAsync(b, scope, col, _principal(1));
+        expect(
+          p!.predicate.generate(dialect),
+          b.boolOp(false).generate(dialect),
+        );
+      },
+    );
+
+    test(
+      'an unregistered async scope kind throws TomDataScopeException',
+      () async {
+        const scope = TomDbScope(field: 'id', scope: 'ghost-async');
+        expect(
+          () => TomDataScope.buildAsync(b, scope, col, _principal(1)),
+          throwsA(
+            isA<TomDataScopeException>().having(
+              (e) => e.key,
+              'key',
+              'data_scope.build.unknown_async_scope',
+            ),
+          ),
+        );
+      },
+    );
   });
 
   group('runUnscoped re-entrancy guard (RCB8)', () {
-    test('isBypassed is false outside, true inside a runUnscoped body',
-        () async {
-      expect(TomDataScope.isBypassed, isFalse);
-      await TomDataScope.runUnscoped(() async {
-        expect(TomDataScope.isBypassed, isTrue);
-      });
-      expect(TomDataScope.isBypassed, isFalse);
-    });
+    test(
+      'isBypassed is false outside, true inside a runUnscoped body',
+      () async {
+        expect(TomDataScope.isBypassed, isFalse);
+        await TomDataScope.runUnscoped(() async {
+          expect(TomDataScope.isBypassed, isTrue);
+        });
+        expect(TomDataScope.isBypassed, isFalse);
+      },
+    );
 
     test('a null-returning body still restores the unscoped state', () async {
       await TomDataScope.runUnscoped(() async => null);
@@ -463,10 +509,10 @@ void main() {
       expect(TomDataScopeRegistry.writeResolverFor('tenant'), isNull);
       const scope = TomDbScope(field: 'owner_id', scope: 'tenant');
       expect(TomDataScope.allowedValues(scope, _principal(1)), [1, 2]);
-      expect(
-        TomDataScope.allowedValues(scope, _principal(1), forWrite: true),
-        [1, 2],
-      );
+      expect(TomDataScope.allowedValues(scope, _principal(1), forWrite: true), [
+        1,
+        2,
+      ]);
     });
 
     test('a registered write resolver narrows the writable set', () {
@@ -478,8 +524,11 @@ void main() {
       expect(TomDataScopeRegistry.writeResolverFor('tenant'), isNotNull);
       const scope = TomDbScope(field: 'owner_id', scope: 'tenant');
       expect(TomDataScope.allowedValues(scope, _principal(1)), [1, 2]);
-      final writable =
-          TomDataScope.allowedValues(scope, _principal(1), forWrite: true);
+      final writable = TomDataScope.allowedValues(
+        scope,
+        _principal(1),
+        forWrite: true,
+      );
       expect(writable, [1]);
       // The membership check the repository applies on insert: readable but not
       // writable is rejected.
@@ -495,8 +544,13 @@ void main() {
       );
       const scope = TomDbScope(field: 'owner_id', scope: 'tenant');
       final read = TomDataScope.build(b, scope, col, _principal(1))!;
-      final write =
-          TomDataScope.build(b, scope, col, _principal(1), forWrite: true)!;
+      final write = TomDataScope.build(
+        b,
+        scope,
+        col,
+        _principal(1),
+        forWrite: true,
+      )!;
       expect(read.parameters, {'__tomscope_0': 1, '__tomscope_1': 2});
       expect(write.parameters, {'__tomscope_0': 1});
     });
@@ -514,8 +568,12 @@ void main() {
       expect(TomDataScopeRegistry.asyncWriteResolverFor('visible'), isNotNull);
       const scope = TomDbScope(field: 'id', scope: 'visible');
       final idCol = _column('projects', 'id', int);
-      final read =
-          (await TomDataScope.buildAsync(b, scope, idCol, _principal(1)))!;
+      final read = (await TomDataScope.buildAsync(
+        b,
+        scope,
+        idCol,
+        _principal(1),
+      ))!;
       final write = (await TomDataScope.buildAsync(
         b,
         scope,
@@ -527,21 +585,24 @@ void main() {
       expect(write.parameters.values, [1]);
     });
 
-    test('allowedValuesAsync flattens the groups for a membership check',
-        () async {
-      TomDataScopeRegistry.registerAsync(
-        'visible',
-        (p) async => const [
-          [1],
-          [2, 3],
-        ],
-      );
-      const scope = TomDbScope(field: 'id', scope: 'visible');
-      expect(
-        await TomDataScope.allowedValuesAsync(scope, _principal(1)),
-        [1, 2, 3],
-      );
-    });
+    test(
+      'allowedValuesAsync flattens the groups for a membership check',
+      () async {
+        TomDataScopeRegistry.registerAsync(
+          'visible',
+          (p) async => const [
+            [1],
+            [2, 3],
+          ],
+        );
+        const scope = TomDbScope(field: 'id', scope: 'visible');
+        expect(await TomDataScope.allowedValuesAsync(scope, _principal(1)), [
+          1,
+          2,
+          3,
+        ]);
+      },
+    );
 
     test('reset clears write registrations with the rest', () {
       TomDataScopeRegistry.register(
@@ -585,8 +646,12 @@ void main() {
         field: 'resource_key',
         scope: TomDbScope.resourceScope,
       );
-      final read =
-          (await TomDataScope.buildAsync(b, scope, col, _principal(1)))!;
+      final read = (await TomDataScope.buildAsync(
+        b,
+        scope,
+        col,
+        _principal(1),
+      ))!;
       final write = (await TomDataScope.buildAsync(
         b,
         scope,

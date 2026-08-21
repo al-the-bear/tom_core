@@ -37,7 +37,7 @@ void main() async {
   final String? skipReason = reachable
       ? null
       : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-          'start one with tool/run_db_tests.sh';
+            'start one with tool/run_db_tests.sh';
 
   group('FixtureTaskRepository (DB-backed CRUD)', () {
     late TomDataSourceInfo dsi;
@@ -58,14 +58,16 @@ void main() async {
 
     tearDownAll(TestDatabase.reset);
 
-    test('save inserts a new row and returns the database-assigned key',
-        () async {
-      final saved = await repo.save(_task('write tests', 3, done: true));
-      expect(saved.id, isNotNull);
-      expect(saved.title, 'write tests');
-      expect(saved.priority, 3);
-      expect(saved.done, isTrue);
-    });
+    test(
+      'save inserts a new row and returns the database-assigned key',
+      () async {
+        final saved = await repo.save(_task('write tests', 3, done: true));
+        expect(saved.id, isNotNull);
+        expect(saved.title, 'write tests');
+        expect(saved.priority, 3);
+        expect(saved.done, isTrue);
+      },
+    );
 
     test('findById loads a previously saved row', () async {
       final saved = await repo.save(_task('find me', 4));

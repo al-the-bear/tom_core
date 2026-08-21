@@ -113,6 +113,7 @@ class TomBlobExportStore extends TomExportStore {
   Future<bool> delete(String key) => blobStore.delete(_blobKey(key));
 
   @override
-  String toString() => 'TomBlobExportStore($blobStore'
+  String toString() =>
+      'TomBlobExportStore($blobStore'
       '${keyPrefix.isEmpty ? '' : ', prefix "$keyPrefix"'})';
 }

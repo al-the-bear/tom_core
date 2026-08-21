@@ -38,8 +38,10 @@ Future<void> run() async {
   // 3. Swapping the global analyzer changes what every request returns.
   final previous = TomHealthServer.globalSettingsHealthAnalyzer;
   try {
-    TomHealthServer.globalSettingsHealthAnalyzer =
-        _DemoAnalyzer(dbOk: true, cacheOk: false);
+    TomHealthServer.globalSettingsHealthAnalyzer = _DemoAnalyzer(
+      dbOk: true,
+      cacheOk: false,
+    );
     final degraded = await server.health();
     print('3. health() with degraded analyzer => $degraded');
     assert(degraded == 'DEGRADED: db=true, cache=false');

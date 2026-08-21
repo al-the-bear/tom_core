@@ -175,9 +175,7 @@ class TomEmailRequest {
     ].whereType<String>().join(' ').trim();
     return TomEmailRequest(
       templateKey: templateKey,
-      to: [
-        TomRecipient(address, displayName: name.isEmpty ? null : name),
-      ],
+      to: [TomRecipient(address, displayName: name.isEmpty ? null : name)],
       locale: locale ?? TomTextLocale.fromPrincipal(principal),
       parameters: parameters,
       from: from,
@@ -256,5 +254,4 @@ class TomEmailService extends TomTemplatedMessageService<TomEmailRequest> {
       headers: request.headers,
     );
   }
-
 }

@@ -216,7 +216,8 @@ class _TypedFileSlot<T extends Object, K> extends TomFileSlot {
   }
 
   @override
-  Stream<List<int>> open(String rawId) => repository.openFile(_id(rawId), _field);
+  Stream<List<int>> open(String rawId) =>
+      repository.openFile(_id(rawId), _field);
 
   @override
   Future<bool> clear(String rawId) async {
@@ -326,7 +327,11 @@ class TomFileSlots {
           throw TomFileSlotException(
             'file_endpoint.ambiguous_slot',
             'Two file columns of the same entity answer to the name "$name".',
-            parameters: {'table': table, 'name': name, 'columns': [owner, column.declaredName]},
+            parameters: {
+              'table': table,
+              'name': name,
+              'columns': [owner, column.declaredName],
+            },
           );
         }
         seen[name] = column.declaredName;

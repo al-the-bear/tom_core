@@ -584,12 +584,10 @@ class TomEndpointHandler {
                 is Map<String, Object?>) {
               // Builds the parameter or throws — there is no null result to
               // test for.
-              final parameterObject = tomReflectionInfo
-                  .createInstanceFromJson(
-                    parameterMirror,
-                    req.context[parameterMirror.simpleName]
-                        as Map<String, Object?>,
-                  );
+              final parameterObject = tomReflectionInfo.createInstanceFromJson(
+                parameterMirror,
+                req.context[parameterMirror.simpleName] as Map<String, Object?>,
+              );
               positionalArguments.add(parameterObject);
               tomLog.trace(
                 "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} value using map from context to $parameterObject ${req.context[parameterMirror.simpleName]}",

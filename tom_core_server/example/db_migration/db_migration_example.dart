@@ -30,8 +30,10 @@ void run() {
     ..checksum = '12345'
     ..success = 1;
   print('2. recorded migration:');
-  print('   rank=${version.installedRank} version=${version.version} '
-      'description=${version.description} success=${version.success}');
+  print(
+    '   rank=${version.installedRank} version=${version.version} '
+    'description=${version.description} success=${version.success}',
+  );
   assert(version.version == 2);
   assert(version.description == 'add_orders');
   assert(version.success == 1);

@@ -126,33 +126,37 @@ void main() async {
     // Reads
     // ------------------------------------------------------------------
 
-    test('two principals read disjoint row sets from their own grants',
-        () async {
-      await seed('project:alpha', 'Alpha plan');
-      await seed('project:beta', 'Beta plan');
-      install([
-        _grant(1, 'project:alpha', 'owner'),
-        _grant(2, 'project:beta', 'owner'),
-      ]);
+    test(
+      'two principals read disjoint row sets from their own grants',
+      () async {
+        await seed('project:alpha', 'Alpha plan');
+        await seed('project:beta', 'Beta plan');
+        install([
+          _grant(1, 'project:alpha', 'owner'),
+          _grant(2, 'project:beta', 'owner'),
+        ]);
 
-      final one = await asPrincipal(1, (r) => r.findAll());
-      final two = await asPrincipal(2, (r) => r.findAll());
-      expect(one.map((e) => e.title), ['Alpha plan']);
-      expect(two.map((e) => e.title), ['Beta plan']);
-      // Both rows are really there — the filtering is the scope's, not the
-      // fixture's.
-      expect(await rawCount(), 2);
-    });
+        final one = await asPrincipal(1, (r) => r.findAll());
+        final two = await asPrincipal(2, (r) => r.findAll());
+        expect(one.map((e) => e.title), ['Alpha plan']);
+        expect(two.map((e) => e.title), ['Beta plan']);
+        // Both rows are really there — the filtering is the scope's, not the
+        // fixture's.
+        expect(await rawCount(), 2);
+      },
+    );
 
-    test('an ungranted row is invisible by id as well as in a listing',
-        () async {
-      await seed('project:alpha', 'Alpha plan');
-      final ids = await rawIds(dsi);
-      install([_grant(2, 'project:beta', 'owner')]);
+    test(
+      'an ungranted row is invisible by id as well as in a listing',
+      () async {
+        await seed('project:alpha', 'Alpha plan');
+        final ids = await rawIds(dsi);
+        install([_grant(2, 'project:beta', 'owner')]);
 
-      expect(await asPrincipal(2, (r) => r.findAll()), isEmpty);
-      expect(await asPrincipal(2, (r) => r.findById(ids.first)), isNull);
-    });
+        expect(await asPrincipal(2, (r) => r.findAll()), isEmpty);
+        expect(await asPrincipal(2, (r) => r.findById(ids.first)), isNull);
+      },
+    );
 
     test('a principal with no grants at all reads nothing', () async {
       await seed('project:alpha', 'Alpha plan');
@@ -163,30 +167,31 @@ void main() async {
     test('a viewer grant admits the row to a read (decision 1)', () async {
       await seed('project:alpha', 'Alpha plan');
       install([_grant(1, 'project:alpha', 'viewer')]);
-      expect(
-        (await asPrincipal(1, (r) => r.findAll())).map((e) => e.title),
-        ['Alpha plan'],
-      );
+      expect((await asPrincipal(1, (r) => r.findAll())).map((e) => e.title), [
+        'Alpha plan',
+      ]);
     });
 
     // ------------------------------------------------------------------
     // Writes
     // ------------------------------------------------------------------
 
-    test('an owner grant admits an update; the change reaches the table',
-        () async {
-      await seed('project:alpha', 'Alpha plan');
-      install([_grant(1, 'project:alpha', 'owner')]);
+    test(
+      'an owner grant admits an update; the change reaches the table',
+      () async {
+        await seed('project:alpha', 'Alpha plan');
+        install([_grant(1, 'project:alpha', 'owner')]);
 
-      await asPrincipal(1, (r) async {
-        final row = (await r.findAll()).single;
-        row.title = 'Alpha plan v2';
-        await r.save(row);
-      });
+        await asPrincipal(1, (r) async {
+          final row = (await r.findAll()).single;
+          row.title = 'Alpha plan v2';
+          await r.save(row);
+        });
 
-      final reread = await asPrincipal(1, (r) => r.findAll());
-      expect(reread.single.title, 'Alpha plan v2');
-    });
+        final reread = await asPrincipal(1, (r) => r.findAll());
+        expect(reread.single.title, 'Alpha plan v2');
+      },
+    );
 
     test('a viewer grant rejects an update of the row it admits to reads '
         '(decision 2)', () async {
@@ -205,20 +210,22 @@ void main() async {
       expect((await rawRows(dsi)).single.title, 'Alpha plan');
     });
 
-    test('a viewer grant rejects a delete of the row it admits to reads',
-        () async {
-      await seed('project:alpha', 'Alpha plan');
-      final ids = await rawIds(dsi);
-      install([_grant(1, 'project:alpha', 'viewer')]);
+    test(
+      'a viewer grant rejects a delete of the row it admits to reads',
+      () async {
+        await seed('project:alpha', 'Alpha plan');
+        final ids = await rawIds(dsi);
+        install([_grant(1, 'project:alpha', 'viewer')]);
 
-      await asPrincipal(1, (r) async {
-        await expectLater(
-          r.deleteById(ids.first),
-          throwsA(isA<TomDataScopeAuthorizationException>()),
-        );
-      });
-      expect(await rawCount(), 1);
-    });
+        await asPrincipal(1, (r) async {
+          await expectLater(
+            r.deleteById(ids.first),
+            throwsA(isA<TomDataScopeAuthorizationException>()),
+          );
+        });
+        expect(await rawCount(), 1);
+      },
+    );
 
     test('an owner grant admits a delete', () async {
       await seed('project:alpha', 'Alpha plan');
@@ -229,24 +236,26 @@ void main() async {
       expect(await rawCount(), 0);
     });
 
-    test('a write to another principal\'s row is rejected, not silently ignored',
-        () async {
-      await seed('project:alpha', 'Alpha plan');
-      install([
-        _grant(1, 'project:alpha', 'owner'),
-        _grant(2, 'project:beta', 'owner'),
-      ]);
+    test(
+      'a write to another principal\'s row is rejected, not silently ignored',
+      () async {
+        await seed('project:alpha', 'Alpha plan');
+        install([
+          _grant(1, 'project:alpha', 'owner'),
+          _grant(2, 'project:beta', 'owner'),
+        ]);
 
-      // Principal 1 reads the row it owns; principal 2 tries to write it.
-      final row = (await asPrincipal(1, (r) => r.findAll())).single;
-      row.title = 'Hijacked';
-      await asPrincipal(2, (r) async {
-        await expectLater(
-          r.save(row),
-          throwsA(isA<TomDataScopeAuthorizationException>()),
-        );
-      });
-    });
+        // Principal 1 reads the row it owns; principal 2 tries to write it.
+        final row = (await asPrincipal(1, (r) => r.findAll())).single;
+        row.title = 'Hijacked';
+        await asPrincipal(2, (r) async {
+          await expectLater(
+            r.save(row),
+            throwsA(isA<TomDataScopeAuthorizationException>()),
+          );
+        });
+      },
+    );
 
     test('an insert under an ungranted resource key is rejected', () async {
       install([_grant(1, 'project:alpha', 'owner')]);
@@ -263,21 +272,23 @@ void main() async {
       expect(await rawCount(), 0);
     });
 
-    test('an insert under a viewer-graded key is rejected too (decision 2)',
-        () async {
-      install([_grant(1, 'project:alpha', 'viewer')]);
+    test(
+      'an insert under a viewer-graded key is rejected too (decision 2)',
+      () async {
+        install([_grant(1, 'project:alpha', 'viewer')]);
 
-      await asPrincipal(1, (r) async {
-        final fresh = FixtureResourceRecord()
-          ..resourceKey = 'project:alpha'
-          ..title = 'Read-only key';
-        await expectLater(
-          r.save(fresh),
-          throwsA(isA<TomDataScopeAuthorizationException>()),
-        );
-      });
-      expect(await rawCount(), 0);
-    });
+        await asPrincipal(1, (r) async {
+          final fresh = FixtureResourceRecord()
+            ..resourceKey = 'project:alpha'
+            ..title = 'Read-only key';
+          await expectLater(
+            r.save(fresh),
+            throwsA(isA<TomDataScopeAuthorizationException>()),
+          );
+        });
+        expect(await rawCount(), 0);
+      },
+    );
 
     test('an insert under an owner-graded key is accepted', () async {
       install([_grant(1, 'project:alpha', 'owner')]);
@@ -289,37 +300,35 @@ void main() async {
         await r.save(fresh);
       });
       expect(await rawCount(), 1);
-      expect(
-        (await asPrincipal(1, (r) => r.findAll())).single.title,
-        'Mine',
-      );
+      expect((await asPrincipal(1, (r) => r.findAll())).single.title, 'Mine');
     });
 
     // ------------------------------------------------------------------
     // Delegation
     // ------------------------------------------------------------------
 
-    test('an active share delegation lets the delegate read the shared row',
-        () async {
-      await seed('project:alpha', 'Alpha plan');
-      install(
-        [_grant(1, 'project:alpha', 'owner')],
-        delegations: [
-          TomPrincipalDelegation(
-            delegatorId: '1',
-            delegateId: '2',
-            mode: 'share',
-            resourceKey: 'project:alpha',
-            role: 'viewer',
-          ),
-        ],
-      );
+    test(
+      'an active share delegation lets the delegate read the shared row',
+      () async {
+        await seed('project:alpha', 'Alpha plan');
+        install(
+          [_grant(1, 'project:alpha', 'owner')],
+          delegations: [
+            TomPrincipalDelegation(
+              delegatorId: '1',
+              delegateId: '2',
+              mode: 'share',
+              resourceKey: 'project:alpha',
+              role: 'viewer',
+            ),
+          ],
+        );
 
-      expect(
-        (await asPrincipal(2, (r) => r.findAll())).map((e) => e.title),
-        ['Alpha plan'],
-      );
-    });
+        expect((await asPrincipal(2, (r) => r.findAll())).map((e) => e.title), [
+          'Alpha plan',
+        ]);
+      },
+    );
 
     test('a revoked delegation stops the delegate reading the row', () async {
       await seed('project:alpha', 'Alpha plan');
@@ -421,12 +430,14 @@ void main() async {
       expect(await rawCount(), 1);
     });
 
-    test('an unauthenticated request (no principal in the zone) reads nothing',
-        () async {
-      await seed('project:alpha', 'Alpha plan');
-      install([_grant(1, 'project:alpha', 'owner')]);
-      expect(await FixtureResourceRepository().findAll(), isEmpty);
-    });
+    test(
+      'an unauthenticated request (no principal in the zone) reads nothing',
+      () async {
+        await seed('project:alpha', 'Alpha plan');
+        install([_grant(1, 'project:alpha', 'owner')]);
+        expect(await FixtureResourceRepository().findAll(), isEmpty);
+      },
+    );
   }, skip: skipReason);
 }
 
@@ -440,5 +451,6 @@ Future<List<FixtureResourceRecord>> rawRows(TomDataSourceInfo dsi) =>
     );
 
 /// The primary keys currently in `fixture_resource_document`.
-Future<List<int>> rawIds(TomDataSourceInfo dsi) async =>
-    [for (final row in await rawRows(dsi)) row.id!];
+Future<List<int>> rawIds(TomDataSourceInfo dsi) async => [
+  for (final row in await rawRows(dsi)) row.id!,
+];

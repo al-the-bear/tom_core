@@ -155,7 +155,8 @@ class _MemoryFileRepository
       );
     }
     final id = entity.id;
-    if (id != null && (outOfScope.contains(id) || writeScopeRefused.contains(id))) {
+    if (id != null &&
+        (outOfScope.contains(id) || writeScopeRefused.contains(id))) {
       throw TomDataScopeAuthorizationException(
         'data_scope.write.out_of_scope',
         'The requested row is not within your data scope.',
@@ -229,7 +230,9 @@ class _MemoryFileRepository
     final column = _column(fieldName);
     final key = column.getVariableValue(entity);
     column.setVariableValue(entity, null);
-    if (key is String && key.isNotEmpty && column.fileReference!.cascadeDelete) {
+    if (key is String &&
+        key.isNotEmpty &&
+        column.fileReference!.cascadeDelete) {
       await _store(column).delete(key);
     }
     return entity;
@@ -361,8 +364,10 @@ void main() {
         TomFileSlots.resolve('FixtureUnmappedFileRecord', 'attachment'),
         isNull,
       );
-      expect(TomFileSlots.resolve('fixture_unmapped_file', 'attachment'),
-          isNull);
+      expect(
+        TomFileSlots.resolve('fixture_unmapped_file', 'attachment'),
+        isNull,
+      );
     });
 
     group('the ambiguity guard behind the default-closed rule', () {
@@ -394,7 +399,8 @@ void main() {
         expect(
           resolved.declaredName,
           'notes',
-          reason: 'the field name the exposed slot would pass to the '
+          reason:
+              'the field name the exposed slot would pass to the '
               'repository resolves to the closed column, so registering this '
               'entity would put closed bytes behind an open slot',
         );
@@ -557,45 +563,47 @@ void main() {
       TomBlobStoreInfo.stores.clear();
     });
 
-    test('upload, describe, download and delete round-trip over HTTP', () async {
-      await start();
-      const slot = 'fixture_file_slot/1/poster';
-      final payload = utf8.encode('the bytes that crossed the socket');
+    test(
+      'upload, describe, download and delete round-trip over HTTP',
+      () async {
+        await start();
+        const slot = 'fixture_file_slot/1/poster';
+        final payload = utf8.encode('the bytes that crossed the socket');
 
-      final uploaded = await client.upload(
-        slot: slot,
-        source: TomFileSource.bytes(
-          'poster.txt',
-          payload,
-          mediaType: 'text/plain',
-        ),
-      );
-      expect(uploaded.byteCount, payload.length);
-      expect(uploaded.mediaType, startsWith('text/plain'));
-      expect(uploaded.fileName, 'poster.txt');
-      // The server minted the key; the client never named one.
-      expect(uploaded.key, startsWith('fixture/poster/'));
-      expect(repository.rows[1]!.poster, uploaded.key);
+        final uploaded = await client.upload(
+          slot: slot,
+          source: TomFileSource.bytes(
+            'poster.txt',
+            payload,
+            mediaType: 'text/plain',
+          ),
+        );
+        expect(uploaded.byteCount, payload.length);
+        expect(uploaded.mediaType, startsWith('text/plain'));
+        expect(uploaded.fileName, 'poster.txt');
+        // The server minted the key; the client never named one.
+        expect(uploaded.key, startsWith('fixture/poster/'));
+        expect(repository.rows[1]!.poster, uploaded.key);
 
-      final described = await client.describe(slot);
-      expect(described, isNotNull);
-      expect(described!.key, uploaded.key);
-      expect(described.byteCount, payload.length);
-      expect(described.fileName, 'poster.txt');
+        final described = await client.describe(slot);
+        expect(described, isNotNull);
+        expect(described!.key, uploaded.key);
+        expect(described.byteCount, payload.length);
+        expect(described.fileName, 'poster.txt');
 
-      final downloaded = <int>[];
-      await for (final chunk in client.download(slot)) {
-        downloaded.addAll(chunk);
-      }
-      expect(utf8.decode(downloaded), 'the bytes that crossed the socket');
+        final downloaded = <int>[];
+        await for (final chunk in client.download(slot)) {
+          downloaded.addAll(chunk);
+        }
+        expect(utf8.decode(downloaded), 'the bytes that crossed the socket');
 
-      expect(await client.remove(slot), isTrue);
-      expect(repository.rows[1]!.poster, isNull);
-      expect(await client.describe(slot), isNull);
-    });
+        expect(await client.remove(slot), isTrue);
+        expect(repository.rows[1]!.poster, isNull);
+        expect(await client.describe(slot), isNull);
+      },
+    );
 
-    test('a download produces its bytes inside the request execution context',
-        () async {
+    test('a download produces its bytes inside the request execution context', () async {
       // A response body is *lazy*. The handler returns a stream and shelf hands
       // it to the socket, so the bytes are pulled after the request's zone —
       // and with it the [TomPrincipal] the authentication middleware installed
@@ -631,7 +639,8 @@ void main() {
       expect(
         downloaded,
         payload,
-        reason: 'the stream must be subscribed in the request zone, or the '
+        reason:
+            'the stream must be subscribed in the request zone, or the '
             'scoped read behind it sees no principal',
       );
     });
@@ -669,8 +678,11 @@ void main() {
         throwsA(isA<TomFileTransferException>()),
         reason: 'an anonymous caller must not be able to write a file column',
       );
-      expect(repository.rows[1]!.poster, isNull,
-          reason: 'and the refused write must leave the row untouched');
+      expect(
+        repository.rows[1]!.poster,
+        isNull,
+        reason: 'and the refused write must leave the row untouched',
+      );
 
       // The read direction, against a slot that genuinely holds a file — so a
       // refusal cannot be confused with an empty slot. The file is placed
@@ -948,7 +960,9 @@ void main() {
         body: utf8.encode('put across the socket'),
       );
       expect(response.statusCode, 201);
-      final descriptor = jsonDecode(await response.transform(utf8.decoder).join());
+      final descriptor = jsonDecode(
+        await response.transform(utf8.decoder).join(),
+      );
       expect(descriptor['byteCount'], 'put across the socket'.length);
       expect(repository.rows[1]!.poster, descriptor['key']);
 
@@ -976,30 +990,32 @@ void main() {
       expect(response.statusCode, 404);
     });
 
-    test('a stored file the store cannot answer for is not silently a success',
-        () async {
-      // The row took the key and the store lost the bytes. `saveFile` reported
-      // success, so the upload cannot simply be failed as a client error — but
-      // neither may it be reported as stored, because the descriptor the client
-      // is owed does not exist. The endpoint names the disagreement instead of
-      // dereferencing the `null` it got back.
-      await start(loseStoredBlob: true);
-      final slot = TomFileSlots.resolve('fixture_file_slot', 'poster')!;
-      await expectLater(
-        slot.upload('1', Stream.value(utf8.encode('bytes that will vanish'))),
-        throwsA(
-          isA<TomFileSlotException>().having(
-            (e) => e.key,
-            'key',
-            'file_endpoint.stored_file_not_readable',
+    test(
+      'a stored file the store cannot answer for is not silently a success',
+      () async {
+        // The row took the key and the store lost the bytes. `saveFile` reported
+        // success, so the upload cannot simply be failed as a client error — but
+        // neither may it be reported as stored, because the descriptor the client
+        // is owed does not exist. The endpoint names the disagreement instead of
+        // dereferencing the `null` it got back.
+        await start(loseStoredBlob: true);
+        final slot = TomFileSlots.resolve('fixture_file_slot', 'poster')!;
+        await expectLater(
+          slot.upload('1', Stream.value(utf8.encode('bytes that will vanish'))),
+          throwsA(
+            isA<TomFileSlotException>().having(
+              (e) => e.key,
+              'key',
+              'file_endpoint.stored_file_not_readable',
+            ),
           ),
-        ),
-      );
-      // The row is left holding the key it was given — the endpoint reports the
-      // inconsistency, it does not paper over it by clearing the column, which
-      // would destroy the only evidence of what the store lost.
-      expect(repository.rows[1]!.poster, isNotNull);
-    });
+        );
+        // The row is left holding the key it was given — the endpoint reports the
+        // inconsistency, it does not paper over it by clearing the column, which
+        // would destroy the only evidence of what the store lost.
+        expect(repository.rows[1]!.poster, isNotNull);
+      },
+    );
 
     test('a lost blob surfaces as a server fault, not as a 404', () async {
       // Over the wire the same case must *not* join the 404 family. 404 tells a
@@ -1017,28 +1033,30 @@ void main() {
       expect(response.statusCode, greaterThanOrEqualTo(500));
     });
 
-    test('a large upload streams through without being buffered whole',
-        () async {
-      await start();
-      const slot = 'fixture_file_slot/1/poster';
-      // Comfortably more than one socket chunk, so the body genuinely arrives
-      // in pieces and the endpoint has to hand a stream on rather than a list.
-      final payload = List<int>.generate(512 * 1024, (i) => i % 251);
-      final uploaded = await client.upload(
-        slot: slot,
-        source: TomFileSource.bytes('big.bin', payload),
-      );
-      expect(uploaded.byteCount, payload.length);
+    test(
+      'a large upload streams through without being buffered whole',
+      () async {
+        await start();
+        const slot = 'fixture_file_slot/1/poster';
+        // Comfortably more than one socket chunk, so the body genuinely arrives
+        // in pieces and the endpoint has to hand a stream on rather than a list.
+        final payload = List<int>.generate(512 * 1024, (i) => i % 251);
+        final uploaded = await client.upload(
+          slot: slot,
+          source: TomFileSource.bytes('big.bin', payload),
+        );
+        expect(uploaded.byteCount, payload.length);
 
-      var downloadedLength = 0;
-      var chunks = 0;
-      await for (final chunk in client.download(slot)) {
-        downloadedLength += chunk.length;
-        chunks++;
-      }
-      expect(downloadedLength, payload.length);
-      expect(chunks, greaterThan(0));
-    });
+        var downloadedLength = 0;
+        var chunks = 0;
+        await for (final chunk in client.download(slot)) {
+          downloadedLength += chunk.length;
+          chunks++;
+        }
+        expect(downloadedLength, payload.length);
+        expect(chunks, greaterThan(0));
+      },
+    );
   });
 
   group('the handler mounted on its own', () {
@@ -1059,7 +1077,11 @@ void main() {
       TomFileSlots.register(_MemoryFileRepository());
       final router = Router()
         ..all('/files/<entity>/<id>/<column>', TomFileEndpoint.handle);
-      server = await shelf_io.serve(router.call, InternetAddress.loopbackIPv4, 0);
+      server = await shelf_io.serve(
+        router.call,
+        InternetAddress.loopbackIPv4,
+        0,
+      );
     });
 
     tearDown(() async {
@@ -1108,7 +1130,8 @@ void main() {
 /// needs a slot to *already* hold a file cannot fill it over HTTP without
 /// assuming the very behaviour it is about to deny.
 Future<String> _storeFixtureBlob(String content) async {
-  final key = 'fixture/poster/preloaded-${DateTime.now().microsecondsSinceEpoch}';
+  final key =
+      'fixture/poster/preloaded-${DateTime.now().microsecondsSinceEpoch}';
   await TomBlobStoreInfo.defaultStore.putBytes(
     key: key,
     bytes: utf8.encode(content),
@@ -1125,10 +1148,11 @@ Future<String> _storeFixtureBlob(String content) async {
 /// leave this one unable to run without a key. What matters downstream is only
 /// that a `TomPrincipal` is in the zone, so that is all this puts there.
 Middleware _principalMiddleware(TomPrincipal principal) =>
-    (innerHandler) => (request) => runZoned<FutureOr<Response>>(
-      () => innerHandler(request),
-      zoneValues: {TomPrincipal: principal},
-    );
+    (innerHandler) =>
+        (request) => runZoned<FutureOr<Response>>(
+          () => innerHandler(request),
+          zoneValues: {TomPrincipal: principal},
+        );
 
 /// Issues a raw request, bypassing the client, so a status code the client
 /// turns into an exception can be asserted directly.

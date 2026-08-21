@@ -175,7 +175,10 @@ class TomDatabaseBlobStore extends TomBlobStore {
         // hands out whatever the OS gave it), so the loop slices rather than
         // assuming one buffer fill per event.
         while (offset < incoming.length) {
-          final take = (chunkSize - buffer.length).clamp(0, incoming.length - offset);
+          final take = (chunkSize - buffer.length).clamp(
+            0,
+            incoming.length - offset,
+          );
           buffer.addAll(incoming.getRange(offset, offset + take));
           offset += take;
           if (buffer.length >= chunkSize) await flush();
@@ -335,9 +338,9 @@ class TomDatabaseBlobStore extends TomBlobStore {
   }
 
   Future<void> _deleteChunks(String uploadId) => datasource.executeCommand(
-        'DELETE FROM $chunkTable WHERE upload_id = :uploadId',
-        {'uploadId': uploadId},
-      );
+    'DELETE FROM $chunkTable WHERE upload_id = :uploadId',
+    {'uploadId': uploadId},
+  );
 
   /// Renders [value] in the `YYYY-MM-DD HH:MM:SS` form a SQL `DATETIME` binds.
   static String _sqlDateTime(DateTime value) =>

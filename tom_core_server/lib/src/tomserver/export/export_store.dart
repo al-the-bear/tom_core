@@ -165,10 +165,12 @@ class TomDirectoryExportStore extends TomExportStore {
     var written = 0;
     final sink = partial.openWrite();
     try {
-      await sink.addStream(bytes.map((chunk) {
-        written += chunk.length;
-        return chunk;
-      }));
+      await sink.addStream(
+        bytes.map((chunk) {
+          written += chunk.length;
+          return chunk;
+        }),
+      );
       await sink.flush();
     } on Object catch (error, stack) {
       await sink.close().catchError((Object _) {});

@@ -298,9 +298,9 @@ class Tom2FARegistry {
   static List<Tom2FAMethodDescriptor> get enrollableMethods {
     _ensureScanned();
     return List.unmodifiable(
-      _adaptors.values
-          .whereType<Tom2FAEnrolmentSupport>()
-          .map((adaptor) => (adaptor as Tom2FAService).descriptor),
+      _adaptors.values.whereType<Tom2FAEnrolmentSupport>().map(
+        (adaptor) => (adaptor as Tom2FAService).descriptor,
+      ),
     );
   }
 
@@ -426,9 +426,8 @@ class Tom2FARegistry {
 ///
 /// The returned secret is the base32 string an authenticator app was
 /// provisioned with.
-typedef TomTotpSecretResolver = FutureOr<String?> Function(
-  Tom2FAContext context,
-);
+typedef TomTotpSecretResolver =
+    FutureOr<String?> Function(Tom2FAContext context);
 
 /// The built-in RFC 6238 time-based one-time-password adaptor.
 ///
@@ -689,8 +688,8 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
   /// credential: a guessable one is worse than no second factor, because it is
   /// trusted.
   static String generateSecret() => TomTotp.encodeBase32(
-        RsaKeyHelper.getSecureRandom().nextBytes(globalSettingSecretBytes),
-      );
+    RsaKeyHelper.getSecureRandom().nextBytes(globalSettingSecretBytes),
+  );
 
   /// The `otpauth://` provisioning URI for [secret], as an authenticator app
   /// consumes it (the payload behind the QR code).
@@ -728,7 +727,9 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
   /// The issuer name to provision, for a login in [context]: the configured
   /// [globalSettingIssuer], else the application being logged into.
   static String issuerFor(Tom2FAContext context) =>
-      globalSettingIssuer.isNotEmpty ? globalSettingIssuer : context.application;
+      globalSettingIssuer.isNotEmpty
+      ? globalSettingIssuer
+      : context.application;
 
   /// The code this verifier expects right now, for the base32 [secret] — the
   /// adaptor's own policy (digits, period) applied to [TomTotp].
@@ -736,11 +737,11 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
   /// For enrolment self-checks and for tests, so neither has to restate the
   /// policy and then drift out of agreement with the verifier.
   static String expectedCode(String secret, {DateTime? at}) => TomTotp.codeFor(
-        secret,
-        at: at,
-        digits: globalSettingDigits,
-        period: globalSettingPeriod,
-      );
+    secret,
+    at: at,
+    digits: globalSettingDigits,
+    period: globalSettingPeriod,
+  );
 
   /// Whether [submitted] is the code for [secret] at any time step within
   /// [globalSettingWindowSteps] of now.
@@ -762,10 +763,15 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
     if (globalSettingPeriod.inSeconds <= 0) return false;
 
     final now = DateTime.now();
-    for (var offset = -globalSettingWindowSteps;
-        offset <= globalSettingWindowSteps;
-        offset++) {
-      final expected = expectedCode(secret, at: now.add(globalSettingPeriod * offset));
+    for (
+      var offset = -globalSettingWindowSteps;
+      offset <= globalSettingWindowSteps;
+      offset++
+    ) {
+      final expected = expectedCode(
+        secret,
+        at: now.add(globalSettingPeriod * offset),
+      );
       // Empty means the secret was undecodable; no submission should match it.
       if (expected.isEmpty) return false;
       if (_constantTimeEquals(expected, code)) return true;

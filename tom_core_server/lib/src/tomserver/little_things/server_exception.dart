@@ -54,7 +54,7 @@ class TomServerException extends TomException {
     this.clientThrow = true,
   }) {
     TomRequestId? requestId = getFromCurrentZone<TomRequestId>();
-    if( requestId != null ) {
+    if (requestId != null) {
       requestUuid = requestId.uuid;
     }
   }
@@ -62,7 +62,8 @@ class TomServerException extends TomException {
   /// Returns the base [TomException] string extended with the originating
   /// [isolateName], the [clientThrow] flag, and the correlated request UUID.
   @override
-  String toString() => "${super.toString()} $isolateName client-throw: $clientThrow $requestUuid";
+  String toString() =>
+      "${super.toString()} $isolateName client-throw: $clientThrow $requestUuid";
 }
 
 /// A server-side login failure.

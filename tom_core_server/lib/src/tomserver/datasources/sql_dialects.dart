@@ -2,7 +2,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../object_persistence/operators_expressions.dart';
 import 'types_operator.dart';
 
-
 /// A SQL fragment. An alias for `String` that documents intent at call sites.
 typedef SqlString = String;
 

@@ -36,20 +36,20 @@ FixtureExportRecord _record({
   bool done = true,
   String secret = 'do-not-export',
   String attachment = 'fixture/export/1/report.pdf',
-}) =>
-    FixtureExportRecord()
-      ..id = id
-      ..title = title
-      ..amount = amount
-      ..done = done
-      ..createdAt = DateTime.utc(2026, 7, 28, 14, 30)
-      ..tagDay = TomZonedDate(year: 2026, month: 7, day: 28)
-      ..secret = secret
-      ..attachment = attachment;
+}) => FixtureExportRecord()
+  ..id = id
+  ..title = title
+  ..amount = amount
+  ..done = done
+  ..createdAt = DateTime.utc(2026, 7, 28, 14, 30)
+  ..tagDay = TomZonedDate(year: 2026, month: 7, day: 28)
+  ..secret = secret
+  ..attachment = attachment;
 
 /// The declared field names of a section's columns, in output order.
-List<String> _names(TomTabularSection section) =>
-    [for (final column in section.columns) column.name];
+List<String> _names(TomTabularSection section) => [
+  for (final column in section.columns) column.name,
+];
 
 Future<Uint8List> _collect(Stream<List<int>> bytes) async {
   final out = <int>[];
@@ -71,10 +71,14 @@ void main() {
       final section = TomTabularSection.ofEntities<FixtureExportRecord>(
         const Stream.empty(),
       );
-      expect(
-        _names(section),
-        ['id', 'title', 'amount', 'done', 'createdAt', 'tagDay'],
-      );
+      expect(_names(section), [
+        'id',
+        'title',
+        'amount',
+        'done',
+        'createdAt',
+        'tagDay',
+      ]);
     });
 
     test('names columns by declared field, not by database column', () {
@@ -109,8 +113,9 @@ void main() {
       final section = TomTabularSection.ofEntities<FixtureExportRecord>(
         const Stream.empty(),
       );
-      final tagDay =
-          section.columns.firstWhere((column) => column.name == 'tagDay');
+      final tagDay = section.columns.firstWhere(
+        (column) => column.name == 'tagDay',
+      );
       expect(tagDay.type, TomColumnType.text);
     });
 
@@ -275,17 +280,17 @@ void main() {
       // validated against the entity's fields.
       for (final build in [
         () => TomTabularSection.ofEntities<FixtureExportRecord>(
-              const Stream.empty(),
-              include: ['nosuch'],
-            ),
+          const Stream.empty(),
+          include: ['nosuch'],
+        ),
         () => TomTabularSection.ofEntities<FixtureExportRecord>(
-              const Stream.empty(),
-              exclude: {'nosuch'},
-            ),
+          const Stream.empty(),
+          exclude: {'nosuch'},
+        ),
         () => TomTabularSection.ofEntities<FixtureExportRecord>(
-              const Stream.empty(),
-              titles: {'nosuch': 'No Such'},
-            ),
+          const Stream.empty(),
+          titles: {'nosuch': 'No Such'},
+        ),
       ]) {
         expect(
           build,
@@ -322,29 +327,31 @@ void main() {
   // ===========================================================================
 
   group('TomTabularSection.ofEntities (streaming and positional cells)', () {
-    test('nothing is pulled from the entity stream before a renderer runs',
-        () async {
-      var produced = 0;
-      Stream<FixtureExportRecord> source() async* {
-        for (var i = 0; i < 3; i++) {
-          produced++;
-          yield _record(id: i);
+    test(
+      'nothing is pulled from the entity stream before a renderer runs',
+      () async {
+        var produced = 0;
+        Stream<FixtureExportRecord> source() async* {
+          for (var i = 0; i < 3; i++) {
+            produced++;
+            yield _record(id: i);
+          }
         }
-      }
 
-      final result = TomTabularResult.fromEntities<FixtureExportRecord>(
-        source(),
-        title: 'Records',
-      );
+        final result = TomTabularResult.fromEntities<FixtureExportRecord>(
+          source(),
+          title: 'Records',
+        );
 
-      // Deriving the columns reads annotations, not rows: building the whole
-      // result must not have touched the stream.
-      expect(produced, 0);
-      expect(result.sections.single.columns, isNotEmpty);
+        // Deriving the columns reads annotations, not rows: building the whole
+        // result must not have touched the stream.
+        expect(produced, 0);
+        expect(result.sections.single.columns, isNotEmpty);
 
-      await _renderCsv(result);
-      expect(produced, 3);
-    });
+        await _renderCsv(result);
+        expect(produced, 3);
+      },
+    );
 
     test('rows are pulled one at a time, not collected first', () async {
       // A renderer that materialised the stream would block until the
@@ -365,7 +372,9 @@ void main() {
 
     test('cells are a positional list parallel to the columns', () async {
       final section = TomTabularSection.ofEntities<FixtureExportRecord>(
-        Stream.value(_record(id: 3, title: 'Gadget', amount: 12.0, done: false)),
+        Stream.value(
+          _record(id: 3, title: 'Gadget', amount: 12.0, done: false),
+        ),
       );
       final row = await section.rows.first;
       expect(row.cells, isA<List<Object?>>());
@@ -379,7 +388,8 @@ void main() {
   // ===========================================================================
 
   group('TomTabularResult.fromEntities (rendering)', () {
-    TomTabularResult build() => TomTabularResult.fromEntities<FixtureExportRecord>(
+    TomTabularResult build() =>
+        TomTabularResult.fromEntities<FixtureExportRecord>(
           Stream.fromIterable([
             _record(id: 1, title: 'Widget'),
             _record(id: 2, title: 'Gadget', amount: 12.0, done: false),
@@ -414,7 +424,8 @@ void main() {
 }
 
 Future<String> _renderCsv(TomTabularResult result) async {
-  final bytes =
-      await _collect(const TomCsvRenderer(byteOrderMark: false).render(result));
+  final bytes = await _collect(
+    const TomCsvRenderer(byteOrderMark: false).render(result),
+  );
   return utf8.decode(bytes);
 }

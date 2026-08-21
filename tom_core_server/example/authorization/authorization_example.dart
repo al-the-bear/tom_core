@@ -17,10 +17,12 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 /// Builds a client JWT token whose `validUntil` claim is [validFor] from now.
 /// Pass a negative duration to obtain an already-expired token.
-TomClientJwtToken _token(String userId, {Duration validFor = const Duration(hours: 2)}) =>
-    TomClientJwtToken(
-      TomServerJwtToken({'userId': userId}, expiresIn: validFor).getJWT('tom'),
-    );
+TomClientJwtToken _token(
+  String userId, {
+  Duration validFor = const Duration(hours: 2),
+}) => TomClientJwtToken(
+  TomServerJwtToken({'userId': userId}, expiresIn: validFor).getJWT('tom'),
+);
 
 /// A principal for [username], marked authenticated.
 TomPrincipal _principal(String username) =>
@@ -39,7 +41,9 @@ Future<void> run() async {
   // 2. An unknown token is a cache miss and returns null (not an error).
   final strangerToken = _token('stranger');
   final miss = await TomAuthorizationCache.getPrincipal(strangerToken);
-  print('2. unknown token -> miss     : ${miss == null ? 'null (miss)' : miss.username}');
+  print(
+    '2. unknown token -> miss     : ${miss == null ? 'null (miss)' : miss.username}',
+  );
   assert(miss == null);
 
   // 3. A token whose validUntil is already in the past yields an expired entry.
@@ -60,16 +64,20 @@ Future<void> run() async {
   //    worker isolate getPrincipal/storePrincipal forward one of these to the
   //    main isolate, where TomAuthorizationCacheExecutor turns it back into a
   //    cache call.
-  final store = TomAuthorizationCacheStoreMessage(aliceToken, _principal('alice'));
+  final store = TomAuthorizationCacheStoreMessage(
+    aliceToken,
+    _principal('alice'),
+  );
   final retrieve = TomAuthorizationCacheRetrieveMessage(aliceToken);
   final executor = TomAuthorizationCacheExecutor();
-  print('4. executor store -> ${executor.execute(store)}, '
-      'unknown command -> noResult: ${identical(executor.execute('nope'), TomExecutor.noResult)}');
+  print(
+    '4. executor store -> ${executor.execute(store)}, '
+    'unknown command -> noResult: ${identical(executor.execute('nope'), TomExecutor.noResult)}',
+  );
   assert(executor.execute(store) == true);
   assert(identical(executor.execute('nope'), TomExecutor.noResult));
   // The retrieve command resolves (asynchronously) to the stored principal.
-  final retrieved =
-      await (executor.execute(retrieve) as Future<TomPrincipal?>);
+  final retrieved = await (executor.execute(retrieve) as Future<TomPrincipal?>);
   assert(retrieved?.username == 'alice');
 }
 

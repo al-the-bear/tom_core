@@ -294,9 +294,9 @@ class TomDataScope {
   /// enumeration in this so the reads that *compute* the visible id-set are not
   /// themselves re-scoped — the guard against unbounded resolver recursion.
   static Future<T> runUnscoped<T>(Future<T> Function() body) => runZoned(
-        body,
-        zoneValues: const {TomDataScopeBypass: TomDataScopeBypass()},
-      );
+    body,
+    zoneValues: const {TomDataScopeBypass: TomDataScopeBypass()},
+  );
 
   /// Builds the scope predicate for [scope] on column [col] from [principal]'s
   /// allowed values, resolved through [TomDataScopeRegistry].
@@ -404,7 +404,12 @@ class TomDataScope {
     final predicates = <TomOperator<TomDbBool>>[];
     final parameters = <String, Object?>{};
     for (var g = 0; g < groups.length; g++) {
-      final sub = inList(builder, col, groups[g], prefix: '$parameterPrefix${g}_');
+      final sub = inList(
+        builder,
+        col,
+        groups[g],
+        prefix: '$parameterPrefix${g}_',
+      );
       predicates.add(sub.predicate);
       parameters.addAll(sub.parameters);
     }
@@ -467,7 +472,9 @@ class TomDataScope {
     bool forWrite = false,
   }) {
     final resolver =
-        (forWrite ? TomDataScopeRegistry.writeResolverFor(scope.scope) : null) ??
+        (forWrite
+            ? TomDataScopeRegistry.writeResolverFor(scope.scope)
+            : null) ??
         TomDataScopeRegistry.resolverFor(scope.scope);
     if (resolver == null) {
       throw TomDataScopeException(
@@ -520,15 +527,13 @@ class TomDataScope {
   ) {
     final field = col.getQueryFieldName();
     if (col.declaredType == int) {
-      return builder.isIn<TomDbInt>(
-        builder.intF(field, col),
-        [for (final n in parameterNames) builder.p<TomDbInt>(n)],
-      );
+      return builder.isIn<TomDbInt>(builder.intF(field, col), [
+        for (final n in parameterNames) builder.p<TomDbInt>(n),
+      ]);
     }
-    return builder.isIn<TomDbString>(
-      builder.textF(field, col),
-      [for (final n in parameterNames) builder.p<TomDbString>(n)],
-    );
+    return builder.isIn<TomDbString>(builder.textF(field, col), [
+      for (final n in parameterNames) builder.p<TomDbString>(n),
+    ]);
   }
 
   /// Builds `<col> = :parameterName`, dispatching the SQL type on [col]'s

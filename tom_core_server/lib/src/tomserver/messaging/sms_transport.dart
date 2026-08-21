@@ -114,7 +114,12 @@ class TomSmsSegmentation {
     return TomSmsSegmentation._(
       encoding,
       units,
-      _pack(costs, units, _singleCapacityOf(encoding), _partCapacityOf(encoding)),
+      _pack(
+        costs,
+        units,
+        _singleCapacityOf(encoding),
+        _partCapacityOf(encoding),
+      ),
     );
   }
 
@@ -272,7 +277,8 @@ class TomSmsGatewaySettings {
       apiSecret: _blankToNull(configuration.smsApiSecret),
       senderId: _blankToNull(configuration.smsSenderId),
       authScheme: TomSmsAuthScheme.values.firstWhere(
-        (s) => s.name.toLowerCase() == configuration.smsAuthScheme.toLowerCase(),
+        (s) =>
+            s.name.toLowerCase() == configuration.smsAuthScheme.toLowerCase(),
         // Bearer rather than `none`: an unrecognised value must not silently
         // drop the credential and send unauthenticated requests to a paid API.
         orElse: () => TomSmsAuthScheme.bearer,
@@ -716,7 +722,9 @@ class TomSmsTransport extends TomMessageTransport {
            openChannel ??
            ((s) => TomServerChannel(
              s.endpoint.host,
-             s.endpoint.hasPort ? s.endpoint.port : (s.endpoint.isScheme('https') ? 443 : 80),
+             s.endpoint.hasPort
+                 ? s.endpoint.port
+                 : (s.endpoint.isScheme('https') ? 443 : 80),
            ));
 
   @override
@@ -756,7 +764,8 @@ class TomSmsTransport extends TomMessageTransport {
     }
 
     final segmentation = TomSmsSegmentation.of(text);
-    if (settings.maxSegments > 0 && segmentation.segments > settings.maxSegments) {
+    if (settings.maxSegments > 0 &&
+        segmentation.segments > settings.maxSegments) {
       // Permanent by construction: the text will not be shorter on a retry,
       // and the alternative — send it anyway — bills for it.
       throw TomDeliveryException.permanent(

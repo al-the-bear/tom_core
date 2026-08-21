@@ -60,15 +60,13 @@ void main() {
       );
     });
 
-    test('the guards are environment-tagged, not part of the default chain',
-        () {
+    test('the guards are environment-tagged, not part of the default chain', () {
       // A deployment whose credential already lacks UPDATE gains nothing from
       // the trigger, and the DELETE guard actively blocks retention. Both must
       // therefore be opt-in; the `@env` tag is how a migration says so.
-      final names = Directory('example/audit/migrations/main/tomcore')
-          .listSync()
-          .map((e) => e.uri.pathSegments.last)
-          .toList();
+      final names = Directory(
+        'example/audit/migrations/main/tomcore',
+      ).listSync().map((e) => e.uri.pathSegments.last).toList();
       expect(names.where((n) => n.contains('@')), hasLength(2));
       expect(
         names.singleWhere((n) => n.startsWith('[1]')).contains('@'),
@@ -105,9 +103,7 @@ void main() {
       // rather than at the next verification.
       expect(
         ddl,
-        contains(
-          'UNIQUE KEY uq_tom_audit_trail_link (writer, previous_hash)',
-        ),
+        contains('UNIQUE KEY uq_tom_audit_trail_link (writer, previous_hash)'),
       );
       expect(
         ddl,
@@ -119,14 +115,22 @@ void main() {
       // Nothing addresses an audit row by anything else, and insertion order is
       // both the chain's read order and the axis retention trims a prefix from.
       expect(ddl, contains('PRIMARY KEY (seq)'));
-      expect(ddl, contains('seq           BIGINT       NOT NULL AUTO_INCREMENT'));
+      expect(
+        ddl,
+        contains('seq           BIGINT       NOT NULL AUTO_INCREMENT'),
+      );
     });
 
-    test('the chain is scoped by writer so several nodes may share a table',
-        () {
-      expect(ddl, contains('writer        VARCHAR(64)  NOT NULL'));
-      expect(ddl, contains('KEY ix_tom_audit_trail_time (writer, recorded_at)'));
-    });
+    test(
+      'the chain is scoped by writer so several nodes may share a table',
+      () {
+        expect(ddl, contains('writer        VARCHAR(64)  NOT NULL'));
+        expect(
+          ddl,
+          contains('KEY ix_tom_audit_trail_time (writer, recorded_at)'),
+        );
+      },
+    );
 
     test('the record text is stored whole and is not truncated', () {
       // The projection columns are a lossy index for operators; `record` is the
@@ -215,7 +219,10 @@ void main() {
         updateTrigger: 'trg_tom_audit_trail_no_update',
         grantsDelete: false,
       );
-      expect(guarded.summary, contains('blocked by trg_tom_audit_trail_no_update'));
+      expect(
+        guarded.summary,
+        contains('blocked by trg_tom_audit_trail_no_update'),
+      );
       expect(guarded.summary, contains('DELETE not granted'));
     });
   });

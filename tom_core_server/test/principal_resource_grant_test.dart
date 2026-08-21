@@ -52,25 +52,38 @@ void main() {
     });
     tearDown(TomResourceRoleRegistry.reset);
 
-    test('Alice\'s role differs per resource → per-resource role map', () async {
-      final store = InMemoryPrincipalResourceGrantStore([
-        TomPrincipalResourceGrant(
-            principalId: 'alice', resourceKey: 'project.X', role: 'owner'),
-        TomPrincipalResourceGrant(
-            principalId: 'alice', resourceKey: 'project.Y', role: 'viewer'),
-        // Bob's grant must not leak into Alice's resolution.
-        TomPrincipalResourceGrant(
-            principalId: 'bob', resourceKey: 'project.X', role: 'viewer'),
-      ]);
-      final resolver = TomPrincipalResourceRoleResolver(store);
+    test(
+      'Alice\'s role differs per resource → per-resource role map',
+      () async {
+        final store = InMemoryPrincipalResourceGrantStore([
+          TomPrincipalResourceGrant(
+            principalId: 'alice',
+            resourceKey: 'project.X',
+            role: 'owner',
+          ),
+          TomPrincipalResourceGrant(
+            principalId: 'alice',
+            resourceKey: 'project.Y',
+            role: 'viewer',
+          ),
+          // Bob's grant must not leak into Alice's resolution.
+          TomPrincipalResourceGrant(
+            principalId: 'bob',
+            resourceKey: 'project.X',
+            role: 'viewer',
+          ),
+        ]);
+        final resolver = TomPrincipalResourceRoleResolver(store);
 
-      final roles = await resolver.resolveResourceRoles('alice');
-      expect(roles, {'project.X': 'owner', 'project.Y': 'viewer'});
-    });
+        final roles = await resolver.resolveResourceRoles('alice');
+        expect(roles, {'project.X': 'owner', 'project.Y': 'viewer'});
+      },
+    );
 
     test('no grants → empty map (every resource resolves to none)', () async {
-      final resolver =
-          TomPrincipalResourceRoleResolver(InMemoryPrincipalResourceGrantStore([]));
+      final resolver = TomPrincipalResourceRoleResolver(
+        InMemoryPrincipalResourceGrantStore([]),
+      );
       expect(await resolver.resolveResourceRoles('nobody'), isEmpty);
     });
 
@@ -79,9 +92,15 @@ void main() {
       // same resource: the stronger (owner → full) must win.
       final store = InMemoryPrincipalResourceGrantStore([
         TomPrincipalResourceGrant(
-            principalId: 'alice', resourceKey: 'project.X', role: 'viewer'),
+          principalId: 'alice',
+          resourceKey: 'project.X',
+          role: 'viewer',
+        ),
         TomPrincipalResourceGrant(
-            principalId: 'alice', resourceKey: 'project.X', role: 'owner'),
+          principalId: 'alice',
+          resourceKey: 'project.X',
+          role: 'owner',
+        ),
       ]);
       final resolver = TomPrincipalResourceRoleResolver(store);
 
@@ -89,46 +108,61 @@ void main() {
       expect(roles, {'project.X': 'owner'});
     });
 
-    test('resolveAdapter produces an adapter driving server + client states',
-        () async {
-      final store = InMemoryPrincipalResourceGrantStore([
-        TomPrincipalResourceGrant(
-            principalId: 'alice', resourceKey: 'project.X', role: 'owner'),
-        TomPrincipalResourceGrant(
-            principalId: 'alice', resourceKey: 'project.Y', role: 'viewer'),
-      ]);
-      final resolver = TomPrincipalResourceRoleResolver(store);
+    test(
+      'resolveAdapter produces an adapter driving server + client states',
+      () async {
+        final store = InMemoryPrincipalResourceGrantStore([
+          TomPrincipalResourceGrant(
+            principalId: 'alice',
+            resourceKey: 'project.X',
+            role: 'owner',
+          ),
+          TomPrincipalResourceGrant(
+            principalId: 'alice',
+            resourceKey: 'project.Y',
+            role: 'viewer',
+          ),
+        ]);
+        final resolver = TomPrincipalResourceRoleResolver(store);
 
-      final adapter = await resolver.resolveAdapter('alice');
+        final adapter = await resolver.resolveAdapter('alice');
 
-      // Server enforcement.
-      expect(adapter.stateOf('project.X').isInteractive, isTrue);
-      expect(adapter.stateOf('project.Y').isInteractive, isFalse);
-      // Client presentation.
-      expect(adapter.resolveAuth('project.X'), TomAuthState.full);
-      expect(adapter.resolveAuth('project.Y'), TomAuthState.read);
-      expect(adapter.resolveAuth('project.Z'), TomAuthState.none);
-    });
+        // Server enforcement.
+        expect(adapter.stateOf('project.X').isInteractive, isTrue);
+        expect(adapter.stateOf('project.Y').isInteractive, isFalse);
+        // Client presentation.
+        expect(adapter.resolveAuth('project.X'), TomAuthState.full);
+        expect(adapter.resolveAuth('project.Y'), TomAuthState.read);
+        expect(adapter.resolveAuth('project.Z'), TomAuthState.none);
+      },
+    );
 
-    test('a custom strongerRole ordering overrides the registry default',
-        () async {
-      // With registry strength, editor (full) would beat commenter (read); a
-      // caller-supplied ordering that always prefers the alphabetically-first
-      // token flips that.
-      final store = InMemoryPrincipalResourceGrantStore([
-        TomPrincipalResourceGrant(
-            principalId: 'alice', resourceKey: 'r', role: 'editor'),
-        TomPrincipalResourceGrant(
-            principalId: 'alice', resourceKey: 'r', role: 'commenter'),
-      ]);
-      final resolver = TomPrincipalResourceRoleResolver(
-        store,
-        strongerRole: (a, b) => a.compareTo(b) <= 0 ? a : b,
-      );
+    test(
+      'a custom strongerRole ordering overrides the registry default',
+      () async {
+        // With registry strength, editor (full) would beat commenter (read); a
+        // caller-supplied ordering that always prefers the alphabetically-first
+        // token flips that.
+        final store = InMemoryPrincipalResourceGrantStore([
+          TomPrincipalResourceGrant(
+            principalId: 'alice',
+            resourceKey: 'r',
+            role: 'editor',
+          ),
+          TomPrincipalResourceGrant(
+            principalId: 'alice',
+            resourceKey: 'r',
+            role: 'commenter',
+          ),
+        ]);
+        final resolver = TomPrincipalResourceRoleResolver(
+          store,
+          strongerRole: (a, b) => a.compareTo(b) <= 0 ? a : b,
+        );
 
-      final roles = await resolver.resolveResourceRoles('alice');
-      expect(roles, {'r': 'commenter'});
-    });
+        final roles = await resolver.resolveResourceRoles('alice');
+        expect(roles, {'r': 'commenter'});
+      },
+    );
   });
-
 }

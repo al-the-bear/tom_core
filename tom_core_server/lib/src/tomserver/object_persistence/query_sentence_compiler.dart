@@ -365,7 +365,9 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
           case IntCol():
             return isMin ? minInt(operand, alias) : maxInt(operand, alias);
           case DoubleCol():
-            return isMin ? minDouble(operand, alias) : maxDouble(operand, alias);
+            return isMin
+                ? minDouble(operand, alias)
+                : maxDouble(operand, alias);
           case StringCol():
             return isMin ? minText(operand, alias) : maxText(operand, alias);
           case DateTimeCol():
@@ -387,12 +389,7 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
 
   /// The option keywords that take a numeric argument, so the grouped branch
   /// knows how many tokens to skip before the projection starts.
-  static const Set<String> _windowOptions = {
-    "TOP",
-    "FIRST",
-    "SKIP",
-    "OFFSET",
-  };
+  static const Set<String> _windowOptions = {"TOP", "FIRST", "SKIP", "OFFSET"};
 
   /// Reads the numeric option spelled either [keyA] or [keyB] out of [options],
   /// returning `-1` when neither appears.

@@ -39,7 +39,7 @@ void main() async {
   final String? skipReason = reachable
       ? null
       : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-          'start one with tool/run_db_tests.sh';
+            'start one with tool/run_db_tests.sh';
 
   group('MariaDbDatasource (DB-backed)', () {
     late TomDataSourceInfo dsi;
@@ -104,28 +104,32 @@ void main() async {
       expect(rows.single.title, 'high');
     });
 
-    test('prepareStatement binds positional parameters and maps rows', () async {
-      await ds.executeCommand(
-        "INSERT INTO fixture_task (title, priority) VALUES ('alpha', 5)",
-      );
-      await ds.executeCommand(
-        "INSERT INTO fixture_task (title, priority) VALUES ('beta', 5)",
-      );
-      final stmt = await ds.prepareStatement<FixtureTaskRecord>(
-        TomLiteralSelect(
-          [FixtureTaskRecord],
-          query: 'SELECT id, title, priority, done FROM fixture_task '
-              'WHERE priority = :priority ORDER BY title',
-          parameters: ['priority'],
-        ),
-      );
-      try {
-        final rows = await stmt.execute({'priority': 5});
-        expect(rows.map((r) => r.title), ['alpha', 'beta']);
-      } finally {
-        await stmt.deallocate();
-      }
-    });
+    test(
+      'prepareStatement binds positional parameters and maps rows',
+      () async {
+        await ds.executeCommand(
+          "INSERT INTO fixture_task (title, priority) VALUES ('alpha', 5)",
+        );
+        await ds.executeCommand(
+          "INSERT INTO fixture_task (title, priority) VALUES ('beta', 5)",
+        );
+        final stmt = await ds.prepareStatement<FixtureTaskRecord>(
+          TomLiteralSelect(
+            [FixtureTaskRecord],
+            query:
+                'SELECT id, title, priority, done FROM fixture_task '
+                'WHERE priority = :priority ORDER BY title',
+            parameters: ['priority'],
+          ),
+        );
+        try {
+          final rows = await stmt.execute({'priority': 5});
+          expect(rows.map((r) => r.title), ['alpha', 'beta']);
+        } finally {
+          await stmt.deallocate();
+        }
+      },
+    );
 
     test('a rolled-back transaction discards its inserts', () async {
       expect(await ds.startTransaction(), isTrue);

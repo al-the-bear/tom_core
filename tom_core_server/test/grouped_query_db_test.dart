@@ -78,7 +78,7 @@ void main() async {
   final String? skipReason = reachable
       ? null
       : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-          'start one with tool/run_db_tests.sh';
+            'start one with tool/run_db_tests.sh';
 
   final b = _Builder();
 
@@ -149,14 +149,12 @@ void main() async {
         expect(
           [for (final row in rows) row.stringValue('title')],
           ['alpha', 'beta', 'delta', 'gamma'],
-          reason: 'ORDER BY names the projection alias, so the groups come '
+          reason:
+              'ORDER BY names the projection alias, so the groups come '
               'back in title order — the assertion is that the server honoured '
               'it, not merely that the clause was emitted',
         );
-        expect(
-          [for (final row in rows) row.intValue('n')],
-          [3, 2, 2, 1],
-        );
+        expect([for (final row in rows) row.intValue('n')], [3, 2, 2, 1]);
       });
 
       test('every aggregate kind computes the right value', () async {
@@ -208,13 +206,15 @@ void main() async {
         expect(
           delta.intValue('n'),
           2,
-          reason: 'COUNT(*) counts rows, including those whose priority is '
+          reason:
+              'COUNT(*) counts rows, including those whose priority is '
               'NULL',
         );
         expect(
           delta.intValue('rated'),
           0,
-          reason: 'COUNT(priority) counts non-null values — the distinction '
+          reason:
+              'COUNT(priority) counts non-null values — the distinction '
               'the two node kinds exist to express',
         );
       });
@@ -238,71 +238,77 @@ void main() async {
         expect(alpha.intValue('kinds'), 3);
       });
 
-      test('grouping by a bool key materialises the TINYINT as a bool',
-          () async {
-        final query = TomGroupedSelect(
-          [FixtureTaskRecord],
-          query: allRows(),
-          groupBy: [doneCol],
-          aggregates: [b.countAll('n'), b.sum(priorityCol, 'total')],
-          orderBy: ['done'],
-        );
-        final rows = await repo.findGroupedByQuery(query, const {});
-        expect(rows, hasLength(2));
-        expect(
-          rows.first.value('done'),
-          isA<bool>(),
-          reason: 'MariaDB stores the column as TINYINT(1); the projection '
-              'declares it bool, so the mapper must hand back a Dart bool '
-              'rather than 0/1',
-        );
-        final byDone = {
-          for (final row in rows) row.boolValue('done')!: row,
-        };
-        expect(byDone[false]!.intValue('n'), 5);
-        expect(byDone[true]!.intValue('n'), 3);
-        expect(byDone[true]!.doubleValue('total'), 23.0);
-      });
+      test(
+        'grouping by a bool key materialises the TINYINT as a bool',
+        () async {
+          final query = TomGroupedSelect(
+            [FixtureTaskRecord],
+            query: allRows(),
+            groupBy: [doneCol],
+            aggregates: [b.countAll('n'), b.sum(priorityCol, 'total')],
+            orderBy: ['done'],
+          );
+          final rows = await repo.findGroupedByQuery(query, const {});
+          expect(rows, hasLength(2));
+          expect(
+            rows.first.value('done'),
+            isA<bool>(),
+            reason:
+                'MariaDB stores the column as TINYINT(1); the projection '
+                'declares it bool, so the mapper must hand back a Dart bool '
+                'rather than 0/1',
+          );
+          final byDone = {for (final row in rows) row.boolValue('done')!: row};
+          expect(byDone[false]!.intValue('n'), 5);
+          expect(byDone[true]!.intValue('n'), 3);
+          expect(byDone[true]!.doubleValue('total'), 23.0);
+        },
+      );
 
-      test('an empty groupBy aggregates the whole filtered set into one row',
-          () async {
-        final query = TomGroupedSelect(
-          [FixtureTaskRecord],
-          query: allRows(),
-          aggregates: [
-            b.countAll('n'),
-            b.sum(priorityCol, 'total'),
-            b.minInt(priorityCol, 'lo'),
-            b.maxInt(priorityCol, 'hi'),
-          ],
-        );
-        final rows = await repo.findGroupedByQuery(query, const {});
-        expect(rows, hasLength(1));
-        expect(rows.single.intValue('n'), 8);
-        expect(rows.single.doubleValue('total'), 43.0);
-        expect(rows.single.intValue('lo'), 1);
-        expect(rows.single.intValue('hi'), 20);
-      });
+      test(
+        'an empty groupBy aggregates the whole filtered set into one row',
+        () async {
+          final query = TomGroupedSelect(
+            [FixtureTaskRecord],
+            query: allRows(),
+            aggregates: [
+              b.countAll('n'),
+              b.sum(priorityCol, 'total'),
+              b.minInt(priorityCol, 'lo'),
+              b.maxInt(priorityCol, 'hi'),
+            ],
+          );
+          final rows = await repo.findGroupedByQuery(query, const {});
+          expect(rows, hasLength(1));
+          expect(rows.single.intValue('n'), 8);
+          expect(rows.single.doubleValue('total'), 43.0);
+          expect(rows.single.intValue('lo'), 1);
+          expect(rows.single.intValue('hi'), 20);
+        },
+      );
 
-      test('the WHERE predicate filters rows before they are aggregated',
-          () async {
-        final query = TomGroupedSelect(
-          [FixtureTaskRecord],
-          query: b.gt(priorityCol, b.intOp(2)),
-          groupBy: [titleCol],
-          aggregates: [b.countAll('n'), b.sum(priorityCol, 'total')],
-        );
-        final groups = await byTitle(query);
-        expect(
-          groups.keys,
-          unorderedEquals(['alpha', 'beta', 'gamma']),
-          reason: 'delta has no row with priority > 2, so it produces no group '
-              'at all — WHERE removes rows, and a group with no rows does not '
-              'exist',
-        );
-        expect(groups['alpha']!.intValue('n'), 1);
-        expect(groups['alpha']!.doubleValue('total'), 3.0);
-      });
+      test(
+        'the WHERE predicate filters rows before they are aggregated',
+        () async {
+          final query = TomGroupedSelect(
+            [FixtureTaskRecord],
+            query: b.gt(priorityCol, b.intOp(2)),
+            groupBy: [titleCol],
+            aggregates: [b.countAll('n'), b.sum(priorityCol, 'total')],
+          );
+          final groups = await byTitle(query);
+          expect(
+            groups.keys,
+            unorderedEquals(['alpha', 'beta', 'gamma']),
+            reason:
+                'delta has no row with priority > 2, so it produces no group '
+                'at all — WHERE removes rows, and a group with no rows does not '
+                'exist',
+          );
+          expect(groups['alpha']!.intValue('n'), 1);
+          expect(groups['alpha']!.doubleValue('total'), 3.0);
+        },
+      );
 
       test('a bound parameter binds into the WHERE clause', () async {
         final query = TomGroupedSelect(
@@ -319,8 +325,7 @@ void main() async {
     });
 
     group('the value types the driver returns', () {
-      test('SUM and AVG over an integer column materialise as double',
-          () async {
+      test('SUM and AVG over an integer column materialise as double', () async {
         final sum = b.sum(priorityCol, 'total');
         final mean = b.avg(priorityCol, 'mean');
         final query = TomGroupedSelect(
@@ -334,7 +339,8 @@ void main() async {
         expect(
           alpha.value('total'),
           isA<double>(),
-          reason: 'SQL widens SUM over an INT column to DECIMAL. Sum declares '
+          reason:
+              'SQL widens SUM over an INT column to DECIMAL. Sum declares '
               'its value type as double so the Dart type is the same on every '
               'dialect; this asserts the mapper actually produced one, which '
               'is the step a connection-free fake cannot exercise',
@@ -343,38 +349,42 @@ void main() async {
         expect(
           sum.read(alpha),
           isA<double>(),
-          reason: 'the typed accessor on the node itself must agree with the '
+          reason:
+              'the typed accessor on the node itself must agree with the '
               'raw mapped value — it is the API a caller uses',
         );
         expect(sum.read(alpha), 6.0);
         expect(mean.read(alpha), 2.0);
       });
 
-      test('COUNT, MIN and MAX over an integer column materialise as int',
-          () async {
-        final count = b.countAll('n');
-        final lo = b.minInt(priorityCol, 'lo');
-        final hi = b.maxInt(priorityCol, 'hi');
-        final query = TomGroupedSelect(
-          [FixtureTaskRecord],
-          query: allRows(),
-          groupBy: [titleCol],
-          aggregates: [count, lo, hi],
-        );
-        final beta = (await byTitle(query))['beta']!;
+      test(
+        'COUNT, MIN and MAX over an integer column materialise as int',
+        () async {
+          final count = b.countAll('n');
+          final lo = b.minInt(priorityCol, 'lo');
+          final hi = b.maxInt(priorityCol, 'hi');
+          final query = TomGroupedSelect(
+            [FixtureTaskRecord],
+            query: allRows(),
+            groupBy: [titleCol],
+            aggregates: [count, lo, hi],
+          );
+          final beta = (await byTitle(query))['beta']!;
 
-        expect(beta.value('n'), isA<int>());
-        expect(
-          beta.value('lo'),
-          isA<int>(),
-          reason: 'unlike SUM, an extremum is one of the operand\'s own values, '
-              'so Min/Max preserve the column type rather than widening',
-        );
-        expect(beta.value('hi'), isA<int>());
-        expect(count.read(beta), 2);
-        expect(lo.read(beta), 10);
-        expect(hi.read(beta), 20);
-      });
+          expect(beta.value('n'), isA<int>());
+          expect(
+            beta.value('lo'),
+            isA<int>(),
+            reason:
+                'unlike SUM, an extremum is one of the operand\'s own values, '
+                'so Min/Max preserve the column type rather than widening',
+          );
+          expect(beta.value('hi'), isA<int>());
+          expect(count.read(beta), 2);
+          expect(lo.read(beta), 10);
+          expect(hi.read(beta), 20);
+        },
+      );
 
       test('MAX over a text column materialises as String', () async {
         final latest = Max<TomDbString, String>(titleCol, 'last');
@@ -391,8 +401,7 @@ void main() async {
         expect(byDone[false]!.stringValue('last'), 'gamma');
       });
 
-      test('the driver refuses to widen a SUM column to double itself',
-          () async {
+      test('the driver refuses to widen a SUM column to double itself', () async {
         // The reason `mapGroupedRow` parses the raw text for a `double`-typed
         // alias instead of calling `typedColByName<double>`, pinned against the
         // real driver rather than assumed.
@@ -418,13 +427,15 @@ void main() async {
         expect(
           () => driverRow.typedColByName<double>('total'),
           throwsA(isA<Exception>()),
-          reason: 'the driver cannot convert NEWDECIMAL to double — this is '
+          reason:
+              'the driver cannot convert NEWDECIMAL to double — this is '
               'the failure mapGroupedRow works around',
         );
         expect(
           double.parse(driverRow.colByName('total')!),
           6.0,
-          reason: 'the raw text form carries the value losslessly, which is '
+          reason:
+              'the raw text form carries the value losslessly, which is '
               'why parsing it is a safe workaround rather than a guess',
         );
       });
@@ -444,7 +455,8 @@ void main() async {
         expect(
           groups.keys,
           unorderedEquals(['alpha', 'beta', 'delta']),
-          reason: 'gamma has one row, so it is aggregated and then discarded — '
+          reason:
+              'gamma has one row, so it is aggregated and then discarded — '
               'the difference between HAVING and WHERE',
         );
       });
@@ -472,35 +484,39 @@ void main() async {
           aggregates: [n],
           having: b.gte(n, b.p<TomDbInt>('minRows')),
         );
-        final rows = await repo.findGroupedByQuery(
-          query,
-          {'floor': 1, 'minRows': 2},
-        );
+        final rows = await repo.findGroupedByQuery(query, {
+          'floor': 1,
+          'minRows': 2,
+        });
         expect(
           {for (final row in rows) row.stringValue('title')},
           unorderedEquals(['alpha', 'beta']),
-          reason: 'the two predicates bind separate parameters in statement '
+          reason:
+              'the two predicates bind separate parameters in statement '
               'order; a WHERE/HAVING mix-up would silently swap them',
         );
       });
 
-      test('a HAVING that excludes every group returns an empty list',
-          () async {
-        final n = b.countAll('n');
-        final query = TomGroupedSelect(
-          [FixtureTaskRecord],
-          query: allRows(),
-          groupBy: [titleCol],
-          aggregates: [n],
-          having: b.gt(n, b.intOp(100)),
-        );
-        expect(
-          await repo.findGroupedByQuery(query, const {}),
-          isEmpty,
-          reason: 'no group qualifies, which is an empty result and not an '
-              'error — a caller iterating the rows must simply see none',
-        );
-      });
+      test(
+        'a HAVING that excludes every group returns an empty list',
+        () async {
+          final n = b.countAll('n');
+          final query = TomGroupedSelect(
+            [FixtureTaskRecord],
+            query: allRows(),
+            groupBy: [titleCol],
+            aggregates: [n],
+            having: b.gt(n, b.intOp(100)),
+          );
+          expect(
+            await repo.findGroupedByQuery(query, const {}),
+            isEmpty,
+            reason:
+                'no group qualifies, which is an empty result and not an '
+                'error — a caller iterating the rows must simply see none',
+          );
+        },
+      );
     });
 
     group('a group whose aggregated column is entirely null', () {
@@ -538,7 +554,8 @@ void main() async {
         expect(
           total.read(delta),
           isNull,
-          reason: 'an aggregate over an all-null column has no value, which is '
+          reason:
+              'an aggregate over an all-null column has no value, which is '
               'null — distinct from zero, which is what a caller who defaulted '
               'it would get wrong',
         );
@@ -548,7 +565,8 @@ void main() async {
         expect(
           delta.has('total'),
           isTrue,
-          reason: 'the alias is present and its value is null; that is not the '
+          reason:
+              'the alias is present and its value is null; that is not the '
               'same as an unknown alias, which throws',
         );
       });
@@ -566,7 +584,8 @@ void main() async {
         expect(
           groups.keys,
           isNot(contains('delta')),
-          reason: 'NULL >= 0 is NULL, not true, so SQL drops the group — worth '
+          reason:
+              'NULL >= 0 is NULL, not true, so SQL drops the group — worth '
               'pinning because a caller reasoning in Dart would expect an '
               'exception or a false',
         );

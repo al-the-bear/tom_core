@@ -202,9 +202,13 @@ class TomSchemaDdlReader {
     // Indexes and views shape neither the columns nor the primary key the check
     // compares, so recognising them is enough.
     if ((leader == 'CREATE' || leader == 'DROP') &&
-        const {'INDEX', 'VIEW', 'DATABASE', 'SCHEMA', 'TRIGGER'}.contains(
-          _objectWord(words),
-        )) {
+        const {
+          'INDEX',
+          'VIEW',
+          'DATABASE',
+          'SCHEMA',
+          'TRIGGER',
+        }.contains(_objectWord(words))) {
       return;
     }
     errors.add(
@@ -358,8 +362,7 @@ class TomSchemaDdlReader {
       errors.add(
         TomDdlReplayError(
           artifact: artifact,
-          message:
-              'ALTER TABLE on "$table", which no earlier artifact creates',
+          message: 'ALTER TABLE on "$table", which no earlier artifact creates',
           statement: _excerpt(statement),
         ),
       );
@@ -421,7 +424,12 @@ class TomSchemaDdlReader {
     String artifact,
     List<TomDdlReplayError> errors,
   ) {
-    final subject = _skipWords(words, 1, const {'COLUMN', 'IF', 'NOT', 'EXISTS'});
+    final subject = _skipWords(words, 1, const {
+      'COLUMN',
+      'IF',
+      'NOT',
+      'EXISTS',
+    });
     if (subject.isEmpty) return;
     final leader = subject[0].toUpperCase();
     if (_constraintLeaders.contains(leader)) {
@@ -586,7 +594,10 @@ class TomSchemaDdlReader {
     while (index + 1 < words.length) {
       if (words[index].toUpperCase() == 'PRIMARY' &&
           words[index + 1].toUpperCase() == 'KEY') {
-        final open = entry.indexOf('(', _indexAfterWord(entry, words[index + 1]) - 1);
+        final open = entry.indexOf(
+          '(',
+          _indexAfterWord(entry, words[index + 1]) - 1,
+        );
         if (open < 0) return const [];
         final close = _matchingParenthesis(entry, open);
         if (close < 0) return const [];
@@ -782,10 +793,8 @@ class TomSchemaDdlReader {
     return words;
   }
 
-  static bool _hasIfNotExists(String text) => RegExp(
-    r'\bIF\s+NOT\s+EXISTS\b',
-    caseSensitive: false,
-  ).hasMatch(text);
+  static bool _hasIfNotExists(String text) =>
+      RegExp(r'\bIF\s+NOT\s+EXISTS\b', caseSensitive: false).hasMatch(text);
 
   /// The table name in a `CREATE TABLE …` / `DROP TABLE …` header.
   static String? _tableNameFrom(String header) {

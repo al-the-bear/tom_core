@@ -56,8 +56,10 @@ Future<void> run() async {
   // 1. Opening a transaction reports it as new; opening again reuses it.
   final (txn, isNew) = TomTransactionManager.startTransaction();
   final (sameTxn, isNew2) = TomTransactionManager.startTransaction();
-  print('1. first=$isNew second=$isNew2 same=${identical(txn, sameTxn)} '
-      'transactional=${TomTransactionManager.transactional}');
+  print(
+    '1. first=$isNew second=$isNew2 same=${identical(txn, sameTxn)} '
+    'transactional=${TomTransactionManager.transactional}',
+  );
   assert(isNew == true && isNew2 == false && identical(txn, sameTxn));
   assert(TomTransactionManager.transactional == true);
 
@@ -65,8 +67,10 @@ Future<void> run() async {
   final a = _RecordingParticipant('a');
   await txn.registerParticipant(a);
   final ok = await txn.commitTransaction();
-  print('2. commit ok=$ok calls=${a.calls} '
-      'cleared=${TomTransactionManager.getCurrentTransaction() == null}');
+  print(
+    '2. commit ok=$ok calls=${a.calls} '
+    'cleared=${TomTransactionManager.getCurrentTransaction() == null}',
+  );
   assert(ok == true);
   assert(a.calls.contains('commit') && a.calls.contains('end'));
   assert(TomTransactionManager.getCurrentTransaction() == null);
@@ -90,8 +94,10 @@ Future<void> run() async {
   } catch (error) {
     captured = error;
   }
-  print('4. enlist-after-conclude threw '
-      '${captured is TomTransactionException ? captured.key : captured}');
+  print(
+    '4. enlist-after-conclude threw '
+    '${captured is TomTransactionException ? captured.key : captured}',
+  );
   assert(captured is TomTransactionException);
 
   // 5. Two concurrent flows, each in its own scope, hold independent current
@@ -112,10 +118,12 @@ Future<void> run() async {
         await txn.commitTransaction();
       });
   await Future.wait([flow('left'), flow('right')]);
-  print('5. concurrent flows shared a transaction='
-      '${identical(opened['left'], opened['right'])} '
-      'outside any scope current='
-      '${TomTransactionManager.getCurrentTransaction()}');
+  print(
+    '5. concurrent flows shared a transaction='
+    '${identical(opened['left'], opened['right'])} '
+    'outside any scope current='
+    '${TomTransactionManager.getCurrentTransaction()}',
+  );
   assert(!identical(opened['left'], opened['right']));
   assert(TomTransactionManager.getCurrentTransaction() == null);
 

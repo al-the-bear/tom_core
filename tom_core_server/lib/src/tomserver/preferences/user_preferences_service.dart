@@ -149,7 +149,10 @@ class TomUserPreferences {
   /// service arrives as a rejected future, and one method that throws
   /// synchronously instead would be caught by a `try` the caller wrote around
   /// the `await` and missed by everything else.
-  Future<TomUserPreferenceDto> set<T extends Object>(String key, T value) async {
+  Future<TomUserPreferenceDto> set<T extends Object>(
+    String key,
+    T value,
+  ) async {
     TomUserPreferenceKeys.validate(key);
     return _write(
       key,

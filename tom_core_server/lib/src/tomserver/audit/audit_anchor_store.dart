@@ -104,7 +104,10 @@ class TomFileAuditAnchorStore extends TomAuditAnchorStore {
   final String filePrefix;
 
   /// Creates a store in [directory], creating the directory if needed.
-  TomFileAuditAnchorStore({required this.directory, this.filePrefix = 'anchor'}) {
+  TomFileAuditAnchorStore({
+    required this.directory,
+    this.filePrefix = 'anchor',
+  }) {
     if (!directory.existsSync()) {
       directory.createSync(recursive: true);
     }
@@ -122,9 +125,11 @@ class TomFileAuditAnchorStore extends TomAuditAnchorStore {
 
   @override
   Future<void> append(TomAuditAnchor anchor) async {
-    await fileFor(
-      anchor.writer,
-    ).writeAsString('${anchor.toJsonLine()}\n', mode: FileMode.append, flush: true);
+    await fileFor(anchor.writer).writeAsString(
+      '${anchor.toJsonLine()}\n',
+      mode: FileMode.append,
+      flush: true,
+    );
   }
 
   @override

@@ -127,7 +127,10 @@ class TomApiImplementation extends TomService {
 /// Implemented by [TomEndpoint] itself (returns `this`) and by
 /// [TomApiEndpointImplementation] (resolves the endpoint from the remote-API
 /// registry).
-abstract class TomEndpointBase<requestType extends Object, resultType extends Object> {
+abstract class TomEndpointBase<
+  requestType extends Object,
+  resultType extends Object
+> {
   /// Resolves this annotation to the concrete [TomEndpoint] to route.
   ///
   /// [apiImplementation] is the class-level `@TomApiImplementation` of the
@@ -146,7 +149,11 @@ abstract class TomEndpointBase<requestType extends Object, resultType extends Ob
 /// from the registered [TomApiEndpoint]; this annotation only adds
 /// implementation-side overrides ([errorHandler], [logRequests], the CORS
 /// settings). [convertToTomEndpoint] merges the two.
-class TomApiEndpointImplementation<requestType extends Object, resultType extends Object> implements TomEndpointBase<requestType, resultType> {
+class TomApiEndpointImplementation<
+  requestType extends Object,
+  resultType extends Object
+>
+    implements TomEndpointBase<requestType, resultType> {
   /// The id of the API this endpoint belongs to.
   final String apiId;
 
@@ -201,7 +208,9 @@ class TomApiEndpointImplementation<requestType extends Object, resultType extend
       produces: endpoint.produces,
       contentDisposition: endpoint.contentDisposition,
       errorHandler:
-          errorHandler ?? apiImplementation?.errorHandler ?? _tomDefaultErrorHandler,
+          errorHandler ??
+          apiImplementation?.errorHandler ??
+          _tomDefaultErrorHandler,
       logRequests: logRequests ?? apiImplementation?.logRequestsDefault,
       headers: endpoint.requestHeaders,
       corsAllowedOrigins: corsAllowedOrigins,
@@ -210,7 +219,6 @@ class TomApiEndpointImplementation<requestType extends Object, resultType extend
       urlParameterMapping: endpoint.urlParameterMapping,
     );
   }
-
 }
 
 /// Method-level annotation that declares an HTTP endpoint inline (without a
@@ -229,7 +237,8 @@ class TomApiEndpointImplementation<requestType extends Object, resultType extend
 /// `TomMultipartForm` method parameters. A handler may return a `TomRedirect`
 /// to answer with a `3xx`, or a shelf `Response` to own the body itself (which
 /// is how the file endpoint streams a download).
-class TomEndpoint<requestType extends Object, resultType extends Object> implements TomEndpointBase<requestType, resultType> {
+class TomEndpoint<requestType extends Object, resultType extends Object>
+    implements TomEndpointBase<requestType, resultType> {
   // Samples:
   // consumes = "application/x-www-form-urlencoded",
   // produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8"

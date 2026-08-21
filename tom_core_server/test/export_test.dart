@@ -30,37 +30,27 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 /// The columns used by most tests: one of every type.
 List<TomTabularColumn> _columns() => [
-      TomTabularColumn('id', label: 'ID', type: TomColumnType.integer),
-      TomTabularColumn('name', label: 'Name'),
-      TomTabularColumn('amount', label: 'Amount', type: TomColumnType.decimal),
-      TomTabularColumn('active', label: 'Active', type: TomColumnType.boolean),
-      TomTabularColumn('at', label: 'At', type: TomColumnType.timestamp),
-    ];
+  TomTabularColumn('id', label: 'ID', type: TomColumnType.integer),
+  TomTabularColumn('name', label: 'Name'),
+  TomTabularColumn('amount', label: 'Amount', type: TomColumnType.decimal),
+  TomTabularColumn('active', label: 'Active', type: TomColumnType.boolean),
+  TomTabularColumn('at', label: 'At', type: TomColumnType.timestamp),
+];
 
 /// A two-row result over [_columns].
 TomTabularResult _sampleResult({String title = 'Sales', String? section}) =>
     TomTabularResult.single(
       title: title,
-      section: TomTabularSection.ofRows(
-        _columns(),
-        [
-          TomTabularRow([
-            1,
-            'Widget',
-            9.5,
-            true,
-            DateTime.utc(2026, 7, 28),
-          ]),
-          TomTabularRow([
-            2,
-            'Gadget, large',
-            12.0,
-            false,
-            DateTime.utc(2026, 7, 28, 14, 30),
-          ]),
-        ],
-        title: section,
-      ),
+      section: TomTabularSection.ofRows(_columns(), [
+        TomTabularRow([1, 'Widget', 9.5, true, DateTime.utc(2026, 7, 28)]),
+        TomTabularRow([
+          2,
+          'Gadget, large',
+          12.0,
+          false,
+          DateTime.utc(2026, 7, 28, 14, 30),
+        ]),
+      ], title: section),
       metadata: {'Filter': 'region = EU'},
     );
 
@@ -104,7 +94,10 @@ class _ZipReader {
 
   int _u16(int at) => bytes[at] | bytes[at + 1] << 8;
   int _u32(int at) =>
-      bytes[at] | bytes[at + 1] << 8 | bytes[at + 2] << 16 | bytes[at + 3] << 24;
+      bytes[at] |
+      bytes[at + 1] << 8 |
+      bytes[at + 2] << 16 |
+      bytes[at + 3] << 24;
 
   /// Every entry's name mapped to its decompressed content.
   Map<String, String> read() {
@@ -124,10 +117,8 @@ class _ZipReader {
       final name = utf8.decode(bytes.sublist(at + 46, at + 46 + nameLength));
 
       expect(_u32(localOffset), 0x04034b50, reason: 'local header signature');
-      final dataAt = localOffset +
-          30 +
-          _u16(localOffset + 26) +
-          _u16(localOffset + 28);
+      final dataAt =
+          localOffset + 30 + _u16(localOffset + 26) + _u16(localOffset + 28);
       final raw = bytes.sublist(dataAt, dataAt + compressedSize);
       final content = method == 0 ? raw : ZLibDecoder(raw: true).convert(raw);
       expect(content.length, uncompressedSize, reason: '$name size');
@@ -184,10 +175,7 @@ void main() {
     });
 
     test('fromMap orders values by the columns, not by the map', () {
-      final columns = [
-        TomTabularColumn('b'),
-        TomTabularColumn('a'),
-      ];
+      final columns = [TomTabularColumn('b'), TomTabularColumn('a')];
       final row = TomTabularRow.fromMap(columns, {'a': 'A', 'b': 'B'});
       expect(row.cells, ['B', 'A']);
     });
@@ -284,9 +272,9 @@ void main() {
     });
 
     test('the BOM can be turned off for machine consumers', () async {
-      final bytes =
-          await _collect(const TomCsvRenderer(byteOrderMark: false)
-              .render(_sampleResult()));
+      final bytes = await _collect(
+        const TomCsvRenderer(byteOrderMark: false).render(_sampleResult()),
+      );
       expect(bytes[0], isNot(0xEF));
     });
 
@@ -321,50 +309,56 @@ void main() {
       expect(text, contains('"say ""hi"""'));
     });
 
-    test('an embedded newline is quoted rather than breaking the row',
-        () async {
-      final text = await _renderCsv(
-        TomTabularResult.single(
-          title: 't',
-          section: TomTabularSection.ofRows(
-            [TomTabularColumn('a')],
-            [
-              const TomTabularRow(['one\ntwo']),
-            ],
+    test(
+      'an embedded newline is quoted rather than breaking the row',
+      () async {
+        final text = await _renderCsv(
+          TomTabularResult.single(
+            title: 't',
+            section: TomTabularSection.ofRows(
+              [TomTabularColumn('a')],
+              [
+                const TomTabularRow(['one\ntwo']),
+              ],
+            ),
           ),
-        ),
-      );
-      expect(text, contains('"one\ntwo"'));
-    });
+        );
+        expect(text, contains('"one\ntwo"'));
+      },
+    );
 
-    test('a leading = is neutralised, so an export cannot inject a formula',
-        () async {
-      final text = await _renderCsv(
-        TomTabularResult.single(
-          title: 't',
-          section: TomTabularSection.ofRows(
-            [TomTabularColumn('a')],
-            [
-              const TomTabularRow(['=1+1']),
-              const TomTabularRow(['+x']),
-              const TomTabularRow(['-y']),
-              const TomTabularRow(['@z']),
-            ],
+    test(
+      'a leading = is neutralised, so an export cannot inject a formula',
+      () async {
+        final text = await _renderCsv(
+          TomTabularResult.single(
+            title: 't',
+            section: TomTabularSection.ofRows(
+              [TomTabularColumn('a')],
+              [
+                const TomTabularRow(['=1+1']),
+                const TomTabularRow(['+x']),
+                const TomTabularRow(['-y']),
+                const TomTabularRow(['@z']),
+              ],
+            ),
           ),
-        ),
-      );
-      expect(text, contains('"\t=1+1"'));
-      expect(text, contains('"\t+x"'));
-      expect(text, contains('"\t-y"'));
-      expect(text, contains('"\t@z"'));
-    });
+        );
+        expect(text, contains('"\t=1+1"'));
+        expect(text, contains('"\t+x"'));
+        expect(text, contains('"\t-y"'));
+        expect(text, contains('"\t@z"'));
+      },
+    );
 
-    test('a whole double loses its .0 so it does not read as approximate',
-        () async {
-      final text = await _renderCsv(_sampleResult());
-      expect(text, contains(',12,'));
-      expect(text, contains(',9.5,'));
-    });
+    test(
+      'a whole double loses its .0 so it does not read as approximate',
+      () async {
+        final text = await _renderCsv(_sampleResult());
+        expect(text, contains(',12,'));
+        expect(text, contains(',9.5,'));
+      },
+    );
 
     test('a timestamp renders ISO-8601 and null renders empty', () async {
       final text = await _renderCsv(
@@ -384,44 +378,52 @@ void main() {
       expect(text, contains('2026-07-28T14:30:00.000Z,\r\n'));
     });
 
-    test('a European separator is honoured, including in the quoting rule',
-        () async {
-      final text = await _renderCsv(
-        TomTabularResult.single(
-          title: 't',
-          section: TomTabularSection.ofRows(
-            [TomTabularColumn('a'), TomTabularColumn('b')],
-            [
-              const TomTabularRow(['x;y', 'plain,comma']),
+    test(
+      'a European separator is honoured, including in the quoting rule',
+      () async {
+        final text = await _renderCsv(
+          TomTabularResult.single(
+            title: 't',
+            section: TomTabularSection.ofRows(
+              [TomTabularColumn('a'), TomTabularColumn('b')],
+              [
+                const TomTabularRow(['x;y', 'plain,comma']),
+              ],
+            ),
+          ),
+          renderer: const TomCsvRenderer(fieldSeparator: ';'),
+        );
+        expect(text, contains('"x;y";plain,comma'));
+      },
+    );
+
+    test(
+      'multiple sections are separated by a blank line and a title',
+      () async {
+        final text = await _renderCsv(
+          TomTabularResult(
+            title: 'two',
+            sections: [
+              TomTabularSection.ofRows(
+                [TomTabularColumn('a')],
+                [
+                  const TomTabularRow(['1']),
+                ],
+                title: 'First',
+              ),
+              TomTabularSection.ofRows(
+                [TomTabularColumn('b')],
+                [
+                  const TomTabularRow(['2']),
+                ],
+                title: 'Second',
+              ),
             ],
           ),
-        ),
-        renderer: const TomCsvRenderer(fieldSeparator: ';'),
-      );
-      expect(text, contains('"x;y";plain,comma'));
-    });
-
-    test('multiple sections are separated by a blank line and a title',
-        () async {
-      final text = await _renderCsv(
-        TomTabularResult(
-          title: 'two',
-          sections: [
-            TomTabularSection.ofRows(
-              [TomTabularColumn('a')],
-              [const TomTabularRow(['1'])],
-              title: 'First',
-            ),
-            TomTabularSection.ofRows(
-              [TomTabularColumn('b')],
-              [const TomTabularRow(['2'])],
-              title: 'Second',
-            ),
-          ],
-        ),
-      );
-      expect(text, 'First\r\na\r\n1\r\n\r\nSecond\r\nb\r\n2\r\n');
-    });
+        );
+        expect(text, 'First\r\na\r\n1\r\n\r\nSecond\r\nb\r\n2\r\n');
+      },
+    );
 
     test('rows reach the output before the source stream closes', () async {
       final rows = StreamController<TomTabularRow>();
@@ -488,14 +490,14 @@ void main() {
 
     test('the workbook relationship points at the sheet by id', () {
       expect(parts['xl/workbook.xml'], contains('r:id="rId1"'));
-      expect(
-        parts['xl/_rels/workbook.xml.rels'],
-        contains('Id="rId1" Type="'),
-      );
+      expect(parts['xl/_rels/workbook.xml.rels'], contains('Id="rId1" Type="'));
     });
 
     test('the header row is bold via the style index, not inline markup', () {
-      expect(parts['xl/worksheets/sheet1.xml'], contains('s="1" t="inlineStr"'));
+      expect(
+        parts['xl/worksheets/sheet1.xml'],
+        contains('s="1" t="inlineStr"'),
+      );
     });
 
     test('text cells are inline strings, so no shared table is needed', () {
@@ -516,10 +518,7 @@ void main() {
     });
 
     test('a date becomes the 1900-system serial with the date style', () {
-      expect(
-        parts['xl/worksheets/sheet1.xml'],
-        contains('s="2"><v>46231</v>'),
-      );
+      expect(parts['xl/worksheets/sheet1.xml'], contains('s="2"><v>46231</v>'));
     });
 
     test('a time of day becomes the fractional part of the serial', () {
@@ -551,24 +550,26 @@ void main() {
       expect(sheet, isNot(contains('r="A2"')));
     });
 
-    test('a value of the wrong type renders as text rather than failing',
-        () async {
-      final parts = _ZipReader(
-        await _render(
-          TomTabularResult.single(
-            title: 't',
-            section: TomTabularSection.ofRows(
-              [TomTabularColumn('n', type: TomColumnType.integer)],
-              [
-                const TomTabularRow(['not a number']),
-              ],
+    test(
+      'a value of the wrong type renders as text rather than failing',
+      () async {
+        final parts = _ZipReader(
+          await _render(
+            TomTabularResult.single(
+              title: 't',
+              section: TomTabularSection.ofRows(
+                [TomTabularColumn('n', type: TomColumnType.integer)],
+                [
+                  const TomTabularRow(['not a number']),
+                ],
+              ),
             ),
+            'xlsx',
           ),
-          'xlsx',
-        ),
-      ).read();
-      expect(parts['xl/worksheets/sheet1.xml'], contains('not a number'));
-    });
+        ).read();
+        expect(parts['xl/worksheets/sheet1.xml'], contains('not a number'));
+      },
+    );
 
     test('markup in a value is escaped, not injected', () async {
       final parts = _ZipReader(
@@ -591,24 +592,26 @@ void main() {
       );
     });
 
-    test('a control character XML cannot carry is dropped, not escaped',
-        () async {
-      final parts = _ZipReader(
-        await _render(
-          TomTabularResult.single(
-            title: 't',
-            section: TomTabularSection.ofRows(
-              [TomTabularColumn('a')],
-              [
-                const TomTabularRow(['a bc']),
-              ],
+    test(
+      'a control character XML cannot carry is dropped, not escaped',
+      () async {
+        final parts = _ZipReader(
+          await _render(
+            TomTabularResult.single(
+              title: 't',
+              section: TomTabularSection.ofRows(
+                [TomTabularColumn('a')],
+                [
+                  const TomTabularRow(['a bc']),
+                ],
+              ),
             ),
+            'xlsx',
           ),
-          'xlsx',
-        ),
-      ).read();
-      expect(parts['xl/worksheets/sheet1.xml'], contains('>abc<'));
-    });
+        ).read();
+        expect(parts['xl/worksheets/sheet1.xml'], contains('>abc<'));
+      },
+    );
 
     test('a column width hint becomes a column definition', () async {
       final parts = _ZipReader(
@@ -617,7 +620,9 @@ void main() {
             title: 't',
             section: TomTabularSection.ofRows(
               [TomTabularColumn('a', width: 30)],
-              [const TomTabularRow(['x'])],
+              [
+                const TomTabularRow(['x']),
+              ],
             ),
           ),
           'xlsx',
@@ -629,28 +634,27 @@ void main() {
       );
     });
 
-    test('references pass Z into AA, so wide results stay addressable',
-        () async {
-      final columns = [
-        for (var i = 0; i < 28; i++) TomTabularColumn('c$i'),
-      ];
-      final parts = _ZipReader(
-        await _render(
-          TomTabularResult.single(
-            title: 't',
-            section: TomTabularSection.ofRows(
-              columns,
-              [TomTabularRow(List<String>.filled(28, 'x'))],
+    test(
+      'references pass Z into AA, so wide results stay addressable',
+      () async {
+        final columns = [for (var i = 0; i < 28; i++) TomTabularColumn('c$i')];
+        final parts = _ZipReader(
+          await _render(
+            TomTabularResult.single(
+              title: 't',
+              section: TomTabularSection.ofRows(columns, [
+                TomTabularRow(List<String>.filled(28, 'x')),
+              ]),
             ),
+            'xlsx',
           ),
-          'xlsx',
-        ),
-      ).read();
-      final sheet = parts['xl/worksheets/sheet1.xml']!;
-      expect(sheet, contains('r="Z1"'));
-      expect(sheet, contains('r="AA1"'));
-      expect(sheet, contains('r="AB1"'));
-    });
+        ).read();
+        final sheet = parts['xl/worksheets/sheet1.xml']!;
+        expect(sheet, contains('r="Z1"'));
+        expect(sheet, contains('r="AA1"'));
+        expect(sheet, contains('r="AB1"'));
+      },
+    );
 
     test('each section becomes its own sheet', () async {
       final parts = _ZipReader(
@@ -660,12 +664,16 @@ void main() {
             sections: [
               TomTabularSection.ofRows(
                 [TomTabularColumn('a')],
-                [const TomTabularRow(['1'])],
+                [
+                  const TomTabularRow(['1']),
+                ],
                 title: 'First',
               ),
               TomTabularSection.ofRows(
                 [TomTabularColumn('b')],
-                [const TomTabularRow(['2'])],
+                [
+                  const TomTabularRow(['2']),
+                ],
                 title: 'Second',
               ),
             ],
@@ -685,7 +693,9 @@ void main() {
             title: 't',
             section: TomTabularSection.ofRows(
               [TomTabularColumn('a')],
-              [const TomTabularRow(['1'])],
+              [
+                const TomTabularRow(['1']),
+              ],
               title: 'Q1/Q2 [draft]',
             ),
           ),
@@ -702,7 +712,9 @@ void main() {
             title: 't',
             section: TomTabularSection.ofRows(
               [TomTabularColumn('a')],
-              [const TomTabularRow(['1'])],
+              [
+                const TomTabularRow(['1']),
+              ],
               title: 'A' * 40,
             ),
           ),
@@ -721,7 +733,9 @@ void main() {
               for (var i = 0; i < 2; i++)
                 TomTabularSection.ofRows(
                   [TomTabularColumn('a')],
-                  [const TomTabularRow(['1'])],
+                  [
+                    const TomTabularRow(['1']),
+                  ],
                   title: 'Same',
                 ),
             ],
@@ -744,15 +758,17 @@ void main() {
       expect(first, orderedEquals(second));
     });
 
-    test('uncompressed output is readable too, for the CPU-bound case',
-        () async {
-      final parts = _ZipReader(
-        await _collect(
-          const TomXlsxRenderer(compressionLevel: 0).render(_sampleResult()),
-        ),
-      ).read();
-      expect(parts['xl/worksheets/sheet1.xml'], contains('Widget'));
-    });
+    test(
+      'uncompressed output is readable too, for the CPU-bound case',
+      () async {
+        final parts = _ZipReader(
+          await _collect(
+            const TomXlsxRenderer(compressionLevel: 0).render(_sampleResult()),
+          ),
+        ).read();
+        expect(parts['xl/worksheets/sheet1.xml'], contains('Widget'));
+      },
+    );
 
     test('bytes are emitted before the row stream closes', () async {
       final rows = StreamController<TomTabularRow>();
@@ -818,35 +834,37 @@ void main() {
 
     test('a section title is printed above its table', () async {
       final bytes = await _collect(
-        const TomPdfRenderer(compress: false)
-            .render(_sampleResult(section: 'Regions')),
+        const TomPdfRenderer(
+          compress: false,
+        ).render(_sampleResult(section: 'Regions')),
       );
-      expect(
-        latin1.decode(bytes, allowInvalid: true),
-        contains('(Regions)'),
-      );
+      expect(latin1.decode(bytes, allowInvalid: true), contains('(Regions)'));
     });
 
-    test('a result beyond the row limit fails instead of being truncated',
-        () async {
-      final result = TomTabularResult.single(
-        title: 'big',
-        section: TomTabularSection.ofRows(
-          [TomTabularColumn('a')],
-          [for (var i = 0; i < 5; i++) TomTabularRow(['$i'])],
-        ),
-      );
-      expect(
-        _collect(const TomPdfRenderer(rowLimit: 3).render(result)),
-        throwsA(
-          isA<TomExportException>().having(
-            (e) => e.parameters?['formats'],
-            'suggested formats',
-            contains('csv'),
+    test(
+      'a result beyond the row limit fails instead of being truncated',
+      () async {
+        final result = TomTabularResult.single(
+          title: 'big',
+          section: TomTabularSection.ofRows(
+            [TomTabularColumn('a')],
+            [
+              for (var i = 0; i < 5; i++) TomTabularRow(['$i']),
+            ],
           ),
-        ),
-      );
-    });
+        );
+        expect(
+          _collect(const TomPdfRenderer(rowLimit: 3).render(result)),
+          throwsA(
+            isA<TomExportException>().having(
+              (e) => e.parameters?['formats'],
+              'suggested formats',
+              contains('csv'),
+            ),
+          ),
+        );
+      },
+    );
 
     test('the row limit counts across sections, not per section', () async {
       final result = TomTabularResult(
@@ -855,7 +873,9 @@ void main() {
           for (var s = 0; s < 2; s++)
             TomTabularSection.ofRows(
               [TomTabularColumn('a')],
-              [for (var i = 0; i < 2; i++) TomTabularRow(['$i'])],
+              [
+                for (var i = 0; i < 2; i++) TomTabularRow(['$i']),
+              ],
             ),
         ],
       );
@@ -865,25 +885,29 @@ void main() {
       );
     });
 
-    test('a result long enough to paginate does not hit the page ceiling',
-        () async {
-      final result = TomTabularResult.single(
-        title: 'long',
-        section: TomTabularSection.ofRows(
-          [TomTabularColumn('a'), TomTabularColumn('b')],
-          [
-            for (var i = 0; i < 400; i++) TomTabularRow(['row $i', 'value $i']),
-          ],
-        ),
-      );
-      final bytes = await _collect(const TomPdfRenderer().render(result));
-      expect(bytes.length, greaterThan(1000));
-    });
+    test(
+      'a result long enough to paginate does not hit the page ceiling',
+      () async {
+        final result = TomTabularResult.single(
+          title: 'long',
+          section: TomTabularSection.ofRows(
+            [TomTabularColumn('a'), TomTabularColumn('b')],
+            [
+              for (var i = 0; i < 400; i++)
+                TomTabularRow(['row $i', 'value $i']),
+            ],
+          ),
+        );
+        final bytes = await _collect(const TomPdfRenderer().render(result));
+        expect(bytes.length, greaterThan(1000));
+      },
+    );
 
     test('landscape output is produced without error', () async {
       final bytes = await _collect(
-        const TomPdfRenderer(orientation: PageOrientation.landscape)
-            .render(_sampleResult()),
+        const TomPdfRenderer(
+          orientation: PageOrientation.landscape,
+        ).render(_sampleResult()),
       );
       expect(utf8.decode(bytes.sublist(0, 5)), '%PDF-');
     });
@@ -958,7 +982,10 @@ void main() {
         bytes: Stream.value(utf8.encode('x,y\r\n1,2\r\n')),
         mediaType: 'text/csv',
       );
-      expect(utf8.decode(await _collect(store.open('a.csv'))), 'x,y\r\n1,2\r\n');
+      expect(
+        utf8.decode(await _collect(store.open('a.csv'))),
+        'x,y\r\n1,2\r\n',
+      );
     });
 
     test('a failed write leaves nothing readable under the key', () async {
@@ -990,8 +1017,7 @@ void main() {
       expect(utf8.decode(await _collect(store.open('a.csv'))), 'new');
     });
 
-    test('reading a key that holds nothing is an error, not an empty file',
-        () {
+    test('reading a key that holds nothing is an error, not an empty file', () {
       expect(
         _collect(TomDirectoryExportStore(root).open('missing.csv')),
         throwsA(isA<TomExportException>()),
@@ -1065,9 +1091,11 @@ void main() {
 
   group('TomExportService (apiResponse channel)', () {
     test('serves the renderer media type and an attachment name', () async {
-      final response =
-          TomExportService().respondWith(_sampleResult(), 'xlsx',
-              baseName: 'sales-2026-07');
+      final response = TomExportService().respondWith(
+        _sampleResult(),
+        'xlsx',
+        baseName: 'sales-2026-07',
+      );
       expect(
         response.headers['content-type'],
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -1079,22 +1107,32 @@ void main() {
     });
 
     test('the body is the rendered document', () async {
-      final response = TomExportService()
-          .respondWith(_sampleResult(), 'csv', baseName: 'sales');
+      final response = TomExportService().respondWith(
+        _sampleResult(),
+        'csv',
+        baseName: 'sales',
+      );
       final text = await response.readAsString();
       expect(text, contains('ID,Name,Amount'));
       expect(text, contains('Widget'));
     });
 
     test('no content-length is set, because the length is not yet known', () {
-      final response = TomExportService()
-          .respondWith(_sampleResult(), 'csv', baseName: 'sales');
+      final response = TomExportService().respondWith(
+        _sampleResult(),
+        'csv',
+        baseName: 'sales',
+      );
       expect(response.headers.containsKey('content-length'), isFalse);
     });
 
     test('a PDF can be shown in the browser rather than downloaded', () {
-      final response = TomExportService()
-          .respondWith(_sampleResult(), 'pdf', baseName: 'r', inline: true);
+      final response = TomExportService().respondWith(
+        _sampleResult(),
+        'pdf',
+        baseName: 'r',
+        inline: true,
+      );
       expect(
         response.headers['content-disposition'],
         'inline; filename="r.pdf"',
@@ -1103,8 +1141,11 @@ void main() {
 
     test('an unknown format fails before a response is built', () {
       expect(
-        () => TomExportService()
-            .respondWith(_sampleResult(), 'doc', baseName: 'x'),
+        () => TomExportService().respondWith(
+          _sampleResult(),
+          'doc',
+          baseName: 'x',
+        ),
         throwsA(isA<TomExportException>()),
       );
     });
@@ -1124,8 +1165,11 @@ void main() {
     test('renders and stores in one call, returning the reference', () async {
       final store = TomMemoryExportStore();
       final service = TomExportService(store: store);
-      final stored =
-          await service.storeAs(_sampleResult(), 'csv', key: 'sales.csv');
+      final stored = await service.storeAs(
+        _sampleResult(),
+        'csv',
+        key: 'sales.csv',
+      );
       expect(stored.key, 'sales.csv');
       expect(stored.mediaType, startsWith('text/csv'));
       expect(store.textOf('sales.csv'), contains('Widget'));
@@ -1144,8 +1188,11 @@ void main() {
 
     test('keyFor partitions by day when asked', () {
       expect(
-        TomExportService()
-            .keyFor('sales', 'pdf', partitionOn: DateTime(2026, 7, 8)),
+        TomExportService().keyFor(
+          'sales',
+          'pdf',
+          partitionOn: DateTime(2026, 7, 8),
+        ),
         '2026/07/08/sales.pdf',
       );
     });
@@ -1158,8 +1205,9 @@ void main() {
     });
 
     test('render is the primitive both channels share', () async {
-      final bytes =
-          await _collect(TomExportService().render(_sampleResult(), 'csv'));
+      final bytes = await _collect(
+        TomExportService().render(_sampleResult(), 'csv'),
+      );
       expect(utf8.decode(bytes), contains('Widget'));
     });
   });
@@ -1181,8 +1229,10 @@ void main() {
     });
 
     test('non-ASCII is replaced, because filename= is a Latin-1 field', () {
-      expect(TomExportService.sanitiseFileName('Bericht_Ümsatz.csv'),
-          'Bericht__msatz.csv');
+      expect(
+        TomExportService.sanitiseFileName('Bericht_Ümsatz.csv'),
+        'Bericht__msatz.csv',
+      );
     });
 
     test('a name that sanitises to nothing still yields a file name', () {
@@ -1218,10 +1268,7 @@ class _JsonLinesRenderer extends TomTabularRenderer {
     for (final section in result.sections) {
       await for (final row in section.rows) {
         yield utf8.encode(
-          '${jsonEncode({
-                for (var i = 0; i < section.columns.length; i++)
-                  section.columns[i].name: tomFormatCellAsText(row.cell(i)),
-              })}\n',
+          '${jsonEncode({for (var i = 0; i < section.columns.length; i++) section.columns[i].name: tomFormatCellAsText(row.cell(i))})}\n',
         );
       }
     }

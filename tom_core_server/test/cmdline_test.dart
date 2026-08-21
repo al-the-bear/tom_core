@@ -71,10 +71,10 @@ void main() {
 
   group('TomArgs.fillFromArgs', () {
     test('fills String and int fields from key=value arguments', () {
-      final config = TomArgs.fillFromArgs(
-        ['name=svc', 'port=8080'],
-        FixtureServerConfig(),
-      );
+      final config = TomArgs.fillFromArgs([
+        'name=svc',
+        'port=8080',
+      ], FixtureServerConfig());
       expect(config.name, 'svc');
       expect(config.port, 8080);
     });
@@ -92,8 +92,9 @@ void main() {
     });
 
     test('coerces a key=value bool into the bool field', () {
-      final config =
-          TomArgs.fillFromArgs(['verbose=true'], FixtureServerConfig());
+      final config = TomArgs.fillFromArgs([
+        'verbose=true',
+      ], FixtureServerConfig());
       expect(config.verbose, isTrue);
     });
 
@@ -106,16 +107,19 @@ void main() {
     });
 
     test('a quoted value stays a String', () {
-      final config =
-          TomArgs.fillFromArgs(['name="my svc"'], FixtureServerConfig());
+      final config = TomArgs.fillFromArgs([
+        'name="my svc"',
+      ], FixtureServerConfig());
       expect(config.name, 'my svc');
     });
 
     test('fills every field type in one pass', () {
-      final config = TomArgs.fillFromArgs(
-        ['name=svc', 'port=8080', 'rate=1.5', 'verbose=true'],
-        FixtureServerConfig(),
-      );
+      final config = TomArgs.fillFromArgs([
+        'name=svc',
+        'port=8080',
+        'rate=1.5',
+        'verbose=true',
+      ], FixtureServerConfig());
       expect(config.name, 'svc');
       expect(config.port, 8080);
       expect(config.rate, 1.5);
@@ -123,8 +127,9 @@ void main() {
     });
 
     test('an argument with no matching field is ignored', () {
-      final config =
-          TomArgs.fillFromArgs(['unrelated=1'], FixtureServerConfig());
+      final config = TomArgs.fillFromArgs([
+        'unrelated=1',
+      ], FixtureServerConfig());
       expect(config.name, '');
       expect(config.port, 0);
       expect(config.rate, 0.0);
@@ -159,8 +164,10 @@ void main() {
 
     test('returns the same instance it was given', () {
       final config = FixtureServerConfig();
-      expect(identical(TomArgs.fillFromArgs(['name=svc'], config), config),
-          isTrue);
+      expect(
+        identical(TomArgs.fillFromArgs(['name=svc'], config), config),
+        isTrue,
+      );
     });
   });
 

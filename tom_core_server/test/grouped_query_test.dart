@@ -74,10 +74,7 @@ void main() {
     });
 
     test('GROUP BY joins the column expressions', () {
-      expect(
-        dialect.groupByClause(['t.a', 't.b']),
-        ' GROUP BY t.a, t.b',
-      );
+      expect(dialect.groupByClause(['t.a', 't.b']), ' GROUP BY t.a, t.b');
     });
 
     test('HAVING is empty without a predicate', () {
@@ -297,7 +294,10 @@ void main() {
       int top = 0,
     }) => TomGroupedSelect(
       [FixtureTaskRecord],
-      query: b.eq(b.boolF('done', compiler.determineColumn('done')), b.boolOp(false)),
+      query: b.eq(
+        b.boolF('done', compiler.determineColumn('done')),
+        b.boolOp(false),
+      ),
       groupBy: groupBy,
       aggregates: aggregates,
       having: having,
@@ -379,7 +379,11 @@ void main() {
         aggregates: [b.countOf(b.p<TomDbInt>('bonus'), 'n')],
         having: b.gt(b.countAll('total'), b.p<TomDbInt>('minCount')),
       );
-      expect(query.getParameters(dialect), ['bonus', 'minPriority', 'minCount']);
+      expect(query.getParameters(dialect), [
+        'bonus',
+        'minPriority',
+        'minCount',
+      ]);
     });
 
     test('reports the columns it reads outside an aggregate', () {
@@ -408,10 +412,8 @@ void main() {
 
     test('two projections cannot share a result-column name', () {
       expect(
-        () => grouped(
-          groupBy: [priority],
-          aggregates: [b.countAll('priority')],
-        ),
+        () =>
+            grouped(groupBy: [priority], aggregates: [b.countAll('priority')]),
         throwsA(
           isA<TomQuerySyntaxException>().having(
             (e) => e.key,
@@ -497,7 +499,9 @@ void main() {
         compiler.compileQuerySentence(sentence) as TomGroupedSelect;
 
     test('compiles a count over a group key', () {
-      final query = compile('group count ( * ) as total over priority by done = :done');
+      final query = compile(
+        'group count ( * ) as total over priority by done = :done',
+      );
       expect(
         query.generateQuery(dialect),
         'SELECT fixture_task.priority AS priority, COUNT(*) AS total'
@@ -532,7 +536,10 @@ void main() {
         'group count ( * ) as total over priority by priority > :min having total > :minCount',
       );
       expect(query.getParameters(dialect), ['min', 'minCount']);
-      expect(query.generateQuery(dialect), contains('HAVING COUNT(*) > :minCount'));
+      expect(
+        query.generateQuery(dialect),
+        contains('HAVING COUNT(*) > :minCount'),
+      );
     });
 
     test('distinct qualifies a counted column', () {
@@ -546,12 +553,16 @@ void main() {
     });
 
     test('min picks the node matching the column type', () {
-      final query = compile('group min ( priority ) as lo over done by priority > 0');
+      final query = compile(
+        'group min ( priority ) as lo over done by priority > 0',
+      );
       expect(query.aggregates.single, isA<Min<TomDbInt, int>>());
     });
 
     test('max over a string column keeps the string type', () {
-      final query = compile('group max ( title ) as hi over done by priority > 0');
+      final query = compile(
+        'group max ( title ) as hi over done by priority > 0',
+      );
       expect(query.aggregates.single.valueType, String);
     });
 
@@ -571,7 +582,8 @@ void main() {
 
     test('an unknown aggregate function is rejected', () {
       expect(
-        () => compile('group median ( priority ) as m over done by priority > 0'),
+        () =>
+            compile('group median ( priority ) as m over done by priority > 0'),
         throwsA(
           isA<TomQuerySyntaxException>().having(
             (e) => e.key,
@@ -610,7 +622,9 @@ void main() {
 
     test('distinct is meaningless for min/max and is rejected', () {
       expect(
-        () => compile('group min ( distinct priority ) as lo over done by priority > 0'),
+        () => compile(
+          'group min ( distinct priority ) as lo over done by priority > 0',
+        ),
         throwsA(
           isA<TomQuerySyntaxException>().having(
             (e) => e.key,
@@ -623,7 +637,9 @@ void main() {
 
     test('having without a predicate is rejected', () {
       expect(
-        () => compile('group count ( * ) as total over priority by priority > 0 having'),
+        () => compile(
+          'group count ( * ) as total over priority by priority > 0 having',
+        ),
         throwsA(
           isA<TomQuerySyntaxException>().having(
             (e) => e.key,

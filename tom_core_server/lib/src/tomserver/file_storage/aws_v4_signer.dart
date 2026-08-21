@@ -136,7 +136,8 @@ class TomAwsV4Signer {
 
     return {
       ...all,
-      'authorization': '$algorithm '
+      'authorization':
+          '$algorithm '
           'Credential=${credentials.accessKeyId}/$scope, '
           'SignedHeaders=$signedHeaderList, '
           'Signature=$signature',
@@ -167,12 +168,15 @@ class TomAwsV4Signer {
   /// The canonical query string of [uri]: every parameter encoded and sorted,
   /// values included even when empty (`?uploads` signs as `uploads=`).
   static String canonicalQuery(Uri uri) {
-    final parameters = <MapEntry<String, String>>[
-      for (final entry in uri.queryParameters.entries)
-        MapEntry(encodeRfc3986(entry.key), encodeRfc3986(entry.value)),
-    ]..sort((a, b) => a.key == b.key
-        ? a.value.compareTo(b.value)
-        : a.key.compareTo(b.key));
+    final parameters =
+        <MapEntry<String, String>>[
+          for (final entry in uri.queryParameters.entries)
+            MapEntry(encodeRfc3986(entry.key), encodeRfc3986(entry.value)),
+        ]..sort(
+          (a, b) => a.key == b.key
+              ? a.value.compareTo(b.value)
+              : a.key.compareTo(b.key),
+        );
     return parameters.map((e) => '${e.key}=${e.value}').join('&');
   }
 
@@ -195,8 +199,9 @@ class TomAwsV4Signer {
   static String hashPayload(List<int> payload) =>
       _hex(sha256.convert(payload).bytes);
 
-  static String _hostHeader(Uri uri) =>
-      uri.hasPort && !_isDefaultPort(uri) ? '${uri.host}:${uri.port}' : uri.host;
+  static String _hostHeader(Uri uri) => uri.hasPort && !_isDefaultPort(uri)
+      ? '${uri.host}:${uri.port}'
+      : uri.host;
 
   static bool _isDefaultPort(Uri uri) =>
       (uri.scheme == 'https' && uri.port == 443) ||

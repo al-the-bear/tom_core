@@ -66,7 +66,9 @@ Future<void> run() async {
 
   // Example 2: a real service accepts the correct credential.
   final service = DemoAuthService();
-  final ok = await service.authenticateUser(_login('alice', password: 's3cret'));
+  final ok = await service.authenticateUser(
+    _login('alice', password: 's3cret'),
+  );
   print('alice authenticated as:    ${ok.principal.user.username}');
 
   // Example 3: a wrong credential is rejected with a LoginException.
@@ -99,8 +101,10 @@ Future<void> run() async {
     }),
   );
   print('default state store:       ${singleNode.type.name}');
-  print('clustered state store:     ${clustered.type.name} '
-      'on "${clustered.datasourceName}"/${clustered.table}');
+  print(
+    'clustered state store:     ${clustered.type.name} '
+    'on "${clustered.datasourceName}"/${clustered.table}',
+  );
 
   // Example 6: holding a provider's tokens is opt-in, per provider. "Sign in
   // with X" needs nothing; an application that calls X's API on the user's
@@ -124,8 +128,10 @@ Future<void> run() async {
     }),
   );
   print('login_only keeps tokens:   ${providers['login_only'].storeTokens}');
-  print('calendar keeps tokens:     ${providers['calendar'].storeTokens} '
-      '${providers['calendar'].authorizationParameters}');
+  print(
+    'calendar keeps tokens:     ${providers['calendar'].storeTokens} '
+    '${providers['calendar'].authorizationParameters}',
+  );
 
   // Example 7: a grant is held against the external identity that consented to
   // it, and it never outlives the link. `unlink` deletes both — the user
@@ -152,12 +158,16 @@ Future<void> run() async {
   // Neither token is printed: `toString` names the grant instead, because this
   // value reaches log lines and both fields are credentials.
   print('held grant:                $held');
-  print('needs refresh in an hour:  '
-      '${held!.expiresWithin(const Duration(hours: 1))}');
+  print(
+    'needs refresh in an hour:  '
+    '${held!.expiresWithin(const Duration(hours: 1))}',
+  );
 
   await identities.unlink(identity.issuer, identity.subject);
-  print('grant after unlink:        '
-      '${await tokens.read(identity.issuer, identity.subject)}');
+  print(
+    'grant after unlink:        '
+    '${await tokens.read(identity.issuer, identity.subject)}',
+  );
 
   // Assertions
   assert(guest.principal.authenticated == false);

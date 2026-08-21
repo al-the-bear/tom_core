@@ -71,15 +71,17 @@ void main() {
     });
 
     test('returns (null, null) for a non-bearer scheme', () {
-      final (principal, token) =
-          extractAuthentication(_get({'authorization': 'Basic dXNlcjpwYXNz'}));
+      final (principal, token) = extractAuthentication(
+        _get({'authorization': 'Basic dXNlcjpwYXNz'}),
+      );
       expect(principal, isNull);
       expect(token, isNull);
     });
 
     test('returns (null, null) for a malformed bearer token', () {
-      final (principal, token) =
-          extractAuthentication(_get({'authorization': 'Bearer not-a-jwt'}));
+      final (principal, token) = extractAuthentication(
+        _get({'authorization': 'Bearer not-a-jwt'}),
+      );
       expect(principal, isNull);
       expect(token, isNull);
     });
@@ -103,12 +105,15 @@ void main() {
       expect(seen, 'v');
     });
 
-    test('passes the request through unchanged when no context is given',
-        () async {
-      final handler =
-          contextSetupMiddleware('noop')((req) => Response.ok('ok'));
-      expect((await handler(_get())).statusCode, 200);
-    });
+    test(
+      'passes the request through unchanged when no context is given',
+      () async {
+        final handler = contextSetupMiddleware('noop')(
+          (req) => Response.ok('ok'),
+        );
+        expect((await handler(_get())).statusCode, 200);
+      },
+    );
   });
 
   group('tomLoggingMiddleware', () {
@@ -137,8 +142,7 @@ void main() {
   group('tomDefaultAuthenticationMiddleware', () {
     test('publishes a TomRequestId into the request zone', () async {
       TomRequestId? zoneId;
-      final handler =
-          tomDefaultAuthenticationMiddleware('auth')((req) {
+      final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
         zoneId = getFromCurrentZone<TomRequestId>();
         return Response.ok('ok');
       });
@@ -151,8 +155,7 @@ void main() {
     test('resolves no principal when there are no credentials', () async {
       TomPrincipal? zonePrincipal;
       var sawPrincipalKey = false;
-      final handler =
-          tomDefaultAuthenticationMiddleware('auth')((req) {
+      final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
         zonePrincipal = getFromCurrentZone<TomPrincipal>();
         sawPrincipalKey = true;
         return Response.ok('ok');
@@ -162,17 +165,20 @@ void main() {
       expect(zonePrincipal, isNull);
     });
 
-    test('merges the optional context into the request seen by the handler',
-        () async {
-      Object? seen;
-      final handler =
-          tomDefaultAuthenticationMiddleware('auth', {'k': 'v'})((req) {
-        seen = req.context['k'];
-        return Response.ok('ok');
-      });
-      await handler(_get());
-      expect(seen, 'v');
-    });
+    test(
+      'merges the optional context into the request seen by the handler',
+      () async {
+        Object? seen;
+        final handler = tomDefaultAuthenticationMiddleware('auth', {'k': 'v'})((
+          req,
+        ) {
+          seen = req.context['k'];
+          return Response.ok('ok');
+        });
+        await handler(_get());
+        expect(seen, 'v');
+      },
+    );
 
     test('publishes the original request into the request zone', () async {
       final request = _get();
@@ -188,9 +194,9 @@ void main() {
     });
 
     test('publishes the parsed bearer token into the request zone', () async {
-      final jwt = TomServerJwtToken({'userId': 'u'},
-              expiresIn: const Duration(hours: 2))
-          .getJWT('tom');
+      final jwt = TomServerJwtToken({
+        'userId': 'u',
+      }, expiresIn: const Duration(hours: 2)).getJWT('tom');
       TomClientJwtToken? zoneToken;
       final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
         zoneToken = getFromCurrentZone<TomClientJwtToken>();
@@ -231,8 +237,10 @@ void main() {
       final server = TomServer(_NoopConfig());
       // Neither handler configured -> the auth-error handler is the very same
       // closure as the (default) main error handler.
-      expect(identical(server.authenticationErrorHandler, server.errorHandler),
-          isTrue);
+      expect(
+        identical(server.authenticationErrorHandler, server.errorHandler),
+        isTrue,
+      );
     });
 
     test('honours a configuration-supplied loggingMiddleware', () {
@@ -260,10 +268,16 @@ void main() {
     });
 
     /// Drives the default handler and decodes its response.
-    Future<({int status, Map<String, String> headers, Map<String, dynamic> body})>
-        map(Object error) async {
+    Future<
+      ({int status, Map<String, String> headers, Map<String, dynamic> body})
+    >
+    map(Object error) async {
       final response = server.errorHandler(_get(), error, StackTrace.current);
-      expect(response, isNotNull, reason: 'the default handler always responds');
+      expect(
+        response,
+        isNotNull,
+        reason: 'the default handler always responds',
+      );
       final body =
           jsonDecode(await response!.readAsString()) as Map<String, dynamic>;
       return (
@@ -298,8 +312,11 @@ void main() {
     });
 
     test('a TomServerException additionally adds clientThrow', () async {
-      final error =
-          TomServerException('db.fail', 'query failed', clientThrow: false);
+      final error = TomServerException(
+        'db.fail',
+        'query failed',
+        clientThrow: false,
+      );
       final result = await map(error);
       expect(result.status, 500);
       expect(result.headers['x-tom-error'], 'true');

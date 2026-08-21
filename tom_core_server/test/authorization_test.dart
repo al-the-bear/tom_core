@@ -6,10 +6,9 @@ import 'package:test/test.dart';
 TomClientJwtToken _token(
   String userId, {
   Duration validFor = const Duration(hours: 2),
-}) =>
-    TomClientJwtToken(
-      TomServerJwtToken({'userId': userId}, expiresIn: validFor).getJWT('tom'),
-    );
+}) => TomClientJwtToken(
+  TomServerJwtToken({'userId': userId}, expiresIn: validFor).getJWT('tom'),
+);
 
 TomPrincipal _principal(String username) =>
     TomPrincipal(user: TomUser(username: username), authenticated: true);
@@ -24,8 +23,16 @@ void main() {
       final before = DateTime.now().add(const Duration(days: 1));
       final entry = TomAuthorizationCacheEntry(_principal('alice'));
       final after = DateTime.now().add(const Duration(days: 1));
-      expect(entry.deletionTime.isBefore(before.subtract(const Duration(minutes: 1))), isFalse);
-      expect(entry.deletionTime.isAfter(after.add(const Duration(minutes: 1))), isFalse);
+      expect(
+        entry.deletionTime.isBefore(
+          before.subtract(const Duration(minutes: 1)),
+        ),
+        isFalse,
+      );
+      expect(
+        entry.deletionTime.isAfter(after.add(const Duration(minutes: 1))),
+        isFalse,
+      );
     });
 
     test('honours an explicit deletion time', () {
@@ -51,8 +58,10 @@ void main() {
   group('TomAuthorizationCache (main isolate)', () {
     test('stores a principal and reads it back by token', () async {
       final token = _token('alice');
-      final result =
-          await TomAuthorizationCache.storePrincipal(token, _principal('alice'));
+      final result = await TomAuthorizationCache.storePrincipal(
+        token,
+        _principal('alice'),
+      );
       expect(result, 0);
 
       final cached = await TomAuthorizationCache.getPrincipal(token);
@@ -65,14 +74,17 @@ void main() {
       expect(cached, isNull);
     });
 
-    test('throws TomAuthorizationCacheException for an expired entry', () async {
-      final token = _token('bob', validFor: const Duration(hours: -1));
-      await TomAuthorizationCache.storePrincipal(token, _principal('bob'));
-      expect(
-        () => TomAuthorizationCache.getPrincipal(token),
-        throwsA(isA<TomAuthorizationCacheException>()),
-      );
-    });
+    test(
+      'throws TomAuthorizationCacheException for an expired entry',
+      () async {
+        final token = _token('bob', validFor: const Duration(hours: -1));
+        await TomAuthorizationCache.storePrincipal(token, _principal('bob'));
+        expect(
+          () => TomAuthorizationCache.getPrincipal(token),
+          throwsA(isA<TomAuthorizationCacheException>()),
+        );
+      },
+    );
   });
 
   group('Cross-isolate command objects', () {
@@ -129,21 +141,27 @@ void main() {
       expect(result, isTrue);
     });
 
-    test('handles a retrieve message, resolving to the stored principal', () async {
-      final token = _token('dave');
-      executor.execute(
-        TomAuthorizationCacheStoreMessage(token, _principal('dave')),
-      );
-      final result = executor.execute(
-        TomAuthorizationCacheRetrieveMessage(token),
-      );
-      final principal = await (result as Future<TomPrincipal?>);
-      expect(principal!.username, 'dave');
-    });
+    test(
+      'handles a retrieve message, resolving to the stored principal',
+      () async {
+        final token = _token('dave');
+        executor.execute(
+          TomAuthorizationCacheStoreMessage(token, _principal('dave')),
+        );
+        final result = executor.execute(
+          TomAuthorizationCacheRetrieveMessage(token),
+        );
+        final principal = await (result as Future<TomPrincipal?>);
+        expect(principal!.username, 'dave');
+      },
+    );
 
     test('returns TomExecutor.noResult for an unrelated command', () {
       expect(
-        identical(executor.execute('not a cache command'), TomExecutor.noResult),
+        identical(
+          executor.execute('not a cache command'),
+          TomExecutor.noResult,
+        ),
         isTrue,
       );
     });

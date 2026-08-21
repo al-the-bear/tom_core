@@ -25,17 +25,19 @@ import 'package:test/test.dart';
 /// A direct-grant store seeded so Alice owns `project.X` and views `project.Y`.
 TomPrincipalResourceRoleResolver _directResolver(
   List<TomPrincipalResourceGrant> grants,
-) =>
-    TomPrincipalResourceRoleResolver(
-      InMemoryPrincipalResourceGrantStore(grants),
-    );
+) => TomPrincipalResourceRoleResolver(
+  InMemoryPrincipalResourceGrantStore(grants),
+);
 
-TomPrincipalResourceGrant _grant(String principal, String resource, String role) =>
-    TomPrincipalResourceGrant(
-      principalId: principal,
-      resourceKey: resource,
-      role: role,
-    );
+TomPrincipalResourceGrant _grant(
+  String principal,
+  String resource,
+  String role,
+) => TomPrincipalResourceGrant(
+  principalId: principal,
+  resourceKey: resource,
+  role: role,
+);
 
 void main() {
   setUp(() {
@@ -66,12 +68,18 @@ void main() {
     });
 
     test('delegationMode parses the stored name, null when unknown', () {
-      expect(TomPrincipalDelegation(mode: 'share').delegationMode,
-          TomDelegationMode.share);
-      expect(TomPrincipalDelegation(mode: 'absence').delegationMode,
-          TomDelegationMode.absence);
-      expect(TomPrincipalDelegation(mode: 'intentional').delegationMode,
-          TomDelegationMode.intentional);
+      expect(
+        TomPrincipalDelegation(mode: 'share').delegationMode,
+        TomDelegationMode.share,
+      );
+      expect(
+        TomPrincipalDelegation(mode: 'absence').delegationMode,
+        TomDelegationMode.absence,
+      );
+      expect(
+        TomPrincipalDelegation(mode: 'intentional').delegationMode,
+        TomDelegationMode.intentional,
+      );
       expect(TomPrincipalDelegation(mode: 'bogus').delegationMode, isNull);
     });
 
@@ -93,7 +101,10 @@ void main() {
 
       test('within an inclusive window → active; outside → inactive', () {
         final d = TomPrincipalDelegation(
-            mode: 'absence', validFrom: from, validTo: to);
+          mode: 'absence',
+          validFrom: from,
+          validTo: to,
+        );
         expect(d.isActiveAt(DateTime.utc(2026, 1, 9)), isFalse); // before
         expect(d.isActiveAt(from), isTrue); // inclusive start
         expect(d.isActiveAt(DateTime.utc(2026, 1, 15)), isTrue); // inside
@@ -102,10 +113,15 @@ void main() {
       });
 
       test('null bounds are unbounded on that side', () {
-        final openEnd =
-            TomPrincipalDelegation(mode: 'intentional', validFrom: from);
+        final openEnd = TomPrincipalDelegation(
+          mode: 'intentional',
+          validFrom: from,
+        );
         expect(openEnd.isActiveAt(DateTime.utc(2030)), isTrue);
-        final openStart = TomPrincipalDelegation(mode: 'intentional', validTo: to);
+        final openStart = TomPrincipalDelegation(
+          mode: 'intentional',
+          validTo: to,
+        );
         expect(openStart.isActiveAt(DateTime.utc(2000)), isTrue);
         final unbounded = TomPrincipalDelegation(mode: 'intentional');
         expect(unbounded.isActiveAt(DateTime.utc(2026, 6)), isTrue);
@@ -113,7 +129,11 @@ void main() {
 
       test('revoked is inactive at every timestamp', () {
         final d = TomPrincipalDelegation(
-            mode: 'intentional', validFrom: from, validTo: to, revoked: true);
+          mode: 'intentional',
+          validFrom: from,
+          validTo: to,
+          revoked: true,
+        );
         expect(d.isActiveAt(from), isFalse);
         expect(d.isActiveAt(DateTime.utc(2026, 1, 15)), isFalse);
       });
@@ -144,10 +164,10 @@ void main() {
     final after = DateTime.utc(2026, 2, 1);
 
     test('within the window Bob inherits ALL of Alice\'s roles', () async {
-      expect(
-        await resolver.resolveDelegatedRoles('bob', inside),
-        {'project.X': 'owner', 'project.Y': 'viewer'},
-      );
+      expect(await resolver.resolveDelegatedRoles('bob', inside), {
+        'project.X': 'owner',
+        'project.Y': 'viewer',
+      });
     });
 
     test('after the window Bob inherits nothing', () async {
@@ -184,8 +204,9 @@ void main() {
         ),
       ]);
       final resolver = TomDelegationResolver(store, direct);
-      expect(await resolver.resolveDelegatedRoles('bob', now),
-          {'project.Q': 'viewer'});
+      expect(await resolver.resolveDelegatedRoles('bob', now), {
+        'project.Q': 'viewer',
+      });
     });
 
     test('a malformed share (missing role) contributes nothing', () async {
@@ -201,22 +222,25 @@ void main() {
       expect(await resolver.resolveDelegatedRoles('bob', now), isEmpty);
     });
 
-    test('intentional narrows to one resource and overrides the role',
-        () async {
-      // Alice intentionally lends only project.X, downgraded to viewer.
-      final store = InMemoryPrincipalDelegationStore([
-        TomPrincipalDelegation(
-          delegatorId: 'alice',
-          delegateId: 'bob',
-          mode: 'intentional',
-          resourceKey: 'project.X',
-          role: 'viewer',
-        ),
-      ]);
-      final resolver = TomDelegationResolver(store, direct);
-      expect(await resolver.resolveDelegatedRoles('bob', now),
-          {'project.X': 'viewer'});
-    });
+    test(
+      'intentional narrows to one resource and overrides the role',
+      () async {
+        // Alice intentionally lends only project.X, downgraded to viewer.
+        final store = InMemoryPrincipalDelegationStore([
+          TomPrincipalDelegation(
+            delegatorId: 'alice',
+            delegateId: 'bob',
+            mode: 'intentional',
+            resourceKey: 'project.X',
+            role: 'viewer',
+          ),
+        ]);
+        final resolver = TomDelegationResolver(store, direct);
+        expect(await resolver.resolveDelegatedRoles('bob', now), {
+          'project.X': 'viewer',
+        });
+      },
+    );
 
     test('a revoked intentional delegation lends nothing', () async {
       final store = InMemoryPrincipalDelegationStore([
@@ -235,51 +259,57 @@ void main() {
   group('TomDelegationResolver — merge, strength, and non-transitivity', () {
     final now = DateTime.utc(2026, 3, 1);
 
-    test('effective roles fold direct + delegated to the stronger per resource',
-        () async {
-      // Bob directly views project.X; Alice delegates owner of project.X to him.
-      // The stronger (owner → full) must win, exactly like duplicate direct
-      // grants collapse.
-      final direct = _directResolver([
-        _grant('alice', 'project.X', 'owner'),
-        _grant('bob', 'project.X', 'viewer'),
-      ]);
-      final store = InMemoryPrincipalDelegationStore([
-        TomPrincipalDelegation(
-          delegatorId: 'alice',
-          delegateId: 'bob',
-          mode: 'intentional',
-        ),
-      ]);
-      final resolver = TomDelegationResolver(store, direct);
-      expect(await resolver.resolveEffectiveRoles('bob', now),
-          {'project.X': 'owner'});
-    });
+    test(
+      'effective roles fold direct + delegated to the stronger per resource',
+      () async {
+        // Bob directly views project.X; Alice delegates owner of project.X to him.
+        // The stronger (owner → full) must win, exactly like duplicate direct
+        // grants collapse.
+        final direct = _directResolver([
+          _grant('alice', 'project.X', 'owner'),
+          _grant('bob', 'project.X', 'viewer'),
+        ]);
+        final store = InMemoryPrincipalDelegationStore([
+          TomPrincipalDelegation(
+            delegatorId: 'alice',
+            delegateId: 'bob',
+            mode: 'intentional',
+          ),
+        ]);
+        final resolver = TomDelegationResolver(store, direct);
+        expect(await resolver.resolveEffectiveRoles('bob', now), {
+          'project.X': 'owner',
+        });
+      },
+    );
 
-    test('delegation is not transitive: B does not inherit A\'s delegated roles',
-        () async {
-      // Carol delegates her roles to Alice; Alice delegates hers to Bob. Bob must
-      // see only Alice's DIRECT roles (project.X), never Carol's (project.Z).
-      final direct = _directResolver([
-        _grant('alice', 'project.X', 'owner'),
-        _grant('carol', 'project.Z', 'owner'),
-      ]);
-      final store = InMemoryPrincipalDelegationStore([
-        TomPrincipalDelegation(
-          delegatorId: 'carol',
-          delegateId: 'alice',
-          mode: 'intentional',
-        ),
-        TomPrincipalDelegation(
-          delegatorId: 'alice',
-          delegateId: 'bob',
-          mode: 'intentional',
-        ),
-      ]);
-      final resolver = TomDelegationResolver(store, direct);
-      expect(await resolver.resolveDelegatedRoles('bob', now),
-          {'project.X': 'owner'});
-    });
+    test(
+      'delegation is not transitive: B does not inherit A\'s delegated roles',
+      () async {
+        // Carol delegates her roles to Alice; Alice delegates hers to Bob. Bob must
+        // see only Alice's DIRECT roles (project.X), never Carol's (project.Z).
+        final direct = _directResolver([
+          _grant('alice', 'project.X', 'owner'),
+          _grant('carol', 'project.Z', 'owner'),
+        ]);
+        final store = InMemoryPrincipalDelegationStore([
+          TomPrincipalDelegation(
+            delegatorId: 'carol',
+            delegateId: 'alice',
+            mode: 'intentional',
+          ),
+          TomPrincipalDelegation(
+            delegatorId: 'alice',
+            delegateId: 'bob',
+            mode: 'intentional',
+          ),
+        ]);
+        final resolver = TomDelegationResolver(store, direct);
+        expect(await resolver.resolveDelegatedRoles('bob', now), {
+          'project.X': 'owner',
+        });
+      },
+    );
 
     test('another delegate\'s delegations do not leak', () async {
       final direct = _directResolver([_grant('alice', 'project.X', 'owner')]);
@@ -291,8 +321,10 @@ void main() {
         ),
       ]);
       final resolver = TomDelegationResolver(store, direct);
-      expect(await resolver.resolveDelegatedRoles('someone_else', now), isEmpty);
+      expect(
+        await resolver.resolveDelegatedRoles('someone_else', now),
+        isEmpty,
+      );
     });
   });
-
 }

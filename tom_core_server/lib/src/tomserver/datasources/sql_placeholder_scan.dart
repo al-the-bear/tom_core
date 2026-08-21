@@ -93,7 +93,8 @@ class SqlPlaceholderScan {
   /// Equivalent to `toPositional(namedSql).$2`; the positional rewrite is
   /// discarded. Used by the CRUD repository, which binds names to a raw
   /// statement rather than rewriting the SQL.
-  static List<String> extractNames(String namedSql) => toPositional(namedSql).$2;
+  static List<String> extractNames(String namedSql) =>
+      toPositional(namedSql).$2;
 
   /// Copies the quoted span that opens at [start] (its delimiter is [quote])
   /// into [out] verbatim, returning the index just past the closing delimiter.

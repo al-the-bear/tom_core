@@ -41,8 +41,9 @@ void main() {
     });
 
     test('health() delegates to the swapped global analyzer', () async {
-      TomHealthServer.globalSettingsHealthAnalyzer =
-          _FixedAnalyzer('DEGRADED: db=false');
+      TomHealthServer.globalSettingsHealthAnalyzer = _FixedAnalyzer(
+        'DEGRADED: db=false',
+      );
       expect(await TomHealthServer().health(), 'DEGRADED: db=false');
     });
 

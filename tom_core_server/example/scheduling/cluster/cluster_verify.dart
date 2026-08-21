@@ -36,8 +36,10 @@ Future<void> main(List<String> args) async {
   final directory = _eventsDirectory(args);
   final events = readEvents(directory);
   if (events.isEmpty) {
-    stderr.writeln('No events under ${directory.path}: the nodes produced no '
-        'testimony, so there is nothing to verify.');
+    stderr.writeln(
+      'No events under ${directory.path}: the nodes produced no '
+      'testimony, so there is nothing to verify.',
+    );
     exit(1);
   }
 
@@ -86,7 +88,11 @@ Future<void> _verifySingleFire(
   report.check(
     claim,
     'both nodes ran to completion',
-    steady.where((e) => e.name == 'finished').map((e) => e.node).toSet().length ==
+    steady
+            .where((e) => e.name == 'finished')
+            .map((e) => e.node)
+            .toSet()
+            .length ==
         2,
     'a node that died early proves nothing about contention',
   );
@@ -109,7 +115,7 @@ Future<void> _verifySingleFire(
     'every window was executed exactly once across the cluster',
     executions.length == windows.length,
     '${executions.length} body invocations over ${windows.length} windows'
-    '${_doubleFires(executions)}',
+        '${_doubleFires(executions)}',
   );
 
   // ...and that it was *arbitration* that produced that number, not one node
@@ -123,16 +129,18 @@ Future<void> _verifySingleFire(
   // claimed the next window while the previous one is still running, and it is
   // the one a job's `allowOverlap: false` rests on cluster-wide.
   final contended = steady
-      .where((e) =>
-          e.name == 'alert' &&
-          e.stringField('kind') == TomJobAlertKind.lockContended.name)
+      .where(
+        (e) =>
+            e.name == 'alert' &&
+            e.stringField('kind') == TomJobAlertKind.lockContended.name,
+      )
       .toList();
   report.check(
     claim,
     'a node was refused the job lease while its peer was mid-run',
     contended.isNotEmpty,
     'no lockContended alert on either node: the job-wide lease was never '
-    'exercised, so single-fire here rests on the queue row alone',
+        'exercised, so single-fire here rests on the queue row alone',
   );
   // A refusal must cost the window a tick, not the work. The refused node hands
   // its claim straight back, so the window returns to the queue and is run by
@@ -143,8 +151,10 @@ Future<void> _verifySingleFire(
   // At least one, rather than all: a window contended in the final second of
   // the run has nobody left to execute it, and demanding otherwise would make
   // the check a statement about when the demo stops.
-  final refusedWindows =
-      contended.map((e) => e.stringField('window')).whereType<String>().toSet();
+  final refusedWindows = contended
+      .map((e) => e.stringField('window'))
+      .whereType<String>()
+      .toSet();
   report.check(
     claim,
     'a window whose lease was refused was still executed, not dropped',
@@ -155,9 +165,10 @@ Future<void> _verifySingleFire(
   // And the database's half: one row per window, no window duplicated. This is
   // the unique key doing its job, and it would still hold if the lease were
   // broken — which is why it is a separate check and not the claim.
-  final runs = (await TomSqlJobStore(datasource, createSchema: false).all())
-      .where((r) => r.jobName == heartbeatJob)
-      .toList();
+  final runs = (await TomSqlJobStore(
+    datasource,
+    createSchema: false,
+  ).all()).where((r) => r.jobName == heartbeatJob).toList();
   final rowWindows = runs.map((r) => r.scheduledFor.toIso8601String()).toSet();
   report.check(
     claim,
@@ -170,7 +181,7 @@ Future<void> _verifySingleFire(
     'every executed window has a row in the queue',
     windows.every(rowWindows.contains),
     'executed windows missing a row: '
-    '${windows.where((w) => !rowWindows.contains(w)).toList()}',
+        '${windows.where((w) => !rowWindows.contains(w)).toList()}',
   );
 }
 
@@ -209,8 +220,12 @@ Future<void> _verifyFencingToken(
   final acquired = _one(holder, 'acquired');
   final taken = _one(taker, 'acquired');
   if (acquired == null || taken == null) {
-    report.check(claim, 'both nodes held the lease in turn', false,
-        'missing an `acquired` event: the scenario did not run');
+    report.check(
+      claim,
+      'both nodes held the lease in turn',
+      false,
+      'missing an `acquired` event: the scenario did not run',
+    );
     return;
   }
 
@@ -228,7 +243,7 @@ Future<void> _verifyFencingToken(
     'the second node was refused while the lease was live',
     (taken.intField('refusals') ?? 0) > 0,
     '${taken.intField('refusals')} refusals before it won — zero would mean it '
-    'never actually contended',
+        'never actually contended',
   );
 
   report.check(
@@ -260,8 +275,10 @@ Future<void> _verifyFencingToken(
   );
 
   // And the database agrees with the logs about who ended up holding what.
-  final info =
-      await TomSqlLeaseLock(datasource, createSchema: false).inspect(fencedResource);
+  final info = await TomSqlLeaseLock(
+    datasource,
+    createSchema: false,
+  ).inspect(fencedResource);
   report.check(
     claim,
     'the lease record names the second node at the higher token',
@@ -275,7 +292,7 @@ Future<void> _verifyFencingToken(
     'the fenced resource carries the second node\'s write, not the stale one',
     row != null && row.holder == taken.node && row.fence == secondToken,
     'row: holder=${row?.holder} fence=${row?.fence}, '
-    'expected holder=${taken.node} fence=$secondToken',
+        'expected holder=${taken.node} fence=$secondToken',
   );
 }
 
@@ -300,8 +317,12 @@ Future<void> _verifyTakeover(
   final observed = _one(survivor, 'observed-claim');
   final recovered = _one(survivor, 'recovered');
   if (observed == null || recovered == null) {
-    report.check(claim, 'the abandoned run was recovered', false,
-        'missing `observed-claim` or `recovered`: the scenario did not run');
+    report.check(
+      claim,
+      'the abandoned run was recovered',
+      false,
+      'missing `observed-claim` or `recovered`: the scenario did not run',
+    );
     return;
   }
 
@@ -323,33 +344,35 @@ Future<void> _verifyTakeover(
     'recovery was attempted before the lease expired',
     early.isNotEmpty,
     'no attempt landed inside the ${leaseTimeoutMs}ms lease — the timing of '
-    'the recovery is then unproven, not proven',
+        'the recovery is then unproven, not proven',
   );
   report.check(
     claim,
     'nothing was recovered while the lease was still live',
     early.every((e) => e.intField('recovered') == 0),
     'attempts inside the lease that recovered anything: '
-    '${early.where((e) => e.intField('recovered') != 0).map((e) => e.fields).toList()}',
+        '${early.where((e) => e.intField('recovered') != 0).map((e) => e.fields).toList()}',
   );
   report.check(
     claim,
     'the run was recovered only after the lease expired',
     (recovered.intField('elapsedMs') ?? 0) >= leaseTimeoutMs,
     'recovered at ${recovered.intField('elapsedMs')}ms, '
-    'lease ${leaseTimeoutMs}ms',
+        'lease ${leaseTimeoutMs}ms',
   );
   report.check(
     claim,
     'the recovered run went back to the queue rather than being written off',
     recovered.stringField('state') == TomJobRunState.pending.name,
     'state ${recovered.stringField('state')} — `failed` would mean the job\'s '
-    'recovery opt-in was not honoured',
+        'recovery opt-in was not honoured',
   );
 
   // The database's own account: runnable again, and held by nobody.
   final runs = await TomSqlJobStore(datasource, createSchema: false).all();
-  final run = runs.where((r) => r.id == recovered.stringField('runId')).firstOrNull;
+  final run = runs
+      .where((r) => r.id == recovered.stringField('runId'))
+      .firstOrNull;
   report.check(
     claim,
     'the queue holds the run pending and unclaimed',
@@ -366,7 +389,7 @@ Future<void> _verifyTakeover(
     'recovery did not charge the dead node\'s crash to the job\'s retry budget',
     run != null && run.attempt == 1,
     'attempt=${run?.attempt}, expected 1 — a crash loop must not consume the '
-    'retries a real failure is entitled to',
+        'retries a real failure is entitled to',
   );
 }
 
@@ -407,12 +430,16 @@ Future<void> _verifyRollCall(
     'the peer occupied exactly one row on every observation',
     rosters.isNotEmpty && rosters.every((e) => e.intField('peerRows') == 1),
     '${rosters.length} observations, row counts '
-    '${rosters.map((e) => e.intField('peerRows')).toSet().toList()}',
+        '${rosters.map((e) => e.intField('peerRows')).toSet().toList()}',
   );
   report.check(
     claim,
     'the row was rewritten as the peer checked in, not left stale',
-    rosters.map((e) => e.stringField('peerCheckinAt')).whereType<String>().toSet().length >
+    rosters
+            .map((e) => e.stringField('peerCheckinAt'))
+            .whereType<String>()
+            .toSet()
+            .length >
         1,
     'a single distinct check-in timestamp would mean the row stopped tracking',
   );
@@ -425,8 +452,12 @@ Future<void> _verifyRollCall(
   );
 
   if (verdict == null) {
-    report.check(claim, 'the departed node was declared failed', false,
-        'no `verdict` event: the watcher never named its peer');
+    report.check(
+      claim,
+      'the departed node was declared failed',
+      false,
+      'no `verdict` event: the watcher never named its peer',
+    );
     return;
   }
 
@@ -438,14 +469,14 @@ Future<void> _verifyRollCall(
   );
 
   final silent = verdict.intField('silentMs')!;
-  final threshold = verdict.intField('publishedIntervalMs')! +
-      verdict.intField('slackMs')!;
+  final threshold =
+      verdict.intField('publishedIntervalMs')! + verdict.intField('slackMs')!;
   report.check(
     claim,
     'the verdict waited out the peer\'s own interval plus the slack',
     silent >= threshold,
     'silent for ${silent}ms against a ${threshold}ms floor — declaring a node '
-    'failed sooner than it promised to speak is a false positive',
+        'failed sooner than it promised to speak is a false positive',
   );
 
   // The table's final state: the departed node is still on the roll, still one
@@ -463,7 +494,7 @@ Future<void> _verifyRollCall(
     'the departed node is still on the roll, in exactly one row',
     rows.where((n) => n.nodeId == verdict.stringField('peer')).length == 1,
     'rows for the peer: '
-    '${rows.where((n) => n.nodeId == verdict.stringField('peer')).length}',
+        '${rows.where((n) => n.nodeId == verdict.stringField('peer')).length}',
   );
 }
 

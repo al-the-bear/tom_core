@@ -202,16 +202,20 @@ class FixtureApiServer implements FixtureApiService {
   }
 
   @override
-  Future<Map<String, Object>> health() async =>
-      <String, Object>{'status': 'ok', 'app': 'fixture'};
+  Future<Map<String, Object>> health() async => <String, Object>{
+    'status': 'ok',
+    'app': 'fixture',
+  };
 
   @override
-  Future<Map<String, Object>> unguarded() async =>
-      <String, Object>{'guarded': false};
+  Future<Map<String, Object>> unguarded() async => <String, Object>{
+    'guarded': false,
+  };
 
   @override
-  Future<Map<String, Object>> auditedAction() async =>
-      <String, Object>{'audited': true};
+  Future<Map<String, Object>> auditedAction() async => <String, Object>{
+    'audited': true,
+  };
 
   @override
   Future<Map<String, Object>> upload(
@@ -338,8 +342,9 @@ class FixtureAccessApiService {
     apiId: fixtureAccessApiId,
     endpointId: 'contractGated',
   )
-  Future<Map<String, Object>> contractGated() async =>
-      <String, Object>{'source': 'contract'};
+  Future<Map<String, Object>> contractGated() async => <String, Object>{
+    'source': 'contract',
+  };
 
   /// Case (b): the handler's policy overrides the contract's.
   @TomRoleAccess(['fixture-handler-role'])
@@ -347,8 +352,9 @@ class FixtureAccessApiService {
     apiId: fixtureAccessApiId,
     endpointId: 'overridden',
   )
-  Future<Map<String, Object>> overridden() async =>
-      <String, Object>{'source': 'handler'};
+  Future<Map<String, Object>> overridden() async => <String, Object>{
+    'source': 'handler',
+  };
 
   /// Case (c): an inline endpoint, so no contract policy exists to shadow.
   @TomRoleAccess(['fixture-inline-role'])
@@ -357,8 +363,9 @@ class FixtureAccessApiService {
     uri: '/fixture-access/inline',
     produces: TomMimeType.json,
   )
-  Future<Map<String, Object>> inlineGated() async =>
-      <String, Object>{'source': 'inline'};
+  Future<Map<String, Object>> inlineGated() async => <String, Object>{
+    'source': 'inline',
+  };
 }
 
 /// A class whose endpoint method carries **two** `TomAccessControl` annotations
@@ -386,8 +393,9 @@ class FixtureConflictingAccessService {
     uri: '/fixture-access/conflicting',
     produces: TomMimeType.json,
   )
-  Future<Map<String, Object>> conflicting() async =>
-      <String, Object>{'unreachable': true};
+  Future<Map<String, Object>> conflicting() async => <String, Object>{
+    'unreachable': true,
+  };
 }
 
 /// A reflected configuration object for exercising [TomArgs.fillFromArgs]: its

@@ -61,10 +61,12 @@ class TomDirectoryBlobStore extends TomBlobStore {
     var written = 0;
     final sink = partial.openWrite();
     try {
-      await sink.addStream(bytes.map((chunk) {
-        written += chunk.length;
-        return chunk;
-      }));
+      await sink.addStream(
+        bytes.map((chunk) {
+          written += chunk.length;
+          return chunk;
+        }),
+      );
       await sink.flush();
     } on Object catch (error, stack) {
       await sink.close().catchError((Object _) {});
@@ -109,7 +111,8 @@ class TomDirectoryBlobStore extends TomBlobStore {
     final meta = await _readMetadata(file);
     return TomStoredBlob(
       key: key,
-      mediaType: meta?['mediaType'] as String? ?? TomStoredBlob.defaultMediaType,
+      mediaType:
+          meta?['mediaType'] as String? ?? TomStoredBlob.defaultMediaType,
       byteCount: stat.size,
       storedAt: stat.modified,
       fileName: meta?['fileName'] as String?,

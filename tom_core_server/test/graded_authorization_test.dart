@@ -26,8 +26,11 @@ void main() {
       for (final state in TomAuthState.values) {
         final stored = TomAuthStateCodec.toStored(state);
         expect(stored, state.name);
-        expect(TomAuthStateCodec.fromStored(stored), state,
-            reason: '$state must survive a stored round-trip');
+        expect(
+          TomAuthStateCodec.fromStored(stored),
+          state,
+          reason: '$state must survive a stored round-trip',
+        );
       }
     });
 
@@ -114,11 +117,17 @@ void main() {
       final sql = TomResourceGrant.createTableSql;
       expect(sql, contains('tom_resource_grant'));
       for (final state in TomAuthState.values) {
-        expect(sql, contains("'${state.name}'"),
-            reason: 'DDL enum must list ${state.name}');
+        expect(
+          sql,
+          contains("'${state.name}'"),
+          reason: 'DDL enum must list ${state.name}',
+        );
       }
-      expect(sql, contains('UNIQUE KEY'),
-          reason: 'a (role, key) pair must be unique');
+      expect(
+        sql,
+        contains('UNIQUE KEY'),
+        reason: 'a (role, key) pair must be unique',
+      );
     });
 
     test('toString summarises the grade', () {
@@ -143,10 +152,16 @@ void main() {
       final aci = TomGradedAccessControlInformation(
         binary: TomAccessControlInformation(resourceKeys: ['orders']),
       );
-      expect(aci.resolveState('orders'), TomAuthState.full,
-          reason: 'a key present in the binary list resolves to full');
-      expect(aci.resolveState('invoice'), TomAuthState.none,
-          reason: 'an absent key resolves to none (closed default)');
+      expect(
+        aci.resolveState('orders'),
+        TomAuthState.full,
+        reason: 'a key present in the binary list resolves to full',
+      );
+      expect(
+        aci.resolveState('invoice'),
+        TomAuthState.none,
+        reason: 'an absent key resolves to none (closed default)',
+      );
     });
 
     test('fromGrants folds rows, widening on a duplicate key', () {
@@ -162,21 +177,21 @@ void main() {
           accessLevel: TomAuthState.full,
         ),
       ]);
-      expect(aci.resolveState('orders'), TomAuthState.full,
-          reason: 'the most permissive grade wins across roles');
+      expect(
+        aci.resolveState('orders'),
+        TomAuthState.full,
+        reason: 'the most permissive grade wins across roles',
+      );
     });
 
     test('fromGrants keeps a binary fallback for ungranted keys', () {
-      final aci = TomGradedAccessControlInformation.fromGrants(
-        [
-          TomResourceGrant(
-            roleName: 'viewer',
-            resourceKey: 'orders',
-            accessLevel: TomAuthState.read,
-          ),
-        ],
-        binary: TomAccessControlInformation(resourceKeys: ['invoice']),
-      );
+      final aci = TomGradedAccessControlInformation.fromGrants([
+        TomResourceGrant(
+          roleName: 'viewer',
+          resourceKey: 'orders',
+          accessLevel: TomAuthState.read,
+        ),
+      ], binary: TomAccessControlInformation(resourceKeys: ['invoice']));
       expect(aci.resolveState('orders'), TomAuthState.read);
       expect(aci.resolveState('invoice'), TomAuthState.full);
       expect(aci.resolveState('shipping'), TomAuthState.none);
@@ -186,16 +201,15 @@ void main() {
       final aci = TomGradedAccessControlInformation(
         grades: {'orders': TomAuthState.read},
       );
-      expect(() => aci.grades['orders'] = TomAuthState.full,
-          throwsUnsupportedError);
+      expect(
+        () => aci.grades['orders'] = TomAuthState.full,
+        throwsUnsupportedError,
+      );
     });
 
     test('toGrants materialises grades back into persistable rows', () {
       final aci = TomGradedAccessControlInformation(
-        grades: {
-          'orders': TomAuthState.full,
-          'invoice': TomAuthState.read,
-        },
+        grades: {'orders': TomAuthState.full, 'invoice': TomAuthState.read},
       );
       final grants = aci.toGrants('editor');
       expect(grants, hasLength(2));
@@ -218,8 +232,9 @@ void main() {
           accessLevel: TomAuthState.disabled,
         ),
       ];
-      final restored =
-          TomGradedAccessControlInformation.fromGrants(original).toGrants('editor');
+      final restored = TomGradedAccessControlInformation.fromGrants(
+        original,
+      ).toGrants('editor');
       final restoredByKey = {
         for (final g in restored) g.resourceKey: g.accessLevel,
       };

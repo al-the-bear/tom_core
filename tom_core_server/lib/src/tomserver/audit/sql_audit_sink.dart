@@ -493,9 +493,7 @@ class TomSqlAuditSink implements TomAuditSink {
       'AND EVENT_OBJECT_TABLE = :table AND ACTION_TIMING = :timing',
       {'table': table, 'timing': 'BEFORE'},
     );
-    return {
-      for (final row in rows) row.eventManipulation: row.triggerName,
-    };
+    return {for (final row in rows) row.eventManipulation: row.triggerName};
   }
 
   Future<int?> _firstSeqAtOrAfter(DateTime instant) async {

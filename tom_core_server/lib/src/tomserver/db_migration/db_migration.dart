@@ -165,8 +165,9 @@ class TomDbMigrations {
   /// followed by `-<description>` (letters and underscores) and an **optional**
   /// environment tag `@<env>[,<env>…]` (C-16), spanning the *whole* basename
   /// (no surrounding text).
-  static final RegExp _migrationNamePattern =
-      RegExp(r'^\[([0-9]+)]-([a-zA-Z_]+)(?:@([a-zA-Z_]+(?:,[a-zA-Z_]+)*))?$');
+  static final RegExp _migrationNamePattern = RegExp(
+    r'^\[([0-9]+)]-([a-zA-Z_]+)(?:@([a-zA-Z_]+(?:,[a-zA-Z_]+)*))?$',
+  );
 
   /// Parses a migration file's [basename] (without extension) into its version,
   /// description and optional environment tag.
@@ -204,7 +205,7 @@ class TomDbMigrations {
   /// `[2]-…` precedes `[10]-…`. Any malformed name reaches
   /// [parseMigrationFileName] and throws.
   static List<({String basename, TomMigrationFileName parsed})>
-      orderMigrationNames(Iterable<String> basenames) {
+  orderMigrationNames(Iterable<String> basenames) {
     final parsed = basenames
         .map((b) => (basename: b, parsed: parseMigrationFileName(b)))
         .toList();
@@ -237,14 +238,13 @@ class TomDbMigrations {
   /// applied-version bookkeeping is unchanged, so a re-run in the same
   /// environment stays idempotent.
   static List<({String basename, TomMigrationFileName parsed})>
-      selectForEnvironment(
+  selectForEnvironment(
     Iterable<({String basename, TomMigrationFileName parsed})> ordered,
     String environmentName,
-  ) =>
-          [
-            for (final entry in ordered)
-              if (entry.parsed.appliesInEnvironment(environmentName)) entry,
-          ];
+  ) => [
+    for (final entry in ordered)
+      if (entry.parsed.appliesInEnvironment(environmentName)) entry,
+  ];
 
   /// Runs all pending migrations under [directory].
   ///
@@ -297,8 +297,10 @@ class TomDbMigrations {
             // (numeric, so [2] precedes [10]) and skip any migration tagged for
             // a non-active environment (C-16); a malformed name throws.
             final ordered = orderMigrationNames(migrations.keys);
-            for (final entry
-                in selectForEnvironment(ordered, environmentName)) {
+            for (final entry in selectForEnvironment(
+              ordered,
+              environmentName,
+            )) {
               await migrator.applyMigration(
                 dsInfo,
                 schemaName,

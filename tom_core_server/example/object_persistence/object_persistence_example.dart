@@ -41,8 +41,10 @@ void run() {
   assert(pred1.generate(dialect) == 'users.age >= :min');
 
   // 2. The parameter is collected for binding; the column is collected as a field.
-  print('2. params=${pred1.getParameters(dialect)} '
-      'fields=${pred1.getFields(dialect)}');
+  print(
+    '2. params=${pred1.getParameters(dialect)} '
+    'fields=${pred1.getFields(dialect)}',
+  );
   assert(pred1.getParameters(dialect).contains('min'));
   assert(pred1.getFields(dialect).contains('users.age'));
 
@@ -53,8 +55,10 @@ void run() {
     b.group(b.like(b.textF('name', nameCol), b.text('A%'))),
   ]);
   print('3. ${pred3.generate(dialect)}');
-  assert(pred3.generate(dialect) ==
-      "( users.age >= :min ) AND ( users.name LIKE 'A%' )");
+  assert(
+    pred3.generate(dialect) ==
+        "( users.age >= :min ) AND ( users.name LIKE 'A%' )",
+  );
 
   // 4. IN membership over integer literals.
   final pred4 = b.isIn(b.intF('age', ageCol), [b.intOp(18), b.intOp(21)]);
@@ -77,8 +81,10 @@ void run() {
     b.gt(b.intF('age', ageCol), b.intOp(65)),
   ]);
   print('6. ${pred6.generate(dialect)}');
-  assert(pred6.generate(dialect) ==
-      'users.age <> 0 OR users.age < 18 OR users.age > 65');
+  assert(
+    pred6.generate(dialect) ==
+        'users.age <> 0 OR users.age < 18 OR users.age > 65',
+  );
 
   // 7. Negated / regex string matching and a non-null test.
   final pred7 = b.and([
@@ -87,22 +93,28 @@ void run() {
     b.regexp(b.textF('name', nameCol), b.text('^[A-M]')),
   ]);
   print('7. ${pred7.generate(dialect)}');
-  assert(pred7.generate(dialect) ==
-      "users.name IS NOT NULL AND users.name NOT LIKE 'Z%'"
-          " AND users.name REGEXP '^[A-M]'");
+  assert(
+    pred7.generate(dialect) ==
+        "users.name IS NOT NULL AND users.name NOT LIKE 'Z%'"
+            " AND users.name REGEXP '^[A-M]'",
+  );
 
   // 8. Typed literals: double/bool render bare, dates single-quoted (unpadded).
-  print('8. double=${b.doubleOp(1.5).generate(dialect)} '
-      'bool=${b.boolOp(true).generate(dialect)} '
-      'date=${b.dateOp(DateTime(2026, 7, 5)).generate(dialect)}');
+  print(
+    '8. double=${b.doubleOp(1.5).generate(dialect)} '
+    'bool=${b.boolOp(true).generate(dialect)} '
+    'date=${b.dateOp(DateTime(2026, 7, 5)).generate(dialect)}',
+  );
   assert(b.doubleOp(1.5).generate(dialect) == '1.5');
   assert(b.boolOp(true).generate(dialect) == 'true');
   assert(b.dateOp(DateTime(2026, 7, 5)).generate(dialect) == "'2026-7-5'");
 
   // 9. The dialect's objectOp turns any Dart value into its SQL literal by
   //    runtime type — the single entry point behind the literal builders.
-  print('9. ${dialect.objectOp(null)} / ${dialect.objectOp("O'Brien")} / '
-      '${dialect.objectOp([1, 2, 'a'])}');
+  print(
+    '9. ${dialect.objectOp(null)} / ${dialect.objectOp("O'Brien")} / '
+    '${dialect.objectOp([1, 2, 'a'])}',
+  );
   assert(dialect.objectOp(null) == 'NULL');
   assert(dialect.objectOp("O'Brien") == "'O''Brien'");
   assert(dialect.objectOp([1, 2, 'a']) == "1,2,'a'");

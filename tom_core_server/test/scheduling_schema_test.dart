@@ -29,9 +29,9 @@ String _normalise(String sql) => sql
     .replaceAll(RegExp(r';\s*$'), '')
     .trim();
 
-String _migration(String basename) =>
-    File('example/scheduling/migrations/main/tomcore/$basename')
-        .readAsStringSync();
+String _migration(String basename) => File(
+  'example/scheduling/migrations/main/tomcore/$basename',
+).readAsStringSync();
 
 void main() {
   group('scheduling migration files match the shipped DDL', () {
@@ -74,8 +74,13 @@ void main() {
       // The scheduler's idempotence key. As a convention it holds until two
       // nodes plan the same window at the same moment; as a unique index it
       // holds always.
-      expect(ddl, contains('UNIQUE KEY uq_tom_job_run_window '
-          '(job_name, scheduled_for)'));
+      expect(
+        ddl,
+        contains(
+          'UNIQUE KEY uq_tom_job_run_window '
+          '(job_name, scheduled_for)',
+        ),
+      );
     });
 
     test('the claim scan and the recovery scan each have an index', () {
@@ -83,15 +88,17 @@ void main() {
       expect(ddl, contains('KEY ix_tom_job_run_lease (state, claimed_at)'));
     });
 
-    test('when execution began is recorded separately from when it was claimed',
-        () {
-      // The two instants answer different questions, and recovery needs both:
-      // a row that was claimed and never started can be re-queued for any job,
-      // while one that was already executing may only be re-queued when the job
-      // opts in. One column carrying both would collapse that distinction.
-      expect(ddl, contains('claimed_at    DATETIME(6)  NULL'));
-      expect(ddl, contains('started_at    DATETIME(6)  NULL'));
-    });
+    test(
+      'when execution began is recorded separately from when it was claimed',
+      () {
+        // The two instants answer different questions, and recovery needs both:
+        // a row that was claimed and never started can be re-queued for any job,
+        // while one that was already executing may only be re-queued when the job
+        // opts in. One column carrying both would collapse that distinction.
+        expect(ddl, contains('claimed_at    DATETIME(6)  NULL'));
+        expect(ddl, contains('started_at    DATETIME(6)  NULL'));
+      },
+    );
 
     test('the composite unique key fits the legacy InnoDB index limit', () {
       // 160 utf8mb4 characters (640 bytes) plus a DATETIME(6) (8 bytes) stays
@@ -104,13 +111,15 @@ void main() {
   group('the lease schema encodes the fencing invariants', () {
     final ddl = leaseTableDdl(defaultLeaseTable);
 
-    test('a version column exists so a matching update still changes the row',
-        () {
-      // MariaDB counts changed rows, not matched rows. Without this column a
-      // renewal in the same clock instant with the same TTL reports zero
-      // affected rows and looks like a lost lease.
-      expect(ddl, contains('version     BIGINT       NOT NULL DEFAULT 1'));
-    });
+    test(
+      'a version column exists so a matching update still changes the row',
+      () {
+        // MariaDB counts changed rows, not matched rows. Without this column a
+        // renewal in the same clock instant with the same TTL reports zero
+        // affected rows and looks like a lost lease.
+        expect(ddl, contains('version     BIGINT       NOT NULL DEFAULT 1'));
+      },
+    );
 
     test('release is a flag, not a delete, so the token counter survives', () {
       expect(ddl, contains('released    TINYINT(1)   NOT NULL DEFAULT 0'));
@@ -166,16 +175,24 @@ void main() {
     test('the rendered form is a fixed-width DATETIME(6) literal', () {
       // Fixed width keeps the text ordered the same way in SQL as in Dart, so a
       // `run_at <= :now` comparison cannot be surprised by a shorter fraction.
-      expect(sqlInstant(DateTime.utc(2026, 3, 1)),
-          '2026-03-01 00:00:00.000000');
-      expect(sqlInstant(DateTime.utc(999, 1, 2, 3, 4, 5, 6, 7)),
-          '0999-01-02 03:04:05.006007');
+      expect(
+        sqlInstant(DateTime.utc(2026, 3, 1)),
+        '2026-03-01 00:00:00.000000',
+      );
+      expect(
+        sqlInstant(DateTime.utc(999, 1, 2, 3, 4, 5, 6, 7)),
+        '0999-01-02 03:04:05.006007',
+      );
     });
 
-    test('a stored value already carrying a zone marker is not double-marked',
-        () {
-      expect(parseSqlInstant('2026-03-01T10:00:00.000000Z'),
-          DateTime.utc(2026, 3, 1, 10));
-    });
+    test(
+      'a stored value already carrying a zone marker is not double-marked',
+      () {
+        expect(
+          parseSqlInstant('2026-03-01T10:00:00.000000Z'),
+          DateTime.utc(2026, 3, 1, 10),
+        );
+      },
+    );
   });
 }

@@ -38,10 +38,8 @@ class TomExportService {
   /// through its API never needs one, and requiring it would force a
   /// filesystem decision on a deployment that has no use for it. Calling
   /// [storeAs] without one is a configuration error and says so.
-  TomExportService({
-    TomExportFormats? formats,
-    this.store,
-  }) : formats = formats ?? TomExportFormats.standard();
+  TomExportService({TomExportFormats? formats, this.store})
+    : formats = formats ?? TomExportFormats.standard();
 
   /// The formats this service can produce.
   final TomExportFormats formats;
@@ -86,7 +84,7 @@ class TomExportService {
         TomHeader.contentType: renderer.mediaType,
         TomHeader.contentDisposition:
             '${inline ? 'inline' : 'attachment'}; '
-                'filename="${sanitiseFileName(fileName)}"',
+            'filename="${sanitiseFileName(fileName)}"',
       },
     );
   }
@@ -123,11 +121,7 @@ class TomExportService {
   /// Exports accumulate, and a flat directory of them becomes unlistable long
   /// before it becomes large. Partitioning by day is the cheap fix that also
   /// makes expiry a matter of deleting a prefix.
-  String keyFor(
-    String baseName,
-    String format, {
-    DateTime? partitionOn,
-  }) {
+  String keyFor(String baseName, String format, {DateTime? partitionOn}) {
     final fileName = formats.rendererFor(format).fileNameFor(baseName);
     if (partitionOn == null) return TomExportStore.validateKey(fileName);
     final month = partitionOn.month.toString().padLeft(2, '0');
@@ -149,7 +143,8 @@ class TomExportService {
   static String sanitiseFileName(String fileName) {
     final buffer = StringBuffer();
     for (final rune in fileName.runes) {
-      final safe = rune >= 0x20 &&
+      final safe =
+          rune >= 0x20 &&
           rune < 0x7F &&
           rune != 0x22 && // "
           rune != 0x5C && // \

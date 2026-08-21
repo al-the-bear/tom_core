@@ -51,17 +51,23 @@ Future<void> run(Directory workDir) async {
     mediaType: 'text/plain',
     fileName: 'welcome.txt',
   );
-  print('1.  stored                  : ${stored.key} '
-      '(${stored.byteCount} bytes, ${stored.mediaType})');
+  print(
+    '1.  stored                  : ${stored.key} '
+    '(${stored.byteCount} bytes, ${stored.mediaType})',
+  );
 
   // 2. A key is a name in someone else's namespace — an S3 object name, a path
   //    under a directory, a row in a table. The grammar is therefore narrow
   //    enough to be safe in all of them, and checked before the key is used
   //    rather than after.
-  print('2.  "a/b/c-1_2.txt" valid   : '
-      '${TomBlobStore.isValidKey('a/b/c-1_2.txt')}');
-  print('    "../../etc/passwd" valid: '
-      '${TomBlobStore.isValidKey('../../etc/passwd')}');
+  print(
+    '2.  "a/b/c-1_2.txt" valid   : '
+    '${TomBlobStore.isValidKey('a/b/c-1_2.txt')}',
+  );
+  print(
+    '    "../../etc/passwd" valid: '
+    '${TomBlobStore.isValidKey('../../etc/passwd')}',
+  );
   try {
     await memory.put(key: '../escape', bytes: Stream.value(const [1]));
   } on TomStorageException catch (e) {
@@ -85,28 +91,38 @@ Future<void> run(Directory workDir) async {
   //    reader never sees a half-written file, and keeps a sidecar for the
   //    metadata a filesystem cannot hold (media type, original name).
   final described = await directory.describe('big/sample.bin');
-  print('4.  described               : ${described!.mediaType}, '
-      '${described.byteCount} bytes, at ${described.location}');
+  print(
+    '4.  described               : ${described!.mediaType}, '
+    '${described.byteCount} bytes, at ${described.location}',
+  );
 
   // 5. Backends are selected from configuration, not from code — the same
   //    mechanism the data sources use, so a deployment changes where its files
   //    live by editing YAML.
-  final config = loadYaml('''
+  final config =
+      loadYaml('''
 files:
   type: directory
   default: true
   root: ${workDir.path}/configured
 archive:
   type: memory
-''') as YamlMap;
-  await TomBlobStoreInfo.initializeBlobStores(Map<String, dynamic>.from(config));
-  print('5.  configured stores       : ${TomBlobStoreInfo.stores.keys.toList()}'
-      ' (default "${TomBlobStoreInfo.defaultStoreName}")');
+''')
+          as YamlMap;
+  await TomBlobStoreInfo.initializeBlobStores(
+    Map<String, dynamic>.from(config),
+  );
+  print(
+    '5.  configured stores       : ${TomBlobStoreInfo.stores.keys.toList()}'
+    ' (default "${TomBlobStoreInfo.defaultStoreName}")',
+  );
 
   // 6. An application with a backend of its own registers a factory under a
   //    name; from then on it is spelled in configuration like any built-in.
   TomBlobStoreInfo.registerBackend('memory-plus', (name, settings) => memory);
-  print('6.  known backends          : ${TomBlobStoreInfo.backendTypes.toList()}');
+  print(
+    '6.  known backends          : ${TomBlobStoreInfo.backendTypes.toList()}',
+  );
 
   // 7. A misconfigured store name is a named error at the point of use, not a
   //    write to the wrong place.
@@ -130,9 +146,11 @@ archive:
   // 9. Which matters because the "file name" is caller-supplied text. Only a
   //    short alphanumeric suffix survives into the key; everything else is
   //    dropped rather than escaped.
-  print('9.  extension of a hostile  : '
-      '"${TomFileReferenceKeys.extensionOf('../etc/passwd')}" '
-      '(plain: "${TomFileReferenceKeys.extensionOf('report.PDF')}")');
+  print(
+    '9.  extension of a hostile  : '
+    '"${TomFileReferenceKeys.extensionOf('../etc/passwd')}" '
+    '(plain: "${TomFileReferenceKeys.extensionOf('report.PDF')}")',
+  );
 
   // 10. The export module stores through the same API, so an export can be
   //     written to a database, a bucket or an application's own store without
@@ -146,8 +164,10 @@ archive:
   //     The recorded key is the caller's; the prefix is the store's business,
   //     and an export whose key could not be passed back to `open` would be a
   //     trap. What the blob store actually holds shows the difference.
-  print('10. export stored as        : ${export.key} '
-      '(${export.byteCount} bytes)');
+  print(
+    '10. export stored as        : ${export.key} '
+    '(${export.byteCount} bytes)',
+  );
   print('    blob store holds        : ${memory.keys.toList()}');
 
   // 11. Deleting reports whether there was anything to delete, so a cascade

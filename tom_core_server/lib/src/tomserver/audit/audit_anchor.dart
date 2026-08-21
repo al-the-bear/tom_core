@@ -242,11 +242,15 @@ class TomRsaAuditAnchorSigner implements TomAuditAnchorSigner {
   final String keyId;
 
   /// Creates a signer for [privateKey], published under [keyId].
-  const TomRsaAuditAnchorSigner({required this.privateKey, required this.keyId});
+  const TomRsaAuditAnchorSigner({
+    required this.privateKey,
+    required this.keyId,
+  });
 
   @override
-  String sign(String payload) =>
-      base64Encode(rsaSign(privateKey, Uint8List.fromList(utf8.encode(payload))));
+  String sign(String payload) => base64Encode(
+    rsaSign(privateKey, Uint8List.fromList(utf8.encode(payload))),
+  );
 }
 
 /// Verifies anchor signatures against a set of published public keys.

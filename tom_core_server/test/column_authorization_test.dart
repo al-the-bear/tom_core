@@ -107,10 +107,7 @@ void main() {
       // Nothing changed → no rejection possible; partition is by grade only.
       final decision = decide(const {});
       expect(decision.writable, unorderedEquals(['title', 'note']));
-      expect(
-        decision.preserved,
-        unorderedEquals(['status', 'salary', 'ssn']),
-      );
+      expect(decision.preserved, unorderedEquals(['status', 'salary', 'ssn']));
     });
 
     test('a changed visible (read) column is a rejectable violation', () {
@@ -150,19 +147,24 @@ void main() {
 
     test('an unregistered key resolves to null so the caller keeps its own '
         'column-wide grade', () async {
-      expect(await TomRowColumnAuthorization.resolve('k.attachment', '7'),
-          isNull);
+      expect(
+        await TomRowColumnAuthorization.resolve('k.attachment', '7'),
+        isNull,
+      );
     });
 
-    test('a null authKey resolves to null without consulting the registry',
-        () async {
-      TomRowColumnAuthorization.register(
-        'k.attachment',
-        (principal, rowId) async =>
-            throw StateError('must not be consulted for an unrestricted column'),
-      );
-      expect(await TomRowColumnAuthorization.resolve(null, '7'), isNull);
-    });
+    test(
+      'a null authKey resolves to null without consulting the registry',
+      () async {
+        TomRowColumnAuthorization.register(
+          'k.attachment',
+          (principal, rowId) async => throw StateError(
+            'must not be consulted for an unrestricted column',
+          ),
+        );
+        expect(await TomRowColumnAuthorization.resolve(null, '7'), isNull);
+      },
+    );
 
     test('a registered key resolves per row', () async {
       // The point of the registry: the *same* column grades differently on two
@@ -172,18 +174,26 @@ void main() {
         (principal, rowId) async =>
             rowId == '1' ? TomAuthState.full : TomAuthState.read,
       );
-      expect(await TomRowColumnAuthorization.resolve('k.attachment', '1'),
-          TomAuthState.full);
-      expect(await TomRowColumnAuthorization.resolve('k.attachment', '2'),
-          TomAuthState.read);
+      expect(
+        await TomRowColumnAuthorization.resolve('k.attachment', '1'),
+        TomAuthState.full,
+      );
+      expect(
+        await TomRowColumnAuthorization.resolve('k.attachment', '2'),
+        TomAuthState.read,
+      );
     });
 
     test('reset removes every registration', () async {
       TomRowColumnAuthorization.register(
-          'k.attachment', (principal, rowId) async => TomAuthState.none);
+        'k.attachment',
+        (principal, rowId) async => TomAuthState.none,
+      );
       TomRowColumnAuthorization.reset();
-      expect(await TomRowColumnAuthorization.resolve('k.attachment', '1'),
-          isNull);
+      expect(
+        await TomRowColumnAuthorization.resolve('k.attachment', '1'),
+        isNull,
+      );
     });
   });
 }

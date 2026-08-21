@@ -43,10 +43,7 @@ List<TomMigrationArtifact> _chain(String directory) {
     ..sort((a, b) => a.path.compareTo(b.path));
   return [
     for (final file in files)
-      TomMigrationArtifact(
-        file.uri.pathSegments.last,
-        file.readAsStringSync(),
-      ),
+      TomMigrationArtifact(file.uri.pathSegments.last, file.readAsStringSync()),
   ];
 }
 
@@ -191,19 +188,15 @@ void main() {
     /// Asserts that [rowTypes] map only columns [table] declares.
     void maps(TomFrameworkTable table, List<Type> rowTypes) {
       final divergences = check.verifyRowTypes(table, rowTypes);
-      final errors = [for (final d in divergences) if (d.isError) d];
-      expect(
-        errors,
-        isEmpty,
-        reason: errors.map((e) => e.message).join('\n'),
-      );
+      final errors = [
+        for (final d in divergences)
+          if (d.isError) d,
+      ];
+      expect(errors, isEmpty, reason: errors.map((e) => e.message).join('\n'));
     }
 
     test('the job queue', () {
-      maps(jobRunTable(defaultJobRunTable), [
-        TomJobRunRow,
-        TomJobRunWindowRow,
-      ]);
+      maps(jobRunTable(defaultJobRunTable), [TomJobRunRow, TomJobRunWindowRow]);
     });
 
     test('the lease table', () {

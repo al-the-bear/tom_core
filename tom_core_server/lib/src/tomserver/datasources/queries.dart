@@ -320,7 +320,9 @@ class TomCount extends TomGeneratedQuery {
     for (var nextCol in columns) {
       tables.add(nextCol.table.table);
       if (nextCol.reference == null) {
-        columnExprs.add("${nextCol.table.table}.${nextCol.getQueryFieldName()}");
+        columnExprs.add(
+          "${nextCol.table.table}.${nextCol.getQueryFieldName()}",
+        );
       }
     }
     return "SELECT ${TomGeneratedQuery.countProjection(distinct, columnExprs)}"

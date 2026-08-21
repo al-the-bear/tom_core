@@ -86,8 +86,8 @@ class TomRequestId {
 
   /// Creates a request id with a new random v4 [uuid].
   TomRequestId() {
-      var generator = UuidV4();
-      uuid = generator.generate();
+    var generator = UuidV4();
+    uuid = generator.generate();
   }
 
   @override
@@ -141,7 +141,7 @@ Middleware tomDefaultAuthenticationMiddleware(
         TomExecutionContext: tomExecutionContext,
         TomPrincipal: principal,
         TomClientJwtToken: clientToken,
-        TomRequestId: TomRequestId()
+        TomRequestId: TomRequestId(),
       });
       zoneValues[TomZoneValues] = zoneValues;
       // Each request also gets its own current transaction, for the same reason
@@ -286,7 +286,7 @@ class TomServer {
             "errorKey": error.key,
             "uuid": error.uuid,
             "autoLog": error.autoLog,
-            "requestUuid" : error.requestUuid,
+            "requestUuid": error.requestUuid,
           };
         }
         if (error is TomServerException) {
