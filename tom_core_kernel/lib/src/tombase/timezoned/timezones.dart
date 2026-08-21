@@ -8,7 +8,16 @@ import '../little_things/exception_base.dart';
 // resolve to that member and recurse.
 import '../little_things/formatting.dart' as formatting;
 
+// Imported for the synchronous lazy-init below, and re-exported because
+// `tomSetupTimezones` is part of the module's public surface: on web it is the
+// only way to load the database, and an import alone would not carry it
+// through this library to the package barrel. The two lines repeat the same
+// platform configuration because an `export` does not bring names into scope
+// and an `import` does not pass them on; keep them in step.
 import 'init_tz.dart'
+    if (dart.library.io) 'init_tz_flutter.dart'
+    if (dart.library.js) 'init_tz_web.dart';
+export 'init_tz.dart'
     if (dart.library.io) 'init_tz_flutter.dart'
     if (dart.library.js) 'init_tz_web.dart';
 

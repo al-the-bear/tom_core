@@ -9,6 +9,23 @@ anyone who was writing them.
 
 ### Added
 
+- **`tomSetupTimezones` and `tomSetupTimezonesSync` are exported from the
+  barrel (tcinc323).** They never were. `timezones.dart` pulled the
+  platform-conditional implementation in with an `import`, which brings names
+  into the importing library without passing them on, so neither function
+  crossed `package:tom_core_kernel/tom_core_kernel.dart` and neither could be
+  called by an application. On native nothing showed: the database is bundled
+  and `TomTimezone` loads it synchronously on first access, so the call is
+  optional there and its absence went unnoticed. On web it is the only way to
+  load the database — there is no synchronous path, and every access before it
+  completes throws — so the module was unusable as shipped, on the one platform
+  where four documents said the call was required. The conditional
+  configuration is now re-exported beside the import that already selected it,
+  which keeps the platform choice stated once. Both functions gained the
+  dartdoc that public API needs, and `doc/timezoned/timezoned.md` gained an
+  **Initialization** section, the startup requirement having previously been a
+  comment inside a Quick Start snippet.
+
 - **`TomGetSettingsResult.timezone` — the missing half of the timezone pair
   (tcinc300).** The result's localization block is built in server/client pairs
   so a consumer can tell an override from an echo: the server states what it

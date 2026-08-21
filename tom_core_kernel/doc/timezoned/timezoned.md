@@ -7,6 +7,7 @@ automatic handling of daylight saving time (DST) transitions.
 ## Table of Contents
 
 - [Overview](#overview)
+- [Initialization](#initialization)
 - [Quick Start](#quick-start)
 - [TomTimezone](#tomtimezone)
 - [TomTimezoned Types](#tomtimezoned-types)
@@ -42,14 +43,52 @@ All `TomTimezoned` values store the actual UTC moment internally:
 - **Type safety**: Separate classes for date-only, time-only, and full datetime values
 - **IANA timezone names**: Uses standard identifiers like `'America/New_York'` or `'Asia/Tokyo'`
 
+## Initialization
+
+Every lookup needs the IANA timezone database in memory, and where that data
+comes from differs by platform.
+
+**On native (VM / Flutter) there is nothing to do.** The database is bundled
+with the package, so the first `TomTimezone` access loads it synchronously and
+in memory. No startup call, no `await`.
+
+**On web the database is fetched over the network**, which cannot happen
+synchronously — so it has to be done before anything reads a timezone:
+
+```dart
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+Future<void> main() async {
+  await tomSetupTimezones();
+
+  // Safe from here on.
+  final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+}
+```
+
+Skipping it is not a silent degradation: `TomTimezone` throws a `StateError`
+naming the missing call rather than behaving as though no zone matched. That is
+deliberate — an empty database makes every lookup return `null`, which reads
+like a bad zone name and sends you looking in the wrong place.
+
+`tomSetupTimezones` is safe to call on native too, where it is a no-op beyond
+loading data that would have loaded anyway. So startup code that awaits it
+unconditionally is correct on both platforms, and that is the simplest thing to
+write if the application targets both.
+
+There is also `tomSetupTimezonesSync`, which is what backs the native lazy
+load. Calling it directly is rarely useful — it does what first access already
+does — and on web it throws, because the synchronous path it names does not
+exist there.
+
 ## Quick Start
 
 ```dart
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
-  // On native platforms the timezone database loads synchronously on first
-  // access — no startup call needed. On web, `await tomSetupTimezones()` first.
+  // Native: the database loads on first access. On web, await
+  // tomSetupTimezones() first — see Initialization above.
   final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
   final newYork = TomTimezone.fromName('America/New_York')!;
   

@@ -368,3 +368,6 @@ None — the constructor is private. Obtain instances via `TomTimezone.utc`,
 These two functions are provided by a platform-conditional import
 (`init_tz.dart` / `init_tz_flutter.dart` / `init_tz_web.dart`), so the active
 implementation is selected at compile time for the target platform.
+`timezones.dart` re-exports that same conditional configuration, which is what
+carries both names out to `package:tom_core_kernel/tom_core_kernel.dart` — an
+import alone would have kept them inside the module.
