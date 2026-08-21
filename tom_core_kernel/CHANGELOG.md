@@ -815,6 +815,24 @@ anyone who was writing them.
 
 ### Tests
 
+- **New guard: `timezoned_dependency_table_test.dart` (tcinc335).** A dependency
+  table is wholly derivable from the source, and it is the part of a document
+  that goes stale most quietly: an import added to a file changes nothing a
+  reader can see, and a missing row looks exactly like a dependency that was
+  never there. The timezoned table had lost a `little_things` entry point that
+  way. It is now compared to the module's imports in both directions — a
+  dependency with no row is an omission, a row with no dependency is a leftover
+  — along with the `Imported by` column per dependency, since a table can name
+  the right four things and still attribute them to the wrong files.
+
+  The closing note is checked too, bounded at both ends. It names the types
+  living in `date_timestamp.dart` in an aside before stating what that file
+  imports, and goes on to mention `timezones.dart` again afterwards; a scan
+  reading the whole paragraph would take three class names for dependencies at
+  one end and keep finding `timezones.dart` at the other however badly the claim
+  itself was worded. Mutation-checked against five realistic drifts, including
+  the one that produced the original defect.
+
 - **New guard: `timezoned_shared_members_test.dart` (tcinc334).** The roster of
   members `TomTimezoned` offers is stated as code, not as strings: a map from
   each name to a closure that reads it off a base instance. A member removed
