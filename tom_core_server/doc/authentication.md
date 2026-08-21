@@ -1647,7 +1647,9 @@ stating outright:
   running. A throttled sweep on write then deletes what is already invisible, so
   the table does not grow without bound. A scheduled job would have made
   liveness a precondition of correctness; this way it is only a precondition of
-  size.
+  size. The sweep prunes by calling `purgeExpired` — the same entry point a
+  deployment drives from a job of its own — so the predicate is written once and
+  the two prunes cannot come to disagree about what "expired" means.
 * **Completion is one statement.** `consume` is a single `DELETE … RETURNING`,
   so two nodes racing the same callback cannot both see the row: the database
   picks a winner and the loser is handed nothing. A read followed by a delete

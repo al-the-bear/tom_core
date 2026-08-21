@@ -1662,13 +1662,15 @@ factory TomSqlOAuthStateStore.named(
 | `store(TomOAuthAuthorizationState)` | `Future<void>` | Records a pending authorization. `INSERT`, not `REPLACE` — a duplicate handle is an error, never an overwrite |
 | `peek(String state)` | `Future<TomOAuthAuthorizationState?>` | Reads without spending; `null` for unknown *and* expired |
 | `consume(String state)` | `Future<TomOAuthAuthorizationState?>` | Spends the record in **one** `DELETE … RETURNING`, so two racing callbacks cannot both be answered |
-| `purgeExpired([DateTime now])` | `Future<int>` | Deletes what has expired; affects size, never behaviour |
+| `purgeExpired([DateTime now])` | `Future<int>` | Deletes what has expired; affects size, never behaviour. The **only** place the expiry predicate is written — `store`'s throttled sweep comes through here, passing the instant it stamped its throttle with |
 | `deleteAll()` | `Future<void>` | Empties the table, for provisioning and tests |
 
 `named` throws `oauth.state_store.unknown_datasource` when no such data source
 is registered — a start-up failure rather than a first-login one. Expiry is a
 predicate (`expires_at > :now`) on every read, so a row is invisible from the
-instant it expires whether or not the sweep has reached it.
+instant it expires whether or not the sweep has reached it. The sweep prunes by
+calling `purgeExpired`, so what it deletes and what an operator's prune deletes
+are the same statement rather than two copies of one.
 
 ### TomOAuthStateRow
 

@@ -293,6 +293,12 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
   /// deployment that would rather prune from a scheduled job — or an operator
   /// cleaning up after an outage — can drive it directly. It affects no
   /// *behaviour*: an expired row is already invisible to [peek] and [consume].
+  ///
+  /// **This is the only place the expiry predicate is written.** The throttled
+  /// sweep comes through here rather than issuing its own copy, so what the
+  /// background prune deletes and what an operator's prune deletes cannot come
+  /// apart. [now] exists for that caller: it prunes against the instant it
+  /// stamped its throttle with, not a second reading of the clock.
   Future<int> purgeExpired([DateTime? now]) async {
     await ensureSchema();
     final affected = await datasource.executeCommand(
@@ -311,16 +317,25 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
     await datasource.executeCommand('DELETE FROM $table');
   }
 
-  /// Prunes expired rows, at most once per [sweepInterval].
+  /// Prunes expired rows through [purgeExpired], at most once per
+  /// [sweepInterval].
+  ///
+  /// All this adds to [purgeExpired] is the throttle and a discarded row count;
+  /// the statement is deliberately not repeated here. Two copies of one
+  /// predicate is the duplication that drifts, and a store whose background
+  /// sweep and whose explicit purge disagreed about what "expired" meant would
+  /// leave rows behind that no purge removes, with nothing failing to say so.
+  ///
+  /// The sweep's own instant is passed on, so the deadline the delete tests
+  /// against is the one the throttle was stamped with rather than a second
+  /// reading of the clock. The stamp precedes the `await` for the usual reason:
+  /// two [store] calls interleaving here must not both get past the throttle.
   Future<void> _sweep() async {
     final now = _now();
     final last = _lastSweep;
     if (last != null && now.difference(last) < sweepInterval) return;
     _lastSweep = now;
-    await datasource.executeCommand(
-      'DELETE FROM $table WHERE expires_at <= :now',
-      {'now': sqlInstant(now)},
-    );
+    await purgeExpired(now);
   }
 
   DateTime _now() => DateTime.now().toUtc();
