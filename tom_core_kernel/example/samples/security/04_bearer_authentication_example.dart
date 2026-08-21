@@ -72,7 +72,7 @@ class BearerAuthenticationExample {
         lastname: 'Doe',
         email: 'john.doe@example.com',
         phone: '+1-555-0123',
-        timeZone: 'America/New_York',
+        timezone: 'America/New_York',
       ),
       organization: 'Acme Corp',
       application: 'main-app',

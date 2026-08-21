@@ -230,7 +230,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 > The one honest, signature-preserving cleanup done in sub-step 1: removed the
 > dead `= ""` field initializers on `TomGetSettingsResult`'s eight nullable
 > `String?` fields (`organization`, `process`, `application`, `country`,
-> `language`, `clientCountry`, `clientLanguage`, `clientTimeZone`) — each is an
+> `language`, `clientCountry`, `clientLanguage`, `clientTimezone`) — each is an
 > initializing formal (`this.x`) in the constructor, so the field-level `= ""`
 > never took effect and the real default was already `null` (as the existing
 > tests assert). It was dead code that misled about the default; removal changes

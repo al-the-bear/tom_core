@@ -244,7 +244,7 @@ TomPrincipal _principal(
     firstname: 'Alice',
     lastname: 'Example',
     attributes: {},
-    timeZone: 'utc',
+    timezone: 'utc',
   ),
   aci: TomAccessControlInformation(roles: const ['user']),
 );
@@ -1105,7 +1105,6 @@ void main() {
         ),
       );
     });
-
   });
 
   // ===========================================================================
@@ -1138,23 +1137,26 @@ void main() {
 
     // A few providers send the lifetime as a string; a lifetime nobody can
     // parse is treated as unstated rather than as already expired.
-    test('accepts a numeric-string lifetime and ignores an unparseable one', () {
-      final at = DateTime.utc(2026, 5, 6);
-      expect(
-        TomOAuthTokenGrant.fromTokenResponse(const {
-          'access_token': 'at-1',
-          'expires_in': '900',
-        }, now: at).expiresAt,
-        at.add(const Duration(minutes: 15)),
-      );
-      expect(
-        TomOAuthTokenGrant.fromTokenResponse(const {
-          'access_token': 'at-1',
-          'expires_in': 'soon',
-        }, now: at).expiresAt,
-        isNull,
-      );
-    });
+    test(
+      'accepts a numeric-string lifetime and ignores an unparseable one',
+      () {
+        final at = DateTime.utc(2026, 5, 6);
+        expect(
+          TomOAuthTokenGrant.fromTokenResponse(const {
+            'access_token': 'at-1',
+            'expires_in': '900',
+          }, now: at).expiresAt,
+          at.add(const Duration(minutes: 15)),
+        );
+        expect(
+          TomOAuthTokenGrant.fromTokenResponse(const {
+            'access_token': 'at-1',
+            'expires_in': 'soon',
+          }, now: at).expiresAt,
+          isNull,
+        );
+      },
+    );
 
     // RFC 6749 §6: omitting `refresh_token` from a refresh response means "keep
     // the one you have". Taking the omission literally would discard the
@@ -1238,7 +1240,10 @@ void main() {
     test('fromJson refuses a payload that carries no access token', () {
       expect(TomOAuthTokenGrant.fromJson(null), isNull);
       expect(TomOAuthTokenGrant.fromJson('not json'), isNull);
-      expect(TomOAuthTokenGrant.fromJson(const {'tokenType': 'Bearer'}), isNull);
+      expect(
+        TomOAuthTokenGrant.fromJson(const {'tokenType': 'Bearer'}),
+        isNull,
+      );
       expect(TomOAuthTokenGrant.fromJson(const {'accessToken': ''}), isNull);
     });
   });
@@ -1369,7 +1374,9 @@ void main() {
       );
 
       final uri = Uri.parse(
-        (await flow.beginAuthorization(_authorizationRequest())).authorizationUri,
+        (await flow.beginAuthorization(
+          _authorizationRequest(),
+        )).authorizationUri,
       );
 
       expect(uri.queryParameters['access_type'], 'offline');
@@ -1379,27 +1386,30 @@ void main() {
     // Configured extras are applied before the flow's own parameters, so a typo
     // in deployment configuration cannot unpick the CSRF handle or send the
     // provider's redirect somewhere else.
-    test('a configured parameter cannot override the flow parameters', () async {
-      final flow = _flow(
-        delegating(
-          authorizationParameters: const {
-            'state': 'attacker-chosen',
-            'redirect_uri': 'https://evil.example.test/collect',
-          },
-        ),
-        _StubTransport(),
-      );
+    test(
+      'a configured parameter cannot override the flow parameters',
+      () async {
+        final flow = _flow(
+          delegating(
+            authorizationParameters: const {
+              'state': 'attacker-chosen',
+              'redirect_uri': 'https://evil.example.test/collect',
+            },
+          ),
+          _StubTransport(),
+        );
 
-      final dto = await flow.beginAuthorization(_authorizationRequest());
-      final uri = Uri.parse(dto.authorizationUri);
+        final dto = await flow.beginAuthorization(_authorizationRequest());
+        final uri = Uri.parse(dto.authorizationUri);
 
-      expect(uri.queryParameters['state'], dto.state);
-      expect(uri.queryParameters['state'], isNot('attacker-chosen'));
-      expect(
-        uri.queryParameters['redirect_uri'],
-        'https://app.example.test/oauth/callback',
-      );
-    });
+        expect(uri.queryParameters['state'], dto.state);
+        expect(uri.queryParameters['state'], isNot('attacker-chosen'));
+        expect(
+          uri.queryParameters['redirect_uri'],
+          'https://app.example.test/oauth/callback',
+        );
+      },
+    );
 
     // Refreshing is not a login. The proof is that it works with no
     // authorization state, no code, no PKCE verifier and no directory — none of
@@ -1481,37 +1491,40 @@ void main() {
       expect(transport.postedForm, isNull);
     });
 
-    test('accessTokenFor refreshes near expiry and writes the result back', () async {
-      final transport = _StubTransport(
-        tokenResponse: <String, Object?>{
-          'access_token': 'at-2',
-          'token_type': 'Bearer',
-          'expires_in': 3600,
-        },
-      );
-      final flow = _flow(delegating(), transport);
-      final store = TomMemoryOAuthTokenStore();
-      await store.store(
-        _issuer,
-        'sub-1',
-        TomOAuthTokenGrant(
-          accessToken: 'at-1',
-          refreshToken: 'rt-1',
-          expiresAt: DateTime.now().toUtc().add(const Duration(seconds: 5)),
-        ),
-      );
+    test(
+      'accessTokenFor refreshes near expiry and writes the result back',
+      () async {
+        final transport = _StubTransport(
+          tokenResponse: <String, Object?>{
+            'access_token': 'at-2',
+            'token_type': 'Bearer',
+            'expires_in': 3600,
+          },
+        );
+        final flow = _flow(delegating(), transport);
+        final store = TomMemoryOAuthTokenStore();
+        await store.store(
+          _issuer,
+          'sub-1',
+          TomOAuthTokenGrant(
+            accessToken: 'at-1',
+            refreshToken: 'rt-1',
+            expiresAt: DateTime.now().toUtc().add(const Duration(seconds: 5)),
+          ),
+        );
 
-      final live = await flow.accessTokenFor(
-        providerId: 'stub',
-        subject: 'sub-1',
-        store: store,
-      );
+        final live = await flow.accessTokenFor(
+          providerId: 'stub',
+          subject: 'sub-1',
+          store: store,
+        );
 
-      expect(live!.accessToken, 'at-2');
-      expect(transport.postedForm!['grant_type'], 'refresh_token');
-      // Written back, or the next call refreshes again and the one after that.
-      expect((await store.read(_issuer, 'sub-1'))!.accessToken, 'at-2');
-    });
+        expect(live!.accessToken, 'at-2');
+        expect(transport.postedForm!['grant_type'], 'refresh_token');
+        // Written back, or the next call refreshes again and the one after that.
+        expect((await store.read(_issuer, 'sub-1'))!.accessToken, 'at-2');
+      },
+    );
 
     test('accessTokenFor answers null when nothing is held', () async {
       final flow = _flow(delegating(), _StubTransport());
@@ -1526,27 +1539,32 @@ void main() {
     });
 
     // The deployment's cue to send the user through consent again.
-    test('accessTokenFor answers null for an unrefreshable expired grant', () async {
-      final flow = _flow(delegating(), _StubTransport());
-      final store = TomMemoryOAuthTokenStore();
-      await store.store(
-        _issuer,
-        'sub-1',
-        TomOAuthTokenGrant(
-          accessToken: 'at-1',
-          expiresAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
-        ),
-      );
+    test(
+      'accessTokenFor answers null for an unrefreshable expired grant',
+      () async {
+        final flow = _flow(delegating(), _StubTransport());
+        final store = TomMemoryOAuthTokenStore();
+        await store.store(
+          _issuer,
+          'sub-1',
+          TomOAuthTokenGrant(
+            accessToken: 'at-1',
+            expiresAt: DateTime.now().toUtc().subtract(
+              const Duration(hours: 1),
+            ),
+          ),
+        );
 
-      expect(
-        await flow.accessTokenFor(
-          providerId: 'stub',
-          subject: 'sub-1',
-          store: store,
-        ),
-        isNull,
-      );
-    });
+        expect(
+          await flow.accessTokenFor(
+            providerId: 'stub',
+            subject: 'sub-1',
+            store: store,
+          ),
+          isNull,
+        );
+      },
+    );
   });
 
   group('provider token retention', () {

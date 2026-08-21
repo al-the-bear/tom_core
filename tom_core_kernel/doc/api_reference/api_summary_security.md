@@ -397,7 +397,7 @@ TomUser({
   String? city,
   String? postcode,
   String? stateRegion,
-  String? timeZone,
+  String? timezone,
   Map<String, Object?>? attributes,
 })
 ```
@@ -424,7 +424,7 @@ TomUser({
 | `city` | `String?` | The user's city. |
 | `postcode` | `String?` | The user's postal/zip code. |
 | `stateRegion` | `String?` | The user's state or region. |
-| `timeZone` | `String?` | The user's preferred timezone. |
+| `timezone` | `String?` | The user's preferred timezone. |
 | `attributes` | `Map<String, Object?>` | Unmodifiable view of custom attributes for extending user data. |
 
 #### Methods

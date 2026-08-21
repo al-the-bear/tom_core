@@ -17,7 +17,9 @@ TomAuthenticationData _login(String username, {Object? password}) =>
 /// A minimal service: only `alice`/`s3cret` is accepted.
 class _DemoAuthService implements TomAuthenticationService {
   @override
-  Future<TomAuthenticationInfo> authenticateUser(TomAuthenticationData a) async {
+  Future<TomAuthenticationInfo> authenticateUser(
+    TomAuthenticationData a,
+  ) async {
     if (a.username != 'alice' || a.key != 's3cret') {
       throw LoginException(
         'error.invalid-user-or-password',
@@ -76,7 +78,7 @@ TomPrincipal _principal(
     firstname: 'Test',
     lastname: 'User',
     attributes: {},
-    timeZone: 'utc',
+    timezone: 'utc',
   ),
   aci: TomAccessControlInformation(roles: roles),
 );
@@ -98,7 +100,9 @@ class _RecordingAuthService implements TomAuthenticationService {
   TomAuthenticationData? lastData;
 
   @override
-  Future<TomAuthenticationInfo> authenticateUser(TomAuthenticationData a) async {
+  Future<TomAuthenticationInfo> authenticateUser(
+    TomAuthenticationData a,
+  ) async {
     calls++;
     lastData = a;
     if (throwThis != null) throw throwThis!;
@@ -153,8 +157,9 @@ void main() {
     final service = _DemoAuthService();
 
     test('accepts the correct credential', () async {
-      final info =
-          await service.authenticateUser(_login('alice', password: 's3cret'));
+      final info = await service.authenticateUser(
+        _login('alice', password: 's3cret'),
+      );
       expect(info.principal.user.username, 'alice');
     });
 
@@ -165,25 +170,30 @@ void main() {
       );
     });
 
-    test('LoginException carries its key/parameters and is a server exception',
-        () async {
-      try {
-        await service.authenticateUser(_login('mallory'));
-        fail('expected LoginException');
-      } on LoginException catch (e) {
-        expect(e.key, 'error.invalid-user-or-password');
-        expect(e.parameters, containsPair('username', 'mallory'));
-        expect(e, isA<TomServerException>());
-      }
-    });
+    test(
+      'LoginException carries its key/parameters and is a server exception',
+      () async {
+        try {
+          await service.authenticateUser(_login('mallory'));
+          fail('expected LoginException');
+        } on LoginException catch (e) {
+          expect(e.key, 'error.invalid-user-or-password');
+          expect(e.parameters, containsPair('username', 'mallory'));
+          expect(e, isA<TomServerException>());
+        }
+      },
+    );
   });
 
   group('Adaptor annotations', () {
-    test('TomAuthenticationAdaptor defaults to neither guest- nor user-only', () {
-      final a = TomAuthenticationAdaptor();
-      expect(a.guestOnly, isFalse);
-      expect(a.userOnly, isFalse);
-    });
+    test(
+      'TomAuthenticationAdaptor defaults to neither guest- nor user-only',
+      () {
+        final a = TomAuthenticationAdaptor();
+        expect(a.guestOnly, isFalse);
+        expect(a.userOnly, isFalse);
+      },
+    );
 
     test('TomAuthenticationAdaptor records guestOnly/userOnly', () {
       expect(TomAuthenticationAdaptor(guestOnly: true).guestOnly, isTrue);
@@ -218,14 +228,16 @@ void main() {
     // second pass now exists, so the contract under test is its *rejection* of
     // a call that presents no challenge, not an UnsupportedError. The pass
     // itself is covered in two_factor_test.dart.
-    test('authenticatePass2 without a presented challenge fails cleanly',
-        () async {
-      final result = await TomAuthenticationServer().authenticatePass2(
-        TomAuthenticationMessage(),
-      );
-      expect(result.error, 'login.error.2fa.no-challenge');
-      expect(result.authenticationToken, isEmpty);
-    });
+    test(
+      'authenticatePass2 without a presented challenge fails cleanly',
+      () async {
+        final result = await TomAuthenticationServer().authenticatePass2(
+          TomAuthenticationMessage(),
+        );
+        expect(result.error, 'login.error.2fa.no-challenge');
+        expect(result.authenticationToken, isEmpty);
+      },
+    );
   });
 
   // The login orchestration (authenticateUser and the authenticatePass1 /
@@ -265,48 +277,60 @@ void main() {
           savedProtectionDefault;
     });
 
-    test('authenticatePass1 issues both tokens and stamps the identity claims',
-        () async {
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          _RecordingAuthService(
-        build: (a) => TomAuthenticationInfo(
-          _principal(a),
-          TomAccessControlDefinition(),
-        ),
-      );
+    test(
+      'authenticatePass1 issues both tokens and stamps the identity claims',
+      () async {
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            _RecordingAuthService(
+              build: (a) => TomAuthenticationInfo(
+                _principal(a),
+                TomAccessControlDefinition(),
+              ),
+            );
 
-      final result =
-          await TomAuthenticationServer().authenticatePass1(_message());
+        final result = await TomAuthenticationServer().authenticatePass1(
+          _message(),
+        );
 
-      expect(result.error, isEmpty);
-      expect(result.authenticationToken, isNotEmpty);
-      expect(result.authorizationToken, isNotEmpty);
+        expect(result.error, isEmpty);
+        expect(result.authenticationToken, isNotEmpty);
+        expect(result.authorizationToken, isNotEmpty);
 
-      final auth = TomClientJwtToken(result.authenticationToken, decrypt: false);
-      expect(auth.issuer, TomAuthenticationServer.globalSettingJwtOrganization);
-      expect(auth.payload?['username'], 'alice');
-      expect(auth.payload?['organization'], 'acme');
-    });
+        final auth = TomClientJwtToken(
+          result.authenticationToken,
+          decrypt: false,
+        );
+        expect(
+          auth.issuer,
+          TomAuthenticationServer.globalSettingJwtOrganization,
+        );
+        expect(auth.payload?['username'], 'alice');
+        expect(auth.payload?['organization'], 'acme');
+      },
+    );
 
-    test('the authorization token carries the encrypted access-control payload',
-        () async {
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          _RecordingAuthService(
-        build: (a) => TomAuthenticationInfo(
-          _principal(a, roles: ['admin']),
-          TomAccessControlDefinition(),
-        ),
-      );
+    test(
+      'the authorization token carries the encrypted access-control payload',
+      () async {
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            _RecordingAuthService(
+              build: (a) => TomAuthenticationInfo(
+                _principal(a, roles: ['admin']),
+                TomAccessControlDefinition(),
+              ),
+            );
 
-      final result =
-          await TomAuthenticationServer().authenticatePass1(_message());
+        final result = await TomAuthenticationServer().authenticatePass1(
+          _message(),
+        );
 
-      // Decoding with decrypt:true exercises the RSA encrypt→decrypt round-trip
-      // end to end (server-side encrypt in getJWT, client-side decrypt here).
-      final authz = TomClientJwtToken(result.authorizationToken);
-      expect(authz.secretData, isNotNull);
-      expect(authz.secretData!['roles'], contains('admin'));
-    });
+        // Decoding with decrypt:true exercises the RSA encrypt→decrypt round-trip
+        // end to end (server-side encrypt in getJWT, client-side decrypt here).
+        final authz = TomClientJwtToken(result.authorizationToken);
+        expect(authz.secretData, isNotNull);
+        expect(authz.secretData!['roles'], contains('admin'));
+      },
+    );
 
     test('authenticatePass1 routes to the user service', () async {
       final userService = _RecordingAuthService(
@@ -328,96 +352,120 @@ void main() {
       expect(guestService.calls, 0);
     });
 
-    test('authenticateGuest routes to the guest service and stays unauthenticated',
-        () async {
-      final userService = _RecordingAuthService(
-        build: (a) =>
-            TomAuthenticationInfo(_principal(a), TomAccessControlDefinition()),
-      );
-      final guestService = _RecordingAuthService(
-        build: (a) => TomAuthenticationInfo(
-          _principal(a, authenticated: false),
-          TomAccessControlDefinition(),
-        ),
-      );
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          userService;
-      TomAuthenticationServer.globalSettingGuestAuthenticationService =
-          guestService;
+    test(
+      'authenticateGuest routes to the guest service and stays unauthenticated',
+      () async {
+        final userService = _RecordingAuthService(
+          build: (a) => TomAuthenticationInfo(
+            _principal(a),
+            TomAccessControlDefinition(),
+          ),
+        );
+        final guestService = _RecordingAuthService(
+          build: (a) => TomAuthenticationInfo(
+            _principal(a, authenticated: false),
+            TomAccessControlDefinition(),
+          ),
+        );
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            userService;
+        TomAuthenticationServer.globalSettingGuestAuthenticationService =
+            guestService;
 
-      final result = await TomAuthenticationServer()
-          .authenticateGuest(_message(userName: 'GUEST', password: ''));
+        final result = await TomAuthenticationServer().authenticateGuest(
+          _message(userName: 'GUEST', password: ''),
+        );
 
-      expect(guestService.calls, 1);
-      expect(userService.calls, 0);
-      expect(result.error, isEmpty);
+        expect(guestService.calls, 1);
+        expect(userService.calls, 0);
+        expect(result.error, isEmpty);
 
-      final auth = TomClientJwtToken(result.authenticationToken, decrypt: false);
-      expect(auth.payload?['username'], 'GUEST');
-    });
+        final auth = TomClientJwtToken(
+          result.authenticationToken,
+          decrypt: false,
+        );
+        expect(auth.payload?['username'], 'GUEST');
+      },
+    );
 
-    test('a LoginException maps to a failed result carrying its key, no tokens',
-        () async {
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          _RecordingAuthService(
-        throwThis: LoginException('auth.bad-credentials', 'nope'),
-      );
+    test(
+      'a LoginException maps to a failed result carrying its key, no tokens',
+      () async {
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            _RecordingAuthService(
+              throwThis: LoginException('auth.bad-credentials', 'nope'),
+            );
 
-      final result =
-          await TomAuthenticationServer().authenticatePass1(_message());
+        final result = await TomAuthenticationServer().authenticatePass1(
+          _message(),
+        );
 
-      expect(result.error, 'auth.bad-credentials');
-      expect(result.authenticationToken, isEmpty);
-      expect(result.authorizationToken, isEmpty);
-    });
+        expect(result.error, 'auth.bad-credentials');
+        expect(result.authenticationToken, isEmpty);
+        expect(result.authorizationToken, isEmpty);
+      },
+    );
 
-    test('an unexpected error maps to the generic login.error.unknown result',
-        () async {
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          _RecordingAuthService(throwThis: StateError('boom'));
+    test(
+      'an unexpected error maps to the generic login.error.unknown result',
+      () async {
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            _RecordingAuthService(throwThis: StateError('boom'));
 
-      final result =
-          await TomAuthenticationServer().authenticatePass1(_message());
+        final result = await TomAuthenticationServer().authenticatePass1(
+          _message(),
+        );
 
-      expect(result.error, 'login.error.unknown');
-      expect(result.authenticationToken, isEmpty);
-      expect(result.authorizationToken, isEmpty);
-    });
+        expect(result.error, 'login.error.unknown');
+        expect(result.authenticationToken, isEmpty);
+        expect(result.authorizationToken, isEmpty);
+      },
+    );
 
     test('the issued token stamps the configured JWT issuer', () async {
       TomAuthenticationServer.globalSettingJwtOrganization = 'acme-corp';
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          _RecordingAuthService(
+      TomAuthenticationServer
+          .globalSettingUserAuthenticationService = _RecordingAuthService(
         build: (a) =>
             TomAuthenticationInfo(_principal(a), TomAccessControlDefinition()),
       );
 
-      final result =
-          await TomAuthenticationServer().authenticatePass1(_message());
+      final result = await TomAuthenticationServer().authenticatePass1(
+        _message(),
+      );
 
-      final auth = TomClientJwtToken(result.authenticationToken, decrypt: false);
+      final auth = TomClientJwtToken(
+        result.authenticationToken,
+        decrypt: false,
+      );
       expect(auth.issuer, 'acme-corp');
     });
 
-    test('authenticateUser delegates to the guest service when guestLogin is true',
-        () async {
-      final userService = _RecordingAuthService(
-        build: (a) =>
-            TomAuthenticationInfo(_principal(a), TomAccessControlDefinition()),
-      );
-      final guestService = _RecordingAuthService(
-        build: (a) =>
-            TomAuthenticationInfo(_principal(a), TomAccessControlDefinition()),
-      );
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          userService;
-      TomAuthenticationServer.globalSettingGuestAuthenticationService =
-          guestService;
+    test(
+      'authenticateUser delegates to the guest service when guestLogin is true',
+      () async {
+        final userService = _RecordingAuthService(
+          build: (a) => TomAuthenticationInfo(
+            _principal(a),
+            TomAccessControlDefinition(),
+          ),
+        );
+        final guestService = _RecordingAuthService(
+          build: (a) => TomAuthenticationInfo(
+            _principal(a),
+            TomAccessControlDefinition(),
+          ),
+        );
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            userService;
+        TomAuthenticationServer.globalSettingGuestAuthenticationService =
+            guestService;
 
-      await TomAuthenticationServer().authenticateUser(_message(), true);
+        await TomAuthenticationServer().authenticateUser(_message(), true);
 
-      expect(guestService.calls, 1);
-      expect(userService.calls, 0);
-    });
+        expect(guestService.calls, 1);
+        expect(userService.calls, 0);
+      },
+    );
   });
 }

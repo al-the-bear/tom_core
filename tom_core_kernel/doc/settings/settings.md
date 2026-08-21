@@ -135,7 +135,7 @@ TomGetSettingsResult({
   String? timezone,
   String? clientLanguage,
   String? clientCountry,
-  String? clientTimeZone,
+  String? clientTimezone,
 })
 ```
 
@@ -208,7 +208,7 @@ TomGetSettingsResult buildSettings(User user, Tenant tenant) {
 | `timezone` | `String?` | `null` | Server-side timezone (IANA format) |
 | `clientCountry` | `String?` | `null` | Client's preferred country (ISO 3166-1) |
 | `clientLanguage` | `String?` | `null` | Client's preferred language (ISO 639-1) |
-| `clientTimeZone` | `String?` | `null` | Client's timezone (IANA format) |
+| `clientTimezone` | `String?` | `null` | Client's timezone (IANA format) |
 
 The three localization concepts are each carried as a **pair**: the server
 states what it decided, the client states what it asked for. A consumer reads
@@ -216,9 +216,9 @@ the server field first and falls back to the client one, and compares the two
 when it needs to know it was overridden:
 
 ```dart
-final effectiveZone = settings.timezone ?? settings.clientTimeZone;
+final effectiveZone = settings.timezone ?? settings.clientTimezone;
 final zoneOverridden =
-    settings.timezone != null && settings.timezone != settings.clientTimeZone;
+    settings.timezone != null && settings.timezone != settings.clientTimezone;
 ```
 
 A `null` server field means the server expressed no opinion — which is not the

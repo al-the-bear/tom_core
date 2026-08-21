@@ -14,7 +14,7 @@ class BasicUserExample {
   static int? userId;
   static String? userUsername;
   static String? userEmail;
-  static String? userTimeZone;
+  static String? userTimezone;
   static String? userDepartment;
   static bool userCreated = false;
 
@@ -28,21 +28,21 @@ class BasicUserExample {
       phone: '+1-555-123-4567',
       city: 'San Francisco',
       stateRegion: 'CA',
-      timeZone: 'America/Los_Angeles',
+      timezone: 'America/Los_Angeles',
       attributes: {'department': 'Engineering', 'employeeNumber': 'E1001'},
     );
 
     userId = user.id;
     userUsername = user.username;
     userEmail = user.email;
-    userTimeZone = user.timeZone;
+    userTimezone = user.timezone;
     userDepartment = user.attributes['department'] as String?;
     userCreated = true;
 
     assert(userId == 12345, 'User ID should match');
     assert(userUsername == 'jdoe', 'Username should match');
     assert(userEmail == 'john.doe@example.com', 'Email should match');
-    assert(userTimeZone == 'America/Los_Angeles', 'Timezone should match');
+    assert(userTimezone == 'America/Los_Angeles', 'Timezone should match');
     assert(userDepartment == 'Engineering', 'Department should match');
     assert(userCreated, 'User should be created');
   }

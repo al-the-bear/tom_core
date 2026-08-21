@@ -110,7 +110,7 @@ void main() {
         expect(user.city, isNull);
         expect(user.postcode, isNull);
         expect(user.stateRegion, isNull);
-        expect(user.timeZone, isNull);
+        expect(user.timezone, isNull);
         expect(user.attributes, isEmpty);
       });
 
@@ -132,7 +132,7 @@ void main() {
           city: 'New York',
           postcode: '10001',
           stateRegion: 'NY',
-          timeZone: 'America/New_York',
+          timezone: 'America/New_York',
           attributes: attrs,
         );
 
@@ -149,7 +149,7 @@ void main() {
         expect(user.city, equals('New York'));
         expect(user.postcode, equals('10001'));
         expect(user.stateRegion, equals('NY'));
-        expect(user.timeZone, equals('America/New_York'));
+        expect(user.timezone, equals('America/New_York'));
         expect(user.attributes['key1'], equals('value1'));
         expect(user.attributes['key2'], equals(42));
       });
@@ -2594,7 +2594,8 @@ void main() {
           expect(
             principal.requires2FA,
             isTrue,
-            reason: 'claim $claim (${claim.runtimeType}) means a factor is owed',
+            reason:
+                'claim $claim (${claim.runtimeType}) means a factor is owed',
           );
           expect(principal.authenticated, isFalse);
         }

@@ -43,7 +43,8 @@ TomLocalizedTextResources _texts() => TomLocalizedTextResources(
       'email': {
         'two_factor_code': {
           'subject': 'Your {application} sign-in code',
-          'text': 'Hello {firstname}, your code is {code}. '
+          'text':
+              'Hello {firstname}, your code is {code}. '
               'It expires in {minutes} minutes.',
         },
         'two_factor_enrolment': {
@@ -92,7 +93,7 @@ TomPrincipal _principal({
     mobile: mobile,
     phone: phone,
     attributes: {},
-    timeZone: 'utc',
+    timezone: 'utc',
   ),
   aci: TomAccessControlInformation(roles: const ['user']),
 );
@@ -131,8 +132,9 @@ TomAuthenticationMessage _message({String password = 's3cret'}) =>
 /// destinations on record.
 class _StubAuthService implements TomAuthenticationService {
   @override
-  Future<TomAuthenticationInfo> authenticateUser(TomAuthenticationData a) async =>
-      TomAuthenticationInfo(_principal(), TomAccessControlDefinition());
+  Future<TomAuthenticationInfo> authenticateUser(
+    TomAuthenticationData a,
+  ) async => TomAuthenticationInfo(_principal(), TomAccessControlDefinition());
 }
 
 /// The digits out of whatever the transport was handed.
@@ -180,29 +182,41 @@ void main() {
       const code = '123456';
       final sealed = TomDeliveredCode2FAService.sealCode(code);
 
-      expect(sealed.keys, containsAll([
-        TomDeliveredCode2FAService.saltKey,
-        TomDeliveredCode2FAService.hashKey,
-      ]));
-      expect(sealed.toString(), isNot(contains(code)),
-          reason: 'this map travels in a token the client holds');
+      expect(
+        sealed.keys,
+        containsAll([
+          TomDeliveredCode2FAService.saltKey,
+          TomDeliveredCode2FAService.hashKey,
+        ]),
+      );
+      expect(
+        sealed.toString(),
+        isNot(contains(code)),
+        reason: 'this map travels in a token the client holds',
+      );
     });
 
     test('recognises the code it sealed and nothing else', () {
       final sealed = TomDeliveredCode2FAService.sealCode('123456');
 
-      expect(TomDeliveredCode2FAService.matchesSealedCode(sealed, '123456'),
-          isTrue);
-      expect(TomDeliveredCode2FAService.matchesSealedCode(sealed, '123457'),
-          isFalse);
+      expect(
+        TomDeliveredCode2FAService.matchesSealedCode(sealed, '123456'),
+        isTrue,
+      );
+      expect(
+        TomDeliveredCode2FAService.matchesSealedCode(sealed, '123457'),
+        isFalse,
+      );
       expect(TomDeliveredCode2FAService.matchesSealedCode(sealed, ''), isFalse);
     });
 
     // Users paste codes out of mail clients, which add spaces.
     test('tolerates surrounding whitespace in the submission', () {
       final sealed = TomDeliveredCode2FAService.sealCode('123456');
-      expect(TomDeliveredCode2FAService.matchesSealedCode(sealed, ' 123456 '),
-          isTrue);
+      expect(
+        TomDeliveredCode2FAService.matchesSealedCode(sealed, ' 123456 '),
+        isTrue,
+      );
     });
 
     // Two salts, one code: the hashes must differ, or a table of hashes of every
@@ -225,13 +239,10 @@ void main() {
         isFalse,
       );
       expect(
-        TomDeliveredCode2FAService.matchesSealedCode(
-          const {
-            TomDeliveredCode2FAService.saltKey: 'not base64 !!',
-            TomDeliveredCode2FAService.hashKey: 'x',
-          },
-          '123456',
-        ),
+        TomDeliveredCode2FAService.matchesSealedCode(const {
+          TomDeliveredCode2FAService.saltKey: 'not base64 !!',
+          TomDeliveredCode2FAService.hashKey: 'x',
+        }, '123456'),
         isFalse,
       );
     });
@@ -251,8 +262,10 @@ void main() {
     });
 
     test('masks a short local part entirely', () {
-      expect(TomEmailCode2FAService.maskEmailAddress('ab@example.com'),
-          '***@example.com');
+      expect(
+        TomEmailCode2FAService.maskEmailAddress('ab@example.com'),
+        '***@example.com',
+      );
     });
 
     test('masks a malformed address opaquely rather than rejecting it', () {
@@ -260,10 +273,14 @@ void main() {
     });
 
     test('keeps the last four digits of a number and its punctuation', () {
-      expect(TomSmsCode2FAService.maskPhoneNumber('+41791234567'),
-          '+*******4567');
-      expect(TomSmsCode2FAService.maskPhoneNumber('079 123 45 67'),
-          '*** *** 45 67');
+      expect(
+        TomSmsCode2FAService.maskPhoneNumber('+41791234567'),
+        '+*******4567',
+      );
+      expect(
+        TomSmsCode2FAService.maskPhoneNumber('079 123 45 67'),
+        '*** *** 45 67',
+      );
     });
   });
 
@@ -306,18 +323,20 @@ void main() {
     // Email
     // -----------------------------------------------------------------------
 
-    test('mails a code to the address on record, rendered from the template',
-        () async {
-      await email.issueChallenge(_context());
+    test(
+      'mails a code to the address on record, rendered from the template',
+      () async {
+        await email.issueChallenge(_context());
 
-      expect(mail.count, 1);
-      final sent = mail.last!;
-      expect(sent.channel, TomMessageChannel.email);
-      expect(sent.recipients.single.address, 'alice.smith@example.com');
-      expect(sent.subject, 'Your console sign-in code');
-      expect(sent.textBody!.content, startsWith('Hello Alice, your code is'));
-      expect(sent.textBody!.content, contains('expires in 10 minutes'));
-    });
+        expect(mail.count, 1);
+        final sent = mail.last!;
+        expect(sent.channel, TomMessageChannel.email);
+        expect(sent.recipients.single.address, 'alice.smith@example.com');
+        expect(sent.subject, 'Your console sign-in code');
+        expect(sent.textBody!.content, startsWith('Hello Alice, your code is'));
+        expect(sent.textBody!.content, contains('expires in 10 minutes'));
+      },
+    );
 
     test('the challenge tells the client where to look, masked', () async {
       final spec = await email.issueChallenge(_context());
@@ -340,8 +359,11 @@ void main() {
 
       expect(spec.clientData.toString(), isNot(contains(code)));
       expect(spec.hint, isNot(contains(code)));
-      expect(spec.verificationData.toString(), isNot(contains(code)),
-          reason: 'even the server-only blob keeps only a hash');
+      expect(
+        spec.verificationData.toString(),
+        isNot(contains(code)),
+        reason: 'even the server-only blob keeps only a hash',
+      );
     });
 
     test('the mailed code verifies and a wrong one does not', () async {
@@ -354,24 +376,28 @@ void main() {
 
     // Each challenge seals its own code, so an old code cannot be replayed
     // against a fresh challenge.
-    test('a code from an earlier challenge does not answer a later one',
-        () async {
-      await email.issueChallenge(_context());
-      final first = _deliveredCode(mail);
-      final second = await email.issueChallenge(_context());
+    test(
+      'a code from an earlier challenge does not answer a later one',
+      () async {
+        await email.issueChallenge(_context());
+        final first = _deliveredCode(mail);
+        final second = await email.issueChallenge(_context());
 
-      expect(await _verify(email, second, first), isFalse);
-      expect(await _verify(email, second, _deliveredCode(mail)), isTrue);
-    });
+        expect(await _verify(email, second, first), isFalse);
+        expect(await _verify(email, second, _deliveredCode(mail)), isTrue);
+      },
+    );
 
     test('a user with no address is refused, and nothing is sent', () async {
       await expectLater(
         email.issueChallenge(_context(email: null)),
-        throwsA(isA<LoginException>().having(
-          (e) => e.key,
-          'key',
-          'login.error.2fa.not-enrolled',
-        )),
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.not-enrolled',
+          ),
+        ),
       );
       expect(mail.count, 0);
     });
@@ -384,7 +410,11 @@ void main() {
       final spec = await text.issueChallenge(_context());
 
       expect(sms.count, 1);
-      expect(mail.count, 0, reason: 'the channels do not bleed into each other');
+      expect(
+        mail.count,
+        0,
+        reason: 'the channels do not bleed into each other',
+      );
       final sent = sms.last!;
       expect(sent.channel, TomMessageChannel.sms);
       expect(sent.recipients.single.address, '+41791234567');
@@ -412,11 +442,13 @@ void main() {
     test('a user with neither number is refused', () async {
       await expectLater(
         text.issueChallenge(_context(mobile: null)),
-        throwsA(isA<LoginException>().having(
-          (e) => e.key,
-          'key',
-          'login.error.2fa.not-enrolled',
-        )),
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.not-enrolled',
+          ),
+        ),
       );
       expect(sms.count, 0);
     });
@@ -429,23 +461,27 @@ void main() {
     /// prompt the user stares at until it expires. The flow cannot tell an
     /// undelivered challenge from a user who has not typed yet, so the adaptor
     /// has to.
-    test('a transport failure fails the challenge instead of prompting',
-        () async {
-      mail.failAlways = TomDeliveryException.transient(
-        'test.relay.down',
-        'The relay refused the connection.',
-      );
+    test(
+      'a transport failure fails the challenge instead of prompting',
+      () async {
+        mail.failAlways = TomDeliveryException.transient(
+          'test.relay.down',
+          'The relay refused the connection.',
+        );
 
-      await expectLater(
-        email.issueChallenge(_context()),
-        throwsA(isA<LoginException>().having(
-          (e) => e.key,
-          'key',
-          'login.error.2fa.delivery-failed',
-        )),
-      );
-      expect(mail.count, 0);
-    });
+        await expectLater(
+          email.issueChallenge(_context()),
+          throwsA(
+            isA<LoginException>().having(
+              (e) => e.key,
+              'key',
+              'login.error.2fa.delivery-failed',
+            ),
+          ),
+        );
+        expect(mail.count, 0);
+      },
+    );
 
     test('a permanent transport failure fails the same way', () async {
       sms.failAlways = TomDeliveryException.permanent(
@@ -455,11 +491,13 @@ void main() {
 
       await expectLater(
         text.issueChallenge(_context()),
-        throwsA(isA<LoginException>().having(
-          (e) => e.key,
-          'key',
-          'login.error.2fa.delivery-failed',
-        )),
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.delivery-failed',
+          ),
+        ),
       );
     });
 
@@ -467,18 +505,21 @@ void main() {
     // cannot be issued, so it must not be.
     test('a missing template fails the challenge', () async {
       final saved = TomEmailCode2FAService.globalSettingChallengeTemplateKey;
-      addTearDown(() =>
-          TomEmailCode2FAService.globalSettingChallengeTemplateKey = saved);
+      addTearDown(
+        () => TomEmailCode2FAService.globalSettingChallengeTemplateKey = saved,
+      );
       TomEmailCode2FAService.globalSettingChallengeTemplateKey =
           'email.nobody_wrote_this';
 
       await expectLater(
         email.issueChallenge(_context()),
-        throwsA(isA<LoginException>().having(
-          (e) => e.key,
-          'key',
-          'login.error.2fa.delivery-failed',
-        )),
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.delivery-failed',
+          ),
+        ),
       );
       expect(mail.count, 0);
     });
@@ -490,11 +531,13 @@ void main() {
 
       await expectLater(
         email.issueChallenge(_context()),
-        throwsA(isA<Tom2FAException>().having(
-          (e) => e.key,
-          'key',
-          'authentication.2fa.email.no_service',
-        )),
+        throwsA(
+          isA<Tom2FAException>().having(
+            (e) => e.key,
+            'key',
+            'authentication.2fa.email.no_service',
+          ),
+        ),
       );
     });
 
@@ -552,31 +595,38 @@ void main() {
 
     tearDown(TomBean.resetBeanContext);
 
-    test('beginning an enrolment sends a code to the claimed address', () async {
-      final offer = await email.beginEnrolment(_context());
+    test(
+      'beginning an enrolment sends a code to the claimed address',
+      () async {
+        final offer = await email.beginEnrolment(_context());
 
-      expect(mail.count, 1);
-      expect(mail.last!.subject, 'Confirm this address');
-      expect(offer.type, 'email');
-      expect(offer.hint, 'a***h@example.com');
-      expect(offer.validity, const Duration(minutes: 15));
-    });
+        expect(mail.count, 1);
+        expect(mail.last!.subject, 'Confirm this address');
+        expect(offer.type, 'email');
+        expect(offer.hint, 'a***h@example.com');
+        expect(offer.validity, const Duration(minutes: 15));
+      },
+    );
 
-    test('the offer keeps the address and the seal out of the client half',
-        () async {
-      final offer = await email.beginEnrolment(_context());
-      final code = _deliveredCode(mail);
+    test(
+      'the offer keeps the address and the seal out of the client half',
+      () async {
+        final offer = await email.beginEnrolment(_context());
+        final code = _deliveredCode(mail);
 
-      expect(offer.clientData.toString(), isNot(contains(code)));
-      expect(offer.clientData.toString(),
+        expect(offer.clientData.toString(), isNot(contains(code)));
+        expect(
+          offer.clientData.toString(),
           isNot(contains('alice.smith@example.com')),
-          reason: 'the client gets the mask, the server keeps the address');
-      expect(
-        offer.enrolmentData[TomDeliveredCode2FAService.destinationKey],
-        'alice.smith@example.com',
-      );
-      expect(offer.enrolmentData.toString(), isNot(contains(code)));
-    });
+          reason: 'the client gets the mask, the server keeps the address',
+        );
+        expect(
+          offer.enrolmentData[TomDeliveredCode2FAService.destinationKey],
+          'alice.smith@example.com',
+        );
+        expect(offer.enrolmentData.toString(), isNot(contains(code)));
+      },
+    );
 
     test('confirming with the delivered code yields the enrolment', () async {
       final offer = await email.beginEnrolment(_context());
@@ -600,11 +650,13 @@ void main() {
 
       await expectLater(
         email.confirmEnrolment(_context(), offer, '000000'),
-        throwsA(isA<LoginException>().having(
-          (e) => e.key,
-          'key',
-          'login.error.2fa.enrolment-code-invalid',
-        )),
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.enrolment-code-invalid',
+          ),
+        ),
       );
     });
 
@@ -618,26 +670,32 @@ void main() {
 
       await expectLater(
         email.confirmEnrolment(_context(), offer, '123456'),
-        throwsA(isA<LoginException>().having(
-          (e) => e.key,
-          'key',
-          'login.error.2fa.enrolment-offer-invalid',
-        )),
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.enrolment-offer-invalid',
+          ),
+        ),
       );
     });
 
-    test('a user with no address on record cannot begin an enrolment',
-        () async {
-      await expectLater(
-        email.beginEnrolment(_context(email: null)),
-        throwsA(isA<LoginException>().having(
-          (e) => e.key,
-          'key',
-          'login.error.2fa.no-destination',
-        )),
-      );
-      expect(mail.count, 0);
-    });
+    test(
+      'a user with no address on record cannot begin an enrolment',
+      () async {
+        await expectLater(
+          email.beginEnrolment(_context(email: null)),
+          throwsA(
+            isA<LoginException>().having(
+              (e) => e.key,
+              'key',
+              'login.error.2fa.no-destination',
+            ),
+          ),
+        );
+        expect(mail.count, 0);
+      },
+    );
 
     /// A proven address outranks an asserted one: an attacker who can edit a
     /// profile field must not thereby redirect the second factor.
@@ -663,46 +721,50 @@ void main() {
     // Enrolling is how a destination *becomes* confirmed, so starting from the
     // confirmed one would make the step a tautology no user could ever use to
     // move to a new address.
-    test('beginning an enrolment goes to the record, not the confirmed one',
-        () async {
-      final context = _context();
-      await store.store(
-        context,
-        Tom2FAEnrolment(
-          type: 'email',
-          enrolmentId: 'email',
-          hint: 'p***y@example.org',
-          secretData: const {
-            TomDeliveredCode2FAService.destinationKey: 'proven@example.org',
-          },
-        ),
-      );
+    test(
+      'beginning an enrolment goes to the record, not the confirmed one',
+      () async {
+        final context = _context();
+        await store.store(
+          context,
+          Tom2FAEnrolment(
+            type: 'email',
+            enrolmentId: 'email',
+            hint: 'p***y@example.org',
+            secretData: const {
+              TomDeliveredCode2FAService.destinationKey: 'proven@example.org',
+            },
+          ),
+        );
 
-      await email.beginEnrolment(context);
+        await email.beginEnrolment(context);
 
-      expect(mail.last!.recipients.single.address, 'alice.smith@example.com');
-    });
+        expect(mail.last!.recipients.single.address, 'alice.smith@example.com');
+      },
+    );
 
     // One row per channel per user: [resolveDestination] answers with the first
     // match, so a second row would make which address is challenged depend on
     // storage order.
-    test('re-confirming replaces the destination rather than adding one',
-        () async {
-      final context = _context();
-      final first = await email.beginEnrolment(context);
-      await store.store(
-        context,
-        await email.confirmEnrolment(context, first, _deliveredCode(mail)),
-      );
-      final second = await email.beginEnrolment(context);
-      await store.store(
-        context,
-        await email.confirmEnrolment(context, second, _deliveredCode(mail)),
-      );
+    test(
+      're-confirming replaces the destination rather than adding one',
+      () async {
+        final context = _context();
+        final first = await email.beginEnrolment(context);
+        await store.store(
+          context,
+          await email.confirmEnrolment(context, first, _deliveredCode(mail)),
+        );
+        final second = await email.beginEnrolment(context);
+        await store.store(
+          context,
+          await email.confirmEnrolment(context, second, _deliveredCode(mail)),
+        );
 
-      final stored = await store.enrolmentsFor(context);
-      expect(stored.where((e) => e.type == 'email'), hasLength(1));
-    });
+        final stored = await store.enrolmentsFor(context);
+        expect(stored.where((e) => e.type == 'email'), hasLength(1));
+      },
+    );
   });
 
   // ===========================================================================
@@ -790,8 +852,10 @@ void main() {
       final result = await server.authenticatePass1(_message());
       final code = _deliveredCode(mail);
 
-      final public =
-          TomClientJwtToken(result.authorizationToken, decrypt: false).payload;
+      final public = TomClientJwtToken(
+        result.authorizationToken,
+        decrypt: false,
+      ).payload;
       expect(public, isNot(contains(Tom2FAClaims.verificationData)));
       expect(public.toString(), isNot(contains(code)));
 
@@ -801,29 +865,33 @@ void main() {
       final decrypted = TomClientJwtToken(result.authorizationToken);
       final verification =
           decrypted.secretData![Tom2FAClaims.verificationData] as Map;
-      expect(verification.keys,
-          containsAll([
-            TomDeliveredCode2FAService.saltKey,
-            TomDeliveredCode2FAService.hashKey,
-          ]));
+      expect(
+        verification.keys,
+        containsAll([
+          TomDeliveredCode2FAService.saltKey,
+          TomDeliveredCode2FAService.hashKey,
+        ]),
+      );
       expect(verification.toString(), isNot(contains(code)));
     });
 
-    test('the masked address does travel, so the user knows where to look',
-        () async {
-      final result = await server.authenticatePass1(_message());
+    test(
+      'the masked address does travel, so the user knows where to look',
+      () async {
+        final result = await server.authenticatePass1(_message());
 
-      final challenge = Tom2FAChallenge.fromClaims(
-        TomClientJwtToken(result.authorizationToken, decrypt: false).payload,
-      )!;
-      expect(challenge.hint, 'a***h@example.com');
-      expect(challenge.hint, isNot(contains('alice.smith')));
-      expect(
-        challenge.clientData[TomDeliveredCode2FAService.digitsKey],
-        6,
-        reason: 'so a UI can size its input without knowing the mechanism',
-      );
-    });
+        final challenge = Tom2FAChallenge.fromClaims(
+          TomClientJwtToken(result.authorizationToken, decrypt: false).payload,
+        )!;
+        expect(challenge.hint, 'a***h@example.com');
+        expect(challenge.hint, isNot(contains('alice.smith')));
+        expect(
+          challenge.clientData[TomDeliveredCode2FAService.digitsKey],
+          6,
+          reason: 'so a UI can size its input without knowing the mechanism',
+        );
+      },
+    );
 
     test('pass 2 with the mailed code issues a session', () async {
       final pass1 = await server.authenticatePass1(_message());
@@ -844,19 +912,21 @@ void main() {
       );
     });
 
-    test('pass 2 with a wrong code is refused and offers another attempt',
-        () async {
-      final pass1 = await server.authenticatePass1(_message());
+    test(
+      'pass 2 with a wrong code is refused and offers another attempt',
+      () async {
+        final pass1 = await server.authenticatePass1(_message());
 
-      final pass2 = await server.authenticatePass2(
-        _message(password: '000000'),
-        challengeToken: TomClientJwtToken(pass1.authorizationToken),
-      );
+        final pass2 = await server.authenticatePass2(
+          _message(password: '000000'),
+          challengeToken: TomClientJwtToken(pass1.authorizationToken),
+        );
 
-      expect(pass2.error, 'login.error.2fa.invalid-code');
-      expect(pass2.requires2FA, isTrue);
-      expect(mail.count, 1, reason: 'a retry reuses the code already sent');
-    });
+        expect(pass2.error, 'login.error.2fa.invalid-code');
+        expect(pass2.requires2FA, isTrue);
+        expect(mail.count, 1, reason: 'a retry reuses the code already sent');
+      },
+    );
 
     /// The flow-level half of the delivery rule: a relay that is down produces
     /// a failed login, not a pending challenge for a code nobody will receive.
@@ -875,59 +945,68 @@ void main() {
 
     /// Enrolment through the server, which is where "confirm before storing"
     /// has to hold: nothing is written until the mailed code comes back.
-    test('the enrol-on-first-login round trip confirms before storing',
-        () async {
-      final store = TomMemory2FAEnrolmentStore();
-      TomBean.withType(Tom2FAEnrolmentStore, store);
-      final context = _context();
+    test(
+      'the enrol-on-first-login round trip confirms before storing',
+      () async {
+        final store = TomMemory2FAEnrolmentStore();
+        TomBean.withType(Tom2FAEnrolmentStore, store);
+        final context = _context();
 
-      final offered = await server.authenticatePass1(_message());
-      expect(offered.requires2FAEnrolment, isTrue);
-      expect(offered.availableTwoFactorMethods.map((m) => m.type), ['email']);
-      expect(offered.availableTwoFactorMethods.single.displayNameKey,
-          'two_factor.email.name');
-      expect(mail.count, 0, reason: 'nothing to challenge yet');
+        final offered = await server.authenticatePass1(_message());
+        expect(offered.requires2FAEnrolment, isTrue);
+        expect(offered.availableTwoFactorMethods.map((m) => m.type), ['email']);
+        expect(
+          offered.availableTwoFactorMethods.single.displayNameKey,
+          'two_factor.email.name',
+        );
+        expect(mail.count, 0, reason: 'nothing to challenge yet');
 
-      final begun = await server.beginTwoFactorEnrolment(
-        _message(password: 'email'),
-        enrolmentToken: TomClientJwtToken(offered.authorizationToken),
-      );
-      expect(begun.error, isEmpty);
-      expect(mail.count, 1);
-      final code = _deliveredCode(mail);
-      expect(await store.enrolmentsFor(context), isEmpty,
-          reason: 'an unconfirmed address is not an enrolment');
+        final begun = await server.beginTwoFactorEnrolment(
+          _message(password: 'email'),
+          enrolmentToken: TomClientJwtToken(offered.authorizationToken),
+        );
+        expect(begun.error, isEmpty);
+        expect(mail.count, 1);
+        final code = _deliveredCode(mail);
+        expect(
+          await store.enrolmentsFor(context),
+          isEmpty,
+          reason: 'an unconfirmed address is not an enrolment',
+        );
 
-      // The confirmation material is encrypted, so a client cannot swap the
-      // address it is about to be tested on.
-      final publicClaims =
-          TomClientJwtToken(begun.authorizationToken, decrypt: false).payload;
-      expect(publicClaims, isNot(contains(Tom2FAEnrolmentClaims.offerData)));
-      expect(publicClaims.toString(), isNot(contains(code)));
+        // The confirmation material is encrypted, so a client cannot swap the
+        // address it is about to be tested on.
+        final publicClaims = TomClientJwtToken(
+          begun.authorizationToken,
+          decrypt: false,
+        ).payload;
+        expect(publicClaims, isNot(contains(Tom2FAEnrolmentClaims.offerData)));
+        expect(publicClaims.toString(), isNot(contains(code)));
 
-      final refused = await server.completeTwoFactorEnrolment(
-        _message(password: '000000'),
-        enrolmentToken: TomClientJwtToken(begun.authorizationToken),
-      );
-      expect(refused.error, isNotEmpty);
-      expect(await store.enrolmentsFor(context), isEmpty);
+        final refused = await server.completeTwoFactorEnrolment(
+          _message(password: '000000'),
+          enrolmentToken: TomClientJwtToken(begun.authorizationToken),
+        );
+        expect(refused.error, isNotEmpty);
+        expect(await store.enrolmentsFor(context), isEmpty);
 
-      final done = await server.completeTwoFactorEnrolment(
-        _message(password: code),
-        enrolmentToken: TomClientJwtToken(begun.authorizationToken),
-      );
+        final done = await server.completeTwoFactorEnrolment(
+          _message(password: code),
+          enrolmentToken: TomClientJwtToken(begun.authorizationToken),
+        );
 
-      expect(done.error, isEmpty);
-      expect(done.requires2FAEnrolment, isFalse);
-      final stored = await store.enrolmentsFor(context);
-      expect(stored, hasLength(1));
-      expect(stored.single.type, 'email');
-      expect(
-        stored.single.secretData[TomDeliveredCode2FAService.destinationKey],
-        'alice.smith@example.com',
-      );
-      expect(stored.single.isPrimary, isTrue);
-    });
+        expect(done.error, isEmpty);
+        expect(done.requires2FAEnrolment, isFalse);
+        final stored = await store.enrolmentsFor(context);
+        expect(stored, hasLength(1));
+        expect(stored.single.type, 'email');
+        expect(
+          stored.single.secretData[TomDeliveredCode2FAService.destinationKey],
+          'alice.smith@example.com',
+        );
+        expect(stored.single.isPrimary, isTrue);
+      },
+    );
   });
 }
 

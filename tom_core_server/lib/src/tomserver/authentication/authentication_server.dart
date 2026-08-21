@@ -150,7 +150,7 @@ class TomDummyAuthenticationService implements TomAuthenticationService {
         firstname: "guest",
         lastname: "guest",
         attributes: {},
-        timeZone: "utc",
+        timezone: "utc",
       ),
       aci: TomAccessControlInformation(),
     );

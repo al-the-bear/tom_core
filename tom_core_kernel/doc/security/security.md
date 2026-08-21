@@ -219,7 +219,7 @@ var user = TomUser(
   firstname: 'John',
   lastname: 'Doe',
   email: 'john.doe@example.com',
-  timeZone: 'America/New_York',
+  timezone: 'America/New_York',
   attributes: {'department': 'Engineering'},
 );
 ```
@@ -262,7 +262,7 @@ one.
 `tom.user.email`, `tom.user.phone`, `tom.user.attributes`, and so on — falling
 back to `null` (or `const {}` for attributes) when the key is protected. Three
 fields are *not* filtered and always travel in the clear: `username`, `id` and
-`timeZone`. Note the prefix: `tom.user.email` is a different key from the
+`timezone`. Note the prefix: `tom.user.email` is a different key from the
 `user.email` used as an application-level example elsewhere in this document,
 and protecting one does not protect the other.
 

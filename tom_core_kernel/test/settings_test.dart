@@ -145,7 +145,7 @@ void main() {
         expect(result.timezone, isNull);
         expect(result.clientCountry, isNull);
         expect(result.clientLanguage, isNull);
-        expect(result.clientTimeZone, isNull);
+        expect(result.clientTimezone, isNull);
       });
 
       test('should create result with all named parameters', () {
@@ -173,7 +173,7 @@ void main() {
           timezone: 'America/Chicago',
           clientCountry: 'GB',
           clientLanguage: 'en-GB',
-          clientTimeZone: 'Europe/London',
+          clientTimezone: 'Europe/London',
         );
 
         // Assert
@@ -191,7 +191,7 @@ void main() {
         expect(result.timezone, equals('America/Chicago'));
         expect(result.clientCountry, equals('GB'));
         expect(result.clientLanguage, equals('en-GB'));
-        expect(result.clientTimeZone, equals('Europe/London'));
+        expect(result.clientTimezone, equals('Europe/London'));
       });
 
       test('should allow partial initialization with named parameters', () {
@@ -586,11 +586,11 @@ void main() {
         test('should store client timezone with IANA identifier', () {
           // Arrange
           final result = TomGetSettingsResult(
-            clientTimeZone: 'America/New_York',
+            clientTimezone: 'America/New_York',
           );
 
           // Assert
-          expect(result.clientTimeZone, equals('America/New_York'));
+          expect(result.clientTimezone, equals('America/New_York'));
         });
 
         test('should handle various IANA timezone identifiers', () {
@@ -606,19 +606,19 @@ void main() {
           ];
 
           for (final tz in timezones) {
-            final result = TomGetSettingsResult(clientTimeZone: tz);
+            final result = TomGetSettingsResult(clientTimezone: tz);
 
             // Assert
-            expect(result.clientTimeZone, equals(tz));
+            expect(result.clientTimezone, equals(tz));
           }
         });
 
         test('should handle UTC timezone', () {
           // Arrange
-          final result = TomGetSettingsResult(clientTimeZone: 'UTC');
+          final result = TomGetSettingsResult(clientTimezone: 'UTC');
 
           // Assert
-          expect(result.clientTimeZone, equals('UTC'));
+          expect(result.clientTimezone, equals('UTC'));
         });
       });
 
@@ -653,48 +653,48 @@ void main() {
           // Arrange
           final result = TomGetSettingsResult(
             timezone: 'UTC',
-            clientTimeZone: 'Europe/Berlin',
+            clientTimezone: 'Europe/Berlin',
           );
 
           // Assert
           expect(result.timezone, equals('UTC'));
-          expect(result.clientTimeZone, equals('Europe/Berlin'));
-          expect(result.timezone, isNot(equals(result.clientTimeZone)));
+          expect(result.clientTimezone, equals('Europe/Berlin'));
+          expect(result.timezone, isNot(equals(result.clientTimezone)));
         });
 
         // The point of having both timezone fields: a consumer can tell an
-        // override apart from an echo. With only `clientTimeZone` to read,
+        // override apart from an echo. With only `clientTimezone` to read,
         // both look identical.
         test('should distinguish a timezone override from server silence', () {
           // Arrange
           final overridden = TomGetSettingsResult(
             timezone: 'UTC',
-            clientTimeZone: 'Europe/Berlin',
+            clientTimezone: 'Europe/Berlin',
           );
           final serverSilent = TomGetSettingsResult(
-            clientTimeZone: 'Europe/Berlin',
+            clientTimezone: 'Europe/Berlin',
           );
 
           // Assert — the server's decision wins where it made one.
           expect(
-            overridden.timezone ?? overridden.clientTimeZone,
+            overridden.timezone ?? overridden.clientTimezone,
             equals('UTC'),
           );
           expect(
             overridden.timezone != null &&
-                overridden.timezone != overridden.clientTimeZone,
+                overridden.timezone != overridden.clientTimezone,
             isTrue,
           );
 
           // Assert — a null timezone is "no opinion", not agreement, so the
           // client's preference stands and nothing was overridden.
           expect(
-            serverSilent.timezone ?? serverSilent.clientTimeZone,
+            serverSilent.timezone ?? serverSilent.clientTimezone,
             equals('Europe/Berlin'),
           );
           expect(
             serverSilent.timezone != null &&
-                serverSilent.timezone != serverSilent.clientTimeZone,
+                serverSilent.timezone != serverSilent.clientTimezone,
             isFalse,
           );
         });
@@ -707,7 +707,7 @@ void main() {
             timezone: 'America/New_York',
             clientCountry: 'DE',
             clientLanguage: 'de',
-            clientTimeZone: 'Europe/Berlin',
+            clientTimezone: 'Europe/Berlin',
           );
 
           // Assert
@@ -716,7 +716,7 @@ void main() {
           expect(result.timezone, equals('America/New_York'));
           expect(result.clientCountry, equals('DE'));
           expect(result.clientLanguage, equals('de'));
-          expect(result.clientTimeZone, equals('Europe/Berlin'));
+          expect(result.clientTimezone, equals('Europe/Berlin'));
         });
       });
     });
@@ -810,14 +810,14 @@ void main() {
         result.language = 'fr';
         result.clientCountry = 'IT';
         result.clientLanguage = 'it';
-        result.clientTimeZone = 'Europe/Rome';
+        result.clientTimezone = 'Europe/Rome';
 
         // Assert
         expect(result.country, equals('FR'));
         expect(result.language, equals('fr'));
         expect(result.clientCountry, equals('IT'));
         expect(result.clientLanguage, equals('it'));
-        expect(result.clientTimeZone, equals('Europe/Rome'));
+        expect(result.clientTimezone, equals('Europe/Rome'));
       });
     });
 
@@ -890,7 +890,7 @@ void main() {
           timezone: 'UTC',
           clientCountry: 'GB',
           clientLanguage: 'en',
-          clientTimeZone: 'America/New_York',
+          clientTimezone: 'America/New_York',
         );
 
         final json = tomReflectionInfo.convertToJsonString(original);
@@ -913,7 +913,7 @@ void main() {
         expect(restored.timezone, equals('UTC'));
         expect(restored.clientCountry, equals('GB'));
         expect(restored.clientLanguage, equals('en'));
-        expect(restored.clientTimeZone, equals('America/New_York'));
+        expect(restored.clientTimezone, equals('America/New_York'));
       });
 
       // "Unset is null" has to hold on every path an instance can arrive by,
@@ -938,7 +938,7 @@ void main() {
         expect(restored.timezone, isNull);
         expect(restored.clientCountry, isNull);
         expect(restored.clientLanguage, isNull);
-        expect(restored.clientTimeZone, isNull);
+        expect(restored.clientTimezone, isNull);
       });
 
       // The counterpart: a string the server deliberately set to empty must
@@ -1101,7 +1101,7 @@ void main() {
           application: 'project-manager',
           clientCountry: 'US',
           clientLanguage: 'en',
-          clientTimeZone: 'America/New_York',
+          clientTimezone: 'America/New_York',
         );
 
         // Assert
@@ -1109,7 +1109,7 @@ void main() {
         expect(result.groups.contains('engineering'), isTrue);
         expect(result.entitlements.length, equals(3));
         expect(result.organization, equals('tech-company'));
-        expect(result.clientTimeZone, equals('America/New_York'));
+        expect(result.clientTimezone, equals('America/New_York'));
       });
 
       test('should represent admin user settings', () {
@@ -1170,13 +1170,13 @@ void main() {
           language: 'de',
           clientCountry: 'DE',
           clientLanguage: 'de',
-          clientTimeZone: 'Europe/Berlin',
+          clientTimezone: 'Europe/Berlin',
         );
 
         // Assert
         expect(result.country, equals('DE'));
         expect(result.language, equals('de'));
-        expect(result.clientTimeZone, equals('Europe/Berlin'));
+        expect(result.clientTimezone, equals('Europe/Berlin'));
         expect(result.texts['currency'], equals('€'));
         expect(result.config['currencyCode'], equals('EUR'));
       });

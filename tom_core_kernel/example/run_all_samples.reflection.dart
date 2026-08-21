@@ -2646,13 +2646,13 @@ final _data = <r.Reflection, r.ReflectorData>{
                 timezone,
                 clientLanguage,
                 clientCountry,
-                clientTimeZone,
+                clientTimezone,
               }) => b
               ? prefix39.TomGetSettingsResult(
                   application: application,
                   clientCountry: clientCountry,
                   clientLanguage: clientLanguage,
-                  clientTimeZone: clientTimeZone,
+                  clientTimezone: clientTimezone,
                   config: config,
                   country: country,
                   entitlements: entitlements,
@@ -12628,7 +12628,7 @@ final _data = <r.Reflection, r.ReflectorData>{
                 city,
                 postcode,
                 stateRegion,
-                timeZone,
+                timezone,
                 attributes,
               }) => b
               ? prefix38.TomUser(
@@ -12644,7 +12644,7 @@ final _data = <r.Reflection, r.ReflectorData>{
                   phone: phone,
                   postcode: postcode,
                   stateRegion: stateRegion,
-                  timeZone: timeZone,
+                  timezone: timezone,
                   username: username,
                 )
               : null,
@@ -16289,7 +16289,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const [],
       ),
       r.VariableMirrorImpl(
-        r'clientTimeZone',
+        r'clientTimezone',
         67239941,
         64,
         const prefix28.TomReflector(),
@@ -43220,7 +43220,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const [],
       ),
       r.MethodMirrorImpl(
-        r'timeZone',
+        r'timezone',
         2097155,
         240,
         151,
@@ -49194,7 +49194,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         #clientCountry,
       ),
       r.ParameterMirrorImpl(
-        r'clientTimeZone',
+        r'clientTimezone',
         67253254,
         1325,
         const prefix28.TomReflector(),
@@ -49204,7 +49204,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const [],
         null,
-        #clientTimeZone,
+        #clientTimezone,
       ),
       r.ParameterMirrorImpl(
         r'value',
@@ -74132,7 +74132,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         #stateRegion,
       ),
       r.ParameterMirrorImpl(
-        r'timeZone',
+        r'timezone',
         67252230,
         3625,
         const prefix28.TomReflector(),
@@ -74142,7 +74142,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const [],
         null,
-        #timeZone,
+        #timezone,
       ),
       r.ParameterMirrorImpl(
         r'attributes',
@@ -78856,7 +78856,6 @@ final _data = <r.Reflection, r.ReflectorData>{
       r'resourceKeys': (dynamic instance) => instance.resourceKeys,
       r'language': (dynamic instance) => instance.language,
       r'timezone': (dynamic instance) => instance.timezone,
-      r'clientTimeZone': (dynamic instance) => instance.clientTimeZone,
       r'getSerializationPrefix': (dynamic instance) =>
           instance.getSerializationPrefix,
       r'setByString': (dynamic instance) => instance.setByString,
@@ -79719,8 +79718,6 @@ final _data = <r.Reflection, r.ReflectorData>{
           instance.resourceKeys = value,
       r'language=': (dynamic instance, value) => instance.language = value,
       r'timezone=': (dynamic instance, value) => instance.timezone = value,
-      r'clientTimeZone=': (dynamic instance, value) =>
-          instance.clientTimeZone = value,
       r'startDateTime=': (dynamic instance, value) =>
           instance.startDateTime = value,
       r'endDateTime=': (dynamic instance, value) =>

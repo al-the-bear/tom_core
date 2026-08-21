@@ -76,7 +76,7 @@ TomPrincipal _principal(
     firstname: 'Test',
     lastname: 'User',
     attributes: {},
-    timeZone: 'utc',
+    timezone: 'utc',
   ),
   aci: TomAccessControlInformation(roles: roles),
 );
@@ -84,47 +84,45 @@ TomPrincipal _principal(
 /// A principal distinguished only by its user id, for the enrolment store —
 /// whose entire job is to keep one user's factors away from another's.
 TomPrincipal _principalWithId(int userId) => TomPrincipal(
-      authenticated: true,
-      context: {},
-      clientId: 0,
-      organization: 'acme',
-      organizationId: 0,
-      application: 'console',
-      applicationId: 0,
-      process: 'login',
-      processId: 0,
-      language: 'en',
-      country: 'US',
-      clientCountry: 'US',
-      clientLanguage: 'en',
-      clientTimezone: 'UTC',
-      user: TomUser(
-        id: userId,
-        username: 'user$userId',
-        firstname: 'Test',
-        lastname: 'User',
-        attributes: {},
-        timeZone: 'utc',
-      ),
-      aci: TomAccessControlInformation(roles: const ['user']),
-    );
+  authenticated: true,
+  context: {},
+  clientId: 0,
+  organization: 'acme',
+  organizationId: 0,
+  application: 'console',
+  applicationId: 0,
+  process: 'login',
+  processId: 0,
+  language: 'en',
+  country: 'US',
+  clientCountry: 'US',
+  clientLanguage: 'en',
+  clientTimezone: 'UTC',
+  user: TomUser(
+    id: userId,
+    username: 'user$userId',
+    firstname: 'Test',
+    lastname: 'User',
+    attributes: {},
+    timezone: 'utc',
+  ),
+  aci: TomAccessControlInformation(roles: const ['user']),
+);
 
 /// An authentication service that answers with a fixed principal shape.
 class _StubAuthService implements TomAuthenticationService {
-  _StubAuthService({
-    this.requires2FA = false,
-    this.twoFactorType,
-  });
+  _StubAuthService({this.requires2FA = false, this.twoFactorType});
 
   final bool requires2FA;
   final String? twoFactorType;
 
   @override
-  Future<TomAuthenticationInfo> authenticateUser(TomAuthenticationData a) async =>
-      TomAuthenticationInfo(
-        _principal(a, requires2FA: requires2FA, twoFactorType: twoFactorType),
-        TomAccessControlDefinition(),
-      );
+  Future<TomAuthenticationInfo> authenticateUser(
+    TomAuthenticationData a,
+  ) async => TomAuthenticationInfo(
+    _principal(a, requires2FA: requires2FA, twoFactorType: twoFactorType),
+    TomAccessControlDefinition(),
+  );
 }
 
 /// A mechanism whose "code" is a constant, so the flow tests can assert
@@ -219,8 +217,7 @@ class _EnrollableAdaptor implements Tom2FAService, Tom2FAEnrolmentSupport {
   Future<bool> verifySubmission(
     Tom2FAContext context,
     Tom2FASubmission submission,
-  ) async =>
-      submission.submitted == confirmation;
+  ) async => submission.submitted == confirmation;
 
   @override
   Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context) async {
@@ -297,8 +294,8 @@ class _CandidateMirror implements ClassMirror<Object> {
     this._name, {
     required List<Object> metadata,
     required Object Function() instantiate,
-  })  : _metadata = metadata,
-        _instantiate = instantiate;
+  }) : _metadata = metadata,
+       _instantiate = instantiate;
 
   final String _name;
   final List<Object> _metadata;
@@ -312,17 +309,16 @@ class _CandidateMirror implements ClassMirror<Object> {
     String constructorName,
     List<dynamic> positionalArguments, [
     Map<Symbol, dynamic> namedArguments = const {},
-  ]) =>
-      _instantiate();
+  ]) => _instantiate();
 
   @override
   String toString() => _name;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
-        'The candidate mirror was asked for ${invocation.memberName}, which '
-        'the adaptor scan does not use. Implement it here if that changes.',
-      );
+    'The candidate mirror was asked for ${invocation.memberName}, which '
+    'the adaptor scan does not use. Implement it here if that changes.',
+  );
 }
 
 /// The JWT registered claims, the validity window and the encrypted blob — all
@@ -397,12 +393,14 @@ void main() {
       );
     });
 
-    test('Tom2FAException is a server exception that is not client-throwable',
-        () {
-      final e = Tom2FAException('authentication.2fa.x', 'boom');
-      expect(e, isA<TomServerException>());
-      expect(e.clientThrow, isFalse);
-    });
+    test(
+      'Tom2FAException is a server exception that is not client-throwable',
+      () {
+        final e = Tom2FAException('authentication.2fa.x', 'boom');
+        expect(e, isA<TomServerException>());
+        expect(e.clientThrow, isFalse);
+      },
+    );
 
     test('reset drops every registration', () {
       Tom2FARegistry.register('fake', _FakeAdaptor());
@@ -445,18 +443,20 @@ void main() {
       expect(descriptor.iconKey, 'two_factor.sms.icon');
     });
 
-    test('availableMethods reports the TOTP descriptor with resource keys',
-        () async {
-      initializeReflection();
-      Tom2FARegistry.reset();
+    test(
+      'availableMethods reports the TOTP descriptor with resource keys',
+      () async {
+        initializeReflection();
+        Tom2FARegistry.reset();
 
-      final totp = Tom2FARegistry.availableMethods.singleWhere(
-        (m) => m.type == TomTotp2FAService.mechanismType,
-      );
-      expect(totp.displayNameKey, 'two_factor.totp.name');
-      expect(totp.descriptionKey, 'two_factor.totp.description');
-      expect(totp.iconKey, 'two_factor.totp.icon');
-    });
+        final totp = Tom2FARegistry.availableMethods.singleWhere(
+          (m) => m.type == TomTotp2FAService.mechanismType,
+        );
+        expect(totp.displayNameKey, 'two_factor.totp.name');
+        expect(totp.descriptionKey, 'two_factor.totp.description');
+        expect(totp.iconKey, 'two_factor.totp.icon');
+      },
+    );
 
     test('no descriptor carries anything that reads as user-facing text', () {
       initializeReflection();
@@ -485,38 +485,42 @@ void main() {
       }
     });
 
-    test('the catalog is derived from the registry, so the two cannot drift',
-        () {
-      Tom2FARegistry.reset();
-      Tom2FARegistry.register('fake', _FakeAdaptor());
-      expect(
-        Tom2FARegistry.availableMethods.map((m) => m.type),
-        Tom2FARegistry.registeredTypes,
-      );
-    });
+    test(
+      'the catalog is derived from the registry, so the two cannot drift',
+      () {
+        Tom2FARegistry.reset();
+        Tom2FARegistry.register('fake', _FakeAdaptor());
+        expect(
+          Tom2FARegistry.availableMethods.map((m) => m.type),
+          Tom2FARegistry.registeredTypes,
+        );
+      },
+    );
 
     // "What can be verified here" and "what can the user be sent off to set up"
     // are different questions. A forced-enrolment step that offered the first
     // would present an option that cannot be acted on.
-    test('enrollableMethods is availableMethods minus what cannot be enrolled',
-        () {
-      initializeReflection();
-      Tom2FARegistry.reset();
-      Tom2FARegistry.register('fake', _FakeAdaptor());
+    test(
+      'enrollableMethods is availableMethods minus what cannot be enrolled',
+      () {
+        initializeReflection();
+        Tom2FARegistry.reset();
+        Tom2FARegistry.register('fake', _FakeAdaptor());
 
-      expect(
-        Tom2FARegistry.availableMethods.map((m) => m.type),
-        containsAll(<String>['fake', TomTotp2FAService.mechanismType]),
-      );
-      expect(
-        Tom2FARegistry.enrollableMethods.map((m) => m.type),
-        contains(TomTotp2FAService.mechanismType),
-      );
-      expect(
-        Tom2FARegistry.enrollableMethods.map((m) => m.type),
-        isNot(contains('fake')),
-      );
-    });
+        expect(
+          Tom2FARegistry.availableMethods.map((m) => m.type),
+          containsAll(<String>['fake', TomTotp2FAService.mechanismType]),
+        );
+        expect(
+          Tom2FARegistry.enrollableMethods.map((m) => m.type),
+          contains(TomTotp2FAService.mechanismType),
+        );
+        expect(
+          Tom2FARegistry.enrollableMethods.map((m) => m.type),
+          isNot(contains('fake')),
+        );
+      },
+    );
 
     test('enrolmentSupportFor resolves the enrollable and nothing else', () {
       initializeReflection();
@@ -556,9 +560,8 @@ void main() {
 
     tearDown(TomBean.resetBeanContext);
 
-    Tom2FAContext contextFor(int userId) => Tom2FAContext(
-          principal: _principalWithId(userId),
-        );
+    Tom2FAContext contextFor(int userId) =>
+        Tom2FAContext(principal: _principalWithId(userId));
 
     Tom2FAEnrolment enrolment({
       String type = 'totp',
@@ -566,14 +569,13 @@ void main() {
       String hint = 'iPhone',
       bool isPrimary = false,
       Map<String, Object?> secretData = const {'secret': _rfcSecretBase32},
-    }) =>
-        Tom2FAEnrolment(
-          type: type,
-          enrolmentId: id,
-          hint: hint,
-          isPrimary: isPrimary,
-          secretData: secretData,
-        );
+    }) => Tom2FAEnrolment(
+      type: type,
+      enrolmentId: id,
+      hint: hint,
+      isPrimary: isPrimary,
+      secretData: secretData,
+    );
 
     test('resolve returns null when no store is installed', () {
       expect(Tom2FAEnrolmentStore.resolve(), isNull);
@@ -605,8 +607,9 @@ void main() {
 
       final loaded = await store.enrolmentsFor(context);
       expect(loaded.map((e) => e.enrolmentId), containsAll(['phone', 'app']));
-      expect(loaded.where((e) => e.isPrimary).map((e) => e.enrolmentId),
-          ['app']);
+      expect(loaded.where((e) => e.isPrimary).map((e) => e.enrolmentId), [
+        'app',
+      ]);
     });
 
     test('re-storing the same enrolment id replaces it', () async {
@@ -630,8 +633,9 @@ void main() {
       await store.store(context, enrolment(id: 'b'));
 
       await store.remove(context, 'a');
-      expect((await store.enrolmentsFor(context)).map((e) => e.enrolmentId),
-          ['b']);
+      expect((await store.enrolmentsFor(context)).map((e) => e.enrolmentId), [
+        'b',
+      ]);
 
       await expectLater(store.remove(context, 'ghost'), completes);
     });
@@ -683,7 +687,9 @@ void main() {
       expect(
         () => Tom2FARegistry.registerAnnotated([candidate]),
         throwsA(
-          isA<Tom2FAException>().having((e) => e.key, 'key', key).having(
+          isA<Tom2FAException>()
+              .having((e) => e.key, 'key', key)
+              .having(
                 (e) => e.defaultUserMessage,
                 'message',
                 contains('$candidate'),
@@ -701,7 +707,10 @@ void main() {
           instantiate: () => adaptor,
         ),
       ]);
-      expect(identical(Tom2FARegistry.lookup('carrier-pigeon'), adaptor), isTrue);
+      expect(
+        identical(Tom2FARegistry.lookup('carrier-pigeon'), adaptor),
+        isTrue,
+      );
     });
 
     test('ignores a class with no @Tom2FAAdaptor annotation', () {
@@ -755,8 +764,11 @@ void main() {
           ),
         ]),
         throwsA(
-          isA<Tom2FAException>()
-              .having((e) => e.defaultUserMessage, 'message', contains('"sms"')),
+          isA<Tom2FAException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            contains('"sms"'),
+          ),
         ),
       );
     });
@@ -813,28 +825,28 @@ void main() {
     });
 
     Tom2FAContext context() => Tom2FAContext(
-          principal: _principal(
-            TomAuthenticationData(
-              username: 'alice',
-              organization: 'acme',
-              application: 'console',
-              process: 'login',
-              language: 'en',
-              country: 'US',
-              timezone: 'UTC',
-              client: 'web',
-            ),
-          ),
-        );
+      principal: _principal(
+        TomAuthenticationData(
+          username: 'alice',
+          organization: 'acme',
+          application: 'console',
+          process: 'login',
+          language: 'en',
+          country: 'US',
+          timezone: 'UTC',
+          client: 'web',
+        ),
+      ),
+    );
 
     Tom2FASubmission submission(String code) => Tom2FASubmission(
-          submitted: code,
-          challenge: Tom2FAChallenge(
-            type: 'totp',
-            expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
-            attempt: 1,
-          ),
-        );
+      submitted: code,
+      challenge: Tom2FAChallenge(
+        type: 'totp',
+        expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+        attempt: 1,
+      ),
+    );
 
     /// The code an authenticator would show right now, [stepsOff] time steps
     /// away from the server's current step.
@@ -842,24 +854,29 @@ void main() {
     /// Derived through the kernel primitive the verifier itself uses, so the
     /// test cannot drift out of agreement with what it is checking.
     String currentCode({int stepsOff = 0}) => TomTotp.generateCode(
-          TomTotp.decodeBase32(_rfcSecretBase32),
-          TomTotp.counterFor(period: TomTotp2FAService.globalSettingPeriod) +
-              stepsOff,
+      TomTotp.decodeBase32(_rfcSecretBase32),
+      TomTotp.counterFor(period: TomTotp2FAService.globalSettingPeriod) +
+          stepsOff,
+      TomTotp2FAService.globalSettingDigits,
+    );
+
+    test(
+      'issues a challenge describing the code shape but delivering nothing',
+      () async {
+        final spec = await TomTotp2FAService().issueChallenge(context());
+        expect(spec.hint, isEmpty);
+        expect(
+          spec.clientData['digits'],
           TomTotp2FAService.globalSettingDigits,
         );
-
-    test('issues a challenge describing the code shape but delivering nothing',
-        () async {
-      final spec = await TomTotp2FAService().issueChallenge(context());
-      expect(spec.hint, isEmpty);
-      expect(spec.clientData['digits'], TomTotp2FAService.globalSettingDigits);
-      expect(
-        spec.clientData['periodSeconds'],
-        TomTotp2FAService.globalSettingPeriod.inSeconds,
-      );
-      // Nothing secret travels: the secret is re-resolved on pass 2.
-      expect(spec.verificationData, isEmpty);
-    });
+        expect(
+          spec.clientData['periodSeconds'],
+          TomTotp2FAService.globalSettingPeriod.inSeconds,
+        );
+        // Nothing secret travels: the secret is re-resolved on pass 2.
+        expect(spec.verificationData, isEmpty);
+      },
+    );
 
     test('fails the login when no authenticator is enrolled', () async {
       TomTotp2FAService.globalSettingSecretResolver = (_) => null;
@@ -890,7 +907,10 @@ void main() {
     // ------------------------------------------------------------------
 
     /// Installs an enrolment store holding [secret] for the test's principal.
-    Future<void> installStoreWith(String? secret, {String type = 'totp'}) async {
+    Future<void> installStoreWith(
+      String? secret, {
+      String type = 'totp',
+    }) async {
       final store = TomMemory2FAEnrolmentStore();
       if (secret != null) {
         await store.store(
@@ -908,28 +928,34 @@ void main() {
     // The store is the source of truth once installed; a stale resolver left
     // over from before the migration must not keep answering.
     test('prefers the enrolment store over the legacy resolver', () async {
-      TomTotp2FAService.globalSettingSecretResolver =
-          (_) => 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      TomTotp2FAService.globalSettingSecretResolver = (_) =>
+          'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
       await installStoreWith(_rfcSecretBase32);
 
       expect(
-        await TomTotp2FAService()
-            .verifySubmission(context(), submission(currentCode())),
+        await TomTotp2FAService().verifySubmission(
+          context(),
+          submission(currentCode()),
+        ),
         isTrue,
       );
     });
 
     // Migrating one user at a time: a store that holds nothing for *this* user
     // is not an answer, so the hook still gets asked.
-    test('falls back to the resolver when the store holds no TOTP enrolment',
-        () async {
-      await installStoreWith(_rfcSecretBase32, type: 'sms');
-      expect(
-        await TomTotp2FAService()
-            .verifySubmission(context(), submission(currentCode())),
-        isTrue,
-      );
-    });
+    test(
+      'falls back to the resolver when the store holds no TOTP enrolment',
+      () async {
+        await installStoreWith(_rfcSecretBase32, type: 'sms');
+        expect(
+          await TomTotp2FAService().verifySubmission(
+            context(),
+            submission(currentCode()),
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('with a store but no enrolment and no resolver, the login fails as '
         'not-enrolled', () async {
@@ -938,8 +964,11 @@ void main() {
       await expectLater(
         TomTotp2FAService().issueChallenge(context()),
         throwsA(
-          isA<LoginException>()
-              .having((e) => e.key, 'key', 'login.error.2fa.not-enrolled'),
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.not-enrolled',
+          ),
         ),
       );
     });
@@ -961,16 +990,16 @@ void main() {
         Tom2FAEnrolment(
           type: 'totp',
           enrolmentId: 'good',
-          secretData: const {
-            TomTotp2FAService.secretDataKey: _rfcSecretBase32,
-          },
+          secretData: const {TomTotp2FAService.secretDataKey: _rfcSecretBase32},
         ),
       );
       TomBean.withType(Tom2FAEnrolmentStore, store);
 
       expect(
-        await TomTotp2FAService()
-            .verifySubmission(context(), submission(currentCode())),
+        await TomTotp2FAService().verifySubmission(
+          context(),
+          submission(currentCode()),
+        ),
         isTrue,
       );
     });
@@ -993,23 +1022,34 @@ void main() {
       );
     });
 
-    test('rejects a code of the wrong length without hashing anything',
-        () async {
-      expect(
-        await TomTotp2FAService().verifySubmission(context(), submission('12')),
-        isFalse,
-      );
-    });
+    test(
+      'rejects a code of the wrong length without hashing anything',
+      () async {
+        expect(
+          await TomTotp2FAService().verifySubmission(
+            context(),
+            submission('12'),
+          ),
+          isFalse,
+        );
+      },
+    );
 
     test('tolerates one time step of clock skew either way', () async {
       TomTotp2FAService.globalSettingWindowSteps = 1;
       final adaptor = TomTotp2FAService();
       expect(
-        await adaptor.verifySubmission(context(), submission(currentCode(stepsOff: -1))),
+        await adaptor.verifySubmission(
+          context(),
+          submission(currentCode(stepsOff: -1)),
+        ),
         isTrue,
       );
       expect(
-        await adaptor.verifySubmission(context(), submission(currentCode(stepsOff: 1))),
+        await adaptor.verifySubmission(
+          context(),
+          submission(currentCode(stepsOff: 1)),
+        ),
         isTrue,
       );
     });
@@ -1067,10 +1107,8 @@ void main() {
       TomTotp2FAService.globalSettingWindowSteps = savedWindow;
     });
 
-    Tom2FAContext context() => Tom2FAContext(
-          principal: _principalWithId(7),
-          application: 'console',
-        );
+    Tom2FAContext context() =>
+        Tom2FAContext(principal: _principalWithId(7), application: 'console');
 
     /// The base32 secret the offer is asking the user to install.
     String offeredSecret(Tom2FAEnrolmentOffer offer) =>
@@ -1080,83 +1118,91 @@ void main() {
     // The round trip
     // ------------------------------------------------------------------
 
-    test('a generated secret round-trips base32 and its code confirms',
-        () async {
-      final adaptor = TomTotp2FAService();
-      final offer = await adaptor.beginEnrolment(context());
-      final secret = offeredSecret(offer);
+    test(
+      'a generated secret round-trips base32 and its code confirms',
+      () async {
+        final adaptor = TomTotp2FAService();
+        final offer = await adaptor.beginEnrolment(context());
+        final secret = offeredSecret(offer);
 
-      // Decodable, and back to exactly the bytes the policy asked for — a
-      // secret the authenticator cannot decode is a lockout the server would
-      // only discover at the next login.
-      final key = TomTotp.decodeBase32(secret);
-      expect(key, hasLength(TomTotp2FAService.globalSettingSecretBytes));
-      expect(TomTotp.encodeBase32(key), secret);
+        // Decodable, and back to exactly the bytes the policy asked for — a
+        // secret the authenticator cannot decode is a lockout the server would
+        // only discover at the next login.
+        final key = TomTotp.decodeBase32(secret);
+        expect(key, hasLength(TomTotp2FAService.globalSettingSecretBytes));
+        expect(TomTotp.encodeBase32(key), secret);
 
-      final enrolment = await adaptor.confirmEnrolment(
-        context(),
-        offer,
-        TomTotp2FAService.expectedCode(secret),
-      );
+        final enrolment = await adaptor.confirmEnrolment(
+          context(),
+          offer,
+          TomTotp2FAService.expectedCode(secret),
+        );
 
-      expect(enrolment.type, TomTotp2FAService.mechanismType);
-      expect(enrolment.secretData[TomTotp2FAService.secretDataKey], secret);
-      expect(enrolment.enrolmentId, isNotEmpty);
-    });
+        expect(enrolment.type, TomTotp2FAService.mechanismType);
+        expect(enrolment.secretData[TomTotp2FAService.secretDataKey], secret);
+        expect(enrolment.enrolmentId, isNotEmpty);
+      },
+    );
 
     // The confirmed secret must be the one the *verifier* will later resolve,
     // not merely one that agrees with itself.
-    test('the confirmed enrolment answers a real challenge afterwards',
-        () async {
-      final adaptor = TomTotp2FAService();
-      final offer = await adaptor.beginEnrolment(context());
-      final secret = offeredSecret(offer);
+    test(
+      'the confirmed enrolment answers a real challenge afterwards',
+      () async {
+        final adaptor = TomTotp2FAService();
+        final offer = await adaptor.beginEnrolment(context());
+        final secret = offeredSecret(offer);
 
-      final enrolment = await adaptor.confirmEnrolment(
-        context(),
-        offer,
-        TomTotp2FAService.expectedCode(secret),
-      );
-
-      final store = TomMemory2FAEnrolmentStore();
-      await store.store(context(), enrolment);
-      TomBean.withType(Tom2FAEnrolmentStore, store);
-
-      expect(
-        await adaptor.verifySubmission(
-          context(),
-          Tom2FASubmission(
-            submitted: TomTotp2FAService.expectedCode(secret),
-            challenge: Tom2FAChallenge(
-              type: TomTotp2FAService.mechanismType,
-              expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
-            ),
-          ),
-        ),
-        isTrue,
-      );
-    });
-
-    test('confirmation tolerates the same clock skew the verifier does',
-        () async {
-      TomTotp2FAService.globalSettingWindowSteps = 1;
-      final adaptor = TomTotp2FAService();
-      final offer = await adaptor.beginEnrolment(context());
-      final secret = offeredSecret(offer);
-
-      // The code the user's slightly-behind phone is still showing.
-      final onePeriodAgo = DateTime.now().subtract(
-        TomTotp2FAService.globalSettingPeriod,
-      );
-      await expectLater(
-        adaptor.confirmEnrolment(
+        final enrolment = await adaptor.confirmEnrolment(
           context(),
           offer,
-          TomTotp2FAService.expectedCode(secret, at: onePeriodAgo),
-        ),
-        completes,
-      );
-    });
+          TomTotp2FAService.expectedCode(secret),
+        );
+
+        final store = TomMemory2FAEnrolmentStore();
+        await store.store(context(), enrolment);
+        TomBean.withType(Tom2FAEnrolmentStore, store);
+
+        expect(
+          await adaptor.verifySubmission(
+            context(),
+            Tom2FASubmission(
+              submitted: TomTotp2FAService.expectedCode(secret),
+              challenge: Tom2FAChallenge(
+                type: TomTotp2FAService.mechanismType,
+                expiresAt: DateTime.now().toUtc().add(
+                  const Duration(minutes: 5),
+                ),
+              ),
+            ),
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'confirmation tolerates the same clock skew the verifier does',
+      () async {
+        TomTotp2FAService.globalSettingWindowSteps = 1;
+        final adaptor = TomTotp2FAService();
+        final offer = await adaptor.beginEnrolment(context());
+        final secret = offeredSecret(offer);
+
+        // The code the user's slightly-behind phone is still showing.
+        final onePeriodAgo = DateTime.now().subtract(
+          TomTotp2FAService.globalSettingPeriod,
+        );
+        await expectLater(
+          adaptor.confirmEnrolment(
+            context(),
+            offer,
+            TomTotp2FAService.expectedCode(secret, at: onePeriodAgo),
+          ),
+          completes,
+        );
+      },
+    );
 
     // ------------------------------------------------------------------
     // Nothing unconfirmed is ever stored
@@ -1205,40 +1251,42 @@ void main() {
     // The security invariant of the two-map split: clientData travels in public
     // claims, so a confirmation that derived its expected code from there could
     // be told which secret to accept.
-    test('confirmation derives the code from enrolmentData, never clientData',
-        () async {
-      final adaptor = TomTotp2FAService();
-      final genuine = await adaptor.beginEnrolment(context());
-      const attackerSecret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+    test(
+      'confirmation derives the code from enrolmentData, never clientData',
+      () async {
+        final adaptor = TomTotp2FAService();
+        final genuine = await adaptor.beginEnrolment(context());
+        const attackerSecret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
 
-      final tampered = Tom2FAEnrolmentOffer(
-        type: genuine.type,
-        clientData: {
-          ...genuine.clientData,
-          TomTotp2FAService.secretDataKey: attackerSecret,
-        },
-        enrolmentData: genuine.enrolmentData,
-      );
+        final tampered = Tom2FAEnrolmentOffer(
+          type: genuine.type,
+          clientData: {
+            ...genuine.clientData,
+            TomTotp2FAService.secretDataKey: attackerSecret,
+          },
+          enrolmentData: genuine.enrolmentData,
+        );
 
-      await expectLater(
-        adaptor.confirmEnrolment(
+        await expectLater(
+          adaptor.confirmEnrolment(
+            context(),
+            tampered,
+            TomTotp2FAService.expectedCode(attackerSecret),
+          ),
+          throwsA(isA<LoginException>()),
+        );
+
+        final enrolment = await adaptor.confirmEnrolment(
           context(),
           tampered,
-          TomTotp2FAService.expectedCode(attackerSecret),
-        ),
-        throwsA(isA<LoginException>()),
-      );
-
-      final enrolment = await adaptor.confirmEnrolment(
-        context(),
-        tampered,
-        TomTotp2FAService.expectedCode(offeredSecret(genuine)),
-      );
-      expect(
-        enrolment.secretData[TomTotp2FAService.secretDataKey],
-        offeredSecret(genuine),
-      );
-    });
+          TomTotp2FAService.expectedCode(offeredSecret(genuine)),
+        );
+        expect(
+          enrolment.secretData[TomTotp2FAService.secretDataKey],
+          offeredSecret(genuine),
+        );
+      },
+    );
 
     // ------------------------------------------------------------------
     // The secret itself
@@ -1259,42 +1307,41 @@ void main() {
     test('the secret width follows the setting', () async {
       TomTotp2FAService.globalSettingSecretBytes = 32;
       final offer = await TomTotp2FAService().beginEnrolment(context());
-      expect(
-        TomTotp.decodeBase32(offeredSecret(offer)),
-        hasLength(32),
-      );
+      expect(TomTotp.decodeBase32(offeredSecret(offer)), hasLength(32));
     });
 
     // ------------------------------------------------------------------
     // The provisioning URI
     // ------------------------------------------------------------------
 
-    test("the otpauth URI parses and carries this verifier's own policy",
-        () async {
-      TomTotp2FAService.globalSettingIssuer = 'Acme Corp';
-      final offer = await TomTotp2FAService().beginEnrolment(context());
-      final uri = Uri.parse(
-        offer.clientData[TomTotp2FAService.clientDataUriKey] as String,
-      );
+    test(
+      "the otpauth URI parses and carries this verifier's own policy",
+      () async {
+        TomTotp2FAService.globalSettingIssuer = 'Acme Corp';
+        final offer = await TomTotp2FAService().beginEnrolment(context());
+        final uri = Uri.parse(
+          offer.clientData[TomTotp2FAService.clientDataUriKey] as String,
+        );
 
-      expect(uri.scheme, 'otpauth');
-      expect(uri.host, 'totp');
-      // The label is `issuer:account`, both percent-decoded by Uri.
-      expect(uri.pathSegments.single, 'Acme Corp:user7');
+        expect(uri.scheme, 'otpauth');
+        expect(uri.host, 'totp');
+        // The label is `issuer:account`, both percent-decoded by Uri.
+        expect(uri.pathSegments.single, 'Acme Corp:user7');
 
-      expect(uri.queryParameters['secret'], offeredSecret(offer));
-      expect(uri.queryParameters['issuer'], 'Acme Corp');
-      // Stated, not left to the app's default: the derivation is HMAC-SHA1.
-      expect(uri.queryParameters['algorithm'], 'SHA1');
-      expect(
-        uri.queryParameters['digits'],
-        '${TomTotp2FAService.globalSettingDigits}',
-      );
-      expect(
-        uri.queryParameters['period'],
-        '${TomTotp2FAService.globalSettingPeriod.inSeconds}',
-      );
-    });
+        expect(uri.queryParameters['secret'], offeredSecret(offer));
+        expect(uri.queryParameters['issuer'], 'Acme Corp');
+        // Stated, not left to the app's default: the derivation is HMAC-SHA1.
+        expect(uri.queryParameters['algorithm'], 'SHA1');
+        expect(
+          uri.queryParameters['digits'],
+          '${TomTotp2FAService.globalSettingDigits}',
+        );
+        expect(
+          uri.queryParameters['period'],
+          '${TomTotp2FAService.globalSettingPeriod.inSeconds}',
+        );
+      },
+    );
 
     // A hardcoded issuer would put one word in every deployment's
     // authenticator; the deployment already has a name for itself.
@@ -1310,10 +1357,7 @@ void main() {
 
     test('the client data carries the code shape a UI must render', () async {
       final offer = await TomTotp2FAService().beginEnrolment(context());
-      expect(
-        offer.clientData['digits'],
-        TomTotp2FAService.globalSettingDigits,
-      );
+      expect(offer.clientData['digits'], TomTotp2FAService.globalSettingDigits);
       expect(
         offer.clientData['periodSeconds'],
         TomTotp2FAService.globalSettingPeriod.inSeconds,
@@ -1413,8 +1457,9 @@ void main() {
     // -------------------------------------------------------------------------
 
     test('the flag policy reads an exempt principal as disabled', () async {
-      final decision = await const TomPrincipalFlag2FAPolicy()
-          .decideFor(contextFor());
+      final decision = await const TomPrincipalFlag2FAPolicy().decideFor(
+        contextFor(),
+      );
 
       expect(decision.requirement, Tom2FARequirement.disabled);
       expect(decision.isSatisfiedWithoutFactor, isTrue);
@@ -1422,8 +1467,9 @@ void main() {
     });
 
     test('the flag policy reproduces requires2FA and twoFactorType', () async {
-      final decision = await const TomPrincipalFlag2FAPolicy()
-          .decideFor(contextFor(requires2FA: true, twoFactorType: 'totp'));
+      final decision = await const TomPrincipalFlag2FAPolicy().decideFor(
+        contextFor(requires2FA: true, twoFactorType: 'totp'),
+      );
 
       expect(decision.requirement, Tom2FARequirement.required);
       expect(decision.allowedMechanisms, ['totp']);
@@ -1432,14 +1478,17 @@ void main() {
     // The dead end the flags cannot express: required, but naming nothing. The
     // policy must not invent a mechanism — it reports the requirement with no
     // way to satisfy it, and the login is what turns that into a clear refusal.
-    test('a principal that requires a factor but names none allows nothing',
-        () async {
-      final decision = await const TomPrincipalFlag2FAPolicy()
-          .decideFor(contextFor(requires2FA: true));
+    test(
+      'a principal that requires a factor but names none allows nothing',
+      () async {
+        final decision = await const TomPrincipalFlag2FAPolicy().decideFor(
+          contextFor(requires2FA: true),
+        );
 
-      expect(decision.requirement, Tom2FARequirement.required);
-      expect(decision.allowedMechanisms, isEmpty);
-    });
+        expect(decision.requirement, Tom2FARequirement.required);
+        expect(decision.allowedMechanisms, isEmpty);
+      },
+    );
 
     test('resolve falls back to the flag policy when no bean is installed', () {
       expect(Tom2FAPolicy.resolve(), isA<TomPrincipalFlag2FAPolicy>());
@@ -1481,13 +1530,15 @@ void main() {
       // Both orders, because "strictest" must not depend on which role the ACI
       // happens to list first.
       expect(
-        (await policy.decideFor(contextFor(roles: ['staff', 'admin'])))
-            .requirement,
+        (await policy.decideFor(
+          contextFor(roles: ['staff', 'admin']),
+        )).requirement,
         Tom2FARequirement.required,
       );
       expect(
-        (await policy.decideFor(contextFor(roles: ['admin', 'staff'])))
-            .requirement,
+        (await policy.decideFor(
+          contextFor(roles: ['admin', 'staff']),
+        )).requirement,
         Tom2FARequirement.required,
       );
     });
@@ -1501,8 +1552,9 @@ void main() {
         mechanisms: ['fake'],
       );
 
-      final decision =
-          await policy.decideFor(contextFor(roles: ['service-account', 'admin']));
+      final decision = await policy.decideFor(
+        contextFor(roles: ['service-account', 'admin']),
+      );
       expect(decision.requirement, Tom2FARequirement.required);
     });
 
@@ -1544,37 +1596,45 @@ void main() {
     /// adaptors for `totp`, `sms` and `email`. Those three are therefore
     /// genuinely installed here, so naming one of them as the uninstallable
     /// mechanism would assert the opposite of what the framework does.
-    test('offerable mechanisms are the permitted ones that are registered',
-        () async {
-      Tom2FARegistry.register('fake', _FakeAdaptor());
-      final policy = TomRole2FAPolicy(
-        defaultRequirement: Tom2FARequirement.required,
-        mechanisms: ['carrier-pigeon', 'fake', 'push'],
-      );
+    test(
+      'offerable mechanisms are the permitted ones that are registered',
+      () async {
+        Tom2FARegistry.register('fake', _FakeAdaptor());
+        final policy = TomRole2FAPolicy(
+          defaultRequirement: Tom2FARequirement.required,
+          mechanisms: ['carrier-pigeon', 'fake', 'push'],
+        );
 
-      final decision = await policy.decideFor(contextFor());
-      expect(decision.allowedMechanisms, ['carrier-pigeon', 'fake', 'push']);
-      expect(decision.offerableMechanisms, ['fake']);
-    });
+        final decision = await policy.decideFor(contextFor());
+        expect(decision.allowedMechanisms, ['carrier-pigeon', 'fake', 'push']);
+        expect(decision.offerableMechanisms, ['fake']);
+      },
+    );
 
-    test('a policy naming only unregistered mechanisms offers nothing',
-        () async {
-      Tom2FARegistry.register('fake', _FakeAdaptor());
-      final policy = TomRole2FAPolicy(
-        defaultRequirement: Tom2FARequirement.required,
-        mechanisms: ['push'],
-      );
+    test(
+      'a policy naming only unregistered mechanisms offers nothing',
+      () async {
+        Tom2FARegistry.register('fake', _FakeAdaptor());
+        final policy = TomRole2FAPolicy(
+          defaultRequirement: Tom2FARequirement.required,
+          mechanisms: ['push'],
+        );
 
-      final decision = await policy.decideFor(contextFor());
-      expect(decision.allowedMechanisms, ['push'], reason: 'still permitted');
-      expect(decision.offerableMechanisms, isEmpty, reason: 'but unusable');
-    });
+        final decision = await policy.decideFor(contextFor());
+        expect(decision.allowedMechanisms, ['push'], reason: 'still permitted');
+        expect(decision.offerableMechanisms, isEmpty, reason: 'but unusable');
+      },
+    );
 
     test('a decision cannot be edited after the policy made it', () async {
-      final decision = await const TomPrincipalFlag2FAPolicy()
-          .decideFor(contextFor(requires2FA: true, twoFactorType: 'totp'));
+      final decision = await const TomPrincipalFlag2FAPolicy().decideFor(
+        contextFor(requires2FA: true, twoFactorType: 'totp'),
+      );
 
-      expect(() => decision.allowedMechanisms.add('sms'), throwsUnsupportedError);
+      expect(
+        () => decision.allowedMechanisms.add('sms'),
+        throwsUnsupportedError,
+      );
     });
   });
 
@@ -1663,30 +1723,34 @@ void main() {
         containsPair('nonce', 'n-1'),
       );
       // ...and nowhere in the claims a client can read without the private key.
-      final public =
-          TomClientJwtToken(pass1.authorizationToken, decrypt: false);
+      final public = TomClientJwtToken(
+        pass1.authorizationToken,
+        decrypt: false,
+      );
       expect(public.payload, isNot(contains(Tom2FAClaims.verificationData)));
     });
 
-    test('pass 2 hands the adaptor the challenge and its own blob back',
-        () async {
-      final token = await issuedChallenge();
-      await server.authenticatePass2(
-        _message(password: '424242'),
-        challengeToken: token,
-      );
+    test(
+      'pass 2 hands the adaptor the challenge and its own blob back',
+      () async {
+        final token = await issuedChallenge();
+        await server.authenticatePass2(
+          _message(password: '424242'),
+          challengeToken: token,
+        );
 
-      expect(adaptor.verified, 1);
-      expect(adaptor.lastSubmission!.submitted, '424242');
-      // Already counted, so an adaptor sees the state its answer produces.
-      expect(adaptor.lastSubmission!.challenge.attempt, 1);
-      expect(
-        adaptor.lastSubmission!.verificationData,
-        containsPair('nonce', 'n-1'),
-      );
-      expect(adaptor.lastVerifyContext!.principal.username, 'alice');
-      expect(adaptor.lastVerifyContext!.organization, 'acme');
-    });
+        expect(adaptor.verified, 1);
+        expect(adaptor.lastSubmission!.submitted, '424242');
+        // Already counted, so an adaptor sees the state its answer produces.
+        expect(adaptor.lastSubmission!.challenge.attempt, 1);
+        expect(
+          adaptor.lastSubmission!.verificationData,
+          containsPair('nonce', 'n-1'),
+        );
+        expect(adaptor.lastVerifyContext!.principal.username, 'alice');
+        expect(adaptor.lastVerifyContext!.organization, 'acme');
+      },
+    );
 
     test('a correct answer completes the login', () async {
       final token = await issuedChallenge();
@@ -1712,115 +1776,130 @@ void main() {
       // The access-control payload survives both passes.
       expect(completed.secretData!['roles'], contains('admin'));
 
-      final principal =
-          TomBearerAuthentication.convertTokenPayloadToPrincipal(completed);
+      final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        completed,
+      );
       expect(principal.authenticated, isTrue);
       expect(principal.requires2FA, isFalse);
     });
 
     // The todo's actual acceptance criterion: after the second factor, the
     // client holds exactly the token a pass1-only login would have given it.
-    test('the completed token is the one a 2FA-free login would have issued',
-        () async {
-      final token = await issuedChallenge();
-      final pass2 = await server.authenticatePass2(
-        _message(password: '424242'),
-        challengeToken: token,
-      );
+    test(
+      'the completed token is the one a 2FA-free login would have issued',
+      () async {
+        final token = await issuedChallenge();
+        final pass2 = await server.authenticatePass2(
+          _message(password: '424242'),
+          challengeToken: token,
+        );
 
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          _StubAuthService();
-      final control = await server.authenticatePass1(_message());
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            _StubAuthService();
+        final control = await server.authenticatePass1(_message());
 
-      expect(
-        _identityClaims(pass2.authorizationToken),
-        _identityClaims(control.authorizationToken),
-      );
-    });
+        expect(
+          _identityClaims(pass2.authorizationToken),
+          _identityClaims(control.authorizationToken),
+        );
+      },
+    );
 
-    test('a wrong answer is retryable and spends exactly one attempt', () async {
-      final token = await issuedChallenge();
-      final retry = await server.authenticatePass2(
-        _message(password: 'wrong'),
-        challengeToken: token,
-      );
-
-      expect(retry.error, 'login.error.2fa.invalid-code');
-      expect(retry.requires2FA, isTrue);
-      expect(retry.authorizationToken, isNotEmpty);
-
-      final reissued = TomClientJwtToken(retry.authorizationToken);
-      final challenge = Tom2FAChallenge.fromClaims(reissued.payload);
-      expect(challenge!.attempt, 1);
-      expect(challenge.attemptsRemaining, 2);
-      // Re-issued with its blob intact, so the next attempt is answerable.
-      expect(
-        reissued.secretData?[Tom2FAClaims.verificationData],
-        containsPair('nonce', 'n-1'),
-      );
-
-      // And the retry token completes the login normally.
-      final pass2 = await server.authenticatePass2(
-        _message(password: '424242'),
-        challengeToken: reissued,
-      );
-      expect(pass2.error, isEmpty);
-    });
-
-    test('the attempt counter cannot be rewound within one challenge', () async {
-      var token = await issuedChallenge();
-      for (var attempt = 1; attempt <= 2; attempt++) {
+    test(
+      'a wrong answer is retryable and spends exactly one attempt',
+      () async {
+        final token = await issuedChallenge();
         final retry = await server.authenticatePass2(
           _message(password: 'wrong'),
           challengeToken: token,
         );
+
         expect(retry.error, 'login.error.2fa.invalid-code');
-        token = TomClientJwtToken(retry.authorizationToken);
-        expect(Tom2FAChallenge.fromClaims(token.payload)!.attempt, attempt);
-      }
+        expect(retry.requires2FA, isTrue);
+        expect(retry.authorizationToken, isNotEmpty);
 
-      // Third and last allowed attempt: wrong again burns the challenge.
-      final burned = await server.authenticatePass2(
-        _message(password: 'wrong'),
-        challengeToken: token,
-      );
-      expect(burned.error, 'login.error.2fa.attempts-exhausted');
-      expect(burned.authorizationToken, isEmpty);
-      expect(adaptor.verified, 3);
-    });
+        final reissued = TomClientJwtToken(retry.authorizationToken);
+        final challenge = Tom2FAChallenge.fromClaims(reissued.payload);
+        expect(challenge!.attempt, 1);
+        expect(challenge.attemptsRemaining, 2);
+        // Re-issued with its blob intact, so the next attempt is answerable.
+        expect(
+          reissued.secretData?[Tom2FAClaims.verificationData],
+          containsPair('nonce', 'n-1'),
+        );
 
-    test('an exhausted challenge is refused without consulting the adaptor',
-        () async {
-      final exhausted = Tom2FAChallenge(
-        type: 'fake',
-        attempt: 3,
-        attemptsAllowed: 3,
-        expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
-      );
-      final result = await server.authenticatePass2(
-        _message(password: '424242'),
-        challengeToken: _tokenCarrying(exhausted),
-      );
+        // And the retry token completes the login normally.
+        final pass2 = await server.authenticatePass2(
+          _message(password: '424242'),
+          challengeToken: reissued,
+        );
+        expect(pass2.error, isEmpty);
+      },
+    );
 
-      expect(result.error, 'login.error.2fa.attempts-exhausted');
-      expect(adaptor.verified, 0);
-    });
+    test(
+      'the attempt counter cannot be rewound within one challenge',
+      () async {
+        var token = await issuedChallenge();
+        for (var attempt = 1; attempt <= 2; attempt++) {
+          final retry = await server.authenticatePass2(
+            _message(password: 'wrong'),
+            challengeToken: token,
+          );
+          expect(retry.error, 'login.error.2fa.invalid-code');
+          token = TomClientJwtToken(retry.authorizationToken);
+          expect(Tom2FAChallenge.fromClaims(token.payload)!.attempt, attempt);
+        }
 
-    test('a lapsed challenge is refused without consulting the adaptor',
-        () async {
-      final lapsed = Tom2FAChallenge(
-        type: 'fake',
-        expiresAt: DateTime.now().toUtc().subtract(const Duration(seconds: 1)),
-      );
-      final result = await server.authenticatePass2(
-        _message(password: '424242'),
-        challengeToken: _tokenCarrying(lapsed),
-      );
+        // Third and last allowed attempt: wrong again burns the challenge.
+        final burned = await server.authenticatePass2(
+          _message(password: 'wrong'),
+          challengeToken: token,
+        );
+        expect(burned.error, 'login.error.2fa.attempts-exhausted');
+        expect(burned.authorizationToken, isEmpty);
+        expect(adaptor.verified, 3);
+      },
+    );
 
-      expect(result.error, 'login.error.2fa.expired');
-      expect(result.authorizationToken, isEmpty);
-      expect(adaptor.verified, 0);
-    });
+    test(
+      'an exhausted challenge is refused without consulting the adaptor',
+      () async {
+        final exhausted = Tom2FAChallenge(
+          type: 'fake',
+          attempt: 3,
+          attemptsAllowed: 3,
+          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+        );
+        final result = await server.authenticatePass2(
+          _message(password: '424242'),
+          challengeToken: _tokenCarrying(exhausted),
+        );
+
+        expect(result.error, 'login.error.2fa.attempts-exhausted');
+        expect(adaptor.verified, 0);
+      },
+    );
+
+    test(
+      'a lapsed challenge is refused without consulting the adaptor',
+      () async {
+        final lapsed = Tom2FAChallenge(
+          type: 'fake',
+          expiresAt: DateTime.now().toUtc().subtract(
+            const Duration(seconds: 1),
+          ),
+        );
+        final result = await server.authenticatePass2(
+          _message(password: '424242'),
+          challengeToken: _tokenCarrying(lapsed),
+        );
+
+        expect(result.error, 'login.error.2fa.expired');
+        expect(result.authorizationToken, isEmpty);
+        expect(adaptor.verified, 0);
+      },
+    );
 
     test('a token carrying no challenge cannot complete a login', () async {
       TomAuthenticationServer.globalSettingUserAuthenticationService =
@@ -1834,34 +1913,43 @@ void main() {
       expect(result.error, 'login.error.2fa.no-challenge');
     });
 
-    test('pass 2 outside a request zone and without a token fails cleanly',
-        () async {
-      final result = await server.authenticatePass2(_message());
-      expect(result.error, 'login.error.2fa.no-challenge');
-      expect(result.authenticationToken, isEmpty);
-    });
+    test(
+      'pass 2 outside a request zone and without a token fails cleanly',
+      () async {
+        final result = await server.authenticatePass2(_message());
+        expect(result.error, 'login.error.2fa.no-challenge');
+        expect(result.authenticationToken, isEmpty);
+      },
+    );
 
-    test('a challenge for an unregistered mechanism cannot be answered',
-        () async {
-      final token = await issuedChallenge();
-      Tom2FARegistry.reset();
+    test(
+      'a challenge for an unregistered mechanism cannot be answered',
+      () async {
+        final token = await issuedChallenge();
+        Tom2FARegistry.reset();
 
-      final result = await server.authenticatePass2(
-        _message(password: '424242'),
-        challengeToken: token,
-      );
-      expect(result.error, 'login.error.2fa.unsupported-mechanism');
-    });
+        final result = await server.authenticatePass2(
+          _message(password: '424242'),
+          challengeToken: token,
+        );
+        expect(result.error, 'login.error.2fa.unsupported-mechanism');
+      },
+    );
 
-    test('pass 1 fails when the account names a mechanism nobody implements',
-        () async {
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          _StubAuthService(requires2FA: true, twoFactorType: 'carrier-pigeon');
-      final result = await server.authenticatePass1(_message());
+    test(
+      'pass 1 fails when the account names a mechanism nobody implements',
+      () async {
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            _StubAuthService(
+              requires2FA: true,
+              twoFactorType: 'carrier-pigeon',
+            );
+        final result = await server.authenticatePass1(_message());
 
-      expect(result.error, 'login.error.2fa.unsupported-mechanism');
-      expect(result.authenticationToken, isEmpty);
-    });
+        expect(result.error, 'login.error.2fa.unsupported-mechanism');
+        expect(result.authenticationToken, isEmpty);
+      },
+    );
 
     test('pass 1 fails when the account names no mechanism at all', () async {
       TomAuthenticationServer.globalSettingUserAuthenticationService =
@@ -1890,17 +1978,19 @@ void main() {
       expect(result.authorizationToken, isEmpty);
     });
 
-    test('an unexpected adaptor fault is masked behind the generic error',
-        () async {
-      Tom2FARegistry.reset();
-      Tom2FARegistry.register(
-        'fake',
-        _FakeAdaptor(failIssueWith: StateError('gateway down')),
-      );
-      final result = await server.authenticatePass1(_message());
+    test(
+      'an unexpected adaptor fault is masked behind the generic error',
+      () async {
+        Tom2FARegistry.reset();
+        Tom2FARegistry.register(
+          'fake',
+          _FakeAdaptor(failIssueWith: StateError('gateway down')),
+        );
+        final result = await server.authenticatePass1(_message());
 
-      expect(result.error, 'login.error.unknown');
-    });
+        expect(result.error, 'login.error.unknown');
+      },
+    );
 
     test('a principal that owes no factor logs in on pass 1 alone', () async {
       TomAuthenticationServer.globalSettingUserAuthenticationService =
@@ -1911,8 +2001,10 @@ void main() {
       expect(result.requires2FA, isFalse);
       expect(adaptor.issued, 0);
       expect(
-        TomClientJwtToken(result.authorizationToken, decrypt: false)
-            .payload?[Tom2FAClaims.requires2FA],
+        TomClientJwtToken(
+          result.authorizationToken,
+          decrypt: false,
+        ).payload?[Tom2FAClaims.requires2FA],
         'false',
       );
     });
@@ -1926,80 +2018,88 @@ void main() {
     /// whether or not the decision had been lifted out of the field read. These
     /// two put the policy and the flags in *disagreement*, which is the only
     /// arrangement in which the difference is observable at all.
-    test('an installed policy can require a factor the principal does not',
-        () async {
-      // Flags say exempt. The deployment's policy says every `admin` owes one.
-      TomAuthenticationServer.globalSettingUserAuthenticationService =
-          _StubAuthService();
-      TomBean.withType(
-        Tom2FAPolicy,
-        TomRole2FAPolicy(
-          requirementByRole: {'admin': Tom2FARequirement.required},
-          mechanisms: ['fake'],
-        ),
-      );
+    test(
+      'an installed policy can require a factor the principal does not',
+      () async {
+        // Flags say exempt. The deployment's policy says every `admin` owes one.
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            _StubAuthService();
+        TomBean.withType(
+          Tom2FAPolicy,
+          TomRole2FAPolicy(
+            requirementByRole: {'admin': Tom2FARequirement.required},
+            mechanisms: ['fake'],
+          ),
+        );
 
-      final result = await server.authenticatePass1(_message());
+        final result = await server.authenticatePass1(_message());
 
-      expect(result.error, isEmpty);
-      expect(result.requires2FA, isTrue);
-      expect(result.twoFactorType, 'fake');
-      expect(adaptor.issued, 1);
-    });
+        expect(result.error, isEmpty);
+        expect(result.requires2FA, isTrue);
+        expect(result.twoFactorType, 'fake');
+        expect(adaptor.issued, 1);
+      },
+    );
 
-    test('an installed policy can exempt a principal whose flag requires one',
-        () async {
-      // Flags say required (the group default). The policy says nobody is.
-      TomBean.withType(Tom2FAPolicy, TomRole2FAPolicy());
+    test(
+      'an installed policy can exempt a principal whose flag requires one',
+      () async {
+        // Flags say required (the group default). The policy says nobody is.
+        TomBean.withType(Tom2FAPolicy, TomRole2FAPolicy());
 
-      final result = await server.authenticatePass1(_message());
+        final result = await server.authenticatePass1(_message());
 
-      expect(result.error, isEmpty);
-      expect(result.requires2FA, isFalse);
-      expect(adaptor.issued, 0, reason: 'no challenge should be issued');
-    });
+        expect(result.error, isEmpty);
+        expect(result.requires2FA, isFalse);
+        expect(adaptor.issued, 0, reason: 'no challenge should be issued');
+      },
+    );
 
     // The permitted-but-not-installed case, reached through a policy rather than
     // through a principal naming a mechanism nobody implements. Same refusal,
     // because the login rejects on what is *offerable*, not on where the
     // permission came from.
-    test('a policy naming only unregistered mechanisms fails the login',
-        () async {
-      TomBean.withType(
-        Tom2FAPolicy,
-        TomRole2FAPolicy(
-          defaultRequirement: Tom2FARequirement.required,
-          // 'push' rather than 'sms': the framework ships an sms adaptor, and
-          // the registry's scan finds it, so 'sms' names an *installed*
-          // mechanism in any program that reflects the server barrel.
-          mechanisms: ['push'],
-        ),
-      );
+    test(
+      'a policy naming only unregistered mechanisms fails the login',
+      () async {
+        TomBean.withType(
+          Tom2FAPolicy,
+          TomRole2FAPolicy(
+            defaultRequirement: Tom2FARequirement.required,
+            // 'push' rather than 'sms': the framework ships an sms adaptor, and
+            // the registry's scan finds it, so 'sms' names an *installed*
+            // mechanism in any program that reflects the server barrel.
+            mechanisms: ['push'],
+          ),
+        );
 
-      final result = await server.authenticatePass1(_message());
+        final result = await server.authenticatePass1(_message());
 
-      expect(result.error, 'login.error.2fa.unsupported-mechanism');
-      expect(result.authenticationToken, isEmpty);
-      expect(adaptor.issued, 0);
-    });
+        expect(result.error, 'login.error.2fa.unsupported-mechanism');
+        expect(result.authenticationToken, isEmpty);
+        expect(adaptor.issued, 0);
+      },
+    );
 
-    test('the login challenges with the policy\'s first offerable mechanism',
-        () async {
-      TomBean.withType(
-        Tom2FAPolicy,
-        TomRole2FAPolicy(
-          defaultRequirement: Tom2FARequirement.required,
-          // 'push' is permitted but not installed here, so preference order has
-          // to survive the intersection for 'fake' to be the one challenged.
-          mechanisms: ['push', 'fake'],
-        ),
-      );
+    test(
+      'the login challenges with the policy\'s first offerable mechanism',
+      () async {
+        TomBean.withType(
+          Tom2FAPolicy,
+          TomRole2FAPolicy(
+            defaultRequirement: Tom2FARequirement.required,
+            // 'push' is permitted but not installed here, so preference order has
+            // to survive the intersection for 'fake' to be the one challenged.
+            mechanisms: ['push', 'fake'],
+          ),
+        );
 
-      final result = await server.authenticatePass1(_message());
+        final result = await server.authenticatePass1(_message());
 
-      expect(result.error, isEmpty);
-      expect(result.twoFactorType, 'fake');
-    });
+        expect(result.error, isEmpty);
+        expect(result.twoFactorType, 'fake');
+      },
+    );
   });
 
   // ===========================================================================
@@ -2134,48 +2234,43 @@ void main() {
     void policy(
       Tom2FARequirement requirement, {
       List<String> mechanisms = const ['app'],
-    }) =>
-        TomBean.withType(
-          Tom2FAPolicy,
-          TomRole2FAPolicy(
-            defaultRequirement: requirement,
-            mechanisms: mechanisms,
-          ),
-        );
+    }) => TomBean.withType(
+      Tom2FAPolicy,
+      TomRole2FAPolicy(defaultRequirement: requirement, mechanisms: mechanisms),
+    );
 
     /// The context the server builds for the logging-in user, so a test can
     /// seed and read the store under the same key the flow uses.
     Tom2FAContext contextOfAlice() => Tom2FAContext(
-          principal: _principal(
-            TomAuthenticationData(
-              username: 'alice',
-              organization: 'acme',
-              application: 'console',
-              process: 'login',
-              language: 'en',
-              country: 'US',
-              timezone: 'UTC',
-              client: 'web',
-            ),
-          ),
-        );
+      principal: _principal(
+        TomAuthenticationData(
+          username: 'alice',
+          organization: 'acme',
+          application: 'console',
+          process: 'login',
+          language: 'en',
+          country: 'US',
+          timezone: 'UTC',
+          client: 'web',
+        ),
+      ),
+    );
 
     /// Records [type] as an already-set-up factor for the logging-in user.
     Future<void> alreadyEnrolled({
       String type = 'app',
       String id = 'existing',
       bool isPrimary = true,
-    }) =>
-        store.store(
-          contextOfAlice(),
-          Tom2FAEnrolment(
-            type: type,
-            enrolmentId: id,
-            hint: 'set up earlier',
-            isPrimary: isPrimary,
-            secretData: const {'secret': _EnrollableAdaptor.secret},
-          ),
-        );
+    }) => store.store(
+      contextOfAlice(),
+      Tom2FAEnrolment(
+        type: type,
+        enrolmentId: id,
+        hint: 'set up earlier',
+        isPrimary: isPrimary,
+        secretData: const {'secret': _EnrollableAdaptor.secret},
+      ),
+    );
 
     /// Runs pass 1 and hands back the interim token plus the result.
     Future<(TomAuthenticationResult, TomClientJwtToken)> login() async {
@@ -2207,44 +2302,54 @@ void main() {
     // name only one factor and is set by whichever adaptor built the principal.
     // The store is the authority now, so a user holding several factors is
     // challenged for the one they nominated.
-    test('the challenge follows the primary enrolment, not the policy order',
-        () async {
-      await alreadyEnrolled(type: 'fake', id: 'old-token', isPrimary: false);
-      await alreadyEnrolled(id: 'phone');
-      policy(Tom2FARequirement.required, mechanisms: ['fake', 'app']);
+    test(
+      'the challenge follows the primary enrolment, not the policy order',
+      () async {
+        await alreadyEnrolled(type: 'fake', id: 'old-token', isPrimary: false);
+        await alreadyEnrolled(id: 'phone');
+        policy(Tom2FARequirement.required, mechanisms: ['fake', 'app']);
 
-      final result = await server.authenticatePass1(_message());
+        final result = await server.authenticatePass1(_message());
 
-      expect(result.twoFactorType, 'app',
-          reason: "'fake' comes first in the policy but is not primary");
-      expect(unenrollable.issued, 0);
-      expect(enrollable.issued, 1);
-    });
+        expect(
+          result.twoFactorType,
+          'app',
+          reason: "'fake' comes first in the policy but is not primary",
+        );
+        expect(unenrollable.issued, 0);
+        expect(enrollable.issued, 1);
+      },
+    );
 
     // ------------------------------------------------------------------
     // Shape 2 — enforced, not yet enrolled
     // ------------------------------------------------------------------
 
-    test('an unenrolled user is offered the method list, not locked out',
-        () async {
-      policy(Tom2FARequirement.required);
+    test(
+      'an unenrolled user is offered the method list, not locked out',
+      () async {
+        policy(Tom2FARequirement.required);
 
-      final (result, _) = await login();
+        final (result, _) = await login();
 
-      expect(result.error, isEmpty, reason: 'this used to be a hard failure');
-      expect(result.requires2FAEnrolment, isTrue);
-      expect(result.requires2FA, isFalse,
-          reason: 'enrolment is its own state, not an overloaded challenge');
-      expect(result.twoFactorEnrolmentSkippable, isFalse);
-      expect(result.availableTwoFactorMethods.map((m) => m.type), ['app']);
-      // Resource-keyed, so the chooser has something to render in the user's
-      // own language rather than a mechanism key.
-      final method = result.availableTwoFactorMethods.single;
-      expect(method.displayNameKey, 'two_factor.app.name');
-      expect(method.descriptionKey, 'two_factor.app.description');
-      expect(method.iconKey, 'two_factor.app.icon');
-      expect(enrollable.issued, 0, reason: 'nothing to challenge yet');
-    });
+        expect(result.error, isEmpty, reason: 'this used to be a hard failure');
+        expect(result.requires2FAEnrolment, isTrue);
+        expect(
+          result.requires2FA,
+          isFalse,
+          reason: 'enrolment is its own state, not an overloaded challenge',
+        );
+        expect(result.twoFactorEnrolmentSkippable, isFalse);
+        expect(result.availableTwoFactorMethods.map((m) => m.type), ['app']);
+        // Resource-keyed, so the chooser has something to render in the user's
+        // own language rather than a mechanism key.
+        final method = result.availableTwoFactorMethods.single;
+        expect(method.displayNameKey, 'two_factor.app.name');
+        expect(method.descriptionKey, 'two_factor.app.description');
+        expect(method.iconKey, 'two_factor.app.icon');
+        expect(enrollable.issued, 0, reason: 'nothing to challenge yet');
+      },
+    );
 
     // A mechanism the policy permits but which cannot be set up here is not an
     // offer — advertising it would produce a chooser entry that fails the
@@ -2262,15 +2367,15 @@ void main() {
       policy(Tom2FARequirement.required);
 
       final (_, token) = await login();
-      final principal =
-          TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+      final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        token,
+      );
 
       expect(principal.username, 'alice');
       expect(principal.authenticated, isFalse);
     });
 
-    test('the whole enrol-on-first-login round trip issues a session',
-        () async {
+    test('the whole enrol-on-first-login round trip issues a session', () async {
       policy(Tom2FARequirement.required);
       final (_, offered) = await login();
 
@@ -2284,8 +2389,10 @@ void main() {
 
       // What the user needs to install rides in the public claims...
       final begunToken = TomClientJwtToken(begun.authorizationToken);
-      final publicClaims =
-          TomClientJwtToken(begun.authorizationToken, decrypt: false).payload;
+      final publicClaims = TomClientJwtToken(
+        begun.authorizationToken,
+        decrypt: false,
+      ).payload;
       expect(
         publicClaims?[Tom2FAEnrolmentClaims.clientData],
         containsPair('setupCode', _EnrollableAdaptor.secret),
@@ -2308,8 +2415,9 @@ void main() {
 
       final session = TomClientJwtToken(done.authorizationToken);
       expect(
-        TomBearerAuthentication.convertTokenPayloadToPrincipal(session)
-            .authenticated,
+        TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          session,
+        ).authenticated,
         isTrue,
       );
 
@@ -2345,30 +2453,32 @@ void main() {
     // Shape 3 — optional
     // ------------------------------------------------------------------
 
-    test('an optional policy offers enrolment and lets it be declined',
-        () async {
-      policy(Tom2FARequirement.optional);
+    test(
+      'an optional policy offers enrolment and lets it be declined',
+      () async {
+        policy(Tom2FARequirement.optional);
 
-      final (offer, token) = await login();
-      expect(offer.requires2FAEnrolment, isTrue);
-      expect(offer.twoFactorEnrolmentSkippable, isTrue);
+        final (offer, token) = await login();
+        expect(offer.requires2FAEnrolment, isTrue);
+        expect(offer.twoFactorEnrolmentSkippable, isTrue);
 
-      final skipped = await server.skipTwoFactorEnrolment(
-        _message(),
-        enrolmentToken: token,
-      );
+        final skipped = await server.skipTwoFactorEnrolment(
+          _message(),
+          enrolmentToken: token,
+        );
 
-      expect(skipped.error, isEmpty);
-      expect(skipped.requires2FA, isFalse);
-      expect(skipped.requires2FAEnrolment, isFalse);
-      expect(
-        TomBearerAuthentication.convertTokenPayloadToPrincipal(
-          TomClientJwtToken(skipped.authorizationToken),
-        ).authenticated,
-        isTrue,
-      );
-      expect(await store.enrolmentsFor(contextOfAlice()), isEmpty);
-    });
+        expect(skipped.error, isEmpty);
+        expect(skipped.requires2FA, isFalse);
+        expect(skipped.requires2FAEnrolment, isFalse);
+        expect(
+          TomBearerAuthentication.convertTokenPayloadToPrincipal(
+            TomClientJwtToken(skipped.authorizationToken),
+          ).authenticated,
+          isTrue,
+        );
+        expect(await store.enrolmentsFor(contextOfAlice()), isEmpty);
+      },
+    );
 
     test('an optional offer can also be accepted', () async {
       policy(Tom2FARequirement.optional);
@@ -2403,26 +2513,28 @@ void main() {
     // Grace is the one case in which a *required* factor may be postponed, and
     // the postponement has to be charged to somebody — the policy that granted
     // it, which is the only party that knows how many are left.
-    test('grace logins make a required offer declinable, and are spent',
-        () async {
-      final graced = _GracePolicy(
-        requirement: Tom2FARequirement.required,
-        graceLogins: 2,
-      );
-      TomBean.withType(Tom2FAPolicy, graced);
+    test(
+      'grace logins make a required offer declinable, and are spent',
+      () async {
+        final graced = _GracePolicy(
+          requirement: Tom2FARequirement.required,
+          graceLogins: 2,
+        );
+        TomBean.withType(Tom2FAPolicy, graced);
 
-      final (offer, token) = await login();
-      expect(offer.requires2FAEnrolment, isTrue);
-      expect(offer.twoFactorEnrolmentSkippable, isTrue);
+        final (offer, token) = await login();
+        expect(offer.requires2FAEnrolment, isTrue);
+        expect(offer.twoFactorEnrolmentSkippable, isTrue);
 
-      final skipped = await server.skipTwoFactorEnrolment(
-        _message(),
-        enrolmentToken: token,
-      );
+        final skipped = await server.skipTwoFactorEnrolment(
+          _message(),
+          enrolmentToken: token,
+        );
 
-      expect(skipped.error, isEmpty);
-      expect(graced.graceSpent, 1);
-    });
+        expect(skipped.error, isEmpty);
+        expect(graced.graceSpent, 1);
+      },
+    );
 
     // Opening the chooser is not using a grace login. Only declining is.
     test('enrolling under grace spends none of it', () async {
@@ -2455,8 +2567,11 @@ void main() {
       final (_, token) = await login();
       await server.skipTwoFactorEnrolment(_message(), enrolmentToken: token);
 
-      expect(graced.graceSpent, 0,
-          reason: 'an optional factor was never owed, so nothing was postponed');
+      expect(
+        graced.graceSpent,
+        0,
+        reason: 'an optional factor was never owed, so nothing was postponed',
+      );
     });
 
     // ------------------------------------------------------------------
@@ -2486,18 +2601,20 @@ void main() {
     // A deployment that installed no store keeps exactly the behaviour it had:
     // the adaptor stays the only authority on whether the user has a factor,
     // because there would be nowhere to save an enrolment offered here.
-    test('with no store installed the login keeps the challenge path',
-        () async {
-      TomBean.resetBeanContext();
-      policy(Tom2FARequirement.required);
+    test(
+      'with no store installed the login keeps the challenge path',
+      () async {
+        TomBean.resetBeanContext();
+        policy(Tom2FARequirement.required);
 
-      final result = await server.authenticatePass1(_message());
+        final result = await server.authenticatePass1(_message());
 
-      expect(result.error, isEmpty);
-      expect(result.requires2FA, isTrue);
-      expect(result.requires2FAEnrolment, isFalse);
-      expect(enrollable.issued, 1);
-    });
+        expect(result.error, isEmpty);
+        expect(result.requires2FA, isTrue);
+        expect(result.requires2FAEnrolment, isFalse);
+        expect(enrollable.issued, 1);
+      },
+    );
 
     // ------------------------------------------------------------------
     // What the enrolment passes refuse
@@ -2517,39 +2634,41 @@ void main() {
       expect(enrollable.begun, 0);
     });
 
-    test('a wrong confirmation stores nothing and leaves the login incomplete',
-        () async {
-      policy(Tom2FARequirement.required);
-      final (_, token) = await login();
-      final begun = await server.beginTwoFactorEnrolment(
-        _message(password: 'app'),
-        enrolmentToken: token,
-      );
+    test(
+      'a wrong confirmation stores nothing and leaves the login incomplete',
+      () async {
+        policy(Tom2FARequirement.required);
+        final (_, token) = await login();
+        final begun = await server.beginTwoFactorEnrolment(
+          _message(password: 'app'),
+          enrolmentToken: token,
+        );
 
-      final retry = await server.completeTwoFactorEnrolment(
-        _message(password: 'nope'),
-        enrolmentToken: TomClientJwtToken(begun.authorizationToken),
-      );
+        final retry = await server.completeTwoFactorEnrolment(
+          _message(password: 'nope'),
+          enrolmentToken: TomClientJwtToken(begun.authorizationToken),
+        );
 
-      expect(retry.error, 'login.error.2fa.enrolment-invalid-code');
-      expect(retry.requires2FAEnrolment, isTrue);
-      expect(await store.enrolmentsFor(contextOfAlice()), isEmpty);
-      expect(
-        TomBearerAuthentication.convertTokenPayloadToPrincipal(
-          TomClientJwtToken(retry.authorizationToken),
-        ).authenticated,
-        isFalse,
-      );
+        expect(retry.error, 'login.error.2fa.enrolment-invalid-code');
+        expect(retry.requires2FAEnrolment, isTrue);
+        expect(await store.enrolmentsFor(contextOfAlice()), isEmpty);
+        expect(
+          TomBearerAuthentication.convertTokenPayloadToPrincipal(
+            TomClientJwtToken(retry.authorizationToken),
+          ).authenticated,
+          isFalse,
+        );
 
-      // The re-issued token still confirms, with one attempt spent — the same
-      // retry shape a wrong challenge answer gets.
-      final done = await server.completeTwoFactorEnrolment(
-        _message(password: _EnrollableAdaptor.confirmation),
-        enrolmentToken: TomClientJwtToken(retry.authorizationToken),
-      );
-      expect(done.error, isEmpty);
-      expect(await store.enrolmentsFor(contextOfAlice()), hasLength(1));
-    });
+        // The re-issued token still confirms, with one attempt spent — the same
+        // retry shape a wrong challenge answer gets.
+        final done = await server.completeTwoFactorEnrolment(
+          _message(password: _EnrollableAdaptor.confirmation),
+          enrolmentToken: TomClientJwtToken(retry.authorizationToken),
+        );
+        expect(done.error, isEmpty);
+        expect(await store.enrolmentsFor(contextOfAlice()), hasLength(1));
+      },
+    );
 
     test('confirmation attempts cannot be rewound and do run out', () async {
       policy(Tom2FARequirement.required);
@@ -2584,13 +2703,13 @@ void main() {
 
       for (final pass in <Future<TomAuthenticationResult> Function()>[
         () => server.beginTwoFactorEnrolment(
-              _message(password: 'app'),
-              enrolmentToken: token,
-            ),
+          _message(password: 'app'),
+          enrolmentToken: token,
+        ),
         () => server.completeTwoFactorEnrolment(
-              _message(password: _EnrollableAdaptor.confirmation),
-              enrolmentToken: token,
-            ),
+          _message(password: _EnrollableAdaptor.confirmation),
+          enrolmentToken: token,
+        ),
         () => server.skipTwoFactorEnrolment(_message(), enrolmentToken: token),
       ]) {
         final result = await pass();
@@ -2638,15 +2757,17 @@ void main() {
     });
 
     // The offer is only honest if the factor it advertises can be recorded.
-    test('a required user with nothing enrollable still fails the login',
-        () async {
-      policy(Tom2FARequirement.required, mechanisms: ['fake']);
+    test(
+      'a required user with nothing enrollable still fails the login',
+      () async {
+        policy(Tom2FARequirement.required, mechanisms: ['fake']);
 
-      final result = await server.authenticatePass1(_message());
+        final result = await server.authenticatePass1(_message());
 
-      expect(result.error, 'login.error.2fa.unsupported-mechanism');
-      expect(result.authorizationToken, isEmpty);
-    });
+        expect(result.error, 'login.error.2fa.unsupported-mechanism');
+        expect(result.authorizationToken, isEmpty);
+      },
+    );
   });
 }
 
@@ -2669,8 +2790,10 @@ TomClientJwtToken _tokenCarrying(Tom2FAChallenge challenge) {
     requires2FA: true,
     twoFactorType: challenge.type,
   );
-  final (publicInfo, privateInfo) =
-      TomBearerAuthentication.convertPrincipalToTokenPayload(
+  final (
+    publicInfo,
+    privateInfo,
+  ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
     principal,
     null,
     'US',

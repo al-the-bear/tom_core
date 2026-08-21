@@ -112,7 +112,7 @@ class FullResultExample {
       application: 'admin-portal',
       language: 'en',
       timezone: 'UTC',
-      clientTimeZone: 'America/New_York',
+      clientTimezone: 'America/New_York',
     );
 
     textsCount = result.texts.length;
@@ -315,8 +315,8 @@ class SettingsEndpointExample {
 class LocalizationPairsExample {
   static String? effectiveCountry;
   static String? effectiveLanguage;
-  static String? effectiveTimeZone;
-  static bool timeZoneOverridden = false;
+  static String? effectiveTimezone;
+  static bool timezoneOverridden = false;
   static bool languageOverridden = false;
 
   static void example10LocalizationPairs() {
@@ -327,23 +327,23 @@ class LocalizationPairsExample {
       timezone: 'UTC',
       clientCountry: 'DE',
       clientLanguage: 'de',
-      clientTimeZone: 'Europe/Berlin',
+      clientTimezone: 'Europe/Berlin',
     );
 
     effectiveCountry = result.country ?? result.clientCountry;
     effectiveLanguage = result.language ?? result.clientLanguage;
-    effectiveTimeZone = result.timezone ?? result.clientTimeZone;
+    effectiveTimezone = result.timezone ?? result.clientTimezone;
 
-    timeZoneOverridden =
-        result.timezone != null && result.timezone != result.clientTimeZone;
+    timezoneOverridden =
+        result.timezone != null && result.timezone != result.clientTimezone;
     languageOverridden =
         result.language != null && result.language != result.clientLanguage;
 
     assert(effectiveCountry == 'DE', 'Server and client agree on the country');
     assert(effectiveLanguage == 'de', 'Server was silent, so the client wins');
-    assert(effectiveTimeZone == 'UTC', 'Server pinned the zone, so it wins');
+    assert(effectiveTimezone == 'UTC', 'Server pinned the zone, so it wins');
 
-    assert(timeZoneOverridden, 'The server decided against the client zone');
+    assert(timezoneOverridden, 'The server decided against the client zone');
     assert(!languageOverridden, 'Silence is not an override');
   }
 }

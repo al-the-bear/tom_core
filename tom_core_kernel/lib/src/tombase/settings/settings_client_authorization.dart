@@ -101,7 +101,7 @@ class TomGetSettingsMessage {
 /// | Resources | [texts], [config] |
 /// | Authorization | [groups], [roles], [entitlements], [resourceKeys] |
 /// | Context | [organization], [process], [application] |
-/// | Localization | [country], [language], [timezone], [clientCountry], [clientLanguage], [clientTimeZone] |
+/// | Localization | [country], [language], [timezone], [clientCountry], [clientLanguage], [clientTimezone] |
 ///
 /// ## Example
 ///
@@ -218,7 +218,7 @@ class TomGetSettingsResult {
   ///
   /// The IANA timezone identifier the server resolved for this session — set
   /// when the deployment pins a timezone (a tenant fixed to one, say) or when
-  /// it declines the client's request. May differ from [clientTimeZone] based
+  /// it declines the client's request. May differ from [clientTimezone] based
   /// on server configuration.
   ///
   /// This completes the server/client pairing the other two localization
@@ -228,9 +228,9 @@ class TomGetSettingsResult {
   /// an override:
   ///
   /// ```dart
-  /// final effective = result.timezone ?? result.clientTimeZone;
+  /// final effective = result.timezone ?? result.clientTimezone;
   /// final overridden =
-  ///     result.timezone != null && result.timezone != result.clientTimeZone;
+  ///     result.timezone != null && result.timezone != result.clientTimezone;
   /// ```
   ///
   /// `null` means the server expressed no opinion, which is not the same as
@@ -254,7 +254,7 @@ class TomGetSettingsResult {
   ///
   /// The timezone used for date/time display and calculations.
   /// Uses IANA timezone database identifiers (e.g., 'America/New_York').
-  String? clientTimeZone;
+  String? clientTimezone;
 
   // ---------------------------------------------------------------------------
   // Constructor
@@ -281,7 +281,7 @@ class TomGetSettingsResult {
     this.timezone,
     this.clientLanguage,
     this.clientCountry,
-    this.clientTimeZone,
+    this.clientTimezone,
   }) : texts = texts ?? <String, Object?>{},
        config = config ?? <String, Object?>{},
        groups = groups ?? <String>[],

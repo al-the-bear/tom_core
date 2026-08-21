@@ -77,7 +77,7 @@ TomPrincipal _principalWithId(int userId) => TomPrincipal(
     firstname: 'Test',
     lastname: 'User',
     attributes: {},
-    timeZone: 'utc',
+    timezone: 'utc',
   ),
   aci: TomAccessControlInformation(roles: const ['user']),
 );

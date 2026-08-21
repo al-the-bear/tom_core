@@ -15,8 +15,8 @@ anyone who was writing them.
   decided, the client what it asked for, and comparing the two answers "was I
   overridden?". Two of the three concepts had both halves —
   `country`/`clientCountry`, `language`/`clientLanguage` — while timezone had
-  only `clientTimeZone`. A server that pinned a session's zone had nowhere to
-  say so, and a client reading `clientTimeZone` could not tell whether it was
+  only `clientTimezone`. A server that pinned a session's zone had nowhere to
+  say so, and a client reading `clientTimezone` could not tell whether it was
   looking at its own preference echoed back or a server decision. The new field
   is declared beside `country` and `language`, follows the same `null`-means-no-
   opinion convention, and completes the 3+3 set `TomPrincipal` already carried.
@@ -153,6 +153,40 @@ anyone who was writing them.
   shared `tomReflectionInfo` stays lenient.
 
 ### Changed
+
+- **One spelling of "timezone" across the kernel, and one spelling in the token
+  (tcinc301).** The concept was written three ways in code that hands it from
+  one type to the next: `TomUser.timeZone`, `TomPrincipal.timezone` /
+  `.clientTimezone`, and `TomGetSettingsResult.clientTimeZone`. `TomPrincipal`
+  sits between the other two — it is populated from the user and populates the
+  settings result — so every hop had to switch spelling, and the source carried
+  a hand-written note at the seam (`// Note: user.timeZone is the stored
+  preference`) whose only job was to bridge two spellings of one word. The
+  neighbouring concepts had no such split: `language` and `country` are spelled
+  identically everywhere.
+
+  Everything now reads `timezone` / `clientTimezone`, one word — the spelling
+  the IANA database uses, the spelling the `timezone` package this kernel
+  depends on names itself, and already the majority here
+  (`TomPrincipal.timezone`, `TomPrincipal.clientTimezone`,
+  `TomUserPreferenceKeys.timezone`, and the new
+  `TomGetSettingsResult.timezone`). The bridging comment is deleted because
+  there is nothing left to bridge.
+
+  **The JWT claim names were split the same way, and are unified too.**
+  `convertPrincipalToTokenPayload` wrote `"timeZone"` and `"clientTimezone"`
+  two lines apart in one map literal, plus `"userTimeZone"` for the user's
+  stored preference — so the wire format itself spelled the concept both ways.
+  The claims are now `"timezone"`, `"clientTimezone"` and `"userTimezone"`.
+
+  **Breaking, on two surfaces.** `TomUser.timeZone` (getter and constructor
+  parameter) and `TomGetSettingsResult.clientTimeZone` (field and constructor
+  parameter) are renamed, which the compiler catches; and because both classes
+  are reflected, the identifier is the JSON key, so the settings wire contract
+  and the token claim names change with them. Reflected serialization data must
+  be regenerated — a stale `.reflection.dart` still compiles, because its
+  accessor closures take `dynamic instance`, and fails only when the accessor
+  is invoked.
 
 - **`settings_client_authorization.dart` and `authentication_authorization.dart`
   now import `@tomReflector` from the reflection module directly.** Both

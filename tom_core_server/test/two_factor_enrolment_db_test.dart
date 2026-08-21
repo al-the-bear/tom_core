@@ -35,30 +35,30 @@ import 'fixtures/test_database.dart';
 /// A principal whose [TomPrincipal.id] is [userId] — the value the store
 /// stringifies into `principal_id`.
 TomPrincipal _principalWithId(int userId) => TomPrincipal(
-      authenticated: true,
-      context: {},
-      clientId: 0,
-      organization: 'acme',
-      organizationId: 0,
-      application: 'console',
-      applicationId: 0,
-      process: 'login',
-      processId: 0,
-      language: 'en',
-      country: 'US',
-      clientCountry: 'US',
-      clientLanguage: 'en',
-      clientTimezone: 'UTC',
-      user: TomUser(
-        id: userId,
-        username: 'user$userId',
-        firstname: 'Test',
-        lastname: 'User',
-        attributes: {},
-        timeZone: 'utc',
-      ),
-      aci: TomAccessControlInformation(roles: const ['user']),
-    );
+  authenticated: true,
+  context: {},
+  clientId: 0,
+  organization: 'acme',
+  organizationId: 0,
+  application: 'console',
+  applicationId: 0,
+  process: 'login',
+  processId: 0,
+  language: 'en',
+  country: 'US',
+  clientCountry: 'US',
+  clientLanguage: 'en',
+  clientTimezone: 'UTC',
+  user: TomUser(
+    id: userId,
+    username: 'user$userId',
+    firstname: 'Test',
+    lastname: 'User',
+    attributes: {},
+    timezone: 'utc',
+  ),
+  aci: TomAccessControlInformation(roles: const ['user']),
+);
 
 Tom2FAContext _context(int userId) =>
     Tom2FAContext(principal: _principalWithId(userId));
@@ -80,7 +80,7 @@ void main() async {
   final String? skipReason = reachable
       ? null
       : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-          'start one with tool/run_db_tests.sh';
+            'start one with tool/run_db_tests.sh';
 
   group('TomPersistent2FAEnrolmentStore (DB-backed)', () {
     late TomDataSourceInfo dsi;
@@ -191,10 +191,10 @@ void main() async {
       );
 
       final loaded = await store.enrolmentsFor(_context(7));
-      expect(loaded.map((e) => e.enrolmentId), containsAll(<String>[
-        'phone-1',
-        'watch-1',
-      ]));
+      expect(
+        loaded.map((e) => e.enrolmentId),
+        containsAll(<String>['phone-1', 'watch-1']),
+      );
     });
 
     // ------------------------------------------------------------------
@@ -313,31 +313,33 @@ void main() async {
       expect(() => jsonDecode(cipher), throwsA(isA<FormatException>()));
     });
 
-    test('an undecryptable row yields an unusable factor, not a failed read',
-        () async {
-      await store.store(
-        _context(7),
-        Tom2FAEnrolment(
-          type: 'totp',
-          enrolmentId: 'phone-1',
-          hint: 'iPhone 14',
-          secretData: {TomTotp2FAService.secretDataKey: _secret},
-        ),
-      );
-      // Ciphertext this store's key cannot open — what a row written before a
-      // key rotation looks like afterwards.
-      await dsi.datasource.executeCommand(
-        "UPDATE tom_user_two_factor_enrolment SET secret_data = 'not-cipher'",
-      );
+    test(
+      'an undecryptable row yields an unusable factor, not a failed read',
+      () async {
+        await store.store(
+          _context(7),
+          Tom2FAEnrolment(
+            type: 'totp',
+            enrolmentId: 'phone-1',
+            hint: 'iPhone 14',
+            secretData: {TomTotp2FAService.secretDataKey: _secret},
+          ),
+        );
+        // Ciphertext this store's key cannot open — what a row written before a
+        // key rotation looks like afterwards.
+        await dsi.datasource.executeCommand(
+          "UPDATE tom_user_two_factor_enrolment SET secret_data = 'not-cipher'",
+        );
 
-      // The enrolment still comes back, with everything that was never secret
-      // intact: an unreadable secret means *this factor cannot answer a
-      // challenge*, and throwing would instead fail the whole login — including
-      // the user's other, perfectly good factors.
-      final enrolment = (await store.enrolmentsFor(_context(7))).single;
-      expect(enrolment.enrolmentId, 'phone-1');
-      expect(enrolment.hint, 'iPhone 14');
-      expect(enrolment.secretData, isEmpty);
-    });
+        // The enrolment still comes back, with everything that was never secret
+        // intact: an unreadable secret means *this factor cannot answer a
+        // challenge*, and throwing would instead fail the whole login — including
+        // the user's other, perfectly good factors.
+        final enrolment = (await store.enrolmentsFor(_context(7))).single;
+        expect(enrolment.enrolmentId, 'phone-1');
+        expect(enrolment.hint, 'iPhone 14');
+        expect(enrolment.secretData, isEmpty);
+      },
+    );
   }, skip: skipReason);
 }

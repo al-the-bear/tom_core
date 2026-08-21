@@ -1201,13 +1201,13 @@ final _data = <r.Reflection, r.ReflectorData>{
                 timezone,
                 clientLanguage,
                 clientCountry,
-                clientTimeZone,
+                clientTimezone,
               }) => b
               ? prefix22.TomGetSettingsResult(
                   application: application,
                   clientCountry: clientCountry,
                   clientLanguage: clientLanguage,
-                  clientTimeZone: clientTimeZone,
+                  clientTimezone: clientTimezone,
                   config: config,
                   country: country,
                   entitlements: entitlements,
@@ -6628,7 +6628,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const [],
       ),
       r.VariableMirrorImpl(
-        r'clientTimeZone',
+        r'clientTimezone',
         67239941,
         33,
         const prefix14.TomReflector(),
@@ -20772,7 +20772,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         #clientCountry,
       ),
       r.ParameterMirrorImpl(
-        r'clientTimeZone',
+        r'clientTimezone',
         67253254,
         447,
         const prefix14.TomReflector(),
@@ -20782,7 +20782,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const [],
         null,
-        #clientTimeZone,
+        #clientTimezone,
       ),
       r.ParameterMirrorImpl(
         r'value',
@@ -31575,7 +31575,6 @@ final _data = <r.Reflection, r.ReflectorData>{
       r'country': (dynamic instance) => instance.country,
       r'language': (dynamic instance) => instance.language,
       r'timezone': (dynamic instance) => instance.timezone,
-      r'clientTimeZone': (dynamic instance) => instance.clientTimeZone,
       r'mute': (dynamic instance) => instance.mute,
       r'unmute': (dynamic instance) => instance.unmute,
       r'batch': (dynamic instance) => instance.batch,
@@ -31898,8 +31897,6 @@ final _data = <r.Reflection, r.ReflectorData>{
       r'country=': (dynamic instance, value) => instance.country = value,
       r'language=': (dynamic instance, value) => instance.language = value,
       r'timezone=': (dynamic instance, value) => instance.timezone = value,
-      r'clientTimeZone=': (dynamic instance, value) =>
-          instance.clientTimeZone = value,
       r'startDate=': (dynamic instance, value) => instance.startDate = value,
       r'endDate=': (dynamic instance, value) => instance.endDate = value,
       r'startTime=': (dynamic instance, value) => instance.startTime = value,

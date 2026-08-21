@@ -652,7 +652,7 @@ class TomEntitlement {
 ///   firstname: 'John',
 ///   lastname: 'Doe',
 ///   email: 'john.doe@example.com',
-///   timeZone: 'America/New_York',
+///   timezone: 'America/New_York',
 /// );
 ///
 /// // Check if guest
@@ -724,10 +724,10 @@ class TomUser {
   /// The user's state or region.
   String? get stateRegion => _stateRegion;
 
-  String? _timeZone;
+  String? _timezone;
 
   /// The user's preferred timezone.
-  String? get timeZone => _timeZone;
+  String? get timezone => _timezone;
 
   final Map<String, Object?> _attributes = {};
 
@@ -755,7 +755,7 @@ class TomUser {
     String? city,
     String? postcode,
     String? stateRegion,
-    String? timeZone,
+    String? timezone,
     Map<String, Object?>? attributes,
   }) {
     _id = id;
@@ -770,7 +770,7 @@ class TomUser {
     _city = city;
     _postcode = postcode;
     _stateRegion = stateRegion;
-    _timeZone = timeZone;
+    _timezone = timezone;
     if (attributes != null && attributes.isNotEmpty) {
       _attributes.addAll(attributes);
     }
@@ -887,7 +887,6 @@ class TomPrincipal {
   String? clientCountry;
 
   /// Client device timezone identifier.
-  // Note: user.timeZone is the stored preference
   String? clientTimezone;
 
   final Map<String, Object?> _currentContext = {};

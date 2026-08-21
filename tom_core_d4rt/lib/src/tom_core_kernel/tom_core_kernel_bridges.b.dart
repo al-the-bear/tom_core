@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 65 files
-// Generated: 2026-08-20T18:01:39.405300
+// Generated: 2026-08-21T02:23:15.063551
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -14433,6 +14433,16 @@ BridgedClass _createTom2FAClaimsBridge() {
       'clientData': (visitor) => $tom_core_kernel_46.Tom2FAClaims.clientData,
       'verificationData': (visitor) => $tom_core_kernel_46.Tom2FAClaims.verificationData,
     },
+    staticMethods: {
+      'isTrue': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'isTrue');
+        final raw = D4.getRequiredArg<Object?>(positional, 0, 'raw', 'isTrue');
+        return $tom_core_kernel_46.Tom2FAClaims.isTrue(raw);
+      },
+    },
+    staticMethodSignatures: {
+      'isTrue': 'bool isTrue(Object? raw)',
+    },
     staticGetterSignatures: {
       'requires2FA': 'String get requires2FA',
       'type': 'String get type',
@@ -15126,14 +15136,14 @@ BridgedClass _createTomUserBridge() {
         final city = D4.getOptionalNamedArg<String?>(named, 'city');
         final postcode = D4.getOptionalNamedArg<String?>(named, 'postcode');
         final stateRegion = D4.getOptionalNamedArg<String?>(named, 'stateRegion');
-        final timeZone = D4.getOptionalNamedArg<String?>(named, 'timeZone');
+        final timezone = D4.getOptionalNamedArg<String?>(named, 'timezone');
         final attributes = D4.coerceMapOrNull<String, Object?>(named['attributes'], 'attributes');
         if (!named.containsKey('username')) {
-          return $tom_core_kernel_47.TomUser(id: id, firstname: firstname, lastname: lastname, email: email, phone: phone, mobile: mobile, addressLine1: addressLine1, addressLine2: addressLine2, city: city, postcode: postcode, stateRegion: stateRegion, timeZone: timeZone, attributes: attributes);
+          return $tom_core_kernel_47.TomUser(id: id, firstname: firstname, lastname: lastname, email: email, phone: phone, mobile: mobile, addressLine1: addressLine1, addressLine2: addressLine2, city: city, postcode: postcode, stateRegion: stateRegion, timezone: timezone, attributes: attributes);
         }
         if (named.containsKey('username')) {
           final username = D4.getRequiredNamedArg<String>(named, 'username', 'TomUser');
-          return $tom_core_kernel_47.TomUser(id: id, firstname: firstname, lastname: lastname, email: email, phone: phone, mobile: mobile, addressLine1: addressLine1, addressLine2: addressLine2, city: city, postcode: postcode, stateRegion: stateRegion, timeZone: timeZone, attributes: attributes, username: username);
+          return $tom_core_kernel_47.TomUser(id: id, firstname: firstname, lastname: lastname, email: email, phone: phone, mobile: mobile, addressLine1: addressLine1, addressLine2: addressLine2, city: city, postcode: postcode, stateRegion: stateRegion, timezone: timezone, attributes: attributes, username: username);
         }
         throw StateError('Unreachable: all named parameter combinations should be covered');
       },
@@ -15151,7 +15161,7 @@ BridgedClass _createTomUserBridge() {
       'city': (visitor, target) => D4.validateTarget<$tom_core_kernel_47.TomUser>(target, 'TomUser').city,
       'postcode': (visitor, target) => D4.validateTarget<$tom_core_kernel_47.TomUser>(target, 'TomUser').postcode,
       'stateRegion': (visitor, target) => D4.validateTarget<$tom_core_kernel_47.TomUser>(target, 'TomUser').stateRegion,
-      'timeZone': (visitor, target) => D4.validateTarget<$tom_core_kernel_47.TomUser>(target, 'TomUser').timeZone,
+      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_47.TomUser>(target, 'TomUser').timezone,
       'attributes': (visitor, target) => D4.validateTarget<$tom_core_kernel_47.TomUser>(target, 'TomUser').attributes,
     },
     methods: {
@@ -15164,7 +15174,7 @@ BridgedClass _createTomUserBridge() {
       'guestUsername': (visitor) => $tom_core_kernel_47.TomUser.guestUsername,
     },
     constructorSignatures: {
-      '': 'TomUser({int id = -1, String username = guestUsername, String? firstname, String? lastname, String? email, String? phone, String? mobile, String? addressLine1, String? addressLine2, String? city, String? postcode, String? stateRegion, String? timeZone, Map<String, Object?>? attributes})',
+      '': 'TomUser({int id = -1, String username = guestUsername, String? firstname, String? lastname, String? email, String? phone, String? mobile, String? addressLine1, String? addressLine2, String? city, String? postcode, String? stateRegion, String? timezone, Map<String, Object?>? attributes})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -15182,7 +15192,7 @@ BridgedClass _createTomUserBridge() {
       'city': 'String? get city',
       'postcode': 'String? get postcode',
       'stateRegion': 'String? get stateRegion',
-      'timeZone': 'String? get timeZone',
+      'timezone': 'String? get timezone',
       'attributes': 'Map<String, Object?> get attributes',
     },
     staticGetterSignatures: {
@@ -15402,10 +15412,11 @@ BridgedClass _createTomGetSettingsResultBridge() {
         final application = D4.getOptionalNamedArg<String?>(named, 'application');
         final country = D4.getOptionalNamedArg<String?>(named, 'country');
         final language = D4.getOptionalNamedArg<String?>(named, 'language');
+        final timezone = D4.getOptionalNamedArg<String?>(named, 'timezone');
         final clientLanguage = D4.getOptionalNamedArg<String?>(named, 'clientLanguage');
         final clientCountry = D4.getOptionalNamedArg<String?>(named, 'clientCountry');
-        final clientTimeZone = D4.getOptionalNamedArg<String?>(named, 'clientTimeZone');
-        return $tom_core_kernel_48.TomGetSettingsResult(texts: texts, config: config, groups: groups, roles: roles, entitlements: entitlements, resourceKeys: resourceKeys, organization: organization, process: process, application: application, country: country, language: language, clientLanguage: clientLanguage, clientCountry: clientCountry, clientTimeZone: clientTimeZone);
+        final clientTimezone = D4.getOptionalNamedArg<String?>(named, 'clientTimezone');
+        return $tom_core_kernel_48.TomGetSettingsResult(texts: texts, config: config, groups: groups, roles: roles, entitlements: entitlements, resourceKeys: resourceKeys, organization: organization, process: process, application: application, country: country, language: language, timezone: timezone, clientLanguage: clientLanguage, clientCountry: clientCountry, clientTimezone: clientTimezone);
       },
     },
     getters: {
@@ -15420,9 +15431,10 @@ BridgedClass _createTomGetSettingsResultBridge() {
       'application': (visitor, target) => D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').application,
       'country': (visitor, target) => D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').country,
       'language': (visitor, target) => D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').language,
+      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').timezone,
       'clientCountry': (visitor, target) => D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientCountry,
       'clientLanguage': (visitor, target) => D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientLanguage,
-      'clientTimeZone': (visitor, target) => D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientTimeZone,
+      'clientTimezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientTimezone,
     },
     setters: {
       'groups': (visitor, target, value) => 
@@ -15443,15 +15455,17 @@ BridgedClass _createTomGetSettingsResultBridge() {
         D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').country = D4.extractBridgedArgOrNull<String>(value, 'country'),
       'language': (visitor, target, value) => 
         D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').language = D4.extractBridgedArgOrNull<String>(value, 'language'),
+      'timezone': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').timezone = D4.extractBridgedArgOrNull<String>(value, 'timezone'),
       'clientCountry': (visitor, target, value) => 
         D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientCountry = D4.extractBridgedArgOrNull<String>(value, 'clientCountry'),
       'clientLanguage': (visitor, target, value) => 
         D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientLanguage = D4.extractBridgedArgOrNull<String>(value, 'clientLanguage'),
-      'clientTimeZone': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientTimeZone = D4.extractBridgedArgOrNull<String>(value, 'clientTimeZone'),
+      'clientTimezone': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_48.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientTimezone = D4.extractBridgedArgOrNull<String>(value, 'clientTimezone'),
     },
     constructorSignatures: {
-      '': 'TomGetSettingsResult({Map<String, Object?>? texts, Map<String, Object?>? config, List<String>? groups, List<String>? roles, List<String>? entitlements, List<String>? resourceKeys, String? organization, String? process, String? application, String? country, String? language, String? clientLanguage, String? clientCountry, String? clientTimeZone})',
+      '': 'TomGetSettingsResult({Map<String, Object?>? texts, Map<String, Object?>? config, List<String>? groups, List<String>? roles, List<String>? entitlements, List<String>? resourceKeys, String? organization, String? process, String? application, String? country, String? language, String? timezone, String? clientLanguage, String? clientCountry, String? clientTimezone})',
     },
     getterSignatures: {
       'texts': 'Map<String, Object?> get texts',
@@ -15465,9 +15479,10 @@ BridgedClass _createTomGetSettingsResultBridge() {
       'application': 'String? get application',
       'country': 'String? get country',
       'language': 'String? get language',
+      'timezone': 'String? get timezone',
       'clientCountry': 'String? get clientCountry',
       'clientLanguage': 'String? get clientLanguage',
-      'clientTimeZone': 'String? get clientTimeZone',
+      'clientTimezone': 'String? get clientTimezone',
     },
     setterSignatures: {
       'texts': 'set texts(dynamic value)',
@@ -15481,9 +15496,10 @@ BridgedClass _createTomGetSettingsResultBridge() {
       'application': 'set application(dynamic value)',
       'country': 'set country(dynamic value)',
       'language': 'set language(dynamic value)',
+      'timezone': 'set timezone(dynamic value)',
       'clientCountry': 'set clientCountry(dynamic value)',
       'clientLanguage': 'set clientLanguage(dynamic value)',
-      'clientTimeZone': 'set clientTimeZone(dynamic value)',
+      'clientTimezone': 'set clientTimezone(dynamic value)',
     },
   );
 }

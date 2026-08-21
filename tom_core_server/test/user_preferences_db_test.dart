@@ -53,7 +53,7 @@ TomPrincipal _principalWithId(int userId) => TomPrincipal(
     firstname: 'Test',
     lastname: 'User',
     attributes: {},
-    timeZone: 'utc',
+    timezone: 'utc',
   ),
   aci: TomAccessControlInformation(roles: const ['user']),
 );
@@ -144,49 +144,57 @@ void main() async {
     test('getOr answers the fallback only for an unwritten key', () async {
       await asSession(7, (p) => p.set('theme', 'dark'));
 
-      expect(await asSession(7, (p) => p.getOr<String>('theme', 'light')),
-          'dark');
-      expect(await asSession(7, (p) => p.getOr<String>('other', 'light')),
-          'light');
+      expect(
+        await asSession(7, (p) => p.getOr<String>('theme', 'light')),
+        'dark',
+      );
+      expect(
+        await asSession(7, (p) => p.getOr<String>('other', 'light')),
+        'light',
+      );
     });
 
-    test('writing the same key twice replaces the value in the same row',
-        () async {
-      await asSession(7, (p) => p.set('theme', 'dark'));
-      final firstId = (await rawRows()).single.id;
+    test(
+      'writing the same key twice replaces the value in the same row',
+      () async {
+        await asSession(7, (p) => p.set('theme', 'dark'));
+        final firstId = (await rawRows()).single.id;
 
-      await asSession(7, (p) => p.set('theme', 'light'));
+        await asSession(7, (p) => p.set('theme', 'light'));
 
-      final rows = await rawRows();
-      // One row, not two: `(principal_id, preference_key)` *is* the
-      // preference's identity, so a second row would make the value a user
-      // gets depend on row order.
-      expect(rows, hasLength(1));
-      expect(rows.single.id, firstId);
-      expect(await asSession(7, (p) => p.get<String>('theme')), 'light');
-    });
+        final rows = await rawRows();
+        // One row, not two: `(principal_id, preference_key)` *is* the
+        // preference's identity, so a second row would make the value a user
+        // gets depend on row order.
+        expect(rows, hasLength(1));
+        expect(rows.single.id, firstId);
+        expect(await asSession(7, (p) => p.get<String>('theme')), 'light');
+      },
+    );
 
     test('all() lists the calling principal\'s preferences', () async {
       await asSession(7, (p) => p.set('theme', 'dark'));
       await asSession(7, (p) => p.set('fontSize', 14));
 
       final all = await asSession(7, (p) => p.all());
-      expect(all.map((dto) => dto.key), containsAll(<String>[
-        'theme',
-        'fontSize',
-      ]));
+      expect(
+        all.map((dto) => dto.key),
+        containsAll(<String>['theme', 'fontSize']),
+      );
     });
 
-    test('remove deletes the preference and reports whether it existed',
-        () async {
-      await asSession(7, (p) => p.set('theme', 'dark'));
+    test(
+      'remove deletes the preference and reports whether it existed',
+      () async {
+        await asSession(7, (p) => p.set('theme', 'dark'));
 
-      expect(await asSession(7, (p) => p.remove('theme')), isTrue);
-      expect(await asSession(7, (p) => p.get<String>('theme')), isNull);
-      // A second removal reports false rather than throwing: "was never there"
-      // is an ordinary answer, not a failure.
-      expect(await asSession(7, (p) => p.remove('theme')), isFalse);
-    });
+        expect(await asSession(7, (p) => p.remove('theme')), isTrue);
+        expect(await asSession(7, (p) => p.get<String>('theme')), isNull);
+        // A second removal reports false rather than throwing: "was never there"
+        // is an ordinary answer, not a failure.
+        expect(await asSession(7, (p) => p.remove('theme')), isFalse);
+      },
+    );
 
     test('a write records the server\'s UTC timestamp', () async {
       final before = DateTime.now().toUtc().subtract(
@@ -217,15 +225,17 @@ void main() async {
       expect(await rawRows(), hasLength(1));
     });
 
-    test('the same key under two principals is two rows, not a collision',
-        () async {
-      await asSession(7, (p) => p.set('theme', 'dark'));
-      await asSession(8, (p) => p.set('theme', 'light'));
+    test(
+      'the same key under two principals is two rows, not a collision',
+      () async {
+        await asSession(7, (p) => p.set('theme', 'dark'));
+        await asSession(8, (p) => p.set('theme', 'light'));
 
-      expect(await rawRows(), hasLength(2));
-      expect(await asSession(7, (p) => p.get<String>('theme')), 'dark');
-      expect(await asSession(8, (p) => p.get<String>('theme')), 'light');
-    });
+        expect(await rawRows(), hasLength(2));
+        expect(await asSession(7, (p) => p.get<String>('theme')), 'dark');
+        expect(await asSession(8, (p) => p.get<String>('theme')), 'light');
+      },
+    );
 
     test('one principal\'s write does not overwrite another\'s same-named '
         'preference', () async {
@@ -244,8 +254,7 @@ void main() async {
       expect(await asSession(7, (p) => p.get<String>('theme')), 'dark');
     });
 
-    test('a read without a principal is refused rather than unscoped',
-        () async {
+    test('a read without a principal is refused rather than unscoped', () async {
       final preferences = TomUserPreferences(TomUserPreferenceRepository());
       // No zone, so no caller. Answering *something* here would mean answering
       // from an unscoped query — every principal's rows — which is the one
@@ -256,29 +265,31 @@ void main() async {
       );
     });
 
-    test('getFor reads a named principal\'s preference outside a request',
-        () async {
-      await asSession(7, (p) => p.set(TomUserPreferenceKeys.timezone, 'CET'));
+    test(
+      'getFor reads a named principal\'s preference outside a request',
+      () async {
+        await asSession(7, (p) => p.set(TomUserPreferenceKeys.timezone, 'CET'));
 
-      // The authentication path's entry point: no request zone exists yet, so
-      // the principal is supplied and installed by the call itself.
-      final preferences = TomUserPreferences(TomUserPreferenceRepository());
-      expect(
-        await preferences.getFor<String>(
-          _principalWithId(7),
-          TomUserPreferenceKeys.timezone,
-        ),
-        'CET',
-      );
-      // Still scoped: naming a principal is not a bypass.
-      expect(
-        await preferences.getFor<String>(
-          _principalWithId(8),
-          TomUserPreferenceKeys.timezone,
-        ),
-        isNull,
-      );
-    });
+        // The authentication path's entry point: no request zone exists yet, so
+        // the principal is supplied and installed by the call itself.
+        final preferences = TomUserPreferences(TomUserPreferenceRepository());
+        expect(
+          await preferences.getFor<String>(
+            _principalWithId(7),
+            TomUserPreferenceKeys.timezone,
+          ),
+          'CET',
+        );
+        // Still scoped: naming a principal is not a bypass.
+        expect(
+          await preferences.getFor<String>(
+            _principalWithId(8),
+            TomUserPreferenceKeys.timezone,
+          ),
+          isNull,
+        );
+      },
+    );
 
     // ------------------------------------------------------------------
     // Typed values round-trip
@@ -331,34 +342,39 @@ void main() async {
       );
     });
 
-    test('reading a preference as the wrong type is refused, not coerced',
-        () async {
-      await asSession(7, (p) => p.set('count', 42));
+    test(
+      'reading a preference as the wrong type is refused, not coerced',
+      () async {
+        await asSession(7, (p) => p.set('count', 42));
 
-      await expectLater(
-        asSession(7, (p) => p.get<String>('count')),
-        throwsA(isA<TomUserPreferenceCodecException>()),
-      );
-    });
+        await expectLater(
+          asSession(7, (p) => p.get<String>('count')),
+          throwsA(isA<TomUserPreferenceCodecException>()),
+        );
+      },
+    );
 
-    test('setEncoded stores a pre-encoded value and rejects a mismatched one',
-        () async {
-      await asSession(
-        7,
-        (p) => p.setEncoded('theme', valueType: 'String', valueJson: '"dark"'),
-      );
-      expect(await asSession(7, (p) => p.get<String>('theme')), 'dark');
-
-      // The endpoint's write path validates before it stores: a pair that
-      // disagrees fails every later read of the key, on every device.
-      await expectLater(
-        asSession(
+    test(
+      'setEncoded stores a pre-encoded value and rejects a mismatched one',
+      () async {
+        await asSession(
           7,
-          (p) => p.setEncoded('bad', valueType: 'int', valueJson: '"dark"'),
-        ),
-        throwsA(isA<TomUserPreferenceCodecException>()),
-      );
-      expect(await asSession(7, (p) => p.read('bad')), isNull);
-    });
+          (p) =>
+              p.setEncoded('theme', valueType: 'String', valueJson: '"dark"'),
+        );
+        expect(await asSession(7, (p) => p.get<String>('theme')), 'dark');
+
+        // The endpoint's write path validates before it stores: a pair that
+        // disagrees fails every later read of the key, on every device.
+        await expectLater(
+          asSession(
+            7,
+            (p) => p.setEncoded('bad', valueType: 'int', valueJson: '"dark"'),
+          ),
+          throwsA(isA<TomUserPreferenceCodecException>()),
+        );
+        expect(await asSession(7, (p) => p.read('bad')), isNull);
+      },
+    );
   }, skip: skipReason);
 }
