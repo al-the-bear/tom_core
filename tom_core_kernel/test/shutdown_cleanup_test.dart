@@ -94,6 +94,26 @@ class BaseWithShutdown {
 @tomReflector
 class InheritsShutdown extends BaseWithShutdown {}
 
+/// Mixin declaring `close()`; the leaf [MixesInClose] gets it without
+/// redeclaring, so resolving it means the walk sees through the mixin
+/// application rather than only through named superclasses.
+mixin ClosingMixin {
+  bool closed = false;
+  void close() => closed = true;
+}
+
+@tomReflector
+class MixesInClose with ClosingMixin {}
+
+/// Mixin declaring `dispose()`; the leaf [MixesInDispose] gets it the same way.
+mixin DisposingMixin {
+  bool disposedFlag = false;
+  void dispose() => disposedFlag = true;
+}
+
+@tomReflector
+class MixesInDispose with DisposingMixin {}
+
 /// Target whose close method requires a parameter (error path).
 @tomReflector
 class CloseWithParam {
@@ -784,11 +804,13 @@ void main() {
       expect(target.closed, isTrue);
     });
 
+    // `ClassMirror.declarations` holds only a type's own members, so
+    // everything a leaf type inherits has to be found by walking upwards. The
+    // four tests below are the four shapes that walk has to cope with.
+
     test('resolves a close() inherited from a superclass', () {
       final target = InheritsClose();
 
-      // Pre-fix: the constructor threw because `declarations` holds only the
-      // leaf type's own members, so the inherited close() was not found.
       final adaptor = TomCloseAdaptor(target);
       adaptor.close();
 
@@ -811,6 +833,31 @@ void main() {
       adaptor.close();
 
       expect(target.shutdownCalled, isTrue);
+    });
+
+    // The walk follows `ClassMirror.superclass` and nothing else, so it only
+    // reaches a mixin's members if the reflector models the mixin application
+    // as a class in that chain. That is a property of the generator rather
+    // than of this module, which is precisely why it is asserted here: the
+    // dartdoc on `_resolveCloseMethod` promises mixin members are resolved,
+    // and nothing but a live mixin can keep that promise honest.
+
+    test('resolves a close() mixed in rather than inherited', () {
+      final target = MixesInClose();
+
+      final adaptor = TomCloseAdaptor(target);
+      adaptor.close();
+
+      expect(target.closed, isTrue);
+    });
+
+    test('resolves a dispose() mixed in rather than inherited', () {
+      final target = MixesInDispose();
+
+      final adaptor = TomCloseAdaptor(target);
+      adaptor.close();
+
+      expect(target.disposedFlag, isTrue);
     });
 
     test('throws when the resolved method requires a parameter', () {
