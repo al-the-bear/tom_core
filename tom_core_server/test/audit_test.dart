@@ -1532,6 +1532,65 @@ void main() {
       expect(ids.toSet(), hasLength(50));
     });
 
+    test('the counter restarts with every microsecond', () {
+      // What makes the six-digit suffix sufficient. It counts ids *within one
+      // microsecond*, not since process start, so it cannot climb towards its
+      // own width: a suffix that only ever counted upwards would wrap at
+      // 16 777 216 ids and start reissuing values that sort before their
+      // predecessors.
+      var micros = 1700000000000000;
+      final generator = TomAuditRecordIdGenerator(clock: () => micros);
+
+      expect(generator.next(), '1700000000000000-000000');
+      expect(generator.next(), '1700000000000000-000001');
+      expect(generator.next(), '1700000000000000-000002');
+
+      micros += 1;
+      expect(generator.next(), '1700000000000001-000000');
+    });
+
+    test('record ids keep rising when the clock steps backwards', () {
+      // An NTP correction is a far likelier way to break write-order sorting
+      // than exhausting a counter. The id pins the highest microsecond it has
+      // seen and counts on from there, so the ordering claim survives it --
+      // at the cost of an id whose leading field can briefly run ahead of the
+      // record's own timestamp, which is the field that states the time.
+      var micros = 1700000000000000;
+      final generator = TomAuditRecordIdGenerator(clock: () => micros);
+
+      final before = generator.next();
+      micros -= 5000000; // five seconds backwards
+      final after = generator.next();
+      final later = generator.next();
+
+      expect(after.compareTo(before), greaterThan(0));
+      expect(later.compareTo(after), greaterThan(0));
+      expect({before, after, later}, hasLength(3));
+    });
+
+    test('ids stay ordered and distinct across a held microsecond', () {
+      final generator = TomAuditRecordIdGenerator(
+        clock: () => 1700000000000000,
+      );
+      final ids = [for (var i = 0; i < 100000; i++) generator.next()];
+
+      expect(ids.toSet(), hasLength(ids.length));
+      final sorted = [...ids]..sort();
+      expect(sorted, ids);
+    });
+
+    test('every id has the same shape, which is what lets a sort work', () {
+      // Sorting audit ids is a *string* sort, so both fields have to be
+      // fixed-width. The suffix is padded here; the microsecond field is
+      // sixteen digits of its own accord until the year 2286.
+      final pattern = RegExp(r'^\d{16}-[0-9a-f]{6}$');
+      final generator = TomAuditRecordIdGenerator();
+      for (var i = 0; i < 5; i++) {
+        expect(generator.next(), matches(pattern));
+      }
+      expect(TomAuditTrail.newAuditRecordId(), matches(pattern));
+    });
+
     test('the request id is picked up from the zone', () async {
       expect(TomAuditTrail.currentRequestId(), isNull);
       final sink = TomMemoryAuditSink();

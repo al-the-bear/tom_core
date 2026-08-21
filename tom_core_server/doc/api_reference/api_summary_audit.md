@@ -23,6 +23,7 @@ hash-chained by the sink, and optionally anchored outside the audited server.
   - [TomAuditPolicy](#tomauditpolicy)
   - [TomAuditBypass](#tomauditbypass)
   - [TomAuditTrail](#tomaudittrail)
+  - [TomAuditRecordIdGenerator](#tomauditrecordidgenerator)
   - [TomAuditAnchor](#tomauditanchor)
   - [TomAuditAnchorSigner](#tomauditanchorsigner)
   - [TomAuditAnchorVerifier](#tomauditanchorverifier)
@@ -124,6 +125,7 @@ TomAudited
 TomAuditPolicy
 TomAuditBypass
 TomAuditTrail  (static-only)
+TomAuditRecordIdGenerator
 
 TomAuditAnchor
 TomAuditAnchorVerification
@@ -275,7 +277,7 @@ archive written by a version that had a value this one does not.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `id` | `String` | Unique id of this entry; sorts in write order (final). |
+| `id` | `String` | Unique id of this entry; sorts in write order. Unique per process — see `TomAuditRecordIdGenerator` (final). |
 | `timestamp` | `DateTime` | When the action happened, always in UTC (final). |
 | `actor` | `TomAuditActor` | Who performed the action (final). |
 | `action` | `TomAuditAction` | What kind of action it was (final). |
@@ -662,7 +664,54 @@ None — the constructor is private; the whole surface is static.
 | `recordMutation` | `static Future<void> recordMutation({required Type entityType, required TomAuditAction action, required String target, String? targetKey, TomAuditOutcome outcome = TomAuditOutcome.succeeded, Map<String, Object?> before = const {}, Map<String, Object?> after = const {}, String? detail})` | Records a mutation of `entityType`, consulting the type's policy, applying its redaction and attributing the action to the current zone's principal and request. Returns without writing when the policy excludes `action`. |
 | `recordAction` | `static Future<void> recordAction({required TomAuditAction action, required String target, required TomAuditOutcome outcome, String? targetKey, String? detail, TomAuditActor? actor})` | Records an action that is not an entity mutation — an endpoint invocation or an access denial. No entity policy is consulted: the caller has already decided. |
 | `currentRequestId` | `static String? currentRequestId()` | The current request's id from the zone's `TomRequestId`, or `null` outside a request. |
-| `newAuditRecordId` | `static String newAuditRecordId()` | A unique id for a new record: microseconds since epoch plus an in-process counter, so ids sort in write order. |
+| `newAuditRecordId` | `static String newAuditRecordId()` | A new record id from the process-wide `TomAuditRecordIdGenerator`: microseconds since epoch plus a per-microsecond counter, so ids sort in write order. |
+
+### TomAuditRecordIdGenerator
+
+Issues audit record ids of the form `<microseconds since epoch>-<six hex
+digits>`, e.g. `1700000000000000-00002a`. Both fields are fixed-width, because
+sorting audit ids is a *string* sort: the suffix is padded, and the microsecond
+field is sixteen digits of its own accord until the year 2286.
+
+The counter counts **within a microsecond** and resets whenever the clock
+advances, which is what makes six digits enough. A counter that only climbed
+would wrap at 16 777 216 ids and reissue values sorting *before* their
+predecessors; reset per microsecond, its width is bounded by how many records a
+process can write in one microsecond, and is therefore unreachable rather than
+merely generous.
+
+`next` also pins the highest microsecond it has seen, so a clock stepping
+backwards — an NTP correction, far likelier than exhausting a counter — cannot
+make a later id sort before an earlier one. The cost is that during such a
+correction the id's leading field runs ahead of the wall clock; the record's own
+`timestamp` is unaffected, and that is the field that states when the action
+happened.
+
+Ids are unique **per generator**, hence per process. Two processes writing into
+one trail table can mint the same id in the same microsecond and nothing rejects
+it: `entry_id` carries no unique key, and must not, because such a key would
+turn a legitimate collision between two writers into a failed insert — and a
+failed insert here fails the audited action closed. Cross-process identity is
+the record's actor and timestamp; cross-process chain integrity is the sink's
+`writer` and its unique key on `(writer, previous_hash)`.
+
+#### Constructors
+
+```dart
+TomAuditRecordIdGenerator({int Function()? clock})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `clock` | `int Function()` | The clock this generator reads, in microseconds since the epoch; injectable so a test can hold a microsecond still or move it backwards without waiting for either (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `next` | `String next()` | The next id. Advances the pinned microsecond and restarts the counter when the clock has moved forwards; otherwise increments the counter against the pinned microsecond. |
 
 ### TomAuditAnchor
 

@@ -42,6 +42,12 @@ const String defaultAuditTrailTable = 'tom_audit_trail';
 ///    constraint it becomes a duplicate-key error at insert time instead of
 ///    silent corruption discovered at the next verification. The companion key
 ///    on `(writer, hash)` catches the same event from the other side.
+///  * `entry_id` carries **no key at all**, unique or otherwise, and that is a
+///    decision rather than an omission. A record id is unique per process (see
+///    `TomAuditRecordIdGenerator`), so a unique key would turn a legitimate
+///    collision between two writers into a failed insert — and a failed insert
+///    here fails the audited action closed. Identity across writers is the
+///    actor and timestamp; linearity is the `writer`-scoped unique keys above.
 ///  * `record` is the canonical JSON that was hashed, and is authoritative. The
 ///    projection columns (`actor`, `action`, `target`, `target_key`, `outcome`,
 ///    `request_id`) are a lossy index for operators: they are truncated to fit,

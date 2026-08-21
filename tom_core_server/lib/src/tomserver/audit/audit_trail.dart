@@ -356,18 +356,84 @@ class TomAuditTrail {
   /// The current request's id, or `null` outside a request.
   static String? currentRequestId() => getFromCurrentZone<TomRequestId>()?.uuid;
 
-  static int _sequence = 0;
+  static final TomAuditRecordIdGenerator _recordIds =
+      TomAuditRecordIdGenerator();
 
   /// A unique id for a new audit record.
   ///
-  /// Timestamp plus an in-process counter rather than a UUID: audit ids are
-  /// read by humans reconciling a trail, and an id that sorts in write order
-  /// is worth more to them than one that is globally unique. Uniqueness across
-  /// processes comes from the actor and timestamp already in the record.
-  static String newAuditRecordId() {
-    _sequence = (_sequence + 1) & 0xFFFFFF;
-    final micros = DateTime.now().toUtc().microsecondsSinceEpoch;
-    return '$micros-${_sequence.toRadixString(16).padLeft(6, '0')}';
+  /// Timestamp plus a counter rather than a UUID: audit ids are read by humans
+  /// reconciling a trail, and an id that sorts in write order is worth more to
+  /// them than one that is globally unique. Uniqueness across processes comes
+  /// from the actor and timestamp already in the record — see
+  /// [TomAuditRecordIdGenerator] for exactly what is and is not guaranteed.
+  static String newAuditRecordId() => _recordIds.next();
+}
+
+/// Issues audit record ids that are distinct and sort in write order.
+///
+/// An id is `<microseconds since epoch>-<counter>`, the counter six lowercase
+/// hex digits: `1700000000000000-00002a`. Both fields are fixed-width, because
+/// sorting audit ids is a *string* sort — the suffix is padded, and the
+/// microsecond field is sixteen digits of its own accord until the year 2286.
+///
+/// ## The counter counts within a microsecond, not since start-up
+///
+/// It resets every time the clock advances, and that is what makes six digits
+/// enough. A counter that only ever climbed would wrap at 16 777 216 ids and
+/// then reissue values that sort *before* their predecessors — a duplicate id
+/// and a broken ordering, arriving after a process had been up long enough for
+/// nobody to connect the two. Reset per microsecond, the suffix is bounded by
+/// how many records one process can write in a single microsecond, so the
+/// width is unreachable rather than merely generous.
+///
+/// ## A clock that steps backwards does not unsort the trail
+///
+/// [next] pins the highest microsecond it has seen and counts on from there, so
+/// an NTP correction — much likelier than exhausting any counter — cannot make
+/// a later id sort before an earlier one. The cost is that during such a
+/// correction the id's leading field runs ahead of the wall clock. That is the
+/// right trade because the id is an *ordering* token: the record's own
+/// [TomAuditRecord.timestamp] is what states when the action happened, and it
+/// is unaffected.
+///
+/// ## What is not claimed
+///
+/// Ids are unique **per generator**, which in practice means per process. Two
+/// processes writing into one trail table can mint the same id in the same
+/// microsecond, and nothing rejects that: `entry_id` carries no unique key, and
+/// must not, because such a key would turn a legitimate collision between two
+/// writers into a failed insert — and a failed insert here fails the audited
+/// action closed. Cross-process identity is the record's actor and timestamp;
+/// cross-process chain integrity is the sink's `writer` and its unique key on
+/// `(writer, previous_hash)`.
+class TomAuditRecordIdGenerator {
+  /// Creates a generator reading [clock].
+  TomAuditRecordIdGenerator({int Function()? clock})
+    : clock = clock ?? _systemMicros;
+
+  /// The clock this generator reads, in microseconds since the epoch.
+  ///
+  /// Injectable so a test can hold a microsecond still, or move it backwards,
+  /// without waiting for either.
+  final int Function() clock;
+
+  static int _systemMicros() => DateTime.now().toUtc().microsecondsSinceEpoch;
+
+  int _micros = 0;
+  int _counter = 0;
+
+  /// The next id.
+  String next() {
+    final now = clock();
+    if (now > _micros) {
+      _micros = now;
+      _counter = 0;
+    } else {
+      // The same microsecond, or a clock that moved backwards. Either way the
+      // pinned microsecond stands and the counter breaks the tie.
+      _counter++;
+    }
+    return '$_micros-${_counter.toRadixString(16).padLeft(6, '0')}';
   }
 }
 

@@ -82,6 +82,31 @@ TomAuditRecord(
 )
 ```
 
+### What "sortable, unique" means
+
+The id is `<microseconds since epoch>-<six hex digits>`, both fields fixed-width
+because sorting audit ids is a *string* sort. `TomAuditTrail.newAuditRecordId()`
+mints one from a process-wide `TomAuditRecordIdGenerator`, and it is a counter
+rather than a UUID because these ids are read by humans reconciling a trail: an
+id that sorts in write order is worth more to them than one that is globally
+unique.
+
+The counter counts **within a microsecond** and restarts whenever the clock
+advances, which is what keeps six digits sufficient — a counter that only
+climbed would wrap at 16 777 216 ids and begin reissuing values that sort
+*before* their predecessors, long after start-up and with nothing to connect the
+two. The generator also pins the highest microsecond it has seen, so a clock
+stepping backwards cannot unsort the trail; during such a correction the id's
+leading field runs ahead of the wall clock, while `timestamp` — the field that
+states when the action happened — is unaffected.
+
+Uniqueness is **per process**. Two nodes writing into one trail table can mint
+the same id in the same microsecond, and nothing rejects it: `entry_id` carries
+no unique key, and must not, since such a key would turn a legitimate collision
+into a failed insert and a failed insert here fails the audited action closed.
+Identity across writers is the actor and timestamp; linearity across writers is
+`writer` and its unique keys.
+
 Timestamps are coerced to UTC. `before`/`after` are unmodifiable and carry
 **only the fields that changed** — an update that touched one column does not
 reproduce the whole row, because a diff an auditor can read beats a snapshot
@@ -331,7 +356,7 @@ projection columns are a lossy index, truncated to fit rather than allowed to
 fail an insert, because the trail is fail-closed and a rejected row would take
 the audited action down with it.
 
-Three design points are worth stating outright:
+Four design points are worth stating outright:
 
 - **It does not go through `TomSqlDatasourceRepository`.** The repository is
   itself an audit chokepoint, so a repository-backed sink would audit its own
@@ -353,6 +378,11 @@ Three design points are worth stating outright:
   timestamps come from the record and sequence numbers from the insert, so
   clock skew is enough to leave an older-stamped row after a newer-stamped one
   and deleting by timestamp would punch a hole.
+- **`entry_id` carries no key at all**, unique or otherwise. A record id is
+  unique per process, so a unique key there would turn a legitimate collision
+  between two writers into a failed insert — and a failed insert fails the
+  audited action closed. The row is addressed by `seq`; identity across writers
+  is the actor and timestamp.
 
 Reference migrations live in `example/audit/migrations/main/tomcore/`. The table
 itself is declared **once**, as the `auditTrailTable(name)` descriptor in
