@@ -71,9 +71,11 @@ genesis. The chain starts at `tomAuditGenesisHash`, and `verifyAuditChain`
 returns a `TomAuditChainVerification` that distinguishes an edited record, a
 broken link and a renumbered chain. `TomMemoryAuditSink` is a bounded ring for
 tests; `TomFileAuditSink` appends JSON Lines under a directory, rotating by
-renaming and applying age- and count-based retention; `TomSqlAuditSink` writes
-one row per entry into a `TomDataSource` and prunes a contiguous prefix through
-`purgeBefore` / `purgeToMaxEntries`. All three recover their head on reopen, so
+renaming and applying age- and count-based retention *itself*;
+`TomSqlAuditSink` writes one row per entry into a `TomDataSource` and prunes a
+contiguous prefix through `purgeBefore` / `purgeToMaxEntries`, which nothing
+calls on its behalf — it retains nothing until the deployment schedules one.
+All three recover their head on reopen, so
 a restart continues the chain rather than beginning a second one. Auditing is
 fail-closed: a sink that cannot store a record completes its `write` future with
 a `TomAuditException`, and the audited action fails with it.
@@ -513,6 +515,11 @@ rotation, since the new day gets its own name. The chain continues across
 files, so retention leaves a verifiable suffix rather than unrelated fragments.
 Rotation sequence numbers are monotonic and never reused. The head hash and
 entry count are recovered from the newest existing file at construction.
+
+Retention here is **automatic** — the sink applies `retention` and `maxFiles`
+whenever it opens a file, so a deployment that sets them has nothing to
+schedule. `TomSqlAuditSink` is the opposite and retains nothing on its own; the
+asymmetry and where the scheduled purge belongs are described there.
 
 - **Implements:** `TomAuditSink`
 
@@ -1029,6 +1036,18 @@ chain makes a clustered deployment correct, and the unique key on
 `(writer, previous_hash)` turns a fork into a duplicate-key error at insert
 time.
 
+**This sink retains nothing on its own.** `TomFileAuditSink` takes `retention`
+and `maxFiles` and enforces them itself; here `purgeBefore` and
+`purgeToMaxEntries` exist but nothing in the framework calls them, so the trail
+table grows without bound until the deployment schedules a purge. That follows
+from the write-once story rather than contradicting it: pruning needs a
+`DELETE` grant the serving credential should not hold, and a `BEFORE DELETE`
+guard trigger blocks the purge outright. The intended home for the call is the
+**scheduler** — `TomScheduler` / `@TomScheduledJob` in `tom_core_kernel`, where
+an idempotent nightly purge is exactly the shape a job body should have;
+`advanced_ops_server`'s `OpsPurgeJob` is the worked pattern. Note that both
+purges are scoped to `writer`, so one clustered job trims one node's chain.
+
 - **Implements:** `TomAuditSink`
 
 #### Constructors
@@ -1080,8 +1099,8 @@ start-up than on the first audited action.
 | `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Inserts one row, serialised through an internal queue so the `(writer, previous_hash)` constraint never has to fire. The returned future carries a `TomAuditException` when the sink is closed or the insert fails; the call itself does not throw. |
 | `readAll` | `Future<List<TomAuditEntry>> readAll()` | Reads every retained entry of this writer's chain, ordered by `seq`, oldest first. Throws `TomAuditException` on a row whose record text will not parse. Asynchronous because it is a query, and not a `TomAuditSink` member — read-back is per implementation by design. Reads *every* row, so prefer a bounded window on a large trail. |
 | `verify` | `Future<TomAuditChainVerification> verify()` | Verifies the retained entries starting from the oldest retained link, so a retention sweep is not reported as a break. Asynchronous, like `readAll` whose whole result it consumes, and not on `TomAuditSink` either. |
-| `purgeBefore` | `Future<int> purgeBefore(DateTime before)` | Deletes this writer's entries recorded before `before`, returning the row count. The cutoff is resolved to a *sequence* boundary first, because deleting by timestamp could punch a hole under clock skew. |
-| `purgeToMaxEntries` | `Future<int> purgeToMaxEntries(int maxEntries)` | Keeps the newest `maxEntries` entries of this writer's chain and deletes the prefix in front of them, returning the row count. Throws `TomAuditException` for a negative limit. |
+| `purgeBefore` | `Future<int> purgeBefore(DateTime before)` | Deletes this writer's entries recorded before `before`, returning the row count. The cutoff is resolved to a *sequence* boundary first, because deleting by timestamp could punch a hole under clock skew. Never called by the framework — schedule it. |
+| `purgeToMaxEntries` | `Future<int> purgeToMaxEntries(int maxEntries)` | Keeps the newest `maxEntries` entries of this writer's chain and deletes the prefix in front of them, returning the row count. Throws `TomAuditException` for a negative limit. Never called by the framework — schedule it. |
 | `verifyWriteOnce` | `Future<TomAuditWriteOnceCheck> verifyWriteOnce()` | Observes what the connected user and the table's `BEFORE` triggers actually permit. Called by `open`; exposed so a health check or operator tool can ask without opening a second sink. |
 | `close` | `void close()` | *(override)* Marks the sink closed. Every `write` that has *returned* already committed its `INSERT`, so nothing completed is at risk; a record still in the queue is refused with `audit.sink.closed`, because `TomClosable` requires this method to return synchronously and no synchronous method can wait for a queue. The `datasource` is deliberately not closed — it is registered process-wide. |
 | `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Closes the sink to new records, waits for the queued ones to be inserted, then returns. The route that stores what `close` has to refuse; like `close`, it leaves the `datasource` open. |

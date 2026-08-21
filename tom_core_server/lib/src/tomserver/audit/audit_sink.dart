@@ -539,6 +539,15 @@ class TomMemoryAuditSink implements TomAuditSink {
 /// a whole file, on a boundary the chain records, is auditable in a way that
 /// trimming lines out of a live file is not.
 ///
+/// Retention here is **automatic**: the sink applies it itself whenever it
+/// opens a file, so a deployment that sets the two arguments has nothing left
+/// to schedule. `TomSqlAuditSink` is the other way round — it retains nothing
+/// unless the deployment schedules `purgeBefore` or `purgeToMaxEntries` — and
+/// the asymmetry is deliberate rather than an omission on either side. This
+/// sink owns its directory and may delete in it; a trail table is pruned with a
+/// `DELETE` grant the serving credential should not have. See that class for
+/// the scheduling side of it.
+///
 /// **UTC, not the host's calendar**, because every [TomAuditRecord] timestamp
 /// is UTC: a file named from local time disagrees with its own contents on any
 /// host that is not on UTC, so an operator grepping a reported day reads the

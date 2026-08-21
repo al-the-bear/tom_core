@@ -128,6 +128,46 @@ class TomAuditWriteOnceCheck {
 }
 
 /// A [TomAuditSink] whose entries are rows in a [TomDataSource].
+///
+/// ## This sink retains nothing on its own
+///
+/// `TomFileAuditSink` takes `retention` and `maxFiles` as constructor arguments
+/// and enforces them itself, on every open and every rotation. **This sink has
+/// no equivalent.** [purgeBefore] and [purgeToMaxEntries] exist, but nothing in
+/// the framework ever calls them: a trail in a table grows without bound until
+/// the deployment schedules a purge. That asymmetry is easy to read as a gap in
+/// the API and is not one — it follows from the same fact as the whole
+/// write-once story above. Deleting a row needs `DELETE`, the credential that
+/// serves this sink should not hold it, and a sink cannot quietly prune a table
+/// it was deliberately not granted permission to prune.
+///
+/// The intended home for the call is the **scheduler** — `TomScheduler` and
+/// `@TomScheduledJob` in `tom_core_kernel`. A purge is a good fit for it: it is
+/// idempotent, which is what the scheduler's at-least-once guarantee requires,
+/// and it is exactly the nightly housekeeping a job store exists to drive.
+/// `tom_core_samples/advanced_ops_server` shows the shape in `OpsPurgeJob` —
+/// including computing the cutoff from the run's `scheduledFor` rather than
+/// `DateTime.now()`, so a recovered run trims the window it was planned for.
+///
+/// Two things to get right when scheduling it:
+///
+///  * **Both purges are scoped to [writer].** A single clustered job trims only
+///    the chain of the sink that node happens to hold, so a deployment with
+///    several writers must either run the job on every node or give one job a
+///    sink per writer. A nightly purge that silently trims one node's rows is
+///    worse than none, because the table still grows and the job reports
+///    success.
+///  * **A `BEFORE DELETE` guard trigger blocks it.** That is the trade
+///    `auditTrailNoDeleteTriggerDdl` makes explicit: a table nothing can delete
+///    from is a table nothing can prune. Choose one.
+///
+/// This is *not* the same case as anchoring, which
+/// `advanced_ops_server/lib/src/ops_anchoring.dart` keeps deliberately off the
+/// scheduler. An anchor records one writer's head, so it must be published by
+/// each process for itself; a purge is storage housekeeping over rows that are
+/// already written, and running it from a job store is right. What the two
+/// share is only that the chain is per writer -- see "Why the chain is per
+/// writer" above, which is why the purge is writer-scoped too.
 class TomSqlAuditSink implements TomAuditSink {
   /// Creates a sink over [datasource].
   ///

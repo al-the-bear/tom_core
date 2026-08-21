@@ -242,6 +242,34 @@ chain. `TomFileAuditSink` deletes **whole files** — entries older than
 the chain, which still verifies; removing an interior entry would break it and
 be indistinguishable from tampering.
 
+**But only one of the two sinks retains anything by itself.** `TomFileAuditSink`
+applies its own retention, on every open and rotation, so a deployment that sets
+`retention` and `maxFiles` has nothing further to do. `TomSqlAuditSink` applies
+**none**: nothing in the framework calls `purgeBefore` or `purgeToMaxEntries`,
+and a trail table grows without bound until the deployment schedules one of
+them. The intended home for that call is the **scheduler** — `TomScheduler` /
+`@TomScheduledJob` from `tom_core_kernel`, where a purge sits naturally beside
+the rest of a deployment's nightly housekeeping and where being idempotent (as
+both purges are) is what the at-least-once guarantee asks for.
+`tom_core_samples/advanced_ops_server` has the pattern in `OpsPurgeJob`, cutoff
+computed from the run's `scheduledFor` rather than `DateTime.now()`.
+
+The asymmetry is not an omission on either side. A file sink owns its directory
+and may delete in it; a trail table is pruned with a `DELETE` grant that the
+credential serving the sink [should not hold](#the-write-once-story) — and if
+the deployment installed the `BEFORE DELETE` guard trigger, the purge is blocked
+outright. Retention on the relational sink is therefore an *operator* action,
+scheduled and credentialed as such, rather than something the sink can do
+quietly on its own behalf.
+
+Two things a scheduled purge must get right. Both purges are scoped to the
+sink's `writer`, so in a clustered deployment one job trims one node's chain —
+run it on every node, or give a single job a sink per writer, or the table keeps
+growing while the job reports success. And this is *not* the anchoring case: an
+anchor is published per process and is deliberately [kept off the
+scheduler](#why-the-publisher-is-not-a-scheduled-job), whereas a purge is
+housekeeping over rows already written and belongs on it.
+
 Retention never moves an entry's `index` or a sink's `entryCount`: both are
 counted from genesis, so a pruned trail still knows *where* its survivors sat.
 That is what lets [anchor verification](#anchoring-the-chain-head) tell a
