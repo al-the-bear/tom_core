@@ -71,18 +71,31 @@ final _narrationPatterns = <RegExp>[
 
 /// The `§` uses that are *not* work-item pointers and must not be flagged.
 ///
-/// - Published standards a reader can look up: `RFC 4226 §5.3`, `CWE-117`.
-/// - Sections of a specification the package is implementing: `§5.26`,
-///   `CE-ER §7`, `codespecs_mapping.md §7`. A subsection number
-///   (`§<digits>.<digits>`) is the giveaway — quest bug lists are flat.
-/// - A named section of a sibling document: `doc/logging/logging.md § "What
-///   the collector does"`.
+/// A section number is allowed exactly when the line says what it is a section
+/// *of*, because that is the whole difference between a citation and a dangling
+/// number. The named thing has to be something the reader can reach:
+///
+/// - a published standard — `RFC 4226 §5.3`, `CWE-117`;
+/// - a specification this package implements — `CE-ER §7`,
+///   `codespecs_mapping.md §5.26`;
+/// - a sibling document — `doc/logging/logging.md § "What the collector does"`.
+///
+/// The naming is required on the same line, not merely somewhere in the file.
+/// Dartdoc is read one member at a time — in the generated API docs a member's
+/// paragraph appears with nothing around it — so a document named forty lines
+/// up is not available to the person reading the citation. The practical
+/// consequence is that a citation may not be broken across a wrap: reflow the
+/// paragraph so the document and its section number stay on one line.
+///
+/// There is deliberately no exemption for the *shape* of the number. Allowing
+/// `§<digits>.<digits>` on the grounds that quest bug lists are flat tests
+/// where a number came from rather than whether a reader can follow it, and it
+/// let three unattributed `§5.26` citations sit in `access_controls.dart` —
+/// real spec sections, unreachable all the same.
 final _allowedSectionRefs = <RegExp>[
   RegExp(r'RFC ?\d+'),
   RegExp(r'CWE-\d+'),
-  RegExp(r'§ ?\d+\.\d+'),
   RegExp(r'CE-ER'),
-  RegExp('codespecs'),
   RegExp(r'\.md" *§|\.md` *§|\.md *§'),
 ];
 

@@ -815,6 +815,24 @@ anyone who was writing them.
 
 ### Tests
 
+- **`comments_read_as_is_test.dart` now tests resolvability, not provenance
+  (tcinc336).** The section-reference guard exempted any `§<digits>.<digits>`,
+  on the reasoning that quest bug lists are flat and so a dotted number could
+  not be one. That tests where a number came from rather than whether a reader
+  can follow it, and three `§5.26` citations sat in `access_controls.dart`
+  naming no document — real specification sections, unreachable all the same.
+  A section number is now allowed exactly when the same line says what it is a
+  section *of*: a published standard, a specification this package implements,
+  or a sibling document.
+
+  The naming is required on the same line rather than anywhere in the file.
+  File scope would resolve citations split across a line wrap, but it also
+  licenses a work-item pointer nine hundred lines below an unrelated document
+  mention; and dartdoc is read one member at a time, so in the generated API
+  docs a document named forty lines up is not available to the person reading
+  the citation. The practical consequence — reflow the paragraph so the
+  document and its section number stay together — is stated in the guard.
+
 - **New guard: `timezoned_dependency_table_test.dart` (tcinc335).** A dependency
   table is wholly derivable from the source, and it is the part of a document
   that goes stale most quietly: an import added to a file changes nothing a
@@ -1300,6 +1318,13 @@ anyone who was writing them.
   is where the window it opens belongs.
 
 ### Documentation
+
+- **Three specification citations named no specification (tcinc336).** The
+  access-control dartdoc cited `§5.26` three times — for the worked example
+  behind the pattern shape, for why server-level grants need no new class, and
+  for the grant-carrier rule — without ever saying which document has a §5.26.
+  A reader who wanted the source had nothing to search for. All three now name
+  `codespecs_mapping.md` on the line that carries the number.
 
 - **The type guide offered a member the base class does not have (tcinc334).**
   `doc/timezoned/timezoned.md` introduced its shared-member block with "All
