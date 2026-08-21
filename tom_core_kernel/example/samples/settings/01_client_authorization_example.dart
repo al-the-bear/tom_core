@@ -6,6 +6,8 @@
 /// ```
 library;
 
+import 'dart:convert';
+
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // Both settings DTOs are `@tomReflector` classes, and EXAMPLE 13 round-trips
@@ -89,12 +91,27 @@ class BasicResultExample {
 // EXAMPLE 4: Creating a Fully Populated Settings Result
 // =============================================================================
 
+/// What the server sends a signed-in user: every one of the fifteen fields
+/// carrying a value, across all four groups the class declares — resources,
+/// authorization, application context, and localization.
+///
+/// "Fully populated" is checked rather than taken on trust. The result is
+/// serialized and the payload inspected for a `null`, so a sixteenth field
+/// added to the class and forgotten here fails this example instead of
+/// quietly making it a partial one again — which is how the four that this
+/// sample never mentioned came to be missing in the first place.
+///
+/// The two groups that need more than a value to understand get their own
+/// examples: the localization pairs in EXAMPLE 10, the context triple in
+/// EXAMPLE 15.
 class FullResultExample {
   static int textsCount = 0;
   static int configCount = 0;
   static int rolesCount = 0;
   static int groupsCount = 0;
   static int entitlementsCount = 0;
+  static int fieldCount = 0;
+  static List<String> unsetFields = const [];
   static bool resultCreated = false;
 
   static void example4FullResult() {
@@ -118,9 +135,13 @@ class FullResultExample {
       ],
       resourceKeys: ['dashboard', 'reports'],
       organization: 'acme-corp',
+      process: 'quarterly-close',
       application: 'admin-portal',
+      country: 'US',
       language: 'en',
       timezone: 'UTC',
+      clientCountry: 'DE',
+      clientLanguage: 'de',
       clientTimezone: 'America/New_York',
     );
 
@@ -137,6 +158,27 @@ class FullResultExample {
     assert(groupsCount == 2, 'Should have 2 groups');
     assert(entitlementsCount == 3, 'Should have 3 entitlements');
     assert(resultCreated, 'Result should be created');
+
+    // The completeness check. Serializing names every field, so nothing here
+    // has to repeat the field list — the class stays the single source of it.
+    final payload =
+        jsonDecode(tomReflectionInfo.convertToJsonString(result))
+            as Map<String, Object?>;
+
+    fieldCount = payload.length;
+    unsetFields =
+        payload.entries
+            .where((entry) => entry.value == null)
+            .map((entry) => entry.key)
+            .toList()
+          ..sort();
+
+    assert(fieldCount == 15, 'The result declares fifteen fields');
+    assert(
+      unsetFields.isEmpty,
+      'A fully populated result leaves nothing unset, but these are: '
+      '${unsetFields.join(', ')}',
+    );
   }
 }
 
@@ -574,6 +616,85 @@ class UnsetStringDefaultsExample {
 }
 
 // =============================================================================
+// EXAMPLE 15: The Application Context Triple
+// =============================================================================
+
+/// `organization`, `process` and `application` are not three more settings —
+/// they are the *scope* of everything else in the result. The roles, the
+/// entitlements, the texts and the config are what this user has **in this
+/// organization, in this process, in this application**, and they are not
+/// meaningful outside it.
+///
+/// That makes the triple part of a cached result's identity. Two results can
+/// carry identical roles and be answers to different questions, so a client
+/// that caches settings keys the cache on the triple; a client that reuses one
+/// result after the user switches organization is showing stale authorization.
+///
+/// The request message carries none of the three — it carries only the bearer
+/// token (EXAMPLE 1). The server derives the scope from the session and states
+/// it back, which is why `organization` is documented as possibly differing
+/// from the one that was asked for: the value in the result is the one that
+/// was actually applied.
+class ApplicationContextExample {
+  static String? organization;
+  static String? process;
+  static String? application;
+  static String? scopeKey;
+  static bool sameRolesDifferentScope = false;
+  static bool unscoped = false;
+
+  static void example15ApplicationContext() {
+    final result = TomGetSettingsResult(
+      roles: ['approver'],
+      organization: 'acme-corp',
+      process: 'quarterly-close',
+      application: 'admin-portal',
+    );
+
+    organization = result.organization;
+    process = result.process;
+    application = result.application;
+
+    assert(organization == 'acme-corp', 'The organization owning the session');
+    assert(process == 'quarterly-close', 'The workflow the user is inside');
+    assert(application == 'admin-portal', 'The application being configured');
+
+    // A cache key is the triple, not the user — this is the shape of it:
+    scopeKey = '${result.organization}/${result.process}/${result.application}';
+    assert(
+      scopeKey == 'acme-corp/quarterly-close/admin-portal',
+      'The three together identify the scope',
+    );
+
+    // Same user, same role, different process: approving a quarterly close is
+    // not approving an onboarding, so this is a different answer and must not
+    // reuse the one above.
+    final otherProcess = TomGetSettingsResult(
+      roles: ['approver'],
+      organization: 'acme-corp',
+      process: 'employee-onboarding',
+      application: 'admin-portal',
+    );
+
+    sameRolesDifferentScope =
+        otherProcess.roles.join() == result.roles.join() &&
+        otherProcess.process != result.process;
+    assert(sameRolesDifferentScope, 'Equal roles, different scope');
+
+    // All three are nullable, and all three being absent is a legitimate
+    // answer: a server that runs one application for one tenant has no scope
+    // to narrow to, and says so by leaving them unset rather than inventing
+    // placeholder values.
+    final global = TomGetSettingsResult(roles: ['viewer']);
+    unscoped =
+        global.organization == null &&
+        global.process == null &&
+        global.application == null;
+    assert(unscoped, 'An unscoped result leaves all three null');
+  }
+}
+
+// =============================================================================
 // RUN ALL EXAMPLES
 // =============================================================================
 
@@ -592,6 +713,7 @@ void run() {
   PerInstanceIsolationExample.example12PerInstanceIsolation();
   ReflectedRoundTripExample.example13ReflectedRoundTrip();
   UnsetStringDefaultsExample.example14UnsetStringDefaults();
+  ApplicationContextExample.example15ApplicationContext();
 }
 
 void main() {
