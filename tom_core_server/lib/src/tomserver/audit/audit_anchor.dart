@@ -226,6 +226,16 @@ abstract class TomAuditAnchorVerifier {
   /// An unsigned anchor, or one signed by an unknown key, is `false`: the
   /// verifier's job is to say whether the anchor can be relied on, and neither
   /// of those can.
+  ///
+  /// **Implementations must not throw.** The input is an anchor that may have
+  /// been tampered with — that is the situation the verifier exists for — so
+  /// malformed key ids, signatures and payloads are ordinary traffic, not
+  /// programming errors, and the caller's only two useful answers are `true`
+  /// and `false`. [verifyAgainstAnchor] enforces this at the seam rather than
+  /// trusting it, because implementations legitimately leave the process and an
+  /// expired HSM session is not something it can rule out; but an
+  /// implementation that relies on being caught reports every one of its own
+  /// failures as an unexplained bad signature.
   bool verify(TomAuditAnchor anchor);
 }
 
@@ -278,9 +288,21 @@ class TomRsaAuditAnchorVerifier implements TomAuditAnchorVerifier {
         Uint8List.fromList(utf8.encode(anchor.signedPayload)),
         base64Decode(signature),
       );
-    } on FormatException {
-      // A signature that is not even base64 is a forgery attempt or a corrupt
-      // store; either way it is "does not verify", not a crash in the checker.
+    } catch (_) {
+      // Any failure to verify is a failed verification. A signature that is not
+      // base64, one that decodes to bytes the cipher rejects, a payload the
+      // digest chokes on — all of it is "does not verify", not a crash in the
+      // checker, because every byte here came from a store this method exists
+      // to distrust.
+      //
+      // Broad on purpose. As of pointycastle 3.9.1 nothing below actually
+      // escapes: `rsaVerify` catches `ArgumentError`, `RSASigner` catches it
+      // again around `processBlock`, and every throw in `PKCS1Encoding` and
+      // `RSAEngine` is an `ArgumentError`. But that is three layers of other
+      // people's internals — one of them commented with the version it was
+      // written for — holding up a totality guarantee this class owes its
+      // caller. Naming a single exception type here made the guarantee true by
+      // coincidence and re-breakable by a dependency bump.
       return false;
     }
   }
@@ -428,13 +450,38 @@ TomAuditAnchorVerification verifyAgainstAnchor(
       'chain "$writer"',
     );
   }
-  if (verifier != null && !verifier.verify(anchor)) {
-    return result(
-      TomAuditAnchorStatus.signatureInvalid,
-      anchor.isSigned
-          ? 'anchor signature from key "${anchor.keyId}" does not verify'
-          : 'anchor is unsigned but a signature was required',
-    );
+  if (verifier != null) {
+    // [TomAuditAnchorVerifier.verify] is required not to throw, and this
+    // enforces it rather than trusting it. The interface exists so a deployment
+    // can put an HSM or a KMS behind it, and those fail in ways no pure-Dart
+    // verifier does — expired sessions, timeouts, unparseable key material. A
+    // function documented as returning one of eight statuses may not hand the
+    // caller a stack trace instead because the key store was briefly away.
+    //
+    // The fail-safe answer is `signatureInvalid`, for the reason the unsigned
+    // case already uses: a verifier that could not answer and an anchor that is
+    // genuinely forged are indistinguishable from here, and calling the
+    // ambiguity "fine" is how a check silently stops checking. The exception
+    // goes into [TomAuditAnchorVerification.detail] so the operator sees an
+    // infrastructure fault for what it is instead of hunting a forgery.
+    final bool verified;
+    try {
+      verified = verifier.verify(anchor);
+    } catch (error) {
+      return result(
+        TomAuditAnchorStatus.signatureInvalid,
+        'the verifier threw instead of answering, so the anchor could not be '
+        'authenticated: $error',
+      );
+    }
+    if (!verified) {
+      return result(
+        TomAuditAnchorStatus.signatureInvalid,
+        anchor.isSigned
+            ? 'anchor signature from key "${anchor.keyId}" does not verify'
+            : 'anchor is unsigned but a signature was required',
+      );
+    }
   }
   if (!chain.isValid) {
     return result(

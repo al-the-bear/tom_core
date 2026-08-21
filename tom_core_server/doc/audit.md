@@ -501,7 +501,7 @@ what an operator alert should key on, not the enum directly.
 | `diverged` | **tampering** | intact but the anchored position hashes differently: **the wholesale-rewrite signal** |
 | `truncated` | **tampering** | intact but stops short of the anchored position: entries removed from the end |
 | `chainBroken` | **tampering** | the chain fails its own verification, so the anchor was not consulted |
-| `signatureInvalid` | **tampering** | the anchor is unsigned, or signed by an unknown or wrong key |
+| `signatureInvalid` | **tampering** | the anchor is unsigned, signed by an unknown or wrong key, or the verifier failed to answer |
 | `beforeRetention` | inconclusive | the anchored position was pruned; nothing left to compare |
 | `writerMismatch` | inconclusive | the anchor describes a different chain |
 
@@ -518,6 +518,16 @@ available on `TomAuditAnchorVerification.chain`, whichever status is returned.
 `signatureInvalid` counts as tampering because a forged anchor and a
 misconfigured key are indistinguishable from the verifier's side, and treating
 the ambiguity as "fine" means the check has silently stopped checking.
+
+The same reasoning covers a verifier that **throws**. `TomAuditAnchorVerifier`
+is an interface a deployment implements, and the implementations worth having —
+an HSM, a KMS — fail in ways a pure-Dart one does not: expired sessions,
+timeouts, key material that will not parse. `verifyAgainstAnchor` catches those
+and reports `signatureInvalid` rather than letting them out of a function
+documented as returning one of eight statuses, and puts the exception in
+`detail` so the fault is legible as infrastructure rather than as forgery.
+Implementations should still answer `false` instead of throwing; the guard is
+there because the checker cannot verify that they do.
 
 `beforeRetention` is the one that needs a policy decision. **If your deployment
 does not prune, treat it as a finding** — it means the entries an anchor

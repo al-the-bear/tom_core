@@ -2,6 +2,41 @@
 
 ### Behaviour Changes
 
+- **`verifyAgainstAnchor` no longer lets a verifier's exception out, and the
+  verifier contract says so (tcinc348).** `TomAuditAnchorVerifier` is an
+  interface, and the library invites implementations that leave the process —
+  "an HSM, a KMS and a PEM file are all legitimate answers". Those fail in ways
+  a pure-Dart verifier does not: expired sessions, timeouts, key material that
+  will not parse. `verifyAgainstAnchor` called `verifier.verify(anchor)` inside
+  no guard of its own, so a function documented as returning one of eight
+  statuses handed the caller a stack trace instead whenever the key store was
+  briefly away.
+
+  It now reports `signatureInvalid`, for the reason the unsigned case already
+  used: a verifier that could not answer and an anchor that is genuinely forged
+  are indistinguishable from here, and calling the ambiguity "fine" is how a
+  check silently stops checking. The exception goes into
+  `TomAuditAnchorVerification.detail`, so an operator reads an infrastructure
+  fault as one rather than opening a forgery investigation. The guard wraps the
+  signature check in place and does not disturb the writer check above it.
+
+  `TomAuditAnchorVerifier.verify` now documents that implementations must not
+  throw — the input is an anchor that may have been tampered with, so malformed
+  key ids and signatures are ordinary traffic rather than programming errors,
+  and the caller's only two useful answers are `true` and `false`.
+
+  `TomRsaAuditAnchorVerifier.verify` widens its `on FormatException` to catch
+  everything. This one is belt-and-braces and is labelled as such in the code:
+  with pointycastle 3.9.1 nothing else actually escapes — `rsaVerify` catches
+  `ArgumentError`, `RSASigner` catches it again around `processBlock`, and every
+  throw in `PKCS1Encoding` and `RSAEngine` is an `ArgumentError`. Twenty-three
+  malformed signatures (invalid base64, empty, one byte, half length, off by one
+  either way, doubled, all-`0xFF`, against 2048-bit, 4096-bit and toy keys) all
+  answered `false` before the change. But that totality was three layers of
+  other people's internals — one of them commented with the version it was
+  written for — holding up a guarantee this class owes its own callers, who may
+  call it outside `verifyAgainstAnchor` and so outside the new guard.
+
 - **`TomFileAuditSink` buckets by the UTC day, and actually starts a new file
   when the day turns over (tcinc346).** Two defects behind one claim. The file
   name came from the host's *local* calendar while every `TomAuditRecord`

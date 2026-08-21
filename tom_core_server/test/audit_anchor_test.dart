@@ -91,6 +91,17 @@ class _FakeVerifier implements TomAuditAnchorVerifier {
   }
 }
 
+/// A verifier that throws instead of answering, standing in for the
+/// out-of-process implementations the interface exists to allow — an HSM whose
+/// session expired, a KMS call that timed out, a PEM that failed to parse.
+class _ThrowingVerifier implements TomAuditAnchorVerifier {
+  final Object error;
+  const _ThrowingVerifier(this.error);
+
+  @override
+  bool verify(TomAuditAnchor anchor) => throw error;
+}
+
 void main() {
   group('TomAuditAnchor', () {
     test('captures head and count from a sink as one observation', () async {
@@ -449,6 +460,66 @@ void main() {
       expect(result.status, TomAuditAnchorStatus.signatureInvalid);
     });
 
+    group('a verifier that throws', () {
+      // `TomAuditAnchorVerifier` is a public interface, and the library invites
+      // implementations that leave the process — "an HSM, a KMS and a PEM file
+      // are all legitimate answers". Those fail in ways a pure-Dart verifier
+      // does not: expired sessions, timeouts, unparseable key material. The
+      // built-in RSA verifier is total, but `verifyAgainstAnchor` cannot assume
+      // the one it was handed is, and it is documented as returning one of
+      // eight statuses rather than as something that might throw.
+      final entries = _chain(3);
+
+      test('is reported as signatureInvalid rather than propagating', () {
+        final result = verifyAgainstAnchor(
+          entries,
+          _anchorAt(entries),
+          verifier: const _ThrowingVerifier('HSM session expired'),
+        );
+        expect(result.status, TomAuditAnchorStatus.signatureInvalid);
+        expect(result.indicatesTampering, isTrue);
+      });
+
+      test('names the failure in the detail, so the cause is not lost', () {
+        // Swallowing the exception without saying so would turn an
+        // infrastructure fault into an indistinguishable "signature is bad",
+        // and send an operator hunting a forgery instead of restarting an
+        // agent. The status is the fail-safe answer; `detail` is where the
+        // actual reason has to survive.
+        final result = verifyAgainstAnchor(
+          entries,
+          _anchorAt(entries),
+          verifier: const _ThrowingVerifier('HSM session expired'),
+        );
+        expect(result.detail, contains('verifier'));
+        expect(result.detail, contains('HSM session expired'));
+      });
+
+      test('does not escape for an Error either, not just an Exception', () {
+        // `on Exception` would be the reflexive catch and would miss exactly
+        // the failures a misconfigured native verifier produces.
+        final result = verifyAgainstAnchor(
+          entries,
+          _anchorAt(entries),
+          verifier: _ThrowingVerifier(StateError('key handle closed')),
+        );
+        expect(result.status, TomAuditAnchorStatus.signatureInvalid);
+        expect(result.detail, contains('key handle closed'));
+      });
+
+      test('is still outranked by a writer mismatch', () {
+        // The guard wraps the signature check in place; it does not move it
+        // ahead of the more specific answer above it.
+        final result = verifyAgainstAnchor(
+          entries,
+          _anchorAt(entries, writer: 'node-b'),
+          writer: 'node-a',
+          verifier: const _ThrowingVerifier('HSM session expired'),
+        );
+        expect(result.status, TomAuditAnchorStatus.writerMismatch);
+      });
+    });
+
     group('precedence when several checks fail at once', () {
       // Every test above arranges for exactly one thing to be wrong, so none of
       // them says which answer wins when two are. That is the interesting case
@@ -589,6 +660,44 @@ void main() {
         TomRsaAuditAnchorVerifier({'audit-2026': publicKey}).verify(anchor),
         isFalse,
       );
+    });
+
+    test('well-formed base64 of the wrong length is false, not a throw', () {
+      // Decoding cleanly is not the same as being a signature. These reach the
+      // cipher rather than stopping at `base64Decode`, which is the half of
+      // the input space the narrower `on FormatException` never covered.
+      final signer = TomRsaAuditAnchorSigner(
+        privateKey: privateKey,
+        keyId: 'audit-2026',
+      );
+      final valid = base64Decode(
+        _anchorAt(_chain(1)).signedWith(signer).signature!,
+      );
+      final verifier = TomRsaAuditAnchorVerifier({'audit-2026': publicKey});
+
+      for (final bytes in <List<int>>[
+        <int>[],
+        [0x01],
+        valid.sublist(0, valid.length ~/ 2),
+        valid.sublist(0, valid.length - 1),
+        [...valid, 0x00],
+        [...valid, ...valid],
+        List<int>.filled(valid.length, 0xFF),
+      ]) {
+        final anchor = TomAuditAnchor(
+          writer: 'node-a',
+          entryCount: 1,
+          headHash: 'c' * 64,
+          createdAt: DateTime.utc(2026, 7, 28),
+          keyId: 'audit-2026',
+          signature: base64Encode(bytes),
+        );
+        expect(
+          verifier.verify(anchor),
+          isFalse,
+          reason: 'a ${bytes.length}-byte signature must answer, not throw',
+        );
+      }
     });
 
     test('an unknown key id is rejected without consulting the signature', () {

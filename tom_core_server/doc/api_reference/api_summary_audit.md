@@ -731,7 +731,7 @@ Checks the signature on an anchor.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `verify` | `bool verify(TomAuditAnchor anchor)` | Whether `anchor` carries a valid signature from a key this verifier knows. An unsigned anchor, or one signed by an unknown key, is `false`. |
+| `verify` | `bool verify(TomAuditAnchor anchor)` | Whether `anchor` carries a valid signature from a key this verifier knows. An unsigned anchor, or one signed by an unknown key, is `false`. **Implementations must not throw** — the input is an anchor that may have been tampered with, so malformed key ids and signatures are ordinary traffic. `verifyAgainstAnchor` enforces this at the seam, reporting a throw as `signatureInvalid` with the error in `detail`. |
 
 ### TomRsaAuditAnchorSigner
 
@@ -787,7 +787,7 @@ const TomRsaAuditAnchorVerifier(Map<String, RSAPublicKey> publicKeys)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `verify` | `bool verify(TomAuditAnchor anchor)` | *(override)* `false` for an unsigned anchor, an unknown key id, or a signature that is not even valid base64; otherwise the result of `rsaVerify` over `signedPayload`. |
+| `verify` | `bool verify(TomAuditAnchor anchor)` | *(override)* `false` for an unsigned anchor, an unknown key id, or any signature the cipher cannot make sense of — invalid base64, the wrong length, bytes that decode to nothing PKCS#1 recognises; otherwise the result of `rsaVerify` over `signedPayload`. Total by construction: every failure below is caught and answered `false`. |
 
 ### TomAuditAnchorStatus
 
@@ -803,7 +803,7 @@ three groups `TomAuditAnchorVerification` exposes — `isMatch`,
 | `truncated` | The chain is intact but stops short of the anchored position: entries the anchor counted are gone from the end. |
 | `diverged` | The chain is intact but the anchored position hashes differently — the wholesale-rewrite signal. |
 | `chainBroken` | The chain fails its own verification, so the anchor was not consulted. |
-| `signatureInvalid` | The anchor's signature is missing, unknown or wrong, so nothing was concluded from it. |
+| `signatureInvalid` | The anchor's signature is missing, unknown or wrong — or the verifier threw instead of answering — so nothing was concluded from it. |
 | `writerMismatch` | The anchor describes a different chain than the entries do. |
 
 ### TomAuditAnchorVerification
