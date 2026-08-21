@@ -141,7 +141,7 @@ class TomDummyAuthenticationService implements TomAuthenticationService {
       processId: 0,
       language: authData.language,
       country: authData.country,
-      clientCountry: authData.language,
+      clientCountry: authData.country,
       clientLanguage: authData.language,
       clientTimezone: authData.timezone,
       user: TomUser(

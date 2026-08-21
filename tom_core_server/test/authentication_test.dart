@@ -141,6 +141,19 @@ void main() {
       expect(info.principal.authenticated, isFalse);
     });
 
+    test('takes each locale field from its matching source', () async {
+      final dummy = TomDummyAuthenticationService()..showErrorMessage = false;
+      // The login carries a language and a country that differ, so conflating
+      // the two is visible in the result rather than hidden by equal values.
+      final info = await dummy.authenticateUser(_login('bob'));
+      final principal = info.principal;
+      expect(principal.language, 'en');
+      expect(principal.country, 'US');
+      expect(principal.clientLanguage, 'en');
+      expect(principal.clientCountry, 'US');
+      expect(principal.clientTimezone, 'UTC');
+    });
+
     test('defaults showErrorMessage to true', () {
       expect(TomDummyAuthenticationService().showErrorMessage, isTrue);
     });
