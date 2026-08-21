@@ -99,7 +99,7 @@ TomAuthenticationService.authenticateUser   ← your implementation
         │  or throws LoginException
         ▼
         │
-        ├─ principal.requires2FA ?  ──► see Two-Factor Authentication
+        ├─ 2FA policy owes a factor ?  ──► see Two-Factor Authentication
         ▼
 TomBearerAuthentication.convertPrincipalToTokenPayload
         │  → (public claims, encrypted private claims)
@@ -236,6 +236,7 @@ and the four shapes a deployment can be in are these:
 │ authenticatePass1(message)                                               │
 │   └─ TomAuthenticationService.authenticateUser  → principal              │
 │        principal.requires2FA == true, twoFactorType == 'totp'            │
+│   └─ Tom2FAPolicy.resolve().decideFor(ctx)      → required, ['totp']     │
 │   └─ Tom2FARegistry.lookup('totp')              → Tom2FAService          │
 │   └─ service.issueChallenge(Tom2FAContext)      → Tom2FAChallengeSpec    │
 │        .clientData        ──► public claims     (the client's UI reads)  │
