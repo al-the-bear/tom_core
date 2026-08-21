@@ -178,4 +178,31 @@ void main() {
       expect(datasource.prunes, hasLength(2));
     });
   });
+
+  // The named constructor resolves a data source out of the registry and throws
+  // before it touches one, so this needs no database — which is the reason it
+  // lives here and not in `oauth_state_store_db_test.dart`.
+  group('the relational state store resolves its data source by name', () {
+    test('an unregistered name fails at construction, not at first login', () {
+      expect(
+        () => TomSqlOAuthStateStore.named('no-such-datasource'),
+        throwsA(
+          isA<TomServerException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'oauth.state_store.unknown_datasource',
+              )
+              // The name is carried as a parameter rather than only baked into
+              // the message: a cluster misconfigured this way has one typo in
+              // one YAML key, and the failure has to say which.
+              .having(
+                (e) => e.parameters?['datasource'],
+                'datasource',
+                'no-such-datasource',
+              ),
+        ),
+      );
+    });
+  });
 }

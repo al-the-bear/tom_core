@@ -541,6 +541,30 @@ void main() {
       );
     });
 
+    // The same raise, one line in the shared base class, interpolating the
+    // subclass's `type`. Worth asserting twice rather than once: the key an
+    // operator greps for is the interpolated one, and the two subclasses reach
+    // it through *different* `resolveDeliveryService` overrides — a subclass
+    // that resolved the wrong bean type would still throw, just never here.
+    test('the sms mechanism names itself, not the family', () async {
+      TomBean.resetBeanContext();
+
+      await expectLater(
+        text.issueChallenge(_context()),
+        throwsA(
+          isA<Tom2FAException>()
+              .having((e) => e.key, 'key', 'authentication.2fa.sms.no_service')
+              // The message names what to install, which is the only actionable
+              // part of a wiring failure.
+              .having(
+                (e) => e.toString(),
+                'message',
+                contains('TomSmsService'),
+              ),
+        ),
+      );
+    });
+
     // -----------------------------------------------------------------------
     // Descriptors
     // -----------------------------------------------------------------------

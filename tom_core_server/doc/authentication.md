@@ -1240,7 +1240,7 @@ signal, never surfaced to a client.
 | `server.selflogin.rejected` | The auth server refused the credential. Only the HTTP status is reported — the body may echo the credential back. |
 | `server.selflogin.bad_response` | The response was not JSON, or was JSON that is not an object. |
 | `server.selflogin.no_token` | The response carried no token under any accepted name. |
-| `server.selflogin.bad_token` | The token could not be turned into a principal. |
+| `server.selflogin.bad_token` | A token field was present but could not be turned into a principal: it was not a decodable JWT, its payload was not an object, or its encrypted section would not unwrap under this deployment's key. One key for all three, because the operator's move is the same in each — look at what the auth server put in that field. |
 
 The response is read for `authenticationToken`/`authToken` and
 `authorizationToken`/`authzToken` — both spellings, because both are in the

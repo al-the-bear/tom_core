@@ -3391,6 +3391,42 @@ void main() {
         expect(result.authorizationToken, isEmpty);
       },
     );
+
+    // The store going away *between* the offer and the confirmation is the only
+    // way to reach this refusal, and that is worth stating rather than working
+    // around: with no store installed `_usableEnrolments` answers null and no
+    // enrolment is ever offered, so a deployment that never had one cannot get
+    // here. What can is a restart or a bean context rebuilt mid-flow — and the
+    // confirmation must then refuse, because the alternative is confirming a
+    // factor that is written nowhere and handing out a full token pair for it.
+    // The user would be enrolled in their own belief and in nothing else, and
+    // their next login would ask them to enrol again.
+    test('an enrolment whose store disappears mid-flow is refused', () async {
+      policy(Tom2FARequirement.required);
+      final (_, token) = await login();
+      final begun = await server.beginTwoFactorEnrolment(
+        _message(password: 'app'),
+        enrolmentToken: token,
+      );
+      expect(begun.error, isEmpty, reason: 'the offer must be made first');
+
+      // The store goes; the registry is static and survives, so the pass still
+      // reaches the store check rather than failing earlier on the mechanism.
+      TomBean.resetBeanContext();
+
+      final result = await server.completeTwoFactorEnrolment(
+        _message(password: _EnrollableAdaptor.confirmation),
+        enrolmentToken: TomClientJwtToken(begun.authorizationToken),
+      );
+
+      expect(result.error, 'login.error.2fa.enrolment-unavailable');
+      expect(result.authorizationToken, isEmpty);
+      expect(
+        enrollable.confirmed,
+        0,
+        reason: 'nothing is confirmed that cannot be recorded',
+      );
+    });
   });
 }
 

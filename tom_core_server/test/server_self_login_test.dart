@@ -322,6 +322,62 @@ void main() {
         ),
       );
     });
+
+    // The last thing between a response and a principal, and the one failure
+    // that arrives from *inside* another library. The body is well-formed and
+    // both token fields are present and non-empty, so `_readTokens` passes —
+    // and then the string is not a JWT. SL16 covers a body that is not JSON;
+    // this is the different case of a well-formed body whose token field is
+    // rubbish, which an auth server behind a misconfigured proxy produces. It
+    // must still come back keyed, not as whatever `dart_jsonwebtoken` threw.
+    test('SL17: a token field that is not a JWT throws '
+        '[2026-08-22] (OK)', () async {
+      final transport = _FakeTransport(_kernelSpelling('not-a-jwt'));
+      await expectLater(
+        TomServerSelfLogin.logIn(
+          TomServiceCredential.fromConfiguration(_configured())!,
+          transport: transport,
+        ),
+        throwsA(
+          isA<TomServerSelfLoginException>()
+              .having((e) => e.key, 'key', 'server.selflogin.bad_token')
+              // The auth server is named: a deployment dials one URI for this
+              // and the operator has to know which one answered rubbish.
+              .having(
+                (e) => e.toString(),
+                'message',
+                contains('auth.test:8081'),
+              ),
+        ),
+      );
+    });
+
+    // A JWT whose payload is a JSON *string* rather than an object decodes
+    // without complaint and then fails the cast in the payload getter — a
+    // `TypeError`, not a `StateError`, and from a third library again. One key
+    // covers the family precisely because the caller's move is the same for
+    // every member of it.
+    test('SL18: a token whose payload is not an object throws '
+        '[2026-08-22] (OK)', () async {
+      String seg(String s) =>
+          base64Url.encode(utf8.encode(s)).replaceAll('=', '');
+      final token =
+          '${seg('{"alg":"HS256","typ":"JWT"}')}.${seg('"not-an-object"')}.sig';
+      final transport = _FakeTransport(_kernelSpelling(token));
+      await expectLater(
+        TomServerSelfLogin.logIn(
+          TomServiceCredential.fromConfiguration(_configured())!,
+          transport: transport,
+        ),
+        throwsA(
+          isA<TomServerSelfLoginException>().having(
+            (e) => e.key,
+            'key',
+            'server.selflogin.bad_token',
+          ),
+        ),
+      );
+    });
   });
 
   group('TomServerSelfLogin.loginAndInstall', () {

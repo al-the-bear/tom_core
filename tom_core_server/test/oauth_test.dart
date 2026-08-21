@@ -9,9 +9,15 @@
 /// the 2FA decision, the token issuance) executes exactly as it does against a
 /// real provider, so these tests exercise the production path rather than a
 /// parallel one.
+///
+/// The one exception is [TomHttpOAuthTokenTransport], the live seam itself,
+/// which is pinned against a loopback [HttpServer] — a stub cannot prove what
+/// the code that speaks HTTP does with a non-2xx.
 library;
 
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
@@ -114,20 +120,35 @@ Map<String, Object?> _claims({
 /// the *request* — that the verifier travels, that the redirect URI is the
 /// configured one, that the secret is presented as `client_secret_basic`.
 class _StubTransport implements TomOAuthTokenTransport {
-  _StubTransport({Map<String, Object?>? tokenResponse, this.userInfo})
-    : tokenResponse =
-          tokenResponse ??
-          <String, Object?>{
-            'access_token': 'at-1',
-            'token_type': 'Bearer',
-            'id_token': _idToken(_claims()),
-          };
+  _StubTransport({
+    Map<String, Object?>? tokenResponse,
+    this.userInfo,
+    this.rawTokenBody,
+    this.rawUserInfoBody,
+  }) : tokenResponse =
+           tokenResponse ??
+           <String, Object?>{
+             'access_token': 'at-1',
+             'token_type': 'Bearer',
+             'id_token': _idToken(_claims()),
+           };
 
   /// What the token endpoint answers.
   final Map<String, Object?> tokenResponse;
 
   /// What the user-info endpoint answers, when one is called.
   final Map<String, Object?>? userInfo;
+
+  /// The token response as a literal body, bypassing [tokenResponse].
+  ///
+  /// The scripted responses are encoded from a map, which can only ever produce
+  /// well-formed JSON — so the provider that answers `200` with an HTML error
+  /// page, the one the decoder's diagnostics were written for, is unreachable
+  /// through them. These two say the body verbatim instead.
+  final String? rawTokenBody;
+
+  /// The user-info response as a literal body, bypassing [userInfo].
+  final String? rawUserInfoBody;
 
   /// The form the last code exchange posted.
   Map<String, String>? postedForm;
@@ -146,13 +167,13 @@ class _StubTransport implements TomOAuthTokenTransport {
   ) async {
     postedForm = form;
     postedHeaders = headers;
-    return jsonEncode(tokenResponse);
+    return rawTokenBody ?? jsonEncode(tokenResponse);
   }
 
   @override
   Future<String> getJson(Uri uri, Map<String, String> headers) async {
     fetchedUri = uri;
-    return jsonEncode(userInfo ?? const <String, Object?>{});
+    return rawUserInfoBody ?? jsonEncode(userInfo ?? const <String, Object?>{});
   }
 }
 
@@ -740,6 +761,95 @@ void main() {
         ),
       );
     });
+
+    // The provider *set* is a map of maps, and one entry being a scalar is the
+    // shape a mis-indented YAML block takes. It has to fail on the entry rather
+    // than on the whole block: `oauth.config.not_a_map` names the wrong level
+    // and would send an operator looking at the wrong four lines.
+    test('a provider entry that is not a map names the provider that is', () {
+      expect(
+        () => TomOAuthProviders.fromConfiguration(
+          TomServerConfigResourceProvider.from({
+            'oauth': {
+              'providers': {'google': 'https://accounts.google.com'},
+            },
+          }),
+        ),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.config.provider_not_a_map',
+          ),
+        ),
+      );
+    });
+
+    test('authorization parameters that are not a map fail at load', () {
+      expect(
+        () => TomOAuthProviderConfig.fromMap('p', {
+          'issuer': _issuer,
+          'authorizationEndpoint': '$_issuer/authorize',
+          'tokenEndpoint': '$_issuer/token',
+          'clientId': _clientId,
+          'redirectUri': 'https://app.example.test/oauth/callback',
+          'authorizationParameters': 'prompt=consent',
+        }),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.config.parameters_not_a_map',
+          ),
+        ),
+      );
+    });
+
+    // Stringifying a nested map into the redirect would not fail here: it would
+    // fail at the provider, as a rejected authorization request whose message
+    // says nothing about the YAML. Refusing at load is what keeps the
+    // diagnostic next to the mistake.
+    test('a nested authorization parameter value fails at load', () {
+      expect(
+        () => TomOAuthProviderConfig.fromMap('p', {
+          'issuer': _issuer,
+          'authorizationEndpoint': '$_issuer/authorize',
+          'tokenEndpoint': '$_issuer/token',
+          'clientId': _clientId,
+          'redirectUri': 'https://app.example.test/oauth/callback',
+          'authorizationParameters': {
+            'tenant': {'id': 'contoso'},
+          },
+        }),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.config.parameter_not_a_scalar',
+          ),
+        ),
+      );
+    });
+
+    test(
+      'a state-store block that is not a map fails rather than defaulting',
+      () {
+        expect(
+          () => TomOAuthStateStoreSettings.fromConfiguration(
+            TomServerConfigResourceProvider.from({
+              'oauth': {'stateStore': 'sql'},
+            }),
+          ),
+          throwsA(
+            isA<TomOAuthException>().having(
+              (e) => e.key,
+              'key',
+              'oauth.config.state_store_not_a_map',
+            ),
+          ),
+        );
+      },
+    );
   });
 
   // ===========================================================================
@@ -1291,6 +1401,229 @@ void main() {
             'oauth.flow.no_claims_source',
           ),
         ),
+      );
+    });
+
+    // The callback arriving with a *known* state but no code is what a provider
+    // sends when the user declined at the consent screen and the provider is
+    // sloppy enough to redirect anyway. It has to be distinguished from an
+    // unknown state, which is a replay: the state is checked first, and the
+    // empty code is only reached once it has passed.
+    test('a callback with a known state but no code is refused', () async {
+      final flow = _flow(_oidcProvider(), _StubTransport());
+      final begun = await flow.beginAuthorization(_authorizationRequest());
+
+      await expectLater(
+        flow.completeAuthorization(code: '', state: begun.state),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.flow.missing_code',
+          ),
+        ),
+      );
+    });
+
+    // Distinct from `no_claims_source`: the provider *has* a user-info
+    // endpoint, so the fallback path is entered — and then has no bearer token
+    // to present. Calling the endpoint unauthenticated would answer 401 and
+    // report the provider's wording for a defect that is in the token response.
+    test('a user-info provider that returns no access token fails before the '
+        'second call', () async {
+      final provider = _userInfoProvider();
+      final transport = _StubTransport(
+        tokenResponse: {'token_type': 'Bearer'},
+        userInfo: {'id': 4711, 'login': 'octocat'},
+      );
+      final flow = _flow(provider, transport);
+      final begun = await flow.beginAuthorization(
+        _authorizationRequest(providerId: provider.id),
+      );
+
+      await expectLater(
+        flow.completeAuthorization(code: 'c', state: begun.state),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.flow.no_access_token',
+          ),
+        ),
+      );
+      // The endpoint was never reached, which is the point of failing here.
+      expect(transport.fetchedUri, isNull);
+    });
+
+    // A `200` carrying an HTML error page is the shape a proxy or a maintenance
+    // window takes, and it is the one the decoder's diagnostics were written
+    // for: a JSON parse failure ten frames down says nothing about which
+    // provider call produced it.
+    test(
+      'a token response that is not JSON names the call that failed',
+      () async {
+        final flow = _flow(
+          _oidcProvider(),
+          _StubTransport(
+            rawTokenBody: '<html><body>502 Bad Gateway</body></html>',
+          ),
+        );
+        final begun = await flow.beginAuthorization(_authorizationRequest());
+
+        await expectLater(
+          flow.completeAuthorization(code: 'c', state: begun.state),
+          throwsA(
+            isA<TomOAuthException>()
+                .having((e) => e.key, 'key', 'oauth.provider.malformed_json')
+                .having(
+                  (e) => e.toString(),
+                  'message',
+                  contains('code exchange response'),
+                ),
+          ),
+        );
+      },
+    );
+
+    // Well-formed JSON that is not an object: the second branch of the same
+    // key. `jsonDecode` succeeds here, so nothing but the explicit type check
+    // stands between a list and a cast failure further in.
+    test('a token response that is a JSON array is refused', () async {
+      final flow = _flow(_oidcProvider(), _StubTransport(rawTokenBody: '[]'));
+      final begun = await flow.beginAuthorization(_authorizationRequest());
+
+      await expectLater(
+        flow.completeAuthorization(code: 'c', state: begun.state),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.provider.malformed_json',
+          ),
+        ),
+      );
+    });
+
+    // Two calls can fail identically, and the key does not distinguish them.
+    // Naming the call is the entire reason the decoder takes a `what`, so the
+    // second call has to be shown saying something different from the first.
+    test(
+      'a malformed user-info response names that call, not the exchange',
+      () async {
+        final provider = _userInfoProvider();
+        final flow = _flow(
+          provider,
+          _StubTransport(
+            tokenResponse: {'access_token': 'at-9'},
+            rawUserInfoBody: 'Service Unavailable',
+          ),
+        );
+        final begun = await flow.beginAuthorization(
+          _authorizationRequest(providerId: provider.id),
+        );
+
+        await expectLater(
+          flow.completeAuthorization(code: 'c', state: begun.state),
+          throwsA(
+            isA<TomOAuthException>()
+                .having((e) => e.key, 'key', 'oauth.provider.malformed_json')
+                .having(
+                  (e) => e.toString(),
+                  'message',
+                  contains('user-info response'),
+                ),
+          ),
+        );
+      },
+    );
+  });
+
+  // ===========================================================================
+  // THE LIVE TRANSPORT
+  // ===========================================================================
+
+  // Every other test in this file installs a stub, which is what makes the flow
+  // testable at all — but it also means the one seam that actually speaks HTTP
+  // is the one seam none of them exercise. Its whole contract is that a non-2xx
+  // becomes a keyed exception carrying the provider's own body, and getting
+  // that wrong turns every provider misconfiguration into an unhandled
+  // `ClientException` with no key to branch on. A loopback server is enough to
+  // pin it, and keeps the test hermetic.
+  group('TomHttpOAuthTokenTransport', () {
+    late HttpServer server;
+    late Uri endpoint;
+    late int status;
+    late String body;
+
+    setUp(() async {
+      status = 500;
+      body = '{"error":"invalid_client"}';
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      endpoint = Uri.parse('http://127.0.0.1:${server.port}/token');
+      unawaited(
+        server.forEach((request) async {
+          await request.drain<void>();
+          request.response.statusCode = status;
+          request.response.write(body);
+          await request.response.close();
+        }),
+      );
+    });
+
+    tearDown(() => server.close(force: true));
+
+    test(
+      'a non-2xx POST is a keyed failure carrying the provider body',
+      () async {
+        await expectLater(
+          const TomHttpOAuthTokenTransport().postForm(endpoint, const {
+            'grant_type': 'authorization_code',
+          }, const {}),
+          throwsA(
+            isA<TomOAuthException>()
+                .having((e) => e.key, 'key', 'oauth.provider.http_error')
+                // The body is the only thing that says *why*, so its absence
+                // would leave a misconfigured client id undiagnosable.
+                .having(
+                  (e) => e.toString(),
+                  'message',
+                  allOf(contains('500'), contains('invalid_client')),
+                ),
+          ),
+        );
+      },
+    );
+
+    test('a non-2xx GET fails the same way', () async {
+      status = 403;
+      await expectLater(
+        const TomHttpOAuthTokenTransport().getJson(endpoint, const {}),
+        throwsA(
+          isA<TomOAuthException>()
+              .having((e) => e.key, 'key', 'oauth.provider.http_error')
+              .having((e) => e.toString(), 'message', contains('403')),
+        ),
+      );
+    });
+
+    // The failure is server-side by construction: the body it carries is the
+    // provider's, and forwarding a provider's error text to a browser is how a
+    // client id leaks into a bug report.
+    test('the failure does not travel to the client', () async {
+      try {
+        await const TomHttpOAuthTokenTransport().getJson(endpoint, const {});
+        fail('expected a TomOAuthException');
+      } on TomOAuthException catch (ex) {
+        expect(ex.clientThrow, isFalse);
+      }
+    });
+
+    test('a 2xx answers the body verbatim', () async {
+      status = 200;
+      body = '{"access_token":"at-live"}';
+      expect(
+        await const TomHttpOAuthTokenTransport().getJson(endpoint, const {}),
+        '{"access_token":"at-live"}',
       );
     });
   });

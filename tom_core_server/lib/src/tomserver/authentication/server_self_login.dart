@@ -267,7 +267,8 @@ class TomServerSelfLogin {
   /// server that holds the RSA private key.
   ///
   /// Throws [TomServerSelfLoginException] when the auth server refuses, when the
-  /// response is not the expected shape, or when the token carries no payload.
+  /// response is not the expected shape, or when a token it carried cannot be
+  /// decoded into a principal.
   static Future<TomPrincipal> logIn(
     TomServiceCredential credential, {
     TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(),
@@ -297,17 +298,26 @@ class TomServerSelfLogin {
     }
 
     final tokens = _readTokens(response.body, credential);
-    final authToken = TomClientJwtToken(tokens.$1, decrypt: decryptTokens);
-    final authzToken = TomClientJwtToken(tokens.$2, decrypt: decryptTokens);
+    // Decoding is inside the try along with the conversion, because the two
+    // fail for one reason and the caller can do one thing about it. The token
+    // strings came off the wire: they may not be JWTs at all, their payload may
+    // not be an object, and their encrypted section may not decrypt under this
+    // deployment's key. Each of those surfaces from a different library as a
+    // different type -- a `JWTException`, a `TypeError`, a
+    // `TomJwtTokenException` -- and none of them names self-login or the auth
+    // server that sent the token. Uncaught, an operator whose auth server is
+    // returning an error page in the token field gets "Bad state" from a frame
+    // in the kernel and no key to branch on.
     try {
       return TomBearerAuthentication.convertTokenPayloadToPrincipal(
-        authToken,
-        authzToken,
+        TomClientJwtToken(tokens.$1, decrypt: decryptTokens),
+        TomClientJwtToken(tokens.$2, decrypt: decryptTokens),
       );
-    } on StateError catch (e) {
+    } catch (e) {
       throw TomServerSelfLoginException(
         'server.selflogin.bad_token',
-        'The service token could not be turned into a principal: ${e.message}',
+        'The service token from ${credential.loginUri} could not be turned '
+            'into a principal: $e',
       );
     }
   }
