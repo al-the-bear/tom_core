@@ -283,7 +283,7 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(externalClient));
 | ---------- | ---- | -------- |
 | [**Reflection Module**](../reflection/reflection.md) | kernel module | The global `tomReflector`, which is how `TomCloseAdaptor` finds a `close`/`dispose` method on an object that implements neither interface |
 | `tom_reflection` | package | `ClassMirror`, walked up the supertype chain by the adaptor — `ClassMirror.declarations` holds only a type's *own* members, so an inherited `close` needs the walk |
-| `tom_basics` | package | `tomLog`, for the single informational entry written when the listener is initialized |
+| `tom_basics` | package | `tomLog`, for the module's only log line — the breadcrumb [`start()`](#start--an-optional-log-breadcrumb) writes. Nothing logs during shutdown itself; those diagnostics are `print` |
 | `dart:io` | SDK | `ProcessSignal` — the whole signal-handling half of the module, and what makes it native-only |
 | `dart:async` | SDK | `StreamSubscription`, held per registered signal so the handlers can be cancelled |
 
@@ -293,7 +293,10 @@ from generated reflection data, so a package registering objects through
 [`TomClosable` or `TomDisposable`](#interfaces) directly need none of it — the build step is the price of the adaptor, not of the module.
 
 Note what is *not* here. The module does not depend on the
-[logging module](../logging/logging.md): its one log line goes through
-`tomLog`, the live global from `tom_basics`, which needs no wiring. Nor does it
-depend on the [observable module](../observable/observable.md) — the reflector
-is the reflection module's, and observable merely re-exports it.
+[logging module](../logging/logging.md): its one log line — the breadcrumb
+[`start()`](#start--an-optional-log-breadcrumb) writes, which is not part of
+shutdown at all — goes through `tomLog`, the live global from `tom_basics`,
+which needs no wiring. Nor does it depend on the
+[observable module](../observable/observable.md): `tomReflector` belongs to the
+reflection module and is imported from there directly. Observable re-exports
+it, which is the only reason the two are ever confused.
