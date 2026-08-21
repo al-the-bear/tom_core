@@ -1,9 +1,18 @@
 /// Demonstrates TomGetSettingsMessage and TomGetSettingsResult usage.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/settings/01_client_authorization_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+// Both settings DTOs are `@tomReflector` classes, and EXAMPLE 13 round-trips
+// one through the reflection helpers — so this sample needs the generated
+// registry, not just the assert guard. `bootstrapSamples` calls
+// `requireAsserts` itself; the two must not both be called.
+import '../../sample_bootstrap.dart';
 
 // =============================================================================
 // EXAMPLE 1: Creating a Settings Request Message
@@ -349,6 +358,222 @@ class LocalizationPairsExample {
 }
 
 // =============================================================================
+// EXAMPLE 11: Building a Result Incrementally
+// =============================================================================
+
+/// Every example above hands the constructor a finished result. A server
+/// rarely has one: it discovers the user's roles from one source, their
+/// entitlements from another, and the UI texts from a third. So the
+/// default-constructed collections are *fresh mutable* instances — an empty
+/// result is a starting point, not a frozen value.
+///
+/// This is the reason the defaults are written as literals rather than shared
+/// `const` ones. A `const []` would be shared by every instance and would
+/// throw on the first `add`, which is exactly what the incremental style
+/// below does on its first line.
+class IncrementalBuildExample {
+  static int rolesCount = 0;
+  static int entitlementsCount = 0;
+  static String? theme;
+  static String? welcome;
+  static bool startedEmpty = false;
+
+  static void example11IncrementalBuild() {
+    final result = TomGetSettingsResult();
+
+    startedEmpty =
+        result.roles.isEmpty && result.config.isEmpty && result.texts.isEmpty;
+    assert(startedEmpty, 'A default result starts out empty');
+
+    // Authorization, resolved one source at a time.
+    result.roles.add('admin');
+    result.roles.add('editor');
+    result.entitlements.add('feature.dashboard.view');
+    result.groups.add('platform-team');
+    result.resourceKeys.add('dashboard');
+
+    // Configuration and texts, filled in by key.
+    result.config['theme'] = 'dark';
+    result.config['maxItemsPerPage'] = 50;
+    result.texts['welcome'] = 'Welcome to the Application';
+
+    rolesCount = result.roles.length;
+    entitlementsCount = result.entitlements.length;
+    theme = result.config['theme'] as String?;
+    welcome = result.texts['welcome'] as String?;
+
+    assert(rolesCount == 2, 'Both roles were appended');
+    assert(entitlementsCount == 1, 'The entitlement was appended');
+    assert(theme == 'dark', 'Config accepts assignment by key');
+    assert(welcome == 'Welcome to the Application', 'So does texts');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 12: Two Results Do Not Share State
+// =============================================================================
+
+/// The counterpart to EXAMPLE 11, and the half that is easy to get wrong.
+/// Mutable defaults are only safe if each instance gets its *own* — a single
+/// shared default would silently leak one request's roles into the next.
+///
+/// A server building one result per request depends on this: nothing resets
+/// the collections between requests, so their independence is what keeps two
+/// concurrent users from seeing each other's authorization.
+class PerInstanceIsolationExample {
+  static int firstRolesCount = 0;
+  static int secondRolesCount = 0;
+  static bool secondUnaffected = false;
+
+  static void example12PerInstanceIsolation() {
+    final first = TomGetSettingsResult();
+    final second = TomGetSettingsResult();
+
+    first.roles.add('admin');
+    first.texts['welcome'] = 'Hello';
+
+    firstRolesCount = first.roles.length;
+    secondRolesCount = second.roles.length;
+    secondUnaffected = second.roles.isEmpty && second.texts.isEmpty;
+
+    assert(firstRolesCount == 1, 'The first result took the role');
+    assert(secondRolesCount == 0, 'The second never saw it');
+    assert(secondUnaffected, 'Neither collection is shared between instances');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 13: The Reflected Round Trip
+// =============================================================================
+
+/// Both settings classes carry `@tomReflector`, and that is the whole reason
+/// they are shaped the way they are — public fields, a no-argument
+/// constructor, no computed state. They exist to cross the wire.
+///
+/// So the operation that matters is the round trip: serialize on the server,
+/// deserialize on the client, and get an equal value back. The field
+/// identifiers *are* the JSON keys, which is why renaming one is a wire
+/// change rather than a refactor.
+///
+/// This needs the generated reflection registry, which is why this sample's
+/// `main()` calls `bootstrapSamples()`.
+class ReflectedRoundTripExample {
+  static String? json;
+  static int restoredRolesCount = 0;
+  static String? restoredTheme;
+  static String? restoredOrganization;
+  static bool survivedRoundTrip = false;
+
+  static void example13ReflectedRoundTrip() {
+    final original = TomGetSettingsResult(
+      texts: {'welcome': 'Welcome to the Application'},
+      config: {'theme': 'dark', 'maxItemsPerPage': 50},
+      roles: ['admin', 'editor'],
+      entitlements: ['feature.dashboard.view'],
+      organization: 'acme-corp',
+      language: 'en',
+      timezone: 'UTC',
+    );
+
+    json = tomReflectionInfo.convertToJsonString(original);
+
+    final mirror =
+        tomReflector.reflectType(TomGetSettingsResult) as ClassMirror;
+    final restored = tomReflectionInfo
+        .createInstanceFromJsonString<TomGetSettingsResult>(mirror, json!);
+
+    restoredRolesCount = restored.roles.length;
+    restoredTheme = restored.config['theme'] as String?;
+    restoredOrganization = restored.organization;
+
+    survivedRoundTrip =
+        restoredRolesCount == 2 &&
+        restoredTheme == 'dark' &&
+        restoredOrganization == 'acme-corp' &&
+        restored.timezone == 'UTC';
+
+    assert(json!.isNotEmpty, 'Serialization produced a payload');
+    assert(restoredRolesCount == 2, 'Roles survived the round trip');
+    assert(restoredTheme == 'dark', 'Nested config values survived');
+    assert(restoredOrganization == 'acme-corp', 'Scalars survived');
+    assert(survivedRoundTrip, 'The value came back equal');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 14: Unset Is Null, and Empty Is Not Unset
+// =============================================================================
+
+/// The string fields default to `null`, and that is a deliberate distinction
+/// rather than an accident of Dart: `null` means *the server said nothing
+/// about this*, and `''` means *the server set it to empty*. A client that
+/// falls back to a default should do so only in the first case.
+///
+/// The distinction has to survive the wire for it to mean anything, so this
+/// checks it after a round trip as well as on a fresh instance — with every
+/// field populated, as in EXAMPLE 13, an unset default never shows.
+class UnsetStringDefaultsExample {
+  static String? organization;
+  static String? clientLanguage;
+  static bool allUnsetAreNull = false;
+  static bool emptyIsNotNull = false;
+  static bool nullSurvivesTheWire = false;
+
+  static void example14UnsetStringDefaults() {
+    final result = TomGetSettingsResult();
+
+    organization = result.organization;
+    clientLanguage = result.clientLanguage;
+
+    allUnsetAreNull =
+        result.organization == null &&
+        result.process == null &&
+        result.application == null &&
+        result.country == null &&
+        result.language == null &&
+        result.timezone == null &&
+        result.clientCountry == null &&
+        result.clientLanguage == null &&
+        result.clientTimezone == null;
+
+    assert(organization == null, 'An unset organization reads back as null');
+    assert(clientLanguage == null, 'So does an unset clientLanguage');
+    assert(allUnsetAreNull, 'Every unset string field is null, not empty');
+
+    // An empty string is a value the server chose, and is not the same answer.
+    final deliberatelyEmpty = TomGetSettingsResult(organization: '');
+    emptyIsNotNull =
+        deliberatelyEmpty.organization != null &&
+        deliberatelyEmpty.organization!.isEmpty;
+    assert(emptyIsNotNull, '"" is set-to-empty, which is not unset');
+
+    // Which is why a client tests for null rather than for emptiness:
+    //
+    //   final org = result.organization ?? defaultOrganization;
+    //
+    // `result.organization?.isEmpty ?? true` would collapse the two.
+
+    // The guarantee is consumed on the deserialization path, so check it there
+    // too — a client reads results the deserializer built, not ones it
+    // constructed.
+    final restoredJson = tomReflectionInfo.convertToJsonString(
+      TomGetSettingsResult(),
+    );
+    final mirror =
+        tomReflector.reflectType(TomGetSettingsResult) as ClassMirror;
+    final restored = tomReflectionInfo
+        .createInstanceFromJsonString<TomGetSettingsResult>(
+          mirror,
+          restoredJson,
+        );
+
+    nullSurvivesTheWire =
+        restored.organization == null && restored.clientLanguage == null;
+    assert(nullSurvivesTheWire, 'Unset stays unset across the wire');
+  }
+}
+
+// =============================================================================
 // RUN ALL EXAMPLES
 // =============================================================================
 
@@ -363,9 +588,13 @@ void run() {
   CheckEntitlementsExample.example8CheckEntitlements();
   SettingsEndpointExample.example9BuildEndpoint();
   LocalizationPairsExample.example10LocalizationPairs();
+  IncrementalBuildExample.example11IncrementalBuild();
+  PerInstanceIsolationExample.example12PerInstanceIsolation();
+  ReflectedRoundTripExample.example13ReflectedRoundTrip();
+  UnsetStringDefaultsExample.example14UnsetStringDefaults();
 }
 
 void main() {
-  requireAsserts();
+  bootstrapSamples();
   run();
 }
