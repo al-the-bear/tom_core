@@ -1421,6 +1421,18 @@ presses *disconnect* cannot leave a live refresh token behind.
 Keyed on the pair rather than on the subject alone because a subject is only
 unique *within* an issuer — two providers may both call a user `12345`.
 
+`identitiesOf` answers a **snapshot**: the list is unmodifiable and every
+`TomExternalIdentityLink` in it is detached, so editing one changes nothing a
+later call reports, and two calls hand back distinct instances. `link` and
+`recordLogin` are how a change is written back; there is no path from a returned
+row. The entity is mutable and has to be — the repository fills a blank instance
+column by column — so this is the store's guarantee rather than the type's, and
+it is in the contract because the two implementations would otherwise disagree
+about it: a database-backed store materialises fresh rows on every read whether
+it means to or not, an in-memory one aliases its own state unless it copies. A
+test written against the store that aliases would pass for a reason that does
+not hold in production, which is the failure worth spending a copy to avoid.
+
 `TomPersistentExternalIdentityStore` is the production implementation over
 `TomExternalIdentityLinkRepository`; `TomMemoryExternalIdentityStore` exists for
 tests. There is no in-memory *default*: a link that vanishes on restart sends a

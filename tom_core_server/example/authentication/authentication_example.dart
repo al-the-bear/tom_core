@@ -5,8 +5,9 @@
 /// it through a service into a [TomAuthenticationInfo], rejecting a login with a
 /// [LoginException], reading the adaptor-annotation configuration, choosing the
 /// pending-authorization store through [TomOAuthStateStoreSettings], setting
-/// how much clock skew an ID token's expiry is read against, and watching a
-/// grant that can never again mint a token be deleted rather than kept.
+/// how much clock skew an ID token's expiry is read against, listing an
+/// account's external identities as detached snapshots, and watching a grant
+/// that can never again mint a token be deleted rather than kept.
 ///
 /// Run with `dart run example/authentication/authentication_example.dart`.
 /// The same behaviour is covered by `test/authentication_test.dart`.
@@ -191,6 +192,16 @@ Future<void> run() async {
     '${held!.expiresWithin(const Duration(hours: 1))}',
   );
 
+  // What an account-settings page lists is a *snapshot*: the list is
+  // unmodifiable and every link in it is detached, so a page that normalises a
+  // display name for display is not thereby editing the store. Writing a change
+  // back is `link` or `recordLogin`, never mutation of a returned row.
+  final linked = await identities.identitiesOf('alice');
+  linked.single.localUsername = 'someone-else';
+  final stillLinkedTo = await identities.localUsernameFor(identity);
+  print('links listed:              ${linked.length}');
+  print('store after editing one:   $stillLinkedTo');
+
   await identities.unlink(identity.issuer, identity.subject);
   print(
     'grant after unlink:        '
@@ -247,6 +258,8 @@ Future<void> run() async {
   assert(held.hasRefreshToken);
   assert(!held.isExpired());
   assert(!'$held'.contains('rt-long-lived'));
+  assert(linked.length == 1);
+  assert(stillLinkedTo == 'alice');
   assert(await tokens.read(identity.issuer, identity.subject) == null);
   assert(await identities.localUsernameFor(identity) == null);
   assert(dead == null);

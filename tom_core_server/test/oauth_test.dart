@@ -1361,6 +1361,44 @@ void main() {
       },
     );
 
+    // Nothing a caller got back is a way into the store: not the list, and not
+    // the entities in it. The persistent store cannot alias its rows even if it
+    // wanted to -- every read materialises fresh entities out of the database --
+    // so a memory store that handed out what it holds would differ from it on
+    // exactly the point a test cannot see, and the test would pass for a reason
+    // that does not hold in production.
+    test('identitiesOf hands out snapshots, not the stored rows', () async {
+      final store = TomMemoryExternalIdentityStore();
+      await store.link(alice, 'alice');
+
+      final rows = await store.identitiesOf('alice');
+      expect(() => rows.add(TomExternalIdentityLink()), throwsUnsupportedError);
+
+      rows.single
+        ..localUsername = 'mallory'
+        ..displayName = 'Someone Else'
+        ..lastLoginAt = DateTime.utc(2020);
+
+      expect(await store.localUsernameFor(alice), 'alice');
+      expect(await store.identitiesOf('mallory'), isEmpty);
+      final stored = (await store.identitiesOf('alice')).single;
+      expect(stored.localUsername, 'alice');
+      expect(stored.displayName, 'Alice');
+      expect(stored.lastLoginAt, isNull);
+    });
+
+    // A snapshot per call, not one snapshot cached and shared: two callers
+    // holding the same instance is the same aliasing bug one level out.
+    test('every identitiesOf call answers fresh instances', () async {
+      final store = TomMemoryExternalIdentityStore();
+      await store.link(alice, 'alice');
+      final first = (await store.identitiesOf('alice')).single;
+      final second = (await store.identitiesOf('alice')).single;
+      expect(identical(first, second), isFalse);
+      expect(second.subject, first.subject);
+      expect(second.linkedAt, first.linkedAt);
+    });
+
     test('the entity DDL keys the pair uniquely and indexes the account', () {
       final sql = TomExternalIdentityLink.createTableSql;
       expect(

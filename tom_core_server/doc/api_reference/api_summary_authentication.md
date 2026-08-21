@@ -1956,7 +1956,7 @@ The linking table.
 | `link` | `Future<void> link(TomExternalIdentity identity, String localUsername)` | Creates or updates the link. Relinking updates rather than duplicating. |
 | `unlink` | `Future<void> unlink(String issuer, String subject)` | Removes the link **and every provider token held through it**, in that order. The cascade is part of the contract rather than the caller's responsibility: leaving the two deletions to whoever wrote the account-settings page fails in the one direction that matters — the user pressed *disconnect*, the page said *disconnected*, and the deployment still holds a live refresh token for their mailbox. Removing a link that is not there is a no-op. |
 | `recordLogin` | `Future<void> recordLogin(TomExternalIdentity identity)` | Stamps `lastLoginAt`. |
-| `identitiesOf` | `Future<List<TomExternalIdentityLink>> identitiesOf(String localUsername)` | Every identity linked to an account — the account-settings question. |
+| `identitiesOf` | `Future<List<TomExternalIdentityLink>> identitiesOf(String localUsername)` | Every identity linked to an account — the account-settings question. A **snapshot** in both senses: the list is unmodifiable and each link is detached, so editing one changes nothing a later call reports and two calls answer distinct instances. Write back through `link` or `recordLogin`. In the contract because the implementations would otherwise disagree — a database-backed store materialises fresh rows whether it means to or not, an in-memory one aliases its own state unless it copies, and a test written against the aliasing one passes for a reason production does not share. |
 | `resolve` | `static TomExternalIdentityStore? resolve()` | The installed bean, or `null`. There is deliberately **no in-memory default**: a link that vanishes on restart sends a returning user through provisioning again. |
 
 ### TomPersistentExternalIdentityStore
@@ -1981,6 +1981,12 @@ store after its identity store still gets the cascade. Requires the
 
 A map-backed store for tests. Not a production default — see
 `TomExternalIdentityStore.resolve`. Takes the same optional `tokenStore`.
+
+`identitiesOf` copies each link on the way out, because here the entities *are*
+the store's state and handing them out would make every caller an unwitting
+writer to it. The persistent store owes the same snapshot guarantee and pays
+nothing for it, which is the whole reason the guarantee is written into the
+interface rather than left to each implementation to happen to provide.
 
 ### TomOAuthCredential
 

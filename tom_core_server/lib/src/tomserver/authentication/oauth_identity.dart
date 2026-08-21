@@ -164,6 +164,23 @@ abstract class TomExternalIdentityStore {
 
   /// Every identity linked to [localUsername] — what an account-settings page
   /// lists, and what a deployment checks before removing the last credential.
+  ///
+  /// **The result is a snapshot, in both of the ways that can be meant.** The
+  /// list is unmodifiable, and each [TomExternalIdentityLink] in it is detached
+  /// from the store — a caller that adjusts a returned link (a page normalising
+  /// a display name, a test setting [TomExternalIdentityLink.lastLoginAt])
+  /// changes nothing a later call will report. Two calls answer distinct
+  /// instances, so two callers cannot reach each other either. Writing a change
+  /// back is [link] or [recordLogin]; there is no path from a returned row.
+  ///
+  /// The entity is mutable and has to be — the repository instantiates a blank
+  /// one and fills it column by column — so this is the store's guarantee to
+  /// give rather than the type's to enforce. It is in the contract because a
+  /// database-backed implementation gives it whether or not it means to (every
+  /// read materialises fresh rows) and an in-memory one does not unless it
+  /// copies. Two implementations of one interface differing on aliasing is the
+  /// worst of the three possibilities: a test written against the fast one
+  /// passes for a reason that does not hold in production.
   Future<List<TomExternalIdentityLink>> identitiesOf(String localUsername);
 
   /// Removes the link for `(issuer, subject)` **and every provider token held
@@ -241,6 +258,9 @@ class TomPersistentExternalIdentityStore implements TomExternalIdentityStore {
     await repository.save(row);
   }
 
+  /// Snapshots, as the contract requires, and free of charge: the repository
+  /// builds these entities out of the result set on this call, so the store
+  /// never held them and nothing has to be copied.
   @override
   Future<List<TomExternalIdentityLink>> identitiesOf(
     String localUsername,
@@ -316,11 +336,16 @@ class TomMemoryExternalIdentityStore implements TomExternalIdentityStore {
         DateTime.now().toUtc();
   }
 
+  /// Snapshots, as the contract requires, and here they cost a copy: these
+  /// entities *are* the store's state, and handing them out would make every
+  /// caller an unwitting writer to it.
   @override
   Future<List<TomExternalIdentityLink>> identitiesOf(
     String localUsername,
   ) async => List.unmodifiable(
-    _links.values.where((row) => row.localUsername == localUsername),
+    _links.values
+        .where((row) => row.localUsername == localUsername)
+        .map(_snapshotOf),
   );
 
   @override
@@ -331,6 +356,23 @@ class TomMemoryExternalIdentityStore implements TomExternalIdentityStore {
     );
     _links.remove(_keyOf(issuer, subject));
   }
+
+  /// A detached duplicate of [row], field for field.
+  ///
+  /// A private function rather than a method on [TomExternalIdentityLink]
+  /// because the entity is reflected: a declaration added to it re-indexes the
+  /// generated mirrors in every package that reflects over the framework
+  /// tables, which is a wide change to make for a copy only this class needs.
+  static TomExternalIdentityLink _snapshotOf(TomExternalIdentityLink row) =>
+      TomExternalIdentityLink(
+        id: row.id,
+        issuer: row.issuer,
+        subject: row.subject,
+        localUsername: row.localUsername,
+        displayName: row.displayName,
+        linkedAt: row.linkedAt,
+        lastLoginAt: row.lastLoginAt,
+      );
 
   /// The map key.
   ///
