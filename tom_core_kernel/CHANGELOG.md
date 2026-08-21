@@ -815,6 +815,21 @@ anyone who was writing them.
 
 ### Tests
 
+- **The offset index has a stated contract now (tcinc337).** Five tests in
+  `timezones_test.dart` hold the behaviour the shelf-life caveat describes: a
+  DST zone is in the bucket for the offset it has now and in no other, over
+  fifty zones move between buckets across the year, the buckets partition the
+  database by current offset, and `firstWithOffset` is the head of
+  `allWithOffset` — which is why the documentation can tell callers not to
+  expect the well-known zone.
+
+  Every assertion reads the zone's two offsets from the database and derives
+  which is current, so each holds in either season. Hard-coding "New York is at
+  -300" would pass all winter and fail all summer, which is the mistake the
+  documentation itself was making. Mutation-checked against three drifts:
+  indexing on a fixed winter offset, indexing a zone under both of its
+  seasons, and returning the tail of the bucket.
+
 - **`comments_read_as_is_test.dart` now tests resolvability, not provenance
   (tcinc336).** The section-reference guard exempted any `§<digits>.<digits>`,
   on the reasoning that quest bug lists are flat and so a dotted number could
@@ -1318,6 +1333,27 @@ anyone who was writing them.
   is where the window it opens belongs.
 
 ### Documentation
+
+- **Offset lookup was documented as if its answers were permanent (tcinc337).**
+  `firstWithOffset` and `allWithOffset` read an index built once, at first
+  access, from each zone's offset *at that moment*, and never rebuilt. A zone
+  that observes daylight saving is therefore in one bucket in winter and
+  another in summer — about a third of the IANA database moves this way — and a
+  process running across a transition keeps answering for the season it started
+  in. Nothing at the call site said so: the narrative guide showed
+  `firstWithOffset(540)` under a "Creating Timezones" heading with no caveat,
+  and the API mirror said only "the first timezone matching the given UTC
+  offset".
+
+  Worse, the `allWithOffset` dartdoc illustrated its result as `'UTC',
+  'Europe/London', etc.` — false for half the year, since London is on BST at
+  +60 in July and is not in the zero bucket at all. Both documents and the
+  dartdoc now state that the match is against the current offset, that the
+  result is a snapshot rather than a membership rule, and that the name is what
+  should be stored. Two further surprises are named where they bite: *first*
+  means first in IANA name order, so `firstWithOffset(0)` yields
+  `Africa/Abidjan` rather than `UTC`; and `findTimezone`'s name-null branch
+  reads the same index and inherits the same shelf life.
 
 - **Three specification citations named no specification (tcinc336).** The
   access-control dartdoc cited `§5.26` three times — for the worked example

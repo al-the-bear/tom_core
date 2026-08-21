@@ -268,16 +268,32 @@ class TomTimezone {
     return _timezonesMap[name.toUpperCase()];
   }
 
-  /// Returns the first timezone matching the given UTC offset.
+  /// Returns the first timezone whose offset **right now** is
+  /// [utcOffsetMinutes].
+  ///
+  /// The match is against the current offset, so the answer has a shelf life.
+  /// A zone that observes daylight saving is in one bucket in winter and a
+  /// different one in summer — roughly a third of the IANA database moves this
+  /// way — and the index is built once at first access and never rebuilt, so a
+  /// process that runs across a transition keeps answering for the season it
+  /// started in. Use offset lookup for discovery ("who is at +05:30 at the
+  /// moment", a zone picker) and store the [timezone] name it yields, never
+  /// the offset it was found under. For the offset a zone had at a particular
+  /// instant, ask the zone with [getUtcOffsetOn].
+  ///
+  /// *First* means first in the bucket, which is IANA name order rather than
+  /// the best-known zone at that offset: `firstWithOffset(0)` yields
+  /// `Africa/Abidjan`, not `UTC`. Where a particular zone is wanted, name it
+  /// with [fromName].
   ///
   /// [utcOffsetMinutes] The UTC offset in minutes (e.g., 540 for UTC+9).
   ///
-  /// Returns `null` if no timezone matches the offset.
+  /// Returns `null` if no timezone is at that offset now.
   ///
   /// Example:
   /// ```dart
   /// final tz = TomTimezone.firstWithOffset(540); // UTC+9
-  /// print(tz?.timezone); // Might be 'Asia/Tokyo' or another UTC+9 timezone
+  /// print(tz?.timezone); // Some zone currently at +09:00
   /// ```
   static TomTimezone? firstWithOffset(int utcOffsetMinutes) {
     _initialize();
@@ -288,17 +304,23 @@ class TomTimezone {
     return null;
   }
 
-  /// Returns all timezones matching the given UTC offset.
+  /// Returns every timezone whose offset **right now** is [utcOffsetMinutes].
+  ///
+  /// The same shelf life as [firstWithOffset], and for the same reason: the
+  /// bucket holds the zones that were at this offset when the index was built,
+  /// not the zones that are ever at it. `allWithOffset(0)` in July does not
+  /// contain `Europe/London`, which is on BST and sits at 60; in January it
+  /// does. Treat the result as a snapshot, not as a membership rule.
   ///
   /// [utcOffsetMinutes] The UTC offset in minutes.
   ///
-  /// Returns `null` if no timezones match the offset.
+  /// Returns `null` if no timezone is at that offset now.
   ///
   /// Example:
   /// ```dart
-  /// final tzList = TomTimezone.allWithOffset(0); // All UTC+0 timezones
-  /// for (final tz in tzList ?? []) {
-  ///   print(tz.timezone); // 'UTC', 'Europe/London', etc.
+  /// final tzList = TomTimezone.allWithOffset(0); // Zones at +00:00 today
+  /// for (final tz in tzList ?? <TomTimezone>[]) {
+  ///   print(tz.timezone); // 'UTC', 'Africa/Abidjan', 'Etc/GMT', ...
   /// }
   /// ```
   static List<TomTimezone>? allWithOffset(int utcOffsetMinutes) {
@@ -320,7 +342,8 @@ class TomTimezone {
   /// - The named zone, when it exists and — if an offset was given — its
   ///   current offset is that offset
   /// - The first zone at [utcOffsetMinutes] if [name] is null, or `null` when
-  ///   no zone is at that offset
+  ///   no zone is at that offset. This branch reads the same offset index as
+  ///   [firstWithOffset] and inherits its shelf life
   /// - `null` if both parameters are null
   ///
   /// Throws [TomTimezoneException] in two cases:

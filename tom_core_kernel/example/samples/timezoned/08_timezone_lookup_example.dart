@@ -38,6 +38,9 @@ void run() {
   // -------------------------------------------------------------------------
   print('2. Find first timezone with specific offset (in minutes):');
 
+  // These match the offset each zone has *right now*, so the answers have a
+  // shelf life: a DST-observing zone is in one bucket in winter and another in
+  // summer. Discovery, not identity — store the name, not the offset.
   final utcPlus9 = TomTimezone.firstWithOffset(540); // +9:00
   final utcMinus5 = TomTimezone.firstWithOffset(-300); // -5:00
   final utcPlus530 = TomTimezone.firstWithOffset(330); // +5:30

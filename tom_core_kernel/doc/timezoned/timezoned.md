@@ -121,15 +121,41 @@ final newYork = TomTimezone.fromName('America/New_York');
 // UTC singleton
 final utc = TomTimezone.utc;
 
-// By UTC offset in minutes
+// By UTC offset in minutes — zones that are at that offset *right now*
 final utcPlus9 = TomTimezone.firstWithOffset(540);   // +09:00
 final utcMinus5 = TomTimezone.firstWithOffset(-300); // -05:00
-final allPlus9 = TomTimezone.allWithOffset(540);     // All +09:00 timezones
+final allPlus9 = TomTimezone.allWithOffset(540);     // Every zone at +09:00 today
 
-// With offset validation
+// With offset validation — -300 is New York in winter, so this throws in summer
 final ny = TomTimezone.findTimezone('America/New_York', -300);
 // findTimezone throws: unknown name, or an offset that does not match
 ```
+
+The offset lookups have a shelf life, and it is worth knowing before you use
+one. They match the zone's **current** offset, so a zone that observes daylight
+saving is in one bucket in winter and another in summer — about a third of the
+IANA database moves this way. `allWithOffset(0)` contains `Europe/London` in
+January and does not in July, when London is on BST at +60. The index is built
+once, on first access, and never rebuilt, so a process that runs across a
+transition keeps answering for the season it started in.
+
+Two consequences at the call site. Use offset lookup for **discovery** — a zone
+picker, "who is at +05:30 at the moment" — and store the zone *name* it gives
+you, never the offset you found it under; a stored offset stops identifying the
+same zone twice a year. And when the question is really "what was the offset
+then", it is not a lookup at all: ask a zone you already hold, with
+`getUtcOffsetOn` (see [UTC Offset Operations](#utc-offset-operations)).
+
+`firstWithOffset` is likewise a weaker promise than it looks. *First* means
+first in the bucket, which is IANA name order rather than the best-known zone
+at that offset: `firstWithOffset(0)` yields `Africa/Abidjan`, not `UTC`. Where a
+particular zone is wanted, name it with `fromName`.
+
+The same applies to `findTimezone(null, offset)`, which reads the same index.
+Its name-plus-offset form compares against the current offset too, so the
+offset you pass has to be the one the zone holds today:
+`findTimezone('America/New_York', -300)` above agrees in winter and mismatches
+in summer, when New York is at -240.
 
 ### UTC Offset Operations
 

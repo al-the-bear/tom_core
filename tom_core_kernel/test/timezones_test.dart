@@ -125,6 +125,121 @@ void main() {
       });
     });
 
+    // The offset lookups answer "who is at this offset *right now*", and the
+    // documentation says so in three places. These tests are what those
+    // sentences are measured against — without them the caveat is a claim
+    // about behaviour that nothing holds to the behaviour.
+    //
+    // Every assertion here is phrased so that it holds in either season: the
+    // zone's two offsets are read from the database rather than written down,
+    // and which of them is current is derived. A test that hard-coded "New
+    // York is at -300" would pass all winter and fail all summer, which is the
+    // very mistake the documentation was making.
+    group('offset lookups answer for the current moment', () {
+      // Both offsets a northern-hemisphere DST zone takes, read from the
+      // database rather than assumed.
+      const winter = 1; // January
+      const summer = 7; // July
+      final newYork = TomTimezone.fromName('America/New_York')!;
+      final winterOffset = newYork.getUtcOffsetOn(
+        DateTime.utc(2024, winter, 15),
+      );
+      final summerOffset = newYork.getUtcOffsetOn(
+        DateTime.utc(2024, summer, 15),
+      );
+
+      test('a DST zone sits in the bucket for the offset it has now', () {
+        final current = newYork.timezoneOffsetMin;
+        expect(
+          current,
+          anyOf(equals(winterOffset), equals(summerOffset)),
+          reason:
+              'The zone reports an offset that is neither of the two it takes '
+              'across the year, so the rest of this group is testing a '
+              'premise that no longer holds.',
+        );
+        expect(
+          TomTimezone.allWithOffset(current)?.map((tz) => tz.timezone),
+          contains(newYork.timezone),
+          reason:
+              'A zone is indexed under the offset it had when the index was '
+              'built. If it is missing from its own current bucket, offset '
+              'lookup cannot find it at all.',
+        );
+      });
+
+      test('and in no other bucket, including its other season', () {
+        final other = newYork.timezoneOffsetMin == winterOffset
+            ? summerOffset
+            : winterOffset;
+
+        expect(
+          TomTimezone.allWithOffset(other)?.map((tz) => tz.timezone) ??
+              const [],
+          isNot(contains(newYork.timezone)),
+          reason:
+              'The zone appears in the bucket for the offset it holds in the '
+              'other half of the year. Offset lookup would then be '
+              'season-independent, and the shelf-life caveat the module '
+              'documents would be describing a hazard that does not exist.',
+        );
+      });
+
+      test('so a third of the database moves between buckets each year', () {
+        final movers = TomTimezone.timezones.values
+            .where(
+              (tz) =>
+                  tz.getUtcOffsetOn(DateTime.utc(2024, winter, 15)) !=
+                  tz.getUtcOffsetOn(DateTime.utc(2024, summer, 15)),
+            )
+            .length;
+
+        expect(
+          movers,
+          greaterThan(50),
+          reason:
+              'Only a handful of zones change offset across the year, so the '
+              'documented caveat is describing a corner case rather than a '
+              'property of the database. Either the database shrank or the '
+              'offsets stopped being read per-instant.',
+        );
+      });
+
+      test('the buckets partition the database by current offset', () {
+        final byOffset = <String, int>{};
+        for (final zone in TomTimezone.timezones.values) {
+          final bucket = TomTimezone.allWithOffset(zone.timezoneOffsetMin);
+          expect(
+            bucket?.map((tz) => tz.timezone),
+            contains(zone.timezone),
+            reason:
+                '${zone.timezone} is not in the bucket for its own current '
+                'offset, so the index and the getter disagree about what the '
+                'zone\'s offset is.',
+          );
+          byOffset[zone.timezone] = zone.timezoneOffsetMin;
+        }
+
+        // Non-vacuity: the loop above passes trivially over an empty database.
+        expect(byOffset, hasLength(greaterThan(300)));
+        expect(byOffset.values.toSet(), hasLength(greaterThan(20)));
+      });
+
+      test('"first" means first in the bucket, not most prominent', () {
+        for (final offset in [0, 60, 330, 540]) {
+          expect(
+            TomTimezone.firstWithOffset(offset)?.timezone,
+            equals(TomTimezone.allWithOffset(offset)?.first.timezone),
+            reason:
+                'firstWithOffset returned something other than the head of '
+                'allWithOffset for $offset. The documentation tells callers '
+                'not to expect the well-known zone precisely because the two '
+                'are the same list in the same order.',
+          );
+        }
+      });
+    });
+
     group('findTimezone', () {
       test(
         'should throw TomTimezoneException when name does not match offset',
