@@ -126,28 +126,46 @@ abstract class TomClosable {
 ///
 /// This class uses reflection to find and invoke close or dispose methods
 /// on objects that don't explicitly implement [TomClosable] or [TomDisposable].
-/// Useful for integrating third-party objects into the shutdown cleanup system.
+/// It reaches the method through the global `tomReflector`, so it works on
+/// **classes in your own build that carry `@tomReflector`** — typically ones
+/// already annotated for JSON — and not on types from outside it.
 ///
 /// ## Example
 ///
 /// ```dart
-/// // Wrap a third-party object that has a close() method
-/// final httpClient = HttpClient();
-/// final adaptor = TomCloseAdaptor(httpClient);
+/// // A class of your own, annotated for reflection, whose teardown method
+/// // you would rather not re-expose by implementing TomClosable.
+/// @tomReflector
+/// class SessionStore {
+///   void close() { /* ... */ }
+/// }
+///
+/// final adaptor = TomCloseAdaptor(SessionStore());
 /// tomShutdownCleanup.addClosable(adaptor);
 ///
 /// // Specify a custom method name
-/// final customObject = MyObject();
-/// final customAdaptor = TomCloseAdaptor(customObject, 'shutdown');
-/// tomShutdownCleanup.addClosable(customAdaptor);
+/// @tomReflector
+/// class Worker {
+///   void shutdown() { /* ... */ }
+/// }
+///
+/// tomShutdownCleanup.addClosable(TomCloseAdaptor(Worker(), 'shutdown'));
 /// ```
 ///
 /// ## Limitations
 ///
 /// - The target method must have no required parameters
-/// - The object's class must be registered with the Tom reflector
+/// - The target's class must be annotated with `@tomReflector` **and** its
+///   generated reflection data must have been initialized, which means a
+///   `build_runner` step in the package that declares the class
+/// - Consequently the adaptor cannot wrap a type you do not own: `dart:io`'s
+///   `HttpClient`, or any class from a package you cannot annotate, is out of
+///   reach no matter what methods it declares. Wrap such an object in a small
+///   class of your own that implements [TomClosable] instead — which is also
+///   cheaper, because it needs no reflection at all
 ///
 /// Throws an [Exception] if:
+/// - The object's class is not reflectable (a [TomReflectorException])
 /// - No close/dispose method is found on the object
 /// - The method requires parameters
 class TomCloseAdaptor implements TomClosable {
@@ -163,8 +181,7 @@ class TomCloseAdaptor implements TomClosable {
   /// [methodName] - Optional custom method name to invoke. If not provided,
   ///                looks for 'close' first, then 'dispose'.
   TomCloseAdaptor(this.closableObject, [String? methodName]) {
-    var classMirror =
-        tomReflector.reflectType(closableObject.runtimeType) as ClassMirror;
+    final classMirror = _reflectClass(closableObject);
     MethodMirror? mm = _resolveCloseMethod(classMirror, methodName);
     if (mm == null) {
       throw Exception(
@@ -178,6 +195,40 @@ class TomCloseAdaptor implements TomClosable {
     }
     _mm = mm;
     _im = tomReflector.reflect(closableObject);
+  }
+
+  /// Resolves the class mirror of [closableObject], insisting it is reflectable.
+  ///
+  /// This is the adaptor's *most likely* failure rather than an exotic one:
+  /// the class is reached for when a type does not implement [TomClosable] or
+  /// [TomDisposable], and the types that do not are frequently the ones nobody
+  /// can annotate. Left unguarded, `tom_reflection` answers with a
+  /// `NoSuchCapabilityError` — an [Error], not an [Exception] — that names the
+  /// type and nothing else: not the operation that wanted it, and not the
+  /// annotation that would fix it. A caller guarding the constructor with
+  /// `on Exception` would miss it entirely, even though the constructor's two
+  /// other failures are exceptions. Reporting it as a [TomReflectorException]
+  /// is what the rest of the package already does for this same condition.
+  ///
+  /// It is not logged on the way out. Unlike the shutdown diagnostics this
+  /// happens at construction time, in the caller's own control flow, and the
+  /// thrown object carries the full detail to whoever asked for it.
+  static ClassMirror _reflectClass(Object closableObject) {
+    try {
+      return tomReflector.reflectType(closableObject.runtimeType)
+          as ClassMirror;
+    } catch (e, s) {
+      throw TomReflectorException(
+        "shutdown_cleanup.close_adaptor.not_reflectable",
+        "TomCloseAdaptor: cannot reflect on ${closableObject.runtimeType} — "
+            "the class is not annotated with @tomReflector, or its generated "
+            "reflection data was not initialized. A type you do not own cannot "
+            "be annotated; wrap it in a class of your own that implements "
+            "TomClosable instead: $e",
+        rootException: e,
+        stack: s,
+      );
+    }
   }
 
   /// Resolves the close/dispose method to invoke, walking the superclass chain.

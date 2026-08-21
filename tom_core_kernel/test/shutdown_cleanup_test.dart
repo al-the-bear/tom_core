@@ -106,6 +106,17 @@ class NoCloseTarget {
   void doStuff() {}
 }
 
+/// Target deliberately **not** annotated with `@tomReflector`.
+///
+/// This is the situation the adaptor exists for — a third-party class you
+/// cannot annotate — so it is the adaptor's most likely failure, not an edge
+/// case. The class has a perfectly good `close()`; what it lacks is generated
+/// reflection data.
+class UnreflectedTarget {
+  bool closed = false;
+  void close() => closed = true;
+}
+
 // =============================================================================
 // Order / counting recorders for performShutdown() behaviour tests
 // =============================================================================
@@ -824,6 +835,41 @@ void main() {
         );
       },
     );
+
+    // An unreflectable target is the adaptor's most likely failure, not an
+    // exotic one: the class exists to wrap objects you do not own, and an
+    // object you do not own cannot be given a `@tomReflector` annotation. The
+    // three tests below pin that this failure obeys the same contract as the
+    // other two rather than escaping as a bare Error from another package.
+
+    test('throws an Exception, not an Error, for an unreflectable class', () {
+      expect(
+        () => TomCloseAdaptor(UnreflectedTarget()),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('the unreflectable-class failure names the type and the fix', () {
+      expect(
+        () => TomCloseAdaptor(UnreflectedTarget()),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('UnreflectedTarget'), contains('@tomReflector')),
+          ),
+        ),
+      );
+    });
+
+    test('the unreflectable-class failure is a TomReflectorException', () {
+      // Same type the rest of the package raises for this exact condition, so
+      // a caller can catch one thing rather than one thing plus an Error.
+      expect(
+        () => TomCloseAdaptor(UnreflectedTarget()),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
   });
 
   // ===========================================================================

@@ -17,13 +17,19 @@ import '../../sample_bootstrap.dart';
 // Example Support Classes
 // ============================================================================
 
-/// Third-party class that has a close() method but doesn't implement TomClosable.
+/// A class of our own with a `close()` but no `TomClosable` implementation.
+///
+/// Note the `@tomReflector`. Every adaptor target below carries it, and that
+/// is not incidental: `TomCloseAdaptor` resolves the teardown method through
+/// the global reflector, so it only ever reaches classes in your own build. A
+/// genuinely third-party class cannot be annotated and so cannot be adapted —
+/// wrap one in a small `TomClosable` of your own instead.
 @tomReflector
-class ThirdPartyDatabase {
+class AnnotatedDatabase {
   final String connectionString;
   bool _isClosed = false;
 
-  ThirdPartyDatabase(this.connectionString);
+  AnnotatedDatabase(this.connectionString);
 
   bool get isClosed => _isClosed;
 
@@ -33,13 +39,13 @@ class ThirdPartyDatabase {
   }
 }
 
-/// Third-party class that has a dispose() method.
+/// A class of our own with a `dispose()` but no `TomDisposable` implementation.
 @tomReflector
-class ThirdPartyStream {
+class AnnotatedStream {
   final String streamName;
   bool _isDisposed = false;
 
-  ThirdPartyStream(this.streamName);
+  AnnotatedStream(this.streamName);
 
   bool get isDisposed => _isDisposed;
 
@@ -146,8 +152,8 @@ class AdvancedShutdownExample {
   static void example1AdaptorWithClose() {
     print('1. TomCloseAdaptor wrapping close() method:');
 
-    final database = ThirdPartyDatabase('postgres://localhost:5432');
-    print('   - Created ThirdPartyDatabase: ${database.connectionString}');
+    final database = AnnotatedDatabase('postgres://localhost:5432');
+    print('   - Created AnnotatedDatabase: ${database.connectionString}');
     print('   - isClosed before: ${database.isClosed}');
 
     // Wrap with adaptor - automatically finds close() method
@@ -171,8 +177,8 @@ class AdvancedShutdownExample {
   static void example2AdaptorWithDispose() {
     print('\n2. TomCloseAdaptor wrapping dispose() method:');
 
-    final stream = ThirdPartyStream('events-stream');
-    print('   - Created ThirdPartyStream: ${stream.streamName}');
+    final stream = AnnotatedStream('events-stream');
+    print('   - Created AnnotatedStream: ${stream.streamName}');
     print('   - isDisposed before: ${stream.isDisposed}');
 
     // When no close() exists, adaptor finds dispose() automatically
@@ -311,11 +317,11 @@ class AdvancedShutdownExample {
   static void example8CombiningAdaptors() {
     print('\n8. Combining TomCloseAdaptor with shutdown cleanup:');
 
-    final db1 = ThirdPartyDatabase('mysql://localhost');
-    final db2 = ThirdPartyDatabase('postgres://localhost');
-    final stream = ThirdPartyStream('audit-log');
+    final db1 = AnnotatedDatabase('mysql://localhost');
+    final db2 = AnnotatedDatabase('postgres://localhost');
+    final stream = AnnotatedStream('audit-log');
 
-    print('   - Created 3 third-party resources without TomClosable interface');
+    print('   - Created 3 annotated resources without TomClosable interface');
     print('');
     print('   - Wrap with adaptors and register:');
     print('     tomShutdownCleanup.addClosable(TomCloseAdaptor(db1));');
@@ -344,7 +350,7 @@ class AdvancedShutdownExample {
     print('   - Use for: connections, files, sockets');
     print('');
     print('   TomCloseAdaptor:');
-    print('   - Wraps objects without interface');
+    print('   - Wraps an annotated class that has no Tom interface');
     print('   - Auto-detects close() or dispose()');
     print('   - Or specify custom method name');
     print('   - Implements TomClosable');

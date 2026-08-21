@@ -73,9 +73,11 @@ is called automatically by `TomShutdownCleanup`.
 ### TomCloseAdaptor
 
 Adaptor that wraps objects with `close`/`dispose` methods to implement
-`TomClosable`, using reflection to find and invoke the method. Useful for
-integrating third-party objects. The target method must have no required
-parameters, and the object's class must be registered with the Tom reflector.
+`TomClosable`, using the global `tomReflector` to find and invoke the method.
+The target method must have no required parameters, and the target's class must
+carry `@tomReflector` and have been through `build_runner` — so the adaptor
+applies to classes in your own build, not to types from outside it. Wrap a type
+you do not own in a class of your own implementing `TomClosable` instead.
 
 - **Implements:** `TomClosable`
 
@@ -85,8 +87,9 @@ parameters, and the object's class must be registered with the Tom reflector.
 TomCloseAdaptor(Object closableObject, [String? methodName])
 ```
 
-Throws an `Exception` if no close/dispose method is found or the method requires
-parameters.
+Throws an `Exception` if the class is not reflectable (a
+`TomReflectorException` naming the type and the annotation), if no
+close/dispose method is found, or if the method requires parameters.
 
 #### Properties
 

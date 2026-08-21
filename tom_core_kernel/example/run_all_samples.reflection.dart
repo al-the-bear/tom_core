@@ -1792,9 +1792,9 @@ final _data = <r.Reflection, r.ReflectorData>{
         ],
         null,
       ),
-      r.NonGenericClassMirrorImpl<prefix97.ThirdPartyDatabase>(
-        r'ThirdPartyDatabase',
-        r'.ThirdPartyDatabase',
+      r.NonGenericClassMirrorImpl<prefix97.AnnotatedDatabase>(
+        r'AnnotatedDatabase',
+        r'.AnnotatedDatabase',
         134217735,
         43,
         const prefix28.TomReflector(),
@@ -1807,7 +1807,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         {
           r'': (bool b) =>
               (connectionString) =>
-                  b ? prefix97.ThirdPartyDatabase(connectionString) : null,
+                  b ? prefix97.AnnotatedDatabase(connectionString) : null,
         },
         13,
         43,
@@ -1815,9 +1815,9 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <Object>[prefix28.tomReflector],
         null,
       ),
-      r.NonGenericClassMirrorImpl<prefix97.ThirdPartyStream>(
-        r'ThirdPartyStream',
-        r'.ThirdPartyStream',
+      r.NonGenericClassMirrorImpl<prefix97.AnnotatedStream>(
+        r'AnnotatedStream',
+        r'.AnnotatedStream',
         134217735,
         44,
         const prefix28.TomReflector(),
@@ -1829,7 +1829,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              (streamName) => b ? prefix97.ThirdPartyStream(streamName) : null,
+              (streamName) => b ? prefix97.AnnotatedStream(streamName) : null,
         },
         13,
         44,
@@ -77959,8 +77959,8 @@ final _data = <r.Reflection, r.ReflectorData>{
       prefix96.NightlyReconciliationV2,
       prefix96.ReportBuilder,
       prefix96.AmbiguousTrigger,
-      prefix97.ThirdPartyDatabase,
-      prefix97.ThirdPartyStream,
+      prefix97.AnnotatedDatabase,
+      prefix97.AnnotatedStream,
       prefix97.CustomShutdownResource,
       prefix97.NoCloseMethod,
       prefix97.ParameterizedClose,

@@ -91,19 +91,67 @@ class MyConnection implements TomClosable {
 
 ### TomCloseAdaptor
 
-Wraps third-party objects that have close/dispose methods but don't implement the Tom interfaces.
+Wraps an object that has a close/dispose method but does not implement the Tom
+interfaces, resolving that method through the global `tomReflector`.
+
+Read the reflector requirement before reaching for this. The target's class
+must carry `@tomReflector` and must have been through `build_runner`, which
+makes the adaptor a tool for **your own** classes — usually ones already
+annotated for something else — and rules out the case its name suggests. A
+type you do not own cannot be annotated, so `HttpClient` and anything else
+from outside your build is beyond it. See [Adapting a class you do not
+own](#adapting-a-class-you-do-not-own).
 
 ```dart
-// Wrap an object with a standard close() method
-final httpClient = HttpClient();
-final adaptor = TomCloseAdaptor(httpClient);
-tomShutdownCleanup.addClosable(adaptor);
+// A class of your own, already annotated, whose teardown method you would
+// rather not re-expose by implementing TomClosable.
+@tomReflector
+class SessionStore {
+  void close() { /* ... */ }
+}
+
+tomShutdownCleanup.addClosable(TomCloseAdaptor(SessionStore()));
 
 // Specify a custom method name
-final customObject = MyObject();
-final customAdaptor = TomCloseAdaptor(customObject, 'shutdown');
-tomShutdownCleanup.addClosable(customAdaptor);
+@tomReflector
+class Worker {
+  void shutdown() { /* ... */ }
+}
+
+tomShutdownCleanup.addClosable(TomCloseAdaptor(Worker(), 'shutdown'));
 ```
+
+An unreflectable target fails in the constructor with a `TomReflectorException`
+naming the type and the annotation that would have fixed it:
+
+```text
+TomCloseAdaptor: cannot reflect on HttpClient — the class is not annotated
+with @tomReflector, or its generated reflection data was not initialized. A
+type you do not own cannot be annotated; wrap it in a class of your own that
+implements TomClosable instead: ...
+```
+
+#### Adapting a class you do not own
+
+You cannot, and the adaptor is the wrong tool for it. Write the four lines
+instead — they need no reflection, no annotation and no build step, and they
+are checked by the compiler rather than at runtime:
+
+```dart
+class HttpClientCloser implements TomClosable {
+  HttpClientCloser(this._client);
+  final HttpClient _client;
+
+  @override
+  void close() => _client.close();
+}
+
+tomShutdownCleanup.addClosable(HttpClientCloser(httpClient));
+```
+
+This is the better choice even when the target *is* one of your annotated
+classes. The adaptor earns its keep only where the wrapper cannot be written
+by hand — chiefly when the method name is chosen at runtime.
 
 ### TomShutdownCleanup
 
@@ -273,13 +321,23 @@ tomShutdownCleanup.addSignalHandler((signal) async {
 });
 ```
 
-### 5. Use TomCloseAdaptor for Third-Party Objects
+### 5. Reach for TomCloseAdaptor Last, Not First
 
-When working with objects you don't control:
+The adaptor looks like the answer for objects you don't control, and it is the
+one thing it cannot be: it resolves the method through `tomReflector`, so the
+target's class needs an annotation only its own author can add.
+
+Prefer, in order:
+
+1. **Implement `TomClosable`/`TomDisposable`** on the class, if it is yours.
+2. **Write a small wrapper** that implements one of them, if it is not. No
+   reflection, no build step, and a compile error rather than a runtime one if
+   the wrapped method changes.
+3. **Use `TomCloseAdaptor`** when neither fits — chiefly when the method name
+   is not known until runtime:
 
 ```dart
-final externalClient = ThirdPartyClient();
-tomShutdownCleanup.addClosable(TomCloseAdaptor(externalClient));
+tomShutdownCleanup.addClosable(TomCloseAdaptor(store, config.teardownMethod));
 ```
 
 ## Limitations
@@ -289,7 +347,7 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(externalClient));
 - A failure's stack trace is cut to its top ten frames, enough to identify the failing `close()`/`dispose()` but not to follow a deep call chain
 - Cleanup executes only once—subsequent signals are ignored after the first cleanup completes
 - On some platforms, certain signals may not be available
-- `TomCloseAdaptor` requires the object's class to be registered with the Tom reflector
+- `TomCloseAdaptor` requires the target's class to carry `@tomReflector` and to have been through `build_runner`, so it cannot wrap a type from outside your own build no matter what methods that type declares; an unreflectable target raises a `TomReflectorException` from the constructor
 
 ---
 

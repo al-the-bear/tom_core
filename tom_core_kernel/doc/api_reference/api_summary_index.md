@@ -307,7 +307,7 @@ declarations are omitted.
 | `TomShutdownCleanup` | class | Coordinates ordered shutdown on process signals. |
 | `TomDisposable` | abstract class | `dispose()` contract. |
 | `TomClosable` | abstract class | `close()` contract. |
-| `TomCloseAdaptor` | class | Adapts a callback to `TomClosable`. |
+| `TomCloseAdaptor` | class | Adapts a `@tomReflector` class's close-style method to `TomClosable`. |
 | `TomSignalHandler` | typedef | `void Function(ProcessSignal)`. |
 | `tomShutdownCleanup` | final | Shared shutdown coordinator. |
 

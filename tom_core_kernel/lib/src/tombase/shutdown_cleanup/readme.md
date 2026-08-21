@@ -14,7 +14,7 @@ signal handlers and runs them when the process shuts down, so resources
 | `TomShutdownCleanup` | Registry of cleanup actions; runs registered closables/disposables/signal handlers on shutdown. |
 | `TomDisposable` | Contract for objects with a `dispose()` lifecycle. |
 | `TomClosable` | Contract for objects with a `close()` lifecycle. |
-| `TomCloseAdaptor` | Adapts an object with a close-style method into a `TomClosable`. |
+| `TomCloseAdaptor` | Adapts a close-style method into a `TomClosable`, via the global `tomReflector` — so the target's class must carry `@tomReflector`. |
 | `tomShutdownCleanup` | The shared global `TomShutdownCleanup` instance. |
 | `TomSignalHandler` | Typedef for an OS-signal callback. |
 
