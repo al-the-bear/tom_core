@@ -1149,6 +1149,19 @@ governs the JWT keys. `TomServiceCredential.toString()` redacts it, and the
 request body is built by hand rather than through reflection so the secret never
 passes through a general-purpose serialiser that might log or cache it.
 
+There is **no locale to configure**, and that absence is deliberate rather than
+an omission. `TomAuthenticationMessage` carries three locale fields alongside
+the identity ones, but a deployment is a process, not a device: there is no
+browser to read a language from, no operator present to have a country, and its
+own clock is UTC. So the self-login body sends the message type's **own
+defaults** — `en`, `XX` (the ISO 3166-1 user-assigned code the kernel uses for
+"none") and `utc` — and it *reads* them from that type rather than restating
+them. Building the body by hand is what buys the credential its isolation, and
+it costs exactly one thing: nothing otherwise keeps the body agreeing with the
+type it claims to be shaped as. Three literals would have been a second copy of
+the kernel's defaults, right on the day they were written and quietly stale the
+day the kernel moved one.
+
 ### Lifecycle
 
 ```dart

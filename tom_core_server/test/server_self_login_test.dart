@@ -150,6 +150,38 @@ void main() {
       expect(body['password'], ' s3cret ');
     });
 
+    test('SL07: the locale fields are the message type defaults, not a second '
+        'copy of them [2026-08-21] (OK)', () {
+      final body =
+          jsonDecode(
+                TomServiceCredential.fromConfiguration(
+                  _configured(),
+                )!.toRequestBody(),
+              )
+              as Map<String, dynamic>;
+
+      // What actually goes on the wire, pinned so a reader of this test can
+      // see it without going to look it up: a deployment is a process, not a
+      // device, so it asserts no country -- `XX` is the ISO 3166-1
+      // user-assigned code the kernel uses for "none" -- and no timezone but
+      // UTC.
+      expect(body['clientLanguage'], 'en');
+      expect(body['clientCountry'], 'XX');
+      expect(body['clientTimezone'], 'utc');
+
+      // And the relationship those three stand in, which is the part that can
+      // rot unobserved. The body is built by hand -- deliberately, so the
+      // credential never meets a general serialiser -- and the price of that
+      // is that nothing otherwise makes it agree with the type it claims to be
+      // shaped as. They are that type's own defaults, so a kernel that moves
+      // one fails here instead of leaving the deployment asserting a value the
+      // auth server stopped expecting.
+      final defaults = TomAuthenticationMessage();
+      expect(body['clientLanguage'], defaults.clientLanguage);
+      expect(body['clientCountry'], defaults.clientCountry);
+      expect(body['clientTimezone'], defaults.clientTimezone);
+    });
+
     test('SL04: an unusable URI yields null [2026-07-28] (OK)', () {
       expect(
         TomServiceCredential.fromConfiguration(

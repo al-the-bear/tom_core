@@ -137,17 +137,35 @@ class TomServiceCredential {
   ///
   /// Written by hand rather than through reflection so the credential never
   /// passes through a general-purpose serialiser that might log or cache it.
-  String toRequestBody() => jsonEncode(<String, Object?>{
-    'userName': username,
-    'password': credential,
-    'organization': organization,
-    'application': application,
-    'process': process,
-    'client': client,
-    'clientLanguage': 'en',
-    'clientCountry': 'XX',
-    'clientTimezone': 'utc',
-  });
+  ///
+  /// The identity fields come from this credential; the three locale fields do
+  /// not, because **a deployment has no locale to assert**. It is a process,
+  /// not a device: there is no browser to read a language from, no operator
+  /// present to have a country, and its own clock is UTC. So it sends
+  /// [TomAuthenticationMessage]'s defaults — which is what "no locale" is
+  /// already spelled as in this framework, `XX` being the ISO 3166-1
+  /// user-assigned code the kernel uses for "none".
+  ///
+  /// They are **read from the message type rather than restated** here. Writing
+  /// the body by hand buys the credential its isolation and costs exactly one
+  /// thing: nothing otherwise keeps it agreeing with the type it claims to be
+  /// shaped as. Three literals would have been a second copy of the kernel's
+  /// defaults, correct on the day they were written and silently stale the day
+  /// the kernel moved one.
+  String toRequestBody() {
+    final locale = TomAuthenticationMessage();
+    return jsonEncode(<String, Object?>{
+      'userName': username,
+      'password': credential,
+      'organization': organization,
+      'application': application,
+      'process': process,
+      'client': client,
+      'clientLanguage': locale.clientLanguage,
+      'clientCountry': locale.clientCountry,
+      'clientTimezone': locale.clientTimezone,
+    });
+  }
 
   /// Redacted representation — the credential is never included.
   @override

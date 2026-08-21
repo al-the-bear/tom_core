@@ -1340,7 +1340,7 @@ const TomServiceCredential({
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `fromConfiguration` | `static TomServiceCredential? fromConfiguration(TomBaseServerConfiguration config)` | Reads the credential out of `config`, or returns `null` when self-login is not (or only partially) configured — the supported, silent default. All three required values count as absent when they are **whitespace**, the credential included; the trim decides only *whether* one was configured, and the value is carried through as written. |
-| `toRequestBody` | `String toRequestBody()` | The login request body, shaped as the kernel's `TomAuthenticationMessage`. Written by hand so the credential never passes through a general-purpose serialiser. |
+| `toRequestBody` | `String toRequestBody()` | The login request body, shaped as the kernel's `TomAuthenticationMessage`. Written by hand so the credential never passes through a general-purpose serialiser. The identity fields come from the credential; the three locale fields are **read from `TomAuthenticationMessage`'s own defaults**, because a deployment is a process rather than a device and has no locale to assert. |
 
 ### TomServiceLoginTransport
 
