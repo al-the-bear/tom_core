@@ -2,6 +2,39 @@
 
 ### Behaviour Changes
 
+- **`TomAuditAnchorPublisher.close` no longer pretends to publish a final
+  anchor; `publishAndClose` actually does (tcinc345).** `close()` fired
+  `unawaited(_tick())` and the docs promised the result — "entries written
+  since the last tick are not left unanchored by a graceful shutdown". It is
+  `TomClosable`'s method, and that contract is synchronous: nothing awaits what
+  it returns. So the append sat in a microtask that the shutdown it was called
+  for never ran. Measured against a file-backed store, `close()` followed by
+  `exit(0)` produced **one anchor on disk where two were claimed** — the final
+  head silently unanchored. The old test only saw the anchor because it added
+  `await Future<void>.delayed(Duration.zero)`, which is precisely the turn a
+  departing process does not take.
+
+  A guarantee that is absent at the only moment it is claimed for is worse than
+  no guarantee: an operator reading that close pins the chain believes the tail
+  is covered, and an unanchored tail nobody knows about is the gap an anchor
+  exists to close. `close()` now cancels the schedule and publishes **nothing**,
+  and says so. The awaitable `publishAndClose()` delivers the final anchor — the
+  same split `TomAuditSink` already draws between `close()` and
+  `flushAndClose()`, so the two classes shut down the same way.
+
+  `publishNow()` gained the closed-publisher guard, as the single choke point
+  every publication passes through: a closed publisher could previously still
+  append through the direct route while the scheduled one was refused. New
+  `isScheduled` getter — whether the periodic timer is armed is the one piece of
+  lifecycle state with no other observable consequence until an interval has
+  elapsed, and a live periodic timer holds the isolate open.
+
+  In the samples, `advanced_ops_server`'s `OpsRuntime.close` took the anchor at
+  step 2 but drained the sink at step 4, so even a working final anchor would
+  have pinned the head as it stood *before* the records the drain went on to
+  store — leaving them outside the anchored range, which is the one place a
+  truncation is invisible. Draining now precedes anchoring.
+
 - **Audit sinks report every `write` failure through the returned future
   (tcinc344).** `TomFileAuditSink.write` and `TomSqlAuditSink.write` both
   declared `Future<TomAuditEntry>` and both opened with a bare

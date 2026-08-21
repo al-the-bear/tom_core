@@ -125,7 +125,29 @@ class OpsAnchoring {
   Future<TomAuditAnchor> publishNow() =>
       runAsOpsService(() => publisher.publishNow());
 
-  /// Stops the timer after a final publication.
+  /// Publishes a final anchor, then stops the timer.
+  ///
+  /// Awaitable, because the anchor that pins the head a shutdown stops at is
+  /// the one worth having and a synchronous close cannot wait for it — see
+  /// [TomAuditAnchorPublisher.close]. [OpsRuntime.close] calls this *after*
+  /// draining the sink, so the final anchor covers the records the drain
+  /// stored rather than the head as it stood before them.
+  ///
+  /// Not gated on [OpsCapabilities.publishAuditAnchor], unlike [start] and
+  /// [publishNow]: a shutdown must not be the moment a capability check
+  /// discovers it can refuse, and an anchor the server is closing on is
+  /// evidence about work it has already done rather than new work it is asking
+  /// permission for.
+  Future<void> publishAndClose() => runAsOpsService(publisher.publishAndClose);
+
+  /// Cancels the timer. Publishes **nothing** — see [publishAndClose].
+  ///
+  /// Kept alongside its awaitable sibling rather than folded into it, because
+  /// the two answer different questions and a sample that offered only one
+  /// would hide the choice. This is the one to reach for when all that is
+  /// wanted is to stop the schedule — a test tearing down, or a synchronous
+  /// shutdown path with no `await` to be had. [OpsRuntime.close] has an
+  /// `await`, so it uses the other.
   void close() => publisher.close();
 
   /// One line describing the arrangement, for the boot log.

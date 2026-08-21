@@ -246,18 +246,27 @@ class TomAuditAnchorPublisher implements TomClosable {
   /// The most recent anchor this publisher wrote, or `null`.
   TomAuditAnchor? get lastPublished => _lastPublished;
 
+  /// Whether the periodic schedule is currently armed.
+  ///
+  /// The one piece of this object's state that has no other observable
+  /// consequence until an interval has elapsed — which is a long time to wait
+  /// to learn that a shutdown left a timer running, and a periodic [Timer]
+  /// holds the isolate alive on its own. Exposing it lets a caller (and a
+  /// test) ask directly instead of inferring it from anchors that did or did
+  /// not appear.
+  bool get isScheduled => _timer != null;
+
   /// Begins publishing every [interval], starting with one immediately.
   ///
   /// The immediate publication matters: a process that starts, is compromised
   /// and is killed inside one interval would otherwise never anchor at all, and
   /// the gap would be exactly the interesting one.
+  /// Refuses a closed publisher, and does so through [publishNow] rather than
+  /// with a check of its own: the immediate publication happens before the
+  /// timer is armed, so that one guard already covers this path. A second copy
+  /// here would be a second wording of the same rule with nothing keeping the
+  /// two in step.
   Future<void> start() async {
-    if (_closed) {
-      throw TomAuditException(
-        'audit.anchor.publisher_closed',
-        'Audit anchor publisher for $writer is closed.',
-      );
-    }
     _timer?.cancel();
     await publishNow();
     _timer = Timer.periodic(interval, (_) => unawaited(_tick()));
@@ -274,7 +283,20 @@ class TomAuditAnchorPublisher implements TomClosable {
   /// Throws when the store refuses — a caller that asked for a publication is
   /// entitled to learn that it did not happen. The scheduled path swallows and
   /// logs instead; see [_tick].
+  ///
+  /// Also throws once the publisher is closed. This is the single choke point
+  /// every publication passes through — [start] and [_tick] both come here — so
+  /// the guard sits here rather than being restated at each entry point: an
+  /// anchor is a claim that this process was watching the chain at that moment,
+  /// and a publisher that has announced it stopped is no longer in a position
+  /// to make one.
   Future<TomAuditAnchor> publishNow() async {
+    if (_closed) {
+      throw TomAuditException(
+        'audit.anchor.publisher_closed',
+        'Audit anchor publisher for $writer is closed.',
+      );
+    }
     final anchor = TomAuditAnchor.of(sink, writer: writer);
     final published = signer == null ? anchor : anchor.signedWith(signer!);
     await store.append(published);
@@ -298,17 +320,57 @@ class TomAuditAnchorPublisher implements TomClosable {
     }
   }
 
-  /// Stops the schedule after publishing a final anchor.
+  /// Publishes a final anchor, then closes.
   ///
   /// The last anchor of a graceful shutdown is the one that pins the chain's
-  /// final head, so skipping it would leave every entry written since the last
-  /// tick unanchored. A failure here is logged rather than thrown: close must
-  /// not be the call that fails a shutdown.
+  /// final head; without it every entry written since the last tick is left
+  /// unanchored. This is the method that delivers it, and [close] is not — see
+  /// there for why a synchronous close cannot.
+  ///
+  /// The timer is stopped *before* the final anchor is taken, so a scheduled
+  /// tick cannot interleave and leave the last word to a publication the
+  /// caller did not ask for.
+  ///
+  /// A store failure is **thrown**, unlike the scheduled path which only logs:
+  /// a caller that asked for a publication is entitled to learn it did not
+  /// happen. The publisher is closed either way — a shutdown that left the
+  /// timer running because the store was down would be a process that does not
+  /// exit.
+  ///
+  /// Idempotent, and a no-op after [close]: shutdown paths run twice more often
+  /// than anyone plans for, and a second final anchor would be a second claim
+  /// about the same head from a publisher that had already stopped.
+  Future<void> publishAndClose() async {
+    if (_closed) return;
+    stop();
+    try {
+      await publishNow();
+    } finally {
+      _closed = true;
+    }
+  }
+
+  /// Stops the schedule. **Publishes nothing** — see [publishAndClose].
+  ///
+  /// This is [TomClosable]'s method and inherits its **synchronous** contract,
+  /// which is what decides the behaviour: no synchronous method can wait for a
+  /// publication, and a publication started without waiting is one the caller
+  /// cannot rely on. In the shutdown path this is called from, the process is
+  /// going away — so the append sitting in a microtask never runs, and the
+  /// anchor is simply lost.
+  ///
+  /// Publishing anyway on a best-effort basis was the previous behaviour and
+  /// was worse than not publishing: an operator who reads that close anchors
+  /// the final head believes the chain is pinned where it stopped, and an
+  /// unanchored tail nobody knows about is the gap an anchor exists to close.
+  ///
+  /// Use [publishAndClose] wherever an `await` is available; reach for this one
+  /// only from the synchronous shutdown path, and accept that the entries
+  /// written since the last tick stay unanchored.
   @override
   void close() {
     if (_closed) return;
     _closed = true;
     stop();
-    unawaited(_tick());
   }
 }

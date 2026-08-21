@@ -299,6 +299,57 @@ void main() {
       expect(fileSink.readAll(), hasLength(1));
     });
 
+    test('close anchors the head the drain left, not the one before', () async {
+      // The ordering claim in `OpsRuntime.close`, and `entryCount` is what
+      // discriminates it. The record below reaches the sink's queue but is not
+      // stored until the drain, so an anchor taken before the drain counts 0
+      // and one taken after counts 1. Anchoring first would leave that record
+      // outside the anchored range — which is the one place a truncation is
+      // invisible, and so the one place it must not be left.
+      final dir = Directory.systemTemp.createTempSync('ops_shutdown_anchor');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final fileSink = TomFileAuditSink(directory: dir);
+      final anchors = TomMemoryAuditAnchorStore();
+      final closing = OpsRuntime(
+        scheduler: TomScheduler(
+          store: TomMemoryJobStore(),
+          dispatcher: const TomInlineJobDispatcher(),
+          ownerId: 'test-node',
+        ),
+        outbox: TomMessageOutbox(
+          router: TomMessageRouter([TomMemoryMessageTransport()]),
+          store: TomMemoryJobStore(),
+        ),
+        auditSink: fileSink,
+        anchoring: OpsAnchoring(
+          publisher: TomAuditAnchorPublisher(
+            sink: fileSink,
+            store: anchors,
+            writer: opsAuditWriter,
+          ),
+          storeDescription: 'memory:test',
+          independentOfServer: false,
+        ),
+      );
+      await closing.start();
+
+      unawaited(
+        TomAuditTrail.recordAction(
+          action: TomAuditAction.execute,
+          target: 'OpsRuntime',
+          outcome: TomAuditOutcome.succeeded,
+          detail: 'a record submitted as the process was going down',
+        ),
+      );
+
+      await closing.close();
+
+      expect(anchors.anchors, isNotEmpty);
+      final last = anchors.anchors.last;
+      expect(last.entryCount, 1);
+      expect(last.headHash, fileSink.headHash);
+    });
+
     test('registerServices publishes the beans the job bodies resolve', () async {
       final retention = OpsRetentionService(store: _NullRetentionStore());
       runtime.registerServices(

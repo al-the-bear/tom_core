@@ -567,9 +567,7 @@ covered.
 Every tick publishes, even when nothing was written: an anchor over an unchanged
 head says *the head was still this at time T*, which bounds when a later
 divergence must have happened. At a couple of hundred bytes an hourly publisher
-costs about two megabytes a year. `close()` publishes a final anchor, so the
-entries written since the last tick are not left unanchored by a graceful
-shutdown.
+costs about two megabytes a year.
 
 **Worked example.** `advanced_ops_server` in the samples suite runs three
 scheduled jobs *and* this publisher in one process, so the difference is visible
@@ -577,6 +575,32 @@ rather than asserted in prose: `test/ops_anchor_test.dart` checks the publisher'
 own timer and that **no `@TomScheduledJob` declares it**, which is the shape of
 the mistake this section exists to prevent. See
 [`README_advanced_14_operations.md`](../../tom_core_samples/README_advanced_14_operations.md).
+
+### Shutting the publisher down
+
+The final anchor of a graceful shutdown is the one that pins the chain's last
+head; without it every entry written since the previous tick stays unanchored.
+Delivering it takes an `await`, so the publisher offers the same pair the sink
+does:
+
+| Call | Publishes | Use it |
+| ---- | --------- | ------ |
+| `publishAndClose()` | a final anchor, awaited | wherever an `await` is available |
+| `close()` | **nothing** | only the synchronous `TomClosable` shutdown path |
+
+`close()` is `TomClosable`'s method and that contract is synchronous — nothing
+awaits what it returns. A publication it started without waiting would sit in a
+microtask that a departing process never runs, so it makes no such attempt.
+Best-effort publishing here would be worse than none: an operator who reads that
+close anchors the final head believes the chain is pinned where it stopped, and
+an unanchored tail nobody knows about is the gap an anchor exists to close.
+
+Order matters when the sink is queued. Anchor **after** draining the sink, not
+before — an anchor is a claim about a *position*, so one taken first pins the
+head as it stood before the records the drain went on to store, leaving them
+outside the anchored range. That is the one place a truncation is invisible.
+`advanced_ops_server`'s `OpsRuntime.close` is the worked example: stop the
+timers, uninstall the trail, `flushAndClose` the sink, *then* `publishAndClose`.
 
 ## Failure Behaviour
 

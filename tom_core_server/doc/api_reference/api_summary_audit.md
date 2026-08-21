@@ -947,15 +947,17 @@ TomAuditAnchorPublisher({
 | `signer` | `TomAuditAnchorSigner?` | Signs each anchor before publication, when the deployment has a key (final). |
 | `interval` | `Duration` | How often an anchor is published once `start` has been called (final). |
 | `lastPublished` | `TomAuditAnchor?` | *(getter)* The most recent anchor this publisher wrote, or `null`. |
+| `isScheduled` | `bool` | *(getter)* Whether the periodic schedule is currently armed. The one piece of lifecycle state with no other observable consequence until an interval has elapsed — and a live periodic timer holds the isolate open. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `start` | `Future<void> start()` | Publishes one anchor immediately, then every `interval`. The immediate publication matters: a process compromised and killed inside one interval would otherwise never anchor. Throws `TomAuditException` when the publisher is closed. |
+| `start` | `Future<void> start()` | Publishes one anchor immediately, then every `interval`. The immediate publication matters: a process compromised and killed inside one interval would otherwise never anchor. Throws `TomAuditException` when the publisher is closed — through `publishNow`, which runs before the timer is armed. |
 | `stop` | `void stop()` | Stops the schedule; `publishNow` still works. |
-| `publishNow` | `Future<TomAuditAnchor> publishNow()` | Captures the sink's position, signs it when a signer is configured, appends it to the store and returns it. Throws when the store refuses. |
-| `close` | `void close()` | *(override)* Stops the schedule after publishing a final anchor, so entries written since the last tick are not left unanchored. A failure here is logged rather than thrown. |
+| `publishNow` | `Future<TomAuditAnchor> publishNow()` | Captures the sink's position, signs it when a signer is configured, appends it to the store and returns it. Throws when the store refuses, and throws `TomAuditException` (`audit.anchor.publisher_closed`) once the publisher is closed — this is the single choke point every publication passes through. |
+| `publishAndClose` | `Future<void> publishAndClose()` | Cancels the schedule, publishes a final anchor, then closes. The anchor that pins the chain's last head, which a synchronous `close` cannot deliver. A store failure is thrown, unlike the scheduled path; the publisher closes either way. Idempotent, and a no-op after `close`. |
+| `close` | `void close()` | *(override)* Cancels the schedule and closes. **Publishes nothing** — `TomClosable`'s contract is synchronous, and a publication started without waiting is one a departing process never finishes. Use `publishAndClose` wherever an `await` is available. |
 
 ### TomAuditWriteOnceCheck
 

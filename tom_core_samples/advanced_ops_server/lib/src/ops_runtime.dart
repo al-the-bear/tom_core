@@ -220,13 +220,16 @@ class OpsRuntime {
     return definitions;
   }
 
-  /// Stops the timers, removes the trail, then waits for it to be written.
+  /// Stops the timers, removes the trail, drains it, then anchors what it ends
+  /// on.
   ///
   /// The reverse of [start], and the order is the whole point:
   ///
   ///  1. the timers stop, so nothing new is started;
   ///  2. the trail is uninstalled, so nothing new reaches the sink;
-  ///  3. the sink is **drained**, so what did reach it is stored.
+  ///  3. the sink is **drained**, so what did reach it is stored;
+  ///  4. the final anchor is published, so the head it was drained to is
+  ///     pinned.
   ///
   /// Uninstalling before the schedulers had stopped would let an in-flight
   /// run's final mutation go unrecorded — the one record most worth having,
@@ -236,12 +239,19 @@ class OpsRuntime {
   /// and therefore has to refuse it. [TomAuditSink.flushAndClose] is what
   /// stores it, and awaiting it here is what lets the caller exit knowing the
   /// trail is complete rather than merely closed.
+  ///
+  /// Anchoring comes **last**, and that is not tidiness. An anchor is a claim
+  /// about a *position*, so one taken before the drain would pin the head as it
+  /// stood before the records the drain went on to store — and those records
+  /// would end up outside the anchored range, which is the one place a
+  /// truncation is invisible. Publishing after the drain is what makes the
+  /// final anchor cover the trail the process actually finished with.
   Future<void> close() async {
     scheduler.close();
-    anchoring.close();
     outbox.close();
     TomAuditTrail.uninstall();
     await auditSink.flushAndClose();
+    await anchoring.publishAndClose();
   }
 
   /// One line per scheduler alert.

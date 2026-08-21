@@ -351,7 +351,11 @@ Future<void> run() async {
   print('    retained suffix          : ${retained.status.name}');
   assert(retained.isMatch && !retained.indicatesTampering);
 
-  publisher.close();
+  // `publishAndClose`, not `close`: the final anchor is what pins the head the
+  // chain ends on, and only the awaitable sibling can deliver it. `close()` is
+  // `TomClosable`'s synchronous method and publishes nothing — reach for it
+  // only where there is no `await` to be had.
+  await publisher.publishAndClose();
   anchors.close();
   TomAuditTrail.uninstall();
 }
