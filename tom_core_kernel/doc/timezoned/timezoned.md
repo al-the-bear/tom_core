@@ -178,21 +178,39 @@ final nowInTokyo = tokyo.now();
 
 ## TomTimezoned Types
 
-All types share these features:
+All types share these features, because `TomTimezoned` itself has them:
 
 ```dart
 // Common accessors (return UTC values)
 year, month, day, hour, minute, second, millisecond, microsecond, weekday
 
 // Local accessors (return values in the timezone)
-localYear, localMonth, localDay, localHour, localMinute, localSecond, 
+localYear, localMonth, localDay, localHour, localMinute, localSecond,
 localMillisecond, localMicrosecond, localWeekday
 
-// Common methods
-timezone                              // The associated TomTimezone
-convertToTimezone(TomTimezone tz)     // Convert to another timezone
-toDateTime()                          // Get DateTime with local time values
-toString()                            // Serialize to string
+// Common members
+timezone                    // The associated TomTimezone
+getSerializationPrefix()    // '' here; '@D@', '@T@' or '@X@' on the subclasses
+toDateTime()                // Get DateTime with local time values
+toString()                  // Serialize to string
+```
+
+Conversion is not on that list. Each of the three subclasses declares its own
+`convertToTimezone`, narrowed to return its own type, so there is no single
+signature the base class could hold — see [TomZonedDateTime](#tomzoneddatetime),
+[TomZonedDate](#tomzoneddate) and [TomZonedTime](#tomzonedtime).
+
+This is worth knowing because `TomTimezoned.now()` and
+`TomTimezoned.parseFromString(...)` hand back the base class, not a subclass. A
+value held at that type has no conversion method to call, and the compiler is
+what tells you so. Rebuild it as the type you want first:
+
+```dart
+final base = TomTimezoned.now();
+
+// The instant and the zone are all convertToTimezone needs.
+final moved = TomZonedDateTime.fromDateTime(base, base.timezone)
+    .convertToTimezone(newYork);
 ```
 
 ### TomZonedDateTime
@@ -218,6 +236,9 @@ final parsed = TomZonedDateTime.parseFromString(
 
 // Check string format
 if (TomZonedDateTime.isTomZonedDateTimeString(input)) { ... }
+
+// Same instant, read in another timezone
+final inNewYork = dt.convertToTimezone(newYork); // TomZonedDateTime
 ```
 
 ### TomZonedDate
@@ -241,6 +262,9 @@ final parsed = TomZonedDate.parseFromString(
 
 // Check if a DateTime is date-only
 if (TomZonedDate.isDate(someDateTime)) { ... }
+
+// Which calendar day is this same instant, in another timezone?
+final dateInNY = date.convertToTimezone(newYork); // TomZonedDate
 ```
 
 `fromDateTime` asks its question of the *target* timezone, so the day it picks
@@ -272,6 +296,9 @@ final parsed = TomZonedTime.parseFromString(
 
 // Check if a DateTime is time-only
 if (TomZonedTime.isTime(someDateTime)) { ... }
+
+// What does another timezone's clock read at that same moment?
+final standupUtc = standup.convertToTimezone(TomTimezone.utc); // TomZonedTime
 ```
 
 `isTime` reads a `TomTimezoned` in its own timezone just as `isDate` does, so a

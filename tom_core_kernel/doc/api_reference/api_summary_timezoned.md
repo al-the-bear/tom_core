@@ -110,6 +110,11 @@ The default factory interprets the components as local time in `timezone` and
 converts to UTC. `parseFromString` throws `FormatException` for an invalid
 string or unknown zone.
 
+All of them return `TomTimezoned` itself rather than one of the subclasses, so
+the methods below are the whole of what such a value offers. `convertToTimezone`
+is not among them — each subclass declares its own, narrowed to its own return
+type — so converting a base value means rebuilding it as the subclass first.
+
 #### Static Methods
 
 | Method | Return Type | Description |

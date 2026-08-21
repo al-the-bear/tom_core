@@ -815,6 +815,25 @@ anyone who was writing them.
 
 ### Tests
 
+- **New guard: `timezoned_shared_members_test.dart` (tcinc334).** The roster of
+  members `TomTimezoned` offers is stated as code, not as strings: a map from
+  each name to a closure that reads it off a base instance. A member removed
+  from the class takes this file's compilation with it, and one that is renamed
+  cannot be papered over by editing a literal — which is the failure mode a
+  list of names has. Each closure is then run, so the entry proves the member
+  is readable rather than merely declared.
+
+  Against that anchor the guide's shared-member block is compared in both
+  directions, so neither a stale entry nor a missing one survives. The scan
+  reads only the first fenced block under the heading — the roster itself —
+  because anything fenced after it is illustration, and illustration names
+  locals and per-subclass members that would make the roster look like whatever
+  the examples happen to mention. Comments and parameter lists are dropped: a
+  signature names its argument too, and an argument is not a member. Three
+  further tests hold `convertToTimezone` to the subclasses that declare it, and
+  a fourth pins the reason it matters — that `now()` and `parseFromString`
+  return the base class itself.
+
 - **New guard: `serialized_form_trailing_space_test.dart` (tcinc333).** The
   emitted bytes are the anchor: a table of all six ways the module renders a
   value, each asserted to end in exactly one space, with the table's own size
@@ -1263,6 +1282,26 @@ anyone who was writing them.
   is where the window it opens belongs.
 
 ### Documentation
+
+- **The type guide offered a member the base class does not have (tcinc334).**
+  `doc/timezoned/timezoned.md` introduced its shared-member block with "All
+  types share these features" and listed `convertToTimezone` among them.
+  `TomTimezoned` declares no such method: each of the three subclasses declares
+  its own, narrowed to return its own type, so there is no single signature the
+  base could hold. That is not a pedantic distinction, because `TomTimezoned`
+  is a type readers actually hold — `now()` and `parseFromString` both return
+  the base class rather than a subclass — so following the document produced a
+  compile error, with no diagnostic pointing at the document that caused it.
+  The same block omitted `getSerializationPrefix`, which the base class does
+  declare, so the roster was wrong in both directions at once.
+
+  The block now matches the base class, and `convertToTimezone` appears in each
+  of the three subclass sections with its return type shown, so narrowing is
+  visible at the point of use. Two paragraphs were added for what the roster
+  cannot express on its own: why no shared declaration exists, and how to
+  convert a base value — rebuild it through the subclass, the instant and the
+  zone being all the conversion needs. The API mirror, which had the member
+  tables right, gained the same consequence in prose beside its factory list.
 
 - **The wire format was documented without its last character (tcinc333).**
   Every string the module serializes ends in a space —
