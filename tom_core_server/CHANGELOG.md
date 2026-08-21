@@ -2,6 +2,35 @@
 
 ### Behaviour Changes
 
+- **An audit sink that is closed no longer writes; `flushAndClose()` is the way
+  to keep what was queued (tcinc341).** Both persistent sinks serialise writes
+  through an internal queue and checked `_closed` only at enqueue time. A
+  record submitted before `close()` and started after it therefore ran to
+  completion on a closed sink: `TomFileAuditSink` found `_sink` nulled, called
+  `openWrite` again and appended to the file it had just closed — while the
+  unawaited close of the old handle was still in flight on the same path — and
+  `TomSqlAuditSink` inserted its row. A write submitted *after* `close()`
+  returned was correctly refused, so which answer a caller got depended on
+  where the event loop happened to be.
+
+  `close()` now refuses a queued record with `audit.sink.closed`, checked in
+  the serialised body and again at the one point a file handle is opened —
+  rotation awaits, so a close can land in the middle of `_ensureOpen`, and the
+  same is true of the SQL sink's `open()`. Refusing is the only honest answer
+  of the three available: writing it anyway is the reopen, and dropping it
+  silently lets an audited action report success with no entry behind it, which
+  is what a fail-closed trail exists to prevent.
+
+  `TomAuditSink.flushAndClose()` is new and is the route that *stores* those
+  records: it closes the sink to new writes, awaits the queue, then closes.
+  Without it the fix would only have converted a silent reopen into a silent
+  refusal at every graceful shutdown. `close()` keeps `TomClosable`'s
+  synchronous contract — the shutdown calls it through a `void Function()` and
+  cannot await it — so draining could not be folded into it. Applications
+  should `await sink.flushAndClose()` in their own teardown and leave the
+  `TomClosable` registration as the backstop; calling both is safe, as
+  `flushAndClose()` after `close()` is a no-op rather than a second close.
+
 - **`@TomAudited(includeReads:)` is removed; reads were never audited and now
   say so (tcinc340).** The parameter was documented in four places — the
   `audit_trail` library comment's coverage table, `doc/audit.md`,

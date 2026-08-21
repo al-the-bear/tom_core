@@ -17,6 +17,9 @@
 /// the runtime group drives a real [TomScheduler] over a memory store.
 library;
 
+import 'dart:async';
+import 'dart:io';
+
 import 'package:advanced_app_server/advanced_app_server.dart';
 import 'package:advanced_ops_server/advanced_ops_server.dart';
 import 'package:test/test.dart';
@@ -42,10 +45,11 @@ void main() {
 
   group('the three jobs are discoverable and distinctly named', () {
     test('discovery finds exactly the three this server declares', () {
-      expect(
-        TomScheduledJobs.discover().map((job) => job.name).toSet(),
-        {opsPurgeJobName, opsReportJobName, opsDigestJobName},
-      );
+      expect(TomScheduledJobs.discover().map((job) => job.name).toSet(), {
+        opsPurgeJobName,
+        opsReportJobName,
+        opsDigestJobName,
+      });
     });
 
     test('the names are namespaced, so two packages can share one store', () {
@@ -53,7 +57,11 @@ void main() {
       // another package's rows in it. An unprefixed `purge` would collide with
       // any other package's purge — and the collision would look like a job
       // that mysteriously stopped firing.
-      for (final name in [opsPurgeJobName, opsReportJobName, opsDigestJobName]) {
+      for (final name in [
+        opsPurgeJobName,
+        opsReportJobName,
+        opsDigestJobName,
+      ]) {
         expect(name, startsWith('ops.'));
       }
     });
@@ -231,7 +239,7 @@ void main() {
       await runtime.start();
       expect(TomAuditTrail.isEnabled, isTrue);
 
-      runtime.close();
+      await runtime.close();
 
       // The reverse order matters: uninstalling first would let an in-flight
       // run's final mutation go unrecorded — the record most worth having,
@@ -239,8 +247,59 @@ void main() {
       expect(TomAuditTrail.isEnabled, isFalse);
     });
 
-    test('registerServices publishes the beans the job bodies resolve',
-        () async {
+    test('close drains the audit sink rather than abandoning it', () async {
+      // A *file* sink, not the memory one the other tests use: the claim under
+      // test is that the shutdown waits for the queue, and a memory sink has
+      // stored the entry before `write` even returns. Only a sink that really
+      // queues can tell a drain apart from no drain.
+      final dir = Directory.systemTemp.createTempSync('ops_shutdown_drain');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final fileSink = TomFileAuditSink(directory: dir);
+      final draining = OpsRuntime(
+        scheduler: TomScheduler(
+          store: TomMemoryJobStore(),
+          dispatcher: const TomInlineJobDispatcher(),
+          ownerId: 'test-node',
+        ),
+        outbox: TomMessageOutbox(
+          router: TomMessageRouter([TomMemoryMessageTransport()]),
+          store: TomMemoryJobStore(),
+        ),
+        auditSink: fileSink,
+        anchoring: OpsAnchoring(
+          publisher: TomAuditAnchorPublisher(
+            sink: fileSink,
+            store: TomMemoryAuditAnchorStore(),
+            writer: opsAuditWriter,
+          ),
+          storeDescription: 'memory:test',
+          independentOfServer: false,
+        ),
+      );
+      await draining.start();
+
+      // Submitted and deliberately not awaited, so it is still in the sink's
+      // queue when the shutdown begins. `TomAuditSink.close()` is synchronous
+      // and would have to refuse it; the runtime's shutdown is asynchronous
+      // precisely so it does not have to.
+      unawaited(
+        TomAuditTrail.recordAction(
+          action: TomAuditAction.execute,
+          target: 'OpsRuntime',
+          outcome: TomAuditOutcome.succeeded,
+          detail: 'a record submitted as the process was going down',
+        ),
+      );
+
+      await draining.close();
+
+      // Read from disk the instant the shutdown returns. This is what lets
+      // `ops_server_start.dart` call `exit(0)` on the next line: the trail is
+      // complete, not merely closed.
+      expect(fileSink.readAll(), hasLength(1));
+    });
+
+    test('registerServices publishes the beans the job bodies resolve', () async {
       final retention = OpsRetentionService(store: _NullRetentionStore());
       runtime.registerServices(
         retention: retention,
@@ -266,16 +325,22 @@ void main() {
       );
     });
 
-    test('the anchor publisher is started by the runtime, not the scheduler',
-        () async {
-      await runtime.start();
+    test(
+      'the anchor publisher is started by the runtime, not the scheduler',
+      () async {
+        await runtime.start();
 
-      // It publishes at start; the scheduler knows nothing about it. Both
-      // halves matter — see `ops_anchor_test.dart` for why putting it on the
-      // scheduler would be a correctness bug.
-      expect(runtime.scheduler.jobs.keys, isNot(contains('anchor')));
-      expect(sink.records, isEmpty, reason: 'anchoring records no audit rows');
-    });
+        // It publishes at start; the scheduler knows nothing about it. Both
+        // halves matter — see `ops_anchor_test.dart` for why putting it on the
+        // scheduler would be a correctness bug.
+        expect(runtime.scheduler.jobs.keys, isNot(contains('anchor')));
+        expect(
+          sink.records,
+          isEmpty,
+          reason: 'anchoring records no audit rows',
+        );
+      },
+    );
   });
 }
 
@@ -285,8 +350,7 @@ class _NullRetentionStore implements OpsRetentionStore {
   Future<List<ItemRecord>> expiredItems(
     DateTime cutoff, {
     required int limit,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<void> destroy(ItemRecord item) async =>

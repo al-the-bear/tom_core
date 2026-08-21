@@ -425,7 +425,8 @@ own storage errors defeats the guarantee for everything above it.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | Persists `record` and returns the entry as stored; throws when it cannot. |
-| `close` | `void close()` | *(override)* Releases the sink's resources. |
+| `close` | `void close()` | *(override)* Closes the sink **without** waiting for records already queued. Inherits `TomClosable`'s synchronous contract, so a queued record cannot be waited for: it is refused with `audit.sink.closed` rather than dropped or written anyway. |
+| `flushAndClose` | `Future<void> flushAndClose()` | Waits for every queued record to be stored, then closes. Nothing enqueued before the call is refused. Idempotent, and safe to call after `close`. Use this wherever an `await` is available. |
 
 ### TomMemoryAuditSink
 
@@ -461,6 +462,7 @@ TomMemoryAuditSink({int maxEntries = 1000})
 | `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries, starting from the oldest retained link rather than genesis so a bounded sink does not report a false break at the front. |
 | `clear` | `void clear()` | Discards every retained entry and resets the chain. Test-support only. |
 | `close` | `void close()` | *(override)* No-op. |
+| `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Nothing to drain — `write` stores the entry before its future completes and there is no queue behind it. |
 
 ### TomFileAuditSink
 
@@ -505,7 +507,8 @@ TomFileAuditSink({
 | `readAll` | `List<TomAuditEntry> readAll()` | Reads every retained entry across all files, oldest first. |
 | `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries starting from the oldest retained link, so a retention deletion is not reported as a break. |
 | `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Appends one JSON line, rotating and applying retention as needed. Writes are serialised through an internal queue, and each is flushed before it returns. Throws `TomAuditException` when the sink is closed or the write fails. |
-| `close` | `void close()` | *(override)* Closes the underlying file sink; nothing can be lost, since every write already flushed. |
+| `close` | `void close()` | *(override)* Closes the file handle. Every `write` that has *returned* already flushed, so nothing completed is at risk; a record still in the queue is refused with `audit.sink.closed`, because `TomClosable` requires this method to return synchronously and no synchronous method can wait for a queue. The refusal is also what keeps a queued record from reopening the file the sink has just closed. |
+| `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Closes the sink to new records, waits for the queued ones to be written and flushed, then closes the handle. The route that stores what `close` has to refuse. |
 
 ### TomAudited
 
@@ -1036,7 +1039,8 @@ start-up than on the first audited action.
 | `purgeBefore` | `Future<int> purgeBefore(DateTime before)` | Deletes this writer's entries recorded before `before`, returning the row count. The cutoff is resolved to a *sequence* boundary first, because deleting by timestamp could punch a hole under clock skew. |
 | `purgeToMaxEntries` | `Future<int> purgeToMaxEntries(int maxEntries)` | Keeps the newest `maxEntries` entries of this writer's chain and deletes the prefix in front of them, returning the row count. Throws `TomAuditException` for a negative limit. |
 | `verifyWriteOnce` | `Future<TomAuditWriteOnceCheck> verifyWriteOnce()` | Observes what the connected user and the table's `BEFORE` triggers actually permit. Called by `open`; exposed so a health check or operator tool can ask without opening a second sink. |
-| `close` | `void close()` | *(override)* Marks the sink closed. Nothing can be lost, and the `datasource` is deliberately not closed — it is registered process-wide. |
+| `close` | `void close()` | *(override)* Marks the sink closed. Every `write` that has *returned* already committed its `INSERT`, so nothing completed is at risk; a record still in the queue is refused with `audit.sink.closed`, because `TomClosable` requires this method to return synchronously and no synchronous method can wait for a queue. The `datasource` is deliberately not closed — it is registered process-wide. |
+| `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Closes the sink to new records, waits for the queued ones to be inserted, then returns. The route that stores what `close` has to refuse; like `close`, it leaves the `datasource` open. |
 | `toString` | `String toString()` | *(override)* `TomSqlAuditSink(<table>, writer: <writer>)`. |
 
 ### TomAuditTrailRow

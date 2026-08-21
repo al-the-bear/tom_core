@@ -204,6 +204,14 @@ class TomSqlAuditSink implements TomAuditSink {
   String _headHash = tomAuditGenesisHash;
   int _entryCount = 0;
   bool _closed = false;
+
+  /// True only while [flushAndClose] is waiting for the queue.
+  ///
+  /// The sink is closed to new records throughout, so this is not a second
+  /// "open" state — it is the narrow window in which records enqueued *before*
+  /// the close are still allowed to complete.
+  bool _draining = false;
+
   Future<void>? _opening;
   TomAuditWriteOnceCheck? _writeOnceCheck;
 
@@ -327,12 +335,7 @@ class TomSqlAuditSink implements TomAuditSink {
 
   @override
   Future<TomAuditEntry> write(TomAuditRecord record) {
-    if (_closed) {
-      throw TomAuditException(
-        'audit.sink.closed',
-        'Audit sink for $table is closed and cannot accept records.',
-      );
-    }
+    if (_closed) throw _closedException();
     final result = _queue.then((_) => _writeSerialised(record));
     // Keep the queue alive on failure: one failed write must not wedge the
     // sink, and the error is delivered to the caller through `result`.
@@ -340,8 +343,27 @@ class TomSqlAuditSink implements TomAuditSink {
     return result;
   }
 
+  TomAuditException _closedException() => TomAuditException(
+    'audit.sink.closed',
+    'Audit sink for $table is closed and cannot accept records.',
+  );
+
+  /// Whether a record already in the queue may still be written.
+  ///
+  /// A closed sink normally refuses it. [flushAndClose] is the exception it
+  /// exists to be: during the drain the sink is closed to *new* records while
+  /// the ones already queued are deliberately allowed through.
+  bool get _queueMayProceed => !_closed || _draining;
+
   Future<TomAuditEntry> _writeSerialised(TomAuditRecord record) async {
+    // Re-checked here and not only in [write]: between the two lies the whole
+    // lifetime of a queued record, and [close] can land anywhere in it.
+    // Checking only on the way in answers for the moment the caller asked
+    // rather than for the moment the row is inserted, and those are the same
+    // moment only when nothing is queued.
+    if (!_queueMayProceed) throw _closedException();
     await open();
+    if (!_queueMayProceed) throw _closedException();
     final entry = TomAuditEntry.chain(record, _headHash, index: _entryCount);
     try {
       await datasource.executeCommand(
@@ -563,15 +585,47 @@ class TomSqlAuditSink implements TomAuditSink {
   static String? _fitOrNull(String? value, int limit) =>
       value == null ? null : _fit(value, limit);
 
-  /// Closes the sink.
+  /// Closes the sink, refusing whatever is still queued.
   ///
-  /// Nothing can be lost: every [write] awaits its `INSERT` before it returns,
-  /// so there is no buffered entry to drop. The [datasource] is deliberately
-  /// **not** closed — it is registered process-wide and is not this sink's to
-  /// dispose of.
+  /// Every [write] that has *returned* has already committed its `INSERT`, so
+  /// nothing completed is at risk. What this cannot save is a record still
+  /// sitting in `_queue`: [TomClosable] requires this method to return
+  /// synchronously and no synchronous method can wait for a queue. Those
+  /// records are refused with `audit.sink.closed` — see [TomAuditSink.close]
+  /// for why refusing beats writing them anyway or dropping them silently.
+  /// [flushAndClose] is the route that stores them.
+  ///
+  /// The [datasource] is deliberately **not** closed — it is registered
+  /// process-wide and is not this sink's to dispose of.
   @override
   void close() {
     _closed = true;
+  }
+
+  /// Waits for the queued records to be inserted, then closes.
+  ///
+  /// The drain awaits `_queue` rather than the individual write futures
+  /// because `_queue` is the tail of the chain: awaiting it means every record
+  /// enqueued before this call has run. It swallows nothing — `_queue` already
+  /// absorbs write errors so one failure cannot wedge the sink, and each error
+  /// was delivered to its own caller through the future [write] returned.
+  ///
+  /// Like [close], it leaves the [datasource] open.
+  @override
+  Future<void> flushAndClose() async {
+    if (_closed) return;
+    // Close to new records *first*, then wait. Taking them in this order is
+    // what gives the drain a fixed point to reach: a caller writing in a loop
+    // would otherwise keep extending the queue for as long as we waited on it.
+    // `_draining` is what keeps the already-queued records from being refused
+    // by the very flag that stops the new ones.
+    _closed = true;
+    _draining = true;
+    try {
+      await _queue;
+    } finally {
+      _draining = false;
+    }
   }
 
   @override

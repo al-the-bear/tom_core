@@ -20,6 +20,7 @@
 @Tags(['db'])
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:test/test.dart';
@@ -132,6 +133,121 @@ void main() async {
             ),
           ),
         );
+      });
+
+      test('a record still queued when close() runs is refused', () async {
+        final sink = sinkFor('node-a');
+        await sink.write(_record(1));
+        // Not awaited: the record is enqueued and has not started when
+        // `close()` runs. The enqueue-time check already let it through, so
+        // only the check in the serialised body can turn it away — and if
+        // neither does, a closed sink inserts a row.
+        final queued = sink.write(_record(2));
+        sink.close();
+        await expectLater(
+          queued,
+          throwsA(
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.sink.closed',
+            ),
+          ),
+        );
+
+        // The refusal is only half the claim; the table is the other half.
+        final reader = sinkFor('node-a');
+        expect((await reader.readAll()).map((e) => e.record.id), ['entry-1']);
+        reader.close();
+      });
+
+      test('a refused record does not provision the schema', () async {
+        // Never opened: the table was dropped in setUp and this sink has not
+        // written yet, so the queued record would be the one to create it.
+        final sink = sinkFor('node-a');
+        final queued = sink.write(_record(1));
+        sink.close();
+        await expectLater(queued, throwsA(isA<TomAuditException>()));
+
+        // Refusing has to be free of side effects. Refuse late enough and the
+        // record still reaches `open()` on its way to being turned away — a
+        // closed sink creating a table, probing the deployment and recovering
+        // a chain head for an entry it had already decided not to store.
+        expect(sink.writeOnceCheck, isNull);
+      });
+
+      test('a close during open() does not insert the queued row', () async {
+        final sink = sinkFor('node-a');
+        final queued = sink.write(_record(1));
+        // `open()` is a real round trip — provisioning, probing and head
+        // recovery. The serialised body has already passed its first check and
+        // is suspended inside it, so this is the window that only the check
+        // *after* the open can catch.
+        scheduleMicrotask(sink.close);
+        await expectLater(
+          queued,
+          throwsA(
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.sink.closed',
+            ),
+          ),
+        );
+
+        final reader = sinkFor('node-a');
+        expect(await reader.readAll(), isEmpty);
+        reader.close();
+      });
+
+      test(
+        'flushAndClose stores what was queued rather than refusing it',
+        () async {
+          final sink = sinkFor('node-a');
+          final first = sink.write(_record(1));
+          final queued = sink.write(_record(2));
+
+          await sink.flushAndClose();
+
+          // Neither write was awaited before the close, and both are stored.
+          // This is what `close()` cannot do: `TomClosable` requires it to
+          // return synchronously, and no synchronous method can wait for a queue.
+          await expectLater(first, completes);
+          await expectLater(queued, completes);
+          expect((await sink.readAll()).map((e) => e.record.id), [
+            'entry-1',
+            'entry-2',
+          ]);
+          expect((await sink.verify()).isValid, isTrue);
+        },
+      );
+
+      test('flushAndClose leaves the sink closed', () async {
+        final sink = sinkFor('node-a');
+        await sink.flushAndClose();
+        expect(
+          () => sink.write(_record(1)),
+          throwsA(
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.sink.closed',
+            ),
+          ),
+        );
+      });
+
+      test('flushAndClose after close() is a no-op', () async {
+        final sink = sinkFor('node-a');
+        await sink.write(_record(1));
+        sink.close();
+        // Shutdown may call both — the registered `TomClosable` and the
+        // application's own teardown. The second call must not throw, and must
+        // not resurrect anything.
+        await sink.flushAndClose();
+        final reader = sinkFor('node-a');
+        expect((await reader.readAll()).map((e) => e.record.id), ['entry-1']);
+        reader.close();
       });
     });
 

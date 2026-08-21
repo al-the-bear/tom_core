@@ -312,8 +312,37 @@ abstract class TomAuditSink implements TomClosable {
   /// that never happened.
   int get entryCount;
 
+  /// Closes the sink without waiting for records already queued.
+  ///
+  /// This is [TomClosable]'s method and inherits its **synchronous** contract,
+  /// which is what decides the behaviour: no synchronous method can wait for a
+  /// queue, so a record that was enqueued and had not yet started cannot be
+  /// stored. It is **refused** — its `write` future completes with
+  /// `audit.sink.closed` — rather than dropped or written anyway.
+  ///
+  /// Refusing is the only honest answer of the three. Writing it anyway means
+  /// a sink that is closed is still writing, which for the file sink meant
+  /// reopening the file it had just closed. Dropping it means an audited
+  /// action reports success with no entry behind it, which is the one outcome
+  /// a fail-closed trail exists to prevent. Refusing tells the caller, and the
+  /// caller is the code that knows whether the action can still be allowed to
+  /// stand.
+  ///
+  /// Use [flushAndClose] wherever an `await` is available; reach for this one
+  /// only from the synchronous shutdown path.
   @override
   void close();
+
+  /// Waits for every queued record to be stored, then closes.
+  ///
+  /// The counterpart to [close] for callers that have an `await` to spend:
+  /// nothing enqueued before the call is refused. Idempotent, and safe to call
+  /// after [close] — the sink is already closed and there is nothing left to
+  /// drain, so it returns without reopening anything.
+  ///
+  /// Records enqueued *during* the drain are refused like any other write
+  /// after close: the drain would otherwise have no fixed point to reach.
+  Future<void> flushAndClose();
 }
 
 /// An in-memory sink, bounded by entry count.
@@ -390,6 +419,11 @@ class TomMemoryAuditSink implements TomAuditSink {
 
   @override
   void close() {}
+
+  /// Nothing to drain: [write] stores the entry before its future completes
+  /// and there is no queue behind it.
+  @override
+  Future<void> flushAndClose() async => close();
 }
 
 /// An append-only JSON-Lines file sink with age- and count-based retention.
@@ -433,6 +467,13 @@ class TomFileAuditSink implements TomAuditSink {
   String _headHash = tomAuditGenesisHash;
   int _entryCount = 0;
   bool _closed = false;
+
+  /// True only while [flushAndClose] is waiting for the queue.
+  ///
+  /// The sink is closed to new records throughout, so this is not a second
+  /// "open" state — it is the narrow window in which records enqueued *before*
+  /// the close are still allowed to complete.
+  bool _draining = false;
 
   /// The last rotation sequence number handed out. Only ever increases.
   int _rotationSequence = 0;
@@ -559,12 +600,7 @@ class TomFileAuditSink implements TomAuditSink {
 
   @override
   Future<TomAuditEntry> write(TomAuditRecord record) {
-    if (_closed) {
-      throw TomAuditException(
-        'audit.sink.closed',
-        'Audit sink for ${directory.path} is closed and cannot accept records.',
-      );
-    }
+    if (_closed) throw _closedException();
     final result = _queue.then((_) => _writeSerialised(record));
     // Keep the queue alive on failure: one failed write must not wedge the
     // sink, and the error is delivered to the caller through `result`.
@@ -572,7 +608,28 @@ class TomFileAuditSink implements TomAuditSink {
     return result;
   }
 
+  /// The refusal every closed-sink check raises.
+  TomAuditException _closedException() => TomAuditException(
+    'audit.sink.closed',
+    'Audit sink for ${directory.path} is closed and cannot accept records.',
+  );
+
+  /// Whether a record already in the queue may still be written.
+  ///
+  /// Consulted from the serialised body and again at the one place a file
+  /// handle is opened, rather than only from [write] at enqueue time: between
+  /// the enqueue and the write lies the whole lifetime of a queued record, and
+  /// [close] can land anywhere in it. Checking only on the way in answers for
+  /// the moment the caller asked rather than for the moment the write happens,
+  /// and those are the same moment only when nothing is queued.
+  ///
+  /// A closed sink normally refuses. [flushAndClose] is the exception it
+  /// exists to be: during the drain the sink is closed to *new* records while
+  /// the ones already queued are deliberately allowed through.
+  bool get _queueMayProceed => !_closed || _draining;
+
   Future<TomAuditEntry> _writeSerialised(TomAuditRecord record) async {
+    if (!_queueMayProceed) throw _closedException();
     final entry = TomAuditEntry.chain(record, _headHash, index: _entryCount);
     final line = '${entry.toJsonLine()}\n';
     final bytes = utf8.encode(line).length;
@@ -580,6 +637,11 @@ class TomFileAuditSink implements TomAuditSink {
       await _ensureOpen(additionalBytes: bytes);
       _sink!.write(line);
       await _sink!.flush();
+    } on TomAuditException {
+      // A refusal from `_ensureOpen` is an answer, not a storage failure.
+      // Relabelling it `write_failed` would tell the caller the disk let them
+      // down when in fact the sink was closed underneath them.
+      rethrow;
     } catch (e, stack) {
       throw TomAuditException(
         'audit.sink.write_failed',
@@ -619,6 +681,12 @@ class TomFileAuditSink implements TomAuditSink {
       _rotate();
       _currentBytes = 0;
     }
+    // The one place a file handle comes into existence, and therefore the
+    // place the closed check has to be repeated: rotation above awaits, so
+    // `close()` can land in the middle of this method. Resuming afterwards
+    // would open a handle on a sink that is already closed — and the caller
+    // that closed it has no way to learn a new one exists.
+    if (!_queueMayProceed) throw _closedException();
     _sink = _currentFile!.openWrite(mode: FileMode.append);
     _applyRetention();
   }
@@ -702,12 +770,19 @@ class TomFileAuditSink implements TomAuditSink {
     return '${now.year}-$month-$day';
   }
 
-  /// Closes the sink.
+  /// Closes the sink, refusing whatever is still queued.
   ///
-  /// Nothing can be lost here: every [write] flushes before it returns, so by
-  /// the time close is reachable there is no buffered entry left to drop. The
-  /// close itself is therefore allowed to complete in the background, which is
-  /// what lets this satisfy [TomClosable]'s synchronous contract.
+  /// Every [write] that has *returned* has already flushed, so nothing
+  /// completed is at risk. What this cannot save is a record still sitting in
+  /// `_queue`: [TomClosable] requires this method to return synchronously and
+  /// no synchronous method can wait for a queue. Those records are refused
+  /// with `audit.sink.closed` — see [TomAuditSink.close] for why refusing
+  /// beats the two alternatives. [flushAndClose] is the route that stores them.
+  ///
+  /// The handle's own close is allowed to finish in the background. That is
+  /// safe *because* of the refusal: with no queued write able to reach
+  /// `_ensureOpen` any more, nothing can reopen the file while the close is in
+  /// flight.
   @override
   void close() {
     if (_closed) return;
@@ -715,5 +790,36 @@ class TomFileAuditSink implements TomAuditSink {
     final sink = _sink;
     _sink = null;
     if (sink != null) unawaited(sink.close());
+  }
+
+  /// Waits for the queued records to be written, then closes.
+  ///
+  /// The drain awaits `_queue` rather than the individual write futures
+  /// because `_queue` is the tail of the chain: awaiting it means every record
+  /// enqueued before this call has run. It swallows nothing — `_queue` already
+  /// absorbs write errors so one failure cannot wedge the sink, and each
+  /// error was delivered to its own caller through the future `write`
+  /// returned.
+  @override
+  Future<void> flushAndClose() async {
+    if (_closed) return;
+    // Close to new records *first*, then wait. Taking them in this order is
+    // what gives the drain a fixed point to reach: a caller writing in a loop
+    // would otherwise keep extending the queue for as long as we waited on it.
+    // `_draining` is what keeps the already-queued records from being refused
+    // by the very flag that stops the new ones.
+    _closed = true;
+    _draining = true;
+    try {
+      await _queue;
+    } finally {
+      _draining = false;
+    }
+    final sink = _sink;
+    _sink = null;
+    if (sink != null) {
+      await sink.flush();
+      await sink.close();
+    }
   }
 }

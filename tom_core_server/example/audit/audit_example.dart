@@ -183,7 +183,13 @@ Future<void> run() async {
       targetKey: '7',
       outcome: TomAuditOutcome.succeeded,
     );
-    files.close();
+
+    // Shutting down: `flushAndClose` waits for records the sink has accepted
+    // but not yet written. `close()` is `TomClosable`'s synchronous method and
+    // cannot wait, so it refuses them with `audit.sink.closed` — the honest
+    // answer, but not the one a graceful shutdown wants. Here the record above
+    // was awaited and is already on disk; the shape is what matters.
+    await files.flushAndClose();
 
     // Reopening picks the chain up where it left off rather than restarting it.
     final reopened = TomFileAuditSink(directory: dir);
@@ -193,7 +199,32 @@ Future<void> run() async {
     print('   entries on disk           : ${reopened.readAll().length}');
     assert(reopened.readAll().length == 1);
     assert(reopened.verify().isValid);
+
+    // What a queued record meets at each of the two doors, side by side.
+    final queued = reopened.write(
+      TomAuditRecord(
+        id: 'queued-at-close',
+        timestamp: DateTime.now().toUtc(),
+        actor: TomAuditActor.system,
+        action: TomAuditAction.update,
+        target: 'Order',
+        targetKey: '7',
+        outcome: TomAuditOutcome.succeeded,
+      ),
+    );
     reopened.close();
+    String outcome;
+    try {
+      await queued;
+      outcome = 'stored';
+    } on TomAuditException catch (e) {
+      outcome = 'refused (${e.key})';
+    }
+    print('   a record queued at close  : $outcome');
+    assert(outcome.startsWith('refused'));
+    // Refused, not silently dropped and not written behind the sink's back:
+    // the caller is told, and the file the sink just closed stays closed.
+    assert(reopened.readAll().length == 1);
   } finally {
     await dir.delete(recursive: true);
     TomAuditTrail.uninstall();

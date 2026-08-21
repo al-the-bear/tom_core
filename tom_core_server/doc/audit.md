@@ -555,6 +555,45 @@ switched on by installing a sink at startup:
 TomAuditTrail.install(TomFileAuditSink(Directory('/var/audit/app')));
 ```
 
+### Shutting a sink down
+
+Both persistent sinks serialise their writes through an internal queue, so at
+the moment of shutdown there may be a record that a caller has submitted and the
+sink has not yet stored. What happens to it is a choice, and the sinks make it
+explicitly:
+
+| Call | Contract | Use it |
+| ---- | -------- | ------ |
+| `close()` | Synchronous. Refuses whatever is still queued with `audit.sink.closed`. | From the synchronous shutdown path — it is `TomClosable`'s method. |
+| `flushAndClose()` | Asynchronous. Waits for the queued records to be stored, then closes. | Everywhere an `await` is available. |
+
+`close()` cannot do better. `TomClosable.close()` must complete synchronously —
+the shutdown calls it through a `void Function()` and does not await what comes
+back — and no synchronous method can wait for a queue. That leaves three
+possible answers for a queued record, and only one of them is honest:
+
+- **Write it anyway.** A sink that is closed is still writing. For the file
+  sink this meant reopening the file it had just closed and appending to it,
+  behind the back of the code that closed it.
+- **Drop it.** An audited action reports success with no entry behind it —
+  precisely the outcome a fail-closed trail exists to prevent.
+- **Refuse it.** The record's `write` future completes with
+  `audit.sink.closed`, and the caller — which is the code that knows whether the
+  action may still be allowed to stand — is told.
+
+So a graceful shutdown should call `flushAndClose()` and await it; registering
+the sink as a `TomClosable` remains the backstop for the paths that cannot.
+Calling both is safe: `flushAndClose()` after `close()` is a no-op, not a second
+close, and it will not reopen anything.
+
+```dart
+final sink = TomFileAuditSink(directory: Directory('/var/audit/app'));
+TomAuditTrail.install(sink);
+
+// Graceful teardown: nothing submitted before this line is refused.
+await sink.flushAndClose();
+```
+
 ## Suppressing the Trail
 
 `TomAuditTrail.runUnaudited(body)` runs `body` in a zone carrying a

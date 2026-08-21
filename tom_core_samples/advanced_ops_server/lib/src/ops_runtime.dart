@@ -220,17 +220,28 @@ class OpsRuntime {
     return definitions;
   }
 
-  /// Stops the timers, then removes the trail.
+  /// Stops the timers, removes the trail, then waits for it to be written.
   ///
-  /// The reverse of [start], and the last step matters: uninstalling the sink
-  /// before the schedulers had stopped would let an in-flight run's final
-  /// mutation go unrecorded — the one record most worth having, because it is
-  /// the one that happened during a shutdown.
-  void close() {
+  /// The reverse of [start], and the order is the whole point:
+  ///
+  ///  1. the timers stop, so nothing new is started;
+  ///  2. the trail is uninstalled, so nothing new reaches the sink;
+  ///  3. the sink is **drained**, so what did reach it is stored.
+  ///
+  /// Uninstalling before the schedulers had stopped would let an in-flight
+  /// run's final mutation go unrecorded — the one record most worth having,
+  /// because it is the one that happened during a shutdown. Draining is the
+  /// other half of that promise: a record the sink has accepted but not yet
+  /// written is still in its queue, and `TomAuditSink.close()` is synchronous
+  /// and therefore has to refuse it. [TomAuditSink.flushAndClose] is what
+  /// stores it, and awaiting it here is what lets the caller exit knowing the
+  /// trail is complete rather than merely closed.
+  Future<void> close() async {
     scheduler.close();
     anchoring.close();
     outbox.close();
     TomAuditTrail.uninstall();
+    await auditSink.flushAndClose();
   }
 
   /// One line per scheduler alert.

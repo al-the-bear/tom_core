@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 114 files
-// Generated: 2026-08-21T13:00:47.015371
+// Generated: 2026-08-21T13:42:47.138342
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -4139,10 +4139,15 @@ BridgedClass _createTomAuditSinkBridge() {
         t.close();
         return null;
       },
+      'flushAndClose': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_4.TomAuditSink>(target, 'TomAuditSink');
+        return t.flushAndClose();
+      },
     },
     methodSignatures: {
       'write': 'Future<TomAuditEntry> write(TomAuditRecord record)',
       'close': 'void close()',
+      'flushAndClose': 'Future<void> flushAndClose()',
     },
     getterSignatures: {
       'headHash': 'String get headHash',
@@ -4196,6 +4201,10 @@ BridgedClass _createTomMemoryAuditSinkBridge() {
         t.close();
         return null;
       },
+      'flushAndClose': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_4.TomMemoryAuditSink>(target, 'TomMemoryAuditSink');
+        return t.flushAndClose();
+      },
     },
     constructorSignatures: {
       '': 'TomMemoryAuditSink({int maxEntries = 1000})',
@@ -4205,6 +4214,7 @@ BridgedClass _createTomMemoryAuditSinkBridge() {
       'verify': 'TomAuditChainVerification verify()',
       'clear': 'void clear()',
       'close': 'void close()',
+      'flushAndClose': 'Future<void> flushAndClose()',
     },
     getterSignatures: {
       'maxEntries': 'int get maxEntries',
@@ -4267,6 +4277,10 @@ BridgedClass _createTomFileAuditSinkBridge() {
         t.close();
         return null;
       },
+      'flushAndClose': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_4.TomFileAuditSink>(target, 'TomFileAuditSink');
+        return t.flushAndClose();
+      },
     },
     constructorSignatures: {
       '': 'TomFileAuditSink({required Directory directory, int maxFileBytes = 16 * 1024 * 1024, Duration retention = const Duration(days: 3650), int maxFiles = 512, String filePrefix = \'audit\'})',
@@ -4276,6 +4290,7 @@ BridgedClass _createTomFileAuditSinkBridge() {
       'verify': 'TomAuditChainVerification verify()',
       'write': 'Future<TomAuditEntry> write(TomAuditRecord record)',
       'close': 'void close()',
+      'flushAndClose': 'Future<void> flushAndClose()',
     },
     getterSignatures: {
       'directory': 'Directory get directory',
@@ -4656,6 +4671,10 @@ BridgedClass _createTomSqlAuditSinkBridge() {
         t.close();
         return null;
       },
+      'flushAndClose': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_6.TomSqlAuditSink>(target, 'TomSqlAuditSink');
+        return t.flushAndClose();
+      },
       'toString': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_6.TomSqlAuditSink>(target, 'TomSqlAuditSink');
         return t.toString();
@@ -4674,6 +4693,7 @@ BridgedClass _createTomSqlAuditSinkBridge() {
       'purgeToMaxEntries': 'Future<int> purgeToMaxEntries(int maxEntries)',
       'verifyWriteOnce': 'Future<TomAuditWriteOnceCheck> verifyWriteOnce()',
       'close': 'void close()',
+      'flushAndClose': 'Future<void> flushAndClose()',
       'toString': 'String toString()',
     },
     getterSignatures: {

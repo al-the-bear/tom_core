@@ -160,8 +160,7 @@ void initializeServerResources() {
 /// deployment — which is why the environment variable exists and why a real one
 /// sets it.
 String resolveNodeId() =>
-    Platform.environment['OPS_NODE_ID'] ??
-    'ops-${Platform.localHostname}-$pid';
+    Platform.environment['OPS_NODE_ID'] ?? 'ops-${Platform.localHostname}-$pid';
 
 /// Where digests go.
 ///
@@ -212,8 +211,9 @@ Future<void> main(List<String> args) async {
   // Removed before the configuration parses what is left: the flag decides how
   // much of *this* function runs and is not a configuration value.
   final migrateOnly = args.contains(migrateOnlyFlag);
-  final configuration =
-      OpsServerConfiguration(args.where((a) => a != migrateOnlyFlag).toList());
+  final configuration = OpsServerConfiguration(
+    args.where((a) => a != migrateOnlyFlag).toList(),
+  );
   tomLog.setLogLevelByName(configuration.logLevel);
 
   await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
@@ -240,7 +240,9 @@ Future<void> main(List<String> args) async {
     exit(0);
   }
 
-  final appDatasource = TomDataSourceInfo.getDataSourceInfo('app_db')!.datasource;
+  final appDatasource = TomDataSourceInfo.getDataSourceInfo(
+    'app_db',
+  )!.datasource;
   final runtime = OpsRuntime.production(
     datasource: appDatasource,
     nodeId: resolveNodeId(),
@@ -265,10 +267,13 @@ Future<void> main(List<String> args) async {
 
   // A back-office process has no request to end on, so the only clean stop is a
   // signal. Closing through the runtime is what guarantees the trail outlives
-  // the last in-flight run rather than the other way round.
-  ProcessSignal.sigint.watch().listen((_) {
+  // the last in-flight run rather than the other way round — and the `await` is
+  // load-bearing: `exit(0)` does not wait for pending work, so calling this
+  // without it would take the process down with the last audit records still
+  // queued, which is the shutdown the trail most needs to survive.
+  ProcessSignal.sigint.watch().listen((_) async {
     tomLog.info('Advanced ops server stopping.');
-    runtime.close();
+    await runtime.close();
     exit(0);
   });
 }
