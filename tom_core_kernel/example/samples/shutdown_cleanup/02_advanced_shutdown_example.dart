@@ -383,7 +383,7 @@ class AdvancedShutdownExample {
 
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
-  print('ADVANCED SHUTDOWN CLEANUP EXAMPLE');
+  print('02: ADVANCED SHUTDOWN CLEANUP EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );

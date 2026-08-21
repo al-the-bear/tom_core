@@ -412,7 +412,7 @@ class GlobalSettingsExample {
 
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
-  print('ADVANCED ACCESS CONTROL EXAMPLE');
+  print('03: ADVANCED ACCESS CONTROL EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );

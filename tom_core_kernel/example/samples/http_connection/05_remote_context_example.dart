@@ -332,7 +332,7 @@ class RemoteContextExample {
 
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
-  print('REMOTE CONTEXT CONFIGURATION EXAMPLE');
+  print('05: REMOTE CONTEXT CONFIGURATION EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );

@@ -633,7 +633,7 @@ class AdvancedLoggingExample {
 
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
-  print('ADVANCED LOGGING CONFIGURATION EXAMPLE');
+  print('04: ADVANCED LOGGING CONFIGURATION EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );

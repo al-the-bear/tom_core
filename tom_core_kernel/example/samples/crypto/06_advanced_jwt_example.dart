@@ -384,7 +384,7 @@ class AdvancedJwtExample {
 
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
-  print('ADVANCED JWT TOKEN EXAMPLE');
+  print('06: ADVANCED JWT TOKEN EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );

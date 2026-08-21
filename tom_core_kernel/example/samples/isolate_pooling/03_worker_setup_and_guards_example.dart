@@ -406,7 +406,7 @@ class WorkerSetupAndGuardsExample {
 
 Future<void> run() async {
   print('═══════════════════════════════════════════════════════════════════');
-  print('WORKER SETUP AND CREATOR-SIDE GUARDS EXAMPLE');
+  print('03: WORKER SETUP AND CREATOR-SIDE GUARDS EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );

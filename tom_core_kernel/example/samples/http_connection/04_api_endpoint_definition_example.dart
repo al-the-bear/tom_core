@@ -494,7 +494,7 @@ class ApiEndpointDefinitionExample {
 
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
-  print('API AND ENDPOINT DEFINITION EXAMPLE');
+  print('04: API AND ENDPOINT DEFINITION EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );

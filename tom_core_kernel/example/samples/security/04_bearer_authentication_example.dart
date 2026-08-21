@@ -326,7 +326,7 @@ class BearerAuthenticationExample {
 
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
-  print('BEARER AUTHENTICATION EXAMPLE');
+  print('04: BEARER AUTHENTICATION EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );

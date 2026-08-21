@@ -62,7 +62,7 @@ void _installBundle(Map<String, dynamic> bundle) {
 }
 
 void run() {
-  print('=== TomObservableEnum Example ===\n');
+  print('=== 08: TomObservableEnum Example ===\n');
 
   _installBundle(_englishBundle());
 

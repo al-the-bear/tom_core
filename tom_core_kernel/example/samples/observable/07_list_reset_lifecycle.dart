@@ -43,7 +43,7 @@ class _RecordingLifecycleListener extends TomListLifecycleListener {
 }
 
 void run() {
-  print('=== TomList Reset & Lifecycle Example ===\n');
+  print('=== 07: TomList Reset & Lifecycle Example ===\n');
 
   // ===========================================================================
   // Example 1: resetWith replaces all contents atomically

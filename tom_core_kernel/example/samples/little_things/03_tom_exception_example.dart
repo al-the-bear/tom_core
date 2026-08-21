@@ -445,7 +445,7 @@ class TomExceptionExample {
 
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
-  print('TOM EXCEPTION DETAILED USAGE EXAMPLE');
+  print('03: TOM EXCEPTION DETAILED USAGE EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );
