@@ -36,7 +36,7 @@ Future<void> run() async {
 
   print('02: Advanced Shutdown Example');
   print('-' * 40);
-  advanced_shutdown.run();
+  await advanced_shutdown.run();
   print('✓ Advanced shutdown examples passed\n');
 
   print('03: Shutdown Execution Example');

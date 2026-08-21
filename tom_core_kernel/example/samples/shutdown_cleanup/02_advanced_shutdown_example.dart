@@ -1,21 +1,36 @@
-// ignore_for_file: unused_local_variable
-/// Advanced Shutdown Cleanup Example
+/// Example: adapting a class that has no Tom interface, with TomCloseAdaptor
 ///
-/// This example demonstrates advanced shutdown cleanup features:
-/// - TomCloseAdaptor for wrapping non-interface objects
-/// - Custom signal handlers
-/// - Adding additional signals
-/// - Cleanup execution order
-/// - Error handling during cleanup
+/// [TomShutdownCleanup] closes [TomClosable]s and disposes [TomDisposable]s.
+/// [TomCloseAdaptor] is how an object that implements neither still gets torn
+/// down: it resolves the object's teardown method through the global
+/// `tomReflector` and presents the result as a [TomClosable].
+///
+/// This example covers the whole of that contract:
+/// - resolution — `close()` and `dispose()` are found without being named, and
+///   any other method is reached by naming it
+/// - the three ways construction fails — no teardown method, a method that
+///   takes a parameter, and a class the reflector cannot see
+/// - registration — an adaptor is a [TomClosable], so it goes on a cleanup like
+///   any other and is closed by the shutdown
+///
+/// The reflector requirement is the part most likely to bite, and example 6
+/// exists to make it concrete: the adaptor reaches classes in *your own* build
+/// that carry `@tomReflector`. A type from a package you cannot annotate is out
+/// of reach no matter what methods it declares — wrap it in a small
+/// [TomClosable] of your own instead, which needs no reflection at all.
+///
+/// `01_shutdown_handler_example.dart` owns registration in general and
+/// `03_shutdown_execution_example.dart` owns the execution semantics — phase
+/// order, once-only execution, fault isolation, `paused`, `silent`.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../sample_bootstrap.dart';
 
-// ============================================================================
+// =============================================================================
 // Example Support Classes
-// ============================================================================
+// =============================================================================
 
 /// A class of our own with a `close()` but no `TomClosable` implementation.
 ///
@@ -26,405 +41,289 @@ import '../../sample_bootstrap.dart';
 /// wrap one in a small `TomClosable` of your own instead.
 @tomReflector
 class AnnotatedDatabase {
+  AnnotatedDatabase(this.connectionString);
+
   final String connectionString;
   bool _isClosed = false;
 
-  AnnotatedDatabase(this.connectionString);
-
   bool get isClosed => _isClosed;
 
-  // Has close() but doesn't implement TomClosable
-  void close() {
-    _isClosed = true;
-  }
+  // Has close() but doesn't implement TomClosable.
+  void close() => _isClosed = true;
 }
 
 /// A class of our own with a `dispose()` but no `TomDisposable` implementation.
 @tomReflector
 class AnnotatedStream {
+  AnnotatedStream(this.streamName);
+
   final String streamName;
   bool _isDisposed = false;
 
-  AnnotatedStream(this.streamName);
-
   bool get isDisposed => _isDisposed;
 
-  // Has dispose() but doesn't implement TomDisposable
-  void dispose() {
-    _isDisposed = true;
-  }
+  // Has dispose() but doesn't implement TomDisposable.
+  void dispose() => _isDisposed = true;
 }
 
-/// Class with a custom shutdown method name.
+/// A class whose teardown method is named neither `close` nor `dispose`.
 @tomReflector
 class CustomShutdownResource {
+  CustomShutdownResource(this.resourceId);
+
   final String resourceId;
   bool _isShutdown = false;
 
-  CustomShutdownResource(this.resourceId);
-
   bool get isShutdown => _isShutdown;
 
-  // Custom method name for cleanup
-  void shutdown() {
-    _isShutdown = true;
-  }
+  void shutdown() => _isShutdown = true;
 }
 
-/// Class with no close/dispose method for error testing.
+/// A class with no teardown method at all.
 @tomReflector
 class NoCloseMethod {
   void doSomething() {}
 }
 
-/// Class with parameterized close method for error testing.
+/// A class whose `close()` needs an argument the adaptor has no way to supply.
 @tomReflector
 class ParameterizedClose {
   void close(String reason) {}
 }
 
-/// Proper disposable resource.
-class ProperDisposable implements TomDisposable {
-  final String name;
-  bool disposed = false;
-  int order = 0;
+/// A class the reflector cannot see, standing in for a third-party type.
+///
+/// Deliberately *not* annotated: it has a perfectly good `close()`, which is
+/// the point — the adaptor's requirement is reflectability, not the shape of
+/// the method, and no amount of the latter substitutes for the former.
+class UnreachableCache {
+  bool isClosed = false;
 
-  ProperDisposable(this.name);
-
-  @override
-  void dispose() {
-    disposed = true;
-    order = CleanupOrderTracker.nextOrder();
-  }
+  void close() => isClosed = true;
 }
 
-/// Proper closable resource.
-class ProperClosable implements TomClosable {
-  final String name;
-  bool closed = false;
-  int order = 0;
+// =============================================================================
+// Main Example Function
+// =============================================================================
 
-  ProperClosable(this.name);
-
-  @override
-  void close() {
-    closed = true;
-    order = CleanupOrderTracker.nextOrder();
-  }
-}
-
-/// Tracks the order of cleanup operations.
-class CleanupOrderTracker {
-  static int _counter = 0;
-  static final List<String> operations = [];
-
-  static int nextOrder() {
-    _counter++;
-    return _counter;
-  }
-
-  static void recordOperation(String name) {
-    operations.add(name);
-  }
-
-  static void reset() {
-    _counter = 0;
-    operations.clear();
-  }
-}
-
-// ============================================================================
-// Example Class
-// ============================================================================
-
-class AdvancedShutdownExample {
-  // Captured results
-  static bool adaptorCloseWorks = false;
-  static bool adaptorDisposeWorks = false;
-  static bool customMethodWorks = false;
-  static bool noMethodError = false;
-  static bool parameterError = false;
-  static int signalHandlerCallCount = 0;
-
-  // --------------------------------------------------------------------------
-  // Example 1: TomCloseAdaptor with close() method
-  // --------------------------------------------------------------------------
-  static void example1AdaptorWithClose() {
-    print('1. TomCloseAdaptor wrapping close() method:');
-
-    final database = AnnotatedDatabase('postgres://localhost:5432');
-    print('   - Created AnnotatedDatabase: ${database.connectionString}');
-    print('   - isClosed before: ${database.isClosed}');
-
-    // Wrap with adaptor - automatically finds close() method
-    final adaptor = TomCloseAdaptor(database);
-    print('   - Created TomCloseAdaptor (auto-detected close method)');
-
-    // The adaptor implements TomClosable
-    final TomClosable closable = adaptor;
-    closable.close();
-
-    print('   - isClosed after calling adaptor.close(): ${database.isClosed}');
-    adaptorCloseWorks = database.isClosed;
-
-    // Assertions
-    assert(database.isClosed, 'Database should be closed via adaptor');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 2: TomCloseAdaptor with dispose() method
-  // --------------------------------------------------------------------------
-  static void example2AdaptorWithDispose() {
-    print('\n2. TomCloseAdaptor wrapping dispose() method:');
-
-    final stream = AnnotatedStream('events-stream');
-    print('   - Created AnnotatedStream: ${stream.streamName}');
-    print('   - isDisposed before: ${stream.isDisposed}');
-
-    // When no close() exists, adaptor finds dispose() automatically
-    final adaptor = TomCloseAdaptor(stream);
-    print('   - Created TomCloseAdaptor (auto-detected dispose method)');
-
-    adaptor.close();
-
-    print(
-      '   - isDisposed after calling adaptor.close(): ${stream.isDisposed}',
-    );
-    adaptorDisposeWorks = stream.isDisposed;
-
-    // Assertions
-    assert(stream.isDisposed, 'Stream should be disposed via adaptor');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 3: TomCloseAdaptor with custom method name
-  // --------------------------------------------------------------------------
-  static void example3AdaptorCustomMethod() {
-    print('\n3. TomCloseAdaptor with custom method name:');
-
-    final resource = CustomShutdownResource('resource-123');
-    print('   - Created CustomShutdownResource: ${resource.resourceId}');
-    print('   - isShutdown before: ${resource.isShutdown}');
-
-    // Specify custom method name 'shutdown'
-    final adaptor = TomCloseAdaptor(resource, 'shutdown');
-    print('   - Created TomCloseAdaptor with custom method "shutdown"');
-
-    adaptor.close();
-
-    print(
-      '   - isShutdown after calling adaptor.close(): ${resource.isShutdown}',
-    );
-    customMethodWorks = resource.isShutdown;
-
-    // Assertions
-    assert(resource.isShutdown, 'Resource should be shutdown via adaptor');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 4: TomCloseAdaptor error - no method found
-  // --------------------------------------------------------------------------
-  static void example4AdaptorNoMethodError() {
-    print('\n4. TomCloseAdaptor error when no close/dispose method:');
-
-    final noClose = NoCloseMethod();
-    print('   - Created NoCloseMethod (has no close/dispose)');
-
-    try {
-      final adaptor = TomCloseAdaptor(noClose);
-      print('   - ERROR: Should have thrown exception');
-      noMethodError = false;
-    } catch (e) {
-      print(
-        '   - Caught expected exception: ${e.toString().split('\n').first}',
-      );
-      noMethodError = e.toString().contains("didn't find a close method");
-    }
-
-    // Assertions
-    assert(noMethodError, 'Should throw when no method found');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 5: TomCloseAdaptor error - method has parameters
-  // --------------------------------------------------------------------------
-  static void example5AdaptorParameterError() {
-    print('\n5. TomCloseAdaptor error when method has parameters:');
-
-    final paramClose = ParameterizedClose();
-    print('   - Created ParameterizedClose (close needs parameter)');
-
-    try {
-      final adaptor = TomCloseAdaptor(paramClose);
-      print('   - ERROR: Should have thrown exception');
-      parameterError = false;
-    } catch (e) {
-      print(
-        '   - Caught expected exception: ${e.toString().split('\n').first}',
-      );
-      parameterError = e.toString().contains('needs parameter');
-    }
-
-    // Assertions
-    assert(parameterError, 'Should throw when method needs parameters');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 6: Signal handler registration
-  // --------------------------------------------------------------------------
-  static void example6SignalHandler() {
-    print('\n6. Signal handler registration (not triggered):');
-
-    // Create a custom cleanup handler (not using global singleton)
-    print('   - TomShutdownCleanup automatically listens for:');
-    print('     - SIGHUP');
-    print('     - SIGINT (Ctrl+C)');
-    print('');
-    print('   - You can add additional signals with addSignal():');
-    print('     shutdown.addSignal(ProcessSignal.sigterm)');
-    print('');
-    print('   - Signal handlers execute in this order:');
-    print('     1. Custom signal handlers (addSignalHandler)');
-    print('     2. Closables (addClosable)');
-    print('     3. Disposables (addDisposable)');
-    print('');
-    print('   - Each cleanup is wrapped in try-catch');
-    print('   - Cleanup only executes once, even with multiple signals');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 7: Using the global instance
-  // --------------------------------------------------------------------------
-  static void example7GlobalInstance() {
-    print('\n7. Global tomShutdownCleanup instance:');
-
-    print('   - Access via: tomShutdownCleanup');
-    print('');
-    print('   - Typical usage:');
-    print('     tomShutdownCleanup.addClosable(databaseConnection);');
-    print('     tomShutdownCleanup.addDisposable(streamController);');
-    print('     tomShutdownCleanup.addSignalHandler((signal) {');
-    print('       print("Cleanup started due to \$signal");');
-    print('     });');
-    print('');
-    print('   - Registration is the whole setup: the instance arms SIGHUP and');
-    print('     SIGINT in its constructor. start() is optional and only logs.');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 8: Combining adaptors with cleanup
-  // --------------------------------------------------------------------------
-  static void example8CombiningAdaptors() {
-    print('\n8. Combining TomCloseAdaptor with shutdown cleanup:');
-
-    final db1 = AnnotatedDatabase('mysql://localhost');
-    final db2 = AnnotatedDatabase('postgres://localhost');
-    final stream = AnnotatedStream('audit-log');
-
-    print('   - Created 3 annotated resources without TomClosable interface');
-    print('');
-    print('   - Wrap with adaptors and register:');
-    print('     tomShutdownCleanup.addClosable(TomCloseAdaptor(db1));');
-    print('     tomShutdownCleanup.addClosable(TomCloseAdaptor(db2));');
-    print('     tomShutdownCleanup.addClosable(TomCloseAdaptor(stream));');
-    print('');
-    print('   - On SIGINT/SIGHUP, all resources close automatically!');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 9: TomDisposable vs TomClosable
-  // --------------------------------------------------------------------------
-  static void example9InterfaceComparison() {
-    print('\n9. TomDisposable vs TomClosable:');
-
-    print('   TomDisposable:');
-    print('   - Implement dispose() method');
-    print('   - Register with addDisposable()');
-    print('   - Called LAST during cleanup');
-    print('   - Use for: stream controllers, subscriptions');
-    print('');
-    print('   TomClosable:');
-    print('   - Implement close() method');
-    print('   - Register with addClosable()');
-    print('   - Called BEFORE disposables');
-    print('   - Use for: connections, files, sockets');
-    print('');
-    print('   TomCloseAdaptor:');
-    print('   - Wraps an annotated class that has no Tom interface');
-    print('   - Auto-detects close() or dispose()');
-    print('   - Or specify custom method name');
-    print('   - Implements TomClosable');
-  }
-
-  // --------------------------------------------------------------------------
-  // Example 10: Creating a custom shutdown handler
-  // --------------------------------------------------------------------------
-  static void example10CustomShutdownHandler() {
-    print('\n10. Creating a custom TomShutdownCleanup instance:');
-
-    print('    - Use custom instance for specialized signal handling:');
-    print('');
-    print('      final customShutdown = TomShutdownCleanup();');
-    print('      customShutdown.addSignal(ProcessSignal.sigusr1);');
-    print('      customShutdown.addSignalHandler((signal) {');
-    print('        if (signal == ProcessSignal.sigusr1) {');
-    print('          // Reload configuration');
-    print('        }');
-    print('      });');
-    print('');
-    print('    - Note: Each TomShutdownCleanup instance has its own');
-    print('      set of handlers and will execute independently');
-  }
-}
-
-// ============================================================================
-// Run Function
-// ============================================================================
-
-void run() {
+/// Runs the adaptor demonstrations.
+///
+/// [TomCloseAdaptor] resolves teardown methods through the global reflector, so
+/// the reflected targets above must be registered before [run] is called. Both
+/// entry points do that: the group runner (`00_run_all_examples.dart`) and this
+/// file's own `main()` each call `bootstrapSamples()` first.
+Future<void> run() async {
   print('═══════════════════════════════════════════════════════════════════');
   print('02: ADVANCED SHUTDOWN CLEANUP EXAMPLE');
   print(
     '═══════════════════════════════════════════════════════════════════\n',
   );
 
-  AdvancedShutdownExample.example1AdaptorWithClose();
-  AdvancedShutdownExample.example2AdaptorWithDispose();
-  AdvancedShutdownExample.example3AdaptorCustomMethod();
-  AdvancedShutdownExample.example4AdaptorNoMethodError();
-  AdvancedShutdownExample.example5AdaptorParameterError();
-  AdvancedShutdownExample.example6SignalHandler();
-  AdvancedShutdownExample.example7GlobalInstance();
-  AdvancedShutdownExample.example8CombiningAdaptors();
-  AdvancedShutdownExample.example9InterfaceComparison();
-  AdvancedShutdownExample.example10CustomShutdownHandler();
+  // ---------------------------------------------------------------------------
+  // Example 1: close() is found without being named
+  // ---------------------------------------------------------------------------
+  print('1. TomCloseAdaptor wrapping close():');
 
-  // Final assertions
+  final database = AnnotatedDatabase('postgres://localhost:5432');
+  final databaseAdaptor = TomCloseAdaptor(database);
+
+  final databaseClosedBefore = database.isClosed;
+  // The adaptor *is* a TomClosable — that is the whole conversion.
+  final TomClosable asClosable = databaseAdaptor;
+  asClosable.close();
+  final databaseClosedAfter = database.isClosed;
+
+  print('   - ${database.connectionString}');
+  print('   - isClosed before: $databaseClosedBefore');
+  print('   - isClosed after:  $databaseClosedAfter\n');
+
+  // ---------------------------------------------------------------------------
+  // Example 2: dispose() is found when there is no close()
+  // ---------------------------------------------------------------------------
+  print('2. TomCloseAdaptor wrapping dispose():');
+
+  final stream = AnnotatedStream('events-stream');
+  final streamAdaptor = TomCloseAdaptor(stream);
+
+  final streamDisposedBefore = stream.isDisposed;
+  // Still `close()` on the adaptor — the adaptor's own name for teardown does
+  // not change with the target's.
+  streamAdaptor.close();
+  final streamDisposedAfter = stream.isDisposed;
+
+  print('   - ${stream.streamName}');
+  print('   - isDisposed before: $streamDisposedBefore');
+  print('   - isDisposed after:  $streamDisposedAfter\n');
+
+  // ---------------------------------------------------------------------------
+  // Example 3: any other method, named explicitly
+  // ---------------------------------------------------------------------------
+  print('3. TomCloseAdaptor with a custom method name:');
+
+  final resource = CustomShutdownResource('resource-123');
+  final resourceAdaptor = TomCloseAdaptor(resource, 'shutdown');
+
+  final resourceShutdownBefore = resource.isShutdown;
+  resourceAdaptor.close();
+  final resourceShutdownAfter = resource.isShutdown;
+
+  print('   - ${resource.resourceId}');
+  print('   - isShutdown before: $resourceShutdownBefore');
+  print('   - isShutdown after:  $resourceShutdownAfter\n');
+
+  // ---------------------------------------------------------------------------
+  // Example 4: no teardown method
+  // ---------------------------------------------------------------------------
+  // The three failures below all happen in the *constructor*. The adaptor
+  // resolves the method up front rather than at close() time, so a target it
+  // cannot tear down is rejected while there is still a caller to tell —
+  // not during a shutdown, where the diagnostic scrolls past unread.
+  print('4. Construction fails when there is no teardown method:');
+
+  Object? noMethodFailure;
+  try {
+    TomCloseAdaptor(NoCloseMethod());
+  } catch (e) {
+    noMethodFailure = e;
+  }
+
+  print('   - ${_firstLine(noMethodFailure)}\n');
+
+  // ---------------------------------------------------------------------------
+  // Example 5: a teardown method that takes an argument
+  // ---------------------------------------------------------------------------
+  print('5. Construction fails when the method needs an argument:');
+
+  Object? parameterFailure;
+  try {
+    TomCloseAdaptor(ParameterizedClose());
+  } catch (e) {
+    parameterFailure = e;
+  }
+
+  print('   - ${_firstLine(parameterFailure)}\n');
+
+  // ---------------------------------------------------------------------------
+  // Example 6: a class the reflector cannot see
+  // ---------------------------------------------------------------------------
+  print('6. Construction fails when the class is not reflectable:');
+
+  TomReflectorException? notReflectableFailure;
+  try {
+    TomCloseAdaptor(UnreachableCache());
+  } on TomReflectorException catch (e) {
+    notReflectableFailure = e;
+  }
+
+  print('   - key: ${notReflectableFailure?.key}\n');
+
+  // ---------------------------------------------------------------------------
+  // Example 7: adaptors registered on a cleanup
+  // ---------------------------------------------------------------------------
+  print('7. Registering adaptors and running the shutdown:');
+
+  final primary = AnnotatedDatabase('mysql://localhost');
+  final replica = AnnotatedDatabase('postgres://localhost');
+  final auditLog = AnnotatedStream('audit-log');
+
+  final cleanup = TomShutdownCleanup();
+  cleanup.addClosable(TomCloseAdaptor(primary));
+  cleanup.addClosable(TomCloseAdaptor(replica));
+  cleanup.addClosable(TomCloseAdaptor(auditLog));
+
+  cleanup.performShutdown();
+
+  print('   - ${primary.connectionString} closed: ${primary.isClosed}');
+  print('   - ${replica.connectionString} closed: ${replica.isClosed}');
+  print('   - ${auditLog.streamName} disposed: ${auditLog.isDisposed}\n');
+
+  // ---------------------------------------------------------------------------
+  // Teardown for the instance example 7 created
+  // ---------------------------------------------------------------------------
+  // Running a cleanup is not the same as disposing it: `performShutdown()`
+  // executes the registrations but leaves the SIGHUP/SIGINT watchers the
+  // constructor started, and an active watcher keeps the process alive.
+  await cleanup.dispose();
+
+  // ===========================================================================
+  // Assertions
+  // ===========================================================================
+
+  // Example 1: the adaptor invokes the target's close(), and says which object
+  // it will close.
+  assert(!databaseClosedBefore, 'Building an adaptor must not close anything');
+  assert(databaseClosedAfter, 'The adaptor must invoke the target close()');
   assert(
-    AdvancedShutdownExample.adaptorCloseWorks,
-    'Adaptor close should work',
-  );
-  assert(
-    AdvancedShutdownExample.adaptorDisposeWorks,
-    'Adaptor dispose should work',
-  );
-  assert(
-    AdvancedShutdownExample.customMethodWorks,
-    'Custom method should work',
-  );
-  assert(
-    AdvancedShutdownExample.noMethodError,
-    'No method error should be caught',
-  );
-  assert(
-    AdvancedShutdownExample.parameterError,
-    'Parameter error should be caught',
+    identical(databaseAdaptor.closableObject, database),
+    'closableObject names the object the adaptor will actually close',
   );
 
-  print('\n✓ All advanced shutdown cleanup examples passed!\n');
+  // Example 2: dispose() is reached under the adaptor's close().
+  assert(
+    !streamDisposedBefore,
+    'Building an adaptor must not dispose anything',
+  );
+  assert(streamDisposedAfter, 'The adaptor must invoke the target dispose()');
+
+  // Example 3: an explicitly named method wins over the defaults, which this
+  // target does not have at all.
+  assert(!resourceShutdownBefore, 'Building an adaptor must not tear down');
+  assert(resourceShutdownAfter, 'The adaptor must invoke the named method');
+
+  // Example 4: rejected, and the message says what was looked for.
+  assert(
+    noMethodFailure is Exception,
+    'A target with no teardown method must be rejected',
+  );
+  assert(
+    '$noMethodFailure'.contains("didn't find a close method"),
+    'The failure must say that no close method was found',
+  );
+
+  // Example 5: rejected too — a parameter the adaptor cannot supply is as
+  // fatal as no method at all, and is reported separately so the caller can
+  // tell the two apart.
+  assert(
+    parameterFailure is Exception,
+    'A teardown method with a parameter must be rejected',
+  );
+  assert(
+    '$parameterFailure'.contains('needs parameter'),
+    'The failure must say the method needs a parameter',
+  );
+  assert(
+    '$noMethodFailure' != '$parameterFailure',
+    'The two construction failures must be distinguishable',
+  );
+
+  // Example 6: reported as a TomReflectorException carrying the module's key,
+  // rather than as the bare NoSuchCapabilityError the reflector would throw —
+  // an Error, which `on Exception` would not have caught.
+  assert(
+    notReflectableFailure != null,
+    'An unannotated target must be rejected, however good its close()',
+  );
+  assert(
+    notReflectableFailure?.key ==
+        'shutdown_cleanup.close_adaptor.not_reflectable',
+    'The failure must carry the documented error key, got '
+    '${notReflectableFailure?.key}',
+  );
+
+  // Example 7: one shutdown tore down all three targets, through adaptors that
+  // resolved two different method names.
+  assert(primary.isClosed, 'The shutdown must close the first database');
+  assert(replica.isClosed, 'The shutdown must close the second database');
+  assert(auditLog.isDisposed, 'The shutdown must dispose the stream');
+
+  print('✓ All advanced shutdown cleanup examples passed!\n');
 }
 
-void main() {
+/// The first line of [failure], which is the part that names the condition.
+String _firstLine(Object? failure) => '$failure'.split('\n').first;
+
+/// Standalone entry point.
+Future<void> main() async {
   bootstrapSamples();
-  run();
+  await run();
 }
