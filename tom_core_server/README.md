@@ -329,8 +329,6 @@ apps get the full kernel API through one dependency. See the
   (`doc/api/` is reserved for generated `dart doc` HTML and is gitignored.)
 - [`tom_core_kernel`](../tom_core_kernel/README.md) — the platform-neutral
   building blocks this layer is composed from.
-- [`tom_core_d4rt`](../tom_core_d4rt/README.md) — exposes the server API to
-  `d4rt` scripts.
 
 ## Status
 

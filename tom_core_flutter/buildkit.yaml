@@ -1,4 +1,0 @@
-# Tom Build Configuration for tom_core_flutter
-
-cleanup:
-  - 'lib/src/d4rt_bridges/bridges_trigger.g.dart'

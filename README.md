@@ -6,8 +6,7 @@
 Tom Core is the set of packages every Tom application is built on: a
 platform-neutral kernel (dependency injection, observable state, security,
 resources, logging) and the runtimes layered on top of it — a server stack, two
-Flutter layers, a DartScript bridge tool, a VS Code bridge server, and a set of
-agentic building blocks.
+Flutter layers, and a set of agentic building blocks.
 
 This repository ([`al-the-bear/tom_core`](https://github.com/al-the-bear/tom_core))
 holds the whole layer. This document is the **map**; each package has its own
@@ -37,9 +36,6 @@ re-documented here — one phrase of "what it is" plus the link is the contract.
 - **Share one model of state, security, and resources** across server and
   client — the platform-neutral [`tom_core_kernel`](tom_core_kernel/README.md)
   is the single source of those cross-cutting concerns.
-- **Script the framework** — expose the kernel, server, build, and document
-  toolkits to sandboxed DartScript through
-  [`tom_core_d4rt`](tom_core_d4rt/README.md).
 - **Assemble agent runtimes** from generic, domain-free, `dart:io`-free
   building blocks ([`tom_core_agentic`](tom_core_agentic/README.md)).
 
@@ -50,17 +46,14 @@ re-documented here — one phrase of "what it is" plus the link is the contract.
 Everything roots at the **kernel**. The two runtimes (**server** and **Flutter**)
 re-export it, so an app depends on one of them and gets the kernel API for free.
 The **UI library** is the rich widget set that the Flutter runtime's thin
-integration layer complements. The **scripting** and **bridge** tools wrap the
-runtimes for DartScript and the VS Code extension. The **agentic** blocks sit
-beside the kernel, depending only on `tom_basics`.
+integration layer complements. The **agentic** blocks sit beside the kernel,
+depending only on `tom_basics`.
 
 ```
                     tom_core_kernel            (platform-neutral foundation)
                    /       |        \
        tom_core_server  tom_core_flutter  tom_flutter_ui
          (backend)      (Flutter glue)    (widget library)
-              |
-       tom_core_d4rt  ── tom_core_bridge        (DartScript / VS Code bridge)
 
        tom_core_agentic  (agent building blocks; depends only on tom_basics)
 ```
@@ -90,13 +83,6 @@ for all entries is this repository root.
 | Package | What it is |
 | --- | --- |
 | [`tom_flutter_ui`](tom_flutter_ui/README.md) | The Flutter widget library: a Material/Cupertino-aware widget set, a declarative form system, a behavioural action system, and a fluent row-based layout engine (Advanced Container Layout). Every widget understands the kernel's `tomId`/`tomGroup` visibility, the four-state `TomAuthState` model, and resource-driven styling. |
-
-### Scripting & bridges
-
-| Package | What it is | Binary |
-| --- | --- | --- |
-| [`tom_core_d4rt`](tom_core_d4rt/README.md) | The D4rt scripting tool with the full Tom Framework bridge set — an interactive REPL and headless script runner that exposes the kernel, server, build, distributed, and document toolkits to sandboxed DartScript. | `d4rt` |
-| [`tom_core_bridge`](tom_core_bridge/README.md) | The VS Code bridge server extended with the complete Tom D4rt bridge set — `tom_bs` (DCli + VS Code API bridges) plus everything `tom_core_d4rt` registers. | `core_bs` |
 
 ### Agentic
 
@@ -148,8 +134,6 @@ above link the relevant files. The most common entry points:
 | Flutter integration modules | [`tom_core_flutter/doc/`](tom_core_flutter/doc/) |
 | Widget library — ACL engine | [`tom_flutter_ui/doc/advanced_container_layout.md`](tom_flutter_ui/doc/advanced_container_layout.md) |
 | Widget library — forms & authorizers | [`tom_flutter_ui/doc/forms.md`](tom_flutter_ui/doc/forms.md) · [`form_authorizers.md`](tom_flutter_ui/doc/form_authorizers.md) |
-| DartScript bridge groups | [`tom_core_d4rt/doc/`](tom_core_d4rt/doc/) (one `.md` per bridged package) |
-| VS Code bridge operations | [`tom_core_bridge/doc/operations.md`](tom_core_bridge/doc/operations.md) |
 | Agentic building blocks | [`tom_core_agentic/doc/`](tom_core_agentic/doc/) |
 | Form demo catalogue | [`tom_flutter_form_test/doc/demo_catalogue.md`](tom_flutter_form_test/doc/demo_catalogue.md) |
 | UI demo catalogue | [`tom_flutter_ui_test/doc/demo_catalogue.md`](tom_flutter_ui_test/doc/demo_catalogue.md) |
@@ -163,8 +147,6 @@ tom_core_kernel/       platform-neutral foundation (DI, state, security, …)   
 tom_core_server/       backend runtime: HTTP, persistence, auth               (runtime)
 tom_core_flutter/      Flutter integration layer (re-exports the kernel)      (runtime)
 tom_flutter_ui/        Flutter widget library: widgets, forms, ACL engine     (UI)
-tom_core_d4rt/         DartScript REPL + runner with full Tom bridges (d4rt)   (scripting)
-tom_core_bridge/       VS Code bridge server with the Tom bridge set (core_bs) (bridge)
 tom_core_agentic/      domain-free agentic building blocks (dart:io-free)      (agentic)
 tom_flutter_form_test/ runnable demo: the form framework                      (demo app)
 tom_flutter_ui_test/   runnable demo/smoke-test: the whole widget library     (demo app)
@@ -174,9 +156,7 @@ tool/                  repo-wide developer tooling (see below)                (t
 Dependency direction, simplified: everything roots at `tom_core_kernel`;
 `tom_core_server` and `tom_core_flutter` build on and re-export it;
 `tom_flutter_ui` builds on the kernel and is exercised by the two demo apps;
-`tom_core_d4rt` bridges the runtimes into DartScript and `tom_core_bridge`
-serves those bridges to the VS Code extension; `tom_core_agentic` depends only
-on `tom_basics`.
+`tom_core_agentic` depends only on `tom_basics`.
 
 ## Repository tooling
 

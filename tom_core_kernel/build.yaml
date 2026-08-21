@@ -1,6 +1,5 @@
 # Build configuration for tom_core_kernel
 #
-# D4rt bridge configuration for DartScript integration.
 # Reflection generator configuration for runtime reflection.
 
 targets:

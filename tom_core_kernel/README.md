@@ -16,12 +16,11 @@ every other Tom layer is composed from.
 ## Overview
 
 `tom_core_kernel` is the foundation of the Tom Framework. It carries no UI and no
-server runtime, so it runs unchanged on any Dart target — CLI, server, Flutter,
-or the [`d4rt`](../tom_core_d4rt/README.md) interpreter. Everything layered above
-it (the [server stack](../tom_core_server/README.md), the
+server runtime, so it runs unchanged on any Dart target — CLI, server, or
+Flutter. Everything layered above it (the
+[server stack](../tom_core_server/README.md), the
 [Flutter](../tom_core_flutter/README.md) /
-[UI](../tom_flutter_ui/README.md) layers, the DartScript bridge) depends on the
-contracts defined here.
+[UI](../tom_flutter_ui/README.md) layers) depends on the contracts defined here.
 
 The kernel is **reflection-aware**: it builds on
 [`tom_reflection`](../../reflection/tom_reflection/README.md) so observable
@@ -323,14 +322,14 @@ are largely independent.
 tom_basics · tom_crypto · tom_reflection
                  │
           tom_core_kernel        ← you are here
-        ┌────────┼─────────┐
-tom_core_server  tom_core_flutter  tom_core_d4rt
-                 │                   (bridges the kernel into d4rt scripts)
+        ┌────────┴─────────┐
+tom_core_server  tom_core_flutter
+                 │
           tom_flutter_ui
 ```
 
 `tom_core_kernel` sits directly on the basics/crypto/reflection foundation and is
-the common dependency of the server, Flutter, and DartScript layers. See the
+the common dependency of the server and Flutter layers. See the
 [repository map](../README.md) for the full picture.
 
 ## Further documentation
@@ -352,8 +351,6 @@ the common dependency of the server, Flutter, and DartScript layers. See the
   this kernel.
 - [`tom_core_flutter`](../tom_core_flutter/README.md) /
   [`tom_flutter_ui`](../tom_flutter_ui/README.md) — the client/UI layers.
-- [`tom_core_d4rt`](../tom_core_d4rt/README.md) — exposes these types to `d4rt`
-  scripts.
 
 ## Status
 

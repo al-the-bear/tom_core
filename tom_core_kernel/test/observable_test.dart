@@ -641,7 +641,7 @@ void main() {
     test('TomFunctionObserver is reflected like its neighbours', () {
       // Everything around it in the module carries @tomReflector; a hole in
       // the reflected graph breaks anything that walks it (serialization, the
-      // Forge inspectors, the D4rt bridges).
+      // Forge inspectors).
       expect(tomReflector.reflectType(TomFunctionObserver), isA<ClassMirror>());
     });
   });

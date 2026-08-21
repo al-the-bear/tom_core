@@ -321,7 +321,7 @@ tom_core_flutter │                 tom_flutter_ui   ← this package
   Flutter        │               ACL · actions · theme)
   binding)       │
                  ▼
-          tom_core_server / tom_core_d4rt
+                tom_core_server
 ```
 
 `tom_flutter_ui` is the rich UI toolkit; the lower-level kernel-on-Flutter

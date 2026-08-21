@@ -15,8 +15,8 @@
 ///  * register the `tom_core_server_test` data source (the name the fixture
 ///    entity's `@TomDbTable` binds to) and provision / clean its schema.
 ///
-/// It is deliberately reusable: the same fixture unblocks RCK20 (the d4rt replay
-/// DB surfaces), so nothing here is specific to a single test file.
+/// It is deliberately reusable: nothing here is specific to a single test
+/// file, so any suite that needs a live schema can share it.
 library;
 
 import 'dart:io';

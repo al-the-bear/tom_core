@@ -1,9 +1,0 @@
-# Dart / pub
-.dart_tool/
-.packages
-pubspec.lock
-
-# Temporary smoke-test binary (tool/smoke_test.dart cleans this up, but guard
-# against a stray copy if the runner is interrupted mid-run)
-.smoke_core_bs
-.smoke_core_bs.exe
