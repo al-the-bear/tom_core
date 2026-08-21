@@ -83,31 +83,35 @@ TomPrincipal _principal(
 
 /// A principal distinguished only by its user id, for the enrolment store —
 /// whose entire job is to keep one user's factors away from another's.
-TomPrincipal _principalWithId(int userId) => TomPrincipal(
-  authenticated: true,
-  context: {},
-  clientId: 0,
-  organization: 'acme',
-  organizationId: 0,
-  application: 'console',
-  applicationId: 0,
-  process: 'login',
-  processId: 0,
-  language: 'en',
-  country: 'US',
-  clientCountry: 'US',
-  clientLanguage: 'en',
-  clientTimezone: 'UTC',
-  user: TomUser(
-    id: userId,
-    username: 'user$userId',
-    firstname: 'Test',
-    lastname: 'User',
-    attributes: {},
-    timezone: 'utc',
-  ),
-  aci: TomAccessControlInformation(roles: const ['user']),
-);
+///
+/// [organization] varies separately so a test can ask what the tenant does
+/// *not* do to the storage key.
+TomPrincipal _principalWithId(int userId, {String organization = 'acme'}) =>
+    TomPrincipal(
+      authenticated: true,
+      context: {},
+      clientId: 0,
+      organization: organization,
+      organizationId: 0,
+      application: 'console',
+      applicationId: 0,
+      process: 'login',
+      processId: 0,
+      language: 'en',
+      country: 'US',
+      clientCountry: 'US',
+      clientLanguage: 'en',
+      clientTimezone: 'UTC',
+      user: TomUser(
+        id: userId,
+        username: 'user$userId',
+        firstname: 'Test',
+        lastname: 'User',
+        attributes: {},
+        timezone: 'utc',
+      ),
+      aci: TomAccessControlInformation(roles: const ['user']),
+    );
 
 /// An authentication service that answers with a fixed principal shape.
 class _StubAuthService implements TomAuthenticationService {
@@ -674,8 +678,11 @@ void main() {
 
     tearDown(TomBean.resetBeanContext);
 
-    Tom2FAContext contextFor(int userId) =>
-        Tom2FAContext(principal: _principalWithId(userId));
+    Tom2FAContext contextFor(int userId, {String organization = 'acme'}) =>
+        Tom2FAContext(
+          principal: _principalWithId(userId, organization: organization),
+          organization: organization,
+        );
 
     Tom2FAEnrolment enrolment({
       String type = 'totp',
@@ -739,6 +746,45 @@ void main() {
     test('enrolments are scoped to their principal', () async {
       await store.store(contextFor(1), enrolment());
       expect(await store.enrolmentsFor(contextFor(2)), isEmpty);
+    });
+
+    // The storage key is the principal id and nothing else, and the shipped
+    // table has no tenant column to hold anything else. That is only sound
+    // because a principal id names one person across the whole deployment
+    // rather than within a tenant -- the premise every framework table that
+    // files rows per principal already rests on. These two tests exist so the
+    // premise is asserted somewhere rather than merely believed: read the
+    // opposite way, they are what fails if someone gives the key a tenant.
+    test('the storage key is the principal id, whatever the tenant', () {
+      expect(
+        Tom2FAEnrolmentStore.principalKeyOf(contextFor(7)),
+        Tom2FAEnrolmentStore.principalKeyOf(
+          contextFor(7, organization: 'globex'),
+        ),
+      );
+      expect(Tom2FAEnrolmentStore.principalKeyOf(contextFor(7)), '7');
+    });
+
+    test('a user reaches their factors from every organization', () async {
+      await store.store(contextFor(1), enrolment(hint: 'iPhone'));
+
+      // Same person, second tenant: their authenticator is already enrolled,
+      // so the login challenges it instead of demanding a second set-up.
+      final elsewhere = await store.enrolmentsFor(
+        contextFor(1, organization: 'globex'),
+      );
+      expect(elsewhere, hasLength(1));
+      expect(elsewhere.single.hint, 'iPhone');
+
+      // And it is one factor, not one per tenant: re-enrolling from the second
+      // tenant replaces the row rather than adding a parallel one.
+      await store.store(
+        contextFor(1, organization: 'globex'),
+        enrolment(hint: 'new iPhone'),
+      );
+      final home = await store.enrolmentsFor(contextFor(1));
+      expect(home, hasLength(1));
+      expect(home.single.hint, 'new iPhone');
     });
 
     test('remove drops one enrolment and tolerates an absent id', () async {

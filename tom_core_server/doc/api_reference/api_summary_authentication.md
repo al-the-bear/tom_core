@@ -831,6 +831,10 @@ Tom2FAEnrolmentState({
 
 Where a principal's set-up factors live. Deployment-supplied: the framework
 knows what an enrolment *is* but not where this deployment keeps its user data.
+Every method takes a `Tom2FAContext` rather than a bare principal id for the
+same reason the adaptors do — a deployment writing its own store sees the whole
+attempt (client, organization, locale) and one handed only an id could not. What
+the shipped stores actually file rows under is narrower; see `principalKeyOf`.
 
 **`resolve()` is nullable and has no fallback, deliberately.** An empty fallback
 store would be indistinguishable from a real store holding nothing, and the
@@ -848,7 +852,7 @@ every deployment that never opted in.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `resolve` | `static Tom2FAEnrolmentStore? resolve()` | The store bean registered for `Tom2FAEnrolmentStore`, or `null` when none is installed. |
-| `principalKeyOf` | `static String principalKeyOf(Tom2FAContext context)` | The key a store files a principal's enrolments under — `context.principal.id`, stringified, matching `TomPrincipalResourceGrant.principalId`. One place, so the memory store and the persistent store cannot disagree on what "this user" means. |
+| `principalKeyOf` | `static String principalKeyOf(Tom2FAContext context)` | The key a store files a principal's enrolments under — `context.principal.id`, stringified, matching `TomPrincipalResourceGrant.principalId`. One place, so the memory store and the persistent store cannot disagree on what "this user" means. The organization is deliberately no part of it: a principal id names one person across the deployment rather than within a tenant, so a user's factors are theirs in every organization they log into, and `tom_user_two_factor_enrolment` has no tenant column. A deployment that allocates ids per tenant has broken that premise framework-wide and supplies its own store, which is handed the whole context — which is also why this staying `static` costs nothing. |
 
 #### Methods
 
