@@ -875,6 +875,57 @@ void main() {
       expect(log, equals(['closable', 'disposable']));
     });
 
+    // Isolating a failure is only half of fault tolerance; the other half is
+    // saying what failed. A shutdown happens once, usually unattended, and
+    // cannot be reproduced by re-running it, so whatever the diagnostic omits
+    // is lost for good.
+
+    test('the failure diagnostic names the exception', () {
+      final lines = <String>[];
+      final cleanup = TomShutdownCleanup();
+      cleanup.addClosable(ThrowingClosable());
+
+      _capturePrints(lines, cleanup.performShutdown);
+
+      // ThrowingClosable throws Exception('Close failed').
+      expect(lines.join('\n'), contains('Close failed'));
+    });
+
+    test('the failure diagnostic names the phase and the entry', () {
+      final lines = <String>[];
+      final cleanup = TomShutdownCleanup();
+      cleanup.addDisposable(ThrowingDisposable());
+
+      _capturePrints(lines, cleanup.performShutdown);
+
+      final diagnostic = lines.join('\n');
+      expect(diagnostic, contains('disposable'));
+      expect(diagnostic, contains('ThrowingDisposable'));
+    });
+
+    test('the failure diagnostic carries a stack trace', () {
+      final lines = <String>[];
+      final cleanup = TomShutdownCleanup();
+      cleanup.addClosable(ThrowingClosable());
+
+      _capturePrints(lines, cleanup.performShutdown);
+
+      // The frame that actually threw has to be in there, or the trace is
+      // decoration rather than evidence.
+      expect(lines.join('\n'), contains('ThrowingClosable.close'));
+    });
+
+    test('silent suppresses the failure diagnostic too', () {
+      final lines = <String>[];
+      final cleanup = TomShutdownCleanup();
+      cleanup.addClosable(ThrowingClosable());
+      cleanup.silent = true;
+
+      _capturePrints(lines, cleanup.performShutdown);
+
+      expect(lines, isEmpty);
+    });
+
     test('manual call ignores paused (only the signal path honours it)', () {
       final cleanup = TomShutdownCleanup();
       final closable = TestClosable();

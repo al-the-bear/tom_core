@@ -25,7 +25,11 @@ When a process receives termination signals (like SIGHUP or SIGINT from Ctrl+C),
 4. Disposes all registered disposable objects
 5. Marks the cleanup as complete to prevent duplicate execution
 
-The system is designed to be fault-tolerant—if one cleanup operation fails, it logs the error and continues with the remaining operations.
+The system is designed to be fault-tolerant—if one cleanup operation fails, it
+reports the failure and continues with the remaining operations. The report
+names the phase, the entry, the exception and the top frames of its stack, and
+goes to `print` rather than the logging system (see
+[Limitations](#limitations)); setting `silent` suppresses it.
 
 ## Quick Start
 
@@ -229,18 +233,30 @@ tomShutdownCleanup.addClosable(connection); // Register immediately
 - Use `TomDisposable` for resources that need disposal (controllers, subscriptions)
 - Use signal handlers for complex cleanup logic
 
-### 3. Handle Errors in Custom Handlers
+### 3. Handle Errors Inside a Handler That Has More To Do
 
-The system catches exceptions, but it's good practice to handle errors in your handlers:
+The system catches what escapes a handler and reports it — phase, entry,
+exception, and the top ten stack frames — so you do not need your own
+try/catch merely to find out that something failed:
+
+```text
+Failed to call closable Instance of 'CacheService': Exception: flush timed out
+lib/cache_service.dart 88:5 l:88 c:5 CacheService.close lib/cache_service.dart
+…
+```
+
+What it cannot do is resume your handler. The catch is *around* the whole
+callout, so the first throw ends that handler and the remaining entries run.
+Catch inside a handler when the steps after the risky one still need to happen:
 
 ```dart
 tomShutdownCleanup.addSignalHandler((signal) {
   try {
-    riskyCleanupOperation();
+    flushPendingWrites();
   } catch (e) {
-    print('Cleanup warning: $e');
-    // Continue with other cleanup
+    print('Flush failed, continuing: $e');
   }
+  notifyConnectedClients(); // runs either way — this is the point
 });
 ```
 
@@ -269,6 +285,8 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(externalClient));
 ## Limitations
 
 - The cleanup system uses `print()` for logging during shutdown (not the full logging system) to ensure output even if logging is affected
+- `silent` suppresses the failure diagnostics along with the status messages, so a silent instance says nothing when a cleanup throws — the cleanup still continues, but the reason it failed is gone
+- A failure's stack trace is cut to its top ten frames, enough to identify the failing `close()`/`dispose()` but not to follow a deep call chain
 - Cleanup executes only once—subsequent signals are ignored after the first cleanup completes
 - On some platforms, certain signals may not be available
 - `TomCloseAdaptor` requires the object's class to be registered with the Tom reflector
@@ -282,6 +300,7 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(externalClient));
 | Dependency | Kind | Used for |
 | ---------- | ---- | -------- |
 | [**Reflection Module**](../reflection/reflection.md) | kernel module | The global `tomReflector`, which is how `TomCloseAdaptor` finds a `close`/`dispose` method on an object that implements neither interface |
+| [**Little Things Module**](../little_things/little_things.md) | kernel module | `tomGetStackTrace`, which formats and depth-limits the trace attached to a failed cleanup's diagnostic |
 | `tom_reflection` | package | `ClassMirror`, walked up the supertype chain by the adaptor — `ClassMirror.declarations` holds only a type's *own* members, so an inherited `close` needs the walk |
 | `tom_basics` | package | `tomLog`, for the module's only log line — the breadcrumb [`start()`](#start--an-optional-log-breadcrumb) writes. Nothing logs during shutdown itself; those diagnostics are `print` |
 | `dart:io` | SDK | `ProcessSignal` — the whole signal-handling half of the module, and what makes it native-only |

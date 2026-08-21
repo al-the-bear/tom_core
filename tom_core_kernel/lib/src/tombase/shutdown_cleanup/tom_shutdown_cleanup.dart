@@ -37,6 +37,7 @@ import 'dart:io';
 import 'package:tom_basics/tom_basics.dart';
 import 'package:tom_reflection/mirrors.dart';
 
+import '../little_things/little_things.dart';
 import '../reflection/reflection.dart';
 
 // =============================================================================
@@ -229,7 +230,9 @@ class TomCloseAdaptor implements TomClosable {
 /// 3. Disposables (objects implementing [TomDisposable])
 ///
 /// Each cleanup operation is wrapped in a try-catch to ensure that a
-/// failing cleanup doesn't prevent other cleanups from executing.
+/// failing cleanup doesn't prevent other cleanups from executing. The failure
+/// is reported with its exception and the top frames of its stack — printed,
+/// not logged, and suppressed by [silent].
 ///
 /// ## Basic Usage
 ///
@@ -269,6 +272,14 @@ class TomCloseAdaptor implements TomClosable {
 /// });
 /// ```
 class TomShutdownCleanup {
+  /// Frames kept from a failing cleanup's stack trace.
+  ///
+  /// Bounded rather than unlimited: a shutdown can fail in several entries at
+  /// once, and full traces from each would bury the failure list in the very
+  /// output an operator is scanning. The frames that identify a `close()` or
+  /// `dispose()` failure are the top ones.
+  static const int _diagnosticStackDepth = 10;
+
   late TomSignalHandler _signalHandler;
   bool _executed = false;
 
@@ -332,15 +343,25 @@ class TomShutdownCleanup {
 
   /// Runs [action] over every entry of [items], isolating each call so one
   /// failing entry never aborts the phase. On failure a `Failed to call
-  /// $label $item` diagnostic is printed unless [silent]. This is the single
-  /// owner of the per-entry try/catch/report policy shared by all three
-  /// cleanup phases.
+  /// $label $item: $exception` diagnostic is printed, followed by the top
+  /// [_diagnosticStackDepth] frames, unless [silent]. This is the single owner
+  /// of the per-entry try/catch/report policy shared by all three cleanup
+  /// phases.
+  ///
+  /// The exception and its trace are part of the report because a shutdown
+  /// runs once, usually unattended, and cannot be re-run to find out what went
+  /// wrong: whatever this line omits is lost. Message and trace go out in a
+  /// single `print` so that concurrent output cannot separate a failure from
+  /// its evidence when several entries fail.
   void _runPhase<T>(List<T> items, String label, void Function(T item) action) {
     for (final item in items) {
       try {
         action(item);
-      } catch (exception) {
-        if (!silent) print("Failed to call $label $item");
+      } catch (exception, stackTrace) {
+        if (silent) continue;
+        final trace = tomGetStackTrace(stackTrace, _diagnosticStackDepth);
+        final report = "Failed to call $label $item: $exception";
+        print(trace.isEmpty ? report : "$report\n$trace");
       }
     }
   }
