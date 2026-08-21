@@ -246,7 +246,21 @@ class Tom2FARegistry {
   Tom2FARegistry._();
 
   static final Map<String, Tom2FAService> _adaptors = {};
+
+  /// Whether the annotation scan has completed *successfully*.
+  ///
+  /// Only a successful scan is remembered. A scan that could not run, or that
+  /// threw, leaves this false so the next access tries again — see
+  /// [_ensureScanned].
   static bool _scanned = false;
+
+  /// Whether a scan is on the stack right now, so a re-entrant access does not
+  /// start a second one. Distinct from [_scanned], which means *finished*.
+  static bool _scanning = false;
+
+  /// Whether the "nothing to scan" diagnostic has already been emitted for this
+  /// registry lifetime.
+  static bool _scanSkipLogged = false;
 
   /// The mechanism keys currently resolvable, scanning if needed.
   ///
@@ -345,26 +359,58 @@ class Tom2FARegistry {
   static void reset() {
     _adaptors.clear();
     _scanned = false;
+    _scanSkipLogged = false;
   }
 
+  /// Runs the annotation scan once, on first use.
+  ///
+  /// "Once" means once *successfully*. A scan that could not run leaves the
+  /// registry unarmed, so the next access tries again: the reflector is
+  /// initialised by generated code at some point during start-up, and whatever
+  /// touches the registry before that point must not decide the question for
+  /// the rest of the process. Remembering a failure as though it were a scan
+  /// is how a registry ends up permanently and silently empty.
   static void _ensureScanned() {
-    if (_scanned) return;
-    // Set before scanning: an adaptor whose construction itself touches the
-    // registry must not re-enter the scan.
-    _scanned = true;
+    // `_scanning` rather than `_scanned` is what makes this re-entrant-safe: an
+    // adaptor whose constructor touches the registry sees the partial map and
+    // does not start a second scan, but the scan it interrupted is still the
+    // one that gets to record success.
+    if (_scanned || _scanning) return;
 
     final Iterable<ClassMirror> candidates;
     try {
       candidates = tomReflector.annotatedClasses;
     } on StateError {
-      // No generated reflection in this program. Annotation discovery is a
-      // convenience on top of [register], not a precondition of it, so a
-      // deployment that wires its adaptors by hand must keep working — and a
-      // *genuinely* missing adaptor still surfaces clearly, as a null [lookup]
-      // that the login turns into `login.error.2fa.unsupported-mechanism`.
+      // No generated reflection *yet*. Annotation discovery is a convenience on
+      // top of [register], not a precondition of it, so a deployment that wires
+      // its adaptors by hand must keep working — and a *genuinely* missing
+      // adaptor still surfaces clearly, as a null [lookup] that the login turns
+      // into `login.error.2fa.unsupported-mechanism`.
+      //
+      // Said out loud, because an empty registry is otherwise indistinguishable
+      // from a deployment that meant to register nothing. Informational rather
+      // than a warning: hand-wiring is supported, and a reflector that arrives
+      // later is picked up by the retry this early return leaves armed. Once
+      // per lifetime, because [lookup] runs on every login pass.
+      if (!_scanSkipLogged) {
+        _scanSkipLogged = true;
+        tomLog.info(
+          'Tom2FARegistry: the 2FA adaptor scan found no generated reflection '
+          'in this program, so annotated adaptors were not discovered. '
+          'Adaptors registered by hand still resolve, and the scan is retried '
+          'on the next access.',
+        );
+      }
       return;
     }
-    registerAnnotated(candidates);
+
+    _scanning = true;
+    try {
+      registerAnnotated(candidates);
+    } finally {
+      _scanning = false;
+    }
+    _scanned = true;
   }
 
   /// Registers every class in [candidates] that carries a [Tom2FAAdaptor]
@@ -382,34 +428,48 @@ class Tom2FARegistry {
   /// half-registered registry is not offered as an alternative: an adaptor set
   /// that is wrong is wrong at start-up, not at the login that happens to need
   /// the missing mechanism.
+  ///
+  /// That holds for the registry a caller can still see afterwards, not only
+  /// for the throw: a failed call registers nothing, and leaves registrations
+  /// made before it untouched. Both halves matter now that a failed scan is
+  /// retried — leftovers from the first attempt would collide with the second
+  /// attempt's fresh instances and report a mechanism that was never at fault.
   static void registerAnnotated(Iterable<ClassMirror> candidates) {
-    for (var candidate in candidates) {
-      final annotations = candidate.metadata.whereType<Tom2FAAdaptor>();
-      if (annotations.isEmpty) continue;
-      final annotation = annotations.first;
+    final restore = Map<String, Tom2FAService>.of(_adaptors);
+    try {
+      for (var candidate in candidates) {
+        final annotations = candidate.metadata.whereType<Tom2FAAdaptor>();
+        if (annotations.isEmpty) continue;
+        final annotation = annotations.first;
 
-      Object? adaptor;
-      try {
-        adaptor = candidate.newInstance('', []);
-      } catch (error, stack) {
-        throw Tom2FAException(
-          'authentication.2fa.adaptor_instantiation_failed',
-          '2FA adaptor scan: failed to instantiate $candidate for '
-              'mechanism "${annotation.type}"',
-          rootException: error,
-          stack: stack,
-          autoLog: true,
-        );
+        Object? adaptor;
+        try {
+          adaptor = candidate.newInstance('', []);
+        } catch (error, stack) {
+          throw Tom2FAException(
+            'authentication.2fa.adaptor_instantiation_failed',
+            '2FA adaptor scan: failed to instantiate $candidate for '
+                'mechanism "${annotation.type}"',
+            rootException: error,
+            stack: stack,
+            autoLog: true,
+          );
+        }
+        if (adaptor is! Tom2FAService) {
+          throw Tom2FAException(
+            'authentication.2fa.adaptor_does_not_implement_service',
+            '2FA adaptor scan: $candidate is annotated @Tom2FAAdaptor('
+                '"${annotation.type}") but does not implement Tom2FAService',
+            autoLog: true,
+          );
+        }
+        register(annotation.type, adaptor);
       }
-      if (adaptor is! Tom2FAService) {
-        throw Tom2FAException(
-          'authentication.2fa.adaptor_does_not_implement_service',
-          '2FA adaptor scan: $candidate is annotated @Tom2FAAdaptor('
-              '"${annotation.type}") but does not implement Tom2FAService',
-          autoLog: true,
-        );
-      }
-      register(annotation.type, adaptor);
+    } catch (_) {
+      _adaptors
+        ..clear()
+        ..addAll(restore);
+      rethrow;
     }
   }
 }

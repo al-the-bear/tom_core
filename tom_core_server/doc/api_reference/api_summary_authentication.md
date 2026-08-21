@@ -528,6 +528,11 @@ deployment can also register an adaptor built by hand. Registration is
 idempotent per key and rejects a second, *different* adaptor for the same key.
 Statics only — the constructor is private.
 
+Only a scan that *completed* counts as the first use. Consulted in a program
+whose generated reflection has not been initialized yet, the registry says so
+once in the log and stays armed, so the scan happens as soon as reflection
+arrives; hand-registered adaptors resolve throughout.
+
 #### Static Properties
 
 | Property | Type | Description |
@@ -543,7 +548,7 @@ Statics only — the constructor is private.
 | `register` | `static void register(String type, Tom2FAService service)` | Registers `service` under `type`. Throws `Tom2FAException` (`authentication.2fa.duplicate_adaptor`) if a different adaptor is already registered for `type`; re-registering the identical instance is a no-op. |
 | `lookup` | `static Tom2FAService? lookup(String type)` | The adaptor for `type`, or `null` when the mechanism is unknown here. Triggers the annotation scan on first use. |
 | `enrolmentSupportFor` | `static Tom2FAEnrolmentSupport? enrolmentSupportFor(String type)` | The adaptor for `type` when it can also be enrolled, else `null` — the one place the `is` check is made, so callers ask "can this be set up here?" rather than reproducing the test. |
-| `registerAnnotated` | `static void registerAnnotated(Iterable<ClassMirror> candidates)` | Registers every class in `candidates` carrying a `Tom2FAAdaptor` annotation. Throws `Tom2FAException` on the first unusable candidate (`authentication.2fa.adaptor_instantiation_failed`, `authentication.2fa.adaptor_does_not_implement_service`), naming it — an adaptor set that is wrong is wrong at start-up. |
+| `registerAnnotated` | `static void registerAnnotated(Iterable<ClassMirror> candidates)` | Registers every class in `candidates` carrying a `Tom2FAAdaptor` annotation. Throws `Tom2FAException` on the first unusable candidate (`authentication.2fa.adaptor_instantiation_failed`, `authentication.2fa.adaptor_does_not_implement_service`), naming it — an adaptor set that is wrong is wrong at start-up. A call that throws registers nothing and leaves registrations made before it untouched, so a retried scan meets the same registry the first attempt found. |
 | `reset` | `static void reset()` | Drops every registration and forces a re-scan on next use. For tests. |
 
 ### Tom2FARequirement

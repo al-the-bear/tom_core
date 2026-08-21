@@ -281,6 +281,30 @@ class _GracePolicy implements Tom2FAPolicy, Tom2FAGraceAccounting {
   }
 }
 
+/// Collects what the framework logged, so a test can assert on a diagnostic
+/// that has no other observable effect.
+///
+/// Every level is kept: [TomLogger] hands the output its own configured level
+/// and leaves the filtering to it, so filtering here would silently drop the
+/// message whenever the suite ran at a quieter level.
+class _CapturingLogOutput implements TomLogOutput {
+  final List<String> messages = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp,
+    String? origin,
+  ) => messages.add('$message');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 /// One candidate for the adaptor scan, standing in for a reflected class.
 ///
 /// A hand-built mirror rather than a reflected fixture class, because the scan
@@ -366,6 +390,32 @@ void main() {
       expect(Tom2FARegistry.registeredTypes, isEmpty);
     });
 
+    // Tolerating the missing reflector must not mean saying nothing about it.
+    // An empty registry with no diagnostic is the hardest possible shape to
+    // debug: every lookup answers null, and null is also what a genuinely
+    // unregistered mechanism answers.
+    //
+    // Logged once per registry lifetime, not once per access: `lookup` runs on
+    // every login pass, and a deployment that wires its adaptors by hand is
+    // supported rather than broken -- a line per login would be noise it can
+    // do nothing about.
+    test('says so, once, when there is no reflection to scan', () {
+      final log = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      tomLog.logOutput = log;
+      addTearDown(() => tomLog.logOutput = previous);
+
+      Tom2FARegistry.registeredTypes;
+      Tom2FARegistry.lookup('anything');
+      Tom2FARegistry.availableMethods;
+
+      final skipped = log.messages
+          .where((m) => m.contains('2FA adaptor scan'))
+          .toList();
+      expect(skipped, hasLength(1), reason: 'once per lifetime, not per read');
+      expect(skipped.single, contains('no generated reflection'));
+    });
+
     test('resolves a hand-registered adaptor', () {
       final adaptor = _FakeAdaptor();
       Tom2FARegistry.register('fake', adaptor);
@@ -408,6 +458,35 @@ void main() {
       expect(Tom2FARegistry.lookup('fake'), isNull);
     });
 
+    // The defect this pins, and the last test that can: it closes the
+    // no-reflection window by calling initializeReflection() -- which is
+    // exactly where the test below closed it before, so nothing above sees a
+    // different world.
+    //
+    // The scan used to arm its own "already done" flag *before* running, so a
+    // scan that could not run was never retried. A process that touched the
+    // registry before initializeReflection() -- an eager bean, a settings
+    // read, anything -- got an empty registry and kept it, and the reflector
+    // that arrived a moment later was never consulted.
+    //
+    // Deliberately no reset() between the two reads: the whole point is that
+    // one registry lifetime spans the reflector's arrival.
+    test('picks up a reflector that only becomes available later', () {
+      expect(
+        Tom2FARegistry.registeredTypes,
+        isEmpty,
+        reason: 'premise: nothing to scan yet',
+      );
+
+      initializeReflection();
+
+      expect(
+        Tom2FARegistry.lookup(TomTotp2FAService.mechanismType),
+        isA<TomTotp2FAService>(),
+        reason: 'the skipped scan must be re-armed, not remembered as done',
+      );
+    });
+
     // The dispatch the framework actually relies on: an adaptor is found by its
     // @Tom2FAAdaptor annotation, with nothing naming it anywhere in the server.
     test('discovers annotated adaptors by reflection', () {
@@ -418,6 +497,41 @@ void main() {
         isA<TomTotp2FAService>(),
       );
       expect(Tom2FARegistry.registeredTypes, contains('totp'));
+    });
+
+    // The other way a scan fails: it runs, and throws part-way. A hand-wired
+    // adaptor already sitting on a key the scan also claims makes register()
+    // reject the scan's instance -- a real wiring bug, and the shape the
+    // registry's own dartdoc says must surface at start-up rather than at the
+    // login that happens to need the missing mechanism.
+    //
+    // It used to surface once and then never again, because the flag was
+    // already armed: the second read returned a half-built registry, quietly.
+    test('a scan that throws part-way keeps throwing', () {
+      initializeReflection();
+      Tom2FARegistry.reset();
+      // Occupy a key the scan will also claim, with a foreign instance.
+      Tom2FARegistry.register(TomTotp2FAService.mechanismType, _FakeAdaptor());
+
+      final collision = throwsA(
+        isA<Tom2FAException>()
+            .having((e) => e.key, 'key', 'authentication.2fa.duplicate_adaptor')
+            .having(
+              (e) => e.defaultUserMessage,
+              'message',
+              contains('"${TomTotp2FAService.mechanismType}"'),
+            ),
+      );
+
+      expect(
+        () => Tom2FARegistry.registeredTypes,
+        collision,
+        reason: 'premise',
+      );
+      // Same fault, named the same way. Not merely "throws again": a scan that
+      // left its own partial work behind would collide with *that* on the
+      // retry, and report whichever mechanism it happened to reach first.
+      expect(() => Tom2FARegistry.registeredTypes, collision);
     });
   });
 
@@ -771,6 +885,58 @@ void main() {
           ),
         ),
       );
+    });
+
+    // "A half-registered registry is not offered as an alternative" is the
+    // registry's own dartdoc, and it has to mean the registry the caller can
+    // still see afterwards -- not merely that the scan threw. The good
+    // candidate here is registered before the bad one is reached, so without a
+    // rollback it would outlive the failure.
+    //
+    // It matters because a failed scan is now retried: leftovers from the
+    // first attempt would collide with the second attempt's fresh instances
+    // and report a mechanism that was never the problem.
+    test('a scan that fails leaves nothing of itself behind', () {
+      expect(
+        () => Tom2FARegistry.registerAnnotated([
+          _CandidateMirror(
+            'GoodAdaptor',
+            metadata: const [Tom2FAAdaptor('carrier-pigeon')],
+            instantiate: _FakeAdaptor.new,
+          ),
+          _CandidateMirror(
+            'NotAnAdaptor',
+            metadata: const [Tom2FAAdaptor('sms')],
+            instantiate: Object.new,
+          ),
+        ]),
+        throwsA(isA<Tom2FAException>()),
+      );
+      expect(
+        Tom2FARegistry.lookup('carrier-pigeon'),
+        isNull,
+        reason: 'the candidate registered before the failure is rolled back',
+      );
+    });
+
+    // The converse, so the rollback cannot be implemented as "clear
+    // everything": registrations that were already there are not the scan's to
+    // undo.
+    test('a scan that fails leaves earlier registrations alone', () {
+      final hand = _FakeAdaptor();
+      Tom2FARegistry.register('fake', hand);
+
+      expect(
+        () => Tom2FARegistry.registerAnnotated([
+          _CandidateMirror(
+            'NotAnAdaptor',
+            metadata: const [Tom2FAAdaptor('sms')],
+            instantiate: Object.new,
+          ),
+        ]),
+        throwsA(isA<Tom2FAException>()),
+      );
+      expect(identical(Tom2FARegistry.lookup('fake'), hand), isTrue);
     });
 
     test('the scan stops at the first unusable candidate', () {

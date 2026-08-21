@@ -601,6 +601,13 @@ Both routes fill the same map; `Tom2FARegistry.registeredTypes` reports it. A
 duplicate registration for one type is a `Tom2FAException` at start-up rather
 than a surprise at the login that happens to need the other one.
 
+"The first time it is consulted" means the first time the scan can actually
+run. A registry consulted before the program's generated reflection has been
+initialized logs one informational line and stays armed, so the annotated
+adaptors are picked up as soon as reflection arrives rather than being written
+off for the life of the process; explicitly registered adaptors resolve the
+whole time.
+
 **3 — Install an enrolment store**, so users can set a factor up themselves:
 
 ```dart
