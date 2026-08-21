@@ -835,6 +835,32 @@ anyone who was writing them.
 
 ### Tests
 
+- **`timezone_throw_contract_test.dart` now guards which type a refusal
+  surfaces as, not only why it happens (tcinc339).** A second table lists the
+  module's three refusal shapes — `fromName` returning `null`, `findTimezone`
+  throwing `TomTimezoneException`, `parseFromString` throwing `FormatException`
+  — each with the call that provokes it, so an attribution is only ever judged
+  against a behaviour that runs. The rule over the readme is that every
+  exception type a passage names must belong to something that passage
+  mentions, which is exactly what the defective row failed: it named
+  `TomTimezoneException` beside "parse failures" and never mentioned
+  `findTimezone`. A denial — "throws `FormatException` and never
+  `TomTimezoneException`" — is struck out before judging, because the sentence
+  naming the type it is *not* is the one most worth writing here.
+
+  Two existing mechanisms were corrected in passing. The file's own dartdoc
+  claimed `findTimezone` was "the only thing in the module that throws", which
+  is the misconception under repair; it is the only source of
+  `TomTimezoneException`, and saying so is the point. And the passage scanner
+  read any line carrying a throw word on its own — right for a trailing code
+  comment or a table row, which are complete claims, but wrong for prose, where
+  it made the guard a rule about where a sentence may wrap. Self-contained
+  lines are now recognised as such and everything else is read with its
+  paragraph. The readme joins the guide and the API mirror as a scanned
+  document. Mutation-checked against five drifts: the readme as it stood, the
+  defective row alone, the denial handling removed, every line standing alone
+  again, and the parser raising `TomTimezoneException` as the old row claimed.
+
 - **The two anchoring factories are tested where the ordinary day breaks
   (tcinc338).** Eleven tests in `timezones_test.dart` pin what
   `TomZonedDate.fromDateTime` and `TomZonedTime.fromDateTime` anchor to when
@@ -1378,6 +1404,25 @@ anyone who was writing them.
   is where the window it opens belongs.
 
 ### Documentation
+
+- **The timezoned readme credited one exception with two failures it does not
+  have (tcinc339).** Its Key types row read "`TomTimezoneException` — thrown on
+  unknown zones / parse failures". Parse failures raise `FormatException`, from
+  `parseFromString` on all three variants, both for a malformed string and for
+  one naming a zone the database does not hold. And "unknown zones" was half
+  right in the other direction: `fromName` returns `null` for a name it cannot
+  find, and only the strict `findTimezone` throws — a difference the table gave
+  no hint of, and the one most likely to catch a caller out.
+
+  The module refuses in three shapes and the trigger does not reveal which:
+  "a zone that is not in the database" reaches all three. The row now names
+  `findTimezone` as the only source of `TomTimezoneException`, and a new
+  **Failures** section states the choice between the lookups and the parsers'
+  separate contract. The exception's own dartdoc hedged with "common error
+  scenarios include", which is what invited the readme's reading; it now says
+  it is raised for exactly two reasons and explicitly not by a parse failure.
+  The web note names `StateError`, the type a first access before
+  `await tomSetupTimezones()` actually raises.
 
 - **Offset lookup was documented as if its answers were permanent (tcinc337).**
   `firstWithOffset` and `allWithOffset` read an index built once, at first

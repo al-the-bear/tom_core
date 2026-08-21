@@ -1,10 +1,12 @@
-/// The guard that keeps `findTimezone`'s documented failure modes equal to the
-/// ones it has.
+/// The guard that keeps the module's documented failures equal to the ones it
+/// has — both *why* it refuses and *what the caller catches*.
 ///
-/// `TomTimezone.findTimezone` is the only thing in the module that throws, and
-/// it throws for two unrelated reasons: the name is not in the database, or the
-/// name is there but its current offset is not the one the caller supplied. One
-/// `throw` serves both, which is why they are easy to describe as one.
+/// ## Why `findTimezone` throws
+///
+/// `TomTimezone.findTimezone` throws for two unrelated reasons: the name is not
+/// in the database, or the name is there but its current offset is not the one
+/// the caller supplied. One `throw` serves both, which is why they are easy to
+/// describe as one.
 ///
 /// The unknown-name case is the one that surprises, because the neighbouring
 /// lookup does the opposite: `fromName('Mars/Olympus')` returns `null`, while
@@ -20,12 +22,39 @@
 /// the code, and a behaviour test on its own is what the module already had
 /// when the description drifted.
 ///
-/// Three documents are held to it — the method's own dartdoc, the narrative
-/// guide, and the API mirror. In the two markdown files it is not the file as a
-/// whole that must name both modes but each passage that raises the subject:
-/// the omission being guarded against was a single trailing comment that said
-/// `Throws if mismatch`, and a file-wide search would have found the missing
-/// half somewhere else and reported nothing.
+/// ## Which type each refusal surfaces as
+///
+/// The module refuses in three shapes, and which one a caller meets depends on
+/// the entry point rather than on the mistake: `fromName` returns `null`,
+/// `findTimezone` throws `TomTimezoneException`, and `parseFromString` throws
+/// `FormatException`. "A zone that is not in the database" reaches all three,
+/// so the trigger does not reveal the shape and a document can attribute one to
+/// the wrong entry point while every word in it looks right. The module readme
+/// did: it credited `TomTimezoneException` with "unknown zones / parse
+/// failures", of which the first was half true and the second belonged to
+/// `FormatException`.
+///
+/// The rule that catches it is that **every exception type a passage names must
+/// belong to something that passage mentions**. A denial — "throws
+/// `FormatException` and never `TomTimezoneException`" — is not an attribution
+/// and is struck out before judging, because a sentence that names the type it
+/// is *not* is the one most worth writing here.
+///
+/// The web case is left out of the table on purpose. A first access before
+/// `await tomSetupTimezones()` throws `StateError`, but only on the browser,
+/// and this suite runs on the VM. A mode that cannot be provoked here would sit
+/// in the table as an unexecuted claim, which is exactly what the table exists
+/// to prevent; `timezoned_platform_selection_test.dart` holds the platform
+/// documentation instead.
+///
+/// ## Where the contracts are stated
+///
+/// Four documents are held to them — the method's own dartdoc, the module
+/// readme, the narrative guide, and the API mirror. In the markdown files it is
+/// not the file as a whole that must name both modes but each passage that
+/// raises the subject: the omission being guarded against was a single trailing
+/// comment that said `Throws if mismatch`, and a file-wide search would have
+/// found the missing half somewhere else and reported nothing.
 library;
 
 import 'dart:io';
@@ -78,12 +107,91 @@ final List<_FailureMode> _failureModes = [
   ),
 ];
 
+/// One way the module refuses, and the shape the caller meets it in.
+///
+/// [surfaces] is the exception type, or `null` where the refusal is a `null`
+/// return rather than a throw. That case belongs in the same table as the
+/// throws: the mistake the documentation makes is choosing between them, so a
+/// table holding only the throws could not describe the choice.
+class _Refusal {
+  const _Refusal({
+    required this.what,
+    required this.provoke,
+    required this.surfaces,
+    required this.surfaceNamed,
+    required this.triggeredBy,
+  });
+
+  /// How the refusal reads in a failure message.
+  final String what;
+
+  /// A call that must produce [surfaces].
+  final Object? Function() provoke;
+
+  /// The exception type raised, or `null` for a `null` return.
+  final Type? surfaces;
+
+  /// How a document names the shape, lowercase.
+  final String surfaceNamed;
+
+  /// Lowercase phrases that put a passage on this refusal's subject.
+  ///
+  /// The parse entries carry `parse failure` as well as the method name because
+  /// that is how the defective readme referred to parsing — naming the outcome
+  /// without naming the call. A guard keyed only on `parseFromString` would
+  /// have read straight past it.
+  final Set<String> triggeredBy;
+}
+
+/// Every refusal the module can be provoked into on this platform.
+///
+/// The two parse entries share a surface and a trigger set but not a cause, and
+/// both are listed because the readme's claim was about the *category*: if only
+/// the malformed-string case were executed, "an unknown zone is a parse
+/// failure" — the half that reads like a `TomTimezoneException` and is not one
+/// — would go unchecked.
+final List<_Refusal> _refusals = [
+  _Refusal(
+    what: 'a name the lenient lookup cannot find',
+    provoke: () => TomTimezone.fromName('Mars/Olympus'),
+    surfaces: null,
+    surfaceNamed: 'null',
+    triggeredBy: {'fromname'},
+  ),
+  _Refusal(
+    what: 'a name the strict lookup cannot find',
+    provoke: () => TomTimezone.findTimezone('Mars/Olympus', null),
+    surfaces: TomTimezoneException,
+    surfaceNamed: 'tomtimezoneexception',
+    triggeredBy: {'findtimezone'},
+  ),
+  _Refusal(
+    what: 'a string that is not in the serialized form',
+    provoke: () => TomZonedDateTime.parseFromString('invalid'),
+    surfaces: FormatException,
+    surfaceNamed: 'formatexception',
+    triggeredBy: {'parsefromstring', 'parse failure', 'parsing'},
+  ),
+  _Refusal(
+    what: 'a serialized string naming a zone the database does not hold',
+    provoke: () => TomZonedDateTime.parseFromString(
+      '@X@2024-06-15T05:30:00.000Z_+09:00_Mars/Olympus',
+    ),
+    surfaces: FormatException,
+    surfaceNamed: 'formatexception',
+    triggeredBy: {'parsefromstring', 'parse failure', 'parsing'},
+  ),
+];
+
 // =============================================================================
 // Where the contract is stated
 // =============================================================================
 
 /// The module source, relative to the package root the test runs from.
 const String _sourcePath = 'lib/src/tombase/timezoned/timezones.dart';
+
+/// The module readme.
+const String _readmePath = 'lib/src/tombase/timezoned/readme.md';
 
 /// The narrative guide.
 const String _guidePath = 'doc/timezoned/timezoned.md';
@@ -106,6 +214,15 @@ const Set<String> _throwWords = {'throw', 'thrown', 'throws', 'exception'};
 String _asRead(String text) =>
     text.toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
+/// [text] with the mentions of [name] that it explicitly denies struck out.
+///
+/// A document corrects a misconception by naming the type it is *not* —
+/// "throws `FormatException` and never `TomTimezoneException`". Counting that
+/// as an attribution would forbid the one sentence most worth writing about
+/// this module, so a denied mention is removed before the passage is judged.
+String _withoutDenials(String text, String name) =>
+    text.replaceAll(RegExp('(?:not|never|rather than) +`?$name`?'), '');
+
 void main() {
   group('findTimezone throws for both documented reasons', () {
     test('every listed mode actually throws', () {
@@ -118,7 +235,7 @@ void main() {
           reason:
               'findTimezone no longer throws for ${mode.what}. If that is '
               'deliberate, drop the entry from _failureModes and remove the '
-              'warning from the three documents — a documented failure that '
+              'warning from the four documents — a documented failure that '
               'cannot occur sends a reader hunting for something not there.',
         );
       }
@@ -164,9 +281,9 @@ void main() {
       }
     });
 
-    for (final path in [_guidePath, _apiPath]) {
+    for (final path in [_readmePath, _guidePath, _apiPath]) {
       test('every passage in $path that raises the subject names both', () {
-        final passages = _throwPassages(path);
+        final passages = _throwPassages(path, {_method.toLowerCase()});
 
         expect(
           passages,
@@ -198,6 +315,102 @@ void main() {
         );
       });
     }
+  });
+
+  group('each refusal surfaces as the type the readme credits it with', () {
+    test('every listed refusal behaves as the table says', () {
+      // The anchor again: the scan below is about attribution, and an
+      // attribution can only be right or wrong against a behaviour that
+      // happens.
+      for (final refusal in _refusals) {
+        if (refusal.surfaces == null) {
+          expect(
+            refusal.provoke(),
+            isNull,
+            reason:
+                '${refusal.what} no longer returns null. The readme tells '
+                'callers to choose between the lookups on exactly this, so the '
+                'advice is wrong the moment the behaviour is.',
+          );
+          continue;
+        }
+        expect(
+          refusal.provoke,
+          throwsA(predicate((e) => e.runtimeType == refusal.surfaces)),
+          reason:
+              '${refusal.what} no longer surfaces as ${refusal.surfaces}. The '
+              'exact type is the subject here, not merely that something was '
+              'thrown: a caller writes `on ${refusal.surfaces}` and a subtype '
+              'or a neighbour would walk straight past it.',
+        );
+      }
+    });
+
+    test('the readme describes every refusal', () {
+      // Non-vacuity for the scan below, which can only fault a passage it
+      // finds. A refusal nobody wrote about cannot be misattributed, and is
+      // also not documented.
+      final undescribed = <String>[];
+      for (final refusal in _refusals) {
+        final passages = _throwPassages(_readmePath, refusal.triggeredBy);
+        final described = passages.any(
+          (p) => _asRead(p.text).contains(refusal.surfaceNamed),
+        );
+        if (!described) undescribed.add(refusal.what);
+      }
+
+      expect(
+        undescribed,
+        isEmpty,
+        reason:
+            'No passage of $_readmePath puts these refusals next to what they '
+            'surface as: ${undescribed.join('; ')}. Each is a way the module '
+            'says no, and which of the three shapes it takes is the thing a '
+            'caller cannot guess from the mistake they made.',
+      );
+    });
+
+    test('every exception the readme names belongs to something it mentions', () {
+      // The defect itself. The old Key types row read "Thrown on unknown zones
+      // / parse failures" against `TomTimezoneException` — a passage naming a
+      // type beside a trigger that raises a different one, with nothing in it
+      // that the named type does belong to.
+      final surfaces = {for (final r in _refusals) r.surfaceNamed};
+      final misattributed = <String>[];
+
+      for (final surface in surfaces) {
+        final owners = _refusals
+            .where((r) => r.surfaceNamed == surface)
+            .expand((r) => r.triggeredBy)
+            .toSet();
+        final others = _refusals
+            .where((r) => r.surfaceNamed != surface)
+            .expand((r) => r.triggeredBy)
+            .toSet()
+            .difference(owners);
+
+        for (final passage in _throwPassages(_readmePath, others)) {
+          final text = _withoutDenials(_asRead(passage.text), surface);
+          if (!text.contains(surface)) continue;
+          if (owners.any(text.contains)) continue;
+          misattributed.add(
+            '$_readmePath:${passage.line} names `$surface` while writing about '
+            '${others.where(text.contains).join(', ')}',
+          );
+        }
+      }
+
+      expect(
+        misattributed,
+        isEmpty,
+        reason:
+            'These passages credit a type to an entry point that does not '
+            'raise it: ${misattributed.join('; ')}. Name the call the type '
+            'comes from in the same passage, or say plainly that it is *not* '
+            'the type — "throws `FormatException` and never '
+            '`TomTimezoneException`" reads as the denial it is.',
+      );
+    });
   });
 }
 
@@ -238,34 +451,46 @@ class _Passage {
   final String text;
 }
 
-/// The passages of [path] that describe [_method] failing.
+/// Whether [line] is a claim that stands on its own.
 ///
-/// A mention that carries its own warning is read alone; one that does not is
-/// read with the run of markdown around it.
+/// A trailing comment states a complete claim about the call it sits on —
+/// `findTimezone(…); // Throws if mismatch` says what that call does, and
+/// nothing else may be assumed to complete it. A table row is the same shape:
+/// one row, one subject, one description. Reading either with its block would
+/// let an unrelated neighbour supply a missing half — a line above about
+/// `fromName` returning `null` for a name that is *not found* covers the words
+/// while saying nothing about `findTimezone`.
 ///
-/// The distinction matters because a trailing comment states a complete claim
-/// about the call it sits on — `findTimezone(…); // Throws if mismatch` says
-/// what that call does and nothing else may be assumed to complete it. Reading
-/// it with its block would let an unrelated neighbour supply the missing half:
-/// a line above about `fromName` returning `null` for a name that is *not
-/// found* covers the words while saying nothing about `findTimezone`.
+/// Everything else is prose, and prose is read with its paragraph. Where a
+/// sentence wraps is a property of the file, so a claim split across two lines
+/// is still one claim; judging the first line alone would make the guard a rule
+/// about line breaks.
+bool _standsAlone(String line) {
+  final trimmed = line.trim();
+  if (trimmed.startsWith('|') && trimmed.endsWith('|')) return true;
+  return trimmed.contains('//');
+}
+
+/// The passages of [path] that mention any of [mentions] and describe a failure.
 ///
-/// A mention with no warning of its own is a different shape — the `try` in an
-/// example, whose warning is the sentence introducing the block — and there the
-/// surrounding run is exactly the right unit.
+/// A self-contained line — see [_standsAlone] — is read alone when it carries
+/// its own warning; anything else is read with the run of markdown around it,
+/// which for the `try` in an example is exactly right, its warning being the
+/// sentence that introduces the block.
 ///
 /// Passages carrying no word from [_throwWords] either way are dropped: a
 /// mention that makes no claim about failing has nothing to be narrow about.
-List<_Passage> _throwPassages(String path) {
+List<_Passage> _throwPassages(String path, Set<String> mentions) {
   final lines = File(path).readAsLinesSync();
   final bounds = _blockBounds(lines);
   final passages = <_Passage>[];
   final seen = <int>{};
 
   for (var i = 0; i < lines.length; i++) {
-    if (!lines[i].contains(_method)) continue;
+    final line = _asRead(lines[i]);
+    if (!mentions.any(line.contains)) continue;
 
-    if (_throwWords.any(_asRead(lines[i]).contains)) {
+    if (_standsAlone(lines[i]) && _throwWords.any(line.contains)) {
       passages.add(_Passage(i + 1, lines[i]));
       continue;
     }

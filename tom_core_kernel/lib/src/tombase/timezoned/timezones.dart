@@ -24,12 +24,19 @@ export 'init_tz_embedded.dart' if (dart.library.js) 'init_tz_web.dart';
 
 // see https://stackoverflow.com/questions/63666615/how-to-get-timezone-name-in-flutter
 
-/// Exception thrown when a timezone operation fails.
+/// Exception thrown by [TomTimezone.findTimezone], and by nothing else in this
+/// module.
 ///
 /// Extends [TomException] to provide consistent error handling across the
-/// Tom framework. Common error scenarios include:
+/// Tom framework. It is raised for exactly two reasons:
 /// - Timezone name not found in the database
 /// - Timezone name and UTC offset mismatch
+///
+/// It is *not* what a parse failure raises. The `parseFromString` of each
+/// variant throws [FormatException] — for a string that does not match the
+/// serialized form, and for one naming a zone that is not in the database —
+/// so a caller reading serialized values catches that instead. The lenient
+/// lookup [TomTimezone.fromName] raises nothing at all and returns `null`.
 ///
 /// Example:
 /// ```dart

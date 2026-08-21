@@ -12,20 +12,20 @@ full variants used by the observable date/time cells.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomTimezone` | A named IANA zone; `TomTimezone.utc`, `TomTimezone.fromName('Asia/Tokyo')`. |
+| `TomTimezone` | A named IANA zone; `TomTimezone.utc`, `TomTimezone.fromName('Asia/Tokyo')` — `null` for a name the database does not hold. |
 | `TomTimezoned` | `DateTime` with an attached zone; base for the variants below. |
 | `TomZonedDate` | Date-only zoned value. |
 | `TomZonedTime` | Time-only zoned value. |
 | `TomZonedDateTime` | Full zoned date-and-time value. |
-| `TomTimezoneException` | Thrown on unknown zones / parse failures. |
+| `TomTimezoneException` | Thrown by `findTimezone`, the strict lookup, and by nothing else: for a name that is not in the database, or one whose current offset does not match a value supplied alongside it. Parsing fails with `FormatException` — see [Failures](#failures). |
 
 > On native (VM / Flutter) the timezone database loads **synchronously on first
 > access** from the embedded IANA data — no startup call is required. On the
 > **web** the data is fetched over the network, so `await tomSetupTimezones()`
-> during startup is mandatory; a first access without it throws rather than
-> resolving to an empty database. `tomSetupTimezones` is exported from the
-> package barrel alongside the types below, and is harmless on native — see
-> [Initialization](../../../../doc/timezoned/timezoned.md#initialization).
+> during startup is mandatory; a first access without it throws `StateError`
+> rather than resolving to an empty database. `tomSetupTimezones` is exported
+> from the package barrel alongside the types below, and is harmless on native
+> — see [Initialization](../../../../doc/timezoned/timezoned.md#initialization).
 
 ## Quick start
 
@@ -43,6 +43,21 @@ void main() {
   print(meeting.year); // 2026
 }
 ```
+
+## Failures
+
+Which failure a caller sees depends on the entry point rather than on the
+mistake. `fromName('Mars/Olympus')` returns `null`, while `findTimezone` throws
+`TomTimezoneException` for a name that is not in the database — with or without
+an offset supplied to disagree with — and for a name that is there but whose
+current offset does not match one that was. Ask with `fromName` when a zone's
+absence is an answer, with `findTimezone` when it is a fault.
+
+Parsing refuses differently again: `parseFromString`, on all three variants,
+throws `FormatException` and never `TomTimezoneException` — both for a string
+that is not in the serialized form and for one naming a zone the database does
+not hold. An unknown zone is a parse failure rather than a silent substitution,
+because the value would otherwise carry UTC while claiming a zone it never had.
 
 ---
 
