@@ -169,7 +169,9 @@ Future<void> run() async {
   print('7. records inside bypass     : ${sink.records.length}');
   assert(sink.records.isEmpty);
 
-  // 8. The file sink appends JSON Lines, one file per day, rotating by size and
+  // 8. The file sink appends JSON Lines, one file per *UTC* day — the calendar
+  //    the records are stamped on, so the day in the file name is the day to
+  //    grep — rotating by size and
   //    recovering the head hash on reopen so a restart continues the chain.
   //    Retention deletes whole files, which leaves a valid *suffix*; deleting
   //    individual entries would break the chain and look like tampering.

@@ -222,7 +222,11 @@ then omitted, so the trail never claims a user id that does not exist.
 - **`TomMemoryAuditSink`** — bounded ring (default 1000 entries) with a
   `droppedCount`. For tests and short-lived processes.
 - **`TomFileAuditSink`** — append-only JSON Lines under a directory, one file
-  per day, rotated at `maxFileBytes` (default 16 MiB). Writes are serialised
+  per **UTC** day (`audit-<yyyy-mm-dd>.jsonl`), rotated at `maxFileBytes`
+  (default 16 MiB). UTC because the entries themselves are: a file named from
+  the host's local calendar disagrees with its own contents on any host that is
+  not on UTC, so the day an incident report names is not the file it is in.
+  Grep the UTC day. Writes are serialised
   through an internal queue so concurrent callers cannot interleave, and the
   head hash is recovered from disk on reopen, so a restart continues the chain
   rather than starting a new one.

@@ -488,9 +488,12 @@ TomMemoryAuditSink({int maxEntries = 1000})
 
 ### TomFileAuditSink
 
-An append-only JSON Lines file sink with age- and count-based retention. Files
-are named `audit-<yyyy-mm-dd>.jsonl`, rotated by **renaming** to
-`audit-<yyyy-mm-dd>-<n>.jsonl` and never rewritten; the chain continues across
+An append-only JSON Lines file sink with age- and count-based retention. There
+is one file per **UTC** day, named `audit-<yyyy-mm-dd>.jsonl` — UTC because
+every record timestamp is, so a file named from local time would disagree with
+its own contents. A file that exceeds `maxFileBytes` is rotated by **renaming**
+it to `audit-<yyyy-mm-dd>-<n>.jsonl`, never rewritten; a day boundary is not a
+rotation, since the new day gets its own name. The chain continues across
 files, so retention leaves a verifiable suffix rather than unrelated fragments.
 Rotation sequence numbers are monotonic and never reused. The head hash and
 entry count are recovered from the newest existing file at construction.
@@ -506,6 +509,7 @@ TomFileAuditSink({
   Duration retention = const Duration(days: 3650),
   int maxFiles = 512,
   String filePrefix = 'audit',
+  DateTime Function()? clock,
 })
 ```
 
@@ -518,6 +522,7 @@ TomFileAuditSink({
 | `retention` | `Duration` | How long a rotated file is kept (final). |
 | `maxFiles` | `int` | How many files are kept, regardless of `retention` (final). |
 | `filePrefix` | `String` | The file name prefix, so several trails can share a directory (final). |
+| `clock` | `DateTime Function()` | The clock the day boundary and the retention age are read from; defaults to `DateTime.now`, injectable so a test can cross midnight or age a file without waiting (final). |
 | `headHash` | `String` | *(getter, override)* The hash of the most recently written entry. |
 | `entryCount` | `int` | *(getter, override)* Entries written since genesis, recovered across restarts. |
 | `files` | `List<File>` | *(getter)* The audit files in `directory` in write order — by day, then by rotation sequence, with each day's live file last. |
@@ -528,7 +533,7 @@ TomFileAuditSink({
 | ------ | --------- | ----------- |
 | `readAll` | `List<TomAuditEntry> readAll()` | Reads every retained entry across all files, oldest first. |
 | `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries starting from the oldest retained link, so a retention deletion is not reported as a break. |
-| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Appends one JSON line, rotating and applying retention as needed. Writes are serialised through an internal queue, and each is flushed before it returns. The returned future carries `audit.sink.closed` when the sink is closed and `audit.sink.write_failed` when storage refused it — once each, and never as a throw from the call. A failed write drops the file handle, so the sink resumes recording as soon as the path it died on works again. |
+| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Appends one JSON line to the current UTC day's file, opening the next day's file when the day has turned over — which is not a rotation, so no sequence number is spent — rotating on overflow and applying retention as needed. Writes are serialised through an internal queue, and each is flushed before it returns. The returned future carries `audit.sink.closed` when the sink is closed and `audit.sink.write_failed` when storage refused it — once each, and never as a throw from the call. A failed write drops the file handle, so the sink resumes recording as soon as the path it died on works again. |
 | `close` | `void close()` | *(override)* Closes the file handle. Every `write` that has *returned* already flushed, so nothing completed is at risk; a record still in the queue is refused with `audit.sink.closed`, because `TomClosable` requires this method to return synchronously and no synchronous method can wait for a queue. The refusal is also what keeps a queued record from reopening the file the sink has just closed. |
 | `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Closes the sink to new records, waits for the queued ones to be written and flushed, then closes the handle. The route that stores what `close` has to refuse. |
 

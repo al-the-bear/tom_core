@@ -2,6 +2,44 @@
 
 ### Behaviour Changes
 
+- **`TomFileAuditSink` buckets by the UTC day, and actually starts a new file
+  when the day turns over (tcinc346).** Two defects behind one claim. The file
+  name came from the host's *local* calendar while every `TomAuditRecord`
+  timestamp is UTC, so on a host two hours east of UTC a record stamped
+  `2026-08-12T01:00Z` was filed in `audit-2026-08-11.jsonl` — a file whose name
+  disagrees with its own contents, so the day an incident report names is not
+  the file it is in, and at a month boundary is not even the right month. It
+  also made the layout depend on where the process happened to run, which is
+  exactly the dependency an audit trail may not have when several nodes write
+  into one directory.
+
+  The larger half: `_ensureOpen` returned early on nothing but the byte cap, so
+  the day was consulted only when a file overflowed. A sink under the default
+  16 MiB cap therefore appended to the file named after the day of its *first*
+  write — for weeks. "One file per day" was true only of trails busy enough to
+  rotate daily anyway. The target file is now recomputed on every write.
+
+  A day boundary is **not** a rotation: the finished day keeps its plain name
+  and spends no sequence number, because a day with rotated parts and no live
+  file otherwise means "this day filled up". Both reasons to reopen now run
+  through one rule — reopen when the file that should be open is not the one
+  that is, rotate only when the file being opened is already too full — which
+  removed a second `_rotate()` call that was redundant on overflow and wrong on
+  a rollover, where it renamed a day that had not overflowed at all.
+
+  New `clock` constructor parameter (defaults to `DateTime.now`), following the
+  convention `TomSqlLeaseLock` and `TomMimeEncoder` already use. It drives both
+  the day boundary and the retention age, so a caller who moves the clock to
+  exercise a ten-year policy sees it apply rather than watching nothing expire.
+  Retention's arithmetic is otherwise unchanged and was never zone-dependent:
+  `DateTime.difference` compares instants, not calendar fields, so the window
+  was always exact — a `// Why:` note now records that, so it is not "fixed"
+  into a change that alters nothing.
+
+  Existing files keep their names and are still read in write order; the reader
+  sorts by the day *string*, which is why the zero-padding is load-bearing and
+  now has a test that says so.
+
 - **`TomAuditAnchorPublisher.close` no longer pretends to publish a final
   anchor; `publishAndClose` actually does (tcinc345).** `close()` fired
   `unawaited(_tick())` and the docs promised the result — "entries written

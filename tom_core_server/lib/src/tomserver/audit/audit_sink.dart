@@ -497,12 +497,18 @@ class TomMemoryAuditSink implements TomAuditSink {
 
 /// An append-only JSON-Lines file sink with age- and count-based retention.
 ///
-/// Files are named `audit-<yyyy-mm-dd>.jsonl` and rotated when they exceed
-/// [maxFileBytes]; a rotated file is **renamed** to
+/// There is one file per **UTC** day, named `audit-<yyyy-mm-dd>.jsonl`, and it
+/// is rotated when it exceeds [maxFileBytes]; a rotated file is **renamed** to
 /// `audit-<yyyy-mm-dd>-<n>.jsonl` and never rewritten. Retention deletes whole
 /// files that are older than [retention] or that exceed [maxFiles] — deleting
 /// a whole file, on a boundary the chain records, is auditable in a way that
 /// trimming lines out of a live file is not.
+///
+/// **UTC, not the host's calendar**, because every [TomAuditRecord] timestamp
+/// is UTC: a file named from local time disagrees with its own contents on any
+/// host that is not on UTC, so an operator grepping a reported day reads the
+/// wrong file. It also makes a day boundary the same instant on every node
+/// writing into the same directory.
 ///
 /// Rotation sequence numbers are **monotonic for the sink's lifetime and never
 /// reused**, including after retention has deleted the file that held one. A
@@ -529,6 +535,10 @@ class TomFileAuditSink implements TomAuditSink {
 
   /// The file name prefix, so several trails can share a directory.
   final String filePrefix;
+
+  /// The clock this sink reads, injectable so tests can cross a day boundary
+  /// or age a file without waiting for one.
+  final DateTime Function() clock;
 
   IOSink? _sink;
   File? _currentFile;
@@ -565,7 +575,8 @@ class TomFileAuditSink implements TomAuditSink {
     this.retention = const Duration(days: 3650),
     this.maxFiles = 512,
     this.filePrefix = 'audit',
-  }) {
+    DateTime Function()? clock,
+  }) : clock = clock ?? DateTime.now {
     if (!directory.existsSync()) {
       directory.createSync(recursive: true);
     }
@@ -765,14 +776,39 @@ class TomFileAuditSink implements TomAuditSink {
     broken.close().ignore();
   }
 
-  /// Ensures a file is open with room for [additionalBytes], rotating first if
-  /// the current one is full.
+  /// Ensures the file for today's UTC day is open with room for
+  /// [additionalBytes].
+  ///
+  /// Two things send the sink to a different file, and they are not the same
+  /// event. **Overflow** rotates: the day is not finished, so the file is moved
+  /// aside under the next sequence number and reopened under the same name. **A
+  /// UTC day boundary** does not rotate: the outgoing file is complete, and the
+  /// new day simply gets its own name. Renaming a finished day would spend a
+  /// rotation number on a file nothing overflowed and leave a day with rotated
+  /// parts and no live file — a shape that otherwise only ever means "this day
+  /// filled up".
+  ///
+  /// Both fall out of one rule, which is why there is one rotation site rather
+  /// than one per reason: reopen whenever the file that *should* be open is not
+  /// the one that is, and rotate only if the file being opened is already too
+  /// full to take the record. A new day's file is empty, so it is never
+  /// rotated; a full day's file is, every time. An earlier version rotated on
+  /// the way out as well, which was redundant when the day was unchanged and
+  /// wrong when it was not.
+  ///
+  /// The target is recomputed on **every** call, not only when the byte cap
+  /// bites. Consulting the day only on overflow is what made "one file per day"
+  /// false for any trail quiet enough to stay under the cap: the sink went on
+  /// appending to the file named after the day of its first write, for weeks.
   ///
   /// Closing the outgoing file is **awaited**: rotation renames the file out
   /// from under the sink, and a rename racing an unflushed buffer is how a
   /// rotation loses the last entries it was supposed to preserve.
   Future<void> _ensureOpen({required int additionalBytes}) async {
-    if (_sink != null && _currentBytes + additionalBytes <= maxFileBytes) {
+    final target = p.join(directory.path, '$filePrefix-${_utcDay()}.jsonl');
+    if (_sink != null &&
+        _currentFile!.path == target &&
+        _currentBytes + additionalBytes <= maxFileBytes) {
       return;
     }
     if (_sink != null) {
@@ -780,11 +816,8 @@ class TomFileAuditSink implements TomAuditSink {
       _sink = null;
       await outgoing.flush();
       await outgoing.close();
-      _rotate();
     }
-    _currentFile = File(
-      p.join(directory.path, '$filePrefix-${_today()}.jsonl'),
-    );
+    _currentFile = File(target);
     _currentBytes = _currentFile!.existsSync() ? _currentFile!.lengthSync() : 0;
     if (_currentBytes + additionalBytes > maxFileBytes) {
       _rotate();
@@ -827,8 +860,19 @@ class TomFileAuditSink implements TomAuditSink {
     file.renameSync(target.path);
   }
 
+  /// Deletes whole files that fall outside [retention] or [maxFiles].
+  ///
+  /// The age comparison is deliberately left on a local `DateTime`, unlike the
+  /// file naming above, and it is worth saying why so the point is not "fixed"
+  /// into a change that alters nothing. [DateTime.difference] compares
+  /// **instants**, not calendar fields: both operands here come from real
+  /// instants — the clock and the file's mtime — so the elapsed time it returns
+  /// is exact in any zone, and unchanged by a DST shift landing inside the
+  /// window. The SDK's DST caveat applies to *constructing* local `DateTime`s
+  /// from wall-clock components, which retention never does. A ten-year
+  /// window measured this way really is ten years.
   void _applyRetention() {
-    final now = DateTime.now();
+    final now = clock();
     final all = files;
     final current = _currentFile?.path;
     for (final file in all) {
@@ -872,8 +916,18 @@ class TomFileAuditSink implements TomAuditSink {
     return (hash: tomAuditGenesisHash, entryCount: 0);
   }
 
-  String _today() {
-    final now = DateTime.now();
+  /// Today's date in UTC, as `yyyy-mm-dd` — the day a file is named for.
+  ///
+  /// UTC because that is the calendar the entries themselves are on:
+  /// [TomAuditRecord] coerces every timestamp to UTC. Naming the file from the
+  /// host's local calendar instead put a record stamped `2026-08-12T01:00Z`
+  /// into `audit-2026-08-11.jsonl` on any host west of UTC, so a file's name
+  /// disagreed with its own contents and an operator grepping a reported day
+  /// read the wrong file — or, at a month boundary, none. It also made the
+  /// name depend on where the process happened to run, which is precisely the
+  /// kind of dependency an audit trail is not allowed to have.
+  String _utcDay() {
+    final now = clock().toUtc();
     final month = now.month.toString().padLeft(2, '0');
     final day = now.day.toString().padLeft(2, '0');
     return '${now.year}-$month-$day';

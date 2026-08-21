@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -865,6 +866,101 @@ void main() {
       expect(sink.verify().isValid, isTrue);
     });
 
+    test(
+      'files are named for the UTC day, not the host calendar',
+      () async {
+        // Run in a child process under a zone fourteen hours east of UTC.
+        // Nothing else can test this: with the runner's own zone set to UTC —
+        // which is what a CI container gives you — the local and UTC calendars
+        // agree, both implementations produce the same name, and an in-process
+        // assertion is green whether or not the defect is present. The whole
+        // question is what happens when they disagree.
+        final result = await Process.run(
+          Platform.resolvedExecutable,
+          ['run', p.join('test', 'fixtures', 'audit_utc_day_probe.dart')],
+          environment: {'TZ': 'Pacific/Kiritimati'},
+        );
+        expect(
+          result.exitCode,
+          0,
+          reason: 'probe failed: ${result.stdout}${result.stderr}',
+        );
+        final parts = (result.stdout as String).trim().split('|');
+        // Believe the name only once the forced zone is known to have taken:
+        // a `TZ` that was ignored would leave the probe at UTC, where the two
+        // implementations agree and the assertion below proves nothing.
+        expect(
+          int.parse(parts.first),
+          14,
+          reason: 'TZ did not take effect; the check below cannot discriminate',
+        );
+        // 23:30 UTC on the 11th is 13:30 local on the 12th. The entry inside
+        // records the 11th, because every audit timestamp is UTC — so a file
+        // called `audit-2026-08-12.jsonl` is a file whose name disagrees with
+        // its own contents, and an operator grepping a reported day would read
+        // the wrong file or none.
+        expect(parts.last, 'audit-2026-08-11.jsonl');
+      },
+      skip: Platform.isWindows
+          ? 'the Windows C runtime does not honour TZ'
+          : null,
+    );
+
+    test('a UTC day rollover opens the next day, without rotating', () async {
+      // The size cap is not the only reason to open a new file, and until the
+      // day is checked it is the only one that happens: a long-running sink
+      // keeps appending to the file named after the day of its *first* write,
+      // for as long as that file stays under the cap. On the default 16 MiB
+      // cap that is most deployments, most of the time — so "one file per day"
+      // would be true only of trails busy enough to rotate daily anyway.
+      var now = DateTime.utc(2026, 8, 11, 23, 30);
+      final sink = TomFileAuditSink(directory: dir, clock: () => now);
+      addTearDown(sink.close);
+
+      await sink.write(_record('r1'));
+      now = DateTime.utc(2026, 8, 12, 0, 30);
+      await sink.write(_record('r2'));
+
+      expect(sink.files.map((f) => p.basename(f.path)), [
+        'audit-2026-08-11.jsonl',
+        'audit-2026-08-12.jsonl',
+      ]);
+      // Crossing midnight is not an overflow. Renaming the finished day to
+      // `audit-2026-08-11-000001.jsonl` would spend a rotation sequence number
+      // on a file nothing overflowed, and leave a day with rotated parts and
+      // no live file — a shape that only ever means "this day filled up".
+      expect(
+        sink.files.map((f) => f.readAsLinesSync().length),
+        [1, 1],
+        reason: 'one entry landed in each day',
+      );
+      // The chain is what makes the split safe to do at all.
+      expect(sink.readAll().map((e) => e.record.id), ['r1', 'r2']);
+      expect(sink.verify().isValid, isTrue);
+    });
+
+    test('single-digit days are zero-padded, so files still order', () async {
+      // The padding is not cosmetic. `files` orders by the day *as a string*,
+      // so an unpadded September sorts after an unpadded October ('9' > '1')
+      // and the trail reads back out of write order — which the chain reports
+      // as a break, indistinguishable from tampering. The same padding is what
+      // lets a rotated name match `\d{4}-\d{2}-\d{2}-<n>` at all.
+      var now = DateTime.utc(2026, 9, 30, 23, 30);
+      final sink = TomFileAuditSink(directory: dir, clock: () => now);
+      addTearDown(sink.close);
+
+      await sink.write(_record('r1'));
+      now = DateTime.utc(2026, 10, 1, 0, 30);
+      await sink.write(_record('r2'));
+
+      expect(sink.files.map((f) => p.basename(f.path)), [
+        'audit-2026-09-30.jsonl',
+        'audit-2026-10-01.jsonl',
+      ]);
+      expect(sink.readAll().map((e) => e.record.id), ['r1', 'r2']);
+      expect(sink.verify().isValid, isTrue);
+    });
+
     test('rotation moves the file aside and continues the chain', () async {
       // A tiny cap forces a rotation after the first record.
       final sink = TomFileAuditSink(directory: dir, maxFileBytes: 300);
@@ -973,6 +1069,31 @@ void main() {
       }
       await sink.write(_record('r3'));
       await sink.write(_record('r4'));
+      expect(sink.readAll().map((e) => e.record.id), isNot(contains('r1')));
+    });
+
+    test('age-based retention is measured against the injected clock', () async {
+      // One clock, or two? A sink that names files from `clock` but ages them
+      // from `DateTime.now` has two, and the second is invisible — a caller who
+      // moved the clock forward to exercise a ten-year policy would watch
+      // nothing expire and conclude the policy worked. The files below are
+      // genuinely fresh on disk — the clock is what has moved on, which is why
+      // it starts from the real one rather than a fixed date: an age is the
+      // distance between the clock and an mtime the filesystem writes.
+      var now = DateTime.now().toUtc();
+      final sink = TomFileAuditSink(
+        directory: dir,
+        maxFileBytes: 300,
+        retention: const Duration(days: 1),
+        clock: () => now,
+      );
+      addTearDown(sink.close);
+      await sink.write(_record('r1'));
+      await sink.write(_record('r2'));
+      expect(sink.files.length, greaterThan(1), reason: 'r1 rotated out');
+
+      now = now.add(const Duration(days: 2));
+      await sink.write(_record('r3'));
       expect(sink.readAll().map((e) => e.record.id), isNot(contains('r1')));
     });
 
