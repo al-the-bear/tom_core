@@ -120,7 +120,11 @@ class TomAuthorizationCache {
       // An expiry raised on the creator side arrives here as a throw and
       // propagates untouched, so this branch only has to separate a hit from a
       // miss. A miss reaches us as TomExecutor.noResult rather than `null`,
-      // because executeInCreator substitutes the sentinel for a `null` result.
+      // because executeInCreator substitutes the sentinel for a `null` result
+      // -- which is also what a command no executor claimed comes back as, so
+      // a process that never registered TomAuthorizationCacheExecutor reads as
+      // one long cache miss. The creator logs a warning in that case and this
+      // side cannot see it.
       Object? cachedResult = await TomWorker.executeInCreator(
         TomAuthorizationCacheRetrieveMessage(authenticationToken),
       );

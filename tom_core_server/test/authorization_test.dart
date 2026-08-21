@@ -160,6 +160,10 @@ void main() {
   // there is no back channel, so the forwarding attempt throws
   // TomWorkerException — proof the off-isolate branch was taken rather than the
   // local map being touched.
+  //
+  // That is all this group establishes, and it is worth saying so: which branch
+  // ran says nothing about what the branch returns. The round-trip group below
+  // is what covers the answers.
   group('TomAuthorizationCache (worker isolate forwarding)', () {
     setUp(() => TomWorker.simulateWorkerIsolate());
     tearDown(() => TomWorker.resetIsMainIsolate());
@@ -219,14 +223,30 @@ void main() {
       expect(answer, 'expired:tomclient.authorization_cache.expired_principal');
     });
 
-    test('an unknown token still reaches the worker as a miss', () async {
-      // The companion to the case above: if every answer became an expiry the
-      // first assertion would pass for the wrong reason.
-      final answer = await worker
-          .executeCommand(ProbeCacheCommand(_token('nobody-at-all')))
-          .timeout(const Duration(seconds: 10));
+    test('a miss becomes a hit once the creator stores the token', () async {
+      // Asserting the miss on its own would be worthless: an unknown token
+      // reads as a miss whether the creator answered or nothing did. Verified
+      // by deleting the addExecutor above — the bare assertion stays green,
+      // because an unserviced command comes back as TomExecutor.noResult and
+      // `is TomPrincipal` rejects that exactly as it rejects a real miss.
+      //
+      // So the two probes share one token and one worker, and only the
+      // creator's map changes between them. A transition from miss to hit can
+      // only be that map being read, which pins the miss as an answer rather
+      // than as silence.
+      final token = _token('henry');
 
-      expect(answer, 'miss');
+      final beforeStore = await worker
+          .executeCommand(ProbeCacheCommand(token))
+          .timeout(const Duration(seconds: 10));
+      expect(beforeStore, 'miss');
+
+      await TomAuthorizationCache.storePrincipal(token, _principal('henry'));
+
+      final afterStore = await worker
+          .executeCommand(ProbeCacheCommand(token))
+          .timeout(const Duration(seconds: 10));
+      expect(afterStore, 'hit:henry');
     });
 
     test('a live entry reaches the worker as the principal', () async {
@@ -252,6 +272,35 @@ void main() {
       final cached = await TomAuthorizationCache.getPrincipal(token);
       expect(cached!.username, 'grace');
     });
+
+    test(
+      'a worker-stored entry expires for the worker that stored it',
+      () async {
+        // The whole loop in one test, with the main isolate touching neither
+        // end: the worker writes, the creator keeps the entry, the worker reads
+        // it back. Each test above crosses the boundary once and has the main
+        // isolate supply the other half, so this is the only one that would
+        // notice the two halves agreeing with the main isolate but not with each
+        // other — and it lands on the expiry, the answer that used to be lost.
+        final token = _token('helen', validFor: const Duration(hours: -1));
+
+        final stored = await worker
+            .executeCommand(
+              StoreThroughWorkerCommand(token, _principal('helen')),
+            )
+            .timeout(const Duration(seconds: 10));
+        expect(stored, 'stored:0');
+
+        final answer = await worker
+            .executeCommand(ProbeCacheCommand(token))
+            .timeout(const Duration(seconds: 10));
+
+        expect(
+          answer,
+          'expired:tomclient.authorization_cache.expired_principal',
+        );
+      },
+    );
   });
 
   group('TomAuthorizationCacheExecutor', () {
