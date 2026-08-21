@@ -150,6 +150,46 @@ TomOAuthFlow _flow(
   transport: transport,
 );
 
+/// A flow over several providers, configured **in the order given**.
+///
+/// The order is load-bearing rather than incidental: what these tests guard
+/// against is a resolution that walks the configured providers and takes the
+/// first plausible match, so a fixture that could not place the *wrong*
+/// provider first could not fail when one does.
+TomOAuthFlow _multiProviderFlow(
+  List<TomOAuthProviderConfig> providers,
+  TomOAuthTokenTransport transport, {
+  TomOAuthStateStore? stateStore,
+}) => TomOAuthFlow(
+  providers: TomOAuthProviders({
+    for (final provider in providers) provider.id: provider,
+  }),
+  stateStore: stateStore ?? TomOAuthMemoryStateStore(),
+  transport: transport,
+);
+
+/// A second registration against the *same* issuer as [_oidcProvider].
+///
+/// Not a contrived configuration: a provider is keyed by its own id and nothing
+/// makes the issuer unique, which is exactly how a deployment offers one IdP
+/// twice — two scope sets, or two client registrations, one restricted and one
+/// not. The two then differ in everything that matters to a login while
+/// asserting identical identities.
+TomOAuthProviderConfig _twinProvider({
+  required String id,
+  required TomOAuthProvisioning provisioning,
+  bool storeTokens = false,
+}) => TomOAuthProviderConfig(
+  id: id,
+  issuer: _issuer,
+  authorizationEndpoint: '$_issuer/authorize',
+  tokenEndpoint: '$_issuer/token',
+  clientId: _clientId,
+  redirectUri: 'https://app.example.test/oauth/callback',
+  provisioning: provisioning,
+  storeTokens: storeTokens,
+);
+
 /// The request a client posts to start a login.
 TomOAuthAuthorizationRequest _authorizationRequest({
   String providerId = 'stub',
@@ -816,6 +856,41 @@ void main() {
         );
       },
     );
+
+    // The exchange names its own provider, so that every decision downstream
+    // can be taken from one resolution rather than each finding its own. The
+    // issuer cannot serve as that name: it identifies the IdP, and two
+    // registrations may share one.
+    test('names the provider it was completed against', () async {
+      final flow = _multiProviderFlow([
+        _twinProvider(
+          id: 'restricted',
+          provisioning: TomOAuthProvisioning.refuse,
+        ),
+        _twinProvider(
+          id: 'full',
+          provisioning: TomOAuthProvisioning.autoProvision,
+          storeTokens: true,
+        ),
+      ], _StubTransport());
+      final begun = await flow.beginAuthorization(
+        _authorizationRequest(providerId: 'full'),
+      );
+
+      final exchange = await flow.completeAuthorization(
+        code: 'c',
+        state: begun.state,
+      );
+
+      expect(exchange.provider.id, 'full');
+      expect(
+        exchange.provider.provisioning,
+        TomOAuthProvisioning.autoProvision,
+      );
+      expect(exchange.provider.storeTokens, isTrue);
+      // The twin it is not, asserting identically.
+      expect(exchange.identity.issuer, _issuer);
+    });
 
     // The single-use guarantee, which is what a stolen code runs into.
     test('a replayed state cannot complete a second time', () async {
@@ -2013,6 +2088,151 @@ void main() {
         expect(info.principal.organization, 'acme');
       },
     );
+
+    // -------------------------------------------------------------------
+    // ONE LOGIN, ONE PROVIDER
+    // -------------------------------------------------------------------
+
+    // A login makes two separate decisions out of provider configuration --
+    // whether to provision, and whether to keep the grant -- at two points far
+    // enough apart that they could be taken from *different* providers. With
+    // two registrations sharing an issuer they once were: the provisioning
+    // decision followed whichever the configuration listed first, while the
+    // retention decision followed the one the user actually authorized
+    // against. These tests hold both to the second.
+    group('two providers sharing an issuer', () {
+      /// Runs a whole login begun against [providerId], with [providers]
+      /// configured in the order given.
+      Future<TomAuthenticationInfo> loginAgainst({
+        required List<TomOAuthProviderConfig> providers,
+        required String providerId,
+        required _StubDirectory directory,
+        required TomExternalIdentityStore store,
+        TomOAuthTokenStore? tokenStore,
+      }) async {
+        final flow = _multiProviderFlow(
+          providers,
+          _StubTransport(
+            tokenResponse: <String, Object?>{
+              'access_token': 'at-1',
+              'refresh_token': 'rt-1',
+              'token_type': 'Bearer',
+              'expires_in': 3600,
+              'id_token': _idToken(_claims()),
+            },
+          ),
+        );
+        final begun = await flow.beginAuthorization(
+          _authorizationRequest(providerId: providerId),
+        );
+        final service = TomOAuthAuthenticationService(
+          directory: directory,
+          flow: flow,
+          identityStore: store,
+          tokenStore: tokenStore,
+        );
+        return service.authenticateUser(
+          _authData()..key = TomOAuthCredential(code: 'c', state: begun.state),
+        );
+      }
+
+      test('provisioning and retention are both taken from the provider the '
+          'user authorized against', () async {
+        final tokens = TomMemoryOAuthTokenStore();
+        final store = TomMemoryExternalIdentityStore(tokenStore: tokens);
+        final directory = _StubDirectory(canProvision: true);
+
+        final info = await loginAgainst(
+          providers: [
+            _twinProvider(
+              id: 'restricted',
+              provisioning: TomOAuthProvisioning.refuse,
+            ),
+            _twinProvider(
+              id: 'full',
+              provisioning: TomOAuthProvisioning.autoProvision,
+              storeTokens: true,
+            ),
+          ],
+          providerId: 'full',
+          directory: directory,
+          store: store,
+          tokenStore: tokens,
+        );
+
+        // Provisioning: `full` allows it, and it is not the first configured.
+        expect(info.principal.user.username, 'alice@example.test');
+        expect(directory.provisioned.single.subject, 'sub-1');
+        // Retention: `full` asks for it, and the same login kept the grant.
+        expect((await tokens.read(_issuer, 'sub-1'))?.accessToken, 'at-1');
+      });
+
+      // The mirror, and the half that a first-match resolution gets wrong in
+      // the more dangerous direction: it would admit -- and provision -- a user
+      // the authorized-against provider was configured to refuse.
+      test('the restricted twin still refuses, though a permissive one is '
+          'configured against the same issuer', () async {
+        final tokens = TomMemoryOAuthTokenStore();
+        final store = TomMemoryExternalIdentityStore(tokenStore: tokens);
+        final directory = _StubDirectory(canProvision: true);
+
+        await expectLater(
+          loginAgainst(
+            providers: [
+              _twinProvider(
+                id: 'full',
+                provisioning: TomOAuthProvisioning.autoProvision,
+                storeTokens: true,
+              ),
+              _twinProvider(
+                id: 'restricted',
+                provisioning: TomOAuthProvisioning.refuse,
+              ),
+            ],
+            providerId: 'restricted',
+            directory: directory,
+            store: store,
+            tokenStore: tokens,
+          ),
+          throwsA(
+            isA<LoginException>().having(
+              (e) => e.key,
+              'key',
+              'login.error.oauth.no-local-account',
+            ),
+          ),
+        );
+        expect(directory.provisioned, isEmpty);
+        expect(await tokens.read(_issuer, 'sub-1'), isNull);
+      });
+
+      // Retention is opt-in per registration, so the twin that did not ask for
+      // it must not inherit the opt-in of the one beside it.
+      test('a twin that did not opt into retention keeps nothing', () async {
+        final tokens = TomMemoryOAuthTokenStore();
+        final store = TomMemoryExternalIdentityStore(tokenStore: tokens);
+
+        await loginAgainst(
+          providers: [
+            _twinProvider(
+              id: 'delegating',
+              provisioning: TomOAuthProvisioning.autoProvision,
+              storeTokens: true,
+            ),
+            _twinProvider(
+              id: 'sign-in-only',
+              provisioning: TomOAuthProvisioning.autoProvision,
+            ),
+          ],
+          providerId: 'sign-in-only',
+          directory: _StubDirectory(canProvision: true),
+          store: store,
+          tokenStore: tokens,
+        );
+
+        expect(await tokens.read(_issuer, 'sub-1'), isNull);
+      });
+    });
   });
 
   // ===========================================================================

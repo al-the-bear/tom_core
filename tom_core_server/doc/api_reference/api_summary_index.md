@@ -126,7 +126,7 @@ surface documented here.
 | `TomOAuthProvisioning` | enum | What a first external login with no local account does: `refuse` or `autoProvision`. |
 | `TomOAuthFlow` | class | The authorization-code + PKCE handshake. |
 | `TomOAuthPkce` | class | A verifier / `S256` challenge pair. |
-| `TomOAuthExchange` | class | What a completed handshake yields: the asserted identity and its login context. |
+| `TomOAuthExchange` | class | What a completed handshake yields: the provider it was against, the asserted identity and its login context. |
 | `TomOAuthAuthorizationState` | class | One pending authorization: handle, verifier, and the context it started in. |
 | `TomOAuthStateStore` | abstract class | Where pending authorizations live between the two halves of the flow. |
 | `TomOAuthMemoryStateStore` | class | The default store: per-process, time-to-live bounded. |

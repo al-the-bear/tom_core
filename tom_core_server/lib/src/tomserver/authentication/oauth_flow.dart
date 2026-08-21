@@ -357,8 +357,8 @@ class TomExternalIdentity {
   String toString() => 'TomExternalIdentity($issuer/$subject)';
 }
 
-/// A completed code exchange: who the provider says this is, and which pending
-/// flow it completes.
+/// A completed code exchange: which provider it was against, who that provider
+/// says this is, and which pending flow it completes.
 class TomOAuthExchange {
   /// The identity the provider asserted.
   final TomExternalIdentity identity;
@@ -366,6 +366,23 @@ class TomOAuthExchange {
   /// The pending record this exchange consumed — the login context the session
   /// must be issued in.
   final TomOAuthAuthorizationState pending;
+
+  /// The provider this exchange was completed against.
+  ///
+  /// Carried rather than re-derived, because a login makes several decisions
+  /// out of provider configuration — whether to provision, whether to retain
+  /// the grant — at points far enough apart that two of them could resolve to
+  /// *different* providers and disagree about which login this was. Resolution
+  /// happens once, here, at the only moment the answer is not in question: the
+  /// pending record names the provider the flow began with, and this exchange
+  /// is that flow's conclusion.
+  ///
+  /// Deriving it again downstream from [identity] would not be equivalent.
+  /// [TomExternalIdentity.issuer] is copied *from this provider's*
+  /// configuration, so it identifies the IdP and not the registration — and two
+  /// registrations may share an issuer, which is how a deployment offers one
+  /// IdP under two scope sets or two client registrations.
+  final TomOAuthProviderConfig provider;
 
   /// What the provider's token endpoint returned, or `null` when it returned no
   /// usable access token.
@@ -384,8 +401,14 @@ class TomOAuthExchange {
   /// login succeeds — not here.
   final TomOAuthTokenGrant? tokens;
 
-  /// Pairs an identity with the flow it completes.
-  const TomOAuthExchange(this.identity, this.pending, {this.tokens});
+  /// Pairs an identity with the flow it completes and the provider it came
+  /// from.
+  const TomOAuthExchange(
+    this.identity,
+    this.pending, {
+    required this.provider,
+    this.tokens,
+  });
 }
 
 /// Drives the authorization-code + PKCE handshake.
@@ -508,6 +531,7 @@ class TomOAuthFlow {
     return TomOAuthExchange(
       _identityFor(provider, claims),
       pending,
+      provider: provider,
       // A grant with no access token is not a grant: an OIDC provider that
       // answered with an `id_token` alone has authenticated the user and
       // delegated nothing, and handing back an empty bearer token would let a

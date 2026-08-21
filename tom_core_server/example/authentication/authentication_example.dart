@@ -110,6 +110,13 @@ Future<void> run() async {
   // with X" needs nothing; an application that calls X's API on the user's
   // behalf says so — and usually has to say so to the provider too, which is
   // what `authorizationParameters` carries.
+  //
+  // Note what these two registrations are: **one IdP, registered twice**. They
+  // share an issuer, differing only in scope and in whether the grant is kept,
+  // which is the ordinary way to offer sign-in and delegated access side by
+  // side. A provider is keyed by its own id precisely so that this is
+  // expressible, and every decision a login takes from configuration follows
+  // the registration the flow began with — carried on `TomOAuthExchange`.
   final providers = TomOAuthProviders.fromConfiguration(
     TomServerConfigResourceProvider.from({
       'oauth': {
@@ -181,6 +188,8 @@ Future<void> run() async {
   assert(providers['login_only'].storeTokens == false);
   assert(providers['calendar'].storeTokens == true);
   assert(providers['calendar'].authorizationParameters.length == 2);
+  // One IdP, two registrations: the issuer does not tell them apart.
+  assert(providers['login_only'].issuer == providers['calendar'].issuer);
   assert(held.hasRefreshToken);
   assert(!held.isExpired());
   assert(!'$held'.contains('rt-long-lived'));

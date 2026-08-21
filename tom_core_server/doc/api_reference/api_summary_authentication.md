@@ -1474,7 +1474,12 @@ correct for different deployments.
 
 ### TomOAuthProviderConfig
 
-One identity provider, as data. Immutable.
+One identity provider *registration*, as data. Immutable, and keyed by its own
+`id`: `issuer` is an ordinary field underneath and is deliberately not unique,
+so a deployment may register one IdP twice under two scope sets or two client
+registrations. Every decision a login takes from configuration follows the
+registration the flow began with — see
+[Two registrations against one IdP](../authentication.md#two-registrations-against-one-idp).
 
 #### Constructors
 
@@ -1743,13 +1748,15 @@ identity — a subject is only unique within its issuer.
 
 ### TomOAuthExchange
 
-The result of a completed handshake: the `identity` and the `pending` record it
-completed, so the caller can replay the login context the flow captured.
+The result of a completed handshake: the `provider` it was against, the
+`identity` that provider asserted, and the `pending` record it completed, so the
+caller can replay the login context the flow captured.
 
 | Field | Type | Notes |
 | ----- | ---- | ----- |
 | `identity` | `TomExternalIdentity` | Who the provider says this is. |
 | `pending` | `TomOAuthAuthorizationState` | The record the exchange spent, carrying the login context. |
+| `provider` | `TomOAuthProviderConfig` | The provider this exchange was completed against, resolved **once** from `pending.providerId`. Carried rather than re-derived, because a login takes several decisions out of provider configuration at points far enough apart that two of them could resolve differently and disagree about which login this was. Deriving it from `identity.issuer` is not equivalent: the issuer names the IdP and two registrations may share one — see [Two registrations against one IdP](../authentication.md#two-registrations-against-one-idp). |
 | `tokens` | `TomOAuthTokenGrant?` | The provider's grant, or `null` when the response carried no access token (an `id_token`-only OIDC response). Surfaced on **every** exchange, whatever `storeTokens` says — retention is a storage decision, and a caller that wants the grant for the duration of *this* request may always have it. |
 
 ### TomOAuthFlow
@@ -2033,8 +2040,12 @@ Login failure keys: `login.error.oauth.no-identity-store`,
 `login.error.oauth.linked-account-missing`,
 `login.error.oauth.no-local-account`,
 `login.error.oauth.provisioning-unsupported`,
-`login.error.oauth.unknown-issuer`,
 `login.error.oauth.credential-not-supported`.
+
+`provisioning` and `storeTokens` are both read from
+`TomOAuthExchange.provider` — the registration the flow began with — so one
+login cannot provision under one provider's policy and retain under another's
+when two registrations share an issuer.
 
 ### TomOAuthServer
 

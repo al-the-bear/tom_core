@@ -1337,6 +1337,43 @@ error — it is the majority case, and yields an empty provider set.
 `TomOAuthProviders.fromConfiguration()` reads it; the endpoints resolve the
 installed bean, so a deployment that installs nothing offers nothing.
 
+### Two registrations against one IdP
+
+A provider is keyed by **its own id**, and the `issuer` is an ordinary field
+underneath. Nothing makes it unique, and that is deliberate: registering the
+same IdP twice is how a deployment offers it under two scope sets, or two client
+registrations — one that asks for calendar access and retains the grant, one
+that only signs the user in.
+
+```yaml
+oauth:
+  providers:
+    google:                             # sign-in only
+      issuer: https://accounts.google.com
+      scopes: openid email profile
+      # …endpoints, clientId, clientSecret, redirectUri…
+    google-calendar:                    # the same IdP, delegating
+      issuer: https://accounts.google.com
+      scopes: openid email profile https://www.googleapis.com/auth/calendar
+      storeTokens: true
+      # …endpoints, a second clientId, clientSecret, redirectUri…
+```
+
+Every decision a login takes out of provider configuration — `provisioning`,
+`storeTokens` — follows **the registration the flow began with**, never
+"whichever is configured against this issuer". The two are not the same choice
+when twins exist, and taking them apart is what would let a login provision
+under one registration's policy while retaining under the other's. The flow
+resolves the provider once, when it spends the pending record, and hands it on
+as [`TomOAuthExchange.provider`](api_reference/api_summary_authentication.md#tomoauthexchange);
+nothing downstream resolves it again.
+
+The identity is unaffected: `TomExternalIdentity.issuer` names the **IdP**, not
+the registration, so twins assert the same identity and therefore share one row
+in the linking table and one slot in the token store. That is the intended
+reading — it is one Google account either way, and a user who consented through
+`google-calendar` has not acquired a second local account by doing so.
+
 ### First login with no local account: `refuse` or `autoProvision`
 
 This is a **configuration choice per provider**, never a hardcoded policy,
@@ -1619,7 +1656,6 @@ without the application registering anything.
 | `login.error.oauth.linked-account-missing` | The link outlived the account it pointed at. |
 | `login.error.oauth.provisioning-unsupported` | `autoProvision` is configured but the directory does not implement it. |
 | `login.error.oauth.no-identity-store` | No `TomExternalIdentityStore` is installed. |
-| `login.error.oauth.unknown-issuer` | The token's issuer matches no configured provider. |
 | `login.error.oauth.credential-not-supported` | A non-OAuth credential arrived and there is no `delegate`. |
 
 ## Core Components

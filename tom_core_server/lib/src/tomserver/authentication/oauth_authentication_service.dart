@@ -209,7 +209,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
       return info;
     }
 
-    return _firstLogin(identity, authData, store, exchange);
+    return _firstLogin(authData, store, exchange);
   }
 
   /// Hands the provider's grant to the token store, when this provider asks for
@@ -222,10 +222,8 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
   Future<void> _retainTokens(TomOAuthExchange exchange) async {
     final grant = exchange.tokens;
     if (grant == null) return;
-    final provider = (flow ?? TomOAuthFlow.fromBeans()).providers.lookup(
-      exchange.pending.providerId,
-    );
-    if (provider == null || !provider.storeTokens) return;
+    final provider = exchange.provider;
+    if (!provider.storeTokens) return;
     final store = tokenStore ?? TomOAuthTokenStore.resolve();
     if (store == null) {
       // Configuration asked for tokens and the wiring cannot honour it. Loud,
@@ -245,13 +243,21 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
   }
 
   /// A successful external login for which no link exists yet.
+  ///
+  /// Everything this decides comes off [exchange] rather than being passed
+  /// alongside it: the identity, and the provider whose policy governs the
+  /// decision. A second parameter for either would be a second thing that could
+  /// disagree with the first, which is the failure this method is arranged to
+  /// make impossible — two registrations may share an issuer, so a provider
+  /// re-derived from the identity could be one the user never authorized
+  /// against while [_retainTokens] took its own from the one they did.
   Future<TomAuthenticationInfo> _firstLogin(
-    TomExternalIdentity identity,
     TomAuthenticationData authData,
     TomExternalIdentityStore store,
     TomOAuthExchange exchange,
   ) async {
-    final provider = _providerFor(identity);
+    final identity = exchange.identity;
+    final provider = exchange.provider;
 
     // An existing local account under the asserted username is linked rather
     // than duplicated — this is how a user who signed up with a password later
@@ -297,22 +303,6 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
     await store.recordLogin(identity);
     await _retainTokens(exchange);
     return provisioned;
-  }
-
-  /// The provider [identity] came from, by issuer.
-  ///
-  /// By issuer rather than by the pending record's provider id because the
-  /// issuer is what the *token* asserted and what the link is keyed on, so this
-  /// cannot pick a provider the identity did not actually come from.
-  TomOAuthProviderConfig _providerFor(TomExternalIdentity identity) {
-    final providers = (flow ?? TomOAuthFlow.fromBeans()).providers;
-    for (final provider in providers.providers.values) {
-      if (provider.issuer == identity.issuer) return provider;
-    }
-    throw LoginException(
-      'login.error.oauth.unknown-issuer',
-      "No provider is configured for the issuer '${identity.issuer}'.",
-    );
   }
 
   /// Replays the login context captured when the flow started.
