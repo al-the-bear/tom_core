@@ -527,6 +527,37 @@
 
 ### Documentation
 
+- **The cache example demonstrates all nine documented behaviours, and two of
+  them are now tested (tcinc402).** The module's completion document introduced
+  its nine "Using it" snippets with "the snippets below are taken from
+  `example/cache/cache_example.dart` … and asserts each result". The example had
+  six steps. Three snippets were taken from nowhere: a `TomCacheEntry` stored
+  verbatim to carry its own lifetime, `stopTimers`, and replacing the current
+  `TomCacheManager`. A reader who followed the sentence to the example — which
+  is what the sentence is for — found two thirds of what it promised, and the
+  three unbacked snippets were exactly the unverified prose that running the
+  example is supposed to settle.
+
+  All three are now steps 7–9, and the nine sections correspond one-for-one and
+  in order with the nine steps, so a snippet that stops matching is visibly a
+  snippet whose step moved. Two of the three were also *asserted nowhere*:
+
+  - **A `TomCacheEntry` passed as the value keeps its own `deletionTime`**
+    rather than taking the cache's default. The existing test dated every entry
+    to 2999, which pins the routing (through `putEntry`, into the MRU chain) but
+    not whose deletion time survives — a far-future entry reads back under
+    either rule. The new test stores an entry whose instant has already passed
+    into a cache whose 300-second default would have kept it readable; the miss
+    is the only observation that separates the two.
+  - **`setCurrent` discards the caches the replaced manager held.** The registry
+    is an instance field, so the swap drops every registration with it — which
+    is the whole reason the swap is useful between tests, and was the half the
+    existing test did not cover.
+
+  The example also records what `setCurrent` does *not* discard: a dropped
+  cache's timers stay installed and keep firing, so they must be stopped while
+  a handle to them still exists.
+
 - **The cache example and test fixture state the expiry rule the module
   actually has (tcinc401).** Two comments still described the rule as it stood
   *before* it was fixed: the example's first step claimed "a retrievable entry

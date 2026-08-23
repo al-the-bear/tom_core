@@ -65,6 +65,18 @@ await TomCache.removeFromTypeCache<User>('u-42');
 removed in passing). It throws [`TomCacheException`] if the stored value is not a
 `T`.
 
+A value that *is already* a [`TomCacheEntry`] is stored verbatim, so it keeps its
+own `deletionTime` and the cache's `deleteEntriesAfterSeconds` does not apply to
+it. This is how a single entry opts out of the cache-wide default:
+
+```dart
+await TomCache.toNameCache(
+  'greetings',
+  'flash',
+  TomCacheEntry('short-lived', DateTime.now().add(const Duration(seconds: 30))),
+);
+```
+
 > **Entries without a deletion time are kept forever.** A value stored with
 > neither a `deleteEntriesAfterSeconds` default nor an explicit `deletionTime`
 > has `deletionTime == null`: it never expires on its own and is returned by

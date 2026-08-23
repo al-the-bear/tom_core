@@ -2,8 +2,13 @@
 ///
 /// Demonstrates the named in-memory cache running in the main isolate: storing
 /// and reading a value, per-entry expiry, the entry with no deletion time that
-/// never expires, LRU eviction in a bounded cache, removal by type, and the
-/// [TomCacheException] raised on a type mismatch.
+/// never expires, LRU eviction in a bounded cache, removal by type, the
+/// [TomCacheException] raised on a type mismatch, a [TomCacheEntry] stored
+/// verbatim to carry its own lifetime, stopping a cache's periodic timers, and
+/// replacing the current [TomCacheManager].
+///
+/// Its nine steps correspond one-for-one, and in order, with the nine snippets
+/// in the "Using it" section of the module's completion document.
 ///
 /// Run with `dart run example/cache/cache_example.dart`.
 /// The same behaviour is covered by `test/cache_test.dart`.
@@ -87,6 +92,44 @@ Future<void> run() async {
     print('6. type mismatch threw       : ${e.key}');
   }
   assert(threw);
+
+  // 7. Passing a TomCacheEntry as the value stores it verbatim, so the entry
+  //    keeps its own deletionTime instead of taking the cache's default. The
+  //    past instant below is what proves it: 'greetings' has a 300s default
+  //    that would have kept this readable, and the read is a miss anyway.
+  await TomCache.toNameCache(
+    'greetings',
+    'flash',
+    TomCacheEntry(
+      'short-lived',
+      DateTime.now().subtract(const Duration(seconds: 1)),
+    ),
+  );
+  final flash = await TomCache.fromNameCache<String>('greetings', 'flash');
+  print('7. entry with own lifetime   : ${flash ?? 'null (its own time won)'}');
+  assert(flash == null);
+
+  // 8. A cache installs its periodic timers on construction, and a live timer
+  //    keeps the isolate alive. A program that outlives its caches must stop
+  //    them or exit explicitly — main() below does the latter.
+  final ticking = TomCache('ticking', clearIntervalSeconds: 60);
+  TomCacheManager.addCache(ticking);
+  assert(ticking.clearanceTimer?.isActive ?? false);
+  ticking.stopTimers();
+  print('8. timers stopped            : ${ticking.clearanceTimer?.isActive}');
+  assert(!(ticking.clearanceTimer?.isActive ?? false));
+
+  // 9. Replacing the current manager discards the registry along with it, which
+  //    is what makes it useful between tests. It discards only the *registry*
+  //    though: the caches themselves are unreachable now but their timers are
+  //    still installed, so stopping them (step 8) has to come first to have
+  //    happened at all. Last step here, since it empties the registry.
+  assert(TomCacheManager.getCache('greetings') != null);
+  TomCacheManager.setCurrent(TomCacheManager(true));
+  print(
+    '9. after setCurrent          : ${TomCacheManager.getCache('greetings')}',
+  );
+  assert(TomCacheManager.getCache('greetings') == null);
 }
 
 Future<void> main() async {

@@ -164,6 +164,16 @@ void main() {
       final replacement = TomCacheManager();
       expect(TomCacheManager.setCurrent(replacement), same(replacement));
     });
+
+    test('setCurrent discards the caches the replaced manager held', () {
+      // The registry is an instance field, so installing a new manager drops
+      // every registration with the old one. This is the whole reason the
+      // swap is useful between tests, and it was the half not covered.
+      TomCacheManager.addCache(_cache('doomed'));
+      expect(TomCacheManager.getCache('doomed'), isNotNull);
+      TomCacheManager.setCurrent(TomCacheManager());
+      expect(TomCacheManager.getCache('doomed'), isNull);
+    });
   });
 
   group('TomCache store/read/remove (main isolate)', () {
@@ -305,6 +315,23 @@ void main() {
       expect(await TomCache.fromNameCache<int>('be', 'a'), isNull);
       expect(await TomCache.fromNameCache<int>('be', 'b'), 2);
       expect(await TomCache.fromNameCache<int>('be', 'c'), 3);
+    });
+
+    test('a TomCacheEntry value keeps its own deletionTime over the '
+        'cache default', () async {
+      // The test above dates every entry to 2999, so it pins the routing
+      // (through putEntry, into the MRU chain) but not whose deletion time
+      // survives — a far-future entry reads back under either rule. The
+      // helper's 300s default would keep an ordinary store readable, so an
+      // entry carrying an instant already past reading as a miss is the only
+      // observation that separates the two.
+      TomCacheManager.addCache(_cache('own'));
+      await TomCache.toNameCache(
+        'own',
+        'k',
+        TomCacheEntry('v', DateTime.now().subtract(const Duration(seconds: 1))),
+      );
+      expect(await TomCache.fromNameCache<String>('own', 'k'), isNull);
     });
   });
 

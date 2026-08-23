@@ -157,7 +157,7 @@ factory TomCache.forType(
 | `fromTypeCache` | `static Future<T?> fromTypeCache<T>(String key)` | Reads the value of type `T` keyed by `key` from the cache named after `T`. |
 | `fromNameCache` | `static Future<T?> fromNameCache<T>(String cacheName, String key)` | Reads the value keyed by `key` from cache `cacheName`; returns `null` on a miss or expiry, throws `TomCacheException` on type mismatch or missing cache, and forwards from a worker isolate — with the same answers on the forwarded path as on the local one. |
 | `toTypeCache` | `static Future<int> toTypeCache<T>(String key, Object? value)` | Stores `value` under `key` in the cache named after `T`. |
-| `toNameCache` | `static Future<int> toNameCache(String cacheName, String key, Object? value, [DateTime? deletionTime])` | Stores `value` under `key` in cache `cacheName`, defaulting expiry from the cache's `deleteEntriesAfterSeconds`; always returns `0`. |
+| `toNameCache` | `static Future<int> toNameCache(String cacheName, String key, Object? value, [DateTime? deletionTime])` | Stores `value` under `key` in cache `cacheName`, defaulting expiry from the cache's `deleteEntriesAfterSeconds`; a `value` that is already a `TomCacheEntry` is stored verbatim and keeps its own `deletionTime` instead. Always returns `0`. |
 | `removeFromTypeCache` | `static Future<int> removeFromTypeCache<T>(String key)` | Removes the entry keyed by `key` from the cache named after `T`. |
 | `removeFromNameCache` | `static Future<int> removeFromNameCache(String cacheName, String key)` | Removes the entry keyed by `key` from cache `cacheName`; forwards from a worker isolate; always returns `0`. |
 
