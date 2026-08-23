@@ -2,6 +2,37 @@
 
 ### Behaviour Changes
 
+- **Cache failures are internal, and a type mismatch no longer renders the
+  cached value (tcinc404).** `TomServerException` carries a `clientThrow` flag
+  whose dartdoc says to set it `false` for errors that must not leak to the
+  client. `TomCacheException`'s constructor forwarded `parameters`, `stack`,
+  `rootException` and `autoLog` and stopped there, so the flag always took its
+  `true` default: every cache failure was client-throwable and no caller could
+  mark one internal. That was an omission rather than a decision — nothing in
+  the module documentation mentioned the flag at all.
+
+  It now defaults to `false`, matching `TomAuditException`,
+  `TomMessagingException` and `TomOAuthException`, which each made the same call
+  for the same reason. Neither cache failure is actionable by a caller. "No
+  cache with name X found" names an entry in a server-side registry, and the
+  caller never addressed the cache in the first place — it asked for a resource,
+  and whether the server answers it from a cache is an implementation choice the
+  error has no business disclosing. A type mismatch says the server stored
+  something other than what it now reads back, which is the operator's problem.
+  The flag remains a parameter, so a raise site with genuinely public cache
+  names can pass `clientThrow: true`.
+
+  **The type-mismatch message changed too**, and independently of the flag: it
+  named the stored value (`"Cached value $value is not of type $T"`) in a message
+  that is logged. A cache holds whatever a caller put in it — a session token as
+  readily as a greeting — and the contents never explain why the cast failed,
+  while the runtime type always does. The message now names the type, which is a
+  better diagnosis *and* renders no payload.
+
+  The four cross-isolate probes now report `clientThrow` alongside the error key,
+  which confirms the flag survives the isolate boundary: a forwarded failure is
+  internal exactly as a local one is.
+
 - **A `DateTime` column is an instant, not the writing node's wall clock
   (tcinc396).** `datasources/sql_instant.dart` declared itself "a **data source**
   concern, not a feature of any one module … every table that stores an instant

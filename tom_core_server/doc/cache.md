@@ -12,6 +12,7 @@ bounded, and can expire entries by age or clear itself on a schedule.
 - [Reading, Storing, Removing](#reading-storing-removing)
 - [Expiry and Bounds](#expiry-and-bounds)
 - [Isolate Model](#isolate-model)
+- [Failures Are Internal](#failures-are-internal)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -137,6 +138,30 @@ call site, so a forwarded read answers exactly as a local one does: the type
 mismatch throws, and the miss is `null` rather than a sentinel object handed
 back as though it were the cached value.
 
+## Failures Are Internal
+
+[`TomCacheException`] defaults to **`clientThrow: false`**, so the endpoints
+pipeline treats a cache failure as internal and does not surface its message to
+the caller. Both of the module's failures earn that:
+
+- **"No cache with name X found."** names an entry in a server-side registry.
+  That is a deployment detail, and the caller never addressed the cache in the
+  first place — it asked for a resource, and whether the server answers it from
+  a cache is an implementation choice the error has no business disclosing.
+- **A type mismatch** says the server stored something other than what it now
+  reads back. There is nothing for the caller to do about it.
+
+The type-mismatch message names the **runtime type** of the stored value, not
+the value itself. A cache holds whatever a caller put in it — a session token as
+readily as a greeting — and the contents never explain why the cast failed,
+while the type always does. Rendering the payload into a message that is logged
+would be a leak that buys no diagnosis.
+
+The flag is a constructor parameter, so a raise site with a genuinely public
+cache can pass `clientThrow: true`. It survives the isolate boundary intact, so
+a forwarded failure carries the same `key` **and** the same `clientThrow` as a
+local one.
+
 ## Core Components
 
 - **`TomCache`** — the cache and its static accessor helpers. Instance methods
@@ -145,7 +170,8 @@ back as though it were the cached value.
 - **`TomCacheEntry`** — value object: the cached `value` and its `deletionTime`.
 - **`TomCacheManager`** — the per-isolate registry and the `useInThisIsolate`
   switch.
-- **`TomCacheException`** — raised on a missing cache or a type mismatch.
+- **`TomCacheException`** — raised on a missing cache or a type mismatch;
+  `clientThrow: false` by default, since neither is the caller's business.
 - **`TomCacheStoreMessage` / `TomCacheRemoveMessage` / `TomCacheRetrieveMessage`**
   — the cross-isolate commands.
 

@@ -7,6 +7,18 @@ import '../little_things/server_exception.dart';
 /// Raised by the cache API when an operation cannot be completed: the named
 /// cache does not exist in this isolate (and cannot be forwarded), or a
 /// retrieved value does not match the requested type parameter.
+///
+/// Defaults to `clientThrow: false`. Both failures are about the server's own
+/// wiring and neither is actionable by a caller: a missing cache names an entry
+/// in a server-side registry, which is a deployment detail, and a type mismatch
+/// says the server stored something other than what it now reads back. A caller
+/// that asked for a value cannot fix either, and the cache is a facility the
+/// caller never addressed in the first place — a request asks for a resource,
+/// not for a cache lookup, so the very existence of the cache is an
+/// implementation choice that the error should not disclose.
+///
+/// The flag is forwarded, so a caller with a cache whose names are genuinely
+/// public can pass `clientThrow: true` at the raise site.
 class TomCacheException extends TomServerException {
   TomCacheException(
     super.key,
@@ -15,6 +27,7 @@ class TomCacheException extends TomServerException {
     super.stack,
     super.rootException,
     super.autoLog,
+    super.clientThrow = false,
   });
 }
 
@@ -382,9 +395,14 @@ class TomCache {
         try {
           return entry.value as T;
         } catch (e) {
+          // The value's *type* is what explains the mismatch; its contents
+          // explain nothing and are whatever the caller cached — a session
+          // token as easily as a greeting. Naming the type diagnoses the fault
+          // without rendering a payload into a message that is logged.
           throw TomCacheException(
             "error.cache_retrieve.types_dont_match",
-            "Cached value ${entry.value} is not of type $T",
+            "Cached value of type ${entry.value.runtimeType} "
+                "is not of type $T",
           );
         }
       }
@@ -407,7 +425,7 @@ class TomCache {
       // it will then fail to store any more successfully than it read it.
       throw TomCacheException(
         "error.cache_retrieve.types_dont_match",
-        "Cached value $cachedResult is not of type $T",
+        "Cached value of type ${cachedResult.runtimeType} is not of type $T",
       );
     } else {
       throw TomCacheException(

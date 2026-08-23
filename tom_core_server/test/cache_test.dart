@@ -50,7 +50,7 @@ class ProbeCacheReadCommand extends TomCommand {
       final value = await TomCache.fromNameCache<String>(cacheName, 'k');
       return value == null ? 'miss' : 'hit:$value';
     } on TomCacheException catch (e) {
-      return 'failed:${e.key}';
+      return 'failed:${e.key} client=${e.clientThrow}';
     } catch (e) {
       return 'other:${e.runtimeType}';
     }
@@ -77,7 +77,7 @@ class ProbeCacheUntypedReadCommand extends TomCommand {
       final value = await TomCache.fromNameCache<Object>(cacheName, 'k');
       return value == null ? 'miss' : 'value:${value.runtimeType}';
     } on TomCacheException catch (e) {
-      return 'failed:${e.key}';
+      return 'failed:${e.key} client=${e.clientThrow}';
     } catch (e) {
       return 'other:${e.runtimeType}';
     }
@@ -96,7 +96,7 @@ class ProbeCacheStoreCommand extends TomCommand {
     try {
       return 'stored:${await TomCache.toNameCache(cacheName, 'k', 'from-worker')}';
     } on TomCacheException catch (e) {
-      return 'failed:${e.key}';
+      return 'failed:${e.key} client=${e.clientThrow}';
     } catch (e) {
       return 'other:${e.runtimeType}';
     }
@@ -115,7 +115,7 @@ class ProbeCacheRemoveCommand extends TomCommand {
     try {
       return 'removed:${await TomCache.removeFromNameCache(cacheName, 'k')}';
     } on TomCacheException catch (e) {
-      return 'failed:${e.key}';
+      return 'failed:${e.key} client=${e.clientThrow}';
     } catch (e) {
       return 'other:${e.runtimeType}';
     }
@@ -145,6 +145,22 @@ void main() {
       final e = TomCacheException('a.key', 'a message');
       expect(e, isA<TomServerException>());
       expect(e.key, 'a.key');
+    });
+
+    test('is internal by default, unlike TomServerException', () {
+      // The base defaults to `true`, so an unforwarded `clientThrow` is not a
+      // neutral omission — it silently makes every cache failure
+      // client-throwable. Pinning both sides is what makes this test say
+      // "chosen" rather than "inherited".
+      expect(TomServerException('a.key', 'a message').clientThrow, isTrue);
+      expect(TomCacheException('a.key', 'a message').clientThrow, isFalse);
+    });
+
+    test('lets a raise site opt into client visibility', () {
+      expect(
+        TomCacheException('a.key', 'a message', clientThrow: true).clientThrow,
+        isTrue,
+      );
     });
   });
 
@@ -266,6 +282,57 @@ void main() {
         () => TomCache.removeFromNameCache('ghost', 'k'),
         throwsA(isA<TomCacheException>()),
       );
+    });
+  });
+
+  group('Cache failures are internal', () {
+    // The constructor default only matters if the raise sites take it, and a
+    // raise site can override it silently. Each of the four is pinned here.
+
+    Future<TomCacheException> raised(Future<Object?> Function() op) async {
+      try {
+        await op();
+      } on TomCacheException catch (e) {
+        return e;
+      }
+      fail('expected a TomCacheException');
+    }
+
+    test(
+      'a missing cache is not client-throwable, on any of the three helpers',
+      () async {
+        // "No cache named X" names an entry in a server-side registry. The
+        // caller never addressed the cache — it asked for a resource — so the
+        // message discloses an implementation choice and offers nothing to act
+        // on.
+        for (final op in <Future<Object?> Function()>[
+          () => TomCache.fromNameCache<String>('ghost', 'k'),
+          () => TomCache.toNameCache('ghost', 'k', 'v'),
+          () => TomCache.removeFromNameCache('ghost', 'k'),
+        ]) {
+          expect((await raised(op)).clientThrow, isFalse);
+        }
+      },
+    );
+
+    test('a type mismatch is not client-throwable', () async {
+      TomCacheManager.addCache(_cache('c'));
+      await TomCache.toNameCache('c', 'k', 123);
+      final e = await raised(() => TomCache.fromNameCache<String>('c', 'k'));
+      expect(e.clientThrow, isFalse);
+    });
+
+    test('a type mismatch names the type it found, not the value', () async {
+      // The value's contents explain nothing about why the cast failed, and a
+      // cache holds whatever a caller put in it — a session token as readily
+      // as a greeting. The type is the diagnosis; rendering the payload into a
+      // logged message is only a leak.
+      TomCacheManager.addCache(_cache('c'));
+      await TomCache.toNameCache('c', 'k', 'super-secret-token');
+      final e = await raised(() => TomCache.fromNameCache<int>('c', 'k'));
+      expect(e.defaultUserMessage, isNot(contains('super-secret-token')));
+      expect(e.defaultUserMessage, contains('String'));
+      expect(e.defaultUserMessage, contains('int'));
     });
   });
 
@@ -512,7 +579,7 @@ void main() {
           .executeCommand(ProbeCacheReadCommand('nowhere'))
           .timeout(const Duration(seconds: 10));
 
-      expect(answer, 'failed:error.cache_retrieve.not_found');
+      expect(answer, 'failed:error.cache_retrieve.not_found client=false');
     });
 
     test(
@@ -522,7 +589,7 @@ void main() {
             .executeCommand(ProbeCacheStoreCommand('nowhere'))
             .timeout(const Duration(seconds: 10));
 
-        expect(answer, 'failed:error.cache_store.not_found');
+        expect(answer, 'failed:error.cache_store.not_found client=false');
       },
     );
 
@@ -553,7 +620,10 @@ void main() {
             .executeCommand(ProbeCacheRemoveCommand('nowhere'))
             .timeout(const Duration(seconds: 10));
 
-        expect(answer, 'failed:error.cache_remove.cache_not_found');
+        expect(
+          answer,
+          'failed:error.cache_remove.cache_not_found client=false',
+        );
       },
     );
 
@@ -589,7 +659,10 @@ void main() {
             .executeCommand(ProbeCacheReadCommand('shared'))
             .timeout(const Duration(seconds: 10));
 
-        expect(answer, 'failed:error.cache_retrieve.types_dont_match');
+        expect(
+          answer,
+          'failed:error.cache_retrieve.types_dont_match client=false',
+        );
       },
     );
 

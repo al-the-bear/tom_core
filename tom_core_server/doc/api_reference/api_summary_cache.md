@@ -67,6 +67,14 @@ Raised by the cache API when an operation cannot be completed: the named cache
 does not exist in this isolate (and cannot be forwarded), or a retrieved value
 does not match the requested type parameter.
 
+Defaults to **`clientThrow: false`**, unlike its base, which defaults to `true`.
+Neither failure is actionable by a caller: a missing cache names an entry in a
+server-side registry, and a type mismatch says the server stored something other
+than what it now reads back. The type-mismatch message names the stored value's
+runtime type rather than the value itself, so a cached payload is not rendered
+into a logged message. The flag is a parameter, so a raise site with a genuinely
+public cache can pass `true`.
+
 - **Extends:** `TomServerException`
 
 #### Constructors
@@ -79,6 +87,7 @@ TomCacheException(
   Object? stack,
   Object? rootException,
   bool autoLog = false,
+  bool clientThrow = false,
 })
 ```
 
