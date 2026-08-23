@@ -1019,6 +1019,42 @@ void main() {
       expect(cache.getEntry('a')!.value, 3);
       expect(cache.getEntry('k')!.value, 2);
     });
+
+    test('replacing a key in a bounded cache leaves no stale entry behind', () {
+      // The other replacement tests take the unbounded path and the
+      // single-entry path; this one takes the third — a bounded cache holding
+      // more than one entry, where the replacement routes through removeEntry.
+      //
+      // The failure this guards against is invisible at the moment it happens.
+      // A replacement that skips the unlink still answers every read
+      // correctly — the map holds one value per key either way — and the
+      // superseded entry merely sits in the MRU chain unreachable. It surfaces
+      // two stores later, when the chain's tail is that ghost and the eviction
+      // follows its key: the cache then drops the *live* replacement and keeps
+      // the entry it should have dropped. So the assertions have to come after
+      // the bound has been crossed twice, and nothing may read the cache in
+      // between, since a read promotes and would rewrite the very order under
+      // test.
+      final cache = _cache('p', maximumEntries: 3);
+      cache.putEntry('a', TomCacheEntry(1));
+      cache.putEntry('b', TomCacheEntry(2));
+      cache.putEntry('c', TomCacheEntry(3));
+      cache.putEntry('b', TomCacheEntry(20)); // replace: 'b' becomes newest
+      cache.putEntry('d', TomCacheEntry(4)); // over bound -> evict LRU 'a'
+      cache.putEntry('e', TomCacheEntry(5)); // over bound -> evict LRU 'c'
+
+      expect(cache.getEntry('a'), isNull, reason: 'evicted first, as the LRU');
+      expect(cache.getEntry('c'), isNull, reason: 'evicted second, as the LRU');
+      expect(
+        cache.getEntry('b')!.value,
+        20,
+        reason:
+            'the replacement is the newest entry of the three survivors and '
+            'must not be evicted on account of the entry it replaced',
+      );
+      expect(cache.getEntry('d')!.value, 4);
+      expect(cache.getEntry('e')!.value, 5);
+    });
   });
 
   group('removeEntry (direct)', () {

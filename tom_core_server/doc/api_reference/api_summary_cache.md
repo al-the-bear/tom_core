@@ -96,6 +96,12 @@ TomCacheException(
 A single cached value paired with the optional `deletionTime` after which it is
 considered expired.
 
+In a bounded cache (`TomCache.maximumEntries` set) an entry is also linked into
+the most-recently-used list through private `_next` / `_before` pointers, so the
+least-recently-used entry can be evicted in O(1). The pointers are the cache's,
+not the caller's: an entry belongs to one position in one chain, which is why
+`removeEntry` is the module's only unlink routine.
+
 #### Constructors
 
 ```dart
@@ -106,19 +112,25 @@ TomCacheEntry(Object? value, [DateTime? deletionTime])
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `deletionTime` | `DateTime?` | The instant after which this entry is expired; `null` means it does not expire on its own. |
+| `deletionTime` | `DateTime?` | The instant after which this entry is expired; `null` means it does not expire on its own — it may still be evicted by an LRU bound or a clear. |
 | `value` | `Object?` | The cached value. |
 
 ### TomCacheManager
 
 Holds the set of named `TomCache` instances for an isolate and decides whether
-cache operations run locally or are forwarded to the creator isolate.
+cache operations run locally or are forwarded to the creator isolate. The caches
+physically live in the main isolate.
 
 #### Constructors
 
 ```dart
 TomCacheManager([bool useInThisIsolate = false])
 ```
+
+The default is `false`, but the constructor **forces `useInThisIsolate` to
+`true` when it runs in the main isolate** — the argument is only honoured in a
+worker. Reading the signature alone would suggest a main-isolate manager starts
+out forwarding, which it never does.
 
 #### Static Methods
 
@@ -168,9 +180,9 @@ factory TomCache.forType(
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `fromTypeCache` | `static Future<T?> fromTypeCache<T>(String key)` | Reads the value of type `T` keyed by `key` from the cache named after `T`. |
-| `fromNameCache` | `static Future<T?> fromNameCache<T>(String cacheName, String key)` | Reads the value keyed by `key` from cache `cacheName`; returns `null` on a miss or expiry, throws `TomCacheException` on type mismatch or missing cache, and forwards from a worker isolate — with the same answers on the forwarded path as on the local one. |
+| `fromNameCache` | `static Future<T?> fromNameCache<T>(String cacheName, String key)` | Reads the value keyed by `key` from cache `cacheName`; returns `null` on a miss or expiry, and an expired entry is removed in passing; throws `TomCacheException` on type mismatch or missing cache, and forwards from a worker isolate — with the same answers on the forwarded path as on the local one. |
 | `toTypeCache` | `static Future<int> toTypeCache<T>(String key, Object? value)` | Stores `value` under `key` in the cache named after `T`. |
-| `toNameCache` | `static Future<int> toNameCache(String cacheName, String key, Object? value, [DateTime? deletionTime])` | Stores `value` under `key` in cache `cacheName`, defaulting expiry from the cache's `deleteEntriesAfterSeconds`; a `value` that is already a `TomCacheEntry` is stored verbatim and keeps its own `deletionTime` instead. Always returns `0`. |
+| `toNameCache` | `static Future<int> toNameCache(String cacheName, String key, Object? value, [DateTime? deletionTime])` | Stores `value` under `key` in cache `cacheName`, defaulting expiry from the cache's `deleteEntriesAfterSeconds`; a `value` that is already a `TomCacheEntry` is stored verbatim and keeps its own `deletionTime` instead, linked into the LRU chain like any other entry. Always returns `0`. |
 | `removeFromTypeCache` | `static Future<int> removeFromTypeCache<T>(String key)` | Removes the entry keyed by `key` from the cache named after `T`. |
 | `removeFromNameCache` | `static Future<int> removeFromNameCache(String cacheName, String key)` | Removes the entry keyed by `key` from cache `cacheName`; forwards from a worker isolate; always returns `0`. |
 
@@ -192,7 +204,7 @@ factory TomCache.forType(
 | ------ | --------- | ----------- |
 | `removeEntry` | `void removeEntry(String key)` | Removes the entry stored under `key`, unlinking it from the MRU list if the cache is bounded; a no-op when the key is absent. The module's only chain-unlink routine — the deletion sweep and both of `putEntry`'s removals (replacing a key, evicting the least-recently-used entry) go through it. |
 | `getEntry` | `TomCacheEntry? getEntry(String key)` | Returns the entry under `key`, or `null` if absent; in a bounded cache the entry is promoted to most-recently-used. Does not check expiry. |
-| `putEntry` | `void putEntry(String key, TomCacheEntry entry)` | Stores `entry` under `key` at the most-recently-used position; in a bounded cache, exceeding `maximumEntries` evicts the least-recently-used entry. |
+| `putEntry` | `void putEntry(String key, TomCacheEntry entry)` | Stores `entry` under `key` at the most-recently-used position; in a bounded cache, exceeding `maximumEntries` evicts the least-recently-used entry. Storing under a key the cache already holds replaces the entry — the previous one is unlinked through `removeEntry` first, so it leaves the MRU chain rather than staying in it unreachable and later being evicted in the replacement's place. |
 | `createTimers` | `void createTimers()` | Cancels any running timers and installs the deletion and/or clearance timers for which an interval is configured. |
 | `stopTimers` | `void stopTimers()` | Cancels the deletion and clearance timers if they are running and clears both fields; the intervals are untouched, so `createTimers` restarts the cache. |
 | `createDeletionTimer` | `Timer createDeletionTimer()` | Builds the periodic timer that removes entries past their `deletionTime`. |

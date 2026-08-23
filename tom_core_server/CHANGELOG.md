@@ -2,6 +2,31 @@
 
 ### Documentation
 
+- **The cache API summary was verified against the source rather than trusted
+  (tcinc411).** The mirror in `doc/api_reference/` is last in precedence, so it
+  was checked symbol by symbol against `server_cache.dart`. Nothing was
+  missing — every public type and member was present — but five descriptions
+  were thinner than the dartdoc they mirror, each in the same way: read alone,
+  the row implied something the source contradicts. `TomCacheManager`'s
+  constructor showed a default of `false` without saying the body forces `true`
+  in the main isolate; `fromNameCache` reported the `null` on expiry but not
+  that the expired entry is removed in passing; `putEntry` described insertion
+  and eviction but not replacement; `toNameCache` named the
+  `TomCacheEntry`-as-value branch but not that such an entry is linked into the
+  LRU chain like any other; and
+  `TomCacheEntry` omitted the MRU pointers, its `deletionTime` row stopping at
+  "does not expire on its own" without the source's qualifier that a bound or a
+  clear may still evict it.
+
+  `putEntry`'s dartdoc gained the replacement rule first, since the mirror had
+  been faithful to a dartdoc that was itself silent on it and stating it only in
+  the mirror would invert the precedence. A test now pins that rule for the one
+  path it lacked one — a bounded cache holding more than one entry, where the
+  replacement routes through `removeEntry`. The failure it guards is invisible
+  when it happens: a skipped unlink still answers every read correctly, and only
+  surfaces two stores later, when the superseded entry has become the chain's
+  tail and the eviction follows its key, dropping the live replacement instead.
+
 - **The cache module readme's quick start is now a program that returns
   (tcinc410).** It was a complete `main()` that registered a cache, stored, read
   and printed — and then hung. `TomCache.forType` defaults

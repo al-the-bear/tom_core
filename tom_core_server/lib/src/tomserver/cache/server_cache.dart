@@ -182,6 +182,13 @@ class TomCache {
   /// Stores [entry] under [key], inserting it at the most-recently-used
   /// position. In a bounded cache, exceeding [maximumEntries] evicts the
   /// least-recently-used entry.
+  ///
+  /// Storing under a key the cache already holds *replaces* the entry: in a
+  /// bounded cache the previous one is unlinked through [removeEntry] first, so
+  /// it leaves the MRU chain rather than staying in it unreachable. Reads would
+  /// not notice either way — the map holds one value per key regardless — but a
+  /// superseded entry left in the chain eventually becomes its tail, and the
+  /// eviction that follows would then drop the live replacement by its key.
   void putEntry(String key, TomCacheEntry entry) {
     if (maximumEntries == null) {
       _cache[key] = entry;
