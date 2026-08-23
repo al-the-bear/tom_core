@@ -113,6 +113,34 @@
 
 ### Documentation
 
+- **The API mirror now states what `TomEnvFile`'s `.env` features do
+  (tcinc427).** `doc/api_reference/api_summary_cmdline.md` reproduced all five
+  signatures and said the class supports "comments, empty lines, quoted values,
+  and inline comments" — without saying what a single one of them *does*. A
+  reader with only the mirror could call every method and still not predict the
+  type of any value, which is the one thing this module decides.
+
+  Three rules now follow the method table, each the behaviour behind one of the
+  named features. A quoted value skips conversion entirely, which is the only
+  way to keep a numeric-looking string a `String` (`NUM="123"`); an empty value
+  becomes `null` rather than the empty `String`, with the key still present; and
+  an unquoted value is truncated at its first `#`, no preceding whitespace
+  required. A six-row table shows each against its unquoted counterpart, and a
+  preceding paragraph states which lines `parse` skips and that it trims where
+  `TomArgs` does not.
+
+  The overview paragraph was overclaiming and is corrected: the two classes are
+  *not* consistent, and the empty-value rule is named as the single documented
+  exception. The quoting rule, contrary to how it is often described, is
+  **shared** — `K="123"` yields the `String` `123` from an argument too — so it
+  is stated as a shared rule, not a `.env` peculiarity. Only `#`-truncation and
+  the empty-value rule are genuinely `.env`-only.
+
+  One test was added: nothing pinned the divergence itself, only the two sides
+  separately, so a differential test now requires `EMPTY=` to yield `''` from
+  `TomArgs.parseArgsToMap` and `null` from `TomEnvFile.parse`, with the key
+  present either way.
+
 - **`doc/cmdline.md` now names its example and its suite (tcinc426).** The doc
   mentioned neither `example/cmdline/cmdline_example.dart` nor
   `test/cmdline_test.dart`, so a reader who wanted to *run* the module had no

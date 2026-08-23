@@ -31,9 +31,10 @@ starting with `=` — is skipped rather than recorded under an empty key, again 
 
 `TomEnvFile` reads environment variables from a `.env` file (synchronously or
 asynchronously), supporting comments, empty lines, quoted values, and inline
-comments. It reuses the `TomArgs` conversion rules so values are typed
-consistently, and can merge multiple sources with later sources overriding
-earlier ones.
+comments. It reuses the `TomArgs` conversion rules, so a value is typed the same
+way from either source with one documented exception — an empty value becomes
+`null` here and the empty `String` there. It can merge multiple sources, with
+later sources overriding earlier ones.
 
 ## Class Hierarchy
 
@@ -104,6 +105,46 @@ static.
 | `parse` | `static Map<String, Object?> parse(List<String> lines)` | Parses a list of `.env`-format lines into a map, usable for content from any source. |
 | `merge` | `static Map<String, Object?> merge(List<Map<String, Object?>> sources)` | Merges multiple environment maps; later sources override earlier ones. Converts nothing: a raw `Map<String, String>` such as `Platform.environment` passes by covariance and contributes `String` values, so wrap it in `TomArgs.convertToObjectMap` first. |
 | `load` | `static Map<String, Object?> load([String path = '.env'])` | Loads a `.env` file and returns the values (note: `Platform.environment` is read-only, so this does not mutate the OS environment). |
+
+`parse` reads a line only when it carries a `=` and a non-empty key, so a blank
+line, a `#` comment line, and a line with no separator are all skipped, as is a
+line beginning with `=`. Key and value are each trimmed of surrounding
+whitespace — `TomArgs` does not trim, which is the other way the two sources
+differ. A skipped line costs only itself; the lines around it are still read.
+
+Value conversion then runs through the `TomArgs` table above. Three further
+rules decide *which* type a value arrives as, and each is what one of the
+supported features named above actually does:
+
+| Input line | Result | Rule |
+| ---------- | ------ | ---- |
+| `NUM=123` | `int` `123` | the shared table applies |
+| `NUM="123"` | `String` `123` | quoted — no conversion at all |
+| `ON="true"` | `String` `true` | quoted — not a `bool` |
+| `EMPTY=` | `null` | empty value (`.env` only) |
+| `EMPTY=""` | `String` `''` | quoted empty — not `null` |
+| `PW=pa#ss` | `String` `pa` | truncated at the inline comment |
+
+**A quoted value skips conversion entirely.** `TomArgs.unquote` decides what
+counts as quoted — a matched pair, see `unquote` above — and a value it accepts
+is stored as its unquoted contents with no further typing. Quoting is therefore
+how a value that *looks* like another type is kept a `String`: `NUM="123"` is
+the string `123`, not the `int`, and `ON="true"` is the string `true`, not the
+`bool`. `TomArgs` treats a quoted argument the same way, so this is a shared
+rule rather than a `.env` peculiarity — but it is what "quoted values" means.
+
+**An empty value becomes `null`, not the empty `String`.** This is the one
+place the two classes' conversion tables diverge: the `.env` line `EMPTY=`
+yields `null`, while the argument `EMPTY=` yields the empty `String`. The key is
+present either way — `containsKey` returns `true` — so an empty assignment is a
+key explicitly set to nothing, which is distinct from a key no source mentioned
+at all. To store an empty `String` from a `.env` file, quote it: `EMPTY=""`.
+
+**An unquoted value is truncated at its first `#`.** No whitespace is required
+before it, so `PW=pa#ss` yields `pa` and a URL loses its fragment; that is what
+"inline comments" means. `TomArgs` strips no comments, so unlike the quoting
+rule this one really is `.env`-only. Quote any value that may legitimately
+contain a `#`.
 
 ## Global Functions and Constants
 

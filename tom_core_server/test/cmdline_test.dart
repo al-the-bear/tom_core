@@ -108,6 +108,24 @@ void main() {
       expect(TomArgs.parseArgsToMap([line]), {'pw': 'pa#ss'});
       expect(TomEnvFile.parse([line]), {'pw': 'pa'}); // truncated at the '#'
     });
+
+    // The one place the two conversion tables themselves disagree, rather than
+    // the surrounding parse: `TomEnvFile._convertValue` short-circuits an empty
+    // value to null before delegating, and `_convertString` has no such branch,
+    // so the same text yields a different *type* from each source. The
+    // documentation states this as the single exception to "typed the same way
+    // from either source", so it is worth a differential test rather than two
+    // independent ones that happen to disagree.
+    test('differs from TomEnvFile.parse on an empty value', () {
+      const line = 'EMPTY=';
+      expect(TomArgs.parseArgsToMap([line])['EMPTY'], '');
+      expect(TomEnvFile.parse([line])['EMPTY'], isNull);
+
+      // Null as a value, not an absent key — an empty assignment is a key set
+      // to nothing, which a caller checking completeness must tell apart from
+      // a key no source mentioned.
+      expect(TomEnvFile.parse([line]).containsKey('EMPTY'), isTrue);
+    });
   });
 
   group('TomArgs.convertToObjectMap value conversion', () {
