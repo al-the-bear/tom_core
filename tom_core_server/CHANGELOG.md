@@ -2,6 +2,23 @@
 
 ### Behaviour Changes
 
+- **`TomAuthorizationCache.storePrincipal` returns `Future<void>` (tcinc393).**
+  It was declared `Future<int>` and ended with `return 0` on every path, which
+  cost a sentence in the source dartdoc, the completion doc and the API summary
+  — three places documenting a value a caller could not branch on, and a caller
+  that tried would have been testing a constant. Nothing in the module supports
+  the obvious reading that the `int` was once a count or a status code.
+
+  A store either happens or throws, so completion and failure are the whole
+  answer and the future now carries only those. The one place the constant was
+  load-bearing was inside the module's own reasoning: the cross-isolate executor
+  returned the store's future partly because `0` "is not null, so
+  `executeInCreator` does not mistake it for an unclaimed command". A
+  `Future<void>` settles to `null` instead, and the creator's executor chain
+  compares against `TomExecutor.noResult` rather than against null, so the
+  command is still claimed — now asserted by a test that watches a trailing
+  executor never be offered the store.
+
 - **`TomAuthorizationCacheEntry` requires its deletion time, and neither field
   can be moved afterwards (tcinc392).** The constructor's second argument was
   optional and fell back to `DateTime.now().add(Duration(days: 1))`. An entry's

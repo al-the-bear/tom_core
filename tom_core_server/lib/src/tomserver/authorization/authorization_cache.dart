@@ -341,8 +341,11 @@ class TomAuthorizationCache implements TomDisposable {
   /// only ever reads the cache never starts a timer at all.
   ///
   /// When called from a worker isolate the store is forwarded to the main
-  /// isolate. Always returns `0`.
-  static Future<int> storePrincipal(
+  /// isolate.
+  ///
+  /// The future carries only completion and failure: there is no count or
+  /// status to report, since a store either happens or throws.
+  static Future<void> storePrincipal(
     TomClientJwtToken authenticationToken,
     TomPrincipal authorizedPrincipal,
   ) async {
@@ -362,7 +365,6 @@ class TomAuthorizationCache implements TomDisposable {
         ),
       );
     }
-    return 0;
   }
 }
 
@@ -405,10 +407,14 @@ class TomAuthorizationCacheExecutor extends TomExecutor {
       // Returned rather than discarded, for the same reason the retrieve below
       // is: the transport awaits whatever comes back, so a returned future
       // carries a refusal to the worker as a throw, while a discarded one
-      // leaves the worker reading `0` -- success -- for a store that never
-      // happened. The value it settles to is storePrincipal's own `0`; nothing
-      // reads it, but it is not null, so executeInCreator does not mistake it
-      // for an unclaimed command.
+      // leaves the worker reading success for a store that never happened.
+      //
+      // The future settles to nothing, which is the right answer and not a
+      // missing one: the creator awaits it and compares against
+      // TomExecutor.noResult to decide whether an executor claimed the
+      // command, and `null` is not that sentinel, so the chain stops here as
+      // it should. What the worker finally reads is the substituted sentinel,
+      // and nothing reads it.
       return TomAuthorizationCache.storePrincipal(
         command.authenticationToken,
         command.authorizedPrincipal,

@@ -87,13 +87,14 @@ Future<void> run() async {
   final executor = TomAuthorizationCacheExecutor();
   // Both handled commands hand back the cache call's future rather than
   // awaiting it, so a creator-side refusal travels to the asking worker as a
-  // throw. Await it here as the transport would.
-  final stored = await (executor.execute(store) as Future<int>);
+  // throw. Await it here as the transport would. A store settles to nothing --
+  // it either happened or threw -- so completing without a throw is the whole
+  // answer.
+  await (executor.execute(store) as Future<void>);
   print(
-    '4. executor store -> $stored, '
+    '4. executor store -> completed, '
     'unknown command -> noResult: ${identical(executor.execute('nope'), TomExecutor.noResult)}',
   );
-  assert(stored == 0);
   assert(identical(executor.execute('nope'), TomExecutor.noResult));
   // The retrieve command resolves (asynchronously) to the stored principal.
   final retrieved = await (executor.execute(retrieve) as Future<TomPrincipal?>);

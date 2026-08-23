@@ -73,6 +73,31 @@ class ProbeCacheCommand extends TomCommand {
   }
 }
 
+/// Declines everything, recording what it was offered.
+///
+/// Registered behind [TomAuthorizationCacheExecutor] so a test can ask what the
+/// cache executor left for the rest of the chain.
+class _RecordingExecutor extends TomExecutor {
+  final List<Object> seen = [];
+
+  @override
+  Object execute(Object command) {
+    seen.add(command);
+    return TomExecutor.noResult;
+  }
+}
+
+/// Runs inside a WORKER isolate and forwards a command no executor claims, so
+/// a test can see what the creator's executor chain does with one.
+class ProbeChainCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async {
+    if (TomWorker.isMainIsolate) return 'not-a-worker';
+    final answer = await TomWorker.executeInCreator('unclaimed-probe');
+    return identical(answer, TomExecutor.noResult) ? 'noResult' : 'claimed';
+  }
+}
+
 /// Runs inside a WORKER isolate and forwards a store to the creator.
 class StoreThroughWorkerCommand extends TomCommand {
   final TomClientJwtToken token;
@@ -84,8 +109,8 @@ class StoreThroughWorkerCommand extends TomCommand {
   Future<Object?> execute() async {
     if (TomWorker.isMainIsolate) return 'not-a-worker';
     try {
-      return 'stored:'
-          '${await TomAuthorizationCache.storePrincipal(token, principal)}';
+      await TomAuthorizationCache.storePrincipal(token, principal);
+      return 'stored';
     } on TomAuthorizationCacheException catch (e) {
       return 'rejected:${e.key}';
     } catch (e) {
@@ -139,11 +164,7 @@ void main() {
   group('TomAuthorizationCache (main isolate)', () {
     test('stores a principal and reads it back by token', () async {
       final token = _token('alice');
-      final result = await TomAuthorizationCache.storePrincipal(
-        token,
-        _principal('alice'),
-      );
-      expect(result, 0);
+      await TomAuthorizationCache.storePrincipal(token, _principal('alice'));
 
       final cached = await TomAuthorizationCache.getPrincipal(token);
       expect(cached, isNotNull);
@@ -492,10 +513,8 @@ void main() {
         'validUntil': expiry.toIso8601String(),
       });
 
-      expect(
-        await TomAuthorizationCache.storePrincipal(token, _principal('iris')),
-        0,
-      );
+      await TomAuthorizationCache.storePrincipal(token, _principal('iris'));
+
       final cached = await TomAuthorizationCache.getPrincipal(token);
       expect(cached!.username, 'iris');
     });
@@ -558,10 +577,15 @@ void main() {
   // like a miss exactly where the request pipeline runs.
   group('TomAuthorizationCache (worker isolate round trip)', () {
     final executor = TomAuthorizationCacheExecutor();
+    // Registered after the cache executor so that it sees exactly the commands
+    // the cache executor declined. See the last test in this group.
+    final trailing = _RecordingExecutor();
     late TomWorker worker;
 
     setUp(() async {
       TomWorker.addExecutor(executor);
+      TomWorker.addExecutor(trailing);
+      trailing.seen.clear();
       worker = await TomWorker.spawn(
         TomWorker.startRemoteIsolate,
         _CacheWorkerContext(),
@@ -573,6 +597,7 @@ void main() {
       // The registry is process-global, so withdraw exactly this registration;
       // clearExecutors would discard whatever else the process had installed.
       TomWorker.removeExecutor(executor);
+      TomWorker.removeExecutor(trailing);
     });
 
     test('an expired entry reaches the worker as an expiry', () async {
@@ -630,7 +655,7 @@ void main() {
       final stored = await worker
           .executeCommand(StoreThroughWorkerCommand(token, _principal('grace')))
           .timeout(const Duration(seconds: 10));
-      expect(stored, 'stored:0');
+      expect(stored, 'stored');
 
       final cached = await TomAuthorizationCache.getPrincipal(token);
       expect(cached!.username, 'grace');
@@ -652,7 +677,7 @@ void main() {
               StoreThroughWorkerCommand(token, _principal('helen')),
             )
             .timeout(const Duration(seconds: 10));
-        expect(stored, 'stored:0');
+        expect(stored, 'stored');
 
         final answer = await worker
             .executeCommand(ProbeCacheCommand(token))
@@ -668,10 +693,10 @@ void main() {
     test('a worker-side store of a malformed token is refused', () async {
       // The guard lives on the creator side, so a worker only learns that its
       // store was refused if the refusal travels back. Nothing else in this
-      // group would notice it not travelling: storePrincipal answers `0` on
-      // the way out regardless, so the worker reads a store that never
-      // happened as a store that did — the same failure shape as the expiry
-      // that used to be lost, one method along.
+      // group would notice it not travelling: a store that returns normally
+      // and a store that never happened look identical from the worker, so
+      // without the throw the worker reads the second as the first — the same
+      // failure shape as the expiry that used to be lost, one method along.
       final token = _tokenWithPayload({'userId': 'ivan'});
 
       final answer = await worker
@@ -684,6 +709,46 @@ void main() {
       );
       expect(await TomAuthorizationCache.getPrincipal(token), isNull);
     });
+
+    test('a forwarded store claims the command, ending the chain', () async {
+      // A store now settles to nothing, and the creator decides whether an
+      // executor claimed a command by comparing what it settled to against
+      // TomExecutor.noResult. `null` is not that sentinel, so the chain must
+      // stop at the cache executor -- but the two are close enough that the
+      // distinction is worth pinning rather than assuming. If a settled-to-
+      // nothing store ever read as "not handled", every executor behind this
+      // one would be offered a store it has no business seeing, and the
+      // creator would log the command as unhandled while it in fact succeeded.
+      //
+      // The other tests in this group cannot see this: with one executor
+      // registered, claiming the command and falling off the end of the chain
+      // look the same.
+      final token = _token('quinn');
+
+      final stored = await worker
+          .executeCommand(StoreThroughWorkerCommand(token, _principal('quinn')))
+          .timeout(const Duration(seconds: 10));
+
+      expect(stored, 'stored');
+      expect(
+        (await TomAuthorizationCache.getPrincipal(token))!.username,
+        'quinn',
+      );
+
+      // A command nobody claims, to show the recorder is genuinely behind the
+      // cache executor in the chain. Without this the assertion below would
+      // hold just as well if the recorder were never consulted at all.
+      final probe = await worker
+          .executeCommand(ProbeChainCommand())
+          .timeout(const Duration(seconds: 10));
+      expect(probe, 'noResult');
+      expect(trailing.seen, contains('unclaimed-probe'));
+
+      expect(
+        trailing.seen.whereType<TomAuthorizationCacheStoreMessage>(),
+        isEmpty,
+      );
+    });
   });
 
   group('TomAuthorizationCacheExecutor', () {
@@ -691,14 +756,15 @@ void main() {
 
     test('handles a store message, returning the store to be awaited', () async {
       // The future is returned rather than discarded so that a refusal reaches
-      // the worker that asked for the store; the value it settles to is
-      // storePrincipal's `0`, which matters only in that it is not null and so
-      // is not read as an unclaimed command.
+      // the worker that asked for the store. What it settles to is nothing:
+      // there is no count or status a store could report, so the assertion is
+      // that awaiting it completes and the principal is there afterwards.
       final token = _token('carol');
       final result = executor.execute(
         TomAuthorizationCacheStoreMessage(token, _principal('carol')),
       );
-      expect(await (result as Future<int>), 0);
+      expect(result, isA<Future<void>>());
+      await (result as Future<void>);
       expect(
         (await TomAuthorizationCache.getPrincipal(token))!.username,
         'carol',
@@ -731,7 +797,7 @@ void main() {
         await (executor.execute(
               TomAuthorizationCacheStoreMessage(token, _principal('dave')),
             )
-            as Future<int>);
+            as Future<void>);
         final result = executor.execute(
           TomAuthorizationCacheRetrieveMessage(token),
         );
