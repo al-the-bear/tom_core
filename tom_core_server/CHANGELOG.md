@@ -81,6 +81,36 @@
 
 ### Behaviour Changes
 
+- **A cache type mismatch now carries the cast error that caused it
+  (tcinc413).** `fromNameCache` wrapped `entry.value as T` in a try/catch,
+  bound the caught object and then threw a `TomCacheException` built from a key
+  and a message only — so the module's one failure with a genuine underlying
+  cause was also the one that discarded it. A caller debugging a mismatch saw
+  "Cached value of type String is not of type int" and nothing behind it. The
+  other three raise sites decide by inspection and have nothing to attach; they
+  are unchanged.
+
+  The exception is now constructed with `rootException` and with the `stack`
+  the catch was handed, which is the trace of the cast rather than of the catch
+  block a few lines below it — a wrapper that keeps its cause should report
+  where the cause arose. The `TypeError` is worth keeping because it says
+  something the message cannot: it names the target type as the runtime
+  resolved it, generics and nullability included, where `$T` is only ever as
+  specific as the type argument the caller wrote.
+
+  The catch was also narrowed from a bare `catch` to `on TypeError`. The
+  `return` is the only statement in the `try`, so a failed cast is the only
+  thing it can raise; the bare form promised to relabel anything else as a type
+  mismatch, which is the one diagnosis this site is certain of.
+
+  Attaching a cause widens an existing guarantee, so it is now pinned by a
+  test. `TomBaseException.toString()` renders `rootException`, so from here on
+  the cause's wording appears in every logged form of the exception — and the
+  module's rule is that a mismatch names the type it found and never the value,
+  because a cache holds whatever a caller put in it. That a `TypeError` reports
+  types and never the value is a property of the runtime rather than of this
+  code, so it is asserted rather than assumed.
+
 - **`TomCache` now rejects a non-positive `maximumEntries` (tcinc408).**
   `putEntry`'s bounded path splits on whether the cache is empty, and the empty
   branch inserted unconditionally — it never reached the eviction check, which

@@ -406,6 +406,10 @@ class TomCache {
   /// named cache does not exist. In a worker isolate that does not hold the
   /// cache, the read is forwarded to the main isolate.
   ///
+  /// The mismatch carries the cast's `TypeError` as its `rootException` and the
+  /// cast site's trace as its `stack`; the runtime's message names the target
+  /// type as it was resolved, which this method's own message cannot.
+  ///
   /// A forwarded read that fails on the main isolate — because no cache of that
   /// name exists there either — throws here too, rather than answering `null`:
   /// "there is no such cache" is a configuration mistake and must not be
@@ -433,15 +437,30 @@ class TomCache {
         );
         try {
           return entry.value as T;
-        } catch (e) {
+        } on TypeError catch (e, s) {
+          // Narrow, because the cast is the only statement in the `try` and a
+          // failed cast is the only thing it can raise. A bare `catch` would
+          // relabel any other failure as a type mismatch, which is the one
+          // diagnosis this site is certain of.
+          //
           // The value's *type* is what explains the mismatch; its contents
           // explain nothing and are whatever the caller cached — a session
           // token as easily as a greeting. Naming the type diagnoses the fault
           // without rendering a payload into a message that is logged.
+          //
+          // The cause is carried rather than dropped. This is the module's only
+          // failure with a genuine underlying error, and the TypeError says
+          // something the message above cannot: it names the *target* type as
+          // the runtime resolved it, generics and nullability included, where
+          // `$T` is only as specific as the caller's type argument. `s` is the
+          // trace of the cast rather than of this catch block — a wrapper that
+          // keeps its cause should report where the cause arose.
           throw TomCacheException(
             "error.cache_retrieve.types_dont_match",
             "Cached value of type ${entry.value.runtimeType} "
                 "is not of type $T",
+            rootException: e,
+            stack: s,
           );
         }
       }

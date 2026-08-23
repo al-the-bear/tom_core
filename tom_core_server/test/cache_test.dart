@@ -24,6 +24,19 @@ TomCache _cache(String name, {int? maximumEntries}) => TomCache(
   maximumEntries: maximumEntries,
 );
 
+/// Runs [op] and returns the [TomCacheException] it raises, failing the test if
+/// it raises nothing. Used where the assertion is about the *contents* of the
+/// exception — its `clientThrow`, its message, its cause — rather than merely
+/// that one was thrown, which `throwsA` already covers.
+Future<TomCacheException> _raised(Future<Object?> Function() op) async {
+  try {
+    await op();
+  } on TomCacheException catch (e) {
+    return e;
+  }
+  fail('expected a TomCacheException');
+}
+
 /// A plain LRU of the same bound, used as the reference the cache is checked
 /// against.
 ///
@@ -367,15 +380,6 @@ void main() {
     // The constructor default only matters if the raise sites take it, and a
     // raise site can override it silently. Each of the four is pinned here.
 
-    Future<TomCacheException> raised(Future<Object?> Function() op) async {
-      try {
-        await op();
-      } on TomCacheException catch (e) {
-        return e;
-      }
-      fail('expected a TomCacheException');
-    }
-
     test(
       'a missing cache is not client-throwable, on any of the three helpers',
       () async {
@@ -388,7 +392,7 @@ void main() {
           () => TomCache.toNameCache('ghost', 'k', 'v'),
           () => TomCache.removeFromNameCache('ghost', 'k'),
         ]) {
-          expect((await raised(op)).clientThrow, isFalse);
+          expect((await _raised(op)).clientThrow, isFalse);
         }
       },
     );
@@ -396,7 +400,7 @@ void main() {
     test('a type mismatch is not client-throwable', () async {
       TomCacheManager.addCache(_cache('c'));
       await TomCache.toNameCache('c', 'k', 123);
-      final e = await raised(() => TomCache.fromNameCache<String>('c', 'k'));
+      final e = await _raised(() => TomCache.fromNameCache<String>('c', 'k'));
       expect(e.clientThrow, isFalse);
     });
 
@@ -407,10 +411,64 @@ void main() {
       // logged message is only a leak.
       TomCacheManager.addCache(_cache('c'));
       await TomCache.toNameCache('c', 'k', 'super-secret-token');
-      final e = await raised(() => TomCache.fromNameCache<int>('c', 'k'));
+      final e = await _raised(() => TomCache.fromNameCache<int>('c', 'k'));
       expect(e.defaultUserMessage, isNot(contains('super-secret-token')));
       expect(e.defaultUserMessage, contains('String'));
       expect(e.defaultUserMessage, contains('int'));
+    });
+  });
+
+  group('The type mismatch keeps its cause', () {
+    // The mismatch is the only failure in this module with a genuine underlying
+    // error: the other three raise sites decide by inspection and have nothing
+    // to attach. So this is the only place where dropping the cause would cost
+    // anything, and the only place worth pinning.
+
+    test('a type mismatch carries the cast error as its cause', () async {
+      TomCacheManager.addCache(_cache('c'));
+      await TomCache.toNameCache('c', 'k', 123);
+      final e = await _raised(() => TomCache.fromNameCache<String>('c', 'k'));
+
+      // The TypeError says something the wrapper's message cannot: it names the
+      // target type as the *runtime* resolved it, where `$T` is only ever as
+      // specific as the type argument the caller wrote.
+      expect(e.rootException, isA<TypeError>());
+      expect(
+        e.rootException.toString(),
+        allOf(contains('int'), contains('String')),
+      );
+    });
+
+    test('the reported stack is the cast site, not the catch block', () async {
+      // The catch passes the trace it was handed rather than letting the
+      // exception capture StackTrace.current where it is constructed. Both
+      // traces name fromNameCache, so a test that only looked for the method
+      // would pass either way; what distinguishes them is the *line*, and the
+      // head frame is the cast rather than the throw a few lines below it.
+      TomCacheManager.addCache(_cache('c'));
+      await TomCache.toNameCache('c', 'k', 123);
+      final e = await _raised(() => TomCache.fromNameCache<String>('c', 'k'));
+
+      expect(e.stack, isA<StackTrace>());
+      final head = e.stack.toString().split('\n').first;
+      expect(head, contains('fromNameCache'));
+      expect(head, contains('server_cache.dart'));
+    });
+
+    test('the attached cause does not leak the cached value either', () async {
+      // Attaching a cause widens the no-leak guarantee that the test above
+      // ("names the type it found, not the value") makes of the message alone:
+      // TomBaseException.toString() renders rootException, so from here on the
+      // cause's own wording appears in every logged form of this exception. A
+      // TypeError reports types and never the value that failed to convert —
+      // that is a property of the runtime, so it is asserted rather than
+      // assumed.
+      TomCacheManager.addCache(_cache('c'));
+      await TomCache.toNameCache('c', 'k', 'super-secret-token');
+      final e = await _raised(() => TomCache.fromNameCache<int>('c', 'k'));
+
+      expect(e.rootException.toString(), isNot(contains('super-secret-token')));
+      expect(e.toString(), isNot(contains('super-secret-token')));
     });
   });
 

@@ -75,6 +75,13 @@ runtime type rather than the value itself, so a cached payload is not rendered
 into a logged message. The flag is a parameter, so a raise site with a genuinely
 public cache can pass `true`.
 
+The type mismatch is the module's only failure with an underlying cause, and it
+carries it: the cast's `TypeError` as `rootException` and the cast site's trace
+as `stack`. The runtime's message names the target type as it was resolved,
+which the wrapper's own message cannot, and reports types only — never the
+value that failed to convert. The other raise sites decide by inspection and
+have no cause to pass.
+
 - **Extends:** `TomServerException`
 
 #### Constructors

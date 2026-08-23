@@ -184,6 +184,14 @@ readily as a greeting — and the contents never explain why the cast failed,
 while the type always does. Rendering the payload into a message that is logged
 would be a leak that buys no diagnosis.
 
+Being internal does not mean being undiagnosable. The mismatch is the module's
+one failure with an underlying cause, and it keeps it: the cast's `TypeError`
+is attached as `rootException` and the cast site's trace as `stack`, both of
+which reach the log. The runtime's message names the target type as it was
+resolved — generics and nullability included, where the type parameter is only
+as specific as the caller wrote it — and reports types only, never the value,
+so attaching it does not widen the leak the paragraph above rules out.
+
 The flag is a constructor parameter, so a raise site with a genuinely public
 cache can pass `clientThrow: true`. It survives the isolate boundary intact, so
 a forwarded failure carries the same `key` **and** the same `clientThrow` as a
