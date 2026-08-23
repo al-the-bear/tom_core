@@ -558,6 +558,28 @@
 
 ### Documentation
 
+- **A forwarded store is now tested with the one argument whose loss is silent
+  (tcinc406).** The cache module's cross-isolate forwarding was covered from two
+  directions, neither of which crossed an isolate boundary with a full argument
+  list: one group asserted only *which branch* was taken (the helpers throw a
+  `TomWorkerException` because the test process has no back channel), and the
+  other called the command objects' `execute()` directly in the main isolate,
+  which is the local path with an extra object around it. A real round-trip
+  group already existed and covered a store, a read and a removal — but its
+  store passes no `deletionTime`, so the four-argument forwarding path was
+  exercised only with `null`.
+
+  That is the one argument whose loss cannot surface as a failure: the receiving
+  side fills the expiry in from the target cache's `deleteEntriesAfterSeconds`
+  and reports the same success, so the write looks fine and the entry outlives
+  its intended lifetime until some later read. Two tests now store through a
+  real spawned `TomWorker` with an explicit instant — one asserting the entry
+  landed with the instant the worker asked for rather than the cache's default,
+  one asserting an already-expired store reads back as a miss through the public
+  API. Both were checked against the defect they guard: reverting
+  `TomCacheStoreMessage.execute` to drop its `deletionTime` turns them red,
+  showing the substituted default in place of the requested expiry.
+
 - **`doc/cache.md` records the module's limits, and the limits are pinned
   (tcinc405).** The cache module's five known limits lived only in an internal
   completion document; the package-facing prose carried none of them and had no

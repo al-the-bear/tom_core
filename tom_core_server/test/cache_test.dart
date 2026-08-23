@@ -103,6 +103,38 @@ class ProbeCacheStoreCommand extends TomCommand {
   }
 }
 
+/// Runs inside a WORKER isolate and stores a value with an explicit expiry.
+///
+/// The expiry is the whole point of this probe. A `deletionTime` dropped in
+/// transit cannot surface as an error — the receiving side simply applies the
+/// target cache's `deleteEntriesAfterSeconds` and reports the same success — so
+/// the only way to see it is to ask for an instant the cache's default would
+/// not have produced, and then look at the entry that landed.
+class ProbeCacheStoreWithExpiryCommand extends TomCommand {
+  final String cacheName;
+  final DateTime deletionTime;
+
+  ProbeCacheStoreWithExpiryCommand(this.cacheName, this.deletionTime);
+
+  @override
+  Future<Object?> execute() async {
+    if (TomWorker.isMainIsolate) return 'not-a-worker';
+    try {
+      final result = await TomCache.toNameCache(
+        cacheName,
+        'k',
+        'from-worker',
+        deletionTime,
+      );
+      return 'stored:$result';
+    } on TomCacheException catch (e) {
+      return 'failed:${e.key} client=${e.clientThrow}';
+    } catch (e) {
+      return 'other:${e.runtimeType}';
+    }
+  }
+}
+
 /// Runs inside a WORKER isolate and reports how a forwarded removal came back.
 class ProbeCacheRemoveCommand extends TomCommand {
   final String cacheName;
@@ -534,6 +566,14 @@ void main() {
   // a creator-side "no such cache" used to come back as an ordinary value, so a
   // forwarded read reported a miss and — worse — a forwarded store reported
   // success, for a cache that exists nowhere.
+  //
+  // Executing a command object directly in the main isolate is not a substitute.
+  // That is the *local* path with an extra object around it: it never exercises
+  // the crossing, so it cannot see an argument that fails to make it. The
+  // `deletionTime` is exactly such an argument — dropping it substitutes the
+  // target cache's default and still reports success — which is why the two
+  // expiry tests below go through a real worker rather than through
+  // `TomCacheStoreMessage.execute()`.
   group('Worker-isolate forwarding round trip', () {
     late TomWorker worker;
 
@@ -607,6 +647,46 @@ void main() {
           await TomCache.fromNameCache<String>('shared', 'k'),
           'from-worker',
         );
+      },
+    );
+
+    test('a forwarded store carries the expiry the worker asked for', () async {
+      // The store above passes no `deletionTime`, so it exercises the
+      // forwarding path with `null` and can say nothing about the one argument
+      // whose loss is invisible: the receiving side would fill it in from the
+      // cache's `deleteEntriesAfterSeconds` and report the very same success,
+      // and the entry would then outlive its intended lifetime until some
+      // later read. The cache below would have supplied now+300s of its own
+      // accord, so an entry that lands with the worker's instant proves the
+      // argument crossed rather than being silently substituted.
+      final cache = _cache('shared'); // deleteEntriesAfterSeconds: 300
+      TomCacheManager.addCache(cache);
+      final asked = DateTime.now().add(const Duration(days: 30));
+
+      final answer = await worker
+          .executeCommand(ProbeCacheStoreWithExpiryCommand('shared', asked))
+          .timeout(const Duration(seconds: 10));
+
+      expect(answer, 'stored:0');
+      expect(cache.getEntry('k')!.deletionTime, asked);
+    });
+
+    test(
+      'a forwarded store of an already-expired entry reads back as a miss',
+      () async {
+        // The same fact stated through the public API rather than the entry, so
+        // it holds even for a caller that never reaches past `fromNameCache`:
+        // had the instant been dropped, the cache's default would have made this
+        // value live for five minutes and the read below would hit.
+        TomCacheManager.addCache(_cache('shared'));
+        final past = DateTime.now().subtract(const Duration(minutes: 1));
+
+        final answer = await worker
+            .executeCommand(ProbeCacheStoreWithExpiryCommand('shared', past))
+            .timeout(const Duration(seconds: 10));
+
+        expect(answer, 'stored:0');
+        expect(await TomCache.fromNameCache<String>('shared', 'k'), isNull);
       },
     );
 
