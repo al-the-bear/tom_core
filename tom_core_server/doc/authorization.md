@@ -139,11 +139,22 @@ tomShutdownCleanup.addDisposable(TomAuthorizationCache.instance);
 
 `stopEviction()` cancels the sweep on its own (entries stay, and expired ones
 are still rejected on read); `startEviction(interval:)` starts one at a chosen
-interval, replacing any that is running. A server that would rather have the
-sweep parented at boot than to whichever request happens to store first calls
-that once at start-up. `TomAuthorizationCache.instance` is the only way to reach
-a cache — the constructor is private, because every instance would own a sweep
-and a second one's sweep would walk a map the static API never writes to.
+interval, replacing any that is running — for a server that wants something
+other than the hourly default, and for tests that cannot wait an hour.
+`TomAuthorizationCache.instance` is the only way to reach a cache — the
+constructor is private, because every instance would own a sweep and a second
+one's sweep would walk a map the static API never writes to.
+
+The sweep runs in **`Zone.root`**, whichever path started it. That matters
+because the caller that stores the first principal is normally a request, and
+the endpoint pipeline runs each request in its own zone to carry the principal:
+a timer created with `Zone.current` would leave process-lifetime work answering
+to one request's error handling and teardown, and would let whichever caller
+arrived first decide the zone. Root rather than a zone the server installs at
+boot, because the sweep wants nothing a zone can give it — it walks a plain map,
+needs no principal and no transaction, and a failure in it belongs to the
+process rather than to any request. Nothing therefore has to call
+`startEviction` at start-up to get the zone right.
 
 ## Grants, Grades and Delegations
 

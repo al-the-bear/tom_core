@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:tom_core_server/tom_core_server.dart';
@@ -283,6 +284,66 @@ void main() {
         isTrue,
       );
     });
+
+    test(
+      'the sweep belongs to the root zone, not to whoever started it',
+      () async {
+        // The scenario this pins: on a server the first principal is stored
+        // from inside a request, and the pipeline runs each request in its own
+        // zone to carry the principal. A sweep created with Zone.current would
+        // therefore be parented to one request's zone -- process-lifetime work
+        // answering to that request's error handling and teardown long after
+        // the request is gone.
+        //
+        // The caller's zone is instrumented rather than inspected: a timer a
+        // zone owns is one it was asked to create (createPeriodicTimer) and
+        // whose callback it later runs (runUnary, with the Timer as argument).
+        // Both counters staying at zero is what "not this zone's timer" means,
+        // and either would rise again the moment Zone.current came back.
+        var timersCreatedHere = 0;
+        var callbacksRunHere = 0;
+        final requestZoneSpec = ZoneSpecification(
+          createPeriodicTimer: (self, parent, zone, period, f) {
+            timersCreatedHere++;
+            return parent.createPeriodicTimer(zone, period, f);
+          },
+          runUnary: <R, T>(self, parent, zone, f, arg) {
+            if (arg is Timer) callbacksRunHere++;
+            return parent.runUnary(zone, f, arg);
+          },
+        );
+
+        final expiredToken = _token(
+          'quentin',
+          validFor: const Duration(hours: -1),
+        );
+
+        await runZoned(() async {
+          // The automatic start: the first store is what creates the sweep.
+          await TomAuthorizationCache.storePrincipal(
+            expiredToken,
+            _principal('quentin'),
+          );
+          expect(TomAuthorizationCache.isEvicting, isTrue);
+          // ...and the deliberate start, which funnels through the same private
+          // starter. Asked for here so the interval is short enough that the
+          // callback actually fires before this test ends.
+          TomAuthorizationCache.startEviction(
+            interval: const Duration(milliseconds: 20),
+          );
+        }, zoneSpecification: requestZoneSpec);
+
+        // Outside the zone now -- as a server is once the request has finished.
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        expect(timersCreatedHere, 0, reason: 'the sweep is not this zone\'s');
+        expect(callbacksRunHere, 0, reason: 'nor does this zone run it');
+        // And it is a working sweep, not merely one this zone never saw: the
+        // entry stored above was already expired and has been evicted, so the
+        // read is a plain miss rather than the rejection an unswept entry gives.
+        expect(await TomAuthorizationCache.getPrincipal(expiredToken), isNull);
+      },
+    );
   });
 
   // The token is client-supplied, so `validUntil` is untrusted input and every

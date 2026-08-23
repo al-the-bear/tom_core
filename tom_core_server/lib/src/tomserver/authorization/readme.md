@@ -20,7 +20,7 @@ application-side resolver involved.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomAuthorizationCache` | Static principal cache; `storePrincipal(...)` and `getPrincipal(...)`, with cross-isolate forwarding. Its eviction sweep starts with the first stored principal and stops through `stopEviction()` or, on a server, by registering `instance` with `tomShutdownCleanup`. |
+| `TomAuthorizationCache` | Static principal cache; `storePrincipal(...)` and `getPrincipal(...)`, with cross-isolate forwarding. Its eviction sweep starts with the first stored principal, runs in `Zone.root` rather than the storing request's zone, and stops through `stopEviction()` or, on a server, by registering `instance` with `tomShutdownCleanup`. |
 | `TomAuthorizationCacheEntry` | One cached principal with its expiry bookkeeping. |
 | `TomAuthorizationCacheStoreMessage` · `TomAuthorizationCacheRetrieveMessage` | Cross-isolate commands carrying a store/retrieve to the main isolate. |
 | `TomAuthorizationCacheExecutor` | `TomExecutor` that runs those commands in the creator isolate. |

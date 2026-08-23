@@ -115,6 +115,8 @@ Future<void> run() async {
   //    an hour by default; ask for a short one so the demo can watch it work.
   //    Bob's entry from step 3 is already expired, so the sweep removes it and
   //    the next read is an ordinary miss rather than the rejection above.
+  //    The sweep's timer is created in Zone.root either way, so on a server the
+  //    request that stores first does not end up owning it.
   print('6. sweep running            : ${TomAuthorizationCache.isEvicting}');
   TomAuthorizationCache.startEviction(
     interval: const Duration(milliseconds: 20),

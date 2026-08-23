@@ -66,7 +66,9 @@ class TomAuthorizationCacheEntry {
 /// has passed; reads also reject an expired entry by throwing a
 /// [TomAuthorizationCacheException]. The sweep starts with the first stored
 /// principal and can be stopped again through [stopEviction] — or, on a server,
-/// by registering [instance] with `tomShutdownCleanup`.
+/// by registering [instance] with `tomShutdownCleanup`. It runs in [Zone.root]
+/// regardless of who starts it, so the request that happens to store first does
+/// not end up owning process-lifetime work.
 class TomAuthorizationCache implements TomDisposable {
   static final TomAuthorizationCache _current = TomAuthorizationCache._();
 
@@ -107,8 +109,12 @@ class TomAuthorizationCache implements TomDisposable {
   ///
   /// Callers do not normally need this: [storePrincipal] starts the sweep at
   /// [evictionInterval] with the first entry it caches. It exists for the two
-  /// cases that do — a server that wants the sweep parented at boot rather than
-  /// to whichever request stores first, and a test that cannot wait an hour.
+  /// cases that do — a server that wants a different interval than the hourly
+  /// default, and a test that cannot wait an hour.
+  ///
+  /// It is *not* needed to control which zone the sweep runs in: the timer is
+  /// created in [Zone.root] whichever of the two paths starts it, so a sweep
+  /// started from inside a request is no different from one started at boot.
   ///
   /// Replacing rather than ignoring a second call is what makes the postcondition
   /// "a sweep is running at [interval]" true whenever this returns.
@@ -125,11 +131,20 @@ class TomAuthorizationCache implements TomDisposable {
 
   void _startEviction(Duration interval) {
     _evictionTimer?.cancel();
-    // Zone.root, not Zone.current: this timer lives as long as the process,
-    // while the caller that happens to store the first principal is usually a
-    // single request running in its own zone. Parenting process-lifetime work
-    // to a request zone leaves it answering to that request's error handling
-    // and teardown long after the request is gone.
+    // Why: Zone.root, not Zone.current. This timer lives as long as the
+    // process, while the caller that happens to store the first principal is
+    // usually a single request — the endpoint pipeline runs each one in its own
+    // zone to carry the principal. Parenting process-lifetime work to a request
+    // zone leaves it answering to that request's error handling and teardown
+    // long after the request is gone, and makes the sweep's zone depend on
+    // which caller arrived first rather than on a decision anyone made.
+    //
+    // Root rather than a zone the server installs at boot, because the sweep
+    // needs nothing a zone could give it: it walks a plain map, wants no
+    // principal and no transaction, and an error in it belongs to the process
+    // rather than to any request. Its one log line carries no request logging
+    // context for the same reason — the sweep is not part of a request. A boot
+    // zone would only tie the sweep to start-up ordering it cannot use.
     _evictionTimer = Zone.root.createPeriodicTimer(
       interval,
       (Timer t) => _evictExpired(),

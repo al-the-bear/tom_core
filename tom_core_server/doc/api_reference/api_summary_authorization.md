@@ -156,7 +156,9 @@ TomAuthorizationCacheEntry(TomPrincipal authorizedPrincipal, [DateTime? deletion
 Caches the `TomPrincipal` resolved for an authentication token, keyed by the JWT
 token string. Lives in the main isolate; worker-isolate calls forward to the
 creator isolate. A periodic sweep evicts expired entries, started by the first
-stored principal and stoppable through `stopEviction` or `dispose`.
+stored principal and stoppable through `stopEviction` or `dispose`. The sweep's
+timer is created in `Zone.root`, not in the caller's zone, so the request that
+happens to store first does not end up owning process-lifetime work.
 
 Implements `TomDisposable`. The constructor is private: `instance` is the single
 cache the static API uses, exposed so a server can register it for shutdown
@@ -178,7 +180,7 @@ can populate, so there is exactly one.
 | ------ | --------- | ----------- |
 | `getPrincipal` | `static Future<TomPrincipal?> getPrincipal(TomClientJwtToken authenticationToken)` | Returns the cached principal, or `null` on a cache miss. Throws `TomAuthorizationCacheException` when the entry has expired. Called from a worker isolate the lookup is forwarded to the main isolate, and all three answers survive the trip -- a hit returns the principal, a miss returns `null`, an expiry rethrows -- so callers need no isolate-dependent handling. |
 | `storePrincipal` | `static Future<int> storePrincipal(TomClientJwtToken authenticationToken, TomPrincipal authorizedPrincipal)` | Stores the principal under the token, using the token's `validUntil` claim as expiry, and starts the eviction sweep if it is not already running. Throws `TomAuthorizationCacheException` (`missing_valid_until` / `invalid_valid_until`) when that claim is absent, not a string, or not an ISO 8601 instant -- there is no fallback lifetime, because an invented one would keep a principal cached past the expiry of the token authorizing it. Nothing is cached in that case and the caller keeps resolving the principal per request. Always returns `0` on success. |
-| `startEviction` | `static void startEviction({Duration interval = evictionInterval})` | Starts the sweep at `interval`, replacing any sweep already running -- so the postcondition "a sweep is running at this interval" holds whenever it returns. Rarely needed: a store starts one. For a server that wants the sweep parented at boot rather than to whichever request stores first, and for tests that cannot wait an hour. |
+| `startEviction` | `static void startEviction({Duration interval = evictionInterval})` | Starts the sweep at `interval`, replacing any sweep already running -- so the postcondition "a sweep is running at this interval" holds whenever it returns. Rarely needed: a store starts one at the hourly default. For a server that wants a different interval, and for tests that cannot wait an hour. Not needed to control the sweep's zone: it is created in `Zone.root` whichever path starts it. |
 | `stopEviction` | `static void stopEviction()` | Cancels the sweep; a no-op when none is running. Cached entries are left in place -- stopping the sweep suspends the bounding of the map, it does not invalidate its contents. |
 
 #### Methods
