@@ -78,6 +78,23 @@
 
 ### Documentation
 
+- **The composition diagram in `doc/cmdline.md` now shows the resource base
+  layer (tcinc422).** It drew three inputs — `Platform.environment`, the `.env`
+  file and the command line — and called them "all three sources".
+  `getDefaultValues` starts from a deep copy of the active
+  `TomServerConfigResourceProvider`'s resources and merges those three on top,
+  so the YAML tree is a fourth, lowest-precedence layer. It is also the only
+  layer that supplies a value when none of the others does, which made the
+  omission the expensive kind: a reader of `doc/cmdline.md` could not work out
+  where a setting they never passed had come from.
+
+  The diagram now has four inputs and the prose says the three sources are
+  layered *on top of the configuration resources*, matching the diagram
+  `doc/configuration.md` already carried. The `merge` snippet beneath it is
+  labelled as reproducing the three upper layers only, since a hand-rolled
+  stack has no resource tree beneath it. A test pins the base layer on its own
+  — a resource value no other source supplies reaches the configuration.
+
 - **The `doublePattern` shorthand no longer understates the pattern
   (tcinc421).** `TomArgs.doublePattern` is `[0-9]+[.][0-9]*`, but its own
   dartdoc and the API-reference mirror both described it as

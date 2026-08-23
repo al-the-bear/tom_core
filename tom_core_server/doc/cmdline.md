@@ -157,18 +157,29 @@ abort the read, and the lines after it are still parsed.
 
 ## How Configuration Composes Them
 
-`TomBaseServerConfiguration` layers all three sources, later overriding earlier:
+`TomBaseServerConfiguration` layers all three sources **on top of the
+configuration resources**, later overriding earlier:
 
 ```text
-Platform.environment  ─┐
-.env file             ─┼─►  merged config values  ─►  the running server
-command-line args     ─┘   (args win over .env win over environment)
+configuration resources  ─┐
+Platform.environment     ─┼─►  merged config values  ─►  the running server
+.env file                ─┤   (args win over .env win over environment
+command-line args        ─┘    win over resources)
 ```
 
-(See `base_server_configuration.dart`, which calls `convertToObjectMap`,
-`TomEnvFile.read`, and `parseArgsToMap` in that order.)
+(See `getDefaultValues` in `base_server_configuration.dart`: it starts from a
+deep copy of `TomServerConfigResourceProvider.getServerConfig().resources`, then
+calls `convertToObjectMap`, `TomEnvFile.read`, and `parseArgsToMap` in that
+order.)
 
-To build the same stack yourself, layer the three with `merge`:
+The resource tree is the base rather than a fourth peer, and that is the layer
+worth knowing about: it is the only one that supplies a value when none of the
+other three does. A setting that appears in the running server without being
+passed anywhere came from the YAML the provider loaded — see
+[configuration.md](configuration.md) for how that tree is built.
+
+To build the three upper layers yourself — without a resource tree beneath
+them — use `merge`:
 
 ```dart
 final merged = TomEnvFile.merge([

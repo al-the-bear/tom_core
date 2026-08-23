@@ -199,6 +199,18 @@ void main() {
   });
 
   group('TomBaseServerConfiguration.getDefaultValues', () {
+    // The resource tree is the base of the four-layer merge, and the only layer
+    // that answers when nothing was passed -- so a setting that appears in a
+    // running server without being written on the command line, in the
+    // environment or in a `.env` file came from here. The documented layering
+    // (doc/cmdline.md, doc/configuration.md) rests on this, so it is pinned on
+    // its own rather than as a side assertion of an override test.
+    test('a resource value no other source supplies reaches the config', () {
+      _install({'only.in.resources': 'fromResource'});
+      final config = _CapturingConfig([]);
+      expect(config.captured['only.in.resources'], 'fromResource');
+    });
+
     test('command-line args override configuration resources', () {
       _install({'override.me': 'fromResource', 'kept': 'resource'});
       final config = _CapturingConfig(['override.me=fromArgs']);
