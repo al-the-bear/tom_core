@@ -30,7 +30,10 @@ cache up through `TomCacheManager` and, in a worker isolate that does not hold
 the cache, forward the operation to the main isolate. A forwarded operation that
 fails there fails here too: a read of a cache that exists nowhere raises rather
 than answering `null`, and a store into one raises rather than reporting the `0`
-that means success.
+that means success. A forwarded read matches a local one on the two outcomes the
+transport cannot classify as well — a value that fails to convert to `T` throws
+rather than reporting a miss, and a miss is `null` rather than the
+`TomExecutor.noResult` sentinel that `executeInCreator` substitutes for it.
 
 `TomCacheManager` holds the named `TomCache` instances for an isolate and decides
 whether operations run locally or are forwarded. `TomCacheException` is raised
@@ -152,7 +155,7 @@ factory TomCache.forType(
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `fromTypeCache` | `static Future<T?> fromTypeCache<T>(String key)` | Reads the value of type `T` keyed by `key` from the cache named after `T`. |
-| `fromNameCache` | `static Future<T?> fromNameCache<T>(String cacheName, String key)` | Reads the value keyed by `key` from cache `cacheName`; returns `null` on a miss or expiry, throws `TomCacheException` on type mismatch or missing cache, and forwards from a worker isolate. |
+| `fromNameCache` | `static Future<T?> fromNameCache<T>(String cacheName, String key)` | Reads the value keyed by `key` from cache `cacheName`; returns `null` on a miss or expiry, throws `TomCacheException` on type mismatch or missing cache, and forwards from a worker isolate — with the same answers on the forwarded path as on the local one. |
 | `toTypeCache` | `static Future<int> toTypeCache<T>(String key, Object? value)` | Stores `value` under `key` in the cache named after `T`. |
 | `toNameCache` | `static Future<int> toNameCache(String cacheName, String key, Object? value, [DateTime? deletionTime])` | Stores `value` under `key` in cache `cacheName`, defaulting expiry from the cache's `deleteEntriesAfterSeconds`; always returns `0`. |
 | `removeFromTypeCache` | `static Future<int> removeFromTypeCache<T>(String key)` | Removes the entry keyed by `key` from the cache named after `T`. |

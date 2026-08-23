@@ -46,6 +46,33 @@ class ProbeCacheReadCommand extends TomCommand {
   }
 }
 
+/// Runs inside a WORKER isolate and reports how an *untyped* forwarded read
+/// came back.
+///
+/// The type argument is the whole point. `executeInCreator` never resolves to
+/// `null` — a creator result of `null`, which is what a miss is, is substituted
+/// with `TomExecutor.noResult` — so a read whose `T` admits any object accepts
+/// that sentinel as if it were the cached value. A read for `String` cannot see
+/// the defect, because the sentinel fails the type test on its way past.
+class ProbeCacheUntypedReadCommand extends TomCommand {
+  final String cacheName;
+
+  ProbeCacheUntypedReadCommand(this.cacheName);
+
+  @override
+  Future<Object?> execute() async {
+    if (TomWorker.isMainIsolate) return 'not-a-worker';
+    try {
+      final value = await TomCache.fromNameCache<Object>(cacheName, 'k');
+      return value == null ? 'miss' : 'value:${value.runtimeType}';
+    } on TomCacheException catch (e) {
+      return 'failed:${e.key}';
+    } catch (e) {
+      return 'other:${e.runtimeType}';
+    }
+  }
+}
+
 /// Runs inside a WORKER isolate and reports how a forwarded store came back.
 class ProbeCacheStoreCommand extends TomCommand {
   final String cacheName;
@@ -57,6 +84,25 @@ class ProbeCacheStoreCommand extends TomCommand {
     if (TomWorker.isMainIsolate) return 'not-a-worker';
     try {
       return 'stored:${await TomCache.toNameCache(cacheName, 'k', 'from-worker')}';
+    } on TomCacheException catch (e) {
+      return 'failed:${e.key}';
+    } catch (e) {
+      return 'other:${e.runtimeType}';
+    }
+  }
+}
+
+/// Runs inside a WORKER isolate and reports how a forwarded removal came back.
+class ProbeCacheRemoveCommand extends TomCommand {
+  final String cacheName;
+
+  ProbeCacheRemoveCommand(this.cacheName);
+
+  @override
+  Future<Object?> execute() async {
+    if (TomWorker.isMainIsolate) return 'not-a-worker';
+    try {
+      return 'removed:${await TomCache.removeFromNameCache(cacheName, 'k')}';
     } on TomCacheException catch (e) {
       return 'failed:${e.key}';
     } catch (e) {
@@ -458,6 +504,70 @@ void main() {
         );
       },
     );
+
+    test(
+      'a forwarded removal from a missing cache fails rather than lying',
+      () async {
+        // The third helper. A removal that reports success for a cache that
+        // exists nowhere is the same lie the store used to tell, and the one
+        // helper of the three with no round-trip evidence behind it.
+        final answer = await worker
+            .executeCommand(ProbeCacheRemoveCommand('nowhere'))
+            .timeout(const Duration(seconds: 10));
+
+        expect(answer, 'failed:error.cache_remove.cache_not_found');
+      },
+    );
+
+    test(
+      'a forwarded removal from a cache the creator holds takes effect',
+      () async {
+        // The companion that keeps the case above honest: a removal must be able
+        // to succeed, and succeed by actually removing something.
+        TomCacheManager.addCache(_cache('shared'));
+        await TomCache.toNameCache('shared', 'k', 'v');
+
+        final answer = await worker
+            .executeCommand(ProbeCacheRemoveCommand('shared'))
+            .timeout(const Duration(seconds: 10));
+
+        expect(answer, 'removed:0');
+        expect(await TomCache.fromNameCache<String>('shared', 'k'), isNull);
+      },
+    );
+
+    test(
+      'a forwarded read of a wrongly typed value fails, not misses',
+      () async {
+        // The local path throws types_dont_match here. Across the boundary the
+        // value came back fine and it is the *conversion* that fails, so no
+        // exception marker in the transport can help: the call site has to make
+        // the check itself, or a caller asking for the wrong type is told the
+        // cache is empty and goes off to recompute a value that is right there.
+        TomCacheManager.addCache(_cache('shared'));
+        await TomCache.toNameCache('shared', 'k', 42);
+
+        final answer = await worker
+            .executeCommand(ProbeCacheReadCommand('shared'))
+            .timeout(const Duration(seconds: 10));
+
+        expect(answer, 'failed:error.cache_retrieve.types_dont_match');
+      },
+    );
+
+    test('a forwarded miss answers null even when T admits Object', () async {
+      // A miss arrives as the noResult sentinel rather than as null, so a read
+      // whose T accepts any object hands that sentinel back as if it were the
+      // cached value — an object no caller has a type for, in place of the
+      // `null` the same call returns locally.
+      TomCacheManager.addCache(_cache('shared'));
+
+      final answer = await worker
+          .executeCommand(ProbeCacheUntypedReadCommand('shared'))
+          .timeout(const Duration(seconds: 10));
+
+      expect(answer, 'miss');
+    });
   });
 
   group('Cross-isolate command objects (executed locally)', () {

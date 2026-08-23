@@ -429,6 +429,30 @@
 
 ### Bug Fixes
 
+- **A forwarded cache read answers as a local one does (tcinc400).** Carrying a
+  creator-side failure across the isolate hop as a failure — the kernel change
+  that made `executeInCreator` complete with an error rather than hand the
+  exception back as a value — fixed the *reported* half of this: a forwarded
+  store into a cache that exists nowhere raises instead of returning the `0`
+  that means success, and a forwarded read raises instead of reporting an empty
+  cache. Round-trip tests through a real worker now cover the third helper too,
+  `removeFromNameCache`, which had the same contract and no evidence behind it.
+
+  Two of a read's outcomes are not failures, though, and no exception marker in
+  the transport reaches them. A value that crossed intact and then failed to
+  convert to `T` was answered as `null` — telling a caller holding the wrong
+  type that the cache is empty, where the local path throws
+  `error.cache_retrieve.types_dont_match`. And a miss arrives as
+  `TomExecutor.noResult`, because `executeInCreator` never resolves to `null`;
+  a read whose `T` admits any object (`Object`, or the `dynamic` of an
+  uninstantiated call) therefore accepted that sentinel *as the cached value*
+  and returned an object no caller has a type for. A read for `String` could not
+  see either defect, which is why neither had surfaced.
+
+  `fromNameCache` now settles both at the call site: the sentinel is translated
+  back into the `null` that means a miss, and a value that is not a `T` throws
+  the same `TomCacheException` the local path throws.
+
 - **A cache store forwarded from a worker isolate keeps its expiry
   (tcinc399).** `TomCacheStoreMessage` carries a `deletionTime` across the
   isolate boundary, and `TomCache.toNameCache` populated it when forwarding —

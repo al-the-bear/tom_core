@@ -112,6 +112,19 @@ If neither a local cache nor forwarding is available, the helper throws
 [`TomCacheException`]. The three static helpers (`from…`, `to…`, `removeFrom…`)
 share the same forward-or-throw rule.
 
+A failure raised on the main isolate comes back as a **throw**, so a forwarded
+operation fails the way it would have failed locally: a store into a cache that
+exists nowhere raises rather than returning the `0` that means success, and a
+read of one raises rather than reporting an empty cache.
+
+Two of a read's answers are not failures, though, and the transport has nothing
+to say about either — a value that crossed intact and then failed to convert to
+`T`, and a miss, which arrives as `TomExecutor.noResult` because
+`executeInCreator` never resolves to `null`. `fromNameCache` settles both at the
+call site, so a forwarded read answers exactly as a local one does: the type
+mismatch throws, and the miss is `null` rather than a sentinel object handed
+back as though it were the cached value.
+
 ## Core Components
 
 - **`TomCache`** — the cache and its static accessor helpers. Instance methods

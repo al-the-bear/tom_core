@@ -358,6 +358,12 @@ class TomCache {
   /// name exists there either — throws here too, rather than answering `null`:
   /// "there is no such cache" is a configuration mistake and must not be
   /// mistaken for "the cache is empty".
+  ///
+  /// A forwarded read answers exactly as a local one does. The type mismatch
+  /// throws on both paths, and a miss is `null` on both — neither follows from
+  /// the transport, which reports a *remote throw* as a throw but has nothing to
+  /// say about a value that came back intact and then failed to convert, nor
+  /// about a miss that reaches this side as [TomExecutor.noResult].
   static Future<T?> fromNameCache<T>(String cacheName, String key) async {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
@@ -383,12 +389,26 @@ class TomCache {
         }
       }
     } else if (!TomCacheManager._current.useInThisIsolate) {
+      // A creator-side failure arrives as a throw and leaves on its own.
       Object? cachedResult = await TomWorker.executeInCreator(
         TomCacheRetrieveMessage(cacheName, key),
       );
-      if (cachedResult != null && cachedResult is T) {
-        return cachedResult as T;
-      }
+      // A miss is the creator answering `null`, and executeInCreator never
+      // resolves to `null` — it substitutes this sentinel. Translating it back
+      // is what makes a forwarded miss read as a miss; without it a `T` that
+      // admits any object (`Object`, or the `dynamic` of an uninstantiated
+      // call) accepts the sentinel as the cached value.
+      if (identical(cachedResult, TomExecutor.noResult)) return null;
+      if (cachedResult is T) return cachedResult;
+      // The value crossed intact and it is the *conversion* that failed, so
+      // the transport cannot report this — only the call site can. Answering
+      // `null` would say "the cache is empty" to a caller who has the wrong
+      // type for an entry that is present, sending it off to recompute a value
+      // it will then fail to store any more successfully than it read it.
+      throw TomCacheException(
+        "error.cache_retrieve.types_dont_match",
+        "Cached value $cachedResult is not of type $T",
+      );
     } else {
       throw TomCacheException(
         "error.cache_retrieve.not_found",
