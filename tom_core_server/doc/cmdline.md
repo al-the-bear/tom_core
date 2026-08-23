@@ -57,6 +57,17 @@ A token with no `=` is a **flag**. Both map paths encode a flag identically as
 the boolean `true` — consistent with how `key=true` is converted — so a flag
 fills a reflected `bool` field directly.
 
+A token whose key is empty is **skipped**: an empty token, and one starting with
+`=` so that nothing precedes the separator, name no field, and are dropped
+rather than recorded under an empty key. `TomEnvFile` skips such a line for the
+same reason. Skipping is per token — the tokens around a malformed one are still
+parsed, so one stray argument does not cost the launch line the rest:
+
+```dart
+TomArgs.parseArgsToMap(['name=svc', '=orphan', 'port=8080']);
+// => {'name': 'svc', 'port': 8080}
+```
+
 > **`fillFromArgs` needs a reflected type.** It assigns through
 > `tomReflectionInfo.setValues`, so `T` must be registered with the reflection
 > system (an `@tomReflector` configuration class). Keys that do not match a

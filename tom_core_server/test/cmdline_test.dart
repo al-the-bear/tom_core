@@ -56,6 +56,34 @@ void main() {
       expect(TomArgs.parseArgsToMap(['k==='])['k'], '==');
     });
 
+    // An empty key names nothing. The .env parser has always skipped such a
+    // line, and the two sources are documented as one syntax; on the
+    // fillFromArgs path an empty key could never match a field either, so it
+    // was only ever dead weight travelling into setValues.
+    test('an argument with an empty key is skipped', () {
+      expect(TomArgs.parseArgsToMap(['']), isEmpty);
+      expect(TomArgs.parseArgsToMap(['=orphan']), isEmpty);
+      expect(TomArgs.parseArgsToMap(['=']), isEmpty);
+    });
+
+    // Skipped, not fatal: one malformed argument must not cost the launch line
+    // the arguments around it, which is the principle the oversized-digit and
+    // stray-quote cases settle too.
+    test('an empty key does not displace the arguments around it', () {
+      final m = TomArgs.parseArgsToMap(['name=svc', '=orphan', 'port=8080']);
+      expect(m, {'name': 'svc', 'port': 8080});
+    });
+
+    test('agrees with TomEnvFile.parse on an empty key', () {
+      for (final line in ['', '=orphan', '=']) {
+        expect(
+          TomArgs.parseArgsToMap([line]),
+          TomEnvFile.parse([line]),
+          reason: 'the two parsers differ on "$line"',
+        );
+      }
+    });
+
     // The two parsers are documented as sharing one syntax, so the same text
     // has to mean the same thing whether it arrives on the command line or
     // from a .env file. This is the guarantee that regressed.

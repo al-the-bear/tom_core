@@ -22,6 +22,12 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// encode a bare flag identically as the boolean `true` — consistent with how
 /// `key=true` is converted (see [convertToObjectMap]) — so a bare flag can fill
 /// a reflected `bool` field directly.
+///
+/// An argument whose key is empty is **skipped**: an empty argument, and one
+/// that starts with `=` so that nothing precedes the separator, both name no
+/// field and are dropped rather than recorded under an empty key. This too is
+/// the rule `TomEnvFile.parse` applies. Skipping is per argument — the
+/// arguments around a malformed one are still parsed.
 class TomArgs {
   /// Fills [fillIn] from `key=value` [args] using reflection and returns it.
   ///
@@ -29,7 +35,8 @@ class TomArgs {
   /// is the text before the first `=`, the value is everything after it, and
   /// the value is type-converted (see [convertToObjectMap]).
   /// A bare flag (`--verbose`) is recorded as the boolean `true`, matching how
-  /// `key=true` converts, so it fills a reflected `bool` field directly.
+  /// `key=true` converts, so it fills a reflected `bool` field directly. An
+  /// argument with an empty key is skipped and never reaches [fillIn].
   ///
   /// [T] must be a type registered with the reflection system
   /// (`tomReflectionInfo.setValues` performs the assignment); unknown keys that
@@ -62,7 +69,8 @@ class TomArgs {
   ///
   /// `key=value` becomes `key -> convertedValue`, split on the first `=` (see
   /// [convertToObjectMap] for the conversion table); a bare flag becomes
-  /// `flag -> true` (boolean).
+  /// `flag -> true` (boolean). An argument with an empty key contributes no
+  /// entry, so the returned map never carries an empty key.
   static Map<String, dynamic> parseArgsToMap(List<String> args) =>
       _parseArgs(args);
 
@@ -107,17 +115,28 @@ class TomArgs {
   /// be documented as one syntax rather than two that merely resemble each
   /// other.
   ///
+  /// An argument whose key is empty (`""`, `"=orphan"`, `"="`) is skipped, as
+  /// the same shape is in a `.env` file.
+  ///
   /// Both public entry points parse through here, so they cannot disagree.
   static Map<String, dynamic> _parseArgs(List<String> args) {
     var argMap = <String, dynamic>{};
     for (String arg in args) {
       var separator = arg.indexOf("=");
+      final key = separator < 0 ? arg : arg.substring(0, separator);
+      // An empty key names nothing. On the fillFromArgs path it could never
+      // match a field, so it would reach setValues as dead weight; and
+      // `TomEnvFile.parse` has always skipped it, so accepting it here would
+      // make the same text mean different things in the two sources.
+      // Skipped rather than fatal: one malformed argument must not cost the
+      // launch line the arguments around it.
+      if (key.isEmpty) {
+        continue;
+      }
       if (separator < 0) {
-        argMap[arg] = true;
+        argMap[key] = true;
       } else {
-        argMap[arg.substring(0, separator)] = _convertString(
-          arg.substring(separator + 1),
-        );
+        argMap[key] = _convertString(arg.substring(separator + 1));
       }
     }
     return argMap;

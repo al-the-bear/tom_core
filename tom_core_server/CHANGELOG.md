@@ -2,6 +2,24 @@
 
 ### Fixed
 
+- **An argument with an empty key is now skipped, as in a `.env` file
+  (tcinc424).** `TomEnvFile.parse` has always dropped a line whose key is empty,
+  but `TomArgs` had no equivalent guard: `parseArgsToMap([''])` returned
+  `{'': true}` and `parseArgsToMap(['=orphan'])` returned `{'': 'orphan'}`,
+  using the empty string as a name. The two sources are documented as one
+  syntax, so the same text meant different things depending on where it arrived
+  from, and nothing recorded the difference.
+
+  `_parseArgs` — through which both `fillFromArgs` and `parseArgsToMap` run —
+  now skips an entry whose key is empty. The reflection path decides which way
+  round the two should agree: an empty key can never match a Dart field, so such
+  an entry only ever reached `tomReflectionInfo.setValues` to be ignored there.
+  The entry is dropped on its own, not fatally, so
+  `['name=svc', '=orphan', 'port=8080']` still yields `{'name': 'svc', 'port':
+  8080}`. "Empty" means literally empty: a whitespace-only key remains a key to
+  `TomArgs` and an empty line to `TomEnvFile`, which is the separate
+  whitespace-trimming difference between the two parsers.
+
 - **A digit run too large for an `int` no longer aborts the parse (tcinc420).**
   `TomArgs` decided a value was an integer from its shape (`[0-9]+`) and then
   called `int.parse` with no guard. The pattern constrains shape, not magnitude,

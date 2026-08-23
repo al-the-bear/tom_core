@@ -25,7 +25,9 @@ conversion rules. An argument is split on its **first** `=`, so a value may
 itself contain `=` (a connection string, a URL with a query, padded base64) and
 arrives whole; `TomEnvFile` splits the same way. A bare flag becomes the boolean
 `true` in both `parseArgsToMap` and `fillFromArgs`, consistent with how
-`key=true` converts.
+`key=true` converts. An argument whose key is empty — an empty argument, or one
+starting with `=` — is skipped rather than recorded under an empty key, again as
+`TomEnvFile` does; the arguments around it are still parsed.
 
 `TomEnvFile` reads environment variables from a `.env` file (synchronously or
 asynchronously), supporting comments, empty lines, quoted values, and inline
@@ -52,8 +54,8 @@ value type.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `fillFromArgs` | `static T fillFromArgs<T extends Object>(List<String> args, T fillIn)` | Fills `fillIn` from `key=value` `args` using reflection and returns it, splitting each argument on its first `=`; a bare flag is recorded as the boolean `true`. `T` must be registered with the reflection system. |
-| `parseArgsToMap` | `static Map<String, dynamic> parseArgsToMap(List<String> args)` | Parses `key=value` `args` into a loose map, splitting on the first `=` and type-converting each value; a bare flag becomes the boolean `true`. |
+| `fillFromArgs` | `static T fillFromArgs<T extends Object>(List<String> args, T fillIn)` | Fills `fillIn` from `key=value` `args` using reflection and returns it, splitting each argument on its first `=`; a bare flag is recorded as the boolean `true`, and an argument with an empty key is skipped. `T` must be registered with the reflection system. |
+| `parseArgsToMap` | `static Map<String, dynamic> parseArgsToMap(List<String> args)` | Parses `key=value` `args` into a loose map, splitting on the first `=` and type-converting each value; a bare flag becomes the boolean `true`, and an argument with an empty key contributes no entry. |
 | `convertToObjectMap` | `static Map<String, dynamic> convertToObjectMap(Map<String, String> map)` | Converts every value in a string `map` to its natural Dart type (useful for normalising `Platform.environment`). |
 | `unquote` | `static String? unquote(String value)` | Returns the contents of `value` with its surrounding quotes removed, or `null` when `value` is not a quoted literal. Quotes count only as a **matched pair** — at least two characters, opening with `"` or `'` and closing with that same character — so `""` unquotes to the empty string while a lone `"`, an unterminated `"hello` and a mismatched `"hello'` all yield `null` and are used verbatim. `TomEnvFile.parse` decides through this method too, so the two sources cannot disagree. |
 
