@@ -181,6 +181,10 @@ class TomCache {
     } else {
       int cacheSize = _cache.length;
       if (cacheSize == 0) {
+        // Why: no bound check here. The constructor rejects a non-positive
+        // [maximumEntries], so a bound is at least 1 and the first entry can
+        // never exceed it. That invariant is what makes this branch correct;
+        // without it, a bound of 0 would hold one entry forever.
         _cache[key] = entry;
         _first = entry;
         _last = entry;
@@ -245,7 +249,7 @@ class TomCache {
   final int? clearIntervalSeconds;
 
   /// Upper bound on the number of entries. `null` makes the cache unbounded; a
-  /// value turns on LRU eviction.
+  /// value turns on LRU eviction and must be positive — see the constructor.
   final int? maximumEntries;
 
   /// Creates a named cache and installs its background timers.
@@ -254,6 +258,13 @@ class TomCache {
   /// [deletionIntervalSeconds] the expiry-sweep period (default 3600),
   /// [maximumEntries] the LRU bound, and [clearIntervalSeconds] a full-clear
   /// period.
+  ///
+  /// Throws an [ArgumentError] if [maximumEntries] is not positive. Zero and
+  /// below cannot be honoured as an upper bound: a cache allowed to hold no
+  /// entries would report every store as successful and miss on every read.
+  /// Refusing the value tells the caller — typically one that computed the
+  /// bound — instead of quietly handing back a cache that contradicts the
+  /// number it was given.
   TomCache(
     this.cacheName, {
     this.deleteEntriesAfterSeconds,
@@ -261,6 +272,16 @@ class TomCache {
     this.maximumEntries,
     this.clearIntervalSeconds,
   }) {
+    // Why: before createTimers(). A throw after the timers were installed would
+    // strand a live periodic timer in the isolate — the construction failed, so
+    // no caller holds the object through which to cancel it.
+    if (maximumEntries != null && maximumEntries! <= 0) {
+      throw ArgumentError.value(
+        maximumEntries,
+        'maximumEntries',
+        'must be positive; pass null for an unbounded cache',
+      );
+    }
     createTimers();
   }
 

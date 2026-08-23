@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -841,6 +842,68 @@ void main() {
 
     test('an unbounded cache has no maximumEntries', () {
       expect(_cache('u').maximumEntries, isNull);
+    });
+  });
+
+  group('A non-positive bound is rejected at construction', () {
+    // `maximumEntries` is the module's only capacity guarantee, and every
+    // document states it as an upper bound. A zero or negative value cannot be
+    // honoured under that reading — a cache that may hold no entries at all is
+    // a black hole, storing successfully and missing on every read — so it is
+    // refused where the caller can still see it, rather than degrading into a
+    // one-entry cache that silently contradicts the number it was given.
+    test('rejects a bound of zero', () {
+      expect(() => TomCache('z', maximumEntries: 0), throwsArgumentError);
+    });
+
+    test('rejects a negative bound', () {
+      expect(() => TomCache('n', maximumEntries: -1), throwsArgumentError);
+    });
+
+    test('forType rejects it too', () {
+      // forType delegates to the main constructor, so this pins that the
+      // validation sits where both entry points pass through it.
+      expect(
+        () => TomCache.forType(String, maximumEntries: 0),
+        throwsArgumentError,
+      );
+    });
+
+    test('a bound of one is accepted and holds exactly one entry', () {
+      // One is the smallest bound that *can* be honoured, and it is the edge
+      // the rule has to stop at: reject `<= 0`, not `< 2`.
+      final cache = _cache('one', maximumEntries: 1);
+      cache.putEntry('a', TomCacheEntry(1));
+      cache.putEntry('b', TomCacheEntry(2));
+      expect(cache.getEntry('a'), isNull);
+      expect(cache.getEntry('b')!.value, 2);
+    });
+
+    test('an unbounded cache is unaffected', () {
+      expect(() => _cache('u2'), returnsNormally);
+      expect(_cache('u2').maximumEntries, isNull);
+    });
+
+    test('a rejected bound leaves no timer running', () {
+      // The validation has to precede createTimers(). A throw after the timers
+      // were installed would leave a live periodic timer in the isolate with
+      // no reference by which to cancel it — the construction failed, so the
+      // caller never got the object holding it. Counting timer creations in a
+      // zone is what makes the ordering observable at all.
+      var created = 0;
+      final spec = ZoneSpecification(
+        createPeriodicTimer: (self, parent, zone, period, f) {
+          created++;
+          return parent.createPeriodicTimer(zone, period, f);
+        },
+      );
+      runZoned(() {
+        expect(
+          () => TomCache('t', maximumEntries: 0, clearIntervalSeconds: 60),
+          throwsArgumentError,
+        );
+      }, zoneSpecification: spec);
+      expect(created, 0);
     });
   });
 

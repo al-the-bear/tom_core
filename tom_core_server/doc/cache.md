@@ -105,9 +105,12 @@ A cache has two independent eviction mechanisms plus an optional periodic clear:
   first place.
 - **LRU bound** — when `maximumEntries` is set the entries form a
   most-recently-used list; reading or writing an entry moves it to the front,
-  and exceeding the bound evicts the least-recently-used entry. When it is
-  **not** set there is no bound at all — see
-  [Not Yet Implemented](#not-yet-implemented) before leaving a cache unbounded.
+  and exceeding the bound evicts the least-recently-used entry. The bound must
+  be positive: a non-positive value is refused at construction with an
+  `ArgumentError`, since a cache permitted to hold nothing would accept every
+  store and miss on every read. When `maximumEntries` is **not** set there is no
+  bound at all — see [Not Yet Implemented](#not-yet-implemented) before leaving
+  a cache unbounded.
 - **Periodic clear** — when `clearIntervalSeconds` is set a *clearance timer*
   empties the whole cache on that interval.
 

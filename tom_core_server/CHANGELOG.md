@@ -2,6 +2,23 @@
 
 ### Behaviour Changes
 
+- **`TomCache` now rejects a non-positive `maximumEntries` (tcinc408).**
+  `putEntry`'s bounded path splits on whether the cache is empty, and the empty
+  branch inserted unconditionally — it never reached the eviction check, which
+  only runs on the non-empty side. A cache built with `maximumEntries: 0` (or a
+  negative value) therefore accepted its first entry and held exactly one entry
+  forever, silently contradicting the only capacity number the module takes.
+
+  Honouring a zero bound literally would have been worse than the defect: the
+  cache would accept every store with the same success `0` and miss on every
+  read, so a caller whose computed bound evaluated to zero would get a working
+  cache that never remembers anything. Both constructors now throw an
+  `ArgumentError` for `maximumEntries <= 0` instead — `null` still means
+  unbounded, and `1` and above are unchanged. The check runs before
+  `createTimers()`, so a rejected construction leaves no periodic timer behind;
+  that ordering has its own test. No call site in the workspace passed a
+  computed bound, so nothing downstream changes.
+
 - **`TomCache.stopTimers` now clears `deletionTimer` and `clearanceTimer`
   (tcinc407).** Both fields are documented — in the source dartdoc, in
   `doc/api_reference/api_summary_cache.md` and in the module's completion

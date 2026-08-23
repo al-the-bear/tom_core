@@ -139,6 +139,10 @@ TomCacheManager([bool useInThisIsolate = false])
 A named in-memory cache of `TomCacheEntry` values keyed by string, either
 unbounded or bounded (LRU).
 
+Both constructors throw an `ArgumentError` when `maximumEntries` is present and
+not positive — the bound is the module's only capacity guarantee, and zero or
+less cannot be honoured as one.
+
 #### Constructors
 
 ```dart
@@ -178,7 +182,7 @@ factory TomCache.forType(
 | `deletionIntervalSeconds` | `int?` | How often (seconds) the deletion timer sweeps expired entries; `null` disables it (default 3600, final). |
 | `deleteEntriesAfterSeconds` | `int?` | Default lifetime (seconds) applied when no explicit deletion time is given; `null` means no age expiry (final). |
 | `clearIntervalSeconds` | `int?` | How often (seconds) the clearance timer empties the whole cache; `null` disables it (final). |
-| `maximumEntries` | `int?` | Upper bound on entries; `null` makes the cache unbounded, a value turns on LRU eviction (final). |
+| `maximumEntries` | `int?` | Upper bound on entries; `null` makes the cache unbounded, a positive value turns on LRU eviction (final). |
 | `deletionTimer` | `Timer?` | The periodic timer that sweeps expired entries, or `null` when none is running — the interval is unset, or `stopTimers` has since cleared it. |
 | `clearanceTimer` | `Timer?` | The periodic timer that clears the whole cache, or `null` when none is running — the interval is unset, or `stopTimers` has since cleared it. |
 
