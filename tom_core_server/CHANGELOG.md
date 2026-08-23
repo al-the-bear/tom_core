@@ -2,10 +2,10 @@
 
 ### Fixed
 
-- **An unbalanced quote no longer crashes or truncates a value (tcinc418).**
-  Both parsers unquoted by dropping the first and last character on the
-  strength of the *opening* quote alone. For the one-character value `"` that
-  asks for `substring(1, 0)`, so `TomArgs.parseArgsToMap(['K="'])` and
+- **An unbalanced quote no longer crashes or truncates a value (tcinc418,
+  tcinc419).** Both parsers unquoted by dropping the first and last character
+  on the strength of the *opening* quote alone. For the one-character value
+  `"` that asks for `substring(1, 0)`, so `TomArgs.parseArgsToMap(['K="'])` and
   `TomEnvFile.parse(['K="'])` each raised an unhandled `RangeError (end):
   Invalid value: Only valid value is 1: 0` — a stray quote on a launch command
   or in a `.env` file aborted server start-up with a `dart:core` error naming
@@ -14,9 +14,16 @@
 
   The crash was hiding a quieter defect of the same origin: with no closing
   quote there is nothing to strip, but the last character was dropped anyway,
-  so `K="hello` silently became `hell` and a mismatched `K="hello'` became
-  `hello`. A truncated password or host name is worse than a crash, because
-  nothing reports it.
+  so `K="hello` silently became `hell`, `K="abc` became `ab`, and a mismatched
+  `K="hello'` became `hello`. A truncated password or host name is worse than a
+  crash, because nothing reports it — and `K="a b` became `a `, corruption that
+  ends in whitespace and so survives a visual check of a log line.
+
+  The `.env` parser had the right test locally, requiring *both* ends to match,
+  and was corrupted anyway: a value its own check correctly declined fell
+  through to the shared converter, which unquoted on the opening character
+  alone. Getting the rule right in one of the two places it lived was not
+  enough.
 
   Quotes are now stripped only as a **matched pair** — at least two characters,
   opening with `"` or `'` and closing with that same character. Everything else
@@ -24,8 +31,9 @@
   to the empty string. The rule lives in one new public method,
   `TomArgs.unquote`, which `TomEnvFile.parse` also decides through, so the two
   sources cannot disagree about what counts as quoted — the same
-  extract-the-shared-rule treatment that tcinc415 gave the `=` split. Ten tests
-  pin it across both parsers.
+  extract-the-shared-rule treatment that tcinc415 gave the `=` split. Thirteen
+  tests pin it across all three entry points, and they were checked against the
+  old rule to confirm they fail on it rather than merely passing on the new one.
 
 - **A command-line argument value containing a second `=` is no longer
   truncated (tcinc415).** `TomArgs.fillFromArgs` and `TomArgs.parseArgsToMap`

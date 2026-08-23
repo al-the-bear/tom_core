@@ -122,10 +122,20 @@ void main() {
     });
 
     // Without a closing quote there is nothing to strip, and stripping the
-    // last character anyway silently ate it — `"hello` became `hell`.
+    // last character anyway silently ate it — `"hello` became `hell` and
+    // `"abc` became `ab`. No error, no diagnostic: a password or token that
+    // happens to begin with a quote simply arrived one character short.
     test('a value with no closing quote is kept verbatim', () {
       expect(convert('"hello'), '"hello');
       expect(convert("'hello"), "'hello");
+      expect(convert('"abc'), '"abc');
+    });
+
+    // The interior space makes this the nastiest shape of the truncation:
+    // `"a b` became `a ` — corruption that ends in whitespace and so survives
+    // a visual check of a log line or a config dump.
+    test('an unterminated quote around a value with a space keeps it', () {
+      expect(convert('"a b'), '"a b');
     });
 
     test('mismatched quotes are kept verbatim', () {
@@ -184,6 +194,16 @@ void main() {
         'name="my svc"',
       ], FixtureServerConfig());
       expect(config.name, 'my svc');
+    });
+
+    // The consequence that matters: an unterminated quote used to reach the
+    // field one character short, silently. A secret or host name beginning
+    // with a quote was corrupted on the way in, and nothing said so.
+    test('an unterminated quote reaches the field whole', () {
+      final config = TomArgs.fillFromArgs([
+        'name="my svc',
+      ], FixtureServerConfig());
+      expect(config.name, '"my svc');
     });
 
     test('fills every field type in one pass', () {
@@ -301,6 +321,14 @@ void main() {
 
     test('a value with no closing quote is kept verbatim', () {
       expect(TomEnvFile.parse(['K="hello'])['K'], '"hello');
+    });
+
+    // The .env path declined `"a b` as unquoted on its own check — both ends
+    // had to match — and then handed it to the shared converter, which
+    // unquoted on the opening character alone and returned `a `. Getting the
+    // check right locally was not enough while the rule lived in two places.
+    test('an unterminated quote is not truncated by the shared converter', () {
+      expect(TomEnvFile.parse(['K="a b'])['K'], '"a b');
     });
 
     test('mismatched quotes are kept verbatim', () {
