@@ -478,13 +478,24 @@ class TomCache {
   }
 }
 
-/// Cross-isolate command that stores [value] under [key] in cache [cacheName].
-/// Dispatched to the main isolate via [TomWorker.executeInCreator] when a
-/// worker isolate stores into a cache it does not hold.
+/// Cross-isolate command that stores [value] under [key] in cache [cacheName],
+/// expiring at [deletionTime]. Dispatched to the main isolate via
+/// [TomWorker.executeInCreator] when a worker isolate stores into a cache it
+/// does not hold.
 class TomCacheStoreMessage extends TomCommand {
   String cacheName;
   String key;
   Object? value;
+
+  /// The expiry the *caller* asked for, carried across the isolate boundary.
+  ///
+  /// It has to travel with the message and be applied on arrival, because the
+  /// worker side of a forwarded store does not hold the cache and so cannot
+  /// apply it itself. `null` means "no explicit expiry", which
+  /// [TomCache.toNameCache] then fills from the target cache's
+  /// `deleteEntriesAfterSeconds` — so dropping a non-null value here does not
+  /// fail loudly, it silently substitutes the cache default and the write goes
+  /// on reporting success.
   DateTime? deletionTime;
 
   TomCacheStoreMessage(this.cacheName, this.key, this.value, this.deletionTime);
@@ -494,7 +505,7 @@ class TomCacheStoreMessage extends TomCommand {
     tomLog.trace(
       "Storing in main isolate cache $key $cacheName ${Isolate.current.debugName}",
     );
-    await TomCache.toNameCache(cacheName, key, value);
+    await TomCache.toNameCache(cacheName, key, value, deletionTime);
     return true;
   }
 }

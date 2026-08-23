@@ -427,6 +427,30 @@
   decoder gained direct test coverage, including a case that decodes one
   projected payload with both readers and asserts they agree.
 
+### Bug Fixes
+
+- **A cache store forwarded from a worker isolate keeps its expiry
+  (tcinc399).** `TomCacheStoreMessage` carries a `deletionTime` across the
+  isolate boundary, and `TomCache.toNameCache` populated it when forwarding —
+  but the message's `execute` called the three-argument form of `toNameCache`
+  and dropped it on arrival. The field was therefore dead: it travelled and was
+  discarded.
+
+  Nothing failed when it was. The receiving side treats a missing
+  `deletionTime` as "no explicit expiry" and substitutes the target cache's
+  `deleteEntriesAfterSeconds`, so the store reported success and the entry
+  simply outlived the lifetime the worker asked for — permanently, when that
+  default was unset. A worker requesting a 30-second lifetime got the cache
+  default instead, and the substitution was only observable at some later read
+  that returned a value it should not have.
+
+  `execute` now forwards the fourth argument. Two tests pin it: a store through
+  the message with an already-past instant must read back `null`, and a store
+  with an explicit future instant must land with *that* instant rather than the
+  cache default — the first proves an expiry is applied, the second proves it is
+  the caller's. The other cross-isolate commands in the package were audited for
+  the same shape and consume every field they carry.
+
 ### Features
 
 - **repository paging and caller-controlled sorting.** The four finders

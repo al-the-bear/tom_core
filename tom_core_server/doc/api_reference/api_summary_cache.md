@@ -203,13 +203,13 @@ TomCacheStoreMessage(String cacheName, String key, Object? value, DateTime? dele
 | `cacheName` | `String` | Name of the target cache. |
 | `key` | `String` | Entry key. |
 | `value` | `Object?` | Value to store. |
-| `deletionTime` | `DateTime?` | Optional expiry instant. |
+| `deletionTime` | `DateTime?` | The expiry the caller asked for, applied on arrival in the main isolate. `null` means no explicit expiry, and the target cache's `deleteEntriesAfterSeconds` fills it in. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `execute` | `Future<bool> execute()` | *(override)* Stores the value in the main-isolate cache and returns `true`. |
+| `execute` | `Future<bool> execute()` | *(override)* Stores the value in the main-isolate cache, under `deletionTime`, and returns `true`. |
 
 ### TomCacheRemoveMessage
 

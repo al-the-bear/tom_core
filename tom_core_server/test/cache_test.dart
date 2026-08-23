@@ -468,6 +468,38 @@ void main() {
       expect(await TomCache.fromNameCache<String>('c', 'k'), 'v');
     });
 
+    test('store message honours a deletion time already past', () async {
+      // The message is how a worker isolate asks the main isolate to store, so
+      // dropping its deletionTime on arrival is invisible at the call site: the
+      // worker's write reports success and the entry outlives the lifetime it
+      // asked for. The cache's own 300s default is what it silently fell back
+      // to, which is why an already-past instant is the assertion — under the
+      // default the value is still readable, so the two outcomes cannot be
+      // confused.
+      TomCacheManager.addCache(_cache('c'));
+      final ok = await TomCacheStoreMessage(
+        'c',
+        'k',
+        'v',
+        DateTime.now().subtract(const Duration(hours: 1)),
+      ).execute();
+      expect(ok, isTrue);
+      expect(await TomCache.fromNameCache<String>('c', 'k'), isNull);
+    });
+
+    test('store message forwards its deletion time verbatim', () async {
+      // The expired case above proves *an* expiry was applied; this proves it
+      // is the one the worker asked for, and not the cache default that
+      // happened to be shorter.
+      TomCacheManager.addCache(_cache('c'));
+      final deletionTime = DateTime(2999, 1, 2, 3, 4, 5);
+      await TomCacheStoreMessage('c', 'k', 'v', deletionTime).execute();
+      expect(
+        TomCacheManager.getCache('c')!.getEntry('k')!.deletionTime,
+        deletionTime,
+      );
+    });
+
     test('retrieve message returns the stored value', () async {
       TomCacheManager.addCache(_cache('c'));
       await TomCache.toNameCache('c', 'k', 'v');

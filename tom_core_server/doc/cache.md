@@ -101,6 +101,13 @@ TomCache.toNameCache(...)  ──forward──► TomCacheStoreMessage.execute()
                                           └─► TomCache.toNameCache(...)  (local)
 ```
 
+The forward carries every argument, so a store made from a worker lands with
+the `deletionTime` the worker asked for and not the target cache's default. That
+matters more than it looks: a dropped argument here cannot surface as an error,
+because the receiving side would simply apply `deleteEntriesAfterSeconds`
+instead and report success — the write looks fine and the entry outlives its
+intended lifetime, which is only discovered at some later read.
+
 If neither a local cache nor forwarding is available, the helper throws
 [`TomCacheException`]. The three static helpers (`from…`, `to…`, `removeFrom…`)
 share the same forward-or-throw rule.
