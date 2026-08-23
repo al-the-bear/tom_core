@@ -147,6 +147,13 @@ class TomPrincipalDelegation {
   ///
   /// Shipped verbatim as the reference `db_migration` script, so the two cannot
   /// drift — `test/reference_migrations_test.dart` fails if they do.
+  ///
+  /// The delegate index covers `(delegate_id, revoked)` because that is the
+  /// selective part of the lookup: revocation is a flag rather than a delete,
+  /// so a delegate accumulates dead rows for life and the index has to keep
+  /// them off the read. The window columns are deliberately *not* in it — the
+  /// bounds are tested as `valid_from IS NULL OR valid_from <= :at`, and that
+  /// shape is not usable as an index range.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   id BIGINT NOT NULL AUTO_INCREMENT,
@@ -159,7 +166,7 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   valid_to DATETIME NULL,
   revoked TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
-  KEY idx_tom_principal_delegation_delegate (delegate_id)
+  KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)
 );''';
 
   @override
@@ -177,10 +184,19 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
 /// a one-method interface this runs against the live repository at boot and a
 /// seeded in-memory store under test, with identical resolution on both.
 abstract class PrincipalDelegationStore {
-  /// Returns every delegation whose delegate is [delegateId]. Empty when none
-  /// target the delegate (they then inherit no delegated roles).
-  Future<List<TomPrincipalDelegation>> delegationsForDelegate(
+  /// Returns the delegations targeting [delegateId] that are **in force at**
+  /// [at] — i.e. those [TomPrincipalDelegation.isActiveAt] admits. Empty when
+  /// none target the delegate, or none of theirs is live at that instant (they
+  /// then inherit no delegated roles).
+  ///
+  /// The instant is a parameter rather than something the caller filters on
+  /// afterwards so that an implementation can answer the question where the
+  /// rows are. Revocation is a flag, not a delete, so a delegate's row count
+  /// grows with their whole delegation *history*; loading it to discard most of
+  /// it makes every request pay for that history.
+  Future<List<TomPrincipalDelegation>> activeDelegationsForDelegate(
     String delegateId,
+    DateTime at,
   );
 }
 
@@ -228,12 +244,18 @@ class TomDelegationResolver {
     String delegateId,
     DateTime at,
   ) async {
-    final delegations = await delegationStore.delegationsForDelegate(
+    final delegations = await delegationStore.activeDelegationsForDelegate(
       delegateId,
+      at,
     );
     final delegatorRoles = <String, Future<Map<String, String>>>{};
     final entries = <MapEntry<String, String>>[];
     for (final delegation in delegations) {
+      // The store already promises only live rows, and both shipped stores keep
+      // that promise. The re-check stays because this is the gate a revoked
+      // delegation has to fail: the store is an open seam, and a deployment
+      // whose implementation forgets the predicate should lose the delegation,
+      // not silently keep granting it.
       if (!delegation.isActiveAt(at)) continue;
       entries.addAll(await _entriesFor(delegation, delegatorRoles));
     }
@@ -316,13 +338,36 @@ class RepositoryPrincipalDelegationStore implements PrincipalDelegationStore {
   /// Builds the store over [repository].
   const RepositoryPrincipalDelegationStore(this.repository);
 
+  /// The query sentence [activeDelegationsForDelegate] runs — the SQL
+  /// expression of [TomPrincipalDelegation.isActiveAt].
+  ///
+  /// Each window bound admits `NULL` explicitly because `null` means *unbounded
+  /// on that side*, and SQL's three-valued logic answers `NULL <= :at` with
+  /// unknown rather than true — a bare comparison would silently drop every
+  /// open-ended delegation, which is most of them.
+  ///
+  /// Every conjunct is parenthesised: the sentence compiler builds `AND`/`OR`
+  /// right-recursively, and against a *boolean* column it parses the whole tail
+  /// of the sentence as the right-hand operand — so an unbracketed
+  /// `revoked = :revoked AND …` swallows the window tests and fails to compile.
+  /// The brackets are what the grammar needs, not decoration.
+  ///
+  /// A named constant rather than a literal at the call site so a test can
+  /// compile *this* sentence and inspect the SQL, instead of a copy that would
+  /// go on passing after the real one changed.
+  static const String activeDelegationsQuery =
+      'FIND BY delegate_id = :delegateId AND ( revoked = :revoked ) '
+      'AND ( valid_from IS NULL OR valid_from <= :at ) '
+      'AND ( valid_to IS NULL OR valid_to >= :at )';
+
   @override
-  Future<List<TomPrincipalDelegation>> delegationsForDelegate(
+  Future<List<TomPrincipalDelegation>> activeDelegationsForDelegate(
     String delegateId,
+    DateTime at,
   ) async {
     final matches = await repository.findByQuerySentence(
-      'FIND BY delegate_id = :delegateId',
-      {'delegateId': delegateId},
+      activeDelegationsQuery,
+      {'delegateId': delegateId, 'revoked': false, 'at': at},
     );
     return matches.toList();
   }
@@ -330,8 +375,11 @@ class RepositoryPrincipalDelegationStore implements PrincipalDelegationStore {
 
 /// A seeded, database-free [PrincipalDelegationStore] for tests.
 ///
-/// Holds the delegation rows directly and filters by delegate id, so a test can
-/// assert resolution at chosen timestamps without a connection or reflection.
+/// Holds the delegation rows directly, so a test can assert resolution at
+/// chosen timestamps without a connection or reflection. Applies the same two
+/// filters the repository store pushes into SQL — the delegate, and
+/// [TomPrincipalDelegation.isActiveAt] — so a test seeing rows here sees what a
+/// database would have returned.
 class InMemoryPrincipalDelegationStore implements PrincipalDelegationStore {
   final List<TomPrincipalDelegation> _delegations;
 
@@ -340,10 +388,11 @@ class InMemoryPrincipalDelegationStore implements PrincipalDelegationStore {
     : _delegations = delegations;
 
   @override
-  Future<List<TomPrincipalDelegation>> delegationsForDelegate(
+  Future<List<TomPrincipalDelegation>> activeDelegationsForDelegate(
     String delegateId,
+    DateTime at,
   ) async => [
     for (final d in _delegations)
-      if (d.delegateId == delegateId) d,
+      if (d.delegateId == delegateId && d.isActiveAt(at)) d,
   ];
 }

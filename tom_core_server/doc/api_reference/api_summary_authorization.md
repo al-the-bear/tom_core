@@ -405,7 +405,7 @@ The delegation-lookup seam the `TomDelegationResolver` reads through.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `delegationsForDelegate` | `Future<List<TomPrincipalDelegation>> delegationsForDelegate(String delegateId)` | Every delegation whose delegate is `delegateId`; empty when none target them. |
+| `activeDelegationsForDelegate` | `Future<List<TomPrincipalDelegation>> activeDelegationsForDelegate(String delegateId, DateTime at)` | The delegations targeting `delegateId` that are **in force at** `at` — those `isActiveAt` admits; empty when none target them, or none of theirs is live at that instant. The instant is a parameter rather than a post-filter so an implementation can answer the question where the rows are. |
 
 ### TomDelegationResolver
 
@@ -458,12 +458,13 @@ const RepositoryPrincipalDelegationStore(
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `repository` | `TomSqlDatasourceRepository<TomPrincipalDelegation, int>` | The repository the store reads delegation rows through. |
+| `activeDelegationsQuery` | `static const String` | The query sentence the store runs — the SQL expression of `isActiveAt`. Named so a test can compile the real sentence rather than a copy of it. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `delegationsForDelegate` | `Future<List<TomPrincipalDelegation>> delegationsForDelegate(String delegateId)` | *(override)* Queries `FIND BY delegate_id = :delegateId`. |
+| `activeDelegationsForDelegate` | `Future<List<TomPrincipalDelegation>> activeDelegationsForDelegate(String delegateId, DateTime at)` | *(override)* Runs `activeDelegationsQuery`: the delegate, `revoked = false`, and both window bounds tested at the database, each admitting `NULL`. Only live rows come back. |
 
 ### InMemoryPrincipalDelegationStore
 
@@ -481,7 +482,7 @@ InMemoryPrincipalDelegationStore(List<TomPrincipalDelegation> delegations)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `delegationsForDelegate` | `Future<List<TomPrincipalDelegation>> delegationsForDelegate(String delegateId)` | *(override)* Filters the seeded rows by delegate id. |
+| `activeDelegationsForDelegate` | `Future<List<TomPrincipalDelegation>> activeDelegationsForDelegate(String delegateId, DateTime at)` | *(override)* Filters the seeded rows by delegate id **and** `isActiveAt(at)` — the same two filters the repository store pushes into SQL. |
 
 ### TomPrincipalResourceGrant
 

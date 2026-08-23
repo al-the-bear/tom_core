@@ -27,6 +27,7 @@ application-side resolver involved.
 | `TomAuthorizationCacheException` | Raised on cache faults: an expired entry on read (dropped by the read that rejects it, so the expiry is reported once), or a token whose `validUntil` claim is unreadable on write (refused rather than cached under an invented expiry). |
 | `TomPrincipalResourceGrant` · `PrincipalResourceGrantStore` · `TomPrincipalResourceRoleResolver` | The `(principalId, resourceKey, role)` row, its read seam, and the fold into a `resourceKey → role` map (strongest role wins). |
 | `TomPrincipalDelegation` · `TomDelegationMode` · `TomDelegationResolver` | Share / absence / intentional delegation of a delegator's roles, and the resolver folding them over the delegate's direct grants. Never transitive. |
+| `PrincipalDelegationStore` · `RepositoryPrincipalDelegationStore` · `InMemoryPrincipalDelegationStore` | The delegation read seam, taking the instant (`activeDelegationsForDelegate(delegateId, at)`) so only live rows are read: the repository store tests `revoked` and both window bounds in SQL, the in-memory store applies `isActiveAt`. |
 | `TomResourceGrant` · `TomAuthStateCodec` · `TomGradedAccessControlInformation` | The graded `(role, resourceKey)` record, its stored representation, and the resolved graded view over the kernel's binary fallback. |
 | `TomResourceDataScope` | Installs the grant-driven `resource` row scope: `read` or wider admits a row to queries, `full` alone admits a write. |
 

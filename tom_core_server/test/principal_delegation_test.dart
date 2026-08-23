@@ -22,6 +22,8 @@ library;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/reflection_fixture.reflection.dart';
+
 /// A direct-grant store seeded so Alice owns `project.X` and views `project.Y`.
 TomPrincipalResourceRoleResolver _directResolver(
   List<TomPrincipalResourceGrant> grants,
@@ -350,6 +352,129 @@ void main() {
       expect(
         await resolver.resolveDelegatedRoles('someone_else', now),
         isEmpty,
+      );
+    });
+  });
+
+  group('PrincipalDelegationStore — only live rows cross the seam', () {
+    final from = DateTime.utc(2026, 1, 10);
+    final to = DateTime.utc(2026, 1, 20);
+
+    /// One row of every liveness shape, all targeting Bob, all distinguishable
+    /// by `delegatorId` so a test can name which survived.
+    InMemoryPrincipalDelegationStore mixedStore() =>
+        InMemoryPrincipalDelegationStore([
+          TomPrincipalDelegation(
+            delegatorId: 'live_unbounded',
+            delegateId: 'bob',
+            mode: 'intentional',
+          ),
+          TomPrincipalDelegation(
+            delegatorId: 'live_in_window',
+            delegateId: 'bob',
+            mode: 'absence',
+            validFrom: from,
+            validTo: to,
+          ),
+          TomPrincipalDelegation(
+            delegatorId: 'revoked',
+            delegateId: 'bob',
+            mode: 'intentional',
+            revoked: true,
+          ),
+          TomPrincipalDelegation(
+            delegatorId: 'not_yet',
+            delegateId: 'bob',
+            mode: 'absence',
+            validFrom: DateTime.utc(2027),
+          ),
+          TomPrincipalDelegation(
+            delegatorId: 'expired',
+            delegateId: 'bob',
+            mode: 'absence',
+            validTo: DateTime.utc(2025),
+          ),
+          TomPrincipalDelegation(
+            delegatorId: 'live_but_not_bobs',
+            delegateId: 'someone_else',
+            mode: 'intentional',
+          ),
+        ]);
+
+    test('the in-memory store answers only the rows live at the '
+        'instant', () async {
+      final rows = await mixedStore().activeDelegationsForDelegate(
+        'bob',
+        DateTime.utc(2026, 1, 15),
+      );
+      expect(rows.map((d) => d.delegatorId), ['live_unbounded', 'live_in_window']);
+    });
+
+    test('the instant decides: the same store answers differently '
+        'later', () async {
+      final rows = await mixedStore().activeDelegationsForDelegate(
+        'bob',
+        DateTime.utc(2026, 6, 1),
+      );
+      // The window row has expired by June; the unbounded one has not.
+      expect(rows.map((d) => d.delegatorId), ['live_unbounded']);
+    });
+
+    group('the repository store asks the database', () {
+      late TomQuerySentenceCompiler compiler;
+      final dialect = MariadbSqlDialect();
+
+      setUpAll(() {
+        initializeReflection();
+        compiler = TomQuerySentenceCompiler([TomPrincipalDelegation]);
+      });
+
+      /// The SQL the store's *own* sentence compiles to — the constant is read
+      /// from the store rather than restated here, so the assertions below
+      /// cannot drift from the query that actually runs.
+      String sql() =>
+          (compiler.compileQuerySentence(
+                RepositoryPrincipalDelegationStore.activeDelegationsQuery,
+              ) as TomSelect)
+              .generateQuery(dialect);
+
+      test('the delegate predicate is still there', () {
+        expect(sql(), contains('tom_principal_delegation.delegate_id = :delegateId'));
+      });
+
+      test('revoked rows are excluded in SQL', () {
+        expect(sql(), contains('tom_principal_delegation.revoked = :revoked'));
+      });
+
+      test('the window bounds are tested in SQL, each admitting null', () {
+        // `null` is unbounded on that side, so neither bound can be a bare
+        // comparison: SQL's three-valued logic makes `NULL <= :at` unknown,
+        // which would silently drop every open-ended delegation.
+        expect(
+          sql(),
+          contains(
+            '( tom_principal_delegation.valid_from IS NULL '
+            'OR tom_principal_delegation.valid_from <= :at )',
+          ),
+        );
+        expect(
+          sql(),
+          contains(
+            '( tom_principal_delegation.valid_to IS NULL '
+            'OR tom_principal_delegation.valid_to >= :at )',
+          ),
+        );
+      });
+    });
+
+    test('the index covers the columns the query now filters on', () {
+      // An index on the delegate alone leaves the database reading every
+      // historical row for that delegate before discarding the revoked ones.
+      expect(
+        TomPrincipalDelegation.createTableSql,
+        contains(
+          'KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)',
+        ),
       );
     });
   });

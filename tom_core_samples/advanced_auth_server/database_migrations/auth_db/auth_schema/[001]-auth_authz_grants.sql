@@ -56,5 +56,5 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   valid_to DATETIME NULL,
   revoked TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
-  KEY idx_tom_principal_delegation_delegate (delegate_id)
+  KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)
 );

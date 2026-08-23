@@ -82,7 +82,7 @@ class RepositoryShareDelegationStore implements ShareDelegationStore {
 ///
 /// Holds the delegation rows directly and assigns a surrogate key on insert
 /// (`id <= 0`). The [delegations] getter lets a test assert the persisted share;
-/// implementing [delegationsForDelegate] lets the *same* instance feed a
+/// implementing [activeDelegationsForDelegate] lets the *same* instance feed a
 /// [TomDelegationResolver], proving a newly written share immediately grants the
 /// grantee access — with no connection or reflection.
 class InMemoryShareDelegationStore
@@ -133,9 +133,15 @@ class InMemoryShareDelegationStore
   Future<void> deleteDelegation(int id) async =>
       _delegations.removeWhere((d) => d.id == id);
 
+  /// Applies both filters the live store pushes into SQL — the delegate and
+  /// [TomPrincipalDelegation.isActiveAt] — so a revoked or out-of-window share
+  /// stops being returned here exactly as it stops being selected there.
   @override
-  Future<List<TomPrincipalDelegation>> delegationsForDelegate(
+  Future<List<TomPrincipalDelegation>> activeDelegationsForDelegate(
     String delegateId,
-  ) async =>
-      [for (final d in _delegations) if (d.delegateId == delegateId) d];
+    DateTime at,
+  ) async => [
+    for (final d in _delegations)
+      if (d.delegateId == delegateId && d.isActiveAt(at)) d,
+  ];
 }

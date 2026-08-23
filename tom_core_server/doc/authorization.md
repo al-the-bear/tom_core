@@ -198,6 +198,18 @@ validity window the delegate inherits *all* the delegator's direct roles), and
 delegator's *direct* grants only, never the delegator's own delegated-in roles,
 which forecloses delegation chains and privilege loops.
 
+The window and the kill-switch are applied **where the rows are**. The store seam
+is `activeDelegationsForDelegate(delegateId, at)`: it takes the instant, and the
+repository-backed store compiles it into the query — `revoked = false` plus both
+bounds, each written to admit `NULL` (`valid_from IS NULL OR valid_from <= :at`),
+because SQL answers `NULL <= :at` with *unknown* and a bare comparison would drop
+every open-ended delegation. This matters because revocation is a flag rather
+than a delete: a delegate accumulates dead rows for the lifetime of the
+deployment, and reading them back to discard them in Dart would make every
+request pay for that history. The delegate index covers `(delegate_id, revoked)`
+for the same reason. `isActiveAt` remains the in-memory statement of the same
+predicate — what the in-memory store filters on, and what the tests share.
+
 Resolving a delegate costs one grant read per **distinct delegator**, not one per
 delegation row. The distinction is worth stating because lending several
 resources means one row each: a colleague who shares four projects with you is

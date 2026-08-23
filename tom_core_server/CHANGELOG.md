@@ -2,6 +2,30 @@
 
 ### Behaviour Changes
 
+- **The delegation query selects only live rows (tcinc395).** The store read
+  *every* delegation targeting the delegate and threw the dead ones away in
+  Dart. Revocation is a flag rather than a delete, so a delegate accumulates
+  rows for the lifetime of the deployment and every request paid for that whole
+  history — to use, typically, a handful of them.
+
+  The read seam now takes the instant —
+  `PrincipalDelegationStore.activeDelegationsForDelegate(delegateId, at)`
+  (was `delegationsForDelegate(delegateId)`) — so an implementation can answer
+  the question where the rows are.
+  `RepositoryPrincipalDelegationStore` compiles it into the query: `revoked`
+  and both window bounds are tested in SQL, each bound written to admit `NULL`
+  (`valid_from IS NULL OR valid_from <= :at`) because SQL answers `NULL <= :at`
+  with *unknown*, and a bare comparison would silently drop every open-ended
+  delegation. The delegate index widens to `(delegate_id, revoked)` to cover the
+  selective part of the new predicate; the window columns stay out of it,
+  because the `OR … IS NULL` shape is not usable as an index range. The DDL
+  change lands in `TomPrincipalDelegation.createTableSql`, its reference
+  migration, and the `tom_uam` / `advanced_auth_server` schema migrations.
+
+  `TomPrincipalDelegation.isActiveAt` is unchanged and remains the in-memory
+  statement of the same predicate — what `InMemoryPrincipalDelegationStore`
+  filters on, what the resolver still re-checks, and what the tests share.
+
 - **Delegation resolution reads each delegator's grants once, not once per
   delegation row (tcinc394).** `TomDelegationResolver.resolveDelegatedRoles`
   looped over the active rows and, for every `absence`/`intentional` one, asked
