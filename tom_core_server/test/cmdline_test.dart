@@ -74,6 +74,29 @@ void main() {
       expect(convert('3.14'), 3.14);
     });
 
+    // The shape test says "all digits", but Dart's int is 64-bit, so a longer
+    // run has no int to become. It stays a String for the same reason `-5` and
+    // `12px` do: the value is not something this converter can represent as an
+    // int, so it is left as the text it arrived as. Previously the shape alone
+    // decided and the unguarded parse threw, taking the whole parse down.
+    test('a digit run too large for an int stays a String', () {
+      expect(convert('99999999999999999999'), '99999999999999999999');
+    });
+
+    // The boundary itself, both sides, because "too large" is only meaningful
+    // if the largest representable value still converts.
+    test('the 64-bit boundary converts and one past it does not', () {
+      expect(convert('9223372036854775807'), 9223372036854775807);
+      expect(convert('9223372036854775808'), '9223372036854775808');
+    });
+
+    // An oversized run has no decimal point, so it cannot fall through to the
+    // double branch and arrive as a lossy approximation. Pinned because
+    // "otherwise treat it as a double" is the obvious wrong repair.
+    test('an oversized digit run does not become a double', () {
+      expect(convert('99999999999999999999'), isA<String>());
+    });
+
     test('a leading sign keeps the value a String (no whole-string match)', () {
       expect(convert('-5'), '-5');
       expect(convert('-1.5'), '-1.5');
@@ -204,6 +227,19 @@ void main() {
         'name="my svc',
       ], FixtureServerConfig());
       expect(config.name, '"my svc');
+    });
+
+    // The consequence that matters here: a long digit run belongs in a String
+    // field, and the caller would have been happy with it. Instead the parse
+    // threw before any field was assigned, so an account number in one
+    // argument cost the server every other argument as well.
+    test('an oversized digit run fills a String field', () {
+      final config = TomArgs.fillFromArgs([
+        'name=99999999999999999999',
+        'port=8080',
+      ], FixtureServerConfig());
+      expect(config.name, '99999999999999999999');
+      expect(config.port, 8080);
     });
 
     test('fills every field type in one pass', () {
@@ -339,6 +375,27 @@ void main() {
     test('a stray quote does not stop the remaining lines being read', () {
       final env = TomEnvFile.parse(['BAD="', 'PORT=8080']);
       expect(env['BAD'], '"');
+      expect(env['PORT'], 8080);
+    });
+
+    // The shapes a long digit run actually takes in a .env file: an account
+    // number, a device identifier. Neither is arithmetic, and both used to
+    // abort the read.
+    test('an oversized digit run arrives as a String', () {
+      final env = TomEnvFile.parse([
+        'ACCOUNT=99999999999999999999',
+        'DEVICE=123456789012345678901234',
+      ]);
+      expect(env['ACCOUNT'], '99999999999999999999');
+      expect(env['DEVICE'], '123456789012345678901234');
+    });
+
+    // And it must not take the rest of the file with it either — the failure
+    // was one unguarded parse in the shared converter, so every line after the
+    // offending one was lost as well.
+    test('an oversized value does not stop the remaining lines being read', () {
+      final env = TomEnvFile.parse(['BIG=99999999999999999999', 'PORT=8080']);
+      expect(env['BIG'], '99999999999999999999');
       expect(env['PORT'], 8080);
     });
   });

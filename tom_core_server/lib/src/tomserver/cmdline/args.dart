@@ -42,6 +42,10 @@ class TomArgs {
   /// Matches a run of digits. A value is parsed as an `int` only when this
   /// pattern matches the *whole* string, so a leading sign or trailing text
   /// keeps the value a `String` (e.g. `-5` and `12px` stay strings).
+  ///
+  /// Matching is necessary but not sufficient: the pattern constrains shape,
+  /// not magnitude, and a run too long for a 64-bit `int` also stays a
+  /// `String`.
   static final RegExp intPattern = RegExp("[0-9]+");
 
   /// Matches a decimal number (`digits . digits?`). A value is parsed as a
@@ -68,13 +72,18 @@ class TomArgs {
   /// | `"true"` / `null` | `bool` `true` |
   /// | `"false"` | `bool` `false` |
   /// | wrapped in a matched pair of `"` or `'` | the unquoted contents |
-  /// | all digits | `int` |
+  /// | all digits, and it fits a 64-bit `int` | `int` |
   /// | decimal number | `double` |
   /// | anything else | the original `String` |
   ///
   /// Quotes are only stripped as a **pair** (see [unquote]): an unbalanced
   /// quote is not a quoted value, so a lone `"` and an unterminated `"hello`
   /// are both passed through unchanged rather than truncated.
+  ///
+  /// The magnitude limit is part of the rule, not an edge case: Dart's `int` is
+  /// 64-bit, so a digit run larger than `9223372036854775807` has no `int` to
+  /// become and stays a `String` — an account number or a device id arrives as
+  /// the text it was written as, rather than aborting the parse.
   static Map<String, dynamic> convertToObjectMap(Map<String, String> map) {
     Map<String, dynamic> result = {};
     for (var key in map.keys) {
@@ -155,7 +164,16 @@ class TomArgs {
       return unquoted;
     }
     if (intPattern.stringMatch(value) == value) {
-      return int.parse(value);
+      // tryParse, not parse: the pattern says "all digits", which is a claim
+      // about shape and not about magnitude. Dart's int is 64-bit, so a longer
+      // run has no int to become and tryParse returns null — the value then
+      // falls through to the String at the end, exactly as `-5` and `12px` do.
+      // parse would instead throw a FormatException naming neither the key nor
+      // the source, aborting the whole parse over one account number.
+      final asInt = int.tryParse(value);
+      if (asInt != null) {
+        return asInt;
+      }
     }
     if (doublePattern.stringMatch(value) == value) {
       return double.parse(value);

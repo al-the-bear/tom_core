@@ -2,6 +2,27 @@
 
 ### Fixed
 
+- **A digit run too large for an `int` no longer aborts the parse (tcinc420).**
+  `TomArgs` decided a value was an integer from its shape (`[0-9]+`) and then
+  called `int.parse` with no guard. The pattern constrains shape, not magnitude,
+  and Dart's `int` is 64-bit, so the two part company at `9223372036854775807`:
+  above it `int.parse` threw `FormatException: Positive input exceeds the limit
+  of integer`, naming neither the key nor the source. Because every entry point
+  funnels through one converter, the whole parse went down with it — a single
+  account number in a `.env` file cost every other line, and one in `argv` cost
+  every other argument. None of the four conversion tables mentioned a limit, so
+  a reader had no reason to expect one.
+
+  An oversized run now stays a `String`, which is the answer the table already
+  gives `-5`, `12px` and `1.2.3`: not an error, just a value the converter
+  cannot represent as a number. It is also what the caller wanted, since the
+  values that overflow are labels spelled in digits — an account number, a
+  device identifier, a phone number written without punctuation. The limit is
+  stated in all four conversion tables. The `double` branch was checked and
+  needs no equivalent guard: `double.parse` saturates to `Infinity` rather than
+  throwing. Six tests pin it across all three entry points, including both sides
+  of the boundary.
+
 - **An unbalanced quote no longer crashes or truncates a value (tcinc418,
   tcinc419).** Both parsers unquoted by dropping the first and last character
   on the strength of the *opening* quote alone. For the one-character value

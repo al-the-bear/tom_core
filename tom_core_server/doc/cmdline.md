@@ -98,7 +98,7 @@ Both classes share one conversion table (implemented once in `TomArgs`):
 | `true` | `bool` `true` |
 | `false` | `bool` `false` |
 | wrapped in a matched pair of `"` or `'` | the unquoted contents |
-| all digits (e.g. `8080`) | `int` |
+| all digits, fitting a 64-bit `int` (e.g. `8080`) | `int` |
 | decimal (e.g. `3.14`) | `double` |
 | empty (`.env` only) | `null` |
 | anything else | the original `String` |
@@ -106,6 +106,25 @@ Both classes share one conversion table (implemented once in `TomArgs`):
 The numeric rules match the *whole* string, so a leading sign or trailing text
 keeps the value a `String`: `-5`, `1.2.3`, and `12px` all stay strings. `int` is
 tried before `double`, so `8080` is an `int` and `3.14` a `double`.
+
+### A digit run larger than an `int` stays a `String`
+
+Dart's `int` is 64-bit. A run of digits longer than `9223372036854775807` has no
+`int` to become, so it is left as the text it arrived as — the same outcome as
+`-5` or `12px`, and for the same reason: the converter only produces a type it
+can actually represent.
+
+| Value | Result |
+| ----- | ------ |
+| `9223372036854775807` | `int` — the largest that fits |
+| `9223372036854775808` | `String` — one past the limit |
+| `99999999999999999999` | `String` |
+
+This matters because the values that overflow are rarely arithmetic. An account
+number, a device identifier, or a phone number written without punctuation is a
+label that happens to be spelled in digits, and a `String` is what the caller
+wanted anyway. Treating the overflow as a parse failure would have cost the
+whole argument list or `.env` file, not just the one value.
 
 ### Quotes are stripped only in pairs
 
