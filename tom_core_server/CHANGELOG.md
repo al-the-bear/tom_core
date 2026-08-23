@@ -1,5 +1,28 @@
 ## 1.3.0
 
+### Documentation
+
+- **The cache module readme's quick start is now a program that returns
+  (tcinc410).** It was a complete `main()` that registered a cache, stored, read
+  and printed — and then hung. `TomCache.forType` defaults
+  `deletionIntervalSeconds` to 3600 and the constructor installs the timer, so
+  the isolate stayed alive with nothing left to do; run verbatim it printed
+  `hello` and had to be killed. It was the first thing a reader of the module
+  saw, and the only artefact of the five that got the rule wrong — the example
+  already ends with `exit(0)` and the tests pass `deletionIntervalSeconds: null`
+  or tear the timers down.
+
+  The snippet now keeps a reference to the cache it registers and ends with
+  `stopTimers()`, so the program terminates on its own instead of being forced
+  out. A new test extracts the `dart` block under the readme's "Quick start"
+  heading, runs it, and requires exit 0 with `hello` on stdout — with a
+  20-second watchdog that kills the child, since the regression it guards is a
+  program that never exits and a hung suite is a poor error message. The
+  example was already pinned this way; the quick start was not, which is why it
+  drifted. `doc/cache.md` also gained the rule it was missing: a live timer
+  keeps the isolate alive, the deletion sweep is on by default, and a script
+  has to stop its caches to return.
+
 ### Internal
 
 - **`removeEntry` is now `TomCache`'s only chain-unlink routine (tcinc409).**

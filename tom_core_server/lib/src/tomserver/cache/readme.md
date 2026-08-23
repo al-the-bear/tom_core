@@ -25,12 +25,18 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 Future<void> main() async {
   // Register a cache keyed by the type it holds.
-  TomCacheManager.addCache(TomCache.forType(String));
+  final greetings = TomCache.forType(String);
+  TomCacheManager.addCache(greetings);
 
   await TomCache.toTypeCache<String>('greeting', 'hello');
   final value = await TomCache.fromTypeCache<String>('greeting');
 
   print(value); // hello
+
+  // A cache installs periodic timers when it is constructed, and a live timer
+  // keeps the isolate alive — so a program that outlives its caches has to stop
+  // them to exit. A server never gets here; a script like this one does.
+  greetings.stopTimers();
 }
 ```
 

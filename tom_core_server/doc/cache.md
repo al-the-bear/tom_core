@@ -118,6 +118,14 @@ None of the three is on by default. `TomCache('x')` with no further arguments is
 unbounded, holds its entries forever, and runs an hourly sweep that finds
 nothing to sweep.
 
+That last one costs more than the wasted sweep: **a live timer keeps the isolate
+alive**. The deletion sweep is installed by the constructor and is on by
+default, so a program that builds a cache no longer exits once its work is
+done. A server never notices, since it is meant to stay up. A script, a sample
+or a one-shot job has to call `stopTimers()` on the caches it created — or exit
+explicitly — to return at all. The module readme's quick start ends that way,
+and a test runs it to keep the promise honest.
+
 ## Isolate Model
 
 The caches live in the **main isolate**. `TomCacheManager.useInThisIsolate` is
