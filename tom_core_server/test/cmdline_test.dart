@@ -83,6 +83,25 @@ void main() {
       expect(convert('12px'), '12px');
     });
 
+    // The patterns are unanchored, so `doublePattern` matches the "1.2" prefix
+    // of "1.2.3" — but `_convertString` compares the match against the *whole*
+    // string, which is what keeps a dotted triple (a version, an IPv4 address)
+    // a String. Pinned because the prefix match invites the opposite reading.
+    test('a dotted triple keeps the value a String', () {
+      expect(convert('1.2.3'), '1.2.3');
+      expect(convert('192.168.0.1'), '192.168.0.1');
+    });
+
+    // The documented double shape is `digits . digits?`, so the fractional part
+    // is optional and a trailing dot still converts.
+    test('a trailing dot still converts to a double', () {
+      expect(convert('5.'), 5.0);
+    });
+
+    test('exponent notation keeps the value a String', () {
+      expect(convert('1e3'), '1e3');
+    });
+
     test('a quoted value is unquoted to a String', () {
       expect(convert('"hello"'), 'hello');
       expect(convert("'world'"), 'world');
