@@ -14,6 +14,7 @@ bounded, and can expire entries by age or clear itself on a schedule.
 - [Isolate Model](#isolate-model)
 - [Failures Are Internal](#failures-are-internal)
 - [Core Components](#core-components)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
 
 ---
@@ -62,9 +63,15 @@ final same = await TomCache.fromTypeCache<User>('u-42');
 await TomCache.removeFromTypeCache<User>('u-42');
 ```
 
-`fromNameCache` returns `null` on a miss or an expired entry (an expired entry is
-removed in passing). It throws [`TomCacheException`] if the stored value is not a
-`T`.
+`fromNameCache` returns `null` on a miss or an expired entry (an expired entry
+is removed in passing). It throws [`TomCacheException`] if the stored value is
+not a `T`. Both answers hold whichever isolate the read runs in — see
+[Isolate Model](#isolate-model).
+
+The three mutators return `Future<int>` and **always answer `0`**. It is a
+uniform result shape, not a count: it does not distinguish an insert from a
+replacement, or a removal from a no-op. Do not branch on it; see
+[Not Yet Implemented](#not-yet-implemented).
 
 A value that *is already* a [`TomCacheEntry`] is stored verbatim, so it keeps its
 own `deletionTime` and the cache's `deleteEntriesAfterSeconds` does not apply to
@@ -91,13 +98,22 @@ A cache has two independent eviction mechanisms plus an optional periodic clear:
 
 - **Per-entry expiry** — a stored value expires at an explicit `deletionTime`,
   or after `deleteEntriesAfterSeconds` from when it was stored. Expired entries
-  are dropped lazily on read and swept by a *deletion timer* every
-  `deletionIntervalSeconds` (default one hour).
+  are dropped lazily when read *through the static helpers* and swept by a
+  *deletion timer* every `deletionIntervalSeconds` (default one hour). The raw
+  `getEntry` accessor does not apply the rule, so it can hand back an expired
+  entry; the sweep only ever reclaims entries that carry a `deletionTime` in the
+  first place.
 - **LRU bound** — when `maximumEntries` is set the entries form a
   most-recently-used list; reading or writing an entry moves it to the front,
-  and exceeding the bound evicts the least-recently-used entry.
+  and exceeding the bound evicts the least-recently-used entry. When it is
+  **not** set there is no bound at all — see
+  [Not Yet Implemented](#not-yet-implemented) before leaving a cache unbounded.
 - **Periodic clear** — when `clearIntervalSeconds` is set a *clearance timer*
   empties the whole cache on that interval.
+
+None of the three is on by default. `TomCache('x')` with no further arguments is
+unbounded, holds its entries forever, and runs an hourly sweep that finds
+nothing to sweep.
 
 ## Isolate Model
 
@@ -174,6 +190,49 @@ local one.
   `clientThrow: false` by default, since neither is the caller's business.
 - **`TomCacheStoreMessage` / `TomCacheRemoveMessage` / `TomCacheRetrieveMessage`**
   — the cross-isolate commands.
+
+## Not Yet Implemented
+
+- **`getEntry` does not enforce expiry.** The expiry rule lives in
+  `fromNameCache` alone; the entry accessor is a structural read that looks the
+  key up, promotes it in a bounded cache, and hands it back whatever its
+  `deletionTime` says. `getEntry` and `putEntry` are public because storing an
+  entry with its own lifetime is a documented use, so a caller that reaches past
+  the static helpers can read a value the module considers dead. Prefer
+  `fromNameCache` unless you specifically want the raw entry.
+- **An unbounded cache has no bound at all.** Without `maximumEntries` nothing
+  caps the map, and without `deleteEntriesAfterSeconds` the stored entries carry
+  no `deletionTime` for the sweep to find — so both eviction mechanisms decline
+  and the cache grows for the life of the process. That is the *default*
+  configuration: `TomCache('x')` is unbounded, lifetime-free, and swept hourly
+  for nothing. It is safe when the key space is itself bounded — routing tables,
+  compiled templates, resolved configuration — and a leak when the key is a user
+  id or a request parameter. Nothing in the API distinguishes the two, so the
+  choice is the caller's to make deliberately.
+- **The mutators always answer `0`.** `toNameCache`, `toTypeCache`,
+  `removeFromNameCache` and `removeFromTypeCache` return `Future<int>` and the
+  `int` is a uniform result shape, not a count: it cannot tell an insert from a
+  replacement, or a removal from a no-op. A caller that needs to know reads
+  first, which is a second operation and — from a worker isolate — a second
+  round trip.
+- **Cross-isolate forwarding is one round trip per operation.** Each helper
+  issues its own `executeInCreator` call with a single-operation command. There
+  is no batch form and no worker-side read-through copy, so a handler resolving
+  ten cached keys from a worker pays ten crossings. Nothing measures this today,
+  so the size of the cost is unknown.
+- **A cache that leaves the registry keeps its timers.**
+  `TomCacheManager.setCurrent` swaps the whole registry and nothing stops the
+  discarded caches' timers, which carry on sweeping maps no lookup can reach and
+  keep the isolate alive. There is also no per-cache deregistration —
+  `addCache` has no counterpart — so `setCurrent` is the only way to drop a
+  registration, and it is the leaky one. Call `stopTimers()` on a cache you are
+  finished with.
+
+All but the fourth are pinned by tests in `test/cache_test.dart` — the second,
+third and the timer half of the last in the group "The limits the documentation
+records", the first in "getEntry (direct)" — so closing one of them turns a test
+red rather than leaving this section quietly wrong. The fourth is a cost rather
+than an outcome, and pinning it would mean asserting a shape.
 
 ## Dependencies
 

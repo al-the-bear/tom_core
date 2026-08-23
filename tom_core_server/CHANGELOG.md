@@ -558,6 +558,26 @@
 
 ### Documentation
 
+- **`doc/cache.md` records the module's limits, and the limits are pinned
+  (tcinc405).** The cache module's five known limits lived only in an internal
+  completion document; the package-facing prose carried none of them and had no
+  section in which to, though seven sibling module documents already use a
+  `## Not Yet Implemented` section for exactly this. The gap was not abstract —
+  the LRU bound was presented without saying that an *unbounded* cache has no
+  bound at all, and the three mutators were shown without saying their
+  `Future<int>` result is always `0`. Both are now qualified where the claim is
+  made, and the section states all five: the raw `getEntry` accessor skipping
+  expiry, the unbounded default, the constant mutator result, unbatched
+  cross-isolate forwarding, and `setCurrent` orphaning the timers of the caches
+  it discards.
+
+  Three of the five are now pinned by tests, because a prose list of limits
+  cannot go red when one of its items is closed — which is not a hypothetical:
+  re-verifying the list against the source found a **sixth** item that had been
+  fixed and was still being read as live. Closing one of the pinned limits now
+  fails a test that names the section, rather than leaving the document quietly
+  wrong.
+
 - **The cache example's expectations actually run, and the suite runs the
   example (tcinc403).** The completion document said the example "runs with
   `dart run example/cache/cache_example.dart` and asserts each result". It did

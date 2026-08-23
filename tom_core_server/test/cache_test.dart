@@ -898,6 +898,62 @@ void main() {
     });
   });
 
+  group('The limits the documentation records', () {
+    // `doc/cache.md`'s "Not Yet Implemented" section states these as the
+    // module's behaviour today. Prose cannot go red on its own, so closing one
+    // of these limits turns the matching test red, which is the signal that the
+    // section has a line to lose. The section's remaining two items are covered
+    // elsewhere: `getEntry` skipping expiry is pinned by the "getEntry
+    // (direct)" group above, and unbatched forwarding is a cost rather than an
+    // outcome — pinning it would mean asserting a shape, not a behaviour.
+
+    test('an unbounded cache keeps every entry it is given', () async {
+      // Nothing caps the backing map when `maximumEntries` is null, and a value
+      // stored into a cache without `deleteEntriesAfterSeconds` carries no
+      // `deletionTime` — so the sweep has nothing to find either. Both eviction
+      // mechanisms decline and the map grows for the life of the process.
+      // Giving `maximumEntries` a default would turn this red.
+      final cache = TomCache('unbounded', deletionIntervalSeconds: null);
+      TomCacheManager.addCache(cache);
+      for (var i = 0; i < 5000; i++) {
+        await TomCache.toNameCache('unbounded', 'k$i', i);
+      }
+      expect(cache.maximumEntries, isNull);
+      // The first key survives 4999 later writes: nothing evicted it.
+      expect(await TomCache.fromNameCache<int>('unbounded', 'k0'), 0);
+      expect(await TomCache.fromNameCache<int>('unbounded', 'k4999'), 4999);
+      // And it is not merely unswept-yet — it carries no expiry to sweep.
+      expect(cache.getEntry('k0')!.deletionTime, isNull);
+    });
+
+    test('the mutators answer 0 whatever they did', () async {
+      // Each pair below differs in outcome and agrees in result, which is the
+      // whole of the claim: the `int` is a uniform shape, not a count. Making
+      // it meaningful — or narrowing it to `void`/`bool` — fails here.
+      TomCacheManager.addCache(_cache('c'));
+      TomCacheManager.addCache(_cache('String'));
+      expect(await TomCache.toNameCache('c', 'k', 'v'), 0); // inserted
+      expect(await TomCache.toNameCache('c', 'k', 'w'), 0); // replaced
+      expect(await TomCache.removeFromNameCache('c', 'k'), 0); // removed one
+      expect(await TomCache.removeFromNameCache('c', 'k'), 0); // removed none
+      expect(await TomCache.toTypeCache<String>('k', 'v'), 0);
+      expect(await TomCache.removeFromTypeCache<String>('k'), 0);
+    });
+
+    test('setCurrent leaves the discarded caches sweeping', () {
+      // The registry is swapped, but the caches that went with it keep their
+      // timers: they carry on firing against maps no lookup can reach, and each
+      // one keeps the isolate alive. The tear-down below is the workaround the
+      // absence of a deregistration API forces, and is itself the evidence.
+      final orphan = TomCache('orphan', deletionIntervalSeconds: 1);
+      addTearDown(orphan.stopTimers);
+      TomCacheManager.addCache(orphan);
+      TomCacheManager.setCurrent(TomCacheManager());
+      expect(TomCacheManager.getCache('orphan'), isNull);
+      expect(orphan.deletionTimer!.isActive, isTrue);
+    });
+  });
+
   group('The example runs green', () {
     final examplePath = p.join('example', 'cache', 'cache_example.dart');
 
