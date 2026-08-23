@@ -50,6 +50,16 @@
 
 ### Internal
 
+- **The cache registry is declared `Map<String, TomCache>` (tcinc412).**
+  `TomCacheManager` held it as `Map<Object, TomCache>`, but the only write is
+  `_caches[cache.cacheName] = cache` with a `String` `cacheName`, and the only
+  read is `getCache(String name)` — so the key type was wider than anything that
+  could be put in or taken out. It admitted a key `getCache` could never reach,
+  and cost a reader the moment it takes to work out whether a cache can be
+  registered under something other than its name. It cannot. The narrowing is a
+  no-op the analyzer proves: if any site had needed the wider type it would no
+  longer compile, and every suite is unchanged.
+
 - **`removeEntry` is now `TomCache`'s only chain-unlink routine (tcinc409).**
   `putEntry` held two further copies of it — one for replacing an existing key,
   one for evicting the least-recently-used entry — and the eviction copy had

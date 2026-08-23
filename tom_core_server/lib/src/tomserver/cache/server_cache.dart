@@ -90,7 +90,10 @@ class TomCacheManager {
     _current._caches[cache.cacheName] = cache;
   }
 
-  final Map<Object, TomCache> _caches = {};
+  /// The registry itself. Keyed by [TomCache.cacheName], which is the only key
+  /// [addCache] can write and the only one [getCache] can read — a cache is
+  /// reachable under its own name and under nothing else.
+  final Map<String, TomCache> _caches = {};
 }
 
 /// A named in-memory cache of [TomCacheEntry] values keyed by string.
