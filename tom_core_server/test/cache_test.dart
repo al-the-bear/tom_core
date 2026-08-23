@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:path/path.dart' as p;
 import 'package:tom_core_server/tom_core_server.dart';
@@ -21,6 +22,49 @@ TomCache _cache(String name, {int? maximumEntries}) => TomCache(
   deletionIntervalSeconds: null, // no background timer needed under test
   maximumEntries: maximumEntries,
 );
+
+/// A plain LRU of the same bound, used as the reference the cache is checked
+/// against.
+///
+/// Deliberately naive — a list for the order and a map for the values, with no
+/// pointer bookkeeping at all. The cache's chain exists to make eviction O(1);
+/// this model gets the same answers by scanning, so the two agree only if the
+/// chain is maintained correctly. A shared helper would have hidden exactly the
+/// bug being looked for.
+class _LruModel {
+  _LruModel(this.bound);
+
+  final int bound;
+
+  /// Keys most-recently-used first.
+  final List<String> _order = [];
+  final Map<String, Object?> _values = {};
+
+  /// Reads [key], promoting it on a hit. A miss changes nothing, matching
+  /// `getEntry`.
+  Object? get(String key) {
+    if (!_values.containsKey(key)) return null;
+    _order.remove(key);
+    _order.insert(0, key);
+    return _values[key];
+  }
+
+  /// Stores [value] under [key] at the most-recently-used position, evicting
+  /// the least-recently-used entry if that puts the model over its bound.
+  void put(String key, Object? value) {
+    _order.remove(key);
+    _order.insert(0, key);
+    _values[key] = value;
+    if (_order.length > bound) {
+      _values.remove(_order.removeLast());
+    }
+  }
+
+  void remove(String key) {
+    _order.remove(key);
+    _values.remove(key);
+  }
+}
 
 /// Minimal context for a worker spawned by the round-trip group below.
 class _CacheWorkerContext extends TomWorkerContext {
@@ -994,6 +1038,101 @@ void main() {
       expect(cache.getEntry('a'), isNull);
       expect(cache.getEntry('c')!.value, 3);
       expect(cache.getEntry('e')!.value, 5);
+    });
+  });
+
+  group('The MRU chain stays coherent across evictions', () {
+    // The map and the chain are two views of the same entries, and only the
+    // map is observable from outside. A chain that drifts out of step with it
+    // is therefore invisible until it produces a wrong *answer* — the wrong
+    // entry evicted, or no eviction at all and a cache over its bound. These
+    // tests reach the chain the only way a caller can: through the answers.
+    test('draining to a single entry and refilling still evicts the LRU', () {
+      // The drain is the interesting part. Removing entries until one is left
+      // leaves that entry as both head and tail, which is the shape in which a
+      // tail repair that only runs when the tail has a predecessor would be
+      // skipped. Refilling past the bound then asks the cache to evict it.
+      final cache = _cache('drain', maximumEntries: 3);
+      cache.putEntry('a', TomCacheEntry(1));
+      cache.putEntry('b', TomCacheEntry(2));
+      cache.putEntry('c', TomCacheEntry(3));
+      cache.removeEntry('a');
+      cache.removeEntry('b'); // 'c' is now head and tail at once
+
+      cache.putEntry('d', TomCacheEntry(4));
+      cache.putEntry('e', TomCacheEntry(5));
+      cache.putEntry('f', TomCacheEntry(6)); // over bound -> evict LRU 'c'
+
+      expect(cache.getEntry('c'), isNull);
+      expect(cache.getEntry('d')!.value, 4);
+      expect(cache.getEntry('e')!.value, 5);
+      expect(cache.getEntry('f')!.value, 6);
+    });
+
+    test('draining the cache empty and refilling starts from a clean chain', () {
+      // Removing the last entry has to leave head and tail both unset, or the
+      // next put links a fresh entry onto a chain of entries that are gone.
+      final cache = _cache('empty', maximumEntries: 2);
+      cache.putEntry('a', TomCacheEntry(1));
+      cache.putEntry('b', TomCacheEntry(2));
+      cache.removeEntry('a');
+      cache.removeEntry('b');
+
+      cache.putEntry('x', TomCacheEntry(10));
+      cache.putEntry('y', TomCacheEntry(20));
+      cache.putEntry('z', TomCacheEntry(30)); // over bound -> evict LRU 'x'
+
+      expect(cache.getEntry('x'), isNull);
+      expect(cache.getEntry('y')!.value, 20);
+      expect(cache.getEntry('z')!.value, 30);
+    });
+
+    test('agrees with a reference LRU over a long random operation mix', () {
+      // The hand-written cases above each pin one shape. This one pins the
+      // invariant behind all of them: whatever sequence of puts, reads and
+      // removes it is driven through, the cache holds exactly the entries an
+      // ordinary LRU of the same bound would hold. Any chain that drifts out
+      // of step with the map eventually evicts the wrong entry — or fails to
+      // evict and grows past the bound — and either shows up here.
+      //
+      // The verification pass is itself a run of reads, so it promotes; it is
+      // applied to the model in the same order and therefore keeps the two in
+      // lockstep rather than perturbing one of them. That is what allows it to
+      // run every round and name the round that first diverged, instead of
+      // once at the end where the diagnosis would be a single failed key.
+      const bound = 3;
+      final keys = List.generate(8, (i) => 'k$i');
+      final random = Random(20260823); // fixed seed: a failure is reproducible
+      final cache = _cache('model', maximumEntries: bound);
+      final model = _LruModel(bound);
+
+      for (var round = 1; round <= 40; round++) {
+        for (var i = 0; i < 15; i++) {
+          final key = keys[random.nextInt(keys.length)];
+          final roll = random.nextInt(100);
+          if (roll < 50) {
+            final value = random.nextInt(1000);
+            cache.putEntry(key, TomCacheEntry(value));
+            model.put(key, value);
+          } else if (roll < 85) {
+            expect(
+              cache.getEntry(key)?.value,
+              model.get(key),
+              reason: 'round $round: read of $key',
+            );
+          } else {
+            cache.removeEntry(key);
+            model.remove(key);
+          }
+        }
+        for (final key in keys) {
+          expect(
+            cache.getEntry(key)?.value,
+            model.get(key),
+            reason: 'round $round: contents differ at $key',
+          );
+        }
+      }
     });
   });
 

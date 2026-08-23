@@ -118,6 +118,13 @@ class TomCache {
 
   /// Removes the entry stored under [key], unlinking it from the MRU list if the
   /// cache is bounded. A no-op when the key is absent.
+  ///
+  /// This is the module's only chain-unlink routine. The deletion sweep, and
+  /// both of [putEntry]'s removals — replacing an existing key and evicting the
+  /// least-recently-used entry — all go through it, so a map removal cannot be
+  /// paired with a partial chain repair in one of them. Every earlier defect in
+  /// this area was a second copy of these ten lines that had drifted: repairing
+  /// the head but not the tail, or removing from the map with no repair at all.
   void removeEntry(String key) {
     TomCacheEntry? oldEntry = _cache[key];
     // Remove old entry;
@@ -192,26 +199,18 @@ class TomCache {
         entry._next = null;
         entry._key = key;
       } else {
-        TomCacheEntry? oldEntry = _cache[key];
-        // Remove old entry;
-        if (oldEntry != null) {
-          // if this was the only entry, start with empty cache again
+        // Replacing an existing key: drop the old entry first, so the
+        // insertion below links one entry into the chain rather than leaving
+        // the previous one in it unreachable.
+        if (_cache.containsKey(key)) {
+          // The sole entry of the cache — restarting from empty is shorter
+          // than unlinking a one-element chain, and lands in the branch above.
           if (cacheSize == 1) {
             _cache.clear();
             putEntry(key, entry);
             return;
           }
-          // else remove from chain
-          if (oldEntry._before != null) {
-            oldEntry._before!._next = oldEntry._next;
-          } else {
-            _first = oldEntry._next;
-          }
-          if (oldEntry._next != null) {
-            oldEntry._next!._before = oldEntry._before;
-          } else {
-            _last = oldEntry._before;
-          }
+          removeEntry(key);
         }
         // insert new element at the beginning
         _cache[key] = entry;
@@ -222,12 +221,7 @@ class TomCache {
         _first = entry;
         // remove one from end if maximum is exceeded
         if (_cache.length > maximumEntries!) {
-          var oldLast = _last;
-          if (oldLast!._before != null) {
-            oldLast._before!._next = null;
-            _last = oldLast._before;
-          }
-          _cache.remove(oldLast._key);
+          removeEntry(_last!._key!);
         }
       }
     }

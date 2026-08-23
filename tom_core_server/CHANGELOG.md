@@ -1,5 +1,26 @@
 ## 1.3.0
 
+### Internal
+
+- **`removeEntry` is now `TomCache`'s only chain-unlink routine (tcinc409).**
+  `putEntry` held two further copies of it — one for replacing an existing key,
+  one for evicting the least-recently-used entry — and the eviction copy had
+  drifted: it reassigned `_last` inside `if (oldLast._before != null)` but
+  removed from the map outside the guard, so the guard's false branch would
+  have left the chain's tail pointing at an entry no longer in the map. That is
+  the same shape as the three chain defects fixed earlier in this release.
+
+  The branch is unreachable as the module stands — eviction runs only after a
+  fresh head has been linked, so the tail always has a predecessor — and
+  planting a `throw` in it leaves the whole suite green. It is therefore a
+  latent hazard rather than an observable bug, and reverting the change leaves
+  the suite green too. Both copies now call `removeEntry`, which repairs head
+  and tail on every branch and is already what the deletion sweep uses; having
+  one routine is what stops a fourth copy from drifting. A new differential
+  test checks a bounded cache against a naive LRU of the same bound across a
+  randomised operation mix, and turns red if either of `removeEntry`'s repairs
+  is dropped.
+
 ### Behaviour Changes
 
 - **`TomCache` now rejects a non-positive `maximumEntries` (tcinc408).**
