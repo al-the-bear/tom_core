@@ -88,9 +88,17 @@ void main() {
     // The two parsers are documented as sharing one syntax, so the same text
     // has to mean the same thing whether it arrives on the command line or
     // from a .env file. This is the guarantee that regressed.
+    //
+    // The expected map is named rather than left implicit. Comparing the two
+    // parsers to each other only asserts that they agree, and duplicated logic
+    // regresses in both copies at once — a shared move to `lastIndexOf` would
+    // keep them in perfect agreement about the wrong answer. Naming the result
+    // makes this a test of the rule as well as of the agreement.
     test('agrees with TomEnvFile.parse on where the key ends', () {
       const line = 'url=mysql://h/db?user=root&pw=s3cret';
-      expect(TomArgs.parseArgsToMap([line]), TomEnvFile.parse([line]));
+      const expected = {'url': 'mysql://h/db?user=root&pw=s3cret'};
+      expect(TomArgs.parseArgsToMap([line]), expected);
+      expect(TomEnvFile.parse([line]), expected);
     });
 
     // Where the two still part company. Both differences come from
@@ -559,6 +567,29 @@ void main() {
     test('ignores a line with no "=" and a line with an empty key', () {
       final env = TomEnvFile.parse(['novalue', '=orphan', 'KEY=ok']);
       expect(env, {'KEY': 'ok'});
+    });
+
+    // The first-"=" rule on the .env side. The command-line group asserts the
+    // same rule for `TomArgs`; these three are its counterparts, because the
+    // two sources are documented as one syntax and a rule stated for both is
+    // only tested here if it is tested on both.
+    //
+    // A line with one "=" cannot put the question — first and last give the
+    // same key — so each case below carries a second one that is data.
+    test('the key is the text before the first "=", not before the last', () {
+      final env = TomEnvFile.parse(['DB_URL=mysql://host/db?user=root']);
+      // The key side: exactly one entry, and not 'DB_URL=mysql://host/db?user'.
+      expect(env.keys, ['DB_URL']);
+      // The value side: the query parameter is part of the URL, not a pair.
+      expect(env['DB_URL'], 'mysql://host/db?user=root');
+    });
+
+    test('base64 padding is not mistaken for a separator', () {
+      expect(TomEnvFile.parse(['SECRET=YWJjZA=='])['SECRET'], 'YWJjZA==');
+    });
+
+    test('a value that is only "=" characters is kept', () {
+      expect(TomEnvFile.parse(['K==='])['K'], '==');
     });
 
     test('an empty quoted value is the empty String', () {

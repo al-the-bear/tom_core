@@ -301,6 +301,31 @@
 
 ### Internal
 
+- **The `.env` first-`=` rule is now tested on the `.env` side (tcinc429).** The
+  headline claim for `TomEnvFile.parse` is that it splits on the *first* `=`, so
+  a value carrying more of them survives whole; the module documentation makes
+  the point with `DB_URL=mysql://host/db?user=root`, whose query parameter is
+  data rather than a second pair. The behaviour was correct, and untested. The
+  `TomEnvFile.parse` group covered pairs, comments, quoting, inline comments,
+  empty values and malformed lines, but no value containing a second `=` — the
+  same gap that let the equivalent `TomArgs` defect survive until tcinc415.
+
+  Three tests now mirror, on the `.env` side, the set the command-line group
+  already carried: the documented URL (asserting both that the single key is
+  `DB_URL` and that the value is whole), a padded base64 blob, and a value that
+  is nothing but `=` characters. A line with one `=` cannot put the question at
+  all — first and last pick the same key — so each case carries a second one
+  that is data.
+
+  The cross-source test that appeared to cover this was strengthened in the same
+  pass. It compared `TomArgs.parseArgsToMap` to `TomEnvFile.parse` on a URL and
+  asserted only that the two agreed, which a regression in both at once — the
+  likely shape, given how much of the rule the two state in common — would
+  satisfy while agreeing about the wrong answer. Reverting both parsers to
+  `lastIndexOf` confirmed it: they returned identical, identically wrong maps.
+  The test now names the map it expects, so it pins the rule as well as the
+  agreement.
+
 - **The single argument parse is now enforced, not just present (tcinc428).**
   `fillFromArgs` and `parseArgsToMap` once carried byte-identical parse loops,
   which is why the first-`=` split and the bare-flag rule each had to be
