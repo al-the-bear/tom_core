@@ -122,6 +122,10 @@ class TomExternalIdentityLink {
   /// depend on row order. The index on `local_username` is what makes "every
   /// identity linked to this account" — the account-settings question — a
   /// lookup rather than a scan.
+  ///
+  /// The two instant columns are `DATETIME(6)`, the width the instant convention
+  /// writes (`datasources/sql_instant.dart`); a plain `DATETIME` rounds off the
+  /// microseconds it always renders.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_external_identity (
   id BIGINT NOT NULL AUTO_INCREMENT,
@@ -129,8 +133,8 @@ CREATE TABLE IF NOT EXISTS tom_external_identity (
   subject VARCHAR(255) NOT NULL,
   local_username VARCHAR(255) NOT NULL,
   display_name VARCHAR(255) NOT NULL DEFAULT '',
-  linked_at DATETIME NULL,
-  last_login_at DATETIME NULL,
+  linked_at DATETIME(6) NULL,
+  last_login_at DATETIME(6) NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_external_identity (issuer, subject),
   KEY idx_tom_external_identity_local (local_username)

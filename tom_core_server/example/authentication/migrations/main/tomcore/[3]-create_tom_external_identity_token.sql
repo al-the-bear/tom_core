@@ -61,8 +61,8 @@ CREATE TABLE IF NOT EXISTS tom_external_identity_token (
   subject VARCHAR(255) NOT NULL,
   token_data TEXT NULL,
   token_scope VARCHAR(1024) NOT NULL DEFAULT '',
-  obtained_at DATETIME NULL,
-  expires_at DATETIME NULL,
+  obtained_at DATETIME(6) NULL,
+  expires_at DATETIME(6) NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_external_identity_token (issuer, subject)
 );

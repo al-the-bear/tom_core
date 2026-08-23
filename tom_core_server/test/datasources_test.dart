@@ -35,11 +35,20 @@ void main() {
       expect(TomDbString.of('hello').get(), 'hello');
     });
 
-    test('TomDbDateTime parses an ISO-8601 string', () {
-      expect(
-        TomDbDateTime.of('2026-01-02T03:04:05').get(),
-        DateTime.parse('2026-01-02T03:04:05'),
-      );
+    test('TomDbDateTime reads a stored instant back as UTC', () {
+      // The column carries no zone and every instant this server writes is UTC,
+      // so the reader supplies the zone the text omits. Parsing it as *local*
+      // would make the value mean whatever the reading host's offset happens to
+      // be — the same characters naming a different moment on each node.
+      final read = TomDbDateTime.of('2026-01-02 03:04:05.000000').get()!;
+      expect(read, DateTime.utc(2026, 1, 2, 3, 4, 5));
+      expect(read.isUtc, isTrue);
+    });
+
+    test('TomDbDateTime treats an empty column as absent', () {
+      // The driver reports a NULL instant as either null or '' depending on the
+      // row mapper; `DateTime.parse('')` would throw on the second shape.
+      expect(TomDbDateTime.of('').get(), isNull);
     });
 
     test('a null string yields a box holding null', () {
@@ -72,9 +81,21 @@ void main() {
       expect(d.p('userId'), ':userId');
     });
 
-    test('dateTimeOp is a quoted ISO-8601 string', () {
-      final dt = DateTime.parse('2026-01-02T03:04:05');
-      expect(d.dateTimeOp(dt), "'${dt.toIso8601String()}'");
+    test('dateTimeOp is a quoted UTC DATETIME(6) literal', () {
+      // Not ISO-8601: a `T` separator and a trailing `Z` are both rejected by a
+      // DATETIME column (error 1292), so the ISO rendering could not carry a
+      // UTC instant into generated SQL at all.
+      expect(
+        d.dateTimeOp(DateTime.utc(2026, 1, 2, 3, 4, 5)),
+        "'2026-01-02 03:04:05.000000'",
+      );
+    });
+
+    test('dateTimeOp renders a local value as the instant it names', () {
+      // Whatever zone the emitting node is in, the literal is the moment — not
+      // that node's wall-clock reading of it.
+      final local = DateTime.utc(2026, 1, 2, 3, 4, 5).toLocal();
+      expect(d.dateTimeOp(local), "'2026-01-02 03:04:05.000000'");
     });
   });
 
@@ -340,41 +361,46 @@ void main() {
       expect(bound, [null]);
     });
 
-    // The driver serializes a bound DateTime through `toString()`, which for a
-    // UTC instant appends `Z` — '2000-01-01 00:00:00.000Z'. MariaDB has no
-    // zone-aware DATETIME and rejects the suffix outright ("Incorrect datetime
-    // value", error 1292), so a DateTime must reach the driver with no zone
-    // designator or it cannot be persisted at all.
+    // The bind boundary is where an entity column meets the instant convention
+    // (`datasources/sql_instant.dart`). A reflected `@TomDbColumn<DateTime?,
+    // TomDbDateTime>` field names no conversion of its own, so the data source
+    // applies the convention on its behalf: what reaches the driver is the UTC
+    // `DATETIME(6)` text, identical on every node.
     //
-    // Converted rather than merely stripped of its `Z`: the read side parses a
-    // suffix-less column value as *local* (`DateTime.parse`), so stripping would
-    // store a UTC wall clock and read it back as a local one — the same text
-    // naming a different instant, silently off by the machine's offset. Only
-    // `toLocal()` round-trips.
-    test('a UTC DateTime binds as the local instant MariaDB can store', () {
-      final utc = DateTime.utc(2000, 1, 1, 12);
+    // Text rather than a converted `DateTime`, for two reasons. The driver
+    // serializes a bound `DateTime` through `toString()`, which for a UTC value
+    // appends `Z` — a suffix MariaDB rejects outright ("Incorrect datetime
+    // value", error 1292). And a `toLocal()` conversion, which does avoid the
+    // suffix, stores *the writing node's wall clock*: it round-trips on that
+    // node and means a different moment on every other one.
+    test('a UTC DateTime binds as its UTC DATETIME(6) text', () {
       final bound = MariadbPreparedStatement.buildPositionalParameters(
         ['created_at'],
-        {'created_at': utc},
+        {'created_at': DateTime.utc(2000, 1, 1, 12)},
       );
-
-      final value = bound.single as DateTime;
-      expect(value.isUtc, isFalse);
-      expect(value.toString(), isNot(endsWith('Z')));
-      // The same moment in time, so a write followed by a read is a round trip.
-      expect(value.isAtSameMomentAs(utc), isTrue);
+      expect(bound.single, '2000-01-01 12:00:00.000000');
     });
 
-    test('a local DateTime is bound unchanged', () {
-      // The already-working case, asserted so the fix above stays a conversion
-      // of the UTC case and does not become a blanket re-anchoring of every
-      // DateTime that passes through.
-      final local = DateTime(2000, 1, 1, 12);
+    test('a local DateTime binds as the instant it names, not its face', () {
+      // The property that makes the column an instant: the characters stored
+      // depend on the moment alone, so a node in any zone binding the same
+      // moment leaves the same row behind.
+      final local = DateTime.utc(2000, 1, 1, 12).toLocal();
       final bound = MariadbPreparedStatement.buildPositionalParameters(
         ['created_at'],
         {'created_at': local},
       );
-      expect(bound.single, same(local));
+      expect(bound.single, '2000-01-01 12:00:00.000000');
+    });
+
+    test('a TomDbDateTime box binds the same text as a bare DateTime', () {
+      // The path a reflected column actually takes: its toDbConverter hands the
+      // datasource a box, which must not change what is stored.
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['created_at'],
+        {'created_at': TomDbDateTime(DateTime.utc(2000, 1, 1, 12))},
+      );
+      expect(bound.single, '2000-01-01 12:00:00.000000');
     });
   });
 

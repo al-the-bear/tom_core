@@ -210,6 +210,17 @@ request pay for that history. The delegate index covers `(delegate_id, revoked)`
 for the same reason. `isActiveAt` remains the in-memory statement of the same
 predicate — what the in-memory store filters on, and what the tests share.
 
+Both bounds are **instants**, not wall clocks. They decide whether a delegate
+holds a role, so a bound read as the local time of whichever node happened to
+load the row would mean a different moment on each node of a cluster — and the
+node that is wrong is wrong in the direction of honouring a delegation outside
+the window its owner set. The columns are `DATETIME(6)` and the datasource
+applies the framework's instant convention (`datasources/sql_instant.dart`) to
+them: bound as UTC text, read back UTC-flagged. Nothing is asked of the caller
+beyond passing a `DateTime`. The `(6)` matters for the same reason the UTC does
+— a plain `DATETIME` rounds each bound to the second, putting the edge of a
+security window up to half a second from the one that was set.
+
 Resolving a delegate costs one grant read per **distinct delegator**, not one per
 delegation row. The distinction is worth stating because lending several
 resources means one row each: a colleague who shares four projects with you is

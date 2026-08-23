@@ -171,14 +171,17 @@ void main() async {
       expect(row.issuer, _issuer);
       expect(row.subject, 'sub-1');
       expect(row.tokenScope, 'openid email calendar.read');
-      // `.toUtc()` because a `DATETIME` column carries no zone: the driver
-      // stores a UTC instant as its local wall clock and `DateTime.parse` reads
-      // it back as a *local* instant naming the same moment (see
-      // `MariaDbDatasource._toBindValue`). The moment is what the projection
-      // has to preserve; the flag is the driver's convention, and Dart's `==`
-      // compares both.
-      expect(row.obtainedAt!.toUtc(), _obtainedAt);
-      expect(row.expiresAt!.toUtc(), _expiresAt);
+      // Equal with no conversion on the way out. A `DATETIME` column carries no
+      // zone, so the datasource supplies the one the text omits: written as UTC
+      // and read back UTC-flagged (`datasources/sql_instant.dart`). Dart's `==`
+      // compares the flag as well as the moment, which makes this the stronger
+      // assertion — it fails if the column is read as the local time of
+      // whichever node happened to load the row, and that is precisely the
+      // reading that would let one node think a grant had expired and another
+      // think it had not.
+      expect(row.obtainedAt, _obtainedAt);
+      expect(row.expiresAt, _expiresAt);
+      expect(row.obtainedAt!.isUtc, isTrue);
     });
 
     // ------------------------------------------------------------------

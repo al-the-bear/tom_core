@@ -19,6 +19,9 @@
 /// conventions of `principal_resource_grant_test.dart`.
 library;
 
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -475,6 +478,93 @@ void main() {
         contains(
           'KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)',
         ),
+      );
+    });
+  });
+
+  group('the validity window is an instant, not a wall clock', () {
+    // `[validFrom, validTo]` decides whether a delegate holds a role. Stored as
+    // the writing node's local wall clock it means a different moment on every
+    // node that reads it, so two servers of one cluster disagree about when a
+    // delegation begins and ends — and the one that is wrong is wrong in the
+    // direction of granting access outside the window its owner set.
+
+    /// Runs the probe with `TZ` forced to [zone] and returns its four fields.
+    Future<List<String>> probe(String zone) async {
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        p.join('test', 'fixtures', 'delegation_window_tz_probe.dart'),
+      ], environment: {'TZ': zone});
+      expect(
+        result.exitCode,
+        0,
+        reason: 'probe failed under $zone: ${result.stdout}${result.stderr}',
+      );
+      return (result.stdout as String).trim().split('|');
+    }
+
+    test(
+      'two nodes in different zones store the same characters',
+      () async {
+        // Fourteen hours east and twelve west: 26 hours apart, so the two
+        // hosts are not merely at different clock readings but on different
+        // calendar days for the probe's instant.
+        final east = await probe('Pacific/Kiritimati');
+        final west = await probe('Etc/GMT+12');
+
+        // Believe the columns only once the forced zones are known to have
+        // taken effect — two processes that both silently stayed at UTC would
+        // agree trivially and the assertion below would prove nothing.
+        expect(int.parse(east.first), 14, reason: 'TZ did not take effect');
+        expect(int.parse(west.first), -12, reason: 'TZ did not take effect');
+
+        // The property: the column is the instant, so the characters do not
+        // depend on who wrote them.
+        expect(east[1], west[1]);
+        expect(east[1], '2026-08-11 23:30:00.000000');
+      },
+      skip: Platform.isWindows
+          ? 'the Windows C runtime does not honour TZ'
+          : null,
+    );
+
+    test(
+      'a stored window bound reads back as the instant it names, in any zone',
+      () async {
+        final east = await probe('Pacific/Kiritimati');
+        final west = await probe('Etc/GMT+12');
+
+        expect(int.parse(east.first), 14, reason: 'TZ did not take effect');
+        expect(int.parse(west.first), -12, reason: 'TZ did not take effect');
+
+        // Both read the *same* stored text; a reader that parses it as its own
+        // local time lands 14 hours early on one host and 12 hours late on the
+        // other, which is 26 hours of window either side of the truth.
+        expect(east[2], '2026-08-11T23:30:00.000Z');
+        expect(west[2], '2026-08-11T23:30:00.000Z');
+        // Flagged UTC, not merely equal to it: `DateTime.==` compares `isUtc`,
+        // so a local-flagged value of the same moment fails every equality the
+        // window comparisons and the tests are written with.
+        expect(east[3], 'utc');
+        expect(west[3], 'utc');
+      },
+      skip: Platform.isWindows
+          ? 'the Windows C runtime does not honour TZ'
+          : null,
+    );
+
+    test('the window columns carry the sub-second precision the '
+        'convention specifies', () {
+      // `DATETIME` is whole seconds; the instant convention is `DATETIME(6)`.
+      // A window bound rounded to the second is a window whose edge moves by up
+      // to half a second relative to the one that was set.
+      expect(
+        TomPrincipalDelegation.createTableSql,
+        contains('valid_from DATETIME(6) NULL'),
+      );
+      expect(
+        TomPrincipalDelegation.createTableSql,
+        contains('valid_to DATETIME(6) NULL'),
       );
     });
   });

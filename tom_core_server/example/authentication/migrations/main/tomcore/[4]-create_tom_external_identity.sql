@@ -54,8 +54,8 @@ CREATE TABLE IF NOT EXISTS tom_external_identity (
   subject VARCHAR(255) NOT NULL,
   local_username VARCHAR(255) NOT NULL,
   display_name VARCHAR(255) NOT NULL DEFAULT '',
-  linked_at DATETIME NULL,
-  last_login_at DATETIME NULL,
+  linked_at DATETIME(6) NULL,
+  last_login_at DATETIME(6) NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_external_identity (issuer, subject),
   KEY idx_tom_external_identity_local (local_username)

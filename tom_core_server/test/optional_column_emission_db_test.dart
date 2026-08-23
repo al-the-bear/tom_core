@@ -49,11 +49,19 @@ import 'fixtures/reflection_fixture.dart'
 import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/test_database.dart';
 
-/// The reference instant. Seconds-resolution and no sub-second part, because
-/// the column is a plain `DATETIME`: a microsecond component would be truncated
-/// by the database and the assertion would fail for a reason that has nothing
-/// to do with optionality.
-final DateTime _occurred = DateTime.parse('2026-03-04 05:06:07');
+/// The reference instant.
+///
+/// **UTC**, because that is what a `DateTime` column round-trips as: the
+/// datasource writes every instant as UTC text and reads it back UTC-flagged
+/// (`datasources/sql_instant.dart`), and `DateTime.==` compares the flag as well
+/// as the moment. A local value here would fail on the flag alone and say
+/// nothing about optionality.
+///
+/// Seconds-resolution and no sub-second part, because the column is a plain
+/// `DATETIME`: a microsecond component would be rounded by the database and the
+/// assertion would fail for a reason that has nothing to do with optionality
+/// either.
+final DateTime _occurred = DateTime.utc(2026, 3, 4, 5, 6, 7);
 
 /// A record with every optional column populated.
 FixtureOptionalColumnRecord _populated() => FixtureOptionalColumnRecord()

@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS tom_user_preference (
   preference_key VARCHAR(191) NOT NULL,
   value_type VARCHAR(191) NOT NULL,
   value_json TEXT NULL,
-  updated_at DATETIME NULL,
+  updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_user_preference (principal_id, preference_key),
   KEY idx_tom_user_preference_principal (principal_id)

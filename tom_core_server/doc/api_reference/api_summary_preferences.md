@@ -102,7 +102,7 @@ fills it column by column when mapping a result.
 
 | Constant | Type | Description |
 | -------- | ---- | ----------- |
-| `createTableSql` | `String` | The DDL this entity expects, reproduced verbatim by the framework migration so the two cannot drift — `test/reference_migrations_test.dart` fails if they do. `(principal_id, preference_key)` is unique, because that pair is the preference's identity. |
+| `createTableSql` | `String` | The DDL this entity expects, reproduced verbatim by the framework migration so the two cannot drift — `test/reference_migrations_test.dart` fails if they do. `(principal_id, preference_key)` is unique, because that pair is the preference's identity; `updated_at` is `DATETIME(6)`, the width the instant convention writes. |
 
 ### TomUserPreferenceRepository
 

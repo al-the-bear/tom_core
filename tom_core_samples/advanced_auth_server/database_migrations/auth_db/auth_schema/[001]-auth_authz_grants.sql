@@ -52,8 +52,8 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   mode VARCHAR(32) NOT NULL,
   resource_key VARCHAR(255) NULL,
   role VARCHAR(255) NULL,
-  valid_from DATETIME NULL,
-  valid_to DATETIME NULL,
+  valid_from DATETIME(6) NULL,
+  valid_to DATETIME(6) NULL,
   revoked TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)

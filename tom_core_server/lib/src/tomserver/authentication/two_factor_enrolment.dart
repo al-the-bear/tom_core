@@ -764,6 +764,10 @@ class TomUserTwoFactorEnrolment {
   /// a user's second factors are theirs in every organization they log into.
   /// See [Tom2FAEnrolmentStore.principalKeyOf] for what that premise costs a
   /// deployment that does not share it.
+  ///
+  /// `enrolled_at` is `DATETIME(6)`, the width the instant convention writes
+  /// (`datasources/sql_instant.dart`); a plain `DATETIME` rounds off the
+  /// microseconds it always renders.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_user_two_factor_enrolment (
   id BIGINT NOT NULL AUTO_INCREMENT,
@@ -771,7 +775,7 @@ CREATE TABLE IF NOT EXISTS tom_user_two_factor_enrolment (
   enrolment_id VARCHAR(255) NOT NULL,
   mechanism VARCHAR(64) NOT NULL,
   hint VARCHAR(255) NOT NULL DEFAULT '',
-  enrolled_at DATETIME NULL,
+  enrolled_at DATETIME(6) NULL,
   is_primary TINYINT(1) NOT NULL DEFAULT 0,
   secret_data TEXT NULL,
   PRIMARY KEY (id),

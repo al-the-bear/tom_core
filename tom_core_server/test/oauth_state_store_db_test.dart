@@ -48,11 +48,24 @@ TomOAuthProviderConfig _provider() => TomOAuthProviderConfig(
 /// Unsigned because the flow deliberately does not check the signature — see the
 /// `oauth_flow.dart` library documentation — so a signature here would assert
 /// something no production code reads.
+///
+/// `exp` is present and in the future because the flow refuses a token without
+/// it (`oauth.flow.missing_expiry`): OIDC Core §2 makes the claim required, so
+/// its absence is a non-conformant provider rather than a token that never
+/// expires. A fixture that omits it is not modelling "a well-behaved provider"
+/// at all, and the tests below are about the *state store*, not about freshness
+/// — they should reach it.
 String _idToken() {
   String segment(Map<String, Object?> value) =>
       base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
+  final expires =
+      DateTime.now()
+          .toUtc()
+          .add(const Duration(minutes: 5))
+          .millisecondsSinceEpoch ~/
+      1000;
   return '${segment({'alg': 'none', 'typ': 'JWT'})}'
-      '.${segment({'iss': 'https://idp.example.test', 'aud': 'tom-core-server-test', 'sub': 'sub-1', 'email': 'alice@example.test'})}'
+      '.${segment({'iss': 'https://idp.example.test', 'aud': 'tom-core-server-test', 'sub': 'sub-1', 'email': 'alice@example.test', 'exp': expires})}'
       '.';
 }
 

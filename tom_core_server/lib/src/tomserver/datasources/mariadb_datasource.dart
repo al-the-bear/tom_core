@@ -10,6 +10,7 @@ import '../object_persistence/annotation_analyzer.dart';
 
 import 'mariadb_sql_dialect.dart';
 import 'sql_dialects.dart';
+import 'sql_instant.dart';
 import 'sql_placeholder_scan.dart';
 import 'datasource_initialization.dart';
 import 'queries.dart';
@@ -133,7 +134,7 @@ class MariadbPreparedStatement<T extends Object>
 
   /// Marshals one bind [value] into a driver primitive: a [TomDbType] box is
   /// unwrapped to the Dart value it holds; a Dart `bool` becomes its MariaDB
-  /// integer encoding; a UTC [DateTime] becomes its local equivalent; every
+  /// integer encoding; a [DateTime] becomes its UTC `DATETIME(6)` text; every
   /// other value is bound as-is.
   ///
   /// MariaDB has no native boolean type — `BOOLEAN` is an alias for
@@ -150,18 +151,19 @@ class MariadbPreparedStatement<T extends Object>
   /// driver with no zone designator — `DateTime.utc(...)` is the ordinary case,
   /// not an exotic one.
   ///
-  /// Converted with [DateTime.toLocal] rather than by stripping the suffix,
-  /// because the two are not the same value. The read side parses a suffix-less
-  /// column through `DateTime.parse`, which yields a *local* `DateTime`;
-  /// stripping would therefore store a UTC wall clock and read it back as a
-  /// local one — the same text naming an instant off by the machine's offset.
-  /// `toLocal()` preserves the moment, so a write followed by a read is a round
-  /// trip. Callers keep whichever convention they like; only the value handed to
-  /// the driver is normalised.
+  /// Rendered through [sqlInstant] rather than converted with `toLocal()`.
+  /// `toLocal()` also produces an acceptable suffix-less value and round-trips
+  /// on the node that wrote it, which is why it stood for a while — but what it
+  /// stores is *that node's wall clock*, so two servers of one cluster leave
+  /// different characters in the column for the same moment and each reads the
+  /// other's rows off by the difference in their offsets. [sqlInstant] writes
+  /// the instant, identically everywhere, and `TomDbDateTime.of` reads it back
+  /// as UTC. Callers keep whichever flag they like on their own `DateTime`;
+  /// only what reaches the driver is normalised.
   static Object? _toBindValue(Object? value) {
     final unwrapped = value is TomDbType ? value.get() : value;
     if (unwrapped is bool) return unwrapped ? 1 : 0;
-    if (unwrapped is DateTime && unwrapped.isUtc) return unwrapped.toLocal();
+    if (unwrapped is DateTime) return sqlInstant(unwrapped);
     return unwrapped;
   }
 
@@ -398,6 +400,11 @@ class MariaDbDatasource implements TomDataSource {
   /// `DateTime`. The `DateTime` branch used to skip the assignment instead,
   /// which left the member holding whatever its field initialiser had put
   /// there — a stale value presented as if it had been read.
+  ///
+  /// A `DateTime` is read through [parseOptionalSqlInstant], the reading half
+  /// of the instant convention this data source writes through (`sqlInstant`;
+  /// see `sql_instant.dart`). A bare `DateTime.parse` would read the column as
+  /// *this node's* local time, which is not the moment the writing node stored.
   static void _setObservableMember(
     ResultSetRow row,
     TomObject member,
@@ -417,8 +424,7 @@ class MariaDbDatasource implements TomDataSource {
       case bool:
         member.set(row.typedColByName<bool>(field));
       case DateTime:
-        final String? stringForm = row.typedColByName<String>(field);
-        member.set(stringForm == null ? null : DateTime.parse(stringForm));
+        member.set(parseOptionalSqlInstant(row.typedColByName<String>(field)));
       default:
         throw MariadbDatasourceException(
           errorCode,
@@ -535,10 +541,9 @@ class MariaDbDatasource implements TomDataSource {
         case bool:
           values[alias] = row.typedColByName<bool>(alias);
         case DateTime:
-          final stringForm = row.typedColByName<String>(alias);
-          values[alias] = stringForm == null
-              ? null
-              : DateTime.parse(stringForm);
+          values[alias] = parseOptionalSqlInstant(
+            row.typedColByName<String>(alias),
+          );
         default:
           throw MariadbDatasourceException(
             "error.result_processing_grouped.unknown_type",
@@ -704,11 +709,16 @@ class MariaDbDatasource implements TomDataSource {
                 dm.simpleName,
                 row.typedColByName<bool>(fieldName),
               );
+            // Read through the instant convention (`sql_instant.dart`), and set
+            // unconditionally like every branch above it: a bare
+            // `DateTime.parse` would read the column as this node's local time,
+            // and skipping the assignment on `NULL` would leave the field
+            // holding its initialiser value, presented as if it had been read.
             case DateTime:
-              String? stringForm = row.typedColByName<String>(fieldName);
-              if (stringForm != null) {
-                im.invokeSetter(dm.simpleName, DateTime.parse(stringForm));
-              }
+              im.invokeSetter(
+                dm.simpleName,
+                parseOptionalSqlInstant(row.typedColByName<String>(fieldName)),
+              );
             default:
               throw MariadbDatasourceException(
                 "error.result_processing_field.unknown_type",
@@ -769,11 +779,14 @@ class MariaDbDatasource implements TomDataSource {
                 dm.simpleName,
                 row.typedColByName<bool>(col.field),
               );
+            // As above: the instant convention on the read side, and an
+            // unconditional set so a `NULL` column clears the field rather than
+            // leaving its initialiser value in place.
             case DateTime:
-              String? stringForm = row.typedColByName<String>(col.field);
-              if (stringForm != null) {
-                im.invokeSetter(dm.simpleName, DateTime.parse(stringForm));
-              }
+              im.invokeSetter(
+                dm.simpleName,
+                parseOptionalSqlInstant(row.typedColByName<String>(col.field)),
+              );
             default:
               if (col.column != null) {
                 if (col.column!.fromDbConverter != null) {

@@ -96,10 +96,17 @@ class TomPrincipalDelegation {
   String? role;
 
   /// Inclusive window start; `null` = unbounded (active from any past time).
+  ///
+  /// An **instant**, stored and read as UTC — this bound decides whether a
+  /// delegate holds a role, and a wall-clock reading would mean a different
+  /// moment on every node that read it. The data source applies the convention
+  /// (`datasources/sql_instant.dart`); nothing is asked of the caller beyond
+  /// passing a `DateTime`, which comes back UTC-flagged.
   @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'valid_from')
   DateTime? validFrom;
 
-  /// Inclusive window end; `null` = unbounded (never expires by time).
+  /// Inclusive window end; `null` = unbounded (never expires by time). An
+  /// instant on the same terms as [validFrom].
   @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'valid_to')
   DateTime? validTo;
 
@@ -154,6 +161,11 @@ class TomPrincipalDelegation {
   /// them off the read. The window columns are deliberately *not* in it — the
   /// bounds are tested as `valid_from IS NULL OR valid_from <= :at`, and that
   /// shape is not usable as an index range.
+  ///
+  /// The window columns are `DATETIME(6)`, the width the instant convention
+  /// (`datasources/sql_instant.dart`) writes. A plain `DATETIME` rounds each
+  /// bound to the second, which puts the edge of a security window up to half a
+  /// second away from the one its owner set.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   id BIGINT NOT NULL AUTO_INCREMENT,
@@ -162,8 +174,8 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   mode VARCHAR(32) NOT NULL,
   resource_key VARCHAR(255) NULL,
   role VARCHAR(255) NULL,
-  valid_from DATETIME NULL,
-  valid_to DATETIME NULL,
+  valid_from DATETIME(6) NULL,
+  valid_to DATETIME(6) NULL,
   revoked TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)

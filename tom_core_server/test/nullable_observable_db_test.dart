@@ -46,6 +46,17 @@ import 'fixtures/reflection_fixture.dart'
 import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/test_database.dart';
 
+/// The instant the populated row's `occurred_at` column holds.
+///
+/// **UTC**, matching the raw characters the row is inserted with. A `DATETIME`
+/// column carries no zone, and the framework's convention is that the zone it
+/// omits is UTC — the datasource writes instants as UTC text and reads them
+/// back UTC-flagged (`datasources/sql_instant.dart`). `DateTime.==` compares
+/// the flag as well as the moment, so asserting the local reading of the same
+/// characters would be asserting that a row means something different on every
+/// node that loads it.
+final DateTime _occurredAt = DateTime.utc(2026, 3, 4, 5, 6, 7);
+
 void main() async {
   // Probe once, before declaring the group, so the group can skip when nothing
   // is listening — keeping the default run green with no database.
@@ -118,7 +129,7 @@ void main() async {
         expect(row.active.get(), isA<bool>());
         expect(row.active.get(), isTrue);
         expect(row.occurredAt.get(), isA<DateTime>());
-        expect(row.occurredAt.get(), DateTime.parse('2026-03-04 05:06:07'));
+        expect(row.occurredAt.get(), _occurredAt);
       });
 
       test('carries a SQL NULL through as null', () async {
@@ -160,7 +171,7 @@ void main() async {
         expect(row.active.get(), isA<bool>());
         expect(row.active.get(), isTrue);
         expect(row.occurredAt.get(), isA<DateTime>());
-        expect(row.occurredAt.get(), DateTime.parse('2026-03-04 05:06:07'));
+        expect(row.occurredAt.get(), _occurredAt);
       });
 
       test('carries a SQL NULL through as null', () async {

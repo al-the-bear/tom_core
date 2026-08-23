@@ -81,15 +81,16 @@ class TomUserPreference {
 
   /// This row as the wire DTO.
   ///
-  /// [updatedAt] is normalised to UTC on the way out. MariaDB's `DATETIME`
-  /// carries no zone, so the datasource writes a UTC instant as its local
-  /// equivalent and reads it back through `DateTime.parse` — the same moment,
-  /// but flagged local. That is the right convention *inside* the server, and
-  /// the wrong one at its edge: this DTO is serialized to ISO-8601 for a client
-  /// that may be in another zone, and a local-flagged instant renders without an
-  /// offset, so the client would read the server's wall clock as its own. The
-  /// moment is unchanged by the conversion; only the flag the encoder acts on
-  /// is.
+  /// [updatedAt] is normalised to UTC on the way out. A value read from the
+  /// column already arrives UTC-flagged — the datasource applies the instant
+  /// convention (`datasources/sql_instant.dart`) to every `TomDbDateTime`
+  /// column — so for that path the conversion is a no-op. It is kept because
+  /// this DTO is also built from rows this entity did not load and from values
+  /// set in memory, and at the server's edge the flag is load-bearing: the DTO
+  /// is serialized to ISO-8601 for a client that may be in another zone, and a
+  /// local-flagged instant renders without an offset, so the client would read
+  /// the server's wall clock as its own. The moment is unchanged either way;
+  /// only the flag the encoder acts on is.
   TomUserPreferenceDto toDto() => TomUserPreferenceDto(
     key: preferenceKey,
     valueType: valueType,
@@ -104,6 +105,10 @@ class TomUserPreference {
   /// `(principal_id, preference_key)` is unique because that pair *is* the
   /// preference's identity: writing a key twice must replace the value, and a
   /// duplicate would make which value a user gets depend on row order.
+  ///
+  /// `updated_at` is `DATETIME(6)`, the width the instant convention writes
+  /// (`../datasources/sql_instant.dart`); a plain `DATETIME` rounds off the
+  /// microseconds it always renders.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_user_preference (
   id BIGINT NOT NULL AUTO_INCREMENT,
@@ -111,7 +116,7 @@ CREATE TABLE IF NOT EXISTS tom_user_preference (
   preference_key VARCHAR(191) NOT NULL,
   value_type VARCHAR(191) NOT NULL,
   value_json TEXT NULL,
-  updated_at DATETIME NULL,
+  updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_user_preference (principal_id, preference_key),
   KEY idx_tom_user_preference_principal (principal_id)

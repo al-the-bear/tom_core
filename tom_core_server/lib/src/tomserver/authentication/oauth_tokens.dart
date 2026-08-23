@@ -409,6 +409,10 @@ class TomExternalIdentityToken {
   /// would make which credential an application presents depend on row order —
   /// and the older of two rows is by definition the one whose refresh token the
   /// provider may already have rotated away.
+  ///
+  /// The two instant columns are `DATETIME(6)`, the width the instant convention
+  /// writes (`datasources/sql_instant.dart`); a plain `DATETIME` rounds off the
+  /// microseconds it always renders.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_external_identity_token (
   id BIGINT NOT NULL AUTO_INCREMENT,
@@ -416,8 +420,8 @@ CREATE TABLE IF NOT EXISTS tom_external_identity_token (
   subject VARCHAR(255) NOT NULL,
   token_data TEXT NULL,
   token_scope VARCHAR(1024) NOT NULL DEFAULT '',
-  obtained_at DATETIME NULL,
-  expires_at DATETIME NULL,
+  obtained_at DATETIME(6) NULL,
+  expires_at DATETIME(6) NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_external_identity_token (issuer, subject)
 );''';

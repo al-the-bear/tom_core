@@ -1,6 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'sql_dialects.dart';
+import 'sql_instant.dart';
 
 /// A boxed, SQL-typed value: the bridge between a Dart value and the column
 /// type it maps to in a data source.
@@ -62,9 +63,18 @@ class TomDbDateTime extends TomDbType<DateTime?> {
   /// Wraps [value] as a SQL timestamp.
   TomDbDateTime(super.value);
 
-  /// Parses [s] via [DateTime.parse] (or `null` when [s] is `null`).
+  /// Reads a stored instant back as **UTC**, via [parseOptionalSqlInstant].
+  ///
+  /// A `DATETIME` column carries no zone, and a bare [DateTime.parse] of its
+  /// text therefore yields a *local* value — the reader's wall clock, not the
+  /// writer's moment. Every instant this server writes is UTC ([sqlInstant]),
+  /// so reading it as UTC is what closes the round trip; see `sql_instant.dart`
+  /// for the convention this is the entity-column half of.
+  ///
+  /// A `null` *or empty* column yields a box holding `null`: the driver reports
+  /// an absent instant either way depending on the row mapper.
   static TomDbDateTime of(String? s) {
-    return s == null ? TomDbDateTime(null) : TomDbDateTime(DateTime.parse(s));
+    return TomDbDateTime(parseOptionalSqlInstant(s));
   }
 }
 

@@ -419,9 +419,13 @@ void main() {
       expect(b.boolOp(false).generate(dialect), 'false');
     });
 
-    test('dateTimeOp renders a single-quoted ISO-8601 timestamp', () {
+    test('dateTimeOp renders a single-quoted UTC DATETIME(6) literal', () {
+      // Not ISO-8601: the `T` separator and the trailing `Z` of a UTC value are
+      // both rejected by a DATETIME column (error 1292). The literal path
+      // carries the instant convention (`datasources/sql_instant.dart`) the
+      // same way the bind boundary does.
       final ts = DateTime.utc(2026, 7, 15, 9, 30);
-      expect(b.dateTimeOp(ts).generate(dialect), "'${ts.toIso8601String()}'");
+      expect(b.dateTimeOp(ts).generate(dialect), "'2026-07-15 09:30:00.000000'");
     });
 
     test('dateOp renders single-quoted YYYY-M-D without padding', () {
@@ -483,9 +487,11 @@ void main() {
       expect(dialect.objectOp(true), 'true');
     });
 
-    test('DateTime renders as a quoted ISO-8601 timestamp', () {
+    test('DateTime renders as a quoted UTC DATETIME(6) literal', () {
       final ts = DateTime.utc(2026, 7, 15, 9, 30);
-      expect(dialect.objectOp(ts), "'${ts.toIso8601String()}'");
+      expect(dialect.objectOp(ts), "'2026-07-15 09:30:00.000000'");
+      // Dispatched by runtime type, so a local value renders the same instant.
+      expect(dialect.objectOp(ts.toLocal()), "'2026-07-15 09:30:00.000000'");
     });
 
     test('an Iterable renders as a comma-separated literal list', () {

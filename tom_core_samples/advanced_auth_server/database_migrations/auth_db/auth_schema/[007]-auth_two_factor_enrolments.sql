@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS tom_user_two_factor_enrolment (
   enrolment_id VARCHAR(255) NOT NULL,
   mechanism VARCHAR(64) NOT NULL,
   hint VARCHAR(255) NOT NULL DEFAULT '',
-  enrolled_at DATETIME NULL,
+  enrolled_at DATETIME(6) NULL,
   is_primary TINYINT(1) NOT NULL DEFAULT 0,
   secret_data TEXT NULL,
   PRIMARY KEY (id),

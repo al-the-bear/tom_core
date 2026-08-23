@@ -1,5 +1,6 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../object_persistence/operators_expressions.dart';
+import 'sql_instant.dart';
 import 'types_operator.dart';
 
 /// A SQL fragment. An alias for `String` that documents intent at call sites.
@@ -312,9 +313,17 @@ class TomStandardSqlDialect {
     return "$value";
   }
 
-  /// Renders a timestamp literal as a single-quoted ISO-8601 string.
+  /// Renders a timestamp literal as the single-quoted UTC `DATETIME(6)` text
+  /// [sqlInstant] defines.
+  ///
+  /// The same rendering the bind boundary applies, for the same two reasons. An
+  /// ISO-8601 string carries a `T` separator and, for a UTC value, a trailing
+  /// `Z`; a `DATETIME` column accepts neither ("Incorrect datetime value",
+  /// error 1292), so the literal path could not carry a UTC instant at all. And
+  /// a local value rendered verbatim writes the *emitting node's* wall clock,
+  /// which is not a moment another node can read back.
   SqlString dateTimeOp(DateTime value) {
-    return "'${value.toIso8601String()}'";
+    return "'${sqlInstant(value)}'";
   }
 
   /// Renders a date literal as single-quoted `YYYY-M-D`.

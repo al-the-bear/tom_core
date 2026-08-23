@@ -16,6 +16,33 @@
 /// A caller that writes a local `DateTime` gets a UTC one back: the same
 /// instant, differently labelled, which is the right answer for a cluster whose
 /// nodes must never compare wall clocks.
+///
+/// ## Both ways of writing SQL go through here
+///
+/// There are two of those in this server, and the convention is one convention:
+///
+///  * **Hand-written SQL** — the scheduling, OAuth-state, audit and file-storage
+///    stores build their own statements and call [sqlInstant] /
+///    [parseSqlInstant] at each seam explicitly.
+///  * **Reflected entity columns** — a `@TomDbColumn<DateTime?, TomDbDateTime>`
+///    field names no conversion at all, so the data source applies this one on
+///    its behalf: the MariaDB bind boundary renders every bound `DateTime`
+///    through [sqlInstant], and `TomDbDateTime.of` reads a column back through
+///    [parseOptionalSqlInstant]. An entity therefore stores UTC and reads UTC
+///    without saying so, and a `DATETIME` literal inlined into generated SQL is
+///    rendered the same way.
+///
+/// The second case is why this is stated here rather than left to each entity.
+/// A validity window, an expiry, a lease deadline — the instants that decide
+/// something are exactly the ones an entity is most likely to carry, and the
+/// wall-clock reading of whichever node happened to write the row is not an
+/// answer to "when". Nodes are allowed to disagree about the zone; they are not
+/// allowed to disagree about the moment.
+///
+/// The corollary for DDL: a column holding an instant is `DATETIME(6)`. A plain
+/// `DATETIME` rounds the microseconds this library always writes, which moves
+/// the stored moment by up to half a second — tolerable for a "when was this
+/// touched" field, not for a boundary something is compared against.
 library;
 
 /// Renders [value] as the UTC `DATETIME(6)` literal the columns bind.

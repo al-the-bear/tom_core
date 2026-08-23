@@ -8,7 +8,11 @@
 -- and the `revoked` kill-switch bound every mode. The delegate index backs the
 -- resolver's "delegations live for this delegate" lookup and covers `revoked`
 -- as well, because revocation is a flag rather than a delete: a delegate's dead
--- rows accumulate for life, and the index is what keeps them off the read. This file is the
+-- rows accumulate for life, and the index is what keeps them off the read. The
+-- window columns are `DATETIME(6)` — the width the instant convention
+-- (`datasources/sql_instant.dart`) writes; a plain `DATETIME` rounds each bound
+-- to the second, moving the edge of a security window up to half a second from
+-- the one its owner set. This file is the
 -- canonical DDL and reproduces `TomPrincipalDelegation.createTableSql`
 -- verbatim; `test/reference_migrations_test.dart` fails if the two drift apart.
 -- The db_migration module applies it as version [3] of the `tomcore` schema on
@@ -20,8 +24,8 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   mode VARCHAR(32) NOT NULL,
   resource_key VARCHAR(255) NULL,
   role VARCHAR(255) NULL,
-  valid_from DATETIME NULL,
-  valid_to DATETIME NULL,
+  valid_from DATETIME(6) NULL,
+  valid_to DATETIME(6) NULL,
   revoked TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)

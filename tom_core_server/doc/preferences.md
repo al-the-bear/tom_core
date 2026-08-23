@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS tom_user_preference (
   preference_key VARCHAR(191) NOT NULL,
   value_type VARCHAR(191) NOT NULL,
   value_json TEXT NULL,
-  updated_at DATETIME NULL,
+  updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_user_preference (principal_id, preference_key),
   KEY idx_tom_user_preference_principal (principal_id)
@@ -171,11 +171,14 @@ existed only in production would fail every test that touched it, and one that
 existed only in test would fail in production.
 
 `updated_at` is the server's clock, never the caller's, which is why the write
-DTO carries no timestamp. It is normalised to UTC by `toDto()` on the way out:
-MariaDB's `DATETIME` carries no zone, so the datasource writes a UTC instant as
-its local equivalent and reads it back flagged local. That is the right
-convention *inside* the server and the wrong one at its edge, where the DTO is
-serialized to ISO-8601 for a client that may be in another zone.
+DTO carries no timestamp. It is stored and read as an instant: MariaDB's
+`DATETIME` carries no zone, so the datasource writes every `TomDbDateTime`
+column as UTC text and reads it back UTC-flagged (`datasources/sql_instant.dart`
+states the convention). `toDto()` normalises to UTC again on the way out, which
+is a no-op for a loaded row and the guard for a DTO built any other way — at the
+server's edge the flag is load-bearing, because the DTO is serialized to
+ISO-8601 for a client that may be in another zone and a local-flagged instant
+renders without an offset.
 
 ## The Endpoints
 

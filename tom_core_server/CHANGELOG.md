@@ -2,6 +2,57 @@
 
 ### Behaviour Changes
 
+- **A `DateTime` column is an instant, not the writing node's wall clock
+  (tcinc396).** `datasources/sql_instant.dart` declared itself "a **data source**
+  concern, not a feature of any one module … every table that stores an instant
+  has the same problem and must have the same answer", and the hand-written
+  stores (scheduling, OAuth state, audit, file storage) followed it. Reflected
+  entity columns did not. A `@TomDbColumn<DateTime?, TomDbDateTime>` field names
+  no conversion, so the data source decided for it — and decided *local*: bound
+  through `toLocal()`, read back through a bare `DateTime.parse`.
+
+  That round-trips on the node that wrote the row, which is why it stood. It
+  does not round-trip *between* nodes: the characters in the column are the
+  writer's wall clock, so each node reads the other's rows off by the difference
+  in their offsets. `TomPrincipalDelegation.validFrom` / `validTo` are the case
+  that made it matter — a validity window decides whether a delegate holds a
+  role, and a cluster whose members disagree about when the window opens has one
+  member honouring a delegation outside the bounds its owner set.
+
+  The convention is now applied by the data source on the entity's behalf, in
+  one place for all of them. Every bound `DateTime` is rendered by `sqlInstant`
+  (UTC `DATETIME(6)` text, identical on every node); every `DateTime` column is
+  read through `parseOptionalSqlInstant` — the boxed `TomDbDateTime.of` path,
+  the two entity row-mappers, the observable-member mapper and the grouped-row
+  mapper, which were five copies of the same decision and are now one. The
+  inline-literal path (`TomStandardSqlDialect.dateTimeOp`) renders the same
+  text; it previously emitted ISO-8601, which MariaDB rejects for a UTC value
+  outright ("Incorrect datetime value", error 1292), so that path could not
+  carry a UTC instant at all.
+
+  **This changes what callers observe.** A `DateTime` read from a column now
+  arrives **UTC-flagged**; it used to arrive local-flagged, naming the same
+  moment. `DateTime.==` compares the flag, so a caller comparing a read value
+  against a locally-constructed `DateTime` must now construct it with
+  `DateTime.utc(...)`. Two related fixes ride along: the entity row-mappers
+  skipped the assignment for a `NULL` `DateTime` column, leaving the field
+  holding its initialiser value as if it had been read (the observable mapper
+  had already been fixed; the other two now match), and `TomDbDateTime.of`
+  treats an empty column string as absent rather than throwing.
+
+  **Every framework instant column widens to `DATETIME(6)`** — the width the
+  convention writes — in each entity's `createTableSql`, in the reference
+  migration that reproduces it, and in the `tom_uam` / `advanced_auth_server`
+  schema migrations that ship the same tables: `tom_principal_delegation`
+  (`valid_from`, `valid_to`), `tom_external_identity_token` (`obtained_at`,
+  `expires_at`), `tom_external_identity` (`linked_at`, `last_login_at`),
+  `tom_user_two_factor_enrolment` (`enrolled_at`) and `tom_user_preference`
+  (`updated_at`). A plain `DATETIME` rounds to the second, which for a validity
+  window or a token expiry puts the edge up to half a second from the one that
+  was set — and for the rest simply loses part of what was written. The
+  corollary is now stated with the convention: a column holding an instant is
+  `DATETIME(6)`.
+
 - **The delegation query selects only live rows (tcinc395).** The store read
   *every* delegation targeting the delegate and threw the dead ones away in
   Dart. Revocation is a flag rather than a delete, so a delegate accumulates

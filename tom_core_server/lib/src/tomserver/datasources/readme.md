@@ -20,6 +20,29 @@ MariaDB/MySQL driver, a typed SQL-dialect renderer, and typed query objects.
 | `TomStandardSqlDialect` · `MariadbSqlDialect` | Render queries and types into SQL. |
 | `TomSelect` · `TomCount` · `TomDelete` · `TomLiteralSelect` | Typed generated queries. |
 | `TomDbType<T>` family | Column types: `TomDbInt`, `TomDbDouble`, `TomDbString`, `TomDbBool`, `TomDbDateTime`, `TomDbDate`, `TomDbTime`. |
+| `sqlInstant` · `parseSqlInstant` | The one encoding of an instant in a `DATETIME(6)` column — see below. |
+
+## Instants are UTC, everywhere
+
+A MariaDB `DATETIME` carries no zone, and the driver materialises one with
+`DateTime.parse`, which yields a **local** value — the reader's wall clock, not
+the writer's moment. Left alone, two servers of one cluster leave different
+characters in the same column for the same instant and each reads the other's
+rows off by the difference in their offsets.
+
+`sql_instant.dart` settles it once, for both ways of writing SQL in this server:
+
+- **Hand-written SQL** (scheduling, OAuth state, audit, file storage) calls
+  `sqlInstant` / `parseSqlInstant` at each seam explicitly.
+- **Reflected entity columns** name no conversion at all, so this module applies
+  it on their behalf: the MariaDB bind boundary renders every bound `DateTime`
+  through `sqlInstant`, `TomDbDateTime.of` reads a column back through
+  `parseOptionalSqlInstant`, and `dateTimeOp` inlines the same text as a
+  literal. An entity stores UTC and reads UTC without saying so.
+
+The corollary for DDL: a column holding an instant is `DATETIME(6)`. A plain
+`DATETIME` rounds the microseconds this convention always writes, which moves
+the stored moment by up to half a second.
 
 ## Quick start
 

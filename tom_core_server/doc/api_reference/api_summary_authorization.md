@@ -371,7 +371,7 @@ TomPrincipalDelegation({
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `createTableSql` | `static const String` | The canonical DDL for the `tom_principal_delegation` table. |
+| `createTableSql` | `static const String` | The canonical DDL for the `tom_principal_delegation` table; the delegate index covers `(delegate_id, revoked)` and the window columns are `DATETIME(6)`. |
 
 #### Properties
 
@@ -383,8 +383,8 @@ TomPrincipalDelegation({
 | `mode` | `String` | The delegation mode, stored as the `TomDelegationMode` name. |
 | `resourceKey` | `String?` | For `share` the resource shared; for `absence`/`intentional` an optional single resource to narrow the inherited roles. |
 | `role` | `String?` | For `share` the role granted; for `absence`/`intentional` an optional override applied to every inherited resource. |
-| `validFrom` | `DateTime?` | Inclusive window start; `null` = unbounded. |
-| `validTo` | `DateTime?` | Inclusive window end; `null` = unbounded. |
+| `validFrom` | `DateTime?` | Inclusive window start; `null` = unbounded. An **instant**, stored and read as UTC `DATETIME(6)` by the datasource's instant convention, so every node reads the same window. |
+| `validTo` | `DateTime?` | Inclusive window end; `null` = unbounded. An instant on the same terms as `validFrom`. |
 | `revoked` | `bool` | Manual kill-switch: a revoked delegation is inactive at every timestamp. |
 | `delegationMode` | `TomDelegationMode?` | The parsed mode, or `null` when `mode` is unknown/blank. |
 
