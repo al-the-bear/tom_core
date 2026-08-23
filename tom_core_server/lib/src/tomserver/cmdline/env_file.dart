@@ -139,6 +139,15 @@ class TomEnvFile {
   ///   TomEnvFile.read('.env.${Platform.environment['ENV'] ?? 'dev'}'),
   /// ]);
   /// ```
+  ///
+  /// **Values are merged as they arrive; nothing is converted here.** [read],
+  /// [parse] and `TomArgs.parseArgsToMap` all convert on the way out, so a
+  /// stack built from those is typed. A raw `Map<String, String>` is not —
+  /// and Dart's covariance lets one pass as a `Map<String, Object?>` without
+  /// complaint, so `Platform.environment` merges silently and contributes
+  /// every value as a `String`. Wrap it in `TomArgs.convertToObjectMap` first,
+  /// or an `int` or `bool` field will be refused by the reflector when the
+  /// result reaches `setValues`.
   static Map<String, Object?> merge(List<Map<String, Object?>> sources) {
     final result = <String, Object?>{};
     for (final source in sources) {

@@ -270,6 +270,70 @@ void main() {
     test('merging nothing yields an empty map', () {
       expect(TomEnvFile.merge([]), isEmpty);
     });
+
+    // `merge` only addAll's. Dart's covariance lets a Map<String, String> —
+    // which is what Platform.environment is — pass as a Map<String, Object?>,
+    // so an unconverted source merges without complaint and its values stay
+    // strings. This is the trap in the layering idiom: every other source in
+    // the stack (read, parse, parseArgsToMap) is already converted, so the
+    // environment is the one entry that has to be wrapped by the caller.
+    test('does not convert: an unconverted source stays stringly typed', () {
+      final merged = TomEnvFile.merge([
+        <String, String>{'PORT': '8080'},
+      ]);
+      expect(merged['PORT'], '8080');
+      expect(merged['PORT'], isA<String>());
+    });
+
+    test('converting the source first is what types it', () {
+      final merged = TomEnvFile.merge([
+        TomArgs.convertToObjectMap(<String, String>{'PORT': '8080'}),
+      ]);
+      expect(merged['PORT'], 8080);
+    });
+  });
+
+  // The module documents a layering idiom — environment, then .env, then argv,
+  // later winning — and the value of documenting it is that it can be pasted.
+  // These two tests are what make that true: the wrapped form reaches the
+  // fields, and the unwrapped form fails loudly rather than subtly, so a reader
+  // who drops the wrap learns it immediately.
+  group('layering the sources onto a reflected configuration', () {
+    Map<String, Object?> layer(
+      Map<String, String> environment,
+      List<String> args,
+    ) => TomEnvFile.merge([
+      TomArgs.convertToObjectMap(environment),
+      TomArgs.parseArgsToMap(args),
+    ]);
+
+    test('a converted environment fills typed fields, argv winning', () {
+      final config = FixtureServerConfig();
+      tomReflectionInfo.setValues<FixtureServerConfig>(
+        config,
+        layer(
+          {'name': 'from-env', 'port': '8080', 'verbose': 'true'},
+          ['port=9090'],
+        ),
+      );
+      expect(config.name, 'from-env');
+      expect(config.verbose, isTrue);
+      // The later source wins, and it arrives as an int either way.
+      expect(config.port, 9090);
+    });
+
+    test('an unconverted environment is rejected by the reflector', () {
+      final config = FixtureServerConfig();
+      expect(
+        () => tomReflectionInfo.setValues<FixtureServerConfig>(
+          config,
+          TomEnvFile.merge([
+            <String, String>{'port': '8080'},
+          ]),
+        ),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
   });
 
   group('TomEnvFile file IO', () {

@@ -87,7 +87,7 @@ static.
 | `read` | `static Map<String, Object?> read([String path = '.env'])` | Reads a `.env` file synchronously, converting values to their natural types; returns an empty map if the file does not exist. |
 | `readAsync` | `static Future<Map<String, Object?>> readAsync([String path = '.env'])` | Asynchronous variant of `read`; returns an empty map if the file does not exist. |
 | `parse` | `static Map<String, Object?> parse(List<String> lines)` | Parses a list of `.env`-format lines into a map, usable for content from any source. |
-| `merge` | `static Map<String, Object?> merge(List<Map<String, Object?>> sources)` | Merges multiple environment maps; later sources override earlier ones. |
+| `merge` | `static Map<String, Object?> merge(List<Map<String, Object?>> sources)` | Merges multiple environment maps; later sources override earlier ones. Converts nothing: a raw `Map<String, String>` such as `Platform.environment` passes by covariance and contributes `String` values, so wrap it in `TomArgs.convertToObjectMap` first. |
 | `load` | `static Map<String, Object?> load([String path = '.env'])` | Loads a `.env` file and returns the values (note: `Platform.environment` is read-only, so this does not mutate the OS environment). |
 
 ## Global Functions and Constants

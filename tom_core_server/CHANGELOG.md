@@ -24,6 +24,25 @@
 
 ### Documentation
 
+- **`TomEnvFile.merge` now says that it converts nothing (tcinc417).** The
+  documented way to layer configuration is to `merge` the process environment,
+  a `.env` file and the parsed arguments, then hand the result to
+  `setValues`. Only the last two arrive typed: `read` and `parseArgsToMap`
+  convert on the way out, `merge` merely `addAll`s, and `Platform.environment`
+  is a `Map<String, String>` that Dart's covariance lets `merge` accept as a
+  `Map<String, Object?>` in silence. An unwrapped environment therefore merges
+  cleanly and contributes every value as a `String`, and the first `int` or
+  `bool` field fails at `setValues` with `TomReflectorException: Unexpected
+  type int set using String`.
+
+  The package's own composition (`getDefaultValues`) has always wrapped the
+  environment in `TomArgs.convertToObjectMap`; nothing but the documentation
+  was wrong. `merge`'s dartdoc, `doc/cmdline.md` and the API-reference mirror
+  now each state that the wrap is required and why, and `doc/cmdline.md` gained
+  the layering snippet itself so the idiom can be pasted rather than
+  reconstructed. Four tests pin it, including one asserting that the unwrapped
+  form is *rejected* — the failure is the documentation's evidence.
+
 - **The cache module's prose now names the artefacts that verify it
   (tcinc414).** `doc/cache.md` had seven sections and mentioned
   `example/cache/cache_example.dart` nowhere and `test/cache_test.dart` only

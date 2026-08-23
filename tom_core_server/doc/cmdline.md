@@ -120,6 +120,25 @@ command-line args     ─┘   (args win over .env win over environment)
 (See `base_server_configuration.dart`, which calls `convertToObjectMap`,
 `TomEnvFile.read`, and `parseArgsToMap` in that order.)
 
+To build the same stack yourself, layer the three with `merge`:
+
+```dart
+final merged = TomEnvFile.merge([
+  TomArgs.convertToObjectMap(Platform.environment),  // wrap is required
+  TomEnvFile.read('.env'),
+  TomArgs.parseArgsToMap(args),
+]);
+tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
+```
+
+> **Convert the environment before merging it.** `merge` overlays maps and
+> converts nothing; `read` and `parseArgsToMap` hand it values that are already
+> typed, but `Platform.environment` is a `Map<String, String>`. Dart's
+> covariance lets it pass as a `Map<String, Object?>`, so an unwrapped
+> environment merges without error and delivers every value as a `String` — and
+> an `int` or `bool` field is then refused at `setValues` with
+> `TomReflectorException: Unexpected type int set using String`.
+
 ## Core Components
 
 - **`TomArgs`** — `fillFromArgs` (reflected object), `parseArgsToMap` (loose
