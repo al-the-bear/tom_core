@@ -40,6 +40,12 @@ Future<void> main() async {
 }
 ```
 
+See [`doc/cache.md`](../../../../doc/cache.md) for expiry and bounds, the
+isolate model, and what the module does not yet do, and
+`example/cache/cache_example.dart` for a runnable nine-step walkthrough that
+checks its own results. `test/cache_test.dart` covers the module and also runs
+both the example and the snippet above, so neither can drift unnoticed.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

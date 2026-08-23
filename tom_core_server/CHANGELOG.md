@@ -2,6 +2,33 @@
 
 ### Documentation
 
+- **The cache module's prose now names the artefacts that verify it
+  (tcinc414).** `doc/cache.md` had seven sections and mentioned
+  `example/cache/cache_example.dart` nowhere and `test/cache_test.dart` only
+  once, in passing, at the foot of "Not Yet Implemented". Its siblings do point
+  at theirs — `authorization.md` names its example and its end-to-end test in a
+  sentence, `scheduling.md` carries a whole `## Verification` section — and the
+  pointers matter more here than usual, because the example and the suite are
+  the only executable statements of what the module does, while the prose is the
+  one artefact a consumer is likely to read. The link was also one-directional:
+  the example's header already names the test.
+
+  `doc/cache.md` gains a `## Verification` section saying what each covers — the
+  example's nine steps and why its checks are a plain `throw` rather than an
+  `assert`; the suite's areas, including the differential check against a naive
+  LRU and the forwarding tests running against a real spawned `TomWorker`, and
+  that it needs no server and so runs in the default `testkit :test` — and
+  records that the suite runs both the example and the readme's quick start, so
+  each of the module's prose artefacts is falsifiable from it.
+
+  Two things were fixed in passing. The module's own `readme.md` pointed at
+  neither `doc/cache.md` nor the example, where every sibling readme points at
+  both; it now carries the same "See …" paragraph in the same position. And six
+  type references in `doc/cache.md` were bracketed as shortcut reference links
+  with no definition anywhere in the file, so they rendered with literal square
+  brackets around the type name. Every other module document uses plain code
+  spans; these now do too.
+
 - **The cache API summary was verified against the source rather than trusted
   (tcinc411).** The mirror in `doc/api_reference/` is last in precedence, so it
   was checked symbol by symbol against `server_cache.dart`. Nothing was

@@ -1,7 +1,7 @@
 # Cache Module
 
 A lightweight in-memory cache for the server. Caches are registered by name in a
-[`TomCacheManager`], physically held in the main isolate, and reached from any
+`TomCacheManager`, physically held in the main isolate, and reached from any
 isolate through a small set of static helpers. A cache can be unbounded or LRU
 bounded, and can expire entries by age or clear itself on a schedule.
 
@@ -15,6 +15,7 @@ bounded, and can expire entries by age or clear itself on a schedule.
 - [Failures Are Internal](#failures-are-internal)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
+- [Verification](#verification)
 - [Dependencies](#dependencies)
 
 ---
@@ -64,7 +65,7 @@ await TomCache.removeFromTypeCache<User>('u-42');
 ```
 
 `fromNameCache` returns `null` on a miss or an expired entry (an expired entry
-is removed in passing). It throws [`TomCacheException`] if the stored value is
+is removed in passing). It throws `TomCacheException` if the stored value is
 not a `T`. Both answers hold whichever isolate the read runs in — see
 [Isolate Model](#isolate-model).
 
@@ -73,7 +74,7 @@ uniform result shape, not a count: it does not distinguish an insert from a
 replacement, or a removal from a no-op. Do not branch on it; see
 [Not Yet Implemented](#not-yet-implemented).
 
-A value that *is already* a [`TomCacheEntry`] is stored verbatim, so it keeps its
+A value that *is already* a `TomCacheEntry` is stored verbatim, so it keeps its
 own `deletionTime` and the cache's `deleteEntriesAfterSeconds` does not apply to
 it. This is how a single entry opts out of the cache-wide default:
 
@@ -124,14 +125,15 @@ default, so a program that builds a cache no longer exits once its work is
 done. A server never notices, since it is meant to stay up. A script, a sample
 or a one-shot job has to call `stopTimers()` on the caches it created — or exit
 explicitly — to return at all. The module readme's quick start ends that way,
-and a test runs it to keep the promise honest.
+and a test runs it to keep the promise honest — see
+[Verification](#verification).
 
 ## Isolate Model
 
 The caches live in the **main isolate**. `TomCacheManager.useInThisIsolate` is
 forced to `true` there. When a static helper runs in a worker isolate that does
 not hold the named cache, it forwards the operation to the main isolate as a
-[`TomCommand`] (`TomCacheStoreMessage` / `TomCacheRemoveMessage` /
+`TomCommand` (`TomCacheStoreMessage` / `TomCacheRemoveMessage` /
 `TomCacheRetrieveMessage`) via `TomWorker.executeInCreator`:
 
 ```text
@@ -149,7 +151,7 @@ instead and report success — the write looks fine and the entry outlives its
 intended lifetime, which is only discovered at some later read.
 
 If neither a local cache nor forwarding is available, the helper throws
-[`TomCacheException`]. The three static helpers (`from…`, `to…`, `removeFrom…`)
+`TomCacheException`. The three static helpers (`from…`, `to…`, `removeFrom…`)
 share the same forward-or-throw rule.
 
 A failure raised on the main isolate comes back as a **throw**, so a forwarded
@@ -167,7 +169,7 @@ back as though it were the cached value.
 
 ## Failures Are Internal
 
-[`TomCacheException`] defaults to **`clientThrow: false`**, so the endpoints
+`TomCacheException` defaults to **`clientThrow: false`**, so the endpoints
 pipeline treats a cache failure as internal and does not surface its message to
 the caller. Both of the module's failures earn that:
 
@@ -252,6 +254,40 @@ third and the timer half of the last in the group "The limits the documentation
 records", the first in "getEntry (direct)" — so closing one of them turns a test
 red rather than leaving this section quietly wrong. The fourth is a cost rather
 than an outcome, and pinning it would mean asserting a shape.
+
+## Verification
+
+`example/cache/cache_example.dart` walks the module in nine steps, in the main
+isolate and with no setup of any kind — store and read, expiry, the entry that
+never expires, LRU eviction, the type cache, the mismatch, an entry carrying its
+own lifetime, stopping the timers, and replacing the manager. Every step checks
+its own result and the run fails when one does not hold, so a green run is a
+verification rather than a transcript. The checks are a plain `if`/`throw` and
+not `assert`, because `dart run` leaves assertions disabled: an `assert` would
+compile out under the very command the file documents, and the example would
+print a plausible transcript and exit 0 with every expectation violated.
+
+`test/cache_test.dart` covers it end to end in one process — the static helpers
+and the raw entry accessors, expiry and bounds, the MRU chain across evictions,
+sweeps and clears (including a differential check against a naive LRU of the
+same bound under a randomised operation mix), the timer lifecycle, the
+`clientThrow` decision at all four raise sites, and the cross-isolate forwarding
+against a **real spawned `TomWorker`** rather than a stubbed transport, which is
+the only way to establish that an argument survives the crossing. It needs no
+external server and carries no tag, so all of it runs in the default
+`testkit :test`.
+
+The two are linked in both directions — the example's header names the suite,
+and the suite runs the example, under exactly the command that header documents,
+requiring exit 0. A second group extracts the `dart` block under the module
+readme's "Quick start" heading and runs that too, under a 20-second watchdog:
+the regression it guards is a program that never returns, and a hang reported as
+a hang says less than a hang reported as a named failure.
+
+So each of this module's prose artefacts is falsifiable from the suite: the
+example, the readme's quick start, and all but one of the
+[Not Yet Implemented](#not-yet-implemented) items above, which that section
+itself accounts for. None of them can drift quietly while nobody is reading.
 
 ## Dependencies
 
