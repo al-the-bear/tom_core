@@ -434,7 +434,7 @@ TomDelegationResolver(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `resolveDelegatedRoles` | `Future<Map<String, String>> resolveDelegatedRoles(String delegateId, DateTime at)` | The `resourceKey → roleName` map received purely via delegations active at `at`. |
+| `resolveDelegatedRoles` | `Future<Map<String, String>> resolveDelegatedRoles(String delegateId, DateTime at)` | The `resourceKey → roleName` map received purely via delegations active at `at`. Costs one grant read per *distinct* delegator named by the active rows, not one per row; the reuse lasts only this call. |
 | `resolveEffectiveRoles` | `Future<Map<String, String>> resolveEffectiveRoles(String principalId, DateTime at)` | Direct grants merged with every delegated role, folded to the stronger role per resource. |
 | `resolveAdapter` | `Future<TomResourceRoleAdapter> resolveAdapter(String principalId, DateTime at)` | Resolves effective roles at `at` and wraps them in a kernel `TomResourceRoleAdapter`. |
 

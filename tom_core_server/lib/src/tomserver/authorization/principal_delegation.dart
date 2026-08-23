@@ -216,6 +216,14 @@ class TomDelegationResolver {
 
   /// Resolves the `resourceKey → roleName` map [delegateId] receives purely via
   /// delegations active at [at]. Empty when no active delegation targets them.
+  ///
+  /// Costs one grant read per *distinct delegator* named by the active rows, not
+  /// one per row: lending several resources means one row each, so a delegator
+  /// who lends four resources appears four times and their grants are read once.
+  /// The reuse lasts exactly this call — it is a way of not asking the same
+  /// question twice in one resolution, not a cache, and nothing it holds
+  /// survives to be served stale to the next one. (Amortising across a whole
+  /// request is [TomResourceDataScope.runCached]'s job, one layer up.)
   Future<Map<String, String>> resolveDelegatedRoles(
     String delegateId,
     DateTime at,
@@ -223,10 +231,11 @@ class TomDelegationResolver {
     final delegations = await delegationStore.delegationsForDelegate(
       delegateId,
     );
+    final delegatorRoles = <String, Future<Map<String, String>>>{};
     final entries = <MapEntry<String, String>>[];
     for (final delegation in delegations) {
       if (!delegation.isActiveAt(at)) continue;
-      entries.addAll(await _entriesFor(delegation));
+      entries.addAll(await _entriesFor(delegation, delegatorRoles));
     }
     return TomPrincipalResourceRoleResolver.foldRoles(entries, strongerRole);
   }
@@ -256,8 +265,14 @@ class TomDelegationResolver {
       TomResourceRoleAdapter(await resolveEffectiveRoles(principalId, at));
 
   /// The `resourceKey → roleName` entries one active [delegation] contributes.
+  ///
+  /// [delegatorRoles] memoises the delegator grant reads for the enclosing
+  /// [resolveDelegatedRoles] call; it holds the pending future rather than the
+  /// resolved map, so a delegator named by two rows shares one read whether or
+  /// not the first has landed.
   Future<Iterable<MapEntry<String, String>>> _entriesFor(
     TomPrincipalDelegation delegation,
+    Map<String, Future<Map<String, String>>> delegatorRoles,
   ) async {
     switch (delegation.delegationMode) {
       case TomDelegationMode.share:
@@ -272,8 +287,9 @@ class TomDelegationResolver {
         // Inherit the delegator's own direct roles (not their delegated ones:
         // delegation is not transitive), optionally narrowed to one resource
         // and/or overridden to a single role.
-        final inherited = await directResolver.resolveResourceRoles(
+        final inherited = await delegatorRoles.putIfAbsent(
           delegation.delegatorId,
+          () => directResolver.resolveResourceRoles(delegation.delegatorId),
         );
         return [
           for (final entry in inherited.entries)

@@ -39,6 +39,32 @@ TomPrincipalResourceGrant _grant(
   role: role,
 );
 
+/// An [InMemoryPrincipalResourceGrantStore] that counts its reads, so a test can
+/// assert how many times resolution went to the store rather than only what it
+/// resolved. Modelled on the `_CountingGrantStore` the `per-request caching`
+/// group in `resource_data_scope_test.dart` counts [TomResourceDataScope]
+/// resolutions with.
+class _CountingGrantStore implements PrincipalResourceGrantStore {
+  final List<TomPrincipalResourceGrant> grants;
+
+  /// The principal ids passed to [grantsForPrincipal], in call order. The length
+  /// is the read count; the set is which delegators were read at all.
+  final List<String> reads = [];
+
+  _CountingGrantStore(this.grants);
+
+  @override
+  Future<List<TomPrincipalResourceGrant>> grantsForPrincipal(
+    String principalId,
+  ) async {
+    reads.add(principalId);
+    return [
+      for (final g in grants)
+        if (g.principalId == principalId) g,
+    ];
+  }
+}
+
 void main() {
   setUp(() {
     TomResourceRoleRegistry.reset();
@@ -325,6 +351,125 @@ void main() {
         await resolver.resolveDelegatedRoles('someone_else', now),
         isEmpty,
       );
+    });
+  });
+
+  group('TomDelegationResolver — grant reads per resolution', () {
+    final now = DateTime.utc(2026, 3, 1);
+
+    /// Three active delegations to Bob naming two distinct delegators: Alice
+    /// twice (narrowed to a different resource each time, so both rows matter)
+    /// and Carol once.
+    List<TomPrincipalDelegation> threeDelegationsTwoDelegators() => [
+      TomPrincipalDelegation(
+        delegatorId: 'alice',
+        delegateId: 'bob',
+        mode: 'intentional',
+        resourceKey: 'project.X',
+      ),
+      TomPrincipalDelegation(
+        delegatorId: 'alice',
+        delegateId: 'bob',
+        mode: 'intentional',
+        resourceKey: 'project.Y',
+      ),
+      TomPrincipalDelegation(
+        delegatorId: 'carol',
+        delegateId: 'bob',
+        mode: 'absence',
+      ),
+    ];
+
+    _CountingGrantStore countingStore() => _CountingGrantStore([
+      _grant('alice', 'project.X', 'owner'),
+      _grant('alice', 'project.Y', 'viewer'),
+      _grant('carol', 'project.Z', 'editor'),
+    ]);
+
+    test('n delegations naming k delegators cost k grant reads', () async {
+      final grants = countingStore();
+      final resolver = TomDelegationResolver(
+        InMemoryPrincipalDelegationStore(threeDelegationsTwoDelegators()),
+        TomPrincipalResourceRoleResolver(grants),
+      );
+
+      final roles = await resolver.resolveDelegatedRoles('bob', now);
+
+      // Three delegation rows, two delegators → two reads, not three.
+      expect(grants.reads.length, 2);
+      expect(grants.reads.toSet(), {'alice', 'carol'});
+      // And the reuse lends the right roles: a memo keyed on the wrong thing
+      // would hand Alice's grants to Carol's row (or the reverse) and this map
+      // would be wrong while the count above stayed right.
+      expect(roles, {
+        'project.X': 'owner',
+        'project.Y': 'viewer',
+        'project.Z': 'editor',
+      });
+    });
+
+    test('only the delegators that are actually resolved are read', () async {
+      final grants = countingStore();
+      final resolver = TomDelegationResolver(
+        InMemoryPrincipalDelegationStore([
+          // A share carries its own explicit role, so it never reads the
+          // delegator's grants...
+          TomPrincipalDelegation(
+            delegatorId: 'dave',
+            delegateId: 'bob',
+            mode: 'share',
+            resourceKey: 'project.Q',
+            role: 'viewer',
+          ),
+          // ...and an inactive row is skipped before any read.
+          TomPrincipalDelegation(
+            delegatorId: 'erin',
+            delegateId: 'bob',
+            mode: 'intentional',
+            revoked: true,
+          ),
+          TomPrincipalDelegation(
+            delegatorId: 'alice',
+            delegateId: 'bob',
+            mode: 'intentional',
+          ),
+        ]),
+        TomPrincipalResourceRoleResolver(grants),
+      );
+
+      await resolver.resolveDelegatedRoles('bob', now);
+
+      expect(grants.reads, ['alice']);
+    });
+
+    test('the reuse is scoped to one resolution, not remembered across '
+        'calls', () async {
+      // Request-scoped caching is TomResourceDataScope.runCached's job; the
+      // resolver holding grants beyond a single resolution would serve a
+      // revoked grant to the next request.
+      final grants = countingStore();
+      final resolver = TomDelegationResolver(
+        InMemoryPrincipalDelegationStore(threeDelegationsTwoDelegators()),
+        TomPrincipalResourceRoleResolver(grants),
+      );
+
+      await resolver.resolveDelegatedRoles('bob', now);
+      await resolver.resolveDelegatedRoles('bob', now);
+
+      expect(grants.reads.length, 4);
+    });
+
+    test('effective roles read the delegate once alongside the '
+        'delegators', () async {
+      final grants = countingStore();
+      final resolver = TomDelegationResolver(
+        InMemoryPrincipalDelegationStore(threeDelegationsTwoDelegators()),
+        TomPrincipalResourceRoleResolver(grants),
+      );
+
+      await resolver.resolveEffectiveRoles('bob', now);
+
+      expect(grants.reads, ['bob', 'alice', 'carol']);
     });
   });
 }

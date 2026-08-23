@@ -198,6 +198,14 @@ validity window the delegate inherits *all* the delegator's direct roles), and
 delegator's *direct* grants only, never the delegator's own delegated-in roles,
 which forecloses delegation chains and privilege loops.
 
+Resolving a delegate costs one grant read per **distinct delegator**, not one per
+delegation row. The distinction is worth stating because lending several
+resources means one row each: a colleague who shares four projects with you is
+four rows naming one delegator, and their grants are read once. The reuse is
+scoped to the single `resolveDelegatedRoles` call — it declines to ask the same
+question twice within one resolution, and holds nothing afterwards, so liveness
+is untouched. Amortising across a whole request is `runCached`'s job, below.
+
 `TomResourceGrant` is the orthogonal axis: it grades a `(role, resourceKey)`
 pair with a `TomAuthState` (`none` / `disabled` / `read` / `full`), stored by
 name through `TomAuthStateCodec` — a lenient codec, in that an unknown or `null`

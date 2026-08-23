@@ -2,6 +2,27 @@
 
 ### Behaviour Changes
 
+- **Delegation resolution reads each delegator's grants once, not once per
+  delegation row (tcinc394).** `TomDelegationResolver.resolveDelegatedRoles`
+  looped over the active rows and, for every `absence`/`intentional` one, asked
+  the direct resolver for that row's delegator — so a delegator naming four rows
+  was read four times, and each read is a query against
+  `tom_principal_resource_grant`.
+
+  The multiplicity is not a corner case: `resourceKey` narrows a delegation to
+  *one* resource, so lending four projects is idiomatically four rows with one
+  delegator, and the cost grew with exactly the thing the model encourages.
+  Resolution now memoises the delegator reads for the duration of the single
+  `resolveDelegatedRoles` call, keyed on the delegator id.
+
+  It is deliberately not a cache. Resolution is live — a revoked grant must stop
+  granting access at revocation rather than at token expiry — so the memo holds
+  nothing once the call returns, and two resolutions still read twice; a test
+  pins that. Amortising across a whole request remains
+  `TomResourceDataScope.runCached`'s job, which the resolver sits underneath.
+  `share` rows and inactive rows still cost no grant read at all, since neither
+  ever consults the delegator.
+
 - **`TomAuthorizationCache.storePrincipal` returns `Future<void>` (tcinc393).**
   It was declared `Future<int>` and ended with `return 0` on every path, which
   cost a sentence in the source dartdoc, the completion doc and the API summary
