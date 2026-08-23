@@ -527,6 +527,30 @@
 
 ### Documentation
 
+- **The cache example and test fixture state the expiry rule the module
+  actually has (tcinc401).** Two comments still described the rule as it stood
+  *before* it was fixed: the example's first step claimed "a retrievable entry
+  must carry a deletion time, so `deleteEntriesAfterSeconds` supplies one
+  automatically on store", and `test/cache_test.dart`'s shared `_cache` helper
+  repeated it as "a readable entry must carry a future deletion time". The
+  module has not worked that way since the expiry gate was corrected — an entry
+  expires only once it carries a deletion time that *has passed*, and an entry
+  with no deletion time at all is kept forever. `doc/cache.md` had already been
+  brought in line, which is what left these two contradicting it.
+
+  A stale comment on a *fixture* is the more expensive of the two: it is read by
+  everyone adding a test, and it justifies the fixture's 300-second default with
+  a reason that is not the real one. The default stays — but for what it in fact
+  buys, which the comment now says: because the cache would otherwise supply its
+  own instant, an entry that expires on the *caller's* proves the caller's was
+  carried through rather than silently replaced, and that is the whole substance
+  of the two `TomCacheStoreMessage` expiry tests.
+
+  The example gains the step that would have caught this: a cache with no
+  default lifetime, whose stored entry reads back. The "cache forever" half of
+  the rule was asserted in the suite and demonstrated nowhere, and a rule stated
+  only in prose is exactly the kind that drifts out of date unnoticed.
+
 - **The source and the test suite state their rules instead of narrating past
   defects (tcinc351).** 85 lines across 27 files carried a bare `§N` — `(bug
   §75)` on the audit record's encodability pass, `Bug §22:` above the migration

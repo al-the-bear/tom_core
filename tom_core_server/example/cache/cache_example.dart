@@ -1,8 +1,9 @@
 /// Executable example for the cache module of `tom_core_server`.
 ///
 /// Demonstrates the named in-memory cache running in the main isolate: storing
-/// and reading a value, per-entry expiry, LRU eviction in a bounded cache,
-/// removal by type, and the [TomCacheException] raised on a type mismatch.
+/// and reading a value, per-entry expiry, the entry with no deletion time that
+/// never expires, LRU eviction in a bounded cache, removal by type, and the
+/// [TomCacheException] raised on a type mismatch.
 ///
 /// Run with `dart run example/cache/cache_example.dart`.
 /// The same behaviour is covered by `test/cache_test.dart`.
@@ -20,9 +21,10 @@ class User {
 }
 
 Future<void> run() async {
-  // 1. A named cache with a default 5-minute entry lifetime. A retrievable
-  //    entry must carry a deletion time, so deleteEntriesAfterSeconds supplies
-  //    one automatically on store.
+  // 1. A named cache with a default 5-minute entry lifetime: a store that does
+  //    not name its own deletion time gets one 300s out. An entry expires only
+  //    once it carries a deletion time that has passed, so this one reads back
+  //    for the next five minutes.
   TomCacheManager.addCache(
     TomCache('greetings', deleteEntriesAfterSeconds: 300),
   );
@@ -43,7 +45,16 @@ Future<void> run() async {
   print('2. expired entry read        : ${expired ?? 'null (expired)'}');
   assert(expired == null);
 
-  // 3. A bounded cache evicts the least-recently-used entry once full.
+  // 3. The other half of the same rule: a cache with no default lifetime stores
+  //    entries with no deletion time at all, and those never expire on their
+  //    own — they are returned by every read until removed, evicted or cleared.
+  TomCacheManager.addCache(TomCache('forever'));
+  await TomCache.toNameCache('forever', 'pi', '3.14159');
+  final kept = await TomCache.fromNameCache<String>('forever', 'pi');
+  print('3. entry with no expiry      : $kept');
+  assert(kept == '3.14159');
+
+  // 4. A bounded cache evicts the least-recently-used entry once full.
   TomCacheManager.addCache(
     TomCache('lru', maximumEntries: 2, deleteEntriesAfterSeconds: 300),
   );
@@ -52,28 +63,28 @@ Future<void> run() async {
   await TomCache.toNameCache('lru', 'c', 3); // evicts 'a' (least recent)
   final a = await TomCache.fromNameCache<int>('lru', 'a');
   final c = await TomCache.fromNameCache<int>('lru', 'c');
-  print('3. lru: a -> ${a ?? 'evicted'}, c -> $c');
+  print('4. lru: a -> ${a ?? 'evicted'}, c -> $c');
   assert(a == null && c == 3);
 
-  // 4. A type cache is named after the Dart type it holds.
+  // 5. A type cache is named after the Dart type it holds.
   TomCacheManager.addCache(
     TomCache.forType(User, deleteEntriesAfterSeconds: 300),
   );
   await TomCache.toTypeCache<User>('u-42', User('42'));
   final user = await TomCache.fromTypeCache<User>('u-42');
-  print('4. type cache read           : $user');
+  print('5. type cache read           : $user');
   assert(user?.id == '42');
   await TomCache.removeFromTypeCache<User>('u-42');
   assert(await TomCache.fromTypeCache<User>('u-42') == null);
 
-  // 5. Reading a value as the wrong type throws TomCacheException.
+  // 6. Reading a value as the wrong type throws TomCacheException.
   await TomCache.toNameCache('greetings', 'num', 123);
   var threw = false;
   try {
     await TomCache.fromNameCache<String>('greetings', 'num');
   } on TomCacheException catch (e) {
     threw = true;
-    print('5. type mismatch threw       : ${e.key}');
+    print('6. type mismatch threw       : ${e.key}');
   }
   assert(threw);
 }

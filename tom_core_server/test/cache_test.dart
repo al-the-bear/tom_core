@@ -1,8 +1,16 @@
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
-/// A cache with a generous default lifetime so stored entries are retrievable
-/// (a readable entry must carry a future deletion time).
+/// A cache configured the way a caller normally configures one: a default entry
+/// lifetime, generous enough that nothing expires mid-test.
+///
+/// The default is not what makes an entry readable — an entry expires only once
+/// it carries a deletion time that has passed, and one with no deletion time at
+/// all is kept forever (see the "cache forever" test below, which deliberately
+/// does *not* use this helper). What a non-null default buys the expiry tests is
+/// discrimination: because the cache would have supplied its own instant, a
+/// stored entry that expires on the caller's instead proves the caller's was
+/// carried through rather than silently replaced.
 TomCache _cache(String name, {int? maximumEntries}) => TomCache(
   name,
   deleteEntriesAfterSeconds: 300,
