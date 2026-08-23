@@ -20,7 +20,7 @@ application-side resolver involved.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomAuthorizationCache` | Static principal cache; `storePrincipal(...)` and `getPrincipal(...)`, with cross-isolate forwarding. |
+| `TomAuthorizationCache` | Static principal cache; `storePrincipal(...)` and `getPrincipal(...)`, with cross-isolate forwarding. Its eviction sweep starts with the first stored principal and stops through `stopEviction()` or, on a server, by registering `instance` with `tomShutdownCleanup`. |
 | `TomAuthorizationCacheEntry` | One cached principal with its expiry bookkeeping. |
 | `TomAuthorizationCacheStoreMessage` · `TomAuthorizationCacheRetrieveMessage` | Cross-isolate commands carrying a store/retrieve to the main isolate. |
 | `TomAuthorizationCacheExecutor` | `TomExecutor` that runs those commands in the creator isolate. |
@@ -44,6 +44,11 @@ Future<void> main() async {
   // or never cached), so the request skips a fresh authentication:
   final principal = await TomAuthorizationCache.getPrincipal(token);
   print(principal == null); // true when nothing is cached for this token
+
+  // Caching the first principal starts the hourly eviction sweep, which is a
+  // periodic timer and so holds the isolate open. Register the cache once at
+  // start-up and shutdown stops the sweep and drops the cached principals.
+  tomShutdownCleanup.addDisposable(TomAuthorizationCache.instance);
 
   // Once at start-up, wire the grant-driven row scope over the same delegation
   // resolver the rest of the layer uses. Until this runs the scope denies every

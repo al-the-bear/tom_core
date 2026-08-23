@@ -98,6 +98,12 @@ void main() {
   // synchronous, single-isolate behaviour under test.
   setUp(() => TomWorker.resetIsMainIsolate());
 
+  // The eviction sweep is process-lifetime state on a singleton, so a test that
+  // left one running would decide what the next test sees. Stopping after each
+  // one also keeps the suite honest about the thing this lifecycle exists for:
+  // a sweep nobody stops is a sweep that holds the isolate open.
+  tearDown(TomAuthorizationCache.stopEviction);
+
   group('TomAuthorizationCacheEntry', () {
     test('defaults the deletion time to roughly one day out', () {
       final before = DateTime.now().add(const Duration(days: 1));
@@ -165,6 +171,118 @@ void main() {
         );
       },
     );
+  });
+
+  // The sweep is the cache's only background work, and until it was held in a
+  // field it could not be observed or stopped: it kept the isolate alive (the
+  // module's example had to end in `exit(0)`) and a second one could be started
+  // with nothing referencing either. These tests pin the three properties that
+  // removes -- one sweep at a time, stoppable, and only running when there is
+  // something to sweep.
+  group('TomAuthorizationCache (eviction lifecycle)', () {
+    test('no sweep runs until there is something to evict', () async {
+      expect(TomAuthorizationCache.isEvicting, isFalse);
+
+      // A read cannot add an entry, so it cannot create work for the sweep.
+      await TomAuthorizationCache.getPrincipal(_token('nobody-at-all'));
+      expect(TomAuthorizationCache.isEvicting, isFalse);
+
+      await TomAuthorizationCache.storePrincipal(
+        _token('eve'),
+        _principal('eve'),
+      );
+      expect(TomAuthorizationCache.isEvicting, isTrue);
+    });
+
+    test('stopEviction cancels the sweep and is idempotent', () {
+      TomAuthorizationCache.startEviction();
+      expect(TomAuthorizationCache.isEvicting, isTrue);
+
+      TomAuthorizationCache.stopEviction();
+      expect(TomAuthorizationCache.isEvicting, isFalse);
+
+      // Shutdown paths run in whatever order the process is torn down in, so
+      // stopping something already stopped has to be a no-op rather than a
+      // failure.
+      TomAuthorizationCache.stopEviction();
+      expect(TomAuthorizationCache.isEvicting, isFalse);
+    });
+
+    test('the sweep drops expired entries and keeps live ones', () async {
+      final expired = _token('mona', validFor: const Duration(hours: -1));
+      final live = _token('nora');
+      await TomAuthorizationCache.storePrincipal(expired, _principal('mona'));
+      await TomAuthorizationCache.storePrincipal(live, _principal('nora'));
+
+      // The store started the sweep at its default hourly interval, which no
+      // test can wait out; an explicit start replaces it with one that can be.
+      TomAuthorizationCache.startEviction(
+        interval: const Duration(milliseconds: 20),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+
+      // A miss rather than a rejection: the sweep removes the row, so nothing
+      // is left to recognise as expired.
+      expect(await TomAuthorizationCache.getPrincipal(expired), isNull);
+      expect(
+        (await TomAuthorizationCache.getPrincipal(live))!.username,
+        'nora',
+      );
+    });
+
+    test(
+      'starting again replaces the sweep rather than leaving an orphan',
+      () async {
+        // If the second start does not cancel the first, the first keeps running
+        // with nothing referencing it -- the original defect, and invisible to
+        // isEvicting, which can only see the timer the field holds.
+        TomAuthorizationCache.startEviction(
+          interval: const Duration(milliseconds: 20),
+        );
+        TomAuthorizationCache.startEviction(
+          interval: const Duration(milliseconds: 25),
+        );
+
+        final token = _token('olga', validFor: const Duration(hours: -1));
+        await TomAuthorizationCache.storePrincipal(token, _principal('olga'));
+        TomAuthorizationCache.stopEviction();
+        expect(TomAuthorizationCache.isEvicting, isFalse);
+
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        // A stopped cache does not sweep, so the expired entry is still there to
+        // be rejected. An orphaned timer would have made this a miss.
+        await expectLater(
+          () => TomAuthorizationCache.getPrincipal(token),
+          throwsA(isA<TomAuthorizationCacheException>()),
+        );
+      },
+    );
+
+    test('dispose stops the sweep and drops the cached principals', () async {
+      final token = _token('petra');
+      await TomAuthorizationCache.storePrincipal(token, _principal('petra'));
+      expect(TomAuthorizationCache.isEvicting, isTrue);
+
+      TomAuthorizationCache.instance.dispose();
+
+      expect(TomAuthorizationCache.isEvicting, isFalse);
+      expect(await TomAuthorizationCache.getPrincipal(token), isNull);
+    });
+
+    test('exposes one disposable instance for the shutdown path', () {
+      // The instance is reachable so a server can register it with
+      // tomShutdownCleanup; it is a getter onto the singleton rather than a
+      // constructor so that registering it cannot conjure a second cache.
+      expect(TomAuthorizationCache.instance, isA<TomDisposable>());
+      expect(
+        identical(
+          TomAuthorizationCache.instance,
+          TomAuthorizationCache.instance,
+        ),
+        isTrue,
+      );
+    });
   });
 
   // The token is client-supplied, so `validUntil` is untrusted input and every

@@ -24,9 +24,9 @@ row scope.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomAuthorizationCache` | class | The main-isolate cache: `getPrincipal` / `storePrincipal` keyed by JWT token string |
+| `TomAuthorizationCache` | class | The main-isolate cache: `getPrincipal` / `storePrincipal` keyed by JWT token string, plus the eviction sweep's lifecycle |
 | `TomAuthorizationCacheEntry` | class | One cached principal paired with its expiry (`deletionTime`) |
-| `TomAuthorizationCacheException` | exception | Thrown when a cached entry exists but has expired |
+| `TomAuthorizationCacheException` | exception | Thrown when a cached entry has expired, or when a token's `validUntil` claim is unreadable so nothing was cached |
 | `TomAuthorizationCacheStoreMessage` | class | Cross-isolate command: store a principal in the main isolate |
 | `TomAuthorizationCacheRetrieveMessage` | class | Cross-isolate command: read a principal from the main isolate |
 | `TomAuthorizationCacheExecutor` | `TomExecutor` | Services the two messages in the main isolate |
@@ -122,9 +122,28 @@ Expiry is enforced two ways:
   past its `deletionTime`. The distinct exception type lets the caller catch it
   specifically and treat it as a prompt to re-authorize (a true cache *miss*,
   by contrast, simply returns `null`).
-- **Eagerly on a timer** — a periodic timer sweeps the map once an hour and
+- **Eagerly on a sweep** — a periodic timer walks the map once an hour and
   removes entries whose `deletionTime` has passed, so stale principals do not
   accumulate.
+
+The sweep starts with the first principal `storePrincipal` caches: it exists to
+bound the map, so it runs from the moment there is something in it to bound and
+a process that only ever reads the cache never starts a timer at all. It is a
+periodic timer, so it holds the isolate open until it is stopped — a server
+therefore registers the cache for shutdown, and gets the cached principals
+dropped with it:
+
+```dart
+tomShutdownCleanup.addDisposable(TomAuthorizationCache.instance);
+```
+
+`stopEviction()` cancels the sweep on its own (entries stay, and expired ones
+are still rejected on read); `startEviction(interval:)` starts one at a chosen
+interval, replacing any that is running. A server that would rather have the
+sweep parented at boot than to whichever request happens to store first calls
+that once at start-up. `TomAuthorizationCache.instance` is the only way to reach
+a cache — the constructor is private, because every instance would own a sweep
+and a second one's sweep would walk a map the static API never writes to.
 
 ## Grants, Grades and Delegations
 
@@ -240,9 +259,10 @@ against MariaDB.
 
 ## Core Components
 
-- **`TomAuthorizationCache`** — the cache itself. Public surface is the two
-  static methods `getPrincipal` and `storePrincipal`; the backing map is
-  private.
+- **`TomAuthorizationCache`** — the cache itself. Public surface is
+  `getPrincipal` / `storePrincipal` plus the eviction lifecycle
+  (`startEviction`, `stopEviction`, `isEvicting`, and `dispose` via
+  `instance`); the backing map is private, and so is the constructor.
 - **`TomAuthorizationCacheEntry`** — value object pairing the
   `authorizedPrincipal` with its `deletionTime`.
 - **`TomAuthorizationCacheException`** — signals an expired-but-present entry.

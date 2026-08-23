@@ -62,33 +62,124 @@ class TomAuthorizationCacheEntry {
 /// [TomAuthorizationCacheExecutor] services the [TomAuthorizationCacheStoreMessage]
 /// / [TomAuthorizationCacheRetrieveMessage] against the single shared map.
 ///
-/// A periodic timer evicts entries whose [TomAuthorizationCacheEntry.deletionTime]
-/// has passed once an hour; reads also reject an expired entry by throwing a
-/// [TomAuthorizationCacheException].
-class TomAuthorizationCache {
-  static final TomAuthorizationCache _current = TomAuthorizationCache();
+/// A periodic sweep evicts entries whose [TomAuthorizationCacheEntry.deletionTime]
+/// has passed; reads also reject an expired entry by throwing a
+/// [TomAuthorizationCacheException]. The sweep starts with the first stored
+/// principal and can be stopped again through [stopEviction] — or, on a server,
+/// by registering [instance] with `tomShutdownCleanup`.
+class TomAuthorizationCache implements TomDisposable {
+  static final TomAuthorizationCache _current = TomAuthorizationCache._();
 
-  TomAuthorizationCache() {
-    Zone.current.createPeriodicTimer(Duration(hours: 1), (Timer t) {
-      var now = DateTime.now();
-      List<String> entriesToDelete = [];
-      for (var entry in _cache.entries) {
-        if (entry.value.deletionTime.isBefore(now)) {
-          entriesToDelete.add(entry.key);
-        }
-      }
-      if (entriesToDelete.isNotEmpty) {
-        tomLog.debug(
-          "TomAuthorizationCache timer is deleting keys $entriesToDelete",
-        );
-        for (var key in entriesToDelete) {
-          _cache.remove(key);
-        }
-      }
-    });
-  }
+  /// The one cache the static API reads and writes.
+  ///
+  /// Exposed so that a server can hand it to the shutdown-cleanup path:
+  ///
+  /// ```dart
+  /// tomShutdownCleanup.addDisposable(TomAuthorizationCache.instance);
+  /// ```
+  ///
+  /// A getter onto the singleton rather than a public constructor, so that
+  /// reaching for the cache cannot conjure a second one: every instance owns a
+  /// sweep, and a second instance's sweep would walk a map that nothing can
+  /// ever populate — the static API only ever touches this one.
+  static TomAuthorizationCache get instance => _current;
+
+  TomAuthorizationCache._();
+
+  /// How often the eviction sweep runs when nobody asks for another interval.
+  static const Duration evictionInterval = Duration(hours: 1);
 
   final Map<String, TomAuthorizationCacheEntry> _cache = {};
+
+  /// The running eviction sweep, or `null` when none is running.
+  ///
+  /// Held in a field for two reasons: a periodic timer nothing references can
+  /// never be stopped and keeps the isolate alive, and holding exactly one
+  /// makes "at most one sweep" a property of the structure rather than a rule
+  /// each starter has to remember.
+  Timer? _evictionTimer;
+
+  /// Whether an eviction sweep is currently running.
+  static bool get isEvicting => _current._evictionTimer != null;
+
+  /// Starts the eviction sweep at [interval], replacing any sweep already
+  /// running.
+  ///
+  /// Callers do not normally need this: [storePrincipal] starts the sweep at
+  /// [evictionInterval] with the first entry it caches. It exists for the two
+  /// cases that do — a server that wants the sweep parented at boot rather than
+  /// to whichever request stores first, and a test that cannot wait an hour.
+  ///
+  /// Replacing rather than ignoring a second call is what makes the postcondition
+  /// "a sweep is running at [interval]" true whenever this returns.
+  static void startEviction({Duration interval = evictionInterval}) =>
+      _current._startEviction(interval);
+
+  /// Stops the eviction sweep. Does nothing when none is running, because a
+  /// shutdown path cannot know which parts of the process ever started.
+  ///
+  /// Entries already cached are left alone: stopping the sweep suspends the
+  /// bounding of the map, it does not invalidate what is in it. Expired entries
+  /// are still rejected on read. Use [dispose] to drop them as well.
+  static void stopEviction() => _current._stopEviction();
+
+  void _startEviction(Duration interval) {
+    _evictionTimer?.cancel();
+    // Zone.root, not Zone.current: this timer lives as long as the process,
+    // while the caller that happens to store the first principal is usually a
+    // single request running in its own zone. Parenting process-lifetime work
+    // to a request zone leaves it answering to that request's error handling
+    // and teardown long after the request is gone.
+    _evictionTimer = Zone.root.createPeriodicTimer(
+      interval,
+      (Timer t) => _evictExpired(),
+    );
+  }
+
+  void _stopEviction() {
+    _evictionTimer?.cancel();
+    _evictionTimer = null;
+  }
+
+  /// Starts the sweep at [evictionInterval] unless one is already running.
+  ///
+  /// Distinct from [_startEviction] so that the automatic start cannot undo a
+  /// deliberate one: a server or a test that chose an interval keeps it, and
+  /// the next store does not silently reset it to the default.
+  void _ensureEviction() {
+    if (_evictionTimer != null) return;
+    _startEviction(evictionInterval);
+  }
+
+  /// Removes every entry whose [TomAuthorizationCacheEntry.deletionTime] has
+  /// passed. Collected first and removed after, because removing while
+  /// iterating [_cache] would invalidate the iteration.
+  void _evictExpired() {
+    final DateTime now = DateTime.now();
+    final List<String> entriesToDelete = [
+      for (final entry in _cache.entries)
+        if (entry.value.deletionTime.isBefore(now)) entry.key,
+    ];
+    if (entriesToDelete.isEmpty) return;
+    tomLog.debug(
+      "TomAuthorizationCache timer is deleting ${entriesToDelete.length} expired entries",
+    );
+    for (final key in entriesToDelete) {
+      _cache.remove(key);
+    }
+  }
+
+  /// Stops the sweep and drops every cached principal — the shutdown contract,
+  /// so that registering [instance] with `tomShutdownCleanup` both releases the
+  /// isolate and leaves no authorized principals behind in memory.
+  ///
+  /// Synchronous, as [TomDisposable] requires: the cleanup discards a returned
+  /// future rather than awaiting it, and cancelling a timer needs nothing more.
+  @override
+  void dispose() {
+    _stopEviction();
+    _cache.clear();
+  }
 
   /// Returns the cached principal for [authenticationToken], or `null` if no
   /// entry exists (a cache miss).
@@ -203,6 +294,11 @@ class TomAuthorizationCache {
   /// the principal per request. See [_expiryFromToken] for why there is no
   /// fallback expiry.
   ///
+  /// The first entry cached also starts the eviction sweep (see
+  /// [startEviction]): the sweep exists to bound this map, so it runs from the
+  /// moment there is something in it to bound and not before — a process that
+  /// only ever reads the cache never starts a timer at all.
+  ///
   /// When called from a worker isolate the store is forwarded to the main
   /// isolate. Always returns `0`.
   static Future<int> storePrincipal(
@@ -214,6 +310,7 @@ class TomAuthorizationCache {
       tomLog.trace(
         "Storing principal ${limited(authenticationToken.tokenString, 100)} with expiry $expiry",
       );
+      _current._ensureEviction();
       _current._cache[authenticationToken.tokenString] =
           TomAuthorizationCacheEntry(authorizedPrincipal, expiry);
     } else {

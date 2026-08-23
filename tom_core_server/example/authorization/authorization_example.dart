@@ -5,15 +5,16 @@
 /// reading it back, getting `null` for an unknown token (a cache miss), and the
 /// [TomAuthorizationCacheException] raised when a cached entry has expired. It
 /// also shows the cross-isolate command objects and the executor that services
-/// them, and the refusal to cache a token whose `validUntil` claim is
-/// unreadable.
+/// them, the refusal to cache a token whose `validUntil` claim is unreadable,
+/// and the eviction sweep that bounds the map -- started with the first stored
+/// principal and stopped again at the end, which is what lets this program
+/// terminate on its own.
 ///
 /// Run with `dart run example/authorization/authorization_example.dart`.
 /// The same behaviour is covered by `test/authorization_test.dart`.
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -108,11 +109,34 @@ Future<void> run() async {
     );
   }
   assert(await TomAuthorizationCache.getPrincipal(malformed) == null);
+
+  // 6. Storing the first principal also started the eviction sweep, which
+  //    bounds the map by dropping entries past their expiry. Its interval is
+  //    an hour by default; ask for a short one so the demo can watch it work.
+  //    Bob's entry from step 3 is already expired, so the sweep removes it and
+  //    the next read is an ordinary miss rather than the rejection above.
+  print('6. sweep running            : ${TomAuthorizationCache.isEvicting}');
+  TomAuthorizationCache.startEviction(
+    interval: const Duration(milliseconds: 20),
+  );
+  await Future<void>.delayed(const Duration(milliseconds: 60));
+  final swept = await TomAuthorizationCache.getPrincipal(expiredToken);
+  final survivor = await TomAuthorizationCache.getPrincipal(aliceToken);
+  print(
+    '   after the sweep           : expired -> '
+    '${swept == null ? 'evicted' : swept.username}, '
+    'live -> ${survivor?.username}',
+  );
+  assert(swept == null);
+  assert(survivor?.username == 'alice');
 }
 
 Future<void> main() async {
   await run();
-  // The cache installs a periodic eviction timer in the main isolate, which
-  // keeps the process alive; exit explicitly now the demo has finished.
-  exit(0);
+  // The sweep is a periodic timer, so it holds the isolate open until it is
+  // stopped -- which is why the cache offers a way to stop it instead of
+  // leaving callers to call exit(). A server registers the cache with
+  // tomShutdownCleanup (`addDisposable(TomAuthorizationCache.instance)`) and
+  // gets the same thing on shutdown, plus the cached principals dropped.
+  TomAuthorizationCache.stopEviction();
 }
