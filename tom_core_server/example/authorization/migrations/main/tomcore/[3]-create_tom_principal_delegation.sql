@@ -12,9 +12,9 @@
 -- window columns are `DATETIME(6)` — the width the instant convention
 -- (`datasources/sql_instant.dart`) writes; a plain `DATETIME` rounds each bound
 -- to the second, moving the edge of a security window up to half a second from
--- the one its owner set. This file is the
--- canonical DDL and reproduces `TomPrincipalDelegation.createTableSql`
--- verbatim; `test/reference_migrations_test.dart` fails if the two drift apart.
+-- the one its owner set. This file is the canonical DDL and reproduces
+-- `TomPrincipalDelegation.createTableSql` verbatim;
+-- `test/reference_migrations_test.dart` fails if the two drift apart.
 -- The db_migration module applies it as version [3] of the `tomcore` schema on
 -- the `main` datasource, after the per-principal grant table [2].
 CREATE TABLE IF NOT EXISTS tom_principal_delegation (
