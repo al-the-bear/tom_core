@@ -115,10 +115,22 @@ void main() {
       expect(convert('192.168.0.1'), '192.168.0.1');
     });
 
-    // The documented double shape is `digits . digits?`, so the fractional part
-    // is optional and a trailing dot still converts.
-    test('a trailing dot still converts to a double', () {
+    // The double shape is `digits . digits*` — zero or more fractional digits,
+    // not the "one optional digit" that a `digits?` shorthand suggests. All
+    // three counts are pinned here because the shorthand was wrong in the
+    // dartdoc and the API mirror for long enough to be worth making
+    // unambiguous in the tests.
+    test('the fractional part may have zero, one or many digits', () {
       expect(convert('5.'), 5.0);
+      expect(convert('5.5'), 5.5);
+      expect(convert('5.5678'), 5.5678);
+    });
+
+    // The consequence of "zero" that a reader is least likely to predict: a
+    // value ending in a bare `.` is not left a String, it becomes a double.
+    test('a trailing dot converts rather than keeping the value a String', () {
+      expect(convert('5.'), 5.0);
+      expect(convert('5.'), isA<double>());
     });
 
     test('exponent notation keeps the value a String', () {

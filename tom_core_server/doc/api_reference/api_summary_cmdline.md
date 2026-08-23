@@ -62,7 +62,7 @@ value type.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `intPattern` | `RegExp` | Matches a run of digits; a value parses as `int` only when this matches the whole string **and** the number fits a 64-bit `int` — the pattern constrains shape, not magnitude (static, final). |
-| `doublePattern` | `RegExp` | Matches a decimal number (`digits . digits?`); a value parses as `double` only when this matches the whole string and it is not already an `int` (static, final). |
+| `doublePattern` | `RegExp` | Matches a decimal number (`digits . digits*` — the fractional part is zero or more digits, not one optional digit); a value parses as `double` only when this matches the whole string and it is not already an `int` (static, final). |
 
 Value-conversion table (shared by all entry points):
 
@@ -72,7 +72,7 @@ Value-conversion table (shared by all entry points):
 | `"false"` | `bool` `false` |
 | wrapped in a matched pair of `"` or `'` | the unquoted contents |
 | all digits, and it fits a 64-bit `int` | `int` |
-| decimal number | `double` |
+| decimal number, `digits . digits*` (`5.` included) | `double` |
 | anything else | the original `String` |
 
 Quotes are stripped only as a pair (see `unquote`), so an unbalanced quote is
@@ -82,6 +82,10 @@ The magnitude limit is part of the rule: `9223372036854775807` converts,
 `9223372036854775808` and longer runs stay `String`. Overflow is not a parse
 failure — an account number or device id arrives as the text it was written as,
 instead of aborting the whole argument list or `.env` file.
+
+The fractional part of a decimal is zero or more digits, so a value ending in a
+bare `.` converts rather than staying a `String`: `5.` becomes the `double`
+`5.0`. An integer part is still required, so `.5` stays a `String`.
 
 ### TomEnvFile
 

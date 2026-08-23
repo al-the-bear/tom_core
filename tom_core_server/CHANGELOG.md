@@ -78,6 +78,22 @@
 
 ### Documentation
 
+- **The `doublePattern` shorthand no longer understates the pattern
+  (tcinc421).** `TomArgs.doublePattern` is `[0-9]+[.][0-9]*`, but its own
+  dartdoc and the API-reference mirror both described it as
+  `digits . digits?` — a `?` reads as *one optional digit*, which would forbid
+  the ordinary `3.14`. The shorthand is now `digits . digits*` in both places,
+  and the completion notes, which had quoted the real pattern all along, no
+  longer disagree with them.
+
+  The consequence of "zero" is the one a reader is least likely to predict, so
+  it is now stated wherever the conversion table appears: a value ending in a
+  bare `.` converts rather than staying a `String`, so `5.` becomes the
+  `double` `5.0`. An integer part is still required, so `.5` stays a `String`.
+  Two tests pin the zero / one / many fractional-digit range; the `5.5678` case
+  is what proves the pattern is `*` rather than `?`. No behaviour changed —
+  only the descriptions of it.
+
 - **`TomEnvFile.merge` now says that it converts nothing (tcinc417).** The
   documented way to layer configuration is to `merge` the process environment,
   a `.env` file and the parsed arguments, then hand the result to

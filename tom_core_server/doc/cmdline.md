@@ -99,13 +99,22 @@ Both classes share one conversion table (implemented once in `TomArgs`):
 | `false` | `bool` `false` |
 | wrapped in a matched pair of `"` or `'` | the unquoted contents |
 | all digits, fitting a 64-bit `int` (e.g. `8080`) | `int` |
-| decimal (e.g. `3.14`) | `double` |
+| decimal, `digits . digits*` (e.g. `3.14`, `5.`) | `double` |
 | empty (`.env` only) | `null` |
 | anything else | the original `String` |
 
 The numeric rules match the *whole* string, so a leading sign or trailing text
 keeps the value a `String`: `-5`, `1.2.3`, and `12px` all stay strings. `int` is
 tried before `double`, so `8080` is an `int` and `3.14` a `double`.
+
+The decimal's fractional part is **zero or more** digits, not one optional
+digit. Two consequences are easy to predict wrongly:
+
+| Value | Result | Why |
+| ----- | ------ | --- |
+| `3.14` | `double` `3.14` | any number of fractional digits is accepted |
+| `5.` | `double` `5.0` | zero fractional digits is a match; the bare `.` does **not** keep it a `String` |
+| `.5` | `String` | the integer part is required |
 
 ### A digit run larger than an `int` stays a `String`
 

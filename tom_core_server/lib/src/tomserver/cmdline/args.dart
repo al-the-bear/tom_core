@@ -48,10 +48,14 @@ class TomArgs {
   /// `String`.
   static final RegExp intPattern = RegExp("[0-9]+");
 
-  /// Matches a decimal number (`digits . digits?`). A value is parsed as a
+  /// Matches a decimal number (`digits . digits*`). A value is parsed as a
   /// `double` only when this pattern matches the *whole* string and it is not
   /// already an `int`; a leading sign or a missing integer part keeps the value
   /// a `String` (e.g. `-1.5` and `.5` stay strings).
+  ///
+  /// The fractional part is `*`, zero or more digits — not one optional digit.
+  /// So `3.14` converts, and so does a value ending in a bare `.`: `5.` becomes
+  /// the `double` `5.0` rather than staying a `String`.
   static final RegExp doublePattern = RegExp("[0-9]+[.][0-9]*");
 
   /// Parses `key=value` [args] into a loose map, type-converting each value.
@@ -73,7 +77,7 @@ class TomArgs {
   /// | `"false"` | `bool` `false` |
   /// | wrapped in a matched pair of `"` or `'` | the unquoted contents |
   /// | all digits, and it fits a 64-bit `int` | `int` |
-  /// | decimal number | `double` |
+  /// | decimal number, `digits . digits*` (`5.` included) | `double` |
   /// | anything else | the original `String` |
   ///
   /// Quotes are only stripped as a **pair** (see [unquote]): an unbalanced
