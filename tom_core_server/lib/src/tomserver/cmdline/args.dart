@@ -67,10 +67,14 @@ class TomArgs {
   /// | ----- | ------ |
   /// | `"true"` / `null` | `bool` `true` |
   /// | `"false"` | `bool` `false` |
-  /// | starts with `"` or `'` | the unquoted contents (first/last char dropped) |
+  /// | wrapped in a matched pair of `"` or `'` | the unquoted contents |
   /// | all digits | `int` |
   /// | decimal number | `double` |
   /// | anything else | the original `String` |
+  ///
+  /// Quotes are only stripped as a **pair** (see [unquote]): an unbalanced
+  /// quote is not a quoted value, so a lone `"` and an unterminated `"hello`
+  /// are both passed through unchanged rather than truncated.
   static Map<String, dynamic> convertToObjectMap(Map<String, String> map) {
     Map<String, dynamic> result = {};
     for (var key in map.keys) {
@@ -106,21 +110,56 @@ class TomArgs {
     return argMap;
   }
 
+  /// Returns the contents of [value] with its surrounding quotes removed, or
+  /// `null` if [value] is not a quoted literal.
+  ///
+  /// A value is quoted only when its quotes form a **pair**: it is at least two
+  /// characters long, starts with `"` or `'`, and ends with that same
+  /// character. `""` is therefore a quoted literal whose contents are empty,
+  /// while a lone `"`, an unterminated `"hello`, and a mismatched `"hello'` are
+  /// not quoted at all and yield `null` so the caller can use them verbatim.
+  ///
+  /// Requiring the pair is what keeps a stray quote harmless. Dropping the
+  /// first and last character on the strength of the opening quote alone
+  /// truncates an unterminated value (`"hello` → `hello` minus its last
+  /// character), and on a one-character value it asks for `substring(1, 0)` —
+  /// a `RangeError` that names neither the key nor the file it came from.
+  ///
+  /// Both this class and `TomEnvFile.parse` decide through here, so the two
+  /// sources cannot disagree about what counts as quoted.
+  static String? unquote(String value) {
+    if (value.length < 2) {
+      return null;
+    }
+    final quote = value[0];
+    if (quote != '"' && quote != "'") {
+      return null;
+    }
+    if (!value.endsWith(quote)) {
+      return null;
+    }
+    return value.substring(1, value.length - 1);
+  }
+
   /// Converts a single string [value] to its natural Dart type. See
   /// [convertToObjectMap] for the conversion table.
   static Object _convertString(String? value) {
     if (value == "true" || value == null) {
       return true;
-    } else if (value == "false") {
-      return false;
-    } else if (value.startsWith('"') || value.startsWith("'")) {
-      return value.substring(1, value.length - 1);
-    } else if (intPattern.stringMatch(value) == value) {
-      return int.parse(value);
-    } else if (doublePattern.stringMatch(value) == value) {
-      return double.parse(value);
-    } else {
-      return value;
     }
+    if (value == "false") {
+      return false;
+    }
+    final unquoted = unquote(value);
+    if (unquoted != null) {
+      return unquoted;
+    }
+    if (intPattern.stringMatch(value) == value) {
+      return int.parse(value);
+    }
+    if (doublePattern.stringMatch(value) == value) {
+      return double.parse(value);
+    }
+    return value;
   }
 }

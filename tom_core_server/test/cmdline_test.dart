@@ -107,6 +107,36 @@ void main() {
       expect(convert("'world'"), 'world');
     });
 
+    test('an empty quoted value is the empty String', () {
+      expect(convert('""'), '');
+      expect(convert("''"), '');
+    });
+
+    // Unquoting needs a *pair*. A lone quote character is one character long,
+    // so it is its own first and last character — the reason the old
+    // drop-both-ends rule reduced to substring(1, 0) and raised a RangeError
+    // naming neither the key nor the file it came from.
+    test('a lone quote character is kept verbatim', () {
+      expect(convert('"'), '"');
+      expect(convert("'"), "'");
+    });
+
+    // Without a closing quote there is nothing to strip, and stripping the
+    // last character anyway silently ate it — `"hello` became `hell`.
+    test('a value with no closing quote is kept verbatim', () {
+      expect(convert('"hello'), '"hello');
+      expect(convert("'hello"), "'hello");
+    });
+
+    test('mismatched quotes are kept verbatim', () {
+      expect(convert('"hello\''), '"hello\'');
+    });
+
+    // A trailing quote alone was never treated as quoted, and still is not.
+    test('a trailing quote alone is kept verbatim', () {
+      expect(convert('hello"'), 'hello"');
+    });
+
     test('any other text passes through unchanged', () {
       expect(convert('localhost'), 'localhost');
     });
@@ -255,6 +285,33 @@ void main() {
     test('ignores a line with no "=" and a line with an empty key', () {
       final env = TomEnvFile.parse(['novalue', '=orphan', 'KEY=ok']);
       expect(env, {'KEY': 'ok'});
+    });
+
+    test('an empty quoted value is the empty String', () {
+      expect(TomEnvFile.parse(['EMPTY=""'])['EMPTY'], '');
+    });
+
+    // The .env path checked both ends but not the length, so a lone quote
+    // satisfied startsWith and endsWith at once and aborted the read with a
+    // RangeError — a stray quote in a .env file killed server start-up.
+    test('a lone quote character is kept verbatim', () {
+      expect(TomEnvFile.parse(['K="'])['K'], '"');
+      expect(TomEnvFile.parse(["K='"])['K'], "'");
+    });
+
+    test('a value with no closing quote is kept verbatim', () {
+      expect(TomEnvFile.parse(['K="hello'])['K'], '"hello');
+    });
+
+    test('mismatched quotes are kept verbatim', () {
+      expect(TomEnvFile.parse(['K="hello\''])['K'], '"hello\'');
+    });
+
+    // The stray quote must not take the rest of the file with it.
+    test('a stray quote does not stop the remaining lines being read', () {
+      final env = TomEnvFile.parse(['BAD="', 'PORT=8080']);
+      expect(env['BAD'], '"');
+      expect(env['PORT'], 8080);
     });
   });
 

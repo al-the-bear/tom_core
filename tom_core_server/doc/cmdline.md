@@ -97,7 +97,7 @@ Both classes share one conversion table (implemented once in `TomArgs`):
 | ------------ | ------ |
 | `true` | `bool` `true` |
 | `false` | `bool` `false` |
-| starts with `"` or `'` | the unquoted contents |
+| wrapped in a matched pair of `"` or `'` | the unquoted contents |
 | all digits (e.g. `8080`) | `int` |
 | decimal (e.g. `3.14`) | `double` |
 | empty (`.env` only) | `null` |
@@ -106,6 +106,26 @@ Both classes share one conversion table (implemented once in `TomArgs`):
 The numeric rules match the *whole* string, so a leading sign or trailing text
 keeps the value a `String`: `-5`, `1.2.3`, and `12px` all stay strings. `int` is
 tried before `double`, so `8080` is an `int` and `3.14` a `double`.
+
+### Quotes are stripped only in pairs
+
+`TomArgs.unquote` decides what counts as quoted, and both sources ask it, so a
+value means the same thing on the command line as in a `.env` file. A value is
+quoted only when it is at least two characters long, opens with `"` or `'`, and
+closes with that same character:
+
+| Value | Result | Why |
+| ----- | ------ | --- |
+| `"hello"` | `hello` | matched pair |
+| `""` | the empty string | matched pair, empty contents |
+| `"` | `"` | one character — there is no pair to strip |
+| `"hello` | `"hello` | no closing quote |
+| `"hello'` | `"hello'` | the quotes do not match |
+| `hello"` | `hello"` | does not open with a quote |
+
+An unbalanced quote is therefore **data, not a syntax error**: it is passed
+through verbatim and start-up continues. A stray quote in a `.env` file does not
+abort the read, and the lines after it are still parsed.
 
 ## How Configuration Composes Them
 
@@ -142,8 +162,9 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
 ## Core Components
 
 - **`TomArgs`** — `fillFromArgs` (reflected object), `parseArgsToMap` (loose
-  map), `convertToObjectMap` (string map → typed map), and the `intPattern` /
-  `doublePattern` matchers that drive numeric detection.
+  map), `convertToObjectMap` (string map → typed map), `unquote` (the shared
+  matched-pair quoting rule), and the `intPattern` / `doublePattern` matchers
+  that drive numeric detection.
 - **`TomEnvFile`** — `read` / `readAsync` (file → map), `parse` (lines → map),
   `merge` (overlay maps), and `load` (read for manual use; the OS environment is
   read-only and is not mutated).

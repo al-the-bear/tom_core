@@ -55,6 +55,7 @@ value type.
 | `fillFromArgs` | `static T fillFromArgs<T extends Object>(List<String> args, T fillIn)` | Fills `fillIn` from `key=value` `args` using reflection and returns it, splitting each argument on its first `=`; a bare flag is recorded as the boolean `true`. `T` must be registered with the reflection system. |
 | `parseArgsToMap` | `static Map<String, dynamic> parseArgsToMap(List<String> args)` | Parses `key=value` `args` into a loose map, splitting on the first `=` and type-converting each value; a bare flag becomes the boolean `true`. |
 | `convertToObjectMap` | `static Map<String, dynamic> convertToObjectMap(Map<String, String> map)` | Converts every value in a string `map` to its natural Dart type (useful for normalising `Platform.environment`). |
+| `unquote` | `static String? unquote(String value)` | Returns the contents of `value` with its surrounding quotes removed, or `null` when `value` is not a quoted literal. Quotes count only as a **matched pair** — at least two characters, opening with `"` or `'` and closing with that same character — so `""` unquotes to the empty string while a lone `"`, an unterminated `"hello` and a mismatched `"hello'` all yield `null` and are used verbatim. `TomEnvFile.parse` decides through this method too, so the two sources cannot disagree. |
 
 #### Properties
 
@@ -69,10 +70,13 @@ Value-conversion table (shared by all entry points):
 | ----- | ------ |
 | `"true"` / `null` | `bool` `true` |
 | `"false"` | `bool` `false` |
-| starts with `"` or `'` | the unquoted contents (first/last char dropped) |
+| wrapped in a matched pair of `"` or `'` | the unquoted contents |
 | all digits | `int` |
 | decimal number | `double` |
 | anything else | the original `String` |
+
+Quotes are stripped only as a pair (see `unquote`), so an unbalanced quote is
+data rather than a syntax error: `"` and `"hello` pass through unchanged.
 
 ### TomEnvFile
 

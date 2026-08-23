@@ -2,6 +2,31 @@
 
 ### Fixed
 
+- **An unbalanced quote no longer crashes or truncates a value (tcinc418).**
+  Both parsers unquoted by dropping the first and last character on the
+  strength of the *opening* quote alone. For the one-character value `"` that
+  asks for `substring(1, 0)`, so `TomArgs.parseArgsToMap(['K="'])` and
+  `TomEnvFile.parse(['K="'])` each raised an unhandled `RangeError (end):
+  Invalid value: Only valid value is 1: 0` — a stray quote on a launch command
+  or in a `.env` file aborted server start-up with a `dart:core` error naming
+  neither the key nor the file, and on the `.env` path it took every line after
+  it down as well.
+
+  The crash was hiding a quieter defect of the same origin: with no closing
+  quote there is nothing to strip, but the last character was dropped anyway,
+  so `K="hello` silently became `hell` and a mismatched `K="hello'` became
+  `hello`. A truncated password or host name is worse than a crash, because
+  nothing reports it.
+
+  Quotes are now stripped only as a **matched pair** — at least two characters,
+  opening with `"` or `'` and closing with that same character. Everything else
+  is data, not a syntax error, and passes through verbatim; `""` still unquotes
+  to the empty string. The rule lives in one new public method,
+  `TomArgs.unquote`, which `TomEnvFile.parse` also decides through, so the two
+  sources cannot disagree about what counts as quoted — the same
+  extract-the-shared-rule treatment that tcinc415 gave the `=` split. Ten tests
+  pin it across both parsers.
+
 - **A command-line argument value containing a second `=` is no longer
   truncated (tcinc415).** `TomArgs.fillFromArgs` and `TomArgs.parseArgsToMap`
   both split on every `=` and kept the second segment, so a value was cut at its

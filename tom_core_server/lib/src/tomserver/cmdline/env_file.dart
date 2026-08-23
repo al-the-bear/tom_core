@@ -88,11 +88,13 @@ class TomEnvFile {
 
       var value = line.substring(equalsIndex + 1).trim();
 
-      // Handle quoted values
-      if ((value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))) {
+      // Handle quoted values. TomArgs.unquote owns the rule — quotes count
+      // only as a matched pair — so the two sources cannot disagree about what
+      // is quoted, and a stray quote is not mistaken for one.
+      final unquoted = TomArgs.unquote(value);
+      if (unquoted != null) {
         // Remove quotes and use as string (don't convert to other types)
-        result[key] = value.substring(1, value.length - 1);
+        result[key] = unquoted;
         continue;
       }
 
