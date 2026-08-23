@@ -24,9 +24,17 @@ void main() {
       expect(TomArgs.parseArgsToMap(['--verbose'])['--verbose'], isTrue);
     });
 
-    test('keeps only the text before the first "=" as the key', () {
-      final m = TomArgs.parseArgsToMap(['key=value']);
-      expect(m['key'], 'value');
+    // "First" is only a claim when there is more than one "=" to choose
+    // between: for a plain pair, first and last give the same key, so an
+    // argument carrying two is what puts the question. `_parseArgs` takes
+    // `indexOf("=")` and slices either side of it, so the key is the shortest
+    // prefix and everything after that one index is the value.
+    //
+    // This is the key side of the split; the tests below assert the value side.
+    test('the key is the text before the first "=", not before the last', () {
+      final m = TomArgs.parseArgsToMap(['key=a=b']);
+      expect(m.keys, ['key']); // not 'key=a', and no second entry
+      expect(m['key'], 'a=b');
     });
 
     // The separator is the *first* "="; every later one is part of the value.

@@ -205,6 +205,20 @@
 
 ### Internal
 
+- **A cmdline test named for first-`=` splitting now asserts it (tcinc423).**
+  The test titled "keeps only the text before the first `=` as the key" parsed
+  `key=value` — one `=`, where splitting on the first and splitting on the last
+  give the same answer, so the question its title raised was never put. It was
+  a guard in name only: reverting `_parseArgs` to `lastIndexOf` left it passing.
+
+  It now parses `key=a=b` and asserts the key set is exactly `['key']` — not
+  `key=a`, and no second entry — which is the key side of the split. The four
+  tests below it assert the value side, so the rule is covered from both
+  directions; under the same reverted implementation the renamed test fails.
+  Its comment, which described an implementation of `split`/join that no longer
+  existed, was already removed with the fix in tcinc415; the new one names what
+  `_parseArgs` actually does.
+
 - **The cache registry is declared `Map<String, TomCache>` (tcinc412).**
   `TomCacheManager` held it as `Map<Object, TomCache>`, but the only write is
   `_caches[cache.cacheName] = cache` with a `String` `cacheName`, and the only
