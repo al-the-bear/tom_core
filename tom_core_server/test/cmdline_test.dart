@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -626,6 +627,116 @@ void main() {
       final f = File('${dir.path}/.env');
       await f.writeAsString('LOADED=yes\n');
       expect(TomEnvFile.load(f.path)['LOADED'], 'yes');
+    });
+  });
+
+  group('The example runs green', () {
+    final examplePath = p.join('example', 'cmdline', 'cmdline_example.dart');
+
+    test('under exactly the command its header documents', () async {
+      // The example is this module's worked demonstration and `doc/cmdline.md`
+      // names it as such, so it drifts silently unless something runs it. Run
+      // it the way a reader would — plain `dart run`, no extra flags — and
+      // require the exit code its own checks produce.
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        examplePath,
+      ]);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'example failed: ${result.stdout}${result.stderr}',
+      );
+      // A crash before the last step would also exit 0 if it were swallowed,
+      // so pin that every numbered step actually reported.
+      for (var step = 1; step <= 5; step++) {
+        expect(result.stdout, contains('$step. '));
+      }
+    });
+
+    test('with its expectations checked rather than asserted', () async {
+      // The test above cannot see the difference on its own: an example that
+      // checks nothing exits 0 too. `dart run` leaves assertions disabled —
+      // that is what `--enable-asserts` is for — so an `assert` in the example
+      // is compiled out under the very command the test above uses, and the run
+      // stays green with every expectation violated. This example was written
+      // that way, and its eight checks were inert for exactly that reason. It
+      // now states its expectations through a throwing helper, and this guards
+      // the regression of quietly reverting them to `assert`.
+      final source = File(examplePath).readAsStringSync();
+      expect(
+        source,
+        isNot(contains('assert(')),
+        reason: 'an assert in the example does not run under `dart run`',
+      );
+      expect(source, contains('void check(bool ok, String expectation)'));
+    });
+  });
+
+  group("The readme's quick start runs green", () {
+    // The readme's quick start is a complete `main()` as well, and it is the
+    // first artefact a reader of the module meets. Nothing ran it, so it could
+    // drift from the conversion rules it advertises without failing anything.
+    final readmePath = p.join(
+      'lib',
+      'src',
+      'tomserver',
+      'cmdline',
+      'readme.md',
+    );
+
+    /// Returns the `dart` fenced block under the readme's "Quick start"
+    /// heading — the program this module tells a reader to start from.
+    String quickStartSource() {
+      final lines = File(readmePath).readAsLinesSync();
+      final heading = lines.indexWhere((l) => l.trim() == '## Quick start');
+      expect(
+        heading,
+        greaterThanOrEqualTo(0),
+        reason: 'no Quick start heading',
+      );
+      final open = lines.indexWhere((l) => l.trim() == '```dart', heading);
+      expect(open, greaterThan(heading), reason: 'no dart block after it');
+      final close = lines.indexWhere((l) => l.trim() == '```', open + 1);
+      expect(close, greaterThan(open), reason: 'unterminated dart block');
+      return lines.sublist(open + 1, close).join('\n');
+    }
+
+    test('exactly as written, printing what its comments promise', () async {
+      // Written to `.dart_tool/` for two reasons: it is gitignored, so the
+      // scratch file cannot be committed by accident, and it is inside the
+      // package, so the snippet's `package:tom_core_server` import resolves
+      // against the real package_config.json rather than a synthesised one.
+      final script = File(
+        p.join('.dart_tool', 'cmdline_readme_quick_start.dart'),
+      );
+      script.writeAsStringSync(quickStartSource());
+      addTearDown(() {
+        if (script.existsSync()) script.deleteSync();
+      });
+
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        script.path,
+      ]);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'quick start failed: ${result.stdout}${result.stderr}',
+      );
+      // Exit 0 alone would be satisfied by a snippet that printed nothing, so
+      // pin the four values the readme's own trailing comments promise. They
+      // are the conversion table in miniature — int, String, bool flag — and
+      // the empty-map answer for an absent `.env`.
+      final out = result.stdout as String;
+      expect(out, contains('8080'));
+      expect(out, contains('localhost'));
+      expect(out.trim().split('\n').map((l) => l.trim()).toList(), [
+        '8080',
+        'localhost',
+        'true',
+        'true',
+      ]);
     });
   });
 }

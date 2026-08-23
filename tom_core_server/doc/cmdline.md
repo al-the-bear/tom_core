@@ -15,6 +15,7 @@ line, in the environment, or in a `.env` file is interpreted identically.
 - [How Configuration Composes Them](#how-configuration-composes-them)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Core Components](#core-components)
+- [Verification](#verification)
 - [Dependencies](#dependencies)
 
 ---
@@ -264,6 +265,48 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
 - **`TomEnvFile`** — `read` / `readAsync` (file → map), `parse` (lines → map),
   `merge` (overlay maps), and `load` (read for manual use; the OS environment is
   read-only and is not mutated).
+
+## Verification
+
+`example/cmdline/cmdline_example.dart` walks the codegen-free helpers in five
+steps, with no setup of any kind — parse `key=value` arguments, normalise an
+existing string map, read a `.env` file it writes to a temp directory first, the
+missing file that yields an empty map, and a two-layer `merge`. Run it exactly
+as its header documents:
+
+```bash
+dart run example/cmdline/cmdline_example.dart
+```
+
+Every step checks its own result and the run fails when one does not hold, so a
+green run is a verification rather than a transcript. The checks are a plain
+`if`/`throw` and not `assert`, because `dart run` leaves assertions disabled: an
+`assert` would compile out under the very command above, and the example would
+print a plausible transcript and exit 0 with every expectation violated. The
+reflection-backed `fillFromArgs` is not shown there — it needs a reflected
+configuration type — so it is the one part of the module the example cannot
+demonstrate, and the suite covers it instead.
+
+`test/cmdline_test.dart` covers the module end to end in one process:
+
+```bash
+dart test test/cmdline_test.dart     # or `testkit :test` for the whole package
+```
+
+Seven groups carry the behaviour — the two map paths and their shared conversion
+table, `fillFromArgs` against a reflected fixture (including the assignments the
+reflector refuses), `TomEnvFile.parse`, `merge`, the file IO, and the layering
+of all three sources onto one configuration object. It needs no external server
+and carries no tag, so all of it runs in the default `testkit :test`.
+
+The two are linked in both directions — the example's header names the doc and
+the suite, and the suite runs the example, under exactly the command this
+section gives, requiring exit 0. A second group extracts the `dart` block under
+the module readme's "Quick start" heading and runs that too, pinning the four
+values its trailing comments promise. So each of this module's artefacts is
+falsifiable from the suite, as are the limitations in
+[Not Yet Implemented](#not-yet-implemented) above — none of them can drift
+quietly while nobody is reading.
 
 ## Dependencies
 

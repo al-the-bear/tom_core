@@ -2,6 +2,23 @@
 
 ### Fixed
 
+- **The cmdline example's checks no longer compile out under the command it
+  documents (tcinc426).** `example/cmdline/cmdline_example.dart` stated all
+  eight of its expectations with `assert`, and its own header tells the reader
+  to run it with `dart run` — which leaves assertions **disabled**. Every check
+  in the file was inert: the example printed a plausible five-step transcript
+  and exited 0 whether or not a single one of them held, so it demonstrated the
+  module without establishing anything about it.
+
+  The expectations now run through a throwing `check(ok, expectation)` helper,
+  which holds however the file is invoked and names the expectation that failed.
+  Nothing ran the example either, so `test/cmdline_test.dart` now executes it
+  under exactly the documented command and requires exit 0, asserts that all
+  five numbered steps reported, and fails if an `assert(` reappears in the
+  source — the regression that would silently hollow it out again. A third test
+  extracts the `dart` block under the module readme's "Quick start" heading and
+  runs that as well, pinning the four values its trailing comments promise.
+
 - **An argument with an empty key is now skipped, as in a `.env` file
   (tcinc424).** `TomEnvFile.parse` has always dropped a line whose key is empty,
   but `TomArgs` had no equivalent guard: `parseArgsToMap([''])` returned
@@ -95,6 +112,20 @@
   `.env` parser agree on where the key ends.
 
 ### Documentation
+
+- **`doc/cmdline.md` now names its example and its suite (tcinc426).** The doc
+  mentioned neither `example/cmdline/cmdline_example.dart` nor
+  `test/cmdline_test.dart`, so a reader who wanted to *run* the module had no
+  route from the documentation to either artefact. The pointer only went the
+  other way — the example's header names the doc.
+
+  A `## Verification` section closes the loop, in the shape `doc/cache.md` and
+  `doc/scheduling.md` use: what the example walks and the `dart run` command
+  that runs it, what the suite's seven behavioural groups cover and the
+  `dart test` command that runs them, and the note that the suite is untagged
+  and so runs in the default `testkit :test`. It also records that the two are
+  linked in both directions, the suite now running the example and the readme's
+  quick start.
 
 - **`doc/cmdline.md` now states the module's limitations (tcinc425).** The doc
   described everything the module does and nothing it does not, so read on its
