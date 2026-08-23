@@ -10,8 +10,11 @@
 /// Its nine steps correspond one-for-one, and in order, with the nine snippets
 /// in the "Using it" section of the module's completion document.
 ///
-/// Run with `dart run example/cache/cache_example.dart`.
-/// The same behaviour is covered by `test/cache_test.dart`.
+/// Run with `dart run example/cache/cache_example.dart`. Every step checks its
+/// own result and the run fails when one does not hold, so a green run is a
+/// verification and not just a transcript. `test/cache_test.dart` runs this
+/// file under that exact command and requires it to exit 0, which is what keeps
+/// the checks honest once nobody runs the example by hand.
 library;
 
 import 'dart:io';
@@ -25,6 +28,19 @@ class User {
   String toString() => 'User($id)';
 }
 
+/// Throws unless [ok] holds, naming the expectation that failed.
+///
+/// Deliberately not `assert`: `dart run` leaves assertions **disabled** — that
+/// is what its `--enable-asserts` flag is for — so an `assert` here compiles
+/// out under the very command this file's header gives. An example whose
+/// checks vanish under its own documented invocation is worse than one with no
+/// checks at all, because it still prints a plausible transcript and still
+/// exits 0 while every expectation in it is violated. A plain `if`/`throw`
+/// holds however the file is run.
+void check(bool ok, String expectation) {
+  if (!ok) throw StateError('cache example failed: $expectation');
+}
+
 Future<void> run() async {
   // 1. A named cache with a default 5-minute entry lifetime: a store that does
   //    not name its own deletion time gets one 300s out. An entry expires only
@@ -36,7 +52,7 @@ Future<void> run() async {
   await TomCache.toNameCache('greetings', 'en', 'hello');
   final greeting = await TomCache.fromNameCache<String>('greetings', 'en');
   print('1. stored then read          : $greeting');
-  assert(greeting == 'hello');
+  check(greeting == 'hello', 'a stored entry reads back');
 
   // 2. An explicit past deletion time makes the entry expired: the read returns
   //    null (and drops the stale entry).
@@ -48,7 +64,7 @@ Future<void> run() async {
   );
   final expired = await TomCache.fromNameCache<String>('greetings', 'old');
   print('2. expired entry read        : ${expired ?? 'null (expired)'}');
-  assert(expired == null);
+  check(expired == null, 'an entry past its deletion time reads as a miss');
 
   // 3. The other half of the same rule: a cache with no default lifetime stores
   //    entries with no deletion time at all, and those never expire on their
@@ -57,7 +73,7 @@ Future<void> run() async {
   await TomCache.toNameCache('forever', 'pi', '3.14159');
   final kept = await TomCache.fromNameCache<String>('forever', 'pi');
   print('3. entry with no expiry      : $kept');
-  assert(kept == '3.14159');
+  check(kept == '3.14159', 'an entry with no deletion time is kept forever');
 
   // 4. A bounded cache evicts the least-recently-used entry once full.
   TomCacheManager.addCache(
@@ -69,7 +85,7 @@ Future<void> run() async {
   final a = await TomCache.fromNameCache<int>('lru', 'a');
   final c = await TomCache.fromNameCache<int>('lru', 'c');
   print('4. lru: a -> ${a ?? 'evicted'}, c -> $c');
-  assert(a == null && c == 3);
+  check(a == null && c == 3, 'the bound evicts the least-recently-used entry');
 
   // 5. A type cache is named after the Dart type it holds.
   TomCacheManager.addCache(
@@ -78,9 +94,12 @@ Future<void> run() async {
   await TomCache.toTypeCache<User>('u-42', User('42'));
   final user = await TomCache.fromTypeCache<User>('u-42');
   print('5. type cache read           : $user');
-  assert(user?.id == '42');
+  check(user?.id == '42', 'a type cache reads back through fromTypeCache');
   await TomCache.removeFromTypeCache<User>('u-42');
-  assert(await TomCache.fromTypeCache<User>('u-42') == null);
+  check(
+    await TomCache.fromTypeCache<User>('u-42') == null,
+    'removeFromTypeCache removes the entry',
+  );
 
   // 6. Reading a value as the wrong type throws TomCacheException.
   await TomCache.toNameCache('greetings', 'num', 123);
@@ -91,7 +110,7 @@ Future<void> run() async {
     threw = true;
     print('6. type mismatch threw       : ${e.key}');
   }
-  assert(threw);
+  check(threw, 'reading a value as the wrong type throws TomCacheException');
 
   // 7. Passing a TomCacheEntry as the value stores it verbatim, so the entry
   //    keeps its own deletionTime instead of taking the cache's default. The
@@ -107,29 +126,41 @@ Future<void> run() async {
   );
   final flash = await TomCache.fromNameCache<String>('greetings', 'flash');
   print('7. entry with own lifetime   : ${flash ?? 'null (its own time won)'}');
-  assert(flash == null);
+  check(flash == null, 'a TomCacheEntry keeps its own deletionTime');
 
   // 8. A cache installs its periodic timers on construction, and a live timer
   //    keeps the isolate alive. A program that outlives its caches must stop
   //    them or exit explicitly — main() below does the latter.
   final ticking = TomCache('ticking', clearIntervalSeconds: 60);
   TomCacheManager.addCache(ticking);
-  assert(ticking.clearanceTimer?.isActive ?? false);
+  check(
+    ticking.clearanceTimer?.isActive ?? false,
+    'a clear interval installs a running clearance timer',
+  );
   ticking.stopTimers();
   print('8. timers stopped            : ${ticking.clearanceTimer?.isActive}');
-  assert(!(ticking.clearanceTimer?.isActive ?? false));
+  check(
+    !(ticking.clearanceTimer?.isActive ?? false),
+    'stopTimers cancels the clearance timer',
+  );
 
   // 9. Replacing the current manager discards the registry along with it, which
   //    is what makes it useful between tests. It discards only the *registry*
   //    though: the caches themselves are unreachable now but their timers are
   //    still installed, so stopping them (step 8) has to come first to have
   //    happened at all. Last step here, since it empties the registry.
-  assert(TomCacheManager.getCache('greetings') != null);
+  check(
+    TomCacheManager.getCache('greetings') != null,
+    'the cache registered in step 1 is still registered',
+  );
   TomCacheManager.setCurrent(TomCacheManager(true));
   print(
     '9. after setCurrent          : ${TomCacheManager.getCache('greetings')}',
   );
-  assert(TomCacheManager.getCache('greetings') == null);
+  check(
+    TomCacheManager.getCache('greetings') == null,
+    'setCurrent discards the caches the replaced manager held',
+  );
 }
 
 Future<void> main() async {

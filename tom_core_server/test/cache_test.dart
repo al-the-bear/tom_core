@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -819,6 +822,48 @@ void main() {
       expect(first!.isActive, isFalse);
       expect(cache.deletionTimer, isNot(same(first)));
       expect(cache.deletionTimer!.isActive, isTrue);
+    });
+  });
+
+  group('The example runs green', () {
+    final examplePath = p.join('example', 'cache', 'cache_example.dart');
+
+    test('under exactly the command its header documents', () async {
+      // The example is the module's worked demonstration and the source of the
+      // completion document's snippets, so it drifts silently unless something
+      // runs it. Run it the way a reader would — plain `dart run`, no extra
+      // flags — and require the exit code its own checks produce.
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        examplePath,
+      ]);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'example failed: ${result.stdout}${result.stderr}',
+      );
+      // A crash before the last step would also exit 0 if it were swallowed,
+      // so pin that every numbered step actually reported.
+      for (var step = 1; step <= 9; step++) {
+        expect(result.stdout, contains('$step. '));
+      }
+    });
+
+    test('with its expectations checked rather than asserted', () async {
+      // The test above cannot see the difference on its own: an example that
+      // checks nothing exits 0 too. `dart run` leaves assertions disabled —
+      // that is what `--enable-asserts` is for — so an `assert` in the example
+      // is compiled out under the very command the test above uses, and the
+      // run stays green with every expectation violated. The example therefore
+      // states its expectations through a throwing helper, and this guards the
+      // regression of quietly reverting them to `assert`.
+      final source = File(examplePath).readAsStringSync();
+      expect(
+        source,
+        isNot(contains('assert(')),
+        reason: 'an assert in the example does not run under `dart run`',
+      );
+      expect(source, contains('void check(bool ok, String expectation)'));
     });
   });
 }

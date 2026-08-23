@@ -527,6 +527,34 @@
 
 ### Documentation
 
+- **The cache example's expectations actually run, and the suite runs the
+  example (tcinc403).** The completion document said the example "runs with
+  `dart run example/cache/cache_example.dart` and asserts each result". It did
+  not. `dart run` leaves assertions **disabled** — that is what its
+  `--enable-asserts` flag is for — so every `assert` in the file was compiled
+  out under precisely the command being documented. Proven rather than argued:
+  a copy of the example with a deliberately false assertion, run under that
+  exact command, **exited 0**. The example was a printer that produced a
+  plausible transcript while every expectation in it went unchecked, which is
+  worse than having no checks, because the transcript is what a reader trusts.
+
+  The twelve asserts are now calls to a local `check(bool, String)` that throws
+  a named `StateError`, so the expectations hold however the file is invoked and
+  a violated one exits non-zero. Two tests were added, and the pair is the
+  point: one runs the example under the documented command and requires exit 0
+  plus all nine numbered steps in its output; the other requires the source to
+  contain no `assert(`. The second is not redundant — under the assert-based
+  version the *first* test passes, because an example that checks nothing exits
+  0 too. Only the source check distinguishes a green run from a silent one.
+
+  The completion document and the example's header no longer describe the test
+  as covering "the same behaviour"; the test is what verifies the example, and
+  both now say so.
+
+  The other twenty example files in this package still assert (~300 statements,
+  all inert under `dart run`) and are tracked separately — enabling their checks
+  is expected to surface genuinely failing examples, so it is not a rename.
+
 - **The cache example demonstrates all nine documented behaviours, and two of
   them are now tested (tcinc402).** The module's completion document introduced
   its nine "Using it" snippets with "the snippets below are taken from
