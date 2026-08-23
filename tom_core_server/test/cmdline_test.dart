@@ -91,6 +91,22 @@ void main() {
       const line = 'url=mysql://h/db?user=root&pw=s3cret';
       expect(TomArgs.parseArgsToMap([line]), TomEnvFile.parse([line]));
     });
+
+    // Where the two still part company. Both differences come from
+    // `TomEnvFile.parse` trimming and comment-stripping where `_parseArgs`
+    // takes the token as given; they are documented as limitations, and these
+    // tests are what make a change to either one visible.
+    test('differs from TomEnvFile.parse on surrounding whitespace', () {
+      const line = ' k = v ';
+      expect(TomArgs.parseArgsToMap([line]), {' k ': ' v '});
+      expect(TomEnvFile.parse([line]), {'k': 'v'});
+    });
+
+    test('differs from TomEnvFile.parse on a "#" inside a value', () {
+      const line = 'pw=pa#ss';
+      expect(TomArgs.parseArgsToMap([line]), {'pw': 'pa#ss'});
+      expect(TomEnvFile.parse([line]), {'pw': 'pa'}); // truncated at the '#'
+    });
   });
 
   group('TomArgs.convertToObjectMap value conversion', () {
@@ -140,6 +156,15 @@ void main() {
 
     test('trailing non-numeric text keeps the value a String', () {
       expect(convert('12px'), '12px');
+    });
+
+    // A padded run is still all digits, so it converts — and the padding is
+    // gone, because an int has no notion of it. The values that carry leading
+    // zeros are identifiers rather than quantities, so this is a documented
+    // limitation; pinned so that changing it cannot pass unnoticed.
+    test('leading zeros are dropped by the int conversion', () {
+      expect(convert('007'), 7);
+      expect(convert('004917612345678901'), 4917612345678901);
     });
 
     // The patterns are unanchored, so `doublePattern` matches the "1.2" prefix
@@ -313,6 +338,18 @@ void main() {
       expect(config.verbose, isFalse);
     });
 
+    // The dashes are part of the key, and no Dart field can be named `--port`,
+    // so the conventional double-dash style is one particular case of "no
+    // matching field" — it binds nothing and says nothing. Worth its own test
+    // because that style is what a reader is most likely to try first.
+    test('a dashed key silently fills nothing', () {
+      final config = TomArgs.fillFromArgs([
+        '--port=8080',
+      ], FixtureServerConfig());
+      expect(config.port, 0); // not 8080
+      expect(TomArgs.parseArgsToMap(['--port=8080']), {'--port': 8080});
+    });
+
     // fillFromArgs has no notion of a *required* argument — it binds whatever
     // is present and never validates completeness. An omitted argument is
     // therefore indistinguishable from one that was never declared: the field
@@ -328,6 +365,16 @@ void main() {
       // "abc" is not numeric, so it stays a String and cannot fill an int.
       expect(
         () => TomArgs.fillFromArgs(['port=abc'], FixtureServerConfig()),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
+    // The sign restriction is not merely "stays a String" once a reflected
+    // field is involved: the String is refused at assignment, so a negative
+    // setting cannot reach an int field by any route, quoted or not.
+    test('a negative value cannot fill an int field', () {
+      expect(
+        () => TomArgs.fillFromArgs(['port=-5'], FixtureServerConfig()),
         throwsA(isA<TomReflectorException>()),
       );
     });
@@ -459,6 +506,21 @@ void main() {
 
     test('merging nothing yields an empty map', () {
       expect(TomEnvFile.merge([]), isEmpty);
+    });
+
+    // Completeness is nobody's job here. A setting no source mentions is simply
+    // absent from the merged map — no exception, no marker — so it is
+    // indistinguishable from one that was never required, and the field it
+    // would have filled keeps its initialiser instead of failing at start-up.
+    test('a setting no source supplies is silently absent', () {
+      final merged = TomEnvFile.merge([
+        {'name': 'svc'},
+        {'rate': 1.5},
+      ]);
+      expect(merged.containsKey('port'), isFalse);
+
+      final config = TomArgs.fillFromArgs(['name=svc'], FixtureServerConfig());
+      expect(config.port, 0); // the initialiser, not a reported failure
     });
 
     // `merge` only addAll's. Dart's covariance lets a Map<String, String> —

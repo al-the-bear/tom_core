@@ -96,6 +96,25 @@
 
 ### Documentation
 
+- **`doc/cmdline.md` now states the module's limitations (tcinc425).** The doc
+  described everything the module does and nothing it does not, so read on its
+  own it said "nothing is open" — of a unit with seven known limitations, and
+  to exactly the reader who has only the package documentation. Eight sibling
+  module docs in this package carry a `## Not Yet Implemented` section, so the
+  absence read as a gap in the writing rather than a property of the module.
+
+  The section now names all seven, each with what to do instead: a dashed key
+  cannot reach a reflected field (`--port=8080` binds nothing), a negative
+  number cannot be typed and is refused by the reflector at an `int` field,
+  leading zeros are dropped (`007` becomes `7`), no entry point reports a
+  setting no source supplied, `load` does not load, a `#` anywhere in an
+  unquoted `.env` value truncates it (`K=pa#ss` yields `pa`), and the two
+  parsers still differ on surrounding whitespace.
+
+  Six tests were added so the section cannot quietly go stale — every
+  limitation it names is pinned, including two differential tests over the
+  whitespace and `#` divergences between `TomArgs` and `TomEnvFile`.
+
 - **The composition diagram in `doc/cmdline.md` now shows the resource base
   layer (tcinc422).** It drew three inputs — `Platform.environment`, the `.env`
   file and the command line — and called them "all three sources".

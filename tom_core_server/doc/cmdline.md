@@ -13,6 +13,7 @@ line, in the environment, or in a `.env` file is interpreted identically.
 - [Reading `.env` Files](#reading-env-files)
 - [Value Conversion](#value-conversion)
 - [How Configuration Composes Them](#how-configuration-composes-them)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -208,6 +209,51 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
 > environment merges without error and delivers every value as a `String` — and
 > an `int` or `bool` field is then refused at `setValues` with
 > `TomReflectorException: Unexpected type int set using String`.
+
+## Not Yet Implemented
+
+- **A dashed key cannot fill a reflected field.** The key is the text before
+  the `=` verbatim, dashes included, so `--port=8080` sets the key `--port`.
+  `parseArgsToMap` returns it and a map reader can use it, but `fillFromArgs`
+  hands it to `setValues` as a field name and Dart has no field named `--port`
+  — so the conventional double-dash style binds nothing and reports nothing.
+  Name the argument as the field is named (`port=8080`) when the target is a
+  configuration object.
+- **A negative number cannot be typed from any source.** `intPattern` and
+  `doublePattern` do not admit a sign, so `-5` and `-1.5` stay `String`s. On the
+  map paths that is merely untyped; against a reflected `int` field it fails,
+  because the `String` is refused at assignment with `TomReflectorException`.
+  There is no escape either — quoting makes it a `String` deliberately rather
+  than a number. A negative setting therefore has to be carried some other way
+  (a positive value with a separate direction flag, or a `String` field the
+  application parses itself).
+- **Leading zeros are dropped.** A padded run of digits is still all digits, so
+  it converts, and an `int` has no notion of the padding: `007` becomes `7` and
+  a zero-padded phone number `004917612345678901` loses its prefix. Nothing
+  reports it. The values that carry leading zeros — phone numbers, padded
+  account numbers, postcodes — are identifiers rather than quantities, so quote
+  them (`phone="004917..."`) to keep them the text they were written as.
+- **No entry point reports a setting that no source supplied.** `merge`
+  overlays maps and returns; `fillFromArgs` binds the keys it was given. A
+  required setting that nobody supplied is indistinguishable from one that was
+  never declared — the field keeps its initialiser, and the failure surfaces
+  later as a connection to `localhost:0` rather than at start-up. Completeness
+  is the caller's check, after the last source is merged.
+- **`load` does not load.** It reads the file and returns the values, exactly as
+  `read` does. `Platform.environment` is read-only, so there is nothing for it
+  to install them into. Prefer `read`, which says what happens.
+- **A `#` anywhere in an unquoted `.env` value truncates it.** The
+  inline-comment rule cuts at the first `#` with no requirement that whitespace
+  precede it, so `K=pa#ss` yields `pa` and a URL loses its fragment. Quote any
+  value that may legitimately contain a `#` — a password, a fragment, a colour
+  literal. Command-line arguments are not affected: `TomArgs` strips no
+  comments.
+- **The two parsers still differ on whitespace.** `TomEnvFile.parse` trims
+  around the key and the value; `TomArgs` takes the token as given. So
+  `' k = v '` is `{'k': 'v'}` from a `.env` file and `{' k ': ' v '}` from the
+  command line, and a whitespace-only token is an empty line to one and a key
+  to the other. The two agree on everything else that decides a key — where it
+  ends, what counts as quoted, and that an empty key is skipped.
 
 ## Core Components
 
