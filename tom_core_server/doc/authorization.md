@@ -32,8 +32,14 @@ row scope.
 | `TomAuthorizationCacheExecutor` | `TomExecutor` | Services the two messages in the main isolate |
 | `TomPrincipalResourceGrant` | entity | One `(principalId, resourceKey, role)` row — the role a principal holds on a resource (C-5) |
 | `PrincipalResourceGrantStore` | abstract class | The read seam over those rows (repository-backed at boot, in-memory under test) |
+| `RepositoryPrincipalResourceGrantStore` | class | The seam wired at boot: reads a principal's grant rows through a repository over the `main` datasource |
+| `InMemoryPrincipalResourceGrantStore` | class | The seam under test: seeded rows filtered by principal, with no connection and no reflection |
 | `TomPrincipalResourceRoleResolver` | class | Folds a principal's grants into a `resourceKey → role` map, strongest role winning |
+| `TomDelegationMode` | enum | The three ways roles are lent — `share`, `absence`, `intentional` |
 | `TomPrincipalDelegation` | entity | One delegation row: A lends roles to B in `share` / `absence` / `intentional` mode (C-6) |
+| `PrincipalDelegationStore` | abstract class | The read seam over the delegations targeting one delegate and in force at one instant |
+| `RepositoryPrincipalDelegationStore` | class | The seam wired at boot: pushes the delegate, the `revoked` flag and both window bounds into one query |
+| `InMemoryPrincipalDelegationStore` | class | The seam under test: seeded rows under the same delegate and window filters, so a test sees what the database would return |
 | `TomDelegationResolver` | class | Resolves *effective* roles — direct grants folded with the delegations active now |
 | `TomResourceGrant` | entity | Grades a `(role, resourceKey)` pair with a `TomAuthState` |
 | `TomAuthStateCodec` | class | Round-trips a `TomAuthState` to and from its stored column value |
@@ -337,7 +343,9 @@ against MariaDB.
   `resourceKey → role` map.
 - **`TomPrincipalDelegation` + `TomDelegationMode` + `PrincipalDelegationStore` +
   `TomDelegationResolver`** — the C-6 delegation row, its three modes, its read
-  seam and the resolver that produces a principal's effective roles.
+  seam (`RepositoryPrincipalDelegationStore` at boot,
+  `InMemoryPrincipalDelegationStore` under test) and the resolver that produces
+  a principal's effective roles.
 - **`TomResourceGrant` + `TomAuthStateCodec` +
   `TomGradedAccessControlInformation`** — the graded `(role, resourceKey)`
   record, its stored representation, and the resolved graded view.
