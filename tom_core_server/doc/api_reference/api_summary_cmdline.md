@@ -21,8 +21,11 @@ each value to its natural Dart type (`bool`, `int`, `double`, or `String`). It
 offers three entry points — `fillFromArgs` (reflection-fills a configuration
 object), `parseArgsToMap` (loose map), and `convertToObjectMap` (converts an
 existing string map such as `Platform.environment`) — all sharing the same
-conversion rules. A bare flag becomes the boolean `true` in both
-`parseArgsToMap` and `fillFromArgs`, consistent with how `key=true` converts.
+conversion rules. An argument is split on its **first** `=`, so a value may
+itself contain `=` (a connection string, a URL with a query, padded base64) and
+arrives whole; `TomEnvFile` splits the same way. A bare flag becomes the boolean
+`true` in both `parseArgsToMap` and `fillFromArgs`, consistent with how
+`key=true` converts.
 
 `TomEnvFile` reads environment variables from a `.env` file (synchronously or
 asynchronously), supporting comments, empty lines, quoted values, and inline
@@ -49,8 +52,8 @@ value type.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `fillFromArgs` | `static T fillFromArgs<T extends Object>(List<String> args, T fillIn)` | Fills `fillIn` from `key=value` `args` using reflection and returns it; a bare flag is recorded as the boolean `true`. `T` must be registered with the reflection system. |
-| `parseArgsToMap` | `static Map<String, dynamic> parseArgsToMap(List<String> args)` | Parses `key=value` `args` into a loose map, type-converting each value; a bare flag becomes the boolean `true`. |
+| `fillFromArgs` | `static T fillFromArgs<T extends Object>(List<String> args, T fillIn)` | Fills `fillIn` from `key=value` `args` using reflection and returns it, splitting each argument on its first `=`; a bare flag is recorded as the boolean `true`. `T` must be registered with the reflection system. |
+| `parseArgsToMap` | `static Map<String, dynamic> parseArgsToMap(List<String> args)` | Parses `key=value` `args` into a loose map, splitting on the first `=` and type-converting each value; a bare flag becomes the boolean `true`. |
 | `convertToObjectMap` | `static Map<String, dynamic> convertToObjectMap(Map<String, String> map)` | Converts every value in a string `map` to its natural Dart type (useful for normalising `Platform.environment`). |
 
 #### Properties

@@ -12,6 +12,12 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// - [convertToObjectMap] converts an existing string map (e.g.
 ///   `Platform.environment`) using the same rules.
 ///
+/// An argument is split on its **first** `=`: the key is the text before it and
+/// the value is everything after, so a value may itself contain `=` (a
+/// connection string, a URL with a query, a padded base64 blob). This is the
+/// rule `TomEnvFile.parse` applies, so the same text means the same thing on
+/// the command line and in a `.env` file.
+///
 /// An argument with no `=` is treated as a flag. Both map-producing paths
 /// encode a bare flag identically as the boolean `true` — consistent with how
 /// `key=true` is converted (see [convertToObjectMap]) — so a bare flag can fill
@@ -20,7 +26,8 @@ class TomArgs {
   /// Fills [fillIn] from `key=value` [args] using reflection and returns it.
   ///
   /// Each `key=value` argument becomes a field assignment on [fillIn]: the key
-  /// names the field and the value is type-converted (see [convertToObjectMap]).
+  /// is the text before the first `=`, the value is everything after it, and
+  /// the value is type-converted (see [convertToObjectMap]).
   /// A bare flag (`--verbose`) is recorded as the boolean `true`, matching how
   /// `key=true` converts, so it fills a reflected `bool` field directly.
   ///
@@ -28,16 +35,7 @@ class TomArgs {
   /// (`tomReflectionInfo.setValues` performs the assignment); unknown keys that
   /// do not map to a field are ignored by the reflection layer.
   static T fillFromArgs<T extends Object>(List<String> args, T fillIn) {
-    var argMap = <String, Object>{};
-    for (String arg in args) {
-      var parts = arg.split("=");
-      if (parts.length > 1) {
-        argMap[parts[0]] = _convertString(parts[1]);
-      } else {
-        argMap[arg] = true;
-      }
-    }
-    tomReflectionInfo.setValues<T>(fillIn, argMap);
+    tomReflectionInfo.setValues<T>(fillIn, _parseArgs(args));
     return fillIn;
   }
 
@@ -54,20 +52,11 @@ class TomArgs {
 
   /// Parses `key=value` [args] into a loose map, type-converting each value.
   ///
-  /// `key=value` becomes `key -> convertedValue` (see [convertToObjectMap] for
-  /// the conversion table); a bare flag becomes `flag -> true` (boolean).
-  static Map<String, dynamic> parseArgsToMap(List<String> args) {
-    var argMap = <String, dynamic>{};
-    for (String arg in args) {
-      var parts = arg.split("=");
-      if (parts.length > 1) {
-        argMap[parts[0]] = _convertString(parts[1]);
-      } else {
-        argMap[arg] = true;
-      }
-    }
-    return argMap;
-  }
+  /// `key=value` becomes `key -> convertedValue`, split on the first `=` (see
+  /// [convertToObjectMap] for the conversion table); a bare flag becomes
+  /// `flag -> true` (boolean).
+  static Map<String, dynamic> parseArgsToMap(List<String> args) =>
+      _parseArgs(args);
 
   /// Converts every value in a string [map] to its natural Dart type.
   ///
@@ -88,6 +77,33 @@ class TomArgs {
       result[key] = _convertString(map[key]);
     }
     return result;
+  }
+
+  /// Splits each `key=value` entry of [args] on its **first** `=` and converts
+  /// the value, returning the resulting map. An entry with no `=` is a flag and
+  /// maps to the boolean `true`.
+  ///
+  /// The first `=` rather than every `=`, because everything after the
+  /// separator is the value and may legitimately contain more of them — a
+  /// connection string, a URL with a query, and a padded base64 blob all do.
+  /// `TomEnvFile.parse` splits the same way, which is what lets the two sources
+  /// be documented as one syntax rather than two that merely resemble each
+  /// other.
+  ///
+  /// Both public entry points parse through here, so they cannot disagree.
+  static Map<String, dynamic> _parseArgs(List<String> args) {
+    var argMap = <String, dynamic>{};
+    for (String arg in args) {
+      var separator = arg.indexOf("=");
+      if (separator < 0) {
+        argMap[arg] = true;
+      } else {
+        argMap[arg.substring(0, separator)] = _convertString(
+          arg.substring(separator + 1),
+        );
+      }
+    }
+    return argMap;
   }
 
   /// Converts a single string [value] to its natural Dart type. See

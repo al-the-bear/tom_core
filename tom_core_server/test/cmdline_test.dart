@@ -25,11 +25,35 @@ void main() {
     });
 
     test('keeps only the text before the first "=" as the key', () {
-      // A value may itself contain "=" (split only takes parts.length > 1 into
-      // account, then joins on the original); the helper splits on every "=",
-      // so document the first-segment-is-key behaviour for a plain pair.
       final m = TomArgs.parseArgsToMap(['key=value']);
       expect(m['key'], 'value');
+    });
+
+    // The separator is the *first* "="; every later one is part of the value.
+    // A connection string, a URL with a query, and a padded base64 blob all
+    // carry further "=" characters that are data, and cutting the value at the
+    // second one corrupts it silently — there is no diagnostic, the argument
+    // simply arrives short.
+    test('a value containing further "=" survives whole', () {
+      final m = TomArgs.parseArgsToMap(['url=mysql://h/db?user=root']);
+      expect(m['url'], 'mysql://h/db?user=root');
+    });
+
+    test('base64 padding is not mistaken for a separator', () {
+      final m = TomArgs.parseArgsToMap(['secret=YWJjZA==']);
+      expect(m['secret'], 'YWJjZA==');
+    });
+
+    test('a value that is only "=" characters is kept', () {
+      expect(TomArgs.parseArgsToMap(['k==='])['k'], '==');
+    });
+
+    // The two parsers are documented as sharing one syntax, so the same text
+    // has to mean the same thing whether it arrives on the command line or
+    // from a .env file. This is the guarantee that regressed.
+    test('agrees with TomEnvFile.parse on where the key ends', () {
+      const line = 'url=mysql://h/db?user=root&pw=s3cret';
+      expect(TomArgs.parseArgsToMap([line]), TomEnvFile.parse([line]));
     });
   });
 
@@ -160,6 +184,16 @@ void main() {
         () => TomArgs.fillFromArgs(['port=1.5'], FixtureServerConfig()),
         throwsA(isA<TomReflectorException>()),
       );
+    });
+
+    // The same first-"=" rule reaches the reflected object, not just the map:
+    // a connection string is exactly the kind of value a configuration field
+    // holds, so the binding path is where the truncation would have hurt.
+    test('a value containing further "=" reaches the field whole', () {
+      final config = TomArgs.fillFromArgs([
+        'name=mysql://h/db?user=root',
+      ], FixtureServerConfig());
+      expect(config.name, 'mysql://h/db?user=root');
     });
 
     test('returns the same instance it was given', () {

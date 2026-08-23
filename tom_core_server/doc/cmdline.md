@@ -41,6 +41,18 @@ final map = TomArgs.parseArgsToMap(['port=8080', 'debug=true', '--verbose']);
 final env = TomArgs.convertToObjectMap(Platform.environment);
 ```
 
+A token is split on its **first** `=`: the key is the text before it, the value
+is everything after it. Later `=` characters belong to the value, so a
+connection string, a URL with a query, or a padded base64 blob arrives intact:
+
+```dart
+TomArgs.parseArgsToMap(['url=mysql://h/db?user=root']);
+// => {'url': 'mysql://h/db?user=root'}   (not truncated at the second '=')
+```
+
+`TomEnvFile` splits the same way, which is what lets the two sources be
+described as one syntax rather than two that merely resemble each other.
+
 A token with no `=` is a **flag**. Both map paths encode a flag identically as
 the boolean `true` — consistent with how `key=true` is converted — so a flag
 fills a reflected `bool` field directly.

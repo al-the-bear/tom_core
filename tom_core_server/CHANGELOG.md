@@ -1,5 +1,27 @@
 ## 1.3.0
 
+### Fixed
+
+- **A command-line argument value containing a second `=` is no longer
+  truncated (tcinc415).** `TomArgs.fillFromArgs` and `TomArgs.parseArgsToMap`
+  both split on every `=` and kept the second segment, so a value was cut at its
+  second `=` and the remainder dropped without a diagnostic:
+  `parseArgsToMap(['url=mysql://h/db?user=root'])` yielded
+  `{url: mysql://h/db?user}`, and `secret=YWJjZA==` lost its base64 padding. The
+  values affected are exactly those a server is configured with — connection
+  strings, URLs with a query, encoded keys.
+
+  It was also asymmetric: `TomEnvFile.parse` has always split on the first `=`
+  and kept such a value whole, so the same text meant different things on the
+  command line and in a `.env` file, though the two are documented as one
+  syntax. `TomArgs` now splits at the first `=` as well.
+
+  The two entry points held byte-identical parsing loops — the same defect in
+  two places — so the loop was extracted into one private helper that both use,
+  which is what keeps them from drifting apart again. Five tests pin the
+  behaviour, including a differential check that the argument parser and the
+  `.env` parser agree on where the key ends.
+
 ### Documentation
 
 - **The cache module's prose now names the artefacts that verify it
