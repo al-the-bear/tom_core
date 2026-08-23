@@ -424,6 +424,110 @@ void main() {
     });
   });
 
+  // `fillFromArgs` and `parseArgsToMap` are one syntax with two return types.
+  // They used to be two byte-identical loops, which is why the first-"=" split
+  // and the bare-flag rule each had to be corrected twice; both now run through
+  // the private `_parseArgs`.
+  //
+  // The two tests below guard the two different failure modes that fact has,
+  // and neither substitutes for the other. Duplication does not announce itself
+  // as disagreement — the original copies agreed perfectly, which is exactly
+  // why nothing caught them — so only the source-level test sees a
+  // re-duplication on the day it happens. The behavioural test sees the
+  // consequence that duplication makes possible afterwards: two copies drifting
+  // apart, one rule fixed in one of them.
+  group('the two entry points are one parse', () {
+    /// The fixture's fields, keyed as an argument would name them, with the
+    /// initialiser each keeps when no argument mentions it.
+    const initialisers = <String, Object?>{
+      'name': '',
+      'port': 0,
+      'rate': 0.0,
+      'verbose': false,
+    };
+
+    Object? fieldOf(FixtureServerConfig config, String key) => switch (key) {
+      'name' => config.name,
+      'port' => config.port,
+      'rate' => config.rate,
+      'verbose' => config.verbose,
+      _ => throw ArgumentError('no fixture field named $key'),
+    };
+
+    // One case per rule the argument syntax has, restricted to values the
+    // declared field type accepts — a rule whose result cannot be assigned
+    // (a negative int, say) is put on the String field instead, where the
+    // question is still "does the field get what the map got".
+    const corpus = <String, List<String>>{
+      'a plain pair': ['name=svc', 'port=8080'],
+      'a bare flag': ['verbose'],
+      'an explicit bool': ['verbose=false'],
+      'a value containing a further "="': ['name=a=b'],
+      'a quoted value': ['name="my svc"'],
+      'an unterminated quote': ['name="my svc'],
+      'an empty key between two good arguments': [
+        'name=svc',
+        '=orphan',
+        'port=8080',
+      ],
+      'a digit run too large for an int': ['name=9223372036854775808'],
+      'a negative number': ['name=-5'],
+      'leading zeros': ['port=007'],
+      'a decimal': ['rate=1.5'],
+      'a trailing dot': ['rate=5.'],
+      'a whole number on a double field': ['rate=2'],
+      'an empty value': ['name='],
+      'every field in one pass': [
+        'name=svc',
+        'port=8080',
+        'rate=1.5',
+        'verbose',
+      ],
+    };
+
+    test('every field receives exactly what the map holds for its key', () {
+      corpus.forEach((description, args) {
+        final map = TomArgs.parseArgsToMap(args);
+        final config = TomArgs.fillFromArgs(args, FixtureServerConfig());
+
+        for (final key in initialisers.keys) {
+          // A key no argument supplied leaves the field at its initialiser,
+          // so the map's silence and the object's default must agree too —
+          // that is the half a per-entry-point test tends to leave out.
+          final expected = map.containsKey(key) ? map[key] : initialisers[key];
+          expect(
+            fieldOf(config, key),
+            expected,
+            reason: '$description: field `$key` disagrees with the map',
+          );
+        }
+      });
+    });
+
+    // The defect this guards is invisible to every behavioural test in this
+    // file, because a fresh copy of the loop starts out agreeing with the
+    // original. It is a maintenance defect, and the source is the only place
+    // it is observable on the day it is introduced.
+    test('the argument list is walked in exactly one place', () {
+      final source = File(
+        p.join('lib', 'src', 'tomserver', 'cmdline', 'args.dart'),
+      ).readAsStringSync();
+
+      final loops = RegExp(
+        r'for\s*\(\s*String\s+\w+\s+in\s+args\s*\)',
+      ).allMatches(source).length;
+
+      expect(
+        loops,
+        1,
+        reason:
+            'the argument syntax must be implemented once (in `_parseArgs`); '
+            'a second loop over `args` is the duplication that made the '
+            'first-"=" and bare-flag rules each need fixing twice',
+      );
+    });
+  });
+
   group('TomEnvFile.parse', () {
     test('parses pairs and converts value types', () {
       final env = TomEnvFile.parse(['PORT=8080', 'RATE=1.5', 'ON=true']);

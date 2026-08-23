@@ -301,6 +301,28 @@
 
 ### Internal
 
+- **The single argument parse is now enforced, not just present (tcinc428).**
+  `fillFromArgs` and `parseArgsToMap` once carried byte-identical parse loops,
+  which is why the first-`=` split and the bare-flag rule each had to be
+  corrected in two places. The duplication itself was already gone — extracting
+  `_parseArgs` removed it as a side effect of the first-`=` fix — but nothing
+  held it gone, and `_parseArgs`'s own dartdoc claims the two "cannot disagree".
+
+  Two tests now pin that claim, guarding failure modes that do not overlap. A
+  behavioural one runs a fifteen-case corpus of the argument syntax through both
+  entry points and requires every reflected field to equal the map entry for its
+  key — including the case no argument supplies, where the map's silence and the
+  field's initialiser must agree. A source-level one requires `args.dart` to
+  walk the argument list exactly once.
+
+  The second is not redundant: re-duplication does not announce itself as
+  disagreement. A fresh copy of the loop starts out agreeing perfectly — which
+  is precisely why the original pair went unnoticed — so the behavioural test
+  passes on the day the duplicate lands and only fails later, once the copies
+  drift. Verified by falsification: an identical duplicate fails the source test
+  alone, while one reverted to `lastIndexOf` fails both, the corpus naming the
+  case and field that disagree.
+
 - **A cmdline test named for first-`=` splitting now asserts it (tcinc423).**
   The test titled "keeps only the text before the first `=` as the key" parsed
   `key=value` — one `=`, where splitting on the first and splitting on the last
