@@ -198,7 +198,10 @@ void main() {
       final token = _token('dana', validFor: const Duration(milliseconds: 300));
       await TomAuthorizationCache.storePrincipal(token, _principal('dana'));
 
-      expect((await TomAuthorizationCache.getPrincipal(token))!.username, 'dana');
+      expect(
+        (await TomAuthorizationCache.getPrincipal(token))!.username,
+        'dana',
+      );
 
       // The sweep would also remove it; stop it so that what expires the entry
       // is unambiguously the token's own instant.

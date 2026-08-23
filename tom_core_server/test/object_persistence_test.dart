@@ -425,7 +425,10 @@ void main() {
       // carries the instant convention (`datasources/sql_instant.dart`) the
       // same way the bind boundary does.
       final ts = DateTime.utc(2026, 7, 15, 9, 30);
-      expect(b.dateTimeOp(ts).generate(dialect), "'2026-07-15 09:30:00.000000'");
+      expect(
+        b.dateTimeOp(ts).generate(dialect),
+        "'2026-07-15 09:30:00.000000'",
+      );
     });
 
     test('dateOp renders single-quoted YYYY-M-D without padding', () {

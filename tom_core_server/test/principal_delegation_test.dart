@@ -410,7 +410,10 @@ void main() {
         'bob',
         DateTime.utc(2026, 1, 15),
       );
-      expect(rows.map((d) => d.delegatorId), ['live_unbounded', 'live_in_window']);
+      expect(rows.map((d) => d.delegatorId), [
+        'live_unbounded',
+        'live_in_window',
+      ]);
     });
 
     test('the instant decides: the same store answers differently '
@@ -437,12 +440,16 @@ void main() {
       /// cannot drift from the query that actually runs.
       String sql() =>
           (compiler.compileQuerySentence(
-                RepositoryPrincipalDelegationStore.activeDelegationsQuery,
-              ) as TomSelect)
+                    RepositoryPrincipalDelegationStore.activeDelegationsQuery,
+                  )
+                  as TomSelect)
               .generateQuery(dialect);
 
       test('the delegate predicate is still there', () {
-        expect(sql(), contains('tom_principal_delegation.delegate_id = :delegateId'));
+        expect(
+          sql(),
+          contains('tom_principal_delegation.delegate_id = :delegateId'),
+        );
       });
 
       test('revoked rows are excluded in SQL', () {
@@ -491,10 +498,11 @@ void main() {
 
     /// Runs the probe with `TZ` forced to [zone] and returns its four fields.
     Future<List<String>> probe(String zone) async {
-      final result = await Process.run(Platform.resolvedExecutable, [
-        'run',
-        p.join('test', 'fixtures', 'delegation_window_tz_probe.dart'),
-      ], environment: {'TZ': zone});
+      final result = await Process.run(
+        Platform.resolvedExecutable,
+        ['run', p.join('test', 'fixtures', 'delegation_window_tz_probe.dart')],
+        environment: {'TZ': zone},
+      );
       expect(
         result.exitCode,
         0,

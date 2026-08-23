@@ -237,33 +237,37 @@ void main() {
       final table = _overviewTableTypes(module);
       if (table == null) continue;
 
-      test(module, () {
-        final exported = _exportedTypes(module);
+      test(
+        module,
+        () {
+          final exported = _exportedTypes(module);
 
-        final missing = exported.where((t) => !table.contains(t)).toList();
-        expect(
-          missing,
-          isEmpty,
-          reason:
-              'doc/$module.md\'s Overview table does not list these exported '
-              'types: ${missing.join(', ')}. The table is headed "Type", so a '
-              'reader takes it for the module\'s surface and concludes an '
-              'unlisted type does not exist.',
-        );
+          final missing = exported.where((t) => !table.contains(t)).toList();
+          expect(
+            missing,
+            isEmpty,
+            reason:
+                'doc/$module.md\'s Overview table does not list these exported '
+                'types: ${missing.join(', ')}. The table is headed "Type", so a '
+                'reader takes it for the module\'s surface and concludes an '
+                'unlisted type does not exist.',
+          );
 
-        final orphaned = table.where((t) => !exported.contains(t)).toList();
-        expect(
-          orphaned,
-          isEmpty,
-          reason:
-              'doc/$module.md\'s Overview table names these types, which the '
-              'barrel does not export from $module: ${orphaned.join(', ')}. '
-              'Either the type was renamed or removed, or it belongs to '
-              'another module\'s table.',
-        );
-      }, skip: _tablesPendingReconciliation.contains(module)
-          ? 'Overview table not reconciled yet — quest todo tcincb3_ahwn.'
-          : null);
+          final orphaned = table.where((t) => !exported.contains(t)).toList();
+          expect(
+            orphaned,
+            isEmpty,
+            reason:
+                'doc/$module.md\'s Overview table names these types, which the '
+                'barrel does not export from $module: ${orphaned.join(', ')}. '
+                'Either the type was renamed or removed, or it belongs to '
+                'another module\'s table.',
+          );
+        },
+        skip: _tablesPendingReconciliation.contains(module)
+            ? 'Overview table not reconciled yet — quest todo tcincb3_ahwn.'
+            : null,
+      );
     }
 
     test('every quarantined module still has a table to reconcile', () {
