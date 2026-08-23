@@ -121,10 +121,18 @@ Expiry is enforced two ways:
   `TomAuthorizationCacheException` if a matching entry is found but already
   past its `deletionTime`. The distinct exception type lets the caller catch it
   specifically and treat it as a prompt to re-authorize (a true cache *miss*,
-  by contrast, simply returns `null`).
+  by contrast, simply returns `null`). The rejecting read **removes the entry**
+  as well: it has the map in hand and has just established the entry is dead,
+  so the expiry is reported once and a second read of the same token is an
+  ordinary miss.
 - **Eagerly on a sweep** — a periodic timer walks the map once an hour and
   removes entries whose `deletionTime` has passed, so stale principals do not
   accumulate.
+
+Between them the two cover the whole map: the read drops the dead tokens
+somebody asks about, the sweep drops the ones nobody does. The map's size
+therefore tracks the number of live sessions rather than the number of logins
+per sweep interval.
 
 The sweep starts with the first principal `storePrincipal` caches: it exists to
 bound the map, so it runs from the moment there is something in it to bound and
@@ -276,7 +284,9 @@ against MariaDB.
   `instance`); the backing map is private, and so is the constructor.
 - **`TomAuthorizationCacheEntry`** — value object pairing the
   `authorizedPrincipal` with its `deletionTime`.
-- **`TomAuthorizationCacheException`** — signals an expired-but-present entry.
+- **`TomAuthorizationCacheException`** — signals an entry that was found
+  expired (and dropped by the read that found it), or a token whose
+  `validUntil` claim could not be read.
 - **`TomAuthorizationCacheStoreMessage` / `TomAuthorizationCacheRetrieveMessage`**
   — the commands worker isolates send to the main isolate.
 - **`TomAuthorizationCacheExecutor`** — the `TomExecutor` registered in the

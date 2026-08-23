@@ -8,7 +8,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 ///
 /// | Key | Meaning |
 /// | --- | ------- |
-/// | `tomclient.authorization_cache.expired_principal` | A matching entry exists but its expiry has passed. The client should re-authorize. |
+/// | `tomclient.authorization_cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
 /// | `tomclient.authorization_cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
 /// | `tomclient.authorization_cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
 ///
@@ -63,8 +63,12 @@ class TomAuthorizationCacheEntry {
 /// / [TomAuthorizationCacheRetrieveMessage] against the single shared map.
 ///
 /// A periodic sweep evicts entries whose [TomAuthorizationCacheEntry.deletionTime]
-/// has passed; reads also reject an expired entry by throwing a
-/// [TomAuthorizationCacheException]. The sweep starts with the first stored
+/// has passed; a read that meets one first rejects it with a
+/// [TomAuthorizationCacheException] and drops it in the same breath, so the
+/// sweep bounds the map rather than being the only thing that does. The map
+/// therefore holds about one entry per live session.
+///
+/// The sweep starts with the first stored
 /// principal and can be stopped again through [stopEviction] — or, on a server,
 /// by registering [instance] with `tomShutdownCleanup`. It runs in [Zone.root]
 /// regardless of who starts it, so the request that happens to store first does
@@ -126,7 +130,9 @@ class TomAuthorizationCache implements TomDisposable {
   ///
   /// Entries already cached are left alone: stopping the sweep suspends the
   /// bounding of the map, it does not invalidate what is in it. Expired entries
-  /// are still rejected on read. Use [dispose] to drop them as well.
+  /// are still rejected on read — and dropped by that read, so a stopped cache
+  /// still sheds the tokens anyone asks about, just not the ones nobody does.
+  /// Use [dispose] to drop them all.
   static void stopEviction() => _current._stopEviction();
 
   void _startEviction(Duration interval) {
@@ -202,6 +208,12 @@ class TomAuthorizationCache implements TomDisposable {
   /// Throws [TomAuthorizationCacheException] when an entry exists but has
   /// expired — the caller should treat that as a prompt to re-authorize.
   ///
+  /// That read also removes the entry it rejected, so the expiry is reported
+  /// once: a second read of the same token is an ordinary miss. A caller that
+  /// wants to know a session died still learns it, from the exception; a
+  /// caller retrying with the dead token is told there is nothing there, which
+  /// is by then the truth.
+  ///
   /// When called from a worker isolate the lookup is forwarded to the main
   /// isolate, and all three answers survive the trip: a hit returns the
   /// principal, a miss returns `null`, and an expiry rethrows on this side.
@@ -223,6 +235,16 @@ class TomAuthorizationCache implements TomDisposable {
           );
           return entry.authorizedPrincipal;
         } else {
+          // Why: dropped here rather than left for the sweep. This frame has
+          // just established the entry is dead, and it holds both the map and
+          // the key -- there is no cheaper place to remove it. Left in, the row
+          // would survive until the sweep next came round (an hour, by
+          // default), and every request bearing the same dead token in the
+          // meantime would repeat this lookup, this throw and this stack for an
+          // answer that cannot change. It also decides the map's high-water
+          // mark: one entry per live session with the removal, one per
+          // successful login per sweep interval without it.
+          _current._cache.remove(authenticationToken.tokenString);
           throw TomAuthorizationCacheException(
             "tomclient.authorization_cache.expired_principal",
             "AuthorizedPrincipal expired for user $authenticationToken",

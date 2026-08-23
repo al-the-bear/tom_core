@@ -172,6 +172,30 @@ void main() {
         );
       },
     );
+
+    test('the read that rejects an expired entry also drops it', () async {
+      final token = _token('carl', validFor: const Duration(hours: -1));
+      await TomAuthorizationCache.storePrincipal(token, _principal('carl'));
+
+      // The sweep would remove this row too, but only on its next pass -- an
+      // hour away by default. Stopping it is what makes the second read below
+      // an assertion about the first read rather than about a timer that
+      // happened to fire in between.
+      TomAuthorizationCache.stopEviction();
+
+      await expectLater(
+        () => TomAuthorizationCache.getPrincipal(token),
+        throwsA(isA<TomAuthorizationCacheException>()),
+      );
+
+      // A miss, not a second expiry. The rejecting read had the map in hand and
+      // the key in its own argument, and had just established the entry was
+      // dead: keeping it only buys every later request on the dead token
+      // another lookup, another throw and another stack, and leaves the map's
+      // high-water mark at one entry per login per sweep interval instead of
+      // one per live session.
+      expect(await TomAuthorizationCache.getPrincipal(token), isNull);
+    });
   });
 
   // The sweep is the cache's only background work, and until it was held in a

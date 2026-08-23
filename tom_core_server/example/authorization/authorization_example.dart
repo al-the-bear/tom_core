@@ -3,7 +3,9 @@
 /// Demonstrates the per-token principal cache ([TomAuthorizationCache]) running
 /// in the main isolate: storing a resolved [TomPrincipal] under a JWT token,
 /// reading it back, getting `null` for an unknown token (a cache miss), and the
-/// [TomAuthorizationCacheException] raised when a cached entry has expired. It
+/// [TomAuthorizationCacheException] raised when a cached entry has expired --
+/// together with the removal that read performs, which turns the next read of
+/// the same dead token back into an ordinary miss. It
 /// also shows the cross-isolate command objects and the executor that services
 /// them, the refusal to cache a token whose `validUntil` claim is unreadable,
 /// and the eviction sweep that bounds the map -- started with the first stored
@@ -52,16 +54,26 @@ Future<void> run() async {
   // 3. A token whose validUntil is already in the past yields an expired entry.
   //    Reading it throws TomAuthorizationCacheException so the caller can
   //    distinguish "expired, please re-authorize" from a plain cache miss.
-  final expiredToken = _token('bob', validFor: const Duration(hours: -1));
-  await TomAuthorizationCache.storePrincipal(expiredToken, _principal('bob'));
+  //    That read also drops the entry it rejected -- it holds the map and has
+  //    just established the entry is dead -- so the expiry is reported once and
+  //    asking again for the same dead token is an ordinary miss rather than a
+  //    second throw.
+  final bobToken = _token('bob', validFor: const Duration(hours: -1));
+  await TomAuthorizationCache.storePrincipal(bobToken, _principal('bob'));
   var threw = false;
   try {
-    await TomAuthorizationCache.getPrincipal(expiredToken);
+    await TomAuthorizationCache.getPrincipal(bobToken);
   } on TomAuthorizationCacheException catch (e) {
     threw = true;
     print('3. expired entry threw       : ${e.key}');
   }
   assert(threw);
+  final afterExpiry = await TomAuthorizationCache.getPrincipal(bobToken);
+  print(
+    '   the same token again      : '
+    '${afterExpiry == null ? 'null (miss - the entry is gone)' : afterExpiry.username}',
+  );
+  assert(afterExpiry == null);
 
   // 4. The cross-isolate command objects simply carry their payload; in a
   //    worker isolate getPrincipal/storePrincipal forward one of these to the
@@ -113,22 +125,32 @@ Future<void> run() async {
   // 6. Storing the first principal also started the eviction sweep, which
   //    bounds the map by dropping entries past their expiry. Its interval is
   //    an hour by default; ask for a short one so the demo can watch it work.
-  //    Bob's entry from step 3 is already expired, so the sweep removes it and
-  //    the next read is an ordinary miss rather than the rejection above.
   //    The sweep's timer is created in Zone.root either way, so on a server the
   //    request that stores first does not end up owning it.
+  //
+  //    Step 3's entry is long gone -- the read that rejected it took it with
+  //    it -- so the sweep needs a dead entry nobody has asked about. That is
+  //    exactly the half of the map the sweep is for: reads shed the dead tokens
+  //    somebody presents, the sweep sheds the ones nobody ever comes back for.
+  final abandonedToken = _token('carol', validFor: const Duration(hours: -1));
+  await TomAuthorizationCache.storePrincipal(
+    abandonedToken,
+    _principal('carol'),
+  );
   print('6. sweep running            : ${TomAuthorizationCache.isEvicting}');
   TomAuthorizationCache.startEviction(
     interval: const Duration(milliseconds: 20),
   );
   await Future<void>.delayed(const Duration(milliseconds: 60));
-  final swept = await TomAuthorizationCache.getPrincipal(expiredToken);
+  final swept = await TomAuthorizationCache.getPrincipal(abandonedToken);
   final survivor = await TomAuthorizationCache.getPrincipal(aliceToken);
   print(
-    '   after the sweep           : expired -> '
+    '   after the sweep           : abandoned -> '
     '${swept == null ? 'evicted' : swept.username}, '
     'live -> ${survivor?.username}',
   );
+  // A miss rather than a rejection: the sweep removed the row, so nothing is
+  // left for the read to recognise as expired.
   assert(swept == null);
   assert(survivor?.username == 'alice');
 }

@@ -109,7 +109,7 @@ responses.
 
 | Key | Meaning |
 | --- | ------- |
-| `tomclient.authorization_cache.expired_principal` | A matching entry exists but its expiry has passed. The client should re-authorize. |
+| `tomclient.authorization_cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
 | `tomclient.authorization_cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
 | `tomclient.authorization_cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
 
@@ -156,7 +156,10 @@ TomAuthorizationCacheEntry(TomPrincipal authorizedPrincipal, [DateTime? deletion
 Caches the `TomPrincipal` resolved for an authentication token, keyed by the JWT
 token string. Lives in the main isolate; worker-isolate calls forward to the
 creator isolate. A periodic sweep evicts expired entries, started by the first
-stored principal and stoppable through `stopEviction` or `dispose`. The sweep's
+stored principal and stoppable through `stopEviction` or `dispose`; a read that
+meets an expired entry first rejects it and drops it in the same breath, so the
+map holds about one entry per live session rather than one per login per sweep
+interval. The sweep's
 timer is created in `Zone.root`, not in the caller's zone, so the request that
 happens to store first does not end up owning process-lifetime work.
 
@@ -178,10 +181,10 @@ can populate, so there is exactly one.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getPrincipal` | `static Future<TomPrincipal?> getPrincipal(TomClientJwtToken authenticationToken)` | Returns the cached principal, or `null` on a cache miss. Throws `TomAuthorizationCacheException` when the entry has expired. Called from a worker isolate the lookup is forwarded to the main isolate, and all three answers survive the trip -- a hit returns the principal, a miss returns `null`, an expiry rethrows -- so callers need no isolate-dependent handling. |
+| `getPrincipal` | `static Future<TomPrincipal?> getPrincipal(TomClientJwtToken authenticationToken)` | Returns the cached principal, or `null` on a cache miss. Throws `TomAuthorizationCacheException` when the entry has expired, and removes that entry as part of the same read -- so the expiry is reported once and a second read of the same token is an ordinary miss. Called from a worker isolate the lookup is forwarded to the main isolate, and all three answers survive the trip -- a hit returns the principal, a miss returns `null`, an expiry rethrows -- so callers need no isolate-dependent handling. |
 | `storePrincipal` | `static Future<int> storePrincipal(TomClientJwtToken authenticationToken, TomPrincipal authorizedPrincipal)` | Stores the principal under the token, using the token's `validUntil` claim as expiry, and starts the eviction sweep if it is not already running. Throws `TomAuthorizationCacheException` (`missing_valid_until` / `invalid_valid_until`) when that claim is absent, not a string, or not an ISO 8601 instant -- there is no fallback lifetime, because an invented one would keep a principal cached past the expiry of the token authorizing it. Nothing is cached in that case and the caller keeps resolving the principal per request. Always returns `0` on success. |
 | `startEviction` | `static void startEviction({Duration interval = evictionInterval})` | Starts the sweep at `interval`, replacing any sweep already running -- so the postcondition "a sweep is running at this interval" holds whenever it returns. Rarely needed: a store starts one at the hourly default. For a server that wants a different interval, and for tests that cannot wait an hour. Not needed to control the sweep's zone: it is created in `Zone.root` whichever path starts it. |
-| `stopEviction` | `static void stopEviction()` | Cancels the sweep; a no-op when none is running. Cached entries are left in place -- stopping the sweep suspends the bounding of the map, it does not invalidate its contents. |
+| `stopEviction` | `static void stopEviction()` | Cancels the sweep; a no-op when none is running. Cached entries are left in place -- stopping the sweep suspends the bounding of the map, it does not invalidate its contents. Reads still reject expired entries and still drop the ones they reject, so a stopped cache sheds the tokens anyone asks about, just not the ones nobody does. |
 
 #### Methods
 
