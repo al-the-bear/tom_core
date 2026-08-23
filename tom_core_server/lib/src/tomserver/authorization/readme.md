@@ -21,7 +21,7 @@ application-side resolver involved.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomAuthorizationCache` | Static principal cache; `storePrincipal(...)` and `getPrincipal(...)`, with cross-isolate forwarding. Its eviction sweep starts with the first stored principal, runs in `Zone.root` rather than the storing request's zone, and stops through `stopEviction()` or, on a server, by registering `instance` with `tomShutdownCleanup`. |
-| `TomAuthorizationCacheEntry` | One cached principal with its expiry bookkeeping. |
+| `TomAuthorizationCacheEntry` | One cached principal with the instant it expires. Immutable, and the instant is required: an entry's lifetime is the token's, so there is none the entry could default to or be moved to. |
 | `TomAuthorizationCacheStoreMessage` · `TomAuthorizationCacheRetrieveMessage` | Cross-isolate commands carrying a store/retrieve to the main isolate. |
 | `TomAuthorizationCacheExecutor` | `TomExecutor` that runs those commands in the creator isolate. |
 | `TomAuthorizationCacheException` | Raised on cache faults: an expired entry on read (dropped by the read that rejects it, so the expiry is reported once), or a token whose `validUntil` claim is unreadable on write (refused rather than cached under an invented expiry). |

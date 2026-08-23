@@ -33,23 +33,27 @@ class TomAuthorizationCacheException extends TomException {
 /// [TomPrincipal] paired with the [deletionTime] at which it should be
 /// considered stale and evicted.
 ///
-/// When no explicit deletion time is supplied the entry lives for one day.
+/// Both are required, and neither changes afterwards. An entry's lifetime is
+/// not its own — it is the lifetime of the token the principal was authorized
+/// under, which is why [TomAuthorizationCache.storePrincipal] takes the instant
+/// off the token's `validUntil` claim and refuses to cache a token it cannot
+/// read one from. There is therefore no instant this class could default to
+/// that would be right: a default would be an invented lifetime, the one thing
+/// that refusal exists to avoid, and it would apply exactly to the callers who
+/// had no token expiry in hand. A settable field would let the expiry be moved
+/// afterwards to one the token never granted, which is the same hole with a
+/// later entrance.
 class TomAuthorizationCacheEntry {
   /// The instant after which this entry is expired and may be evicted. Set to
   /// the token's `validUntil` when stored via [TomAuthorizationCache.storePrincipal].
-  late DateTime deletionTime;
+  final DateTime deletionTime;
 
   /// The principal resolved for the associated authentication token.
-  TomPrincipal authorizedPrincipal;
+  final TomPrincipal authorizedPrincipal;
 
-  /// Creates an entry for [authorizedPrincipal]. [deletionTime] defaults to one
-  /// day from now when omitted.
-  TomAuthorizationCacheEntry(
-    this.authorizedPrincipal, [
-    DateTime? deletionTime,
-  ]) {
-    this.deletionTime = deletionTime ?? DateTime.now().add(Duration(days: 1));
-  }
+  /// Creates an entry for [authorizedPrincipal] that expires at [deletionTime]
+  /// — normally the `validUntil` of the token it was authorized under.
+  TomAuthorizationCacheEntry(this.authorizedPrincipal, this.deletionTime);
 }
 
 /// Caches the [TomPrincipal] resolved for an authentication token so that the

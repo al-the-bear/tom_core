@@ -105,31 +105,25 @@ void main() {
   // a sweep nobody stops is a sweep that holds the isolate open.
   tearDown(TomAuthorizationCache.stopEviction);
 
+  // The entry has no default expiry, and that is the contract rather than an
+  // omission: an entry's lifetime is the lifetime of the token its principal
+  // was authorized under, so there is no instant this class could invent that
+  // would be right. The compiler enforces the absence -- the constructor
+  // requires the deletion time -- which is why the tests here can only pin what
+  // the entry does with the one it is given, and the token-lifetime test in the
+  // cache group below pins where that instant comes from.
   group('TomAuthorizationCacheEntry', () {
-    test('defaults the deletion time to roughly one day out', () {
-      final before = DateTime.now().add(const Duration(days: 1));
-      final entry = TomAuthorizationCacheEntry(_principal('alice'));
-      final after = DateTime.now().add(const Duration(days: 1));
-      expect(
-        entry.deletionTime.isBefore(
-          before.subtract(const Duration(minutes: 1)),
-        ),
-        isFalse,
-      );
-      expect(
-        entry.deletionTime.isAfter(after.add(const Duration(minutes: 1))),
-        isFalse,
-      );
-    });
-
-    test('honours an explicit deletion time', () {
+    test('carries the deletion time it was given', () {
       final when = DateTime(2030, 1, 1);
       final entry = TomAuthorizationCacheEntry(_principal('alice'), when);
       expect(entry.deletionTime, when);
     });
 
     test('carries the authorized principal', () {
-      final entry = TomAuthorizationCacheEntry(_principal('bob'));
+      final entry = TomAuthorizationCacheEntry(
+        _principal('bob'),
+        DateTime(2030, 1, 1),
+      );
       expect(entry.authorizedPrincipal.username, 'bob');
     });
   });
@@ -172,6 +166,35 @@ void main() {
         );
       },
     );
+
+    test('a cached principal outlives its token by nothing', () async {
+      // Where the entry's expiry comes from, asserted by watching it arrive:
+      // the token says it is good for 300ms, so the principal is a hit now and
+      // an expiry once that instant has passed -- with no interval of its own
+      // in between. The entry used to accept a one-day default for callers who
+      // named no instant, which would have kept this principal for a day past
+      // the token that authorized it.
+      final token = _token('dana', validFor: const Duration(milliseconds: 300));
+      await TomAuthorizationCache.storePrincipal(token, _principal('dana'));
+
+      expect((await TomAuthorizationCache.getPrincipal(token))!.username, 'dana');
+
+      // The sweep would also remove it; stop it so that what expires the entry
+      // is unambiguously the token's own instant.
+      TomAuthorizationCache.stopEviction();
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      await expectLater(
+        () => TomAuthorizationCache.getPrincipal(token),
+        throwsA(
+          isA<TomAuthorizationCacheException>().having(
+            (e) => e.key,
+            'key',
+            'tomclient.authorization_cache.expired_principal',
+          ),
+        ),
+      );
+    });
 
     test('the read that rejects an expired entry also drops it', () async {
       final token = _token('carl', validFor: const Duration(hours: -1));

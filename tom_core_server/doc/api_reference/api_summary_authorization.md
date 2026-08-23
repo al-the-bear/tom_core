@@ -136,20 +136,23 @@ TomAuthorizationCacheException(
 ### TomAuthorizationCacheEntry
 
 A single cache entry: the authorized `TomPrincipal` paired with the deletion
-time at which it should be considered stale and evicted. Defaults to one day.
+time at which it should be considered stale and evicted. Both are required and
+neither is settable afterwards -- an entry's lifetime is the lifetime of the
+token its principal was authorized under, so there is no instant the class could
+default to that would be right, and no later one it should accept.
 
 #### Constructors
 
 ```dart
-TomAuthorizationCacheEntry(TomPrincipal authorizedPrincipal, [DateTime? deletionTime])
+TomAuthorizationCacheEntry(TomPrincipal authorizedPrincipal, DateTime deletionTime)
 ```
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `deletionTime` | `DateTime` | Instant after which the entry is expired and may be evicted. |
-| `authorizedPrincipal` | `TomPrincipal` | The principal resolved for the associated authentication token. |
+| `deletionTime` | `final DateTime` | Instant after which the entry is expired and may be evicted; normally the `validUntil` of the token the principal was authorized under. |
+| `authorizedPrincipal` | `final TomPrincipal` | The principal resolved for the associated authentication token. |
 
 ### TomAuthorizationCache
 

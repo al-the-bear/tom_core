@@ -112,8 +112,15 @@ cache reachable from every request regardless of which isolate handles it.
 
 Each `TomAuthorizationCacheEntry` carries a `deletionTime`. When stored via
 `storePrincipal`, this is set from the token's `validUntil` payload claim, so a
-cached principal expires together with the token that authorized it. A
-constructed entry with no explicit time defaults to one day.
+cached principal expires together with the token that authorized it.
+
+The entry has no default expiry, and cannot be given one later: both
+constructor arguments are required and both fields are `final`. An entry's
+lifetime is the token's, so any instant the class invented on a caller's behalf
+would be an instant no token granted — and it would apply precisely to the
+caller who had no token expiry to hand. This is the same rule that makes
+`storePrincipal` refuse a token whose `validUntil` it cannot read, seen from
+the other side.
 
 Expiry is enforced two ways:
 

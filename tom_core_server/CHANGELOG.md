@@ -2,6 +2,24 @@
 
 ### Behaviour Changes
 
+- **`TomAuthorizationCacheEntry` requires its deletion time, and neither field
+  can be moved afterwards (tcinc392).** The constructor's second argument was
+  optional and fell back to `DateTime.now().add(Duration(days: 1))`. An entry's
+  lifetime is not its own — it is the lifetime of the token the principal was
+  authorized under, which is why `storePrincipal` reads the instant off the
+  token's `validUntil` claim and refuses to cache a token it cannot read one
+  from. The one-day default contradicted that refusal at the only door it left
+  open: a caller with no token expiry in hand got an invented one, a day long,
+  for a principal whose authorization may have ended minutes later.
+
+  The argument is now required, so the wrong answer is unreachable rather than
+  merely undocumented; `deletionTime` and `authorizedPrincipal` are `final` for
+  the same reason, since a settable expiry would let the entry be moved to an
+  instant the token never granted — the same hole with a later entrance. The
+  test that pinned the one-day arithmetic is gone, and a behavioural test in its
+  place watches a short-lived token's principal go from hit to expiry with no
+  interval of its own in between.
+
 - **`TomAuditPolicy.disabled` is removed (tcinc352).** The constant was public
   and documented, and nothing built a policy from it: the reflector's
   `policyFor` resolves `@TomAudited(enabled: false)` through
