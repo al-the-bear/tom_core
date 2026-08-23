@@ -295,13 +295,25 @@ class TomCache {
     }
   }
 
-  /// Cancels the deletion and clearance timers if they are running.
+  /// Cancels the deletion and clearance timers if they are running, and clears
+  /// both fields.
+  ///
+  /// Clearing is part of the contract, not tidiness: [deletionTimer] and
+  /// [clearanceTimer] are documented as the *running* timer or `null`, so
+  /// leaving a cancelled timer in place would give a caller testing
+  /// `deletionTimer != null` the wrong answer for the rest of the cache's life.
+  /// The cache is restartable — [createTimers] reinstalls from the intervals,
+  /// which this does not touch.
   void stopTimers() {
     deletionTimer?.cancel();
+    deletionTimer = null;
     clearanceTimer?.cancel();
+    clearanceTimer = null;
   }
 
-  /// The periodic timer that sweeps expired entries, or `null` if disabled.
+  /// The periodic timer that sweeps expired entries, or `null` when no such
+  /// timer is running — either because [deletionIntervalSeconds] is unset or
+  /// because [stopTimers] has since cleared it.
   Timer? deletionTimer;
 
   /// Builds the periodic timer that removes entries past their `deletionTime`.
@@ -332,7 +344,9 @@ class TomCache {
     );
   }
 
-  /// The periodic timer that clears the whole cache, or `null` if disabled.
+  /// The periodic timer that clears the whole cache, or `null` when no such
+  /// timer is running — either because [clearIntervalSeconds] is unset or
+  /// because [stopTimers] has since cleared it.
   Timer? clearanceTimer;
 
   /// Builds the periodic timer that empties the entire cache.

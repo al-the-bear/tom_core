@@ -961,10 +961,37 @@ void main() {
       expect(cache.clearanceTimer!.isActive, isTrue);
     });
 
-    test('stopTimers cancels a running deletion timer', () {
-      final cache = TomCache('t');
+    test('stopTimers cancels both timers and clears both fields', () {
+      // The fields are the documented answer to "is this cache sweeping?", so a
+      // stopped cache must not leave a cancelled timer behind for a
+      // `deletionTimer != null` check to find. Holding the two timers in locals
+      // is what lets both halves be asserted: that they were really cancelled
+      // rather than merely dropped, and that the fields no longer name them.
+      final cache = TomCache('t', clearIntervalSeconds: 3600);
+      final deletion = cache.deletionTimer!;
+      final clearance = cache.clearanceTimer!;
+
       cache.stopTimers();
-      expect(cache.deletionTimer!.isActive, isFalse);
+
+      expect(deletion.isActive, isFalse);
+      expect(clearance.isActive, isFalse);
+      expect(cache.deletionTimer, isNull);
+      expect(cache.clearanceTimer, isNull);
+    });
+
+    test('createTimers restarts a stopped cache', () {
+      // Clearing the fields must not make stopping terminal: the pair is a
+      // stop/start, not a teardown. Without this, nulling could just as well
+      // have been implemented by dropping the intervals.
+      final cache = TomCache('t');
+      addTearDown(cache.stopTimers);
+      cache.stopTimers();
+      expect(cache.deletionTimer, isNull);
+
+      cache.createTimers();
+
+      expect(cache.deletionTimer, isNotNull);
+      expect(cache.deletionTimer!.isActive, isTrue);
     });
 
     test('createTimers is idempotent, replacing a running timer', () {

@@ -179,8 +179,8 @@ factory TomCache.forType(
 | `deleteEntriesAfterSeconds` | `int?` | Default lifetime (seconds) applied when no explicit deletion time is given; `null` means no age expiry (final). |
 | `clearIntervalSeconds` | `int?` | How often (seconds) the clearance timer empties the whole cache; `null` disables it (final). |
 | `maximumEntries` | `int?` | Upper bound on entries; `null` makes the cache unbounded, a value turns on LRU eviction (final). |
-| `deletionTimer` | `Timer?` | The periodic timer that sweeps expired entries, or `null` if disabled. |
-| `clearanceTimer` | `Timer?` | The periodic timer that clears the whole cache, or `null` if disabled. |
+| `deletionTimer` | `Timer?` | The periodic timer that sweeps expired entries, or `null` when none is running — the interval is unset, or `stopTimers` has since cleared it. |
+| `clearanceTimer` | `Timer?` | The periodic timer that clears the whole cache, or `null` when none is running — the interval is unset, or `stopTimers` has since cleared it. |
 
 #### Methods
 
@@ -190,7 +190,7 @@ factory TomCache.forType(
 | `getEntry` | `TomCacheEntry? getEntry(String key)` | Returns the entry under `key`, or `null` if absent; in a bounded cache the entry is promoted to most-recently-used. Does not check expiry. |
 | `putEntry` | `void putEntry(String key, TomCacheEntry entry)` | Stores `entry` under `key` at the most-recently-used position; in a bounded cache, exceeding `maximumEntries` evicts the least-recently-used entry. |
 | `createTimers` | `void createTimers()` | Cancels any running timers and installs the deletion and/or clearance timers for which an interval is configured. |
-| `stopTimers` | `void stopTimers()` | Cancels the deletion and clearance timers if they are running. |
+| `stopTimers` | `void stopTimers()` | Cancels the deletion and clearance timers if they are running and clears both fields; the intervals are untouched, so `createTimers` restarts the cache. |
 | `createDeletionTimer` | `Timer createDeletionTimer()` | Builds the periodic timer that removes entries past their `deletionTime`. |
 | `createClearanceTimer` | `Timer createClearanceTimer()` | Builds the periodic timer that empties the entire cache. |
 

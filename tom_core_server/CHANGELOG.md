@@ -2,6 +2,24 @@
 
 ### Behaviour Changes
 
+- **`TomCache.stopTimers` now clears `deletionTimer` and `clearanceTimer`
+  (tcinc407).** Both fields are documented — in the source dartdoc, in
+  `doc/api_reference/api_summary_cache.md` and in the module's completion
+  record — as the *running* timer or `null`. That held only until the first
+  stop: `stopTimers` called `cancel()` and left the field pointing at the
+  cancelled timer, so it held two different meanings depending on the cache's
+  history and `deletionTimer != null` — the reading the documentation invites —
+  answered "yes, sweeping" for the whole life of a stopped cache.
+
+  The code was the outlier rather than the documentation: four independent
+  descriptions all stated the null-when-not-running contract, so the intent was
+  not in doubt. `stopTimers` now nulls both fields after cancelling, which
+  leaves one correct predicate instead of two of which only one worked. The
+  intervals are untouched, so the pair remains a stop/start and `createTimers`
+  restarts a stopped cache — pinned by its own test. Callers that already used
+  `timer?.isActive ?? false` are unaffected; a caller holding the `Timer` itself
+  must capture it before the stop.
+
 - **Cache failures are internal, and a type mismatch no longer renders the
   cached value (tcinc404).** `TomServerException` carries a `clientThrow` flag
   whose dartdoc says to set it `false` for errors that must not leak to the

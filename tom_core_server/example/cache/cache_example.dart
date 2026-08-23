@@ -138,10 +138,12 @@ Future<void> run() async {
     'a clear interval installs a running clearance timer',
   );
   ticking.stopTimers();
-  print('8. timers stopped            : ${ticking.clearanceTimer?.isActive}');
+  // A stopped cache clears the field as well as cancelling the timer, so the
+  // field is a straight answer to "is this cache still ticking?".
+  print('8. timers stopped            : ${ticking.clearanceTimer == null}');
   check(
-    !(ticking.clearanceTimer?.isActive ?? false),
-    'stopTimers cancels the clearance timer',
+    ticking.clearanceTimer == null,
+    'stopTimers cancels the clearance timer and clears the field',
   );
 
   // 9. Replacing the current manager discards the registry along with it, which
