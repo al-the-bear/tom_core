@@ -2,10 +2,25 @@
 ///
 /// Demonstrates the codegen-free helpers: parsing `key=value` arguments into a
 /// typed map ([TomArgs.parseArgsToMap]), normalising an existing string map
-/// ([TomArgs.convertToObjectMap]), and reading / merging `.env` files
-/// ([TomEnvFile]). The reflection-backed [TomArgs.fillFromArgs] is described in
-/// `doc/cmdline.md`; it needs a reflected configuration type and so is not shown
-/// here.
+/// ([TomArgs.convertToObjectMap]), and parsing, reading and merging `.env`
+/// content ([TomEnvFile]).
+///
+/// Two members are deliberately not shown, for two different reasons:
+///
+/// - [TomArgs.fillFromArgs] needs a reflected configuration type, which would
+///   make this file depend on generated code; `doc/cmdline.md` describes it.
+/// - `TomEnvFile.load` does nothing [TomEnvFile.read] does not. It calls `read`
+///   and returns the result — `Platform.environment` is read-only, so there is
+///   nothing for it to install the values into — and `doc/cmdline.md` lists it
+///   as a limitation with the advice to prefer `read`. An example is a
+///   recommendation, so demonstrating it here would contradict that advice.
+///
+/// Every other [TomEnvFile] method appears below, as do [TomArgs]'s three
+/// parsing entry points. [TomArgs.unquote] and the [TomArgs.intPattern] /
+/// [TomArgs.doublePattern] matchers are the shared machinery behind the
+/// conversions shown here — step 4's quoted value is `unquote` at work, and the
+/// `int` and `double` in steps 1 and 3 are the two patterns — rather than
+/// operations a caller performs separately.
 ///
 /// Run with `dart run example/cmdline/cmdline_example.dart`.
 /// The same behaviour is covered by `test/cmdline_test.dart`.
@@ -28,6 +43,15 @@ void check(bool ok, String expectation) {
   if (!ok) throw StateError('cmdline example failed: $expectation');
 }
 
+/// Whether [a] and [b] hold the same keys with the same values.
+///
+/// Dart's `==` on `Map` is identity, so two maps built from the same file are
+/// never equal by it. Compared entry by entry here rather than by pulling in
+/// `package:collection`, to keep the example's imports to what it demonstrates.
+bool _sameMap(Map<String, Object?> a, Map<String, Object?> b) =>
+    a.length == b.length &&
+    a.keys.every((key) => b.containsKey(key) && a[key] == b[key]);
+
 Future<void> run() async {
   // 1. Parse `key=value` arguments. Values are converted to their natural type;
   //    a bare flag becomes the boolean true.
@@ -46,7 +70,25 @@ Future<void> run() async {
     'a string map converts by the same rules as the command line',
   );
 
-  // 3. Read a .env file. Write one to a temp dir first, then read it back.
+  // 3. `.env` syntax without a file. `parse` takes the lines from any source —
+  //    here a blob that arrived from a secret store rather than from disk. It
+  //    is also what `read` is built on: read the lines, then parse them.
+  const fromSecretStore = '''
+# issued by the secret store, never written to disk
+DB_URL=mysql://host/db?user=root
+DB_POOL=16
+''';
+  final secrets = TomEnvFile.parse(fromSecretStore.split('\n'));
+  print('3. parsed .env lines         : $secrets');
+  check(secrets['DB_POOL'] == 16, 'the same conversion rules apply off-disk');
+  // The split is on the *first* `=`, so the query parameter stays part of the
+  // URL instead of being read as a second pair.
+  check(
+    secrets['DB_URL'] == 'mysql://host/db?user=root',
+    'a value carrying further "=" characters survives whole',
+  );
+
+  // 4. Read a .env file. Write one to a temp dir first, then read it back.
   final dir = await Directory.systemTemp.createTemp('tom_cmdline_example');
   final envFile = File('${dir.path}/.env');
   await envFile.writeAsString('''
@@ -56,7 +98,7 @@ SERVER_NAME="my service"   # inline comment is stripped
 ENABLED=true
 ''');
   final env = TomEnvFile.read(envFile.path);
-  print('3. read .env                 : $env');
+  print('4. read .env                 : $env');
   check(env['SERVER_PORT'] == 8080, 'an unquoted .env number converts to int');
   check(
     env['SERVER_NAME'] == 'my service',
@@ -64,17 +106,30 @@ ENABLED=true
   );
   check(env['ENABLED'] == true, 'an unquoted "true" converts to bool');
 
-  // 4. A missing file is not an error: it yields an empty map.
-  final missing = TomEnvFile.read('${dir.path}/.env.absent');
-  print('4. missing .env              : $missing (empty)');
-  check(missing.isEmpty, 'a missing .env yields an empty map, not an error');
+  // 5. The same file read without blocking the isolate. Prefer this wherever
+  //    the call site can await — start-up usually can.
+  final envAsync = await TomEnvFile.readAsync(envFile.path);
+  print('5. readAsync .env            : $envAsync');
+  check(envAsync['SERVER_PORT'] == 8080, 'readAsync converts values too');
+  check(
+    _sameMap(envAsync, env),
+    'readAsync returns what read returns, for the same file',
+  );
 
-  // 5. Merge layers a local override on top of a base; later sources win.
+  // 6. A missing file is not an error: it yields an empty map. Both variants
+  //    answer the same way, so neither needs an existence check first.
+  final missing = TomEnvFile.read('${dir.path}/.env.absent');
+  final missingAsync = await TomEnvFile.readAsync('${dir.path}/.env.absent');
+  print('6. missing .env              : $missing (empty)');
+  check(missing.isEmpty, 'a missing .env yields an empty map, not an error');
+  check(missingAsync.isEmpty, 'readAsync answers the same way');
+
+  // 7. Merge layers a local override on top of a base; later sources win.
   final merged = TomEnvFile.merge([
     {'SERVER_PORT': 8080, 'SERVER_NAME': 'base'},
     {'SERVER_NAME': 'override'},
   ]);
-  print('5. merged env                : $merged');
+  print('7. merged env                : $merged');
   check(
     merged['SERVER_PORT'] == 8080 && merged['SERVER_NAME'] == 'override',
     'a later source overrides an earlier one and leaves the rest alone',

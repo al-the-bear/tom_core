@@ -301,6 +301,36 @@
 
 ### Internal
 
+- **The cmdline example reaches every `TomEnvFile` method it should
+  (tcinc430).** It ran five steps and demonstrated two of the five methods:
+  `parse`, `readAsync` and `load` appeared nowhere, though the API mirror lists
+  all five and the prose document shows `readAsync` in a snippet of its own. The
+  header explained one omission — `fillFromArgs`, which needs a reflected type —
+  and the other three had neither a demonstration nor a mention.
+
+  Two steps were added. `parse` now takes a blob that arrived from a secret
+  store and never touched disk, which is the case the method exists for and also
+  what `read` is built on; it doubles as the example's statement of the
+  first-`=` rule, since the blob carries a URL with a query parameter.
+  `readAsync` reads the same file as the sync step and is required to return
+  what `read` returned, and the missing-file step now exercises both variants,
+  so neither needs an existence check first.
+
+  `load` keeps its omission and now has a stated reason: it calls `read` and
+  returns the result, and `doc/cmdline.md` already lists it as a limitation
+  advising `read` instead. An example is a recommendation, so demonstrating it
+  would contradict that advice. What becomes of the method is a separate open
+  question and is not settled here.
+
+  Two guards were added or repaired, because fixing the instance does not fix
+  the class. A test now reads the public method list off `env_file.dart` and
+  requires each name to be either demonstrated by the example or named in its
+  header, so a method added later cannot go unmentioned unnoticed; adding an
+  unreferenced method to the class fails it, naming that method. The existing
+  step-count check was hard-coded to five and so would have kept passing while
+  covering neither new step — it now derives the numbers from the example and
+  additionally requires them to run `1..n` without a gap.
+
 - **The `.env` first-`=` rule is now tested on the `.env` side (tcinc429).** The
   headline claim for `TomEnvFile.parse` is that it splits on the *first* `=`, so
   a value carrying more of them survives whole; the module documentation makes

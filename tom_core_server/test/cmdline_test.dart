@@ -802,7 +802,23 @@ void main() {
       );
       // A crash before the last step would also exit 0 if it were swallowed,
       // so pin that every numbered step actually reported.
-      for (var step = 1; step <= 5; step++) {
+      //
+      // The count comes from the example rather than from a literal here. A
+      // literal only ever matches the file on the day it is written: when the
+      // example grew from five steps to seven, a hard-coded 5 kept passing and
+      // stopped covering the last two — silently, which is the failure this
+      // test exists to prevent.
+      final declared = RegExp(r"print\('(\d+)\. ")
+          .allMatches(File(examplePath).readAsStringSync())
+          .map((m) => int.parse(m.group(1)!))
+          .toList();
+      expect(
+        declared,
+        List.generate(declared.length, (i) => i + 1),
+        reason: 'the example\'s steps must be numbered 1..n without a gap',
+      );
+      expect(declared, isNotEmpty, reason: 'no numbered step found at all');
+      for (final step in declared) {
         expect(result.stdout, contains('$step. '));
       }
     });
@@ -823,6 +839,50 @@ void main() {
         reason: 'an assert in the example does not run under `dart run`',
       );
       expect(source, contains('void check(bool ok, String expectation)'));
+    });
+
+    // The example once ran five steps and reached two of `TomEnvFile`'s five
+    // methods; `parse`, `readAsync` and `load` appeared nowhere, and the header
+    // explained only the one omission it had thought about. Adding the missing
+    // steps fixes that instance. This fixes the class: a method added to
+    // `TomEnvFile` tomorrow is either shown or accounted for, and the list is
+    // read off the source rather than restated here, so it cannot go stale the
+    // way the hard-coded step count above did.
+    //
+    // Either resolution counts, because the todo's own bar allowed either: a
+    // demonstration, or a reason in the header. `load` takes the second route —
+    // it is `read` under another name and `doc/cmdline.md` says to prefer
+    // `read`, so showing it would recommend what the documentation warns off.
+    test('every public TomEnvFile method is shown or explained', () {
+      final api = File(
+        p.join('lib', 'src', 'tomserver', 'cmdline', 'env_file.dart'),
+      ).readAsStringSync();
+      final methods = RegExp(r'\n  static\s+[\w<>?,\s]+?\s(\w+)\(')
+          .allMatches(api)
+          .map((m) => m.group(1)!)
+          .where((name) => !name.startsWith('_'))
+          .toSet();
+      // If this ever empties, the regex has drifted and the test below would
+      // pass by vacuum rather than by coverage.
+      expect(
+        methods,
+        containsAll(['read', 'readAsync', 'parse', 'merge', 'load']),
+        reason: 'the public method list was not recovered from env_file.dart',
+      );
+
+      final example = File(examplePath).readAsStringSync();
+      // The header is the part before `library;` — a reason has to be stated
+      // where a reader meets it, not buried beside the code that omits it.
+      final header = example.substring(0, example.indexOf('library;'));
+      for (final method in methods) {
+        expect(
+          example.contains('TomEnvFile.$method(') || header.contains(method),
+          isTrue,
+          reason:
+              '`TomEnvFile.$method` is neither demonstrated by the example nor '
+              'named in its header as a deliberate omission',
+        );
+      }
     });
   });
 

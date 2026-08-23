@@ -268,11 +268,12 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
 
 ## Verification
 
-`example/cmdline/cmdline_example.dart` walks the codegen-free helpers in five
+`example/cmdline/cmdline_example.dart` walks the codegen-free helpers in seven
 steps, with no setup of any kind — parse `key=value` arguments, normalise an
-existing string map, read a `.env` file it writes to a temp directory first, the
-missing file that yields an empty map, and a two-layer `merge`. Run it exactly
-as its header documents:
+existing string map, `parse` a `.env` blob that never touches disk, read a
+`.env` file it writes to a temp directory first, read the same file again with
+`readAsync`, the missing file that yields an empty map from either variant, and
+a two-layer `merge`. Run it exactly as its header documents:
 
 ```bash
 dart run example/cmdline/cmdline_example.dart
@@ -283,9 +284,13 @@ green run is a verification rather than a transcript. The checks are a plain
 `if`/`throw` and not `assert`, because `dart run` leaves assertions disabled: an
 `assert` would compile out under the very command above, and the example would
 print a plausible transcript and exit 0 with every expectation violated. The
-reflection-backed `fillFromArgs` is not shown there — it needs a reflected
-configuration type — so it is the one part of the module the example cannot
-demonstrate, and the suite covers it instead.
+Two members are left out, and the example's header gives a reason for each:
+`fillFromArgs` needs a reflected configuration type, and `load` does nothing
+`read` does not (see the limitation above), so demonstrating it would recommend
+what this document warns off. The suite covers both. Which members are omitted
+is not a matter of habit: a test reads the public method list off
+`env_file.dart` and requires each one to be either demonstrated by the example
+or named in its header, so a method added later cannot go unmentioned unnoticed.
 
 `test/cmdline_test.dart` covers the module end to end in one process:
 
