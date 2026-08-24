@@ -104,6 +104,25 @@ String tomAppId = "";
 abstract class TomBaseServerConfiguration {
   String appId = "";
 
+  /// The command-line arguments this configuration was built from.
+  ///
+  /// The one **derived** field on this class: every other field answers "what
+  /// was I told", this one answers "how was I invoked". It is not a
+  /// configuration key — the constructor assigns it from its own parameter
+  /// after [setValues] has run, so a merged key spelled `args` cannot displace
+  /// the real invocation. Such a key is still merged and still visible in
+  /// [getDefaultValues]'s result; it just does not land here.
+  ///
+  /// Note that a merged `args` key whose value is not a `List<String>` — an
+  /// `args=x` argument parses to a `String` — still fails inside [setValues]
+  /// before this assignment is reached. That is deliberate: the message names
+  /// the field and the offending value, which is the right answer for a
+  /// configuration that set a key it should not have.
+  ///
+  /// **This may hold a secret.** The command line is one of the out-of-band
+  /// channels a deployment uses to supply [smtpPassword], [smsApiKey] and the
+  /// rest, so the invocation recorded here can contain them verbatim. Log or
+  /// serialize individual fields, never this list.
   List<String> args = [];
 
   String serverHeader = "";
@@ -496,7 +515,15 @@ utj3flRQDLaDAl91lySpAjUp9aM8
 
   /// Creates the configuration, resolving and applying values from all sources
   /// (see [getDefaultValues]) for the given [args].
+  ///
+  /// [args] is assigned to the field of the same name **after** [setValues], so
+  /// the record of the invocation survives a merged key that happens to be
+  /// spelled `args`. Both are last for a reason: [setValues] runs first because
+  /// a subclass's constructor body must see the resolved fields, and the `args`
+  /// assignment runs after it because the invocation is the meaning this field
+  /// promises.
   TomBaseServerConfiguration(List<String> args) {
     setValues(getDefaultValues(args));
+    this.args = args;
   }
 }

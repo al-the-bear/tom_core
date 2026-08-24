@@ -17,6 +17,20 @@ class _CapturingConfig extends TomBaseServerConfiguration {
   void setValues(Map<String, Object?> values) => captured = values;
 }
 
+/// A configuration whose [setValues] overwrites `args`, standing in for the
+/// generated reflection assigning a merged key that happens to be spelled
+/// `args`.
+///
+/// Written by hand rather than reflected because the ordering under test is the
+/// base constructor's, not the generator's: what matters is that the assignment
+/// of the real invocation happens *after* whatever `setValues` did, whoever
+/// implemented it.
+class _ArgsOverwritingConfig extends TomBaseServerConfiguration {
+  _ArgsOverwritingConfig(super.args);
+  @override
+  void setValues(Map<String, Object?> values) => this.args = ['fromConfigKey'];
+}
+
 /// Installs a fresh provider built from [resources] as the active source.
 void _install(Map<String, dynamic> resources) {
   TomServerConfigResourceProvider.setServerConfigProvider(
@@ -323,6 +337,47 @@ void main() {
       // An empty host routes TomServer.start to InternetAddress.anyIPv4; the
       // previous "t"/"0" defaults were invalid addresses.
       expect(_CapturingConfig([]).host, '');
+    });
+  });
+
+  // `args` is the one field on the configuration base that is *derived* rather
+  // than configured: every other field answers "what was I told", this one
+  // answers "how was I invoked". The distinction is invisible in the class --
+  // it is declared beside the rest and is reflected like the rest -- so it is
+  // pinned here instead.
+  group('TomBaseServerConfiguration.args', () {
+    test('a constructed configuration reads back the arguments it was given', () {
+      _install({});
+      // The claim both documents make about this field. It went unasserted, and
+      // the field went unassigned, for as long as both have existed: the
+      // constructor forwarded its parameter to getDefaultValues and dropped it,
+      // so every configuration ever built reported an empty command line.
+      expect(_CapturingConfig(['--port=9000', 'appId=svc']).args, [
+        '--port=9000',
+        'appId=svc',
+      ]);
+    });
+
+    test('the invocation survives a configuration key of the same name', () {
+      _install({});
+      // `args` is a field name, so the generated setValues will assign it from
+      // a merged key spelled `args` -- from a YAML resource, the environment, a
+      // `.env` line or an `args=...` argument. That value is a different thing
+      // from the invocation, and the invocation is the one the documented
+      // meaning promises, so the constructor assigns last. Reflection is not
+      // needed to state that: this override does what a reflected setValues
+      // would do with such a key.
+      expect(_ArgsOverwritingConfig(['real']).args, ['real']);
+    });
+
+    test('it is not read back out of the merged map', () {
+      _install({});
+      // The corollary of the test above, from the other side: the merge is
+      // still free to carry an `args` key and getDefaultValues still reports
+      // it. The field simply stops being where that key lands.
+      final config = _CapturingConfig(['args=fromCommandLine']);
+      expect(config.captured['args'], 'fromCommandLine');
+      expect(config.args, ['args=fromCommandLine']);
     });
   });
 

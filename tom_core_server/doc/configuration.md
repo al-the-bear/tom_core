@@ -104,6 +104,14 @@ void main(List<String> argv) {
 }
 ```
 
+One field on the base is **derived rather than configured**: `args` holds the
+command line the configuration was built from. The constructor assigns it after
+`setValues`, so a configuration key that happens to be spelled `args` is merged
+like any other but does not land in the field — the invocation is what the field
+promises, and the invocation is what survives. Treat it as sensitive: the
+command line is one of the channels a deployment uses to supply a secret, so log
+individual fields rather than this list.
+
 > The default `certificateChain` / `privateKey` are a throwaway self-signed
 > `localhost` pair for local development and **must be overridden in
 > production**. JWT signing-key fields exist; richer JWT-creation settings are a

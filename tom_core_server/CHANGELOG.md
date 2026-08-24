@@ -2,6 +2,30 @@
 
 ### Fixed
 
+- **`TomBaseServerConfiguration.args` now holds the command line it claims to
+  (tcinc435).** The field was declared, documented in two places as "the
+  command-line arguments the configuration was built from", and never assigned:
+  the constructor forwarded its parameter to `getDefaultValues` and dropped it.
+  Every configuration ever built reported an empty invocation, so a caller
+  reading `config.args` got a silently empty list rather than an error.
+
+  The constructor now assigns it — **after** `setValues`, which is the half that
+  is not obvious. `args` is declared like every other field and is therefore
+  reflected, so the generated `setValues` will assign it from a merged key
+  spelled `args`, whether that key came from a YAML resource, the environment, a
+  `.env` line or an `args=…` argument. That value is a different thing from the
+  invocation, and the invocation is the meaning the field promises, so the
+  constructor's assignment goes last. The key is still merged and still visible
+  in `getDefaultValues`'s result; it simply no longer lands in the field.
+
+  Two consequences are now documented rather than left to be discovered. `args`
+  is the one **derived** field on the class — every other field answers "what
+  was I told", this one answers "how was I invoked" — so it is not configurable
+  and its row in the API mirror says so. And it may hold a **secret**: the
+  command line is one of the out-of-band channels a deployment uses to supply
+  `smtpPassword`, `smsApiKey` and the rest, so the invocation recorded here can
+  contain them verbatim. Log individual fields, never this list.
+
 - **The environment/`TomConfig` boundary is now stated, and the configuration
   example's checks no longer compile out (tcinc433).** The documentation
   described two things separately and never joined them: `getDefaultValues`

@@ -104,6 +104,11 @@ the constructor.
 TomBaseServerConfiguration(List<String> args)
 ```
 
+Calls `setValues(getDefaultValues(args))`, then assigns `args` to the field of
+the same name. The order matters in both directions: `setValues` runs first so
+a subclass's constructor body sees resolved fields, and the `args` assignment
+runs after it so a merged key spelled `args` cannot displace the invocation.
+
 #### Static Methods
 
 | Method | Signature | Description |
@@ -115,7 +120,7 @@ TomBaseServerConfiguration(List<String> args)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `appId` | `String` | Application id (default `""`). |
-| `args` | `List<String>` | Raw command-line arguments (default `[]`). |
+| `args` | `List<String>` | The command line the configuration was built from. **Derived, not configurable** — assigned by the constructor after `setValues`, so a merged key spelled `args` does not land here. May hold a secret, since the command line is one of the out-of-band channels for supplying one. |
 | `serverHeader` | `String` | `Server` response header (default `""`). |
 | `autoCompress` | `bool` | Whether responses are auto-compressed (default `true`). |
 | `poweredByHeader` | `String` | `X-Powered-By` header value (default `"tom"`). |
