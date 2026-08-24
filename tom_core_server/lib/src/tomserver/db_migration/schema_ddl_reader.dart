@@ -71,7 +71,9 @@ class TomDdlReplayResult {
 /// have after `TomDbMigrations.migrateDatabases`. It reads the same artifacts
 /// the engine reads and changes nothing about how the engine behaves.
 ///
-/// **What it understands.** `CREATE TABLE`, `DROP TABLE`, `ALTER TABLE`
+/// **What it understands.** `CREATE TABLE <name> (<column list>)` — the one
+/// `CREATE TABLE` form that spells its columns out, which is the whole of what
+/// the reader is for — plus `DROP TABLE`, `ALTER TABLE`
 /// (`ADD`/`DROP`/`MODIFY`/`CHANGE`/`RENAME` of columns, `ADD PRIMARY KEY`,
 /// `RENAME TO`), and the `IF [NOT] EXISTS` guards that make an artifact
 /// idempotent. Statements that do not shape the schema — `INSERT`, `UPDATE`,
@@ -90,10 +92,24 @@ class TomDdlReplayResult {
 /// as a table the entity model has no entity for.
 ///
 /// **What it does not.** Stored routines and anything using a `DELIMITER`
-/// override, `SELECT`-driven DDL (`CREATE TABLE … AS SELECT`), and vendor
-/// extensions beyond the above. Those surface as [TomDdlReplayError]s rather
-/// than being silently mis-parsed — an unreadable chain must be visible, since
-/// the check's whole value is that it noticed.
+/// override; the `CREATE TABLE` forms that derive their columns from somewhere
+/// else — `AS SELECT …`, `AS (SELECT …)`, `LIKE other` — since the reader has
+/// no way to know what those columns are; and vendor extensions beyond the
+/// above. Those surface as [TomDdlReplayError]s rather than being silently
+/// mis-parsed — an unreadable chain must be visible, since the check's whole
+/// value is that it noticed.
+///
+/// **Rejection is atomic, at the level of the statement form.** A `CREATE
+/// TABLE` whose header carries anything at all between the table name and the
+/// column list is rejected before the builder is touched, so an unmodelled form
+/// leaves no trace in the schema. That distinction matters downstream: a table
+/// committed with a fabricated column list, or with none, turns every column
+/// its entity declares into a `missingColumn` divergence — a second wave of
+/// findings caused by the parse failure rather than by any real disagreement.
+/// *Within* a genuine column list the opposite applies deliberately: an entry
+/// the reader cannot read is reported on its own and the rest of the table
+/// survives, because discarding the table there would manufacture exactly the
+/// same derived noise.
 class TomSchemaDdlReader {
   /// The dialect that classifies column types (see
   /// [TomStandardSqlDialect.typeFamily]).
@@ -264,17 +280,10 @@ class TomSchemaDdlReader {
     List<TomDdlReplayError> errors,
   ) {
     final open = statement.indexOf('(');
-    if (open < 0) {
-      errors.add(
-        TomDdlReplayError(
-          artifact: artifact,
-          message: 'CREATE TABLE without a column list',
-          statement: _excerpt(statement),
-        ),
-      );
-      return;
-    }
-    final header = statement.substring(0, open);
+    // The header is everything before the column list — or the whole statement
+    // when there is no list, so that a `CREATE TABLE … AS SELECT` is recognised
+    // by its form rather than reported as a statement missing a parenthesis.
+    final header = open < 0 ? statement : statement.substring(0, open);
     final guarded = _hasIfNotExists(header);
     final name = _tableNameFrom(header);
     if (name == null) {
@@ -282,6 +291,38 @@ class TomSchemaDdlReader {
         TomDdlReplayError(
           artifact: artifact,
           message: 'CREATE TABLE without a table name',
+          statement: _excerpt(statement),
+        ),
+      );
+      return;
+    }
+    // In every form the reader can model, the column list follows the table
+    // name immediately, so anything else in the header is a form whose shape
+    // the reader cannot derive: `AS SELECT`, `AS (SELECT …)`, `LIKE`, or a
+    // vendor extension. Rejecting on the *form*, before touching the builder,
+    // is what keeps the failure atomic — reading on found the SELECT's own
+    // parenthesis and committed a table with a fabricated column list, or with
+    // none at all, and every column the entity model declared on that table
+    // then surfaced as a `missingColumn` divergence caused by the parse failure
+    // rather than by any real disagreement.
+    final trailing = _headerWordsAfterName(header);
+    if (trailing.isNotEmpty) {
+      errors.add(
+        TomDdlReplayError(
+          artifact: artifact,
+          message:
+              'Unsupported CREATE TABLE form — only '
+              'CREATE TABLE <name> (<column list>) is modelled',
+          statement: _excerpt(statement),
+        ),
+      );
+      return;
+    }
+    if (open < 0) {
+      errors.add(
+        TomDdlReplayError(
+          artifact: artifact,
+          message: 'CREATE TABLE without a column list',
           statement: _excerpt(statement),
         ),
       );
@@ -810,6 +851,24 @@ class TomSchemaDdlReader {
         if (name.isNotEmpty) names.add(name);
       }
       return names;
+    }
+    return const [];
+  }
+
+  /// Whatever a `CREATE TABLE` header carries *after* the table name.
+  ///
+  /// Empty for every form the reader models, because the column list follows
+  /// the name immediately. A non-empty result is therefore the signature of a
+  /// form it does not: `AS SELECT …`, `AS (SELECT …)`, `LIKE other`, or a
+  /// vendor extension nobody has taught it yet. Naming the shape by what is
+  /// *absent* rather than listing the keywords to reject is what makes the next
+  /// unknown form fail loudly instead of being half-read.
+  static List<String> _headerWordsAfterName(String header) {
+    final words = _words(header);
+    for (var i = 0; i < words.length; i++) {
+      if (words[i].toUpperCase() != 'TABLE') continue;
+      final rest = _skipWords(words, i + 1, const {'IF', 'NOT', 'EXISTS'});
+      return rest.length <= 1 ? const [] : rest.sublist(1);
     }
     return const [];
   }

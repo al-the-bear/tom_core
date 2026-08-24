@@ -2,6 +2,34 @@
 
 ### Fixed
 
+- **`CREATE TABLE … AS SELECT` no longer commits a half-parsed table to the
+  replayed schema (tcinc483).** `_createTable` located the column list by the
+  first `(` in the statement, which for a `SELECT`-driven create belongs to the
+  SELECT rather than to a column list. `CREATE TABLE copy AS SELECT id, name
+  FROM src WHERE x = COALESCE(a, b)` therefore read `a, b` as the columns:
+  two "unreadable column definition" errors *and* a table `copy` committed with
+  no columns at all. `CREATE TABLE copy AS (SELECT id FROM src)` was worse — the
+  parenthesised SELECT parses cleanly as a one-entry list, so the reader
+  reported nothing and invented a column named `select`, in direct contradiction
+  of its own dartdoc promise that such statements "surface as replay errors
+  rather than being silently mis-parsed".
+
+  The bogus table did not stay local. It reached the convergence diff, where
+  every column the entity model declares on that table became a `missingColumn`
+  divergence — a second wave of findings caused by the parse failure and
+  pointing away from it.
+
+  Only `CREATE TABLE <name> (<column list>)` is modelled now. Any header
+  carrying something between the table name and the column list — `AS SELECT`,
+  `AS (SELECT …)`, `LIKE other`, or a vendor extension — is rejected as an
+  unsupported form **before the builder is touched**, so an unmodelled statement
+  leaves no trace in the schema. Testing for what a supported header *lacks*,
+  rather than listing keywords to reject, means the next unknown form fails
+  loudly instead of being half-read. Within a genuine column list the opposite
+  rule still applies deliberately: an unreadable entry is reported on its own
+  and the rest of the table survives, since discarding it would manufacture the
+  same derived noise for the sake of one bad entry.
+
 - **An unguarded `DROP TABLE` of a table the chain never created is now
   reported (tcinc482).** `TomSchemaDdlReader` reported an `ALTER TABLE` on a
   table no earlier artifact creates, but `_dropTable` looked the name up and

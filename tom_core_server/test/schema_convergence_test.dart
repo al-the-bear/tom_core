@@ -479,6 +479,92 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
       expect(result.errors.single.message, contains('no earlier artifact'));
     });
 
+    test('CREATE TABLE … AS SELECT is rejected without leaving a table', () {
+      // The parenthesis the header parser finds belongs to the SELECT, so the
+      // reader used to read `a, b` as a column list: two "unreadable column"
+      // errors *and* a table `copy` with no columns at all. That empty table
+      // then turned every column the entity declares on it into a
+      // `missingColumn` divergence — a second wave of noise caused by the parse
+      // failure rather than by any real disagreement.
+      final result = TomSchemaDdlReader(dialect).replay([
+        artifact(
+          '[000]-copy',
+          'CREATE TABLE copy AS SELECT id, name FROM src '
+              'WHERE x = COALESCE(a, b);',
+        ),
+      ]);
+      expect(result.errors, hasLength(1));
+      expect(
+        result.errors.single.message,
+        contains('Unsupported CREATE TABLE form'),
+      );
+      expect(result.schema.tables, isEmpty);
+    });
+
+    test('CREATE TABLE … AS (SELECT …) is rejected rather than mis-parsed', () {
+      // The worst of the family: the parenthesised SELECT parses *cleanly* as a
+      // one-column list, so the reader reported nothing and invented a column
+      // named `select`.
+      final result = TomSchemaDdlReader(dialect).replay([
+        artifact('[000]-copy', 'CREATE TABLE copy AS (SELECT id FROM src);'),
+      ]);
+      expect(result.errors, hasLength(1));
+      expect(
+        result.errors.single.message,
+        contains('Unsupported CREATE TABLE form'),
+      );
+      expect(result.schema.tables, isEmpty);
+    });
+
+    test('CREATE TABLE … AS SELECT without parentheses names the form', () {
+      // Reported before as "without a column list", which reads as a truncated
+      // statement and sends the author looking for a missing paren.
+      final result = TomSchemaDdlReader(dialect).replay([
+        artifact('[000]-copy', 'CREATE TABLE copy AS SELECT * FROM src;'),
+      ]);
+      expect(result.errors, hasLength(1));
+      expect(
+        result.errors.single.message,
+        contains('Unsupported CREATE TABLE form'),
+      );
+      expect(result.schema.tables, isEmpty);
+    });
+
+    test('CREATE TABLE … LIKE is rejected as an unsupported form', () {
+      final result = TomSchemaDdlReader(
+        dialect,
+      ).replay([artifact('[000]-copy', 'CREATE TABLE copy LIKE src;')]);
+      expect(result.errors, hasLength(1));
+      expect(
+        result.errors.single.message,
+        contains('Unsupported CREATE TABLE form'),
+      );
+      expect(result.schema.tables, isEmpty);
+    });
+
+    test('a truncated CREATE TABLE is still reported as a missing list', () {
+      // The unsupported-form check must not swallow this one: nothing follows
+      // the table name, so the statement really is truncated.
+      final result = TomSchemaDdlReader(
+        dialect,
+      ).replay([artifact('[000]-cut', 'CREATE TABLE w')]);
+      expect(result.errors, hasLength(1));
+      expect(result.errors.single.message, contains('without a column list'));
+    });
+
+    test('one unreadable column does not discard the rest of the table', () {
+      // Rejection is at the level of the *statement form*, not the entry: once
+      // the reader has a genuine column list it reads what it can and reports
+      // the entry it cannot. Dropping the whole table here would turn one bad
+      // entry into a missingColumn finding for every other column on it.
+      final result = TomSchemaDdlReader(
+        dialect,
+      ).replay([artifact('[000]-create', 'CREATE TABLE w (id BIGINT, oops);')]);
+      expect(result.errors, hasLength(1));
+      expect(result.errors.single.message, contains('Unreadable column'));
+      expect(result.schema.table('w')!.columns.keys, ['id']);
+    });
+
     test('an unsupported statement is reported rather than mis-parsed', () {
       final result = TomSchemaDdlReader(dialect).replay([
         artifact('[000]-routine', 'CREATE PROCEDURE p() BEGIN SELECT 1; END'),
