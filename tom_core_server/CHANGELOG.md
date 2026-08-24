@@ -2,6 +2,40 @@
 
 ### Fixed
 
+- **Two entities that key one table differently are now a reported
+  contradiction (tcinc481).** `TomEntitySchemaReader.read` merges the columns of
+  several entities mapping the same table — legitimate, since a table is often
+  read through more than one projection — but it also called `setPrimaryKey` for
+  every one of them, so the *last* entity in the caller's iteration order
+  silently replaced the key of every earlier one. A table has exactly one
+  primary key, so two projections declaring different keys means one of the two
+  declarations is wrong; the check quietly adopted whichever it happened to read
+  last and compared *that* against the migration chain. The outcome therefore
+  depended on iteration order: the same code base could converge or report a
+  `primaryKeyMismatch` naming a key no one was looking at, and in the converging
+  order a genuinely wrong entity passed the guard whose entire purpose is to
+  catch it.
+
+  The first entity to declare a table now fixes both its reported origin and its
+  key; a later entity whose key differs yields the new
+  `TomSchemaDivergenceKind.conflictingEntityPrimaryKey`. It is a separate kind
+  from `primaryKeyMismatch` because the culprit and the fix differ — that one
+  says the entity model and the chain disagree and sends the reader to the
+  migration scripts, this one says the entity model disagrees with itself before
+  the chain is consulted at all. Keeping the *first* key rather than the last is
+  what makes the reported origin and the reported key describe the same entity;
+  a union of the two would put a key in the model that neither entity declares
+  and provoke a second, invented mismatch against DDL that is correct. The
+  verdict is order-independent — both orders report the contradiction — while
+  which key survives follows the origin by design.
+
+  `read` consequently returns `({schema, divergences})` rather than a bare
+  `TomSchemaModel`, since a self-contradicting entity model is a finding with no
+  migration chain involved. The key comparison is now the single `_sameKey`
+  used by both this check and the entity-against-DDL diff, so one tolerance
+  policy governs every primary-key comparison in the module; its dead
+  `isEmpty && isEmpty` early return went with the extraction.
+
 - **A migrator that fails to construct now reports why (tcinc480).** The adaptor
   scan wrapped the reflective `newInstance` call in `catch (error)`, bound the
   error to a variable, and never used it — the raised exception named only the

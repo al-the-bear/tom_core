@@ -29,6 +29,24 @@ import 'db_migration.dart';
 import 'schema_ddl_reader.dart';
 import 'schema_model.dart';
 
+/// Whether two primary keys are the same key.
+///
+/// Compared as case-insensitive **sets**. The entity model orders a composite
+/// key by field declaration order, which carries no intent, so reporting a
+/// reordering as a disagreement would be a false positive on a key that is in
+/// fact correct.
+///
+/// One function, because every primary-key comparison in the module runs
+/// through it — entity against entity in [TomEntitySchemaReader.read], entity
+/// against replayed DDL in [TomSchemaConvergenceCheck.diff]. Two tolerance
+/// policies would let a key pass one comparison and fail the other, which is a
+/// key nobody can act on.
+bool _sameKey(List<String> a, List<String> b) {
+  final left = {for (final column in a) column.toLowerCase()};
+  final right = {for (final column in b) column.toLowerCase()};
+  return left.length == right.length && left.containsAll(right);
+}
+
 /// Derives the **expected** schema — the shape the entity model declares.
 ///
 /// This is the half of the check that reads `@TomDbTable` / `@TomDbColumn`
@@ -90,19 +108,63 @@ class TomEntitySchemaReader {
     return declared == null || declared.toLowerCase() == schema.toLowerCase();
   }
 
-  /// Reduces [entityTypes] to the schema shape they declare.
+  /// Reduces [entityTypes] to the schema shape they declare, together with any
+  /// contradiction *within* the entity model itself.
   ///
   /// Two entities mapping to the same table name is not an error — a table may
   /// legitimately be read through more than one projection — so their columns
   /// are merged, and the table's origin names the first entity that declared it.
-  static TomSchemaModel read(Iterable<Type> entityTypes) {
+  ///
+  /// They must agree on the **primary key**, though, because a table has
+  /// exactly one. The first entity to declare a table fixes its key; a later
+  /// entity on the same table whose key differs (compared by [_sameKey], the
+  /// same tolerance the diff applies to the DDL side) yields a
+  /// [TomSchemaDivergenceKind.conflictingEntityPrimaryKey] and leaves the first
+  /// declarer's key in place.
+  ///
+  /// Keeping the *first* key is what makes the reported [TomSchemaTable.origin]
+  /// and the reported key describe the same entity. The alternatives are worse:
+  /// letting the last entity win — which is what this did before — is a silent
+  /// overwrite whose outcome depends on the caller's iteration order, and
+  /// merging the two keys into a union would put a key in the model that
+  /// *neither* entity declares, so every downstream comparison would run
+  /// against a shape nobody wrote and report a second, invented divergence
+  /// against the DDL.
+  ///
+  /// The *verdict* is therefore order-independent — both orders report the
+  /// contradiction — while which key survives follows the origin by design.
+  static ({TomSchemaModel schema, List<TomSchemaDivergence> divergences}) read(
+    Iterable<Type> entityTypes,
+  ) {
     final builder = TomSchemaBuilder();
+    final divergences = <TomSchemaDivergence>[];
+    // Keyed by lower-cased table name, like the builder's own map: what the
+    // first entity to claim each table declared, so a later one can be
+    // reconciled against it.
+    final declared = <String, ({String origin, List<String> key})>{};
     for (final type in entityTypes) {
       final info = TomAnnotationAnalyzer.analysePersistentType(type);
       final table = info.table;
       final origin = '$type';
-      if (!builder.hasTable(table.table)) {
+      final key = primaryKeyOf(info);
+      final owner = declared[table.table.toLowerCase()];
+      if (owner == null) {
         builder.addTable(table.table, origin);
+        builder.setPrimaryKey(table.table, key);
+        declared[table.table.toLowerCase()] = (origin: origin, key: key);
+      } else if (!_sameKey(owner.key, key)) {
+        divergences.add(
+          TomSchemaDivergence(
+            kind: TomSchemaDivergenceKind.conflictingEntityPrimaryKey,
+            table: table.table,
+            origin: '${owner.origin} vs $origin',
+            message:
+                '${owner.origin} declares the primary key of "${table.table}" '
+                'as (${owner.key.join(', ')}) but $origin, which maps to the '
+                'same table, declares it as (${key.join(', ')}); a table has '
+                'one primary key, so the entity model contradicts itself',
+          ),
+        );
       }
       for (final column in info.columnInfo) {
         // An association is resolved through a join entity, not through a
@@ -119,9 +181,8 @@ class TomEntitySchemaReader {
           ),
         );
       }
-      builder.setPrimaryKey(table.table, primaryKeyOf(info));
     }
-    return builder.build();
+    return (schema: builder.build(), divergences: divergences);
   }
 
   /// The primary-key **column** names [info] declares, in declaration order.
@@ -170,6 +231,17 @@ enum TomSchemaDivergenceKind {
 
   /// The two sides disagree on which columns form the primary key.
   primaryKeyMismatch,
+
+  /// Two entities map to the same table but declare different primary keys.
+  ///
+  /// A contradiction *within* the entity model, reported before the migration
+  /// chain is consulted at all: a table has exactly one primary key, so two
+  /// projections of it cannot each be right. Distinct from
+  /// [primaryKeyMismatch], which is the entity model disagreeing with the
+  /// chain — the two have different culprits and different fixes, and reporting
+  /// this one as that would send the reader to the migration scripts to correct
+  /// something no migration script did.
+  conflictingEntityPrimaryKey,
 
   /// A statement in the chain could not be replayed — the actual side of the
   /// comparison is incomplete, so everything downstream of it is unreliable.
@@ -432,6 +504,13 @@ class TomSchemaConvergenceCheck {
       }
     }
 
+    // Read the entity side first and take its self-contradictions with it: an
+    // entity model that disagrees with itself is a defect of the model alone,
+    // so it is reported next to the other entity-side finding above and ahead
+    // of anything the chain has to say.
+    final expected = TomEntitySchemaReader.read(selected);
+    divergences.addAll(expected.divergences);
+
     final replay = TomSchemaDdlReader(dialect).replay(chain);
     for (final error in replay.errors) {
       divergences.add(
@@ -444,9 +523,7 @@ class TomSchemaConvergenceCheck {
       );
     }
 
-    divergences.addAll(
-      diff(TomEntitySchemaReader.read(selected), replay.schema),
-    );
+    divergences.addAll(diff(expected.schema, replay.schema));
 
     return TomSchemaConvergenceReport(
       datasource: datasource,
@@ -560,22 +637,12 @@ class TomSchemaConvergenceCheck {
     return divergences;
   }
 
-  /// Compares primary keys as case-insensitive **sets**.
-  ///
-  /// The entity model orders a composite key by field declaration order, which
-  /// carries no intent — reporting a reordering as a divergence would be a false
-  /// positive on a schema that is in fact correct.
+  /// Compares the declared and the built primary key by [_sameKey].
   List<TomSchemaDivergence> _diffPrimaryKey(
     TomSchemaTable expected,
     TomSchemaTable actual,
   ) {
-    final expectedKey = {for (final c in expected.primaryKey) c.toLowerCase()};
-    final actualKey = {for (final c in actual.primaryKey) c.toLowerCase()};
-    if (expectedKey.isEmpty && actualKey.isEmpty) return const [];
-    if (expectedKey.length == actualKey.length &&
-        expectedKey.containsAll(actualKey)) {
-      return const [];
-    }
+    if (_sameKey(expected.primaryKey, actual.primaryKey)) return const [];
     return [
       TomSchemaDivergence(
         kind: TomSchemaDivergenceKind.primaryKeyMismatch,

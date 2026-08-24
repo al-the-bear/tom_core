@@ -12,7 +12,12 @@ library;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
-import 'fixtures/reflection_fixture.dart' show FixtureTaskRecord;
+import 'fixtures/reflection_fixture.dart'
+    show
+        FixtureNullableRecord,
+        FixtureOptionalColumnRecord,
+        FixtureRekeyedNullableRecord,
+        FixtureTaskRecord;
 import 'fixtures/reflection_fixture.reflection.dart';
 
 /// The converged fixture chain: builds exactly what [FixtureTaskRecord] maps.
@@ -432,8 +437,9 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
 
   group('TomEntitySchemaReader', () {
     test('reduces the entity model to tables, columns, families and key', () {
-      final schema = TomEntitySchemaReader.read([FixtureTaskRecord]);
-      final table = schema.table('fixture_task')!;
+      final expected = TomEntitySchemaReader.read([FixtureTaskRecord]);
+      expect(expected.divergences, isEmpty);
+      final table = expected.schema.table('fixture_task')!;
       expect(table.origin, 'FixtureTaskRecord');
       expect(table.columns.keys.toSet(), {'id', 'title', 'priority', 'done'});
       expect(table.column('id')!.family, TomSqlTypeFamily.integer);
@@ -467,6 +473,75 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
         TomEntitySchemaReader.discoverEntityTypes(),
         contains(FixtureTaskRecord),
       );
+    });
+
+    test('two projections of one table that agree on the key merge', () {
+      // FixtureNullableRecord and FixtureOptionalColumnRecord map the same
+      // `fixture_nullable` table under two member shapes, both keyed by `id`.
+      // Reading a table through more than one projection is legitimate, so
+      // this is not a finding.
+      final expected = TomEntitySchemaReader.read([
+        FixtureNullableRecord,
+        FixtureOptionalColumnRecord,
+      ]);
+      expect(expected.divergences, isEmpty);
+      final table = expected.schema.table('fixture_nullable')!;
+      expect(table.origin, 'FixtureNullableRecord');
+      expect(table.primaryKey, ['id']);
+    });
+
+    test(
+      'a second projection that keys the table differently is a finding',
+      () {
+        final expected = TomEntitySchemaReader.read([
+          FixtureNullableRecord,
+          FixtureRekeyedNullableRecord,
+        ]);
+        final conflict = expected.divergences.single;
+        expect(
+          conflict.kind,
+          TomSchemaDivergenceKind.conflictingEntityPrimaryKey,
+        );
+        expect(conflict.table, 'fixture_nullable');
+        expect(conflict.isError, isTrue);
+        // Both entities have to be named: the reader has to know which two
+        // declarations to reconcile, and neither alone identifies the pair.
+        expect(
+          conflict.origin,
+          'FixtureNullableRecord vs FixtureRekeyedNullableRecord',
+        );
+        expect(conflict.message, contains('(id)'));
+        expect(conflict.message, contains('(name)'));
+      },
+    );
+
+    test('the first entity to declare the table keeps the key and origin', () {
+      final table = TomEntitySchemaReader.read([
+        FixtureNullableRecord,
+        FixtureRekeyedNullableRecord,
+      ]).schema.table('fixture_nullable')!;
+      expect(table.origin, 'FixtureNullableRecord');
+      // Not the second declarer's key, and not a union of the two: a union
+      // would put a key in the model that neither entity declares, and every
+      // downstream comparison would run against a shape nobody wrote.
+      expect(table.primaryKey, ['id']);
+    });
+
+    test('the contradiction is reported whichever entity is read first', () {
+      final reversed = TomEntitySchemaReader.read([
+        FixtureRekeyedNullableRecord,
+        FixtureNullableRecord,
+      ]);
+      expect(
+        reversed.divergences.single.kind,
+        TomSchemaDivergenceKind.conflictingEntityPrimaryKey,
+      );
+      // The verdict is order-independent. Which key survives is not, and is
+      // not meant to be — it follows the origin, so the reported table and the
+      // reported key always describe the same entity.
+      final table = reversed.schema.table('fixture_nullable')!;
+      expect(table.origin, 'FixtureRekeyedNullableRecord');
+      expect(table.primaryKey, ['name']);
     });
   });
 
@@ -594,6 +669,36 @@ CREATE TABLE fixture_task (
       expect(mismatch.kind, TomSchemaDivergenceKind.primaryKeyMismatch);
       expect(mismatch.message, contains('(id)'));
       expect(mismatch.message, contains('(title)'));
+    });
+
+    test('an entity model that contradicts itself fails the report', () {
+      // The chain builds exactly what FixtureNullableRecord declares, key
+      // included — so the only thing wrong here is the entity model's own
+      // disagreement, and the report has to say so rather than converge.
+      final report = check.verify(
+        datasource: fixtureDatasource,
+        schema: fixtureSchema,
+        chain: [
+          artifact('[000]-create', '''
+CREATE TABLE fixture_nullable (
+  id          BIGINT       NOT NULL AUTO_INCREMENT,
+  name        VARCHAR(255) NULL,
+  ratio       DOUBLE       NULL,
+  quantity    INT          NULL,
+  active      TINYINT(1)   NULL,
+  occurred_at DATETIME     NULL,
+  PRIMARY KEY (id)
+);'''),
+        ],
+        entityTypes: [FixtureNullableRecord, FixtureRekeyedNullableRecord],
+      );
+      expect(report.converged, isFalse, reason: report.describe());
+      final conflict = report.errors.single;
+      expect(
+        conflict.kind,
+        TomSchemaDivergenceKind.conflictingEntityPrimaryKey,
+      );
+      expect(conflict.table, 'fixture_nullable');
     });
 
     test('a column the entity does not map is a warning, not an error', () {

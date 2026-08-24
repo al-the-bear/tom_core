@@ -19,6 +19,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
   - [An unreadable checksum is not an edited migration](#an-unreadable-checksum-is-not-an-edited-migration)
 - [Schema Convergence](#schema-convergence)
   - [The Application's Entities](#the-applications-entities)
+  - [When the Entity Model Contradicts Itself](#when-the-entity-model-contradicts-itself)
   - [The Framework's Own Tables](#the-frameworks-own-tables)
   - [The Four Places a Column Name Could Have Been Spelled](#the-four-places-a-column-name-could-have-been-spelled)
   - [What the Live Check Adds](#what-the-live-check-adds)
@@ -248,6 +249,34 @@ schema from the reflected `@TomDbTable` / `@TomDbColumn` declarations on the
 application's entities, and the **actual** schema by replaying the migration
 chain's DDL text through `TomSchemaDdlReader`. A column an entity declares and
 the chain never creates is an error; so is a type family the chain cannot hold.
+
+### When the Entity Model Contradicts Itself
+
+Several entities may map the same table, and that is normal: a table is often
+read through more than one projection, and the projections differ only in which
+columns and which member shapes they present. `TomEntitySchemaReader.read`
+merges their columns for exactly that reason.
+
+Their **primary keys** cannot be merged, because a table has exactly one. If two
+entities on one table declare different keys, one of the two declarations is
+wrong, and no migration chain can reconcile them. `read` therefore returns
+findings alongside the model: the first entity to declare a table fixes both its
+reported origin and its key, and a later entity whose key differs produces a
+`conflictingEntityPrimaryKey` error. Keys are compared as case-insensitive sets,
+the same tolerance the chain comparison applies, since field declaration order
+carries no intent.
+
+The finding is distinct from `primaryKeyMismatch` on purpose. That one says the
+entity model and the migration chain disagree, and sends the reader to the
+migration scripts; this one says the entity model disagrees with itself, before
+the chain is consulted at all, and the scripts are not where the fix goes.
+
+The first key is kept rather than the last because the reported origin and the
+reported key then describe the same entity. A union of the two would put a key
+in the model that neither entity declares, and the chain comparison would then
+report a second, invented mismatch against DDL that is in fact correct. The
+verdict is order-independent — the contradiction is reported whichever entity is
+read first — while which key survives follows the origin.
 
 ### The Framework's Own Tables
 

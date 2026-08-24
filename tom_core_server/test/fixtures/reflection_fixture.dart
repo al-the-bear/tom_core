@@ -1136,6 +1136,43 @@ class FixtureOptionalColumnRecord {
 class FixtureOptionalColumnRepository
     extends TomSqlDatasourceRepository<FixtureOptionalColumnRecord, int> {}
 
+/// A **third** projection of `fixture_nullable` that keys it differently — the
+/// entity model contradicting itself (CSEX6).
+///
+/// [FixtureNullableRecord] and [FixtureOptionalColumnRecord] are two honest
+/// projections of one table: they disagree about member *shape* but agree that
+/// `id` is the key, and merging them is correct. This one disagrees about the
+/// key itself, and a table has exactly one primary key, so the two cannot both
+/// be right. It exists so [TomEntitySchemaReader] can be shown *reporting* that
+/// contradiction rather than silently letting whichever entity is read last
+/// decide.
+///
+/// The key is declared through [TomDbTable.primaryKeyField] with no
+/// `@TomEntityId` on any field, which is deliberate on two counts: it is the
+/// weakest of the three key signals — the one a real entity is most likely to
+/// key a projection by accident — and it exercises the field-to-column
+/// resolution branch of `TomEntitySchemaReader.primaryKeyOf`.
+///
+/// It maps only the two columns it needs. Merging a subset changes nothing
+/// about the table's column set, which keeps the difference in outcome
+/// attributable to the key alone. No repository: nothing ever reads or writes
+/// through it, so it needs no storage beyond the table that already exists.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_nullable',
+  primaryKeyField: 'name',
+)
+class FixtureRekeyedNullableRecord {
+  /// The column this projection considers the key.
+  @TomDbColumn(columnName: 'name')
+  String? name;
+
+  /// An ordinary column, so the projection maps more than its key.
+  @TomDbColumn(columnName: 'quantity')
+  int? quantity;
+}
+
 /// A reflected **preference value** — the object shape a user preference is
 /// stored as when it is not a scalar (TCCA10).
 ///
