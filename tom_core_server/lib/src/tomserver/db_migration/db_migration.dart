@@ -242,6 +242,40 @@ class TomDbMigrations {
     );
   }
 
+  /// Asserts that [directory] — playing the role named by [role] — exists,
+  /// throwing `db_migration.migration.migrations_directory_not_found` if it does
+  /// not.
+  ///
+  /// A migration tree a tool is *told* to walk is an input, not content: absent,
+  /// it means the configured path is wrong, not that the deployment has no
+  /// migrations. Tolerating it is the worst available outcome, because both
+  /// tools then succeed vacuously — the engine reports migrations complete
+  /// against an untouched database, and
+  /// [TomSchemaConvergenceCheck.checkAll] returns an empty report list that no
+  /// call site can tell apart from "every pair converged".
+  ///
+  /// A **relative** path is reported with what it resolved to as well, because
+  /// its usual cause is the right path read from the wrong working directory,
+  /// and the path alone cannot distinguish that from a typo. An absolute one is
+  /// already unambiguous and is not repeated.
+  ///
+  /// Shared with the convergence check for the reason [collectMigrationFiles]
+  /// and [orderMigrationNames] are: two entry points over one tree must not
+  /// disagree about whether the tree being absent is a failure.
+  static void requireMigrationsDirectory(Directory directory, String role) {
+    if (directory.existsSync()) return;
+    final where = p.isAbsolute(directory.path)
+        ? directory.path
+        : "${directory.path} (resolved to ${directory.absolute.path})";
+    throw TomDbMigrationException(
+      "db_migration.migration.migrations_directory_not_found",
+      "$role not found: $where. The migration tree has to exist where it is "
+          "configured — check the path and the working directory the process "
+          "was started in.",
+      autoLog: true,
+    );
+  }
+
   /// Collects the migration files among [entries], keyed by basename without
   /// extension — the key everything downstream identifies a migration by.
   ///
@@ -348,14 +382,19 @@ class TomDbMigrations {
   /// `[<version>]-<description>[@<env>…].<ext>` file in ascending version order.
   /// Migrations tagged for an environment other than the active one
   /// ([resolveActiveEnvironment]) are skipped (C-16); untagged migrations always
-  /// apply. Throws a [TomDbMigrationException] if a data source or migrator is
-  /// missing, a file name is malformed, or a script fails.
+  /// apply. Throws a [TomDbMigrationException] if [directory] does not exist, a
+  /// data source or migrator is missing, a file name is malformed, or a script
+  /// fails.
   static Future<void> migrateDatabases(String directory) async {
+    Directory dir = Directory(directory);
+    // Validated before the adaptor scan: the path is the argument this call was
+    // handed, and answering a wrong one with "reflection has not been
+    // initialized" names the wrong problem entirely.
+    requireMigrationsDirectory(dir, 'Migrations directory');
     if (_migrationAdaptorTypes.isEmpty) {
       _initializeMigrationAdaptorTypes();
     }
     final environmentName = resolveActiveEnvironment();
-    Directory dir = Directory(directory);
     await for (var database in dir.list()) {
       if (database is Directory) {
         String datasourceName = p.basename(database.path);
@@ -401,6 +440,10 @@ class TomDbMigrations {
     Directory dataSourceDirectory,
     String environmentName,
   ) async {
+    requireMigrationsDirectory(
+      dataSourceDirectory,
+      'Migrations directory for data source ${dsInfo.name}',
+    );
     await for (var schema in dataSourceDirectory.list()) {
       if (schema is Directory) {
         String schemaName = p.basename(schema.path);

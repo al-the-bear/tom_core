@@ -833,6 +833,116 @@ void main() {
     });
   });
 
+  // A migration tree the engine is told to walk has to be there. Walking a
+  // path that does not exist used to surface `PathNotFoundException` — a
+  // `dart:io` type from outside this module's exception family, carrying no key
+  // and no mention of migrations — so a caller matching on
+  // TomDbMigrationException saw a wrong path as an unrelated crash.
+  group('TomDbMigrations missing migrations directory', () {
+    late Directory root;
+
+    setUp(() => root = Directory.systemTemp.createTempSync('tom_mig_absent_'));
+    tearDown(() => root.deleteSync(recursive: true));
+
+    /// A path under the temp root that is deliberately never created.
+    String absent() => p.join(root.path, 'not_created');
+
+    TomDataSourceInfo dsi() =>
+        TomDataSourceInfo('tom_core_server_test', <String, dynamic>{})
+          ..type = 'mariadb';
+
+    test('migrateDatabases aborts inside the module exception family', () async {
+      // Reflection is deliberately *not* initialized here. The test therefore
+      // also pins the order: were the guard placed after the adaptor scan, this
+      // would fail with a StateError about reflection — naming the runtime
+      // instead of the path the caller actually got wrong.
+      await expectLater(
+        TomDbMigrations.migrateDatabases(absent()),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test('the abort carries the shared missing-directory key', () async {
+      final error = await _errorOf(
+        () => TomDbMigrations.migrateDatabases(absent()),
+      );
+      expect(
+        (error as TomDbMigrationException).key,
+        'db_migration.migration.migrations_directory_not_found',
+      );
+    });
+
+    test('the abort names the path and where it resolved to', () async {
+      // A relative path plus a wrong working directory is the common cause, and
+      // the given path alone cannot distinguish the two — so the message has to
+      // say what it resolved to as well.
+      final error = await _errorOf(
+        () => TomDbMigrations.migrateDatabases('zz_no_such_migrations_dir'),
+      );
+      expect(error.toString(), contains('zz_no_such_migrations_dir'));
+      expect(
+        error.toString(),
+        contains(Directory('zz_no_such_migrations_dir').absolute.path),
+      );
+      expect(error.toString(), contains('resolved to'));
+    });
+
+    test('an absolute path is not resolved against itself', () async {
+      // The other branch. `absent()` is already absolute, so repeating it under
+      // "resolved to" would be noise in the one message a reader is squinting
+      // at to spot a wrong path.
+      final error = await _errorOf(
+        () => TomDbMigrations.migrateDatabases(absent()),
+      );
+      expect(error.toString(), contains(absent()));
+      expect(error.toString(), isNot(contains('resolved to')));
+    });
+
+    test('migrateDataSource aborts the same way', () async {
+      final error = await _errorOf(
+        () => TomDbMigrations.migrateDataSource(
+          _RecordingMigrator(),
+          dsi(),
+          Directory(absent()),
+          defaultTomEnvironment.env,
+        ),
+      );
+      expect(error, isA<TomDbMigrationException>());
+      expect(
+        (error as TomDbMigrationException).key,
+        'db_migration.migration.migrations_directory_not_found',
+      );
+    });
+
+    test('an existing but empty tree is not an error', () async {
+      // The negative direction. "Nothing to migrate" is a legitimate state — a
+      // guard that rejected it would break every deployment whose migrations
+      // have not been written yet.
+      await TomDbMigrations.migrateDataSource(
+        _RecordingMigrator(),
+        dsi(),
+        root,
+        defaultTomEnvironment.env,
+      );
+    });
+
+    test(
+      'a tree holding only files, no schema directories, is not an error',
+      () async {
+        File(p.join(root.path, 'README.md')).writeAsStringSync('not a schema');
+        final migrator = _RecordingMigrator();
+
+        await TomDbMigrations.migrateDataSource(
+          migrator,
+          dsi(),
+          root,
+          defaultTomEnvironment.env,
+        );
+        expect(migrator.events, isEmpty);
+      },
+    );
+  });
+
   // The adaptor half of the same invariant. Whether a migration counts as
   // already applied is read from `versions`, which describes one schema, so
   // applying against a schema the instance is not bound to is refused rather
@@ -917,6 +1027,22 @@ TomDbMigrationException _instantiationFailure(Object? Function() construct) {
 /// A constructor stand-in that fails from a **named top-level frame**, so a
 /// forwarded trace can be told apart from one captured at the catch site.
 Never _throwingConstructor() => throw StateError('constructor exploded');
+
+/// Runs [action] and returns the error it raised.
+///
+/// `throwsA` proves the *type*; several of the missing-directory tests need the
+/// instance itself, to read its `key` or its message. A
+/// [TomDbMigrationException]'s `toString` embeds a per-instance uuid, so the
+/// message can only ever be asserted by substring — never by equality against a
+/// second instance.
+Future<Object> _errorOf(Future<void> Function() action) async {
+  try {
+    await action();
+  } catch (error) {
+    return error;
+  }
+  fail('expected the call to throw');
+}
 
 /// A [TomDbMigrator] that records the calls it receives and does nothing else.
 ///

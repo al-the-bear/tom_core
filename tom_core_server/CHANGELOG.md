@@ -2,6 +2,50 @@
 
 ### Fixed
 
+- **A missing migrations directory is now the same failure in both tools, and a
+  `TomDbMigrationException` in the engine (tcinc485).** The two entry points over
+  one tree disagreed about whether the tree being absent was an error at all.
+  `TomSchemaConvergenceCheck.checkAll` returned an empty report list — which no
+  call site can distinguish from "every pair converged", so a CI gate written as
+  `reports.every((r) => r.converged)` passed vacuously on a path that was never
+  read. `TomDbMigrations.migrateDatabases` did the opposite and listed the
+  directory with no existence check at all, surfacing `PathNotFoundException`: a
+  `dart:io` type from outside this module's exception family, carrying no key
+  and no mention of migrations, so a caller matching on
+  `TomDbMigrationException` saw a mistyped path as an unrelated crash.
+
+  A migrations tree a tool is *told* to walk is an input, not content. Absent,
+  it means the configured path is wrong — and tolerating it is the worst
+  available answer, because both tools then succeed having done nothing: the
+  engine walks zero data sources and returns normally, so the server boots
+  reporting migrations complete against a database it never touched.
+
+  Both now abort with `db_migration.migration.migrations_directory_not_found`
+  through one shared guard, `TomDbMigrations.requireMigrationsDirectory`, joining
+  `collectMigrationFiles` and the name parser as functions the engine and the
+  check share so they cannot drift. `migrateDataSource` and `checkSchema` are
+  guarded the same way. A **relative** path is reported with what it resolved to
+  as well, since its usual cause is the right path read from the wrong working
+  directory; an absolute one is already unambiguous and is not repeated. The
+  engine checks the path *before* scanning for adaptors, so a wrong path is
+  answered by naming the path rather than by "reflection has not been
+  initialized".
+
+  Three cases stay deliberately tolerant: an existing but empty root, a
+  datasource directory with no schema sub-directories, and a
+  `<datasource>/<schema>` pair absent below an existing root. The last is the
+  interesting one — `readChain` still yields an empty chain there, because that
+  lets the report localise the problem as *every entity missing from the
+  migrations*, which is a finding, and producing findings is what the check
+  exists for.
+
+  **Breaking, deliberately:** the earlier bar asserting that `checkAll` yields no
+  reports for an absent directory has been replaced by one asserting the abort.
+  No existing caller is affected — all five servers that call `migrateDatabases`
+  read `configuration.databaseMigrationsDirectory`, none overrides the
+  `./database_migrations` default, and every one of those directories is
+  committed.
+
 - **Two migration files that differ only in extension abort the run instead of
   silently dropping one (tcinc484).** Both halves of the module collected a
   schema directory into a map keyed by basename-without-extension — the engine

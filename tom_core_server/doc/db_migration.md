@@ -12,6 +12,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [Overview](#overview)
 - [The Directory Layout](#the-directory-layout)
   - [One File per Migration](#one-file-per-migration)
+  - [The Tree Root Has to Be There](#the-tree-root-has-to-be-there)
 - [Running Migrations](#running-migrations)
 - [Adaptor Discovery](#adaptor-discovery)
 - [The MariaDB Adaptor](#the-mariadb-adaptor)
@@ -120,6 +121,59 @@ which both the engine and the [convergence check](#schema-convergence) collect
 through — for the same reason they share the name parser and the ordering. A
 check that quietly read one of two colliding files would report on a chain the
 engine refuses to apply, which is worse than either behaviour on its own.
+
+### The Tree Root Has to Be There
+
+A migrations directory a tool is *told* to walk is an **input**, not content.
+Handed a path that does not exist, both `TomDbMigrations.migrateDatabases` and
+`TomSchemaConvergenceCheck.checkAll` / `checkSchema` abort with
+`db_migration.migration.migrations_directory_not_found`:
+
+```text
+Migrations directory not found: migrations (resolved to
+/srv/app/build/migrations). The migration tree has to exist where it is
+configured — check the path and the working directory the process was started
+in.
+```
+
+A **relative** path is reported with what it resolved to as well, because its
+most common cause is the right path read from the wrong working directory, and
+the path on its own cannot tell that apart from a typo. An absolute path is
+already unambiguous and is not repeated.
+
+Tolerating the absence is the worst of the available answers, because *both*
+tools then succeed while having done nothing:
+
+- the engine walks zero data sources, applies zero migrations, and returns
+  normally — so the server boots reporting migrations complete against a
+  database that was never touched;
+- the check returns an empty report list, which no call site can distinguish
+  from "every pair converged". A CI gate written as
+  `reports.every((r) => r.converged)` passes **vacuously** on a path that was
+  never read.
+
+The two tools also have to agree. Before this rule they did not: the check
+returned `[]` while the engine surfaced a raw `PathNotFoundException` — a
+`dart:io` type from outside this module's exception family, carrying no key and
+no mention of migrations, so a caller matching on `TomDbMigrationException` saw
+a mistyped path as an unrelated crash. Two entry points over one tree cannot
+hold different opinions about whether the tree being absent is a failure.
+
+Three things are deliberately **not** errors:
+
+| Case | Behaviour | Why |
+| ---- | --------- | --- |
+| The root exists but is empty | No migrations run; no reports | "Nothing to migrate yet" is a legitimate state for a project whose migrations have not been written. |
+| A datasource directory holds no schema sub-directories | Nothing runs | Same reason; the walk simply has no schemas to visit. |
+| A `<datasource>/<schema>` pair is absent below an existing root | `readChain` yields an empty chain | This is content below a root already proven to exist, and an empty chain lets `verify` report every entity as *missing from the migrations* — a precise finding, which is what the check exists to produce. An exception here would replace that finding with a crash. |
+
+The guard is one function, `TomDbMigrations.requireMigrationsDirectory`, shared
+by the engine and the check for the same reason `collectMigrationFiles` and the
+name parser are.
+
+The engine checks the path **before** scanning for adaptors, so a caller who
+gets the path wrong is told about the path rather than about reflection not
+being initialised.
 
 ## Running Migrations
 

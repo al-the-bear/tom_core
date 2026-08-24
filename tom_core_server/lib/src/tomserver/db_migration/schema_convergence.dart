@@ -399,14 +399,22 @@ class TomSchemaConvergenceCheck {
   /// A datasource directory with several schemas whose entities declare no
   /// [TomDbTable.schema] yields an [TomSchemaDivergenceKind.ambiguousEntitySchema]
   /// error rather than an arbitrary attribution.
+  ///
+  /// A [migrationsDirectory] that does not exist throws
+  /// [TomDbMigrationException] via
+  /// [TomDbMigrations.requireMigrationsDirectory] — the same refusal the engine
+  /// gives the same path. An empty report list would be indistinguishable, at
+  /// every call site, from "every pair converged", so a mistyped path would read
+  /// as a clean bill of health. An *existing* but empty tree is a different
+  /// thing and still yields no reports: there is genuinely nothing to check.
   Future<List<TomSchemaConvergenceReport>> checkAll(
     String migrationsDirectory, {
     Iterable<Type>? entityTypes,
   }) async {
+    final root = Directory(migrationsDirectory);
+    TomDbMigrations.requireMigrationsDirectory(root, 'Migrations directory');
     final types = entityTypes ?? TomEntitySchemaReader.discoverEntityTypes();
     final reports = <TomSchemaConvergenceReport>[];
-    final root = Directory(migrationsDirectory);
-    if (!root.existsSync()) return reports;
     for (final datasourceDirectory in _subdirectories(root)) {
       final datasource = p.basename(datasourceDirectory.path);
       final schemaDirectories = _subdirectories(datasourceDirectory);
@@ -428,17 +436,30 @@ class TomSchemaConvergenceCheck {
   }
 
   /// Checks the single pair [datasource] / [schema] under [migrationsDirectory].
+  ///
+  /// [migrationsDirectory] is the tree root and must exist, exactly as it must
+  /// for [checkAll] — the two take the same argument and cannot hold different
+  /// opinions about it. The *pair* below it need not: a schema directory that
+  /// was never created reads as an empty chain, which the report renders as
+  /// every entity missing from the migrations. That is a finding, and producing
+  /// findings is what this check is for.
   Future<TomSchemaConvergenceReport> checkSchema(
     String migrationsDirectory,
     String datasource,
     String schema, {
     Iterable<Type>? entityTypes,
-  }) async => verify(
-    datasource: datasource,
-    schema: schema,
-    chain: readChain(p.join(migrationsDirectory, datasource, schema)),
-    entityTypes: entityTypes ?? TomEntitySchemaReader.discoverEntityTypes(),
-  );
+  }) async {
+    TomDbMigrations.requireMigrationsDirectory(
+      Directory(migrationsDirectory),
+      'Migrations directory',
+    );
+    return verify(
+      datasource: datasource,
+      schema: schema,
+      chain: readChain(p.join(migrationsDirectory, datasource, schema)),
+      entityTypes: entityTypes ?? TomEntitySchemaReader.discoverEntityTypes(),
+    );
+  }
 
   /// Reads the migration artifacts of one schema directory in applied order.
   ///
@@ -448,6 +469,14 @@ class TomSchemaConvergenceCheck {
   /// basenames collide throw from the shared collector
   /// ([TomDbMigrations.collectMigrationFiles]) — because a tree the engine
   /// would reject is a defect the check must not paper over.
+  ///
+  /// A [schemaDirectory] that does not exist is the one absence this module
+  /// does **not** treat as an error. It is content below a root that was
+  /// already proven to exist, and an empty chain is the honest reading of it:
+  /// [verify] then reports every entity as missing from the migrations, which
+  /// localises the problem far better than an exception would. Contrast
+  /// [checkAll] and [TomDbMigrations.migrateDatabases], where the absent
+  /// directory is the *root* — an input, not content.
   List<TomMigrationArtifact> readChain(String schemaDirectory) {
     final directory = Directory(schemaDirectory);
     if (!directory.existsSync()) return const [];

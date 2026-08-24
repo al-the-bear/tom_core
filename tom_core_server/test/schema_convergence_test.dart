@@ -935,11 +935,18 @@ CREATE TABLE fixture_task (
     );
 
     test(
-      'a missing migrations directory yields no reports rather than throwing',
+      'a missing migrations directory aborts rather than reporting nothing',
       () async {
-        expect(
-          await check.checkAll('test/fixtures/convergence/absent'),
-          isEmpty,
+        // This replaces an earlier bar that asserted the opposite — an absent
+        // tree returning `[]`. The contract changed because `[]` is
+        // indistinguishable, at every call site, from "every pair converged":
+        // a gate written as `reports.every((r) => r.converged)` passes vacuously
+        // on a path that was never read. And the engine, given the very same
+        // path, refuses to run. Two tools over one tree cannot disagree about
+        // whether the tree being absent is a failure.
+        await expectLater(
+          check.checkAll('test/fixtures/convergence/absent'),
+          throwsA(isA<TomDbMigrationException>()),
         );
       },
     );
@@ -1000,5 +1007,96 @@ CREATE TABLE fixture_task (
         '[1]-alter_it',
       ]);
     });
+  });
+
+  // The missing-directory bar, from the checker's side. The tree *root* is an
+  // input the caller configured: absent, it is a wrong path, and the check has
+  // nothing to say about a tree it never read. A pair *below* an existing root
+  // is content, and content the check can describe — so the two cases are
+  // deliberately not the same, and each is pinned here.
+  group('TomSchemaConvergenceCheck missing directories', () {
+    final check = TomSchemaConvergenceCheck(dialect: dialect);
+    late Directory root;
+
+    setUp(() => root = Directory.systemTemp.createTempSync('tom_conv_absent_'));
+    tearDown(() => root.deleteSync(recursive: true));
+
+    String absent() => p.join(root.path, 'not_created');
+
+    test(
+      'the checker rejects a missing root with the engine\'s own key',
+      () async {
+        // Same tree, same key, from both tools — the point of the whole change.
+        Object? fromCheck;
+        try {
+          await check.checkAll(absent());
+        } catch (error) {
+          fromCheck = error;
+        }
+        Object? fromEngine;
+        try {
+          await TomDbMigrations.migrateDatabases(absent());
+        } catch (error) {
+          fromEngine = error;
+        }
+        expect(fromCheck, isA<TomDbMigrationException>());
+        expect(fromEngine, isA<TomDbMigrationException>());
+        expect(
+          (fromCheck as TomDbMigrationException).key,
+          (fromEngine as TomDbMigrationException).key,
+        );
+        expect(
+          fromCheck.key,
+          'db_migration.migration.migrations_directory_not_found',
+        );
+      },
+    );
+
+    test('checkSchema rejects a missing root too', () async {
+      // It takes the same root argument as checkAll, so it cannot hold a
+      // different opinion about that root existing.
+      await expectLater(
+        check.checkSchema(absent(), 'some_ds', 'some_schema'),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test(
+      'an existing but empty root yields no reports, and does not throw',
+      () async {
+        // The negative direction. An empty tree is a legitimate state — a guard
+        // that rejected it would reject every project whose migrations have not
+        // been written yet.
+        expect(await check.checkAll(root.path, entityTypes: const []), isEmpty);
+      },
+    );
+
+    test(
+      'a pair absent below an existing root is a finding, not an abort',
+      () async {
+        // `readChain` stays tolerant on purpose: an empty chain lets `verify`
+        // report every entity as missing from the migrations, which is a
+        // diagnosis — and a diagnosis is what the check exists to produce. An
+        // exception here would replace a precise finding with a crash.
+        // Named for the fixture's own schema so the entity is attributed to it —
+        // an unattributed entity would leave the report trivially converged and
+        // the test would prove nothing.
+        Directory(
+          p.join(root.path, fixtureDatasource),
+        ).createSync(recursive: true);
+        final report = await check.checkSchema(
+          root.path,
+          fixtureDatasource,
+          fixtureSchema,
+          entityTypes: [FixtureTaskRecord],
+        );
+        expect(report.chain, isEmpty);
+        expect(report.converged, isFalse);
+        expect(
+          report.errors.map((d) => d.kind),
+          contains(TomSchemaDivergenceKind.missingTable),
+        );
+      },
+    );
   });
 }
