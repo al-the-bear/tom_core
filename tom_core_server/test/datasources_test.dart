@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -1757,6 +1758,39 @@ void main() {
         }
       }
       expect(claims, isEmpty);
+    });
+  });
+
+  group('The example runs green', () {
+    final examplePath = p.join(
+      'example',
+      'datasources',
+      'datasources_example.dart',
+    );
+
+    test('under exactly the command its header documents', () async {
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        examplePath,
+      ]);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'example failed: ${result.stdout}${result.stderr}',
+      );
+      for (var step = 1; step <= 4; step++) {
+        expect(result.stdout, contains('$step. '));
+      }
+    });
+
+    test('with its expectations checked rather than asserted', () async {
+      final source = File(examplePath).readAsStringSync();
+      expect(
+        source,
+        isNot(contains('assert(')),
+        reason: 'an assert in the example does not run under `dart run`',
+      );
+      expect(source, contains('void check(bool ok, String expectation)'));
     });
   });
 }

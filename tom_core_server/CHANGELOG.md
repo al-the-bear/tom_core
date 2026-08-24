@@ -2,6 +2,19 @@
 
 ### Fixed
 
+- **The datasources example's expectations run again (tcinc472).** All nine
+  were written as `assert`, and `dart run` leaves assertions disabled — that is
+  what its `--enable-asserts` flag is for — so every one of them compiled out
+  under the exact command the file's own header documents. The example printed
+  a plausible four-step transcript and exited 0 whether or not `TomDbInt.of`
+  parsed an int or `p` rendered a placeholder; falsifying a check by hand
+  changed nothing. They are now a local `check(bool, String)` that throws, the
+  helper's dartdoc records why it is not an `assert`, and
+  `test/datasources_test.dart` runs the file under `dart run` requiring exit 0
+  with all four steps reported, plus a second test that fails if `assert(`
+  reappears. Verified by mutation: falsifying a check now fails the run, and
+  restoring the `assert` form fails the guard.
+
 - **A failed `XA START` no longer wedges the data source permanently
   (tcinc450).** `MariaDbXADatasource.startTransaction` mints the branch id
   *before* issuing the command, and the branch id is also the guard the same
@@ -289,6 +302,26 @@
   `.env` parser agree on where the key ends.
 
 ### Documentation
+
+- **A guide now has to name the artefacts that verify it (tcinc472).**
+  `doc/datasources.md`'s `## Verification` section already named both suites and
+  the `tool/run_db_tests.sh` runner, but not
+  `example/datasources/datasources_example.dart` — the one artefact a reader can
+  run in a second with no database. It now does, with the command, what the
+  example demonstrates, and where it deliberately stops.
+
+  The gap was not local. `test/api_reference_coverage_test.dart` previously
+  checked only that references a guide *writes* resolve, which says nothing
+  about a guide that writes none — the state datasources was in when it prompted
+  that check. A per-module test now requires each guide to name at least one
+  `*_test.dart` and, when the module ships one, at least one runnable artefact
+  under `example/<module>/`. Both, because an example nobody points at is an
+  example nobody runs, which is how the inert asserts above survived a year.
+  Reference migrations under `example/<module>/migrations/` do not count: that
+  is data a reader reads, not a program a reader runs. Twelve modules fail it
+  today and are quarantined as visible skips under quest todo `tcincb125_ahxt`,
+  with a meta-test that fails when a quarantined module has nothing left to
+  attribute.
 
 - **`TomLiteralSelect` states what its empty field set means (tcinc461).** The
   class overrode `getParameters` to return the list its caller declares, but

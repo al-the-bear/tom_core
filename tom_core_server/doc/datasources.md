@@ -874,6 +874,28 @@ against a server you already have, export `TOM_CORE_SERVER_TEST_DB_HOST`,
 `_PORT`, `_USER`, `_PASSWORD` and `_NAME` instead and run
 `dart test --tags db test/datasources_db_test.dart`.
 
+`example/datasources/datasources_example.dart` is the readable entry point to
+the same connection-free surface the first suite covers: boxing and parsing
+typed values, rendering literals, letting `objectOp` dispatch on a runtime type
+— including an iterable becoming a comma-separated list — and emitting the
+`:name` placeholder that keeps untrusted input out of the SQL. It stops exactly
+where a connection would be needed, which is why the drivers and the generated
+query objects are described in this document instead of run there.
+
+```bash
+dart run example/datasources/datasources_example.dart
+```
+
+`test/datasources_test.dart` runs the example under precisely that command and
+requires it to exit 0 with all four numbered steps reported, so the transcript
+in the file is what the module currently does rather than what it did when the
+file was written. Its expectations are written as a local `check(bool, String)`
+that throws, not as `assert`: `dart run` leaves assertions disabled — that is
+what its `--enable-asserts` flag is for — so an `assert` would compile out under
+the very command documented above, leaving an example that prints a plausible
+transcript and exits 0 with every expectation in it violated. A second test
+holds that line, failing if `assert(` reappears in the file.
+
 ## Core Components
 
 - **`TomDbType<T>`** and its concrete subtypes — boxed SQL values with

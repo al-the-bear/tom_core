@@ -108,6 +108,20 @@
 /// package is excused when the paragraph names that package, which is the same
 /// information a reader needs to make sense of it.
 ///
+/// That check is about the references a guide *does* write, so it says nothing
+/// about a guide that writes none — the exact state `doc/datasources.md` was in
+/// when it prompted the check. The per-module half closes it from the other
+/// side: each guide must name at least one suite, and — when the module ships
+/// one — at least one runnable artefact under `example/<module>/`. Both, not
+/// either, because they answer different halves of the same question, and an
+/// example nobody points at is an example nobody runs. The datasources example
+/// spent a year with nine expectations written as `assert`, which `dart run`
+/// leaves disabled, so it printed a plausible transcript and exited 0 with
+/// every one of them violated. Reference migrations under
+/// `example/<module>/migrations/` do not satisfy this: four guides cite that
+/// SQL while explaining a table, which is data a reader reads, not a program a
+/// reader runs. Twelve modules are quarantined under one quest todo.
+///
 /// The group before it asks a question about the document's *tense* rather than
 /// its content. Every check above compares a claim against the code as it
 /// stands; a claim that something is **not finished** cannot be checked that
@@ -1631,6 +1645,66 @@ List<(String, List<String>)> _guides() =>
         .toList()
       ..sort((a, b) => a.$1.compareTo(b.$1));
 
+/// Every runnable artefact under `example/<module>/`, as a guide would write
+/// the path.
+///
+/// Both extensions count. An example is not always a Dart program —
+/// `example/scheduling/cluster/run_cluster_demo.sh` is the one artefact that
+/// substantiates the cluster claims, and a guide that names it has pointed the
+/// reader at the right thing.
+List<String> _exampleArtifacts(String module) {
+  final directory = Directory('example/$module');
+  if (!directory.existsSync()) return const [];
+  return [
+    for (final entry in directory.listSync(recursive: true))
+      if (entry is File &&
+          (entry.path.endsWith('.dart') || entry.path.endsWith('.sh')))
+        entry.path,
+  ]..sort();
+}
+
+/// Matches a suite path, however a guide writes one.
+final RegExp _suiteReference = RegExp(r'[\w./-]*_test\.dart\b');
+
+/// What `doc/<module>.md` never points the reader at, in words.
+///
+/// Two artefacts, checked together because a reader arrives with one question:
+/// *what actually substantiates this?* A guide answers it with the suite that
+/// covers the behaviour and the example that shows it being used. Naming
+/// neither is how `doc/datasources.md` spent a year describing an example that
+/// nobody ran and whose every expectation was an `assert` — inert under the
+/// `dart run` its own header documents.
+///
+/// Migration SQL under `example/<module>/migrations/` does not count, because
+/// it is reference data a guide cites while explaining a table, not something
+/// a reader runs; only `.dart` and `.sh` artefacts are looked for.
+List<String> _unnamedVerification(String module) {
+  final text = File('doc/$module.md').readAsStringSync();
+  final examples = _exampleArtifacts(module);
+  return [
+    if (!_suiteReference.hasMatch(text)) 'names no test suite',
+    if (examples.isNotEmpty && !examples.any(text.contains))
+      'names none of its examples (${examples.join(', ')})',
+  ];
+}
+
+/// The modules whose guide does not yet name the suite and the example that
+/// verify it — quest todo `tcincb125_ahxt`.
+const Set<String> _verificationPendingAttribution = {
+  'audit',
+  'authentication',
+  'db_migration',
+  'endpoints',
+  'export',
+  'file_storage',
+  'healthcheck',
+  'little_things',
+  'messaging',
+  'object_persistence',
+  'server',
+  'transactions',
+};
+
 /// The modules whose Overview table has not been reconciled against its
 /// exports yet — quest todo `tcincb3_ahwn`.
 ///
@@ -2955,6 +3029,62 @@ None — this module exposes no top-level functions or constants.
             'and the sample-package reference all resolve; the two invented '
             'prose paths and the invented fenced command do not',
       );
+    });
+
+    for (final module in _modules()) {
+      test(
+        '$module names both',
+        () {
+          expect(
+            _unnamedVerification(module),
+            isEmpty,
+            reason:
+                'A guide is where a reader goes to find out what backs the '
+                'claims in it. Naming a suite but not the example leaves the '
+                'example unowned, which is exactly how the datasources '
+                'example came to spend a year with nine expectations written '
+                'as `assert` — inert under the `dart run` its own header '
+                'documents, so it printed a plausible transcript and exited 0 '
+                'with every one of them violated. Nothing pointed at it, so '
+                'nothing ran it.',
+          );
+        },
+        skip: _verificationPendingAttribution.contains(module)
+            ? 'verification artefacts not attributed yet — quest todo '
+                  'tcincb125_ahxt.'
+            : null,
+      );
+    }
+
+    test('every quarantined module still has something to attribute', () {
+      final settled = [
+        for (final module in _verificationPendingAttribution)
+          if (_unnamedVerification(module).isEmpty) module,
+      ];
+      expect(
+        settled,
+        isEmpty,
+        reason:
+            'a quarantine entry with nothing left to suppress turns a passing '
+            'module back into an unchecked one; drop it from the set',
+      );
+    });
+
+    test('an unnamed artefact is what the sweep reports', () {
+      // Emptiness for the settled modules is only worth something if the
+      // measurement can see the debt at all — so drive it over one of each.
+      expect(_unnamedVerification('datasources'), isEmpty);
+      expect(_unnamedVerification('transactions'), [
+        'names no test suite',
+        startsWith('names none of its examples'),
+      ]);
+      // Reference migrations are not an example a reader runs, and `audit.md`
+      // names some — so it is the case that separates citing data from
+      // pointing at a program.
+      expect(_exampleArtifacts('audit'), ['example/audit/audit_example.dart']);
+      expect(_unnamedVerification('audit'), [
+        startsWith('names none of its examples'),
+      ]);
     });
   });
 
