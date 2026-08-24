@@ -16,28 +16,12 @@ import 'package:yaml/yaml.dart';
 /// the same digits. `TomConfig` casts rather than parses, so read a substituted
 /// number with `TomStringConfig` and parse it.
 class TomYaml {
-  /// Loads a YAML file and merges it into [result] with environment variable substitution.
+  /// Loads a YAML file and returns it as a Map, substituting environment
+  /// variables.
   ///
-  /// Environment variables in the YAML values are expanded using [Platform.environment].
-  ///
-  /// Throws a [PathNotFoundException] if [filename] does not exist — the
-  /// file is required, not optional. For an optional overlay, guard with
-  /// `File(filename).existsSync()` or catch [PathNotFoundException]
-  /// specifically; a bare `catch` would also swallow a syntax error in a file
-  /// that *is* there and report it as absent. The read happens before the
-  /// merge, so a throw leaves [result] untouched.
-  static void mergeInYamlFile(Map<String, Object?> result, String filename) {
-    var yamlText = File(filename).readAsStringSync();
-    var yamlData = loadYaml(yamlText);
-    var cleanMap = makeCleanJsonMap(yamlData);
-    substituteEnvVars(cleanMap, Platform.environment);
-    mergeMapsOneSided(result, cleanMap);
-  }
-
-  /// Loads a YAML file and returns it as a Map with environment variable substitution.
-  ///
-  /// Environment variables in the YAML values are expanded using [Platform.environment].
-  /// Supports placeholders like `${VAR_NAME}` or `${VAR_NAME:default}`.
+  /// This is the class's only loader; [mergeInYamlFile] is one line over it.
+  /// Values are expanded from [Platform.environment] and support placeholders
+  /// like `${VAR_NAME}` or `${VAR_NAME:default}`.
   ///
   /// ## Example YAML with placeholders
   /// ```yaml
@@ -60,5 +44,19 @@ class TomYaml {
     var cleanMap = makeCleanJsonMap(yamlData);
     substituteEnvVars(cleanMap, Platform.environment);
     return cleanMap;
+  }
+
+  /// Loads a YAML file with [loadYamlFile] and merges it into [result].
+  ///
+  /// The load *is* [loadYamlFile] — same normalisation, same substitution,
+  /// same [PathNotFoundException] for an absent [filename]. See there for the
+  /// placeholder syntax and for what to do about an optional overlay.
+  ///
+  /// The merge is one-sided: keys from [filename] overwrite those already in
+  /// [result], and keys only in [result] survive. Because the load is an
+  /// argument to the merge it completes first, so a throw leaves [result]
+  /// untouched — an overlay never half-applies.
+  static void mergeInYamlFile(Map<String, Object?> result, String filename) {
+    mergeMapsOneSided(result, loadYamlFile(filename));
   }
 }

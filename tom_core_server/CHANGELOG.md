@@ -532,6 +532,28 @@
 
 ### Internal
 
+- **`TomYaml.mergeInYamlFile` now delegates to `loadYamlFile` (tcinc442).** The
+  two methods shared four of their five lines — read, `loadYaml`,
+  `makeCleanJsonMap`, `substituteEnvVars` — and differed only in whether the
+  tree was returned or merged. `mergeInYamlFile` is now
+  `mergeMapsOneSided(result, loadYamlFile(filename))`, and `loadYamlFile` is
+  declared first as the class's only loader.
+
+  The duplication had already cost documentation once: `loadYamlFile` carried
+  the `${VAR_NAME}` / `${VAR_NAME:default}` syntax with a worked example and
+  `mergeInYamlFile` carried a single summary line, though it performed exactly
+  the same substitution. Its dartdoc now points at `loadYamlFile` for the
+  placeholder syntax instead of restating it, so there is one place to keep
+  current.
+
+  A test was added first, and deliberately not a restatement of an expected
+  tree: it loads one file through both entry points and requires the results to
+  be equal. That is the invariant the duplication put at risk and the one thing
+  nothing checked — dropping `substituteEnvVars` from the `mergeInYamlFile`
+  copy alone left every pre-existing `TomYaml` test green. The
+  throw-before-touching guarantee also survives the change, now because the
+  load is an argument to the merge rather than a statement before it.
+
 - **The cmdline example reaches every `TomEnvFile` method it should
   (tcinc430).** It ran five steps and demonstrated two of the five methods:
   `parse`, `readAsync` and `load` appeared nowhere, though the API mirror lists

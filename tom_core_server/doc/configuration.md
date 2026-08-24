@@ -479,7 +479,7 @@ here instead. Its static `getDefaultValues` needs no subclass and is used.
 dart test test/configuration_test.dart   # or `testkit :test` for the package
 ```
 
-Sixty tests in eight groups carry the behaviour — the provider's
+Sixty-one tests in eight groups carry the behaviour — the provider's
 `exists` / `get` (including the explicit-null cases), `TomConfig`'s three
 resolution branches and its one widening, `getDefaultValues` and the four-layer
 merge order, the derived `args` field, the boundary between the merged map and

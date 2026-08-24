@@ -579,6 +579,36 @@ void main() {
       expect(existing['added'], 'yes');
     });
 
+    test('the two entry points load a file identically', () async {
+      // The one invariant the two methods have to share and nothing used to
+      // check: whatever loadYamlFile does to a file on the way in --
+      // normalise, substitute, type -- mergeInYamlFile must do the same, or
+      // the same configuration file means two things depending on which
+      // method the caller reached for. Asserted differentially rather than by
+      // restating the expected tree, because the claim is that the two agree,
+      // not that either produces some particular shape; a literal expectation
+      // would have to be updated twice and could drift to match one side.
+      final f = File('${dir.path}/c.yaml');
+      await f.writeAsString(
+        'database:\n'
+        '  host: \${TOM_CFG_TEST_HOST:localhost}\n'
+        '  port: 3306\n'
+        '  debug: true\n'
+        'path: \${PATH}\n',
+      );
+
+      final loaded = TomYaml.loadYamlFile(f.path);
+      final merged = <String, Object?>{};
+      TomYaml.mergeInYamlFile(merged, f.path);
+
+      expect(merged, loaded);
+      // Not vacuous: the file really did carry a substitution and a typed
+      // scalar through both paths.
+      expect((merged['database'] as Map)['host'], 'localhost');
+      expect((merged['database'] as Map)['port'], isA<int>());
+      expect(merged['path'], Platform.environment['PATH']);
+    });
+
     test('both entry points throw when the file is absent', () {
       // The sibling loader in the same configuration pipeline does the
       // opposite -- TomEnvFile.read returns an empty map for an absent file,
