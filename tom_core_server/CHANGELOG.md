@@ -2,6 +2,32 @@
 
 ### Fixed
 
+- **A failed configuration cast now carries the `TypeError` it caught
+  (tcinc443).** `TomConfig._getValue` caught the failed cast, built a fresh
+  `Exception` from the key, the type and the value, and dropped the caught
+  object and its stack trace. The replacement message is adequate for a scalar
+  mismatch and actively misleading for a generic one: a YAML `hosts: [a, b]`
+  decodes as `List<dynamic>`, so reading it as `List<String>` fails on the
+  *element* type — and the message reported `with value [a, b]`, which is
+  exactly what the operator wrote and looks perfectly valid. The only statement
+  of the real problem, `List<dynamic> is not a subtype of List<String>`, was
+  discarded.
+
+  The path now throws a **`TomConfigurationException`** (new;
+  `TomServerException` → `TomException`, so it is a real `Exception` and carries
+  the isolate name and request UUID like every other server error). Its `key` is
+  `configuration.tom_config.property_type_mismatch`, `parameters` holds the
+  `key`, `type` and `value` separately, and the caught `TypeError` is chained as
+  `rootException` with its trace in `stack` — the same shape the datasources and
+  the endpoints pipeline already used.
+
+  The catch is also narrowed from a bare `catch` to `on TypeError`. Both arms
+  assume a failed cast — the widening reads it as "aimed at a `double`", the
+  throw reports it as a type mismatch — so a bare catch would apply that reading
+  to anything else that ever came to be thrown there. Catching an `Error` is
+  deliberate and is why the clause cannot be `on Exception`: a `TypeError`
+  normally signals a bug, but this one is raised by data the operator wrote.
+
 - **`TomConfig` now widens a whole number to a `double` (tcinc436).** A YAML
   `rate: 2` or a JSON `"rate": 2` decodes to an `int`, and `_getValue` cast with
   a bare `as T` — so `TomDoubleConfig('rate')` threw "Could not set property of

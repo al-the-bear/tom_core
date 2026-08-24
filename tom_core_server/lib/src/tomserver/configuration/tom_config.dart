@@ -1,4 +1,33 @@
+import '../little_things/server_exception.dart';
 import 'base_server_configuration.dart';
+
+/// A configuration property could not be resolved to the type asked for.
+///
+/// Thrown by [TomConfig] when the configured value fails the cast to `T` and
+/// the `int`→`double` widening does not apply. Carries the [TypeError] that
+/// the cast raised as `rootException`, together with its stack trace — the
+/// message names the key, the wanted type and the value, which is enough for a
+/// scalar mismatch but not for a generic one, where only the chained
+/// `TypeError` names the subtype relation that actually failed.
+///
+/// `parameters` carries the `key`, `type` and `value` separately, so a handler
+/// can report them without parsing the message.
+///
+/// This is the only *exception* the resolution path raises. An obligatory key
+/// with no default throws a bare `String` instead, which no `on Exception
+/// catch` will see — see `doc/configuration.md` under *Not Yet Implemented*.
+class TomConfigurationException extends TomServerException {
+  /// Creates a configuration resolution failure.
+  TomConfigurationException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.clientThrow,
+  });
+}
 
 /// A typed, eagerly-resolved view of a single configuration property.
 ///
@@ -10,7 +39,8 @@ import 'base_server_configuration.dart';
 ///
 /// Resolution order at construction:
 /// 1. If the provider has the [key], its value is cast to [T] (a failed cast
-///    throws an [Exception] naming the key, type, and value).
+///    throws a [TomConfigurationException] naming the key, type and value, and
+///    chaining the [TypeError] the cast raised).
 /// 2. Otherwise, if a default was supplied via [TomConfig.withDefault], the
 ///    default is used.
 /// 3. Otherwise the property is considered obligatory and construction throws.
@@ -90,9 +120,20 @@ class TomConfig<T> {
     final provider = TomServerConfigResourceProvider.getServerConfig();
     if (provider.exists(_propertyKey)) {
       final raw = provider.get(_propertyKey);
+      // `on TypeError` rather than a bare `catch`: a failed `as` is the only
+      // thing this `try` means to handle, and both arms below assume it — the
+      // widening treats the failure as "aimed at a double", the throw reports
+      // it as a type mismatch. A bare catch would apply that reading to
+      // anything else that ever came to be thrown here.
+      //
+      // Catching an *Error* is deliberate, and is why the clause cannot be
+      // `on Exception`. A TypeError normally signals a bug, but this one is
+      // raised by data the operator wrote, so it is a configuration fault and
+      // has to become a reportable exception rather than reach the caller as
+      // an Error.
       try {
         _value = raw as T;
-      } catch (exception) {
+      } on TypeError catch (error, stackTrace) {
         // A configuration file cannot say "double": `rate: 2` in YAML and
         // `"rate": 2` in JSON both decode to an int. The reflected path already
         // widens such a value onto a declared double field, so widen it here
@@ -108,8 +149,19 @@ class TomConfig<T> {
         if (raw is int && 0.0 is T) {
           _value = raw.toDouble() as T;
         } else {
-          throw Exception(
+          // The caught error is chained rather than summarised away. The
+          // message below names the key, the wanted type and the value, which
+          // is enough for a scalar mismatch — but not for a generic one: a
+          // YAML `hosts: [a, b]` read as `List<String>` fails on the *element*
+          // type, and the message reports `with value [a, b]`, which is what
+          // the operator wrote and looks perfectly valid. Only the TypeError
+          // says `List<dynamic> is not a subtype of List<String>`.
+          throw TomConfigurationException(
+            "configuration.tom_config.property_type_mismatch",
             "Could not set property of type $T from value of property $_propertyKey with value $raw",
+            parameters: {'key': _propertyKey, 'type': '$T', 'value': raw},
+            rootException: error,
+            stack: stackTrace,
           );
         }
       }

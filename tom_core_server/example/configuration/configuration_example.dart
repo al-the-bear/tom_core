@@ -6,7 +6,9 @@
 /// loading a YAML file with `${VAR:default}` substitution via [TomYaml], and
 /// the boundary between the merged value map and the provider — steps 7 and 8
 /// show that the environment reaches a configuration object's *fields* but not
-/// [TomConfig], and the one line that changes that.
+/// [TomConfig], and the one line that changes that. Step 9 shows the failure
+/// shape: a bad cast raises [TomConfigurationException] chaining the
+/// [TypeError], which step 5's obligatory miss — a bare `String` — does not.
 ///
 /// Constructing a [TomBaseServerConfiguration] subclass is not shown: it needs
 /// a generated `setValues` and so is described in `doc/configuration.md`
@@ -121,6 +123,34 @@ database:
   check(
     TomStringConfig('PATH').get()!.isNotEmpty,
     'the environment resolves once the merged map is the provider',
+  );
+
+  // 9. A value of the wrong type throws TomConfigurationException, which
+  //    chains the TypeError the cast raised. Note the contrast with step 5:
+  //    that one needs a bare `catch` because an obligatory miss throws a bare
+  //    String, while this one can be caught by type.
+  //
+  //    The chained cause is the point. A YAML `hosts: [a, b]` decodes as
+  //    List<dynamic>, so asking for List<String> fails on the *element* type --
+  //    and the exception's own message reports "with value [a, b]", which is
+  //    exactly what the operator wrote and looks perfectly valid. Only the
+  //    TypeError names the subtype relation that actually failed.
+  TomServerConfigResourceProvider.setServerConfigProvider(
+    TomServerConfigResourceProvider.from({
+      'hosts': <dynamic>['a', 'b'],
+    }),
+  );
+  Object? cause;
+  try {
+    TomConfig<List<String>>('hosts');
+  } on TomConfigurationException catch (e) {
+    cause = e.rootException;
+  }
+  print('9. chained cause             : $cause');
+  check(cause is TypeError, 'the failed cast is chained as rootException');
+  check(
+    '$cause'.contains('List<dynamic>') && '$cause'.contains('List<String>'),
+    'the cause names the subtype relation the message cannot',
   );
 }
 

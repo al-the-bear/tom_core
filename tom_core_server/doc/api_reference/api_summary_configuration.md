@@ -16,6 +16,7 @@ and YAML loading with environment-variable substitution.
   - [TomIntConfig](#tomintconfig)
   - [TomDoubleConfig](#tomdoubleconfig)
   - [TomBoolConfig](#tomboolconfig)
+  - [TomConfigurationException](#tomconfigurationexception)
   - [TomYaml](#tomyaml)
 - [Global Functions and Constants](#global-functions-and-constants)
 
@@ -34,8 +35,9 @@ environment, then a `.env` file, then command-line arguments, which win).
 
 `TomConfig<T>` is a typed, eagerly-resolved view of a single property, with
 specialised subclasses `TomStringConfig`, `TomIntConfig`, `TomDoubleConfig`, and
-`TomBoolConfig`. `TomYaml` loads YAML files with `${VAR}` / `${VAR:default}`
-environment-variable substitution.
+`TomBoolConfig`; a value that fails the cast raises
+`TomConfigurationException`, which chains the `TypeError`. `TomYaml` loads YAML
+files with `${VAR}` / `${VAR:default}` environment-variable substitution.
 
 ## Class Hierarchy
 
@@ -49,6 +51,10 @@ TomConfig<T>
     ├── TomIntConfig      (T = int)
     ├── TomDoubleConfig   (T = double)
     └── TomBoolConfig     (T = bool)
+
+TomException  (tom_core_kernel)
+    └── TomServerException
+            └── TomConfigurationException
 
 TomYaml
 ```
@@ -216,6 +222,10 @@ setting is cleared); a non-nullable `T` throws, naming the key, the type and the
 value. Declare the property nullable where clearing it is a legitimate
 deployment choice.
 
+A failed cast throws `TomConfigurationException`; an obligatory key with no
+default throws a bare `String`, which is not an `Exception` at all. The two
+failure modes of one constructor therefore need two different catch shapes.
+
 - **Type Parameters:** `T` — the resolved value type.
 
 #### Constructors
@@ -287,6 +297,42 @@ A `TomConfig` specialised to `bool`.
 ```dart
 TomBoolConfig(String key)
 TomBoolConfig.withDefault(String key, bool value)
+```
+
+### TomConfigurationException
+
+A configuration property failed the cast to `T` and the `int`→`double` widening
+did not apply. Raised by every `TomConfig` constructor.
+
+- **Extends:** `TomServerException`
+
+The `TypeError` the cast raised is chained as `rootException`, with its trace in
+`stack`. Read it before concluding the file is right: the message names the key,
+the wanted type and the value, which is enough for a scalar mismatch but not for
+a generic one. A YAML `hosts: [a, b]` read as `List<String>` fails on the
+element type, and the message reports `with value [a, b]` — exactly what the
+operator wrote. Only the cause says `List<dynamic> is not a subtype of
+List<String>`.
+
+| Field | Value |
+| ----- | ----- |
+| `key` | `configuration.tom_config.property_type_mismatch` |
+| `parameters` | `key`, `type` and `value`, so a handler need not parse the message |
+| `rootException` | the `TypeError` raised by the failed cast |
+| `stack` | that `TypeError`'s stack trace |
+
+#### Constructors
+
+```dart
+TomConfigurationException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog,
+  bool clientThrow,
+})
 ```
 
 ### TomYaml

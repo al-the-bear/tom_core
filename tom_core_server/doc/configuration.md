@@ -30,6 +30,7 @@ environment-variable substitution.
 | `TomServerConfigResourceProvider` | class | Holds the configuration tree; answers `exists`/`get` (dotted paths) |
 | `TomConfig<T>` | class | A typed, eagerly-resolved view of one property |
 | `TomStringConfig` / `TomIntConfig` / `TomDoubleConfig` / `TomBoolConfig` | class | `TomConfig` specialised to a concrete type |
+| `TomConfigurationException` | exception | A property failed the cast to `T`; chains the `TypeError` |
 | `TomBaseServerConfiguration` | reflected class | Base for a server's settings; merges all sources on construction |
 | `TomYaml` | class | Loads YAML files with `${VAR:default}` substitution |
 | `tomAppId` | variable | Process-wide application id |
@@ -80,7 +81,8 @@ on first `getServerConfig`) or construct with `.load(loader)`.
 `TomConfig<T>` reads its value **once at construction** from the active provider
 and caches it. Resolution order:
 
-1. provider has the key → cast its value to `T` (a bad cast throws);
+1. provider has the key → cast its value to `T` (a bad cast throws a
+   [`TomConfigurationException`](#what-a-bad-cast-throws));
 2. else a default was supplied → use it;
 3. else the property is obligatory → construction throws.
 
@@ -140,6 +142,44 @@ optional deployment setting in *Deployment Settings* below is typed `String?`.
 This is the same distinction the provider draws in *The Resource Provider*
 above, carried one layer up: `exists` reports a cleared key as configured
 precisely so `TomConfig` cannot silently fall through to a default.
+
+### What a bad cast throws
+
+Step 1 raises a `TomConfigurationException` — a `TomServerException`, so it is
+a real `Exception` and carries the isolate name and the request UUID like every
+other server error. Its `key` is
+`configuration.tom_config.property_type_mismatch`, and `parameters` holds the
+`key`, `type` and `value` separately, so a handler can report them without
+parsing the message.
+
+The `TypeError` the cast raised is chained as `rootException`, with its stack
+trace in `stack`. That matters more than it looks. The message alone —
+
+```text
+Could not set property of type List<String> from value of property hosts
+with value [a, b]
+```
+
+— names a value the operator wrote and that looks perfectly valid. A YAML
+`hosts: [a, b]` decodes as `List<dynamic>`, so the cast fails on the *element*
+type, and only the chained cause says so:
+
+```dart
+try {
+  TomConfig<List<String>>('hosts');
+} on TomConfigurationException catch (e) {
+  print(e.rootException);
+  // type 'List<dynamic>' is not a subtype of type 'List<String>' in type cast
+}
+```
+
+So read `rootException` before concluding the file is right and the code is
+wrong. The same applies to any generic type — `Map<String, String>` over a
+decoded `Map<String, dynamic>` fails the identical way.
+
+Note the asymmetry with step 3: an obligatory key with no default throws a bare
+`String`, not an exception at all. See [Not Yet
+Implemented](#not-yet-implemented).
 
 Because the value is captured at construction, build a `TomConfig` *after* the
 provider is installed; later provider changes are not observed by an existing
@@ -410,7 +450,8 @@ absent, so a malformed overlay silently stops being applied.
   throws the message rather than an exception carrying it, so `on Exception
   catch` does not catch it and a plain `catch (e)` hands back a `String`. Use a
   bare `catch` around the declaration of an obligatory property. A failed
-  *cast* is unaffected — that path throws a real `Exception`.
+  *cast* is unaffected — that path throws a `TomConfigurationException`, so the
+  two failures of one constructor need two different catch shapes.
 - **A substituted YAML value is text.** `${VAR}` expansion runs after the YAML
   parser has assigned types, so `port: ${DB_PORT:3306}` yields the `String`
   `'3306'` where `port: 3306` yields an `int`, and `TomConfig` casts rather
@@ -450,13 +491,16 @@ absent, so a malformed overlay silently stops being applied.
 ## Verification
 
 `example/configuration/configuration_example.dart` walks the codegen-free
-surface in eight steps, with no setup of any kind — install a provider,
+surface in nine steps, with no setup of any kind — install a provider,
 resolve a dotted path, fall back to a default, read through `~`, watch an
 obligatory miss throw, load a YAML file with `${VAR:default}` substitution,
 and then the two steps that make [Source
 Precedence](#source-precedence) legible: `PATH` failing to resolve through
 `TomConfig` although every platform sets it, and the same lookup succeeding
-once the merged map has been installed as the provider. Run it exactly as its
+once the merged map has been installed as the provider. The last step is the
+other failure shape — a bad cast raising `TomConfigurationException` and the
+`TypeError` it chains, which is also where the contrast with step 5's bare
+`String` becomes visible in code rather than in prose. Run it exactly as its
 header documents:
 
 ```bash
@@ -479,7 +523,7 @@ here instead. Its static `getDefaultValues` needs no subclass and is used.
 dart test test/configuration_test.dart   # or `testkit :test` for the package
 ```
 
-Sixty-one tests in eight groups carry the behaviour — the provider's
+Sixty-three tests in eight groups carry the behaviour — the provider's
 `exists` / `get` (including the explicit-null cases), `TomConfig`'s three
 resolution branches and its one widening, `getDefaultValues` and the four-layer
 merge order, the derived `args` field, the boundary between the merged map and

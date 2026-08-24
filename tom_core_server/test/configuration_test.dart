@@ -175,6 +175,51 @@ void main() {
       expect(() => TomIntConfig('port'), throwsException);
     });
 
+    test('the cast failure carries the TypeError it caught', () {
+      // A failed `as` throws a TypeError, which is an Error and not an
+      // Exception -- so the catch cannot be `on Exception` and the caught
+      // object cannot simply be rethrown to a caller that expects one. It is
+      // converted, and the conversion is where a cause is easiest to drop.
+      _install({'port': 'not-an-int'});
+      Object? thrown;
+      try {
+        TomIntConfig('port');
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown, isA<TomConfigurationException>());
+      final ex = thrown as TomConfigurationException;
+      expect(ex.rootException, isA<TypeError>());
+      expect(ex.stack, isA<StackTrace>());
+      expect(ex.key, 'configuration.tom_config.property_type_mismatch');
+    });
+
+    test('the cast failure keeps the subtype relation that failed', () {
+      // Not a restatement of the test above: this is *why* the cause is worth
+      // keeping. A YAML `hosts: [a, b]` decodes as List<dynamic>, so asking for
+      // List<String> fails on the element type -- and the replacement message
+      // reports "with value [a, b]", which is exactly what the operator wrote
+      // and looks perfectly valid. Only the TypeError names the real problem.
+      // Asserted on the chained cause rather than on the message, so the
+      // diagnostic has to still be *reachable*, not merely once have been
+      // interpolated into a string.
+      _install({
+        'hosts': <dynamic>['a', 'b'],
+      });
+      Object? thrown;
+      try {
+        TomConfig<List<String>>('hosts');
+      } catch (e) {
+        thrown = e;
+      }
+      final cause = (thrown as TomConfigurationException).rootException;
+      expect(cause.toString(), contains('List<dynamic>'));
+      expect(cause.toString(), contains('List<String>'));
+      // And the message the operator sees still names the key and the value,
+      // so chaining adds to the report rather than replacing it.
+      expect(thrown.toString(), contains('hosts'));
+    });
+
     test('the typed subclasses resolve their type', () {
       _install({'s': 'hi', 'i': 3, 'd': 1.5, 'b': false});
       expect(TomStringConfig('s').get(), 'hi');
