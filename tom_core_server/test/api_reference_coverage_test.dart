@@ -490,22 +490,116 @@ Set<String> _declaredApi(String source) => {
 /// module's oldest rows read as naming types the barrel does not export.
 List<String>? _overviewTableTypes(String module) {
   final lines = File('doc/$module.md').readAsLinesSync();
-  final heading = lines.indexWhere((line) => line.startsWith('| Type |'));
-  if (heading < 0) return null;
-
-  final names = <String>{};
-  // +2 skips the heading and the `| ---- |` separator beneath it.
-  for (final line in lines.skip(heading + 2)) {
-    if (!line.startsWith('|')) break;
-    final cell = line.split('|')[1];
-    names.addAll(
-      RegExp(
-        r'`([A-Za-z_][A-Za-z0-9_]*)(?:<[^`]*>)?`',
-      ).allMatches(cell).map((match) => match.group(1)!),
-    );
-  }
-  return names.toList()..sort();
+  if (!lines.any((line) => line.startsWith('| Type |'))) return null;
+  return _typeTableNames(lines).toList()..sort();
 }
+
+/// The type names the first column of a `| Type |` table in [markdown] carries.
+///
+/// Extracted from the table text rather than from a path so both callers can
+/// drive it: the guide's Overview table and the module readme's Key types
+/// table make the same kind of claim in the same syntax, and reading them with
+/// one function is what keeps the two checks measuring the same thing.
+///
+/// **Every** such table in the document counts, not just the first. A readme
+/// may split its types across several tables — `db_migration` uses three, one
+/// per half plus the model they share — and taking only the first would read a
+/// deliberately sectioned document as a truncated one.
+Set<String> _typeTableNames(List<String> markdown) {
+  final names = <String>{};
+  for (var i = 0; i < markdown.length; i++) {
+    if (!markdown[i].startsWith('| Type |')) continue;
+    // +2 skips the heading and the `| ---- |` separator beneath it.
+    for (final line in markdown.skip(i + 2)) {
+      if (!line.startsWith('|')) break;
+      names.addAll(
+        RegExp(
+          r'`([A-Za-z_][A-Za-z0-9_]*)(?:<[^`]*>)?`',
+        ).allMatches(line.split('|')[1]).map((match) => match.group(1)!),
+      );
+    }
+  }
+  return names;
+}
+
+/// The type names [module]'s `readme.md` Key types table carries — or `null`
+/// when the module has no readme, or one with no such table.
+///
+/// `null` and empty are different answers and the caller treats them
+/// differently: a module with no readme is a separate, louder failure than a
+/// module whose readme under-describes it, and collapsing the two would let the
+/// louder one be reported as the quieter.
+Set<String>? _readmeTableTypes(String module) {
+  final readme = File('lib/src/tomserver/$module/readme.md');
+  if (!readme.existsSync()) return null;
+  final names = _typeTableNames(readme.readAsLinesSync());
+  return names.isEmpty ? null : names;
+}
+
+/// Every backticked identifier anywhere in [module]'s `readme.md` — or `null`
+/// when there is no readme.
+///
+/// Deliberately the **whole document**, not the Key types table. Coverage is
+/// measured against what a reader can learn the module contains, and a name met
+/// in the prose or in the quick-start snippet has been learned just as well as
+/// one met in a row. Measuring against the table alone would also make the
+/// check unsatisfiable for a file that declares only free functions — a `|
+/// Type |` table has nowhere to put `jobRunTableDdl` — and a rule that cannot
+/// be complied with gets suppressed rather than met.
+Set<String>? _readmeNames(String module) {
+  final readme = File('lib/src/tomserver/$module/readme.md');
+  if (!readme.existsSync()) return null;
+  return RegExp(r'`([A-Za-z_][A-Za-z0-9_]*)')
+      .allMatches(readme.readAsStringSync())
+      .map((match) => match.group(1)!)
+      .toSet();
+}
+
+/// The exported files of [module] whose public names its readme mentions none
+/// of, sorted.
+///
+/// The measure is deliberately **per file, not per name**. A table headed
+/// "Key types" does not claim to be exhaustive, and holding it to that would
+/// make the worst-affected readmes worse — `object_persistence` exports 83
+/// types, and an 83-row table in a source-directory readme is not a document
+/// anyone reads. What the heading cannot excuse is a whole file with no
+/// representative at all, because that is not selection, it is a capability the
+/// reader has no way to learn exists.
+///
+/// That is the shape the failure actually took. `db_migration`'s table listed
+/// types from two of its seven files, so the entire convergence half — the
+/// schema model, the DDL replay, both checks and the shared lexer — was absent
+/// from the page a reader meets on arriving at the directory, and the module
+/// read as what it had been before five of its files existed.
+///
+List<String> _unrepresentedFiles(String module) {
+  final mentioned = _readmeNames(module) ?? const <String>{};
+  return [
+    for (final export in _exportedFiles(module))
+      if (!_isRepresented(
+        _declaredApi(File('lib/src/tomserver/$export').readAsStringSync()),
+        mentioned,
+      ))
+        export,
+  ]..sort();
+}
+
+/// Whether a file whose public API is [declared] is represented among the names
+/// a readme [mentioned].
+///
+/// One name is enough — see [_unrepresentedFiles] for why the measure is per
+/// file rather than per name.
+///
+/// A file that declares nothing is vacuously represented. It has no name it
+/// could contribute, so requiring one would report an omission that cannot be
+/// committed. No exported file is that shape today, which is precisely why the
+/// branch is spelled out and pinned by a fixture rather than left implicit: a
+/// file of nothing but top-level constants — the shape `messaging`'s
+/// `tomMimeLineEnding` and `tomMimeMaxLineLength` are one extraction away from —
+/// declares nothing by [_declaredApi]'s definition, and the day one appears the
+/// rule must not fire on it.
+bool _isRepresented(Set<String> declared, Set<String> mentioned) =>
+    declared.isEmpty || declared.any(mentioned.contains);
 
 /// The files the package barrel exports for [module], as `<module>/<file>`
 /// pairs, sorted.
@@ -1893,6 +1987,31 @@ const Set<String> _indexPendingReconciliation = {
   'object_persistence',
 };
 
+/// The modules whose `lib/src/tomserver/<module>/readme.md` still leaves at
+/// least one exported file unmentioned — quest todo `tcincb131_ahyb`.
+const Set<String> _moduleReadmesPendingReconciliation = {
+  'authentication',
+  'datasources',
+  'endpoints',
+  'object_persistence',
+  'scheduling',
+};
+
+/// The modules with no `readme.md` at all — quest todo `tcincb131_ahyb`.
+///
+/// Separate from the set above because it is the stronger failure. An
+/// incomplete table is a document that under-describes its module; a missing
+/// readme is the source directory answering a reader's first question with
+/// nothing, and it is invisible to every check that reads a table, because
+/// there is no table to read.
+const Set<String> _modulesWithoutReadme = {
+  'audit',
+  'export',
+  'file_storage',
+  'messaging',
+  'resources',
+};
+
 void main() {
   group('doc/api_reference mirrors lib/src/tomserver', () {
     test('every module has an API summary', () {
@@ -2023,6 +2142,32 @@ void main() {
       );
     });
 
+    test(
+      'the extractor reads every Type table in a document, not the first',
+      () {
+        // A readme that sections its types by concern is the shape this has to
+        // survive; reading only the first table would score it as a truncated
+        // document and send its author to delete the sections.
+        final found = _typeTableNames(
+          '''
+| Type | What it is |
+| ---- | ---------- |
+| `TomFirst` | in the opening table. |
+
+## Another concern
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomSecond` | in a later table. |
+| `TomThird` | and its neighbour. |
+'''
+              .split('\n'),
+        );
+
+        expect(found, {'TomFirst', 'TomSecond', 'TomThird'});
+      },
+    );
+
     test('the scan reads the declaration shapes an exported file uses', () {
       // Each line below is a shape the package actually contains, and three of
       // them are shapes that defeated an earlier reading of it.
@@ -2096,6 +2241,102 @@ class RealClass {}
       expect(found, isNot(contains('quotedFunction')));
       expect(found, isNot(contains('QuotedClass')));
       expect(found, isNot(contains('tom_resource_grant')));
+    });
+  });
+
+  // The same completeness question as the group above, asked of the other
+  // document that answers it — and asked of the reader who is furthest from
+  // `doc/`. A guide is something you go to; `lib/src/tomserver/<module>/
+  // readme.md` is what a developer already inside the source tree meets, so it
+  // is the first and often only description of the module they read.
+  //
+  // The question has to be asked differently here, because the claim is
+  // different. An Overview table is headed `## Overview` and is checked
+  // name-by-name; a readme's is headed **Key types**, which does not promise
+  // exhaustiveness and should not be made to. `object_persistence` exports 83
+  // types, and the honest response to that is a selection, not an 83-row table
+  // nobody reads.
+  //
+  // What a selection may not do is leave a whole *file* unmentioned. That is
+  // not choosing the important types, it is a capability with no entry point:
+  // a reader cannot select against something they have not been told exists.
+  // `db_migration` is the case that prompted this — its table drew from two of
+  // seven files, so the module's entire convergence half was invisible, and the
+  // readme described the module as it had been before five of its files
+  // existed. Both halves are load-bearing and only one was on the page.
+  //
+  // So coverage is measured over the whole readme rather than over the table:
+  // a name introduced in the prose or the quick-start has been introduced. That
+  // is not a loophole but the only satisfiable form of the rule — `scheduling`
+  // exports a file of nothing but free functions, and a `| Type |` table has
+  // nowhere to put `jobRunTableDdl`.
+  group('each module readme reaches every exported file', () {
+    for (final module in _modules()) {
+      test(
+        module,
+        () {
+          expect(
+            _readmeTableTypes(module),
+            isNotNull,
+            reason:
+                'lib/src/tomserver/$module/readme.md is missing, or has no '
+                '`| Type |` table. The directory readme is what a developer '
+                'already in the source tree reads first, and a module that '
+                'answers that reader with nothing is documented only to '
+                'whoever already knows to look in doc/.',
+          );
+
+          final unrepresented = _unrepresentedFiles(module);
+          expect(
+            unrepresented,
+            isEmpty,
+            reason:
+                'lib/src/tomserver/$module/readme.md mentions no public name '
+                'from these exported files: ${unrepresented.join(', ')}. A '
+                '"Key types" table may select, but a file mentioned nowhere at '
+                'all is not a selection — it is a capability the reader has no '
+                'way to learn exists, so they conclude the module is what the '
+                'readme shows.',
+          );
+        },
+        skip:
+            _modulesWithoutReadme.contains(module) ||
+                _moduleReadmesPendingReconciliation.contains(module)
+            ? 'module readme not reconciled yet — quest todo tcincb131_ahyb.'
+            : null,
+      );
+    }
+
+    test('every quarantined module still has something to reconcile', () {
+      final settled = [
+        for (final module in _modulesWithoutReadme)
+          if (_readmeTableTypes(module) != null) module,
+        for (final module in _moduleReadmesPendingReconciliation)
+          if (_readmeTableTypes(module) != null &&
+              _unrepresentedFiles(module).isEmpty)
+            module,
+      ]..sort();
+      expect(
+        settled,
+        isEmpty,
+        reason:
+            'These modules are quarantined but now pass: ${settled.join(', ')}. '
+            'The exemption has to expire by itself, or the list becomes a '
+            'record of debt that was paid and never collected.',
+      );
+    });
+
+    test('a file declaring nothing public is represented vacuously', () {
+      // The three cases of the rule, pinned directly rather than through a
+      // module: one mentioned name represents a file, no mentioned name does
+      // not, and a file that declares nothing is excused. The last case has no
+      // instance in the package today, so only a fixture can hold it — and
+      // without one, deleting the excuse changes no result and the decision is
+      // untested.
+      expect(_isRepresented({'TomA'}, {'TomA', 'TomB'}), isTrue);
+      expect(_isRepresented({'TomA'}, {'TomB'}), isFalse);
+      expect(_isRepresented({'TomA'}, const {}), isFalse);
+      expect(_isRepresented(const {}, const {}), isTrue);
     });
   });
 

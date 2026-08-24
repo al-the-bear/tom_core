@@ -738,6 +738,38 @@
 
 ### Documentation
 
+- **The `db_migration` module readme describes the module that exists
+  (tcinc496).** Its "Key types" table listed five types drawn from two of the
+  module's seven files, so the entire convergence half — `TomSchemaDdlReader`,
+  `TomSchemaConvergenceCheck`, `TomFrameworkSchemaCheck`, the shared
+  `TomSchemaModel` vocabulary and `TomSqlLexer` — was absent from the page a
+  reader meets on arriving at the directory, and the module read as what it had
+  been before five of its files existed. The readme now covers all 25 public
+  types across three tables (the engine, the checks, and the shared schema model
+  and DDL replay), states what each type *is* rather than what it is used for,
+  and points at `doc/db_migration.md` naming the example and the three test
+  files.
+
+  A guard came with it, because the fault was not confined to this module.
+  `test/api_reference_coverage_test.dart` gained `each module readme reaches
+  every exported file`: for every file the barrel exports, at least one of that
+  file's public names must appear in its module's readme. The measure is **per
+  file, not per name** — a table headed "Key types" makes no exhaustiveness
+  claim, and `object_persistence` exports 83 types, so a per-name rule would
+  force an 83-row table and make the worst readme worse. What the heading cannot
+  excuse is a whole file with no representative at all: that is not selection,
+  it is a capability the reader has no way to learn exists. And it is measured
+  over the whole document rather than the table, because `scheduling` exports a
+  file of nothing but free functions and a `| Type |` table has nowhere to put
+  `jobRunTableDdl` — a rule that cannot be complied with gets suppressed rather
+  than met.
+
+  `db_migration` was the worst module in the package at 2 of 7 files reached.
+  Ten of the twenty modules still fail — five with an incomplete readme, five
+  with none at all — and are quarantined by name under quest todo `tcincb131`,
+  with a meta-test that fails when a quarantined module starts passing so the
+  exemptions expire by themselves.
+
 - **The type-family tolerance is no longer described as symmetric (tcinc494).**
   The completion document summarised `TomSqlTypeFamilyCompatibility.accepts` as
   "symmetric where it exists, so which side is asked does not change the answer"
