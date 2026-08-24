@@ -183,8 +183,10 @@ void run() {
   print('\n8. migration layout walked by TomDbMigrations.migrateDatabases():');
   print(
     '   <directory>/<datasourceName>/<schemaName>/'
-    '[<version>]-<description>.sql',
+    '[<version>]-<description>[@<env>[,<env>...]].<anyfileextension>',
   );
+  // The three shipped files below carry no @<env> tag, so they apply in every
+  // environment — a scheduling schema is not a per-environment fixture.
   print(
     '   example/scheduling/migrations/main/tomcore/'
     '[1]-create_tom_job_run.sql',

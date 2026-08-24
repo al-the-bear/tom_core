@@ -12,6 +12,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [Overview](#overview)
 - [The Directory Layout](#the-directory-layout)
   - [One File per Migration](#one-file-per-migration)
+  - [Environment Tags](#environment-tags)
   - [The Tree Root Has to Be There](#the-tree-root-has-to-be-there)
 - [Running Migrations](#running-migrations)
 - [Adaptor Discovery](#adaptor-discovery)
@@ -89,11 +90,23 @@ A data source may hold **any number of schemas**, as `main` does above. Each
 keeps its own independent version history, so the `[1]` under `audit` and the
 `[1]` under `app` are unrelated migrations that both apply.
 
-Each file name must match `[<numeric version>]-<description>` followed by any
-extension, where the description is letters and underscores
-(`[a-zA-Z_]+`). A name that does not match aborts the run with a
-`TomDbMigrationException`. Within a schema, files are applied in **ascending
-numeric version order** — so `[2]` precedes `[10]`.
+Each file name must match
+
+```text
+[<numeric version>]-<description>[@<env>[,<env>...]].<anyfileextension>
+```
+
+which is the grammar `parseMigrationFileName` quotes back when it refuses a
+name. The description is letters and underscores (`[a-zA-Z_]+`) — no digits —
+and the `@<env>` tag is **optional**: `[3]-demo_seed@dev.sql` applies only under
+the `dev` environment, `[3]-demo_seed@dev,test.sql` under either, and an
+untagged name applies everywhere. A name that does not match aborts the run with
+a `TomDbMigrationException`; see [Environment Tags](#environment-tags) for what
+the tag does.
+
+Within a schema, files are applied in **ascending numeric version order** — so
+`[2]` precedes `[10]`, which is exactly where numeric order and name order
+disagree.
 
 ### One File per Migration
 
@@ -142,6 +155,44 @@ which both the engine and the [convergence check](#schema-convergence) collect
 through — for the same reason they share the name parser and the ordering. A
 check that quietly read one of two colliding files would report on a chain the
 engine refuses to apply, which is worse than either behaviour on its own.
+
+### Environment Tags
+
+A migration may name the environments it belongs to by appending
+`@<env>[,<env>...]` to its description. The tag is matched against the **active
+environment name** — `TomDbMigrations.resolveActiveEnvironment()`, resolved
+through `TomRuntime` rather than a raw environment-variable read:
+
+```text
+app/
+  [1]-create_users.sql          # untagged → applies in every environment
+  [2]-demo_seed@dev.sql         # only under `dev`
+  [3]-add_indexes.sql           # untagged
+  [4]-fixtures@dev,test.sql     # under `dev` or `test`
+```
+
+**Untagged is the safe default.** A migration with no tag applies everywhere, so
+schema never becomes environment-scoped by accident — the tag is something you
+opt into for the data you did *not* want in production. Matching is on the
+environment name directly, with no hierarchy walk: a `@dev` migration is skipped
+under `prod` and applied under `dev`, and nothing makes `dev` a "kind of" any
+other environment. When no environment has been initialized at all, the engine
+falls back to `defaultTomEnvironment`, under which only untagged migrations
+apply — the production-safe reading of an unanswerable question.
+
+A tagged migration still occupies its version number in the schema's single
+history — the tag decides *whether* it runs, not which number it takes — so
+`[2]-demo_seed@dev` and an untagged `[2]-add_orders` are the same migration
+claiming one slot, not two alternatives.
+
+Skipping is therefore not the same as not existing, and the difference shows up
+as a history that is not in version order. A box that ran the tree above under
+`prod` applied `[1]` and `[3]` and skipped the other two; switched to `dev`, it
+applies `[2]` and `[4]` next, leaving `1, 3, 2, 4` in installation order. That
+is why
+`initializeMigration` hands back the applied list in installation order rather
+than a single "current version" — see [Running
+Migrations](#running-migrations).
 
 ### The Tree Root Has to Be There
 

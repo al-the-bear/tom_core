@@ -58,9 +58,32 @@ void run() {
   assert(MariadbMigrationAdaptor.checksumOf(edited) != version.checksum);
 
   // 3. The expected on-disk layout the orchestrator walks (see the module doc):
-  //    <directory>/<datasourceName>/<schemaName>/[<version>]-<description>.sql
-  print('3. migration file name pattern: [<version>]-<description>.<ext>');
-  print('   e.g. migrations/main/app/[2]-add_orders.sql');
+  //    <directory>/<datasourceName>/<schemaName>/
+  //      [<version>]-<description>[@<env>[,<env>...]].<ext>
+  //
+  //    Parsed rather than merely printed: a name this example claims is legal
+  //    but the parser rejects throws here instead of misinforming a reader.
+  print('3. migration file name grammar:');
+  print('   [<version>]-<description>[@<env>[,<env>...]].<anyfileextension>');
+  for (final basename in ['[2]-add_orders', '[3]-demo_seed@dev,test']) {
+    final parsed = TomDbMigrations.parseMigrationFileName(basename);
+    final tag = parsed.environments.isEmpty
+        ? 'every environment'
+        : parsed.environments.join('/');
+    print(
+      '   $basename -> version=${parsed.version} '
+      'description=${parsed.description} applies in: $tag',
+    );
+  }
+
+  // 4. Ordering is on the parsed integer, not the name: lexicographically
+  //    '[10]-...' sorts before '[2]-...', numerically it must come after.
+  final ordered = TomDbMigrations.orderMigrationNames([
+    '[10]-add_index',
+    '[2]-add_orders',
+  ]).map((e) => e.basename).toList();
+  print('4. applied in ascending numeric version order: ${ordered.join(', ')}');
+  assert(ordered.first == '[2]-add_orders');
 
   print('\nDb-migration example completed.');
 }

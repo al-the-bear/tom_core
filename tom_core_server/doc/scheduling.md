@@ -418,8 +418,11 @@ Two supported routes, and the choice is about who is allowed to run DDL:
   apply them. Right when the application's database user may not run DDL, which
   is the usual production posture.
 
-The migration layout is the module's standard one:
-`<directory>/<datasourceName>/<schemaName>/[<version>]-<description>.sql`.
+The migration layout is the module's standard one. The shipped files sit at
+`<directory>/<datasourceName>/<schemaName>/[<version>]-<description>.sql` and
+carry no environment tag, because a scheduling schema is wanted in every
+environment. See [Db Migration](db_migration.md#one-file-per-migration) for the
+full file-name grammar, including the optional `@<env>` tag.
 
 ## Time
 

@@ -703,6 +703,31 @@
 
 ### Documentation
 
+- **The migration file-name grammar is documented in full, and the parser now
+  arbitrates what the prose may say (tcinc491).** The `TomDbMigrations` class
+  dartdoc claimed migrations run in "ascending name order" long after the sort
+  had moved onto the parsed integer — where `[2]` precedes `[10]` and name order
+  says the opposite. The module guide's ordering claim had already been
+  corrected, which is what makes the second finding the larger one: *every* text
+  stating the grammar gave it as `[<version>]-<description>`, omitting the
+  optional `@<env>` tag, and the guide documented environment tags nowhere at
+  all. C-16 was live, production-safety-relevant behaviour a reader could not
+  learn existed. The guide gains an **Environment Tags** section — untagged as
+  the safe default, no hierarchy walk, the `defaultTomEnvironment` fallback, and
+  the rule that a tagged migration still occupies its version slot, so
+  `[1]@dev` beside an untagged `[1]` is a collision rather than an addition.
+
+  The durable half is a guard that reads the module's texts and judges them
+  against the parser: every grammar they state must normalise to the one
+  `parseMigrationFileName` quotes when it refuses a name, every file name they
+  exhibit must actually parse, and none may claim name order. Normalisation
+  accepts spelling variants of the same slot (`<numeric version>`/`<version>`,
+  the extension spelled out, abbreviated or left to prose) so the guard does not
+  dictate wording — but no variant can hide a missing `@<env>`. It scans the
+  three texts that state the grammar in full; `doc/scheduling.md` describes only
+  the shape its own shipped files take and now links here for the rest, so it
+  states no grammar to keep honest.
+
 - **A summary can no longer say a module has no enums while it exports one
   (tcinc490).** `## Global Functions and Constants` has been guarded against a
   false "None" since the `frameworkOwnedTables` repair; `## Enums` had no guard

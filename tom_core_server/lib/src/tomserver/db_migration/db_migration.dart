@@ -134,12 +134,22 @@ class TomMigrationFileName {
 ///     <schemaName>/          # one schema within that data source
 ///       [1]-create_users.sql
 ///       [2]-add_index.sql
+///       [3]-demo_seed@dev.sql    # only under the `dev` environment
 /// ```
 ///
-/// Each migration file name must match `[<numeric version>]-<description>` (the
-/// description being letters and underscores), followed by any extension. Files
-/// are applied in ascending name order through the data source's migrator,
-/// resolved from its `type` via [TomDbMigrationAdaptor].
+/// Each migration file name must match
+/// `[<numeric version>]-<description>[@<env>[,<env>…]]` — the description being
+/// letters and underscores, the environment tag optional — followed by any
+/// extension. This is the grammar [parseMigrationFileName] enforces and quotes
+/// back when it refuses a name.
+///
+/// Files are applied in ascending **numeric version** order, not name order:
+/// the sort is on the parsed integer, so `[2]` precedes `[10]` where a
+/// lexicographic sort would not. They run through the data source's migrator,
+/// resolved from its `type` via [TomDbMigrationAdaptor]. A migration tagged for
+/// an environment other than the active one is skipped (C-16) — see
+/// [TomMigrationFileName.appliesInEnvironment] and
+/// [resolveActiveEnvironment].
 class TomDbMigrations {
   static final Map<String, TomDbMigrator> _migrationAdaptorTypes = {};
 
@@ -384,7 +394,8 @@ class TomDbMigrations {
   ///
   /// Walks `<directory>/<datasourceName>/<schemaName>/` and, for each schema,
   /// initialises the data source's migrator and applies every
-  /// `[<version>]-<description>[@<env>…].<ext>` file in ascending version order.
+  /// `[<version>]-<description>[@<env>[,<env>…]].<ext>` file in ascending
+  /// numeric version order.
   /// Migrations tagged for an environment other than the active one
   /// ([resolveActiveEnvironment]) are skipped (C-16); untagged migrations always
   /// apply. Throws a [TomDbMigrationException] if [directory] does not exist, a

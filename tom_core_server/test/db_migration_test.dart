@@ -1011,7 +1011,150 @@ void main() {
       expect(exception.key, 'key');
     });
   });
+
+  // The prose describing this module drifted away from the parser: the class
+  // dartdoc claimed migrations run in *name* order long after the sort had been
+  // moved onto the parsed integer, and every text stating the grammar omitted
+  // the optional environment tag — so C-16 was live behaviour a reader could
+  // not learn about. Prose cannot be kept honest by review alone; this group
+  // makes the parser the arbiter of what the prose is allowed to say.
+  group('documentation matches the parser', () {
+    test('every grammar the docs state is the grammar the parser enforces', () {
+      final canonical = _normalizedGrammar(_grammarQuotedByParser());
+      for (final site in _grammarSites) {
+        final stated = _statedGrammars(File(site).readAsStringSync());
+        expect(
+          stated,
+          isNotEmpty,
+          reason:
+              '$site is registered as a site that states the file-name '
+              'grammar, but states none. Either restore the grammar or drop '
+              'the site from _grammarSites.',
+        );
+        for (final grammar in stated) {
+          expect(
+            _normalizedGrammar(grammar),
+            canonical,
+            reason:
+                '$site states the grammar as "$grammar", which is not what '
+                'parseMigrationFileName accepts. The parser is the source of '
+                'truth — update the text.',
+          );
+        }
+      }
+    });
+
+    test('every migration file name the docs exhibit actually parses', () {
+      for (final site in _grammarSites) {
+        final source = File(site).readAsStringSync();
+        // A description letter is required, so the `[2]-…` shorthand the prose
+        // uses to talk about *ordering* is not mistaken for an exhibited name.
+        // Past that the token runs to its delimiter and takes every character
+        // with it, legal or not — a class narrow enough to be "the characters a
+        // name may contain" would stop short of the very character that makes
+        // an exhibited name illegal, and pass it.
+        final names = RegExp(
+          '\\[\\d+\\]-[A-Za-z_][^\\s`\'"|)]*',
+        ).allMatches(source);
+        expect(
+          names,
+          isNotEmpty,
+          reason: '$site exhibits no migration file name',
+        );
+        for (final match in names) {
+          final basename = _exhibitedBasename(match.group(0)!);
+          expect(
+            () => TomDbMigrations.parseMigrationFileName(basename),
+            returnsNormally,
+            reason:
+                '$site shows "${match.group(0)}" as a migration file name, '
+                'but the parser rejects it.',
+          );
+        }
+      }
+    });
+
+    test('no text still claims migrations run in name order', () {
+      for (final site in _grammarSites) {
+        expect(
+          File(site).readAsStringSync(),
+          isNot(contains('ascending name order')),
+          reason:
+              '$site claims name order; orderMigrationNames sorts on the '
+              'parsed integer, under which [2] precedes [10].',
+        );
+      }
+    });
+  });
 }
+
+/// The texts that state the migration file-name grammar in full.
+///
+/// Deliberately short: the grammar has one owner ([TomDbMigrations]) and two
+/// authorised restatements — the module guide and the module example. Other
+/// modules that mention a migration path (`doc/scheduling.md`) describe only
+/// the shape *their* shipped files take and link here for the rest, so they
+/// state no grammar to keep honest.
+const _grammarSites = [
+  'lib/src/tomserver/db_migration/db_migration.dart',
+  'doc/db_migration.md',
+  'example/db_migration/db_migration_example.dart',
+];
+
+/// The grammar [TomDbMigrations.parseMigrationFileName] quotes back when it
+/// refuses a name — read from the refusal itself, so a change to the pattern
+/// that forgets the message is caught here rather than in the prose.
+String _grammarQuotedByParser() {
+  try {
+    TomDbMigrations.parseMigrationFileName('not a migration');
+  } on TomDbMigrationException catch (e) {
+    final refusal = e.toString();
+    final quoted = RegExp(
+      r'must follow (.+?) pattern',
+    ).firstMatch(refusal)?.group(1);
+    if (quoted != null) return quoted;
+    fail('the refusal no longer quotes the grammar: $refusal');
+  }
+  fail('parseMigrationFileName accepted a name that is not one');
+}
+
+/// Reduces a file name as a text *exhibits* it to the basename the parser is
+/// given.
+///
+/// A name met in prose can end in the sentence's punctuation as well as its own
+/// extension, and only the latter is the parser's to ignore.
+String _exhibitedBasename(String exhibited) =>
+    p.basenameWithoutExtension(exhibited.replaceAll(RegExp(r'[.,]+$'), ''));
+
+/// Every grammar statement in [source]: the version placeholder running
+/// straight into the description placeholder, then on to wherever the token
+/// ends.
+///
+/// Requiring `-<description>` is what separates a statement of the whole rule
+/// from prose naming one part of it — `_migrationNamePattern` describes its
+/// pieces one at a time, and a text is entitled to do that without restating
+/// the grammar.
+List<String> _statedGrammars(String source) => [
+  for (final match in RegExp(
+    '\\[<(?:numeric )?version>\\]-<description>[^\\s`\'"]*',
+  ).allMatches(source))
+    match.group(0)!,
+];
+
+/// Reduces a grammar statement to what it *says*, so the two legitimate
+/// spellings compare equal.
+///
+/// `<numeric version>` and `<version>` name the same slot; the extension is
+/// unconstrained, so a text may spell it out, abbreviate it or leave it to
+/// prose; and a typographic ellipsis is the same "and so on" as three periods.
+/// What survives normalisation is the structure — in particular whether the
+/// optional `@<env>` tag is mentioned at all, which is exactly what every one
+/// of these texts used to omit.
+String _normalizedGrammar(String grammar) => grammar
+    .replaceAll('…', '...')
+    .replaceAll('<numeric version>', '<version>')
+    .replaceAll(RegExp(r'\.<(?:anyfileextension|ext)>'), '')
+    .replaceAll(RegExp(r'\s+'), '');
 
 /// Drives [TomDbMigrations.instantiateMigrator] with a [construct] that fails
 /// and returns the exception it raised.
