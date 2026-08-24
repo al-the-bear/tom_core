@@ -2,6 +2,27 @@
 
 ### Fixed
 
+- **A migrator that fails to construct now reports why (tcinc480).** The adaptor
+  scan wrapped the reflective `newInstance` call in `catch (error)`, bound the
+  error to a variable, and never used it — the raised exception named only the
+  candidate class. So the one thing the operator already knew (*which* class)
+  was reported and the one thing only the machine knew (*why*) was discarded: a
+  missing zero-argument constructor, a throwing field initialiser and a failed
+  dependency lookup produced byte-identical messages. This is a startup failure
+  on a reflective code path, which is the worst position from which to
+  reconstruct a cause by hand. The error is now named in the message and
+  forwarded as the exception's root cause, along with the trace from where it
+  was thrown — captured at the catch site instead, the trace describes the scan,
+  from which the constructor has already unwound. The sibling failure, a
+  candidate that is not a `TomDbMigrator`, named nothing at all and now names
+  the candidate too.
+
+  The step is extracted as `TomDbMigrations.instantiateMigrator(candidate,
+  construct)`, taking the constructor as a callback rather than the reflected
+  class: the scan reads a global registry no test can populate, and populating
+  it would be worse than untestable — a fixture whose constructor throws would
+  break the scan for every real caller.
+
 - **The measured migration duration is no longer discarded (tcinc479).** The
   `<schema>_versioning` table has always had an `executionTimeMs` column,
   `applyMigration` measured the script and wrote it, and

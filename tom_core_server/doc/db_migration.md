@@ -112,6 +112,16 @@ migrator per type, and rejects duplicate or non-conforming registrations with a
 `TomDbMigrationException`. The `<type>` must match the data source's
 `TomDataSourceInfo.type`.
 
+Building a candidate is the one step here that can fail for a reason outside
+the module, so `instantiateMigrator` reports it in full: the constructor's
+error is named in the message **and** forwarded as the raised exception's root
+cause, together with the trace from where it was thrown. The name of the class
+that could not be built says nothing about why — a missing zero-argument
+constructor, a throwing field initialiser and a failed dependency lookup all
+read alike from the outside — and this runs at startup, over a registry
+assembled by reflection, which is the worst position from which to reconstruct
+a cause by hand.
+
 ## The MariaDB Adaptor
 
 `MariadbMigrationAdaptor` keeps a `<schema>_versioning` table per schema:

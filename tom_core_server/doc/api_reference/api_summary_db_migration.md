@@ -89,6 +89,7 @@ schemas.
 | `selectForEnvironment` | `static List<({String basename, TomMigrationFileName parsed})> selectForEnvironment(Iterable<({String basename, TomMigrationFileName parsed})> ordered, String environmentName)` | Filters an ordered migration list to those applying in `environmentName`, preserving order. |
 | `migrateDatabases` | `static Future<void> migrateDatabases(String directory)` | Runs all pending migrations under `directory`; throws `TomDbMigrationException` on a missing data source/migrator, malformed name, or failed script. |
 | `migrateDataSource` | `static Future<void> migrateDataSource(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory dataSourceDirectory, String environmentName)` | Applies every schema under `dataSourceDirectory` through `migrator`, resetting and re-initialising it **once per schema**. Split out of `migrateDatabases` so the walk can be driven with a caller-supplied migrator — the reflection-scanned registry is not injectable. |
+| `instantiateMigrator` | `static TomDbMigrator instantiateMigrator(Object? candidate, Object? Function() construct)` | Builds one scanned adaptor candidate, turning a throwing constructor or a class that does not implement `TomDbMigrator` into a `TomDbMigrationException` naming `candidate`. A constructor error and its trace are forwarded as the raised exception's **root cause**. Parameterised by `construct` rather than the reflected class, because the scan's registry is a global no test can populate. |
 
 ### TomDbMigrator
 

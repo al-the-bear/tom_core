@@ -54,6 +54,74 @@ void main() {
     });
   });
 
+  // The adaptor scan runs at startup over a reflective registry no test can
+  // populate, so the instantiation step is split out and driven directly. What
+  // it must not do is what it used to: catch the constructor's error, report
+  // only the candidate's name, and drop the cause — on a reflective startup
+  // path, which is where an operator has the least context to reconstruct it.
+  group('TomDbMigrations.instantiateMigrator', () {
+    test('returns the instance when the candidate constructs a migrator', () {
+      expect(
+        TomDbMigrations.instantiateMigrator(
+          'GoodMigrator',
+          () => _RecordingMigrator(),
+        ),
+        isA<_RecordingMigrator>(),
+      );
+    });
+
+    test('forwards the constructor error as the root exception', () {
+      final cause = StateError('no zero-argument constructor');
+      final error = _instantiationFailure(() => throw cause);
+
+      expect(
+        error.key,
+        'db_migration.initialization.failed_to_instantiate_migrator',
+      );
+      // Identity, not equality: what the operator needs is the error object
+      // itself — its type and its own fields — not a string resembling it.
+      expect(error.rootException, same(cause));
+    });
+
+    test('names both the candidate and the cause in the message', () {
+      final error = _instantiationFailure(
+        () => throw StateError('field initialiser blew up'),
+      );
+
+      expect(error.defaultUserMessage, contains('BrokenMigrator'));
+      expect(error.defaultUserMessage, contains('field initialiser blew up'));
+    });
+
+    test('carries the trace of the failing constructor, not of the scan', () {
+      final error = _instantiationFailure(_throwingConstructor);
+
+      // Left to capture its own construction site the exception records the
+      // inside of the catch block, by which point the constructor has already
+      // unwound — so the report names the scan and never the failure.
+      expect(error.stack.toString(), contains('_throwingConstructor'));
+    });
+
+    test('a candidate that is not a migrator is rejected by name', () {
+      TomDbMigrationException? error;
+      try {
+        TomDbMigrations.instantiateMigrator('NotAMigrator', () => 'a string');
+      } on TomDbMigrationException catch (e) {
+        error = e;
+      }
+
+      expect(error, isNotNull);
+      expect(
+        error!.key,
+        'db_migration.initialization.'
+        'migrator_does_not_implement_tom_db_migrator',
+      );
+      expect(error.defaultUserMessage, contains('NotAMigrator'));
+      // Nothing threw, so there is no cause to forward. An absent root
+      // exception here is the honest answer, not a dropped one.
+      expect(error.rootException, isNull);
+    });
+  });
+
   group('TomDbVersion', () {
     test('has zero/empty defaults before any migration is recorded', () {
       final version = TomDbVersion();
@@ -636,6 +704,21 @@ void main() {
     });
   });
 }
+
+/// Drives [TomDbMigrations.instantiateMigrator] with a [construct] that fails
+/// and returns the exception it raised.
+TomDbMigrationException _instantiationFailure(Object? Function() construct) {
+  try {
+    TomDbMigrations.instantiateMigrator('BrokenMigrator', construct);
+  } on TomDbMigrationException catch (e) {
+    return e;
+  }
+  fail('instantiateMigrator accepted a constructor that threw');
+}
+
+/// A constructor stand-in that fails from a **named top-level frame**, so a
+/// forwarded trace can be told apart from one captured at the catch site.
+Never _throwingConstructor() => throw StateError('constructor exploded');
 
 /// A [TomDbMigrator] that records the calls it receives and does nothing else.
 ///

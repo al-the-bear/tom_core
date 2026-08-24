@@ -151,28 +151,59 @@ class TomDbMigrations {
             autoLog: true,
           );
         } else {
-          Object? migrator;
-          try {
-            migrator = candidate.newInstance("", []);
-          } catch (error) {
-            throw TomDbMigrationException(
-              "db_migration.initialization.failed_to_instantiate_migrator",
-              "Migration adaptor scan: Failed to instantiate migrator $candidate",
-              autoLog: true,
-            );
-          }
-          if (migrator is TomDbMigrator) {
-            _migrationAdaptorTypes[adaptor.type] = migrator;
-          } else {
-            throw TomDbMigrationException(
-              "db_migration.initialization.migrator_does_not_implement_tom_db_migrator",
-              "Migration adaptor scan: Migrator class is not implementing TomDbMigrator",
-              autoLog: true,
-            );
-          }
+          _migrationAdaptorTypes[adaptor.type] = instantiateMigrator(
+            candidate,
+            () => candidate.newInstance("", []),
+          );
         }
       }
     }
+  }
+
+  /// Builds one scanned adaptor candidate, turning either failure mode — a
+  /// constructor that throws, or a class that does not implement
+  /// [TomDbMigrator] — into a [TomDbMigrationException] naming [candidate].
+  ///
+  /// When [construct] throws, the error and its trace are forwarded as the
+  /// raised exception's root cause. This is a startup failure on a reflective
+  /// code path: the candidate's name alone says *which* class could not be
+  /// built but nothing about *why* — a missing zero-argument constructor, a
+  /// throwing field initialiser, a failed dependency lookup all read alike —
+  /// and that is precisely the context an operator cannot reconstruct from the
+  /// outside. Forwarding the caught trace rather than letting the exception
+  /// capture its own matters for the same reason: captured here, the trace
+  /// describes the scan, from which the constructor has already unwound.
+  ///
+  /// Split out of the scan and parameterised by [construct] rather than taking
+  /// the reflected class, because the scan reads a global registry a test
+  /// cannot populate — and populating it would be worse than untestable, since
+  /// a fixture whose constructor throws would break the scan for every real
+  /// caller. The one call the scan makes on the mirror is therefore the seam,
+  /// leaving [candidate] to carry the identity for the message.
+  static TomDbMigrator instantiateMigrator(
+    Object? candidate,
+    Object? Function() construct,
+  ) {
+    Object? migrator;
+    try {
+      migrator = construct();
+    } catch (error, stack) {
+      throw TomDbMigrationException(
+        "db_migration.initialization.failed_to_instantiate_migrator",
+        "Migration adaptor scan: Failed to instantiate migrator $candidate: $error",
+        autoLog: true,
+        rootException: error,
+        stack: stack,
+      );
+    }
+    if (migrator is! TomDbMigrator) {
+      throw TomDbMigrationException(
+        "db_migration.initialization.migrator_does_not_implement_tom_db_migrator",
+        "Migration adaptor scan: Migrator class $candidate is not implementing TomDbMigrator",
+        autoLog: true,
+      );
+    }
+    return migrator;
   }
 
   /// The anchored migration-filename pattern: a `[<numeric version>]` prefix
