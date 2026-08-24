@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
@@ -52,6 +55,26 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
   /// loaded is what lets [applyMigration] refuse to judge a migration against
   /// another schema's history.
   String? _boundTo;
+
+  /// The checksum recorded for a migration script: the lowercase hex SHA-256
+  /// of its UTF-8 bytes.
+  ///
+  /// This value outlives the process that wrote it — it is read back on every
+  /// later startup to decide whether an already-applied migration has since
+  /// been edited — so it must mean the same thing in every process that ever
+  /// looks at it. A content digest does; `String.hashCode`, which this replaced,
+  /// does not: Dart guarantees it only within one run, and it varies with the
+  /// SDK, the platform and the isolate's hash seed. When it changed, *every*
+  /// row already recorded became a mismatch at once, and the resulting
+  /// `checksum_mismatch` is indistinguishable from a genuinely tampered
+  /// migration — so the operator's first instinct would have been the wrong one.
+  ///
+  /// Public because it is the definition of the stored value: a test pins it to
+  /// a constant so a change of algorithm is caught by the suite rather than by
+  /// a fleet of deployed databases, and an operator repairing a row needs to be
+  /// able to compute the value the adaptor expects.
+  static String checksumOf(String sql) =>
+      sha256.convert(utf8.encode(sql)).toString();
 
   /// Identifies a `(data source, schema)` pair.
   ///
@@ -108,7 +131,11 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
             "MariadbDatabaseMigrator: Description for version $version has changed. Migrations must stay stable. Database migrations has failed.",
           );
         }
-        if (int.parse(v.checksum) != sql.hashCode) {
+        // Compared as text, not parsed as a number: a stored value that is not
+        // a digest at all (an older format, a hand-edited row) is a mismatch —
+        // which is what it means — rather than a FormatException escaping the
+        // module as an unhandled crash.
+        if (v.checksum != checksumOf(sql)) {
           throw MariadbMigrationException(
             "mariadb_migration.apply_migration.checksum_mismatch",
             "MariadbDatabaseMigrator: Script checksum for version $version has changed. Migrations must stay stable. Database migrations has failed.",
@@ -166,7 +193,7 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
         'version': version,
         'description': description,
         'script': sql,
-        'checksum': '${sql.hashCode}',
+        'checksum': checksumOf(sql),
         'executionTimeMs': timeElapsedMs,
         'success': failed ? 0 : 1,
       });
@@ -283,7 +310,8 @@ class TomDbVersion {
   @TomDbColumn(columnName: "script")
   String script = "";
 
-  /// The script's `hashCode`, stored as a string, used to detect later edits.
+  /// The script's content digest — lowercase hex SHA-256, as produced by
+  /// [MariadbMigrationAdaptor.checksumOf] — used to detect later edits.
   @TomDbColumn(columnName: "checksum")
   String checksum = "";
 

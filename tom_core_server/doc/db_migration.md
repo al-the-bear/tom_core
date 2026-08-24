@@ -15,6 +15,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [Adaptor Discovery](#adaptor-discovery)
 - [The MariaDB Adaptor](#the-mariadb-adaptor)
 - [Idempotency and Stability](#idempotency-and-stability)
+  - [The checksum has to outlive the process that wrote it](#the-checksum-has-to-outlive-the-process-that-wrote-it)
 - [Schema Convergence](#schema-convergence)
   - [The Application's Entities](#the-applications-entities)
   - [The Framework's Own Tables](#the-frameworks-own-tables)
@@ -120,7 +121,7 @@ migrator per type, and rejects duplicate or non-conforming registrations with a
 | `version` | the migration version number |
 | `description` | the description from the file name |
 | `script` | the full migration script text |
-| `checksum` | the script's `hashCode` (as text), to detect later edits |
+| `checksum` | the script's content digest (hex SHA-256), to detect later edits |
 | `installedBy` / `installedOn` | who/when (DB defaults) |
 | `executionTimeMs` | how long the script took |
 | `success` | `1` on success, `0` on failure |
@@ -148,11 +149,39 @@ genuinely new versions execute. Recording the **checksum** enforces that
 historical migrations stay immutable — editing an already-applied script is a
 hard error rather than a silent divergence between environments.
 
-> The MariaDB adaptor records each migration's `script` and `description` into
-> the versioning table by interpolating them directly into an `INSERT`.
-> Migration scripts are developer-authored build artifacts, not user input; the
-> general literal-escaping follow-up tracked for the datasources module applies
-> here too.
+### The checksum has to outlive the process that wrote it
+
+The checksum is written once, when a migration is applied, and read back on
+every startup thereafter — by a different process, quite possibly on a different
+machine, a different platform and a different SDK. So it can only be a value
+that means the same thing everywhere: `MariadbMigrationAdaptor.checksumOf`
+returns the lowercase hex **SHA-256 of the script's UTF-8 bytes**, and the
+comparison is a string comparison of that text.
+
+It used to be `String.hashCode`, stored as a decimal string. Dart guarantees
+that value only within a single run: it varies with the SDK release, the
+platform, and the isolate's hash seed. Nothing would have gone wrong until it
+changed — and then *every row already recorded, in every deployed database,
+would have become a mismatch at the same moment*. The failure is total, it
+happens at startup, and it presents as `checksum_mismatch`, which is the module
+saying "someone edited a migration". An operator's first instinct would have
+been to look for the edit that never happened.
+
+A digest is checkable in a way a hash code is not: a test pins
+`checksumOf('CREATE TABLE orders (id INT PRIMARY KEY);')` to the literal
+`9ad9167c…`, so a change of algorithm fails the suite instead of a deployment.
+The value is also reproducible outside Dart, so an operator repairing a row can
+compute what the adaptor expects (`shasum -a 256 < the-script.sql`).
+
+The comparison being textual matters too. A stored value that is not a digest at
+all — a row from an older build, a hand-edited one — is reported as a mismatch,
+which is what it is. The previous code parsed the column with `int.parse`, so
+such a row escaped the module as an unhandled `FormatException`.
+
+> **No upgrade path is provided.** A database whose versioning table still holds
+> the old hash-code checksums will fail its stability check on the next run. Fix
+> it by recomputing each row's `checksum` from its stored `script`
+> (`UPDATE <schema>_versioning SET checksum = <sha256 of script>`).
 
 ## Schema Convergence
 

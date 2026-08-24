@@ -2,6 +2,32 @@
 
 ### Fixed
 
+- **The migration checksum is a content digest, not `String.hashCode`
+  (tcinc477).** `MariadbMigrationAdaptor` recorded each applied migration's
+  checksum as the Dart string hash and verified it by parsing the stored value
+  back with `int.parse`. Dart guarantees `String.hashCode` only within a single
+  run — it may differ across SDK releases, platforms and isolate hash seeds — and
+  the value is read back on *every* later startup. Had it ever changed, every row
+  already recorded in every deployed database would have become a mismatch at the
+  same moment, hard-failing startup with `checksum_mismatch`: a total outage that
+  presents as "someone edited a migration", pointing the operator at an edit that
+  never happened.
+
+  The checksum is now `MariadbMigrationAdaptor.checksumOf(sql)` — the lowercase
+  hex SHA-256 of the script's UTF-8 bytes — and the stability check is a string
+  comparison. A digest can be written down, so a test pins a known script to a
+  known constant and a change of algorithm fails the suite instead of a fleet of
+  databases; it is also reproducible outside Dart (`shasum -a 256`), so an
+  operator can compute what the adaptor expects. Dropping `int.parse` fixed a
+  second failure on the same line: a stored value that is not a number — an older
+  row, a hand-edited one — escaped the module as an unhandled `FormatException`
+  rather than being reported as the mismatch it is.
+
+  **Breaking for existing databases.** A `<schema>_versioning` table still
+  holding hash-code checksums will fail its stability check on the next run; no
+  upgrade shim is provided. Repair by recomputing each row's `checksum` from its
+  stored `script`.
+
 - **One SQL lexer, agreeing with the server (tcinc476).** Migration text was
   walked by **five** hand-rolled quote scanners — one in the migration applier,
   four in the DDL reader (`splitStatements`, `stripComments`, `splitTopLevel`,

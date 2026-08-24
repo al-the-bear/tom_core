@@ -157,6 +157,69 @@ void main() {
   // pinned by `sql_lexer_test.dart` — it is shared with the DDL reader, so it
   // is tested where it lives rather than from either consumer.
 
+  // The recorded checksum is what decides, on every later startup, whether an
+  // already-applied migration has been edited. It therefore has to mean the
+  // same thing in the process that *writes* it and in every process that reads
+  // it back — including one on a different SDK, platform or isolate. These pin
+  // the digest to a constant, so a change of algorithm is a red suite here
+  // rather than a fleet-wide `checksum_mismatch` on the next deployment.
+  group('MariadbMigrationAdaptor.checksumOf', () {
+    test('a known script produces a known constant digest', () {
+      // The constant is the whole point: it is the contract between a row
+      // written last year and the code reading it today. `String.hashCode`
+      // could not be written down like this — that is what made it wrong.
+      expect(
+        MariadbMigrationAdaptor.checksumOf(
+          'CREATE TABLE orders (id INT PRIMARY KEY);',
+        ),
+        '9ad9167cb37c929c8f439bcc29682d4f4b6a963310c983d1bdd35ebc21634483',
+      );
+    });
+
+    test('the empty script produces the empty SHA-256', () {
+      // Pins the encoding as much as the algorithm: this is the digest of zero
+      // bytes, so an implementation that hashed a quoted or padded form of the
+      // script would not land here.
+      expect(
+        MariadbMigrationAdaptor.checksumOf(''),
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      );
+    });
+
+    test('the digest is 64 lowercase hex characters', () {
+      expect(
+        MariadbMigrationAdaptor.checksumOf('SELECT 1'),
+        matches(RegExp(r'^[0-9a-f]{64}$')),
+      );
+    });
+
+    test('a one-character edit changes the digest', () {
+      // The guard exists to catch edits, so an edit must move the value.
+      expect(
+        MariadbMigrationAdaptor.checksumOf('SELECT 1'),
+        isNot(MariadbMigrationAdaptor.checksumOf('SELECT 2')),
+      );
+    });
+
+    test('non-ASCII script text hashes by its UTF-8 bytes', () {
+      // A seed migration carrying accented data is ordinary; the digest must
+      // not depend on how the string happens to be represented in memory.
+      expect(
+        MariadbMigrationAdaptor.checksumOf("INSERT INTO t VALUES ('é');"),
+        MariadbMigrationAdaptor.checksumOf("INSERT INTO t VALUES ('é');"),
+      );
+    });
+
+    test('the digest fits the checksum column', () {
+      // The column is VARCHAR(200); a digest longer than that would be
+      // truncated on write and mismatch on every later read.
+      expect(
+        MariadbMigrationAdaptor.checksumOf('SELECT 1').length,
+        lessThanOrEqualTo(200),
+      );
+    });
+  });
+
   // C-16: an optional `@<env>[,<env>…]` tag on the description selects the
   // environment(s) a migration belongs to; untagged migrations apply
   // everywhere. These pin the tag parse, the per-environment predicate, and the

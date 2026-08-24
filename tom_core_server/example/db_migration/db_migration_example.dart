@@ -22,21 +22,40 @@ void run() {
 
   // 2. Each applied migration becomes one TomDbVersion row. The MariaDB adaptor
   //    uses `version` + `description` + `checksum` to detect re-runs and edits.
+  //    The checksum is a content digest — the same script always produces the
+  //    same value, in this process and in every later one that reads the row
+  //    back, which is exactly what a stability check needs.
+  const script = 'CREATE TABLE orders (id INT PRIMARY KEY);';
   final version = TomDbVersion()
     ..installedRank = 1
     ..version = 2
     ..description = 'add_orders'
-    ..script = 'CREATE TABLE orders (id INT PRIMARY KEY);'
-    ..checksum = '12345'
+    ..script = script
+    ..checksum = MariadbMigrationAdaptor.checksumOf(script)
     ..success = 1;
   print('2. recorded migration:');
   print(
     '   rank=${version.installedRank} version=${version.version} '
     'description=${version.description} success=${version.success}',
   );
+  print('   checksum=${version.checksum}');
   assert(version.version == 2);
   assert(version.description == 'add_orders');
   assert(version.success == 1);
+  assert(
+    version.checksum ==
+        '9ad9167cb37c929c8f439bcc29682d4f4b6a963310c983d1bdd35ebc21634483',
+  );
+
+  // 2b. An edited script no longer matches the recorded checksum, which is how
+  //     `applyMigration` refuses to re-run a migration that was changed after
+  //     the fact.
+  final edited = '$script\n-- edited after the fact';
+  print(
+    '2b. edited script still matches? '
+    '${MariadbMigrationAdaptor.checksumOf(edited) == version.checksum}',
+  );
+  assert(MariadbMigrationAdaptor.checksumOf(edited) != version.checksum);
 
   // 3. The expected on-disk layout the orchestrator walks (see the module doc):
   //    <directory>/<datasourceName>/<schemaName>/[<version>]-<description>.sql

@@ -126,6 +126,108 @@ void main() async {
       expect(versions.single.version, 0);
     });
 
+    // The stability guard, end to end. `checksumOf` itself is pinned to a
+    // constant in `db_migration_test.dart`; what only a server can show is that
+    // the value the adaptor *writes* is that same digest, and that reading it
+    // back decides correctly whether the script was edited.
+    group('the recorded checksum', () {
+      test('is the digest of the script it was recorded with', () async {
+        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+
+        final recorded = (await appliedVersions()).single;
+        // Paired against the row's own `script` column, so this holds whatever
+        // the fixture file happens to contain — and would fail if the write
+        // and the read ever disagreed about what is hashed.
+        expect(
+          recorded.checksum,
+          MariadbMigrationAdaptor.checksumOf(recorded.script),
+        );
+        // Asserted as a digest, not merely as "some string": the defect being
+        // fixed wrote a decimal `String.hashCode`, which is also a non-empty
+        // string and would pass a shape-blind assertion.
+        expect(recorded.checksum, matches(RegExp(r'^[0-9a-f]{64}$')));
+      });
+
+      test('accepts the unchanged script on a later run', () async {
+        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        final recorded = (await appliedVersions()).single;
+
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        // The row was written by a previous `MariadbMigrationAdaptor`; this is
+        // a fresh one reading it back. Re-presenting the same script must be
+        // recognised as already applied and returned from quietly.
+        await adaptor.applyMigration(
+          dsi,
+          _schemaName,
+          recorded.version,
+          recorded.description,
+          recorded.script,
+        );
+        // Verified and skipped, not re-applied: still one row.
+        expect(await appliedVersions(), hasLength(1));
+      });
+
+      test('rejects an edited script with checksum_mismatch', () async {
+        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        final recorded = (await appliedVersions()).single;
+
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        await expectLater(
+          adaptor.applyMigration(
+            dsi,
+            _schemaName,
+            recorded.version,
+            // Same description, so the description guard cannot be what fires.
+            recorded.description,
+            '${recorded.script}\n-- edited after the fact',
+          ),
+          throwsA(
+            isA<MariadbMigrationException>().having(
+              (e) => e.key,
+              'key',
+              'mariadb_migration.apply_migration.checksum_mismatch',
+            ),
+          ),
+        );
+      });
+
+      test('reports a non-digest stored value as a mismatch, not a '
+          'FormatException', () async {
+        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        // A row whose checksum is not a number at all — what a database
+        // migrated from an older build, or a hand-edited row, actually holds.
+        // The previous implementation parsed the column as an int, so this
+        // path escaped as a raw FormatException: an unhandled crash instead of
+        // the module's own diagnosable failure.
+        await dsi.datasource.executeCommand(
+          'UPDATE ${_schemaName}_versioning SET checksum = :checksum',
+          {'checksum': 'not-a-digest'},
+        );
+        final recorded = (await appliedVersions()).single;
+
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        await expectLater(
+          adaptor.applyMigration(
+            dsi,
+            _schemaName,
+            recorded.version,
+            recorded.description,
+            recorded.script,
+          ),
+          throwsA(
+            isA<MariadbMigrationException>().having(
+              (e) => e.key,
+              'key',
+              'mariadb_migration.apply_migration.checksum_mismatch',
+            ),
+          ),
+        );
+      });
+    });
+
     // A data source with more than one schema is the shape both this module's
     // guide and TomSchemaConvergenceCheck.checkAll assume works, and it did
     // not: the orchestrator reset the migrator once per data source but

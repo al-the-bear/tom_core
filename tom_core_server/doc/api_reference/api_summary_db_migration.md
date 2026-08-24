@@ -44,7 +44,9 @@ because each schema keeps its own applied-version history. A migration file
 name is parsed into a `TomMigrationFileName` (version, description, optional
 environment tag). The MariaDB implementation, `MariadbMigrationAdaptor`,
 maintains a `<schema>_versioning` table whose rows are `TomDbVersion` records,
-verifying description/checksum stability of already-applied versions.
+verifying description/checksum stability of already-applied versions. The
+checksum is a content digest (`MariadbMigrationAdaptor.checksumOf`), because it
+is written by one process and read back by every later one.
 
 Both the applier and the DDL reader walk raw SQL text, and both do it through
 `TomSqlLexer` — the module's single quote/comment scanner and its single
@@ -170,6 +172,12 @@ MariadbMigrationAdaptor()
 | -------- | ---- | ----------- |
 | `versions` | `List<TomDbVersion>` | The migrations already applied to the schema this instance is bound to — a snapshot taken by `initializeMigration`, **not** extended as `applyMigration` runs (an applied migration is written to the table, not added here). |
 
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `checksumOf` | `static String checksumOf(String sql)` | The checksum recorded for a migration script: the lowercase hex SHA-256 of its UTF-8 bytes. Public because it *is* the definition of the stored value — a test pins it to a constant, and an operator repairing a row needs to compute what the adaptor expects. It replaced `String.hashCode`, which Dart guarantees only within one run. |
+
 #### Methods
 
 | Method | Signature | Description |
@@ -232,7 +240,7 @@ TomDbVersion()
 | `version` | `int` | The migration version number. |
 | `description` | `String` | The migration description (from the file name). |
 | `script` | `String` | The full migration script text. |
-| `checksum` | `String` | The script's `hashCode`, stored as a string, used to detect later edits. |
+| `checksum` | `String` | The script's content digest — lowercase hex SHA-256, as produced by `MariadbMigrationAdaptor.checksumOf` — used to detect later edits. |
 | `installedBy` | `String` | The database user that applied the migration. |
 | `installedOn` | `DateTime` | When the migration was applied. |
 | `success` | `int` | `1` if the migration script succeeded, `0` if it failed. |
