@@ -160,9 +160,28 @@ class TomSchemaModel {
 /// comes out immutable. The entity side uses the same builder, so both halves
 /// of the check are assembled through one API and cannot drift apart in shape.
 ///
-/// Every method is a no-op-free primitive: it assumes the caller has already
-/// decided the operation is legal (via [hasTable] / [hasColumn]), because only
-/// the caller knows whether an `IF NOT EXISTS` made a collision benign.
+/// Every mutation is a **silent no-op on a table or column the builder does not
+/// have**, never an error: [addColumn], [dropColumn], [renameColumn] and
+/// [setPrimaryKey] against an unknown table all return with the model
+/// unchanged. The builder accumulates; it never reports.
+///
+/// That is a division of labour, not leniency. Whether a statement operating on
+/// something absent is a *defect* depends on the statement text — `DROP TABLE
+/// IF EXISTS` on a table the chain never created is the guard doing its job,
+/// the same drop without the guard is a chain defect worth reporting — and the
+/// builder is handed parsed names and columns, never the SQL, so it is the one
+/// participant that cannot tell those two apart. `TomSchemaDdlReader` can, and
+/// does: it asks [hasTable] / [hasColumn] *before* mutating, and the answer
+/// decides whether it records a `TomDdlReplayError`, not whether the call is
+/// safe to make.
+///
+/// Two consequences follow, and both are why the checking is not moved down
+/// here. The reader collects its errors and keeps replaying, so one run reports
+/// every divergence in a chain rather than only the first; a builder that threw
+/// would end the replay at the earliest defect. And the entity side builds from
+/// `information_schema` rows, where there is no chain to contradict and nothing
+/// to report — a builder that demanded a pre-check would impose guards on a
+/// caller that cannot fail that way.
 class TomSchemaBuilder {
   final Map<String, _TableBuilder> _tables = {};
 

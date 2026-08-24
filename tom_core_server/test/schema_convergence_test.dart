@@ -182,6 +182,109 @@ void main() {
         throwsUnsupportedError,
       );
     });
+
+    // The builder accumulates and never reports: a mutation naming something it
+    // does not have returns with the model unchanged. The class dartdoc used to
+    // claim the opposite — that each method assumed the caller had already
+    // established the operation was legal — while every member below it
+    // documented the no-op, so the one sentence a reader met first told them to
+    // trust a precondition that was never enforced.
+    //
+    // Nothing in the suite pinned this either way, which is why the prose could
+    // drift: a builder rewritten to throw on an unknown table would have made
+    // the retired class doc true and passed. These tests decide it.
+    test('every mutation on an unknown table is a silent no-op', () {
+      final builder = TomSchemaBuilder()..addTable('widget', 'a');
+
+      expect(() {
+        builder
+          ..addColumn('ghost', column('label'))
+          ..dropColumn('ghost', 'label')
+          ..renameColumn('ghost', 'label', 'caption', 'b')
+          ..setPrimaryKey('ghost', ['label'])
+          ..dropTable('ghost')
+          ..renameTable('ghost', 'phantom');
+      }, returnsNormally);
+
+      expect(builder.hasTable('ghost'), isFalse);
+      expect(builder.hasTable('phantom'), isFalse);
+      expect(
+        builder.build().tables.keys,
+        ['widget'],
+        reason:
+            'a mutation on a table the builder does not have must not '
+            'conjure one, and must not disturb the tables it does have',
+      );
+    });
+
+    test('a column mutation naming an unknown column is a silent no-op', () {
+      final builder = TomSchemaBuilder()
+        ..addTable('widget', 'a')
+        ..addColumn('widget', column('label'));
+
+      expect(() {
+        builder
+          ..dropColumn('widget', 'ghost')
+          ..renameColumn('widget', 'ghost', 'caption', 'b');
+      }, returnsNormally);
+
+      final table = builder.build().table('widget')!;
+      expect(table.columns.values.map((c) => c.name), ['label']);
+      expect(
+        table.column('caption'),
+        isNull,
+        reason: 'renaming a column that is not there must not create it',
+      );
+    });
+  });
+
+  group('the builder documents the contract it actually has', () {
+    // The retired claim outlived the code in two places at once — the class
+    // dartdoc and the API summary paragraph that reproduces it — and the
+    // summary carried it directly above a method table that contradicted it
+    // seven times. Fixing one site and not the other leaves the reader with the
+    // same contradiction, so both are checked here.
+    //
+    // Each site is asked two questions, because either answer alone is
+    // insufficient. Stating the no-op is not enough: the retired sentence could
+    // sit beside a correct one and a reader would still meet the wrong claim
+    // first. Absence is not enough either — that is how the prose gets deleted
+    // without a replacement, which leaves the contract undocumented rather than
+    // misdocumented.
+    const sites = {
+      'lib/src/tomserver/db_migration/schema_model.dart':
+          _builderClassDartdocOf,
+      'doc/api_reference/api_summary_db_migration.md': _builderSummaryProseOf,
+    };
+
+    for (final entry in sites.entries) {
+      test('${entry.key} states the no-op contract', () {
+        final prose = entry.value(File(entry.key).readAsStringSync());
+        expect(
+          prose,
+          contains('no-op'),
+          reason:
+              'the builder never reports, and the text a reader meets '
+              'first has to say so',
+        );
+      });
+
+      test('${entry.key} no longer claims the caller must pre-check', () {
+        final prose = entry.value(File(entry.key).readAsStringSync());
+        for (final retired in const [
+          'no-op-free',
+          'assumes the caller has already',
+        ]) {
+          expect(
+            prose,
+            isNot(contains(retired)),
+            reason:
+                'the members document a no-op; a precondition stated here '
+                'contradicts them',
+          );
+        }
+      });
+    }
   });
 
   group('TomSchemaDdlReader statement lexing', () {
@@ -1244,4 +1347,35 @@ CREATE TABLE fixture_task (
       );
     });
   });
+}
+
+/// The run of `///` lines immediately above `class TomSchemaBuilder`.
+///
+/// Deliberately not the whole file: the claim under test is what a reader meets
+/// *at the class*, and a file-wide search would let a sentence anywhere in the
+/// library satisfy an assertion about the class's own contract.
+String _builderClassDartdocOf(String source) {
+  final lines = source.split('\n');
+  final declaration = lines.indexWhere(
+    (line) => line.startsWith('class TomSchemaBuilder'),
+  );
+  if (declaration < 0) fail('schema_model.dart no longer declares the builder');
+  var first = declaration;
+  while (first > 0 && lines[first - 1].trimLeft().startsWith('///')) {
+    first--;
+  }
+  if (first == declaration) fail('TomSchemaBuilder has no class dartdoc');
+  return lines.sublist(first, declaration).join('\n');
+}
+
+/// The prose under the summary's `### TomSchemaBuilder`, up to its first
+/// `####` subsection — the paragraphs, not the member tables that follow.
+String _builderSummaryProseOf(String source) {
+  final section = RegExp(
+    r'^### TomSchemaBuilder$(.*?)^#{3,4} ',
+    multiLine: true,
+    dotAll: true,
+  ).firstMatch(source);
+  if (section == null) fail('the summary no longer has a builder section');
+  return section.group(1)!;
 }

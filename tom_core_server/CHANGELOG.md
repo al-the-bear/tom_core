@@ -703,6 +703,34 @@
 
 ### Documentation
 
+- **`TomSchemaBuilder`'s class dartdoc no longer states the opposite of every
+  method below it (tcinc493).** The class doc called each method a "no-op-free
+  primitive" that assumed the caller had already established the operation was
+  legal via `hasTable` / `hasColumn`. Every member documented the reverse — "does
+  nothing when the table is absent" — as did the API summary's own method table,
+  directly beneath the same false paragraph. The first sentence a reader met was
+  the wrong one, and it told them to trust a precondition nothing enforced.
+
+  The old rationale had a kernel of truth and drew the opposite conclusion from
+  it. Only the caller *can* tell a benign collision from a defect, because that
+  turns on whether the statement carried `IF NOT EXISTS` / `IF EXISTS` and the
+  builder is handed parsed names, never the SQL. But that is why the *reporting*
+  belongs to `TomSchemaDdlReader` — not why the builder would refuse the call.
+  The rewritten doc says so, and adds the two reasons the check is not moved
+  down: the reader collects errors and keeps replaying, so one run reports every
+  divergence rather than only the first, and the entity side builds from
+  `information_schema` rows where there is no chain to contradict at all.
+
+  Six tests close the gap, all mutation-verified. Nothing in the suite pinned the
+  no-op either way, so a builder rewritten to throw would have made the retired
+  doc true and passed; two tests now decide it for every mutator, against both an
+  unknown table and an unknown column. Four more check each of the two sites that
+  carried the sentence, asking both questions: that the no-op contract is stated,
+  and that the retired precondition is gone. Either alone is insufficient —
+  stating it is not enough while the wrong sentence still sits above it, and
+  absence is not enough because that is how prose gets deleted without a
+  replacement, leaving the contract undocumented rather than misdocumented.
+
 - **The migration guide now states that the outcome row is written with bound
   parameters (tcinc492).** The guide used to carry a block quote describing a
   string-interpolated `INSERT` and a follow-up to fix the escaping in
