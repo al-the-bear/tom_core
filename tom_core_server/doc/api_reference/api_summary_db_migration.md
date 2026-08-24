@@ -855,3 +855,16 @@ here rather than on the dialect.
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
 | `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/` and `authentication/`, and none of them reads back, so the scheduler runs without loading a migration. |
+
+The signature names the defaulting constants rather than their values, and each
+is declared by the module that owns the table — so the seven names the check
+actually covers in a deployment that renames nothing are spread across four other
+modules. They are, parameter → constant → table name (owner):
+
+- `jobRun` → `defaultJobRunTable` → `tom_job_run` (Scheduling)
+- `lease` → `defaultLeaseTable` → `tom_lease` (Scheduling)
+- `schedulerNode` → `defaultSchedulerNodeTable` → `tom_scheduler_node` (Scheduling)
+- `blobManifest` → `defaultBlobManifestTable` → `tom_blob` (File Storage)
+- `blobChunk` → `defaultBlobChunkTable` → `tom_blob_chunk` (File Storage)
+- `auditTrail` → `defaultAuditTrailTable` → `tom_audit_trail` (Audit)
+- `oauthState` → `defaultOAuthStateTable` → `tom_oauth_state` (Authentication)

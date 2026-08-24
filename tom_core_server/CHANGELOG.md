@@ -703,6 +703,23 @@
 
 ### Documentation
 
+- **A summary can no longer say a module has no enums while it exports one
+  (tcinc490).** `## Global Functions and Constants` has been guarded against a
+  false "None" since the `frameworkOwnedTables` repair; `## Enums` had no guard
+  at all, so `db_migration`'s fix was hand-made and nothing prevented the next
+  one. The new sweep asks two questions, because an enum — unlike a free
+  function — has more than one legitimate home: every exported enum must have a
+  section *somewhere* in the summary, and the `## Enums` section must **account
+  for** each of them, by documenting it or by saying where it is documented. It
+  found one live falsehood, `object_persistence`'s "None — this module declares
+  no enums", written while the module exported `TomSortDirection` and documented
+  it under Paging & Sorting; that section now points there instead. Twenty
+  modules pass with no quarantine. `db_migration`'s Global Functions section
+  also now spells out the seven default table names `frameworkOwnedTables`
+  covers — the signature names the defaulting *constants*, which are declared
+  across four other modules, so a reader previously had to chase seven
+  identifiers to learn which tables the check actually looks at.
+
 - **The `db_migration` API summary covers all seven of its files, not three
   (tcinc489).** Its `Source:` line named `db_migration.dart`,
   `mariadb_migration_adapter.dart` and `sql_lexer.dart`, and its class sections

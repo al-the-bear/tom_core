@@ -1219,7 +1219,9 @@ Each exception constructor forwards the standard `TomServerException` positional
 
 ## Enums
 
-None — this module declares no enums.
+One: `TomSortDirection`, documented under
+[Paging & Sorting](#tomsortdirection) beside the `TomSortField` that carries it,
+because a direction is only ever met as one term's direction.
 
 ## Global Functions and Constants
 

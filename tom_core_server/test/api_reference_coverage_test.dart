@@ -223,8 +223,32 @@
 /// not declare is worse, the reader having no way to tell it from a current
 /// one. All twenty satisfy both today, so this one carries no quarantine.
 ///
-/// The last group is the first check in this file whose subject is the document
-/// as a document rather than as a set of claims about code, and it is the same
+/// The group after it asks the same "is this section's *None* true" question of
+/// enums, and has to ask it differently. A free function has exactly one place
+/// it can be documented; an enum has two, because eleven of the nineteen in this
+/// package are written up beside the type that carries them —
+/// `TomSortDirection` belongs next to the `TomSortField` whose direction it is,
+/// and the summaries that do this are right to. So the forward check is that the
+/// summary gives every exported enum a section *somewhere*, at whatever depth,
+/// and the `## Enums` section is checked separately for **accounting**: it may
+/// document an enum or say where the enum is documented, but it may not leave
+/// one out. `object_persistence` said "None — this module declares no enums"
+/// while exporting `TomSortDirection` and documenting it two hundred lines
+/// above, under Paging & Sorting — a reader who trusted the section was steered
+/// away from a page that was there all along.
+///
+/// The obvious repair, giving the enum a second section under `## Enums`, is the
+/// wrong one and was written and reverted here: it would have documented one
+/// type in two places, and the pair a reader arrives holding is the direction
+/// *and its sort term*, not the direction alone. A cross-reference is what the
+/// section owes. That is also why this section is read for the names it
+/// **mentions** rather than the subsections it heads — and why staleness, which
+/// mentions cannot answer (prose names neighbouring types too), is read from the
+/// headings instead.
+///
+/// The group after that is the first check in this file whose subject is the
+/// document as a document rather than as a set of claims about code, and it is
+/// the same
 /// completeness failure as the Overview table one level up again. A guide's
 /// `## Table of Contents` is how a reader decides what the document covers
 /// without reading it, so a section it omits is a section most readers never
@@ -638,6 +662,88 @@ List<String>? _globalFunctionNamesOf(String summary) {
 List<String>? _globalFunctionNames(String module) => _globalFunctionNamesOf(
   File('doc/api_reference/api_summary_$module.md').readAsStringSync(),
 );
+
+/// The public enums [source] declares.
+///
+/// Anchored at column zero, so a nested `enum` — there are none today, but the
+/// language allows one — is not read as module surface.
+Set<String> _declaredEnums(String source) => {
+  for (final declaration in RegExp(
+    r'^enum\s+([A-Za-z_]\w*)',
+    multiLine: true,
+  ).allMatches(_withoutMultilineStrings(source)))
+    if (!declaration.group(1)!.startsWith('_')) declaration.group(1)!,
+};
+
+/// The public enums the barrel exports for [module], sorted.
+List<String> _exportedEnums(String module) =>
+    _overExportedSources(module, _declaredEnums).toList()..sort();
+
+/// Every heading [summary] carries, with type parameters stripped.
+///
+/// Depth is not read, for the reason [_classSectionsOf] gives: the audit summary
+/// files its types at `###` and the datasources summary at `####`, and eleven of
+/// the nineteen enums in the package are filed under `## Classes` rather than
+/// under `## Enums` at all. What makes an enum *documented* is that the summary
+/// gives it a section a reader can reach from the table of contents — not which
+/// heading it sits beneath.
+Set<String> _headingNamesOf(String summary) => {
+  for (final heading in RegExp(
+    r'^#{2,6}\s+(.*?)\s*$',
+    multiLine: true,
+  ).allMatches(summary))
+    heading.group(1)!.replaceAll(RegExp(r'&lt;.*&gt;|<[^<>]*>'), '').trim(),
+};
+
+/// Every identifier [summary]'s `## Enums` section names — or `null` when the
+/// summary has no such section.
+///
+/// *Mentions* rather than headings, because the section's job is to account for
+/// the module's enums, not to be the only place they may be documented. Eleven
+/// of the nineteen enums in the package are written up beside the type that
+/// carries them — `TomSortDirection` belongs next to the `TomSortField` whose
+/// direction it is, and moving it under a heading of its own to satisfy a check
+/// would separate the pair a reader arrives holding. A section that says "one:
+/// `TomSortDirection`, documented under Paging & Sorting" has answered the
+/// question; a section that says "None" has answered it wrongly.
+///
+/// The consequence is that staleness cannot be read from this — prose names
+/// neighbouring types too. [_enumSectionHeadingsOf] carries that half.
+Set<String>? _enumSectionMentionsOf(String summary) {
+  final section = _enumSection(summary);
+  if (section == null) return null;
+  return RegExp(
+    r'[A-Za-z_]\w*',
+  ).allMatches(section).map((match) => match.group(0)!).toSet();
+}
+
+/// The names [summary]'s `## Enums` section heads a subsection with — or `null`
+/// when the summary has no such section.
+///
+/// Headings only, deliberately: unlike [_globalFunctionNamesOf], the tables in
+/// this section do not list *types*. Every summary that writes one gives the
+/// enum a heading and then a table of its **values** — `missingTable`,
+/// `unexpectedTable`, and so on. Reading first cells here would take every value
+/// for a type the module does not declare, and the staleness check would fail on
+/// the summaries that got the section right.
+List<String>? _enumSectionHeadingsOf(String summary) {
+  final section = _enumSection(summary);
+  if (section == null) return null;
+  return _headingNamesOf(section).toList()..sort();
+}
+
+/// The text under [summary]'s `## Enums` heading, or `null` when it has none.
+String? _enumSection(String summary) {
+  final heading = RegExp(r'^## Enums$', multiLine: true).firstMatch(summary);
+  if (heading == null) return null;
+  final rest = summary.substring(heading.end);
+  final next = RegExp(r'^## ', multiLine: true).firstMatch(rest);
+  return next == null ? rest : rest.substring(0, next.start);
+}
+
+/// The summary text of [module].
+String _summary(String module) =>
+    File('doc/api_reference/api_summary_$module.md').readAsStringSync();
 
 /// The body of `class <className>`, from its opening brace to the end of the
 /// file, with the constructs that would otherwise be misread removed.
@@ -2278,6 +2384,129 @@ None — this module exposes no top-level functions or constants.
       // — which is what keeps "lists every free function" a falsifiable claim.
       expect(_declaredFunctions("const String aTable = 'tom_x';"), isEmpty);
       expect(_declaredApi("const String aTable = 'tom_x';"), isEmpty);
+    });
+  });
+
+  group('no summary denies an enum its module exports', () {
+    for (final module in _modules()) {
+      test(module, () {
+        final summary = _summary(module);
+        final exported = _exportedEnums(module);
+        final headings = _headingNamesOf(summary);
+
+        final undocumented = exported
+            .where((name) => !headings.contains(name))
+            .toList();
+        expect(
+          undocumented,
+          isEmpty,
+          reason:
+              'api_summary_$module.md gives no section to these enums, which '
+              'the barrel exports from $module: ${undocumented.join(', ')}. An '
+              'enum is the one kind of type whose values are its whole '
+              'contract, so a reader who cannot find its section has no way to '
+              'learn what it can be.',
+        );
+
+        final mentioned = _enumSectionMentionsOf(summary);
+        if (mentioned == null) return;
+
+        final denied = exported
+            .where((name) => !mentioned.contains(name))
+            .toList();
+        expect(
+          denied,
+          isEmpty,
+          reason:
+              'api_summary_$module.md has an Enums section that does not '
+              'account for these, which the barrel exports from $module: '
+              '${denied.join(', ')}. The section need not document them — it '
+              'may say where they are written up — but it must not leave them '
+              'out. A stated "None" is worse than an omission: an omission '
+              'invites the reader to look, a "None" tells them not to.',
+        );
+
+        final stale = _enumSectionHeadingsOf(
+          summary,
+        )!.where((name) => !exported.contains(name)).toList();
+        expect(
+          stale,
+          isEmpty,
+          reason:
+              'api_summary_$module.md\'s Enums section heads a subsection for '
+              'these, which $module does not export as enums: '
+              '${stale.join(', ')}.',
+        );
+      });
+    }
+
+    test('the sweep is reading the sections it claims to check', () {
+      // All three findings above are emptiness assertions, so a parser that
+      // read nothing would report every summary as agreeing.
+      expect(_enumSectionHeadingsOf(_summary('db_migration')), [
+        'TomSchemaDivergenceKind',
+      ]);
+      expect(
+        _enumSectionHeadingsOf(_summary('datasources')),
+        hasLength(_exportedEnums('datasources').length),
+      );
+      // The enums filed beside the type that carries them are found all the
+      // same, which is what keeps the forward check about documentation rather
+      // than layout — and the accounting check satisfiable without moving them.
+      expect(_exportedEnums('messaging'), hasLength(6));
+      expect(
+        _headingNamesOf(_summary('messaging')),
+        containsAll(_exportedEnums('messaging')),
+      );
+      expect(
+        _enumSectionMentionsOf(_summary('object_persistence')),
+        contains('TomSortDirection'),
+      );
+      expect(_enumSectionHeadingsOf(_summary('object_persistence')), isEmpty);
+      // And a module with no Enums section is not silently exempted from the
+      // forward check — it simply makes no claim to contradict.
+      expect(_enumSectionMentionsOf(_summary('messaging')), isNull);
+    });
+
+    test('the parsers read the shapes the package writes', () {
+      expect(_declaredEnums('enum TomFoo { a, b }'), contains('TomFoo'));
+      expect(_declaredEnums('enum _Hidden { a }'), isEmpty);
+      expect(_declaredEnums('  enum Nested { a }'), isEmpty);
+      const withHeading = '''
+## Enums
+
+### TomKind
+
+| Value | Meaning |
+| ----- | ------- |
+| `missingTable` | one |
+
+## Next Section
+
+### NotMine
+''';
+      // A value table under the enum's heading must not be read as naming
+      // types, or the summaries that got this section right would fail.
+      expect(_enumSectionHeadingsOf(withHeading), ['TomKind']);
+      expect(_enumSectionMentionsOf(withHeading), isNot(contains('NotMine')));
+      // A cross-reference accounts for the enum without heading a section.
+      const withReference = '''
+## Enums
+
+One: `TomKind`, documented beside the type that carries it.
+''';
+      expect(_enumSectionMentionsOf(withReference), contains('TomKind'));
+      expect(_enumSectionHeadingsOf(withReference), isEmpty);
+      expect(
+        _enumSectionMentionsOf('## Enums\n\nNone.\n'),
+        isNot(contains('TomKind')),
+      );
+      expect(_enumSectionMentionsOf('## Something Else\n\ntext\n'), isNull);
+      // Type parameters are stripped, however a heading escapes them.
+      expect(
+        _headingNamesOf('#### MariadbPreparedStatement&lt;T&gt;\n'),
+        contains('MariadbPreparedStatement'),
+      );
     });
   });
 
