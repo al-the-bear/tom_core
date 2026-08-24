@@ -876,21 +876,35 @@ against a server you already have, export `TOM_CORE_SERVER_TEST_DB_HOST`,
 `dart test --tags db test/datasources_db_test.dart`.
 
 `example/datasources/datasources_example.dart` is the readable entry point to
-the same connection-free surface the first suite covers: boxing and parsing
-typed values, rendering literals, letting `objectOp` dispatch on a runtime type
-— including an iterable becoming a comma-separated list — and emitting the
-`:name` placeholder that keeps untrusted input out of the SQL. It stops exactly
-where a connection would be needed, which is why the drivers and the generated
-query objects are described in this document instead of run there.
+the same connection-free surface the first suite covers, in nine numbered
+steps: boxing and parsing typed values; rendering literals; letting `objectOp`
+dispatch on a runtime type, including an iterable becoming a comma-separated
+list; emitting the `:name` placeholder that keeps untrusted input out of the
+SQL; writing and reading back an instant through the one `DATETIME(6)`
+encoding; rendering each clause a generated statement is assembled from;
+scanning a statement for its placeholders without mistaking a colon inside a
+literal for one; classifying a failed write as definite or ambiguous; and
+declaring a framework-owned table, then deriving its DDL, its column lists and
+its inserts from that one declaration.
+
+Only two things genuinely need more than a Dart VM, which is why they are
+described in this document instead of run there: the drivers and the registry
+need a live server, and rendering a whole `TomSelect`, `TomCount` or `TomDelete`
+needs annotated entity types, because the column list and the `ORDER BY` are
+resolved from reflected persistence metadata. The clause builders those
+statements are assembled from are static and pure, so step 6 runs them
+directly.
 
 ```bash
 dart run example/datasources/datasources_example.dart
 ```
 
 `test/datasources_test.dart` runs the example under precisely that command and
-requires it to exit 0 with all four numbered steps reported, so the transcript
-in the file is what the module currently does rather than what it did when the
-file was written. Its expectations are written as a local `check(bool, String)`
+requires it to exit 0 having printed exactly those nine steps, in order and with
+no others — an added step nothing lists is a surface nothing checks. So the
+transcript in the file is what the module currently does rather than what it did
+when the file was written. Its expectations are written as a local
+`check(bool, String)`
 that throws, not as `assert`: `dart run` leaves assertions disabled — that is
 what its `--enable-asserts` flag is for — so an `assert` would compile out under
 the very command documented above, leaving an example that prints a plausible

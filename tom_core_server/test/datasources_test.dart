@@ -1778,9 +1778,21 @@ void main() {
         0,
         reason: 'example failed: ${result.stdout}${result.stderr}',
       );
-      for (var step = 1; step <= 4; step++) {
-        expect(result.stdout, contains('$step. '));
-      }
+      // The transcript's step numbers, in the order they were printed. The
+      // whole list is compared rather than each step being looked for in
+      // turn, because only one of the two failures is caught by looking: a
+      // step that stopped printing fails either way, but a step *added*
+      // without being listed here is a surface nothing checks — and that is
+      // the state this example was in for a year, with four steps standing
+      // for nine connection-free surfaces and a header claiming the rest
+      // needed a database.
+      final printed = RegExp(r'^(\d+)\. ', multiLine: true)
+          .allMatches(result.stdout as String)
+          .map((match) => match.group(1)!)
+          .toList();
+      expect(printed, [
+        for (var step = 1; step <= 9; step++) '$step',
+      ], reason: 'the example demonstrates nine surfaces, in order');
     });
 
     test('with its expectations checked rather than asserted', () async {

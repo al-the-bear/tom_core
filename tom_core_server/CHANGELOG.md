@@ -303,6 +303,22 @@
 
 ### Documentation
 
+- **The datasources example runs nine surfaces, not four (tcinc474).** It
+  demonstrated typed-value boxing, literals, `objectOp` dispatch and the `:name`
+  placeholder, and its header told the reader the rest needed a live database
+  and annotated entity types. That was true of the drivers and of rendering a
+  whole `TomSelect`, and false of five more surfaces that need neither: the
+  `DATETIME(6)` instant encoding, `TomGeneratedQuery`'s static clause builders,
+  the quote-aware `SqlPlaceholderScan`, `classifySqlFailure`, and
+  `TomFrameworkTable`'s DDL, column lists and inserts. All five now run, with
+  the header corrected to name only what genuinely needs a server.
+
+  The step check went with it. `test/datasources_test.dart` looked for steps 1
+  to 4 in the transcript, which catches a step that stopped printing but not a
+  step added and left unchecked — the failure that was actually live. It now
+  compares the whole printed sequence against exactly `1..9`, so both
+  directions fail.
+
 - **`doc/datasources.md` now says what the module has not done (tcinc473).** It
   described a module that ships exactly one database driver, declares a
   `TomDbType` nothing produces, holds one connection per data source with no
