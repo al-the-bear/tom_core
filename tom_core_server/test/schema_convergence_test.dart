@@ -131,6 +131,34 @@ void main() {
       expect(TomSqlTypeFamily.integer.accepts(TomSqlTypeFamily.text), isFalse);
       expect(TomSqlTypeFamily.text.accepts(TomSqlTypeFamily.integer), isFalse);
     });
+
+    // `accepts` is directional — the receiver is what the entity model declares,
+    // the argument what the DDL creates — but only one pair actually exercises
+    // that, and every other test above names its pairs one at a time. So a
+    // second asymmetric pair could be added to the policy without a single
+    // failure, and the prose describing the relation would quietly become wrong
+    // in every place it is written down. This asks the whole matrix instead of a
+    // list someone has to remember to extend.
+    test(
+      'decimal/integer is the only pair whose direction changes the answer',
+      () {
+        final asymmetric = <String>{};
+        for (final declared in TomSqlTypeFamily.values) {
+          for (final actual in TomSqlTypeFamily.values) {
+            if (declared.accepts(actual) != actual.accepts(declared)) {
+              asymmetric.add(([declared.name, actual.name]..sort()).join('/'));
+            }
+          }
+        }
+        expect(
+          asymmetric,
+          {'decimal/integer'},
+          reason:
+              'a new directional pair means every text describing the '
+              'relation needs revisiting, starting with the tolerance table',
+        );
+      },
+    );
   });
 
   group('TomSchemaBuilder', () {
@@ -235,6 +263,79 @@ void main() {
         isNull,
         reason: 'renaming a column that is not there must not create it',
       );
+    });
+  });
+
+  group('the tolerance the summary states is the tolerance the code applies', () {
+    // The completion document described this relation as "symmetric where it
+    // exists" directly beneath a table that listed `decimal` accepting
+    // `integer` with no reverse row — while the two pairs that *are* symmetric
+    // each got two rows saying so. That is the dangerous shape of wrong: it
+    // invites a reader to call `accepts` on whichever side is to hand, and the
+    // answer silently differs for exactly one pair.
+    //
+    // The summary states the same relation in prose, in two sentence forms. Both
+    // are claims about `accepts`, so `accepts` should be what settles them —
+    // rather than a reviewer noticing that a sentence and a switch arm disagree.
+    late final String acceptsEntry;
+
+    setUpAll(() {
+      acceptsEntry = File('doc/api_reference/api_summary_db_migration.md')
+          .readAsLinesSync()
+          .firstWhere(
+            (line) => line.startsWith('| `accepts` |'),
+            orElse: () => fail('the summary no longer documents accepts'),
+          );
+    });
+
+    TomSqlTypeFamily family(String name) => TomSqlTypeFamily.values.firstWhere(
+      (value) => value.name == name,
+      orElse: () =>
+          fail('the summary names a family that does not exist: $name'),
+    );
+
+    test('every pair it calls bidirectional is accepted both ways', () {
+      final claims = RegExp(
+        r'`(\w+)` ↔ `(\w+)` both ways',
+      ).allMatches(acceptsEntry);
+      expect(
+        claims,
+        isNotEmpty,
+        reason:
+            'the summary states no bidirectional pair, so this test is '
+            'reading the wrong text or the entry has been reworded',
+      );
+      for (final claim in claims) {
+        final left = family(claim.group(1)!);
+        final right = family(claim.group(2)!);
+        expect(left.accepts(right), isTrue, reason: '${claim.group(0)}');
+        expect(right.accepts(left), isTrue, reason: '${claim.group(0)}');
+      }
+    });
+
+    test('every pair it calls one-way is refused in the other direction', () {
+      final claims = RegExp(
+        r'`(\w+)` accepts `(\w+)` but \*\*not\*\* the reverse',
+      ).allMatches(acceptsEntry);
+      expect(
+        claims,
+        isNotEmpty,
+        reason:
+            'the summary states no one-way pair, which cannot be right '
+            'while the policy still has one',
+      );
+      for (final claim in claims) {
+        final declared = family(claim.group(1)!);
+        final actual = family(claim.group(2)!);
+        expect(declared.accepts(actual), isTrue, reason: '${claim.group(0)}');
+        expect(
+          actual.accepts(declared),
+          isFalse,
+          reason:
+              'the summary says the reverse does not hold: '
+              '${claim.group(0)}',
+        );
+      }
     });
   });
 

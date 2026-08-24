@@ -703,6 +703,19 @@
 
 ### Documentation
 
+- **The type-family tolerance is no longer described as symmetric (tcinc494).**
+  The completion document summarised `TomSqlTypeFamilyCompatibility.accepts` as
+  "symmetric where it exists, so which side is asked does not change the answer"
+  — directly beneath its own table, which listed `decimal` accepting `integer`
+  with no reverse row while giving the two genuinely bidirectional pairs a row
+  each way. Exactly one ordered pair breaks symmetry, and the sentence invited a
+  reader to call `accepts` on whichever side was to hand. The relation is now
+  stated as directional, with `decimal`/`integer` named and both truth values
+  given. Two guards keep the descriptions honest: the whole
+  `TomSqlTypeFamily` matrix is swept so a second asymmetric pair fails
+  immediately, and the API summary's prose claims about `accepts` are now
+  arbitrated by `accepts` itself rather than by review.
+
 - **`TomSchemaBuilder`'s class dartdoc no longer states the opposite of every
   method below it (tcinc493).** The class doc called each method a "no-op-free
   primitive" that assumed the caller had already established the operation was
