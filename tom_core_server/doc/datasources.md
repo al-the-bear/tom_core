@@ -398,6 +398,15 @@ mirror is taken; an alias whose declared type is outside
 > intended outcome: the alternative — leaving the member holding whatever its
 > field initialiser put there — presents a stale value as if it had been read.
 
+As a transaction participant the plain driver is one-phase: `START
+TRANSACTION`, then `COMMIT` or `ROLLBACK`, each of which lowers the
+in-transaction flag itself. `endTransaction` is therefore **a no-op that always
+succeeds** — there is no prepare step to issue, and by the time the coordinator
+calls it, commit or rollback has already released everything there was to
+release. It still reports `true` rather than nothing, because the coordinator
+ands the participants' results together and a `false` would fail a transaction
+that had in fact completed.
+
 `MariaDbXADatasource` (`@TomDatasourceDriver("mariadb_xa")`) inherits all of
 that but overrides the transaction lifecycle to use **XA** (`XA START` / `XA
 END` + `XA PREPARE` / `XA COMMIT` / `XA ROLLBACK`), so it can take part in a

@@ -822,5 +822,36 @@ void main() {
       expect(await ds.startTransaction(), isFalse);
       expect(ds.commands, hasLength(2));
     });
+
+    test('the plain end sends nothing and reports success', () async {
+      // The counterpart to the XA end above, and the reason that method is
+      // empty rather than unfinished: a one-phase `COMMIT` has no prepare step,
+      // so there is no statement for end to issue, and no per-transaction state
+      // left to release either — `commit` and `rollback` clear the
+      // in-transaction flag themselves, and the coordinator always calls one of
+      // them first.
+      //
+      // Asserting the command list is the half that matters. The return value
+      // alone cannot tell an intentional no-op from a forgotten body, whereas a
+      // statement appearing here would show up immediately.
+      final ds = _ScriptedDatasource();
+      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.endTransaction(), isTrue);
+      expect(ds.commands, ['START TRANSACTION;']);
+      expect(await ds.commit(), isTrue);
+      expect(ds.commands, ['START TRANSACTION;', 'COMMIT;']);
+    });
+
+    test('the plain end succeeds even with no transaction open', () async {
+      // "Always succeeds" is not a formality: the coordinator ands every
+      // participant's end result into the outcome, so a `false` here would fail
+      // a transaction that had in fact completed. The no-open-transaction case
+      // is reachable today — a participant whose start returned `false` is
+      // enlisted anyway (tcincb113), and still gets ended.
+      final ds = _ScriptedDatasource(failing: {'START TRANSACTION'});
+      expect(await ds.startTransaction(), isFalse);
+      expect(await ds.endTransaction(), isTrue);
+      expect(ds.commands, ['START TRANSACTION;']);
+    });
   });
 }

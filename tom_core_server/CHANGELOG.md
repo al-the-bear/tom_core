@@ -726,6 +726,29 @@
 
 ### Internal
 
+- **The plain `endTransaction` says what it is instead of looking unfinished
+  (tcinc451).** `MariaDbDatasource.endTransaction` was a `try` block whose only
+  live statement was `return true`, wrapped around a commented-out `await
+  executeCommand("XA END $_txId; XA PREPARE $_txId;")`, with a catch that could
+  never run. The commented line was not merely disabled: `_txId` is a field of
+  the `MariaDbXADatasource` subclass, so restoring it would not have compiled.
+  The whole shape read like a half-finished port from the XA variant, and left
+  the next reader to work out whether something was missing.
+
+  Nothing was missing — the body is now `async => true` with a dartdoc giving
+  the reason. A one-phase `COMMIT` has no prepare step to issue, and there is no
+  per-transaction state left to release either, because `commit` and `rollback`
+  lower the in-transaction flag themselves and the coordinator always calls one
+  of them first. Reporting `true` is load-bearing rather than a formality: the
+  coordinator ands every participant's result into the outcome, so a `false`
+  would fail a transaction that had in fact completed.
+
+  Two tests were added first, as characterization: they passed against the old
+  body, which is what established that the reduction changed no behaviour. Their
+  value is in the assertion on the recorded command list — a return value alone
+  cannot distinguish an intentional no-op from a forgotten body, whereas a
+  statement reappearing here shows up at once.
+
 - **`lib/src` no longer imports its own package (tcinc445).**
   `base_server_configuration.dart` imported
   `package:tom_core_server/tom_core_server.dart` — the barrel that exports it.

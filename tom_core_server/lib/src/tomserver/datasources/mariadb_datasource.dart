@@ -1283,19 +1283,21 @@ class MariaDbDatasource implements TomDataSource {
     }
   }
 
+  /// Ends this participant's part of a plain transaction: a no-op that always
+  /// succeeds.
+  ///
+  /// A one-phase `START TRANSACTION` / `COMMIT` has no prepare step, so there
+  /// is no statement to issue — the XA lifecycle's `XA END` + `XA PREPARE` has
+  /// no plain equivalent (see [MariaDbXADatasource.endTransaction]). Nor is
+  /// there per-transaction state left to release: [commit] and [rollback]
+  /// clear the in-transaction flag themselves, and the coordinator always
+  /// calls one of them before this.
+  ///
+  /// Reporting `true` is not a formality. The coordinator ands every
+  /// participant's result into the outcome, so a `false` here would fail a
+  /// transaction that had in fact completed.
   @override
-  Future<bool> endTransaction() async {
-    try {
-      // await executeCommand("XA END $_txId; XA PREPARE $_txId;");
-      return true;
-    } catch (error) {
-      // very unlikely to happen...
-      tomLog.error(
-        "Ending database transaction of ${getParticipantId()} failed $error",
-      );
-      return false;
-    }
-  }
+  Future<bool> endTransaction() async => true;
 
   @override
   Future<bool> commit() async {

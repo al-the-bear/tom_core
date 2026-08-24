@@ -904,7 +904,7 @@ is not — never silently truncated.
 | `toString` | `String toString()` | *(override)* Debug description of the datasource. |
 | `getParticipantId` | `String getParticipantId()` | *(override)* The transaction-participant id. |
 | `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `START TRANSACTION`. |
-| `endTransaction` | `Future<bool> endTransaction()` | *(override)* No-op end for the plain (non-XA) transaction. |
+| `endTransaction` | `Future<bool> endTransaction()` | *(override)* A no-op that always succeeds: a one-phase transaction has no prepare step to issue and no state left to release, since `commit` / `rollback` clear the in-transaction flag and the coordinator calls one of them first. |
 | `commit` | `Future<bool> commit()` | *(override)* Issues `COMMIT`. |
 | `rollback` | `Future<void> rollback()` | *(override)* Issues `ROLLBACK`. |
 
