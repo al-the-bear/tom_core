@@ -746,6 +746,30 @@
 
 ### Internal
 
+- **Contract listings are checked against source for what is abstract
+  (tcinc465).** In an `abstract class X { … }` listing a bare declaration is a
+  demand on the reader and a declaration with a body is a gift, and nothing
+  checked which one the source meant. `TomDataSource.isOperational` returns
+  `true` and was shown bare, so a driver author implemented a method they
+  already had — and the override displaces a default that a `extends`-based
+  driver was relying on. `doc/messaging.md` had three of the same slip:
+  `TomMessageTransport.supportsCopies`, `supportsAttachments` and `close` all
+  carry defaults, and the two `supports…` ones default to `false` precisely so
+  a transport that has never considered attachments cannot be handed one.
+  Presenting a safe default as a chore invites a careless `true`.
+
+  `test/api_reference_coverage_test.dart` now compares every member of every
+  contract listing in `doc/*.md` against the declaration in `lib/`. The
+  comparison is symmetric — both sides are measured by whether the declaration
+  ends at a `;` or at a body — with `static`s and constructors excluded, since
+  neither is ever abstract however it is written. Fixing it turned up a parser
+  blind spot with the same shape: a trailing `//` comment was read as the
+  member name, and it is the *bodiless* members that carry one, so exactly the
+  members worth checking were being skipped. `doc/messaging.md` also gained the
+  `checkSupported` method its surrounding prose already described, and a
+  sentence stating the bare-versus-bodied convention rather than leaving a
+  reader to infer it.
+
 - **Every documented member is checked against the class that declares it
   (tcinc464).** An API summary is organised as `#### <ClassName>` sections, so a
   row's position is itself a claim of ownership — and that claim was unchecked.

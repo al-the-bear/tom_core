@@ -69,6 +69,30 @@
 /// because the parser could not see the class that declares it would be a
 /// false alarm, and a guard that cries wolf is turned off.
 ///
+/// The last group changes the question a third time. Attribution asks *whose*
+/// member this is; this one asks what the reader is being *asked to do* about
+/// it. In a contract listing — the `abstract class X { … }` blocks the module
+/// guides open a chapter with — a bare declaration is a demand and one with a
+/// body is a gift, and nothing checked which one the source meant.
+///
+/// Both directions of the mistake cost something, and they cost different
+/// things. A concrete member shown bare is work invented for the reader: they
+/// implement what they already had, and the override silently displaces a
+/// default that was load-bearing. `TomMessageTransport.supportsCopies` and
+/// `supportsAttachments` default to `false` precisely so that a transport which
+/// has never considered attachments cannot be handed one — presenting them as
+/// abstract turns a safe default into a chore, and a chore done carelessly
+/// answers `true`. The opposite mistake is louder but cheaper: an abstract
+/// member shown with a body reads as optional, is skipped, and the class does
+/// not compile.
+///
+/// The comparison is symmetric, and that is what makes it sound. What is
+/// measured on both sides is whether a declaration ends at a `;` or at a body,
+/// which for anything that *can* be abstract is abstractness, and for a field
+/// is merely "no initialiser". Two exclusions keep the shapes comparable: a
+/// `static` and a constructor are never abstract however they are written, so a
+/// bodiless one is not evidence of anything.
+///
 /// Everything here reads the working tree, so the failure names the missing
 /// file, type or field and appears the moment the next one lands.
 library;
@@ -347,11 +371,26 @@ class _Declaration {
 
   final String name;
 
+  /// Whether the type is declared `abstract`.
+  bool isAbstract = false;
+
   /// Member names declared directly on this type — fields, getters, setters,
   /// methods, statics, named constructors and enum values alike. The kind does
   /// not matter to the question being asked, which is only whether the name
   /// belongs to this class at all.
   final Set<String> members = {};
+
+  /// The members declared without a body or an initialiser — the ones whose
+  /// declaration ends at a `;`.
+  ///
+  /// For a method or a getter that is exactly abstractness. For a field it is
+  /// "no initialiser", which is not the same thing — a bare `List<Type> types;`
+  /// is a real field, not a demand on a subclass. The distinction does not
+  /// weaken the comparison this feeds, because both sides of it are measured
+  /// the same way: what is being asked is whether a document and the source
+  /// agree about the *shape* of a declaration, and for everything that can be
+  /// abstract, that shape is abstractness.
+  final Set<String> bodilessMembers = {};
 
   /// The names in the `extends` / `implements` / `with` clause.
   final Set<String> supertypes = {};
@@ -446,6 +485,76 @@ int _declarationEnd(String line) {
   return line.length;
 }
 
+/// [line] with any trailing `//` comment removed.
+///
+/// A comment is invisible to a reader and must be invisible to the parser, and
+/// it is not: `bool get supportsCopies;   // Cc / Bcc` ends at its `;`, so
+/// nothing after it is part of the declaration, and the name-of-last-resort
+/// scan reads `Bcc` as the member. That misnames a member precisely when it is
+/// *bodiless* — the case this whole comparison exists to catch — so the member
+/// resolves against no class, is skipped as inherited, and the disagreement
+/// passes unseen. Contract listings annotate their terse members exactly this
+/// way, which is why the blind spot sat over the members most worth checking.
+///
+/// The quote tracking is what keeps `'http://…'` intact. It is per-line, so a
+/// `//` inside a *multi-line* string would still be cut; those are stripped
+/// wholesale before [_parseDeclarations] ever sees them, and no listing in
+/// `doc/` contains one.
+String _withoutLineComment(String line) {
+  String? quote;
+  for (var i = 0; i < line.length; i++) {
+    final character = line[i];
+    if (quote != null) {
+      if (character == r'\') {
+        i++;
+      } else if (character == quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (character == "'" || character == '"') {
+      quote = character;
+    } else if (character == '/' && i + 1 < line.length && line[i + 1] == '/') {
+      return line.substring(0, i);
+    }
+  }
+  return line;
+}
+
+/// Whether the declaration starting at [index] ends at a `;` rather than at a
+/// body or an initialiser.
+///
+/// The scan runs *across* lines, which is the whole reason this exists next to
+/// [_declarationEnd] rather than reusing it. A declaration need not fit on one
+/// line — a wrapped parameter list closes on a later one — and a single-line
+/// verdict reads every wrapped method as bodiless, i.e. as abstract. That would
+/// be a false alarm on the most elaborate signatures in the package, which are
+/// precisely the ones a document is most likely to get wrong.
+bool _endsWithoutBody(List<String> lines, int index) {
+  var depth = 0;
+  for (var i = index; i < lines.length && i < index + 40; i++) {
+    final line = _withoutLineComment(lines[i]);
+    if (i > index && line.trimLeft().startsWith('///')) continue;
+    for (var j = 0; j < line.length; j++) {
+      final character = line[j];
+      if (character == '(' || character == '[') {
+        depth++;
+      } else if (character == ')' || character == ']') {
+        depth--;
+      } else if (depth == 0) {
+        if (character == '{') return false;
+        if (character == ';') return true;
+        if (character != '=') continue;
+        final previous = j == 0 ? '' : line[j - 1];
+        final next = j + 1 < line.length ? line[j + 1] : '';
+        if ('=!<>'.contains(previous) || next == '=') continue;
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
 /// The member [line] declares, or `null` when it declares none.
 ///
 /// Two shapes, distinguished by whether the declaration carries a parameter
@@ -453,8 +562,9 @@ int _declarationEnd(String line) {
 /// name is the last identifier before the initialiser. `Function` is skipped
 /// because `final DateTime Function() clock;` is a *field* whose type happens
 /// to spell a parameter list.
-String? _memberNameOf(String line) {
-  if (!line.startsWith('  ') || line.startsWith('   ')) return null;
+String? _memberNameOf(String rawLine) {
+  if (!rawLine.startsWith('  ') || rawLine.startsWith('   ')) return null;
+  final line = _withoutLineComment(rawLine).trimRight();
 
   var head = line.substring(0, _declarationEnd(line));
   head = head.substring(_memberModifiers.matchAsPrefix(head)?.end ?? 0);
@@ -507,7 +617,9 @@ Map<String, _Declaration> _parseDeclarations() {
       );
     }
 
-    for (final line in source.split('\n')) {
+    final lines = source.split('\n');
+    for (var index = 0; index < lines.length; index++) {
+      final line = lines[index];
       if (line.trimLeft().startsWith('///')) continue;
 
       if (header.isNotEmpty) {
@@ -524,6 +636,7 @@ Map<String, _Declaration> _parseDeclarations() {
       if (declared != null) {
         final name = declared.group(1)!;
         current = declarations.putIfAbsent(name, () => _Declaration(name));
+        current.isAbstract = line.startsWith('abstract ');
         if (line.contains('{')) {
           readSupertypes(line);
         } else {
@@ -539,7 +652,10 @@ Map<String, _Declaration> _parseDeclarations() {
       }
 
       final member = _memberNameOf(line);
-      if (member != null) current.members.add(member);
+      if (member != null) {
+        current.members.add(member);
+        if (_endsWithoutBody(lines, index)) current.bodilessMembers.add(member);
+      }
       final value = _enumValue.firstMatch(line);
       if (value != null) current.members.add(value.group(1)!);
     }
@@ -646,6 +762,109 @@ List<_Attribution> _attributions() {
       if (member == null || current == null) continue;
       found.add((file: name, line: i + 1, type: current, member: member));
     }
+  }
+  return found;
+}
+
+/// One member as a module document's class listing presents it.
+typedef _ListedMember = ({
+  String file,
+  int line,
+  String type,
+  String member,
+  bool bodiless,
+});
+
+/// The header of a contract listing inside a fenced Dart block.
+///
+/// Only `abstract class` qualifies, because only there does a bare declaration
+/// *mean* anything: a concrete class cannot hold an abstract member, so a bare
+/// declaration in a listing of one is unambiguously a body left out for
+/// brevity. Reading those as claims would fail every concrete-class listing in
+/// `doc/` for saying something it never said.
+final RegExp _listingHeader = RegExp(r'^abstract class ([A-Za-z_]\w*)');
+
+/// Listings that describe *application* code rather than this package's.
+///
+/// `doc/audit.md` shows an invented `AdminApi` to demonstrate that
+/// `@TomAudited` on a method audits the invocation; nothing in `lib/` declares
+/// it, and nothing should. Naming the exemption rather than skipping every
+/// unresolvable class keeps the reach check able to say what it is for: a
+/// listing whose class has quietly been renamed still fails, because the
+/// rename produces a name that is not on this list.
+const Set<String> _illustrativeListings = {'AdminApi'};
+
+/// A member declaration that cannot be abstract whatever its shape.
+///
+/// A `static` is never abstract, and neither is a constructor — a bodiless
+/// `TomTypedPersistenceBase(this.types);` still constructs, and the source's
+/// having a body there says nothing a subclass must act on. Comparing either
+/// would report a difference that is not a defect.
+bool _cannotBeAbstract(String line, String type) {
+  final head = line.trimLeft();
+  if (RegExp(r'^(?:@\w+\s+)*static\b').hasMatch(head)) return true;
+  return RegExp('^(?:const |factory )*$type\\s*[.(]').hasMatch(head);
+}
+
+/// Every member of every contract listing in the module documents.
+List<_ListedMember> _listedMembers() => Directory('doc')
+    .listSync()
+    .whereType<File>()
+    .where((entry) => entry.path.endsWith('.md'))
+    .expand(
+      (file) =>
+          _listedMembersOf(file.uri.pathSegments.last, file.readAsLinesSync()),
+    )
+    .toList();
+
+/// The contract-listing members of one document, reported under [file].
+///
+/// Split from [_listedMembers] so the line handling can be exercised on a
+/// listing written for the purpose. Its rules are individually small and
+/// jointly not obvious — which fence counts, where a listing ends, what resets
+/// the current class — and each of them, when wrong, changes *which class a
+/// member is attributed to* rather than producing an error.
+List<_ListedMember> _listedMembersOf(String file, List<String> lines) {
+  final found = <_ListedMember>[];
+  var inDart = false;
+  String? current;
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    if (line.startsWith('```')) {
+      inDart = line.startsWith('```dart');
+      current = null;
+      continue;
+    }
+    if (!inDart) continue;
+
+    final header = _listingHeader.firstMatch(line);
+    if (header != null) {
+      current = header.group(1);
+      continue;
+    }
+    // A `}` at column zero closes the listing; anything else at column zero is
+    // a sibling declaration, and either way the members have ended. Without
+    // this the members of a concrete class declared later in the same fence —
+    // `doc/audit.md` puts one right before its listing — are read as members
+    // of the abstract class above, and are then compared against a class that
+    // never declared them.
+    if (line.isNotEmpty && !line.startsWith(' ')) {
+      current = null;
+      continue;
+    }
+    if (current == null) continue;
+    if (_cannotBeAbstract(line, current)) continue;
+
+    final member = _memberNameOf(line);
+    if (member == null) continue;
+    found.add((
+      file: file,
+      line: i + 1,
+      type: current,
+      member: member,
+      bodiless: _endsWithoutBody(lines, i),
+    ));
   }
   return found;
 }
@@ -1125,6 +1344,198 @@ void main() {
             'the bound in a type parameter must not be read as a supertype, '
             'which would make every lookup on the class undecidable',
       );
+    });
+  });
+
+  group('every contract listing agrees with source on what is abstract', () {
+    test('a transport is told which members it actually has to write', () {
+      // The three that were documented as demands and are in fact gifts. The
+      // two `supports…` defaults are `false` on purpose — a transport that has
+      // not considered attachments cannot carry them — so a document that
+      // presents them as abstract hides the safe answer behind a chore.
+      final transport = _declarations['TomMessageTransport']!;
+      for (final member in ['supportsCopies', 'supportsAttachments', 'close']) {
+        expect(
+          transport.bodilessMembers,
+          isNot(contains(member)),
+          reason: '$member has a default in source',
+        );
+      }
+      // The two that genuinely are demands, pinned so the fix above cannot be
+      // "mark everything concrete and move on".
+      expect(transport.bodilessMembers, containsAll(['channel', 'send']));
+    });
+
+    test('no listing presents an inherited member as one to implement', () {
+      // The cost of getting this backwards runs both ways. A concrete member
+      // shown bare is work invented for the reader — they implement what they
+      // already had, and their override silently replaces a default that was
+      // load-bearing. An abstract member shown with a body is worse: it reads
+      // as optional, so it is skipped, and the class does not compile.
+      final offenders = <String>[];
+      for (final listed in _listedMembers()) {
+        final declaration = _declarations[listed.type];
+        // A class invented for the document has no source to disagree with,
+        // and a member the listing shows but the class inherits is not this
+        // check's business. Anything else unresolvable is a rename, which the
+        // reach test below reports rather than swallowing here.
+        if (declaration == null) continue;
+        if (!declaration.members.contains(listed.member)) continue;
+        final inSource = declaration.bodilessMembers.contains(listed.member);
+        if (inSource == listed.bodiless) continue;
+        offenders.add(
+          '${listed.file}:${listed.line} ${listed.type}.${listed.member} '
+          'documented as ${listed.bodiless ? "abstract" : "concrete"}, '
+          'source is ${inSource ? "abstract" : "concrete"}',
+        );
+      }
+      expect(offenders, isEmpty);
+    });
+
+    test('the sweep reaches the listings it is meant to police', () {
+      final listed = _listedMembers();
+      final resolved = listed
+          .where(
+            (m) => _declarations[m.type]?.members.contains(m.member) ?? false,
+          )
+          .toList();
+
+      // Without a floor, the check above passes just as happily on a parser
+      // that stopped finding listings at all — and it has failed that way
+      // before, from a wrapped header and from an escaped generic.
+      expect(resolved.length, greaterThan(25));
+      expect(
+        resolved.map((m) => m.type).toSet(),
+        containsAll([
+          'TomMessageTransport',
+          'TomTransactionParticipant',
+          'TomTabularRenderer',
+          'TomExportStore',
+        ]),
+      );
+      // Both shapes have to be present, or the comparison is only ever making
+      // one of its two possible mistakes visible.
+      expect(resolved.any((m) => m.bodiless), isTrue);
+      expect(resolved.any((m) => !m.bodiless), isTrue);
+      // Every class named by a listing is one the package declares, save the
+      // few named as illustrations. Without this the sweep's `continue` on an
+      // unresolvable class is indistinguishable from silence: a listing whose
+      // class was renamed would be skipped rather than reported.
+      final unknown = listed
+          .map((m) => m.type)
+          .toSet()
+          .where((type) => !_declarations.containsKey(type))
+          .where((type) => !_illustrativeListings.contains(type))
+          .toSet();
+      expect(unknown, isEmpty);
+    });
+
+    test('the parser reads the declaration shapes a listing uses', () {
+      // Bodiless: the declaration ends at a `;`, on this line or a later one.
+      expect(_endsWithoutBody(['  Future<void> close();'], 0), isTrue);
+      expect(
+        _endsWithoutBody([
+          '  Future<TomPreparedStatement<T>> prepareStatement<T extends '
+              'Object>(',
+          '    TomQuery query, [',
+          '    Type? resultType,',
+          '  ]);',
+        ], 0),
+        isTrue,
+        reason: 'a wrapped parameter list must not read as an abstract member',
+      );
+      // Bodied, in each spelling a listing uses.
+      expect(
+        _endsWithoutBody(['  bool get supportsCopies => false;'], 0),
+        isFalse,
+      );
+      expect(_endsWithoutBody(['  Future<void> close() async {}'], 0), isFalse);
+      expect(
+        _endsWithoutBody(['  String indent(int i) { … }'], 0),
+        isFalse,
+        reason: 'an elided body is still a body',
+      );
+      expect(
+        _endsWithoutBody(['  final List<int> _rows = [];'], 0),
+        isFalse,
+        reason: 'an initialiser ends the declaration as surely as a body',
+      );
+      expect(
+        _endsWithoutBody(['  int retriesFor({int limit = 3}) => limit;'], 0),
+        isFalse,
+        reason: 'a default inside a parameter list is not the declaration end',
+      );
+      // The members no shape comparison applies to.
+      expect(
+        _cannotBeAbstract('  static Tom2FAPolicy resolve();', 'Tom2FAPolicy'),
+        isTrue,
+      );
+      expect(
+        _cannotBeAbstract(
+          '  TomTypedPersistenceBase(this.types);',
+          'TomTypedPersistenceBase',
+        ),
+        isTrue,
+        reason: 'a bodiless constructor still constructs',
+      );
+      expect(
+        _cannotBeAbstract(
+          '  const TomFrameworkKey.unique(this.suffix);',
+          'TomFrameworkKey',
+        ),
+        isTrue,
+        reason: 'a named constructor is a constructor',
+      );
+      expect(
+        _cannotBeAbstract('  Future<void> close();', 'TomMessageTransport'),
+        isFalse,
+      );
+      // A trailing comment is the annotation style contract listings use, and
+      // it is the *bodiless* members that carry one — `TomMessageTransport`
+      // and `TomTransactionParticipant` both gloss theirs that way. Reading
+      // the comment as the member excuses exactly those members from the
+      // comparison, so the stripping is pinned rather than assumed.
+      expect(
+        _memberNameOf('  bool get supportsCopies;        // Cc / Bcc'),
+        'supportsCopies',
+      );
+      expect(
+        _withoutLineComment("  final Uri base = Uri.parse('http://a/b');"),
+        "  final Uri base = Uri.parse('http://a/b');",
+        reason: 'a `//` inside a string is not a comment',
+      );
+    });
+
+    test('a listing ends where the document stops describing it', () {
+      // Every way a listing can end, in one document. Getting any of them
+      // wrong misattributes rather than fails: the members of whatever came
+      // next are compared against the class above them, so the report names a
+      // class the reader never wrote and the real disagreement goes unseen.
+      final members = _listedMembersOf('synthetic.md', [
+        'Prose naming `abstract class TomDecoy { }` outside a fence.',
+        '',
+        '```dart',
+        'abstract class TomContract {',
+        '  Future<void> demanded();',
+        '}',
+        '',
+        'class TomConcrete {',
+        '  void notPartOfTheContract() {}',
+        '}',
+        '```',
+        '',
+        '```yaml',
+        'abstract class TomNotDart {',
+        '  void ignored();',
+        '}',
+        '```',
+      ]);
+
+      expect(members.map((m) => '${m.type}.${m.member}'), [
+        'TomContract.demanded',
+      ]);
+      expect(members.single.line, 5);
+      expect(members.single.bodiless, isTrue);
     });
   });
 }

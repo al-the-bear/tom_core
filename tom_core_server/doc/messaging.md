@@ -170,12 +170,23 @@ loses the message.
 ```dart
 abstract class TomMessageTransport {
   TomMessageChannel get channel;
-  bool get supportsCopies;       // Cc / Bcc
-  bool get supportsAttachments;
   Future<TomDeliveryReceipt> send(TomMessage message);
-  Future<void> close();
+
+  bool get supportsCopies => false;        // Cc / Bcc
+  bool get supportsAttachments => false;
+  Future<void> close() async {}
+  void checkSupported(TomMessage message) { … }
 }
 ```
+
+A bare declaration above is abstract — a transport must supply it. A member
+shown with a body is inherited working, and only the first two are bare: a
+transport declares its channel and sends. Everything else has an answer already.
+
+The two `supports…` defaults are `false` on purpose. A transport that has not
+thought about attachments is a transport that cannot carry them, and the safe
+answer is the one that makes `checkSupported` refuse rather than the one that
+lets a message through untested.
 
 A transport does **one attempt at one message** and reports what happened. It
 does not retry, does not queue, and does not decide whether to send. That is
