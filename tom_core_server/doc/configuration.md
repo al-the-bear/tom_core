@@ -74,6 +74,25 @@ final host = TomStringConfig('server.host').get();                // obligatory
 final beta = ~TomBoolConfig.withDefault('featureFlags.beta', false);
 ```
 
+**A whole number is a `double` when a `double` was asked for.** Step 1 widens an
+`int` to a `double` when `T` is `double` or `double?`, so `rate: 2` and
+`rate: 2.0` mean the same thing:
+
+```dart
+// config/server.yaml → rate: 2
+final rate = TomDoubleConfig('rate').get();   // 2.0, not a throw
+```
+
+A configuration file cannot say "double" — both YAML `rate: 2` and JSON
+`"rate": 2` decode to an `int` — and the reflected path that fills a
+configuration object's *fields* widens the same way (see *Command-Line
+Arguments* in [cmdline.md](cmdline.md)). Without this, one file could fill a
+declared `double` field and fail the matching `TomDoubleConfig` lookup.
+
+The converse does **not** hold: `2.5` is still refused for an `int`. Narrowing
+would need a rounding policy, and truncating silently discards what the operator
+wrote.
+
 Because the value is captured at construction, build a `TomConfig` *after* the
 provider is installed; later provider changes are not observed by an existing
 instance.

@@ -2,6 +2,29 @@
 
 ### Fixed
 
+- **`TomConfig` now widens a whole number to a `double` (tcinc436).** A YAML
+  `rate: 2` or a JSON `"rate": 2` decodes to an `int`, and `_getValue` cast with
+  a bare `as T` — so `TomDoubleConfig('rate')` threw "Could not set property of
+  type double … with value 2" for a file that is perfectly well formed. A
+  configuration file has no way to say "double"; only writing the decimal point
+  by hand avoided it, and nothing told the operator that.
+
+  The asymmetry was the real defect: the *reflected* path that fills a
+  configuration object's fields already widened an `int` onto a declared
+  `double` field (`reflection.dart`'s `_trySetWidenedNumericValue`), so one and
+  the same file could fill `FixtureServerConfig.rate` and fail the matching
+  `TomDoubleConfig` lookup on the same key. `TomConfig` now widens the same way,
+  for `double` and `double?` alike.
+
+  The widening sits **after** the failed cast rather than as a check in front of
+  it, which is what keeps it from doing damage elsewhere: `0.0 is T` is also
+  true for `num`, `Object` and `dynamic`, where `2 as T` already succeeds and
+  the `int` must survive as an `int`. Only a cast that has actually failed can
+  have been aimed at a `double`. The converse widening is deliberately absent,
+  for the reason the reflector gives for not having it either — narrowing needs
+  a rounding policy, and truncating `2.5` discards what the operator wrote, so a
+  decimal is still refused for an `int`.
+
 - **`TomBaseServerConfiguration.args` now holds the command line it claims to
   (tcinc435).** The field was declared, documented in two places as "the
   command-line arguments the configuration was built from", and never assigned:

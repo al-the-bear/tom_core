@@ -178,6 +178,42 @@ void main() {
       expect(TomBoolConfig('b').get(), isFalse);
     });
 
+    // A configuration file cannot say "double". `rate: 2` in YAML and
+    // `"rate": 2` in JSON both decode to an int, and the reflected path already
+    // widens that onto a declared double field (cmdline_test.dart, "fills a
+    // double field from a whole number"). These four pin the same rule here, so
+    // one file cannot fill a double field and fail the matching lookup.
+    test('a whole number resolves as a double', () {
+      _install({'rate': 2});
+      final value = TomDoubleConfig('rate').get();
+      // isA matters: `expect(2, 2.0)` passes on value alone, because Dart's
+      // `==` says 2 == 2.0. The claim here is about the type.
+      expect(value, isA<double>());
+      expect(value, 2.0);
+    });
+
+    test('a whole number resolves as a nullable double', () {
+      _install({'rate': 2});
+      expect(TomConfig<double?>('rate').get(), isA<double>());
+    });
+
+    test('a decimal is still refused for an int', () {
+      // The converse is deliberately absent, for the reason the reflector gives
+      // for not having it either: narrowing needs a rounding policy, and
+      // truncating 2.5 silently loses what the operator wrote.
+      _install({'port': 2.5});
+      expect(() => TomIntConfig('port'), throwsException);
+    });
+
+    test('widening does not intercept a type the cast already accepts', () {
+      // `2 as num` succeeds, so the int must survive as an int. This is what
+      // makes the widening a fallback after a failed cast rather than a check
+      // in front of it -- a pre-check on "does T accept a double" would convert
+      // this one too, and silently change the runtime type of every num.
+      _install({'n': 2});
+      expect(TomConfig<num>('n').get(), isA<int>());
+    });
+
     test('the value is captured at construction, not on read', () {
       _install({'v': 1});
       final config = TomIntConfig('v');

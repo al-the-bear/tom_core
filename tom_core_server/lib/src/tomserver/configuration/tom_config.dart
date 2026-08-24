@@ -15,6 +15,16 @@ import 'base_server_configuration.dart';
 ///    default is used.
 /// 3. Otherwise the property is considered obligatory and construction throws.
 ///
+/// One widening applies in branch 1: an `int` resolves as a `double` when [T]
+/// is `double` (or `double?`), so `rate: 2` and `rate: 2.0` mean the same
+/// thing. A configuration file cannot say "double" — both YAML `rate: 2` and
+/// JSON `"rate": 2` decode to an `int` — and the reflected path that fills a
+/// configuration object's *fields* widens the same way, so a file that fills a
+/// declared `double` field also satisfies the matching [TomDoubleConfig]. The
+/// converse does not hold: a decimal is still refused for an `int`, because
+/// narrowing would need a rounding policy and truncating `2.5` would discard
+/// what the operator wrote.
+///
 /// The provider is the **only** source read. The OS environment, the `.env`
 /// file and the command line are *not* a fourth branch: they are merged by
 /// [TomBaseServerConfiguration.getDefaultValues] into a **copy** of the
@@ -77,17 +87,31 @@ class TomConfig<T> {
   }
 
   void _getValue() {
-    if (TomServerConfigResourceProvider.getServerConfig().exists(
-      _propertyKey,
-    )) {
+    final provider = TomServerConfigResourceProvider.getServerConfig();
+    if (provider.exists(_propertyKey)) {
+      final raw = provider.get(_propertyKey);
       try {
-        _value =
-            TomServerConfigResourceProvider.getServerConfig().get(_propertyKey)
-                as T;
+        _value = raw as T;
       } catch (exception) {
-        throw Exception(
-          "Could not set property of type $T from value of property $_propertyKey with value ${TomServerConfigResourceProvider.getServerConfig().get(_propertyKey)}",
-        );
+        // A configuration file cannot say "double": `rate: 2` in YAML and
+        // `"rate": 2` in JSON both decode to an int. The reflected path already
+        // widens such a value onto a declared double field, so widen it here
+        // too — otherwise one file could fill a field and fail the matching
+        // lookup. The converse is deliberately absent, for the reason the
+        // reflector gives for not having it either: narrowing needs a rounding
+        // policy, and truncating 2.5 loses what the operator wrote.
+        //
+        // Why this sits *after* the failed cast rather than in front of it:
+        // `0.0 is T` is also true for `num`, `Object` and `dynamic`, where
+        // `2 as T` already succeeds and the int must survive as an int. Only a
+        // cast that has actually failed can have been aimed at a double.
+        if (raw is int && 0.0 is T) {
+          _value = raw.toDouble() as T;
+        } else {
+          throw Exception(
+            "Could not set property of type $T from value of property $_propertyKey with value $raw",
+          );
+        }
       }
     } else if (_hasDefault) {
       _value = _defaultValue;

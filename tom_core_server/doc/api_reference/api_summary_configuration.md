@@ -201,6 +201,14 @@ A typed, eagerly-resolved view of a single configuration property. The value is
 read once at construction from the active `TomServerConfigResourceProvider` and
 cached; later provider changes are not observed.
 
+The provider's value is cast to `T`, with one widening: an `int` resolves as a
+`double` when `T` is `double` or `double?`, matching the reflected path that
+fills a configuration object's fields. A configuration file cannot say
+"double" — YAML `rate: 2` and JSON `"rate": 2` both decode to an `int` — so
+without this a file could fill a declared `double` field and fail the matching
+lookup. The converse is deliberately absent: a decimal is still refused for an
+`int`, because narrowing would need a rounding policy.
+
 - **Type Parameters:** `T` — the resolved value type.
 
 #### Constructors
