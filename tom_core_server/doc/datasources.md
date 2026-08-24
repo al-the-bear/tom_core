@@ -420,6 +420,41 @@ rows back onto annotated `@tomReflector` entity classes (including JSON columns,
 custom converters, and reference-field dereferencing). Transactions use plain
 `START TRANSACTION` / `COMMIT` / `ROLLBACK`.
 
+### The connection lifecycle
+
+**A data source is opened explicitly, and never by the statement that wants to
+run.** Opening it means one of the two forms the package documents:
+`initialize(settings)`, which binds the configuration and connects, or setting
+the connection fields directly and calling `connect()`.
+
+Every execution entry point then observes the same rule:
+
+| State of the data source | What an entry point does |
+| ------------------------ | ------------------------ |
+| Never opened | Throws `error.datasource.not_opened`, naming the entry point in the exception's `operation` parameter. Nothing dials out |
+| Opened, but the link has since dropped | Re-opens it and runs the statement on the new link |
+| Opened and live | Runs the statement on the link as it stands |
+
+Opening on demand is not offered because it could not work. `connect()` binds
+`host`, `port` and the credentials, and those arrive only from `initialize` or a
+direct assignment; before either, `host` is `""` and `port` is `-1`. An implicit
+connect could therefore never succeed — it could only turn "this data source was
+never opened" into "the database at `:-1` is unreachable", sending the reader to
+the network for what is a configuration bug.
+
+The second row is the half that must survive. A dropped link is the opposite
+case: the settings *are* known, so reconnecting is exactly what the caller wants
+and it happens without the caller asking.
+
+One private helper, `_openConnection(operation)`, is the only implementation of
+this rule, and all four sites that need a link go through it:
+`prepareStatement`, `executeQuery`, `executeCommand`, and the retry inside
+`MariadbPreparedStatement.execute`. They previously carried a guard each, and
+had drifted — `prepareStatement` connected on demand while the other two threw,
+so the same data source was usable or unusable depending on which method a
+caller reached for first. With a single implementation the rule cannot drift
+again.
+
 A grouped query takes a different path through the same driver. A grouped row
 has no entity class and no column metadata — its shape is decided by the query —
 so `prepareStatement` copies the query's `projectionTypes` (alias → Dart type)

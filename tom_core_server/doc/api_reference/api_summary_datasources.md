@@ -851,6 +851,19 @@ A MariaDB / MySQL `TomDataSource` driver (registered for the `"mariadb"` type).
 Connection settings are filled from the configuration map by reflection in
 `initialize`, which then opens the connection.
 
+**A data source is opened explicitly — by `initialize(settings)`, or by setting
+the connection fields and calling `connect()` — and never by the statement that
+wants to run.** All three execution entry points (`prepareStatement`,
+`executeQuery`, `executeCommand`) require an open connection and throw
+`MariadbDatasourceException` (`error.datasource.not_opened`, naming the entry
+point in the exception's `operation` parameter) when reached before one exists.
+Opening on demand is not offered because it could not work: `connect()` binds
+`host`, `port` and the credentials, so before they are configured it would dial
+`:-1`, reporting an unreachable database where the truth is an unconfigured one.
+A link that *was* opened and has since dropped is the opposite case and is
+re-opened automatically, on every entry point and on the prepared-statement
+retry alike.
+
 - **Implements:** `TomDataSource`
 
 ##### Constructors

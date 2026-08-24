@@ -64,6 +64,151 @@ class _ScriptedDatasource extends MariaDbDatasource with _ScriptedCommands {
   }
 }
 
+/// A never-opened data source that records any attempt to dial out.
+///
+/// The lifecycle rule is about what must *not* happen: an entry point reached
+/// before the data source was opened has to refuse, not open a connection of
+/// its own. Catching the exception alone cannot tell those two apart, because
+/// an implicit connect against the unconfigured `:-1` throws as well — so
+/// [connect] is overridden to count the attempts and fail loudly rather than
+/// touch the network.
+class _NeverOpenedDatasource extends MariaDbDatasource {
+  /// How many times something asked this data source to open a connection.
+  int connectCalls = 0;
+
+  @override
+  Future<void> connect() async {
+    connectCalls++;
+    throw StateError('the data source dialled out');
+  }
+}
+
+/// A stand-in [MySQLConnection] that reports a fixed link state and records
+/// every statement it is asked to run.
+///
+/// `MySQLConnection` cannot be constructed without a server — its constructor
+/// is private and `createConnection` opens a socket — but it is a plain class,
+/// so its interface can be implemented. That is what makes the *other* half of
+/// the lifecycle rule reachable in a unit test: a data source can be handed a
+/// link that claims to be down, and the reconnect observed.
+class _FakeConnection implements MySQLConnection {
+  @override
+  final bool connected;
+
+  /// Every query this link was asked to run, in order.
+  final List<String> executed = [];
+
+  /// Every statement this link was asked to compile, in order.
+  final List<String> prepared = [];
+
+  /// What [execute] reports as the affected-row count.
+  final BigInt affectedRows;
+
+  _FakeConnection({required this.connected, BigInt? affectedRows})
+    : affectedRows = affectedRows ?? BigInt.zero;
+
+  @override
+  Future<IResultSet> execute(
+    String query, [
+    Map<String, dynamic>? params,
+    bool iterable = false,
+  ]) async {
+    executed.add(query);
+    return _FakeResultSet(affectedRows);
+  }
+
+  @override
+  Future<PreparedStmt> prepare(String query, [bool iterable = false]) async {
+    prepared.add(query);
+    return _FakePreparedStmt();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// A prepared-statement handle that runs, or fails the way one does when the
+/// link beneath it has gone.
+class _FakePreparedStmt implements PreparedStmt {
+  /// Thrown by [execute] when set; `null` makes the statement succeed.
+  final Object? failure;
+
+  /// How many times this handle was executed.
+  int executions = 0;
+
+  _FakePreparedStmt({this.failure});
+
+  @override
+  int get numOfParams => 0;
+
+  @override
+  Future<IResultSet> execute(List<dynamic> params) async {
+    executions++;
+    if (failure != null) throw failure!;
+    return _FakeResultSet(BigInt.zero);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// The parts of a result set these paths read: the affected-row count, the
+/// generated key, and the (empty) rows a grouped projection maps.
+class _FakeResultSet implements IResultSet {
+  @override
+  final BigInt affectedRows;
+
+  _FakeResultSet(this.affectedRows);
+
+  @override
+  BigInt get lastInsertID => BigInt.zero;
+
+  @override
+  Iterable<ResultSetRow> get rows => const [];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// A data source holding a link that reports itself down, which [connect]
+/// replaces with a live one — the shape of a dropped connection being restored.
+class _DroppedLinkDatasource extends MariaDbDatasource {
+  /// The link that was open before the drop, and must not be used again.
+  final _FakeConnection dropped = _FakeConnection(connected: false);
+
+  /// The link [connect] installs.
+  final _FakeConnection reopened = _FakeConnection(
+    connected: true,
+    affectedRows: BigInt.two,
+  );
+
+  /// How many times the data source was asked to reconnect.
+  int connectCalls = 0;
+
+  _DroppedLinkDatasource() {
+    connection = dropped;
+  }
+
+  @override
+  Future<void> connect() async {
+    connectCalls++;
+    connection = reopened;
+  }
+}
+
+/// A query that renders fixed SQL, so [MariaDbDatasource.prepareStatement] can
+/// be reached without the reflection-backed query builder.
+///
+/// Constructed over no types on purpose: the base class analyses persistence
+/// annotations for each type it is given, and this query never gets far enough
+/// to need them.
+class _FixedQuery extends TomQuery {
+  _FixedQuery() : super(const []);
+
+  @override
+  String generateQuery(TomStandardSqlDialect t) => 'SELECT 1';
+}
+
 void main() {
   group('TomDbType.of conversions', () {
     test('TomDbInt parses an integer string', () {
@@ -778,6 +923,181 @@ void main() {
         ),
         isFalse,
       );
+    });
+  });
+
+  // A data source is opened explicitly — by `initialize`, which binds the
+  // settings and connects, or by setting the fields and calling `connect`. The
+  // three execution entry points do not open one of their own, and used not to
+  // agree about it: `prepareStatement` connected on demand while `executeQuery`
+  // and `executeCommand` threw, so the same data source was usable or unusable
+  // depending on which method a caller reached for first.
+  //
+  // The rule resolves that towards refusing, because the on-demand connect
+  // could never have worked. `connect` binds `host`, `port` and the
+  // credentials, and those arrive only from `initialize` or a direct
+  // assignment; before either, the fields hold `""` and `-1`. So connecting
+  // from an entry point cannot produce a working link — it can only turn "this
+  // data source was never opened" into "the database at `:-1` is unreachable",
+  // which sends the reader to the network for a configuration bug.
+  //
+  // Each test therefore asserts both halves: the call throws, *and* nothing
+  // dialled out. The second is the one that pins the behaviour — an implicit
+  // connect throws too, so an exception on its own proves nothing.
+  group('MariaDbDatasource lifecycle: a data source that was never opened', () {
+    test('executeQuery refuses instead of connecting', () async {
+      final ds = _NeverOpenedDatasource();
+      await expectLater(
+        ds.executeQuery<Object>('SELECT 1'),
+        throwsA(isA<MariadbDatasourceException>()),
+      );
+      expect(ds.connectCalls, 0);
+    });
+
+    test('executeCommand refuses instead of connecting', () async {
+      final ds = _NeverOpenedDatasource();
+      await expectLater(
+        ds.executeCommand('DELETE FROM t'),
+        throwsA(isA<MariadbDatasourceException>()),
+      );
+      expect(ds.connectCalls, 0);
+    });
+
+    test('prepareStatement refuses instead of connecting', () async {
+      // The entry point that used to differ. It connected on demand, so a
+      // caller that prepared before it queried never met the error the other
+      // two raised.
+      final ds = _NeverOpenedDatasource();
+      await expectLater(
+        ds.prepareStatement<Object>(_FixedQuery()),
+        throwsA(isA<MariadbDatasourceException>()),
+      );
+      expect(ds.connectCalls, 0);
+    });
+
+    test('all three refuse the same way, and name the caller', () async {
+      // One rule means one error, not three shapes of "no connection" a caller
+      // would have to match separately. The operation is carried in the
+      // parameters rather than baked into the key, so a log says which call ran
+      // too early without multiplying the keys.
+      final keys = <String>{};
+      final operations = <Object?>[];
+      for (final call
+          in <(String, Future<Object?> Function(MariaDbDatasource))>[
+            ('executeQuery', (ds) => ds.executeQuery<Object>('SELECT 1')),
+            ('executeCommand', (ds) => ds.executeCommand('DELETE FROM t')),
+            (
+              'prepareStatement',
+              (ds) => ds.prepareStatement<Object>(_FixedQuery()),
+            ),
+          ]) {
+        final ds = _NeverOpenedDatasource();
+        try {
+          await call.$2(ds);
+          fail('${call.$1} did not refuse');
+        } on MariadbDatasourceException catch (e) {
+          keys.add(e.key);
+          operations.add(e.parameters?['operation']);
+        }
+      }
+      expect(keys, {'error.datasource.not_opened'});
+      expect(operations, [
+        'executeQuery',
+        'executeCommand',
+        'prepareStatement',
+      ]);
+    });
+  });
+
+  // The other half of the rule, and the half that must not be lost while
+  // enforcing the first: a link that *was* opened and has since dropped is
+  // re-opened, because the settings are known and reconnecting is what the
+  // caller wants. Refusing here instead would make every restarted database a
+  // permanent outage for the process.
+  group('MariaDbDatasource lifecycle: a link that dropped', () {
+    test('is re-opened, and the statement runs on the new link', () async {
+      final ds = _DroppedLinkDatasource();
+      expect(await ds.executeCommand('DELETE FROM t'), BigInt.two);
+      expect(ds.connectCalls, 1);
+      // Which link ran it is the assertion that matters. Reconnecting and then
+      // issuing the statement on the connection captured before the reconnect
+      // would leave the caller with the same dead link and a confusing error.
+      expect(ds.reopened.executed, ['DELETE FROM t']);
+      expect(ds.dropped.executed, isEmpty);
+    });
+
+    test('a live link is used as it stands, with no reconnect', () async {
+      // The counterweight: reconnecting is conditional, not something every
+      // statement pays for. Driven through executeCommand because executeQuery
+      // maps its rows through reflection, which this suite does not bootstrap —
+      // and the two share the one helper, so the state under test is the same.
+      final live = _FakeConnection(connected: true);
+      final ds = _DroppedLinkDatasource()..connection = live;
+      await ds.executeCommand('DELETE FROM t');
+      expect(ds.connectCalls, 0);
+      expect(live.executed, ['DELETE FROM t']);
+    });
+
+    test('the prepared-statement retry re-prepares on the new link', () async {
+      // The fourth site the rule governs, and the only one that is not an entry
+      // point: a statement whose execute failed on a dead link reconnects and
+      // compiles itself again. It goes through the same helper, so a rule that
+      // held only for the entry points would leave the path that most needs it
+      // — the one reached *because* the link went away — on its own guard.
+      //
+      // Mapped as a grouped row with an empty projection so the assertion stays
+      // on the retry: that route returns the mapped rows without reflecting a
+      // result type, which this suite cannot bootstrap.
+      final ds = _DroppedLinkDatasource();
+      final stale = _FakePreparedStmt(
+        failure: MySQLClientException(
+          'Can not execute prepared stmt: connection closed',
+        ),
+      );
+      final statement = MariadbPreparedStatement<TomGroupedRow>(
+        stale,
+        const [],
+        ds,
+        null,
+        'SELECT 1',
+        groupedProjection: const {},
+      );
+
+      expect(await statement.execute(), isEmpty);
+      expect(stale.executions, 1);
+      expect(ds.connectCalls, 1);
+      expect(ds.reopened.prepared, ['SELECT 1']);
+      expect(ds.dropped.prepared, isEmpty);
+    });
+
+    test('the retry refuses when the data source has been torn down', () async {
+      // A dropped link and a data source that no longer has one are different
+      // situations, and the retry is where confusing them costs most: reopening
+      // here would resurrect a data source the application let go, on a
+      // statement it still happened to hold. The rule says refuse, and this is
+      // the case that separates it from the guard it replaced — which reads
+      // only `connected`, and so cannot tell the two apart.
+      final ds = _DroppedLinkDatasource();
+      final stale = _FakePreparedStmt(
+        failure: MySQLClientException(
+          'Can not execute prepared stmt: connection closed',
+        ),
+      );
+      final statement = MariadbPreparedStatement<TomGroupedRow>(
+        stale,
+        const [],
+        ds,
+        null,
+        'SELECT 1',
+        groupedProjection: const {},
+      );
+      ds.connection = null;
+
+      await expectLater(
+        statement.execute(),
+        throwsA(isA<MariadbDatasourceException>()),
+      );
+      expect(ds.connectCalls, 0);
     });
   });
 

@@ -930,6 +930,53 @@
 
 ### Behaviour Changes
 
+- **Every `MariaDbDatasource` entry point follows one connection-lifecycle rule
+  (tcinc458).** The three execution entry points disagreed about what to do when
+  no connection was open: `prepareStatement` connected on demand, while
+  `executeQuery` and `executeCommand` threw. The same data source was therefore
+  usable or unusable depending on which method a caller reached for first, and a
+  caller that prepared before it queried never saw the error the other two
+  raised. Nothing in the class dartdoc or in `doc/datasources.md` said which was
+  intended.
+
+  The rule now stated in both, and implemented once: **a data source is opened
+  explicitly — by `initialize(settings)`, or by setting the connection fields
+  and calling `connect()` — and never by the statement that wants to run.**
+  Connecting on demand was not adopted, because it could not work: `connect()`
+  binds `host`, `port` and the credentials, which arrive only from `initialize`
+  or a direct assignment, so before either it would dial `:-1`. That turns
+  "never opened" into "the database is unreachable" and sends an operator to the
+  network for a configuration bug. The interface's own contract agrees
+  (`TomDataSource.initialize` is documented as opening the connection,
+  `TomDataSourceInfo` exposes a data source only after it succeeded, and both
+  documented quick-starts call `connect()` explicitly), and two of the three
+  entry points already behaved this way.
+
+  A single private helper, `_openConnection(operation)`, is now the only
+  implementation of the rule, and the four sites that need a link all go through
+  it — the three entry points plus the reconnect-and-retry inside
+  `MariadbPreparedStatement.execute`. A never-opened data source is refused with
+  `error.datasource.not_opened`, naming the calling entry point in the
+  exception's `operation` parameter; a link that *was* opened and has since
+  dropped is still re-opened automatically, which is the half that had to
+  survive. The two old keys it replaces
+  (`error.result_processing.executequery_no_connection` and
+  `…executecommand_no_connection`) had no other user.
+
+  Discovering that `mysql_client`'s connection and statement classes are plain
+  (implementable) closed a gap tcinc457 had recorded as unclosable: with fake
+  link, statement and result-set doubles the reconnect half, the retry loop and
+  its refusal on a torn-down data source are all now covered without a database.
+  Eight tests assert each entry point on a never-opened source, that all three
+  refuse with the same key, that a dropped link is re-opened and the statement
+  runs on the *new* link, that a live link is used as it stands, and both retry
+  cases. Eleven mutations of the rule were each killed by the suite.
+
+  In passing, `executeQuery`'s failure mapper now attaches `rootException` and
+  `stack` as `executeCommand`'s always did — the same severed chain tcinc457
+  repaired in `_execute`, in a method being rewritten anyway. Without it
+  `classifySqlFailure` cannot reach the server's own verdict.
+
 - **A dropped connection is recognised by the link's state, not by the wording
   of an exception (tcinc457).** `MariadbPreparedStatement._execute` decided
   whether a failure was worth one reconnect-and-retry with

@@ -187,11 +187,12 @@ class MariadbPreparedStatement<T extends Object>
         groupedProjection,
       );
     } on MariadbPreparedStatementException {
-      // One retry...
-      if (!datasource.connected) {
-        await datasource.connect();
-      }
-      preparedStmt = await datasource.connection!.prepare(command);
+      // One retry, on the link the data source re-opens. Routed through the
+      // same helper as the entry points so the lifecycle rule has a single
+      // implementation — a statement whose data source has since been torn down
+      // is refused here for the same reason and with the same error.
+      final link = await datasource._openConnection("prepared-statement retry");
+      preparedStmt = await link.prepare(command);
       IResultSet result = await _execute(parameters, params);
       _captureGeneratedId(result);
       return datasource._processResult<T>(
@@ -266,6 +267,25 @@ typedef _PendingReference = ({
 /// (with reflection-based row→object mapping), [executeCommand] — and
 /// participates in transactions via plain `START TRANSACTION` / `COMMIT` /
 /// `ROLLBACK` (see [MariaDbXADatasource] for the XA variant).
+///
+/// ## Connection lifecycle
+///
+/// **A data source is opened explicitly, and never by the statement that wants
+/// to run.** Opening it means either [initialize], which binds the settings and
+/// connects, or setting the connection fields and calling [connect] — the two
+/// forms the package documents. Every execution entry point
+/// ([prepareStatement], [executeQuery], [executeCommand]) then requires an open
+/// connection and throws a [MariadbDatasourceException] if it is reached before
+/// one exists, so all three behave the same way on the same data source.
+///
+/// Opening on demand is not offered because it could not work: [connect] binds
+/// [host], [port] and the credentials, and until they are configured it would
+/// dial `:-1` — turning "never opened" into "the database is unreachable".
+///
+/// A link that *was* opened and has since dropped is a separate case, and is
+/// re-opened automatically: the settings are known, so every entry point
+/// reconnects and carries on. [isOperational] and [connected] report the
+/// current state; [close] releases the link.
 @tomReflector
 @TomDatasourceDriver("mariadb")
 class MariaDbDatasource implements TomDataSource {
@@ -338,16 +358,50 @@ class MariaDbDatasource implements TomDataSource {
   /// Whether the underlying connection is currently established.
   bool get connected => connection != null ? connection!.connected : false;
 
+  /// The open connection to run [operation] on, re-opening a dropped link
+  /// first.
+  ///
+  /// This is the one place the lifecycle rule stated in the class dartdoc is
+  /// implemented, so that every execution entry point observes the same rule
+  /// rather than each carrying its own guard.
+  ///
+  /// A [connection] of `null` means the data source was never opened, and that
+  /// is refused rather than repaired. Opening one here could not work:
+  /// [connect] binds [host], [port] and the credentials, which arrive only from
+  /// [initialize] or a direct assignment, so before either it would dial `:-1`
+  /// — reporting an unreachable database where the truth is an unconfigured
+  /// one, and sending the reader to the network for a configuration bug.
+  ///
+  /// A link that *was* opened and has since dropped is the opposite case: the
+  /// settings are known, reconnecting is exactly what the caller wants, and it
+  /// happens here.
+  ///
+  /// [operation] names the calling entry point and is carried in the thrown
+  /// exception's parameters, so a log identifies which call ran too early.
+  Future<MySQLConnection> _openConnection(String operation) async {
+    if (connection == null) {
+      throw MariadbDatasourceException(
+        "error.datasource.not_opened",
+        "MariadbDatasource: $operation needs an open connection, but this data "
+            "source has never been opened. Call initialize() with the "
+            "connection settings, or set them and call connect().",
+        parameters: {"operation": operation},
+      );
+    }
+    if (!connection!.connected) {
+      await connect();
+    }
+    return connection!;
+  }
+
   @override
   Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(
     TomQuery query, [
     Type? resultType,
   ]) async {
-    if (connection == null || !connection!.connected) {
-      await connect();
-    }
+    final link = await _openConnection("prepareStatement");
     final (q, params) = toPositionalStatement(query.generateQuery(sqlDialect));
-    var preparedStmt = await connection!.prepare(q);
+    var preparedStmt = await link.prepare(q);
     return MariadbPreparedStatement<T>(
       preparedStmt,
       params,
@@ -589,29 +643,23 @@ class MariaDbDatasource implements TomDataSource {
     Type? resultType,
   ]) async {
     tomLog.trace("MariaDbDatasourceExecuting SQL: $T $resultType $command");
-    if (connection != null) {
-      if (!connection!.connected) {
-        await connect();
-      }
-      IResultSet qResult = await runChecked<IResultSet>(
-        () async {
-          return await connection!.execute(command, params);
-        },
-        (e, StackTrace s) {
-          tomLog.warn("Error when executing SQL: $e");
-          return MariadbDatasourceException(
-            "error.failed-to-execute.exception",
-            "MariadbDatasource: execution of $command with $params failed. $e",
-            parameters: {...?params, "command": command, "type": resultType},
-          );
-        },
-      );
-      return _processResult<T>(qResult, resultType);
-    }
-    throw MariadbDatasourceException(
-      "error.result_processing.executequery_no_connection",
-      "Attempt to call executequery before connection has been established",
+    final link = await _openConnection("executeQuery");
+    IResultSet qResult = await runChecked<IResultSet>(
+      () async {
+        return await link.execute(command, params);
+      },
+      (e, StackTrace s) {
+        tomLog.warn("Error when executing SQL: $e");
+        return MariadbDatasourceException(
+          "error.failed-to-execute.exception",
+          "MariadbDatasource: execution of $command with $params failed. $e",
+          parameters: {...?params, "command": command, "type": resultType},
+          rootException: e,
+          stack: s,
+        );
+      },
     );
+    return _processResult<T>(qResult, resultType);
   }
 
   Future<List<T>> _processResult<T extends Object>(
@@ -1183,29 +1231,21 @@ class MariaDbDatasource implements TomDataSource {
     String command, [
     Map<String, dynamic>? params,
   ]) async {
-    if (connection != null) {
-      if (!connection!.connected) {
-        await connect();
-      }
-      var qResult = await runChecked<IResultSet>(
-        () async => await connection!.execute(command, params),
-        (e, s) {
-          return MariadbDatasourceException(
-            "error.result_processing.executecommand_failed",
-            "ExecuteCommand $command failed: $e",
-            parameters: {...?params, "command": command},
-            rootException: e,
-            stack: s,
-            autoLog: true,
-          );
-        },
-      );
-      return qResult.affectedRows;
-    }
-    throw MariadbDatasourceException(
-      "error.result_processing.executecommand_no_connection",
-      "Attempt to call executeCommand before connection has been established",
+    final link = await _openConnection("executeCommand");
+    var qResult = await runChecked<IResultSet>(
+      () async => await link.execute(command, params),
+      (e, s) {
+        return MariadbDatasourceException(
+          "error.result_processing.executecommand_failed",
+          "ExecuteCommand $command failed: $e",
+          parameters: {...?params, "command": command},
+          rootException: e,
+          stack: s,
+          autoLog: true,
+        );
+      },
     );
+    return qResult.affectedRows;
   }
 
   @override
