@@ -189,6 +189,36 @@
 
 ### Documentation
 
+- **A cleared configuration key is documented as a setting, not an omission
+  (tcinc437).** Writing `smtpHost:` with no value in YAML is how a deployment
+  clears a setting, and it means something different from omitting the key.
+  Both are answered differently — `exists` reports the cleared key as present,
+  so `TomConfig` takes the provider branch and a `withDefault` default does not
+  apply — but neither document said so, which left the one question a deployer
+  has about the syntax ("does writing an empty key clear the setting or is it
+  ignored?") answerable only by reading `exists`.
+
+  Now stated in the guide (a worked example under *The Resource Provider*, and
+  *A cleared key takes step 1, not step 2* under *Typed Property Access*), in
+  the API mirror's `exists` / `get` / `TomConfig<T>` entries, and in the
+  completion record. The rule that matters to a deployer is the type split: a
+  nullable `T` resolves to `null` and the setting is cleared, a non-nullable `T`
+  throws naming the key — which is why every optional deployment setting is
+  declared `String?`.
+
+  Two things were corrected in passing. `get` was documented in two places as
+  returning `Object`; it returns `Object?`, and has since a present `null` began
+  resolving rather than being reported missing. And the two "no value" answers
+  are now described as the distinguishable pair they are: `null` means cleared,
+  the key-string fallback means unknown.
+
+  A test was added for the case a deployment actually writes — an explicit
+  `null` beating a *non-null* default on a nullable `T`. The existing pair
+  covered a nullable `null` default and a non-nullable throw, but not this one.
+  All five explicit-null tests were confirmed to fail against the previous
+  `resources[s] != null` semantics, so the guard is load-bearing rather than
+  merely green.
+
 - **The configuration guide explains the 23 deployment settings it used to skip
   (tcinc434).** `tcinc431` below gave the same 23 fields a row in the API
   mirror; the prose guide still did not mention them. It described the base

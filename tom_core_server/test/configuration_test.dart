@@ -250,6 +250,19 @@ void main() {
       _install({'port': null});
       expect(() => TomIntConfig.withDefault('port', 8080), throwsException);
     });
+
+    test('an explicitly null value beats a non-null default', () {
+      // The case above shows a *non-nullable* T refusing to substitute the
+      // default. This is the one a deployment actually writes: `smtpHost:` in
+      // YAML, over a setting that has a default, on a nullable field. It must
+      // resolve to null -- clearing the setting is the whole point of writing
+      // the key -- rather than quietly handing back the default.
+      _install({'smtpHost': null});
+      expect(
+        TomConfig<String?>.withDefault('smtpHost', 'mail.example.com').get(),
+        isNull,
+      );
+    });
   });
 
   group('TomBaseServerConfiguration.getDefaultValues', () {

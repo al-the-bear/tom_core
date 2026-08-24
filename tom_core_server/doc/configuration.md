@@ -54,6 +54,22 @@ top-level key. As a deliberate convenience an *unknown* key resolves to the key
 string itself rather than throwing — so distinguish absence with `exists`
 (which is what `TomConfig` does internally).
 
+**A key set explicitly to `null` exists.** Writing a key with no value is how a
+deployment *clears* a setting, and that is a different statement from not
+mentioning the key at all:
+
+```dart
+final cfg = TomServerConfigResourceProvider.from({'smtpHost': null});
+cfg.exists('smtpHost');  // true  — configured, and configured as nothing
+cfg.get('smtpHost');     // null
+cfg.exists('smsHost');   // false — never mentioned
+cfg.get('smsHost');      // 'smsHost' — the key-string fallback above
+```
+
+`null` and the key-string fallback are therefore the two distinguishable
+answers `get` gives for "no value": `null` means *cleared*, the key string
+means *unknown*. Gate on `exists` rather than testing `get(...) == null`.
+
 Alternatively, supply a lazy `loader` (used when the default provider is created
 on first `getServerConfig`) or construct with `.load(loader)`.
 
@@ -92,6 +108,36 @@ declared `double` field and fail the matching `TomDoubleConfig` lookup.
 The converse does **not** hold: `2.5` is still refused for an `int`. Narrowing
 would need a rounding policy, and truncating silently discards what the operator
 wrote.
+
+### A cleared key takes step 1, not step 2
+
+A default covers an **absent** key. A key the operator explicitly set to `null`
+is *present*, so it takes step 1 and the default never applies — substituting
+it would discard exactly the setting they wrote:
+
+```dart
+// config/server.yaml → smtpHost:      (written, with no value)
+
+TomConfig<String?>.withDefault('smtpHost', 'mail.example.com').get();
+// → null, not 'mail.example.com'
+```
+
+Whether that is a value or an error depends only on `T`:
+
+| `T` | A key explicitly set to `null` |
+| --- | ------------------------------ |
+| nullable (`String?`) | resolves to `null` — the setting is cleared |
+| non-nullable (`String`) | throws, naming the key, the type and the value |
+
+The throw is the intended answer for the non-nullable case: the operator asked
+for nothing where the code requires something, and that is a misconfiguration
+worth failing at startup rather than at first use. Declare the property nullable
+when clearing it is a legitimate deployment choice — which is why every
+optional deployment setting in *Deployment Settings* below is typed `String?`.
+
+This is the same distinction the provider draws in *The Resource Provider*
+above, carried one layer up: `exists` reports a cleared key as configured
+precisely so `TomConfig` cannot silently fall through to a default.
 
 Because the value is captured at construction, build a `TomConfig` *after* the
 provider is installed; later provider changes are not observed by an existing

@@ -87,8 +87,8 @@ TomServerConfigResourceProvider.from(Map<String, dynamic> resources)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `exists` | `bool exists(String s)` | Whether property `s` exists, as a dotted tree path or a top-level key. |
-| `get` | `Object get(String s)` | Returns property `s` (dotted path or top-level key); an unknown key resolves to the key string `s` itself rather than throwing. |
+| `exists` | `bool exists(String s)` | Whether property `s` exists, as a dotted tree path or a top-level key. A property configured explicitly as `null` **exists** — clearing a setting is a configuration act, and `TomConfig` must see it as configured so it does not substitute a default the operator was overriding. |
+| `get` | `Object? get(String s)` | Returns property `s` (dotted path or top-level key). Returns `null` when the property is present and explicitly `null`; an *unknown* key resolves to the key string `s` itself rather than throwing. The two are distinguishable: `null` means cleared, the key string means unknown — gate on `exists` rather than testing for `null`. |
 
 ### TomBaseServerConfiguration
 
@@ -208,6 +208,13 @@ fills a configuration object's fields. A configuration file cannot say
 without this a file could fill a declared `double` field and fail the matching
 lookup. The converse is deliberately absent: a decimal is still refused for an
 `int`, because narrowing would need a rounding policy.
+
+A key configured explicitly as `null` is **present**, so it resolves through the
+provider and a `withDefault` default does not apply — substituting one would
+discard the setting the operator wrote. A nullable `T` resolves to `null` (the
+setting is cleared); a non-nullable `T` throws, naming the key, the type and the
+value. Declare the property nullable where clearing it is a legitimate
+deployment choice.
 
 - **Type Parameters:** `T` — the resolved value type.
 
