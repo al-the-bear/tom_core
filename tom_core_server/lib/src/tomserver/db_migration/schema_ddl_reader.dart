@@ -279,7 +279,7 @@ class TomSchemaDdlReader {
     String artifact,
     List<TomDdlReplayError> errors,
   ) {
-    final open = statement.indexOf('(');
+    final open = _firstBracket(statement);
     // The header is everything before the column list — or the whole statement
     // when there is no list, so that a `CREATE TABLE … AS SELECT` is recognised
     // by its form rather than reported as a statement missing a parenthesis.
@@ -448,8 +448,14 @@ class TomSchemaDdlReader {
       );
       return;
     }
-    final actionsFrom = _indexAfterWord(statement, words[2]);
-    for (final action in splitTopLevel(statement.substring(actionsFrom))) {
+    // The actions are everything past the name, taken from the token list.
+    // Locating them by searching the text for the name finds its *first*
+    // occurrence instead, which is inside the leading keywords whenever the name
+    // is a substring of them — `ABLE` within `TABLE`, or `ab` within `table` in
+    // ordinary lowercase DDL. The result was not a parse error but a false
+    // divergence: an unsupported action named after a fragment of a keyword,
+    // and a column silently never added.
+    for (final action in splitTopLevel(words.sublist(3).join(' '))) {
       _applyAlterAction(builder, table, action, artifact, errors);
     }
   }
@@ -672,17 +678,25 @@ class TomSchemaDdlReader {
     // keyword, so look for the pair rather than only at the head.
     var index = 0;
     while (index + 1 < words.length) {
-      if (words[index].toUpperCase() == 'PRIMARY' &&
-          words[index + 1].toUpperCase() == 'KEY') {
-        final open = entry.indexOf(
-          '(',
-          _indexAfterWord(entry, words[index + 1]) - 1,
-        );
+      // Compared by keyword head, because the tokenizer keeps a parenthesised
+      // group attached to the word before it: in `PRIMARY KEY(a, b)` — no space,
+      // which MariaDB accepts — the second word is the whole `KEY(a, b)`. Read
+      // whole it matches nothing, and the clause was silently skipped, leaving
+      // the table with no primary key and the comparison with a divergence the
+      // chain does not actually have.
+      if (_keywordHead(words[index]) == 'PRIMARY' &&
+          _keywordHead(words[index + 1]) == 'KEY') {
+        // From `KEY` inclusive, because the group may be part of that very
+        // token: `KEY(a, b)` is one word. Starting after it would find no list.
+        // Skipping what precedes is not this slice's job — [_firstBracket]
+        // already ignores brackets inside quoted names.
+        final tail = words.sublist(index + 1).join(' ');
+        final open = _firstBracket(tail);
         if (open < 0) return const [];
-        final close = _matchingParenthesis(entry, open);
+        final close = _matchingParenthesis(tail, open);
         if (close < 0) return const [];
         return [
-          for (final part in splitTopLevel(entry.substring(open + 1, close)))
+          for (final part in splitTopLevel(tail.substring(open + 1, close)))
             _unquote(_words(part).isEmpty ? '' : _words(part).first),
         ]..removeWhere((name) => name.isEmpty);
       }
@@ -873,6 +887,35 @@ class TomSchemaDdlReader {
     return const [];
   }
 
+  /// The index of the first `(` in [text] that opens a group, or `-1`.
+  ///
+  /// Brackets inside a quoted identifier are characters of a name, not
+  /// structure: `CREATE TABLE \`w(1)\` (id BIGINT)` opens its column list at the
+  /// *second* `(`. A plain `indexOf` took the first, splitting the statement
+  /// inside the name — which registered the table as `w` and then read `1` as
+  /// its column list.
+  static int _firstBracket(String text) {
+    for (var i = 0; i < text.length; i++) {
+      final c = text[i];
+      if (TomSqlLexer.quoteCharacters.contains(c)) {
+        i = TomSqlLexer.endOfQuotedRun(text, i);
+        continue;
+      }
+      if (c == '(') return i;
+    }
+    return -1;
+  }
+
+  /// The uppercased keyword at the head of [word], without any parenthesised
+  /// group [_words] left attached to it.
+  ///
+  /// `KEY(a, b)` and `KEY` are the same keyword written with and without a
+  /// space; only this makes them compare equal.
+  static String _keywordHead(String word) {
+    final open = word.indexOf('(');
+    return (open < 0 ? word : word.substring(0, open)).toUpperCase();
+  }
+
   /// [words] from [from] onwards with any leading member of [skippable] removed.
   static List<String> _skipWords(
     List<String> words,
@@ -885,12 +928,6 @@ class TomSchemaDdlReader {
       index++;
     }
     return index >= words.length ? const [] : words.sublist(index);
-  }
-
-  /// The offset just past the first occurrence of [word] in [text].
-  static int _indexAfterWord(String text, String word) {
-    final at = text.indexOf(word);
-    return at < 0 ? 0 : at + word.length;
   }
 
   /// The index of the `)` matching the `(` at [open], or `-1`.

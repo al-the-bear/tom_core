@@ -2,6 +2,40 @@
 
 ### Fixed
 
+- **`TomSchemaDdlReader` derives structure from tokens, not from searching the
+  statement text (tcinc487).** `_alterTable` located its action list by
+  `statement.indexOf(tableName)`, which finds the *first* occurrence of those
+  characters — inside the leading `ALTER TABLE` keywords whenever the name is a
+  substring of them. The symptom was the bad kind: not a parse error but a false
+  divergence, reporting an unsupported action named after a fragment of a
+  keyword while the column was silently never added.
+
+  The todo framed this as an exotic case (a table named `ABLE`). Running the
+  tests corrected the premise in both directions. Quoted forms (`` `TABLE` ``,
+  `` `ALTER` ``) were **never** broken — the backticks make the token unique in
+  the text. But ordinary lowercase DDL on a two-letter table is broken:
+  `alter table ab add column b int` finds the `ab` inside `table`. Uppercase DDL
+  escapes only because `indexOf` is case-sensitive. The actions now come from
+  `words.sublist(3)`, and `_indexAfterWord` is deleted — nothing else used it.
+
+  Mutation testing then found two pre-existing defects of the same shape, both
+  fixed here rather than deferred, because each produces the same false-
+  divergence symptom:
+
+  - `_primaryKeyColumns` matched `PRIMARY` and `KEY` as whole words. The
+    tokenizer keeps a parenthesised group attached to the word before it, so in
+    `PRIMARY KEY(a, b)` — no space, which MariaDB accepts — the second token is
+    the whole `KEY(a, b)` and matched nothing. The clause was skipped and the
+    table came out with no primary key. Keywords are now compared by their head.
+  - `_createTable` found its column list with a plain `indexOf('(')`. A bracket
+    inside a quoted identifier is a character of a name, not structure, so
+    ``CREATE TABLE `w(1)` (id BIGINT)`` split inside the name: the table
+    registered as `w` and `1` was read as its column list. Bracket-finding is now
+    the single quote-aware `_firstBracket`, shared with `_primaryKeyColumns`.
+
+  Nine tests cover the three paths. See *Structure comes from tokens, never from
+  `indexOf`* in `doc/db_migration.md` for the durable rule.
+
 - **`TomDbMigrator.initializeMigration` returns `Future<void>`, and the loaded
   history is ordered in SQL (tcinc486).** The method was declared `Future<int>`
   and documented as returning "the earliest recorded version". It returned

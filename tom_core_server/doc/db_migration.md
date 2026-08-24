@@ -588,6 +588,42 @@ Splitting at all matters because the underlying `mysql_client` only half-reads a
 multi-statement command: it consumes the first result set and leaves the rest,
 desyncing the single shared connection so every later read returns stale data.
 
+### Structure comes from tokens, never from `indexOf`
+
+Once a statement is split off, the reader has to find things inside it: where the
+column list opens, where the `ALTER` actions begin, which columns a
+`PRIMARY KEY` names. Every one of those is a question about *structure* — about
+the token after the table name, or the bracket that opens a group — and none of
+them can be answered by searching the raw text for a name or a character.
+
+Searching answers a different question: the **first** place those characters
+occur. That is a different place whenever the name is a substring of what
+precedes it, and names are substrings of keywords far more often than the
+examples suggest. `ALTER TABLE ab ADD COLUMN …` written in ordinary lowercase
+finds the `ab` inside `table`; uppercase DDL escapes only because `indexOf` is
+case-sensitive. A bracket inside a quoted identifier is likewise a character of a
+name, not structure: ``CREATE TABLE `w(1)` (id BIGINT)`` opens its column list at
+the *second* `(`.
+
+The failure mode is what makes this worth a rule. Neither misfire raises a parse
+error — the reader carries on and builds a **wrong schema**: a table registered
+under a truncated name, a column silently never added, a primary key quietly
+dropped. The comparison then reports a divergence the chain does not have, with a
+message naming a fragment of a keyword. A false divergence that points at the
+wrong thing costs more to diagnose than an outright parse failure.
+
+So the reader derives structure two ways only, and never a third:
+
+- **From the token list** produced by its own tokenizer — `ALTER` actions are
+  everything past the third token, not everything past the first textual
+  occurrence of the name. The tokenizer keeps quoted runs whole and keeps a
+  parenthesised group attached to the word before it, so `KEY(a, b)` (which
+  MariaDB accepts) is one token; keyword comparisons take the head of a token for
+  that reason.
+- **From a quote-aware scan** when a character genuinely is the target — finding
+  the bracket that opens a group skips quoted runs via `TomSqlLexer`, so brackets
+  inside an identifier are passed over.
+
 ## Core Components
 
 - **`TomSqlLexer`** — the shared SQL lexing primitives: `endOfQuotedRun`,

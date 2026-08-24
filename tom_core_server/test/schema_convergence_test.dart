@@ -298,6 +298,64 @@ CREATE TABLE widget (
       expect(schema.table('widget')!.primaryKey, ['owner', 'slot']);
     });
 
+    test('reads a CREATE TABLE whose quoted name contains a bracket', () {
+      // The column list opens at the first bracket that is not inside a quoted
+      // name. Taking the first bracket in the text split the statement inside
+      // the name: the table was registered as `w`, `1` was read as its column
+      // list, and `id` was lost — a divergence report about a table the chain
+      // creates correctly.
+      final schema = replay([
+        artifact('[000]-create', 'CREATE TABLE `w(1)` (id BIGINT NOT NULL);'),
+      ]);
+      expect(schema.table('w'), isNull);
+      expect(schema.table('w(1)')!.column('id'), isNotNull);
+    });
+
+    test('reads a PRIMARY KEY whose column list touches the keyword', () {
+      // `KEY(a, b)` with no space is one word to the tokenizer, which keeps a
+      // parenthesised group attached to the word before it. Reading the list
+      // from the token *after* `KEY` would find nothing here.
+      final schema = replay([
+        artifact('[000]-create', '''
+CREATE TABLE widget (
+  owner BIGINT NOT NULL,
+  slot  INT    NOT NULL,
+  PRIMARY KEY(owner, slot)
+);'''),
+      ]);
+      expect(schema.table('widget')!.primaryKey, ['owner', 'slot']);
+    });
+
+    test('reads a PRIMARY KEY over a column name containing a bracket', () {
+      // The brackets inside the quoted name are not structure, so neither the
+      // opening bracket of the list nor its match may be taken from there.
+      final schema = replay([
+        artifact('[000]-create', '''
+CREATE TABLE widget (
+  `owner(legacy)` BIGINT NOT NULL,
+  slot            INT    NOT NULL,
+  PRIMARY KEY (`owner(legacy)`, slot)
+);'''),
+      ]);
+      expect(schema.table('widget')!.primaryKey, ['owner(legacy)', 'slot']);
+    });
+
+    test('reads a PRIMARY KEY past a constraint name containing a bracket', () {
+      // A backtick-quoted identifier may hold anything, including `(`. A
+      // quote-blind scan finds that one and reads the constraint's *name* as
+      // its column list. Contrived as a table design, ordinary as a quoted
+      // identifier — and the same shape that breaks `CREATE TABLE` above.
+      final schema = replay([
+        artifact('[000]-create', '''
+CREATE TABLE widget (
+  owner BIGINT NOT NULL,
+  slot  INT    NOT NULL,
+  CONSTRAINT `pk(legacy)` PRIMARY KEY (owner, slot)
+);'''),
+      ]);
+      expect(schema.table('widget')!.primaryKey, ['owner', 'slot']);
+    });
+
     test('accumulates ALTER TABLE across artifacts, and attributes each', () {
       final schema = replay([
         artifact('[000]-create', 'CREATE TABLE widget (id BIGINT NOT NULL);'),
@@ -312,6 +370,75 @@ CREATE TABLE widget (
       expect(table.column('id')!.origin, '[000]-create');
       expect(table.column('label')!.origin, '[001]-extend');
       expect(table.column('active')!.family, TomSqlTypeFamily.boolean);
+    });
+
+    // Where the actions begin is a question about the *token* after the table
+    // name, and answering it by searching the raw text for that name answers a
+    // different question: the first place those characters occur, which may be
+    // inside the leading `ALTER TABLE` keywords. The symptom is the bad kind —
+    // not a parse error but a false divergence, reporting an unsupported action
+    // named after a fragment of a keyword while the column is silently never
+    // added. `replay` fails on any error, so each of these is that report.
+    group('ALTER TABLE whose table name also occurs in the keywords', () {
+      /// Creates `name` with one column, then adds column `b` to it.
+      ///
+      /// The two artifacts are the whole point: the `ALTER` has to find its
+      /// action list, and `b INT` is the evidence it did.
+      TomSchemaModel addColumnTo(String name, {required String alter}) =>
+          replay([
+            artifact('[000]-create', 'CREATE TABLE $name (id BIGINT);'),
+            artifact('[001]-extend', alter),
+          ]);
+
+      test('reads the actions of a table named ABLE', () {
+        // `ABLE` occurs inside `TABLE`, four characters before the real name.
+        final schema = addColumnTo(
+          'ABLE',
+          alter: 'ALTER TABLE ABLE ADD COLUMN b INT;',
+        );
+        expect(schema.table('ABLE')!.column('b'), isNotNull);
+      });
+
+      // Quoting a reserved word is how a table actually gets named `TABLE` or
+      // `ALTER`, and the quotes happen to make the token unique in the text, so
+      // these two never misfired. They are here to keep it that way: the name
+      // must be matched as the tokenizer cut it, backticks and all.
+      test('reads the actions of a quoted table named TABLE', () {
+        final schema = addColumnTo(
+          '`TABLE`',
+          alter: 'ALTER TABLE `TABLE` ADD COLUMN b INT;',
+        );
+        expect(schema.table('TABLE')!.column('b'), isNotNull);
+      });
+
+      test('reads the actions of a quoted table named ALTER', () {
+        final schema = addColumnTo(
+          '`ALTER`',
+          alter: 'ALTER TABLE `ALTER` ADD COLUMN b INT;',
+        );
+        expect(schema.table('ALTER')!.column('b'), isNotNull);
+      });
+
+      test('reads the actions of a lowercase statement on a short name', () {
+        // Nothing exotic: `ab` occurs inside `table`, so ordinary lowercase DDL
+        // on a two-letter table hits the same misfire. The search is
+        // case-sensitive, which is the only reason uppercase DDL escapes it.
+        final schema = addColumnTo(
+          'ab',
+          alter: 'alter table ab add column b int;',
+        );
+        expect(schema.table('ab')!.column('b'), isNotNull);
+      });
+
+      test('reads every action, not just the first, past such a name', () {
+        // A misfire that consumed only the first action would still pass the
+        // single-column cases above.
+        final schema = addColumnTo(
+          'ABLE',
+          alter: 'ALTER TABLE ABLE ADD COLUMN b INT, ADD COLUMN c VARCHAR(8);',
+        );
+        expect(schema.table('ABLE')!.columns.keys, ['id', 'b', 'c']);
+      });
     });
 
     test('applies DROP, MODIFY, CHANGE and RENAME COLUMN', () {
