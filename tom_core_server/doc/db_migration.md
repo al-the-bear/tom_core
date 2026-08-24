@@ -17,6 +17,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [Running Migrations](#running-migrations)
 - [Adaptor Discovery](#adaptor-discovery)
 - [The MariaDB Adaptor](#the-mariadb-adaptor)
+  - [The outcome row is written with bound parameters](#the-outcome-row-is-written-with-bound-parameters)
 - [Idempotency and Stability](#idempotency-and-stability)
   - [The checksum has to outlive the process that wrote it](#the-checksum-has-to-outlive-the-process-that-wrote-it)
   - [An unreadable checksum is not an edited migration](#an-unreadable-checksum-is-not-an-edited-migration)
@@ -350,6 +351,27 @@ history `3, 1, 2`. Sort a copy by `version` if version order is what you need.
   means a past migration was edited → failure) and skips;
 - otherwise runs the script, records the outcome — including a failed script
   with `success = 0` — and rethrows on failure.
+
+### The outcome row is written with bound parameters
+
+The `INSERT` into `<schema>_versioning` binds every value — `version`,
+`description`, `script`, `checksum`, `executionTimeMs`, `success` — as a named
+parameter. Nothing is interpolated into the statement text, and there is no
+escaping step to get right.
+
+That is not a stylistic preference. The `script` column stores the migration's
+**full body**, and a migration script routinely contains quote characters: a
+seed row with a JSON payload, an apostrophe in an English comment, a default
+like `'["a","b"]'`. Interpolated, the first of those closes the string literal
+early and the server is handed a fragment — so the *recording* of a perfectly
+good migration fails after the migration itself has already run, which is the
+worst moment for this module to fail. Binding removes the question rather than
+answering it.
+
+The **table name** is the one part that is interpolated (`${schemaName}_versioning`,
+in all three of the adaptor's statements), because an identifier cannot be a
+bound parameter. It is not migration content: it is the schema directory's name,
+taken from the tree the deployment ships and fixed before any script is read.
 
 ## Idempotency and Stability
 

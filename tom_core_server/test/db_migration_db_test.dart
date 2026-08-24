@@ -77,6 +77,9 @@ void main() async {
       await dsi.datasource.executeCommand(
         'DROP TABLE IF EXISTS fixture_gadget',
       );
+      await dsi.datasource.executeCommand(
+        'DROP TABLE IF EXISTS fixture_quoted',
+      );
     });
 
     tearDownAll(TestDatabase.reset);
@@ -540,6 +543,90 @@ void main() async {
           'SELECT 1',
         );
         expect((await appliedVersions()).single.version, 0);
+      });
+    });
+
+    // The outcome row is written with bound parameters. Rebuilding that
+    // `INSERT` by interpolation fails seventeen tests in this file already —
+    // the fixture migration's header comment contains the apostrophe in
+    // "migrator's", which is enough to break an interpolated statement. So the
+    // property is covered; what it is not is *named*. Nothing says the coverage
+    // is the point, and rewording one comment in one fixture would retire it
+    // without a word.
+    //
+    // This group says it, with content chosen to be hostile rather than
+    // incidentally awkward, and adds the one claim nothing else makes: the
+    // stored script equals the literal it was given. The existing checksum test
+    // pairs the row's checksum against the row's *own* script, which is the
+    // right question for detecting an edit and the wrong one for detecting that
+    // both were mangled on the way in.
+    //
+    // What makes the failure mode worth naming is when it lands: the migration
+    // has already run and changed the schema by the time the adaptor tries to
+    // record it. A recording failure there is not a migration that did not
+    // happen — it is one that happened and left no trace, which is the state
+    // the versioning table exists to make impossible.
+    group('recording a migration whose script is full of quote characters', () {
+      // Single quotes, double quotes, a backslash, an apostrophe in a comment,
+      // and — inside a quoted run — a semicolon, which is also the statement
+      // separator. Interpolating this text produces a syntax error; splitting
+      // it with anything less than a lexer cuts it in half mid-literal.
+      const script = '''
+-- The operator's seed row, with a JSON payload.
+CREATE TABLE IF NOT EXISTS fixture_quoted (
+  id      BIGINT       NOT NULL AUTO_INCREMENT,
+  payload VARCHAR(255) NOT NULL DEFAULT '["a;b","c\\\\d"]',
+  label   VARCHAR(255) NOT NULL DEFAULT "it's fine",
+  PRIMARY KEY (id)
+);''';
+
+      test('runs and records instead of failing on the recording', () async {
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+
+        await adaptor.applyMigration(
+          dsi,
+          _schemaName,
+          11,
+          'quoted_payload',
+          script,
+        );
+
+        final recorded = (await appliedVersions()).single;
+        expect(recorded.version, 11);
+        // Recorded as a *success*: the distinction that matters is between a
+        // script that failed and one whose recording failed, and only the
+        // former may leave `success = 0`.
+        expect(recorded.success, 1);
+        // The script ran, so the table it declares exists.
+        expect(await tableExists('fixture_quoted'), isTrue);
+      });
+
+      test('stores the script byte-for-byte, with no escaping applied', () async {
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        await adaptor.applyMigration(
+          dsi,
+          _schemaName,
+          11,
+          'quoted_payload',
+          script,
+        );
+
+        // Round-tripping the text is the stronger claim, and the one the
+        // checksum depends on: a value that survived an escaping round trip
+        // with a doubled quote or a stripped backslash would still *store*,
+        // and would then fail its own stability check on the next startup —
+        // accusing an operator of editing a migration nobody touched.
+        final recorded = (await appliedVersions()).single;
+        expect(recorded.script, script);
+        expect(
+          recorded.checksum,
+          MariadbMigrationAdaptor.checksumOf(script),
+          reason:
+              'the stored script must still hash to what the adaptor recorded, '
+              'or the next run reads this migration as edited',
+        );
       });
     });
   }, skip: skipReason);

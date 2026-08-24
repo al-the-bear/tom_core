@@ -703,6 +703,28 @@
 
 ### Documentation
 
+- **The migration guide now states that the outcome row is written with bound
+  parameters (tcinc492).** The guide used to carry a block quote describing a
+  string-interpolated `INSERT` and a follow-up to fix the escaping in
+  `datasources`; the adaptor moved to named parameters and the quote was deleted
+  — but nothing was put in its place, so the guide said nothing at all about how
+  the row is written. A new **The outcome row is written with bound parameters**
+  section says it, and says why it matters where it matters: the `script` column
+  stores the migration's full body, quote characters in a migration body are
+  routine, and an interpolated `INSERT` therefore fails *after* the migration has
+  already changed the schema — a migration that happened and left no trace, which
+  is the one state the versioning table exists to prevent. It also names the one
+  part that genuinely is interpolated, the `<schema>_versioning` table name,
+  because an identifier cannot be a bound parameter; a reader who greps for
+  `schemaName` finds it either way, and should find it explained rather than
+  contradicted. Two DB-backed tests pin the property with deliberately hostile
+  content — nested quote styles, a backslash, and a semicolon inside a quoted run
+  — one asserting the migration runs *and* records, the other that the stored
+  script equals the literal byte-for-byte. That second assertion is the one no
+  existing test made: the pre-existing checksum test compares a row's checksum
+  against that row's own script, which detects a later edit but cannot detect
+  both having been mangled on the way in.
+
 - **The migration file-name grammar is documented in full, and the parser now
   arbitrates what the prose may say (tcinc491).** The `TomDbMigrations` class
   dartdoc claimed migrations run in "ascending name order" long after the sort
