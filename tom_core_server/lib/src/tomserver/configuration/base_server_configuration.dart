@@ -87,8 +87,39 @@ class TomServerConfigResourceProvider {
   }
 }
 
-/// The process-wide application id, set from configuration at startup.
-String tomAppId = "";
+/// The configuration this isolate most recently built, or `null` before it has
+/// built one. Registered by [TomBaseServerConfiguration]'s constructor and read
+/// only by [tomAppId].
+TomBaseServerConfiguration? _activeConfiguration;
+
+/// The process-wide application id: the [TomBaseServerConfiguration.appId] of
+/// the configuration this isolate built, or `""` before it has built one.
+///
+/// Read it wherever a message has to say *which application* produced it. The
+/// access line of [tomLoggingMiddleware] is the library's own use, and the
+/// motivating one: several servers of one deployment collected into one place
+/// are otherwise indistinguishable.
+///
+/// It is a **getter over the active configuration**, not a variable, and both
+/// halves of that are deliberate.
+///
+/// Resolving the field on each read rather than copying it at some instant is
+/// what makes it correct. A configuration is named in its *subclass*
+/// constructor body (`appId = 'auth';`), which runs after the base constructor
+/// — so any copy taken while the base constructor is still running captures the
+/// merged value, which for an application that names itself in code is the
+/// empty string. Every server in this workspace published `tomAppId = appId`
+/// from inside its `setValues` override, and every one of them published `""`.
+/// A read-at-use getter cannot be early.
+///
+/// Having no setter is what keeps it that way: an application states its name
+/// once, as configuration, in the [TomBaseServerConfiguration.appId] field that
+/// the merge can also supply. There is no second place to say it and therefore
+/// no second answer.
+///
+/// Globals are per-isolate, and a server builds its configuration in the
+/// isolate that serves with it, so this reports that isolate's application.
+String get tomAppId => _activeConfiguration?.appId ?? "";
 
 /// Reflected base class for a server's configuration.
 ///
@@ -107,6 +138,23 @@ String tomAppId = "";
 /// are a tracked follow-up (see the quest completion steps).
 @tomReflector
 abstract class TomBaseServerConfiguration {
+  /// The application's own name — what this server calls itself in a log, a
+  /// diagnostic, or anywhere else several servers meet.
+  ///
+  /// It is an ordinary configuration key, so the merge can supply it (`appId`
+  /// in a resource file, the environment, `.env`, or `appId=…` on the command
+  /// line). A server that has a fixed name states it in its constructor body
+  /// instead, and one that wants both states it the way [port] does, so the
+  /// configured value wins:
+  ///
+  /// ```dart
+  /// MyConfiguration(super.args) {
+  ///   if (appId.isEmpty) appId = 'billing';
+  /// }
+  /// ```
+  ///
+  /// Whichever way it is set, [tomAppId] reports it process-wide; nothing else
+  /// needs to publish it.
   String appId = "";
 
   /// The command-line arguments this configuration was built from.
@@ -557,8 +605,15 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// a subclass's constructor body must see the resolved fields, and the `args`
   /// assignment runs after it because the invocation is the meaning this field
   /// promises.
+  ///
+  /// The instance also registers itself as the isolate's active configuration,
+  /// which is what [tomAppId] resolves through. Registering the object rather
+  /// than reading [appId] out of it here is the point: the subclass constructor
+  /// body has not run yet, so there is no value to read — only an object that
+  /// will have one.
   TomBaseServerConfiguration(List<String> args) {
     setValues(getDefaultValues(args));
     this.args = args;
+    _activeConfiguration = this;
   }
 }

@@ -207,7 +207,7 @@ surface documented here.
 | `TomDoubleConfig` | class | `double` config value. |
 | `TomBoolConfig` | class | `bool` config value. |
 | `TomYaml` | class | YAML resource helpers (static). |
-| `tomAppId` | top-level | The current application id. |
+| `tomAppId` | top-level getter | The current application id, read from the active configuration's `appId`. |
 
 ### Datasources (`lib/src/tomserver/datasources/`)
 

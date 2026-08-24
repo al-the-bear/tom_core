@@ -2,6 +2,58 @@
 
 ### Fixed
 
+- **`tomAppId` is now produced and consumed by the library (tcinc446).** The
+  global was documented as "the process-wide application id, set from
+  configuration at startup" and was neither. Nothing in `tom_core_server`
+  assigned it and nothing read it; instead five applications — `tom_uam_server`
+  and the four sample servers — each carried a hand-written `tomAppId = appId;`
+  in a `setValues` override, and the library never consulted the value it
+  exported.
+
+  All five were also broken, silently and identically. The base constructor
+  calls `setValues` first, then assigns `args`; the *subclass* constructor body
+  — where an application names itself, `appId = 'auth';` — runs after both. So a
+  line inside `setValues` sampled `appId` before it was set, and every one of
+  those five servers published the empty string. The write-only global had never
+  held a value, which is exactly why nothing reading it was ever missed.
+
+  `tomAppId` is now a **getter** over the configuration this isolate built:
+
+  ```dart
+  String get tomAppId => _activeConfiguration?.appId ?? "";
+  ```
+
+  The base constructor registers the instance (not its `appId` — at that point
+  the subclass body has not run, so there is no value to take a copy of).
+  Resolving the field on each read is what makes it correct: a read-at-use
+  getter cannot be early. Having no setter is what keeps it that way — an
+  application states its name once, in `TomBaseServerConfiguration.appId`, which
+  the merge can also supply, so there is no second place to say it and therefore
+  no second answer.
+
+  The library reads it in `tomLoggingMiddleware`, whose access line now opens
+  with the application id:
+
+  ```text
+  [billing] HTTP/1.1 [GET] /tasks http://localhost:8080/tasks 200 null
+  ```
+
+  That is the motivating use: the advanced sample runs three servers side by
+  side, two with `isolateLogging = false`, and their access lines were
+  indistinguishable once collected anywhere in common. The prefix is omitted
+  entirely when no `appId` is configured, so a single-server deployment sees the
+  line unchanged. `server/server.dart` already imported the configuration
+  module, so reading it there adds no dependency edge.
+
+  The five `tomAppId = appId;` lines are gone (each `setValues` override existed
+  for that line alone and now holds only its reflection call). Their
+  `appId = '…';` assignments were also unconditional, which contradicted the
+  `tom_uam_server` comment promising "can be overwritten with
+  environment/commandline args"; all five now guard the assignment the way
+  `port` is guarded — `if (appId.isEmpty) appId = 'auth';` — so the default
+  yields to a configured value instead of overwriting it. `appId` itself gained
+  the dartdoc it never had.
+
 - **A failed configuration cast now carries the `TypeError` it caught
   (tcinc443).** `TomConfig._getValue` caught the failed cast, built a fresh
   `Exception` from the key, the type and the value, and dropped the caught

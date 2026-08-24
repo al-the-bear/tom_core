@@ -80,12 +80,15 @@ const int _defaultPort = 8080;
 /// populate it from the merged config/env/args. The constructor runs after the
 /// base has applied the loaded values, so the fields set here are the sample's
 /// fixed choices: a single plain-HTTP isolate bound on all interfaces, plus the
-/// server-level error handler that yields the service layer's 403/404.
+/// server-level error handler that yields the service layer's 403/404. `appId`
+/// and `port` are guarded on being unset, which is what makes them *defaults*
+/// rather than fixed choices — an unguarded assignment here would overwrite the
+/// value the merge just resolved.
 @tomReflector
 class AppServerConfiguration extends TomBaseServerConfiguration {
   /// Builds the configuration from the process [args].
   AppServerConfiguration(super.args) {
-    appId = 'app';
+    if (appId.isEmpty) appId = 'app';
     if (port == 0) port = _defaultPort;
     noSsl = true;
     isolateLogging = false;
@@ -96,7 +99,6 @@ class AppServerConfiguration extends TomBaseServerConfiguration {
   @override
   void setValues(Map<String, dynamic> values) {
     tomReflectionInfo.setValues<AppServerConfiguration>(this, values);
-    tomAppId = appId;
   }
 }
 
@@ -117,8 +119,12 @@ Response? appServerErrorHandler(
   StackTrace stack,
 ) =>
     appForbiddenOrNotFound(request, error, stack) ??
-    const TomDefaultErrorHandler()
-        .handleErrorDefault(error, stack, request, null);
+    const TomDefaultErrorHandler().handleErrorDefault(
+      error,
+      stack,
+      request,
+      null,
+    );
 
 /// Production environment — the root of the (small) environment hierarchy.
 const TomEnvironment environmentProd = TomEnvironment('prod');

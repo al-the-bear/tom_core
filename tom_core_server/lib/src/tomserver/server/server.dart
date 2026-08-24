@@ -162,12 +162,18 @@ Middleware tomDefaultAuthenticationMiddleware(
 /// The default request-logging [Middleware] of a [TomServer].
 ///
 /// After the inner handler produces a response, it emits a single
-/// `HTTP/<version> [<method>] <url> ... <status>` info line — but only when the
-/// request's [TomRequestLogInfo] (read from the request context) has
+/// `[<appId>] HTTP/<version> [<method>] <url> ... <status>` info line — but only
+/// when the request's [TomRequestLogInfo] (read from the request context) has
 /// `shouldBeLogged == true` and has not already been logged, after which it
 /// marks `hasBeenLogged`. This one-shot guard prevents duplicate lines when the
 /// pipeline retries or re-enters. It is the default value of
 /// `TomBaseServerConfiguration.loggingMiddleware`.
+///
+/// The line opens with [tomAppId] so a deployment that runs several servers can
+/// tell their access logs apart once collected in one place — the requested URI
+/// carries a port, but that only separates them while they are separate ports
+/// on one host. The prefix is omitted entirely when no application id is
+/// configured, so a single-server deployment sees the line unchanged.
 Middleware tomLoggingMiddleware() => (innerHandler) {
   // FutureOr<Response> Function(Request request)
   return (request) {
@@ -175,8 +181,9 @@ Middleware tomLoggingMiddleware() => (innerHandler) {
         request.context[TomRequestLogInfo.contextName] as TomRequestLogInfo;
     return Future.sync(() => innerHandler(request)).then((response) {
       if ((logInfo.shouldBeLogged == true && logInfo.hasBeenLogged == false)) {
+        final appId = tomAppId;
         tomLog.info(
-          "HTTP/${request.protocolVersion} [${request.method}] /${request.url} ${request.requestedUri} ${response.statusCode} ${response.encoding}",
+          "${appId.isEmpty ? "" : "[$appId] "}HTTP/${request.protocolVersion} [${request.method}] /${request.url} ${request.requestedUri} ${response.statusCode} ${response.encoding}",
         );
         logInfo.hasBeenLogged = true;
       }

@@ -77,18 +77,21 @@ import 'ops_server_start.reflection.dart';
 /// environment, `.env` and the command line into one picture, and re-deriving
 /// that for a process without a port would be a second configuration mechanism
 /// in a suite that already has one.
+///
+/// `appId` is guarded on being unset, which is what makes it a *default* rather
+/// than a fixed choice — an unguarded assignment here would overwrite the value
+/// the merge just resolved.
 @tomReflector
 class OpsServerConfiguration extends TomBaseServerConfiguration {
   /// Builds the configuration from the process [args].
   OpsServerConfiguration(super.args) {
-    appId = 'ops';
+    if (appId.isEmpty) appId = 'ops';
     isolateLogging = false;
   }
 
   @override
   void setValues(Map<String, dynamic> values) {
     tomReflectionInfo.setValues<OpsServerConfiguration>(this, values);
-    tomAppId = appId;
   }
 }
 

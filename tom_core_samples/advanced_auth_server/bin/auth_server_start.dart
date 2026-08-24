@@ -99,12 +99,15 @@ const Map<String, String> _demoPasswords = {
 /// populate it from the merged config/env/args. The constructor runs after the
 /// base has applied the loaded values, so the fields set here are the sample's
 /// fixed choices: a single plain-HTTP isolate bound on all interfaces, plus the
-/// server-level error handler that yields the admin gate's 403.
+/// server-level error handler that yields the admin gate's 403. `appId` and
+/// `port` are guarded on being unset, which is what makes them *defaults*
+/// rather than fixed choices — an unguarded assignment here would overwrite the
+/// value the merge just resolved.
 @tomReflector
 class AuthServerConfiguration extends TomBaseServerConfiguration {
   /// Builds the configuration from the process [args].
   AuthServerConfiguration(super.args) {
-    appId = 'auth';
+    if (appId.isEmpty) appId = 'auth';
     if (port == 0) port = _defaultPort;
     noSsl = true;
     isolateLogging = false;
@@ -115,7 +118,6 @@ class AuthServerConfiguration extends TomBaseServerConfiguration {
   @override
   void setValues(Map<String, dynamic> values) {
     tomReflectionInfo.setValues<AuthServerConfiguration>(this, values);
-    tomAppId = appId;
   }
 }
 
@@ -136,8 +138,12 @@ Response? authServerErrorHandler(
   StackTrace stack,
 ) =>
     forbiddenOnAccessDenied(request, error, stack) ??
-    const TomDefaultErrorHandler()
-        .handleErrorDefault(error, stack, request, null);
+    const TomDefaultErrorHandler().handleErrorDefault(
+      error,
+      stack,
+      request,
+      null,
+    );
 
 /// Production environment — the root of the (small) environment hierarchy.
 const TomEnvironment environmentProd = TomEnvironment('prod');

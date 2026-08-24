@@ -31,6 +31,30 @@ class _ArgsOverwritingConfig extends TomBaseServerConfiguration {
   void setValues(Map<String, Object?> values) => this.args = ['fromConfigKey'];
 }
 
+/// A configuration that names itself in its own constructor body, the way every
+/// server in this workspace does.
+///
+/// Its [setValues] deliberately assigns nothing, so the only writer of [appId]
+/// is the subclass constructor — which runs *after* the base constructor. That
+/// ordering is the whole point: it is what a global published from inside
+/// `setValues` cannot see.
+class _LateAppIdConfig extends TomBaseServerConfiguration {
+  _LateAppIdConfig(super.args) {
+    appId = 'fromConstructor';
+  }
+  @override
+  void setValues(Map<String, Object?> values) {}
+}
+
+/// A configuration whose [setValues] assigns [appId] from the merged values,
+/// standing in for what the generated reflection does with an `appId` key.
+class _MergedAppIdConfig extends TomBaseServerConfiguration {
+  _MergedAppIdConfig(super.args);
+  @override
+  void setValues(Map<String, Object?> values) =>
+      appId = (values['appId'] as String?) ?? '';
+}
+
 /// Installs a fresh provider built from [resources] as the active source.
 void _install(Map<String, dynamic> resources) {
   TomServerConfigResourceProvider.setServerConfigProvider(
@@ -477,6 +501,44 @@ void main() {
       final config = _CapturingConfig(['args=fromCommandLine']);
       expect(config.captured['args'], 'fromCommandLine');
       expect(config.args, ['args=fromCommandLine']);
+    });
+  });
+
+  // `tomAppId` is the process-wide answer to "which application is this", and
+  // for as long as it existed the library neither produced nor consumed one:
+  // five servers across this workspace each published it by hand and nothing
+  // ever read it. The hand-written line was also wrong in all five -- it sat in
+  // a `setValues` override, which the base constructor calls *before* the
+  // subclass constructor body that names the application, so every one of them
+  // published the empty string. These pin the wiring that replaced it.
+  group('tomAppId', () {
+    test('reports an app id resolved from the merged configuration', () {
+      _install({});
+      _MergedAppIdConfig(['appId=fromCommandLine']);
+      expect(tomAppId, 'fromCommandLine');
+    });
+
+    test('reports an app id the subclass constructor sets after setValues', () {
+      // The case the hand-written line got wrong. `appId` is assigned after the
+      // base constructor has finished, so anything that samples it *during*
+      // construction reads the wrong value -- which is why tomAppId resolves
+      // the field on each read instead of holding a copy taken at some instant.
+      _install({});
+      _LateAppIdConfig([]);
+      expect(tomAppId, 'fromConstructor');
+    });
+
+    test('follows the configuration built most recently', () {
+      // A server builds one configuration per isolate, and globals are
+      // per-isolate, so in a running process "most recent" and "the only one"
+      // coincide. Stated as a test because it is the rule that decides what a
+      // second configuration means, and a test doing so twice is the only place
+      // the question comes up.
+      _install({});
+      _MergedAppIdConfig(['appId=first']);
+      expect(tomAppId, 'first');
+      _MergedAppIdConfig(['appId=second']);
+      expect(tomAppId, 'second');
     });
   });
 

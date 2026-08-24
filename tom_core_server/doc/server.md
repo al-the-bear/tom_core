@@ -30,7 +30,7 @@ the request zone.
 | `TomRequestLogInfo` | class | Per-request logging state in the request context |
 | `contextSetupMiddleware` | function | Seeds entries into the request context |
 | `tomDefaultAuthenticationMiddleware` | function | Extracts credentials and publishes request zone values |
-| `tomLoggingMiddleware` | function | Emits the one-shot access-log line |
+| `tomLoggingMiddleware` | function | Emits the one-shot access-log line, prefixed with the application id |
 | `extractAuthentication` | function | Reads bearer credentials from a request |
 | `noopHandler` | function | A handler that always returns a fixed status code |
 
@@ -61,7 +61,18 @@ order:
    or `tomDefaultAuthenticationMiddleware`.
 4. **Inner error handler** — catches errors from handling using `errorHandler`.
 5. **Logging middleware** — `loggingMiddleware` (defaults to
-   `tomLoggingMiddleware`).
+   `tomLoggingMiddleware`), which emits one line per served request:
+
+   ```text
+   [billing] HTTP/1.1 [GET] /tasks http://localhost:8080/tasks 200 null
+   ```
+
+   The leading `[billing]` is `tomAppId` — the `appId` of the configuration this
+   isolate built (see `doc/configuration.md`). It is what tells the access logs
+   of a deployment's several servers apart once they are collected in one place;
+   the requested URI carries a port, but that only separates them while they are
+   separate ports on one host. A deployment that configures no `appId` sees the
+   line without the prefix.
 6. **Router** — optionally wrapped in a `Cascade` with the configuration's
    `preExecutionHandler` / `postExecutionHandler`.
 

@@ -368,4 +368,4 @@ one.
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `tomAppId` | `String tomAppId` | The process-wide application id, set from configuration at startup (default `""`). |
+| `tomAppId` | `String get tomAppId` | The process-wide application id: the `appId` of the configuration this isolate built, or `""` before it has built one. Read-only — an application states its name in `TomBaseServerConfiguration.appId` and nothing else publishes it. Resolves the field on each read, so a name set in a subclass constructor (which runs *after* the base constructor) is reported correctly. Read by `tomLoggingMiddleware`, which prefixes the access line with it. |

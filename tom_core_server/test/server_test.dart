@@ -30,6 +30,33 @@ class _NoopConfig extends TomBaseServerConfiguration {
   void setValues(Map<String, Object?> values) {}
 }
 
+/// A [_NoopConfig] that names its application, so [tomAppId] has something to
+/// report. Named in the constructor body, which is where a real server names
+/// itself.
+class _AppIdConfig extends TomBaseServerConfiguration {
+  _AppIdConfig(String id) : super([]) {
+    appId = id;
+  }
+  @override
+  void setValues(Map<String, Object?> values) {}
+}
+
+/// A [TomLogOutput] that keeps every message instead of printing it, so a test
+/// can assert on what the library actually wrote.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp,
+    String? origin,
+  ) => messages.add(convertToString(message));
+}
+
 void main() {
   group('TomRequestId', () {
     test('generates a non-empty v4 uuid', () {
@@ -158,6 +185,32 @@ void main() {
       final handler = tomLoggingMiddleware()((req) => Response.ok('ok'));
       expect((await handler(request)).statusCode, 200);
       expect(info.hasBeenLogged, isFalse);
+    });
+
+    test('the access line names the application', () async {
+      // This is the one line the library emits for every served request, and
+      // until now it identified the request but not the process that served it.
+      // That gap is why `tomAppId` exists, and this is the library reading it:
+      // the advanced sample runs three servers side by side, two of them with
+      // `isolateLogging = false`, so without the app id their access lines are
+      // indistinguishable once collected anywhere in common.
+      //
+      // Captured rather than asserted through a flag -- unlike the suppression
+      // tests above, the claim here *is* about the text.
+      // Constructing it is what publishes it: the base constructor registers
+      // the configuration, and `tomAppId` resolves `appId` through it.
+      _AppIdConfig('billing');
+      final output = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      addTearDown(() => tomLog.logOutput = previous);
+      tomLog.logOutput = output;
+
+      final request = _get().change(
+        context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
+      );
+      await tomLoggingMiddleware()((req) => Response.ok('ok'))(request);
+
+      expect(output.messages.single, contains('billing'));
     });
   });
 

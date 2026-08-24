@@ -52,12 +52,14 @@ const int _defaultPort = 8080;
 /// base has applied the loaded values, so the fields set here are the sample's
 /// fixed choices: plain HTTP (no TLS cert to manage), a single isolate with no
 /// separate logging isolate, and binding on all interfaces so the host and the
-/// compose network can both reach it.
+/// compose network can both reach it. `appId` and `port` are guarded on being
+/// unset, which is what makes them *defaults* rather than fixed choices — an
+/// unguarded assignment here would overwrite the value the merge just resolved.
 @tomReflector
 class ServerConfiguration extends TomBaseServerConfiguration {
   /// Builds the configuration from the process [args].
   ServerConfiguration(super.args) {
-    appId = 'todo';
+    if (appId.isEmpty) appId = 'todo';
     if (port == 0) port = _defaultPort;
     noSsl = true;
     isolateLogging = false;
@@ -67,7 +69,6 @@ class ServerConfiguration extends TomBaseServerConfiguration {
   @override
   void setValues(Map<String, dynamic> values) {
     tomReflectionInfo.setValues<ServerConfiguration>(this, values);
-    tomAppId = appId;
   }
 }
 

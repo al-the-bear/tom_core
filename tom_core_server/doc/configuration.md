@@ -33,7 +33,7 @@ environment-variable substitution.
 | `TomConfigurationException` | exception | A property failed the cast to `T`; chains the `TypeError` |
 | `TomBaseServerConfiguration` | reflected class | Base for a server's settings; merges all sources on construction |
 | `TomYaml` | class | Loads YAML files with `${VAR:default}` substitution |
-| `tomAppId` | variable | Process-wide application id |
+| `tomAppId` | getter | Process-wide application id, read from the active configuration's `appId` |
 
 ## The Resource Provider
 
@@ -223,6 +223,32 @@ individual fields rather than this list.
 > `localhost` pair for local development and **must be overridden in
 > production**. JWT signing-key fields exist; richer JWT-creation settings are a
 > tracked follow-up.
+
+### Naming the application
+
+`appId` is the server's own name — what it calls itself wherever several servers
+of one deployment meet. It is an ordinary configuration key, so the merge can
+supply it (`appId` in a resource file, in the environment, in `.env`, or
+`appId=…` on the command line). A server with a fixed name states it in the
+constructor body instead.
+
+Whichever way it is set, `tomAppId` reports it process-wide, and
+`tomLoggingMiddleware` prefixes each access line with it. There is nothing to
+publish by hand: `tomAppId` is a getter over the configuration this isolate
+built, not a variable to assign.
+
+To have both a default and an override, guard the assignment the way `port` is
+guarded:
+
+```dart
+MyServerConfig(super.args) {
+  if (appId.isEmpty) appId = 'billing';
+}
+```
+
+The guard is what makes it a *default*. A constructor body runs after the base
+has applied the merged values, so an unconditional `appId = 'billing';` discards
+whatever the environment or the command line supplied.
 
 ## Deployment Settings
 
