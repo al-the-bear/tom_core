@@ -930,6 +930,45 @@
 
 ### Behaviour Changes
 
+- **A count no longer accepts a window or an ordering it cannot honour
+  (tcinc454).** `TomCount` took `orderBy`, `ascending`, `sort` and `top` through
+  its constructor and its `generateQuery` read none of them: it rendered the
+  projection, the `FROM` and the `WHERE` and stopped. `TomCount(top: 5)`
+  returned the count of the whole filtered set, with no error and no warning,
+  and the sibling `TomSelect` renders both clauses from the same fields — so
+  the API shape promised something the class never did. The class dartdoc
+  already said a count has no row window; the constructor contradicted it.
+
+  The four parameters are removed rather than rendered, because rendering them
+  cannot fix the reported symptom. `LIMIT` caps the rows *returned*, and a count
+  returns one row whatever the cap, so `SELECT COUNT(*) … LIMIT 5` would still
+  count every matching row — the caller would get the same wrong answer, now
+  with extra SQL to explain it. An `ORDER BY` beside a bare `COUNT(*)` likewise
+  has a single row to order. The question `top: 5` is reaching for — "are there
+  at least five?" — is a different statement (a `COUNT(*)` over a capped
+  subquery), not this one with a clause bolted on.
+
+  The query-sentence grammar moves with the constructor: `count first 5 by …`
+  and `count … order by x` now raise `TomQuerySyntaxException`
+  (`top_unsupported_for_count`, `order_by_unsupported_for_count`) instead of
+  compiling into a query that ignores them. This extends a rule the compiler
+  already had — a count has rejected `skip`/`offset` explicitly for some time —
+  to the other two thirds of the same idea. A side-effect worth naming: because
+  a skip requires a cap and a count may no longer have one, no count sentence
+  can reach the skip rule any more, so that rule is now a `DELETE` rule and its
+  message no longer claims otherwise. `TomDelete` is unaffected and keeps both
+  clauses: `DELETE … ORDER BY x LIMIT n` picks *which* rows go.
+
+  `_scopedCount` in the CRUD repository stops forwarding the two dead fields,
+  and its dartdoc stops claiming to preserve "every shaping option" when a
+  count's shaping options are the projection ones only. Six mutations of the two
+  new rules — each disabled, the cap boundary moved, each aimed at the wrong
+  kind, and the sort rule made unconditional — are all killed. The constructor
+  removal is a compile-time guarantee instead, proved by `dart analyze` over the
+  six projects whose generated reflection code constructs a `TomCount`; their
+  `*.reflection.dart` files were regenerated, and being stale since before the
+  scheduling module existed, brought current at the same time.
+
 - **`dateOp` renders a fixed-width `YYYY-MM-DD` instead of a ragged one
   (tcinc453).** `TomStandardSqlDialect.dateOp` interpolated the components
   directly, so 2 January 2026 came out as `'2026-1-2'` while `dateTimeOp`, four

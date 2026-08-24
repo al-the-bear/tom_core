@@ -219,9 +219,9 @@ predicate with shaping options (`distinct`, `sort`, `top`, `offset`):
 `TomSortDirection` — rather than a field list plus one shared flag, because
 `ORDER BY priority DESC, due_date ASC` cannot be expressed by a direction that
 every column has to agree on. The older two-argument form is still accepted at
-the constructor (`orderBy:` + `ascending:`) and maps onto the list, so existing
-call sites and generated reflection code keep working; internally there is only
-`sort`.
+the constructor (`orderBy:` + `ascending:`) by every form that sorts at all, and
+maps onto the list, so existing call sites and generated reflection code keep
+working; internally there is only `sort`.
 
 `top` caps the rows and `offset` skips them, rendering as `LIMIT n` or
 `LIMIT n OFFSET m`. Two windows are rejected at construction rather than
@@ -232,10 +232,27 @@ rendered:
   `LIMIT n [OFFSET m]`, so there is no bare `OFFSET`, and emitting the statement
   anyway would silently ignore the skip.
 
-Only `TomSelect` and `TomGroupedSelect` take an `offset`. A count has no row
-window — the total of a filtered set does not depend on which page of it the
-caller is reading — and MariaDB's single-table `DELETE … LIMIT n` has no
-`OFFSET` form at all.
+Which of the options a form takes is decided by its result, not by the SQL
+grammar, and each form takes only the ones that mean something:
+
+| Form | `distinct` | `sort` | `top` | `offset` |
+| ---- | ---------- | ------ | ----- | -------- |
+| `TomSelect` / `TomGroupedSelect` | ✓ | ✓ | ✓ | ✓ |
+| `TomDelete` | ✓ | ✓ | ✓ | — |
+| `TomCount` | ✓ | — | — | — |
+
+`TomDelete` has no `offset` because MariaDB's single-table `DELETE … LIMIT n`
+has no `OFFSET` form at all; it keeps `sort` and `top` because
+`DELETE … ORDER BY x LIMIT n` picks *which* rows go.
+
+`TomCount` takes none of the three. Its statement returns exactly one row, so a
+`LIMIT` would cap what is *returned* rather than what is counted — `top: 5`
+would count the whole filtered set and then cap nothing — and an `ORDER BY`
+would have a single row to order. The total of a filtered set likewise does not
+depend on which page of it the caller is reading. The parameters are absent from
+the constructor rather than accepted and ignored, and the query-sentence grammar
+matches: `count first 5 …` and `count … order by x` are rejected, not silently
+counted whole.
 
 `TomLiteralSelect` is the escape hatch for statements the generated queries
 cannot express; its `types` still drive result-row mapping.

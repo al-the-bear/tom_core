@@ -672,16 +672,16 @@ TomCount(
   List<Type> types, {
   required TomOperator<TomDbBool> query,
   bool distinct,
-  List<String> orderBy,
-  bool ascending,
-  List<TomSortField>? sort,
-  int top,
   List<String> ignoreFields,
 })
 ```
 
-No `offset`: the total of a filtered set does not depend on which page of it the
-caller is reading.
+No window and no ordering — no `top`, `offset`, `sort` or `orderBy`/`ascending`.
+The statement returns exactly one row, so `LIMIT` would cap what is *returned*
+rather than what is counted, and an `ORDER BY` would have a single row to order;
+the total of a filtered set likewise does not depend on which page of it the
+caller is reading. The parameters are absent rather than accepted and ignored,
+so a call that asks for a window fails where it is written.
 
 ##### Methods
 

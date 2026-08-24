@@ -295,19 +295,25 @@ class TomLiteralSelect extends TomQuery {
 /// A `SELECT COUNT(*)` (or `COUNT(DISTINCT <cols>)`) over the entity [types],
 /// filtered by the predicate. Returns a single `count` column.
 ///
-/// A count has no row window: it renders neither `ORDER BY` nor `LIMIT`, and so
-/// takes no `offset` — the total of a filtered set does not depend on which page
-/// of it the caller is looking at.
+/// A count has no row window and no ordering, and so takes neither `top`,
+/// `offset`, `sort` nor the `orderBy`/`ascending` shorthand its siblings
+/// accept. Both omissions are about the shape of the result rather than SQL
+/// syntax: the statement returns exactly one row, so `LIMIT` would cap what is
+/// *returned* rather than what is counted (`top: 5` would still count the whole
+/// filtered set), and an `ORDER BY` would have a single row to order. The total
+/// of a filtered set likewise does not depend on which page of it the caller is
+/// looking at, which is why there is no `offset` either.
+///
+/// The parameters are absent rather than accepted and ignored, so a sentence or
+/// call that asks for a window fails where it is written. [TomSelect] is the
+/// sibling that takes all of them, and [TomDelete] takes `sort` and `top` —
+/// `DELETE … ORDER BY x LIMIT n` picks *which* rows go.
 class TomCount extends TomGeneratedQuery {
   /// Builds a count query from the predicate `query`.
   TomCount(
     super.types, {
     required super.query,
     super.distinct,
-    super.orderBy,
-    super.ascending,
-    super.sort,
-    super.top,
     super.ignoreFields,
   });
   @override

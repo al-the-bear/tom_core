@@ -157,6 +157,12 @@ group count ( * ) as total over status by age >= :min
   applies to every field back to the previous direction keyword, so
   `order by a b desc` sorts both descending while `order by a desc b asc` mixes
   them; a field with no direction of its own sorts ascending.
+- **`count` takes neither a cap nor an ordering.** Its statement returns a
+  single row, so `top`/`first` would cap what is *returned* rather than what is
+  counted, and an `order by` would have one row to order. Both are rejected
+  rather than accepted and ignored, so `count first 5 by …` fails instead of
+  quietly counting the whole filtered set. Use `group` to cap or order
+  aggregates.
 
 ```text
 find first 25 skip 50 by status = :status order by priority desc due_date asc

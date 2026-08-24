@@ -91,17 +91,37 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       );
     }
     final kind = parts[0].toUpperCase();
+    if (kind == "COUNT" && top > 0) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.top_unsupported_for_count",
+        "The QuerySentence $qs cannot be compiled. A Count takes no First/Top: "
+            "LIMIT caps the rows returned, and a count returns one row whatever"
+            " the cap, so a capped count would count the whole filtered set and"
+            " then cap nothing.",
+        parameters: {"kind": kind},
+      );
+    }
+    // Reachable for DELETE only: a Skip needs a cap (checked above), and the
+    // rule right above denies a Count one, so no Count sentence gets this far.
     if (offset > 0 && kind != "FIND" && kind != "GROUP") {
       throw TomQuerySyntaxException(
         "query_sentence_compiler.compile.skip_unsupported_for_kind",
         "The QuerySentence $qs cannot be compiled. Only Find and Group take a "
-            "Skip/Offset: a Count of a filtered set does not depend on which "
-            "page of it you are reading, and MariaDB's DELETE has no OFFSET.",
+            "Skip/Offset: MariaDB's DELETE has no OFFSET.",
         parameters: {"kind": kind},
       );
     }
     var distinct = _find(queryOptions, "DISTINCT");
     var sort = _analyseOrderByClause(whereClause, qs);
+    if (kind == "COUNT" && sort.isNotEmpty) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.order_by_unsupported_for_count",
+        "The QuerySentence $qs cannot be compiled. A Count takes no Order By: "
+            "the statement returns a single row, so an ordering has nothing to "
+            "order. Use Group to order aggregates.",
+        parameters: {"kind": kind},
+      );
+    }
 
     // The grouped kind splits its `having` clause off the where clause before
     // either predicate is built, so it branches ahead of the common build.
@@ -128,13 +148,9 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         query: query,
       );
     } else if (kind == "COUNT") {
-      return TomCount(
-        types,
-        distinct: distinct,
-        top: top,
-        sort: sort,
-        query: query,
-      );
+      // No window and no ordering: both were rejected above, so there is
+      // nothing left to forward but the projection options.
+      return TomCount(types, distinct: distinct, query: query);
     } else if (kind == "DELETE") {
       return TomDelete(
         types,

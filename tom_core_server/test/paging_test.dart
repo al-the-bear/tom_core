@@ -159,16 +159,51 @@ void main() {
       );
     });
 
-    test('a count takes no skip', () {
-      // The total of a filtered set does not depend on which page of it the
-      // caller is reading, so a skipped count is a mistake rather than a
-      // narrower question.
+    test('a count takes no row window at all', () {
+      // Neither half of a window means anything to a count. A cap is the
+      // surprising one: LIMIT caps the rows *returned*, and a count returns one
+      // row whatever the cap, so `count first 5` would count the whole filtered
+      // set and then cap nothing. And the total of a set does not depend on
+      // which page of it the caller is reading, so a skip is a mistake rather
+      // than a narrower question.
+      //
+      // Because a skip needs a cap and a count may not have one, the cap rule
+      // is what a skipped count now trips — there is no sentence that reaches
+      // the skip rule through a count.
+      expect(
+        () => compiler.compileQuerySentence('count first 5 by title = :t'),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.compile.top_unsupported_for_count',
+          ),
+        ),
+      );
+      // The cap rule fires *first*, which is what makes the skip rule
+      // unreachable for a count rather than merely redundant. Pinning the key
+      // here keeps that ordering from drifting back.
       expect(
         () => compiler.compileQuerySentence(
           'count first 5 skip 10 by title = :t',
         ),
-        throwsA(isA<TomQuerySyntaxException>()),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.compile.top_unsupported_for_count',
+          ),
+        ),
       );
+    });
+
+    test('a count without a window still compiles', () {
+      // The rejections above are about the *window*, not about counting: the
+      // plain sentence must keep working, and must render neither clause.
+      final query = sql('count by title = :t');
+      expect(query, startsWith('SELECT COUNT(*) AS count FROM '));
+      expect(query, isNot(contains('ORDER BY')));
+      expect(query, isNot(contains('LIMIT')));
     });
 
     test('a delete takes no skip', () {
@@ -223,6 +258,28 @@ void main() {
       expect(
         () => compiler.compileQuerySentence('find by title = :t order by desc'),
         throwsA(isA<TomQuerySyntaxException>()),
+      );
+    });
+
+    test('a count takes no order by', () {
+      // A count is a single row, so an ordering has nothing to order. A delete
+      // is the opposite case and keeps its order by: `DELETE ... ORDER BY x
+      // LIMIT n` picks *which* rows go.
+      expect(
+        () => compiler.compileQuerySentence(
+          'count by title = :t order by amount',
+        ),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.compile.order_by_unsupported_for_count',
+          ),
+        ),
+      );
+      expect(
+        sql('delete first 5 by title = :t order by amount'),
+        endsWith(' ORDER BY amount ASC LIMIT 5'),
       );
     });
 

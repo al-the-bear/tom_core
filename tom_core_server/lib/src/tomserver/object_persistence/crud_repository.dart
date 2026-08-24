@@ -436,14 +436,15 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
 
   /// Returns [base] with [scope]'s predicate ANDed into its `WHERE` (preserving
   /// every shaping option), or [base] unchanged when [scope] is `null`.
+  ///
+  /// A count's shaping options are the projection ones only — it has no window
+  /// and no ordering to carry over (see [TomCount]).
   TomCount _scopedCount(TomCount base, TomDataScopePredicate? scope) {
     if (scope == null) return base;
     return TomCount(
       base.types,
       query: and([base.query, scope.predicate]),
       distinct: base.distinct,
-      sort: base.sort,
-      top: base.top,
       ignoreFields: base.ignoreFields,
     );
   }
