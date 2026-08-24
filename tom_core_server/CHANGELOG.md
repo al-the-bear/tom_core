@@ -746,6 +746,47 @@
 
 ### Internal
 
+- **`TomOperator` is documented as the tree it is, and every summary's class
+  sections are now checked member by member against source (tcinc471).** The
+  datasources summary described `TomOperator` at length and never mentioned
+  `children` — the single edge along which the operator tree is walked, and the
+  member `getParameters`, `getFields` and the `HAVING` rewrite are all defined
+  in terms of — nor the static `operandChildren` an implementation builds it
+  with. Both now have rows with their signatures, and the section says how they
+  differ: `children` is what a node *has*, `operandChildren` is how an
+  implementation *builds* it. `defaultDialect` says it is mutable, `generate`
+  and `getFields` are marked abstract, and the remaining descriptions were
+  rewritten against source.
+
+  The omission was not specific to that class, so the check is not either. A new
+  group compares each `#### <ClassName>` section against the public members the
+  class declares, in the direction the existing attribution check does not: that
+  one asks whether a documented row is filed under the right class, this asks
+  whether a declared member is documented at all. A mention anywhere in the
+  section counts — a row, a fenced constructor listing, prose — because a
+  factory constructor has a row nowhere in this package; an override is
+  satisfied by the ancestor that declares it, and the `Object` members are
+  excused. Three summaries were completed in passing: `TomMessage.sms`,
+  `TomUserPreferencesErrorHandler.invalidKeyKey` (whose section also claimed
+  only one error key was translated when the source translates two), and
+  `TomEndpointRouting.registerFrameworkApis`, `instantiateComponent` and
+  `TomMethodMetadata.audited`. `authentication` and `object_persistence` carry
+  34 members between them and are quarantined under `tcincb123_ahxt` and
+  `tcincb124_ahxt`.
+
+  Measuring it turned up four defects in the file's own reader, each of which
+  had been quietly weakening the attribution check too. An annotation carrying
+  arguments survived the modifier strip and was read as a declaration, so every
+  entity class gained a phantom member named after its annotation; the wrapped
+  tail of a constructor (`  }) : id = …`) is indented exactly like a member and
+  contributed the vocabulary of its initialiser expressions; a member heading
+  split by subject (`##### Methods — aggregates`, `##### Properties (DbCol)`)
+  matched neither class nor member section, which closed the class and orphaned
+  every row beneath it — seven dialect methods were invisible to every check
+  that reads member rows; and `Static Constants` was not in the set of member
+  headings at all. The heading walk the three checks now share is pinned by a
+  fixture rather than by whatever the summaries happen to contain.
+
 - **The summaries' one list of free functions is checked, and the scanner that
   reads it could not see two of them (tcinc470).** Every check in the coverage
   suite finds a member by finding its class, because a summary is organised as

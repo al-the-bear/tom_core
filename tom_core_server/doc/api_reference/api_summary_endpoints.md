@@ -489,6 +489,8 @@ TomEndpointRouting()
 | ------ | --------- | ----------- |
 | `scanClasses` | `TomClassScanResult scanClasses()` | Reflects over the annotated classes and partitions them into service interfaces, API implementations, and components. |
 | `initializeRouter` | `Router initializeRouter()` | Scans the annotated classes and mounts every endpoint method onto a fresh `Router`, returning it. |
+| `registerFrameworkApis` | `void registerFrameworkApis()` | Registers the APIs the framework ships (preferences, OAuth) before the scan, so a deployment does not have to name an endpoint it never asked for. Idempotent — the registry is keyed by API id, so repeated router initialisations cannot double-mount. |
+| `instantiateComponent` | `Object? instantiateComponent(ClassMirror componentType)` | Last-resort resolution: constructs `componentType` through its no-argument constructor, registers the instance as the bean for its type, and returns it — or `null` when it cannot be built that way. A `@tomComponent` that needs no arguments is fully described by its own declaration, so building it is not a guess; anything with a real constructor still belongs to the application. An application that registered its own bean is never overridden, because this only runs when the lookup came back empty. |
 | `createRoutesForClassMirror` | `void createRoutesForClassMirror(ClassMirror serviceType, Object? serviceInstance, Router router)` | Mounts every endpoint method of `serviceType` onto `router`, building a handler per method. |
 | `getReferencedComponent` | `Object? getReferencedComponent(ClassMirror serviceType)` | Resolves the implementation instance named by a `TomComponentReference` on `serviceType`, or `null`. |
 | `createRoutesForEndpoint` | `void createRoutesForEndpoint(TomEndpoint<Object, Object> tep, Router router, TomEndpointHandler teph, TomMethodMetadata mmd, ClassMirror instanceClassMirror)` | Registers `teph` on `router` for each HTTP method of `tep` (plus `OPTIONS`) and records it. |
@@ -509,6 +511,7 @@ TomMethodMetadata({
   required MethodMirror methodMirror,
   TomAccessControl? access,
   TomTransactional? transactionInfo,
+  TomAudited? audited,
   TomApiEndpointImplementation? apiEndpointImplementation,
   TomApiImplementation? apiImplementation,
   TomApi? api,
@@ -525,6 +528,7 @@ TomMethodMetadata({
 | `endpoint` | `TomEndpoint` | The endpoint definition (route, mime types, error handler, …). |
 | `access` | `TomAccessControl?` | The access-control rule, if the method declared one. |
 | `transactionInfo` | `TomTransactional?` | The transaction directive, if the method declared one. |
+| `audited` | `TomAudited?` | The `@TomAudited` declaration, if the method opted its invocation into the audit trail. `null` for the great majority of endpoints, and that is the intended state: endpoint auditing is *declared*, because most endpoint calls are reads whose auditing would drown the trail. Mutation auditing needs no declaration — it happens at the repository. |
 | `apiEndpointImplementation` | `TomApiEndpointImplementation?` | The `@TomApiEndpointImplementation` tag, for registry-based endpoints. |
 | `apiImplementation` | `TomApiImplementation?` | The class's `@TomApiImplementation` tag, for registry-based endpoints. |
 | `api` | `TomApi?` | The resolved remote API, for registry-based endpoints. |

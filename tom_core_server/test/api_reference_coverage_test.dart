@@ -216,6 +216,39 @@
 /// All twenty guides satisfy all three today, so this one carries no
 /// quarantine.
 ///
+/// The group that closes the file is the attribution check run backwards, and
+/// it is the last direction left. Attribution asks, of a row, whether it is
+/// filed under the class that declares it; this asks, of a *declared member*,
+/// whether any section mentions it at all. Between them the two exhaust the
+/// class-shaped surface, and until now only one of them was checked — which is
+/// why `TomOperator` could be documented at length, correctly, and still not
+/// mention `children`, the single edge along which the whole operator tree is
+/// walked. A `#### Properties` table is read as complete, because there is no
+/// other way to read one, so an omitted member does not send anyone to the
+/// source: it tells them the member is not there.
+///
+/// A mention counts wherever it falls — a row, a fenced constructor listing, a
+/// sentence — because the summaries legitimately document different kinds of
+/// member in different shapes, and a factory constructor has a row nowhere in
+/// this package. Demanding a table row would force every summary to restate its
+/// listings as a table, and would be a rule about formatting dressed up as one
+/// about completeness. An override is satisfied by the ancestor that declares
+/// it, since an override is not new API and the interface documents it once;
+/// the `Object` members are excused entirely, being callable whether or not
+/// they were overridden.
+///
+/// Measuring it first is what made it enforceable, and the measurement was
+/// mostly a hunt for defects in the reader rather than in the documents. An
+/// annotation carrying arguments survived the modifier strip and was read as a
+/// declaration, so every entity class gained a phantom member named after its
+/// annotation; the wrapped tail of a constructor — `  }) : id = …` — is
+/// indented exactly like a member and contributed the vocabulary of its
+/// initialisers; and a member heading split by subject (`##### Methods —
+/// aggregates`) matched neither class nor member section, which closed the
+/// class and orphaned every row beneath it. Each of those was silently
+/// weakening the attribution check as well. Two modules' summaries remain
+/// genuinely incomplete and are quarantined under their own quest todos.
+///
 /// Everything here reads the working tree, so the failure names the missing
 /// file, type, field or section and appears the moment the next one lands.
 library;
@@ -800,10 +833,30 @@ final RegExp _ownerDeclaration = RegExp(
 /// declaration read `static (String, List<String>) toPositionalStatement(…)`,
 /// where `static (` is indistinguishable from a call and would otherwise be
 /// taken for the member's name.
+///
+/// An annotation is matched *with its argument list* rather than as a bare
+/// `@\w+` followed by a space, because an annotation that carries arguments
+/// otherwise survives the strip and is then read as a declaration:
+/// `@TomDbColumn('name')` looks exactly like a call, so the entity classes each
+/// gained a phantom member called `TomDbColumn`, and a bare `@override` on its
+/// own line gained one called `override`. Those names belong to no class, and a
+/// census that contains them cannot be asked what a class actually declares.
 final RegExp _memberModifiers = RegExp(
-  r'^\s*(?:@\w+\s+|static\s+|final\s+|late\s+|const\s+|external\s+'
-  r'|abstract\s+|covariant\s+|factory\s+)*',
+  r'^\s*(?:@\w+(?:\s*\((?:[^()]|\([^()]*\))*\))?\s*|static\s+|final\s+'
+  r'|late\s+|const\s+|external\s+|abstract\s+|covariant\s+|factory\s+)*',
 );
+
+/// The characters that open a *continuation* of the previous line rather than a
+/// declaration of their own: the close of a wrapped parameter list or literal,
+/// and the start of an initialiser list.
+///
+/// `  }) : id = id ?? const UuidV4().generate(),` is the tail of a constructor
+/// whose named parameters were wrapped, and it is indented exactly like a
+/// member. Read as one it declares `UuidV4`; its siblings declare `super`,
+/// `unmodifiable`, `toUtc` and `toList` — the vocabulary of the initialiser
+/// expressions rather than of the class. Nothing that is a declaration begins
+/// with any of these characters.
+final RegExp _continuationLine = RegExp(r'^\s*[)\]}:]');
 
 /// An identifier followed by an argument list — the shape of a method or
 /// constructor declaration, and the anchor the member name is read from.
@@ -951,6 +1004,7 @@ bool _endsWithoutBody(List<String> lines, int index) {
 String? _memberNameOf(String rawLine) {
   if (!rawLine.startsWith('  ') || rawLine.startsWith('   ')) return null;
   final line = _withoutLineComment(rawLine).trimRight();
+  if (_continuationLine.hasMatch(line)) return null;
 
   var head = line.substring(0, _declarationEnd(line));
   head = head.substring(_memberModifiers.matchAsPrefix(head)?.end ?? 0);
@@ -1100,11 +1154,58 @@ const Set<String> _memberSectionHeadings = {
   'Values',
   'Operators',
   'Static Members',
+  'Static Constants',
   'Properties and Methods',
 };
 
+/// A qualifier appended to a member heading to say *which* members it holds:
+/// `Methods — aggregates`, `Properties (DbCol)`.
+final RegExp _memberSectionQualifier = RegExp(r'\s(?:[—–-]\s.*|\(.*\))$');
+
+/// Whether [title] heads a member section rather than a class.
+///
+/// A long table is sometimes split by subject — `##### Methods — aggregates`,
+/// `##### Properties (DbCol)` — and an exact-match lookup does not recognise
+/// those. The consequence is not that they are read as a class (they are not
+/// capitalised like one) but that they are read as *neither*, which closes the
+/// current class and leaves every row beneath attributed to nothing. The seven
+/// dialect methods split out that way were invisible to every check that reads
+/// member rows. So the qualifier is cut and the kind matched on.
+bool _isMemberSection(String title) => _memberSectionHeadings.contains(
+  title.replaceFirst(_memberSectionQualifier, ''),
+);
+
 /// Every member row in `doc/api_reference/`, paired with the class it is filed
-/// under.
+/// under — the rows of [_classSections], flattened.
+List<_Attribution> _attributions() => [
+  for (final section in _classSections)
+    for (final row in section.rows)
+      (
+        file: section.file,
+        line: row.line,
+        type: section.type,
+        member: row.member,
+      ),
+];
+
+/// One class's section of a summary: the member rows filed under it, and every
+/// identifier the section mentions anywhere — in a row, in a constructor
+/// listing, or in prose.
+///
+/// The two are read for opposite questions. The rows answer "is this documented
+/// member real", so they must be exact. The mentions answer "is this real member
+/// documented", where a name that appears only in a fenced constructor or in a
+/// sentence is documented just as truly as one with a row of its own — a factory
+/// constructor has no row anywhere in this package, and demanding one would
+/// force every summary to restate its listings as a table.
+typedef _ClassSection = ({
+  String file,
+  String type,
+  List<({int line, String member})> rows,
+  Set<String> mentions,
+});
+
+/// The class sections of one summary [file] whose content is [lines].
 ///
 /// A heading is taken for a class when it names one the package declares —
 /// rather than by its depth, which is not uniform: the audit summary files
@@ -1118,39 +1219,112 @@ const Set<String> _memberSectionHeadings = {
 /// silently — twenty-one of them, including both prepared-statement classes,
 /// which is to say the guard would be blind in exactly the section that held
 /// the misfiled static.
-List<_Attribution> _attributions() {
+List<_ClassSection> _classSectionsOf(String file, List<String> lines) {
   final heading = RegExp(r'^#{2,6}\s+(.*?)\s*$');
   final memberRow = RegExp(r'^\|\s*`(\w+)`');
   final typeName = RegExp(r'^[A-Z]\w*$');
   final typeParameters = RegExp(r'&lt;.*&gt;|<[^<>]*>');
+  final identifier = RegExp(r'[A-Za-z_]\w*');
 
-  final found = <_Attribution>[];
-  final summaries = Directory('doc/api_reference')
-      .listSync()
-      .whereType<File>()
-      .where((e) => e.uri.pathSegments.last.startsWith('api_summary_'));
-
-  for (final file in summaries) {
-    final name = file.uri.pathSegments.last;
-    String? current;
-    final lines = file.readAsLinesSync();
-    for (var i = 0; i < lines.length; i++) {
-      final title = heading.firstMatch(lines[i])?.group(1);
-      if (title != null) {
-        if (_memberSectionHeadings.contains(title)) continue;
-        final type = title.replaceAll(typeParameters, '').trim();
-        final isType =
-            typeName.hasMatch(type) && _declarations.containsKey(type);
-        current = isType ? type : null;
+  final sections = <_ClassSection>[];
+  _ClassSection? current;
+  for (var i = 0; i < lines.length; i++) {
+    final title = heading.firstMatch(lines[i])?.group(1);
+    if (title != null) {
+      if (_isMemberSection(title)) continue;
+      final type = title.replaceAll(typeParameters, '').trim();
+      if (!typeName.hasMatch(type) || !_declarations.containsKey(type)) {
+        current = null;
         continue;
       }
-      final member = memberRow.firstMatch(lines[i])?.group(1);
-      if (member == null || current == null) continue;
-      found.add((file: name, line: i + 1, type: current, member: member));
+      current = (file: file, type: type, rows: [], mentions: {});
+      sections.add(current);
+      continue;
     }
+    if (current == null) continue;
+    final member = memberRow.firstMatch(lines[i])?.group(1);
+    if (member != null) current.rows.add((line: i + 1, member: member));
+    current.mentions.addAll(
+      identifier.allMatches(lines[i]).map((match) => match.group(0)!),
+    );
   }
-  return found;
+  return sections;
 }
+
+/// Parsed once: every class section of every summary in `doc/api_reference/`.
+final List<_ClassSection> _classSections = [
+  for (final file
+      in Directory('doc/api_reference').listSync().whereType<File>().where(
+        (e) => e.uri.pathSegments.last.startsWith('api_summary_'),
+      ))
+    ..._classSectionsOf(file.uri.pathSegments.last, file.readAsLinesSync()),
+];
+
+/// Every name mentioned under a class, across all summaries.
+final Map<String, Set<String>> _mentionsByType = () {
+  final byType = <String, Set<String>>{};
+  for (final section in _classSections) {
+    (byType[section.type] ??= <String>{}).addAll(section.mentions);
+  }
+  return byType;
+}();
+
+/// The `Object` members whose override a class section need not mention.
+///
+/// The question a member list answers is "what can I call on this that I could
+/// not have known without reading it". An override of one of these adds nothing
+/// to that: the member exists on every class whether or not it is overridden,
+/// and a caller who wants it does not go looking in a summary. Demanding them
+/// would have added a `toString` row to thirty-odd sections and taught the
+/// reader nothing.
+const Set<String> _universalMembers = {
+  'toString',
+  'hashCode',
+  'noSuchMethod',
+  'runtimeType',
+};
+
+/// Whether [member] is documented for [type] — under its own section, or under
+/// the section of an ancestor that declares it.
+///
+/// Ancestors count because an override is not new API. `TomSqlDatasourceRepository`
+/// implements twenty-one methods of `TomCrudRepository`, all documented once on
+/// the interface where they are defined; requiring the implementation section to
+/// restate them would make the summary longer and the reader's job harder, and
+/// it is the interface that a caller programs against anyway.
+bool _mentionsMember(String type, String member, [Set<String>? visited]) {
+  final seen = visited ?? <String>{};
+  if (!seen.add(type)) return false;
+  if (_mentionsByType[type]?.contains(member) ?? false) return true;
+  for (final parent in _declarations[type]?.supertypes ?? const <String>{}) {
+    if (_mentionsMember(parent, member, seen)) return true;
+  }
+  return false;
+}
+
+/// The public members [type] declares that no section of it — nor of any
+/// ancestor — mentions, sorted.
+List<String> _undocumentedMembers(String type) =>
+    (_declarations[type]?.members ?? const <String>{})
+        .where((member) => !member.startsWith('_'))
+        // The unnamed constructor is spelled with the class's own name, and it
+        // is documented as a fenced signature under `Constructors` rather than
+        // as a member of itself.
+        .where((member) => member != type)
+        .where((member) => !_universalMembers.contains(member))
+        .where((member) => !_mentionsMember(type, member))
+        .toList()
+      ..sort();
+
+/// `type: a, b, c` for every class documented in [module]'s summary that has
+/// undocumented members — empty when the summary is complete.
+List<String> _incompleteSectionsOf(String module) => [
+  for (final section in _classSections)
+    if (section.file == 'api_summary_$module.md')
+      if (_undocumentedMembers(section.type) case final missing
+          when missing.isNotEmpty)
+        '${section.type}: ${missing.join(', ')}',
+];
 
 /// One member as a module document's class listing presents it.
 typedef _ListedMember = ({
@@ -1484,6 +1658,14 @@ const Set<String> _sourceListsPendingReconciliation = {
   'authorization',
   'db_migration',
   'endpoints',
+  'object_persistence',
+};
+
+/// The modules whose class sections do not yet name every member their classes
+/// declare — quest todos `tcincb123_ahxt` (authentication) and
+/// `tcincb124_ahxt` (object_persistence).
+const Set<String> _memberListsPendingReconciliation = {
+  'authentication',
   'object_persistence',
 };
 
@@ -2773,6 +2955,123 @@ None — this module exposes no top-level functions or constants.
             'and the sample-package reference all resolve; the two invented '
             'prose paths and the invented fenced command do not',
       );
+    });
+  });
+
+  group('every class section names the members its class declares', () {
+    for (final module in _modules()) {
+      test(
+        module,
+        () {
+          final incomplete = _incompleteSectionsOf(module);
+          expect(
+            incomplete,
+            isEmpty,
+            reason:
+                'doc/api_reference/api_summary_$module.md documents these '
+                'classes without naming every public member they declare: '
+                '${incomplete.join('; ')}. A member list is read as complete — '
+                'that is the only way to read one — so an omission does not '
+                'say "look at the source", it says the member is not there. '
+                'The datasources summary described `TomOperator` for a year '
+                'without mentioning `children`, which is the single edge the '
+                'whole operator tree is walked along.',
+          );
+        },
+        skip: _memberListsPendingReconciliation.contains(module)
+            ? 'member lists not reconciled yet — quest todos tcincb123_ahxt '
+                  '(authentication) and tcincb124_ahxt (object_persistence).'
+            : null,
+      );
+    }
+
+    test('every quarantined module still has members to reconcile', () {
+      final stale = _memberListsPendingReconciliation
+          .where((module) => _incompleteSectionsOf(module).isEmpty)
+          .toList();
+      expect(
+        stale,
+        isEmpty,
+        reason:
+            'These modules are quarantined but their class sections are now '
+            'complete: ${stale.join(', ')}. Drop the entry and let the module '
+            'be checked, or the quarantine grows into a list of modules '
+            'nobody checks for a reason nobody remembers.',
+      );
+    });
+
+    test('the sweep is reading the sections it claims to check', () {
+      // Every assertion above passes when nothing is parsed, so the parse is
+      // what has to be pinned. These are the counts the package has today.
+      expect(
+        _classSections.length,
+        greaterThan(300),
+        reason:
+            'the summaries document three hundred-odd classes; if this drops, '
+            'the checks above are asserting that nothing is missing from '
+            'nothing',
+      );
+      final documented = _classSections.map((s) => s.type).toSet();
+      // One class from each shape the heading reader has to cope with: a
+      // generic headed with escaped type parameters, an abstract base filed at
+      // a different depth, and the class this guard was written for.
+      expect(documented, contains('TomOperator'));
+      expect(documented, contains('MariadbPreparedStatement'));
+      expect(documented, contains('TomSqlDatasourceRepository'));
+
+      final operator = _classSections.singleWhere(
+        (s) => s.type == 'TomOperator',
+      );
+      expect(operator.file, 'api_summary_datasources.md');
+      expect(operator.mentions, containsAll(['children', 'operandChildren']));
+    });
+
+    test('a section is measured the way the summaries write one', () {
+      final sections = _classSectionsOf('synthetic.md', [
+        '## Classes',
+        '',
+        '### TomOperator&lt;R&gt;',
+        '',
+        'A node of the operator tree.',
+        '',
+        '#### Constructors',
+        '',
+        '```dart',
+        // A constructor is listed, not tabulated, and a name that appears only
+        // here is documented — so the listing counts as a mention.
+        'const TomOperator.column(String name)',
+        '```',
+        '',
+        '##### Properties',
+        '',
+        '| Property | Type | Description |',
+        '| -------- | ---- | ----------- |',
+        '| `children` | `List<TomOperator>` | The operands. |',
+        '',
+        // A split heading holds members too; read as neither it would close
+        // the class and orphan every row beneath it.
+        '##### Methods — rendering',
+        '',
+        '| `generate` | `String` | Renders SQL. |',
+        '',
+        // Not a class, so it closes the section: this row belongs to nothing.
+        '### Global Functions',
+        '',
+        '| `tomStray` | `void` | Not a member of anything. |',
+      ]);
+
+      final section = sections.single;
+      expect(section.type, 'TomOperator');
+      expect(
+        section.rows.map((r) => '${r.line}:${r.member}'),
+        ['17:children', '21:generate'],
+        reason:
+            'the escaped type parameters are stripped, the two member '
+            'sub-headings both keep the class open, and the row under the '
+            'non-class heading is attributed to nothing',
+      );
+      expect(section.mentions, contains('column'));
+      expect(section.mentions, isNot(contains('tomStray')));
     });
   });
 }

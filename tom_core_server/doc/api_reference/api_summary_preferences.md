@@ -217,8 +217,9 @@ handler is obeyed.
 ### TomUserPreferencesErrorHandler
 
 The error handler the read endpoint is served under: it maps
-`preferences.not_found` — and *only* that key — to a `404`, and leaves every
-other failure to `handleErrorDefault`.
+`preferences.not_found` to a `404` and `preferences.key.invalid` to a `400` —
+and *only* those two keys — leaving every other failure to
+`handleErrorDefault`.
 
 - **Extends:** `TomErrorHandler`.
 
@@ -242,21 +243,24 @@ const TomUserPreferencesErrorHandler()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `notFoundKey` | `String` | `'preferences.not_found'` — the one key that becomes a `404`. |
+| `notFoundKey` | `String` | `'preferences.not_found'` — the key a read raises for a preference the caller has never written; becomes a `404`. |
+| `invalidKeyKey` | `String` | `'preferences.key.invalid'` — the key raised for a preference key that violates `TomUserPreferenceKeys`; becomes a `400`. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers `404` when `error` is a `TomException` whose `key` is `notFoundKey`, carrying the framework's error envelope and the `x-tom-error` header so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
-| `handleErrorDefault` | `Response handleErrorDefault(Object error, Object stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not the one mapped miss is answered exactly as it would have been without this handler. |
+| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the two translated ones, carrying the framework's error envelope and the `x-tom-error` header so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
+| `handleErrorDefault` | `Response handleErrorDefault(Object error, Object stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not one of the two translated keys is answered exactly as it would have been without this handler. |
 
-Why only that key: a client must be able to tell **"you have no such
+Why only those two keys: a client must be able to tell **"you have no such
 preference"** from **"the server is broken"**, and a client that cannot must
-either treat every failure as a miss or every miss as a failure. Mapping
-`preferences.not_configured` — a deployment fault — to a `404` would let a client
-read it as absence and paper the outage over with a default. So the mapping is
-one key wide, deliberately.
+either treat every failure as a miss or every miss as a failure. A rejected key
+is the *caller's* own mistake — it arrives in the request URL, so on this side
+it is untrusted input, and a `500` would tell the client its malformed request
+was a server fault worth retrying. Everything else stays opaque: mapping
+`preferences.not_configured` — a deployment fault — to a `404` would let a
+client read it as absence and paper the outage over with a default.
 
 The `404` body carries the usual error envelope (`errorType`, `errorKey`, `uuid`,
 `autoLog`, `requestUuid`) and the `x-tom-error: true` header, so a client

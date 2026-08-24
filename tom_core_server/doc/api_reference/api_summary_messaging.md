@@ -415,8 +415,21 @@ factory TomMessage.email({
   Map<String, String>? headers,
 })
 
+factory TomMessage.sms({
+  String? id,
+  required List<TomRecipient> to,
+  required String text,
+  String? senderId,
+  Map<String, Object?>? metadata,
+})
+
 factory TomMessage.fromJson(Map<String, Object?> map)
 ```
+
+`TomMessage.sms` composes one text body and no subject. `senderId` goes into
+`metadata` rather than into `from`, because a short code is not a
+`TomRecipient` — nobody replies to one, and modelling it as one would offer a
+`displayName` and a `TomRecipientKind` that mean nothing on this channel.
 
 #### Properties
 

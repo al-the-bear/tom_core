@@ -321,6 +321,17 @@ operator knows how to `generate` its SQL fragment against a
 `TomStandardSqlDialect`, which fields it references, and which positional
 parameters it contributes.
 
+It is also a *tree*, and `children` is the single edge along which that tree is
+walked: `getParameters` and `getFields` are defined in terms of it, and so is
+every caller that must descend a predicate — the grouped query checks a `HAVING`
+clause by walking `children` while treating an aggregate as opaque, because an
+aggregate collapses the rows its operand references and so imposes no grouping
+obligation on it. The two members are complementary, not alternatives:
+`children` is what a node *has* (an instance getter, read by the walkers);
+`operandChildren` is how an implementation *builds* it (a static rule applied to
+one constructor operand). A container operator's `children` override is
+typically nothing more than its operands mapped through `operandChildren`.
+
 - **Type Parameters:** `R` — the SQL return type of the node.
 
 ##### Constructors
@@ -333,24 +344,31 @@ TomOperator()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `defaultDialect` | `TomStandardSqlDialect` | The dialect used when an operator is rendered without an explicit one. |
+| `defaultDialect` | `TomStandardSqlDialect` | The dialect used when an operator is rendered without an explicit one. Mutable — assigning it changes the default for every operator rendered afterwards. |
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `operandChildren` | `static List<TomOperator> operandChildren(Object? operand)` | Flattens one constructor operand into the `children` contribution it represents: a nested operator yields itself, a `List<TomOperator>` yields its elements, and a leaf value (a `String` column name, a Dart literal) yields nothing. Used by a container operator to build its own `children`; it does not read the tree. |
 
 ##### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `returnType` | `Type` | The runtime SQL return type `R`, captured at construction. |
+| `returnType` | `Type` | The runtime SQL return type `R`, captured at construction (`late`, assigned by the constructor). |
+| `children` | `List<TomOperator>` | *(getter)* The direct sub-expressions of this node, left to right — the one traversal every structural walk goes through. A leaf (a literal, a parameter, a column reference) has none, so the base implementation returns `const []`; a container overrides to yield its operands, flattening an operand that is itself a list (as `AND`/`OR`/`IN` carry). |
 
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `generate` | `SqlString generate(TomStandardSqlDialect t)` | Renders this operator's SQL fragment using dialect `t`. |
-| `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | The positional parameter placeholders this operator contributes, in order (empty by default). |
-| `getFields` | `Set<String> getFields(TomStandardSqlDialect t)` | The set of column/field names this operator references. |
+| `generate` | `SqlString generate(TomStandardSqlDialect t)` | *(abstract)* Renders this operator's SQL fragment using dialect `t`. |
+| `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | The positional parameter placeholders this operator contributes, in left-to-right order. Leaf literals override this; container operators concatenate their `children`'s parameters. Empty by default. |
+| `getFields` | `Set<String> getFields(TomStandardSqlDialect t)` | *(abstract)* The set of column/field names this operator references. |
 | `toString` | `String toString()` | *(override)* Human-readable tree (delegates to `analyze(0)`). |
 | `indent` | `String indent(int i)` | Newline followed by `i` tab characters (used by `analyze`). |
-| `analyze` | `String analyze(int l)` | Indented description of this operator at tree depth `l` (debugging). |
+| `analyze` | `String analyze(int l)` | Indented description of this operator at tree depth `l` (debugging). Container operators override to recurse. |
 
 ### The SQL Dialect
 
