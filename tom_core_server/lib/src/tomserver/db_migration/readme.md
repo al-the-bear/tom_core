@@ -16,7 +16,7 @@ so re-runs are idempotent and edited scripts are detected by checksum. The
 | `TomDbMigrations` | The ordered collection of migration scripts to apply. |
 | `TomDbMigrator` | Abstract migrator: applies pending migrations and reconciles the version table. |
 | `MariadbMigrationAdaptor` | MariaDB/MySQL implementation of `TomDbMigrator`. |
-| `TomDbVersion` | A persisted migration record: `installedRank`, `version`, `description`, `checksum`, `installedBy`, `installedOn`, `success`. |
+| `TomDbVersion` | A persisted migration record: `installedRank`, `version`, `description`, `script`, `checksum`, `installedBy`, `installedOn`, `executionTimeMs`, `success`. |
 | `TomDbMigrationAdaptor` | Adapts a datasource for migration execution. |
 
 ## Quick start

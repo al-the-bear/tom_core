@@ -2,6 +2,21 @@
 
 ### Fixed
 
+- **The measured migration duration is no longer discarded (tcinc479).** The
+  `<schema>_versioning` table has always had an `executionTimeMs` column,
+  `applyMigration` measured the script and wrote it, and
+  `initializeMigration`'s SELECT read it back — but `TomDbVersion`, the row type
+  the results are mapped onto, had no field for it. The one piece of operational
+  data the module goes out of its way to collect was written, selected, and then
+  dropped on the floor by the mapper, invisibly: an unmapped column is silently
+  ignored, so nothing failed. `TomDbVersion.executionTimeMs` now carries it.
+
+  A second defect on the same value: the stopwatch was read *inside* the `try`,
+  after the statement loop, so only a successful script recorded a duration.
+  Every failed migration stored a flat `0` — losing the number in exactly the
+  case where "how long did it run before it broke?" is the question being asked.
+  The clock is now read on both paths.
+
 - **An unreadable stored checksum is reported as its own fact, not as an edited
   migration (tcinc478).** Verifying an already-applied migration compared the
   stored checksum against the script's digest and, when they differed, reported

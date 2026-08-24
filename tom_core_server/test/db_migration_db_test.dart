@@ -126,6 +126,85 @@ void main() async {
       expect(versions.single.version, 0);
     });
 
+    // How long each script took is the one piece of operational data this
+    // module goes out of its way to measure, and it is only useful if it
+    // survives the whole round trip: measured by `applyMigration`, stored in
+    // the `executionTimeMs` column, selected back by `initializeMigration`, and
+    // *mapped onto the row type*. The last step is the one that was missing —
+    // `TomDbVersion` had no field for the column, so the value was written,
+    // selected, and then silently dropped by the mapper.
+    group('the recorded execution time', () {
+      test('a stored duration is readable through the row type', () async {
+        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+
+        // A distinctive value, deliberately not the column's `DEFAULT 0`: a
+        // row type with no `executionTimeMs` field leaves the property at its
+        // Dart initialiser, which is also 0. Only a value the mapper has to
+        // carry across can tell a working mapping from an absent one.
+        await dsi.datasource.executeCommand(
+          'UPDATE ${_schemaName}_versioning SET executionTimeMs = 4242',
+        );
+
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        // Read through the adaptor's own loaded history, not just the test's
+        // helper query — that is the list every caller sees.
+        expect(adaptor.versions.single.executionTimeMs, 4242);
+      });
+
+      test('the adaptor records the duration it actually measured', () async {
+        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+
+        final recorded = (await appliedVersions()).single;
+        // The fixture migration is a `CREATE TABLE` sent over a socket to a
+        // real server, so the elapsed time is a small positive number of
+        // milliseconds. Both bounds are oracles: zero would mean the column
+        // default survived (nothing was measured or nothing was written), and
+        // a value this large would mean the unit is not milliseconds — the
+        // stopwatch exposes microseconds on an identically-shaped getter.
+        expect(recorded.executionTimeMs, greaterThan(0));
+        expect(recorded.executionTimeMs, lessThan(60000));
+      });
+
+      test('a failed script records the time spent before it failed', () async {
+        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+
+        // Two statements: one that takes a known, non-trivial amount of time,
+        // then one the server rejects. A migration that spent time and *then*
+        // failed is the case where "how long did it take" matters most, and it
+        // was the one case that recorded nothing — the stopwatch used to be
+        // read inside the `try`, after the loop, so the catch path left the
+        // duration at its initial 0. The sleep makes that falsifiable without
+        // depending on how fast the server rejects bad syntax.
+        await expectLater(
+          adaptor.applyMigration(
+            dsi,
+            _schemaName,
+            99,
+            'deliberately_broken',
+            'SELECT SLEEP(0.2); THIS IS NOT VALID SQL;',
+          ),
+          throwsA(isA<MariadbMigrationException>()),
+        );
+
+        final recorded = (await appliedVersions()).firstWhere(
+          (v) => v.version == 99,
+        );
+        // Recorded as failed — the row exists precisely so the failure is
+        // visible in the table and not only in a log.
+        expect(recorded.success, 0);
+        expect(recorded.executionTimeMs, greaterThanOrEqualTo(200));
+        // The known sleep is what makes the *unit* checkable: the true elapsed
+        // time is a fifth of a second, so a stopwatch read in microseconds
+        // would land around 200000 and fail here. Without a duration we
+        // control, any upper bound loose enough to be safe is also loose
+        // enough to accept the wrong unit.
+        expect(recorded.executionTimeMs, lessThan(60000));
+      });
+    });
+
     // The stability guard, end to end. `checksumOf` itself is pinned to a
     // constant in `db_migration_test.dart`; what only a server can show is that
     // the value the adaptor *writes* is that same digest, and that reading it

@@ -124,8 +124,12 @@ migrator per type, and rejects duplicate or non-conforming registrations with a
 | `script` | the full migration script text |
 | `checksum` | the script's content digest (hex SHA-256), to detect later edits |
 | `installedBy` / `installedOn` | who/when (DB defaults) |
-| `executionTimeMs` | how long the script took |
+| `executionTimeMs` | how long the script's statements took, in ms — including a script that failed part-way, where it is the time spent before the failure |
 | `success` | `1` on success, `0` on failure |
+
+Every column is mapped onto a `TomDbVersion` field, so everything the table
+records is readable from the loaded history rather than only by querying the
+table by hand.
 
 `initializeMigration` binds the instance to one `(data source, schema)` pair,
 creates that pair's table if absent and loads its applied versions (mapped onto

@@ -208,7 +208,6 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
     Stopwatch timer = Stopwatch()..start();
     bool failed = false;
     Object? exception;
-    int timeElapsedMs = 0;
     try {
       // A migration script is typically a multi-statement DDL file. The
       // underlying mysql_client `execute` reads only the first result set of a
@@ -219,8 +218,6 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
       for (final statement in TomSqlLexer.splitStatements(sql)) {
         await dsi.datasource.executeCommand(statement);
       }
-      timeElapsedMs = (timer..stop()).elapsedMilliseconds;
-      failed = false;
     } catch (error) {
       failed = true;
       exception = MariadbMigrationException(
@@ -230,6 +227,11 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
         rootException: error,
       );
     }
+    // Read on both paths. A script that ran for a while and then failed is
+    // precisely when the duration is worth having; reading the stopwatch only
+    // where it used to be read — inside the `try`, after the loop — recorded a
+    // flat 0 for every failed migration.
+    final int timeElapsedMs = (timer..stop()).elapsedMilliseconds;
     // Record the outcome with bound parameters rather than interpolating the
     // values into the SQL text. The script ([script]) routinely contains quote
     // characters (e.g. a JSON seed value like `'["a","b"]'`), which would
@@ -375,6 +377,15 @@ class TomDbVersion {
   /// When the migration was applied.
   @TomDbColumn(columnName: "installedOn")
   DateTime installedOn = DateTime.now();
+
+  /// How long the script took to run, in milliseconds, as measured by
+  /// [MariadbMigrationAdaptor.applyMigration].
+  ///
+  /// Covers the script's statements only: the clock stops before this row is
+  /// inserted, so the figure is comparable across runs. A row recorded for a
+  /// *failed* script carries the time spent before the failure.
+  @TomDbColumn(columnName: "executionTimeMs")
+  int executionTimeMs = 0;
 
   /// `1` if the migration script succeeded, `0` if it failed.
   @TomDbColumn(columnName: "success")

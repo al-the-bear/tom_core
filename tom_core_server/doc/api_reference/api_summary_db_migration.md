@@ -246,6 +246,7 @@ TomDbVersion()
 | `checksum` | `String` | The script's content digest — lowercase hex SHA-256, as produced by `MariadbMigrationAdaptor.checksumOf` — used to detect later edits. |
 | `installedBy` | `String` | The database user that applied the migration. |
 | `installedOn` | `DateTime` | When the migration was applied. |
+| `executionTimeMs` | `int` | How long the script took, in milliseconds, as measured by `applyMigration`. Covers the script's statements only — the clock stops before this row is inserted — and a row recorded for a failed script carries the time spent before the failure. |
 | `success` | `int` | `1` if the migration script succeeded, `0` if it failed. |
 
 ### Exceptions
