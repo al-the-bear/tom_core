@@ -407,8 +407,8 @@ void main() {
   });
 
   // Full-surface scaling (RCF4): the literal builders beyond int/string.
-  // The standard dialect renders numbers/bools bare and dates single-quoted;
-  // dateOp is *not* zero-padded (it interpolates `year-month-day` directly).
+  // The standard dialect renders numbers/bools bare and both date renderers
+  // single-quoted and zero-padded to a fixed width.
   group('remaining literal builders', () {
     test('doubleOp renders the value bare', () {
       expect(b.doubleOp(1.5).generate(dialect), '1.5');
@@ -431,9 +431,11 @@ void main() {
       );
     });
 
-    test('dateOp renders single-quoted YYYY-M-D without padding', () {
+    test('dateOp renders a single-quoted, zero-padded YYYY-MM-DD', () {
+      // The builder hands straight to the dialect, so this pins the wiring;
+      // the padding rule itself is pinned in `datasources_test.dart`.
       final d = DateTime(2026, 7, 5);
-      expect(b.dateOp(d).generate(dialect), "'2026-7-5'");
+      expect(b.dateOp(d).generate(dialect), "'2026-07-05'");
     });
   });
 

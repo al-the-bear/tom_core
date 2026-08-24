@@ -930,6 +930,31 @@
 
 ### Behaviour Changes
 
+- **`dateOp` renders a fixed-width `YYYY-MM-DD` instead of a ragged one
+  (tcinc453).** `TomStandardSqlDialect.dateOp` interpolated the components
+  directly, so 2 January 2026 came out as `'2026-1-2'` while `dateTimeOp`, four
+  lines above it, produced a zero-padded `'2026-01-02 …'`. The module emitted
+  two date spellings and its dartdoc named the odd one out (`YYYY-M-D`) without
+  saying why. MariaDB accepts the ragged form, so nothing was unstorable — the
+  cost was that generated SQL could not be compared as text, and that a reader
+  meeting both renderers had no way to tell whether the difference was
+  deliberate. All three components are now padded, the year included, so the
+  documented `YYYY-MM-DD` holds without qualification rather than only for
+  dates after the year 999.
+
+  The dartdoc also now states the *other* difference from `dateTimeOp`, which
+  was the more surprising one: `dateOp` takes the components **as labelled** and
+  applies no UTC conversion, so a value naming the 5th renders as the 5th in
+  every zone. That was already the behaviour; it simply sat unexplained
+  immediately beneath four lines explaining why an instant *is* converted.
+
+  The padding was previously pinned as intentional (`'2026-7-5'`, in both the
+  query-builder test and the object-persistence example). This reverses that
+  choice deliberately, and both pins move with it. A new dialect-level test
+  pins the rule itself, including the year; six mutations of the renderer —
+  each component unpadded in turn, padded with spaces, reverted to raw
+  interpolation, and month/day transposed — are each killed by it.
+
 - **A cache type mismatch now carries the cast error that caused it
   (tcinc413).** `fromNameCache` wrapped `entry.value as T` in a try/catch,
   bound the caught object and then threw a `TomCacheException` built from a key

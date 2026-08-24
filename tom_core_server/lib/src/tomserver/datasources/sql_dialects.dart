@@ -326,9 +326,23 @@ class TomStandardSqlDialect {
     return "'${sqlInstant(value)}'";
   }
 
-  /// Renders a date literal as single-quoted `YYYY-M-D`.
+  /// Renders a date literal as single-quoted, fixed-width `YYYY-MM-DD`.
+  ///
+  /// Every component is zero-padded, so the literal is the same length whatever
+  /// the date. MariaDB accepts a ragged `2026-1-2` too, so padding is not what
+  /// makes the value storable — it is what makes generated SQL comparable as
+  /// text, and it keeps the module to one date spelling rather than a second
+  /// one invented here.
+  ///
+  /// Unlike [dateTimeOp], the components are taken **as labelled**: no UTC
+  /// conversion is applied, so a value naming the 5th renders as the 5th in
+  /// every zone. That is the difference between the two renderers, and the
+  /// reason this one does not reach for [sqlInstant].
   SqlString dateOp(DateTime value) {
-    return "'${value.year}-${value.month}-${value.day}'";
+    final year = value.year.toString().padLeft(4, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return "'$year-$month-$day'";
   }
 
   /// Renders [values] as a comma-separated list of literals (each via

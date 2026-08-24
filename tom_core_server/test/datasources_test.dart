@@ -143,6 +143,21 @@ void main() {
       final local = DateTime.utc(2026, 1, 2, 3, 4, 5).toLocal();
       expect(d.dateTimeOp(local), "'2026-01-02 03:04:05.000000'");
     });
+
+    test('dateOp is a fixed-width ISO date', () {
+      // Every component is padded, so the literal is the same length whatever
+      // the date. MariaDB accepts the ragged form too, which is why this went
+      // unnoticed — but a fixed width is what makes generated SQL comparable as
+      // text, and it is the one spelling both date renderers now share.
+      expect(d.dateOp(DateTime(2026, 1, 2)), "'2026-01-02'");
+      expect(d.dateOp(DateTime(2026, 12, 31)), "'2026-12-31'");
+
+      // The year is padded for the same reason, not because such a date is
+      // expected: MariaDB's DATE range starts at 1000-01-01, so a three-digit
+      // year is unstorable anyway. Padding it is what lets the dartdoc say
+      // `YYYY-MM-DD` without qualification.
+      expect(d.dateOp(DateTime(7, 1, 2)), "'0007-01-02'");
+    });
   });
 
   group('TomStandardSqlDialect.objectOp dispatch', () {

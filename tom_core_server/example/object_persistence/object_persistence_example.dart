@@ -99,7 +99,8 @@ void run() {
             " AND users.name REGEXP '^[A-M]'",
   );
 
-  // 8. Typed literals: double/bool render bare, dates single-quoted (unpadded).
+  // 8. Typed literals: double/bool render bare, dates single-quoted and
+  //    zero-padded to a fixed-width `YYYY-MM-DD`.
   print(
     '8. double=${b.doubleOp(1.5).generate(dialect)} '
     'bool=${b.boolOp(true).generate(dialect)} '
@@ -107,7 +108,7 @@ void run() {
   );
   assert(b.doubleOp(1.5).generate(dialect) == '1.5');
   assert(b.boolOp(true).generate(dialect) == 'true');
-  assert(b.dateOp(DateTime(2026, 7, 5)).generate(dialect) == "'2026-7-5'");
+  assert(b.dateOp(DateTime(2026, 7, 5)).generate(dialect) == "'2026-07-05'");
 
   // 9. The dialect's objectOp turns any Dart value into its SQL literal by
   //    runtime type — the single entry point behind the literal builders.

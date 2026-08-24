@@ -361,8 +361,8 @@ fragment.
 | `intOp` | `SqlString intOp(int value)` | Renders an integer literal. |
 | `doubleOp` | `SqlString doubleOp(double value)` | Renders a double literal. |
 | `boolOp` | `SqlString boolOp(bool value)` | Renders a boolean literal. |
-| `dateTimeOp` | `SqlString dateTimeOp(DateTime value)` | Renders a timestamp literal as a single-quoted ISO-8601 string. |
-| `dateOp` | `SqlString dateOp(DateTime value)` | Renders a date literal as single-quoted `YYYY-M-D`. |
+| `dateTimeOp` | `SqlString dateTimeOp(DateTime value)` | Renders a timestamp literal as the single-quoted UTC `DATETIME(6)` text `sqlInstant` defines — not ISO-8601, whose `T` and `Z` a `DATETIME` column rejects. |
+| `dateOp` | `SqlString dateOp(DateTime value)` | Renders a date literal as single-quoted, zero-padded `YYYY-MM-DD`. Unlike `dateTimeOp`, the components are taken as labelled — no UTC conversion. |
 | `iterableOp` | `SqlString iterableOp(Iterable values)` | Renders `values` as a comma-separated list of literals. |
 | `nullOp` | `SqlString nullOp()` | Renders the SQL `NULL` literal. |
 | `objectOp` | `SqlString objectOp(Object? o)` | Renders `o` as the appropriate SQL literal, dispatching on runtime type. |
