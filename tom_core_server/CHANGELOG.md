@@ -746,6 +746,36 @@
 
 ### Internal
 
+- **The summaries' one list of free functions is checked, and the scanner that
+  reads it could not see two of them (tcinc470).** Every check in the coverage
+  suite finds a member by finding its class, because a summary is organised as
+  `#### <ClassName>` sections — and a free function has no class. Its only
+  possible home is the module's `## Global Functions and Constants` section, so
+  that section is not a convenience list but the sole place a top-level function
+  can appear at all, and a section reading "None — this module exposes no
+  top-level functions or constants" is a claim that can be false.
+  `api_summary_db_migration.md`'s said exactly that while the module exported
+  `frameworkOwnedTables`, the function from which a deployment learns which
+  tables the framework owns; it now has a row with its full signature.
+
+  The new group checks both directions across all twenty modules — a function
+  absent from the section is undocumented, and a row naming something the module
+  does not declare is worse, since a reader cannot tell it from a current one —
+  and needs no quarantine, all twenty satisfying both.
+
+  The scanner defect it exposed is the more serious half. `_functionDeclaration`
+  required a return type starting with a letter, and a **record** type starts
+  with `(`, so `extractAuthentication` — returning
+  `(TomPrincipal?, TomClientJwtToken?)` — and `auditDiff` — returning
+  `({Map<String, Object?> before, …})` — appeared in none of the sets the suite
+  derives from source. Every check reading one had been excusing two documents
+  from mentioning two exported functions, and reporting the result as agreement.
+  That is the failure a guard is worst at surfacing, being indistinguishable
+  from success: a parser blind to a declaration reads its absence from a
+  document as a match. Both spellings are now pinned by fixtures rather than by
+  whatever the package happens to contain, along with the getter, the private
+  and indented cases, and the boundary between a function and a constant.
+
 - **`api_summary_datasources.md` mirrors two source files it had never noticed,
   and two checks now make "never noticed" a failure (tcinc469).** The summary
   ran to 1116 lines about a unit of ten source files while naming eight of them

@@ -244,4 +244,6 @@ None — this module exposes no public enums.
 
 ## Global Functions and Constants
 
-None — this module exposes no top-level functions or constants.
+| Name | Signature | Description |
+| ---- | --------- | ----------- |
+| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/` and `authentication/`, and none of them reads back, so the scheduler runs without loading a migration. |

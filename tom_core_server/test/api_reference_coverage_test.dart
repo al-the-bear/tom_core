@@ -164,6 +164,40 @@
 /// and a meta-test fails when an entry has nothing left to suppress, so the
 /// exemption expires by itself rather than by being remembered.
 ///
+/// The group after those two is the same completeness question asked about the
+/// one kind of API the class-shaped checks structurally cannot reach. A summary
+/// is organised as `#### <ClassName>` sections, so every check above finds a
+/// member by finding its class — and a **free function has no class**. Its only
+/// possible home is the module's `## Global Functions and Constants` section,
+/// which is therefore not merely a convenience list but the sole place a
+/// top-level function can be documented at all. That is what makes a section
+/// reading "None — this module exposes no top-level functions or constants" a
+/// claim rather than a formality, and `db_migration`'s said exactly that while
+/// the module exported `frameworkOwnedTables` — the function from which a
+/// deployment learns which tables the framework owns. Not an incomplete answer:
+/// a wrong one.
+///
+/// Getting there exposed something worse than any document defect, in the
+/// scanner the last three groups all read. [_functionDeclaration] required a
+/// return type beginning with a letter, and a **record** type begins with `(`.
+/// So `extractAuthentication` and `auditDiff` were in none of the sets this
+/// file derives from source, and every check that consults one had been
+/// excusing two documents from mentioning two exported functions — reporting
+/// agreement it had not established. That is the failure mode a guard is worst
+/// at surfacing, because it is indistinguishable from success: a parser blind
+/// to a declaration reads its absence from a document as a match. The shapes
+/// are now pinned by a fixture rather than by whatever the package happens to
+/// contain, which is the only reading that would have caught it.
+///
+/// The section's *layout*, by contrast, is deliberately not pinned. The twenty
+/// summaries write it more differently than they write anything else — one
+/// table, or a split into `### Constants` and `### Functions`, or a sentence
+/// where there is nothing to list — and none of that variation misleads anyone.
+/// What is checked is which names appear, in both directions: a function absent
+/// from the section is undocumented, and a row naming something the module does
+/// not declare is worse, the reader having no way to tell it from a current
+/// one. All twenty satisfy both today, so this one carries no quarantine.
+///
 /// The last group is the first check in this file whose subject is the document
 /// as a document rather than as a set of claims about code, and it is the same
 /// completeness failure as the Overview table one level up again. A guide's
@@ -242,6 +276,26 @@ final RegExp _functionDeclaration = RegExp(
   multiLine: true,
 );
 
+/// Matches a top-level function whose return type is a **record**, anchored at
+/// column zero.
+///
+/// [_functionDeclaration] cannot see one: its return type must start with a
+/// letter, and a record type starts with `(`. Two of this package's functions
+/// do — `extractAuthentication` returns `(TomPrincipal?, TomClientJwtToken?)`
+/// and `auditDiff` returns `({Map<String, Object?> before, …})` — so both were
+/// absent from every set this file derives from the source, and every check
+/// that reads one was silently excusing the two documents from mentioning them.
+/// A parser that cannot see a declaration reports its absence from a document
+/// as agreement.
+///
+/// The parenthesis matcher allows one level of nesting, which is what a record
+/// of function types needs, and stops there: a return type deep enough to
+/// require more is one whose row a reader would want rewritten anyway.
+final RegExp _recordFunctionDeclaration = RegExp(
+  r'^\([^()]*(?:\([^()]*\)[^()]*)*\)\s+([A-Za-z_]\w*)\s*\(',
+  multiLine: true,
+);
+
 /// Matches a top-level getter, anchored at column zero.
 ///
 /// There is exactly one in the package — `configuration`'s `tomAppId` — and its
@@ -308,53 +362,39 @@ final RegExp _barrelExport = RegExp(
 /// and no guide gives a bare constant a row. The one constant that is arguably
 /// surface — `endpoints`' `const tomService = TomService()` — is an instance of
 /// an exported type, and the type already has the row.
-List<String> _exportedApi(String module) {
-  final barrel = File('lib/tom_core_server.dart').readAsStringSync();
-  final names = <String>{};
-  for (final export in _barrelExport.allMatches(barrel)) {
-    if (export.group(1) != module) continue;
-    final source = File(
-      'lib/src/tomserver/$module/${export.group(2)}',
-    ).readAsStringSync();
-    names.addAll(_declaredApi(source));
-  }
-  return names.toList()..sort();
-}
+List<String> _exportedApi(String module) =>
+    _overExportedSources(module, _declaredApi).toList()..sort();
 
-/// The public top-level names [source] declares.
+/// [source] with its multi-line strings emptied.
+///
+/// A multi-line string holds unindented DDL, and a `CREATE TABLE
+/// tom_resource_grant (` line inside one has the exact shape of a top-level
+/// function. Without this, the scans below report the contents of the package's
+/// SQL constants as part of its API.
+///
+/// Comments need no such treatment, and deliberately get none: every pattern
+/// is anchored at column zero and starts with a letter or `(`, so a `///` or
+/// `//` line cannot match one however much code it quotes. Stripping them as
+/// well would be a line nothing reaches, which is a line nobody maintains.
+String _withoutMultilineStrings(String source) => source
+    .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
+    .replaceAll(RegExp(r'"""[\s\S]*?"""'), '""');
+
+/// The public top-level names [source] declares — its types and its functions.
 ///
 /// Separated from [_exportedApi] so the scan can be driven over a source string
-/// rather than only over the package, which is what makes the shapes below
-/// checkable. One of them — the getter — is currently declared by exactly one
-/// exported file, in a module whose table is still quarantined, so no live
-/// comparison exercises it. A branch nothing reaches is a branch nobody knows
-/// works, and the fixture test is what reaches it.
-Set<String> _declaredApi(String source) {
-  // A multi-line string holds unindented DDL, and a `CREATE TABLE
-  // tom_resource_grant (` line inside one has the exact shape of a top-level
-  // function. Stripped, or the scan reports the contents of the package's SQL
-  // constants as part of its API.
-  //
-  // Comments need no such treatment, and deliberately get none: every pattern
-  // below is anchored at column zero and starts with a letter, so a `///` or
-  // `//` line cannot match one however much code it quotes. Stripping them as
-  // well would be a line nothing reaches, which is a line nobody maintains.
-  final stripped = source
-      .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
-      .replaceAll(RegExp(r'"""[\s\S]*?"""'), '""');
-  final names = <String>{};
-  for (final pattern in [
-    _typeDeclaration,
-    _functionDeclaration,
-    _getterDeclaration,
-  ]) {
-    for (final declaration in pattern.allMatches(stripped)) {
-      final name = declaration.group(1)!;
-      if (!name.startsWith('_')) names.add(name);
-    }
-  }
-  return names;
-}
+/// rather than only over the package, which is what makes the declaration
+/// shapes checkable against a fixture. Some of them are rare enough that no
+/// live comparison exercises them — the package has one top-level getter and
+/// two functions returning a record — and a branch nothing reaches is a branch
+/// nobody knows works.
+Set<String> _declaredApi(String source) => {
+  ..._typeDeclaration
+      .allMatches(_withoutMultilineStrings(source))
+      .map((declaration) => declaration.group(1)!)
+      .where((name) => !name.startsWith('_')),
+  ..._declaredFunctions(source),
+};
 
 /// The type names the first column of `doc/<module>.md`'s Overview table
 /// carries, sorted — or `null` when the guide has no such table.
@@ -425,6 +465,121 @@ List<String>? _summarySourceList(String module) => _sourceListOf(
 /// `` `name<T>` ``, which is how the index writes the type parameters.
 bool _indexNames(String index, String api) =>
     RegExp('`${RegExp.escape(api)}[<`]').hasMatch(index);
+
+/// Matches a top-level `const` or `final` declaration, anchored at column zero.
+///
+/// Not part of [_declaredApi] — a bare constant is documentation of the field
+/// that uses it rather than surface to look up, and no guide gives one a row.
+/// It is needed here all the same, because the module's one list of free
+/// functions is headed "Global Functions **and Constants**" and several modules
+/// use it for exactly that. Without this, every constant row would read as
+/// naming something the module does not declare.
+final RegExp _variableDeclaration = RegExp(
+  r'^(?:const|final)\s+(?:[\w<>,?\s.]+\s+)?([A-Za-z_]\w*)\s*=',
+  multiLine: true,
+);
+
+/// The public top-level functions and getters [source] declares.
+///
+/// Narrower than [_declaredApi] on purpose: what a summary's Global Functions
+/// section claims to list is the free functions, and folding the types in would
+/// make the claim unfalsifiable — every module declares types, and none lists
+/// them there.
+Set<String> _declaredFunctions(String source) {
+  final stripped = _withoutMultilineStrings(source);
+  return {
+    for (final pattern in [
+      _functionDeclaration,
+      _recordFunctionDeclaration,
+      _getterDeclaration,
+    ])
+      for (final declaration in pattern.allMatches(stripped))
+        if (!declaration.group(1)!.startsWith('_')) declaration.group(1)!,
+  };
+}
+
+/// The public top-level functions and getters the barrel exports for [module],
+/// sorted.
+List<String> _exportedFunctions(String module) =>
+    _overExportedSources(module, _declaredFunctions).toList()..sort();
+
+/// Every public top-level name the barrel exports for [module] — types,
+/// functions, getters *and* constants.
+///
+/// The set the Global Functions section is allowed to name. Broader than
+/// [_exportedApi] by the constants, and broader still than what the section is
+/// *required* to name, because a module may legitimately give a row to a
+/// typedef or a constant that the forward check does not demand.
+Set<String> _exportedNames(String module) => _overExportedSources(
+  module,
+  (source) => {
+    ..._declaredApi(source),
+    for (final declaration in _variableDeclaration.allMatches(
+      _withoutMultilineStrings(source),
+    ))
+      if (!declaration.group(1)!.startsWith('_')) declaration.group(1)!,
+  },
+);
+
+/// [scan] applied to every source file the barrel exports for [module],
+/// unioned.
+Set<String> _overExportedSources(
+  String module,
+  Set<String> Function(String source) scan,
+) {
+  final barrel = File('lib/tom_core_server.dart').readAsStringSync();
+  final names = <String>{};
+  for (final export in _barrelExport.allMatches(barrel)) {
+    if (export.group(1) != module) continue;
+    names.addAll(
+      scan(
+        File('lib/src/tomserver/$module/${export.group(2)}').readAsStringSync(),
+      ),
+    );
+  }
+  return names;
+}
+
+/// The names the first column of every table under [summary]'s
+/// `## Global Functions and Constants` heading carries — or `null` when the
+/// summary has no such section.
+///
+/// The section's *shape* varies across the set and deliberately is not pinned:
+/// some summaries carry one table, some split it into `### Constants` and
+/// `### Functions`, and the ones with nothing to list write a sentence instead
+/// of an empty table. Reading every table beneath the heading accommodates all
+/// three, and what is being checked is which names appear, not how they were
+/// arranged.
+///
+/// A first cell may write a name with its parameter list —
+/// `` `oauthStateTable(String table)` `` — so only the leading identifier of
+/// each backticked run is taken.
+List<String>? _globalFunctionNamesOf(String summary) {
+  final heading = RegExp(
+    r'^## Global Functions and Constants$',
+    multiLine: true,
+  ).firstMatch(summary);
+  if (heading == null) return null;
+  var section = summary.substring(heading.end);
+  final next = RegExp(r'^## ', multiLine: true).firstMatch(section);
+  if (next != null) section = section.substring(0, next.start);
+
+  final names = <String>[];
+  for (final line in section.split('\n')) {
+    if (!line.startsWith('|')) continue;
+    final cell = line.split('|')[1];
+    if (cell.contains('---')) continue;
+    names.addAll(
+      RegExp(r'`([A-Za-z_]\w*)').allMatches(cell).map((m) => m.group(1)!),
+    );
+  }
+  return names;
+}
+
+/// The Global Functions section of `doc/api_reference/api_summary_<module>.md`.
+List<String>? _globalFunctionNames(String module) => _globalFunctionNamesOf(
+  File('doc/api_reference/api_summary_$module.md').readAsStringSync(),
+);
 
 /// The body of `class <className>`, from its opening brace to the end of the
 /// file, with the constructs that would otherwise be misread removed.
@@ -1699,6 +1854,142 @@ class RealClass {}
       // vouch for `TomDataSourceInfo` and half the check would be vacuous.
       expect(_indexNames(index, 'TomDataSourceInf'), isFalse);
       expect(_indexNames(index, 'TomNoSuchTypeAtAll'), isFalse);
+    });
+  });
+
+  group('each summary lists every free function its module exports', () {
+    for (final module in _modules()) {
+      test(module, () {
+        final listed = _globalFunctionNames(module);
+        expect(
+          listed,
+          isNotNull,
+          reason:
+              'api_summary_$module.md has no "## Global Functions and '
+              'Constants" section. Every other summary has one — the ones with '
+              'nothing to list say so in a sentence — so its absence reads as '
+              'an omission rather than as an answer.',
+        );
+
+        final missing = _exportedFunctions(
+          module,
+        ).where((name) => !listed!.contains(name)).toList();
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              'api_summary_$module.md\'s Global Functions section does not '
+              'name these, which the barrel exports from $module: '
+              '${missing.join(', ')}. A free function has no class section to '
+              'be found under, so this list is the only place in the summary '
+              'it can appear — a module whose section says "None" while '
+              'exporting one is not merely incomplete, it is answering the '
+              'question wrongly.',
+        );
+
+        final exported = _exportedNames(module);
+        final stale = listed!
+            .where((name) => !exported.contains(name))
+            .toList();
+        expect(
+          stale,
+          isEmpty,
+          reason:
+              'api_summary_$module.md\'s Global Functions section names these, '
+              'which $module does not declare: ${stale.join(', ')}. A row for '
+              'something that no longer exists is worse than a missing row, '
+              'because the reader has no way to tell it from a current one.',
+        );
+      });
+    }
+
+    test('the sweep is reading the sections it claims to check', () {
+      // Two of the three findings above are emptiness assertions, so a parser
+      // that found no rows at all would report every summary as agreeing.
+      final datasources = _globalFunctionNames('datasources')!;
+      expect(datasources, contains('sqlInstant'));
+      expect(datasources, contains('unknownFrameworkColumns'));
+      // The module with the most rows, so a section split across `###`
+      // subheadings is known to be read whole rather than to the first break.
+      expect(_globalFunctionNames('scheduling'), hasLength(greaterThan(8)));
+      // And a module that legitimately lists nothing still has a section.
+      expect(_globalFunctionNames('transactions'), isEmpty);
+    });
+
+    test('the parser reads a section the way the summaries write one', () {
+      // The shapes across the twenty summaries, which differ more than any
+      // other section of these documents: a plain table, a table split under
+      // `###` subheadings, a first cell carrying a parameter list, and a
+      // sentence in place of a table.
+      expect(
+        _globalFunctionNamesOf('''
+intro
+
+## Global Functions and Constants
+
+| Name | Signature | Description |
+| ---- | --------- | ----------- |
+| `plain` | `void plain()` | one |
+| `withArgs(String table)` | `TomFrameworkTable withArgs(String table)` | two |
+
+### Constants
+
+| Constant | Type | Description |
+| -------- | ---- | ----------- |
+| `aConstant` | `String` | three |
+
+## Next Section
+
+| Name | Signature | Description |
+| ---- | --------- | ----------- |
+| `notMine` | `void notMine()` | past the boundary |
+'''),
+        ['plain', 'withArgs', 'aConstant'],
+      );
+      expect(
+        _globalFunctionNamesOf('''
+## Global Functions and Constants
+
+None — this module exposes no top-level functions or constants.
+'''),
+        isEmpty,
+      );
+      expect(_globalFunctionNamesOf('## Something Else\n\ntext\n'), isNull);
+    });
+
+    test('the declaration scan reads the shapes the package writes', () {
+      // The two shapes no live comparison would have caught being wrong,
+      // because for years neither was seen at all: a record return type, in
+      // both the positional and the named spelling.
+      expect(
+        _declaredFunctions(
+          '(TomPrincipal?, TomClientJwtToken?) '
+          'extractAuthentication(Request r) {',
+        ),
+        contains('extractAuthentication'),
+      );
+      expect(
+        _declaredFunctions(
+          '({Map<String, Object?> before, Map<String, Object?> after}) '
+          'auditDiff(\n  Map<String, Object?> before,\n) {',
+        ),
+        contains('auditDiff'),
+      );
+      expect(
+        _declaredFunctions('String get tomAppId =>'),
+        contains('tomAppId'),
+      );
+      expect(
+        _declaredFunctions('List<TomFrameworkTable> frameworkOwnedTables({'),
+        contains('frameworkOwnedTables'),
+      );
+      // Private declarations and indented members are not surface.
+      expect(_declaredFunctions('void _hidden() {}'), isEmpty);
+      expect(_declaredFunctions('  void indented() {}'), isEmpty);
+      // A constant is not a function, and is admitted only by the broader scan
+      // — which is what keeps "lists every free function" a falsifiable claim.
+      expect(_declaredFunctions("const String aTable = 'tom_x';"), isEmpty);
+      expect(_declaredApi("const String aTable = 'tom_x';"), isEmpty);
     });
   });
 
