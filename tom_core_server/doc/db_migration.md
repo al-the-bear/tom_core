@@ -47,6 +47,25 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 | `MariadbMigrationAdaptor` | reflected class | The MariaDB migrator |
 | `MariadbMigrationException` | class | MariaDB migration failures |
 | `TomDbVersion` | reflected class | One row of a `<schema>_versioning` table |
+| `TomMigrationFileName` | class | A migration file name parsed into version, description and environment tags |
+| `TomSqlLexer` | class | The module's one quote/comment scanner and statement splitter |
+| `TomSchemaModel` | class | A whole schema, in the one vocabulary both sides are reduced to |
+| `TomSchemaTable` | class | One table: its columns, primary key and origin |
+| `TomSchemaColumn` | class | One column: its type family, declared type and origin |
+| `TomSchemaBuilder` | class | The mutable accumulator both sides build their model through |
+| `TomSqlTypeFamilyCompatibility` | extension | How much difference between two type families still counts as agreement |
+| `TomMigrationArtifact` | class | One migration artifact as the reader consumes it — a basename and its SQL |
+| `TomSchemaDdlReader` | class | Replays a chain of artifacts into the schema it produces |
+| `TomDdlReplayResult` | class | That schema, together with whatever would not replay |
+| `TomDdlReplayError` | class | One statement that could not be replayed — reported, never thrown |
+| `TomEntitySchemaReader` | class | Reads the schema the `@TomDbTable` entity classes expect |
+| `TomSchemaConvergenceCheck` | class | The comparison: entity model against migration chain |
+| `TomSchemaConvergenceReport` | class | What one `<datasource>/<schema>` pair was checked against, and how it disagreed |
+| `TomSchemaDivergence` | class | One disagreement: kind, table, column, origin, message |
+| `TomSchemaDivergenceKind` | enum | Which of the nine disagreements it is — each a different culprit |
+| `TomFrameworkSchemaCheck` | class | The same comparison for the tables the framework itself owns |
+| `TomInformationSchemaColumnRow` | reflected class | One `information_schema.COLUMNS` row, as the live check reads it |
+| `frameworkOwnedTables` | function | Every framework-owned table, at its default name |
 
 ## The Directory Layout
 

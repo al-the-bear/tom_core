@@ -703,6 +703,35 @@
 
 ### Documentation
 
+- **The `db_migration` API summary covers all seven of its files, not three
+  (tcinc489).** Its `Source:` line named `db_migration.dart`,
+  `mariadb_migration_adapter.dart` and `sql_lexer.dart`, and its class sections
+  matched — so sixteen exported names had no entry at all: the schema vocabulary
+  (`TomSchemaModel`, `TomSchemaTable`, `TomSchemaColumn`, `TomSchemaBuilder`),
+  the DDL reader and its results (`TomSchemaDdlReader`, `TomMigrationArtifact`,
+  `TomDdlReplayResult`, `TomDdlReplayError`), the comparison
+  (`TomEntitySchemaReader`, `TomSchemaConvergenceCheck`,
+  `TomSchemaConvergenceReport`, `TomSchemaDivergence`,
+  `TomSchemaDivergenceKind`), the framework variant (`TomFrameworkSchemaCheck`,
+  `TomInformationSchemaColumnRow`) and `TomSqlTypeFamilyCompatibility`. A
+  summary that names its sources and omits two thirds of them reads as complete,
+  which is the failure the coverage guard exists to prevent.
+
+  `## Enums` said "None — this module exposes no public enums", which
+  `TomSchemaDivergenceKind` had made false; it now documents all nine kinds with
+  which are errors and which are warnings.
+  `TomSqlTypeFamilyCompatibility` is the package's first documented extension
+  and introduces an `## Extensions` section with an `- **On:**` line, the
+  counterpart of the existing `- **Extends:**` / `- **Implements:**`.
+
+  The omission was not confined to the summary: `api_summary_index.md` and
+  `doc/db_migration.md`'s Overview table listed the same seven names, so the
+  types were unfindable from either entry point. Both now list all twenty-five,
+  and `db_migration` is lifted from the guard's `_tablesPendingReconciliation`,
+  `_sourceListsPendingReconciliation` and `_indexPendingReconciliation`
+  quarantines — each of which has a paired staleness test, so the entries could
+  not have been left behind.
+
 - **The datasources example runs nine surfaces, not four (tcinc474).** It
   demonstrated typed-value boxing, literals, `objectOp` dispatch and the `:name`
   placeholder, and its header told the reader the rest needed a live database

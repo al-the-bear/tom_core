@@ -1751,7 +1751,6 @@ const Set<String> _verificationPendingAttribution = {
 const Set<String> _tablesPendingReconciliation = {
   'authentication',
   'configuration',
-  'db_migration',
   'endpoints',
   'export',
   'file_storage',
@@ -1765,7 +1764,6 @@ const Set<String> _tablesPendingReconciliation = {
 /// barrel yet — quest todo `tcincb121_ahxs`.
 const Set<String> _sourceListsPendingReconciliation = {
   'authorization',
-  'db_migration',
   'endpoints',
   'object_persistence',
 };
@@ -1785,7 +1783,6 @@ const Set<String> _indexPendingReconciliation = {
   'authentication',
   'authorization',
   'configuration',
-  'db_migration',
   'endpoints',
   'object_persistence',
 };

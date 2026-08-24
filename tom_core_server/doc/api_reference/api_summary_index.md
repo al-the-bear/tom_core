@@ -258,6 +258,24 @@ surface documented here.
 | `MariadbMigrationAdaptor` | class | MariaDB migration adaptor. |
 | `TomMigrationFileName` | class | Parses/validates migration file names. |
 | `TomDbVersion` | class | A schema version. |
+| `TomSqlLexer` | class | The module's one quote/comment scanner and statement splitter. |
+| `TomSchemaColumn` | class | One column, in the vocabulary the convergence check compares in. |
+| `TomSchemaTable` | class | One table: its columns, primary key and origin. |
+| `TomSchemaModel` | class | A whole schema — the tables of one datasource/schema pair. |
+| `TomSchemaBuilder` | class | The mutable accumulator both sides build their model through. |
+| `TomMigrationArtifact` | class | One migration artifact as the reader consumes it (basename + SQL). |
+| `TomDdlReplayError` | class | A statement the reader could not replay — reported, never thrown. |
+| `TomDdlReplayResult` | class | The schema a chain produces, plus its replay errors. |
+| `TomSchemaDdlReader` | class | Replays a migration chain into a schema model without a database. |
+| `TomEntitySchemaReader` | class | Reads the schema the annotated entity classes expect. |
+| `TomSchemaDivergence` | class | One disagreement between the two sides of a check. |
+| `TomSchemaDivergenceKind` | enum | What kind of disagreement a divergence reports. |
+| `TomSchemaConvergenceReport` | class | The outcome of checking one datasource/schema pair. |
+| `TomSchemaConvergenceCheck` | class | Entity model vs. migration chain, without a database. |
+| `TomFrameworkSchemaCheck` | class | The same check for the tables the framework itself owns. |
+| `TomInformationSchemaColumnRow` | class | One `information_schema.COLUMNS` row, as the live check reads it. |
+| `TomSqlTypeFamilyCompatibility` | extension | How tolerantly two type families still count as agreeing. |
+| `frameworkOwnedTables` | function | Every table the framework owns, at its default name. |
 | `TomDbMigrationException` | class | Migration error (extends `TomServerException`). |
 | `MariadbMigrationException` | class | MariaDB migration error. |
 
@@ -516,6 +534,7 @@ surface documented here.
 | `DoubleLiteral` | Object Persistence |
 | `Eq` | Object Persistence |
 | `extractAuthentication` | Server |
+| `frameworkOwnedTables` | Database Migration |
 | `Group` | Object Persistence |
 | `Gt` | Object Persistence |
 | `Gte` | Object Persistence |
@@ -685,6 +704,8 @@ surface documented here.
 | `TomDbTime` | Datasources |
 | `TomDbType` | Datasources |
 | `TomDbVersion` | Database Migration |
+| `TomDdlReplayError` | Database Migration |
+| `TomDdlReplayResult` | Database Migration |
 | `tomDefaultAuthenticationMiddleware` | Server |
 | `TomDefaultErrorHandler` | Endpoints |
 | `TomDelegationMode` | Authorization |
@@ -721,6 +742,7 @@ surface documented here.
 | `TomExternalIdentityLinkRepository` | Authentication |
 | `TomExternalIdentityStore` | Authentication |
 | `TomExternalIdentityToken` | Authentication |
+| `TomEntitySchemaReader` | Database Migration |
 | `TomExternalIdentityTokenRepository` | Authentication |
 | `TomFieldMappedSmsProtocol` | Messaging |
 | `TomFileAuditAnchorStore` | Audit |
@@ -729,6 +751,7 @@ surface documented here.
 | `tomFormatCellAsText` | Export |
 | `TomFrameworkColumn` | Datasources |
 | `TomFrameworkKey` | Datasources |
+| `TomFrameworkSchemaCheck` | Database Migration |
 | `TomFrameworkTable` | Datasources |
 | `TomGeneratedQuery` | Datasources |
 | `TomGradedAccessControlInformation` | Authorization |
@@ -736,6 +759,7 @@ surface documented here.
 | `TomHealthService` | Health Check |
 | `TomHttpOAuthTokenTransport` | Authentication |
 | `TomHttpServiceLoginTransport` | Authentication |
+| `TomInformationSchemaColumnRow` | Database Migration |
 | `TomIntConfig` | Configuration |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
@@ -759,6 +783,7 @@ surface documented here.
 | `TomMessageTransport` | Messaging |
 | `TomMessagingException` | Messaging |
 | `TomMethodMetadata` | Endpoints |
+| `TomMigrationArtifact` | Database Migration |
 | `TomMigrationFileName` | Database Migration |
 | `TomMimeEncoder` | Messaging |
 | `tomMimeLineEnding` | Messaging |
@@ -814,6 +839,15 @@ surface documented here.
 | `TomS3BlobStore` | File Storage |
 | `TomSchedulerNode` | Scheduling |
 | `TomSchedulerNodeRow` | Scheduling |
+| `TomSchemaBuilder` | Database Migration |
+| `TomSchemaColumn` | Database Migration |
+| `TomSchemaConvergenceCheck` | Database Migration |
+| `TomSchemaConvergenceReport` | Database Migration |
+| `TomSchemaDdlReader` | Database Migration |
+| `TomSchemaDivergence` | Database Migration |
+| `TomSchemaDivergenceKind` | Database Migration |
+| `TomSchemaModel` | Database Migration |
+| `TomSchemaTable` | Database Migration |
 | `TomSelect` | Datasources |
 | `TomServer` | Server |
 | `TomServerConfigResourceProvider` | Configuration |
@@ -849,9 +883,11 @@ surface documented here.
 | `TomSqlFailureMode` | Datasources |
 | `TomSqlJobStore` | Scheduling |
 | `TomSqlLeaseLock` | Scheduling |
+| `TomSqlLexer` | Database Migration |
 | `TomSqlOAuthStateStore` | Authentication |
 | `TomSqlSchedulerNodes` | Scheduling |
 | `TomSqlTypeFamily` | Datasources |
+| `TomSqlTypeFamilyCompatibility` | Database Migration |
 | `TomStandardSqlDialect` | Datasources |
 | `TomStorageException` | File Storage |
 | `TomStoredBlob` | File Storage |
