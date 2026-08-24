@@ -26,6 +26,14 @@ class TomServerConfigResourceProvider {
 
   /// Optional factory for the default provider's [resources]. When set, it is
   /// invoked the first time [getServerConfig] lazily creates a provider.
+  ///
+  /// It is reachable **only before a provider exists**. The call is in the
+  /// default constructor, which [getServerConfig] runs on its *creating*
+  /// access, so once [setServerConfigProvider] has installed anything this hook
+  /// can never fire — setting it afterwards is silently inert. Use
+  /// [TomServerConfigResourceProvider.load] from that point on; it defers the
+  /// same build, scoped to one provider instead of standing as a process-wide
+  /// default.
   static Map<String, dynamic> Function()? loader;
 
   /// Installs [provider] as the process-wide configuration source.

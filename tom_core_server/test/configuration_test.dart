@@ -932,6 +932,37 @@ void main() {
         reason: 'the example must show the install that makes it resolve',
       );
     });
+
+    test('exercising every way a tree gets installed', () {
+      // The exit-code test above cannot see a deleted step: the numbering
+      // closes over the gap and eleven steps pass exactly as twelve did. So
+      // the entry points themselves are named here. All three installs matter
+      // because they are not interchangeable -- `loader` is reachable only
+      // before a provider exists, `.load` only after -- and the completion
+      // document now points at these steps for that rule rather than
+      // asserting it in prose, which is the coupling this guards.
+      final source = File(examplePath).readAsStringSync();
+      expect(
+        source,
+        contains('TomServerConfigResourceProvider.loader = '),
+        reason: 'the example must show the lazy loader hook',
+      );
+      expect(
+        source,
+        contains('TomServerConfigResourceProvider.load('),
+        reason: 'the example must show the .load constructor',
+      );
+      expect(
+        source,
+        contains('TomYaml.mergeInYamlFile('),
+        reason: 'the example must show a layered overlay',
+      );
+      expect(
+        source,
+        contains('on PathNotFoundException'),
+        reason: 'the example must show that an absent overlay throws',
+      );
+    });
   });
 
   // Each limitation listed under *Not Yet Implemented* in doc/configuration.md,

@@ -89,7 +89,7 @@ TomServerConfigResourceProvider.from(Map<String, dynamic> resources)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `loader` | `Map<String, dynamic> Function()?` | Optional factory for the default provider's `resources`, invoked the first time `getServerConfig` lazily creates a provider (static). |
+| `loader` | `Map<String, dynamic> Function()?` | Optional factory for the default provider's `resources`, invoked the first time `getServerConfig` lazily creates a provider (static). Reachable **only before a provider exists** — it fires on that creation, so after any `setServerConfigProvider` call it can never run and `.load` is the equivalent left. |
 | `resources` | `Map<String, dynamic>` | The configuration tree: a possibly-nested map of property values. |
 
 #### Methods

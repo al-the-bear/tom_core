@@ -561,17 +561,25 @@ absent, so a malformed overlay silently stops being applied.
 ## Verification
 
 `example/configuration/configuration_example.dart` walks the codegen-free
-surface in nine steps, with no setup of any kind — install a provider,
-resolve a dotted path, fall back to a default, read through `~`, watch an
-obligatory miss throw, load a YAML file with `${VAR:default}` substitution,
-and then the two steps that make [Source
+surface in twelve steps, with no setup of any kind — defer a tree to the
+`loader` hook, install one directly, resolve a dotted path, fall back to a
+default, read through `~`, watch an obligatory miss throw, load a YAML file
+with `${VAR:default}` substitution, layer a second file over it and install
+the result through `.load`, and then the two steps that make [Source
 Precedence](#source-precedence) legible: `PATH` failing to resolve through
 `TomConfig` although every platform sets it, and the same lookup succeeding
 once the merged map has been installed as the provider. The last step is the
 other failure shape — a bad cast raising `TomConfigurationException` and the
-`TypeError` it chains, which is also where the contrast with step 5's bare
-`String` becomes visible in code rather than in prose. Run it exactly as its
-header documents:
+`TypeError` it chains, which is also where the contrast with step 6's bare
+`String` becomes visible in code rather than in prose.
+
+All three ways to install a tree are executed there, in the order a startup
+meets them. The `loader` hook is step 1 because that is the only place it can
+be: it fires when `getServerConfig()` *creates* the process provider, so once
+any provider exists the hook is unreachable and `.load` is the form left.
+Layering shows both halves an overlay needs — the overwrite is per leaf, so a
+sibling the overlay omits survives, and an overlay that is *absent* throws
+rather than being skipped. Run it exactly as its header documents:
 
 ```bash
 dart run example/configuration/configuration_example.dart

@@ -267,6 +267,33 @@
 
 ### Documentation
 
+- **The configuration example now runs the three lines a startup actually
+  begins with (tcinc448).** It demonstrated reading properties thoroughly and
+  assembling the tree they are read from barely at all — the reader's first
+  question was answered by snippets in the completion document that nothing
+  executed. `TomYaml.mergeInYamlFile`, the static `loader` hook and the `.load`
+  constructor are now steps of the example, each with a check, taking it from
+  nine steps to twelve.
+
+  Writing them as *runnable* steps is what surfaced the rule the prose had not
+  stated: **the loader hook is reachable only before a provider exists.** It
+  fires when `getServerConfig()` creates the process provider, so after any
+  `setServerConfigProvider` call it can never run and `.load` is the form left.
+  The example could not have demonstrated the two in the other order, which is
+  why the hook is step 1 and `.load` is step 9 — and why a snippet showing them
+  side by side, as an unexecuted one did, reads as a free choice when it is not.
+
+  Layering is shown with both halves an overlay needs, since either alone
+  misleads: the overwrite is per *leaf*, so a sibling the overlay omits
+  survives, and an overlay that is **absent throws** rather than being skipped
+  — the case that matters precisely because the usual reason to write the
+  pattern is a set of per-environment files of which only one is ever present.
+
+  Each new step was verified by mutation rather than by reading it: breaking
+  the loader call, the recursive merge, the missing-file throw and `.load`'s
+  callback each turn the example red. A step that prints a plausible line while
+  pinning nothing is the failure mode an example is most prone to.
+
 - **Two configuration rules that only tests knew are now written down
   (tcinc447).** Both were found by mutation: breaking them left the suite
   green, which is how an undocumented rule and an untested one turn out to be
