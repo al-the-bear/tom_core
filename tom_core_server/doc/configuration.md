@@ -239,8 +239,9 @@ individual fields rather than this list.
 
 > The default `certificateChain` / `privateKey` are a throwaway self-signed
 > `localhost` pair for local development and **must be overridden in
-> production**. JWT signing-key fields exist; richer JWT-creation settings are a
-> tracked follow-up.
+> production**. The JWT fields are carried, not used: nothing in this library
+> reads them, and there are no keys for the algorithm, issuer, audience or
+> expiry, so a server that signs tokens assembles that part in code.
 
 ### Naming the application
 

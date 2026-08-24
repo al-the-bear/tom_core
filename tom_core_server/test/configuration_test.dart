@@ -1011,4 +1011,52 @@ void main() {
       );
     });
   });
+
+  // A deferral is only as good as the entry it defers to. The class dartdoc
+  // sent a reader after JWT settings to "the quest completion steps", and that
+  // document has no such entry -- so the pointer cost the lookup and left the
+  // reader unable to tell whether the work was planned, abandoned, or already
+  // done elsewhere. That is worse than saying nothing. An open end either
+  // carries an id someone can follow or is stated outright; what it may not do
+  // is gesture.
+  group('the module defers to nothing it does not have', () {
+    /// Strips dartdoc, comment and blockquote markers and collapses runs of
+    /// whitespace, so a phrase is found however it happens to be wrapped.
+    /// Without this a defect merely reformatted across two lines reads as
+    /// fixed.
+    String flatten(String source) => source
+        .replaceAll(RegExp(r'^[ \t]*(///|//|>)[ \t]?', multiLine: true), '')
+        .replaceAll(RegExp(r'\s+'), ' ');
+
+    final sources = {
+      'the class dartdoc': paths.join(
+        'lib',
+        'src',
+        'tomserver',
+        'configuration',
+        'base_server_configuration.dart',
+      ),
+      'the module document': paths.join('doc', 'configuration.md'),
+    };
+
+    sources.forEach((what, path) {
+      test('$what names its open ends instead of pointing at a list', () {
+        final flat = flatten(File(path).readAsStringSync());
+        expect(
+          flat,
+          isNot(contains('quest completion steps')),
+          reason:
+              'the completion document is quest state, not a tracker a '
+              'reader of this package can open',
+        );
+        // The indefinite article is what marks the unnamed kind: "Tracked as
+        // `tcincb106`" is a pointer that resolves and stays allowed.
+        expect(
+          flat,
+          isNot(contains('a tracked follow-up')),
+          reason: 'an unnamed follow-up cannot be followed',
+        );
+      });
+    });
+  });
 }

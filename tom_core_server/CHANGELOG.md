@@ -267,6 +267,18 @@
 
 ### Documentation
 
+- **The JWT paragraph says what is absent instead of pointing at a list that
+  never had it (tcinc449).** `TomBaseServerConfiguration`'s dartdoc deferred
+  "richer JWT-creation settings" to the quest completion steps, which contain no
+  such entry — a reader following it could not tell whether the work was
+  planned, abandoned, or done elsewhere, and paid a lookup to learn nothing.
+  There is no scheduled work to name, so the sentence now states the fact: all
+  three JWT fields are carried and read by nothing in this library, and the
+  algorithm, issuer, audience and expiry have no configuration keys at all, so
+  an application that signs tokens assembles that part itself. The same
+  deferral in `doc/configuration.md` is gone, and two tests pin that neither
+  file gestures at an unnamed follow-up again.
+
 - **The configuration example now runs the three lines a startup actually
   begins with (tcinc448).** It demonstrated reading properties thoroughly and
   assembling the tree they are read from barely at all — the reader's first

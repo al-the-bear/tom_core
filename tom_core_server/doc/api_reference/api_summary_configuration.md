@@ -138,9 +138,9 @@ runs after it so a merged key spelled `args` cannot displace the invocation.
 | `port` | `int` | HTTP bind port; `0` is the "unconfigured" sentinel (default `0`). |
 | `certificateChain` | `String` | TLS certificate chain; defaults to a throwaway self-signed `localhost` pair that MUST be overridden in production. |
 | `privateKey` | `String` | TLS private key; defaults to a throwaway self-signed `localhost` key that MUST be overridden in production. |
-| `jwtRsaPubKey` | `String?` | JWT RSA public key. |
-| `jwtRsaPrivKey` | `String?` | JWT RSA private key. |
-| `jwtSharedSecretKey` | `String?` | JWT shared-secret passphrase (default `"config-secret-passphrase"`; currently not in use). |
+| `jwtRsaPubKey` | `String?` | JWT RSA public key. Carried, not used — nothing in this library reads it; an application that signs tokens assembles its own signing configuration from it and supplies algorithm, issuer, audience and expiry in code, since no keys exist for those. |
+| `jwtRsaPrivKey` | `String?` | JWT RSA private key, under the same rule; secret-bearing. |
+| `jwtSharedSecretKey` | `String?` | JWT shared-secret passphrase (default `"config-secret-passphrase"`). Read by nothing at all — the one server in this workspace that signs symmetrically takes its secret from `privateKey` instead. |
 | `authServerLoginUri` | `String?` | Absolute URI of the auth server's login endpoint, e.g. `https://auth.example.com/auth/login`; `null` or blank disables server self-login (default `null`). |
 | `serviceAccountName` | `String?` | Login name of this deployment's service account; `null` or blank disables server self-login (default `null`). |
 | `serviceAccountCredential` | `String?` | The service account's secret — **secret-bearing**: declared here so the shape and source key are known, but never authored; supplied out-of-band at deploy time (default `null`). |

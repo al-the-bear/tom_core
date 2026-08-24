@@ -147,9 +147,11 @@ String get tomAppId => _activeConfiguration?.appId ?? "";
 /// earlier ones: configuration resources, then the OS environment, then a
 /// `.env` file, then command-line arguments (which win).
 ///
-/// JWT signing keys ([jwtRsaPubKey] / [jwtRsaPrivKey] /
-/// [jwtSharedSecretKey]) are present as fields; richer JWT-creation settings
-/// are a tracked follow-up (see the quest completion steps).
+/// The JWT fields ([jwtRsaPubKey] / [jwtRsaPrivKey] / [jwtSharedSecretKey]) are
+/// carried, not used: nothing in this library reads them. An application that
+/// signs tokens assembles its own signing configuration from them, and supplies
+/// the rest — algorithm, issuer, audience, expiry — in code, because there are
+/// no configuration keys for those.
 @tomReflector
 abstract class TomBaseServerConfiguration {
   /// The application's own name — what this server calls itself in a log, a
