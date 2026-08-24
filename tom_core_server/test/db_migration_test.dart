@@ -220,6 +220,81 @@ void main() {
         throwsA(isA<TomDbMigrationException>()),
       );
     });
+
+    // A version number is what the versioning table records and what
+    // `applyMigration` decides "already applied" from, so two files claiming
+    // one version cannot both be recorded distinguishably. Left unguarded the
+    // pair applies twice on the first run and collides with itself on the
+    // second — see the group below for the full sequence.
+    test('two names claiming the same version are refused', () {
+      expect(
+        () => TomDbMigrations.orderMigrationNames(['[1]-schema', '[1]-seed']),
+        throwsA(
+          isA<TomDbMigrationException>().having(
+            (e) => e.key,
+            'key',
+            'db_migration.migration.duplicate_migration_version',
+          ),
+        ),
+      );
+    });
+
+    test('the message names the version and both basenames', () {
+      // Sorted, not input order: the same broken tree has to produce the same
+      // message on every machine, and the input order here is a directory
+      // listing.
+      expect(
+        () => TomDbMigrations.orderMigrationNames(['[1]-seed', '[1]-schema']),
+        throwsA(
+          isA<TomDbMigrationException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            allOf(
+              contains('1'),
+              contains('[1]-schema'),
+              contains('[1]-seed'),
+              // The order the two are named in must not depend on the order
+              // they were listed in.
+              contains('[1]-schema and [1]-seed'),
+            ),
+          ),
+        ),
+      );
+    });
+
+    // Leading zeroes are not part of the version — `parseMigrationFileName`
+    // reads an int — so a tree holding `[1]` and `[001]` is the same collision
+    // wearing a disguise. A guard comparing the bracketed text would miss it.
+    test('leading zeroes do not disguise a collision', () {
+      expect(
+        () => TomDbMigrations.orderMigrationNames(['[1]-a', '[001]-b']),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    // The guard runs before environment selection, so it fires on a pair no
+    // single environment would ever apply together. That is deliberate: the
+    // versioning table keys history on the version alone, so a box switched
+    // from one environment to the other would meet the first tag's row while
+    // being offered the second tag's script. A tree that is valid only on
+    // some boxes is the failure this module exists to prevent.
+    test('environment tags do not license a shared version', () {
+      expect(
+        () => TomDbMigrations.orderMigrationNames([
+          '[1]-seed@dev',
+          '[1]-seed@prod',
+        ]),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test('distinct versions still pass, tags or not', () {
+      final ordered = TomDbMigrations.orderMigrationNames([
+        '[2]-seed@dev',
+        '[1]-schema',
+      ]);
+      expect(ordered.map((e) => e.parsed.version), [1, 2]);
+    });
   });
 
   // Migrations are keyed by basename-without-extension, so two files that
@@ -826,6 +901,101 @@ void main() {
         root,
         defaultTomEnvironment.env,
       );
+      expect(
+        migrator.events.where((e) => e.startsWith('apply:')),
+        hasLength(2),
+      );
+    });
+  });
+
+  // The basename collector above catches two files that strip to one key. Two
+  // files claiming one *version* strip to two different keys, so they pass it
+  // untouched — and a version, not a basename, is what the versioning table
+  // records and what `applyMigration` decides "already applied" from.
+  //
+  // Unguarded, the pair produced a three-stage failure. Both scripts applied in
+  // one pass, because `MariadbMigrationAdaptor.versions` is a snapshot taken at
+  // initialisation and is not extended as migrations run, so the second call
+  // could not see the first. Their relative order was undefined — equal keys
+  // make the sort arbitrary — so an untagged `[1]-schema` and a `[1]-seed@dev`
+  // could run seed-before-schema on one machine and the other way on the next.
+  // And the versioning table was left holding two rows for version 1, so the
+  // *following* run met the first of them while being offered the second's
+  // script and raised `description_mismatch` — a message that accuses someone
+  // of editing a past migration when nobody had.
+  group('TomDbMigrations.migrateDataSource duplicate versions', () {
+    late Directory root;
+    late Directory schema;
+
+    setUp(() {
+      root = Directory.systemTemp.createTempSync('tom_mig_dupe_ver_');
+      schema = Directory(p.join(root.path, 'fixture_schema'))
+        ..createSync(recursive: true);
+    });
+    tearDown(() => root.deleteSync(recursive: true));
+
+    TomDataSourceInfo dsi() =>
+        TomDataSourceInfo('tom_core_server_test', <String, dynamic>{})
+          ..type = 'mariadb';
+
+    void write(String name, String sql) =>
+        File(p.join(schema.path, name)).writeAsStringSync(sql);
+
+    Future<void> run(TomDbMigrator migrator, String environment) =>
+        TomDbMigrations.migrateDataSource(migrator, dsi(), root, environment);
+
+    test('nothing is applied when two files claim one version', () async {
+      write('[1]-schema.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[1]-seed.sql', 'INSERT INTO a VALUES (1);');
+      final migrator = _RecordingMigrator();
+
+      await expectLater(
+        run(migrator, defaultTomEnvironment.env),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+      // Aborting *after* applying one of the two would leave the database
+      // holding half a collision, and the versioning row that makes the next
+      // run fail.
+      expect(migrator.events.where((e) => e.startsWith('apply:')), isEmpty);
+    });
+
+    // The reachable shape of the defect, and the one a tag makes easy to write
+    // by accident: neither file collides by basename, and both apply in `dev`.
+    test('an untagged and a tagged file cannot share a version', () async {
+      write('[1]-schema.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[1]-seed@dev.sql', 'INSERT INTO a VALUES (1);');
+      final migrator = _RecordingMigrator();
+
+      await expectLater(
+        run(migrator, 'dev'),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+      expect(migrator.events.where((e) => e.startsWith('apply:')), isEmpty);
+    });
+
+    // Same tree, an environment in which only one of the pair would have been
+    // selected. It still aborts: a tree may not be valid on prod and broken on
+    // dev, because the collision it carries is in the history it will write,
+    // not in the run that writes it.
+    test('the tree is refused in an environment that would apply only '
+        'one of the pair', () async {
+      write('[1]-schema.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[1]-seed@dev.sql', 'INSERT INTO a VALUES (1);');
+      final migrator = _RecordingMigrator();
+
+      await expectLater(
+        run(migrator, defaultTomEnvironment.env),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+      expect(migrator.events.where((e) => e.startsWith('apply:')), isEmpty);
+    });
+
+    test('a schema with distinct versions still runs', () async {
+      write('[1]-schema.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[2]-seed@dev.sql', 'INSERT INTO a VALUES (1);');
+      final migrator = _RecordingMigrator();
+
+      await run(migrator, 'dev');
       expect(
         migrator.events.where((e) => e.startsWith('apply:')),
         hasLength(2),

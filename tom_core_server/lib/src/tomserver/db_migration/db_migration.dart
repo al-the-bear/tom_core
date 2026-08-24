@@ -348,11 +348,53 @@ class TomDbMigrations {
   /// Ordering is by the parsed integer version — not lexicographic — so e.g.
   /// `[2]-…` precedes `[10]-…`. Any malformed name reaches
   /// [parseMigrationFileName] and throws.
+  ///
+  /// Two names claiming the same version throw
+  /// `db_migration.migration.duplicate_migration_version`, naming both. A
+  /// version is what the versioning table records and what a migrator decides
+  /// "already applied" from, so a pair sharing one cannot both be recorded
+  /// distinguishably — and the damage outlives the run that causes it. Both
+  /// scripts apply in the first pass (a migrator's applied-version list is a
+  /// snapshot taken at initialisation, so the second call cannot see the
+  /// first), in an order the sort does not define, and the table is left with
+  /// two rows for one version; the *next* run meets the first of them while
+  /// being offered the second's script, and reports a description or checksum
+  /// mismatch — accusing someone of editing a past migration when nobody did.
+  ///
+  /// Checked on the parsed integer, so `[1]` and `[001]` collide as they
+  /// should, and checked **before** environment selection, so a tagged and an
+  /// untagged file cannot share a version either. The tag does not make the
+  /// pair safe: it only decides which of them runs *here*, while the row they
+  /// collide over is written to a history that a box switched between
+  /// environments will read back. A tree that is valid on some machines and
+  /// broken on others is the failure this module exists to prevent, so the
+  /// answer cannot depend on the active environment — and
+  /// [TomSchemaConvergenceCheck.readChain], which shares this helper, has no
+  /// environment to depend on in the first place.
   static List<({String basename, TomMigrationFileName parsed})>
   orderMigrationNames(Iterable<String> basenames) {
     final parsed = basenames
         .map((b) => (basename: b, parsed: parseMigrationFileName(b)))
         .toList();
+    final byVersion = <int, String>{};
+    for (final entry in parsed) {
+      final existing = byVersion[entry.parsed.version];
+      if (existing != null) {
+        // Sorted, not input order: the input is a directory listing, and the
+        // same broken tree has to produce the same message on every machine.
+        final pair = [existing, entry.basename]..sort();
+        throw TomDbMigrationException(
+          "db_migration.migration.duplicate_migration_version",
+          "Duplicate migration version in migrations directory: version "
+              "${entry.parsed.version} is claimed by both ${pair.first} and "
+              "${pair.last}. A migration is recorded and skipped by its "
+              "version, so two files sharing one cannot be told apart once "
+              "they are applied. Renumber one of them.",
+          autoLog: true,
+        );
+      }
+      byVersion[entry.parsed.version] = entry.basename;
+    }
     parsed.sort((a, b) => a.parsed.version.compareTo(b.parsed.version));
     return parsed;
   }
@@ -465,13 +507,20 @@ class TomDbMigrations {
         String schemaName = p.basename(schema.path);
         migrator.reset();
         await migrator.initializeMigration(dsInfo, schemaName);
-        // Collected before anything is applied, so a directory holding two
-        // files that claim the same version aborts the schema instead of
-        // applying whichever one the listing happened to favour.
+        // Both collision checks run before anything is applied, so an
+        // ambiguous schema aborts whole rather than applying whichever file the
+        // directory listing happened to favour and leaving the rest for a
+        // second run to trip over.
+        //
+        // They catch different ambiguities. Two files that strip to one
+        // basename cannot be told apart as *files*; two that claim one version
+        // cannot be told apart once *applied*, because the versioning table
+        // records the version and nothing else identifying.
         final migrations = collectMigrationFiles(await schema.list().toList());
-        // Parse + validate the names, apply in ascending version order
-        // (numeric, so [2] precedes [10]) and skip any migration tagged for
-        // a non-active environment (C-16); a malformed name throws.
+        // Parse + validate the names, reject a duplicate version, apply in
+        // ascending version order (numeric, so [2] precedes [10]) and skip any
+        // migration tagged for a non-active environment (C-16); a malformed
+        // name throws.
         final ordered = orderMigrationNames(migrations.keys);
         for (final entry in selectForEnvironment(ordered, environmentName)) {
           await migrator.applyMigration(

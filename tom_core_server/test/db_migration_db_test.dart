@@ -80,6 +80,7 @@ void main() async {
       await dsi.datasource.executeCommand(
         'DROP TABLE IF EXISTS fixture_quoted',
       );
+      await dsi.datasource.executeCommand('DROP TABLE IF EXISTS fixture_dupe');
     });
 
     tearDownAll(TestDatabase.reset);
@@ -626,6 +627,115 @@ CREATE TABLE IF NOT EXISTS fixture_quoted (
           reason:
               'the stored script must still hash to what the adaptor recorded, '
               'or the next run reads this migration as edited',
+        );
+      });
+    });
+
+    // `versions` is documented as a snapshot taken by `initializeMigration` and
+    // deliberately *not* extended as `applyMigration` runs — an applied
+    // migration is written to the table, not added to the list. That is a real
+    // constraint, not a footnote: the skip-if-applied check reads `versions`,
+    // so within a single run the adaptor cannot see what it has just applied.
+    //
+    // These tests pin the contract and then follow it to its end, because the
+    // consequence is what justifies guarding the *tree* rather than patching
+    // the list. Appending here would mean inventing an `installedRank`,
+    // `installedBy` and `installedOn` the database assigns, putting rows that
+    // were never read from the versioning table into a list whose whole
+    // definition is that it was — a subtler untruth than the one it fixes.
+    // `orderMigrationNames` refuses the collision instead, before any script
+    // runs.
+    group('the applied-version list within a single run', () {
+      const createSql = 'CREATE TABLE IF NOT EXISTS fixture_dupe (id BIGINT);';
+
+      test(
+        'applyMigration does not extend the snapshot it decides from',
+        () async {
+          final adaptor = MariadbMigrationAdaptor();
+          await adaptor.initializeMigration(dsi, _schemaName);
+          expect(adaptor.versions, isEmpty);
+
+          await adaptor.applyMigration(
+            dsi,
+            _schemaName,
+            1,
+            'schema',
+            createSql,
+          );
+
+          // The row exists; the list does not know it.
+          expect(await appliedVersions(), hasLength(1));
+          expect(
+            adaptor.versions,
+            isEmpty,
+            reason:
+                'the property documents itself as an initialisation snapshot; a '
+                'list that grew here would have to carry a fabricated '
+                'installedRank',
+          );
+        },
+      );
+
+      test('so one version offered twice in a run is applied twice', () async {
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+
+        await adaptor.applyMigration(dsi, _schemaName, 1, 'schema', createSql);
+        await adaptor.applyMigration(
+          dsi,
+          _schemaName,
+          1,
+          'seed',
+          'INSERT INTO fixture_dupe VALUES (1);',
+        );
+
+        // Not a blessing of this outcome — a measurement of it. The skip check
+        // reads `versions`, which is still empty, so nothing stops the second
+        // call. This is why the collision is refused while it is still a pair
+        // of filenames.
+        final recorded = await appliedVersions();
+        expect(recorded.map((v) => v.version), [1, 1]);
+        expect(recorded.map((v) => v.description), ['schema', 'seed']);
+      });
+
+      test('and the run after that cannot tell the two rows apart', () async {
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        await adaptor.applyMigration(dsi, _schemaName, 1, 'schema', createSql);
+        await adaptor.applyMigration(
+          dsi,
+          _schemaName,
+          1,
+          'seed',
+          'INSERT INTO fixture_dupe VALUES (1);',
+        );
+
+        // A fresh run over the same tree: the history now holds two rows for
+        // version 1, and the skip check stops at the first one whatever it is
+        // offered.
+        final next = MariadbMigrationAdaptor();
+        await next.initializeMigration(dsi, _schemaName);
+        expect(next.versions, hasLength(2));
+
+        // This is the damage that outlives the run. The database is not merely
+        // holding a duplicate — it is unmigratable, and it says so in the
+        // language of an edited migration, sending the operator to look for a
+        // change to a file nobody touched.
+        await expectLater(
+          next.applyMigration(
+            dsi,
+            _schemaName,
+            1,
+            'seed',
+            'INSERT INTO fixture_dupe VALUES (1);',
+          ),
+          throwsA(
+            isA<MariadbMigrationException>().having(
+              (e) => e.key,
+              'key',
+              'mariadb_migration.apply_migration.description_mismatch',
+            ),
+          ),
         );
       });
     });

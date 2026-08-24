@@ -12,6 +12,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [Overview](#overview)
 - [The Directory Layout](#the-directory-layout)
   - [One File per Migration](#one-file-per-migration)
+  - [One Migration per Version](#one-migration-per-version)
   - [Environment Tags](#environment-tags)
   - [The Tree Root Has to Be There](#the-tree-root-has-to-be-there)
 - [Running Migrations](#running-migrations)
@@ -156,6 +157,66 @@ which both the engine and the [convergence check](#schema-convergence) collect
 through — for the same reason they share the name parser and the ordering. A
 check that quietly read one of two colliding files would report on a chain the
 engine refuses to apply, which is worse than either behaviour on its own.
+
+### One Migration per Version
+
+The rule above is about files that cannot be told apart *as files*. Two files
+can also be perfectly distinct and still claim the same migration, by sharing a
+version number:
+
+```text
+app/
+  [1]-schema.sql
+  [1]-seed.sql          # distinct basenames, one version → the run aborts
+```
+
+```text
+Duplicate migration version in migrations directory: version 1 is claimed by
+both [1]-schema and [1]-seed. A migration is recorded and skipped by its
+version, so two files sharing one cannot be told apart once they are applied.
+Renumber one of them.
+```
+
+The version is the whole of a migration's *recorded* identity. The versioning
+table stores it, and `applyMigration` decides "already applied" by scanning the
+loaded history for it — so two migrations sharing a version are two rows that no
+later run can attribute to the right file.
+
+Left unguarded the pair fails in three stages, and only the first is visible
+while it is happening:
+
+1. **Both apply, in one pass.** A migrator's applied-version list is a snapshot
+   taken by `initializeMigration` and is deliberately not extended as
+   `applyMigration` runs, so the second call cannot see what the first just did
+   and the skip check does not fire.
+2. **In an order nothing defines.** Ordering is by version, and these two
+   compare equal, so which runs first is whatever the sort left them in — a
+   `[1]-seed` can run before the `[1]-schema` that creates the table it inserts
+   into, and differently on the next machine.
+3. **The next run cannot proceed at all.** The table now holds two rows for
+   version 1. The skip check stops at the first row it finds whatever file it is
+   being offered, so one of the two migrations is compared against the other's
+   description and script — and the run aborts reporting a description or
+   checksum mismatch. That message means "a past migration was edited", which is
+   not what happened; the operator is sent looking for a change to a file nobody
+   touched.
+
+So the collision is refused while it is still a pair of filenames, by
+`TomDbMigrations.orderMigrationNames`. Two details of *how* it is refused are
+deliberate:
+
+- **The comparison is on the parsed integer**, not the bracketed text, so `[1]`
+  and `[001]` collide as they should. Leading zeroes are formatting, not
+  identity.
+- **The check runs before environment selection**, so an untagged `[1]-schema`
+  and a `[1]-seed@dev` are refused even on a box that would only apply one of
+  them. A tag decides which of the pair runs *here*; it does not give them
+  separate rows in the history they share, and a box switched between
+  environments (which [environment tags](#environment-tags) explicitly support)
+  meets the other one's row. A tree that is valid on production and broken on a
+  developer's machine is exactly the failure this module refuses to allow, and
+  the [convergence check](#schema-convergence) — which shares this function —
+  has no active environment to filter by in the first place.
 
 ### Environment Tags
 

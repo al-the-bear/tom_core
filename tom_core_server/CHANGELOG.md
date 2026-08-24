@@ -2,6 +2,41 @@
 
 ### Fixed
 
+- **Two migration files claiming the same version are refused (tcinc495).**
+  `collectMigrationFiles` rejected two files that stripped to the same
+  *basename*, and the orchestrator's own comment claimed a directory holding two
+  files that claim the same *version* aborted the schema — but nothing checked
+  that, anywhere. `orderMigrationNames` now throws
+  `db_migration.migration.duplicate_migration_version` naming the version and
+  both basenames.
+
+  The two ambiguities are different: files sharing a basename cannot be told
+  apart as *files*; files sharing a version cannot be told apart once *applied*,
+  because the versioning table records the version and nothing else identifying.
+  The damage therefore outlives the run that causes it, in three stages. Both
+  scripts apply in the first pass — a migrator's applied-version list is a
+  snapshot taken at initialisation, so the second call cannot see the first — in
+  an order the sort does not define, since equal keys have no defined order (a
+  `[1]-seed` observed running before its `[1]-schema`, inserting into a table
+  that did not exist yet). The table is left with two rows for one version. The
+  *next* run then meets the first row while being offered the second's script and
+  reports a description or checksum mismatch, accusing someone of editing a past
+  migration when nobody did.
+
+  Two placement decisions are deliberate. The check compares the **parsed
+  integer**, so `[1]` and `[001]` collide as they should rather than passing a
+  text comparison. And it runs **before environment selection**, so a tagged and
+  an untagged file cannot share a version either: the tag does not make the pair
+  safe, it only decides which of them runs *here*, while the row they collide
+  over goes into a history that a box switched between environments reads back.
+  A tree valid on some machines and broken on others is the failure this module
+  exists to prevent, so the answer cannot depend on the active environment — and
+  `TomSchemaConvergenceCheck.readChain`, which shares this helper, has no active
+  environment to depend on in the first place.
+
+  No existing fixture tree contained a duplicate version, so nothing that was
+  passing stops.
+
 - **`TomSchemaConvergenceCheck.checkAll` and `checkSchema` are synchronous
   (tcinc488).** Both were `async` while doing only synchronous file I/O, so the
   returned future was already complete before the first `await`. The signature
