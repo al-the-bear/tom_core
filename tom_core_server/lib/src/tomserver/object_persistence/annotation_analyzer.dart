@@ -464,4 +464,153 @@ mixin TomAnnotationAnalyzer {
       "No column match field [$name] found. Must be a variable and must have @TomDbColumn annotation.'}",
     );
   }
+
+  /// The `FIND BY` sentence that resolves [reference] for one already-mapped
+  /// row of [owningType], together with the parameters it binds.
+  ///
+  /// A `@TomReference` is not a column: it is read by a *second* query over the
+  /// join entity, issued once the owning row exists, and this builds that
+  /// query's text. Its three column lists are three different kinds of term,
+  /// which is why they cannot be written as one list:
+  ///
+  ///  * [TomReference.leftSideColumns] tie the join row to *this* row, so the
+  ///    owner side is a value known only at read time. Written
+  ///    `Join.field=Owner.field`, they are emitted as a bound parameter named
+  ///    after the owner field — the value never reaches the statement text.
+  ///  * [TomReference.rightSideColumns] tie the join row to the target row.
+  ///    Both sides are columns, so the term is emitted verbatim.
+  ///  * [TomReference.contextColumns] tie the join row to an ambient value —
+  ///    the tenant, the application. Written `Join.field=:name`, they bind
+  ///    `:name` from the [TomExecutionContext] installed in the current zone.
+  ///
+  /// [readOwningField] reads a field of the mapped row by its *declared* name.
+  /// The caller holds the instance, so the read is passed in rather than the
+  /// object; that is also what lets this be exercised without a database.
+  ///
+  /// Throws [TomAnnotationAnalyzerSyntaxException] when an expression is
+  /// malformed — an authoring error in the annotation, and always reported
+  /// ahead of any context lookup — and [TomAnnotationAnalyzerException] when a
+  /// well-formed expression names a context value the running zone cannot
+  /// supply.
+  static ({String sentence, Map<String, Object?> parameters}) referenceQuery(
+    TomReference reference,
+    Type owningType,
+    Object? Function(String field) readOwningField,
+  ) {
+    final terms = <String>[];
+    final parameters = <String, Object?>{};
+    final ownerPrefix = "$owningType.";
+
+    for (final expression in reference.leftSideColumns) {
+      final (left, right) = _referenceExpressionSides(
+        expression,
+        "left_side",
+        "Join.field=$ownerPrefix<field>",
+      );
+      if (left.startsWith(ownerPrefix)) {
+        throw TomAnnotationAnalyzerSyntaxException(
+          "annotation_analyzer.reference_query.left_side_owner_on_left",
+          "Invalid leftSideColumns expression [$expression]: the value from"
+              " $owningType must be on the right, [$left] is on the left.",
+          parameters: {"expression": expression, "part": left},
+        );
+      }
+      if (!right.startsWith(ownerPrefix)) {
+        throw TomAnnotationAnalyzerSyntaxException(
+          "annotation_analyzer.reference_query.left_side_owner_missing",
+          "Invalid leftSideColumns expression [$expression]: the right side"
+              " [$right] must name a field of $owningType.",
+          parameters: {"expression": expression, "part": right},
+        );
+      }
+      final parameter = right.substring(ownerPrefix.length);
+      terms.add("$left = :$parameter");
+      parameters[parameter] = readOwningField(parameter);
+    }
+
+    terms.addAll(reference.rightSideColumns);
+
+    for (final expression in reference.contextColumns) {
+      final (left, right) = _referenceExpressionSides(
+        expression,
+        "context",
+        "Join.field=:name",
+      );
+      if (left.startsWith(":")) {
+        throw TomAnnotationAnalyzerSyntaxException(
+          "annotation_analyzer.reference_query.context_value_on_left",
+          "Invalid contextColumns expression [$expression]: the context value"
+              " must be on the right, [$left] is on the left.",
+          parameters: {"expression": expression, "part": left},
+        );
+      }
+      if (!right.startsWith(":")) {
+        throw TomAnnotationAnalyzerSyntaxException(
+          "annotation_analyzer.reference_query.context_value_missing",
+          "Invalid contextColumns expression [$expression]: the right side"
+              " [$right] must name a context entry and start with a colon.",
+          parameters: {"expression": expression, "part": right},
+        );
+      }
+      final parameter = right.substring(1);
+      final context = getFromCurrentZone<TomExecutionContext>();
+      if (context == null) {
+        throw TomAnnotationAnalyzerException(
+          "annotation_analyzer.reference_query.no_execution_context",
+          "No TomExecutionContext installed in the current zone, so the"
+              " context value [$parameter] required by [$expression] cannot be"
+              " read. Not running in context.",
+          parameters: {"expression": expression, "paramName": parameter},
+        );
+      }
+      final entry = context.contextMap[parameter];
+      if (entry == null) {
+        throw TomAnnotationAnalyzerException(
+          "annotation_analyzer.reference_query.context_entry_not_found",
+          "No context entry for [$parameter] found. Entries are:"
+              " ${context.contextMap.keys.toList()}",
+          parameters: {"expression": expression, "paramName": parameter},
+        );
+      }
+      terms.add(expression);
+      parameters[parameter] = entry.value;
+    }
+
+    if (terms.isEmpty) {
+      throw TomAnnotationAnalyzerSyntaxException(
+        "annotation_analyzer.reference_query.no_terms",
+        "The reference to ${reference.targetEntity} via"
+            " ${reference.joinEntity} declares no columns at all, so it"
+            " constrains nothing and would load every row of the join.",
+        parameters: {
+          "targetEntity": reference.targetEntity,
+          "joinEntity": reference.joinEntity,
+        },
+      );
+    }
+
+    return (sentence: "FIND BY ${terms.join(' AND ')}", parameters: parameters);
+  }
+
+  /// Splits a `left=right` reference expression of [kind] into its two sides.
+  ///
+  /// [expected] is the shape the expression should have had, quoted back in the
+  /// message: the lists are strings in an annotation, so a typo is caught here
+  /// rather than by the compiler, and the error has to say what was wanted.
+  static (String, String) _referenceExpressionSides(
+    String expression,
+    String kind,
+    String expected,
+  ) {
+    final sides = expression.split("=");
+    if (sides.length != 2) {
+      throw TomAnnotationAnalyzerSyntaxException(
+        "annotation_analyzer.reference_query.${kind}_not_a_pair",
+        "Invalid ${kind}Columns expression [$expression]: expected exactly one"
+            " '=', as in [$expected].",
+        parameters: {"expression": expression},
+      );
+    }
+    return (sides[0], sides[1]);
+  }
 }

@@ -9,6 +9,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 
 - [Overview](#overview)
 - [Mapping an Entity](#mapping-an-entity)
+  - [Associations (`@TomReference`)](#associations-tomreference)
 - [The Repository Contract](#the-repository-contract)
 - [Query Sentences](#query-sentences)
 - [The Query Builder DSL](#the-query-builder-dsl)
@@ -66,6 +67,60 @@ class User {
 `noLoad` (skipped on select), or `isJson`, and can carry `fromDbConverter` /
 `toDbConverter` functions to translate between the Dart value and the boxed
 `TomDbType` stored in the column.
+
+### Associations (`@TomReference`)
+
+A field annotated `@TomReference` is not a column. It names a *many-to-many*
+association reached through a **join entity**, and it is filled by a second
+query issued after the owning row has been mapped — the query binds values from
+that row, so it cannot run while the row is still being read.
+
+```dart
+@TomReference(
+  targetEntity: Role,
+  keyType: int,
+  repositoryType: RoleRepository,
+  joinEntity: UserRole,
+  leftSideColumns: ['UserRole.userId=User.id'],
+  rightSideColumns: ['UserRole.roleId=Role.id'],
+  contextColumns: ['UserRole.organizationId=:organization'],
+)
+List<Role> roles = [];
+```
+
+The three column lists are three different *kinds* of term, which is why they
+are three lists rather than one:
+
+| List | Written as | Becomes |
+| ---- | ---------- | ------- |
+| `leftSideColumns` | `Join.field=Owner.field` | `Join.field = :field`, bound from the mapped row |
+| `rightSideColumns` | `Join.field=Target.field` | the term verbatim — both sides are columns |
+| `contextColumns` | `Join.field=:name` | the term verbatim, with `:name` bound from the execution context |
+
+`TomAnnotationAnalyzer.referenceQuery` assembles them into one `FIND BY`
+sentence and the parameter map it binds. Two consequences are worth naming:
+
+- **The owner's value never reaches the statement text.** A left-side term is
+  the one place a *row value* enters the reference query, and it enters as a
+  parameter. The parameter is named after the **owner** field, not the join
+  field, so the two may be spelled differently without the binding drifting.
+- **The context read is per context column.** A reference that declares none
+  builds outside any `TomExecutionContext`; one that declares a context column
+  requires a context that carries that entry, and says which entry is missing
+  when it does not.
+
+A malformed expression is an authoring error and raises
+`TomAnnotationAnalyzerSyntaxException` — always ahead of any context lookup, so
+a typo is reported as a typo rather than as a missing context value. A
+well-formed expression that the running zone cannot supply raises
+`TomAnnotationAnalyzerException`. A reference declaring no columns at all is
+rejected outright: it constrains nothing, so it would load every join row for
+every owner row.
+
+The field must be **non-null and modifiable** — `List<Role> roles = []`, not
+`List<Role>? roles`. The mapper fills the list the entity already holds instead
+of assigning a fresh one, because reflection cannot construct a `List<Role>`
+from a mirror that carries no type arguments.
 
 ## The Repository Contract
 

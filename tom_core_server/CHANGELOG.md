@@ -930,6 +930,50 @@
 
 ### Behaviour Changes
 
+- **`@TomReference` resolution is separated from the connection, and is now
+  tested (tcinc456).** Two private helpers in `mariadb_datasource.dart` were the
+  largest block in the file and read like abandoned scaffolding.
+  `_referenceValueStack` was a six-parameter `async void` wrapper around a
+  single `list.add`, called without `await`. `_referenceValuesGet` declared a
+  type parameter `TBLTYPE` its body never used, carried a commented-out line in
+  the middle of a 257-line body, and returned the constant `1` regardless of
+  what happened. Neither was exercised by any test.
+
+  Neither was dead, either. `_referenceValuesGet` is the *whole*
+  implementation of `@TomReference` — the second query that fills an
+  association after its owning row has been mapped — and `tom_uam_server`
+  depends on it for five associations. It was untested because reaching it
+  required a live database, which is also why the scaffolding around it could
+  decay unnoticed.
+
+  The construction of the reference query is now
+  `TomAnnotationAnalyzer.referenceQuery`, a pure function returning the
+  `FIND BY` sentence and the parameters it binds. It needs no connection, no
+  reflector and no entity — the mapped row is represented by a field-read
+  callback — so the sixteen behaviours it implements are now asserted directly,
+  including seven rejections that previously existed but could not be reached.
+  What remains in the data source is the part that genuinely needs a
+  connection: compile, run, write back.
+
+  Three behaviour changes fall out of the split. **The rejection exceptions
+  moved** from `MariadbDatasourceException` with `error.result_processing.ref_*`
+  keys to `TomAnnotationAnalyzerSyntaxException` (a malformed expression is an
+  authoring error in the annotation, not a MariaDB failure) and
+  `TomAnnotationAnalyzerException` (a context entry the running zone cannot
+  supply), under `annotation_analyzer.reference_query.*` keys. **Two new
+  rejections** close gaps: an expression without exactly one `=` used to fail as
+  an unhandled pattern-match error, and a reference declaring no columns at all
+  used to emit the sentence `FIND BY ` — it constrains nothing, so it would have
+  loaded every join row for every owner row. **Syntax is now checked before the
+  context is read**, so a typo is reported as a typo rather than as a missing
+  context value it never worked out how to ask for.
+
+  A separate defect surfaced under the same reading. The pending-reference stack
+  was declared *outside* the row loop and drained *inside* it, and never
+  cleared — so row *k* re-resolved every earlier row's associations, turning one
+  query per association into a quadratic number of them. The stack is now
+  per row.
+
 - **A delete's `ORDER BY` names the column instead of the Dart field
   (tcinc455).** `TomDelete.generateQuery` passed its `sort` list straight to
   `TomGeneratedQuery.orderByClause`, which — as its own dartdoc says — emits

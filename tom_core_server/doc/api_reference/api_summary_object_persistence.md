@@ -1187,6 +1187,7 @@ per-type caches.
 | `findAuthColumns` | `static List<TomColumnInformation> findAuthColumns(Type dbType)` | The columns of `dbType` that opt into column-level access rights (C-4), or empty. |
 | `getPersistentColumns` | `static List<TomColumnInformation>? getPersistentColumns(Type dbType)` | The persistence metadata for every annotated field, or `null` if not reflectable. Throws `TomAnnotationAnalyzerSyntaxException`. |
 | `determineColumn` | `static TomColumnInformation determineColumn(String name, List<TomTypePersistenceInfo> persistenceInfo)` | Finds the `TomColumnInformation` matching `name`. Throws `TomAnnotationAnalyzerSyntaxException` when nothing matches. |
+| `referenceQuery` | `static ({String sentence, Map<String, Object?> parameters}) referenceQuery(TomReference reference, Type owningType, Object? Function(String field) readOwningField)` | The `FIND BY` sentence resolving a `@TomReference` for one mapped row, and the parameters it binds. Throws `TomAnnotationAnalyzerSyntaxException` for a malformed expression, `TomAnnotationAnalyzerException` for a context value the zone cannot supply. |
 
 ##### Properties
 

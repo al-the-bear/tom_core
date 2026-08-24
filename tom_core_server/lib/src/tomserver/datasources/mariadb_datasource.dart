@@ -230,6 +230,20 @@ class MariadbPreparedStatement<T extends Object>
   }
 }
 
+/// One association read that a mapped row still owes: the `@TomReference`
+/// [column], the [owner] mirror that declares it, the [field] to fill, and the
+/// [row] instance to fill it in.
+///
+/// A reference cannot be read while the row is being mapped, because its query
+/// binds values from that same row — so the mapper collects these and drains
+/// them once the row's own columns are set.
+typedef _PendingReference = ({
+  TomColumnInformation column,
+  ClassMirror owner,
+  VariableMirror field,
+  InstanceMirror row,
+});
+
 /// A MariaDB / MySQL [TomDataSource] driver (registered for the `"mariadb"`
 /// type).
 ///
@@ -734,17 +748,11 @@ class MariaDbDatasource implements TomDataSource {
         result.add(rowResult as T);
       }
     } else if (TomAnnotationAnalyzer.getPersistentColumns(rType) != null) {
-      List<
-        (
-          TomColumnInformation,
-          ClassMirror,
-          VariableMirror,
-          InstanceMirror,
-          Type,
-        )
-      >
-      refStack = [];
       for (var row in qResult.rows) {
+        // Per row: the stack is drained at the end of this iteration, so a
+        // stack that outlived it would re-resolve every earlier row's
+        // references once more for each row that follows.
+        final refStack = <_PendingReference>[];
         Object rowResult;
         try {
           rowResult = classMirror.newInstance("", []);
@@ -760,8 +768,9 @@ class MariaDbDatasource implements TomDataSource {
           VariableMirror dm =
               classMirror.declarations[col.declaredName] as VariableMirror;
           if (col.reference != null) {
-            // we need to dereference after setting all other fields to be able to use the data
-            _referenceValueStack(refStack, col, classMirror, dm, im, T);
+            // Deferred: the reference query binds values from this row, so it
+            // can only run once every other field has been set.
+            refStack.add((column: col, owner: classMirror, field: dm, row: im));
             continue;
           }
           switch (dm.reflectedType) {
@@ -861,7 +870,7 @@ class MariaDbDatasource implements TomDataSource {
           }
         }
         if (refStack.isNotEmpty) {
-          await _referenceValuesGet(refStack);
+          await _loadReferencedValues(refStack);
         }
         result.add(rowResult as T);
       }
@@ -896,89 +905,30 @@ class MariaDbDatasource implements TomDataSource {
     );
   }
 
-  void _referenceValueStack(
-    List<
-      (TomColumnInformation, ClassMirror, VariableMirror, InstanceMirror, Type)
-    >
-    refStack,
-    TomColumnInformation column,
-    ClassMirror classMirror,
-    VariableMirror vm,
-    InstanceMirror im,
-    Type T,
-  ) async {
-    refStack.add((column, classMirror, vm, im, T));
-  }
-
-  Future<int> _referenceValuesGet<TBLTYPE extends Object>(
-    List<
-      (TomColumnInformation, ClassMirror, VariableMirror, InstanceMirror, Type)
-    >
-    refStack,
-  ) async {
-    for (var (column, classMirror, vm, im, _) in refStack) {
-      String query = "";
-      Map<String, Object?> referenceQueryParams = {};
-      for (var ls in column.reference!.leftSideColumns) {
-        var [left, right] = ls.split("=");
-        if (left.startsWith("${classMirror.reflectedType}.")) {
-          throw MariadbDatasourceException(
-            "error.result_processing.ref_leftside_syntax_a",
-            "Invalid leftSideColumn-Expression $ls, value from originType must be on the right side.",
-            parameters: {"expression": ls, "part": left},
-          );
-        }
-        if (!right.startsWith("${classMirror.reflectedType}.")) {
-          throw MariadbDatasourceException(
-            "error.result_processing.ref_leftside_syntax_b",
-            "Invalid leftSideColumn-Expression $ls, value from originType must be on the right side, is $right. Must start with type name.",
-            parameters: {"expression": ls, "part": right},
-          );
-        }
-        String paramName = right.substring(right.indexOf(".") + 1);
-        query += "${query.isEmpty ? '' : ' AND '}$left = :$paramName";
-        referenceQueryParams[paramName] = im.invokeGetter(paramName);
-      }
-      for (var rs in column.reference!.rightSideColumns) {
-        query += "${query.isEmpty ? '' : ' AND '}$rs";
-      }
-      for (var cc in column.reference!.contextColumns) {
-        var [left, right] = cc.split("=");
-        if (left.startsWith(":")) {
-          throw MariadbDatasourceException(
-            "error.result_processing.ref_contextcolumns_syntax_a",
-            "Invalid contextColumn-Expression $cc, context value must be on the right.",
-            parameters: {"expression": cc, "part": left},
-          );
-        }
-        if (!right.startsWith(":")) {
-          throw MariadbDatasourceException(
-            "error.result_processing.ref_contextcolumns_syntax_b",
-            "Invalid contextColumn-Expression $cc, context value is not on the right and must stsrt with colon.",
-            parameters: {"expression": cc, "part": right},
-          );
-        }
-        query += "${query.isEmpty ? '' : ' AND '}$cc";
-        var paramName = right.substring(1);
-        var ctx = getFromCurrentZone<TomExecutionContext>();
-        if (ctx != null) {
-          var ctxEntry = ctx.contextMap[paramName];
-          if (ctxEntry != null) {
-            referenceQueryParams[paramName] = ctxEntry.contextFunction();
-          } else {
-            throw MariadbDatasourceException(
-              "error.result_processing.ref_context_value_not_found",
-              "No context entry for $paramName found. Entries are: ${ctx.contextMap.keys.toList()}",
-              parameters: {"expression": cc, "paramName": paramName},
-            );
-          }
-        } else {
-          throw MariadbDatasourceException(
-            "error.result_processing.ref_context_not_found",
-            "No TomExecutionContext for zone found. Not running in context.",
-          );
-        }
-      }
+  /// Fills each pending association in [refStack] by running its reference
+  /// query and writing the results into the row that owes it.
+  ///
+  /// This is the whole implementation of `@TomReference`: [_processResultSet]
+  /// cannot read an association while mapping a row — the query binds values
+  /// from that same row — so it stacks the reference columns and calls this
+  /// once the row's own columns are set.
+  ///
+  /// The sentence and its parameters come from
+  /// [TomAnnotationAnalyzer.referenceQuery]; what is left here is the part that
+  /// needs a connection: compile, run, and write the rows back through the
+  /// field's mirror.
+  Future<void> _loadReferencedValues(List<_PendingReference> refStack) async {
+    for (final (:column, :owner, field: vm, row: im) in refStack) {
+      // Built before the try: a malformed expression is an authoring error in
+      // the annotation, and surfaces as itself rather than as a data-source
+      // failure wrapped around it.
+      final reference = TomAnnotationAnalyzer.referenceQuery(
+        column.reference!,
+        owner.reflectedType,
+        (field) => im.invokeGetter(field),
+      );
+      final query = reference.sentence;
+      final referenceQueryParams = reference.parameters;
       try {
         TomQuerySentenceCompiler tsc = runCheckedSync<TomQuerySentenceCompiler>(
           () => TomQuerySentenceCompiler([
@@ -1005,7 +955,6 @@ class MariaDbDatasource implements TomDataSource {
             );
           },
         );
-        query = "FIND BY $query";
         TomSelect ts = runCheckedSync<TomSelect>(
           () => tsc.compileQuerySentence(query) as TomSelect,
           (e, s) {
@@ -1073,9 +1022,12 @@ class MariaDbDatasource implements TomDataSource {
             );
           },
         );
+        // Fill the list the entity already holds rather than assigning a fresh
+        // one: the declared type is `List<Target>`, and reflection cannot build
+        // that instantiation — a mirror of a generic type has no type arguments
+        // to construct with. Hence the requirement below that a reference field
+        // be non-null and modifiable.
         List? value = im.invokeGetter(vm.simpleName) as List?;
-        // Unfortunately this doesn't work with reflection
-        //List value = (vm.type as ClassMirror).newInstance("empty", [true]) as List;
         if (value != null) {
           value.clear();
           try {
@@ -1166,7 +1118,6 @@ class MariaDbDatasource implements TomDataSource {
         );
       }
     }
-    return 1;
   }
 
   @override
