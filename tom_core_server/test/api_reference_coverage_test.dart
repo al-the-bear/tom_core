@@ -93,6 +93,27 @@
 /// `static` and a constructor are never abstract however they are written, so a
 /// bodiless one is not evidence of anything.
 ///
+/// The last group asks a question about the document's *tense* rather than its
+/// content. Every check above compares a claim against the code as it stands; a
+/// claim that something is **not finished** cannot be checked that way, because
+/// there is nothing in the source that contradicts it — the absence it asserts
+/// looks exactly like an absence that is intended.
+///
+/// What can be checked is where the claim lives. Ten guides collect what they
+/// have not done under `## Not Yet Implemented`, and `doc/authentication.md`
+/// under `## Status and Limitations`; those sections are the ones re-read when
+/// work completes. `doc/datasources.md` made its claim in the middle of a
+/// chapter instead — escaping of interpolated literals was "a tracked follow-up
+/// — see the completion steps" — and so nobody re-read it, and it outlived the
+/// work by however long the escaping had been in `text`. The document a
+/// consumer reads first was warning them off a facility that works and pointing
+/// them at a follow-up that is closed.
+///
+/// So the placement is enforced and the staleness follows from it. A signpost
+/// *to* the section is not a violation — the claim is still in one place — so a
+/// line linking to it is allowed anywhere, as is a fenced block, which may be
+/// quoting code as an example of what not to write.
+///
 /// Everything here reads the working tree, so the failure names the missing
 /// file, type or field and appears the moment the next one lands.
 library;
@@ -869,6 +890,136 @@ List<_ListedMember> _listedMembersOf(String file, List<String> lines) {
   return found;
 }
 
+/// One claim of unfinished work, and where it was made.
+typedef _UnfinishedClaim = ({String file, int line, String text});
+
+/// A phrase by which a guide tells the reader something is not finished.
+///
+/// Deliberately narrow. A guide is full of prose that *sounds* provisional —
+/// "for now", "at present", "deliberate" — and matching that would report a
+/// dozen sentences that are simply describing a design. What is matched here
+/// is the small set of phrases that assert a *state of the work* rather than a
+/// property of the software, which is the only kind of sentence that can be
+/// falsified by finishing the work.
+final RegExp _unfinishedClaim = RegExp(
+  r'tracked follow-?up|is a follow-?up|not yet implemented|completion steps|'
+  r'will be added|planned for|not implemented|yet to be',
+  caseSensitive: false,
+);
+
+/// The heading under which a guide collects what it has not done.
+///
+/// Two spellings, both in use: ten guides say `Not Yet Implemented` and
+/// `doc/authentication.md` says `Status and Limitations`. Which word is used
+/// does not matter to this check — what matters is that there is exactly one
+/// place per document where such a claim lives.
+final RegExp _limitationsHeading = RegExp(
+  r'^##\s+(?:Not Yet Implemented|Status and Limitations)\s*$',
+);
+
+/// A link *to* the limitations section, as the table of contents and the
+/// cross-references in the prose both write it.
+///
+/// Pointing at the section is the correct pattern, not a violation of it: the
+/// claim still lives in one place and the sentence in the chapter is a signpost
+/// to it. Only an unsignposted claim is counted.
+final RegExp _limitationsLink = RegExp(
+  r'\]\(#(?:not-yet-implemented|status-and-limitations)\)',
+  caseSensitive: false,
+);
+
+/// The claims of unfinished work [file] makes outside its limitations section.
+///
+/// The unit of judgement is the **paragraph**, not the line, and that is not a
+/// detail. These guides wrap at eighty columns, so a claim and the signpost
+/// that excuses it routinely land on different lines — "…is not yet
+/// implemented — see" / "[Not Yet Implemented](#not-yet-implemented) before
+/// relying on it". Judging line by line reports that as a violation, and a
+/// guard whose first report is a false alarm gets deleted rather than heeded.
+///
+/// Taking the paragraph does mean a second, unsignposted claim in an already
+/// signposted paragraph goes unreported. That is the right way round to be
+/// wrong: the cost of the miss is one sentence in a paragraph that already
+/// directs the reader to the section, whereas the cost of the false alarm is
+/// the whole check.
+///
+/// Fenced blocks are skipped entirely — a listing may be quoting a `// TODO`
+/// as an example of what *not* to write.
+///
+/// A heading is an ordinary line. Every heading in these guides already has a
+/// blank line above it, so separating it from the prose gains nothing — and
+/// reading it as prose costs nothing while buying something: a rival
+/// `### … not yet implemented` *heading* outside the swept section is a second
+/// place the document collects unfinished work, which is the one arrangement
+/// this check exists to prevent, and it is reported rather than skipped.
+List<_UnfinishedClaim> _unfinishedClaimsOutsideSection(
+  String file,
+  List<String> lines,
+) {
+  var sectionStart = -1;
+  var sectionEnd = lines.length;
+  for (var i = 0; i < lines.length; i++) {
+    if (_limitationsHeading.hasMatch(lines[i])) {
+      sectionStart = i;
+      sectionEnd = lines.length;
+    } else if (sectionStart >= 0 &&
+        sectionEnd == lines.length &&
+        lines[i].startsWith('## ')) {
+      sectionEnd = i;
+    }
+  }
+
+  final found = <_UnfinishedClaim>[];
+  var fenced = false;
+  var paragraph = <int>[];
+
+  void closeParagraph() {
+    if (paragraph.isNotEmpty) {
+      final signposted = paragraph.any(
+        (i) => _limitationsLink.hasMatch(lines[i]),
+      );
+      if (!signposted) {
+        for (final i in paragraph) {
+          if (!_unfinishedClaim.hasMatch(lines[i])) continue;
+          found.add((file: file, line: i + 1, text: lines[i].trim()));
+        }
+      }
+    }
+    paragraph = [];
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    if (line.startsWith('```')) {
+      closeParagraph();
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    if (line.trim().isEmpty) {
+      closeParagraph();
+      continue;
+    }
+    if (sectionStart >= 0 && i >= sectionStart && i < sectionEnd) {
+      closeParagraph();
+      continue;
+    }
+    paragraph.add(i);
+  }
+  closeParagraph();
+  return found;
+}
+
+/// Every module guide, as (name, lines).
+List<(String, List<String>)> _guides() =>
+    Directory('doc')
+        .listSync()
+        .whereType<File>()
+        .where((entry) => entry.path.endsWith('.md'))
+        .map((file) => (file.uri.pathSegments.last, file.readAsLinesSync()))
+        .toList()
+      ..sort((a, b) => a.$1.compareTo(b.$1));
+
 /// The modules whose Overview table has not been reconciled against its
 /// exports yet — quest todo `tcincb3_ahwn`.
 ///
@@ -1536,6 +1687,105 @@ void main() {
       ]);
       expect(members.single.line, 5);
       expect(members.single.bodiless, isTrue);
+    });
+  });
+
+  group('a claim of unfinished work lives where it gets swept', () {
+    test('no guide warns off finished work in the middle of a chapter', () {
+      final offenders = [
+        for (final (name, lines) in _guides())
+          ..._unfinishedClaimsOutsideSection(name, lines),
+      ];
+      expect(
+        offenders.map((claim) => '${claim.file}:${claim.line} ${claim.text}'),
+        isEmpty,
+        reason:
+            'A claim that something is unfinished belongs in the one section '
+            'of the document that is re-read when work completes. Buried in a '
+            'chapter it is never re-read, so it survives the work it '
+            'describes: `doc/datasources.md` told the reader that escaping of '
+            'interpolated literals was "a tracked follow-up" long after `text` '
+            'had been escaping them, which warns a consumer off a facility '
+            'that works and points at a follow-up that is closed. Either say '
+            'what the code now does, or move the claim into the limitations '
+            'section.',
+      );
+    });
+
+    test('the sweep reaches the sections it is meant to leave alone', () {
+      // The check above passes just as happily on a phrase list that matches
+      // nothing at all. What proves it is still looking is that the phrases do
+      // fire inside the sections — where such a claim is supposed to be.
+      final guides = _guides();
+      final withSection = guides
+          .where((guide) => guide.$2.any(_limitationsHeading.hasMatch))
+          .toList();
+      expect(withSection.length, greaterThan(8));
+
+      final inside = withSection.where((guide) {
+        final all = guide.$2
+            .where(_unfinishedClaim.hasMatch)
+            .where((line) => !_limitationsLink.hasMatch(line))
+            .length;
+        final outside = _unfinishedClaimsOutsideSection(
+          guide.$1,
+          guide.$2,
+        ).length;
+        return all > outside;
+      });
+      expect(
+        inside.length,
+        greaterThan(5),
+        reason:
+            'the phrases must match the real limitation sections, or the '
+            'guard above is only asserting that nothing matches anything',
+      );
+    });
+
+    test('the parser separates a claim from a signpost to one', () {
+      const heading = '## Not Yet Implemented';
+      final claims = _unfinishedClaimsOutsideSection('synthetic.md', [
+        '# Guide',
+        '',
+        '- [Not Yet Implemented](#not-yet-implemented)',
+        '',
+        '## Chapter',
+        '',
+        'Retry backoff is a tracked follow-up.',
+        '',
+        // Wrapped across two lines, with the signpost on the second — the
+        // shape eighty-column prose produces, and the one a line-by-line
+        // reading reports as a violation.
+        'Clustered locking is not yet implemented — see',
+        '[Not Yet Implemented](#not-yet-implemented) before relying on it.',
+        '',
+        '```dart',
+        '// not yet implemented',
+        '```',
+        '',
+        // A second place collecting unfinished work is the arrangement the
+        // check exists to prevent, so the heading counts as a claim itself.
+        '### Clustering is not yet implemented',
+        '',
+        heading,
+        '',
+        'Provider revocation is not implemented.',
+        '',
+        '## Dependencies',
+        '',
+        'Nothing here is planned for later.',
+      ]);
+
+      expect(
+        claims.map((claim) => claim.line),
+        [7, 16, 24],
+        reason:
+            'the table-of-contents entry, the signposted sentence, the '
+            'fenced example and the section itself are all legitimate; the '
+            'unlinked chapter claim, the rival heading and the claim after '
+            'the section ends are not',
+      );
+      expect(claims.first.text, 'Retry backoff is a tracked follow-up.');
     });
   });
 }

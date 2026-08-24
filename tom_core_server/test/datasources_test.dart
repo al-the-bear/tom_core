@@ -313,6 +313,40 @@ void main() {
       expect(d.text('abc'), "'abc'");
     });
 
+    test('a value cannot terminate its own literal', () {
+      // `text` was a bare `"'$text'"`, so a value carrying a quote closed the
+      // literal early and everything after it was parsed as SQL. This is the
+      // shape that mattered: the tail is a second statement, not a fragment.
+      expect(
+        d.text("it's"),
+        "'it''s'",
+        reason: 'the doc/datasources.md sample',
+      );
+      expect(
+        d.text("x'; DROP TABLE users; --"),
+        "'x''; DROP TABLE users; --'",
+        reason: 'the injected quote is doubled, so nothing escapes the literal',
+      );
+      expect(d.text(r'a\b'), r"'a\\b'");
+      // Both replacements fire on the same value without interfering. They can
+      // be written in either order — doubling a quote introduces no backslash
+      // and escaping a backslash introduces no quote — so neither can re-escape
+      // what the other produced. Worth pinning because the usual shape of this
+      // pair *is* order-dependent, and a reader will assume this one is too.
+      expect(d.text(r"a\'b"), r"'a\\''b'");
+    });
+
+    test('objectOp escapes the values it routes through text', () {
+      // `objectOp` is the entry point the expression tree reaches by itself,
+      // so escaping only `text` would leave the path that actually renders
+      // user data unprotected.
+      expect(d.objectOp("it's"), "'it''s'");
+      expect(d.objectOp(["a'b", 1]), "'a''b',1");
+      // Anything unrecognised is quoted via its `toString()`, and is escaped
+      // on the way — the fallback is where an unforeseen type arrives.
+      expect(d.objectOp(_Quoting()), "'it''s'");
+    });
+
     test('intOp / doubleOp / boolOp are bare', () {
       expect(d.intOp(7), '7');
       expect(d.doubleOp(1.5), '1.5');
@@ -1641,4 +1675,14 @@ void main() {
       expect(claims, isEmpty);
     });
   });
+}
+
+/// A value of a type `objectOp` does not recognise, whose `toString()` needs
+/// escaping.
+///
+/// The fallback branch is the one an unforeseen type arrives on, which is
+/// exactly when nobody has thought about whether its text is safe to embed.
+class _Quoting {
+  @override
+  String toString() => "it's";
 }

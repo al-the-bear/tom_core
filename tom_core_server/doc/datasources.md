@@ -86,6 +86,7 @@ construct:
 ```dart
 final d = TomStandardSqlDialect();
 d.text('abc');                 // 'abc'            (single-quoted literal)
+d.text("it's");                // 'it''s'          (embedded quote doubled)
 d.intOp(42);                   // 42
 d.p('userId');                 // :userId          (bound parameter placeholder)
 d.objectOp(['a', 1, true]);    // 'a',1,true       (comma-joined list)
@@ -93,9 +94,16 @@ d.nullOp();                    // NULL
 ```
 
 Literal renderers (`text`, `intOp`, `objectOp`, …) interpolate the value
-directly into the SQL string; for untrusted input prefer the parameterised form
-`p(name)` so the driver binds the value. (Escaping of directly-interpolated
-literals is a tracked follow-up — see the completion steps.)
+directly into the SQL string. `text` escapes what it interpolates — an embedded
+single quote is doubled and a backslash is escaped — so a value cannot
+terminate its own literal and have the remainder read as SQL. `objectOp` routes
+strings, and anything it does not otherwise recognise, through `text`, so the
+escaping covers the values the expression tree reaches on its own.
+
+That does not change the advice: for untrusted input prefer the parameterised
+form `p(name)`. It binds out-of-band, so the value never becomes part of the
+SQL text and nothing has to escape correctly for it to be safe. The escaping is
+what stands behind the literal path `objectOp` takes anyway.
 
 A driver supplies its own dialect by subclassing and returning it from
 `TomDataSource.sqlDialect`; `MariadbSqlDialect` inherits the standard generation

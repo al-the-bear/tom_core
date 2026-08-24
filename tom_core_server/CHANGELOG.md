@@ -746,6 +746,41 @@
 
 ### Internal
 
+- **A claim of unfinished work has to live where it gets swept (tcinc466).**
+  `doc/datasources.md` told the reader that escaping of directly-interpolated
+  literals was "a tracked follow-up — see the completion steps". It is not: the
+  escaping is in `TomStandardSqlDialect.text`, and had been for as long as the
+  sentence was wrong about it. So the one document a consumer reads first was
+  warning them off a facility that works and pointing them at a follow-up that
+  is closed.
+
+  The sentence is replaced by a statement of what the escaping does — an
+  embedded single quote is doubled and a backslash escaped, so a value cannot
+  terminate its own literal, and `objectOp` routes strings and anything it does
+  not recognise through `text`, so the path the expression tree takes on its
+  own is covered. The advice to prefer `p(name)` for untrusted input stands
+  unchanged: binding out-of-band means nothing has to escape correctly for the
+  value to be safe. That behaviour was also entirely unpinned — the only
+  assertion on `text` was `d.text('abc')` — so `test/datasources_test.dart`
+  gained the injection shape, the backslash, and the three routes through
+  `objectOp` including the `toString()` fallback an unforeseen type arrives on.
+
+  Why it went stale is the more useful half. A claim that something is *not
+  finished* cannot be checked against the source, because the absence it
+  asserts looks exactly like an absence that is intended. What can be checked
+  is where it was written. Ten guides collect what they have not done under
+  `## Not Yet Implemented` and `doc/authentication.md` under `## Status and
+  Limitations`; those sections get re-read when work completes. This one claim
+  sat in the middle of a chapter, where no sweep would ever pass over it.
+  `test/api_reference_coverage_test.dart` now enforces the placement, and the
+  staleness follows from it. The unit of judgement is the paragraph rather than
+  the line, because these guides wrap at eighty columns and a claim and the
+  signpost that excuses it routinely land on different lines — a guard whose
+  first report is a false alarm gets deleted rather than heeded. A heading is
+  read as ordinary prose, so a rival `### … not yet implemented` heading
+  outside the section is reported too: a second place collecting unfinished
+  work is the arrangement the check exists to prevent.
+
 - **Contract listings are checked against source for what is abstract
   (tcinc465).** In an `abstract class X { … }` listing a bare declaration is a
   demand on the reader and a declaration with a body is a gift, and nothing
