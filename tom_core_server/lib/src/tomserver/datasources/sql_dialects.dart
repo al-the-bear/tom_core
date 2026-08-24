@@ -453,14 +453,3 @@ class TomStandardSqlDialect {
     return "${column.columnInformation.table.table}.${column.columnInformation.getQueryFieldName()}";
   }
 }
-
-/// Annotation marking a [TomStandardSqlDialect] subclass as the dialect for a
-/// named [dataSourceType] (e.g. `"mariadb"`). Used by reflection-based dialect
-/// discovery to pick the right dialect for a data source.
-class TomSqlDialect {
-  /// The data-source type this dialect serves (matches a driver's `type`).
-  final String dataSourceType;
-
-  /// Binds this dialect to [dataSourceType].
-  const TomSqlDialect(this.dataSourceType);
-}

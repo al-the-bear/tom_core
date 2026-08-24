@@ -36,7 +36,6 @@ layer.
 | `TomStandardSqlDialect` | class | Renders operator nodes to standard-SQL fragments |
 | `TomAggregateFunction` | enum | The aggregate vocabulary a dialect must render (`count`/`sum`/`avg`/`min`/`max`) |
 | `TomSqlTypeFamily` | enum | The coarse type classes a stored column can belong to — what a dialect reduces a SQL type name *to* |
-| `TomSqlDialect` | annotation | Binds a dialect subclass to a data-source type |
 | `TomSqlFailureMode` | enum | Whether a failed write is known not to have happened (`definite`) or unknown (`ambiguous`) |
 | `classifySqlFailure` / `sqlFailureCauses` | function | Classifies a write failure, and walks the `rootException` chain it reads |
 | `isLostConnectionFailure` | function | Whether a failure left no live link to have run on, so one reconnect-and-retry is worth it |
@@ -98,9 +97,17 @@ directly into the SQL string; for untrusted input prefer the parameterised form
 `p(name)` so the driver binds the value. (Escaping of directly-interpolated
 literals is a tracked follow-up — see the completion steps.)
 
-A driver supplies its own dialect by subclassing and annotating with
-`@TomSqlDialect("<type>")`; `MariadbSqlDialect` does this and inherits the
-standard generation unchanged — its one override is on the *reading* side, below.
+A driver supplies its own dialect by subclassing and returning it from
+`TomDataSource.sqlDialect`; `MariadbSqlDialect` inherits the standard generation
+unchanged — its one override is on the *reading* side, below.
+
+There is no dialect registry to register it in, and deliberately so. Reflection
+resolves one thing by data-source type name: the *driver*
+([`@TomDatasourceDriver`](#data-sources-and-drivers)). A driver arrives knowing
+its dialect, so a second lookup keyed by the same string could only restate — or
+contradict — what `sqlDialect` already returns. Everything that renders SQL
+therefore asks the data source, and a dialect for another database ships as part
+of that database's driver.
 
 ## Classifying Column Types
 
@@ -606,10 +613,10 @@ written against it.
   `of(String?)` parsing.
 - **`TomOperator<R>`** — the typed SQL expression node (`generate`, `getFields`,
   `getParameters`).
-- **`TomStandardSqlDialect`** (+ the `TomSqlDialect` annotation) — SQL-fragment
-  generation; `SqlString`. Also the reading side: `typeFamily` / `baseTypeName` /
-  `typeArguments` reduce a DDL type name to a **`TomSqlTypeFamily`**, which is
-  how a declared Dart type and a stored SQL type are compared at all.
+- **`TomStandardSqlDialect`** — SQL-fragment generation; `SqlString`. Also the
+  reading side: `typeFamily` / `baseTypeName` / `typeArguments` reduce a DDL
+  type name to a **`TomSqlTypeFamily`**, which is how a declared Dart type and
+  a stored SQL type are compared at all.
 - **`TomSqlFailureMode`** (+ `classifySqlFailure`, `sqlFailureCauses`) — whether
   a failed write is known not to have happened or merely unknown. Ambiguous is
   the default because the set of transport failures is open-ended and the set of

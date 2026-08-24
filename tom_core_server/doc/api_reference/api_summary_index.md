@@ -216,7 +216,6 @@ surface documented here.
 | `TomDbType<T>` | abstract class | Base DB column type (extends kernel `TomObject`). |
 | `TomDbInt` / `TomDbDouble` / `TomDbString` / `TomDbDateTime` / `TomDbDate` / `TomDbTime` / `TomDbBool` | class | Concrete DB types. |
 | `TomOperator<R>` | abstract class | Base of the SQL expression tree. |
-| `TomSqlDialect` | class | Annotation tagging a dialect. |
 | `TomStandardSqlDialect` | class | Standard-SQL dialect. |
 | `MariadbSqlDialect` | class | MariaDB dialect. |
 | `TomQuery` / `TomGeneratedQuery` | abstract class | Query base types. |
@@ -824,7 +823,6 @@ surface documented here.
 | `TomSocketSmtpConnection` | Messaging |
 | `TomSqlAuditSink` | Audit |
 | `TomSqlDatasourceRepository` | Object Persistence |
-| `TomSqlDialect` | Datasources |
 | `TomSqlJobStore` | Scheduling |
 | `TomSqlLeaseLock` | Scheduling |
 | `TomSqlOAuthStateStore` | Authentication |

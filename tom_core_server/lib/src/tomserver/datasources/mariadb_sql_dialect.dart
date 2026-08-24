@@ -1,16 +1,19 @@
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-
 import 'sql_dialects.dart';
 
 /// The SQL dialect for MariaDB.
 ///
-/// It inherits standard SQL *generation* unchanged from [TomStandardSqlDialect];
-/// the `@TomSqlDialect("mariadb")` annotation registers it as the dialect for
-/// the `"mariadb"` data-source type, and `@tomReflector` makes it discoverable
-/// by the reflection-based dialect lookup. Override a fragment method here if a
-/// future MariaDB-specific syntax diverges from the standard.
-@tomReflector
-@TomSqlDialect("mariadb")
+/// It inherits standard SQL *generation* unchanged from
+/// [TomStandardSqlDialect]. Override a fragment method here if a future
+/// MariaDB-specific syntax diverges from the standard.
+///
+/// Nothing looks this class up. A dialect reaches a query because the data
+/// source hands it over — `MariaDbDatasource.sqlDialect` returns an instance of
+/// this class, and everything that renders SQL asks its data source. Driver
+/// discovery is what reflection resolves by type name (`@TomDatasourceDriver`),
+/// and once a driver is chosen its dialect comes with it, so a dialect registry
+/// keyed by the same string would be a second answer to a question already
+/// answered. A dialect for another database therefore arrives as part of that
+/// database's driver, not on its own.
 class MariadbSqlDialect extends TomStandardSqlDialect {
   /// Classifies `TINYINT(1)` as a truth value, everything else as standard.
   ///

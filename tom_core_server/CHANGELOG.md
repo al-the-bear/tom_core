@@ -746,6 +746,37 @@
 
 ### Internal
 
+- **`TomSqlDialect` is removed; a driver owns its dialect (tcinc462).** The
+  annotation bound a `TomStandardSqlDialect` subclass to a data-source type
+  name, for a reflection scan nobody ever wrote: `dataSourceType` had exactly
+  one occurrence in `lib`, its own field declaration. `MariaDbDatasource`
+  returns a `MariadbSqlDialect` directly, so the annotation on that class
+  decided nothing, and a dialect registered for a second database would never
+  have been found.
+
+  Four documents nevertheless described the lookup as the mechanism — the
+  dialect's class dartdoc, the annotation's own dartdoc, `doc/datasources.md`,
+  and the module's completion document — which made the one thing
+  `MariadbSqlDialect` actually contributes (classifying `TINYINT(1)` as a truth
+  value) look like it arrived by registration when it arrives by construction.
+
+  Implementing the scan was the alternative, and it would have been a second
+  answer to a settled question. Reflection already resolves one thing by
+  data-source type name: the *driver*, through `@TomDatasourceDriver`. A driver
+  arrives knowing its dialect and hands it out through `TomDataSource
+  .sqlDialect`, so a registry keyed on the same string could only restate that
+  or contradict it — at the cost of turning a statically checked constructor
+  call into a runtime lookup with a duplicate-registration failure mode. The
+  annotation and the `@tomReflector` that existed only to feed it are gone,
+  and a dialect for another database now ships as part of that database's
+  driver.
+
+  Five tests pin the route that replaces it: both MariaDB drivers render
+  through `MariadbSqlDialect`, a driver hands out one dialect rather than one
+  per call, the `TINYINT(1)` rule is reached *through* `sqlDialect` rather than
+  a hand-built dialect, and no file under `lib/` or `doc/` mentions a dialect
+  lookup by type name again.
+
 - **The plain `endTransaction` says what it is instead of looking unfinished
   (tcinc451).** `MariaDbDatasource.endTransaction` was a `try` block whose only
   live statement was `return true`, wrapped around a commented-out `await

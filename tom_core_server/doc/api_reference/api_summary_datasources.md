@@ -27,7 +27,6 @@ repositories on top of this layer.
   - [The SQL Dialect](#the-sql-dialect)
     - [TomStandardSqlDialect](#tomstandardsqldialect)
     - [MariadbSqlDialect](#mariadbsqldialect)
-    - [TomSqlDialect](#tomsqldialect)
   - [Persistence Metadata](#persistence-metadata)
     - [TomTypePersistenceInfo](#tomtypepersistenceinfo)
     - [TomTypedPersistenceBase](#tomtypedpersistencebase)
@@ -104,7 +103,6 @@ TomOperator<R>
 TomStandardSqlDialect
     └── MariadbSqlDialect
 
-TomSqlDialect  (annotation)
 TomDatasourceDriver  (annotation)
 
 TomTypedPersistenceBase
@@ -416,10 +414,11 @@ removes groups after it. ANDing them upstream would change the meaning of both.
 #### MariadbSqlDialect
 
 The SQL dialect for MariaDB. Inherits standard SQL *generation* unchanged from
-`TomStandardSqlDialect`; the `@TomSqlDialect("mariadb")` annotation registers it
-for the `"mariadb"` data-source type and `@tomReflector` makes it discoverable.
-Its one override is `typeFamily`, which classifies `TINYINT(1)` as
-`TomSqlTypeFamily.boolean` — MariaDB has no distinct boolean storage, so calling
+`TomStandardSqlDialect`. Nothing looks it up: a query reaches it because
+`MariaDbDatasource.sqlDialect` returns it, and reflection resolves the *driver*
+by type name, not the dialect. Its one override is `typeFamily`, which
+classifies `TINYINT(1)` as `TomSqlTypeFamily.boolean` — MariaDB has no
+distinct boolean storage, so calling
 it an integer would report every boolean column of every migration as a type
 divergence.
 
@@ -441,23 +440,6 @@ This is the shape a driver's own dialect should copy: recognise the cases the
 database spells differently, then `return super.typeFamily(sqlType)`. Restating
 the standard names in the override would mean a name added to the base list
 never reaches the subclass.
-
-#### TomSqlDialect
-
-Annotation marking a `TomStandardSqlDialect` subclass as the dialect for a named
-`dataSourceType`, used by reflection-based dialect discovery.
-
-##### Constructors
-
-```dart
-const TomSqlDialect(String dataSourceType)
-```
-
-##### Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `dataSourceType` | `String` | The data-source type this dialect serves (matches a driver's `type`). |
 
 ### Persistence Metadata
 

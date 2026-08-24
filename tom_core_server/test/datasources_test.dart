@@ -1583,4 +1583,62 @@ void main() {
       },
     );
   });
+
+  group('a driver owns its dialect', () {
+    test('the MariaDB driver renders through the MariaDB dialect', () {
+      expect(MariaDbDatasource().sqlDialect, isA<MariadbSqlDialect>());
+    });
+
+    test('the XA driver renders through the same dialect', () {
+      expect(MariaDbXADatasource().sqlDialect, isA<MariadbSqlDialect>());
+    });
+
+    test('a driver hands out one dialect, not one per call', () {
+      final ds = MariaDbDatasource();
+      expect(ds.sqlDialect, same(ds.sqlDialect));
+    });
+
+    test("MariaDB's TINYINT(1) rule arrives through that route", () {
+      // The override that makes `TINYINT(1)` a truth value is the one thing
+      // the MariaDB dialect adds, and reaching it is the whole reason a data
+      // source exposes a dialect at all. Asserted *through* `sqlDialect`
+      // rather than on a hand-built `MariadbSqlDialect`, because a direct
+      // construction would pass even if a driver started handing out the
+      // standard dialect instead.
+      final dialect = MariaDbDatasource().sqlDialect;
+      expect(dialect.typeFamily('TINYINT(1)'), TomSqlTypeFamily.boolean);
+      expect(dialect.typeFamily('TINYINT(4)'), TomSqlTypeFamily.integer);
+    });
+
+    test('no shipped source or guide describes a dialect lookup by type', () {
+      // `TomSqlDialect` was an annotation binding a dialect class to a
+      // data-source type name, for a reflection scan that was never written.
+      // Nothing read it, so a dialect annotated for a second type could not
+      // have been found; the MariaDB dialect was reached only because the
+      // driver constructs that exact class. Four documents nevertheless
+      // described the scan as the mechanism.
+      //
+      // The name is guarded rather than merely removed because the claim
+      // outlived the code by a wide margin, and because the route that does
+      // exist — a driver returning its own dialect — needs no registry. A
+      // future dialect arrives with its own driver. Re-introducing the lookup
+      // is a decision, and this test is where it has to be argued.
+      final claims = <String>[];
+      for (final directory in [Directory('lib'), Directory('doc')]) {
+        for (final entry in directory.listSync(recursive: true)) {
+          if (entry is! File) continue;
+          if (!entry.path.endsWith('.dart') && !entry.path.endsWith('.md')) {
+            continue;
+          }
+          final lines = entry.readAsLinesSync();
+          for (var i = 0; i < lines.length; i++) {
+            if (RegExp(r'(?<!Standard)\bTomSqlDialect\b').hasMatch(lines[i])) {
+              claims.add('${entry.path}:${i + 1}');
+            }
+          }
+        }
+      }
+      expect(claims, isEmpty);
+    });
+  });
 }
