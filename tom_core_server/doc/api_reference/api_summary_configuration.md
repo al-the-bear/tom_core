@@ -127,6 +127,29 @@ TomBaseServerConfiguration(List<String> args)
 | `jwtRsaPubKey` | `String?` | JWT RSA public key. |
 | `jwtRsaPrivKey` | `String?` | JWT RSA private key. |
 | `jwtSharedSecretKey` | `String?` | JWT shared-secret passphrase (default `"config-secret-passphrase"`; currently not in use). |
+| `authServerLoginUri` | `String?` | Absolute URI of the auth server's login endpoint, e.g. `https://auth.example.com/auth/login`; `null` or blank disables server self-login (default `null`). |
+| `serviceAccountName` | `String?` | Login name of this deployment's service account; `null` or blank disables server self-login (default `null`). |
+| `serviceAccountCredential` | `String?` | The service account's secret — **secret-bearing**: declared here so the shape and source key are known, but never authored; supplied out-of-band at deploy time (default `null`). |
+| `serviceAccountOrganization` | `String?` | Organization presented with the deployment's own login; `null` for a single-tenant deployment (default `null`). |
+| `serviceAccountApplication` | `String?` | Application the deployment logs into; `null` when the auth server does not scope service logins by application (default `null`). |
+| `serviceAccountProcess` | `String?` | Process (a sub-context of `serviceAccountApplication`) the deployment logs into; `null` when unscoped (default `null`). |
+| `serviceAccountClient` | `String?` | Client identifier the deployment's own login originates from; `null` when the auth server does not scope service logins by client (default `null`). |
+| `smtpHost` | `String?` | The mail server's host name; `null` or blank means this deployment sends no mail (default `null`). |
+| `smtpPort` | `int` | The mail server's port. `0` is the "unconfigured" sentinel — as with `port` — letting the transport pick the default that goes with `smtpSecurity`: 25, 587 or 465 (default `0`). |
+| `smtpSecurity` | `String` | How the connection is secured: `none`, `startTls` or `implicitTls`. An unrecognised value falls back to `startTls`, so a typo fails closed rather than sending the password in the clear (default `'startTls'`). |
+| `smtpUsername` | `String?` | The login name presented to the mail server; `null` or blank for an unauthenticated relay (default `null`). |
+| `smtpPassword` | `String?` | The mail server password — **secret-bearing**: declared here, never authored, supplied out-of-band. Setting `smtpUsername` without it is rejected when the settings are built, so the omission surfaces at startup rather than as a `535` on the first notification (default `null`). |
+| `smtpFromAddress` | `String?` | The address mail is sent from when a message does not name its own; effectively mandatory for any deployment that actually sends, since most relays require an envelope sender they are authorised for (default `null`). |
+| `smtpFromName` | `String?` | The display name shown beside `smtpFromAddress`; `null` sends the bare address (default `null`). |
+| `smtpClientName` | `String` | The name announced in `EHLO`; some relays check that it resolves (default `'localhost'`). |
+| `smtpAllowInsecureCertificate` | `bool` | Whether to accept a mail server certificate that does not validate. It exists because self-signed certificates are common on internal relays, and a developer who cannot turn this on will set `smtpSecurity` to `none` instead — strictly worse, since that sends `smtpPassword` in the clear (default `false`). |
+| `smsEndpoint` | `String?` | The gateway's submit URL; `null` or blank means this deployment sends no SMS. Must be `http` or `https`, checked when the settings are built, so a typo surfaces at startup rather than as an unroutable request (default `null`). |
+| `smsApiKey` | `String?` | The gateway credential — **secret-bearing**: declared here, never authored, supplied out-of-band exactly as `smtpPassword` is (default `null`). |
+| `smsApiSecret` | `String?` | The second half of a two-part gateway credential — **secret-bearing**. Required only by `smsAuthScheme` `basic`, where `smsApiKey` is the user and this is the password; single-token gateways leave it unset (default `null`). |
+| `smsSenderId` | `String?` | The sender shown to the recipient — a short code, a long number, or an alphanumeric sender id where the destination country permits one. A message may override it via `TomMessage.metadata` (default `null`). |
+| `smsAuthScheme` | `String` | How the credential is presented: `none`, `bearer` or `basic`. An unrecognised value falls back to `bearer`, whose worst outcome is a `401` rather than a credential in the clear. Gateways wanting the key in the payload use `none` (default `'bearer'`). |
+| `smsTimeoutSeconds` | `int` | How long to wait for the gateway before treating the attempt as deferred. A timeout is transient — the message may have been accepted — so the attempt is retried and deduplicated by message id (default `30`). |
+| `smsMaxSegments` | `int` | The most segments a single message may occupy, or `0` for no cap. Over the cap fails *permanently* at send: a message too long now is too long on the retry (default `3`). |
 | `host` | `String` | Bind host; empty makes `TomServer.start` listen on `InternetAddress.anyIPv4` (default `""`). |
 | `isolateCount` | `int` | Number of worker isolates (default `10`). |
 | `authenticationMiddleware` | `Middleware?` | Optional authentication middleware. |
@@ -139,6 +162,27 @@ TomBaseServerConfiguration(List<String> args)
 | `logLevelExceptions` | `String` | Log level for exceptions (default `""`). |
 | `logLevel` | `String` | Global log level (default `""`). |
 | `databaseMigrationsDirectory` | `String` | Directory of database migrations (default `"./database_migrations"`). |
+
+Three of the blocks above are whole subsystems that are **off until
+configured**, and each names one field that switches it on:
+
+| Unset field | Effect |
+| ----------- | ------ |
+| `authServerLoginUri` or `serviceAccountName` | The deployment never logs itself in and runs **uncapped** — its own grants do not cap its users', which is how every server behaved before server-as-principal existed. |
+| `smtpHost` | The deployment sends no mail; the messaging module registers a no-op transport rather than failing to start. |
+| `smsEndpoint` | The deployment sends no SMS, answered the same way. |
+
+Unset means *disabled*, not *misconfigured*: a test run, a local build and a CI
+job all want a server that composes messages and never delivers them. A field
+that is **set but unusable** is the opposite case and throws when the settings
+are built — someone meant to send.
+
+Four fields are **secret-bearing**: `serviceAccountCredential`, `smtpPassword`,
+`smsApiKey` and `smsApiSecret`, under the same rule as `privateKey` and the JWT
+keys. Their *declaration* lives here so the shape and the source key are known;
+their **value is never authored**. It is supplied out-of-band at deploy time
+through the ordinary precedence chain — OS environment, `.env`, or command line
+— and must never be written into a spec or a checked-in configuration tree.
 
 #### Methods
 

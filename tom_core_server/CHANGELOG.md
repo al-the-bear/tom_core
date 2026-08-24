@@ -113,6 +113,31 @@
 
 ### Documentation
 
+- **The configuration mirror lists all 48 settings, not 25 (tcinc431).**
+  `TomBaseServerConfiguration` declares 48 fields; the Properties table in
+  `doc/api_reference/api_summary_configuration.md` listed 25. The 23 absent ones
+  were not scattered — they were three whole blocks: server self-login
+  (`authServerLoginUri` and the six `serviceAccount*` fields), outbound mail
+  (the nine `smtp*` fields) and outbound SMS (the seven `sms*` fields). Each
+  block had been added to the class with its dartdoc and never mirrored, so the
+  page a deployer reads to find out what can be configured omitted every
+  messaging and self-login setting the server has, four of them secret-bearing.
+
+  All 23 now have a row, in declaration order, with type, default and a
+  one-line description. Two rules that no single row can carry follow the
+  table: the three fields that switch a whole subsystem on
+  (`authServerLoginUri` / `serviceAccountName`, `smtpHost`, `smsEndpoint`) and
+  what leaving each unset means — *disabled*, not misconfigured, since a test
+  run wants a server that composes messages and never delivers them — and the
+  four secret-bearing fields, whose declaration belongs here and whose value is
+  never authored.
+
+  `test/api_reference_coverage_test.dart` now censuses the table against the
+  class in both directions and in source order, so the next field added to
+  `base_server_configuration.dart` fails a test until it has a row. The same
+  check for the other Properties tables in `doc/api_reference/` is quest todo
+  `tcincb105_ahxi`.
+
 - **The API mirror now states what `TomEnvFile`'s `.env` features do
   (tcinc427).** `doc/api_reference/api_summary_cmdline.md` reproduced all five
   signatures and said the class supports "comments, empty lines, quoted values,
