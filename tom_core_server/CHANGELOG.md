@@ -215,6 +215,37 @@
 
 ### Documentation
 
+- **The commented-out logging middleware is now documented rather than
+  commented out (tcinc444).** `TomBaseServerConfiguration.loggingMiddleware`
+  was initialised to `tomLoggingMiddleware()` and immediately followed by a
+  block comment holding a disabled `logRequests(logger: …)` call. Commented-out
+  code in an exported library file reads as one of three things — the shape the
+  live default replaced, an alternative a deployment might want, or a leftover
+  — and nothing distinguished them.
+
+  It is the second: activating the block compiles and runs, because `shelf` is
+  already imported and `logRequests` is a `Middleware` of exactly the same
+  shape. So deleting it silently would have discarded a real choice. The field
+  now carries dartdoc that names the alternative, shows it as a code sample,
+  and states the cost. Shelf's middleware adds request timing, which the
+  default does not report, but it reads nothing from the request context and so
+  honours neither guard the default exists for: `shouldBeLogged` — which the
+  endpoint pipeline sets from each endpoint's `logRequests` flag, and which is
+  how `TomHealthService` keeps a `/health` probe arriving every few seconds out
+  of the log — and `hasBeenLogged`, without which a retried request logs once
+  per pass. A third difference is not about the context at all: shelf's version
+  also logs the error path and rethrows, while this layer sits inside
+  `_handleError`, which already logs the error and its stack trace, so every
+  failed request would be reported twice. The same trade-off is now in
+  `doc/server.md` under *Extending the Pipeline* and in both API summaries.
+
+  A test pins the half that was unasserted: `shouldBeLogged: false` emits
+  nothing. The two pre-existing `tomLoggingMiddleware` tests covered the
+  one-shot guard but never the opt-out, so the property that makes shelf's
+  middleware unusable as a drop-in was the one property nothing checked.
+  Verified by removing the `shouldBeLogged` clause, which turns the new test
+  red while both old ones stay green. No behaviour changed.
+
 - **`TomYaml`'s throw on a missing file is now documented (tcinc441).** Both
   entry points read the file with no existence check, so an absent path
   surfaces as a `PathNotFoundException` — and nothing said so, while the

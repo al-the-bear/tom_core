@@ -168,7 +168,7 @@ runs after it so a merged key spelled `args` cannot displace the invocation.
 | `authenticationErrorHandler` | `Response? Function(Request, Object, StackTrace)?` | Optional authentication error handler. |
 | `preExecutionHandler` | `Handler?` | Optional handler run before execution. |
 | `postExecutionHandler` | `Handler?` | Optional handler run after execution. |
-| `loggingMiddleware` | `Middleware` | Request-logging middleware (default `tomLoggingMiddleware()`). |
+| `loggingMiddleware` | `Middleware` | Request-logging middleware (default `tomLoggingMiddleware()`). Shelf's `logRequests()` drops in unchanged and adds timing, but reads nothing from the request context, so it honours neither `shouldBeLogged` (the `logRequests: false` opt-out that keeps `/health` probes out of the log) nor `hasBeenLogged`. |
 | `isolateLogging` | `bool` | Whether isolate logging is enabled (default `true`). |
 | `logLevelExceptions` | `String` | Log level for exceptions (default `""`). |
 | `logLevel` | `String` | Global log level (default `""`). |

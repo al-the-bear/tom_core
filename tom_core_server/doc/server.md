@@ -99,6 +99,12 @@ Provide `TomBaseServerConfiguration.errorHandler` /
 - **Authentication** — set `authenticationMiddleware` on the configuration to
   replace `tomDefaultAuthenticationMiddleware`.
 - **Logging** — set `loggingMiddleware` (defaults to `tomLoggingMiddleware`).
+  Shelf's own `logRequests()` drops in unchanged and adds request timing, which
+  the default does not report. It reads nothing from the request context,
+  though, so it honours neither guard: every endpoint that opted out with
+  `logRequests: false` — `/health` above all — starts logging again, and a
+  retried request logs once per pass. Take it when timing matters more than the
+  opt-out.
 - **Pre/post handlers** — set `preExecutionHandler` / `postExecutionHandler` to
   cascade handlers around the router (e.g. static assets, fallbacks).
 - **Errors** — set `errorHandler` / `authenticationErrorHandler`.

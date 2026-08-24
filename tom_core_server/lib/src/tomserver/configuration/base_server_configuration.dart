@@ -471,12 +471,42 @@ utj3flRQDLaDAl91lySpAjUp9aM8
 
   Handler? postExecutionHandler;
 
+  /// The middleware that emits the per-request access-log line.
+  ///
+  /// Installed as the innermost layer of [TomServer.start]'s pipeline, so it
+  /// sees the response the router produced. The default,
+  /// [tomLoggingMiddleware], emits one line per request but only when the
+  /// request's [TomRequestLogInfo.shouldBeLogged] is set and it has not already
+  /// been logged.
+  ///
+  /// Shelf's own `logRequests()` is the obvious alternative and drops in
+  /// unchanged — it is a `Middleware` of the same shape and adds request
+  /// timing, which the default does not report:
+  ///
+  /// ```dart
+  /// loggingMiddleware = logRequests(
+  ///   logger: (String s, bool error) =>
+  ///       error ? tomLog.error(s) : tomLog.info(s),
+  /// );
+  /// ```
+  ///
+  /// It is **not** the default because it reads nothing from the request
+  /// context, so it can honour neither guard. The consequential one is
+  /// `shouldBeLogged`: the endpoint pipeline copies each endpoint's
+  /// `logRequests` flag onto it, which is how [TomHealthService] keeps a
+  /// `/health` probe arriving every few seconds out of the log. Substituting
+  /// shelf's middleware silently re-enables the line for every endpoint that
+  /// opted out. `hasBeenLogged` likewise stops being honoured, so a retried or
+  /// re-entered request logs once per pass.
+  ///
+  /// It also logs the *error* path, which this layer deliberately does not: it
+  /// sits inside `_handleError`, which already logs the error and its stack
+  /// trace, so shelf's middleware reports every failed request twice.
+  ///
+  /// Choose it when timing matters more than the opt-out — a load test, or a
+  /// deployment with no suppressed endpoints — and expect health-probe noise
+  /// and doubled error reports.
   Middleware loggingMiddleware = tomLoggingMiddleware();
-  /*
-  logRequests( logger:
-      (String s, bool error) => error ? tomLog.error(s) : tomLog.info(s)
-  );
-   */
 
   bool isolateLogging = true;
 

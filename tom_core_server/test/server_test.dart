@@ -137,6 +137,28 @@ void main() {
       expect((await handler(request)).statusCode, 200);
       expect(info.hasBeenLogged, isTrue);
     });
+
+    test('emits nothing when shouldBeLogged is false', () async {
+      // This is the opt-out an endpoint buys with `logRequests: false`: the
+      // pipeline copies that flag onto TomRequestLogInfo.shouldBeLogged, and
+      // TomHealthService uses it so an orchestrator probing /health every few
+      // seconds does not bury the log. Asserted through hasBeenLogged rather
+      // than by capturing output, because the middleware only sets that flag on
+      // the branch that also emits -- so the flag staying false *is* the
+      // suppression, and the two cannot drift apart.
+      //
+      // This is the property that shelf's own logRequests cannot honour: it
+      // never sees the request context, so it would log all of these. It is
+      // why the alternative documented on
+      // TomBaseServerConfiguration.loggingMiddleware is not the default.
+      final info = TomRequestLogInfo()..shouldBeLogged = false;
+      final request = _get().change(
+        context: {TomRequestLogInfo.contextName: info},
+      );
+      final handler = tomLoggingMiddleware()((req) => Response.ok('ok'));
+      expect((await handler(request)).statusCode, 200);
+      expect(info.hasBeenLogged, isFalse);
+    });
   });
 
   group('tomDefaultAuthenticationMiddleware', () {
