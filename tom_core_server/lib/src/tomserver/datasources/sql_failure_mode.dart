@@ -71,6 +71,31 @@ TomSqlFailureMode classifySqlFailure(Object? error) {
   return TomSqlFailureMode.ambiguous;
 }
 
+/// Whether [error] left the statement without a live server to have run on, so
+/// that reconnecting and trying once more is worth doing.
+///
+/// [connected] is the driver's own view of the link when the failure was caught
+/// (`MySQLConnection.connected`, and so `MariaDbDatasource.connected`). It is
+/// the load-bearing half, because the exception on its own cannot answer this:
+/// the driver reports a link it already knows is gone as a bare
+/// [MySQLClientException] with no error code, and raises that same type for a
+/// protocol desync, a second `BEGIN` and a failed handshake. Matching the type
+/// would retry failures a second attempt cannot fix; matching the *message*
+/// binds this decision to the wording of a third-party `toString`, which no
+/// contract holds still. Every "connection closed" the driver throws sits
+/// behind its own `!connected` guard, so the flag recognises exactly those —
+/// by documented API.
+///
+/// The chain is still consulted, for the opposite case. A
+/// [MySQLServerException] anywhere beneath [error] means the server received
+/// the statement and rejected it, and that verdict stands however the link
+/// looks afterwards — retrying would re-run a statement the server has
+/// already judged, and for a write, one whose effect is unknown. That is the
+/// same reading of the same evidence as [classifySqlFailure], so it is asked
+/// rather than repeated.
+bool isLostConnectionFailure(Object? error, {required bool connected}) =>
+    !connected && classifySqlFailure(error) == TomSqlFailureMode.ambiguous;
+
 /// [error] and every `rootException` beneath it, outermost first.
 ///
 /// Exposed because a caller that has decided a failure is ambiguous usually

@@ -930,6 +930,45 @@
 
 ### Behaviour Changes
 
+- **A dropped connection is recognised by the link's state, not by the wording
+  of an exception (tcinc457).** `MariadbPreparedStatement._execute` decided
+  whether a failure was worth one reconnect-and-retry with
+  `"$e".contains("connection closed")` — it stringified a third-party
+  exception and searched for a phrase. Nothing holds that wording still; a
+  dependency bump could turn the retry off silently, with no compile error and
+  no failing test.
+
+  The obvious replacement — match the driver's exception type — would have
+  been a regression, and the new tests say so. `mysql_client` reports a link it
+  already knows is gone as a bare `MySQLClientException` carrying **no error
+  code**, and raises that *same type* for a protocol desync, a second `BEGIN`
+  and a failed handshake. Retrying those re-runs a statement that a second
+  attempt cannot fix.
+
+  What actually distinguishes them is the link, and the driver publishes it:
+  every "connection closed" it throws sits behind its own `!connected` guard,
+  so `MySQLConnection.connected` recognises exactly those cases by documented
+  API. The new `isLostConnectionFailure(error, connected:)` in
+  `sql_failure_mode.dart` requires that *and*
+  `classifySqlFailure(error) == ambiguous`, because a `MySQLServerException`
+  beneath the failure means the server received the statement and rejected
+  it — a verdict that stands however the link looks afterwards. The same
+  file's existing classifier is asked rather than repeated. `MariaDbDatasource`
+  already used `connection.connected` for this question in two other places
+  (`executeQuery`, `isOperational`); the prepared-statement path was the one
+  that read prose instead.
+
+  Two consequences worth naming. The check is now marginally *broader* — a
+  failure of any type raised while the link is down is retried, where before
+  only one phrase was — and that is the correct direction: reconnect-and-retry
+  is exactly the right response to a statement that had no live link. And both
+  branches of the mapper now attach the driver exception as `rootException`
+  with its stack, which they did not before. That was its own defect:
+  `sqlFailureCauses` and `classifySqlFailure` are documented to walk that
+  chain, so a chain ending at this layer made every prepared-statement failure
+  look `ambiguous` to a caller that asked. `executeCommand` had always attached
+  it; this path had not.
+
 - **`@TomReference` resolution is separated from the connection, and is now
   tested (tcinc456).** Two private helpers in `mariadb_datasource.dart` were the
   largest block in the file and read like abandoned scaffolding.

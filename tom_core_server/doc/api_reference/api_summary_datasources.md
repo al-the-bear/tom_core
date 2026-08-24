@@ -1057,8 +1057,11 @@ MariadbDatasourceException(
 
 #### MariadbPreparedStatementException
 
-Thrown when a MariaDB prepared statement fails (e.g. a closed connection),
-signalling that a single reconnect-and-retry may recover it.
+Thrown when a MariaDB prepared statement failed with no live link to have run
+on, signalling that a single reconnect-and-retry may recover it. The type
+carries the whole signal — `MariadbPreparedStatement.execute` catches this and
+nothing else — and which failures qualify is settled by
+`isLostConnectionFailure`.
 
 - **Extends:** `TomServerException`
 
@@ -1127,6 +1130,7 @@ Fails](../datasources.md#when-a-write-fails).
 | -------- | --------- | ----------- |
 | `classifySqlFailure` | `TomSqlFailureMode classifySqlFailure(Object? error)` | Classifies the failure of a data-source write: `definite` when the chain contains a `MySQLServerException` (the server received the statement and rejected it), `ambiguous` for everything else. |
 | `sqlFailureCauses` | `Iterable<Object> sqlFailureCauses(Object? error)` | `error` and every `rootException` beneath it, outermost first — exposed so a caller that has decided a failure is ambiguous can name the driver exception several wrappers down. |
+| `isLostConnectionFailure` | `bool isLostConnectionFailure(Object? error, {required bool connected})` | Whether the statement was left with no live link to have run on, so one reconnect-and-retry is worth it: true when `connected` is false *and* the chain holds no `MySQLServerException`. Drives `MariadbPreparedStatement.execute`'s single retry. |
 
 `SqlString` (in `sql_dialects.dart`) is a typedef alias for `String` that
 documents "this is a SQL fragment" at call sites.

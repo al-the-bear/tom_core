@@ -10,6 +10,7 @@ import '../object_persistence/annotation_analyzer.dart';
 
 import 'mariadb_sql_dialect.dart';
 import 'sql_dialects.dart';
+import 'sql_failure_mode.dart';
 import 'sql_instant.dart';
 import 'sql_placeholder_scan.dart';
 import 'datasource_initialization.dart';
@@ -30,8 +31,12 @@ class MariadbDatasourceException extends TomServerException {
   });
 }
 
-/// Thrown when a MariaDB prepared statement fails (e.g. a closed connection),
-/// signalling that a single reconnect-and-retry may recover it.
+/// Thrown when a MariaDB prepared statement failed with no live link to have
+/// run on, signalling that a single reconnect-and-retry may recover it.
+///
+/// The type carries the whole signal: [MariadbPreparedStatement.execute]
+/// catches this and nothing else, so raising it *is* the decision to retry.
+/// Which failures qualify is settled by `isLostConnectionFailure`.
 class MariadbPreparedStatementException extends TomServerException {
   /// Creates the exception with a message [key] and [defaultUserMessage]; the
   /// remaining parameters mirror [TomServerException].
@@ -205,10 +210,15 @@ class MariadbPreparedStatement<T extends Object>
       () async => await preparedStmt.execute(parameters),
       (e, StackTrace s) {
         tomLog.warn("Error when executing SQL: $e");
-        if ("$e".contains("connection closed")) {
+        // The exception type this returns *is* the retry signal: [execute]
+        // catches MariadbPreparedStatementException and nothing else.
+        if (isLostConnectionFailure(e, connected: datasource.connected)) {
           return MariadbPreparedStatementException(
             "error.failed-to-execute.connection_closed",
             "MariadbPreparedStatement: connection closed",
+            parameters: {...?params, "type": resultType},
+            rootException: e,
+            stack: s,
           );
         }
         return MariadbDatasourceException(
@@ -219,6 +229,8 @@ class MariadbPreparedStatement<T extends Object>
             "type": resultType,
             "connected": datasource.connected,
           },
+          rootException: e,
+          stack: s,
         );
       },
     );

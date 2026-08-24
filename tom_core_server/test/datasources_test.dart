@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -642,6 +644,139 @@ void main() {
       expect(
         MariadbPreparedStatement.normalizeGeneratedId(BigInt.zero),
         isNull,
+      );
+    });
+  });
+
+  group('isLostConnectionFailure (the prepared-statement retry decision)', () {
+    // MariadbPreparedStatement.execute retries once, on a fresh connection,
+    // when _execute raises MariadbPreparedStatementException. Which failures
+    // earn that used to be decided by "$e".contains("connection closed") —
+    // the wording of a third-party toString, which no contract holds still.
+    //
+    // The driver gives nothing better to match on directly: it reports a link
+    // it already knows is gone as a bare MySQLClientException with no error
+    // code, and raises that same type for a protocol desync, a second BEGIN and
+    // a failed handshake. So the type alone is not the answer either — the
+    // question is answered by the link state, which every one of those
+    // "connection closed" throws sits behind, and which the driver exposes as
+    // documented API.
+    //
+    // The statement itself cannot be built here (PreparedStmt's constructor is
+    // private, so it needs a live connection), which is exactly why the
+    // decision lives in a predicate and not in the mapper closure.
+
+    test('a link the driver reports as down is retried', () {
+      expect(
+        isLostConnectionFailure(
+          MySQLClientException(
+            'Can not execute prepared stmt: '
+            'connection closed',
+          ),
+          connected: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('the wording of the message plays no part', () {
+      // The point of the change: a driver that renames its message, or a
+      // failure that never mentions a connection at all, is classified the
+      // same way — by the link, not by the prose.
+      expect(
+        isLostConnectionFailure(
+          MySQLClientException('socket gone west'),
+          connected: false,
+        ),
+        isTrue,
+      );
+      expect(
+        isLostConnectionFailure(
+          MySQLClientException('connection closed'),
+          connected: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('a failure on a live link is not retried', () {
+      // MySQLClientException is also how the driver reports a protocol desync
+      // and a double BEGIN. Reconnecting cannot fix those, and retrying
+      // re-runs the statement — so matching the type alone would be a
+      // regression, not a repair.
+      expect(
+        isLostConnectionFailure(
+          MySQLProtocolException('bad packet'),
+          connected: true,
+        ),
+        isFalse,
+      );
+      expect(
+        isLostConnectionFailure(
+          MySQLClientException('Already in transaction'),
+          connected: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('a server answer is never retried, even with the link down', () {
+      // The server received the statement and rejected it. That verdict stands
+      // however the link looks afterwards, and a retry would re-run a statement
+      // the server has already judged.
+      expect(
+        isLostConnectionFailure(
+          MySQLServerException('duplicate key', 1062),
+          connected: false,
+        ),
+        isFalse,
+      );
+    });
+
+    test('the server answer is found through the wrapping', () {
+      // The driver's exception reaches the decision inside this layer's own
+      // exception, so a check that only read the top of the chain would retry a
+      // rejected statement whenever the link had since dropped.
+      expect(
+        isLostConnectionFailure(
+          MariadbDatasourceException(
+            'error.failed-to-execute.exception',
+            'wrapped',
+            rootException: MySQLServerException('duplicate key', 1062),
+          ),
+          connected: false,
+        ),
+        isFalse,
+      );
+      expect(
+        isLostConnectionFailure(
+          MariadbDatasourceException(
+            'error.failed-to-execute.exception',
+            'wrapped',
+            rootException: MySQLClientException('connection closed'),
+          ),
+          connected: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('an unrecognised failure follows the link state', () {
+      // Nothing in the chain says the server answered, so the link decides.
+      expect(
+        isLostConnectionFailure(
+          const SocketException('reset by peer'),
+          connected: false,
+        ),
+        isTrue,
+      );
+      expect(isLostConnectionFailure(null, connected: false), isTrue);
+      expect(
+        isLostConnectionFailure(
+          StateError('nothing to do with it'),
+          connected: true,
+        ),
+        isFalse,
       );
     });
   });

@@ -39,6 +39,7 @@ layer.
 | `TomSqlDialect` | annotation | Binds a dialect subclass to a data-source type |
 | `TomSqlFailureMode` | enum | Whether a failed write is known not to have happened (`definite`) or unknown (`ambiguous`) |
 | `classifySqlFailure` / `sqlFailureCauses` | function | Classifies a write failure, and walks the `rootException` chain it reads |
+| `isLostConnectionFailure` | function | Whether a failure left no live link to have run on, so one reconnect-and-retry is worth it |
 | `TomQuery` / `TomGeneratedQuery` | abstract class | A query over a set of entity types |
 | `TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect` | class | Concrete statements |
 | `TomTypePersistenceInfo` | reflected class | Per-type persistence metadata (table + columns) |
@@ -386,6 +387,29 @@ The scheduler's job store is the module that needs all of this; see
 [`scheduling.md`](scheduling.md#when-the-answer-to-a-claim-is-lost) for the
 claim path that consumes it.
 
+### Deciding whether to retry
+
+`isLostConnectionFailure(Object? error, {required bool connected})` answers a
+neighbouring but distinct question: not *did the write happen*, but *is there
+any point trying again*. `MariadbPreparedStatement.execute` uses it for its one
+reconnect-and-retry.
+
+It is `true` when both halves hold:
+
+| Half | Reads | Why it is needed |
+| ---- | ----- | ---------------- |
+| `!connected` | The driver's own `MySQLConnection.connected` at the moment the failure was caught | The exception alone cannot say. The driver reports a link it knows is gone as a bare `MySQLClientException` carrying no error code, and raises that *same type* for a protocol desync, a second `BEGIN` and a failed handshake — so the type would retry failures a second attempt cannot fix. Every "connection closed" the driver throws sits behind its own `!connected` guard, so the flag recognises exactly those. |
+| `classifySqlFailure(error) == ambiguous` | The `rootException` chain | A `MySQLServerException` anywhere beneath means the server received the statement and rejected it. That verdict stands however the link looks afterwards, and retrying would re-run a statement the server has already judged — for a write, one whose effect is unknown. |
+
+Neither half is matched against message text. Binding a retry to the wording of
+a third-party `toString` makes the driver's behaviour change on a dependency
+bump, silently and with no compile error.
+
+Because the type returned *is* the signal — `execute` catches
+`MariadbPreparedStatementException` and nothing else — both branches of the
+mapper attach the driver exception as `rootException`. Without it the chain ends
+at this layer and `classifySqlFailure` can never reach the server's own verdict.
+
 ## The MariaDB Driver
 
 `MariaDbDatasource` (`@TomDatasourceDriver("mariadb")`) connects to MariaDB /
@@ -491,6 +515,10 @@ would have to name never began.
   a failed write is known not to have happened or merely unknown. Ambiguous is
   the default because the set of transport failures is open-ended and the set of
   "the server answered" is not.
+- **`isLostConnectionFailure`** — whether a reconnect-and-retry is worth one
+  attempt, from the link state plus the cause chain. Deliberately not from the
+  exception's message text, and deliberately not from its type alone: the driver
+  raises one un-coded type for both a dropped link and a protocol desync.
 - **`TomAggregateFunction`** and the aggregate fragments (`aggregate`,
   `aliased`, `groupByClause`, `havingClause`) — the whole SQL surface a grouped
   query renders through.
