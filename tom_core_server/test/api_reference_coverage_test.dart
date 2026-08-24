@@ -128,8 +128,8 @@
 /// way, because there is nothing in the source that contradicts it — the
 /// absence it asserts looks exactly like an absence that is intended.
 ///
-/// What can be checked is where the claim lives. Ten guides collect what they
-/// have not done under `## Not Yet Implemented`, and `doc/authentication.md`
+/// What can be checked is where the claim lives. Eleven guides collect what
+/// they have not done under `## Not Yet Implemented`, and `doc/authentication.md`
 /// under `## Status and Limitations`; those sections are the ones re-read when
 /// work completes. `doc/datasources.md` made its claim in the middle of a
 /// chapter instead — escaping of interpolated literals was "a tracked follow-up
@@ -142,6 +142,17 @@
 /// *to* the section is not a violation — the claim is still in one place — so a
 /// line linking to it is allowed anywhere, as is a fenced block, which may be
 /// quoting code as an example of what not to write.
+///
+/// That leaves the same hole the attribution check had, in the same shape: a
+/// rule about where a claim goes says nothing about a document that makes no
+/// claim, and a guide with no such section has nowhere legal to put one. The
+/// pressure is then to leave the edge out rather than write it down.
+/// `doc/datasources.md` was that document: it described a module that ships one
+/// database driver, declares a `TomDbTime` nothing produces and runs XA with no
+/// recovery, and mentioned none of the three. Silence reads as "no edges",
+/// which is a stronger claim than any guide in this package can make. So the
+/// per-module half requires the section to exist; eight guides are quarantined
+/// under one quest todo.
 ///
 /// The two groups after it ask a blunter question than anything above: not
 /// whether a documented thing is documented correctly, but whether the document
@@ -1462,13 +1473,37 @@ final RegExp _unfinishedClaim = RegExp(
 
 /// The heading under which a guide collects what it has not done.
 ///
-/// Two spellings, both in use: ten guides say `Not Yet Implemented` and
+/// Two spellings, both in use: eleven guides say `Not Yet Implemented` and
 /// `doc/authentication.md` says `Status and Limitations`. Which word is used
 /// does not matter to this check — what matters is that there is exactly one
 /// place per document where such a claim lives.
 final RegExp _limitationsHeading = RegExp(
   r'^##\s+(?:Not Yet Implemented|Status and Limitations)\s*$',
 );
+
+/// Whether `doc/[module].md` has somewhere to put a claim of unfinished work.
+///
+/// The heading has to be a `##` section of its own, because that is what the
+/// sweep above scopes to and what the table of contents links to. A `###`
+/// sub-heading inside a chapter would read the same to a human and be invisible
+/// to both.
+bool _hasLimitationsSection(String module) =>
+    File('doc/$module.md').readAsLinesSync().any(_limitationsHeading.hasMatch);
+
+/// Guides with no section for what the module has not done.
+///
+/// Surfaced as a `skip:` rather than a filtered list so the gap is visible in
+/// the run. Tracked by quest todo `tcincb126_ahxt`.
+const Set<String> _limitationsPendingSection = {
+  'authorization',
+  'db_migration',
+  'healthcheck',
+  'little_things',
+  'preferences',
+  'resources',
+  'scheduling',
+  'transactions',
+};
 
 /// A link *to* the limitations section, as the table of contents and the
 /// cross-references in the prose both write it.
@@ -2944,6 +2979,63 @@ None — this module exposes no top-level functions or constants.
             'the section ends are not',
       );
       expect(claims.first.text, 'Retry backoff is a tracked follow-up.');
+    });
+
+    for (final module in _modules()) {
+      test(
+        '$module says what it has not done',
+        () {
+          expect(
+            _hasLimitationsSection(module),
+            isTrue,
+            reason:
+                'The check above says a claim of unfinished work must live in '
+                'the limitations section. A guide without one therefore has '
+                'nowhere legal to say it, and the pressure is to leave the '
+                'edge undocumented rather than to write it down: '
+                '`doc/datasources.md` described a module that ships one '
+                'database driver, declares a `TomDbTime` nothing produces and '
+                'runs XA with no recovery, and mentioned none of it. Silence '
+                'reads as "no edges", which is a stronger claim than any of '
+                'these guides can make.',
+          );
+        },
+        skip: _limitationsPendingSection.contains(module)
+            ? 'no limitations section yet — quest todo tcincb126_ahxt.'
+            : null,
+      );
+    }
+
+    test('every quarantined guide is still missing its section', () {
+      final settled = [
+        for (final module in _limitationsPendingSection)
+          if (_hasLimitationsSection(module)) module,
+      ];
+      expect(
+        settled,
+        isEmpty,
+        reason:
+            'a quarantine entry with nothing left to suppress turns a passing '
+            'guide back into an unchecked one; drop it from the set',
+      );
+    });
+
+    test('the heading has to be the section, not a mention of one', () {
+      expect(_limitationsHeading.hasMatch('## Not Yet Implemented'), isTrue);
+      expect(_limitationsHeading.hasMatch('## Status and Limitations'), isTrue);
+      expect(
+        _limitationsHeading.hasMatch('### Not Yet Implemented'),
+        isFalse,
+        reason: 'a sub-heading is inside a chapter, which is what is swept',
+      );
+      expect(
+        _limitationsHeading.hasMatch(
+          '- [Not Yet Implemented](#not-yet-'
+          'implemented)',
+        ),
+        isFalse,
+        reason: 'the table-of-contents entry points at the section',
+      );
     });
   });
 

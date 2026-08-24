@@ -32,6 +32,7 @@ declared.
 - [Framework-Owned Tables](#framework-owned-tables)
 - [Verification](#verification)
 - [Core Components](#core-components)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
 
 ---
@@ -937,6 +938,44 @@ holds that line, failing if `assert(` reappears in the file.
   trail), from which its `CREATE TABLE`, its projections and its inserts are all
   derived. See [Framework-Owned Tables](#framework-owned-tables) and
   [Schema Convergence](db_migration.md#schema-convergence).
+
+## Not Yet Implemented
+
+- **One database, not a family of them.** Both registered drivers are MariaDB —
+  `MariaDbXADatasource` extends `MariaDbDatasource` — so the dialect surface
+  described above has exactly one shipped implementation, and the portability
+  the operator tree exists for has never been exercised against a second
+  engine. A deployment on another database writes its own `TomDataSource`,
+  `TomPreparedStatement` and dialect and registers them with
+  `@TomDatasourceDriver`, as described in
+  [Data Sources and Drivers](#data-sources-and-drivers).
+- **`TomDbTime` is declared but not wired.** The box exists and is exported,
+  and a `TIME` column classifies to `TomSqlTypeFamily.time`, but nothing
+  produces one: the MariaDB read path has no branch for it and falls to
+  `error.result_processing.unknown_type_dbtype_conversion`, and `objectOp`
+  quotes a `TomZonedTime` as its `toString()` rather than dispatching to a time
+  literal. Until the wire format is settled, store a time of day as the
+  `DATETIME(6)` instant it was taken from, or as a `TomDbString` in a format
+  the application owns.
+- **One connection per data source, and no pool.** `MariaDbDatasource` holds a
+  single `MySQLConnection`, so concurrent work on one data source serialises on
+  it, and `delegateTo` gives two logical names the same physical link — which
+  means they share transaction state, and a rollback on one rolls the other one
+  back too. Configure a separate data source for each unit of work that has to
+  commit independently, rather than two names over one connection.
+- **`lastGeneratedId` is optional, and its fallback is session-scoped.**
+  `TomPreparedStatement.lastGeneratedId` defaults to `null` and only the MariaDB
+  statement overrides it; a driver that does not is silently fallen back to a
+  follow-up `SELECT LAST_INSERT_ID()`, which reads the *session's* last value
+  and answers 0 on any other connection. A new driver overrides
+  `lastGeneratedId` and returns the id the insert itself reported.
+- **XA has no recovery.** `MariaDbXADatasource` derives its branch id from a
+  timestamp and keeps it only in memory, and nothing ever issues `XA RECOVER`,
+  so a process that dies between `XA PREPARE` and `XA COMMIT` leaves a prepared
+  branch holding its locks with no id left in the system to resolve it by. An
+  operator lists and resolves such a branch by hand at the server until the
+  driver reconciles them on start-up; the sequence it does issue is under
+  [The MariaDB Driver](#the-mariadb-driver).
 
 ## Dependencies
 

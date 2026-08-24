@@ -303,6 +303,31 @@
 
 ### Documentation
 
+- **`doc/datasources.md` now says what the module has not done (tcinc473).** It
+  described a module that ships exactly one database driver, declares a
+  `TomDbType` nothing produces, holds one connection per data source with no
+  pool, degrades a second driver's generated-key read to a session-scoped
+  `SELECT LAST_INSERT_ID()`, and runs XA with no recovery path — and mentioned
+  none of it. A new `## Not Yet Implemented` section names all five, each with
+  what a caller does instead. Silence about an edge reads as "there is no edge",
+  which is a stronger claim than this module can make.
+
+  Two of the edges the todo listed had already closed and were deliberately not
+  written: the dialect lookup by type no longer exists (a guard test forbids the
+  name in `doc/`), and `TomCount` no longer discards ordering and window
+  arguments — it declines to accept them, with the reasoning in its dartdoc.
+
+  The omission was not local, and it was the mirror of the attribution gap fixed
+  in tcinc472: `test/api_reference_coverage_test.dart` enforced *where* a claim
+  of unfinished work must live, which says nothing about a document that makes
+  none — and a guide with no such section has nowhere legal to put one, so the
+  pressure is to leave the edge out. A per-module test now requires the section
+  to exist. Eight guides fail it today and are quarantined as visible skips
+  under quest todo `tcincb126_ahxt`, with a meta-test that fails when a
+  quarantined guide has gained one. The unwired `TomDbTime` is tracked
+  separately as `tcincb127_ahxt`: it is a feature spanning five files with an
+  unmade wire-format decision, not a documentation defect.
+
 - **A guide now has to name the artefacts that verify it (tcinc472).**
   `doc/datasources.md`'s `## Verification` section already named both suites and
   the `tool/run_db_tests.sh` runner, but not
