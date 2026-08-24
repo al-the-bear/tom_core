@@ -505,8 +505,19 @@ List<String>? _overviewTableTypes(String module) {
 /// may split its types across several tables — `db_migration` uses three, one
 /// per half plus the model they share — and taking only the first would read a
 /// deliberately sectioned document as a truncated one.
-Set<String> _typeTableNames(List<String> markdown) {
-  final names = <String>{};
+Set<String> _typeTableNames(List<String> markdown) =>
+    _typeTableRows(markdown).toSet();
+
+/// The same names as [_typeTableNames], in document order and **keeping
+/// repeats**.
+///
+/// Splitting a type table into groups is what makes a repeat possible: one flat
+/// table shows its own duplicate on the screen, whereas a name added to the
+/// engine group and then to the checks group sits pages apart and reads as two
+/// different types. Collapsing to a set — which every other caller wants — is
+/// exactly what hides that, so the duplicate check needs the list underneath.
+List<String> _typeTableRows(List<String> markdown) {
+  final names = <String>[];
   for (var i = 0; i < markdown.length; i++) {
     if (!markdown[i].startsWith('| Type |')) continue;
     // +2 skips the heading and the `| ---- |` separator beneath it.
@@ -521,6 +532,15 @@ Set<String> _typeTableNames(List<String> markdown) {
   }
   return names;
 }
+
+/// The number of `| Type |` tables [markdown] holds.
+///
+/// A guide that groups its Overview has more than one, and that is the property
+/// [_typeTableRows] exists to read across. Counting them is how the sweep proves
+/// it is reading a grouped document rather than passing because it found one
+/// table and stopped.
+int _typeTableCount(List<String> markdown) =>
+    markdown.where((line) => line.startsWith('| Type |')).length;
 
 /// The type names [module]'s `readme.md` Key types table carries — or `null`
 /// when the module has no readme, or one with no such table.
@@ -2142,6 +2162,54 @@ void main() {
       );
     });
 
+    // The completeness check above unions every row before comparing, so a name
+    // listed twice satisfies it exactly as well as a name listed once. That is
+    // tolerable while an Overview is one table and a reader can see the repeat;
+    // it stops being tolerable once the table is split into groups, because the
+    // whole claim a grouped table makes is that each type belongs *somewhere* —
+    // and a type in two groups says the opposite while looking tidy in both.
+    test('no Overview table lists a name twice', () {
+      final offenders = <String>[];
+      for (final module in _modules()) {
+        final rows = _typeTableRows(File('doc/$module.md').readAsLinesSync());
+        final seen = <String>{};
+        final repeated = rows.where((name) => !seen.add(name)).toSet();
+        if (repeated.isNotEmpty) {
+          offenders.add('$module (${(repeated.toList()..sort()).join(', ')})');
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'These guides give a name more than one Overview row: '
+            '${offenders.join('; ')}. Two rows for one type are two answers to '
+            'the question the table exists to answer, and the reader has no way '
+            'to tell which is current.',
+      );
+    });
+
+    test('the sweep reads every table a grouped Overview splits into', () {
+      // Anti-vacuity, and it needs a real document rather than a fixture: the
+      // multi-table reading is only load-bearing while some guide actually
+      // groups its Overview, and flattening one back would leave every check
+      // above passing on a document that had quietly lost the structure.
+      final lines = File('doc/db_migration.md').readAsLinesSync();
+      expect(
+        _typeTableCount(lines),
+        greaterThan(1),
+        reason:
+            'db_migration.md is the guide whose Overview is split by half. If '
+            'that is deliberately no longer true, move this assertion to '
+            'whichever guide groups instead — do not simply delete it, or '
+            'nothing exercises the multi-table reading against a real document.',
+      );
+      // The union really does span the groups: a name from the last table is
+      // reached, which reading only the first would miss.
+      expect(_overviewTableTypes('db_migration'), contains('TomSqlLexer'));
+      expect(_overviewTableTypes('db_migration'), contains('TomDbMigrations'));
+    });
+
     test(
       'the extractor reads every Type table in a document, not the first',
       () {
@@ -2167,6 +2235,31 @@ void main() {
         expect(found, {'TomFirst', 'TomSecond', 'TomThird'});
       },
     );
+
+    test('the row reader keeps a repeat the name reader collapses', () {
+      // No guide repeats a name today, so the duplicate check above has no live
+      // example and would pass just as happily if the reader underneath it
+      // silently de-duplicated. Only a fixture can hold the two readers apart:
+      // the set is what every completeness check wants, the list is the one
+      // thing that can still see the repeat.
+      final markdown =
+          '''
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomFirst` | class | in the opening group. |
+
+### A second group
+
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomFirst` | class | and again, pages away. |
+'''
+              .split('\n');
+
+      expect(_typeTableRows(markdown), ['TomFirst', 'TomFirst']);
+      expect(_typeTableNames(markdown), {'TomFirst'});
+      expect(_typeTableCount(markdown), 2);
+    });
 
     test('the scan reads the declaration shapes an exported file uses', () {
       // Each line below is a shape the package actually contains, and three of

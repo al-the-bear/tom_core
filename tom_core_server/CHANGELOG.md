@@ -31,8 +31,10 @@
   over goes into a history that a box switched between environments reads back.
   A tree valid on some machines and broken on others is the failure this module
   exists to prevent, so the answer cannot depend on the active environment — and
-  `TomSchemaConvergenceCheck.readChain`, which shares this helper, has no active
-  environment to depend on in the first place.
+  that holds for `TomSchemaConvergenceCheck.readChain` too, which shares this
+  helper and filters by an environment of its own (defaulted to the active
+  name). Had the check run after selection, one tree would be pronounced sound
+  under `prod` and unsound under `dev`.
 
   No existing fixture tree contained a duplicate version, so nothing that was
   passing stops.
@@ -737,6 +739,45 @@
   `.env` parser agree on where the key ends.
 
 ### Documentation
+
+- **The `db_migration` guide groups its Overview by half, and names the whole
+  environment-tag surface (tcinc497).** The Overview was one flat list of 26
+  rows. It was complete — `a1d38e52` had already grown it from the original
+  seven — but a flat list says nothing about the thing worth knowing first:
+  which types run against a live server and which answer *does this chain build
+  the shape the code expects* with no database at all. The Overview is now three
+  tables, **the migration engine** (8), **the convergence checks** (8) and **the
+  shared schema model and DDL replay** (10), the same grouping and the same
+  headings the module readme uses, so the two documents about one module do not
+  cut it two different ways. All 26 rows are preserved and the three headings
+  are listed in the contents.
+
+  The environment-tag section named the tag grammar but not the surface that
+  implements it. It now names both halves of the rule — `appliesInEnvironment`
+  as the whole per-file predicate, `selectForEnvironment` applying it across an
+  already-ordered chain — states that selection is the **last** step so nothing
+  is reordered by being tagged, and states that skipping is a pure omission: a
+  skipped migration is not recorded as anything, so re-running skips it again
+  and switching environments later finds it still pending rather than spent.
+
+  One claim was **wrong**, and it was mine: the guide (and the tcinc495 entry
+  above) said the convergence check "has no active environment to filter by in
+  the first place". `TomSchemaConvergenceCheck` takes an environment and
+  defaults it to the active name, and `readChain` filters with it. Both places
+  now carry the argument that is actually true, and is the stronger one — the
+  check filters by an environment *too*, so had the duplicate-version check run
+  after selection, the same tree would be pronounced sound under `prod` and
+  unsound under `dev`.
+
+  Two guards came with it. `no Overview table lists a name twice`: splitting a
+  table into groups is what makes a repeat possible, and the existing
+  completeness check unions every row before comparing, so it accepts a name
+  listed twice exactly as happily as once. A name in two groups contradicts the
+  claim a grouped table makes while looking tidy in both. All twenty guides pass
+  today, so nothing is quarantined. And `the sweep reads every table a grouped
+  Overview splits into`, which fails if the grouping is ever flattened back —
+  without it, a flattening regression leaves every other check green on a
+  document that has quietly lost its structure.
 
 - **The `db_migration` module readme describes the module that exists
   (tcinc496).** Its "Key types" table listed five types drawn from two of the

@@ -10,6 +10,9 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 ## Table of Contents
 
 - [Overview](#overview)
+  - [The migration engine](#the-migration-engine)
+  - [The convergence checks](#the-convergence-checks)
+  - [The shared schema model and DDL replay](#the-shared-schema-model-and-ddl-replay)
 - [The Directory Layout](#the-directory-layout)
   - [One File per Migration](#one-file-per-migration)
   - [One Migration per Version](#one-migration-per-version)
@@ -41,34 +44,60 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 
 ## Overview
 
+The module has two halves, and which one a type belongs to is the first thing
+worth knowing about it. The **engine** brings a database up to date: it walks a
+directory tree, applies the pending scripts, and records what it applied. The
+**checks** answer a different question — *does this chain build the shape the
+rest of the code expects* — and answer it with no database at all, by replaying
+the chain's DDL text into an in-memory model. Between them sits a third group
+that is neither: the schema vocabulary and the SQL reading both halves are built
+on. A single flat list hides that structure, and a reader who cannot tell the
+replay types from the engine types has to open the source to find out which of
+them run against a live server.
+
+### The migration engine
+
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomDbMigrations` | class | The orchestrator; `migrateDatabases(directory)` drives a whole tree |
 | `TomDbMigrator` | abstract class | The per-database migrator contract (`initializeMigration` / `applyMigration` / `reset`) |
 | `TomDbMigrationAdaptor` | annotation | Binds a migrator to a data-source type for reflection discovery |
-| `TomDbMigrationException` | class | Orchestration / discovery / parsing failures |
-| `MariadbMigrationAdaptor` | reflected class | The MariaDB migrator |
-| `MariadbMigrationException` | class | MariaDB migration failures |
-| `TomDbVersion` | reflected class | One row of a `<schema>_versioning` table |
 | `TomMigrationFileName` | class | A migration file name parsed into version, description and environment tags |
-| `TomSqlLexer` | class | The module's one quote/comment scanner and statement splitter |
-| `TomSchemaModel` | class | A whole schema, in the one vocabulary both sides are reduced to |
-| `TomSchemaTable` | class | One table: its columns, primary key and origin |
-| `TomSchemaColumn` | class | One column: its type family, declared type and origin |
-| `TomSchemaBuilder` | class | The mutable accumulator both sides build their model through |
-| `TomSqlTypeFamilyCompatibility` | extension | How much difference between two type families still counts as agreement |
-| `TomMigrationArtifact` | class | One migration artifact as the reader consumes it — a basename and its SQL |
-| `TomSchemaDdlReader` | class | Replays a chain of artifacts into the schema it produces |
-| `TomDdlReplayResult` | class | That schema, together with whatever would not replay |
-| `TomDdlReplayError` | class | One statement that could not be replayed — reported, never thrown |
-| `TomEntitySchemaReader` | class | Reads the schema the `@TomDbTable` entity classes expect |
+| `MariadbMigrationAdaptor` | reflected class | The MariaDB migrator |
+| `TomDbVersion` | reflected class | One row of a `<schema>_versioning` table |
+| `TomDbMigrationException` | class | Orchestration / discovery / parsing failures |
+| `MariadbMigrationException` | class | MariaDB migration failures |
+
+### The convergence checks
+
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
 | `TomSchemaConvergenceCheck` | class | The comparison: entity model against migration chain |
+| `TomEntitySchemaReader` | class | Reads the schema the `@TomDbTable` entity classes expect |
 | `TomSchemaConvergenceReport` | class | What one `<datasource>/<schema>` pair was checked against, and how it disagreed |
 | `TomSchemaDivergence` | class | One disagreement: kind, table, column, origin, message |
 | `TomSchemaDivergenceKind` | enum | Which of the nine disagreements it is — each a different culprit |
 | `TomFrameworkSchemaCheck` | class | The same comparison for the tables the framework itself owns |
 | `TomInformationSchemaColumnRow` | reflected class | One `information_schema.COLUMNS` row, as the live check reads it |
 | `frameworkOwnedTables` | function | Every framework-owned table, at its default name |
+
+### The shared schema model and DDL replay
+
+Both halves compare through one vocabulary, so a difference between them is a
+real disagreement rather than two spellings of the same thing.
+
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomSchemaDdlReader` | class | Replays a chain of artifacts into the schema it produces |
+| `TomMigrationArtifact` | class | One migration artifact as the reader consumes it — a basename and its SQL |
+| `TomDdlReplayResult` | class | That schema, together with whatever would not replay |
+| `TomDdlReplayError` | class | One statement that could not be replayed — reported, never thrown |
+| `TomSchemaModel` | class | A whole schema, in the one vocabulary both sides are reduced to |
+| `TomSchemaTable` | class | One table: its columns, primary key and origin |
+| `TomSchemaColumn` | class | One column: its type family, declared type and origin |
+| `TomSchemaBuilder` | class | The mutable accumulator both sides build their model through |
+| `TomSqlTypeFamilyCompatibility` | extension | How much difference between two type families still counts as agreement |
+| `TomSqlLexer` | class | The module's one quote/comment scanner and statement splitter |
 
 ## The Directory Layout
 
@@ -214,9 +243,15 @@ deliberate:
   separate rows in the history they share, and a box switched between
   environments (which [environment tags](#environment-tags) explicitly support)
   meets the other one's row. A tree that is valid on production and broken on a
-  developer's machine is exactly the failure this module refuses to allow, and
-  the [convergence check](#schema-convergence) — which shares this function —
-  has no active environment to filter by in the first place.
+  developer's machine is exactly the failure this module refuses to allow.
+
+  Placing it before selection is what makes the answer *environment-independent*,
+  and that matters for the [convergence check](#schema-convergence) as much as
+  for the engine. The check filters the chain by an environment too —
+  `TomSchemaConvergenceCheck` takes one and defaults it to the active name — so
+  had the duplicate check run after selection, the same tree would be pronounced
+  sound when the check ran under `prod` and unsound under `dev`. Refusing the
+  pair while it is still two filenames gives both tools one answer.
 
 ### Environment Tags
 
@@ -241,6 +276,20 @@ under `prod` and applied under `dev`, and nothing makes `dev` a "kind of" any
 other environment. When no environment has been initialized at all, the engine
 falls back to `defaultTomEnvironment`, under which only untagged migrations
 apply — the production-safe reading of an unanswerable question.
+
+The rule is spelled in two places, one per file and one per chain.
+`TomMigrationFileName.appliesInEnvironment(name)` is the whole predicate — true
+when the tag list is empty, or when it contains `name` — and
+`TomDbMigrations.selectForEnvironment(ordered, name)` applies it across an
+already-ordered chain, preserving order. Selection is therefore the **last**
+step: the names are parsed, checked for duplicate versions and sorted by version
+first, and only the surviving order is filtered. Nothing is reordered by being
+tagged.
+
+Skipping is a **pure omission**. The applied-version bookkeeping is untouched —
+a skipped migration is not recorded as applied, failed, or anything else — so
+re-running in the same environment skips it again and stays idempotent, and
+switching environments later finds it still pending rather than already spent.
 
 A tagged migration still occupies its version number in the schema's single
 history — the tag decides *whether* it runs, not which number it takes — so
