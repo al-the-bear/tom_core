@@ -930,7 +930,7 @@ is not — never silently truncated.
 | `close` | `Future<void> close()` | *(override)* Closes the connection if it was still live, and clears `connection` either way — including when closing it throws, since the caller is done with the link regardless. A data source that was never opened has nothing to release and stays "never opened". |
 | `toString` | `String toString()` | *(override)* Debug description of the datasource: the link's own state (`connected: true` / `false`) while it holds one, and otherwise which of the two ways it came to hold none — `closed` or `never opened`. |
 | `getParticipantId` | `String getParticipantId()` | *(override)* The transaction-participant id. |
-| `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `START TRANSACTION`. |
+| `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `START TRANSACTION`. Returns `false` when the database refuses it, but **throws** `MariadbDatasourceException` (`error.transaction.already_active`, naming the `participant`) when this data source is already in a transaction — a caller mistake no retry fixes, and so not the same answer as a failed statement. |
 | `endTransaction` | `Future<bool> endTransaction()` | *(override)* A no-op that always succeeds: a one-phase transaction has no prepare step to issue and no state left to release, since `commit` / `rollback` clear the in-transaction flag and the coordinator calls one of them first. |
 | `commit` | `Future<bool> commit()` | *(override)* Issues `COMMIT`. |
 | `rollback` | `Future<void> rollback()` | *(override)* Issues `ROLLBACK`. |
@@ -954,7 +954,7 @@ MariaDbXADatasource()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `XA START` against a fresh branch id, throwing if one is already open. Clears the id again when the command fails, since the database never opened that branch. |
+| `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `XA START` against a fresh branch id, throwing the same `error.transaction.already_active` as the base class — with the open branch in the `transactionId` parameter — if one is already open. Clears the id again when the command fails, since the database never opened that branch. |
 | `endTransaction` | `Future<bool> endTransaction()` | *(override)* Issues `XA END` + `XA PREPARE`. The one exit that **keeps** the branch id on success — `commit` still needs it — and clears it on failure, where the branch can no longer be committed. |
 | `commit` | `Future<bool> commit()` | *(override)* Issues `XA COMMIT` and clears the branch id either way. |
 | `rollback` | `Future<void> rollback()` | *(override)* Issues `XA ROLLBACK` and clears the branch id either way. |

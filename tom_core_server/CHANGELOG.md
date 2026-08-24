@@ -930,6 +930,32 @@
 
 ### Behaviour Changes
 
+- **The nested-transaction guard throws the module's own exception type
+  (tcinc460).** Both `startTransaction` implementations signalled a second
+  concurrent transaction with a bare `Exception` carrying a message. `Exception`
+  is the supertype of every failure there is, so a caller could not write a
+  `catch` narrow enough to act on the one case it is able to fix, and the
+  DB-backed test could assert nothing stronger than `isA<Exception>()` — which
+  would have passed just as happily on a driver that had fallen over.
+
+  The distinction the type has to carry is real and already load-bearing in this
+  code. A `START TRANSACTION` the database refuses comes back as `false`: the
+  caller may retry, route around it, or give up. A start on a data source
+  already in a transaction is the caller's own mistake, and no retry fixes it —
+  which is why the guard sits in front of the `try` rather than inside it, where
+  the catch-all that turns a failed statement into `false` would swallow it and
+  hand back the wrong one of those two answers.
+
+  Both guards now route through one private helper, `_refuseNestedTransaction`,
+  raising `MariadbDatasourceException` keyed `error.transaction.already_active`
+  with the participant in `parameters` and — for XA, which mints one — the open
+  branch in `transactionId`. Sharing the helper is not just tidiness: the two
+  messages had already drifted apart (one ended in a full stop, the other in an
+  interpolated id), and one refusal reported one way is what stops them drifting
+  again. `MariadbDatasourceException` *is* an `Exception`, so nothing that
+  catches broadly breaks; what changes is that something narrower can now be
+  written. The DB-backed test asserts the specific type and key.
+
 - **`MariaDbDatasource.close` lets go of the connection, so a closed data source
   is closed (tcinc459).** `close` released the socket but left `connection`
   pointing at the dead object. Everything that reports state reads that field,

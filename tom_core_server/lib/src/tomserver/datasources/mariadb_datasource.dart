@@ -1331,11 +1331,38 @@ class MariaDbDatasource implements TomDataSource {
 
   bool _transactional = false;
 
+  /// Refuses a transaction that would nest inside one already running.
+  ///
+  /// Shared by both lifecycles so the refusal cannot drift apart again — it is
+  /// one programming error, reported one way, whichever data source hits it.
+  /// [transactionId] names the branch already open where there is one; the
+  /// plain lifecycle tracks a flag rather than an id, so it has nothing to
+  /// name and omits the parameter.
+  ///
+  /// Thrown rather than reported as `false`, and *in front of* the `try` that
+  /// turns a failed statement into `false`, because the two are not the same
+  /// kind of event. A `START TRANSACTION` the database refuses is a failure
+  /// the caller may retry or route around; a second start on a busy data
+  /// source is the caller's own mistake, and no retry fixes it. Carrying that
+  /// distinction is the whole reason for the module's own exception type: a
+  /// caller that catches `Exception` to handle connection trouble would
+  /// otherwise swallow this too, and never learn it has a bug.
+  Never _refuseNestedTransaction([String? transactionId]) {
+    throw MariadbDatasourceException(
+      "error.transaction.already_active",
+      "MariadbDatasource ${getParticipantId()} already has an active "
+          "transaction${transactionId == null ? "" : " $transactionId"}. "
+          "Conclude it with commit() or rollback() before starting another.",
+      parameters: {
+        "participant": getParticipantId(),
+        if (transactionId != null) "transactionId": transactionId,
+      },
+    );
+  }
+
   @override
   Future<bool> startTransaction() async {
-    if (_transactional) {
-      throw Exception("There is already an active transaction.");
-    }
+    if (_transactional) _refuseNestedTransaction();
     try {
       await executeCommand("START TRANSACTION;");
       _transactional = true;
@@ -1414,9 +1441,7 @@ class MariaDbXADatasource extends MariaDbDatasource {
 
   @override
   Future<bool> startTransaction() async {
-    if (_txId != null) {
-      throw Exception("There is already an active transaction $_txId");
-    }
+    if (_txId != null) _refuseNestedTransaction(_txId);
     _txId = "'${databaseName}_${host}_${port}_${DateTime.now()}'";
     try {
       await executeCommand("XA START $_txId;");

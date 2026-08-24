@@ -550,6 +550,25 @@ exit that forgets locks the data source out of all later transactions
 permanently, and the caller cannot recover by rolling back — the branch it
 would have to name never began.
 
+Both lifecycles refuse a nested start the same way, through one shared helper:
+a **`MariadbDatasourceException` keyed `error.transaction.already_active`**,
+naming the participant and — for XA, which has one — the branch already open.
+The type is the point. Starting a transaction has two ways of not happening,
+and they are not the same kind of event:
+
+| What happened | How the caller hears it | What the caller can do |
+| ------------- | ----------------------- | ---------------------- |
+| The database refused `START TRANSACTION` | `startTransaction` returns `false` | Retry, route around it, or give up |
+| The data source is already in a transaction | Throws `error.transaction.already_active` | Nothing — fix the code |
+
+Which is why the guard sits **in front of** the `try`, not inside it. Inside,
+the catch-all that turns a failed statement into `false` would swallow the
+refusal and hand the caller the first row's answer for the second row's
+situation. And it is thrown as the module's own type rather than a bare
+`Exception` because `Exception` is the supertype of every failure there is: a
+`catch` narrow enough to act on the one case the caller can fix cannot be
+written against it.
+
 > The MariaDB driver needs a live connection for anything that reaches the
 > database, so the unit tests cover the connection-independent surface: the
 > dialect's SQL generation, the SQL-typed value conversions, and the

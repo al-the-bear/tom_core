@@ -153,7 +153,21 @@ void main() async {
 
     test('startTransaction rejects a second concurrent transaction', () async {
       expect(await ds.startTransaction(), isTrue);
-      await expectLater(ds.startTransaction, throwsA(isA<Exception>()));
+      // Against a real server, because this is the one place where the guard
+      // and a genuine database refusal are both reachable through the same
+      // call: `isA<Exception>()` would pass on either, and so would pass on a
+      // driver that had merely fallen over. The module's own type says the
+      // start was refused *by the guard*, and the key says why.
+      await expectLater(
+        ds.startTransaction,
+        throwsA(
+          isA<MariadbDatasourceException>().having(
+            (e) => e.key,
+            'key',
+            'error.transaction.already_active',
+          ),
+        ),
+      );
       // Leave the fixture clean for the next test.
       await ds.rollback();
     });

@@ -55,13 +55,24 @@ mixin _ScriptedCommands on MariaDbDatasource {
 class _ScriptedXADatasource extends MariaDbXADatasource with _ScriptedCommands {
   _ScriptedXADatasource({Set<String> failing = const {}}) {
     this.failing = failing;
+    _describe(this);
   }
 }
 
 class _ScriptedDatasource extends MariaDbDatasource with _ScriptedCommands {
   _ScriptedDatasource({Set<String> failing = const {}}) {
     this.failing = failing;
+    _describe(this);
   }
+}
+
+/// Gives a scripted data source the coordinates it would have had from
+/// `initialize`, so everything derived from them reads as it would in service:
+/// the participant id, and the XA branch id interpolated into the SQL.
+void _describe(MariaDbDatasource ds) {
+  ds.host = 'db';
+  ds.port = 3306;
+  ds.databaseName = 'app';
 }
 
 /// A never-opened data source that records any attempt to dial out.
@@ -1467,5 +1478,109 @@ void main() {
       expect(await ds.endTransaction(), isTrue);
       expect(ds.commands, ['START TRANSACTION;']);
     });
+  });
+
+  // Starting a transaction has two ways of not happening, and they are not the
+  // same kind of event. A `START TRANSACTION` the database refuses comes back
+  // as `false`: the caller may retry, fall back, or give up. A start on a data
+  // source that is *already* in a transaction is the caller's own mistake, and
+  // no retry fixes it — so it is thrown rather than reported.
+  //
+  // That distinction only reaches the caller if the type carries it. Both
+  // guards used to throw a bare `Exception`, which is the supertype of every
+  // failure there is: a `catch` narrow enough to act on this one case could not
+  // be written, and the DB-backed test could assert nothing better than
+  // `isA<Exception>()`. The tests below pin the type, the key and the detail
+  // that says *which* data source and *which* branch.
+  group('MariaDb transaction guard: a second concurrent transaction', () {
+    /// Matches the refusal, optionally requiring the named branch in the
+    /// parameters — the two lifecycles differ only in whether they have an id.
+    Matcher refusesNesting({String? withTransactionId}) {
+      var matcher = isA<MariadbDatasourceException>()
+          .having((e) => e.key, 'key', 'error.transaction.already_active')
+          .having(
+            (e) => e.parameters?['participant'],
+            'parameters.participant',
+            'MariaDb-app@db:@3306',
+          );
+      if (withTransactionId != null) {
+        matcher = matcher.having(
+          (e) => e.parameters?['transactionId'],
+          'parameters.transactionId',
+          withTransactionId,
+        );
+      }
+      return throwsA(matcher);
+    }
+
+    test(
+      'the plain guard raises the module type, not a bare Exception',
+      () async {
+        final ds = _ScriptedDatasource();
+        expect(await ds.startTransaction(), isTrue);
+        await expectLater(ds.startTransaction, refusesNesting());
+      },
+    );
+
+    test('the XA guard raises it too, naming the open branch', () async {
+      final ds = _ScriptedXADatasource();
+      expect(await ds.startTransaction(), isTrue);
+      // The branch id is private, but it was interpolated into the SQL, so the
+      // recorded command is where the value the refusal must name is readable.
+      // Trimming the statement's trailing `;` leaves the id exactly as held.
+      final started = ds.commands.single;
+      final branch = started.substring('XA START '.length, started.length - 1);
+      await expectLater(
+        ds.startTransaction,
+        refusesNesting(withTransactionId: branch),
+      );
+    });
+
+    test('the refusal issues no statement, on either lifecycle', () async {
+      // The guard sits in front of the `try`, which is what keeps it a throw:
+      // inside, the catch-all that turns a failed command into `false` would
+      // swallow it and hand the caller the very report this case must not be
+      // confused with.
+      final plain = _ScriptedDatasource();
+      expect(await plain.startTransaction(), isTrue);
+      await expectLater(plain.startTransaction, refusesNesting());
+      expect(plain.commands, ['START TRANSACTION;']);
+
+      final xa = _ScriptedXADatasource();
+      expect(await xa.startTransaction(), isTrue);
+      await expectLater(xa.startTransaction, throwsA(isA<Exception>()));
+      expect(xa.commands, hasLength(1));
+    });
+
+    test(
+      'a caller can now catch the mistake without catching failures',
+      () async {
+        // The point of the whole todo, said as a test. `on
+        // MariadbDatasourceException` must select the programming error and
+        // nothing else — a database that refuses the start still arrives as
+        // `false`, through the same call, uncaught.
+        final refused = _ScriptedDatasource(failing: {'START TRANSACTION'});
+        var caught = false;
+        try {
+          expect(await refused.startTransaction(), isFalse);
+        } on MariadbDatasourceException {
+          caught = true;
+        }
+        expect(
+          caught,
+          isFalse,
+          reason: 'a refused start is a report, not a throw',
+        );
+
+        final busy = _ScriptedDatasource();
+        expect(await busy.startTransaction(), isTrue);
+        try {
+          await busy.startTransaction();
+          fail('a second start on a busy data source must throw');
+        } on MariadbDatasourceException catch (e) {
+          expect(e.key, 'error.transaction.already_active');
+        }
+      },
+    );
   });
 }
