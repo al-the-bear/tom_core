@@ -746,6 +746,26 @@
 
 ### Internal
 
+- **Documented data-source settings keys are checked against the driver's
+  fields (tcinc463).** A settings key is a field name: `initialize` hands the
+  whole configuration block to `tomReflectionInfo.setValues`, which assigns
+  through the setter the key names. The shared converter tolerates unknown
+  fields by design, so a key naming no field is dropped in silence — a block
+  written with `database` and `user` (what most database documentation calls
+  them) produces a data source pointed at no schema with no credentials, and a
+  connection error that names neither. The module's completion document had
+  exactly that block, contradicting both `doc/datasources.md` and its own field
+  listing eight pages earlier.
+
+  `test/datasource_config_test.dart` now sweeps `lib`, `doc`, `example` and
+  `test` for configuration blocks — anchored on `type: mariadb`, in YAML and
+  Dart, inline and multi-line, inside dartdoc as well as code — and fails on
+  any key outside the bindable set. That set is *derived from reflection*
+  rather than listed, so renaming a field on `MariaDbDatasource` fails the
+  suite too instead of quietly invalidating every documented example. A
+  companion assertion pins the sweep against reaching nothing, since a guard
+  mistaken for coverage is worse than none.
+
 - **`TomSqlDialect` is removed; a driver owns its dialect (tcinc462).** The
   annotation bound a `TomStandardSqlDialect` subclass to a data-source type
   name, for a reflection scan nobody ever wrote: `dataSourceType` had exactly
