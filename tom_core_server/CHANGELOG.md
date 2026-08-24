@@ -2,6 +2,36 @@
 
 ### Fixed
 
+- **`TomSchemaConvergenceCheck.checkAll` and `checkSchema` are synchronous
+  (tcinc488).** Both were `async` while doing only synchronous file I/O, so the
+  returned future was already complete before the first `await`. The signature
+  therefore told callers the migration-tree walk was off the event loop while it
+  blocked the loop entirely — a mis-signalled cost precisely where these run, at
+  server startup.
+
+  The stronger reason is correctness, not honesty. An `async` signature made the
+  missing-directory refusal *ignorable*: a caller who omitted the `await` got a
+  value that reads as success, and the `TomDbMigrationException` arrived later as
+  an unhandled rejection nothing was watching — which is exactly the vacuous
+  "every pair converged" pass that `requireMigrationsDirectory` exists to
+  prevent. Thrown from the call itself, it cannot be dropped.
+
+  This also settles a module-wide rule that the two methods were the only
+  violators of: **a `Future` in `db_migration` means a database is involved**
+  (`migrateDatabases`, `migrateDataSource`, `applyMigration`,
+  `initializeMigration`, `verifyLive`) and nothing else does. `verify`,
+  `readChain`, `verifyChain`, `verifyRowTypes` and `collectMigrationFiles` were
+  already synchronous.
+
+  The guard test deliberately catches around the bare call rather than using
+  `throwsA` over a closure: that matcher awaits a future the closure returns and
+  reports its rejection as a throw, so it passes for both forms and cannot pin
+  synchronicity. Note that re-`await`ing the results is still legal Dart, so the
+  compiler alone does not prevent the drift — the test does.
+
+  **Breaking for callers**: drop the `await`. There are no production call sites
+  in the workspace.
+
 - **`TomSchemaDdlReader` derives structure from tokens, not from searching the
   statement text (tcinc487).** `_alterTable` located its action list by
   `statement.indexOf(tableName)`, which finds the *first* occurrence of those

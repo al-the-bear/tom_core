@@ -28,7 +28,9 @@ implementation (`MariadbMigrationAdaptor`) is provided.
   - [The Four Places a Column Name Could Have Been Spelled](#the-four-places-a-column-name-could-have-been-spelled)
   - [What the Live Check Adds](#what-the-live-check-adds)
   - [Pinning the Entity-Owned Migrations](#pinning-the-entity-owned-migrations)
+- [What Returns a Future, and Why](#what-returns-a-future-and-why)
 - [Reading raw SQL: one lexer, not five](#reading-raw-sql-one-lexer-not-five)
+  - [Structure comes from tokens, never from `indexOf`](#structure-comes-from-tokens-never-from-indexof)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -174,6 +176,12 @@ name parser are.
 The engine checks the path **before** scanning for adaptors, so a caller who
 gets the path wrong is told about the path rather than about reflection not
 being initialised.
+
+On the check's side the refusal is raised by the call rather than delivered in a
+future — `checkAll` and `checkSchema` are synchronous. That is what keeps it
+un-ignorable: a future-returning check hands a caller who forgets an `await`
+precisely the vacuous pass this guard exists to prevent, with the exception
+surfacing later as an unhandled rejection nothing is watching.
 
 ## Running Migrations
 
@@ -547,6 +555,28 @@ migrations covered elsewhere (`framework_schema_test.dart` for descriptors,
 their chains). A reverse test catches list entries whose file is gone. Adding a
 migration without a guard therefore fails when it is added, rather than when it
 drifts.
+
+## What Returns a Future, and Why
+
+Reading migration files is synchronous everywhere in this module, and the
+signatures say so. **A `Future` here means a database is involved** — nothing
+else does:
+
+| Synchronous | Asynchronous |
+| ----------- | ------------ |
+| `TomSchemaConvergenceCheck.checkAll` / `checkSchema` / `readChain` / `verify` | `TomDbMigrations.migrateDatabases` / `migrateDataSource` |
+| `TomFrameworkSchemaCheck.verifyChain` / `verifyRowTypes` | `TomDbMigrator.applyMigration` / `initializeMigration` |
+| `TomSchemaDdlReader.replay`, `TomDbMigrations.collectMigrationFiles` | `TomFrameworkSchemaCheck.verifyLive` |
+
+An `async` method whose I/O is all synchronous never yields: the future is
+complete before the first `await`, so the signature promises the caller that the
+walk is off the event loop while it blocks the loop entirely — a mis-signalled
+cost that matters most where these checks actually run, at startup.
+
+The rule is worth keeping because it is what makes the signature readable at a
+glance. A caller seeing `Future` knows a connection is in play and a failure can
+be a network failure; a caller seeing a plain return knows the work is a file
+walk that either produces a report or throws on the spot.
 
 ## Reading raw SQL: one lexer, not five
 

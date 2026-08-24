@@ -355,9 +355,26 @@ class TomSchemaConvergenceReport {
 ///
 /// [checkAll] walks a whole `<databaseMigrationsDirectory>` tree and returns one
 /// report per `<datasource>/<schema>` pair; [checkSchema] does a single pair.
-/// Both are asynchronous only because they read files — no database is opened,
-/// and none needs to exist. [verify] is the pure core: hand it an already-read
-/// chain and the entity types, and it computes the report with no I/O at all.
+/// [verify] is the pure core: hand it an already-read chain and the entity
+/// types, and it computes the report with no I/O at all.
+///
+/// ## Everything here is synchronous, and says so
+///
+/// No database is opened and none needs to exist; the only I/O is reading a
+/// handful of migration files, which this module does synchronously throughout.
+/// So these methods block, and their signatures admit it — across the module a
+/// `Future` means a database is involved ([TomDbMigrations.migrateDatabases],
+/// [TomDbMigrator.applyMigration], [TomFrameworkSchemaCheck.verifyLive]) and
+/// nothing else does.
+///
+/// The honesty is not cosmetic. A future that is already complete before the
+/// first `await` tells a caller the file walk is off the event loop when it is
+/// not — which is exactly wrong for a check that runs at startup. Worse, it
+/// makes the missing-directory refusal ignorable: a caller who omits the
+/// `await` gets a value that reads as success, and the exception arrives later
+/// as an unhandled rejection nothing is watching. That is the vacuous pass
+/// [TomDbMigrations.requireMigrationsDirectory] exists to prevent. Thrown from
+/// the call itself, it cannot be dropped.
 ///
 /// ## Ordering
 ///
@@ -407,10 +424,10 @@ class TomSchemaConvergenceCheck {
   /// every call site, from "every pair converged", so a mistyped path would read
   /// as a clean bill of health. An *existing* but empty tree is a different
   /// thing and still yields no reports: there is genuinely nothing to check.
-  Future<List<TomSchemaConvergenceReport>> checkAll(
+  List<TomSchemaConvergenceReport> checkAll(
     String migrationsDirectory, {
     Iterable<Type>? entityTypes,
-  }) async {
+  }) {
     final root = Directory(migrationsDirectory);
     TomDbMigrations.requireMigrationsDirectory(root, 'Migrations directory');
     final types = entityTypes ?? TomEntitySchemaReader.discoverEntityTypes();
@@ -443,12 +460,12 @@ class TomSchemaConvergenceCheck {
   /// was never created reads as an empty chain, which the report renders as
   /// every entity missing from the migrations. That is a finding, and producing
   /// findings is what this check is for.
-  Future<TomSchemaConvergenceReport> checkSchema(
+  TomSchemaConvergenceReport checkSchema(
     String migrationsDirectory,
     String datasource,
     String schema, {
     Iterable<Type>? entityTypes,
-  }) async {
+  }) {
     TomDbMigrations.requireMigrationsDirectory(
       Directory(migrationsDirectory),
       'Migrations directory',

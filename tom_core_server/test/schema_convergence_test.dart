@@ -832,28 +832,25 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
       expect(TomSchemaConvergenceCheck.checkName, 'ce-mg.schema-convergence');
     });
 
-    test(
-      'a converged chain reports agreement with no findings at all',
-      () async {
-        final report = await check.checkSchema(
-          convergedMigrations,
-          fixtureDatasource,
-          fixtureSchema,
-          entityTypes: [FixtureTaskRecord],
-        );
-        expect(report.converged, isTrue, reason: report.describe());
-        expect(report.divergences, isEmpty, reason: report.describe());
-        expect(report.describe(), contains('converged'));
-      },
-    );
+    test('a converged chain reports agreement with no findings at all', () {
+      final report = check.checkSchema(
+        convergedMigrations,
+        fixtureDatasource,
+        fixtureSchema,
+        entityTypes: [FixtureTaskRecord],
+      );
+      expect(report.converged, isTrue, reason: report.describe());
+      expect(report.divergences, isEmpty, reason: report.describe());
+      expect(report.describe(), contains('converged'));
+    });
 
     test(
       'the chain is environment-filtered exactly as the engine filters it',
-      () async {
+      () {
         // Under the production-safe default only the two untagged artifacts are
         // in the chain; under `dev` the tagged seed joins them and — being data —
         // still leaves the schema unchanged.
-        final production = await check.checkSchema(
+        final production = check.checkSchema(
           convergedMigrations,
           fixtureDatasource,
           fixtureSchema,
@@ -868,7 +865,7 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
           dialect: dialect,
           environment: 'dev',
         );
-        final report = await development.checkSchema(
+        final report = development.checkSchema(
           convergedMigrations,
           fixtureDatasource,
           fixtureSchema,
@@ -880,8 +877,8 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
       },
     );
 
-    test('a divergent chain localises every disagreement', () async {
-      final report = await check.checkSchema(
+    test('a divergent chain localises every disagreement', () {
+      final report = check.checkSchema(
         divergedMigrations,
         fixtureDatasource,
         fixtureSchema,
@@ -1047,23 +1044,20 @@ CREATE TABLE fixture_task (
       expect(report.divergences, isEmpty);
     });
 
-    test(
-      'checkAll walks the whole tree and reports per datasource/schema',
-      () async {
-        final reports = await check.checkAll(
-          convergedMigrations,
-          entityTypes: [FixtureTaskRecord],
-        );
-        expect(reports, hasLength(1));
-        expect(reports.single.datasource, fixtureDatasource);
-        expect(reports.single.schema, fixtureSchema);
-        expect(reports.single.converged, isTrue);
-      },
-    );
+    test('checkAll walks the whole tree and reports per datasource/schema', () {
+      final reports = check.checkAll(
+        convergedMigrations,
+        entityTypes: [FixtureTaskRecord],
+      );
+      expect(reports, hasLength(1));
+      expect(reports.single.datasource, fixtureDatasource);
+      expect(reports.single.schema, fixtureSchema);
+      expect(reports.single.converged, isTrue);
+    });
 
     test(
       'a missing migrations directory aborts rather than reporting nothing',
-      () async {
+      () {
         // This replaces an earlier bar that asserted the opposite — an absent
         // tree returning `[]`. The contract changed because `[]` is
         // indistinguishable, at every call site, from "every pair converged":
@@ -1071,8 +1065,8 @@ CREATE TABLE fixture_task (
         // on a path that was never read. And the engine, given the very same
         // path, refuses to run. Two tools over one tree cannot disagree about
         // whether the tree being absent is a failure.
-        await expectLater(
-          check.checkAll('test/fixtures/convergence/absent'),
+        expect(
+          () => check.checkAll('test/fixtures/convergence/absent'),
           throwsA(isA<TomDbMigrationException>()),
         );
       },
@@ -1156,7 +1150,7 @@ CREATE TABLE fixture_task (
         // Same tree, same key, from both tools — the point of the whole change.
         Object? fromCheck;
         try {
-          await check.checkAll(absent());
+          check.checkAll(absent());
         } catch (error) {
           fromCheck = error;
         }
@@ -1179,51 +1173,75 @@ CREATE TABLE fixture_task (
       },
     );
 
-    test('checkSchema rejects a missing root too', () async {
+    test('checkSchema rejects a missing root too', () {
       // It takes the same root argument as checkAll, so it cannot hold a
       // different opinion about that root existing.
-      await expectLater(
-        check.checkSchema(absent(), 'some_ds', 'some_schema'),
+      expect(
+        () => check.checkSchema(absent(), 'some_ds', 'some_schema'),
         throwsA(isA<TomDbMigrationException>()),
       );
     });
 
+    test('the refusal is raised by the call, not carried in a future', () {
+      // Not a style point about signatures — it is what makes the refusal
+      // un-ignorable. The guard exists because an unread tree must not read as
+      // "every pair converged"; a future-returning version hands a caller who
+      // forgot an `await` exactly that vacuous pass, with the exception arriving
+      // later as an unhandled rejection nothing was watching.
+      //
+      // Deliberately not `throwsA` over a closure: that matcher awaits a future
+      // the closure returns and reports its rejection as a throw, so it passes
+      // either way and cannot pin this. Only catching around the bare call
+      // distinguishes "threw during the call" from "returned a rejected future".
+      Object? fromCheckAll;
+      try {
+        check.checkAll(absent());
+      } catch (error) {
+        fromCheckAll = error;
+      }
+      Object? fromCheckSchema;
+      try {
+        check.checkSchema(absent(), 'some_ds', 'some_schema');
+      } catch (error) {
+        fromCheckSchema = error;
+      }
+      expect(fromCheckAll, isA<TomDbMigrationException>());
+      expect(fromCheckSchema, isA<TomDbMigrationException>());
+    });
+
     test(
       'an existing but empty root yields no reports, and does not throw',
-      () async {
+      () {
         // The negative direction. An empty tree is a legitimate state — a guard
         // that rejected it would reject every project whose migrations have not
         // been written yet.
-        expect(await check.checkAll(root.path, entityTypes: const []), isEmpty);
+        expect(check.checkAll(root.path, entityTypes: const []), isEmpty);
       },
     );
 
-    test(
-      'a pair absent below an existing root is a finding, not an abort',
-      () async {
-        // `readChain` stays tolerant on purpose: an empty chain lets `verify`
-        // report every entity as missing from the migrations, which is a
-        // diagnosis — and a diagnosis is what the check exists to produce. An
-        // exception here would replace a precise finding with a crash.
-        // Named for the fixture's own schema so the entity is attributed to it —
-        // an unattributed entity would leave the report trivially converged and
-        // the test would prove nothing.
-        Directory(
-          p.join(root.path, fixtureDatasource),
-        ).createSync(recursive: true);
-        final report = await check.checkSchema(
-          root.path,
-          fixtureDatasource,
-          fixtureSchema,
-          entityTypes: [FixtureTaskRecord],
-        );
-        expect(report.chain, isEmpty);
-        expect(report.converged, isFalse);
-        expect(
-          report.errors.map((d) => d.kind),
-          contains(TomSchemaDivergenceKind.missingTable),
-        );
-      },
-    );
+    test('a pair absent below an existing root is a finding, not an abort', () {
+      // `readChain` stays tolerant on purpose: an empty chain lets `verify`
+      // report every entity as missing from the migrations, which is a
+      // diagnosis — and a diagnosis is what the check exists to produce. An
+      // exception here would replace a precise finding with a crash.
+      // Named for the fixture's own schema so the entity is attributed to it —
+      // an unattributed entity would leave the report trivially converged and
+      // the test would prove nothing.
+      Directory(
+        p.join(root.path, fixtureDatasource),
+      ).createSync(recursive: true);
+      final report = check.checkSchema(
+        root.path,
+        fixtureDatasource,
+        fixtureSchema,
+        entityTypes: [FixtureTaskRecord],
+      );
+      expect(report.chain, isEmpty);
+      expect(report.converged, isFalse);
+      expect(
+        report.errors.map((d) => d.kind),
+        contains(TomSchemaDivergenceKind.missingTable),
+      );
+    });
   });
 }
