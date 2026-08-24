@@ -135,6 +135,41 @@ void main() {
       expect(subtree['host'], 'localhost');
     });
 
+    // A dotted key has two possible meanings in one flat map, and the provider
+    // answers both: `server.port` may be a path into a nested tree, or the
+    // literal spelling of a top-level key. YAML lets an operator write either,
+    // and nothing in the file says which was meant -- so the resolution order
+    // between them is a rule a deployment can hit by writing its configuration
+    // the other way round.
+    group('a flat dotted key', () {
+      test('resolves as though it were a path', () {
+        // `server.port: 8080` written flat, rather than nested under `server:`.
+        // The tree walk fails on it -- there is no `server` branch to descend
+        // -- and the top-level lookup behind it is what answers. Both halves
+        // of the provider's fallback are asserted, and so is the TomConfig on
+        // top, because that is where a deployment meets this.
+        final p = TomServerConfigResourceProvider.from({'server.port': 8080});
+        expect(p.exists('server.port'), isTrue);
+        expect(p.get('server.port'), 8080);
+        _install({'server.port': 8080});
+        expect(TomIntConfig('server.port').get(), 8080);
+      });
+
+      test('is shadowed by a real path of the same spelling', () {
+        // With both present the tree walk succeeds, so the nested value wins
+        // and the flat key becomes unreachable -- not merged, not reported,
+        // just never consulted. This is the case worth pinning of the two: an
+        // operator who adds a nested `server:` block to a file that already
+        // carried a flat `server.port` silently loses the flat one, and no
+        // layer of the module says so.
+        final p = TomServerConfigResourceProvider.from({
+          'server': {'port': 8080},
+          'server.port': 9999,
+        });
+        expect(p.get('server.port'), 8080);
+      });
+    });
+
     group('explicitly null properties', () {
       test('a null dotted property exists and reads as null', () {
         final p = TomServerConfigResourceProvider.from({
@@ -216,6 +251,27 @@ void main() {
       expect(ex.rootException, isA<TypeError>());
       expect(ex.stack, isA<StackTrace>());
       expect(ex.key, 'configuration.tom_config.property_type_mismatch');
+    });
+
+    test('the cast failure reports key, type and value as data', () {
+      // The class dartdoc promises these three separately "so a handler can
+      // report them without parsing the message". A handler that has to
+      // recover the key by scanning the sentence is coupled to its wording,
+      // which is the coupling the parameters map exists to prevent -- so the
+      // promise needs an assertion of its own rather than being taken as
+      // implied by the message test above.
+      _install({'port': 'not-an-int'});
+      Object? thrown;
+      try {
+        TomIntConfig('port');
+      } catch (e) {
+        thrown = e;
+      }
+      expect((thrown as TomConfigurationException).parameters, {
+        'key': 'port',
+        'type': 'int',
+        'value': 'not-an-int',
+      });
     });
 
     test('the cast failure keeps the subtype relation that failed', () {
@@ -684,6 +740,42 @@ void main() {
       TomYaml.mergeInYamlFile(existing, f.path);
       expect(existing['existing'], 1);
       expect(existing['added'], 'yes');
+    });
+
+    test('the overlaid file wins the keys the two files share', () async {
+      // The test above uses disjoint keys, so it shows the overlay *arriving*
+      // and says nothing about what happens where two files disagree -- which
+      // is the only question layering asks. Both directions are asserted here
+      // because "one-sided" is a claim about each: the file overwrites what it
+      // names, and leaves what it does not.
+      final f = File('${dir.path}/o.yaml');
+      await f.writeAsString('shared: fromFile\nonlyInFile: yes\n');
+      final target = <String, Object?>{
+        'shared': 'fromTarget',
+        'onlyInTarget': 1,
+      };
+      TomYaml.mergeInYamlFile(target, f.path);
+      expect(target['shared'], 'fromFile');
+      expect(target['onlyInTarget'], 1);
+      expect(target['onlyInFile'], 'yes');
+    });
+
+    test('an overlaid subtree merges into the existing one', () async {
+      // The collision rule above is per *leaf*, not per branch: a file that
+      // names one key of an existing subtree replaces that key and leaves the
+      // subtree's other keys standing. This is what makes a layered file a
+      // patch rather than a wholesale substitution -- an environment overlay
+      // can set `db.host` alone without having to restate `db.port` -- and it
+      // is the behaviour that would quietly invert if the merge ever stopped
+      // recursing, wiping every setting the overlay did not mention.
+      final f = File('${dir.path}/n.yaml');
+      await f.writeAsString('db:\n  host: fromFile\n');
+      final target = <String, Object?>{
+        'db': {'host': 'fromTarget', 'port': 3306},
+      };
+      TomYaml.mergeInYamlFile(target, f.path);
+      expect((target['db'] as Map)['host'], 'fromFile');
+      expect((target['db'] as Map)['port'], 3306);
     });
 
     test('the two entry points load a file identically', () async {

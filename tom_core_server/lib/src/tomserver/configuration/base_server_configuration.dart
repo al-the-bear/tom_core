@@ -15,6 +15,12 @@ import 'tom_config.dart';
 /// a populated one at startup with [setServerConfigProvider] or by setting the
 /// static [loader]. Keys may be dotted paths into the nested [resources] map
 /// (resolved via the kernel's tree walker).
+///
+/// A dotted key is tried as a **path first** and as a literal top-level key
+/// only if the walk fails, so `server.port` reads the same value whether it was
+/// written nested under `server:` or flat as `server.port:`. Where a tree
+/// carries *both*, the path wins and the flat key is unreachable — never
+/// merged and never reported. Use one spelling per key.
 class TomServerConfigResourceProvider {
   static TomServerConfigResourceProvider? _configProvider;
 

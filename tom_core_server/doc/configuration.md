@@ -57,6 +57,24 @@ top-level key. As a deliberate convenience an *unknown* key resolves to the key
 string itself rather than throwing — so distinguish absence with `exists`
 (which is what `TomConfig` does internally).
 
+The fallback is what lets a setting be written flat. These two files are
+equivalent, and `server.port` reads `8080` from either:
+
+```yaml
+server:          # nested
+  port: 8080
+```
+
+```yaml
+server.port: 8080   # flat
+```
+
+They are only equivalent while just one of them is present. The path is tried
+first, so where a file carries **both**, the nested value answers and the flat
+key becomes unreachable — not merged, not reported, simply never consulted.
+Adding a `server:` block to a file that already had a flat `server.port` is
+therefore a silent way to lose the flat one. Pick one spelling per key.
+
 **A key set explicitly to `null` exists.** Writing a key with no value is how a
 deployment *clears* a setting, and that is a different statement from not
 mentioning the key at all:
@@ -398,6 +416,32 @@ TomYaml.mergeInYamlFile(existing, 'config.yaml');
 
 A placeholder with no matching environment variable falls back to its `:default`
 (or stays unresolved if no default is given).
+
+### An overlay is a patch, not a replacement
+
+`mergeInYamlFile` is one-sided: keys the file names overwrite what is already
+in the target, and keys it does not name survive. The merge **recurses into
+subtrees**, so naming one key of a branch replaces that key alone and leaves
+the branch's other keys standing:
+
+```yaml
+# base.yaml            # env.yaml (overlaid onto it)
+db:                    db:
+  host: localhost        host: db.prod.internal
+  port: 3306
+  pool: 20
+```
+
+```dart
+final config = TomYaml.loadYamlFile('base.yaml');
+TomYaml.mergeInYamlFile(config, 'env.yaml');
+// db.host = db.prod.internal   (overlaid)
+// db.port = 3306, db.pool = 20 (survive — not wiped by the partial branch)
+```
+
+This is what makes a per-environment file worth having: it states only its
+differences. Were the merge to replace branches wholesale, `env.yaml` above
+would silently drop `port` and `pool`.
 
 ### A substituted value is a string
 

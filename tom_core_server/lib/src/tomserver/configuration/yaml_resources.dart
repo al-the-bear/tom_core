@@ -56,6 +56,12 @@ class TomYaml {
   /// [result], and keys only in [result] survive. Because the load is an
   /// argument to the merge it completes first, so a throw leaves [result]
   /// untouched — an overlay never half-applies.
+  ///
+  /// It **recurses into subtrees**, so the overwrite is per leaf rather than
+  /// per branch: a file naming `db.host` alone replaces that key and leaves the
+  /// `db` branch's other keys standing. That is what lets a per-environment
+  /// file state only its differences instead of restating every sibling
+  /// setting to avoid losing it.
   static void mergeInYamlFile(Map<String, Object?> result, String filename) {
     mergeMapsOneSided(result, loadYamlFile(filename));
   }

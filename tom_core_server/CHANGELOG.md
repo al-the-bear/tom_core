@@ -267,6 +267,29 @@
 
 ### Documentation
 
+- **Two configuration rules that only tests knew are now written down
+  (tcinc447).** Both were found by mutation: breaking them left the suite
+  green, which is how an undocumented rule and an untested one turn out to be
+  the same defect seen from two sides.
+
+  *A dotted key is tried as a path first.* `server.port` resolves whether the
+  operator wrote it nested under `server:` or flat as `server.port:` — the tree
+  walk answers the first, the top-level fallback the second. The two spellings
+  are only equivalent while one of them is present: where a file carries both,
+  the path wins and the flat key becomes unreachable, neither merged nor
+  reported. Adding a `server:` block to a file that already carried a flat
+  `server.port` is therefore a silent way to lose it. Documented on the
+  provider, in `doc/configuration.md`, and in the API summary.
+
+  *An overlay is a patch, not a replacement.* `TomYaml.mergeInYamlFile` recurses
+  into subtrees, so its one-sided overwrite is per *leaf* rather than per
+  branch: a file naming `db.host` alone replaces that key and leaves `db.port`
+  and `db.pool` standing. This is what lets a per-environment file state only
+  its differences instead of restating every sibling setting to avoid losing
+  it — and it would invert silently if the merge ever stopped recursing. The
+  existing tests used disjoint keys throughout, so nothing had ever exercised a
+  collision in either direction.
+
 - **The commented-out logging middleware is now documented rather than
   commented out (tcinc444).** `TomBaseServerConfiguration.loggingMiddleware`
   was initialised to `tomLoggingMiddleware()` and immediately followed by a

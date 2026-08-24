@@ -65,7 +65,10 @@ TomYaml
 
 Holds the resolved configuration tree and answers property lookups for
 `TomConfig`. A single provider is shared process-wide via `getServerConfig`.
-Keys may be dotted paths into the nested `resources` map.
+Keys may be dotted paths into the nested `resources` map. A dotted key is tried
+as a path first and as a literal top-level key only if the walk fails, so
+`server.port` resolves whether it was written nested or flat; where a tree
+carries both, the path wins and the flat key is unreachable.
 
 #### Constructors
 
@@ -362,7 +365,7 @@ one.
 | Method | Signature | Description | Throws |
 | ------ | --------- | ----------- | ------ |
 | `loadYamlFile` | `static Map<String, Object?> loadYamlFile(String filename)` | Loads a YAML file and returns it as a map with environment-variable substitution. | `PathNotFoundException` if `filename` is absent |
-| `mergeInYamlFile` | `static void mergeInYamlFile(Map<String, Object?> result, String filename)` | Loads a YAML file with `loadYamlFile` and merges it one-sided into `result`. The load is an argument to the merge, so it completes first and a throw leaves `result` untouched. | `PathNotFoundException` if `filename` is absent |
+| `mergeInYamlFile` | `static void mergeInYamlFile(Map<String, Object?> result, String filename)` | Loads a YAML file with `loadYamlFile` and merges it one-sided into `result`. The load is an argument to the merge, so it completes first and a throw leaves `result` untouched. The merge recurses into subtrees, so the overwrite is per leaf: a file naming `db.host` alone leaves the `db` branch's other keys standing. | `PathNotFoundException` if `filename` is absent |
 
 ## Global Functions and Constants
 
