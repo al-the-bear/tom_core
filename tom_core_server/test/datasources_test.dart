@@ -306,6 +306,90 @@ void main() {
     });
   });
 
+  // The encoding every table that stores an instant shares. It was reachable
+  // only through its callers — the dialect's `dateTimeOp`, `TomDbDateTime.of`,
+  // the MariaDB bind boundary, the scheduling stores — so the convention itself
+  // was asserted nowhere, and `doc/datasources.md` now states it as a rule. A
+  // stated rule with no test is the shape of claim tcinc466 and tcinc467 were
+  // both about: it goes stale silently.
+  group('sqlInstant / parseSqlInstant (the one encoding of an instant)', () {
+    test('renders UTC with six fractional digits', () {
+      expect(
+        sqlInstant(DateTime.utc(2026, 3, 1, 12, 30, 45, 123, 456)),
+        '2026-03-01 12:30:45.123456',
+      );
+    });
+
+    test('every field is zero-padded to a fixed width', () {
+      // Fixed width is what keeps the text comparable in SQL as well as in
+      // Dart, and the fractional part is a millisecond field and a microsecond
+      // field written adjacently — three digits each, not one six-digit number.
+      expect(
+        sqlInstant(DateTime.utc(7, 1, 2, 3, 4, 5, 6, 7)),
+        '0007-01-02 03:04:05.006007',
+      );
+    });
+
+    test('a local value renders as the instant it names, not its reading', () {
+      // Built from a UTC moment so the expectation holds in any zone: the two
+      // denote one instant, so they must produce one string.
+      final utc = DateTime.utc(2026, 3, 1, 12, 30, 45, 123, 456);
+      expect(sqlInstant(utc.toLocal()), sqlInstant(utc));
+    });
+
+    test('the round trip is exact, and lands in UTC', () {
+      final written = DateTime.utc(2026, 3, 1, 12, 30, 45, 123, 456);
+      final read = parseSqlInstant(sqlInstant(written));
+      expect(read, written);
+      expect(read.isUtc, isTrue);
+      // Microseconds survive — which is why a column holding an instant is
+      // DATETIME(6). A plain DATETIME rounds them, moving the stored moment.
+      expect(read.microsecond, 456);
+    });
+
+    test('a local value round-trips to the same moment, labelled UTC', () {
+      final local = DateTime.utc(2026, 3, 1, 12, 30, 45).toLocal();
+      final read = parseSqlInstant(sqlInstant(local));
+      expect(read.isUtc, isTrue);
+      expect(read.isAtSameMomentAs(local), isTrue);
+    });
+
+    test('column text alone parses local — appending the zone is the fix', () {
+      // The trap this file exists for, pinned. `DateTime.==` compares `isUtc`
+      // as well as the moment, so the naive read is unequal to what was written
+      // in every zone but UTC; parseSqlInstant is equal in all of them.
+      const text = '2026-03-01 12:30:45.123456';
+      final written = DateTime.utc(2026, 3, 1, 12, 30, 45, 123, 456);
+      expect(DateTime.parse(text).isUtc, isFalse);
+      expect(parseSqlInstant(text), written);
+    });
+
+    test('a value already carrying the zone marker is not given a second', () {
+      expect(
+        parseSqlInstant('2026-03-01 12:30:45.123456Z'),
+        DateTime.utc(2026, 3, 1, 12, 30, 45, 123, 456),
+      );
+    });
+
+    test('surrounding whitespace is trimmed', () {
+      expect(
+        parseSqlInstant('  2026-03-01 12:30:45.123456  '),
+        DateTime.utc(2026, 3, 1, 12, 30, 45, 123, 456),
+      );
+    });
+
+    test('parseOptionalSqlInstant collapses null and empty to absent', () {
+      // The driver reports a NULL instant as either shape depending on the row
+      // mapper, and every caller has to collapse the two the same way.
+      expect(parseOptionalSqlInstant(null), isNull);
+      expect(parseOptionalSqlInstant(''), isNull);
+      expect(
+        parseOptionalSqlInstant('2026-03-01 12:30:45.123456'),
+        DateTime.utc(2026, 3, 1, 12, 30, 45, 123, 456),
+      );
+    });
+  });
+
   group('TomStandardSqlDialect literals', () {
     final d = TomStandardSqlDialect();
 

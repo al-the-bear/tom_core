@@ -9,18 +9,27 @@ and the **data-source / driver** abstraction (`TomDataSource`,
 object-persistence module builds its query DSL and repositories on top of this
 layer.
 
+Three smaller things live here for the same reason — they are decisions every
+table has to make the same way, so they cannot belong to any one caller: how an
+instant is written to a column, how a `:name` placeholder is found in text that
+also contains string literals, and how a table the **framework itself** owns is
+declared.
+
 ## Table of Contents
 
 - [Overview](#overview)
 - [SQL-Typed Values](#sql-typed-values)
+- [Instants Are UTC](#instants-are-utc)
 - [The Operator Tree](#the-operator-tree)
 - [The SQL Dialect](#the-sql-dialect)
 - [Classifying Column Types](#classifying-column-types)
 - [Aggregate Fragments](#aggregate-fragments)
 - [Query Objects](#query-objects)
+- [Finding Placeholders in Quoted SQL](#finding-placeholders-in-quoted-sql)
 - [Data Sources and Drivers](#data-sources-and-drivers)
 - [When a Write Fails](#when-a-write-fails)
 - [The MariaDB Driver](#the-mariadb-driver)
+- [Framework-Owned Tables](#framework-owned-tables)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -34,6 +43,7 @@ layer.
 | `TomDbType<T>` (+ `TomDbInt`/`TomDbDouble`/`TomDbString`/`TomDbDateTime`/`TomDbDate`/`TomDbTime`/`TomDbBool`) | class | A boxed, SQL-typed value with a parsing `of(String?)` factory |
 | `TomOperator<R>` | abstract class | A node in a SQL expression tree, typed by its SQL return type `R` |
 | `SqlString` | typedef | A `String` that documents "this is a SQL fragment" |
+| `sqlInstant` / `parseSqlInstant` / `parseOptionalSqlInstant` | function | The one encoding of an instant in a `DATETIME(6)` column — always UTC, six fractional digits |
 | `TomStandardSqlDialect` | class | Renders operator nodes to standard-SQL fragments |
 | `TomAggregateFunction` | enum | The aggregate vocabulary a dialect must render (`count`/`sum`/`avg`/`min`/`max`) |
 | `TomSqlTypeFamily` | enum | The coarse type classes a stored column can belong to — what a dialect reduces a SQL type name *to* |
@@ -43,11 +53,19 @@ layer.
 | `TomQuery` / `TomGeneratedQuery` | abstract class | A query over a set of entity types |
 | `TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect` | class | Concrete statements |
 | `TomTypePersistenceInfo` | reflected class | Per-type persistence metadata (table + columns) |
+| `TomTypedPersistenceBase` | abstract class | Base for anything scoped to a set of entity types; analyses their annotations once and exposes the flattened column information |
+| `SqlPlaceholderScan` | class | Finds `:name` placeholders in generated SQL without mistaking one inside a quoted literal for a bind |
 | `TomDataSource` | abstract class | A connection to one data source (lifecycle + execution) |
 | `TomPreparedStatement<T>` | abstract class | A reusable compiled statement |
 | `TomDatasourceDriver` | annotation | Marks a `TomDataSource` as the driver for a named type |
 | `TomDataSourceInfo` | class | The process-wide registry of named, configured data sources |
+| `TomDatasourceInitException` | exception | A data source could not be discovered, instantiated or initialised |
 | `MariaDbDatasource` / `MariaDbXADatasource` / `MariadbSqlDialect` | class | The MariaDB implementation (plain + XA transactions) |
+| `MariadbPreparedStatement<T>` | class | A MariaDB-backed `TomPreparedStatement` — the server-side statement, the ordered parameter list, and the type its rows map onto |
+| `MariadbDatasourceException` | exception | A MariaDB connect, execute or result-mapping failure |
+| `MariadbPreparedStatementException` | exception | A statement failed with no live link to have run on; raising it *is* the decision to retry once |
+| `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` | class | The single declaration of a table the framework itself owns, from which its DDL, column lists and inserts are derived |
+| `unknownFrameworkColumns` | function | Audits a hand-written statement for column references no framework table declares |
 
 ## SQL-Typed Values
 
@@ -64,6 +82,52 @@ TomDbString.of('hello').get();  // 'hello'   (wrapped verbatim)
 ```
 
 These types parameterise the operator tree, keeping operands type-safe.
+
+## Instants Are UTC
+
+A MariaDB `DATETIME` carries no zone, and the driver materialises one with
+`DateTime.parse` on the column's text — which yields a **local** `DateTime`.
+`DateTime.==` compares `isUtc` as well as the moment, so a value written as UTC
+does not compare equal to the value read back, even though both denote the same
+instant. Left alone, two nodes of one cluster write different characters into
+the same column for the same moment, and each reads the other's rows off by the
+difference in their offsets.
+
+`sqlInstant` and `parseSqlInstant` settle it once, and settle it the same way
+for both ways this server writes SQL:
+
+- **Hand-written SQL** — the scheduling, OAuth-state, audit and file-storage
+  stores build their own statements and call the pair at each seam explicitly.
+- **Reflected entity columns** — a `@TomDbColumn<DateTime?, TomDbDateTime>`
+  field names no conversion at all, so this module applies one on its behalf:
+  the MariaDB bind boundary renders every bound `DateTime` through `sqlInstant`,
+  `TomDbDateTime.of` reads a column back through `parseOptionalSqlInstant`, and
+  `dateTimeOp` inlines the same text as a literal. An entity therefore stores
+  UTC and reads UTC without saying so.
+
+The second case is why the convention is stated here rather than left to each
+entity. A validity window, an expiry, a lease deadline — the instants that
+*decide* something are exactly the ones an entity is most likely to carry, and
+the wall-clock reading of whichever node happened to write the row is not an
+answer to "when". Nodes may disagree about the zone; they may not disagree
+about the moment.
+
+```dart
+sqlInstant(DateTime.utc(2026, 3, 1, 12, 30, 45, 123, 456));
+// 2026-03-01 12:30:45.123456
+
+parseSqlInstant('2026-03-01 12:30:45.123456').isUtc;  // true
+parseOptionalSqlInstant('');                          // null
+```
+
+A local `DateTime` handed to `sqlInstant` comes back as a UTC one: the same
+instant, differently labelled, which is the right answer for a cluster whose
+nodes must never compare wall clocks.
+
+The corollary for DDL: **a column holding an instant is `DATETIME(6)`.** A plain
+`DATETIME` rounds the microseconds this convention always writes, which moves
+the stored moment by up to half a second — tolerable for a "when was this
+touched" field, not for a boundary something is compared against.
 
 ## The Operator Tree
 
@@ -340,6 +404,57 @@ GROUP BY … [HAVING …]` out of the [aggregate fragments](#aggregate-fragments
 above. It is the one query whose rows are not entities, so a driver treats it
 specially — see [The MariaDB Driver](#the-mariadb-driver).
 
+## Finding Placeholders in Quoted SQL
+
+The dialect renders a bound parameter as `:name` (`TomStandardSqlDialect.p`) and
+inlines a string literal with its own escaping (`text` doubles single quotes and
+backslashes). Two consumers then have to find those placeholders again in the
+finished text: the MariaDB datasource rewrites each one to a positional `?`, and
+the CRUD repository extracts their names to bind a raw statement.
+
+Finding them by regular expression looks obvious and is wrong, because a regex
+has no notion of string-literal context. In
+
+```sql
+WHERE a = 'x:y' AND b = :p
+```
+
+`:y` is four characters inside a value, not a bind — but `:([A-Za-z_]\w*)` sees
+two placeholders. The datasource then emits two `?` and reports two names, so
+every positional slot from that point on is bound to the wrong value. That was a
+real defect (RCC6), and it was two defects, because both consumers carried their
+own copy of the same regex.
+
+`SqlPlaceholderScan` is the one implementation they now share. It walks the SQL
+a character at a time, copies the contents of a quoted span verbatim, and
+recognises `:name` only in ordinary text:
+
+```dart
+SqlPlaceholderScan.toPositional("WHERE a = 'x:y' AND b = :p");
+// ("WHERE a = 'x:y' AND b = ?", ['p'])
+
+SqlPlaceholderScan.extractNames('WHERE a = :first OR b = :second');
+// ['first', 'second']
+```
+
+`toPositional` returns the rewritten SQL together with the names in the exact
+left-to-right order the `?` slots appear — repeats included, because a repeated
+name is a repeated slot and the driver binds by position. `extractNames` is the
+same walk with the rewrite discarded.
+
+Three quoting forms are skipped, each with the escape rule its delimiter
+actually uses:
+
+| Span | Escapes |
+| ---- | ------- |
+| `'…'` and `"…"` (string literals) | a backslash escapes the next character (MariaDB's default mode), **and** a doubled delimiter (`''`, `""`) is an escaped delimiter that keeps the scan inside the literal |
+| `` `…` `` (identifiers) | a doubled backtick only — MySQL/MariaDB identifiers have **no** backslash escaping, so a backslash there is an ordinary character |
+
+Getting the backtick rule wrong would not break generated SQL: a generated
+identifier is a Dart field name and never contains a colon. It is a robustness
+guard (RCB10) for hand-written and future statements, and it is cheap precisely
+because the walk already exists.
+
 ## Data Sources and Drivers
 
 `TomDataSource` is the abstract contract a database driver implements: its
@@ -610,20 +725,103 @@ situation. And it is thrown as the module's own type rather than a bare
 `catch` narrow enough to act on the one case the caller can fix cannot be
 written against it.
 
+## Framework-Owned Tables
+
+An application's tables are guarded end to end: the entity model declares a
+shape, the migration chain builds one, and `TomSchemaConvergenceCheck` proves
+the two agree. The framework's *own* tables — the job queue, the lease table,
+the roll call, the blob pair, the audit trail — are not entities, so they sat
+outside that guard entirely, and each declared its columns **twice**: once in a
+`CREATE TABLE` string and again in the column lists of the statements that read
+and write it. Nothing related the two.
+
+That is a bad place for a divergence to live. A column renamed on one side and
+not the other fails at runtime on a path that may only ever execute in
+production — `recoverAbandoned` after a node dies, a chunk read of a large file
+— and the framework's own tables are the ones a deployment is least able to
+repair by hand.
+
+`TomFrameworkTable` is that declaration, made once. Everything else is derived
+from it:
+
+| Derived | From |
+| ------- | ---- |
+| The create-if-missing DDL each store issues on first use | `createTableDdl` |
+| The column lists its statements interpolate | `columnList`, `columnsOf(names)` |
+| Its `INSERT` / `REPLACE` shape | `insert(verb, values)` |
+| The `TomSchemaModel` the convergence guard compares | `db_migration/framework_convergence.dart`, which replays `createTableDdl` through the same `TomSchemaDdlReader` the migration side uses |
+
+A `TomFrameworkColumn` carries a name, a SQL type, nullability, an optional
+default and an auto-increment flag; a `TomFrameworkKey` carries the columns it
+covers and whether it is unique. A key's *name* is built from the table's name
+plus a suffix rather than given outright, because the table name is a
+per-instance argument of the owning store — two stores over differently-named
+tables in one schema would otherwise collide on an index name, and the second
+`CREATE TABLE` would fail.
+
+Every failure this type can catch, it catches as early as it can. A key part
+that names no column throws at construction, because a descriptor is built once
+at start-up and a typo there would otherwise surface as a `CREATE TABLE` failure
+against a live server. `columnsOf` throws when a name is not a column, so a
+projection that outlived the column it names fails at the first call. `insert`
+keys by column name rather than by position — a positional list would put the
+column list and the value list in lock-step order, so inserting a column in the
+descriptor would silently shift every value one place along, which type-checks
+and is therefore worse than the failure this file exists to remove.
+
+It lives here, and not in `db_migration/`, because the stores that own these
+tables (`scheduling/`, `file_storage/`, `audit/`) already depend on
+`datasources/` and must not be made to depend on the migration module — a
+deployment can use the scheduler without ever running a migration. The
+comparison is migration-shaped and lives there, depending on this file rather
+than the other way round.
+
+It is deliberately **not** a query builder. The statements in these stores are
+conditional writes whose exact shape is load-bearing and documented at length —
+the affected-row count of `UPDATE … WHERE state = 'pending'` *is* the
+arbitration — so rendering them from a template would trade a readable invariant
+for an unreadable one. What is generated is the part that is pure repetition:
+the DDL and the column lists. Column references inside `SET`, `WHERE` and
+`ORDER BY` stay written out, and are guarded by `unknownFrameworkColumns`,
+which drives a store through a recording data source and audits every statement
+it actually issued:
+
+```dart
+final jobs = jobRunTable('tom_job_run');
+
+unknownFrameworkColumns('UPDATE tom_job_run SET state = :s '
+    "WHERE state = 'pending'", [jobs]);
+// []  — every identifier is a column, the table, or SQL
+
+unknownFrameworkColumns('UPDATE tom_job_run SET stat = :s '
+    'WHERE id = :i', [jobs]);
+// ['stat']  — a rename the column lists could never have caught
+```
+
+The audit is conservative in the direction that matters. String literals, binds
+and numbers are stripped before the scan and a fixed set of SQL words is
+ignored; anything else that survives is reported. A word missing from that set
+is a false positive in a test — noisy and self-correcting — whereas a missed
+column reference is the production failure the whole file exists to prevent.
+
 ## Verification
 
 Two suites cover the driver, split by what needs a server rather than by what
-is interesting.
+is interesting. Two more cover the framework-table declarations, split the same
+way.
 
 `test/datasources_test.dart` always runs, and reaches further into the driver
 than "no connection" suggests. Beyond the dialect's SQL generation and the
 `TomDbType.of` conversions it covers `MariadbPreparedStatement`'s
 `buildPositionalParameters` and `normalizeGeneratedId`,
 `MariaDbDatasource.toPositionalStatement` and the placeholder scan it shares
-with `crud_repository`, `parsePort` / `normalizePort`, the
-`initializeDatasourceInfo` configuration guard, `isLostConnectionFailure` —
-the retry decision described in [When a Write Fails](#when-a-write-fails) — and
-the rule that a driver owns its dialect.
+with `crud_repository`, `sqlInstant` / `parseSqlInstant` /
+`parseOptionalSqlInstant` — including the local-reading trap that
+[Instants Are UTC](#instants-are-utc) exists to close — `parsePort` /
+`normalizePort`, the `initializeDatasourceInfo` configuration guard,
+`isLostConnectionFailure` — the retry decision described in
+[When a Write Fails](#when-a-write-fails) — and the rule that a driver owns its
+dialect.
 
 Two things there are worth knowing about, because they are what let a
 connection-free suite assert connection behaviour at all. The **connection
@@ -645,8 +843,27 @@ covers, because on a real server the guard and a genuine database failure are
 both reachable through the same call — which is the only place the module's own
 exception type is doing work that `isA<Exception>()` could not.
 
-That suite is tagged `db` and skips itself when no MariaDB is reachable, so the
-default `testkit :test` run stays green with no database. To run it:
+The framework tables are covered separately, because what has to be proved
+about them is agreement rather than behaviour.
+`test/framework_schema_test.dart` runs without a server and closes the four
+ways a second spelling of a column could survive: each declaration is compared
+against the shipped reference migration, against the reflected row types the
+mapper materialises, and — through `unknownFrameworkColumns`, driving each store
+through a recording data source — against the statements the stores actually
+issue. Its fourth test introduces a deliberate drift and asserts it is *caught*,
+because a guard nobody has watched fail is a guard nobody knows works.
+
+`test/framework_schema_db_test.dart` is the only variant that can see a schema
+edited by hand after provisioning — the dropped "redundant" index, the widened
+column, the `ALTER` applied outside the chain. The other three are readings of
+the source tree and stay true of a database that no longer matches it. This one
+creates each table by both of the routes a deployment may take — the stores'
+create-on-first-use and the reference migration files a DBA applies — reads the
+result back out of `information_schema`, and compares it with the descriptor.
+
+It and `test/datasources_db_test.dart` are tagged `db` and skip themselves when
+no MariaDB is reachable, so the default `testkit :test` run stays green with no
+database. To run them:
 
 ```bash
 tool/run_db_tests.sh     # boots a throwaway MariaDB on 3309, runs, tears down
@@ -661,6 +878,9 @@ against a server you already have, export `TOM_CORE_SERVER_TEST_DB_HOST`,
 
 - **`TomDbType<T>`** and its concrete subtypes — boxed SQL values with
   `of(String?)` parsing.
+- **`sqlInstant` / `parseSqlInstant` / `parseOptionalSqlInstant`** — the one
+  encoding of an instant in a `DATETIME(6)` column, applied to hand-written and
+  reflected SQL alike. See [Instants Are UTC](#instants-are-utc).
 - **`TomOperator<R>`** — the typed SQL expression node (`generate`, `getFields`,
   `getParameters`).
 - **`TomStandardSqlDialect`** — SQL-fragment generation; `SqlString`. Also the
@@ -681,17 +901,19 @@ against a server you already have, export `TOM_CORE_SERVER_TEST_DB_HOST`,
 - **`TomQuery` / `TomGeneratedQuery`** and `TomSelect` / `TomCount` /
   `TomDelete` / `TomLiteralSelect` — query objects; `TomTypePersistenceInfo` /
   `TomTypedPersistenceBase` for the per-type metadata.
+- **`SqlPlaceholderScan`** — the quote-aware `:name` scan the positional rewrite
+  and the CRUD repository share, so neither mistakes a colon inside a literal
+  for a bind. See
+  [Finding Placeholders in Quoted SQL](#finding-placeholders-in-quoted-sql).
 - **`TomDataSource`** (+ `TomPreparedStatement`, `TomDatasourceDriver`,
   `TomDataSourceInfo`) — the data-source/driver abstraction and registry.
 - **`MariaDbDatasource` / `MariaDbXADatasource` / `MariadbSqlDialect`** — the
   MariaDB implementation.
-- **`TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey`** — the single
-  declaration of a table the *framework* owns (the scheduler's queue and lease,
-  the blob store's pair, the audit trail), from which its `CREATE TABLE`, its
-  projections and its inserts are all derived. It lives here rather than in
-  `db_migration` because `scheduling`, `file_storage` and `audit` already depend
-  on this module and must not be made to depend on the migration one — a
-  deployment can run the scheduler without ever loading a migration. See
+- **`TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey`** (+
+  `unknownFrameworkColumns`) — the single declaration of a table the *framework*
+  owns (the scheduler's queue and lease, the blob store's pair, the audit
+  trail), from which its `CREATE TABLE`, its projections and its inserts are all
+  derived. See [Framework-Owned Tables](#framework-owned-tables) and
   [Schema Convergence](db_migration.md#schema-convergence).
 
 ## Dependencies

@@ -746,6 +746,65 @@
 
 ### Internal
 
+- **`doc/datasources.md` documents three source files it had never mentioned,
+  and the completeness check that lets it (tcinc468).** The guide contained no
+  occurrence of `sqlInstant`, `parseSqlInstant` or `SqlPlaceholderScan`, and one
+  bare mention of `TomFrameworkTable` in a bullet list. Three of the module's
+  ten source files were therefore invisible to the document that is a
+  consumer's entry point — including the instant helpers, which encode the
+  module's UTC storage convention and were the one place a reader could have
+  learned it. The guide now has a section for each, with a contents entry:
+  `## Instants Are UTC`, `## Finding Placeholders in Quoted SQL` and
+  `## Framework-Owned Tables`.
+
+  The convention the first of those states is the substantive part. A MariaDB
+  `DATETIME` carries no zone and the driver materialises one with
+  `DateTime.parse`, which yields a *local* value — so a cluster's nodes write
+  different characters for the same moment and read each other's rows off by
+  the difference in their offsets. Both ways this server writes SQL now settle
+  it identically, and the second is why the rule belongs in the guide rather
+  than in each caller: a hand-written statement calls the helpers at each seam
+  explicitly, whereas a `@TomDbColumn<DateTime?, TomDbDateTime>` field names no
+  conversion at all and has one applied on its behalf at the bind boundary, in
+  `TomDbDateTime.of`, and in `dateTimeOp`. An entity stores UTC and reads UTC
+  without saying so, which is only discoverable if it is written down.
+
+  The guard is the durable half. The Overview-table check already compared each
+  guide's table against its module's exported *types*, but `datasources` was one
+  of eleven modules quarantined from it, and could never have left: its table
+  carries three `function` rows, which a types-only reading reports as naming
+  things the module does not export. So `_exportedTypes` became `_exportedApi`
+  and now reads top-level functions and getters as well — `function` is a value
+  the guides' Kind column already takes, eleven times across the set. Top-level
+  *variables* are deliberately excluded, because `messaging`'s two exported
+  constants have no row in any guide and adding them would fail a module that
+  passes today. With the table reconciled — thirteen rows added — `datasources`
+  leaves the quarantine, which drops from eleven modules to ten.
+
+  Two smaller readings had to be fixed to get there, and both were the check
+  being wrong rather than the document. A generic written as
+  `` `TomDbType<T>` `` is the type's name and reads better than the bare one, so
+  the table read now drops the argument list instead of the guide dropping the
+  type parameter. And a
+  `CREATE TABLE tom_resource_grant (` line inside a multi-line DDL constant has
+  the exact shape of a top-level function, so multi-line strings are stripped
+  before the scan; comments are deliberately *not* stripped, every pattern being
+  anchored at column zero where a `///` line cannot match one.
+
+  A second check comes with it, one level up and with no quarantine at all: a
+  guide's `## Table of Contents` must list every section, link only to sections
+  that exist, and be in document order. That is the same completeness failure as
+  an unlisted type — a section the contents list omits is a section most readers
+  never learn exists — and adding a section is precisely when it happens,
+  because the section is the part being thought about. All twenty guides satisfy
+  all three conditions today.
+
+  Finally, `sqlInstant` and its two companions had no direct test — only
+  incidental exercise through the scheduling suites. A stated rule that nothing
+  pins is the shape of claim tcinc466 and tcinc467 were both about, so stating
+  the convention in the guide came with nine tests that hold it, including the
+  local-reading trap itself.
+
 - **`doc/datasources.md` gains a Verification section, and a named suite is
   made load-bearing (tcinc467).** The MariaDB driver chapter ended with a
   blockquote saying the unit tests covered "the connection-independent surface"

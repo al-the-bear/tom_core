@@ -129,8 +129,26 @@
 /// line linking to it is allowed anywhere, as is a fenced block, which may be
 /// quoting code as an example of what not to write.
 ///
+/// The last group is the first check in this file whose subject is the document
+/// as a document rather than as a set of claims about code, and it is the same
+/// completeness failure as the Overview table one level up again. A guide's
+/// `## Table of Contents` is how a reader decides what the document covers
+/// without reading it, so a section it omits is a section most readers never
+/// learn exists. `doc/datasources.md` had three source files with no section at
+/// all; the repair added three, and nothing but attention would have kept their
+/// entries in the list — adding a section being precisely the moment the list
+/// is not what is being thought about.
+///
+/// Three ways for the list to be wrong are separated, because they fail
+/// differently. A section with no entry is unreachable except by scrolling; an
+/// entry with no section still renders and links nowhere, which is worse,
+/// because the reader is told the material exists; and a list in the wrong
+/// order misleads about distance, which is most of what a contents list is for.
+/// All twenty guides satisfy all three today, so this one carries no
+/// quarantine.
+///
 /// Everything here reads the working tree, so the failure names the missing
-/// file, type or field and appears the moment the next one lands.
+/// file, type, field or section and appears the moment the next one lands.
 library;
 
 import 'dart:io';
@@ -178,33 +196,129 @@ final RegExp _typeDeclaration = RegExp(
   multiLine: true,
 );
 
+/// Matches a top-level function declaration, anchored at column zero.
+///
+/// A return type, then the name, then the parameter list. The lazy prefix is
+/// built from word characters, `<>,?.` and spaces, so it cannot cross an `=` —
+/// which is what stops a top-level `final x = someCall();` from reading as a
+/// declaration of `someCall`.
+final RegExp _functionDeclaration = RegExp(
+  r'^[A-Za-z_][\w<>,?\s.]*?\s+([A-Za-z_]\w*)\s*(?:<[^<>]*>)?\s*\(',
+  multiLine: true,
+);
+
+/// Matches a top-level getter, anchored at column zero.
+///
+/// There is exactly one in the package — `configuration`'s `tomAppId` — and its
+/// guide gives it a row, so a reading that knew only about functions would
+/// report that row as naming something the module does not export.
+final RegExp _getterDeclaration = RegExp(
+  r'^[A-Za-z_][\w<>,?\s.]*?\s+get\s+([A-Za-z_]\w*)\b',
+  multiLine: true,
+);
+
+/// The `##` headings of [guide] in document order, less its own contents entry.
+List<String> _guideSections(String guide) =>
+    RegExp(r'^## (.+)$', multiLine: true)
+        .allMatches(File('doc/$guide.md').readAsStringSync())
+        .map((match) => match.group(1)!.trim())
+        .where((heading) => heading != 'Table of Contents')
+        .toList();
+
+/// The anchors [guide]'s table of contents links to, in document order.
+///
+/// `null` when the guide has no contents list at all, which is a different
+/// finding from an incomplete one and is reported separately.
+List<String>? _guideContents(String guide) {
+  final text = File('doc/$guide.md').readAsStringSync();
+  if (!text.contains('## Table of Contents')) return null;
+  return RegExp(
+    r'^- \[[^\]]+\]\(#([^)]+)\)$',
+    multiLine: true,
+  ).allMatches(text).map((match) => match.group(1)!).toList();
+}
+
+/// The fragment GitHub derives from a `##` heading.
+///
+/// Lower-cased, everything but letters, digits, spaces and hyphens dropped,
+/// spaces to hyphens. That is enough for these guides — no two sections of one
+/// guide collide, so the disambiguating `-1` suffix never arises.
+String _anchorOf(String heading) => heading
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9 \-]'), '')
+    .replaceAll(' ', '-');
+
 /// Matches one `export 'src/tomserver/<module>/<file>';` line of the barrel.
 final RegExp _barrelExport = RegExp(
   r"^export 'src/tomserver/([^/]+)/([^']+)';",
   multiLine: true,
 );
 
-/// The public types the package barrel exports for [module], sorted.
+/// The public API the package barrel exports for [module], sorted.
 ///
 /// Read through the barrel rather than by listing the module directory,
 /// because the two are not the same set: a file the barrel does not export is
 /// module-internal, and documenting it in a table headed "Type" would promise
 /// an API that a consumer cannot import.
-List<String> _exportedTypes(String module) {
+///
+/// Types *and* top-level functions and getters, because that is what the guides
+/// already document: `function` is one of the values their Kind column takes,
+/// eleven times across the set. Reading only types made every one of those
+/// rows an orphan, which is why `datasources` — whose table carries three —
+/// could not be reconciled at all while the check knew about types alone.
+///
+/// Top-level *variables* are deliberately not API here. `messaging` exports
+/// `tomMimeLineEnding` and `tomMimeMaxLineLength`, which a reader meets in the
+/// documentation of the field that uses them rather than as surface to look up,
+/// and no guide gives a bare constant a row. The one constant that is arguably
+/// surface — `endpoints`' `const tomService = TomService()` — is an instance of
+/// an exported type, and the type already has the row.
+List<String> _exportedApi(String module) {
   final barrel = File('lib/tom_core_server.dart').readAsStringSync();
   final names = <String>{};
   for (final export in _barrelExport.allMatches(barrel)) {
     if (export.group(1) != module) continue;
-    final source = File('lib/src/tomserver/$module/${export.group(2)}')
-        .readAsStringSync()
-        // Doc comments quote code, and a quoted declaration is not one.
-        .replaceAll(RegExp(r'^\s*///.*$', multiLine: true), '');
-    for (final declaration in _typeDeclaration.allMatches(source)) {
+    final source = File(
+      'lib/src/tomserver/$module/${export.group(2)}',
+    ).readAsStringSync();
+    names.addAll(_declaredApi(source));
+  }
+  return names.toList()..sort();
+}
+
+/// The public top-level names [source] declares.
+///
+/// Separated from [_exportedApi] so the scan can be driven over a source string
+/// rather than only over the package, which is what makes the shapes below
+/// checkable. One of them — the getter — is currently declared by exactly one
+/// exported file, in a module whose table is still quarantined, so no live
+/// comparison exercises it. A branch nothing reaches is a branch nobody knows
+/// works, and the fixture test is what reaches it.
+Set<String> _declaredApi(String source) {
+  // A multi-line string holds unindented DDL, and a `CREATE TABLE
+  // tom_resource_grant (` line inside one has the exact shape of a top-level
+  // function. Stripped, or the scan reports the contents of the package's SQL
+  // constants as part of its API.
+  //
+  // Comments need no such treatment, and deliberately get none: every pattern
+  // below is anchored at column zero and starts with a letter, so a `///` or
+  // `//` line cannot match one however much code it quotes. Stripping them as
+  // well would be a line nothing reaches, which is a line nobody maintains.
+  final stripped = source
+      .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
+      .replaceAll(RegExp(r'"""[\s\S]*?"""'), '""');
+  final names = <String>{};
+  for (final pattern in [
+    _typeDeclaration,
+    _functionDeclaration,
+    _getterDeclaration,
+  ]) {
+    for (final declaration in pattern.allMatches(stripped)) {
       final name = declaration.group(1)!;
       if (!name.startsWith('_')) names.add(name);
     }
   }
-  return names.toList()..sort();
+  return names;
 }
 
 /// The type names the first column of `doc/<module>.md`'s Overview table
@@ -212,6 +326,11 @@ List<String> _exportedTypes(String module) {
 ///
 /// A cell may name more than one type (the delegation row names three), so
 /// every backticked identifier in the cell counts.
+///
+/// A generic is written with its parameter — `` `TomDbType<T>` `` — which reads
+/// better than the bare name and is the name all the same. The argument list is
+/// dropped so the cell and the declaration agree; without that, three of this
+/// module's oldest rows read as naming types the barrel does not export.
 List<String>? _overviewTableTypes(String module) {
   final lines = File('doc/$module.md').readAsLinesSync();
   final heading = lines.indexWhere((line) => line.startsWith('| Type |'));
@@ -224,7 +343,7 @@ List<String>? _overviewTableTypes(String module) {
     final cell = line.split('|')[1];
     names.addAll(
       RegExp(
-        r'`([A-Za-z_][A-Za-z0-9_]*)`',
+        r'`([A-Za-z_][A-Za-z0-9_]*)(?:<[^`]*>)?`',
       ).allMatches(cell).map((match) => match.group(1)!),
     );
   }
@@ -1118,7 +1237,6 @@ List<(String, List<String>)> _guides() =>
 const Set<String> _tablesPendingReconciliation = {
   'authentication',
   'configuration',
-  'datasources',
   'db_migration',
   'endpoints',
   'export',
@@ -1205,7 +1323,7 @@ void main() {
     });
   });
 
-  group('each guide\'s Overview table lists the module\'s exported types', () {
+  group('each guide\'s Overview table lists the module\'s exported API', () {
     for (final module in _modules()) {
       final table = _overviewTableTypes(module);
       if (table == null) continue;
@@ -1213,7 +1331,7 @@ void main() {
       test(
         module,
         () {
-          final exported = _exportedTypes(module);
+          final exported = _exportedApi(module);
 
           final missing = exported.where((t) => !table.contains(t)).toList();
           expect(
@@ -1221,9 +1339,10 @@ void main() {
             isEmpty,
             reason:
                 'doc/$module.md\'s Overview table does not list these exported '
-                'types: ${missing.join(', ')}. The table is headed "Type", so a '
-                'reader takes it for the module\'s surface and concludes an '
-                'unlisted type does not exist.',
+                'names: ${missing.join(', ')}. The table is the first thing '
+                'the guide shows, so a reader takes it for the module\'s '
+                'surface and concludes an unlisted name does not exist — which '
+                'is how three of this module\'s ten files became invisible.',
           );
 
           final orphaned = table.where((t) => !exported.contains(t)).toList();
@@ -1231,10 +1350,10 @@ void main() {
             orphaned,
             isEmpty,
             reason:
-                'doc/$module.md\'s Overview table names these types, which the '
+                'doc/$module.md\'s Overview table names these, which the '
                 'barrel does not export from $module: ${orphaned.join(', ')}. '
-                'Either the type was renamed or removed, or it belongs to '
-                'another module\'s table.',
+                'Either it was renamed or removed, or it belongs to another '
+                'module\'s table.',
           );
         },
         skip: _tablesPendingReconciliation.contains(module)
@@ -1256,6 +1375,167 @@ void main() {
             'suppresses no check and reads as outstanding debt that is not, '
             'so remove it.',
       );
+    });
+
+    test('the scan reads the declaration shapes an exported file uses', () {
+      // Each line below is a shape the package actually contains, and three of
+      // them are shapes that defeated an earlier reading of it.
+      final found = _declaredApi('''
+class TomWidget {}
+abstract class TomContract {}
+mixin TomMixin {}
+enum TomMode { a, b }
+extension TomExt on String {}
+typedef TomAlias = int;
+String renderThing(int value) => '';
+Future<List<String>> loadThings<T>(int n) async => [];
+String get tomAppId => '';
+String _privateThing(int n) => '';
+class _PrivateWidget {}
+const tomBareConstant = 3;
+final tomBareVariable = buildDefaultThing();
+''');
+
+      expect(found, contains('TomWidget'), reason: 'a class');
+      expect(found, contains('TomContract'), reason: 'an abstract class');
+      expect(found, contains('TomMixin'), reason: 'a mixin');
+      expect(found, contains('TomMode'), reason: 'an enum');
+      expect(found, contains('TomExt'), reason: 'an extension');
+      expect(found, contains('TomAlias'), reason: 'a typedef');
+      expect(found, contains('renderThing'), reason: 'a top-level function');
+      expect(found, contains('loadThings'), reason: 'a generic function');
+
+      // The one shape no live comparison reaches: `configuration`'s `tomAppId`
+      // is the package's only exported top-level getter, and that module's
+      // table is still quarantined. Without this line, deleting the getter
+      // pattern would break nothing that anyone would notice.
+      expect(found, contains('tomAppId'), reason: 'a top-level getter');
+
+      expect(found, isNot(contains('_privateThing')));
+      expect(found, isNot(contains('_PrivateWidget')));
+
+      // Top-level variables are deliberately not API — see [_declaredApi].
+      expect(found, isNot(contains('tomBareConstant')));
+      expect(found, isNot(contains('tomBareVariable')));
+
+      // And the initialiser is not read as a declaration either, which is what
+      // the function pattern's refusal to cross an `=` buys. The assertion is
+      // on the *callee* rather than on `tomBareVariable`, because a pattern
+      // that crossed the `=` would capture the name being called — so the
+      // mistake shows up as an unrelated function appearing in the module's
+      // API, and only a name declared nowhere else here can catch it.
+      expect(found, isNot(contains('buildDefaultThing')));
+    });
+
+    test('the scan ignores declarations that are only quoted', () {
+      // The multi-line string is the one that defeated the first reading of the
+      // package: it is how every framework table's DDL is written, and
+      // `CREATE TABLE tom_resource_grant (` has the exact shape of a top-level
+      // function declaration, at column zero, where the anchor cannot save it.
+      //
+      // The doc comment is here for the opposite reason — to hold the claim in
+      // [_declaredApi] that comments need no stripping. If an anchor is ever
+      // relaxed, this is what notices.
+      final found = _declaredApi('''
+/// Renders a thing: `String quotedFunction(int value)`.
+/// See also [QuotedClass], declared as `class QuotedClass {}`.
+const ddl = \'\'\'
+CREATE TABLE tom_resource_grant (
+  id VARCHAR(191) NOT NULL
+)\'\'\';
+class RealClass {}
+''');
+
+      expect(found, contains('RealClass'));
+      expect(found, isNot(contains('quotedFunction')));
+      expect(found, isNot(contains('QuotedClass')));
+      expect(found, isNot(contains('tom_resource_grant')));
+    });
+  });
+
+  // A guide's contents list is how a reader finds out what the document covers
+  // without reading it, so a section missing from it is a section most readers
+  // never learn exists — the same failure as an unlisted type, one level up.
+  // Nothing kept the two in step, and adding a section is exactly when the
+  // omission happens, because the section is the part being thought about.
+  group('every guide\'s table of contents matches its sections', () {
+    for (final guide in _docs('doc')) {
+      test(guide, () {
+        final sections = _guideSections(guide);
+        final contents = _guideContents(guide);
+
+        expect(
+          contents,
+          isNotNull,
+          reason:
+              'doc/$guide.md has no "## Table of Contents". Every other guide '
+              'has one, and a reader who has learned to look for it reads its '
+              'absence as a short document rather than as a missing list.',
+        );
+
+        final anchors = {for (final s in sections) _anchorOf(s): s};
+
+        final unlisted = sections
+            .where((s) => !contents!.contains(_anchorOf(s)))
+            .toList();
+        expect(
+          unlisted,
+          isEmpty,
+          reason:
+              'doc/$guide.md has sections its contents list omits: '
+              '${unlisted.join(', ')}. Add an entry, or the section is only '
+              'reachable by scrolling.',
+        );
+
+        final dangling = contents!
+            .where((a) => !anchors.containsKey(a))
+            .toList();
+        expect(
+          dangling,
+          isEmpty,
+          reason:
+              'doc/$guide.md\'s contents list links to anchors no section '
+              'defines: ${dangling.join(', ')}. A renamed heading breaks the '
+              'link silently — the entry still renders, it just goes nowhere.',
+        );
+
+        expect(
+          contents.where(anchors.containsKey).toList(),
+          sections.map(_anchorOf).toList(),
+          reason:
+              'doc/$guide.md\'s contents list is not in document order. A list '
+              'that does not match the order of the sections it names is worse '
+              'than no list, because a reader uses it to judge distance.',
+        );
+      });
+    }
+
+    test('the sweep is reading the guides it claims to check', () {
+      // Every finding above is an emptiness assertion, so a sweep that read no
+      // guide — or read them and recovered no headings — would pass in silence.
+      final guides = _docs('doc');
+      expect(guides, isNotEmpty, reason: 'no guides were found under doc/');
+      expect(
+        guides.where((g) => _guideSections(g).isEmpty).toList(),
+        isEmpty,
+        reason: 'these guides yielded no "##" headings at all',
+      );
+    });
+
+    test('the anchor rule reproduces the fragments the guides link to', () {
+      // The rule is a reimplementation of GitHub's, so it is worth pinning on
+      // the shapes these headings actually take rather than trusting it.
+      expect(_anchorOf('Instants Are UTC'), 'instants-are-utc');
+      expect(_anchorOf('SQL-Typed Values'), 'sql-typed-values');
+      expect(_anchorOf('Framework-Owned Tables'), 'framework-owned-tables');
+      expect(_anchorOf('When a Write Fails'), 'when-a-write-fails');
+      expect(
+        _anchorOf('Finding Placeholders in Quoted SQL'),
+        'finding-placeholders-in-quoted-sql',
+      );
+      // Punctuation is dropped, not replaced — `TomJob`'s guide would otherwise
+      // gain a hyphen where the backticks were.
+      expect(_anchorOf('The `TomJob` Contract'), 'the-tomjob-contract');
     });
   });
 
