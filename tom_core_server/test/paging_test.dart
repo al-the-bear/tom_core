@@ -299,4 +299,65 @@ void main() {
       );
     });
   });
+
+  group('order by names the column, not the Dart field', () {
+    // A sort term may be written as either name — determineColumn matches the
+    // column name and the declared field name alike — but only one of them is
+    // valid SQL. Every sentence below sorts on `createdAt`, whose column is
+    // `created_at`, so a statement that skipped resolution renders a column
+    // that does not exist. The sorts elsewhere in this suite all happen to
+    // name fields whose column spelling is identical, which is why they never
+    // caught it.
+
+    test('a select resolves the field name to the column', () {
+      expect(
+        sql('find by title = :t order by createdAt'),
+        endsWith(' ORDER BY fixture_export.created_at ASC'),
+      );
+    });
+
+    test('a delete resolves the field name to the column', () {
+      // The defect this group exists for: TomDelete passed its sort straight
+      // to orderByClause, which emits terms verbatim, so the Dart field name
+      // reached the statement.
+      expect(
+        sql('delete by title = :t order by createdAt'),
+        endsWith(' ORDER BY created_at ASC'),
+      );
+    });
+
+    test('a delete names the column bare, without the table', () {
+      // MariaDB's DELETE is single-table, so there is nothing to disambiguate
+      // and the column is named unqualified — unlike the SELECT above, which
+      // may span tables and so qualifies every term.
+      final query = sql('delete first 5 by title = :t order by createdAt desc');
+      expect(query, endsWith(' ORDER BY created_at DESC LIMIT 5'));
+      expect(query, isNot(contains('fixture_export.created_at')));
+    });
+
+    test('resolution carries each term direction and order', () {
+      // Two terms, two directions, one of them renamed: resolution must
+      // substitute the name without disturbing either the order of the terms
+      // or the direction attached to each. (`desc` binds back to the terms
+      // since the last direction keyword, so it takes `createdAt` alone and
+      // the trailing `amount` keeps the default.)
+      expect(
+        sql('delete by title = :t order by createdAt desc amount'),
+        endsWith(' ORDER BY created_at DESC,amount ASC'),
+      );
+    });
+
+    test('a delete rejects a field the entity does not have', () {
+      // Sort names routinely arrive from outside and an ORDER BY cannot bind
+      // them as parameters, so the lookup is also what keeps an arbitrary
+      // string out of the statement text. Before the fix a delete had no
+      // lookup at all, and so no such guard.
+      expect(
+        () => compiler
+            .compileQuerySentence('delete by title = :t order by nosuchfield')
+            .generateQuery(dialect),
+        throwsA(isA<TomAnnotationAnalyzerSyntaxException>()),
+      );
+    });
+  });
 }

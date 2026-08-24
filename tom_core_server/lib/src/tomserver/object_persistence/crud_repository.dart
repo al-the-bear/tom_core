@@ -468,26 +468,6 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     return page.withSort([...page.sort, TomSortField.asc(key)]);
   }
 
-  /// Resolves each sort term's declared field name to its qualified column
-  /// expression, throwing when the entity has no such field.
-  ///
-  /// Sort fields routinely arrive from outside (an HTTP `sort=` parameter, say),
-  /// and the rendered `ORDER BY` cannot bind them as parameters. Resolving them
-  /// through the entity's column metadata is therefore the guard that keeps an
-  /// arbitrary string out of the statement text (C-7).
-  List<TomSortField> _resolveSortColumns(List<TomSortField> sort) {
-    final resolved = <TomSortField>[];
-    for (final term in sort) {
-      final column = TomAnnotationAnalyzer.determineColumn(term.field, [
-        persistenceInfo,
-      ]);
-      resolved.add(
-        term.withField('${column.table.table}.${column.getQueryFieldName()}'),
-      );
-    }
-    return resolved;
-  }
-
   /// Returns [base] narrowed to [page]'s window and ordering, or [base]
   /// unchanged when [page] is `null`.
   ///
@@ -1047,14 +1027,18 @@ SELECT * FROM ${dbTable.table}
       }
       // A window varies per call, so it cannot share the cached statement; the
       // clauses are appended to the same `SELECT *`, with the sort names
-      // resolved against the entity's columns first.
+      // resolved against the entity's columns first — a literal select renders
+      // its own text, so nothing else would resolve them.
+      final sort = TomGeneratedQuery.resolveSortColumns(window.sort, [
+        persistenceInfo,
+      ]);
       return _maskRows(
         await _runPrepared<T>(
           TomLiteralSelect(
             [T],
             query:
                 'SELECT * FROM ${dbTable.table}'
-                '${TomGeneratedQuery.orderByClause(_resolveSortColumns(window.sort))}'
+                '${TomGeneratedQuery.orderByClause(sort)}'
                 '${TomGeneratedQuery.limitClause(window.limit, window.offset)}',
           ),
           {},

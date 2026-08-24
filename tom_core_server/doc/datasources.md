@@ -254,6 +254,40 @@ the constructor rather than accepted and ignored, and the query-sentence grammar
 matches: `count first 5 …` and `count … order by x` are rejected, not silently
 counted whole.
 
+#### Sort terms name columns, not Dart fields
+
+A sort term may be *written* with either name — the column lookup matches the
+column name and the declared Dart field name alike — but only the column name is
+valid SQL. Every form that renders an `ORDER BY` therefore puts its terms
+through `TomGeneratedQuery.resolveSortColumns` first, which substitutes the
+column and carries each term's direction over unchanged. Without it, an entity
+whose two spellings differ (`DateTime? createdAt` mapped to `created_at`) would
+render a column that does not exist.
+
+The lookup is also the guard on the statement text. Sort names routinely arrive
+from outside — an HTTP `sort=` parameter, a query sentence — and an `ORDER BY`
+cannot bind them as parameters, so resolving them is what makes an unknown name
+throw instead of being interpolated verbatim.
+
+The rendering differs by form, the lookup does not:
+
+| Form | Renders terms as | Because |
+| ---- | ---------------- | ------- |
+| `TomSelect` | `table.column` | may span tables, so it qualifies |
+| `TomDelete` | `column` | MariaDB's `DELETE` is single-table |
+| `TomGroupedSelect` | the projection alias, *unresolved* | see below |
+
+`TomGroupedSelect` is the deliberate exception. A grouped result orders over
+what it *projects*: an aggregate alias (`AS total`) has no column, and a group
+column is projected `AS <declaredName>`, so the alias is the name in scope.
+Resolving those to column names would break both. Its guard is a different one —
+a term the query does not project is refused
+(`grouped_query.select.order_by_not_projected`) rather than interpolated.
+
+`TomLiteralSelect` renders its own text and so resolves nothing; a caller
+appending an `ORDER BY` to one must call `resolveSortColumns` itself, as
+`CrudRepository.findAll` does for its windowed `SELECT *`.
+
 `TomLiteralSelect` is the escape hatch for statements the generated queries
 cannot express; its `types` still drive result-row mapping.
 

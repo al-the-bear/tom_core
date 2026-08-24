@@ -567,8 +567,17 @@ bound, or an `offset` without a `top`.
 | ------ | --------- | ----------- |
 | `distinctPrefix` | `static String distinctPrefix(bool distinct)` | Renders the `DISTINCT ` projection prefix (empty when not `distinct`). |
 | `limitClause` | `static String limitClause(int top, [int offset = 0])` | Renders the trailing ` LIMIT n` / ` LIMIT n OFFSET m` row-window clause (empty when `top <= 0`). |
-| `orderByClause` | `static String orderByClause(List<TomSortField> sort)` | Renders the trailing ` ORDER BY <col> ASC\|DESC, …` clause, one direction per term. |
+| `orderByClause` | `static String orderByClause(List<TomSortField> sort)` | Renders the trailing ` ORDER BY <col> ASC\|DESC, …` clause, one direction per term. Emits each term verbatim, so callers pass *resolved* names. |
+| `resolveSortColumns` | `static List<TomSortField> resolveSortColumns(List<TomSortField> sort, List<TomTypePersistenceInfo> persistenceInfo, {bool qualified = true})` | Substitutes each term's column for the name it was written with, keeping the direction. The step `orderByClause` requires. |
 | `countProjection` | `static String countProjection(bool distinct, List<String> columnExprs)` | Renders the `COUNT(*)` / `COUNT(DISTINCT <cols>)` projection. |
+
+A sort term may be written as either the column name or the declared Dart field
+name, but only the column name is valid SQL, so `resolveSortColumns` is what
+every `ORDER BY`-rendering form runs first. It doubles as the guard on the
+statement text: sort names arrive from outside and cannot be bound as
+parameters, so an unknown name throws here rather than being interpolated.
+`qualified` selects the rendering only — `table.column` for a select that may
+span tables, bare `column` for MariaDB's single-table `DELETE`.
 
 ##### Properties
 

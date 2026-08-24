@@ -176,13 +176,50 @@ abstract class TomGeneratedQuery extends TomQuery {
   ///
   /// The terms' [TomSortField.field]s are emitted verbatim, so callers pass
   /// *resolved* column expressions — a name that came from outside must have
-  /// been through the entity's column metadata first.
+  /// been through the entity's column metadata first. [resolveSortColumns] is
+  /// that step, and lives here so the two are read together.
   static String orderByClause(List<TomSortField> sort) {
     if (sort.isEmpty) return '';
     final terms = [
       for (final term in sort) '${term.field} ${term.direction.sqlKeyword}',
     ];
     return ' ORDER BY ${terms.join(',')}';
+  }
+
+  /// Resolves each term of [sort] against [persistenceInfo], returning terms
+  /// whose field is the *column* the entity maps it to, with the direction
+  /// carried over unchanged.
+  ///
+  /// A sort term may be written as either name — the lookup matches the column
+  /// name and the declared Dart field name alike — but only the column name is
+  /// valid SQL, so an unresolved term names a column that does not exist on any
+  /// entity whose two spellings differ.
+  ///
+  /// The lookup is also the guard on the statement text. Sort names routinely
+  /// arrive from outside (an HTTP `sort=` parameter, a query sentence), and an
+  /// `ORDER BY` cannot bind them as parameters; resolving them means an unknown
+  /// name throws here instead of being interpolated verbatim.
+  ///
+  /// [qualified] chooses the rendering, never the lookup. A statement that may
+  /// span tables needs `table.column` to be unambiguous; MariaDB's `DELETE` is
+  /// single-table, so it has nothing to disambiguate and names the column bare.
+  static List<TomSortField> resolveSortColumns(
+    List<TomSortField> sort,
+    List<TomTypePersistenceInfo> persistenceInfo, {
+    bool qualified = true,
+  }) {
+    final resolved = <TomSortField>[];
+    for (final term in sort) {
+      final column = TomAnnotationAnalyzer.determineColumn(
+        term.field,
+        persistenceInfo,
+      );
+      final name = column.getQueryFieldName();
+      resolved.add(
+        term.withField(qualified ? '${column.table.table}.$name' : name),
+      );
+    }
+    return resolved;
   }
 
   /// Renders the `COUNT(*)` / `COUNT(DISTINCT <cols>)` projection.
@@ -246,13 +283,8 @@ class TomSelect extends TomGeneratedQuery {
         return "$current , ${nextCol.table.table}.${nextCol.getQueryFieldName()}";
       }
     });
-    // Resolve each sort term's field through the entity's column metadata: an
-    // unknown name fails here rather than reaching the statement text.
-    final dbSort = <TomSortField>[];
-    for (final term in sort) {
-      final ci = determineColumn(term.field);
-      dbSort.add(term.withField("${ci.table.table}.${ci.getQueryFieldName()}"));
-    }
+    // Qualified, because a select may span tables.
+    final dbSort = TomGeneratedQuery.resolveSortColumns(sort, persistenceInfo);
     return "SELECT ${TomGeneratedQuery.distinctPrefix(distinct)}$fieldList"
         " FROM ${tables.join(',')}"
         " WHERE ${query.generate(t)}"
@@ -355,12 +387,20 @@ class TomDelete extends TomGeneratedQuery {
   String generateQuery(TomStandardSqlDialect t) {
     // MariaDB `DELETE` is single-table and supports neither `DISTINCT` nor a
     // column projection — only an optional `ORDER BY … ASC|DESC` and
-    // `LIMIT n`. The order-by names are unqualified (single table), and
-    // there is no `OFFSET`: `DELETE … LIMIT n OFFSET m` is not MariaDB
-    // syntax, so a delete takes no offset either.
+    // `LIMIT n`. There is no `OFFSET`: `DELETE … LIMIT n OFFSET m` is not
+    // MariaDB syntax, so a delete takes no offset either.
+    //
+    // Unqualified, because the statement names exactly one table — but still
+    // resolved, so the clause carries the column name rather than the Dart
+    // field name it may have been written with.
+    final dbSort = TomGeneratedQuery.resolveSortColumns(
+      sort,
+      persistenceInfo,
+      qualified: false,
+    );
     return "DELETE FROM ${TomAnnotationAnalyzer.findTable(types[0])!.table}"
         " WHERE ${query.generate(t)}"
-        "${TomGeneratedQuery.orderByClause(sort)}"
+        "${TomGeneratedQuery.orderByClause(dbSort)}"
         "${TomGeneratedQuery.limitClause(top)}";
   }
 }

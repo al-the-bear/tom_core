@@ -573,6 +573,35 @@ void main() {
       expect(query.generateQuery(dialect), endsWith(' ORDER BY total DESC'));
     });
 
+    test('order by names the projection alias, not the column', () {
+      // Deliberately unlike TomSelect and TomDelete, which resolve their sort
+      // terms to column names. A grouped select orders over what it projects:
+      // an aggregate alias has no column at all, and a group column is
+      // projected `AS <declaredName>`, so the alias is the name in scope.
+      // Resolving these to column names would break both.
+      final query = compile(
+        'group count ( * ) as total over priority '
+        'by priority > 0 order by priority',
+      );
+      final sql = query.generateQuery(dialect);
+      expect(sql, endsWith(' ORDER BY priority ASC'));
+      // The guard that makes this safe without a column lookup: a term the
+      // query does not project is refused rather than interpolated.
+      expect(
+        () => compile(
+          'group count ( * ) as total over priority '
+          'by priority > 0 order by nosuchthing',
+        ).generateQuery(dialect),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'grouped_query.select.order_by_not_projected',
+          ),
+        ),
+      );
+    });
+
     test('top caps the grouped result', () {
       final query = compile(
         'group top 5 count ( * ) as total over priority by priority > 0',

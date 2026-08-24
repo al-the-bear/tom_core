@@ -930,6 +930,48 @@
 
 ### Behaviour Changes
 
+- **A delete's `ORDER BY` names the column instead of the Dart field
+  (tcinc455).** `TomDelete.generateQuery` passed its `sort` list straight to
+  `TomGeneratedQuery.orderByClause`, which — as its own dartdoc says — emits
+  every term verbatim and expects callers to have resolved them. `TomSelect`
+  does exactly that, mapping each term through `determineColumn` before
+  rendering; `TomDelete` did not. So `delete by … order by createdAt` rendered
+  `ORDER BY createdAt` against a column named `created_at`: invalid SQL for any
+  entity whose Dart field name and column name differ, which is every entity
+  using the customary camelCase-to-snake_case mapping.
+
+  A sort term may legitimately be *written* with either name — the lookup
+  matches the column name, the qualified `table.column`, the `Type.field` form
+  and the declared field name alike — which is why the defect hid: every sort
+  in the existing suite happened to name a field whose column spelling is
+  identical (`amount`, `title`), so nothing rendered a name that differed.
+
+  The second half of the defect was a missing guard rather than a wrong name.
+  Sort names routinely arrive from outside (an HTTP `sort=` parameter, a query
+  sentence) and an `ORDER BY` cannot bind them as parameters, so the column
+  lookup is what keeps an arbitrary string out of the statement text. A delete
+  had no lookup at all: at HEAD, `delete by … order by nosuchfield` compiled and
+  rendered `ORDER BY nosuchfield ASC` rather than throwing.
+
+  Rather than give `TomDelete` a third copy of the resolution loop, the loop
+  moved to `TomGeneratedQuery.resolveSortColumns`, beside the `orderByClause`
+  whose contract requires it — so the step and the requirement are now read
+  together. `TomSelect`, `TomDelete` and `CrudRepository.findAll`'s windowed
+  literal select all call it; `CrudRepository._resolveSortColumns`, the second
+  copy, is gone. Its `qualified` parameter picks the rendering and never the
+  lookup: a select may span tables and so emits `table.column`, while MariaDB's
+  single-table `DELETE` has nothing to disambiguate and emits the column bare.
+
+  `TomGroupedSelect` deliberately does *not* resolve, and now has a test saying
+  so. A grouped result orders over what it projects — an aggregate alias has no
+  column, and a group column is projected `AS <declaredName>` — so resolving
+  would break both; its guard is instead that a term the query does not project
+  is refused outright. Seven mutations were run against the new behaviour (the
+  delete un-resolved again, the resolver keeping the written name, the
+  qualification inverted and each form given the other's rendering, the
+  direction dropped during substitution, and the grouped select made to resolve
+  too); all seven were killed.
+
 - **A count no longer accepts a window or an ordering it cannot honour
   (tcinc454).** `TomCount` took `orderBy`, `ascending`, `sort` and `top` through
   its constructor and its `generateQuery` read none of them: it rendered the
