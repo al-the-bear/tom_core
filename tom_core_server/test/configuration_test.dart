@@ -218,6 +218,33 @@ void main() {
       expect(config.captured['kept'], 'resource');
     });
 
+    // The merge keys on the argument text before the first `=`, dashes
+    // included, so the conventional `--port=9000` style names the key
+    // `--port` -- which no Dart field can be called, and which the reflected
+    // `setValues` therefore drops. The undashed form is the one that reaches a
+    // field. Both halves are asserted here rather than only the working one,
+    // because the failure is silent: nothing reports a key that bound nothing,
+    // so a snippet claiming `--port=9000` sets `port` reads as plausible until
+    // it is run. `doc/cmdline.md` states the same limitation for
+    // `fillFromArgs`; this pins it on the configuration merge, which is the
+    // path a server actually starts through.
+    test(
+      'a dashed argument merges under the dashed key, not the field name',
+      () {
+        _install({});
+        final config = _CapturingConfig(['--port=9000']);
+        expect(config.captured['--port'], 9000);
+        expect(config.captured.containsKey('port'), isFalse);
+      },
+    );
+
+    test('an argument named as the field is named merges under that name', () {
+      _install({});
+      final config = _CapturingConfig(['port=9000']);
+      expect(config.captured['port'], 9000);
+      expect(config.captured.containsKey('--port'), isFalse);
+    });
+
     test('the OS environment is merged in', () {
       _install({});
       final config = _CapturingConfig([]);
