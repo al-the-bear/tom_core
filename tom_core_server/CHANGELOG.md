@@ -930,6 +930,39 @@
 
 ### Behaviour Changes
 
+- **`MariaDbDatasource.close` lets go of the connection, so a closed data source
+  is closed (tcinc459).** `close` released the socket but left `connection`
+  pointing at the dead object. Everything that reports state reads that field,
+  so the data source went on describing itself in terms of a connection that was
+  gone; and the `else` branch — reached whenever the link had already dropped —
+  logged that it was not closing anything and left the handle in place too.
+
+  The reporting was the visible half. The consequential half is that
+  `_openConnection` repairs a *dropped* link by testing exactly that field, so a
+  statement arriving after `close` found a link there, decided it had merely
+  dropped, and quietly dialled a new one. Deliberate teardown is not a dropped
+  link: re-opening resurrects a data source the application let go, and on the
+  shutdown path (`TomDataSourceInfo.closeAll`, which leaves its entries in the
+  registry) opens a socket nothing is left to close. This was predicted rather
+  than discovered — it is the production reachability tcinc458's M10 mutation
+  note said would arrive once this todo was fixed.
+
+  `close` now clears `connection` in a `finally`, so it releases the link
+  whatever state it was in and even when closing it throws — a failed close
+  still means the caller is done with the handle, and the failure is still
+  reported. A closed data source therefore refuses statements exactly as one
+  that was never opened does, with the same `error.datasource.not_opened`.
+
+  Which of the two not-open states it is now rides in the exception's `state`
+  parameter (`"closed"` / `"never_opened"`) and in `toString` (`closed` /
+  `never opened`, in place of the old `no connection`), rather than in the key:
+  a caller matching "this data source has no connection" should not have to
+  match twice, but a reader diagnosing it needs the distinction, because the two
+  point at different faults — configuration or start-up ordering versus shutdown
+  ordering. Closing a data source that was never opened releases nothing and
+  leaves it reading as never opened. Seven tests; twelve mutations of the rule
+  each killed.
+
 - **Every `MariaDbDatasource` entry point follows one connection-lifecycle rule
   (tcinc458).** The three execution entry points disagreed about what to do when
   no connection was open: `prepareStatement` connected on demand, while

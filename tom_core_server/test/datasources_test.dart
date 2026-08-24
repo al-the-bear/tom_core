@@ -104,8 +104,23 @@ class _FakeConnection implements MySQLConnection {
   /// What [execute] reports as the affected-row count.
   final BigInt affectedRows;
 
-  _FakeConnection({required this.connected, BigInt? affectedRows})
-    : affectedRows = affectedRows ?? BigInt.zero;
+  /// How many times this link was asked to close.
+  int closeCalls = 0;
+
+  /// Thrown by [close] when set; `null` closes cleanly.
+  final Object? closeFailure;
+
+  _FakeConnection({
+    required this.connected,
+    BigInt? affectedRows,
+    this.closeFailure,
+  }) : affectedRows = affectedRows ?? BigInt.zero;
+
+  @override
+  Future<void> close() async {
+    closeCalls++;
+    if (closeFailure != null) throw closeFailure!;
+  }
 
   @override
   Future<IResultSet> execute(
@@ -193,6 +208,33 @@ class _DroppedLinkDatasource extends MariaDbDatasource {
   Future<void> connect() async {
     connectCalls++;
     connection = reopened;
+  }
+}
+
+/// A data source holding a link that can be closed, so that what [close] leaves
+/// behind can be observed.
+///
+/// [connect] is overridden to count re-opens rather than dial: the point of
+/// these tests is that a closed data source does *not* reach it.
+class _ClosableDatasource extends MariaDbDatasource {
+  /// The link this data source starts with, and must let go of on [close].
+  final _FakeConnection link;
+
+  /// How many times something asked this data source to open a connection.
+  int connectCalls = 0;
+
+  _ClosableDatasource({_FakeConnection? link})
+    : link = link ?? _FakeConnection(connected: true) {
+    connection = this.link;
+    host = 'db';
+    port = 3306;
+    databaseName = 'app';
+  }
+
+  @override
+  Future<void> connect() async {
+    connectCalls++;
+    connection = _FakeConnection(connected: true);
   }
 }
 
@@ -1098,6 +1140,108 @@ void main() {
         throwsA(isA<MariadbDatasourceException>()),
       );
       expect(ds.connectCalls, 0);
+    });
+  });
+
+  // The third state, and the one close used to leave unrepresentable. Closing
+  // released the socket but left `connection` pointing at the dead object, so
+  // the data source went on describing itself in terms of a connection that was
+  // gone — and, worse, every reconnect path tests that field, so a statement
+  // arriving after close found a link there and quietly dialled a new one.
+  // Deliberate teardown is not a dropped link: reopening it resurrects a data
+  // source the application let go, which on the shutdown path opens a socket
+  // nothing will ever close.
+  group('MariaDbDatasource lifecycle: a data source that was closed', () {
+    test('close releases the link and lets go of it', () async {
+      final ds = _ClosableDatasource();
+      await ds.close();
+      expect(ds.link.closeCalls, 1);
+      expect(ds.connection, isNull);
+      expect(ds.connected, isFalse);
+      expect(ds.isOperational(), isFalse);
+    });
+
+    test('a closed data source refuses statements, and does not '
+        're-open one', () async {
+      // The half that matters beyond reporting. Before, `connection` was still
+      // set and merely disconnected — indistinguishable from a dropped link —
+      // so this call reconnected instead of failing.
+      final ds = _ClosableDatasource();
+      await ds.close();
+      await expectLater(
+        ds.executeCommand('DELETE FROM t'),
+        throwsA(isA<MariadbDatasourceException>()),
+      );
+      expect(ds.connectCalls, 0);
+    });
+
+    test('the refusal says which of the two states it is', () async {
+      // Both refusals share a key, because a caller matching on "this data
+      // source has no connection" should not have to match twice. Which state
+      // it is rides in the parameters, because it points at a different bug:
+      // never opened is a configuration or start-up ordering fault, closed is a
+      // shutdown ordering one.
+      final closed = _ClosableDatasource();
+      await closed.close();
+      final states = <Object?>[];
+      final keys = <String>{};
+      for (final ds in <MariaDbDatasource>[closed, _NeverOpenedDatasource()]) {
+        try {
+          await ds.executeCommand('DELETE FROM t');
+          fail('$ds did not refuse');
+        } on MariadbDatasourceException catch (e) {
+          keys.add(e.key);
+          states.add(e.parameters?['state']);
+        }
+      }
+      expect(keys, {'error.datasource.not_opened'});
+      expect(states, ['closed', 'never_opened']);
+    });
+
+    test('toString stops describing a connection that is gone', () async {
+      final ds = _ClosableDatasource();
+      expect(ds.toString(), contains('connected: true'));
+      await ds.close();
+      expect(ds.toString(), contains('closed'));
+      expect(ds.toString(), isNot(contains('connected:')));
+    });
+
+    test('a link that had already dropped is released, not closed', () async {
+      // close is reached this way whenever the database went away first, and it
+      // is exactly the case the old guard fell through: it logged that it was
+      // not closing anything and left the dead link in place.
+      final ds = _ClosableDatasource(link: _FakeConnection(connected: false));
+      await ds.close();
+      expect(ds.link.closeCalls, 0);
+      expect(ds.connection, isNull);
+    });
+
+    test('the link is let go of even when closing it fails', () async {
+      // A close that throws still means the caller is done with the link.
+      // Keeping the handle would leave the data source claiming a connection
+      // that nothing can use, and the failure is still reported.
+      final ds = _ClosableDatasource(
+        link: _FakeConnection(
+          connected: true,
+          closeFailure: StateError('the socket was already gone'),
+        ),
+      );
+      await expectLater(ds.close(), throwsA(isA<StateError>()));
+      expect(ds.connection, isNull);
+    });
+
+    test('closing one that was never opened leaves it never opened', () async {
+      // Nothing was let go of, so nothing changed. Reporting "closed" here
+      // would send the reader looking for a teardown that never happened.
+      final ds = _NeverOpenedDatasource();
+      await ds.close();
+      expect(ds.toString(), contains('never opened'));
+      try {
+        await ds.executeCommand('DELETE FROM t');
+        fail('the data source did not refuse');
+      } on MariadbDatasourceException catch (e) {
+        expect(e.parameters?['state'], 'never_opened');
+      }
     });
   });
 

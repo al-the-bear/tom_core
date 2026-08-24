@@ -284,8 +284,15 @@ typedef _PendingReference = ({
 ///
 /// A link that *was* opened and has since dropped is a separate case, and is
 /// re-opened automatically: the settings are known, so every entry point
-/// reconnects and carries on. [isOperational] and [connected] report the
-/// current state; [close] releases the link.
+/// reconnects and carries on.
+///
+/// [close] releases the link **and lets go of it**, which puts the data source
+/// back to not-open: a closed data source refuses statements exactly as one
+/// that was never opened does, rather than being silently re-opened by the next
+/// one to arrive. Deliberate teardown is not a dropped link. [isOperational]
+/// and [connected] report the current state, and [toString] distinguishes the
+/// two ways of holding no connection — `closed` from `never opened` — because
+/// they point at different faults.
 @tomReflector
 @TomDatasourceDriver("mariadb")
 class MariaDbDatasource implements TomDataSource {
@@ -312,8 +319,17 @@ class MariaDbDatasource implements TomDataSource {
   /// The connect timeout in milliseconds.
   int timeOut = 10000;
 
-  /// The live MySQL connection (`null` until [connect] succeeds).
+  /// The live MySQL connection (`null` until [connect] succeeds, and again once
+  /// [close] has let go of it).
   MySQLConnection? connection;
+
+  /// Whether [connection] is `null` because [close] released it, rather than
+  /// because the data source was never opened.
+  ///
+  /// Only meaningful while [connection] is `null` — every reader checks that
+  /// first — so re-opening does not clear it; it is simply not consulted again
+  /// until the next [close] sets it anew.
+  bool _wasClosed = false;
 
   /// Opens a connection using the configured settings.
   ///
@@ -365,27 +381,37 @@ class MariaDbDatasource implements TomDataSource {
   /// implemented, so that every execution entry point observes the same rule
   /// rather than each carrying its own guard.
   ///
-  /// A [connection] of `null` means the data source was never opened, and that
-  /// is refused rather than repaired. Opening one here could not work:
-  /// [connect] binds [host], [port] and the credentials, which arrive only from
-  /// [initialize] or a direct assignment, so before either it would dial `:-1`
-  /// — reporting an unreachable database where the truth is an unconfigured
-  /// one, and sending the reader to the network for a configuration bug.
+  /// A [connection] of `null` means the data source is not open — never opened,
+  /// or closed — and that is refused rather than repaired. Neither case is one
+  /// a statement should quietly fix. Opening a never-opened data source here
+  /// could not even work: [connect] binds [host], [port] and the credentials,
+  /// which arrive only from [initialize] or a direct assignment, so before
+  /// either it would dial `:-1` — reporting an unreachable database where the
+  /// truth is an unconfigured one, and sending the reader to the network for a
+  /// configuration bug. Re-opening a *closed* one could work, and that is
+  /// precisely why it must not happen by accident: it would resurrect a data
+  /// source the application deliberately let go.
   ///
-  /// A link that *was* opened and has since dropped is the opposite case: the
-  /// settings are known, reconnecting is exactly what the caller wants, and it
-  /// happens here.
+  /// A link that *was* opened and has since dropped is the one case that is
+  /// repaired: the settings are known, the caller never asked for the loss, and
+  /// reconnecting is exactly what it wants.
   ///
   /// [operation] names the calling entry point and is carried in the thrown
-  /// exception's parameters, so a log identifies which call ran too early.
+  /// exception's parameters alongside the `state` that refused it, so a log
+  /// identifies both which call ran too early and which of the two faults it
+  /// met.
   Future<MySQLConnection> _openConnection(String operation) async {
     if (connection == null) {
       throw MariadbDatasourceException(
         "error.datasource.not_opened",
         "MariadbDatasource: $operation needs an open connection, but this data "
-            "source has never been opened. Call initialize() with the "
-            "connection settings, or set them and call connect().",
-        parameters: {"operation": operation},
+            "source ${_wasClosed ? "has been closed" : "has never been opened"}"
+            ". Call initialize() with the connection settings, or set them and "
+            "call connect().",
+        parameters: {
+          "operation": operation,
+          "state": _wasClosed ? "closed" : "never_opened",
+        },
       );
     }
     if (!connection!.connected) {
@@ -1248,21 +1274,57 @@ class MariaDbDatasource implements TomDataSource {
     return qResult.affectedRows;
   }
 
+  /// Closes the connection and lets go of it.
+  ///
+  /// [connection] is cleared whatever the link's state was, so that a closed
+  /// data source reads as closed rather than as one holding a dead connection.
+  /// That distinction is load-bearing: [_openConnection] repairs a *dropped*
+  /// link, and a closed data source that still carried one would be silently
+  /// re-opened by the next statement — resurrecting, on the shutdown path, a
+  /// connection nothing would ever close again.
+  ///
+  /// A data source that was never opened has nothing to release, so closing it
+  /// changes nothing and leaves it reading as never opened.
   @override
   Future<void> close() async {
-    if (connection != null && connection!.connected) {
-      tomLog.info("MariadbDatasource closing $host:$port/$databaseName");
-      await connection!.close();
-    } else {
+    final link = connection;
+    if (link == null) {
       tomLog.warn(
-        "MariadbDatasource NOT closing $host:$port/$databaseName, either no connection or connection is not connected.",
+        "MariadbDatasource NOT closing $host:$port/$databaseName: it has no "
+        "connection to release.",
       );
+      return;
+    }
+    try {
+      if (link.connected) {
+        tomLog.info("MariadbDatasource closing $host:$port/$databaseName");
+        await link.close();
+      } else {
+        tomLog.warn(
+          "MariadbDatasource $host:$port/$databaseName had already lost its "
+          "connection; releasing it without closing.",
+        );
+      }
+    } finally {
+      // In a finally because a close that failed still means the caller is done
+      // with this link. Keeping the handle would leave the data source claiming
+      // a connection that nothing can use.
+      connection = null;
+      _wasClosed = true;
     }
   }
 
   @override
   String toString() =>
-      "MariadbDatasource $host:$port/$databaseName connected: ${connection != null ? connection!.connected : "no connection"}";
+      "MariadbDatasource $host:$port/$databaseName ${_stateDescription()}";
+
+  /// How this data source describes its connection state: the link's own state
+  /// while it holds one, and otherwise which of the two ways it came to hold
+  /// none.
+  String _stateDescription() {
+    if (connection != null) return "connected: ${connection!.connected}";
+    return _wasClosed ? "closed" : "never opened";
+  }
 
   @override
   String getParticipantId() => "MariaDb-$databaseName@$host:@$port";

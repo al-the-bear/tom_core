@@ -856,13 +856,18 @@ the connection fields and calling `connect()` — and never by the statement tha
 wants to run.** All three execution entry points (`prepareStatement`,
 `executeQuery`, `executeCommand`) require an open connection and throw
 `MariadbDatasourceException` (`error.datasource.not_opened`, naming the entry
-point in the exception's `operation` parameter) when reached before one exists.
-Opening on demand is not offered because it could not work: `connect()` binds
-`host`, `port` and the credentials, so before they are configured it would dial
-`:-1`, reporting an unreachable database where the truth is an unconfigured one.
-A link that *was* opened and has since dropped is the opposite case and is
-re-opened automatically, on every entry point and on the prepared-statement
-retry alike.
+point in the exception's `operation` parameter and the state that refused it in
+`state`) when reached without one. Opening on demand is not offered because it
+could not work: `connect()` binds `host`, `port` and the credentials, so before
+they are configured it would dial `:-1`, reporting an unreachable database where
+the truth is an unconfigured one.
+
+`close()` releases the link **and lets go of it**, so a closed data source is
+not-open and refuses statements (`state: "closed"`) exactly as one that was
+never opened does (`state: "never_opened"`) — re-opening it by itself would
+resurrect a data source the application deliberately let go. A link that *was*
+opened and has since dropped is the one case that is repaired: it is re-opened
+automatically, on every entry point and on the prepared-statement retry alike.
 
 - **Implements:** `TomDataSource`
 
@@ -909,7 +914,7 @@ is not — never silently truncated.
 | `port` | `int` | The database port (`-1` until configured). |
 | `databaseName` | `String` | The schema / database name (empty selects no default schema). |
 | `timeOut` | `int` | The connect timeout in milliseconds. |
-| `connection` | `MySQLConnection?` | The live MySQL connection (`null` until `connect` succeeds). |
+| `connection` | `MySQLConnection?` | The live MySQL connection (`null` until `connect` succeeds, and again once `close` has let go of it). |
 | `connected` | `bool` | Whether the underlying connection is currently established. |
 
 ##### Methods
@@ -922,8 +927,8 @@ is not — never silently truncated.
 | `initialize` | `Future<void> initialize(Map<String, dynamic> settings)` | *(override)* Binds `settings` by reflection and connects. |
 | `isOperational` | `bool isOperational()` | *(override)* Whether the connection exists and is connected. |
 | `executeCommand` | `Future<BigInt> executeCommand(String command, [Map<String, dynamic>? params])` | *(override)* Runs a write command and returns the affected-row count. |
-| `close` | `Future<void> close()` | *(override)* Closes the connection if connected. |
-| `toString` | `String toString()` | *(override)* Debug description of the datasource. |
+| `close` | `Future<void> close()` | *(override)* Closes the connection if it was still live, and clears `connection` either way — including when closing it throws, since the caller is done with the link regardless. A data source that was never opened has nothing to release and stays "never opened". |
+| `toString` | `String toString()` | *(override)* Debug description of the datasource: the link's own state (`connected: true` / `false`) while it holds one, and otherwise which of the two ways it came to hold none — `closed` or `never opened`. |
 | `getParticipantId` | `String getParticipantId()` | *(override)* The transaction-participant id. |
 | `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `START TRANSACTION`. |
 | `endTransaction` | `Future<bool> endTransaction()` | *(override)* A no-op that always succeeds: a one-phase transaction has no prepare step to issue and no state left to release, since `commit` / `rollback` clear the in-transaction flag and the coordinator calls one of them first. |

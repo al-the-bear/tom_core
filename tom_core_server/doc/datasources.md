@@ -431,9 +431,13 @@ Every execution entry point then observes the same rule:
 
 | State of the data source | What an entry point does |
 | ------------------------ | ------------------------ |
-| Never opened | Throws `error.datasource.not_opened`, naming the entry point in the exception's `operation` parameter. Nothing dials out |
+| Never opened | Throws `error.datasource.not_opened`, with `state: "never_opened"`. Nothing dials out |
+| Closed | Throws the same `error.datasource.not_opened`, with `state: "closed"`. Nothing dials out |
 | Opened, but the link has since dropped | Re-opens it and runs the statement on the new link |
 | Opened and live | Runs the statement on the link as it stands |
+
+Both refusals also name the calling entry point in the exception's `operation`
+parameter, so a log says which call ran too early.
 
 Opening on demand is not offered because it could not work. `connect()` binds
 `host`, `port` and the credentials, and those arrive only from `initialize` or a
@@ -442,9 +446,25 @@ connect could therefore never succeed — it could only turn "this data source w
 never opened" into "the database at `:-1` is unreachable", sending the reader to
 the network for what is a configuration bug.
 
-The second row is the half that must survive. A dropped link is the opposite
-case: the settings *are* known, so reconnecting is exactly what the caller wants
-and it happens without the caller asking.
+Re-opening a *closed* data source, by contrast, would work — and that is exactly
+why it must not happen by itself. `close()` is the application saying it is done
+with this data source; a statement that quietly re-opened it would resurrect
+something deliberately let go, and on the shutdown path would open a socket that
+nothing is left to close. So `close()` releases the link **and lets go of it**,
+putting the data source back to not-open.
+
+Which of the two not-open states it is rides in the `state` parameter and in
+`toString`, rather than in the key: a caller matching "this data source has no
+connection" should not have to match twice, but a reader diagnosing it needs the
+distinction, because the two point at different faults — `never_opened` at
+configuration or start-up ordering, `closed` at shutdown ordering. Closing a
+data source that was never opened releases nothing and leaves it reading as
+never opened.
+
+The dropped-link row is the half that must survive all of this. It is the one
+case the driver repairs, because the caller never asked for the loss: the
+settings are known, so reconnecting is exactly what it wants and it happens
+without being asked.
 
 One private helper, `_openConnection(operation)`, is the only implementation of
 this rule, and all four sites that need a link go through it:
