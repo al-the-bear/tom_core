@@ -18,6 +18,7 @@ environment-variable substitution.
 - [Loading YAML](#loading-yaml)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Core Components](#core-components)
+- [Verification](#verification)
 - [Dependencies](#dependencies)
 
 ---
@@ -407,6 +408,57 @@ final port = int.parse(~TomStringConfig('database.port'));
 - **`TomBaseServerConfiguration`** — the reflected settings base;
   `getDefaultValues` (the source merge) and the reflected `setValues`.
 - **`TomYaml`** — YAML loading with environment substitution.
+
+## Verification
+
+`example/configuration/configuration_example.dart` walks the codegen-free
+surface in eight steps, with no setup of any kind — install a provider,
+resolve a dotted path, fall back to a default, read through `~`, watch an
+obligatory miss throw, load a YAML file with `${VAR:default}` substitution,
+and then the two steps that make [Source
+Precedence](#source-precedence) legible: `PATH` failing to resolve through
+`TomConfig` although every platform sets it, and the same lookup succeeding
+once the merged map has been installed as the provider. Run it exactly as its
+header documents:
+
+```bash
+dart run example/configuration/configuration_example.dart
+```
+
+Every step checks its own result and the run fails when one does not hold, so a
+green run is a verification rather than a transcript. The checks are a plain
+`if`/`throw` and not `assert`, because `dart run` leaves assertions disabled: an
+`assert` would compile out under the very command above, and the example would
+print a plausible transcript and exit 0 with every expectation violated. One
+thing is deliberately left out and the header says why — constructing a
+`TomBaseServerConfiguration` subclass needs a generated `setValues`, so it is
+described in [The Server Configuration Base](#the-server-configuration-base)
+here instead. Its static `getDefaultValues` needs no subclass and is used.
+
+`test/configuration_test.dart` covers the module end to end in one process:
+
+```bash
+dart test test/configuration_test.dart   # or `testkit :test` for the package
+```
+
+Fifty-eight tests in eight groups carry the behaviour — the provider's
+`exists` / `get` (including the explicit-null cases), `TomConfig`'s three
+resolution branches and its one widening, `getDefaultValues` and the four-layer
+merge order, the derived `args` field, the boundary between the merged map and
+the provider, `TomYaml`, the example, and the limitations listed under [Not Yet
+Implemented](#not-yet-implemented). Nothing here is tagged and nothing needs an
+external server, so all of it runs in the default `testkit :test`.
+
+The two are linked in both directions — the example's header names this
+document and the suite, and the suite runs the example, under exactly the
+command above, requiring exit 0 and requiring every numbered step to have
+reported (the count read off the example, so a step added later is covered
+without editing the test). Two further tests cover what the exit code cannot
+see: one reads the example's source and requires it to state its
+expectations through the throwing helper rather than `assert`, the other
+requires its `PATH` step to keep demonstrating that `TomConfig` does not
+reach the environment on its own. So each claim this document makes is
+falsifiable from the suite, as is each limitation it admits to.
 
 ## Dependencies
 

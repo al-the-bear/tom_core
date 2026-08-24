@@ -189,6 +189,18 @@
 
 ### Documentation
 
+- **The configuration guide now names how to check it (tcinc440).**
+  `doc/configuration.md` had no `## Verification` section and never mentioned
+  `example/configuration/configuration_example.dart` or
+  `test/configuration_test.dart`, although both exist and are green — the
+  pointer ran only the other way, from the example's header to the document.
+  A reader who wanted to run the module before adopting it had to go looking.
+  The section now names the example with its exact `dart run` command line and
+  what its eight steps demonstrate, says why its checks are a throwing helper
+  rather than `assert` (`dart run` compiles asserts out, so an asserted example
+  would exit 0 with every expectation violated), names the suite with its
+  command line, and says what its fifty-eight tests in eight groups carry.
+
 - **The configuration guide now states what it does not do (tcinc439).**
   `doc/configuration.md` read as though the module were complete, while the
   completion record carried seven verified limitations — so a consumer met
