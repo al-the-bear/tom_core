@@ -1,17 +1,26 @@
+import 'dart:io';
+
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
 /// Tests for the connection-free surface of the db_migration module.
 ///
-/// The orchestrator's directory walk and the MariaDB adaptor need a live data
-/// source and reflection codegen, so those are exercised through
-/// `doc/db_migration.md` and integration tests, not here. This suite pins the
-/// types a caller touches without a database — the [TomDbMigrationAdaptor] type
-/// binding, the [TomDbVersion] row type, and the two exception types — plus the
-/// filename parsing / ordering logic ([TomDbMigrations.parseMigrationFileName]
-/// and [TomDbMigrations.orderMigrationNames]) extracted from the walk so the
-/// version-ordering and anchored-name validation are
-/// unit-testable.
+/// The MariaDB adaptor's SQL needs a live data source, so that is exercised by
+/// `db_migration_db_test.dart`. This suite pins the types a caller touches
+/// without a database — the [TomDbMigrationAdaptor] type binding, the
+/// [TomDbVersion] row type, and the two exception types — plus the filename
+/// parsing / ordering logic ([TomDbMigrations.parseMigrationFileName] and
+/// [TomDbMigrations.orderMigrationNames]) extracted from the walk so the
+/// version-ordering and anchored-name validation are unit-testable.
+///
+/// It also pins the **schema lifecycle**: [TomDbMigrations.migrateDataSource]
+/// takes the migrator as an argument, so the walk over a data source's schemas
+/// can be driven with a recording fake and no server at all. That matters
+/// because the lifecycle was wrong and nothing here could see it — the
+/// orchestrator reset the migrator once per *data source* while initialising it
+/// once per *schema*, which aborted the run on the second schema and, with that
+/// abort removed, would have judged the second schema's migrations against the
+/// first schema's applied-version history.
 void main() {
   // C-16 production-safety default: with no environment initialized on
   // TomRuntime, resolveActiveEnvironment falls back to the default environment
@@ -356,6 +365,177 @@ void main() {
     });
   });
 
+  // A migrator's applied-version state belongs to one (data source, schema)
+  // pair, so the walk has to rebind it per schema. These drive the real
+  // committed fixture tree — which carries two schemas under one data source
+  // precisely so this is observable — through a recording fake, and assert the
+  // call sequence rather than its effect on a database.
+  group('TomDbMigrations.migrateDataSource schema lifecycle', () {
+    /// The committed fixture tree's data-source directory.
+    final dataSourceDirectory = Directory(
+      'test/fixtures/migrations/tom_core_server_test',
+    );
+
+    /// A data source the fake migrator only reads a name from — no connection
+    /// is opened, and it is deliberately not registered, so this leaves no
+    /// global state behind.
+    TomDataSourceInfo dsi() =>
+        TomDataSourceInfo('tom_core_server_test', <String, dynamic>{})
+          ..type = 'mariadb';
+
+    Future<List<String>> eventsOf(_RecordingMigrator migrator) async {
+      await TomDbMigrations.migrateDataSource(
+        migrator,
+        dsi(),
+        dataSourceDirectory,
+        defaultTomEnvironment.env,
+      );
+      return migrator.events;
+    }
+
+    // Without two schemas in the tree the assertions below are vacuous: one
+    // schema cannot distinguish per-schema from per-data-source state. So the
+    // fixture's shape is asserted, not assumed.
+    test('the fixture data source really has more than one schema', () {
+      final schemas =
+          dataSourceDirectory
+              .listSync()
+              .whereType<Directory>()
+              .map((d) => d.path.split(Platform.pathSeparator).last)
+              .toList()
+            ..sort();
+      expect(schemas, ['fixture_schema', 'fixture_schema_two']);
+    });
+
+    test('resets and initialises once per schema, not once per run', () async {
+      final events = await eventsOf(_RecordingMigrator());
+
+      // Two schemas, so two of each. The defect was exactly one reset for the
+      // whole data source against two initialisations.
+      expect(events.where((e) => e == 'reset'), hasLength(2));
+      expect(events.where((e) => e.startsWith('init:')), hasLength(2));
+      expect(
+        events
+            .where((e) => e.startsWith('init:'))
+            .map((e) => e.substring(5))
+            .toList()
+          ..sort(),
+        ['fixture_schema', 'fixture_schema_two'],
+      );
+    });
+
+    test('every initialisation is preceded by its own reset', () async {
+      final events = await eventsOf(_RecordingMigrator());
+
+      for (var i = 0; i < events.length; i++) {
+        if (!events[i].startsWith('init:')) continue;
+        expect(
+          i > 0 && events[i - 1] == 'reset',
+          isTrue,
+          reason:
+              'Initialising without first dropping the previous schema\'s '
+              'state is what let one schema\'s applied-version history stand '
+              'for the next one\'s. Events: $events',
+        );
+      }
+    });
+
+    test('no migration is applied to a schema other than the last '
+        'initialised one', () async {
+      final events = await eventsOf(_RecordingMigrator());
+
+      String? current;
+      var applied = 0;
+      for (final event in events) {
+        if (event.startsWith('init:')) {
+          current = event.substring(5);
+          continue;
+        }
+        if (!event.startsWith('apply:')) continue;
+        applied++;
+        expect(
+          event.split(':')[1],
+          current,
+          reason:
+              'a migration judged against another schema\'s version list is '
+              'the silent half of this defect',
+        );
+      }
+      // Both fixture migrations reached the migrator — an assertion that
+      // passes because nothing was applied would prove nothing.
+      expect(applied, 2);
+    });
+
+    test('both schemas are at version 0, which is what makes the fixture '
+        'discriminating', () async {
+      final events = await eventsOf(_RecordingMigrator());
+      final applies = events.where((e) => e.startsWith('apply:')).toList();
+
+      // Same version, different schemas: a shared version list would read the
+      // second one as already applied.
+      expect(applies.map((e) => e.split(':')[2]).toSet(), {'0'});
+      expect(applies.map((e) => e.split(':')[1]).toSet(), {
+        'fixture_schema',
+        'fixture_schema_two',
+      });
+    });
+  });
+
+  // The adaptor half of the same invariant. Whether a migration counts as
+  // already applied is read from `versions`, which describes one schema, so
+  // applying against a schema the instance is not bound to is refused rather
+  // than answered from the wrong history. The mismatched-pair case needs a
+  // successful initialisation and therefore a server (see
+  // `db_migration_db_test.dart`); the unbound case is reachable here because
+  // the guard runs before any statement is issued.
+  group('MariadbMigrationAdaptor schema binding', () {
+    final dsi = TomDataSourceInfo('some_ds', <String, dynamic>{});
+
+    test('refuses to apply before initializeMigration has bound it', () async {
+      await expectLater(
+        MariadbMigrationAdaptor().applyMigration(
+          dsi,
+          'schema_a',
+          0,
+          'create_thing',
+          'SELECT 1',
+        ),
+        throwsA(
+          isA<MariadbMigrationException>().having(
+            (e) => e.key,
+            'key',
+            'mariadb_migration.apply_migration.not_initialized_for_schema',
+          ),
+        ),
+      );
+    });
+
+    test('reset leaves no applied-version state behind', () {
+      final adaptor = MariadbMigrationAdaptor()
+        ..versions.add(TomDbVersion()..version = 7);
+      adaptor.reset();
+      expect(adaptor.versions, isEmpty);
+    });
+
+    test('reset unbinds, so a later apply is refused again', () async {
+      final adaptor = MariadbMigrationAdaptor()..reset();
+      await expectLater(
+        adaptor.applyMigration(dsi, 'schema_a', 0, 'create_thing', 'SELECT 1'),
+        // The key is asserted, not merely the type: without the binding check
+        // this call still throws a MariadbMigrationException — the one wrapping
+        // the datasource failure it runs into next — so a type-only assertion
+        // would pass whether or not the migration was refused.
+        throwsA(
+          isA<MariadbMigrationException>().having(
+            (e) => e.key,
+            'key',
+            'mariadb_migration.apply_migration.not_initialized_for_schema',
+          ),
+        ),
+      );
+    });
+  });
+
   group('exception types', () {
     test('TomDbMigrationException is a TomServerException', () {
       final exception = TomDbMigrationException('key', 'message');
@@ -369,4 +549,41 @@ void main() {
       expect(exception.key, 'key');
     });
   });
+}
+
+/// A [TomDbMigrator] that records the calls it receives and does nothing else.
+///
+/// The subject of the lifecycle group is the *sequence* the orchestrator drives
+/// a migrator through — how often it resets, when it initialises, and which
+/// schema each migration is applied against. That sequence is what was wrong,
+/// and it is entirely observable without a database, so this fake stands in for
+/// [MariadbMigrationAdaptor] and the walk runs over the committed fixture tree
+/// exactly as it would in production.
+class _RecordingMigrator implements TomDbMigrator {
+  /// Every call, in order: `reset`, `init:<schema>`,
+  /// `apply:<schema>:<version>:<description>`.
+  final List<String> events = [];
+
+  @override
+  void reset() => events.add('reset');
+
+  @override
+  Future<int> initializeMigration(
+    TomDataSourceInfo dsi,
+    String schemaName,
+  ) async {
+    events.add('init:$schemaName');
+    return -1;
+  }
+
+  @override
+  Future<void> applyMigration(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int version,
+    String description,
+    String sql,
+  ) async {
+    events.add('apply:$schemaName:$version:$description');
+  }
 }

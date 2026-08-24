@@ -25,24 +25,51 @@ class MariadbMigrationException extends TomServerException {
 ///
 /// Per schema it maintains a `<schema>_versioning` table recording every
 /// applied migration (version, description, script, checksum, timing, success).
-/// [initializeMigration] creates that table if absent and loads the applied
-/// [versions]; [applyMigration] skips a version already present — but first
-/// verifies its description and script checksum are unchanged, failing if a
-/// past migration was edited — and otherwise runs the script and records the
-/// outcome. A failed script is still recorded (with `success = 0`) before the
-/// error is rethrown.
+/// [initializeMigration] binds the instance to one `(data source, schema)`
+/// pair, creates that table if absent and loads the applied [versions];
+/// [applyMigration] skips a version already present — but first verifies its
+/// description and script checksum are unchanged, failing if a past migration
+/// was edited — and otherwise runs the script and records the outcome. A failed
+/// script is still recorded (with `success = 0`) before the error is rethrown.
+///
+/// One instance serves every schema of every `"mariadb"` data source in turn,
+/// so [initializeMigration] **rebinds**: it replaces the loaded [versions]
+/// rather than adding to them, and [applyMigration] refuses to run against a
+/// pair the instance is not currently bound to. Both matter because "already
+/// applied" is decided from [versions]: a list still holding the previous
+/// schema's history would report that schema's version 1 as applied and skip
+/// the new schema's version 1 without a word.
 @TomDbMigrationAdaptor("mariadb")
 @tomReflector
 class MariadbMigrationAdaptor implements TomDbMigrator {
-  bool _initialized = false;
+  /// The `(data source, schema)` pair [versions] was loaded for, or `null`
+  /// before the first [initializeMigration] and after [reset].
+  ///
+  /// Tracked as the pair rather than as a bare "initialised" flag because the
+  /// applied-version history is per **pair**, not per instance: one data source
+  /// holds several schemas, each with its own history. Knowing *which* pair is
+  /// loaded is what lets [applyMigration] refuse to judge a migration against
+  /// another schema's history.
+  String? _boundTo;
 
-  /// The migrations already applied to the current schema, loaded by
-  /// [initializeMigration] and appended to as [applyMigration] runs.
+  /// Identifies a `(data source, schema)` pair.
+  ///
+  /// Both halves are directory basenames, so neither can contain the
+  /// separator and the key cannot be ambiguous.
+  static String _binding(TomDataSourceInfo dsi, String schemaName) =>
+      '${dsi.name}/$schemaName';
+
+  /// The migrations already applied to the schema this instance is bound to,
+  /// as read from that schema's versioning table by [initializeMigration].
+  ///
+  /// It is a snapshot taken at initialisation and is **not** extended as
+  /// [applyMigration] runs — a migration applied during this run is written to
+  /// the table, not added here.
   List<TomDbVersion> versions = [];
 
   @override
   void reset() {
-    _initialized = false;
+    _boundTo = null;
     versions = [];
   }
 
@@ -121,6 +148,23 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
     String description,
     String sql,
   ) async {
+    // Whether a version counts as "already applied" is read from `versions`,
+    // which describes exactly one schema. Judging a migration against another
+    // schema's history is how the version-1-silently-skipped failure happens,
+    // so the mismatch is refused rather than resolved.
+    if (_boundTo != _binding(dsi, schemaName)) {
+      throw MariadbMigrationException(
+        "mariadb_migration.apply_migration.not_initialized_for_schema",
+        _boundTo == null
+            ? "MariadbMigrationAdaptor: applyMigration called for schema "
+                  "$schemaName in datasource ${dsi.name} before "
+                  "initializeMigration."
+            : "MariadbMigrationAdaptor: applyMigration called for "
+                  "${_binding(dsi, schemaName)} while initialized for "
+                  "$_boundTo. The applied-version history belongs to one "
+                  "schema; call initializeMigration for each.",
+      );
+    }
     // check if this has already been applied
     for (var v in versions) {
       if (v.version == version) {
@@ -211,13 +255,13 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
     TomDataSourceInfo dsi,
     String schemaName,
   ) async {
-    if (_initialized == true) {
-      throw MariadbMigrationException(
-        "mariadb_migration_adapter.initialize.initialized_twice",
-        "MariadbMigrationAdapter can only be initialized once",
-      );
-    }
-    _initialized = true;
+    // Rebinding is legal and is the normal path: one data source holds several
+    // schemas, and the orchestrator walks them through the same instance.
+    // Drop the previous pair's state up front, so a failure below leaves the
+    // instance unbound rather than bound to a schema whose history never
+    // loaded.
+    _boundTo = null;
+    versions = [];
     tomLog.info(
       "Initializing database migrations for schema $schemaName in datasource $dsi",
     );
@@ -266,7 +310,10 @@ SELECT installedRank, version, description, checksum, installedBy, installedOn, 
     currentVersions.sort(
       (v1, v2) => (v1.installedRank).compareTo(v2.installedRank),
     );
-    versions.addAll(currentVersions);
+    // Assigned, never appended: the list describes this schema's history and
+    // must not carry the previous schema's versions into it.
+    versions = currentVersions;
+    _boundTo = _binding(dsi, schemaName);
     if (currentVersions.isEmpty) return -1;
     return currentVersions[0].version;
   }

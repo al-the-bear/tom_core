@@ -2,6 +2,38 @@
 
 ### Fixed
 
+- **A data source with more than one schema migrates (tcinc475).** The
+  migration orchestrator called `reset()` once per *data source* but
+  `initializeMigration` once per *schema*, and the MariaDB adaptor refused a
+  second initialisation outright — so the second schema aborted the whole run
+  with `initialize.initialized_twice`. This is the shape the module's own guide
+  and `TomSchemaConvergenceCheck.checkAll` both assume works.
+
+  Removing only that guard would have left the quieter half. A migrator's
+  applied-version history belongs to a `(data source, schema)` **pair**: each
+  schema keeps its own `<schema>_versioning` table, so two schemas may
+  legitimately both be at version 1. The adaptor appended each schema's history
+  to the previous one's, so the second schema's version 1 read as already
+  applied — its migration silently skipped while the run reported success. Both
+  halves are fixed: `reset()` now runs per schema, `initializeMigration`
+  rebinds and **replaces** the loaded history rather than adding to it, and
+  `applyMigration` refuses
+  (`mariadb_migration.apply_migration.not_initialized_for_schema`) to judge a
+  migration against a pair it is not bound to. The `_initialized` bool is gone,
+  replaced by the pair the instance is bound to — the same check now catches
+  the real defect instead of failing a legal use.
+
+  `TomDbMigrations.migrateDataSource` was split out of `migrateDatabases` to
+  create a test seam: the reflection-scanned migrator registry is private and
+  not injectable, which is why this lifecycle had only ever been exercised
+  against a live server and how the defect survived. The per-schema sequence is
+  now asserted connection-free against a recording migrator, with a meta-test
+  pinning that the fixture tree really holds two schemas so the assertions
+  cannot go vacuous; a second fixture schema (deliberately also at version 0)
+  covers the cross-contamination end-to-end. Verified by mutation: hoisting
+  `reset()` out of the loop, restoring the appending version list, and deleting
+  the binding guard each fail the tests that name them.
+
 - **The datasources example's expectations run again (tcinc472).** All nine
   were written as `assert`, and `dart run` leaves assertions disabled — that is
   what its `--enable-asserts` flag is for — so every one of them compiled out

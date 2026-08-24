@@ -34,17 +34,31 @@ class TomDbMigrationAdaptor {
 
 /// The contract a database-specific migrator implements.
 ///
-/// For one schema, [initializeMigration] prepares the version-tracking state
-/// (e.g. creating a versioning table and reading already-applied versions) and
-/// returns the earliest recorded version (or a sentinel when none). Each
-/// migration script is then handed to [applyMigration] in ascending version
-/// order; an already-applied version is verified (description/checksum) and
-/// skipped, a new one is executed and recorded. [reset] clears per-run state so
-/// one migrator instance can serve several data sources of the same type.
+/// A migrator instance serves **one schema at a time**. [initializeMigration]
+/// binds it to a `(data source, schema)` pair and prepares that pair's
+/// version-tracking state (e.g. creating a versioning table and reading
+/// already-applied versions), returning the earliest recorded version (or a
+/// sentinel when none). Each migration script is then handed to
+/// [applyMigration] in ascending version order; an already-applied version is
+/// verified (description/checksum) and skipped, a new one is executed and
+/// recorded. [reset] releases the binding so the same instance can serve the
+/// next pair.
+///
+/// The unit of state is the **pair**, not the data source: one data source
+/// routinely holds several schemas, and each keeps its own applied-version
+/// history. A migrator that carried one schema's history into the next would
+/// treat the next schema's version 1 as already applied and skip it. The
+/// orchestrator therefore resets once per schema, not once per data source —
+/// see [TomDbMigrations.migrateDataSource].
 abstract class TomDbMigrator {
-  /// Prepares version tracking for [schemaName] in data source [dsi] and
-  /// returns the earliest recorded version (implementation-defined sentinel
-  /// when nothing has been applied yet).
+  /// Binds this migrator to [schemaName] in data source [dsi], prepares that
+  /// pair's version tracking, and returns the earliest recorded version
+  /// (implementation-defined sentinel when nothing has been applied yet).
+  ///
+  /// Binding is a **rebind**: whatever pair the instance was serving before is
+  /// dropped, along with its applied-version state. An implementation must not
+  /// accumulate — the version list after this call describes [schemaName] and
+  /// nothing else.
   Future<int> initializeMigration(TomDataSourceInfo dsi, String schemaName);
 
   /// Applies — or verifies, if already applied — the migration identified by
@@ -57,8 +71,8 @@ abstract class TomDbMigrator {
     String sql,
   );
 
-  /// Clears per-run state so this migrator can be reused for another data
-  /// source of the same type.
+  /// Releases the current `(data source, schema)` binding and its
+  /// applied-version state, so this instance can serve the next pair.
   void reset();
 }
 
@@ -280,36 +294,55 @@ class TomDbMigrations {
             autoLog: true,
           );
         }
-        migrator
-            .reset(); // there might be more than one database of the same type
-        await for (var schema in database.list()) {
-          if (schema is Directory) {
-            String schemaName = p.basename(schema.path);
-            await migrator.initializeMigration(dsInfo, schemaName);
-            Map<String, File> migrations = {};
-            await for (var migration in schema.list()) {
-              if (migration is File) {
-                migrations[p.basenameWithoutExtension(migration.path)] =
-                    migration;
-              }
-            }
-            // Parse + validate the names, apply in ascending version order
-            // (numeric, so [2] precedes [10]) and skip any migration tagged for
-            // a non-active environment (C-16); a malformed name throws.
-            final ordered = orderMigrationNames(migrations.keys);
-            for (final entry in selectForEnvironment(
-              ordered,
-              environmentName,
-            )) {
-              await migrator.applyMigration(
-                dsInfo,
-                schemaName,
-                entry.parsed.version,
-                entry.parsed.description,
-                migrations[entry.basename]!.readAsStringSync(),
-              );
-            }
+        await migrateDataSource(migrator, dsInfo, database, environmentName);
+      }
+    }
+  }
+
+  /// Applies every schema under [dataSourceDirectory] to data source [dsInfo]
+  /// through [migrator], selecting migrations for [environmentName].
+  ///
+  /// Each immediate sub-directory is one schema. Per schema the migrator is
+  /// **reset and then re-initialised**, because a migrator's applied-version
+  /// state belongs to one `(data source, schema)` pair: resetting once for the
+  /// whole data source would let the first schema's history stand for the
+  /// second's, and the second schema's version 1 would be silently skipped as
+  /// already applied. Within a schema, files are applied in ascending numeric
+  /// version order, skipping any tagged for another environment (C-16).
+  ///
+  /// Split out of [migrateDatabases] so the walk can be driven with a
+  /// caller-supplied [migrator] — the reflection-scanned registry
+  /// [migrateDatabases] resolves from is not injectable, which left this
+  /// per-schema lifecycle testable only against a live server.
+  static Future<void> migrateDataSource(
+    TomDbMigrator migrator,
+    TomDataSourceInfo dsInfo,
+    Directory dataSourceDirectory,
+    String environmentName,
+  ) async {
+    await for (var schema in dataSourceDirectory.list()) {
+      if (schema is Directory) {
+        String schemaName = p.basename(schema.path);
+        migrator.reset();
+        await migrator.initializeMigration(dsInfo, schemaName);
+        Map<String, File> migrations = {};
+        await for (var migration in schema.list()) {
+          if (migration is File) {
+            migrations[p.basenameWithoutExtension(migration.path)] = migration;
           }
+        }
+        // Parse + validate the names, apply in ascending version order
+        // (numeric, so [2] precedes [10]) and skip any migration tagged for
+        // a non-active environment (C-16); a malformed name throws.
+        final ordered = orderMigrationNames(migrations.keys);
+        for (final entry in selectForEnvironment(ordered, environmentName)) {
+          await migrator.applyMigration(
+            dsInfo,
+            schemaName,
+            entry.parsed.version,
+            entry.parsed.description,
+            migrations[entry.basename]!.readAsStringSync(),
+          );
         }
       }
     }

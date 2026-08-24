@@ -33,8 +33,12 @@ Source: `lib/src/tomserver/db_migration/db_migration.dart`,
 `<directory>/<datasourceName>/<schemaName>/` and applies every
 `[<version>]-<description>[@<env>…].<ext>` file in ascending version order
 through the data source's migrator, resolved from its `type` via the
-`@TomDbMigrationAdaptor` annotation. `TomDbMigrator` is the per-database migrator
-contract (`initializeMigration` / `applyMigration` / `reset`). A migration file
+`@TomDbMigrationAdaptor` annotation; `migrateDataSource(migrator, dsi, dir, env)`
+is the per-data-source half of that walk, taking the migrator as a parameter.
+`TomDbMigrator` is the per-database migrator contract (`initializeMigration` /
+`applyMigration` / `reset`), and a migrator serves **one `(data source, schema)`
+pair at a time** — the orchestrator resets and re-initialises it once per schema,
+because each schema keeps its own applied-version history. A migration file
 name is parsed into a `TomMigrationFileName` (version, description, optional
 environment tag). The MariaDB implementation, `MariadbMigrationAdaptor`,
 maintains a `<schema>_versioning` table whose rows are `TomDbVersion` records,
@@ -73,20 +77,24 @@ schemas.
 | `resolveActiveEnvironment` | `static String resolveActiveEnvironment()` | The environment name migrations are filtered against, via `TomRuntime` (falling back to the production-safe default). |
 | `selectForEnvironment` | `static List<({String basename, TomMigrationFileName parsed})> selectForEnvironment(Iterable<({String basename, TomMigrationFileName parsed})> ordered, String environmentName)` | Filters an ordered migration list to those applying in `environmentName`, preserving order. |
 | `migrateDatabases` | `static Future<void> migrateDatabases(String directory)` | Runs all pending migrations under `directory`; throws `TomDbMigrationException` on a missing data source/migrator, malformed name, or failed script. |
+| `migrateDataSource` | `static Future<void> migrateDataSource(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory dataSourceDirectory, String environmentName)` | Applies every schema under `dataSourceDirectory` through `migrator`, resetting and re-initialising it **once per schema**. Split out of `migrateDatabases` so the walk can be driven with a caller-supplied migrator — the reflection-scanned registry is not injectable. |
 
 ### TomDbMigrator
 
-The contract a database-specific migrator implements: prepares version tracking,
-applies (or verifies) each migration script in ascending version order, and
-clears per-run state.
+The contract a database-specific migrator implements: binds to a
+`(data source, schema)` pair and prepares its version tracking, applies (or
+verifies) each migration script in ascending version order, and releases the
+binding. The unit of state is the **pair**, not the data source — one data
+source routinely holds several schemas, each with its own applied-version
+history.
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initializeMigration` | `Future<int> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | Prepares version tracking for `schemaName` in `dsi` and returns the earliest recorded version (implementation-defined sentinel when none). |
+| `initializeMigration` | `Future<int> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | Binds this migrator to the `(dsi, schemaName)` pair — **rebinding**, so the loaded version state is replaced, not accumulated — prepares that pair's version tracking, and returns the earliest recorded version (implementation-defined sentinel when none). |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | Applies — or verifies, if already applied — the identified migration. |
-| `reset` | `void reset()` | Clears per-run state so this migrator can be reused for another data source of the same type. |
+| `reset` | `void reset()` | Releases the current `(data source, schema)` binding and its applied-version state, so this instance can serve the next pair. |
 
 ### TomDbMigrationAdaptor
 
@@ -159,15 +167,15 @@ MariadbMigrationAdaptor()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `versions` | `List<TomDbVersion>` | The migrations already applied to the current schema, loaded by `initializeMigration` and appended to as `applyMigration` runs. |
+| `versions` | `List<TomDbVersion>` | The migrations already applied to the schema this instance is bound to — a snapshot taken by `initializeMigration`, **not** extended as `applyMigration` runs (an applied migration is written to the table, not added here). |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `reset` | `void reset()` | *(override)* Clears the initialised flag and applied-versions list. |
-| `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Skips (after verifying) an applied version, otherwise runs the script and records the outcome. |
-| `initializeMigration` | `Future<int> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Creates the versioning table if absent, loads applied versions, and returns the earliest version (or `-1`). |
+| `reset` | `void reset()` | *(override)* Drops the `(data source, schema)` binding and the applied-versions list. |
+| `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `mariadb_migration.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs the script and records the outcome. |
+| `initializeMigration` | `Future<int> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent and **replacing** `versions` with that schema's history; returns the earliest version (or `-1`). |
 
 ### TomDbVersion
 

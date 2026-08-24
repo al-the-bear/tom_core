@@ -49,16 +49,22 @@ migrations/
     app/                    # a schema in that data source
       [1]-create_users.sql
       [2]-add_orders.sql
+    audit/                  # a second schema in the *same* data source
+      [1]-create_audit_log.sql
   reporting/
     analytics/
       [1]-create_facts.sql
 ```
 
+A data source may hold **any number of schemas**, as `main` does above. Each
+keeps its own independent version history, so the `[1]` under `audit` and the
+`[1]` under `app` are unrelated migrations that both apply.
+
 Each file name must match `[<numeric version>]-<description>` followed by any
 extension, where the description is letters and underscores
 (`[a-zA-Z_]+`). A name that does not match aborts the run with a
 `TomDbMigrationException`. Within a schema, files are applied in **ascending
-name order**.
+numeric version order** — so `[2]` precedes `[10]`.
 
 ## Running Migrations
 
@@ -70,15 +76,29 @@ await TomDataSourceInfo.initializeDatasourceInfo(config);
 await TomDbMigrations.migrateDatabases('migrations');
 ```
 
-For each `<datasourceName>/<schemaName>` the orchestrator:
+For each `<datasourceName>` the orchestrator:
 
 1. resolves the `TomDataSourceInfo` by name (missing → exception);
 2. resolves the migrator for the data source's `type` (missing → exception);
-3. calls `reset()` (a migrator instance may serve several data sources of the
-   same type);
-4. calls `initializeMigration(dsi, schemaName)` once per schema;
-5. parses each file's version/description and calls
-   `applyMigration(dsi, schemaName, version, description, sql)`.
+3. hands both to `TomDbMigrations.migrateDataSource`, which walks the schemas.
+
+Then, **for each `<schemaName>` under that data source**, `migrateDataSource`:
+
+1. calls `reset()`, releasing whatever `(data source, schema)` pair the migrator
+   was serving before;
+2. calls `initializeMigration(dsi, schemaName)`, binding it to this pair and
+   loading *this schema's* applied-version history;
+3. parses each file's version/description and calls
+   `applyMigration(dsi, schemaName, version, description, sql)` in ascending
+   version order.
+
+The reset/initialise pair runs **once per schema, not once per data source**.
+A migrator's applied-version state belongs to a `(data source, schema)` pair:
+one data source routinely holds several schemas, and each keeps its own
+`<schema>_versioning` history, so two schemas may legitimately both be at
+version 1. A migrator that carried the first schema's history into the second
+would read the second's version 1 as already applied and skip it silently. The
+MariaDB adaptor enforces the same invariant from its own side — see below.
 
 ## Adaptor Discovery
 
@@ -104,8 +124,16 @@ migrator per type, and rejects duplicate or non-conforming registrations with a
 | `executionTimeMs` | how long the script took |
 | `success` | `1` on success, `0` on failure |
 
-`initializeMigration` creates the table if absent and loads the applied
-versions (mapped onto `TomDbVersion`). `applyMigration` then, per script:
+`initializeMigration` binds the instance to one `(data source, schema)` pair,
+creates that pair's table if absent and loads its applied versions (mapped onto
+`TomDbVersion`). Because one instance serves every `"mariadb"` schema in turn,
+binding is a **rebind**: the loaded version list is *replaced*, never extended,
+so it always describes the schema currently in hand. `applyMigration` refuses —
+with `mariadb_migration.apply_migration.not_initialized_for_schema` — to run
+against any pair the instance is not currently bound to, rather than judging a
+migration against another schema's history.
+
+`applyMigration` then, per script:
 
 - if the `version` is already recorded, verifies the **description and checksum
   match** (a mismatch means a past migration was edited → failure) and skips;
