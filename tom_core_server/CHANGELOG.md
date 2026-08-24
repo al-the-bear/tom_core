@@ -2,6 +2,25 @@
 
 ### Fixed
 
+- **An unguarded `DROP TABLE` of a table the chain never created is now
+  reported (tcinc482).** `TomSchemaDdlReader` reported an `ALTER TABLE` on a
+  table no earlier artifact creates, but `_dropTable` looked the name up and
+  dropped it only if present, so the same mistake in a `DROP` replayed clean.
+  The two are the same defect — both would fail against a live server — and the
+  silence was not local: a mistyped name meant the table the artifact was meant
+  to remove stayed standing in the replayed model, and the mistake resurfaced
+  much later as a table the entity model has no entity for, a finding that
+  points at the entities rather than at the artifact that is actually wrong.
+
+  The reader now applies one rule in every direction: a statement that would
+  fail against a real server is a chain defect, and the `IF [NOT] EXISTS` guard
+  is what marks it deliberately conditional. `DROP TABLE IF EXISTS` on an
+  unknown table stays a silent no-op, exactly as `CREATE TABLE IF NOT EXISTS`
+  on a known one does; the unguarded form is reported. `DROP TABLE` also takes
+  a list (`DROP TABLE a, b`), and every name in it is now read and dropped —
+  previously only the first was, leaving the rest standing in the model to be
+  reported downstream as tables with no entity.
+
 - **Two entities that key one table differently are now a reported
   contradiction (tcinc481).** `TomEntitySchemaReader.read` merges the columns of
   several entities mapping the same table — legitimate, since a table is often

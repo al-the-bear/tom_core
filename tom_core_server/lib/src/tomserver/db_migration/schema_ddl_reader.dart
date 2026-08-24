@@ -79,6 +79,16 @@ class TomDdlReplayResult {
 /// recognised and skipped rather than reported, because seed data and secondary
 /// indexes are legitimate migration content that the check has no opinion on.
 ///
+/// **What the guards mean.** A statement that would fail against a live server
+/// is a chain defect and is reported; the `IF [NOT] EXISTS` guard is what says
+/// the author meant it conditionally. So an unguarded `CREATE TABLE` of a table
+/// the chain already has, an unguarded `ALTER TABLE` on a table it does not, and
+/// an unguarded `DROP TABLE` of a table it does not are each reported, while
+/// their `IF NOT EXISTS` / `IF EXISTS` forms are silent no-ops. One rule,
+/// applied the same way in every direction — a `DROP` that stayed quiet would
+/// let a mistyped table name replay clean here and then reappear far downstream
+/// as a table the entity model has no entity for.
+///
 /// **What it does not.** Stored routines and anything using a `DELIMITER`
 /// override, `SELECT`-driven DDL (`CREATE TABLE … AS SELECT`), and vendor
 /// extensions beyond the above. Those surface as [TomDdlReplayError]s rather
@@ -193,7 +203,7 @@ class TomSchemaDdlReader {
       return;
     }
     if (leader == 'DROP' && second == 'TABLE') {
-      _dropTable(builder, statement);
+      _dropTable(builder, statement, artifact, errors);
       return;
     }
     if (leader == 'ALTER' && second == 'TABLE') {
@@ -332,9 +342,37 @@ class TomSchemaDdlReader {
     if (primaryKey.isNotEmpty) builder.setPrimaryKey(name, primaryKey);
   }
 
-  void _dropTable(TomSchemaBuilder builder, String statement) {
-    final name = _tableNameFrom(statement);
-    if (name != null) builder.dropTable(name);
+  void _dropTable(
+    TomSchemaBuilder builder,
+    String statement,
+    String artifact,
+    List<TomDdlReplayError> errors,
+  ) {
+    // `IF EXISTS` marks a drop as deliberately conditional — that is how a
+    // cleanup artifact stays replayable over a database that may or may not
+    // still carry the table. Without the guard the statement really would fail
+    // against a live server when the table is absent, so it is a chain defect,
+    // and the reader owes it the same report `ALTER TABLE` on an unknown table
+    // gets. Staying silent here made a typo'd table name look like a clean
+    // chain and then surface downstream as an entity table nothing creates.
+    final guarded = _hasIfExists(statement);
+    for (final name in _tableNamesFrom(statement)) {
+      if (builder.hasTable(name)) {
+        builder.dropTable(name);
+        continue;
+      }
+      if (!guarded) {
+        errors.add(
+          TomDdlReplayError(
+            artifact: artifact,
+            message:
+                'DROP TABLE on "$name", which the chain does not have at this '
+                'point',
+            statement: _excerpt(statement),
+          ),
+        );
+      }
+    }
   }
 
   // --- ALTER TABLE ----------------------------------------------------------
@@ -734,17 +772,46 @@ class TomSchemaDdlReader {
   static bool _hasIfNotExists(String text) =>
       RegExp(r'\bIF\s+NOT\s+EXISTS\b', caseSensitive: false).hasMatch(text);
 
-  /// The table name in a `CREATE TABLE …` / `DROP TABLE …` header.
+  /// Whether [text] carries the `IF EXISTS` guard of a conditional `DROP`.
+  ///
+  /// Disjoint from [_hasIfNotExists] without needing to say so: `NOT` sits
+  /// between the two words in `IF NOT EXISTS`, so `IF\s+EXISTS` cannot match it.
+  static bool _hasIfExists(String text) =>
+      RegExp(r'\bIF\s+EXISTS\b', caseSensitive: false).hasMatch(text);
+
+  /// The table name in a `CREATE TABLE …` header, or `null` if it carries none.
   static String? _tableNameFrom(String header) {
+    final names = _tableNamesFrom(header);
+    return names.isEmpty ? null : names.first;
+  }
+
+  /// Every table named in a `CREATE TABLE …` / `DROP TABLE …` header.
+  ///
+  /// `DROP TABLE` takes a *list* — `DROP TABLE a, b`. Reading only the first
+  /// name would leave the rest standing in the model, and they would then be
+  /// reported downstream as tables the entity model has no entity for: a
+  /// finding about a table the chain does in fact drop.
+  ///
+  /// Trailing `CASCADE` / `RESTRICT` are dropped by taking the first word of
+  /// each comma-separated entry, which is also what makes this safe to share
+  /// with `CREATE TABLE` — whose header, cut before the column list, is simply
+  /// a one-entry list.
+  static List<String> _tableNamesFrom(String header) {
     final words = _words(header);
     for (var i = 0; i < words.length; i++) {
       if (words[i].toUpperCase() != 'TABLE') continue;
       final rest = _skipWords(words, i + 1, const {'IF', 'NOT', 'EXISTS'});
-      if (rest.isEmpty) return null;
-      final name = _unquote(rest[0]);
-      return name.isEmpty ? null : name;
+      if (rest.isEmpty) return const [];
+      final names = <String>[];
+      for (final entry in splitTopLevel(rest.join(' '))) {
+        final entryWords = _words(entry);
+        if (entryWords.isEmpty) continue;
+        final name = _unquote(entryWords.first);
+        if (name.isNotEmpty) names.add(name);
+      }
+      return names;
     }
-    return null;
+    return const [];
   }
 
   /// [words] from [from] onwards with any leading member of [skippable] removed.

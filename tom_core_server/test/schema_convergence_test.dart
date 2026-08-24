@@ -385,6 +385,70 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
       expect(result.errors.single.message, contains('already exists'));
     });
 
+    test('DROP TABLE IF EXISTS tolerates a table no artifact creates', () {
+      final result = TomSchemaDdlReader(
+        dialect,
+      ).replay([artifact('[000]-tidy', 'DROP TABLE IF EXISTS ghost;')]);
+      expect(result.errors, isEmpty);
+    });
+
+    test(
+      'an unguarded DROP TABLE of a table no artifact creates is reported',
+      () {
+        final result = TomSchemaDdlReader(
+          dialect,
+        ).replay([artifact('[000]-tidy', 'DROP TABLE ghost;')]);
+        expect(result.errors, hasLength(1));
+        expect(result.errors.single.artifact, '[000]-tidy');
+        expect(result.errors.single.message, contains('ghost'));
+        expect(result.errors.single.message, contains('does not have'));
+      },
+    );
+
+    test('DROP TABLE drops every table it lists, not just the first', () {
+      // A list left half-applied would leave `b` standing and report it as a
+      // table the entity model lacks — a finding about a table the chain drops.
+      final result = TomSchemaDdlReader(dialect).replay([
+        artifact(
+          '[000]-create',
+          'CREATE TABLE a (id BIGINT); CREATE TABLE b (id BIGINT);',
+        ),
+        artifact('[001]-drop', 'DROP TABLE a, b;'),
+      ]);
+      expect(result.errors, isEmpty);
+      expect(result.schema.tables, isEmpty);
+    });
+
+    test('DROP TABLE reports each listed table the chain does not have', () {
+      final result = TomSchemaDdlReader(dialect).replay([
+        artifact('[000]-create', 'CREATE TABLE a (id BIGINT);'),
+        artifact('[001]-drop', 'DROP TABLE a, ghost;'),
+      ]);
+      expect(result.errors, hasLength(1));
+      expect(result.errors.single.message, contains('ghost'));
+    });
+
+    test('an unguarded DROP TABLE of a created table stays silent', () {
+      final result = TomSchemaDdlReader(dialect).replay([
+        artifact('[000]-create', 'CREATE TABLE w (id BIGINT);'),
+        artifact('[001]-drop', 'DROP TABLE w;'),
+      ]);
+      expect(result.errors, isEmpty);
+      expect(result.schema.table('w'), isNull);
+    });
+
+    test('a DROP TABLE of an already-dropped table is reported', () {
+      // The chain drops it twice: the second one would fail against a real
+      // server exactly as a drop of a table that never existed would.
+      final result = TomSchemaDdlReader(dialect).replay([
+        artifact('[000]-create', 'CREATE TABLE w (id BIGINT);'),
+        artifact('[001]-drop', 'DROP TABLE w;'),
+        artifact('[002]-drop-again', 'DROP TABLE w;'),
+      ]);
+      expect(result.errors, hasLength(1));
+      expect(result.errors.single.artifact, '[002]-drop-again');
+    });
+
     test('ADD COLUMN IF NOT EXISTS tolerates a column the baseline has', () {
       final result = TomSchemaDdlReader(dialect).replay([
         artifact('[000]-create', 'CREATE TABLE w (id BIGINT, tag VARCHAR(8));'),

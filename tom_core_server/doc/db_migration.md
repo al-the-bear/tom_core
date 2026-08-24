@@ -20,6 +20,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [Schema Convergence](#schema-convergence)
   - [The Application's Entities](#the-applications-entities)
   - [When the Entity Model Contradicts Itself](#when-the-entity-model-contradicts-itself)
+  - [Replaying the Chain: What the Guards Mean](#replaying-the-chain-what-the-guards-mean)
   - [The Framework's Own Tables](#the-frameworks-own-tables)
   - [The Four Places a Column Name Could Have Been Spelled](#the-four-places-a-column-name-could-have-been-spelled)
   - [What the Live Check Adds](#what-the-live-check-adds)
@@ -277,6 +278,31 @@ in the model that neither entity declares, and the chain comparison would then
 report a second, invented mismatch against DDL that is in fact correct. The
 verdict is order-independent — the contradiction is reported whichever entity is
 read first — while which key survives follows the origin.
+
+### Replaying the Chain: What the Guards Mean
+
+`TomSchemaDdlReader` applies each artifact's DDL to an in-memory model in the
+order the engine would. Because it is modelling what a *real* server would do, a
+statement that would fail against one is a chain defect and is reported — and the
+`IF [NOT] EXISTS` guard is precisely how an author says the statement was meant
+conditionally.
+
+That gives one rule, applied identically in every direction:
+
+| Statement | Unguarded | Guarded |
+| --------- | --------- | ------- |
+| `CREATE TABLE` of a table the chain already has | reported | `IF NOT EXISTS` → silent no-op |
+| `ADD COLUMN` of a column the table already has | reported | `IF NOT EXISTS` → silent no-op |
+| `ALTER TABLE` on a table the chain does not have | reported | — |
+| `DROP TABLE` of a table the chain does not have | reported | `IF EXISTS` → silent no-op |
+
+A `DROP` that stayed quiet would be the one hole in that rule, and it would not
+stay local: a mistyped table name replays clean, the table it was meant to remove
+stays standing in the model, and the mistake resurfaces much later as a table the
+entity model has no entity for — a finding that points at the entities, which is
+not where the fix goes. `DROP TABLE` takes a list (`DROP TABLE a, b`), and every
+name in it is read, for the same reason: a half-applied list leaves tables in the
+model that the chain does in fact drop.
 
 ### The Framework's Own Tables
 
