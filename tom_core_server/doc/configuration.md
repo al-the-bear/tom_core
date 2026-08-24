@@ -13,6 +13,7 @@ environment-variable substitution.
 - [The Resource Provider](#the-resource-provider)
 - [Typed Property Access](#typed-property-access)
 - [The Server Configuration Base](#the-server-configuration-base)
+- [Deployment Settings](#deployment-settings)
 - [Source Precedence](#source-precedence)
 - [Loading YAML](#loading-yaml)
 - [Core Components](#core-components)
@@ -86,9 +87,9 @@ line that makes it reachable here too.
 
 A server subclasses `TomBaseServerConfiguration` and declares typed fields
 (`port`, `host`, `noSsl`, `certificateChain`, `privateKey`, `isolateCount`,
-handler/middleware hooks, logging levels, …). The class is `@tomReflector`, and
-its constructor fills those fields from the merged configuration via the
-generated `setValues`:
+handler/middleware hooks, logging levels, and the three deployment blocks in
+*Deployment Settings* below). The class is `@tomReflector`, and its constructor
+fills those fields from the merged configuration via the generated `setValues`:
 
 ```dart
 @tomReflector
@@ -107,6 +108,100 @@ void main(List<String> argv) {
 > `localhost` pair for local development and **must be overridden in
 > production**. JWT signing-key fields exist; richer JWT-creation settings are a
 > tracked follow-up.
+
+## Deployment Settings
+
+Three blocks of the configuration base exist for the deployment rather than for
+the code: they say who the server logs in as, how it sends mail, and how it
+sends SMS. They are grouped here because their reader is an operator filling in
+an environment rather than a developer calling an API — and an operator cannot
+look up a setting they were never told exists.
+
+**Each block has one switch.** Leave it unset and the block is *disabled*, not
+misconfigured — the server starts, and the messaging module registers a no-op
+transport. That is the wanted behaviour for a test run, a local build and a CI
+job, all of which should compose messages and deliver none. The opposite case, a
+block that is set but unusable, throws when the settings are built, because
+someone meant to send.
+
+| Block | Switch | Unset means |
+| ----- | ------ | ----------- |
+| Server self-login | `authServerLoginUri` + `serviceAccountName` | The server never logs itself in and runs uncapped |
+| Outbound mail | `smtpHost` | This deployment sends no mail |
+| Outbound SMS | `smsEndpoint` | This deployment sends no SMS |
+
+**Four settings are secret-bearing** — `serviceAccountCredential`,
+`smtpPassword`, `smsApiKey` and `smsApiSecret` — under the same rule as
+`privateKey` and the JWT signing keys. Their *declaration* belongs in the class,
+so the shape and the source key are known; their **value is never authored**. It
+is supplied out of band at deploy time through the precedence chain below — the
+OS environment, `.env`, or the command line — and must never be written into a
+spec or a checked-in configuration tree.
+
+### Server Self-Login
+
+A deployed server is itself a principal. It logs in against the auth server with
+a service credential, and the token it gets back carries *this deployment's*
+feature grants, which cap every user's grants (the `min(user, server)` meet in
+`TomAccessControl`). These seven settings say who the deployment is and where it
+presents that identity. All default to `null`; a deployment that leaves them
+unset runs uncapped, exactly as every server built before self-login existed.
+
+| Setting | Type | What it decides |
+| ------- | ---- | --------------- |
+| `authServerLoginUri` | `String?` | Absolute URI of the auth server's login endpoint, e.g. `https://auth.example.com/auth/login`. Deployment-specific but not secret. Blank disables self-login. |
+| `serviceAccountName` | `String?` | The login name of this deployment's service account. Blank disables self-login. |
+| `serviceAccountCredential` | `String?` | The service account's secret. **Secret-bearing** — supplied out of band, never authored. |
+| `serviceAccountOrganization` | `String?` | Organization presented with the deployment's own login; `null` for a single-tenant deployment. |
+| `serviceAccountApplication` | `String?` | Application the deployment logs into; `null` when the auth server does not scope service logins by application. |
+| `serviceAccountProcess` | `String?` | Process within the application; `null` when unscoped. |
+| `serviceAccountClient` | `String?` | Client identifier the login originates from; `null` when unscoped. |
+
+See `authentication/server_self_login.dart`.
+
+### Outbound Mail (SMTP)
+
+The declarations behind `TomSmtpSettings.fromConfiguration`. Nine settings, all
+optional.
+
+| Setting | Type | Default | What it decides |
+| ------- | ---- | ------- | --------------- |
+| `smtpHost` | `String?` | `null` | The mail server's host name. Blank means this deployment sends no mail. |
+| `smtpPort` | `int` | `0` | The mail server's port. `0` is the unconfigured sentinel, letting the transport pick the default that goes with `smtpSecurity` (25, 587 or 465). |
+| `smtpSecurity` | `String` | `startTls` | How the connection is secured: `none`, `startTls` or `implicitTls`. An unrecognised value falls back to `startTls` — failing *closed* is the only acceptable direction for a setting that decides whether a password crosses the network in the clear. |
+| `smtpUsername` | `String?` | `null` | The login name presented to the mail server. Blank for an unauthenticated relay. |
+| `smtpPassword` | `String?` | `null` | The mail server password. **Secret-bearing.** Supplying `smtpUsername` without it is rejected when the settings are built, so the omission surfaces at startup naming the setting rather than as a `535` on the first notification. |
+| `smtpFromAddress` | `String?` | `null` | The address mail is sent from when a message does not name its own. Effectively mandatory for a deployment that actually sends: most relays require an envelope sender they are authorised for. |
+| `smtpFromName` | `String?` | `null` | The display name shown beside `smtpFromAddress`; `null` sends the bare address. |
+| `smtpClientName` | `String` | `localhost` | The name announced in `EHLO`. Some relays check that it resolves. |
+| `smtpAllowInsecureCertificate` | `bool` | `false` | Whether to accept a mail server certificate that does not validate. It should stay `false` in any deployment. It exists because self-signed certificates are common on internal relays, and a developer who cannot turn this on will set `smtpSecurity` to `none` instead — which is strictly worse, since that sends `smtpPassword` in the clear. |
+
+See `messaging/smtp_transport.dart` and `doc/messaging.md`.
+
+### Outbound SMS (HTTP Gateway)
+
+The declarations behind `TomSmsGatewaySettings.fromConfiguration`. Unlike SMTP
+there is no protocol here — every gateway is an HTTP API of its own invention —
+so these seven settings carry only what all of them need: where, with which
+credential, as whom. A particular vendor's field names, body format and error
+codes live in a `TomSmsGatewayProtocol`, which is code the deployment supplies
+rather than configuration.
+
+| Setting | Type | Default | What it decides |
+| ------- | ---- | ------- | --------------- |
+| `smsEndpoint` | `String?` | `null` | The gateway's submit URL. Blank means this deployment sends no SMS. Must be `http` or `https`; anything else is rejected when the settings are built, so a typo surfaces at startup rather than as an unroutable request at 03:00. |
+| `smsApiKey` | `String?` | `null` | The gateway credential. **Secret-bearing.** |
+| `smsApiSecret` | `String?` | `null` | The second half of a two-part credential. **Secret-bearing.** Required only by `smsAuthScheme` `basic`, where `smsApiKey` is the user and this is the password. |
+| `smsSenderId` | `String?` | `null` | The sender shown to the recipient — a short code, a long number, or an alphanumeric sender id where the destination country permits one. A message may override it through its metadata. |
+| `smsAuthScheme` | `String` | `bearer` | How the credential is presented: `none`, `bearer` or `basic`. An unrecognised value falls back to `bearer`; unlike `smtpSecurity`'s fallback the worst outcome is a `401`, not a credential in the clear. Gateways that want the key *in the payload* use `none` and name the field on the protocol. |
+| `smsTimeoutSeconds` | `int` | `30` | How long to wait for the gateway before treating the attempt as deferred. A timeout is transient — the message may well have been accepted — so the honest answer is to retry and let the message id deduplicate. |
+| `smsMaxSegments` | `int` | `3` | The most segments one message may occupy, or `0` for no cap. Segmentation is invisible at composition time: one extra sentence, or a parameter with an umlaut in it, can quietly triple the cost of every message. Over the cap fails *permanently* — a message too long now is too long on the retry. |
+
+See `messaging/sms_transport.dart` and `doc/messaging.md`.
+
+The remaining fields — the server, TLS, JWT, handler and logging settings — are
+listed with their types and defaults in
+`doc/api_reference/api_summary_configuration.md`.
 
 ## Source Precedence
 

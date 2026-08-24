@@ -142,6 +142,34 @@
 
 ### Documentation
 
+- **The configuration guide explains the 23 deployment settings it used to skip
+  (tcinc434).** `tcinc431` below gave the same 23 fields a row in the API
+  mirror; the prose guide still did not mention them. It described the base
+  class as declaring "`port`, `host`, `noSsl`, … and various other settings" and
+  moved on, so the guide a deployer actually reads to learn *how to configure a
+  server* named none of the settings that decide who the server logs in as, how
+  it sends mail, or how it sends SMS. A mirror answers "what is the type of
+  `smsMaxSegments`" for someone who already knows the field exists; nothing
+  answered "what can I configure" for someone who does not.
+
+  `doc/configuration.md` gains a **Deployment Settings** section between the
+  base-class description and *Source Precedence*, with one table per block —
+  seven self-login settings, nine `smtp*`, seven `sms*` — each row saying what
+  the setting *decides* rather than restating its type. The two rules that
+  precede them are the ones no single row can carry: the switch that enables
+  each block and what leaving it unset means (*disabled*, not misconfigured),
+  and the four secret-bearing settings — `serviceAccountCredential`,
+  `smtpPassword`, `smsApiKey`, `smsApiSecret` — whose value is supplied out of
+  band through the precedence chain and must never be written into a spec or a
+  checked-in configuration tree.
+
+  `test/api_reference_coverage_test.dart` guards the section the way it already
+  guards the mirror: both directions, in source order, with block membership
+  matched by name prefix so a tenth `smtp*` setting is covered the day it is
+  declared. The secret markings are checked against the source rather than a
+  list — the four are exactly the fields whose dartdoc says *secret-bearing* —
+  so the guide cannot quietly stop marking one.
+
 - **The configuration mirror lists all 48 settings, not 25 (tcinc431).**
   `TomBaseServerConfiguration` declares 48 fields; the Properties table in
   `doc/api_reference/api_summary_configuration.md` listed 25. The 23 absent ones

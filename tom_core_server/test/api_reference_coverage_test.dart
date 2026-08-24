@@ -146,53 +146,143 @@ List<String>? _overviewTableTypes(String module) {
   return names.toList()..sort();
 }
 
-/// The instance field names a class declares in its source file, in source
-/// order.
+/// The body of `class <className>`, from its opening brace to the end of the
+/// file, with the constructs that would otherwise be misread removed.
 ///
-/// The class body is read from `abstract class <name> {` to the end of the
-/// file, then narrowed to the lines that are *declarations*: exactly two spaces
-/// of indent, ending in `;`, and whose name is not followed by a parameter
-/// list. That last rule is what separates `void setValues(Map<…> values);` from
-/// a field — without it the census counts `values`, the method's final
-/// parameter, as a 49th field and then reports it missing from a table that is
-/// in fact complete.
+/// A multi-line default — the PEM certificate pair — is data whose lines would
+/// be taken for declarations, and a block comment can hold anything at all.
+/// Dartdoc is deliberately *kept*: [_secretBearingFields] reads it.
+String _classBody(String path, String className) {
+  final source = File(path).readAsStringSync();
+  final start = source.indexOf('class $className {');
+  if (start < 0) return '';
+  return source
+      .substring(start)
+      .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
+      .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
+}
+
+/// The field name [line] declares, or `null` when it declares no field.
+///
+/// A declaration is exactly two spaces of indent, ends in `;`, and has a name
+/// that is not followed by a parameter list. That last rule is what separates
+/// `void setValues(Map<…> values);` from a field — without it the census counts
+/// `values`, the method's final parameter, as a 49th field and then reports it
+/// missing from a table that is in fact complete.
 ///
 /// A regex rather than the `analyzer` package for the same reason
 /// [_typeDeclaration] is one: this is a handful of lines of parsing against a
 /// file whose layout the package's own formatter guarantees.
-List<String> _declaredFields(String path, String className) {
-  final source = File(path).readAsStringSync();
-  final start = source.indexOf('class $className {');
-  if (start < 0) return const [];
+String? _fieldNameOf(String line) {
+  if (!line.startsWith('  ') || line.startsWith('   ')) return null;
+  final statement = line.trimRight();
+  if (!statement.endsWith(';')) return null;
 
-  final body = source
-      .substring(start)
-      // A multi-line default — the PEM certificate pair — is data whose lines
-      // would otherwise be read as declarations.
-      .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
-      .replaceAll(RegExp(r'^\s*///.*$', multiLine: true), '')
-      .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
+  // Everything left of the initialiser: a field's name is the last identifier
+  // there, a method's is followed by its parameters.
+  final declaration = statement
+      .substring(0, statement.length - 1)
+      .split('=')
+      .first
+      .trimRight();
+  if (declaration.endsWith(')')) return null;
+
+  final name = RegExp(r'([A-Za-z_][A-Za-z0-9_]*)$').firstMatch(declaration);
+  if (name == null || name.group(1)!.startsWith('_')) return null;
+  return name.group(1)!;
+}
+
+/// The instance field names a class declares in its source file, in source
+/// order.
+List<String> _declaredFields(String path, String className) {
+  final body = _classBody(
+    path,
+    className,
+  ).replaceAll(RegExp(r'^\s*///.*$', multiLine: true), '');
 
   final fields = <String>[];
   for (final line in body.split('\n')) {
-    if (!line.startsWith('  ') || line.startsWith('   ')) continue;
-    final statement = line.trimRight();
-    if (!statement.endsWith(';')) continue;
-
-    // Everything left of the initialiser: a field's name is the last
-    // identifier there, a method's is followed by its parameters.
-    final declaration = statement
-        .substring(0, statement.length - 1)
-        .split('=')
-        .first
-        .trimRight();
-    if (declaration.endsWith(')')) continue;
-
-    final name = RegExp(r'([A-Za-z_][A-Za-z0-9_]*)$').firstMatch(declaration);
-    if (name == null || name.group(1)!.startsWith('_')) continue;
-    fields.add(name.group(1)!);
+    final name = _fieldNameOf(line);
+    if (name != null) fields.add(name);
   }
   return fields;
+}
+
+/// The declared fields whose own dartdoc calls them **secret-bearing**, in
+/// source order.
+///
+/// Derived rather than listed, so marking a new credential in the source is
+/// what puts it on the guide's checked list — the alternative is a literal set
+/// here, which is the same "written once, never revisited" failure this file
+/// exists to close.
+List<String> _secretBearingFields(String path, String className) {
+  final secrets = <String>[];
+  final doc = <String>[];
+  for (final line in _classBody(path, className).split('\n')) {
+    final trimmed = line.trim();
+    if (trimmed.startsWith('///')) {
+      doc.add(trimmed);
+      continue;
+    }
+    // A blank line detaches a dartdoc from what follows it.
+    if (trimmed.isEmpty) {
+      doc.clear();
+      continue;
+    }
+    if (doc.isEmpty) continue;
+    final name = _fieldNameOf(line);
+    if (name != null &&
+        doc.join(' ').toLowerCase().contains('secret-bearing')) {
+      secrets.add(name);
+    }
+    doc.clear();
+  }
+  return secrets;
+}
+
+/// Whether [field] belongs to one of the three deployment-facing blocks the
+/// configuration guide documents: server self-login, outbound mail, outbound
+/// SMS.
+///
+/// Matched by name rather than by a listed set, so a tenth `smtp*` setting is
+/// covered by the guard the day it is declared.
+bool _isDeploymentSetting(String field) =>
+    field == 'authServerLoginUri' ||
+    field.startsWith('serviceAccount') ||
+    field.startsWith('smtp') ||
+    field.startsWith('sms');
+
+/// The settings the tables under `## Deployment Settings` in
+/// `doc/configuration.md` carry: their names in document order, and the subset
+/// whose row marks them secret-bearing.
+///
+/// Only the first column counts. A setting named in passing in another row's
+/// prose is a cross-reference, not an entry — the claim being checked is that
+/// the setting has a row of its own saying what it decides. The block-switch
+/// table contributes nothing, because its first column names blocks rather than
+/// settings.
+(List<String>, Set<String>) _guideDeploymentSettings() {
+  final lines = File('doc/configuration.md').readAsLinesSync();
+  final start = lines.indexWhere(
+    (line) => line.trim() == '## Deployment Settings',
+  );
+  if (start < 0) return (const [], const {});
+
+  final names = <String>[];
+  final secrets = <String>{};
+  for (final line in lines.skip(start + 1)) {
+    if (line.startsWith('## ')) break;
+    if (!line.startsWith('|')) continue;
+    final cell = RegExp(
+      r'`([A-Za-z_][A-Za-z0-9_]*)`',
+    ).firstMatch(line.split('|')[1]);
+    if (cell == null) continue;
+    names.add(cell.group(1)!);
+    if (line.toLowerCase().contains('secret-bearing')) {
+      secrets.add(cell.group(1)!);
+    }
+  }
+  return (names, secrets);
 }
 
 /// The property names the `#### Properties` table under `### <className>` in
@@ -444,6 +534,118 @@ void main() {
         reason:
             'the Properties table for $className is complete but reordered; '
             'keep it in declaration order so the two can be read side by side.',
+      );
+    });
+  });
+
+  group('the configuration guide explains every deployment setting', () {
+    const className = 'TomBaseServerConfiguration';
+    const path =
+        'lib/src/tomserver/configuration/base_server_configuration.dart';
+
+    List<String> declared() =>
+        _declaredFields(path, className).where(_isDeploymentSetting).toList();
+
+    test('the census recovers both sides', () {
+      // Each block is asserted separately rather than the total: the guard
+      // matches block membership by name prefix, so a block renamed wholesale
+      // would otherwise vanish from *both* sides at once and the comparisons
+      // below would agree about nothing.
+      final fields = declared();
+      expect(
+        fields.where((field) => field.startsWith('serviceAccount')),
+        isNotEmpty,
+        reason: 'no self-login settings were recovered from $path',
+      );
+      expect(
+        fields.where((field) => field.startsWith('smtp')),
+        isNotEmpty,
+        reason: 'no SMTP settings were recovered from $path',
+      );
+      expect(
+        fields.where((field) => field.startsWith('sms')),
+        isNotEmpty,
+        reason: 'no SMS settings were recovered from $path',
+      );
+
+      final (documented, _) = _guideDeploymentSettings();
+      expect(
+        documented,
+        isNotEmpty,
+        reason:
+            'no setting rows were found under "## Deployment Settings" in '
+            'doc/configuration.md',
+      );
+      expect(
+        _secretBearingFields(path, className),
+        isNotEmpty,
+        reason:
+            'no field on $className is marked secret-bearing in its dartdoc; '
+            'the guide derives its secret markings from those, so losing the '
+            'marker would silently empty the check below',
+      );
+    });
+
+    test('every deployment setting has a row', () {
+      final (documented, _) = _guideDeploymentSettings();
+      final missing = declared()
+          .where((field) => !documented.contains(field))
+          .toList();
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'doc/configuration.md\'s "Deployment Settings" section says '
+            'nothing about: ${missing.join(', ')}. These settings are filled '
+            'in by an operator reading this guide, and one the guide never '
+            'names cannot be set by someone who did not already know it '
+            'existed.',
+      );
+    });
+
+    test('every row names a deployment setting', () {
+      final declaredFields = _declaredFields(path, className);
+      final (documented, _) = _guideDeploymentSettings();
+      final orphaned = documented
+          .where((setting) => !declaredFields.contains(setting))
+          .toList();
+      expect(
+        orphaned,
+        isEmpty,
+        reason:
+            'doc/configuration.md\'s "Deployment Settings" section documents '
+            'these, which $className no longer declares: '
+            '${orphaned.join(', ')}. A row for a removed setting reads as an '
+            'instruction to supply a key that nothing will ever read.',
+      );
+    });
+
+    test('the rows are in source order', () {
+      final (documented, _) = _guideDeploymentSettings();
+      expect(
+        documented,
+        declared(),
+        reason:
+            'the "Deployment Settings" tables are complete but reordered. The '
+            'three blocks are contiguous in the class, and keeping the tables '
+            'in declaration order is what lets a reviewer diff them against '
+            'the source rather than sort both by hand.',
+      );
+    });
+
+    test('every secret-bearing setting is marked as one', () {
+      final (_, marked) = _guideDeploymentSettings();
+      expect(
+        marked,
+        _secretBearingFields(path, className).toSet(),
+        reason:
+            'the settings doc/configuration.md marks **Secret-bearing** and '
+            'the ones whose dartdoc says so have drifted apart. A secret left '
+            'unmarked is the dangerous direction — it invites someone to '
+            'author the value into a spec or a checked-in configuration tree '
+            'instead of supplying it out of band — but a value marked secret '
+            'that is not one is checked too, because a marker that is '
+            'sometimes wrong stops being read.',
       );
     });
   });
