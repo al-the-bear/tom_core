@@ -746,6 +746,30 @@
 
 ### Internal
 
+- **Every documented member is checked against the class that declares it
+  (tcinc464).** An API summary is organised as `#### <ClassName>` sections, so a
+  row's position is itself a claim of ownership — and that claim was unchecked.
+  The existing coverage guard asks whether a member is documented *somewhere*;
+  it is equally satisfied by a correct row filed under the wrong heading. The
+  datasources completion document listed `mapGroupedRow` under
+  `MariadbPreparedStatement`, the class it is *about* (being the reading half of
+  a grouped query), rather than `MariaDbDatasource`, the class it is *on*. The
+  summary mirror had it right, so the two documents contradicted each other
+  about where a public static lives, and a reader trusting the wrong one writes
+  `MariadbPreparedStatement.mapGroupedRow(...)` and gets a compile error naming
+  a class they were told to use.
+
+  `test/api_reference_coverage_test.dart` now derives ownership from the source
+  instead of reviewing it, resolving each documented row against the declaring
+  class and its supertypes. The resolution is deliberately three-valued —
+  *declared*, *absent*, or **undecidable**, the last when a class inherits from
+  a type this package does not declare (as `TomConfigurationException` does from
+  the kernel's exception base). Only *absent* fails: reporting a member missing
+  because the parser could not see the class that declares it would be a false
+  alarm, and a guard that cries wolf is turned off. The census covers 420
+  classes and 1644 rows with 4 undecidable, and the undecidable share is itself
+  asserted below 2% so the blind spot cannot grow in silence.
+
 - **Documented data-source settings keys are checked against the driver's
   fields (tcinc463).** A settings key is a field name: `initialize` hands the
   whole configuration block to `tomReflectionInfo.setValues`, which assigns

@@ -44,6 +44,31 @@
 /// method can be found in the source by the developer calling it, whereas an
 /// undocumented setting is invisible to the person who needed to set it.
 ///
+/// The final group goes one level finer still, and changes the question from
+/// *completeness* to *attribution*. Every previous check asks whether a member
+/// is documented somewhere; this one asks whether the class it is documented
+/// **under** is the class that declares it. A summary is organised as
+/// `#### <ClassName>` sections, so a row's position is itself a claim of
+/// ownership — and that claim is unchecked by every test above, which would
+/// be equally satisfied by a correct row filed under the wrong heading.
+///
+/// It drifts in a way the completeness checks cannot see. `mapGroupedRow` is a
+/// static of [MariaDbDatasource], and the datasources completion document
+/// listed it under `MariadbPreparedStatement` — the class it is *about*,
+/// being the reading half of a grouped query, not the class it is *on*. A
+/// reader comparing two documents that disagree about where a public static
+/// lives cannot tell which one to believe, and a reader trusting the wrong one
+/// writes `MariadbPreparedStatement.mapGroupedRow(...)` and gets a compile
+/// error naming a class they were told to use.
+///
+/// So ownership is derived from the source rather than reviewed. The parser is
+/// deliberately three-valued: a member is *declared*, *absent*, or
+/// **undecidable** — the last when the class inherits from a type this
+/// package does not declare, as [TomConfigurationException] does from the
+/// kernel's exception base. Only *absent* fails. Reporting a member missing
+/// because the parser could not see the class that declares it would be a
+/// false alarm, and a guard that cries wolf is turned off.
+///
 /// Everything here reads the working tree, so the failure names the missing
 /// file, type or field and appears the moment the next one lands.
 library;
@@ -313,6 +338,316 @@ List<String> _summaryProperties(String module, String className) {
     if (cell != null) names.add(cell.group(1)!);
   }
   return names;
+}
+
+/// One type declared by the package, with what it declares and what it
+/// inherits from.
+class _Declaration {
+  _Declaration(this.name);
+
+  final String name;
+
+  /// Member names declared directly on this type — fields, getters, setters,
+  /// methods, statics, named constructors and enum values alike. The kind does
+  /// not matter to the question being asked, which is only whether the name
+  /// belongs to this class at all.
+  final Set<String> members = {};
+
+  /// The names in the `extends` / `implements` / `with` clause.
+  final Set<String> supertypes = {};
+}
+
+/// Matches a type declaration that can own members, anchored at column zero.
+///
+/// `typedef` and `extension` are deliberately absent. A typedef declares no
+/// members, and an extension's members belong to the type it extends rather
+/// than to itself — including either would attribute members to a name that
+/// does not own them, which is the error this group exists to catch.
+final RegExp _ownerDeclaration = RegExp(
+  r'^(?:abstract\s+|final\s+|sealed\s+|base\s+|interface\s+|mixin\s+)*'
+  r'(?:class|mixin|enum|extension type)\s+([A-Za-z_][A-Za-z0-9_]*)',
+);
+
+/// The modifiers that may precede a member's type, stripped before the name is
+/// looked for.
+///
+/// `static` is the load-bearing one: a record return type makes the
+/// declaration read `static (String, List<String>) toPositionalStatement(…)`,
+/// where `static (` is indistinguishable from a call and would otherwise be
+/// taken for the member's name.
+final RegExp _memberModifiers = RegExp(
+  r'^\s*(?:@\w+\s+|static\s+|final\s+|late\s+|const\s+|external\s+'
+  r'|abstract\s+|covariant\s+|factory\s+)*',
+);
+
+/// An identifier followed by an argument list — the shape of a method or
+/// constructor declaration, and the anchor the member name is read from.
+final RegExp _parameterList = RegExp(r'(\w+)\s*(?:<[^<>]*>)?\s*\(');
+
+/// The last identifier of a string — a field or getter's name, once the
+/// initialiser and the trailing `;` are gone.
+final RegExp _trailingIdentifier = RegExp(r'([A-Za-z_][A-Za-z0-9_]*)\s*$');
+
+/// An enum value: an identifier opening a two-space-indented line.
+final RegExp _enumValue = RegExp(r'^  ([a-z]\w*)\s*[,;(]');
+
+/// The clause naming the supertypes, and the type names inside it.
+final RegExp _supertypeClause = RegExp(
+  r'\b(?:extends|implements|with)\s+([\w\s,]+)',
+);
+final RegExp _supertypeName = RegExp(r'\b([A-Z]\w+)');
+
+/// [source] with every type-argument list removed.
+///
+/// Applied before the supertypes are read, because the *first* `extends` on
+/// `class MariadbPreparedStatement<T extends Object> extends
+/// TomPreparedStatement<T>` is the bound inside the type parameters. Reading
+/// from there makes `Object` a supertype, and since this package does not
+/// declare `Object` every lookup on the class becomes undecidable — the guard
+/// would go quiet on exactly the class the misfiled static was blamed on.
+String _withoutTypeArguments(String source) {
+  final generic = RegExp(r'<[^<>]*>');
+  var result = source;
+  String previous;
+  do {
+    previous = result;
+    result = result.replaceAll(generic, '');
+  } while (previous != result);
+  return result;
+}
+
+/// The offset in [line] where the declaration stops and the body or the
+/// initialiser starts, i.e. the first `{`, `=` or `=>` outside any brackets.
+///
+/// Depth is what makes this correct rather than approximate. Both characters
+/// occur *inside* a parameter list — `({String sentence, …})` as a record
+/// return type, `{int retries = 3}` as an optional parameter — and cutting
+/// there truncates the declaration before its name. Only a delimiter at depth
+/// zero ends the declaration.
+int _declarationEnd(String line) {
+  var depth = 0;
+  for (var i = 0; i < line.length; i++) {
+    final character = line[i];
+    if (character == '(' || character == '[') {
+      depth++;
+    } else if (character == ')' || character == ']') {
+      depth--;
+    } else if (depth == 0) {
+      if (character == '{') return i;
+      if (character != '=') continue;
+      // `==`, `!=`, `<=` and `>=` are comparisons in a default value, not the
+      // start of one. `=>` is an expression body, so cutting at it is right.
+      final previous = i == 0 ? '' : line[i - 1];
+      final next = i + 1 < line.length ? line[i + 1] : '';
+      if ('=!<>'.contains(previous) || next == '=') continue;
+      return i;
+    }
+  }
+  return line.length;
+}
+
+/// The member [line] declares, or `null` when it declares none.
+///
+/// Two shapes, distinguished by whether the declaration carries a parameter
+/// list. With one, the name is the identifier introducing it; without one, the
+/// name is the last identifier before the initialiser. `Function` is skipped
+/// because `final DateTime Function() clock;` is a *field* whose type happens
+/// to spell a parameter list.
+String? _memberNameOf(String line) {
+  if (!line.startsWith('  ') || line.startsWith('   ')) return null;
+
+  var head = line.substring(0, _declarationEnd(line));
+  head = head.substring(_memberModifiers.matchAsPrefix(head)?.end ?? 0);
+
+  for (final match in _parameterList.allMatches(head)) {
+    if (match.group(1) != 'Function') return match.group(1);
+  }
+
+  var remainder = head.trimRight();
+  if (remainder.endsWith(';')) {
+    remainder = remainder.substring(0, remainder.length - 1).trimRight();
+  }
+  return _trailingIdentifier.firstMatch(remainder)?.group(1);
+}
+
+/// Every type the package declares, keyed by name.
+///
+/// The multi-line string literals and block comments go first: their contents
+/// are unindented prose, and a line of it at column zero would be read as the
+/// end of the enclosing class, silently truncating the member list of whatever
+/// class happened to contain one.
+Map<String, _Declaration> _parseDeclarations() {
+  final declarations = <String, _Declaration>{};
+  final sources = Directory('lib/src/tomserver')
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((entry) => entry.path.endsWith('.dart'));
+
+  for (final file in sources) {
+    final source = file
+        .readAsStringSync()
+        .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
+        .replaceAll(RegExp(r'"""[\s\S]*?"""'), '""')
+        .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
+
+    _Declaration? current;
+    // The declaration header, while it is still open. A long type parameter
+    // list is wrapped across lines and closes with a `>` at column zero, which
+    // read as the end of the class body and dropped every member of the four
+    // classes declared that way — `TomEndpointBase` and `TomReference` among
+    // them. So the header is accumulated until its `{`, and the supertypes are
+    // read from the whole of it rather than from its first line.
+    final header = <String>[];
+
+    void readSupertypes(String text) {
+      final clause = _supertypeClause.firstMatch(_withoutTypeArguments(text));
+      if (clause == null) return;
+      current!.supertypes.addAll(
+        _supertypeName.allMatches(clause.group(1)!).map((m) => m.group(1)!),
+      );
+    }
+
+    for (final line in source.split('\n')) {
+      if (line.trimLeft().startsWith('///')) continue;
+
+      if (header.isNotEmpty) {
+        header.add(line);
+        // `;` ends a mixin application (`class A = B with C;`), which has no
+        // body at all.
+        if (!line.contains('{') && !line.contains(';')) continue;
+        readSupertypes(header.join(' '));
+        header.clear();
+        continue;
+      }
+
+      final declared = _ownerDeclaration.firstMatch(line);
+      if (declared != null) {
+        final name = declared.group(1)!;
+        current = declarations.putIfAbsent(name, () => _Declaration(name));
+        if (line.contains('{')) {
+          readSupertypes(line);
+        } else {
+          header.add(line);
+        }
+        continue;
+      }
+      if (current == null) continue;
+      // An unindented line has left the class body behind.
+      if (line.isNotEmpty && !line.startsWith(' ')) {
+        current = null;
+        continue;
+      }
+
+      final member = _memberNameOf(line);
+      if (member != null) current.members.add(member);
+      final value = _enumValue.firstMatch(line);
+      if (value != null) current.members.add(value.group(1)!);
+    }
+  }
+  return declarations;
+}
+
+/// Parsed once: every test in the attribution group reads the same census, and
+/// re-walking the package per test would be the slowest thing in the suite.
+final Map<String, _Declaration> _declarations = _parseDeclarations();
+
+/// Whether [type] declares or inherits [member] — `null` when the answer
+/// cannot be established because some ancestor is not declared in this
+/// package.
+///
+/// Inheritance is walked for a deliberate reason and with a known limit. It
+/// must be walked, or every member a class inherits would read as absent. The
+/// limit is that Dart does not inherit *statics*, so a parent's static
+/// documented under a child would pass. That direction is not the drift being
+/// chased and would take a real element model to distinguish, whereas the
+/// misfiling this catches — a static on the wrong sibling class — does not.
+bool? _resolveMember(String type, String member, [Set<String>? visited]) {
+  final seen = visited ?? <String>{};
+  if (!seen.add(type)) return false;
+
+  final declaration = _declarations[type];
+  if (declaration == null) return null;
+  if (declaration.members.contains(member)) return true;
+
+  var undecided = false;
+  for (final parent in declaration.supertypes) {
+    final inherited = _resolveMember(parent, member, seen);
+    if (inherited == true) return true;
+    if (inherited == null) undecided = true;
+  }
+  return undecided ? null : false;
+}
+
+/// One member row of a summary, with the class its heading attributes it to.
+typedef _Attribution = ({String file, int line, String type, String member});
+
+/// The sub-headings that divide a class's section. They group the rows by kind
+/// and must not be read as a new class, or every table under one would be
+/// skipped.
+const Set<String> _memberSectionHeadings = {
+  'Properties',
+  'Methods',
+  'Static Methods',
+  'Constructors',
+  'Constructor',
+  'Factory Constructors',
+  'Static Properties',
+  'Static Fields',
+  'Fields',
+  'Enum Values',
+  'Values',
+  'Operators',
+  'Static Members',
+  'Properties and Methods',
+};
+
+/// Every member row in `doc/api_reference/`, paired with the class it is filed
+/// under.
+///
+/// A heading is taken for a class when it names one the package declares —
+/// rather than by its depth, which is not uniform: the audit summary files
+/// classes at `###` and the datasources summary at `####`. Any other heading
+/// ends the current class, so rows under `## Overview` are attributed to
+/// nothing instead of to whichever class was last seen.
+///
+/// A generic class is headed with its type parameters HTML-escaped
+/// (`#### MariadbPreparedStatement&lt;T&gt;`), so the parameters are stripped
+/// before the name is matched. Without that every generic class is skipped
+/// silently — twenty-one of them, including both prepared-statement classes,
+/// which is to say the guard would be blind in exactly the section that held
+/// the misfiled static.
+List<_Attribution> _attributions() {
+  final heading = RegExp(r'^#{2,6}\s+(.*?)\s*$');
+  final memberRow = RegExp(r'^\|\s*`(\w+)`');
+  final typeName = RegExp(r'^[A-Z]\w*$');
+  final typeParameters = RegExp(r'&lt;.*&gt;|<[^<>]*>');
+
+  final found = <_Attribution>[];
+  final summaries = Directory('doc/api_reference')
+      .listSync()
+      .whereType<File>()
+      .where((e) => e.uri.pathSegments.last.startsWith('api_summary_'));
+
+  for (final file in summaries) {
+    final name = file.uri.pathSegments.last;
+    String? current;
+    final lines = file.readAsLinesSync();
+    for (var i = 0; i < lines.length; i++) {
+      final title = heading.firstMatch(lines[i])?.group(1);
+      if (title != null) {
+        if (_memberSectionHeadings.contains(title)) continue;
+        final type = title.replaceAll(typeParameters, '').trim();
+        final isType =
+            typeName.hasMatch(type) && _declarations.containsKey(type);
+        current = isType ? type : null;
+        continue;
+      }
+      final member = memberRow.firstMatch(lines[i])?.group(1);
+      if (member == null || current == null) continue;
+      found.add((file: name, line: i + 1, type: current, member: member));
+    }
+  }
+  return found;
 }
 
 /// The modules whose Overview table has not been reconciled against its
@@ -646,6 +981,149 @@ void main() {
             'instead of supplying it out of band — but a value marked secret '
             'that is not one is checked too, because a marker that is '
             'sometimes wrong stops being read.',
+      );
+    });
+  });
+
+  group('every summary files a member under the class that declares it', () {
+    test('mapGroupedRow belongs to the data source, not the statement', () {
+      // The specific misfiling this group was written for, pinned by name. It
+      // is a static of the driver that a grouped *statement* carries the
+      // projection for, so "which class is this about" and "which class is
+      // this on" give different answers — and the documents answered the
+      // first question while appearing to answer the second.
+      expect(
+        _resolveMember('MariaDbDatasource', 'mapGroupedRow'),
+        isTrue,
+        reason:
+            'mapGroupedRow is no longer declared on MariaDbDatasource. If it '
+            'moved, move its row in api_summary_datasources.md with it.',
+      );
+      expect(
+        _resolveMember('MariadbPreparedStatement', 'mapGroupedRow'),
+        isFalse,
+        reason:
+            'MariadbPreparedStatement now resolves mapGroupedRow, so the two '
+            'documents that disagreed about its owner can no longer be told '
+            'apart by this test.',
+      );
+    });
+
+    test('every documented member is declared on the class it sits under', () {
+      final misfiled = <String>[];
+      for (final row in _attributions()) {
+        if (_resolveMember(row.type, row.member) == false) {
+          misfiled.add('${row.file}:${row.line} ${row.type}.${row.member}');
+        }
+      }
+      expect(
+        misfiled,
+        isEmpty,
+        reason:
+            'These rows are filed under a class that does not declare or '
+            'inherit them:\n  ${misfiled.join('\n  ')}\nA summary section is a '
+            'claim of ownership, so a row under the wrong heading tells a '
+            'reader to call a member on a class that has none.',
+      );
+    });
+
+    test('the sweep reaches the summaries it polices', () {
+      // Every assertion above passes vacuously on a census that recovered
+      // nothing — an empty parse reports no misfilings at all. These floors
+      // are the difference between "checked and clean" and "not checked", and
+      // they are floors rather than exact counts so that adding a class or a
+      // row does not fail a test about coverage.
+      expect(
+        _declarations.length,
+        greaterThan(300),
+        reason:
+            'only ${_declarations.length} types were recovered from '
+            'lib/src/tomserver; the parser has stopped reading the package',
+      );
+
+      final rows = _attributions();
+      expect(
+        rows.length,
+        greaterThan(1500),
+        reason:
+            'only ${rows.length} member rows were recovered from '
+            'doc/api_reference; the summaries are no longer being read',
+      );
+
+      final undecidable = rows
+          .where((row) => _resolveMember(row.type, row.member) == null)
+          .toList();
+      expect(
+        undecidable.length / rows.length,
+        lessThan(0.02),
+        reason:
+            '${undecidable.length} of ${rows.length} rows cannot be decided '
+            'because an ancestor is declared outside this package. '
+            'Undecidable rows are not checked, so a large share of them is a '
+            'hole in the guard rather than a property of the documents.',
+      );
+
+      // Named because they are the two sections the misfiling moved between,
+      // and because a generic class heading carries its type parameters — the
+      // shape that silently excluded twenty-one classes.
+      for (final type in const [
+        'MariaDbDatasource',
+        'MariadbPreparedStatement',
+      ]) {
+        expect(
+          rows.where((row) => row.type == type),
+          isNotEmpty,
+          reason:
+              'no rows were attributed to $type, so the section holding '
+              'the misfiled static is not being read at all',
+        );
+      }
+    });
+
+    test('the parser reads the declaration shapes that defeated it', () {
+      // Each of these silently broke the census while it was being written:
+      // the member came back wrong or not at all, and the effect was a class
+      // whose members went unseen — which reads as "documented member not
+      // declared" and would have been mistaken for a documentation bug. They
+      // are pinned here so a change to the parser fails loudly instead.
+      expect(
+        _memberNameOf('  static (String, List<String>) toPositional(String s)'),
+        'toPositional',
+        reason: 'a record return type must not make `static (` read as a call',
+      );
+      expect(
+        _memberNameOf('  final DateTime Function() clock;'),
+        'clock',
+        reason: 'a function-typed field is a field, not a method `Function`',
+      );
+      expect(
+        _memberNameOf('  Future<TomLease?> acquire(String r) async {'),
+        'acquire',
+        reason: 'an async body must not make `async` read as the member name',
+      );
+      expect(
+        _memberNameOf('  static ({String sentence}) referenceQuery(int a) {'),
+        'referenceQuery',
+        reason: 'a record return type brace is not the start of the body',
+      );
+      expect(
+        _memberNameOf('  Set<Type> get registeredTypes {'),
+        'registeredTypes',
+        reason: 'a block-bodied getter declares a member',
+      );
+      expect(
+        _memberNameOf('  static String globalSettingKey ='),
+        'globalSettingKey',
+        reason: 'an initialiser continued on the next line still declares one',
+      );
+      expect(
+        _withoutTypeArguments(
+          'class Prepared<T extends Object> extends TomPrepared<T> {',
+        ),
+        'class Prepared extends TomPrepared {',
+        reason:
+            'the bound in a type parameter must not be read as a supertype, '
+            'which would make every lookup on the class undecidable',
       );
     });
   });
