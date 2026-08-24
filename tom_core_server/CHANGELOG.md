@@ -290,6 +290,26 @@
 
 ### Documentation
 
+- **`TomLiteralSelect` states what its empty field set means (tcinc461).** The
+  class overrode `getParameters` to return the list its caller declares, but
+  left `getFields` to the inherited default. The value that default produces is
+  right — `TomLiteralSelect` extends `TomQuery`, whose `getFields` is `{}`, not
+  `TomGeneratedQuery`, whose implementation walks a predicate a literal query
+  does not have — so nothing was miscomputed. What was missing is the reason.
+
+  Two different claims share the value `{}`: *"this statement references no
+  fields"*, which the base says on behalf of statements where it is true, and
+  *"this statement cannot say which fields it references"*, which is the case
+  for hand-written SQL that nothing here parses. A literal select usually does
+  read several columns. `getFields` is now an explicit override whose dartdoc
+  says which of the two it means, so a caller weighing the answer — to choose a
+  projection, to audit a statement, or to gate access — is told that empty means
+  *unknown* and must not be read as permission. `TomQuery.getFields` points at
+  it, `doc/datasources.md` gains a section contrasting the two forms, and the
+  new `test/queries_test.dart` pins the pair against the three answers a wrong
+  implementation would give (the entity's columns, the declared parameter names,
+  tokens scraped from the SQL text).
+
 - **The JWT paragraph says what is absent instead of pointing at a list that
   never had it (tcinc449).** `TomBaseServerConfiguration`'s dartdoc deferred
   "richer JWT-creation settings" to the quest completion steps, which contain no

@@ -70,6 +70,11 @@ abstract class TomQuery extends TomTypedPersistenceBase {
   }
 
   /// The column/field names the statement references (empty by default).
+  ///
+  /// An empty set does not always mean "references nothing": a statement that
+  /// cannot analyse itself reports empty too (see [TomLiteralSelect.getFields]).
+  /// Callers that act on this answer must decide what to do when it is empty
+  /// for the wrong reason.
   Set<String> getFields(TomStandardSqlDialect t) {
     return {};
   }
@@ -321,6 +326,27 @@ class TomLiteralSelect extends TomQuery {
   @override
   List<String> getParameters(TomStandardSqlDialect t) {
     return parameters;
+  }
+
+  /// Always empty: a hand-written statement's field references cannot be
+  /// derived.
+  ///
+  /// Read this as *"this statement cannot say which fields it reads"*, not
+  /// *"this statement reads none"* — a literal select usually references
+  /// several columns, but they live in SQL text that nothing here parses. The
+  /// generated siblings answer from their operator tree; there is no tree here,
+  /// and the caller declares only its [parameters], never its fields.
+  ///
+  /// Written out rather than left to the inherited default, because the two
+  /// agree only by coincidence: the base returns `{}` on behalf of statements
+  /// that genuinely reference nothing, which is a different claim that happens
+  /// to carry the same value. A caller weighing this answer — to decide a
+  /// projection, to audit a statement, or to gate access — must treat an empty
+  /// set from a literal query as *unknown*, and either read the SQL or work
+  /// from a query it can analyse.
+  @override
+  Set<String> getFields(TomStandardSqlDialect t) {
+    return {};
   }
 }
 

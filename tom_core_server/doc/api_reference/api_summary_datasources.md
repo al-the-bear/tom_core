@@ -530,7 +530,7 @@ TomQuery(List<Type> types)
 | ------ | --------- | ----------- |
 | `generateQuery` | `String generateQuery(TomStandardSqlDialect t)` | Renders the full SQL statement for dialect `t`. |
 | `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | The positional parameters the statement binds (empty by default). |
-| `getFields` | `Set<String> getFields(TomStandardSqlDialect t)` | The column/field names the statement references (empty by default). |
+| `getFields` | `Set<String> getFields(TomStandardSqlDialect t)` | The column/field names the statement references (empty by default). An empty set may also mean the statement cannot analyse itself — see `TomLiteralSelect.getFields`. |
 
 #### TomGeneratedQuery
 
@@ -665,6 +665,7 @@ TomLiteralSelect(
 | ------ | --------- | ----------- |
 | `generateQuery` | `String generateQuery(TomStandardSqlDialect t)` | *(override)* Returns the raw `query` string. |
 | `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | *(override)* Returns the declared `parameters`. |
+| `getFields` | `Set<String> getFields(TomStandardSqlDialect t)` | *(override)* Always empty — a hand-written statement's field references cannot be derived. Means *unknown*, not *none*. |
 | `toString` | `String toString()` | *(override)* Debug description prefixed `TomLiteralSelect:`. |
 
 #### TomCount

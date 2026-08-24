@@ -214,6 +214,31 @@ predicate with shaping options (`distinct`, `sort`, `top`, `offset`):
 | `TomDelete` | `DELETE FROM <first table> WHERE <predicate> [ORDER BY …] [LIMIT n]` |
 | `TomLiteralSelect` | a raw, hand-written SQL string with explicit parameters |
 
+### What a statement reports about itself
+
+Besides rendering, a query answers two questions about its own text:
+`getParameters(dialect)` names the values it binds, and `getFields(dialect)` the
+columns it references. The generated forms answer both by walking their
+predicate — the operator tree *is* the statement, so reading it off is exact.
+
+`TomLiteralSelect` cannot. Its SQL is a string nothing here parses, so the
+caller declares the parameters and there is nothing to declare the fields from:
+
+| Form | `getParameters` | `getFields` |
+| ---- | --------------- | ----------- |
+| `TomSelect` / `TomCount` / `TomDelete` | from the predicate | from the predicate |
+| `TomLiteralSelect` | the declared list | always empty — *unknown* |
+
+The empty set is the honest answer, but it is not the same answer the base class
+gives. A statement referencing no columns reports empty because that is true; a
+literal select reports empty because it *cannot say*, and its text may well
+reference several columns. Anything that acts on `getFields` — choosing a
+projection, auditing a statement, gating access — has to decide which of the two
+it is looking at, and must not read an empty set from a literal query as
+permission. The access gate over grouped queries deliberately reads
+`TomGroupedSelect.referencedColumns` instead, a member no statement can answer
+vacuously.
+
 ### Ordering and the row window
 
 `sort` is an *ordered list* of `TomSortField` — a field name and its own
