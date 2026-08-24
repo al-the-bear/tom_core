@@ -16,6 +16,7 @@ environment-variable substitution.
 - [Deployment Settings](#deployment-settings)
 - [Source Precedence](#source-precedence)
 - [Loading YAML](#loading-yaml)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -351,6 +352,50 @@ read a substituted number as text and parse it:
 ```dart
 final port = int.parse(~TomStringConfig('database.port'));
 ```
+
+## Not Yet Implemented
+
+- **A misspelled setting is silently ignored.** Nothing validates the merged
+  tree against the fields it will fill. `getDefaultValues` returns whatever the
+  sources said, and the reflection layer assigns the keys that name a field and
+  drops the rest — so `prot=8080` merges as a live key, `port` is never set,
+  and the server comes up on its subclass default. A typo is indistinguishable
+  from a setting nobody supplied, and neither is reported. Completeness is the
+  caller's check, after the last source is merged.
+- **An unknown key reads back as its own name.**
+  `TomServerConfigResourceProvider.get` answers a key it does not hold with the
+  key string itself, not `null` and not a throw. A caller that forgets to gate
+  on `exists` receives `'server.port'` where it expected a port — which fails
+  the next cast if it is lucky, and silently succeeds where a `String` was
+  wanted if it is not. Gate on `exists`, or read through `TomConfig`, which
+  does.
+- **A `TomConfig` resolves once, at construction.** The value is read from the
+  active provider when the object is built and cached, so a provider installed
+  afterwards is not observed. Install the provider before declaring the
+  properties — but that ordering is a convention, not something the API
+  enforces, and a property held in a top-level `final` resolves when its
+  library is first touched, which may be before `main` has installed anything.
+- **An obligatory miss throws a bare `String`.** The third resolution branch
+  throws the message rather than an exception carrying it, so `on Exception
+  catch` does not catch it and a plain `catch (e)` hands back a `String`. Use a
+  bare `catch` around the declaration of an obligatory property. A failed
+  *cast* is unaffected — that path throws a real `Exception`.
+- **A substituted YAML value is text.** `${VAR}` expansion runs after the YAML
+  parser has assigned types, so `port: ${DB_PORT:3306}` yields the `String`
+  `'3306'` where `port: 3306` yields an `int`, and `TomConfig` casts rather
+  than parses. See [A substituted value is a
+  string](#a-substituted-value-is-a-string).
+- **The default TLS material is a checked-in self-signed pair.**
+  `certificateChain` and `privateKey` default to a throwaway `localhost`
+  certificate committed to this repository — convenient for local development,
+  and worthless as authentication anywhere else, since its private key is
+  public. Nothing refuses to start when a deployment leaves it in place, so
+  overriding both in production is the deployment's responsibility.
+- **`jwtSharedSecretKey` defaults to a literal passphrase.** The field carries
+  `"config-secret-passphrase"` out of the box and is marked as not currently in
+  use. Nothing consumes it today, so the default is inert rather than
+  dangerous — but it is a secret-shaped value with a published default, and it
+  must be set before anything starts signing with it.
 
 ## Core Components
 

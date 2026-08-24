@@ -189,6 +189,25 @@
 
 ### Documentation
 
+- **The configuration guide now states what it does not do (tcinc439).**
+  `doc/configuration.md` read as though the module were complete, while the
+  completion record carried seven verified limitations — so a consumer met
+  each of them as a surprise at the point of being bitten. Nine sibling module docs
+  already carry a `## Not Yet Implemented` section; this one now does too, in
+  the same shape and the same position, listing all seven with the remedy where
+  there is one: a misspelled setting is silently ignored, an unknown key reads
+  back as its own name, a `TomConfig` resolves once at construction, an
+  obligatory miss throws a bare `String`, a substituted YAML value is text, the
+  default TLS material is a checked-in self-signed pair, and
+  `jwtSharedSecretKey` defaults to a published passphrase.
+
+  Each is pinned by a test, which is the half that keeps the section honest in
+  the other direction: a stale warning costs a reader the same working-around as
+  a missing one, so the four with nowhere else to live got a *the documented
+  limitations hold* group, and the bare-`String` throw — asserted with
+  `throwsA(anything)`, which would have accepted an `Exception` just as happily
+  — was tightened to assert the type the warning names.
+
 - **YAML substitution named as the one untyped configuration source
   (tcinc438).** The completion record's open-end list said values from the
   environment, a `.env` file, the command line *or* a YAML substitution arrive

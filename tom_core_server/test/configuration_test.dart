@@ -161,8 +161,13 @@ void main() {
     });
 
     test('throws for an obligatory key with no default', () {
+      // A bare String, not an Exception -- so `on Exception catch` misses it
+      // and only a bare `catch` sees it. Asserted by type rather than with
+      // `anything`, because that is the part doc/configuration.md warns about
+      // under *Not Yet Implemented*: an assertion that accepts either shape
+      // would let the warning outlive the behaviour it describes.
       _install({});
-      expect(() => TomStringConfig('obligatory'), throwsA(anything));
+      expect(() => TomStringConfig('obligatory'), throwsA(isA<String>()));
     });
 
     test('throws an Exception on a type mismatch', () {
@@ -659,6 +664,52 @@ void main() {
           'provider',
         ),
         reason: 'the example must show the install that makes it resolve',
+      );
+    });
+  });
+
+  // Each limitation listed under *Not Yet Implemented* in doc/configuration.md,
+  // pinned so the section cannot go on warning about a behaviour that has since
+  // been fixed -- a stale warning costs a reader the same working-around as a
+  // missing one. Two of the seven are pinned by their own tests above (the
+  // key-string fallback under TomServerConfigResourceProvider, the bare-String
+  // throw under TomConfig resolution) and the substituted-YAML one under
+  // TomYaml; the four with nowhere else to live are here.
+  group('the documented limitations hold', () {
+    test('a misspelled setting merges as a live key and fills no field', () {
+      // `prot` is a typo for `port`. Nothing validates the merged tree against
+      // the fields it will fill, so the typo survives the merge as an ordinary
+      // key while `port` -- the key that would have set the field -- is simply
+      // absent. The reflection layer then drops `prot`, because no field is
+      // named that, and reports nothing either way.
+      _install({});
+      final merged = TomBaseServerConfiguration.getDefaultValues(['prot=8080']);
+      expect(merged['prot'], 8080);
+      expect(merged.containsKey('port'), isFalse);
+    });
+
+    test('a TomConfig does not observe a provider installed later', () {
+      _install({'n': 1});
+      final resolved = TomIntConfig('n');
+      _install({'n': 2});
+      // The second read proves the install really took, so the first is about
+      // the cache rather than about a provider that never changed.
+      expect(resolved.get(), 1);
+      expect(TomIntConfig('n').get(), 2);
+    });
+
+    test('the default TLS material is the checked-in self-signed pair', () {
+      _install({});
+      final config = _CapturingConfig([]);
+      expect(config.certificateChain, contains('BEGIN CERTIFICATE'));
+      expect(config.privateKey, contains('BEGIN PRIVATE KEY'));
+    });
+
+    test('jwtSharedSecretKey defaults to a literal passphrase', () {
+      _install({});
+      expect(
+        _CapturingConfig([]).jwtSharedSecretKey,
+        'config-secret-passphrase',
       );
     });
   });
