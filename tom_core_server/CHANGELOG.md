@@ -2,6 +2,35 @@
 
 ### Fixed
 
+- **The environment/`TomConfig` boundary is now stated, and the configuration
+  example's checks no longer compile out (tcinc433).** The documentation
+  described two things separately and never joined them: `getDefaultValues`
+  merges the OS environment, `.env` and the command line, and `TomConfig` reads
+  the active provider. The natural inference — that a `TomConfig` lookup
+  therefore sees an environment variable — is false, and nothing said so. It
+  cannot see one: the merge runs over a **copy** of the provider's resources and
+  the result populates a configuration object's *fields*, never the provider.
+  The isolation is deliberate (it is the bug 62 fix), so the two ways of reading
+  such a value are not interchangeable. The dangerous shape is the quiet one:
+  `TomConfig.withDefault('DB_PORT', 3306)` does not throw against an unmerged
+  key, it answers `3306` as though the environment had said nothing, because an
+  unmerged key is indistinguishable from an absent one.
+
+  The boundary is now stated where each reader meets it — the `TomConfig` class
+  doc, and `doc/configuration.md` under both *Typed Property Access* and *Source
+  Precedence* — each with the one line that joins the two stores, installing the
+  merged map as the provider. `example/configuration/configuration_example.dart`
+  demonstrates both halves as steps 7 and 8: `PATH`, which every platform sets,
+  failing to resolve, then resolving after the install.
+
+  The example carried the same defect as the cmdline one below: all six of its
+  checks were `assert`, and its header tells the reader to run it with
+  `dart run`, which leaves assertions **disabled**. Every check was inert. They
+  now run through the same throwing `check(ok, expectation)` helper, and
+  `test/configuration_test.dart` runs the example under exactly the documented
+  command, requires exit 0, derives the numbered-step count from the source
+  rather than a literal, and fails if an `assert(` reappears.
+
 - **The cmdline example's checks no longer compile out under the command it
   documents (tcinc426).** `example/cmdline/cmdline_example.dart` stated all
   eight of its expectations with `assert`, and its own header tells the reader

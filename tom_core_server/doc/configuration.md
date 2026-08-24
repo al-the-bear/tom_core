@@ -77,6 +77,11 @@ Because the value is captured at construction, build a `TomConfig` *after* the
 provider is installed; later provider changes are not observed by an existing
 instance.
 
+The provider is the *only* source read. An environment variable or a
+command-line argument is not one of the three steps above — it reaches the
+configuration object's fields instead. See *Source Precedence* below for the one
+line that makes it reachable here too.
+
 ## The Server Configuration Base
 
 A server subclasses `TomBaseServerConfiguration` and declares typed fields
@@ -117,6 +122,28 @@ command-line arguments   ─┘
 All non-resource sources flow through the command-line conversion rules (see
 `doc/cmdline.md`), so `port=8080` becomes the int `8080`, `noSsl=true` the bool
 `true`, and so on.
+
+The chain ends where the diagram ends. `getDefaultValues` starts from a **copy**
+of the provider's resources and hands the merged result to `setValues`, so an
+environment variable or an argument reaches the configuration object's *fields*
+and nothing else — it does not enter the provider, and `TomConfig` reads nothing
+but the provider. The isolation is deliberate: merging into the live provider
+would let one server's arguments leak into every later lookup in the process.
+
+To read such a value through `TomConfig`, install the merged map as the provider
+first — one line, and the caller's to write:
+
+```dart
+TomServerConfigResourceProvider.setServerConfigProvider(
+  TomServerConfigResourceProvider.from(
+    TomBaseServerConfiguration.getDefaultValues(args).cast<String, dynamic>(),
+  ),
+);
+```
+
+Without it an obligatory `TomConfig` throws, and — the case worth watching —
+`TomConfig.withDefault` does not: it answers its default as though the
+environment had said nothing, because an unmerged key is simply an absent one.
 
 ## Loading YAML
 

@@ -1,5 +1,9 @@
 import 'dart:io';
 
+// Prefixed `paths` rather than the `p` this package's other test files use:
+// a dozen tests below name a provider `p`, and a local shadowing the prefix
+// reads as a mistake even where it compiles.
+import 'package:path/path.dart' as paths;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -322,6 +326,78 @@ void main() {
     });
   });
 
+  // The merged map and the provider tree are two different stores, and the
+  // module reads each of them from a different type: the merge feeds
+  // `setValues`, so it lands on the configuration object's *fields*, while
+  // `TomConfig` resolves against the process-wide provider and nothing else.
+  //
+  // That separation is deliberate -- it is the bug-62 fix, which stopped
+  // building a configuration from injecting the environment into the
+  // process-wide provider -- but it is invisible at a call site, because both
+  // halves are spelled as an ordinary property read. So the two are pinned
+  // against each other here rather than each on its own: the assertions that
+  // matter are the ones about the *boundary*.
+  group('the environment and the command line as TomConfig sees them', () {
+    test('an environment variable is not visible to TomConfig', () {
+      _install({});
+      // PATH is present in Platform.environment on every supported platform,
+      // and getDefaultValues would merge it. TomConfig never consults that
+      // merge, so the key is simply absent and the obligatory lookup throws.
+      expect(() => TomStringConfig('PATH'), throwsA(anything));
+    });
+
+    test('a default silently wins over the environment variable it shadows', () {
+      _install({});
+      // The same absence as above, but with a default there is nothing to
+      // throw: the declared fallback is returned as though the environment had
+      // said nothing. This is the shape that makes the boundary worth
+      // documenting -- the obligatory form at least fails loudly.
+      expect(TomStringConfig.withDefault('PATH', 'fallback').get(), 'fallback');
+    });
+
+    test('constructing a configuration does not publish its merged values', () {
+      _install({});
+      _CapturingConfig(['appId=svc']);
+      // The argument reached the configuration object -- asserted by the
+      // getDefaultValues group above -- but the provider is untouched, so a
+      // TomConfig declared afterwards still cannot see it.
+      expect(() => TomStringConfig('appId'), throwsA(anything));
+      expect(
+        TomServerConfigResourceProvider.getServerConfig().exists('appId'),
+        isFalse,
+      );
+    });
+
+    test('installing the merged map as the provider is what makes both '
+        'sources readable', () {
+      _install({});
+      // The one line that joins the two stores. It is the caller's to write:
+      // the module never does it, which is why every claim that a TomConfig
+      // lookup sees an environment or command-line value needs it first.
+      TomServerConfigResourceProvider.setServerConfigProvider(
+        TomServerConfigResourceProvider.from(
+          TomBaseServerConfiguration.getDefaultValues([
+            'DB_PORT=3307',
+            '--verbose',
+            'accountNumber="00420"',
+          ]).cast<String, dynamic>(),
+        ),
+      );
+      // The environment, now reachable.
+      expect(TomStringConfig('PATH').get(), isNotEmpty);
+      // An all-digit argument arrives already typed, so the strict int cast
+      // holds -- the conversion happens on the way into the map, not on read.
+      expect(TomIntConfig('DB_PORT').get(), 3307);
+      // A bare flag is stored as the boolean true under its own dashed key,
+      // which is the one case where the dashed spelling is useful: it is read
+      // back as a key rather than bound to a field of that name.
+      expect(~TomBoolConfig('--verbose'), isTrue);
+      // Quoting is how a value that looks numeric stays textual; the quotes
+      // are stripped as a pair, so the leading zeros survive.
+      expect(~TomStringConfig('accountNumber'), '00420');
+    });
+  });
+
   group('TomYaml', () {
     late Directory dir;
     setUp(() async {
@@ -365,6 +441,94 @@ void main() {
       TomYaml.mergeInYamlFile(existing, f.path);
       expect(existing['existing'], 1);
       expect(existing['added'], 'yes');
+    });
+  });
+
+  group('The example runs green', () {
+    final examplePath = paths.join(
+      'example',
+      'configuration',
+      'configuration_example.dart',
+    );
+
+    test('under exactly the command its header documents', () async {
+      // The example is this module's worked demonstration and the source of
+      // the completion document's snippets, so it drifts silently unless
+      // something runs it. Run it the way a reader would — plain `dart run`,
+      // no extra flags — and require the exit code its own checks produce.
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        examplePath,
+      ]);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'example failed: ${result.stdout}${result.stderr}',
+      );
+      // A crash before the last step would also exit 0 if it were swallowed,
+      // so pin that every numbered step actually reported. The count is read
+      // off the example rather than written here: a literal only matches the
+      // file on the day it is written, and a stale one stops covering the
+      // steps added since — silently, which is the failure this test exists
+      // to prevent.
+      final declared = RegExp(r"print\('(\d+)\. ")
+          .allMatches(File(examplePath).readAsStringSync())
+          .map((m) => int.parse(m.group(1)!))
+          .toList();
+      expect(declared, isNotEmpty, reason: 'no numbered step found at all');
+      expect(
+        declared,
+        List.generate(declared.length, (i) => i + 1),
+        reason: "the example's steps must be numbered 1..n without a gap",
+      );
+      for (final step in declared) {
+        expect(result.stdout, contains('$step. '));
+      }
+    });
+
+    test('with its expectations checked rather than asserted', () async {
+      // The test above cannot see the difference on its own: an example that
+      // checks nothing exits 0 too. `dart run` leaves assertions disabled —
+      // that is what `--enable-asserts` is for — so an `assert` in the example
+      // is compiled out under the very command the test above uses, and the
+      // run stays green with every expectation violated. This example was
+      // written that way. It now states its expectations through a throwing
+      // helper, and this guards the regression of quietly reverting them.
+      final source = File(examplePath).readAsStringSync();
+      expect(
+        source,
+        isNot(contains('assert(')),
+        reason: 'an assert in the example does not run under `dart run`',
+      );
+      expect(source, contains('void check(bool ok, String expectation)'));
+    });
+
+    test('demonstrating that TomConfig does not see the environment', () {
+      // The completion document's "Reading a property the environment or the
+      // command line supplied" section once showed three `TomConfig` lookups
+      // that could never resolve, because nothing had installed the merged map
+      // as the provider. The section is now backed by the example's last two
+      // steps, so this pins that the backing exists: without them the prose is
+      // unsupported again and the false claim can quietly return.
+      final source = File(examplePath).readAsStringSync();
+      expect(
+        source,
+        contains('TomBaseServerConfiguration.getDefaultValues('),
+        reason: 'the example must show the merge that feeds setValues',
+      );
+      expect(
+        source,
+        contains('the environment is not visible to TomConfig'),
+        reason: 'the example must show the lookup that fails before install',
+      );
+      expect(
+        source,
+        contains(
+          'the environment resolves once the merged map is the '
+          'provider',
+        ),
+        reason: 'the example must show the install that makes it resolve',
+      );
     });
   });
 }

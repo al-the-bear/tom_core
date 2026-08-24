@@ -15,6 +15,26 @@ import 'base_server_configuration.dart';
 ///    default is used.
 /// 3. Otherwise the property is considered obligatory and construction throws.
 ///
+/// The provider is the **only** source read. The OS environment, the `.env`
+/// file and the command line are *not* a fourth branch: they are merged by
+/// [TomBaseServerConfiguration.getDefaultValues] into a **copy** of the
+/// provider's resources, and that copy populates a configuration object's
+/// *fields* — it is never installed back into the provider, so merging one
+/// server's arguments cannot leak into every later lookup in the process. To
+/// read such a value here, install the merged map as the provider first:
+///
+/// ```dart
+/// TomServerConfigResourceProvider.setServerConfigProvider(
+///   TomServerConfigResourceProvider.from(
+///     TomBaseServerConfiguration.getDefaultValues(args).cast<String, dynamic>(),
+///   ),
+/// );
+/// ```
+///
+/// Note that [TomConfig.withDefault] fails *silently* against an unmerged key:
+/// an absent key and a key the environment supplied but nobody installed are
+/// indistinguishable here, so the default wins and nothing throws.
+///
 /// A key configured explicitly as `null` takes branch 1, not branch 2: the
 /// provider reports it as present, because an explicit `null` is a deliberate
 /// act and a default exists to cover an *absent* key (the same reason a
