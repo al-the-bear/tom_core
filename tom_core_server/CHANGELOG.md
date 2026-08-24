@@ -589,6 +589,43 @@
 
 ### Internal
 
+- **`lib/src` no longer imports its own package (tcinc445).**
+  `base_server_configuration.dart` imported
+  `package:tom_core_server/tom_core_server.dart` — the barrel that exports it.
+  It reached seven symbols that way and received the entire package, plus
+  `mysql_client` and `tom_core_kernel`, in exchange. It now imports the kernel,
+  `../cmdline/args.dart`, `../cmdline/env_file.dart`, `../server/server.dart`
+  and `tom_config.dart`, which is the whole of what it uses.
+
+  The cost was never compile time. Through the barrel, `configuration` appeared
+  to depend on every module in the package, which is indistinguishable from
+  depending on none: the import list is where a reader learns whether a module
+  can be lifted out and what an edit here can reach, and it said nothing. Two
+  facts were hidden by it and are now legible — that `configuration` depends on
+  `cmdline`, because `getDefaultValues` parses the environment and the command
+  line rather than only reading a tree, and that `configuration` and `server`
+  import each other, since the class supplies a pipeline default that lives in
+  `server`. That cycle is not new and is legal Dart; it was simply invisible.
+
+  A guard test, `test/library_structure_test.dart`, now fails on any file under
+  `lib/` that imports `package:tom_core_server/`. Writing it first was what
+  found the rest: a grep for the barrel path caught two files, and the test
+  caught a third — `little_things/server_exception.dart` reached into
+  `package:tom_core_server/src/tomserver/server/server.dart`, an absolute path
+  into the package's own private tree, which is the same defect in the spelling
+  that no grep for the barrel would ever match. All three now use relative
+  imports.
+
+  The recurrence is structural rather than careless, which is why it is checked
+  rather than remembered: every module readme opens its quick start with the
+  barrel import, because that is the correct import for a consumer. Copying
+  that line into a source file is the obvious mistake to make.
+
+  One dartdoc link changed as a consequence. `[TomHealthService]` on
+  `loggingMiddleware` became a plain code span: it is a `healthcheck` type, and
+  `healthcheck` depends on `configuration`, so importing it to keep the link
+  live would have added a second cycle for the sake of a hyperlink.
+
 - **`TomYaml.mergeInYamlFile` now delegates to `loadYamlFile` (tcinc442).** The
   two methods shared four of their five lines — read, `loadYaml`,
   `makeCleanJsonMap`, `substituteEnvVars` — and differed only in whether the

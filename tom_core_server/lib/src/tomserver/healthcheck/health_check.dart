@@ -1,4 +1,6 @@
-import 'package:tom_core_server/tom_core_server.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import '../endpoints/endpoint_annotation.dart';
 
 /// Analyzer for customizing health check responses.
 ///

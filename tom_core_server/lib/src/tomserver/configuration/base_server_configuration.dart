@@ -1,7 +1,12 @@
 import 'dart:io';
 
 import 'package:shelf/shelf.dart';
-import 'package:tom_core_server/tom_core_server.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import '../cmdline/args.dart';
+import '../cmdline/env_file.dart';
+import '../server/server.dart';
+import 'tom_config.dart';
 
 /// Holds the resolved configuration tree and answers property lookups for
 /// [TomConfig].
@@ -493,7 +498,7 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// It is **not** the default because it reads nothing from the request
   /// context, so it can honour neither guard. The consequential one is
   /// `shouldBeLogged`: the endpoint pipeline copies each endpoint's
-  /// `logRequests` flag onto it, which is how [TomHealthService] keeps a
+  /// `logRequests` flag onto it, which is how `TomHealthService` keeps a
   /// `/health` probe arriving every few seconds out of the log. Substituting
   /// shelf's middleware silently re-enables the line for every endpoint that
   /// opted out. `hasBeenLogged` likewise stops being honoured, so a retried or

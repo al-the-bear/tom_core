@@ -1,7 +1,8 @@
 import 'dart:isolate';
 
-import 'package:tom_core_server/src/tomserver/server/server.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import '../server/server.dart';
 
 /// Base class for every exception raised by `tom_core_server`.
 ///
