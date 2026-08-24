@@ -295,6 +295,12 @@ Utility class for loading and processing YAML configuration files with automatic
 environment-variable substitution using `${VAR_NAME}` or `${VAR_NAME:default}`
 syntax. All members are static.
 
+Substitution runs after the YAML parser has assigned types and writes its
+expansion back as text, so a substituted value is always a `String`:
+`port: 3306` yields the `int` `3306`, `port: ${DB_PORT:3306}` the `String`
+`'3306'`. This is the only configuration source that reaches `TomConfig<T>`
+untyped, and `TomConfig<T>` casts rather than parses.
+
 #### Static Methods
 
 | Method | Signature | Description |

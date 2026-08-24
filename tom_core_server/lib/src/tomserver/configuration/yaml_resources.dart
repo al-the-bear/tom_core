@@ -8,6 +8,13 @@ import 'package:yaml/yaml.dart';
 ///
 /// Provides methods to load YAML files with automatic environment variable
 /// substitution using the `${VAR_NAME}` or `${VAR_NAME:default}` syntax.
+///
+/// Substitution runs *after* the YAML parser has assigned types and writes its
+/// expansion back into the tree as text, so a substituted value is always a
+/// `String`: `port: 3306` yields the `int` `3306`, `port: ${DB_PORT:3306}` the
+/// `String` `'3306'` — even when `DB_PORT` is unset and the default supplies
+/// the same digits. `TomConfig` casts rather than parses, so read a substituted
+/// number with `TomStringConfig` and parse it.
 class TomYaml {
   /// Loads a YAML file and merges it into [result] with environment variable substitution.
   ///

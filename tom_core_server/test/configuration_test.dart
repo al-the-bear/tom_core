@@ -538,6 +538,33 @@ void main() {
       expect(map['p'], path);
     });
 
+    test('a substituted value is text, where a literal one is typed', () async {
+      // The one place a configuration value reaches TomConfig untyped. A YAML
+      // scalar is typed by the YAML parser, but substitution runs afterwards
+      // and writes the expansion back as text -- so the same number is an int
+      // when written literally and a String when written as a placeholder,
+      // even though the placeholder's own default supplies the same digits.
+      // TomConfig casts rather than parses, so the second form throws.
+      final f = File('${dir.path}/c.yaml');
+      await f.writeAsString(
+        'literal: 3306\n'
+        'substituted: \${TOM_CFG_TEST_PORT:3306}\n',
+      );
+      final map = TomYaml.loadYamlFile(f.path);
+      expect(map['literal'], isA<int>());
+      expect(map['substituted'], isA<String>());
+      expect(map['substituted'], '3306');
+
+      _install(map);
+      expect(TomIntConfig('literal').get(), 3306);
+      expect(
+        () => TomIntConfig('substituted').get(),
+        throwsA(isA<Exception>()),
+      );
+      // It is readable as what it actually is.
+      expect(TomStringConfig('substituted').get(), '3306');
+    });
+
     test('mergeInYamlFile overlays a file onto an existing map', () async {
       final f = File('${dir.path}/c.yaml');
       await f.writeAsString('added: yes\n');

@@ -189,6 +189,26 @@
 
 ### Documentation
 
+- **YAML substitution named as the one untyped configuration source
+  (tcinc438).** The completion record's open-end list said values from the
+  environment, a `.env` file, the command line *or* a YAML substitution arrive
+  as strings and fail `TomConfig`'s cast. Three of those four have not behaved
+  that way for some time — each passes through a converting reader
+  (`TomArgs.convertToObjectMap`, `TomEnvFile.parse`, `TomArgs.parseArgsToMap`),
+  which the same document says 240 lines earlier. Probing all four confirmed it:
+  only substitution delivers text.
+
+  The reason it does is worth stating rather than merely recording, because it
+  is the trap: substitution runs *after* the YAML parser has assigned types and
+  writes its expansion back as text, so `port: 3306` is an `int` while
+  `port: ${DB_PORT:3306}` is the `String` `'3306'` — the same number, in the
+  form `TomYaml`'s own dartdoc example shows, and true even with `DB_PORT`
+  unset. Now stated in the guide (*A substituted value is a string*, with the
+  literal-vs-placeholder table and the parse-it-yourself remedy), in the API
+  mirror's `TomYaml` entry, in `TomYaml`'s class dartdoc, and in a rewritten
+  open end. A test pins both legs from one file, so the two forms cannot drift
+  into agreeing.
+
 - **A cleared configuration key is documented as a setting, not an omission
   (tcinc437).** Writing `smtpHost:` with no value in YAML is how a deployment
   clears a setting, and it means something different from omitting the key.

@@ -331,6 +331,27 @@ TomYaml.mergeInYamlFile(existing, 'config.yaml');
 A placeholder with no matching environment variable falls back to its `:default`
 (or stays unresolved if no default is given).
 
+### A substituted value is a string
+
+Substitution runs *after* the YAML parser has assigned types, and writes its
+expansion back into the tree as text. The placeholder and the literal it stands
+for therefore do not resolve alike:
+
+| Written in YAML | Value in the map | `TomIntConfig` |
+| --------------- | ---------------- | -------------- |
+| `port: 3306` | `3306` (`int`) | resolves |
+| `port: ${DB_PORT:3306}` | `'3306'` (`String`) | throws |
+
+This holds even when `DB_PORT` is unset and the default supplies the same
+digits. Substitution is the only configuration source that reaches `TomConfig`
+untyped — the environment, a `.env` file and the command line each pass
+through a converting reader — and `TomConfig` casts rather than parses. So
+read a substituted number as text and parse it:
+
+```dart
+final port = int.parse(~TomStringConfig('database.port'));
+```
+
 ## Core Components
 
 - **`TomServerConfigResourceProvider`** — the configuration tree and its
