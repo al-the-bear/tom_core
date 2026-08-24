@@ -210,12 +210,107 @@ void main() {
       );
     });
 
+    test('every digest it produces is well-formed', () {
+      // The pair has to agree: whatever `checksumOf` writes, the readability
+      // guard must accept, or the adaptor would reject its own rows.
+      for (final script in ['', 'SELECT 1', 'CREATE TABLE t (id INT);', 'é']) {
+        expect(
+          MariadbMigrationAdaptor.isWellFormedChecksum(
+            MariadbMigrationAdaptor.checksumOf(script),
+          ),
+          isTrue,
+          reason: 'checksumOf($script) must be readable back',
+        );
+      }
+    });
+
     test('the digest fits the checksum column', () {
       // The column is VARCHAR(200); a digest longer than that would be
       // truncated on write and mismatch on every later read.
       expect(
         MariadbMigrationAdaptor.checksumOf('SELECT 1').length,
         lessThanOrEqualTo(200),
+      );
+    });
+  });
+
+  // A stored checksum the adaptor cannot read is a different fact from a
+  // checksum that disagrees, and it wants a different response: a mismatch says
+  // "find the edit", an unreadable value says "this row was not written by this
+  // adaptor — repair it". Conflating them sends the operator looking for an edit
+  // that never happened, so the shape is decided here, once.
+  group('MariadbMigrationAdaptor.isWellFormedChecksum', () {
+    test('accepts a 64-character lowercase hex digest', () {
+      expect(
+        MariadbMigrationAdaptor.isWellFormedChecksum(
+          '9ad9167cb37c929c8f439bcc29682d4f4b6a963310c983d1bdd35ebc21634483',
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects the empty string the column defaults to', () {
+      // `checksum VARCHAR(200) NOT NULL DEFAULT ''` — so any row inserted by
+      // anything other than applyMigration carries exactly this.
+      expect(MariadbMigrationAdaptor.isWellFormedChecksum(''), isFalse);
+    });
+
+    test('rejects a decimal hash code — the format this module used to '
+        'store', () {
+      // The realistic case: a versioning table written before the checksum
+      // became a content digest. It has to be reported as unreadable, not as a
+      // mismatch, or every such row accuses someone of an edit.
+      expect(MariadbMigrationAdaptor.isWellFormedChecksum('12345'), isFalse);
+      expect(
+        MariadbMigrationAdaptor.isWellFormedChecksum('-1234567890'),
+        isFalse,
+      );
+    });
+
+    test('rejects uppercase hex', () {
+      // `checksumOf` never produces it, so accepting it would mean accepting a
+      // value this module cannot have written — and it would compare unequal to
+      // the lowercase digest anyway, reporting a mismatch for a row that is
+      // really just in the wrong format.
+      expect(
+        MariadbMigrationAdaptor.isWellFormedChecksum(
+          '9AD9167CB37C929C8F439BCC29682D4F4B6A963310C983D1BDD35EBC21634483',
+        ),
+        isFalse,
+      );
+    });
+
+    test('rejects a digest one character short or long', () {
+      final digest = MariadbMigrationAdaptor.checksumOf('SELECT 1');
+      expect(
+        MariadbMigrationAdaptor.isWellFormedChecksum(
+          digest.substring(0, digest.length - 1),
+        ),
+        isFalse,
+      );
+      expect(MariadbMigrationAdaptor.isWellFormedChecksum('${digest}a'), false);
+    });
+
+    test('rejects a digest with surrounding whitespace or text', () {
+      // The check must be anchored: an unanchored pattern would accept a
+      // padded or commented value that no comparison could ever match.
+      final digest = MariadbMigrationAdaptor.checksumOf('SELECT 1');
+      expect(MariadbMigrationAdaptor.isWellFormedChecksum(' $digest'), isFalse);
+      expect(
+        MariadbMigrationAdaptor.isWellFormedChecksum('$digest\n'),
+        isFalse,
+      );
+      expect(
+        MariadbMigrationAdaptor.isWellFormedChecksum('sha256:$digest'),
+        isFalse,
+      );
+    });
+
+    test('rejects 64 characters that are not all hex', () {
+      expect(
+        MariadbMigrationAdaptor.isWellFormedChecksum('z' * 64),
+        isFalse,
+        reason: 'a length-only check would accept this',
       );
     });
   });

@@ -46,7 +46,9 @@ environment tag). The MariaDB implementation, `MariadbMigrationAdaptor`,
 maintains a `<schema>_versioning` table whose rows are `TomDbVersion` records,
 verifying description/checksum stability of already-applied versions. The
 checksum is a content digest (`MariadbMigrationAdaptor.checksumOf`), because it
-is written by one process and read back by every later one.
+is written by one process and read back by every later one; a stored value that
+is not such a digest (`isWellFormedChecksum`) is reported as unreadable rather
+than as an edit.
 
 Both the applier and the DDL reader walk raw SQL text, and both do it through
 `TomSqlLexer` — the module's single quote/comment scanner and its single
@@ -177,13 +179,14 @@ MariadbMigrationAdaptor()
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `checksumOf` | `static String checksumOf(String sql)` | The checksum recorded for a migration script: the lowercase hex SHA-256 of its UTF-8 bytes. Public because it *is* the definition of the stored value — a test pins it to a constant, and an operator repairing a row needs to compute what the adaptor expects. It replaced `String.hashCode`, which Dart guarantees only within one run. |
+| `isWellFormedChecksum` | `static bool isWellFormedChecksum(String checksum)` | Whether `checksum` is a value this adaptor could have written — exactly 64 lowercase hex characters, anchored. The counterpart of `checksumOf`: a stored value that fails it is not evidence of an edit but of a row written by something else (the column's `DEFAULT ''`, an older schema, a hand-written repair), and is reported as `checksum_unreadable` rather than `checksum_mismatch`. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `reset` | `void reset()` | *(override)* Drops the `(data source, schema)` binding and the applied-versions list. |
-| `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `mariadb_migration.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs the script and records the outcome. |
+| `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `mariadb_migration.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs the script and records the outcome. Verification of an applied version fails with `description_mismatch`, `checksum_unreadable` (the stored value is not a digest this adaptor could have written) or `checksum_mismatch` (it is a digest, but a different one) — each message naming the data source, schema and version, since one instance walks them all. |
 | `initializeMigration` | `Future<int> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent and **replacing** `versions` with that schema's history; returns the earliest version (or `-1`). |
 
 ### TomSqlLexer

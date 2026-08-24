@@ -16,6 +16,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [The MariaDB Adaptor](#the-mariadb-adaptor)
 - [Idempotency and Stability](#idempotency-and-stability)
   - [The checksum has to outlive the process that wrote it](#the-checksum-has-to-outlive-the-process-that-wrote-it)
+  - [An unreadable checksum is not an edited migration](#an-unreadable-checksum-is-not-an-edited-migration)
 - [Schema Convergence](#schema-convergence)
   - [The Application's Entities](#the-applications-entities)
   - [The Framework's Own Tables](#the-frameworks-own-tables)
@@ -137,8 +138,9 @@ migration against another schema's history.
 
 `applyMigration` then, per script:
 
-- if the `version` is already recorded, verifies the **description and checksum
-  match** (a mismatch means a past migration was edited → failure) and skips;
+- if the `version` is already recorded, verifies the **description matches**, the
+  recorded **checksum is readable**, and the **checksum matches** (a mismatch
+  means a past migration was edited → failure) and skips;
 - otherwise runs the script, records the outcome — including a failed script
   with `success = 0` — and rethrows on failure.
 
@@ -173,15 +175,45 @@ A digest is checkable in a way a hash code is not: a test pins
 The value is also reproducible outside Dart, so an operator repairing a row can
 compute what the adaptor expects (`shasum -a 256 < the-script.sql`).
 
-The comparison being textual matters too. A stored value that is not a digest at
-all — a row from an older build, a hand-edited one — is reported as a mismatch,
-which is what it is. The previous code parsed the column with `int.parse`, so
-such a row escaped the module as an unhandled `FormatException`.
+The comparison being textual matters too: it cannot throw. The previous code
+parsed the column with `int.parse`, so a stored value that was not a number
+escaped the module as an unhandled `FormatException` — naming neither the schema
+nor the migration.
 
 > **No upgrade path is provided.** A database whose versioning table still holds
 > the old hash-code checksums will fail its stability check on the next run. Fix
 > it by recomputing each row's `checksum` from its stored `script`
 > (`UPDATE <schema>_versioning SET checksum = <sha256 of script>`).
+
+### An unreadable checksum is not an edited migration
+
+Before the two checksums are compared, the stored one is checked for *shape*:
+`MariadbMigrationAdaptor.isWellFormedChecksum` — the counterpart of `checksumOf`
+— accepts exactly 64 lowercase hex characters, anchored at both ends. A value
+that fails it is rejected with its own key,
+`mariadb_migration.apply_migration.checksum_unreadable`, and never reaches the
+comparison.
+
+The distinction is not pedantry: the two facts call for opposite responses.
+
+| Stored value | Key | What it means | What to do |
+| ------------ | --- | ------------- | ---------- |
+| a digest, but a different one | `checksum_mismatch` | the script was edited after it was applied | find the edit |
+| not a digest at all | `checksum_unreadable` | the row was not written by `applyMigration` | recompute it from the row's `script` |
+
+The unreadable case is reachable by ordinary means, not just by tampering. The
+versioning DDL declares `checksum VARCHAR(200) NOT NULL DEFAULT ''`, so any row
+inserted by anything other than `applyMigration` — a hand-written repair, a
+partially applied insert, an older schema — carries the empty string. A database
+written before the checksum became a content digest carries a decimal
+`String.hashCode`. Reporting either as a mismatch would tell the operator to go
+looking for an edit that never happened — the same misdirection the hash-code
+checksum would eventually have caused, arriving by a different route.
+
+Anchoring the pattern is deliberate. An unanchored one would accept a padded or
+prefixed value (`" 9ad9167c… "`, `"sha256:9ad9167c…"`) as well-formed, and no
+string comparison could ever match it — an unreadable row would become a
+permanent, unexplainable mismatch instead.
 
 ## Schema Convergence
 

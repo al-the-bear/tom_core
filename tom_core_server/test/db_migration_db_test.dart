@@ -192,20 +192,28 @@ void main() async {
           ),
         );
       });
+    });
 
-      test('reports a non-digest stored value as a mismatch, not a '
-          'FormatException', () async {
+    // A stored checksum this adaptor could not have written is not evidence
+    // that a migration was edited — it is evidence that the row came from
+    // somewhere else: a hand-written repair, an older schema, a partially
+    // applied insert, or the `NOT NULL DEFAULT ''` the column itself supplies.
+    // Reporting it as a mismatch would send the operator hunting for an edit
+    // that never happened, so it has its own key and its own message.
+    group('an unreadable stored checksum', () {
+      /// Applies the fixture migration, then overwrites the recorded checksum
+      /// with [checksum] and re-presents the *unchanged* script to a freshly
+      /// bound adaptor — so the only thing that can fail is readability.
+      Future<void> expectRejectedWithKey(String checksum, String key) async {
         await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
-        // A row whose checksum is not a number at all — what a database
-        // migrated from an older build, or a hand-edited row, actually holds.
-        // The previous implementation parsed the column as an int, so this
-        // path escaped as a raw FormatException: an unhandled crash instead of
-        // the module's own diagnosable failure.
         await dsi.datasource.executeCommand(
           'UPDATE ${_schemaName}_versioning SET checksum = :checksum',
-          {'checksum': 'not-a-digest'},
+          {'checksum': checksum},
         );
         final recorded = (await appliedVersions()).single;
+        // The row really does hold what the test intends — a silently rejected
+        // UPDATE would make every assertion below vacuous.
+        expect(recorded.checksum, checksum);
 
         final adaptor = MariadbMigrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
@@ -218,13 +226,73 @@ void main() async {
             recorded.script,
           ),
           throwsA(
-            isA<MariadbMigrationException>().having(
-              (e) => e.key,
-              'key',
-              'mariadb_migration.apply_migration.checksum_mismatch',
-            ),
+            isA<MariadbMigrationException>().having((e) => e.key, 'key', key),
           ),
         );
+      }
+
+      test('the empty string the column defaults to is refused', () async {
+        // The DDL declares `checksum VARCHAR(200) NOT NULL DEFAULT ''`, so this
+        // is what any row not written by applyMigration carries. It used to
+        // reach `int.parse('')` and escape as a bare FormatException naming
+        // neither the schema nor the migration.
+        await expectRejectedWithKey(
+          '',
+          'mariadb_migration.apply_migration.checksum_unreadable',
+        );
+      });
+
+      test('a non-numeric value is refused', () async {
+        await expectRejectedWithKey(
+          'not-a-digest',
+          'mariadb_migration.apply_migration.checksum_unreadable',
+        );
+      });
+
+      test('a decimal hash code — the format this module used to store — is '
+          'refused as unreadable, not as a mismatch', () async {
+        // A database written before the checksum became a content digest. The
+        // distinction is the whole point of the separate key: these rows are
+        // stale, not tampered with.
+        await expectRejectedWithKey(
+          '-1234567890',
+          'mariadb_migration.apply_migration.checksum_unreadable',
+        );
+      });
+
+      test('the message names the schema and the version', () async {
+        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await dsi.datasource.executeCommand(
+          'UPDATE ${_schemaName}_versioning SET checksum = :checksum',
+          {'checksum': ''},
+        );
+        final recorded = (await appliedVersions()).single;
+
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        try {
+          await adaptor.applyMigration(
+            dsi,
+            _schemaName,
+            recorded.version,
+            recorded.description,
+            recorded.script,
+          );
+          fail('an unreadable checksum must not be accepted');
+        } on MariadbMigrationException catch (e) {
+          // Pinned to the key as well as the text: the mismatch message names
+          // the schema and version too, so without this the assertions below
+          // would still hold if the readability guard were removed entirely.
+          expect(
+            e.key,
+            'mariadb_migration.apply_migration.checksum_unreadable',
+          );
+          // One migrator instance walks every schema of every data source, so a
+          // message naming only the version cannot be acted on: "version 0 is
+          // unreadable" is true of a different table in each schema.
+          expect(e.defaultUserMessage, contains(_schemaName));
+          expect(e.defaultUserMessage, contains('${recorded.version}'));
+        }
       });
     });
 

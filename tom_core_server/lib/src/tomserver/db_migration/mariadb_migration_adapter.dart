@@ -76,6 +76,31 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
   static String checksumOf(String sql) =>
       sha256.convert(utf8.encode(sql)).toString();
 
+  /// The shape [checksumOf] produces: exactly 64 lowercase hex characters.
+  ///
+  /// Anchored deliberately — an unanchored pattern would accept a padded or
+  /// prefixed value that no comparison could ever match, turning an unreadable
+  /// row into a permanent mismatch.
+  static final RegExp _checksumPattern = RegExp(r'^[0-9a-f]{64}$');
+
+  /// Whether [checksum] is a value this adaptor could have written — the
+  /// counterpart of [checksumOf].
+  ///
+  /// A stored checksum that fails this test is not evidence that a migration
+  /// was edited; it is evidence that the row came from somewhere else. The
+  /// versioning table's own DDL makes that reachable: `checksum` is declared
+  /// `NOT NULL DEFAULT ''`, so any row inserted by anything other than
+  /// [applyMigration] — a hand-written repair, an older schema, a partially
+  /// applied insert — carries the empty string. A database written before the
+  /// checksum became a content digest carries a decimal `String.hashCode`.
+  ///
+  /// The two facts are kept apart because they call for opposite responses:
+  /// a mismatch means "find the edit", an unreadable value means "this row was
+  /// never written by this adaptor — recompute it". Reporting the second as the
+  /// first sends the operator hunting for an edit that never happened.
+  static bool isWellFormedChecksum(String checksum) =>
+      _checksumPattern.hasMatch(checksum);
+
   /// Identifies a `(data source, schema)` pair.
   ///
   /// Both halves are directory basenames, so neither can contain the
@@ -125,20 +150,48 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
     // check if this has already been applied
     for (var v in versions) {
       if (v.version == version) {
+        // Every message here names the schema as well as the version: one
+        // instance walks every schema of every data source, so "version 0 has
+        // changed" is true of a different table in each of them and cannot be
+        // acted on.
         if (v.description != description) {
           throw MariadbMigrationException(
             "mariadb_migration.apply_migration.description_mismatch",
-            "MariadbDatabaseMigrator: Description for version $version has changed. Migrations must stay stable. Database migrations has failed.",
+            "MariadbMigrationAdaptor: Description for version $version of "
+                "schema $schemaName in datasource ${dsi.name} has changed "
+                "(recorded '${v.description}', now '$description'). Migrations "
+                "must stay stable, so the migration run has been abandoned.",
           );
         }
-        // Compared as text, not parsed as a number: a stored value that is not
-        // a digest at all (an older format, a hand-edited row) is a mismatch —
-        // which is what it means — rather than a FormatException escaping the
-        // module as an unhandled crash.
+        // Readability first, and separately from the comparison. A value this
+        // adaptor could not have written says nothing about whether the script
+        // changed — reporting it as a mismatch would accuse someone of an edit
+        // that never happened. This is also the path that used to reach
+        // `int.parse` and escape as a bare FormatException naming neither the
+        // schema nor the migration.
+        if (!isWellFormedChecksum(v.checksum)) {
+          throw MariadbMigrationException(
+            "mariadb_migration.apply_migration.checksum_unreadable",
+            "MariadbMigrationAdaptor: The recorded checksum for version "
+                "$version ($description) of schema $schemaName in datasource "
+                "${dsi.name} is not a digest this adaptor could have written "
+                "(found '${v.checksum}'). The row was not written by "
+                "applyMigration — an older schema, a partially applied insert, "
+                "or a hand-written repair. Recompute it as the SHA-256 of the "
+                "row's stored script. The migration run has been abandoned.",
+          );
+        }
+        // Compared as text rather than parsed as a number, so the comparison
+        // cannot throw; by here the stored value is known to be a digest, so an
+        // inequality means what it says — the script was edited.
         if (v.checksum != checksumOf(sql)) {
           throw MariadbMigrationException(
             "mariadb_migration.apply_migration.checksum_mismatch",
-            "MariadbDatabaseMigrator: Script checksum for version $version has changed. Migrations must stay stable. Database migrations has failed.",
+            "MariadbMigrationAdaptor: Script checksum for version $version "
+                "($description) of schema $schemaName in datasource "
+                "${dsi.name} has changed — the script was edited after it was "
+                "applied. Migrations must stay stable, so the migration run "
+                "has been abandoned.",
           );
         }
         // version found, no need to apply

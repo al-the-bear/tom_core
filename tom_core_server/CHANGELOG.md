@@ -2,6 +2,34 @@
 
 ### Fixed
 
+- **An unreadable stored checksum is reported as its own fact, not as an edited
+  migration (tcinc478).** Verifying an already-applied migration compared the
+  stored checksum against the script's digest and, when they differed, reported
+  `checksum_mismatch` — "the script was edited after it was applied". That is the
+  wrong accusation for a value that is not a digest at all, and such values are
+  reachable by ordinary means: the versioning DDL declares
+  `checksum VARCHAR(200) NOT NULL DEFAULT ''`, so any row inserted by anything
+  other than `applyMigration` (a hand-written repair, a partially applied insert,
+  an older schema) carries the empty string, and a database written before the
+  previous entry's change carries a decimal `String.hashCode`. Every one of those
+  sent the operator hunting for an edit that never happened. Before that, the
+  same rows escaped the module as a bare `FormatException` from `int.parse`,
+  naming neither the schema nor the migration.
+
+  `MariadbMigrationAdaptor.isWellFormedChecksum` — the counterpart of
+  `checksumOf`, accepting exactly 64 lowercase hex characters, anchored — now
+  gates the comparison. A value that fails it throws with a key of its own,
+  `mariadb_migration.apply_migration.checksum_unreadable`, and a message saying
+  the row was not written by `applyMigration` and should be recomputed from its
+  stored `script`. The two keys carry opposite instructions: `checksum_mismatch`
+  means "find the edit", `checksum_unreadable` means "recompute the row".
+
+  All three stability messages (`description_mismatch`, `checksum_unreadable`,
+  `checksum_mismatch`) now name the **data source and schema** alongside the
+  version. One adaptor instance walks every schema of every data source, so
+  "version 0 has changed" was true of a different table in each of them and could
+  not be acted on.
+
 - **The migration checksum is a content digest, not `String.hashCode`
   (tcinc477).** `MariadbMigrationAdaptor` recorded each applied migration's
   checksum as the Dart string hash and verified it by parsing the stored value
@@ -20,8 +48,8 @@
   databases; it is also reproducible outside Dart (`shasum -a 256`), so an
   operator can compute what the adaptor expects. Dropping `int.parse` fixed a
   second failure on the same line: a stored value that is not a number — an older
-  row, a hand-edited one — escaped the module as an unhandled `FormatException`
-  rather than being reported as the mismatch it is.
+  row, a hand-edited one — escaped the module as an unhandled `FormatException`.
+  Such rows are now reported as `checksum_unreadable`, per the entry above.
 
   **Breaking for existing databases.** A `<schema>_versioning` table still
   holding hash-code checksums will fail its stability check on the next run; no
