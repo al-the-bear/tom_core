@@ -4,6 +4,7 @@ import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../datasources/datasource_initialization.dart';
 import 'db_migration.dart';
+import 'sql_lexer.dart';
 
 /// Thrown for MariaDB migration failures (versioning-table creation, version
 /// query, a changed description/checksum for an already-applied version, or a
@@ -73,73 +74,6 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
     versions = [];
   }
 
-  /// Splits a (possibly multi-statement) migration [sql] script into its
-  /// individual statements so each can be sent on its own command.
-  ///
-  /// Statements are separated on unquoted, uncommented semicolons. String
-  /// literals (`'…'`, `"…"`), quoted identifiers (`` `…` ``), line comments
-  /// (`-- …`, `# …`) and block comments (`/* … */`) are skipped so a semicolon
-  /// inside any of them does not split a statement. Trailing whitespace-only
-  /// fragments are dropped, so a script ending in `;` yields no empty tail
-  /// statement.
-  static List<String> splitSqlStatements(String sql) {
-    final statements = <String>[];
-    final buffer = StringBuffer();
-    final chars = sql.split('');
-    for (var i = 0; i < chars.length; i++) {
-      final ch = chars[i];
-      final next = i + 1 < chars.length ? chars[i + 1] : '';
-
-      // Line comment: '-- ' or '#' to end of line.
-      if ((ch == '-' && next == '-') || ch == '#') {
-        buffer.write(ch);
-        while (i + 1 < chars.length && chars[i + 1] != '\n') {
-          buffer.write(chars[++i]);
-        }
-        continue;
-      }
-      // Block comment: '/* … */'.
-      if (ch == '/' && next == '*') {
-        buffer.write(ch);
-        buffer.write(chars[++i]);
-        while (i + 1 < chars.length &&
-            !(chars[i] == '*' && chars[i + 1] == '/')) {
-          buffer.write(chars[++i]);
-        }
-        if (i + 1 < chars.length) buffer.write(chars[++i]);
-        continue;
-      }
-      // String literal or quoted identifier: copy verbatim until the matching
-      // unescaped closing quote (doubled quote = escaped quote, stays inside).
-      if (ch == "'" || ch == '"' || ch == '`') {
-        buffer.write(ch);
-        while (i + 1 < chars.length) {
-          final c = chars[++i];
-          buffer.write(c);
-          if (c == ch) {
-            if (i + 1 < chars.length && chars[i + 1] == ch) {
-              buffer.write(chars[++i]); // doubled quote -> escaped, continue
-            } else {
-              break;
-            }
-          }
-        }
-        continue;
-      }
-      // Statement terminator.
-      if (ch == ';') {
-        final statement = buffer.toString().trim();
-        if (statement.isNotEmpty) statements.add(statement);
-        buffer.clear();
-        continue;
-      }
-      buffer.write(ch);
-    }
-    final tail = buffer.toString().trim();
-    if (tail.isNotEmpty) statements.add(tail);
-    return statements;
-  }
-
   @override
   Future<void> applyMigration(
     TomDataSourceInfo dsi,
@@ -201,8 +135,8 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
       // multi-statement command, leaving the rest unread and the (single,
       // shared) connection desynced — so later reads on it return stale data.
       // Send each statement on its own command instead, which keeps the
-      // connection in sync. See `splitSqlStatements`.
-      for (final statement in splitSqlStatements(sql)) {
+      // connection in sync. See `TomSqlLexer.splitStatements`.
+      for (final statement in TomSqlLexer.splitStatements(sql)) {
         await dsi.datasource.executeCommand(statement);
       }
       timeElapsedMs = (timer..stop()).elapsedMilliseconds;

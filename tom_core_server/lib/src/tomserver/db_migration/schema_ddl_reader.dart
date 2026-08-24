@@ -1,5 +1,6 @@
 import '../datasources/sql_dialects.dart';
 import 'schema_model.dart';
+import 'sql_lexer.dart';
 
 /// One migration artifact as the reader consumes it: the basename the chain
 /// orders it by, and the SQL it contains.
@@ -615,89 +616,46 @@ class TomSchemaDdlReader {
 
   /// Splits [sql] into statements, stripping comments.
   ///
+  /// The reader parses structure out of DDL, so a comment is noise to it and is
+  /// removed first. That is this method's whole contribution: the split itself
+  /// is [TomSqlLexer.splitStatements], which keeps comments because a consumer
+  /// that *sends* the statements must not lose an executable `/*! … */` one.
+  ///
   /// Public because the split is the same one a caller needs to count or
   /// pre-filter statements, and re-implementing quote handling is exactly the
   /// kind of duplication that goes subtly wrong.
-  static List<String> splitStatements(String sql) {
-    final stripped = stripComments(sql);
-    final statements = <String>[];
-    final buffer = StringBuffer();
-    String? quote;
-    for (var i = 0; i < stripped.length; i++) {
-      final c = stripped[i];
-      if (quote != null) {
-        buffer.write(c);
-        if (c == r'\' && i + 1 < stripped.length) {
-          buffer.write(stripped[i + 1]);
-          i++;
-        } else if (c == quote) {
-          quote = null;
-        }
-        continue;
-      }
-      if (c == "'" || c == '"' || c == '`') {
-        quote = c;
-        buffer.write(c);
-        continue;
-      }
-      if (c == ';') {
-        final statement = buffer.toString().trim();
-        if (statement.isNotEmpty) statements.add(statement);
-        buffer.clear();
-        continue;
-      }
-      buffer.write(c);
-    }
-    final last = buffer.toString().trim();
-    if (last.isNotEmpty) statements.add(last);
-    return statements;
-  }
+  static List<String> splitStatements(String sql) =>
+      TomSqlLexer.splitStatements(stripComments(sql));
 
   /// Removes `--`, `#` and `/* … */` comments, leaving quoted text alone.
+  ///
+  /// A line comment collapses to its newline and a block comment to a single
+  /// space, so removal cannot weld two tokens together.
+  ///
+  /// Note this removes MariaDB executable comments (`/*!40101 … */`) along with
+  /// the rest. That is right for a *parser* — the reader compares declared
+  /// structure — but wrong for anything that sends the SQL onward, which is why
+  /// [TomSqlLexer.splitStatements] does not strip and this is a separate step.
   static String stripComments(String sql) {
     final out = StringBuffer();
-    String? quote;
     for (var i = 0; i < sql.length; i++) {
       final c = sql[i];
-      if (quote != null) {
-        out.write(c);
-        if (c == r'\' && i + 1 < sql.length) {
-          out.write(sql[i + 1]);
-          i++;
-        } else if (c == quote) {
-          quote = null;
-        }
+      if (TomSqlLexer.quoteCharacters.contains(c)) {
+        final end = TomSqlLexer.endOfQuotedRun(sql, i);
+        out.write(sql.substring(i, end + 1));
+        i = end;
         continue;
       }
-      if (c == "'" || c == '"' || c == '`') {
-        quote = c;
-        out.write(c);
-        continue;
-      }
-      if (c == '-' && i + 1 < sql.length && sql[i + 1] == '-') {
-        i = _skipToLineEnd(sql, i);
-        out.write('\n');
-        continue;
-      }
-      if (c == '#') {
-        i = _skipToLineEnd(sql, i);
-        out.write('\n');
-        continue;
-      }
-      if (c == '/' && i + 1 < sql.length && sql[i + 1] == '*') {
-        final end = sql.indexOf('*/', i + 2);
-        i = end < 0 ? sql.length : end + 1;
-        out.write(' ');
+      if (TomSqlLexer.commentOpensAt(sql, i)) {
+        // A line comment ends before its newline, a block comment at its `*/`;
+        // either way leave whitespace behind so neighbouring tokens stay apart.
+        out.write(sql[i] == '/' ? ' ' : '\n');
+        i = TomSqlLexer.endOfComment(sql, i);
         continue;
       }
       out.write(c);
     }
     return out.toString();
-  }
-
-  static int _skipToLineEnd(String sql, int from) {
-    final end = sql.indexOf('\n', from);
-    return end < 0 ? sql.length : end;
   }
 
   /// Splits [text] on commas that are not inside parentheses or quotes.
@@ -708,22 +666,12 @@ class TomSchemaDdlReader {
     final parts = <String>[];
     final buffer = StringBuffer();
     var depth = 0;
-    String? quote;
     for (var i = 0; i < text.length; i++) {
       final c = text[i];
-      if (quote != null) {
-        buffer.write(c);
-        if (c == r'\' && i + 1 < text.length) {
-          buffer.write(text[i + 1]);
-          i++;
-        } else if (c == quote) {
-          quote = null;
-        }
-        continue;
-      }
-      if (c == "'" || c == '"' || c == '`') {
-        quote = c;
-        buffer.write(c);
+      if (TomSqlLexer.quoteCharacters.contains(c)) {
+        final end = TomSqlLexer.endOfQuotedRun(text, i);
+        buffer.write(text.substring(i, end + 1));
+        i = end;
         continue;
       }
       if (c == '(') depth++;
@@ -752,22 +700,12 @@ class TomSchemaDdlReader {
     final words = <String>[];
     final buffer = StringBuffer();
     var depth = 0;
-    String? quote;
     for (var i = 0; i < text.length; i++) {
       final c = text[i];
-      if (quote != null) {
-        buffer.write(c);
-        if (c == r'\' && i + 1 < text.length) {
-          buffer.write(text[i + 1]);
-          i++;
-        } else if (c == quote) {
-          quote = null;
-        }
-        continue;
-      }
-      if (c == "'" || c == '"' || c == '`') {
-        quote = c;
-        buffer.write(c);
+      if (TomSqlLexer.quoteCharacters.contains(c)) {
+        final end = TomSqlLexer.endOfQuotedRun(text, i);
+        buffer.write(text.substring(i, end + 1));
+        i = end;
         continue;
       }
       if (c == '(') {

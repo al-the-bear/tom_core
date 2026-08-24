@@ -153,81 +153,9 @@ void main() {
     });
   });
 
-  // A multi-statement migration script must be split into individual
-  // statements before it is sent. The underlying mysql_client only half-reads a
-  // multi-statement command — it consumes the first result set and leaves the
-  // rest, desyncing the single shared connection so every later read returns
-  // stale data (a first-boot seed sees an empty users table even though the
-  // migration committed its rows). These tests pin that splitter.
-  group('MariadbMigrationAdaptor.splitSqlStatements', () {
-    test('splits a multi-statement script into its statements', () {
-      const sql =
-          'CREATE TABLE a (id INT);\n'
-          'CREATE TABLE b (id INT);\n'
-          'INSERT INTO a VALUES (1);';
-      expect(MariadbMigrationAdaptor.splitSqlStatements(sql), [
-        'CREATE TABLE a (id INT)',
-        'CREATE TABLE b (id INT)',
-        'INSERT INTO a VALUES (1)',
-      ]);
-    });
-
-    test('returns the single statement for a single-statement script', () {
-      expect(MariadbMigrationAdaptor.splitSqlStatements('SELECT 1;'), [
-        'SELECT 1',
-      ]);
-    });
-
-    test('drops the empty tail after a trailing semicolon', () {
-      expect(MariadbMigrationAdaptor.splitSqlStatements('SELECT 1;\n\n'), [
-        'SELECT 1',
-      ]);
-    });
-
-    test('keeps a semicolon inside a string literal in one statement', () {
-      const sql = "INSERT INTO t (s) VALUES ('a;b');\nSELECT 1;";
-      expect(MariadbMigrationAdaptor.splitSqlStatements(sql), [
-        "INSERT INTO t (s) VALUES ('a;b')",
-        'SELECT 1',
-      ]);
-    });
-
-    test('treats a doubled quote inside a literal as an escaped quote', () {
-      const sql = "INSERT INTO t (s) VALUES ('it''s; ok');\nSELECT 2;";
-      expect(MariadbMigrationAdaptor.splitSqlStatements(sql), [
-        "INSERT INTO t (s) VALUES ('it''s; ok')",
-        'SELECT 2',
-      ]);
-    });
-
-    test('ignores a semicolon inside a line comment', () {
-      const sql = 'SELECT 1; -- a comment with ; inside\nSELECT 2;';
-      expect(MariadbMigrationAdaptor.splitSqlStatements(sql), [
-        'SELECT 1',
-        '-- a comment with ; inside\nSELECT 2',
-      ]);
-    });
-
-    test('ignores a semicolon inside a block comment', () {
-      const sql = 'SELECT 1 /* ; not a split */ ;\nSELECT 2;';
-      expect(MariadbMigrationAdaptor.splitSqlStatements(sql), [
-        'SELECT 1 /* ; not a split */',
-        'SELECT 2',
-      ]);
-    });
-
-    test('keeps a semicolon inside a quoted identifier', () {
-      const sql = 'CREATE TABLE `weird;name` (id INT);\nSELECT 3;';
-      expect(MariadbMigrationAdaptor.splitSqlStatements(sql), [
-        'CREATE TABLE `weird;name` (id INT)',
-        'SELECT 3',
-      ]);
-    });
-
-    test('returns an empty list for a whitespace-only script', () {
-      expect(MariadbMigrationAdaptor.splitSqlStatements('  \n\t '), isEmpty);
-    });
-  });
+  // The statement splitter the applier drives lives in `TomSqlLexer` and is
+  // pinned by `sql_lexer_test.dart` — it is shared with the DDL reader, so it
+  // is tested where it lives rather than from either consumer.
 
   // C-16: an optional `@<env>[,<env>…]` tag on the description selects the
   // environment(s) a migration belongs to; untagged migrations apply

@@ -2,6 +2,41 @@
 
 ### Fixed
 
+- **One SQL lexer, agreeing with the server (tcinc476).** Migration text was
+  walked by **five** hand-rolled quote scanners — one in the migration applier,
+  four in the DDL reader (`splitStatements`, `stripComments`, `splitTopLevel`,
+  `_words`) — and they disagreed with each other and with MariaDB. Each was
+  wrong exactly where the other was right: the applier treated a backslash as an
+  escape inside *no* quote character, so `'it\'s'` ended the literal early and a
+  following semicolon cut the statement in half; the reader treated it as an
+  escape inside *every* quote character, so ``CREATE TABLE `bs\` `` swallowed
+  its closing backtick and welded the next statement onto it. Neither failure is
+  loud — one sends a syntactically broken fragment, the other sends two
+  statements as one.
+
+  The scan now lives once, in `TomSqlLexer`, and implements the rules the server
+  actually has (verified against a running MariaDB under the default
+  `sql_mode`): `''` doubling escapes in all three quote characters, `\'`
+  backslash escaping applies to `'` and `"` string literals but **not** to
+  backtick identifiers, where a backslash is an ordinary character. There is now
+  exactly one statement splitter, `TomSqlLexer.splitStatements`, used by the
+  applier directly and by the reader through
+  `TomSchemaDdlReader.splitStatements`;
+  `MariadbMigrationAdaptor.splitSqlStatements` is gone.
+
+  The splitter **preserves comments**, because a MariaDB executable comment
+  (`/*!40101 SET NAMES utf8 */`) is version-gated SQL and dropping it would
+  silently discard a statement the migration author wrote. Comment removal stays
+  a separate, opt-in step (`TomSchemaDdlReader.stripComments`) taken only by the
+  reader, which compares declared structure rather than executing anything.
+
+  All six cells of the escape matrix are pinned by `test/sql_lexer_test.dart`,
+  along with comment preservation and `endOfQuotedRun`'s unterminated-run
+  contract; the reader keeps its own regression tests for the backtick case it
+  used to get wrong. Two reader assertions that had been counting statements
+  rather than reading them — and so passed with comment-stripping removed — were
+  rewritten to assert exact text.
+
 - **A data source with more than one schema migrates (tcinc475).** The
   migration orchestrator called `reset()` once per *data source* but
   `initializeMigration` once per *schema*, and the MariaDB adaptor refused a

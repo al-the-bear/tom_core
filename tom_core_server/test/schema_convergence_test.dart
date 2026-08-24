@@ -183,9 +183,11 @@ void main() {
 SELECT 1; # trailing note
 /* block */ SELECT '-- not a comment';
 ''';
+      // Asserted as exact text, not as a count: without the strip this still
+      // yields two statements — they just carry the comments along — so a
+      // length-only assertion would pass whether or not stripping happened.
       final statements = TomSchemaDdlReader.splitStatements(sql);
-      expect(statements, hasLength(2));
-      expect(statements.last, contains("'-- not a comment'"));
+      expect(statements, ['SELECT 1', "SELECT '-- not a comment'"]);
     });
 
     test('does not split on a semicolon inside a quoted literal', () {
@@ -196,11 +198,46 @@ SELECT 1; # trailing note
       expect(statements.first, contains("'a;b'"));
     });
 
+    // The reader's own scanners used to treat a backslash as an escape inside
+    // *every* quote character, which is wrong for backtick identifiers: the
+    // closing backtick got swallowed and both statements came back as one. The
+    // scan now goes through TomSqlLexer, which distinguishes the three.
+    test('does not treat a backslash in an identifier as an escape', () {
+      final statements = TomSchemaDdlReader.splitStatements(
+        'CREATE TABLE `bs\\` (id INT);\nSELECT 1;',
+      );
+      expect(statements, hasLength(2));
+      expect(statements.first, contains('`bs\\`'));
+      expect(statements.last, 'SELECT 1');
+    });
+
+    test('does treat a backslash in a literal as an escape', () {
+      final statements = TomSchemaDdlReader.splitStatements(
+        "INSERT INTO t VALUES ('it\\'s; fine');\nSELECT 1;",
+      );
+      expect(statements, hasLength(2));
+      expect(statements.last, 'SELECT 1');
+    });
+
+    test('stripComments leaves whitespace so tokens stay apart', () {
+      expect(
+        TomSchemaDdlReader.stripComments('a/* x */b').trim(),
+        'a b'.trim(),
+      );
+    });
+
     test('splitTopLevel keeps parenthesised groups whole', () {
       expect(
         TomSchemaDdlReader.splitTopLevel("a DECIMAL(10, 2), b ENUM('x','y')"),
         ['a DECIMAL(10, 2)', "b ENUM('x','y')"],
       );
+    });
+
+    test('splitTopLevel is not confused by a backslash in an identifier', () {
+      expect(TomSchemaDdlReader.splitTopLevel('`a\\`, b INT'), [
+        '`a\\`',
+        'b INT',
+      ]);
     });
   });
 

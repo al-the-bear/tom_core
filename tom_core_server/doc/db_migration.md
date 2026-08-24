@@ -21,6 +21,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
   - [The Four Places a Column Name Could Have Been Spelled](#the-four-places-a-column-name-could-have-been-spelled)
   - [What the Live Check Adds](#what-the-live-check-adds)
   - [Pinning the Entity-Owned Migrations](#pinning-the-entity-owned-migrations)
+- [Reading raw SQL: one lexer, not five](#reading-raw-sql-one-lexer-not-five)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -274,8 +275,50 @@ their chains). A reverse test catches list entries whose file is gone. Adding a
 migration without a guard therefore fails when it is added, rather than when it
 drifts.
 
+## Reading raw SQL: one lexer, not five
+
+Two things in this module walk migration text character by character: the
+**applier**, which must send a script one statement at a time, and the
+**reader**, which parses a schema out of it. Both need the same answer to the
+same question — *is this character inside a quoted run?* — and getting it wrong
+does not fail loudly. It cuts a statement in half inside a string literal and
+sends a syntactically broken fragment to the server, or it swallows a closing
+quote and welds two statements into one.
+
+`TomSqlLexer` is the single place that answers it. `endOfQuotedRun` finds where
+a quoted run closes; `splitStatements` is built on it and is the module's one
+statement splitter, used by the applier directly and by the reader through
+`TomSchemaDdlReader.splitStatements`.
+
+The escaping rules it implements are the ones MariaDB actually has, which are
+not uniform across the three quote characters:
+
+| Quote | `''` doubling | `\'` backslash |
+| ----- | ------------- | -------------- |
+| `'` string literal | yes | yes |
+| `"` string literal | yes | yes |
+| `` ` `` identifier | yes | **no** |
+
+A backslash is an ordinary character inside a backtick identifier:
+``CREATE TABLE `bs\` (id INT)`` creates a table genuinely named ``bs\`` and
+terminates at that second backtick. Both backslash columns assume the default
+`sql_mode` (`NO_BACKSLASH_ESCAPES` off), which is the mode migrations run under.
+
+**The splitter keeps comments.** They are not noise that can be dropped on the
+way to the server: `/*!40101 SET NAMES utf8 */` is a MariaDB *executable*
+comment — real, version-gated SQL — so stripping it would silently discard a
+statement the migration author wrote. Comment removal is therefore a separate,
+opt-in step, `TomSchemaDdlReader.stripComments`, which only the reader takes
+because it compares declared structure rather than executing anything.
+
+Splitting at all matters because the underlying `mysql_client` only half-reads a
+multi-statement command: it consumes the first result set and leaves the rest,
+desyncing the single shared connection so every later read returns stale data.
+
 ## Core Components
 
+- **`TomSqlLexer`** — the shared SQL lexing primitives: `endOfQuotedRun`,
+  `commentOpensAt`, `endOfComment`, and the module's one `splitStatements`.
 - **`TomDbMigrations`** — the orchestrator and reflection-based adaptor
   discovery; `migrateDatabases`.
 - **`TomDbMigrator`** (+ the `TomDbMigrationAdaptor` annotation) — the migrator

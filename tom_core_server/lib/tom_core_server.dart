@@ -51,6 +51,7 @@ export 'src/tomserver/db_migration/mariadb_migration_adapter.dart';
 export 'src/tomserver/db_migration/schema_convergence.dart';
 export 'src/tomserver/db_migration/schema_ddl_reader.dart';
 export 'src/tomserver/db_migration/schema_model.dart';
+export 'src/tomserver/db_migration/sql_lexer.dart';
 export 'src/tomserver/endpoints/endpoint_annotation.dart';
 export 'src/tomserver/endpoints/endpoint_pipeline.dart';
 export 'src/tomserver/endpoints/endpoint_results.dart';
