@@ -301,12 +301,19 @@ expansion back as text, so a substituted value is always a `String`:
 `'3306'`. This is the only configuration source that reaches `TomConfig<T>`
 untyped, and `TomConfig<T>` casts rather than parses.
 
+Both methods require the file to exist and throw `PathNotFoundException` when
+it does not — the opposite of `TomEnvFile.read`, which returns an empty map
+for an absent `.env`. There is no optional-load variant, so an optional
+overlay needs an `existsSync` guard, or a catch narrowed to
+`PathNotFoundException` so that a malformed file is not reported as a missing
+one.
+
 #### Static Methods
 
-| Method | Signature | Description |
-| ------ | --------- | ----------- |
-| `mergeInYamlFile` | `static void mergeInYamlFile(Map<String, Object?> result, String filename)` | Loads a YAML file and merges it into `result`, expanding environment variables from `Platform.environment`. |
-| `loadYamlFile` | `static Map<String, Object?> loadYamlFile(String filename)` | Loads a YAML file and returns it as a map with environment-variable substitution. |
+| Method | Signature | Description | Throws |
+| ------ | --------- | ----------- | ------ |
+| `mergeInYamlFile` | `static void mergeInYamlFile(Map<String, Object?> result, String filename)` | Loads a YAML file and merges it into `result`, expanding environment variables from `Platform.environment`. The read precedes the merge, so a throw leaves `result` untouched. | `PathNotFoundException` if `filename` is absent |
+| `loadYamlFile` | `static Map<String, Object?> loadYamlFile(String filename)` | Loads a YAML file and returns it as a map with environment-variable substitution. | `PathNotFoundException` if `filename` is absent |
 
 ## Global Functions and Constants
 

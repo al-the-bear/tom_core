@@ -189,6 +189,27 @@
 
 ### Documentation
 
+- **`TomYaml`'s throw on a missing file is now documented (tcinc441).** Both
+  entry points read the file with no existence check, so an absent path
+  surfaces as a `PathNotFoundException` — and nothing said so, while the
+  surrounding text ("Loads the file, normalises it…") read as though the call
+  always succeeds. The sibling loader in the same pipeline does the opposite:
+  `TomEnvFile.read` returns an empty map for an absent `.env`, and its dartdoc
+  says so, so a reader who had met one had a reasonable and wrong expectation
+  of the other. That matters most for the layered overlay the module itself
+  documents, where the per-environment file is genuinely optional.
+
+  The throw and the contrast are now stated in the dartdoc of both methods, in
+  `doc/configuration.md` (a new *A missing file throws* subsection with the
+  guard to use, plus a *Not Yet Implemented* entry), in the API summary —
+  whose method table gained a Throws column — and in the module readme. Two
+  tests pin it: one asserts both entry points throw and `TomEnvFile.read` does
+  not, so the
+  documented asymmetry cannot quietly change on either side; the other asserts
+  that a failed merge leaves the target map untouched, which is what makes
+  catching a sound remedy rather than a half-applied overlay. No behaviour
+  changed.
+
 - **The configuration guide now names how to check it (tcinc440).**
   `doc/configuration.md` had no `## Verification` section and never mentioned
   `example/configuration/configuration_example.dart` or

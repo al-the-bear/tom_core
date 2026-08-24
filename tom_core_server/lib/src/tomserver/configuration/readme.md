@@ -16,7 +16,7 @@ resolve individual keys — obligatory (throws when absent) or with a default.
 | `TomServerConfigResourceProvider` | Holds the merged config map; `exists(key)` / `get(key)` back every `TomConfig` lookup. |
 | `TomConfig<T>` | Resolves one key to `T`; `TomConfig(key)` is obligatory, `TomConfig.withDefault(key, value)` falls back. `get()` / `~config` read the value. |
 | `TomStringConfig` · `TomIntConfig` · `TomDoubleConfig` · `TomBoolConfig` | Typed specialisations of `TomConfig<T>`. |
-| `TomYaml` | Parses YAML configuration resources. |
+| `TomYaml` | Parses YAML configuration resources. Both entry points require the file to exist and throw `PathNotFoundException` when it does not — unlike `TomEnvFile.read`, which returns `{}`. |
 
 ## Quick start
 

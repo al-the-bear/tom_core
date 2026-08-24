@@ -354,6 +354,36 @@ read a substituted number as text and parse it:
 final port = int.parse(~TomStringConfig('database.port'));
 ```
 
+### A missing file throws
+
+Both entry points read the file with no existence check, so an absent path
+surfaces as a `PathNotFoundException`. The file is required, not optional. The
+sibling loader in the same configuration pipeline does the opposite, and that is
+the trap — having met one, a reader has a reasonable and wrong expectation of
+the other:
+
+| Loader | Absent file |
+| ------ | ----------- |
+| `TomEnvFile.read('.env')` | returns `{}` |
+| `TomYaml.loadYamlFile('config.yaml')` | throws `PathNotFoundException` |
+| `TomYaml.mergeInYamlFile(map, 'config.yaml')` | throws `PathNotFoundException` |
+
+This matters for the layered overlay above, where the per-environment or
+per-locale file is genuinely optional and absence is the normal case. Guard it:
+
+```dart
+void mergeYamlIfPresent(Map<String, Object?> into, String path) {
+  if (!File(path).existsSync()) return;
+  TomYaml.mergeInYamlFile(into, path);
+}
+```
+
+Catching works too — `mergeInYamlFile` reads before it merges, so a throw
+leaves the target map untouched and the caller carries on with what it had.
+But catch `PathNotFoundException` specifically. A bare `catch` around the load
+also swallows a syntax error in a file that *is* there and reports it as
+absent, so a malformed overlay silently stops being applied.
+
 ## Not Yet Implemented
 
 - **A misspelled setting is silently ignored.** Nothing validates the merged
@@ -386,6 +416,14 @@ final port = int.parse(~TomStringConfig('database.port'));
   `'3306'` where `port: 3306` yields an `int`, and `TomConfig` casts rather
   than parses. See [A substituted value is a
   string](#a-substituted-value-is-a-string).
+- **`TomYaml` has no optional load, and the two sibling loaders disagree.**
+  Both entry points throw `PathNotFoundException` for an absent file, where
+  `TomEnvFile.read` in the same pipeline returns `{}`. There is no
+  `loadYamlFileIfPresent`, so every consumer of an optional overlay writes its
+  own guard — the sample servers each carry a private `mergeYamlIfPresent`,
+  and a bare `catch` is the tempting alternative that also hides a malformed
+  file.
+  See [A missing file throws](#a-missing-file-throws).
 - **The default TLS material is a checked-in self-signed pair.**
   `certificateChain` and `privateKey` default to a throwaway `localhost`
   certificate committed to this repository — convenient for local development,
@@ -441,7 +479,7 @@ here instead. Its static `getDefaultValues` needs no subclass and is used.
 dart test test/configuration_test.dart   # or `testkit :test` for the package
 ```
 
-Fifty-eight tests in eight groups carry the behaviour — the provider's
+Sixty tests in eight groups carry the behaviour — the provider's
 `exists` / `get` (including the explicit-null cases), `TomConfig`'s three
 resolution branches and its one widening, `getDefaultValues` and the four-layer
 merge order, the derived `args` field, the boundary between the merged map and

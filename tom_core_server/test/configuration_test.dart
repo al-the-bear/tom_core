@@ -578,6 +578,43 @@ void main() {
       expect(existing['existing'], 1);
       expect(existing['added'], 'yes');
     });
+
+    test('both entry points throw when the file is absent', () {
+      // The sibling loader in the same configuration pipeline does the
+      // opposite -- TomEnvFile.read returns an empty map for an absent file,
+      // and its dartdoc says so -- so a reader who has met one has a
+      // reasonable and wrong expectation of the other. Both directions are
+      // pinned here, in one test, because it is the *contrast* that has to
+      // hold: if either side changes, this asymmetry stops being what
+      // doc/configuration.md describes.
+      final missing = '${dir.path}/absent.yaml';
+      expect(File(missing).existsSync(), isFalse);
+
+      expect(
+        () => TomYaml.loadYamlFile(missing),
+        throwsA(isA<PathNotFoundException>()),
+      );
+      expect(
+        () => TomYaml.mergeInYamlFile(<String, Object?>{}, missing),
+        throwsA(isA<PathNotFoundException>()),
+      );
+      expect(TomEnvFile.read(missing), isEmpty);
+    });
+
+    test('a failed merge leaves the target map untouched', () {
+      // mergeInYamlFile reads before it merges, so an absent file cannot
+      // half-apply an overlay. That is what makes `try`/`catch` a usable
+      // remedy for an optional overlay: the caller can carry on with the map
+      // it already had. Worth pinning separately from the throw itself --
+      // were the read ever moved after a partial merge, the throw would still
+      // be there and the remedy would silently stop being sound.
+      final existing = <String, Object?>{'existing': 1};
+      expect(
+        () => TomYaml.mergeInYamlFile(existing, '${dir.path}/absent.yaml'),
+        throwsA(isA<PathNotFoundException>()),
+      );
+      expect(existing, {'existing': 1});
+    });
   });
 
   group('The example runs green', () {
@@ -671,10 +708,11 @@ void main() {
   // Each limitation listed under *Not Yet Implemented* in doc/configuration.md,
   // pinned so the section cannot go on warning about a behaviour that has since
   // been fixed -- a stale warning costs a reader the same working-around as a
-  // missing one. Two of the seven are pinned by their own tests above (the
+  // missing one. Four of the eight are pinned by their own tests above (the
   // key-string fallback under TomServerConfigResourceProvider, the bare-String
-  // throw under TomConfig resolution) and the substituted-YAML one under
-  // TomYaml; the four with nowhere else to live are here.
+  // throw under TomConfig resolution, and the substituted-YAML and
+  // missing-file ones under TomYaml); the four with nowhere else to live are
+  // here.
   group('the documented limitations hold', () {
     test('a misspelled setting merges as a live key and fills no field', () {
       // `prot` is a typo for `port`. Nothing validates the merged tree against

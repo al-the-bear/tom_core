@@ -19,6 +19,13 @@ class TomYaml {
   /// Loads a YAML file and merges it into [result] with environment variable substitution.
   ///
   /// Environment variables in the YAML values are expanded using [Platform.environment].
+  ///
+  /// Throws a [PathNotFoundException] if [filename] does not exist — the
+  /// file is required, not optional. For an optional overlay, guard with
+  /// `File(filename).existsSync()` or catch [PathNotFoundException]
+  /// specifically; a bare `catch` would also swallow a syntax error in a file
+  /// that *is* there and report it as absent. The read happens before the
+  /// merge, so a throw leaves [result] untouched.
   static void mergeInYamlFile(Map<String, Object?> result, String filename) {
     var yamlText = File(filename).readAsStringSync();
     var yamlData = loadYaml(yamlText);
@@ -39,6 +46,14 @@ class TomYaml {
   ///   port: ${DB_PORT:3306}
   ///   user: ${DB_USER}
   /// ```
+  ///
+  /// Throws a [PathNotFoundException] if [filename] does not exist. Note the
+  /// contrast with the sibling loader in the same configuration pipeline:
+  /// `TomEnvFile.read` returns an empty map for an absent file, where this one
+  /// throws. For an optional overlay, guard with `File(filename).existsSync()`
+  /// or catch [PathNotFoundException] specifically — a bare `catch` would
+  /// also swallow a syntax error in a file that *is* there and report it as
+  /// absent.
   static Map<String, Object?> loadYamlFile(String filename) {
     var yamlText = File(filename).readAsStringSync();
     var yamlData = loadYaml(yamlText);
