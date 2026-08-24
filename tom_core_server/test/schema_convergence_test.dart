@@ -9,6 +9,9 @@
 /// disk exactly as a real `<databaseMigrationsDirectory>` would be.
 library;
 
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -948,6 +951,54 @@ CREATE TABLE fixture_task (
         () => TomDbMigrations.parseMigrationFileName('001-no_brackets'),
         throwsA(isA<TomDbMigrationException>()),
       );
+    });
+  });
+
+  // The checker half of the duplicate-basename bar. `readChain` collects a
+  // schema directory the same way the engine does, so it has to reject the
+  // same tree — a check that quietly read one of two colliding files would
+  // report a chain the engine would refuse to apply, which is worse than
+  // either behaviour alone.
+  group('TomSchemaConvergenceCheck.readChain duplicate basenames', () {
+    final check = TomSchemaConvergenceCheck(dialect: dialect);
+    late Directory dir;
+
+    setUp(() => dir = Directory.systemTemp.createTempSync('tom_conv_dupe_'));
+    tearDown(() => dir.deleteSync(recursive: true));
+
+    void write(String name, String sql) =>
+        File(p.join(dir.path, name)).writeAsStringSync(sql);
+
+    test('two files differing only in extension abort the read', () {
+      write('[0]-create_it.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[0]-create_it.ddl', 'CREATE TABLE b (id BIGINT);');
+      expect(
+        () => check.readChain(dir.path),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test('the abort names both colliding paths', () {
+      write('[0]-create_it.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[0]-create_it.ddl', 'CREATE TABLE b (id BIGINT);');
+      Object? caught;
+      try {
+        check.readChain(dir.path);
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught, isNotNull);
+      expect(caught.toString(), contains('[0]-create_it.sql'));
+      expect(caught.toString(), contains('[0]-create_it.ddl'));
+    });
+
+    test('a directory with distinct basenames still reads its chain', () {
+      write('[0]-create_it.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[1]-alter_it.sql', 'ALTER TABLE a ADD COLUMN n INT;');
+      expect(check.readChain(dir.path).map((a) => a.basename), [
+        '[0]-create_it',
+        '[1]-alter_it',
+      ]);
     });
   });
 }

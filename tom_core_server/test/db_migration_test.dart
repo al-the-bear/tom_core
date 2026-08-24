@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -218,6 +219,130 @@ void main() {
         () => TomDbMigrations.orderMigrationNames(['[1]-ok', 'bad-name']),
         throwsA(isA<TomDbMigrationException>()),
       );
+    });
+  });
+
+  // Migrations are keyed by basename-without-extension, so two files that
+  // differ only in extension claim the same key. Collecting them into a plain
+  // map let whichever the directory listing happened to yield last overwrite
+  // the other, and the run continued as if the tree had always held one file.
+  // That is the opposite of how this module treats every other surprise in a
+  // migrations directory — an unparseable name aborts, on the reasoning that a
+  // stray file is more likely a migration nobody noticed was not running.
+  group('TomDbMigrations.collectMigrationFiles', () {
+    late Directory dir;
+
+    setUp(() => dir = Directory.systemTemp.createTempSync('tom_mig_dupe_'));
+    tearDown(() => dir.deleteSync(recursive: true));
+
+    /// Writes [names] as empty files and returns the directory's entries.
+    List<FileSystemEntity> entriesFor(Iterable<String> names) {
+      for (final name in names) {
+        File(p.join(dir.path, name)).writeAsStringSync('-- $name');
+      }
+      return dir.listSync();
+    }
+
+    test('collects one file per basename when nothing collides', () {
+      final files = TomDbMigrations.collectMigrationFiles(
+        entriesFor(['[1]-first.sql', '[2]-second.ddl']),
+      );
+      expect(files.keys.toList()..sort(), ['[1]-first', '[2]-second']);
+    });
+
+    test('two files differing only in extension abort rather than one '
+        'silently winning', () {
+      expect(
+        () => TomDbMigrations.collectMigrationFiles(
+          entriesFor(['[3]-add_index.sql', '[3]-add_index.ddl']),
+        ),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test('the abort names both colliding paths', () {
+      Object? caught;
+      try {
+        TomDbMigrations.collectMigrationFiles(
+          entriesFor(['[3]-add_index.sql', '[3]-add_index.ddl']),
+        );
+      } catch (error) {
+        caught = error;
+      }
+      // Naming only the basename would leave the reader to find which two of
+      // the directory's files are the pair.
+      expect(caught, isNotNull);
+      expect(caught.toString(), contains('[3]-add_index.sql'));
+      expect(caught.toString(), contains('[3]-add_index.ddl'));
+    });
+
+    test('the two paths are named in a stable order, not encounter order', () {
+      entriesFor(['[3]-add_index.sql', '[3]-add_index.ddl']);
+      final sql = File(p.join(dir.path, '[3]-add_index.sql'));
+      final ddl = File(p.join(dir.path, '[3]-add_index.ddl'));
+
+      // Fed directly rather than through `listSync`, because the point is the
+      // order the collector *encounters* the pair in — which a directory
+      // listing does not let a test control, and which the file system is free
+      // to vary between machines. If the message inherited it, the same broken
+      // tree would report differently from one host to the next.
+      String messageFor(List<File> entries) {
+        try {
+          TomDbMigrations.collectMigrationFiles(entries);
+        } catch (error) {
+          return error.toString();
+        }
+        return fail('expected a collision');
+      }
+
+      // `.ddl` sorts before `.sql`, so it is named first whichever way round
+      // the pair arrives.
+      for (final message in [
+        messageFor([sql, ddl]),
+        messageFor([ddl, sql]),
+      ]) {
+        expect(
+          message.indexOf('[3]-add_index.ddl'),
+          lessThan(message.indexOf('[3]-add_index.sql')),
+          reason: message,
+        );
+      }
+    });
+
+    test('a stale editor artifact cannot displace the real migration', () {
+      // The hazard that makes this more than a tidiness rule: `.orig` strips
+      // to the same basename as `.sql`, so a backup file could be applied
+      // *instead of* the migration it was a backup of.
+      expect(
+        () => TomDbMigrations.collectMigrationFiles(
+          entriesFor(['[3]-add_index.sql', '[3]-add_index.orig']),
+        ),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test(
+      'three files sharing a basename are still reported as a collision',
+      () {
+        expect(
+          () => TomDbMigrations.collectMigrationFiles(
+            entriesFor([
+              '[3]-add_index.sql',
+              '[3]-add_index.ddl',
+              '[3]-add_index.txt',
+            ]),
+          ),
+          throwsA(isA<TomDbMigrationException>()),
+        );
+      },
+    );
+
+    test('directories in the schema folder are ignored, not collected', () {
+      Directory(p.join(dir.path, 'notes')).createSync();
+      final files = TomDbMigrations.collectMigrationFiles(
+        entriesFor(['[1]-first.sql']),
+      );
+      expect(files.keys, ['[1]-first']);
     });
   });
 
@@ -632,6 +757,79 @@ void main() {
         'fixture_schema',
         'fixture_schema_two',
       });
+    });
+  });
+
+  // The engine half of the collision bar. The collector is unit-tested above;
+  // this proves the walk actually routes through it, and that the collision
+  // stops the run instead of applying whichever file won the map.
+  group('TomDbMigrations.migrateDataSource duplicate basenames', () {
+    late Directory root;
+    late Directory schema;
+
+    setUp(() {
+      root = Directory.systemTemp.createTempSync('tom_mig_dupe_ds_');
+      schema = Directory(p.join(root.path, 'fixture_schema'))
+        ..createSync(recursive: true);
+    });
+    tearDown(() => root.deleteSync(recursive: true));
+
+    TomDataSourceInfo dsi() =>
+        TomDataSourceInfo('tom_core_server_test', <String, dynamic>{})
+          ..type = 'mariadb';
+
+    void write(String name, String sql) =>
+        File(p.join(schema.path, name)).writeAsStringSync(sql);
+
+    test('a collision aborts the run', () async {
+      write('[0]-create_it.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[0]-create_it.ddl', 'CREATE TABLE b (id BIGINT);');
+
+      await expectLater(
+        TomDbMigrations.migrateDataSource(
+          _RecordingMigrator(),
+          dsi(),
+          root,
+          defaultTomEnvironment.env,
+        ),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test('nothing is applied when the schema collides', () async {
+      write('[0]-create_it.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[0]-create_it.ddl', 'CREATE TABLE b (id BIGINT);');
+      final migrator = _RecordingMigrator();
+
+      await expectLater(
+        TomDbMigrations.migrateDataSource(
+          migrator,
+          dsi(),
+          root,
+          defaultTomEnvironment.env,
+        ),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+      // Applying one of an ambiguous pair and *then* aborting would leave the
+      // database holding a migration nobody chose.
+      expect(migrator.events.where((e) => e.startsWith('apply:')), isEmpty);
+    });
+
+    test('a schema with distinct basenames still runs', () async {
+      write('[0]-create_it.sql', 'CREATE TABLE a (id BIGINT);');
+      write('[1]-alter_it.sql', 'ALTER TABLE a ADD COLUMN n INT;');
+      final migrator = _RecordingMigrator();
+
+      await TomDbMigrations.migrateDataSource(
+        migrator,
+        dsi(),
+        root,
+        defaultTomEnvironment.env,
+      );
+      expect(
+        migrator.events.where((e) => e.startsWith('apply:')),
+        hasLength(2),
+      );
     });
   });
 

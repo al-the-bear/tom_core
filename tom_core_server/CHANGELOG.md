@@ -2,6 +2,34 @@
 
 ### Fixed
 
+- **Two migration files that differ only in extension abort the run instead of
+  silently dropping one (tcinc484).** Both halves of the module collected a
+  schema directory into a map keyed by basename-without-extension — the engine
+  in `migrateDataSource`, the convergence check in `readChain` — so
+  `[3]-add_index.sql` and `[3]-add_index.ddl` claimed the same key and whichever
+  the directory listing happened to yield last overwrote the other. The run then
+  continued as though the tree had always held one file: no record of which of
+  the two ran, and no guarantee that a machine enumerating the directory
+  differently would make the same choice.
+
+  The sharp edge is the name shape that produces it in practice. An editor or a
+  merge leaves `[3]-add_index.orig` beside the real `[3]-add_index.sql`, and
+  `.orig` strips to the same basename — so the *backup* could win and the
+  migration it backed up never run, with version 3 recorded as applied and the
+  backup's checksum stored against it.
+
+  Collection now goes through one shared `TomDbMigrations.collectMigrationFiles`,
+  used by the engine and the check alike, which throws
+  `db_migration.migration.duplicate_migration_basename` naming both paths in a
+  stable (sorted, not listing) order so the same broken tree reports identically
+  on every host. This restores the rule the module already applied to every other
+  surprise in a migrations directory: an unparseable name aborts rather than
+  being skipped, because a stray file there is more likely a migration nobody
+  noticed was not running than deliberate clutter. Sharing the collector also
+  keeps the check from accepting a tree the engine refuses. No migrations
+  directory in the workspace — 45 artifacts across 16 schema directories — is
+  affected.
+
 - **`CREATE TABLE … AS SELECT` no longer commits a half-parsed table to the
   replayed schema (tcinc483).** `_createTable` located the column list by the
   first `(` in the statement, which for a `SELECT`-driven create belongs to the

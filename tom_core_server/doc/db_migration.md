@@ -11,6 +11,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 
 - [Overview](#overview)
 - [The Directory Layout](#the-directory-layout)
+  - [One File per Migration](#one-file-per-migration)
 - [Running Migrations](#running-migrations)
 - [Adaptor Discovery](#adaptor-discovery)
 - [The MariaDB Adaptor](#the-mariadb-adaptor)
@@ -71,6 +72,54 @@ extension, where the description is letters and underscores
 (`[a-zA-Z_]+`). A name that does not match aborts the run with a
 `TomDbMigrationException`. Within a schema, files are applied in **ascending
 numeric version order** — so `[2]` precedes `[10]`.
+
+### One File per Migration
+
+The extension is not part of a migration's identity: a migration *is* its
+basename, which is what the version ordering, the environment tag and the
+recorded applied-version history are all read from. Two files in one schema
+directory that differ only in extension therefore claim the same migration, and
+the run aborts naming both paths:
+
+```text
+app/
+  [3]-add_index.sql
+  [3]-add_index.ddl     # both claim "[3]-add_index" → the run aborts
+```
+
+```text
+Duplicate migration filename in migrations directory: [3]-add_index.
+A migration is identified by its filename without extension, so
+…/[3]-add_index.ddl and …/[3]-add_index.sql cannot be told apart.
+Remove or rename one.
+```
+
+The alternative is not a tie-break but a coin toss. Collecting the directory
+into a map keyed by basename means the second file the listing yields
+overwrites the first, and the run continues as though the directory had always
+held one — with no record of which of the two ran, and no guarantee that the
+next machine, whose file system enumerates the directory differently, makes the
+same choice.
+
+What turns that from untidy into dangerous is the shape of the names involved.
+An editor or a merge leaves `[3]-add_index.orig` beside `[3]-add_index.sql`,
+and `.orig` strips to exactly the same basename — so the *backup* can be the
+file that wins, and the migration it was a backup of never runs. The failure is
+silent at every stage: the engine records version 3 as applied, the checksum it
+stores is the backup's, and the schema is left in a state no artifact in the
+tree describes.
+
+Aborting is also the rule this module already follows everywhere else. A file
+whose name it cannot parse does not get skipped — it stops the run, on the
+reasoning that a surprising file in a migrations directory is far more likely to
+be a migration nobody noticed was not running than deliberate clutter. A
+duplicate is that same hazard with a sharper edge, and gets the same answer.
+
+The rule is enforced by one function, `TomDbMigrations.collectMigrationFiles`,
+which both the engine and the [convergence check](#schema-convergence) collect
+through — for the same reason they share the name parser and the ordering. A
+check that quietly read one of two colliding files would report on a chain the
+engine refuses to apply, which is worse than either behaviour on its own.
 
 ## Running Migrations
 

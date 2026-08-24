@@ -242,6 +242,56 @@ class TomDbMigrations {
     );
   }
 
+  /// Collects the migration files among [entries], keyed by basename without
+  /// extension — the key everything downstream identifies a migration by.
+  ///
+  /// Two files whose basenames collide (`[3]-add_index.sql` and
+  /// `[3]-add_index.ddl`, or a stray `[3]-add_index.orig` beside the real
+  /// migration) throw
+  /// `db_migration.migration.duplicate_migration_basename`, naming both paths.
+  ///
+  /// The alternative — keeping whichever the directory listing yielded last —
+  /// is not a tie-break but a coin toss, and a silent one: the run proceeds as
+  /// though the tree had always held a single file. It is also the wrong shape
+  /// for this module, which aborts on a name it cannot parse precisely because
+  /// a surprising file in a migrations directory is more likely a migration
+  /// nobody noticed was not running than deliberate clutter. A duplicate is
+  /// that same hazard with a sharper edge: an editor backup ending in `.orig`
+  /// strips to the same key as the `.sql` it was a backup *of*, so the losing
+  /// file can be the one that was meant to run.
+  ///
+  /// Non-file entries are skipped, so a sub-directory in a schema folder is
+  /// ignored rather than collected.
+  ///
+  /// Shared with [TomSchemaConvergenceCheck.readChain] for the reason
+  /// [orderMigrationNames] is: a check that accepted a tree the engine refuses
+  /// would report a chain that cannot be applied.
+  static Map<String, File> collectMigrationFiles(
+    Iterable<FileSystemEntity> entries,
+  ) {
+    final files = <String, File>{};
+    for (final entry in entries) {
+      if (entry is! File) continue;
+      final basename = p.basenameWithoutExtension(entry.path);
+      final existing = files[basename];
+      if (existing != null) {
+        // Sorted, not listing order: the same broken tree has to produce the
+        // same message on every machine.
+        final pair = [existing.path, entry.path]..sort();
+        throw TomDbMigrationException(
+          "db_migration.migration.duplicate_migration_basename",
+          "Duplicate migration filename in migrations directory: $basename. "
+              "A migration is identified by its filename without extension, so "
+              "${pair.first} and ${pair.last} cannot be told apart. Remove or "
+              "rename one.",
+          autoLog: true,
+        );
+      }
+      files[basename] = entry;
+    }
+    return files;
+  }
+
   /// Parses [basenames] (file basenames without extension) and returns them
   /// ordered by **ascending numeric version**, each paired with its parsed
   /// [TomMigrationFileName].
@@ -356,12 +406,10 @@ class TomDbMigrations {
         String schemaName = p.basename(schema.path);
         migrator.reset();
         await migrator.initializeMigration(dsInfo, schemaName);
-        Map<String, File> migrations = {};
-        await for (var migration in schema.list()) {
-          if (migration is File) {
-            migrations[p.basenameWithoutExtension(migration.path)] = migration;
-          }
-        }
+        // Collected before anything is applied, so a directory holding two
+        // files that claim the same version aborts the schema instead of
+        // applying whichever one the listing happened to favour.
+        final migrations = collectMigrationFiles(await schema.list().toList());
         // Parse + validate the names, apply in ascending version order
         // (numeric, so [2] precedes [10]) and skip any migration tagged for
         // a non-active environment (C-16); a malformed name throws.

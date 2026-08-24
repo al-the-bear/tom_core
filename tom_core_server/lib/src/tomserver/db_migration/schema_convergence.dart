@@ -442,19 +442,16 @@ class TomSchemaConvergenceCheck {
 
   /// Reads the migration artifacts of one schema directory in applied order.
   ///
-  /// Names are parsed, ordered by numeric version and filtered for
+  /// Files are collected, parsed, ordered by numeric version and filtered for
   /// [environment] exactly as the engine does; a malformed name throws
-  /// [TomDbMigrationException] from the shared parser, because a name the engine
+  /// [TomDbMigrationException] from the shared parser, and two files whose
+  /// basenames collide throw from the shared collector
+  /// ([TomDbMigrations.collectMigrationFiles]) — because a tree the engine
   /// would reject is a defect the check must not paper over.
   List<TomMigrationArtifact> readChain(String schemaDirectory) {
     final directory = Directory(schemaDirectory);
     if (!directory.existsSync()) return const [];
-    final files = <String, File>{};
-    for (final entry in directory.listSync()) {
-      if (entry is File) {
-        files[p.basenameWithoutExtension(entry.path)] = entry;
-      }
-    }
+    final files = TomDbMigrations.collectMigrationFiles(directory.listSync());
     final ordered = TomDbMigrations.orderMigrationNames(files.keys);
     return [
       for (final entry in TomDbMigrations.selectForEnvironment(
