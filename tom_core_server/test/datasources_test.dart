@@ -16,6 +16,52 @@ class _Literal<R> extends TomOperator<R> {
   Set<String> getFields(TomStandardSqlDialect t) => fields;
 }
 
+/// Scripts a data source's command execution, so a transaction lifecycle can be
+/// driven to any outcome without a database.
+///
+/// The alternative — leaving the data source unconnected so every command
+/// throws — cannot express the case that matters. A transaction's state only
+/// exists after a start that *succeeded*, and the whole question about the exit
+/// paths is what they do with state that is genuinely set. Driving those from a
+/// failed start meant asserting against what a failure had left behind, which
+/// is precisely the behaviour under repair: once the start path cleans up after
+/// itself, such a test still passes and pins nothing.
+///
+/// Recording the commands is the second half. The XA branch id is private and
+/// has no accessor, so the SQL is the only place it is observable — a wrongly
+/// cleared one shows itself as the literal `XA COMMIT null;`.
+mixin _ScriptedCommands on MariaDbDatasource {
+  /// Every command reached, in order, with the branch id as interpolated.
+  final commands = <String>[];
+
+  /// Commands starting with any of these prefixes throw instead of running.
+  Set<String> failing = const {};
+
+  @override
+  Future<BigInt> executeCommand(
+    String command, [
+    Map<String, dynamic>? params,
+  ]) async {
+    commands.add(command);
+    if (failing.any(command.startsWith)) {
+      throw StateError('scripted failure for: $command');
+    }
+    return BigInt.zero;
+  }
+}
+
+class _ScriptedXADatasource extends MariaDbXADatasource with _ScriptedCommands {
+  _ScriptedXADatasource({Set<String> failing = const {}}) {
+    this.failing = failing;
+  }
+}
+
+class _ScriptedDatasource extends MariaDbDatasource with _ScriptedCommands {
+  _ScriptedDatasource({Set<String> failing = const {}}) {
+    this.failing = failing;
+  }
+}
+
 void main() {
   group('TomDbType.of conversions', () {
     test('TomDbInt parses an integer string', () {
@@ -696,29 +742,85 @@ void main() {
     });
   });
 
-  group('MariaDbXADatasource transaction lifecycle', () {
+  // A branch id is set on the way *into* `XA START` and is what the guard in
+  // `startTransaction` refuses a second transaction on. So every path that can
+  // end a branch has to put it back, and each one that forgets wedges the data
+  // source permanently: the next start throws "There is already an active
+  // transaction" and there is nothing a caller can do about it, because the
+  // branch it would have to roll back never began.
+  //
+  // Each of the four exits is therefore driven here with a start that actually
+  // succeeded, and the assertion is always the same one — a following start is
+  // allowed. The one exit that must *not* clear is a successful end, since
+  // `commit` still needs the id; that is asserted through the SQL, which is
+  // where a cleared id would surface as `XA COMMIT null;`.
+  group('MariaDb transaction lifecycle: the state each exit leaves', () {
+    test('a failed start clears the branch id it had already set', () async {
+      final ds = _ScriptedXADatasource(failing: {'XA START'});
+      expect(await ds.startTransaction(), isFalse);
+      // The id is assigned before the command is issued, so a failure that
+      // leaves it set locks out every later transaction. Recovering by calling
+      // `rollback` is not available: there is no branch to roll back, and a
+      // caller that got `false` has been told the transaction never began.
+      expect(await ds.startTransaction(), isFalse);
+      expect(ds.commands, hasLength(2));
+      expect(ds.commands.every((c) => c.startsWith('XA START ')), isTrue);
+    });
+
+    test('a failed rollback clears the branch id', () async {
+      final ds = _ScriptedXADatasource(failing: {'XA ROLLBACK'});
+      expect(await ds.startTransaction(), isTrue);
+      await ds.rollback();
+      expect(await ds.startTransaction(), isTrue);
+      expect(ds.commands[1], startsWith('XA ROLLBACK '));
+      expect(ds.commands[1], isNot(contains('null')));
+    });
+
+    test('a failed endTransaction clears the branch id', () async {
+      final ds = _ScriptedXADatasource(failing: {'XA END'});
+      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.endTransaction(), isFalse);
+      // The branch cannot be committed after a failed prepare, so holding the
+      // id would strand the data source on a transaction with no future.
+      expect(await ds.startTransaction(), isTrue);
+    });
+
+    test('a failed commit clears the branch id', () async {
+      final ds = _ScriptedXADatasource(failing: {'XA COMMIT'});
+      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.endTransaction(), isTrue);
+      expect(await ds.commit(), isFalse);
+      expect(await ds.startTransaction(), isTrue);
+    });
+
     test(
-      'rollback clears the branch id so the next startTransaction is allowed',
+      'a successful end keeps the branch id, because commit needs it',
       () async {
-        final ds = MariaDbXADatasource();
-        // No connection: executeCommand fails, startTransaction returns false, but
-        // the branch id is now set.
-        await ds.startTransaction();
-        // Rollback must clear the branch id even when the underlying command
-        // failed, or the next startTransaction throws "There is already an
-        // active transaction" and the data source is wedged. A second start is
-        // therefore allowed here (it still returns false for the missing
-        // connection, but must not throw).
-        await ds.rollback();
-        await expectLater(ds.startTransaction(), completion(isFalse));
+        // The counterweight to the four clears above: end is the only exit that
+        // hands the branch on rather than closing it. Read through the SQL,
+        // because `_txId` has no accessor -- an id cleared here reaches the
+        // driver as the literal `XA COMMIT null;`, which MariaDB rejects and
+        // which a test asserting only the return value would not notice.
+        final ds = _ScriptedXADatasource();
+        expect(await ds.startTransaction(), isTrue);
+        final branch = ds.commands.single.substring('XA START '.length);
+        expect(branch, isNot(contains('null')));
+        expect(await ds.endTransaction(), isTrue);
+        expect(await ds.commit(), isTrue);
+        expect(ds.commands.last, 'XA COMMIT $branch');
       },
     );
 
-    test('a failed endTransaction clears the branch id', () async {
-      final ds = MariaDbXADatasource();
-      await ds.startTransaction();
-      expect(await ds.endTransaction(), isFalse);
-      await expectLater(ds.startTransaction(), completion(isFalse));
+    test('the non-XA sibling is not wedged by a failed start either', () async {
+      // The plain data source reaches the same contract by a different route:
+      // it raises its in-transaction flag only *after* the command succeeds, so
+      // there is nothing to undo on the failure path. Pinned here because the
+      // two classes share a guard whose message is the symptom of the XA bug,
+      // and a reader of that fix will ask whether the sibling has it too.
+      final ds = _ScriptedDatasource(failing: {'START TRANSACTION'});
+      expect(await ds.startTransaction(), isFalse);
+      expect(await ds.startTransaction(), isFalse);
+      expect(ds.commands, hasLength(2));
     });
   });
 }

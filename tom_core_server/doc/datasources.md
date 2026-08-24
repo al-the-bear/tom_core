@@ -403,9 +403,19 @@ that but overrides the transaction lifecycle to use **XA** (`XA START` / `XA
 END` + `XA PREPARE` / `XA COMMIT` / `XA ROLLBACK`), so it can take part in a
 two-phase commit across multiple resources.
 
-> The MariaDB driver requires a live database connection and is therefore not
-> exercised by the unit tests; the tests cover the connection-independent
-> surface (the dialect's SQL generation and the SQL-typed value conversions).
+Each transaction runs against a branch id the data source mints in
+`startTransaction`, and that id doubles as the guard: a second start while one
+is set throws rather than opening a nested branch. So **every exit clears the
+id except a successful `endTransaction`**, which hands it on to `commit`. An
+exit that forgets locks the data source out of all later transactions
+permanently, and the caller cannot recover by rolling back — the branch it
+would have to name never began.
+
+> The MariaDB driver needs a live connection for anything that reaches the
+> database, so the unit tests cover the connection-independent surface: the
+> dialect's SQL generation, the SQL-typed value conversions, and the
+> transaction state machine, which is driven by overriding `executeCommand` to
+> script each command's outcome and record the SQL it was given.
 
 ## Core Components
 

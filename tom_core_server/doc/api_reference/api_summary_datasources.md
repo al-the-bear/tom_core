@@ -927,10 +927,17 @@ MariaDbXADatasource()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `XA START` against a fresh branch id. |
-| `endTransaction` | `Future<bool> endTransaction()` | *(override)* Issues `XA END` + `XA PREPARE`. |
-| `commit` | `Future<bool> commit()` | *(override)* Issues `XA COMMIT`. |
-| `rollback` | `Future<void> rollback()` | *(override)* Issues `XA ROLLBACK` and always clears the branch id. |
+| `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `XA START` against a fresh branch id, throwing if one is already open. Clears the id again when the command fails, since the database never opened that branch. |
+| `endTransaction` | `Future<bool> endTransaction()` | *(override)* Issues `XA END` + `XA PREPARE`. The one exit that **keeps** the branch id on success — `commit` still needs it — and clears it on failure, where the branch can no longer be committed. |
+| `commit` | `Future<bool> commit()` | *(override)* Issues `XA COMMIT` and clears the branch id either way. |
+| `rollback` | `Future<void> rollback()` | *(override)* Issues `XA ROLLBACK` and clears the branch id either way. |
+
+Every exit puts the branch id back except a successful `endTransaction`, which
+hands it on to `commit`. The rule is what keeps the data source usable: the id
+is also the guard `startTransaction` refuses a second transaction on, so an exit
+that forgets to clear locks out every later transaction permanently — and a
+caller cannot recover by rolling back, because the branch it would name never
+began.
 
 #### MariadbPreparedStatement&lt;T&gt;
 

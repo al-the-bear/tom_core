@@ -1333,6 +1333,13 @@ class MariaDbDatasource implements TomDataSource {
 /// `XA PREPARE` / `XA COMMIT` / `XA ROLLBACK` against a per-transaction branch
 /// id, so this data source can take part in a two-phase commit across multiple
 /// resources.
+///
+/// The branch id doubles as the in-transaction guard: [startTransaction] throws
+/// while one is set rather than opening a nested branch. **Every exit therefore
+/// clears it except a successful [endTransaction]**, which hands it on to
+/// [commit]. An exit that forgets locks this data source out of every later
+/// transaction for good — and the caller cannot recover by rolling back,
+/// because the branch it would have to name never began.
 @tomReflector
 @TomDatasourceDriver("mariadb_xa")
 class MariaDbXADatasource extends MariaDbDatasource {
@@ -1351,6 +1358,12 @@ class MariaDbXADatasource extends MariaDbDatasource {
       tomLog.error(
         "Starting XA database transaction of ${getParticipantId()} failed $error",
       );
+      // The id is assigned before the command is issued, so a failure here
+      // leaves a branch that exists only in this field — the database never
+      // opened it. Holding it wedges the data source: the guard above refuses
+      // every later transaction, and the caller cannot clear it by rolling
+      // back, because it was just told the transaction did not begin.
+      _txId = null;
       return false;
     }
   }

@@ -2,6 +2,29 @@
 
 ### Fixed
 
+- **A failed `XA START` no longer wedges the data source permanently
+  (tcinc450).** `MariaDbXADatasource.startTransaction` mints the branch id
+  *before* issuing the command, and the branch id is also the guard the same
+  method refuses a second transaction on. When `XA START` failed, the catch path
+  logged and returned `false` but left the id set — so every later
+  `startTransaction` on that data source threw "There is already an active
+  transaction", for a branch the database never opened. The caller had no way
+  out: it had just been told the transaction did not begin, so there was nothing
+  to roll back. Bug 66 had removed exactly this wedge from `endTransaction` and
+  `rollback`; the start path was missed. It now clears the id on failure.
+
+  The lifecycle tests were rebuilt in the same pass, because they were pinning
+  the defect rather than the contract. Both drove `rollback` and
+  `endTransaction` from a *failed* start, relying on the id it left behind — the
+  behaviour being removed. After the fix they still passed while asserting
+  against a branch id that was already `null`. They now run against a scripted
+  `executeCommand` that can make a start succeed, so the exits are exercised
+  with a branch id that genuinely exists. All four exits are covered, the fifth
+  test pins that a *successful* `endTransaction` keeps the id (a cleared one
+  reaches the driver as the literal `XA COMMIT null;`, which no return-value
+  assertion would catch), and a sixth records that the non-XA sibling reaches
+  the same contract by raising its flag only after the command succeeds.
+
 - **`tomAppId` is now produced and consumed by the library (tcinc446).** The
   global was documented as "the process-wide application id, set from
   configuration at startup" and was neither. Nothing in `tom_core_server`
