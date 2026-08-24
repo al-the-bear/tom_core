@@ -93,11 +93,26 @@
 /// `static` and a constructor are never abstract however they are written, so a
 /// bodiless one is not evidence of anything.
 ///
-/// The last group asks a question about the document's *tense* rather than its
-/// content. Every check above compares a claim against the code as it stands; a
-/// claim that something is **not finished** cannot be checked that way, because
-/// there is nothing in the source that contradicts it — the absence it asserts
-/// looks exactly like an absence that is intended.
+/// The last group is the same lesson pointed at the guides' claims about their
+/// own testing. `doc/datasources.md` said the unit tests covered "the
+/// connection-independent surface" and named no suite — while two suites
+/// covered the driver, one of them against a live server, and the reader was
+/// told about neither. An unattributed claim is an uncheckable one: there was
+/// no name in the sentence for anything to falsify, so a second suite arriving
+/// changed nothing about it and it went on being wrong.
+///
+/// The repair is to name the suite; the check is what makes naming it mean
+/// something. Every `…_test.dart` and `….sh` a guide mentions must be a file
+/// that exists, so moving a suite fails the build and puts whoever moved it in
+/// front of the prose that describes it. A path belonging to a sibling sample
+/// package is excused when the paragraph names that package, which is the same
+/// information a reader needs to make sense of it.
+///
+/// The group before it asks a question about the document's *tense* rather than
+/// its content. Every check above compares a claim against the code as it
+/// stands; a claim that something is **not finished** cannot be checked that
+/// way, because there is nothing in the source that contradicts it — the
+/// absence it asserts looks exactly like an absence that is intended.
 ///
 /// What can be checked is where the claim lives. Ten guides collect what they
 /// have not done under `## Not Yet Implemented`, and `doc/authentication.md`
@@ -970,44 +985,116 @@ List<_UnfinishedClaim> _unfinishedClaimsOutsideSection(
   }
 
   final found = <_UnfinishedClaim>[];
-  var fenced = false;
-  var paragraph = <int>[];
-
-  void closeParagraph() {
-    if (paragraph.isNotEmpty) {
-      final signposted = paragraph.any(
-        (i) => _limitationsLink.hasMatch(lines[i]),
-      );
-      if (!signposted) {
-        for (final i in paragraph) {
-          if (!_unfinishedClaim.hasMatch(lines[i])) continue;
-          found.add((file: file, line: i + 1, text: lines[i].trim()));
-        }
-      }
+  for (final paragraph in _paragraphsOf(
+    lines,
+    isExcluded: (i) => sectionStart >= 0 && i >= sectionStart && i < sectionEnd,
+  )) {
+    if (paragraph.any((i) => _limitationsLink.hasMatch(lines[i]))) continue;
+    for (final i in paragraph) {
+      if (!_unfinishedClaim.hasMatch(lines[i])) continue;
+      found.add((file: file, line: i + 1, text: lines[i].trim()));
     }
-    paragraph = [];
+  }
+  return found;
+}
+
+/// [lines] grouped into paragraphs, each a list of line indices.
+///
+/// Two checks in this file judge a document by the paragraph rather than the
+/// line, for the same reason — these guides wrap at eighty columns, so a
+/// sentence and the thing that qualifies it routinely land on different lines.
+/// The rules for where a paragraph ends are small but easy to get subtly wrong,
+/// and wrong here does not fail: it moves a line into a neighbouring paragraph,
+/// which silently changes whether that neighbour's qualifier applies to it.
+/// One implementation, exercised by both.
+///
+/// [includeFenced] is the one thing the two callers disagree about. Prose about
+/// unfinished work must ignore fences, because a listing may be quoting a
+/// `// TODO` as an example of what *not* to write; a reference to a test file
+/// must read them, because a fenced block is exactly where a runnable command
+/// naming a script lives.
+///
+/// [isExcluded] drops a line and ends the paragraph it would have joined, which
+/// is how the limitations section is held out without a second walk.
+List<List<int>> _paragraphsOf(
+  List<String> lines, {
+  bool includeFenced = false,
+  bool Function(int index)? isExcluded,
+}) {
+  final paragraphs = <List<int>>[];
+  var current = <int>[];
+  var fenced = false;
+
+  void close() {
+    if (current.isNotEmpty) paragraphs.add(current);
+    current = [];
   }
 
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i];
     if (line.startsWith('```')) {
-      closeParagraph();
+      close();
       fenced = !fenced;
       continue;
     }
-    if (fenced) continue;
-    if (line.trim().isEmpty) {
-      closeParagraph();
+    if (fenced && !includeFenced) continue;
+    if (line.trim().isEmpty || (isExcluded?.call(i) ?? false)) {
+      close();
       continue;
     }
-    if (sectionStart >= 0 && i >= sectionStart && i < sectionEnd) {
-      closeParagraph();
-      continue;
-    }
-    paragraph.add(i);
+    current.add(i);
   }
-  closeParagraph();
-  return found;
+  close();
+  return paragraphs;
+}
+
+/// A test suite or tool script a guide names, and where it names it.
+typedef _NamedArtifact = ({String file, int line, String path});
+
+/// A path to a suite or a script, as a guide writes one.
+///
+/// Matched anywhere on the line rather than only inside backticks, because the
+/// reference that matters most is the runnable one — `tool/run_db_tests.sh` in
+/// a fenced block is the line a reader will actually copy.
+final RegExp _artifactReference = RegExp(r'[\w./-]+(?:_test\.dart|\.sh)\b');
+
+/// A sibling sample package, whose suites live outside this package.
+///
+/// `doc/audit.md`, `doc/export.md`, `doc/messaging.md` and `doc/resources.md`
+/// each point at a worked example in `advanced_ops_server`, writing its suite
+/// as `test/ops_anchor_test.dart` — a path relative to *that* package. Naming
+/// the package is what makes the path unambiguous, so naming it is what excuses
+/// the reference from resolving here.
+final RegExp _samplePackage = RegExp(r'advanced_\w+');
+
+/// The suites and scripts [file] names that do not exist.
+///
+/// The claim being checked is small and completely mechanical: a guide that
+/// tells the reader which suite covers something must name a suite that is
+/// really there. It earns its place by making the *attribution* load-bearing.
+/// `doc/datasources.md` used to say the unit tests covered "the
+/// connection-independent surface" and name nothing, so when a second suite
+/// arrived there was no name to go stale and nothing to re-read — the sentence
+/// simply went on being wrong. A named suite cannot do that: rename or delete
+/// it and this fails, which puts whoever moved it in front of the prose.
+List<_NamedArtifact> _missingArtifacts(String file, List<String> lines) {
+  final missing = <_NamedArtifact>[];
+  for (final paragraph in _paragraphsOf(lines, includeFenced: true)) {
+    final context = paragraph.map((i) => lines[i]).join(' ');
+    final borrowed = _samplePackage.hasMatch(context);
+    for (final i in paragraph) {
+      for (final match in _artifactReference.allMatches(lines[i])) {
+        final path = match.group(0)!;
+        // `test/x_test.dart` as written, or the bare `x_test.dart` the prose
+        // uses once the surrounding sentence has already said where it lives.
+        if (File(path).existsSync()) continue;
+        if (File('test/${path.split('/').last}').existsSync()) continue;
+        if (borrowed) continue;
+        missing.add((file: file, line: i + 1, path: path));
+      }
+    }
+  }
+  return missing;
 }
 
 /// Every module guide, as (name, lines).
@@ -1786,6 +1873,91 @@ void main() {
             'the section ends are not',
       );
       expect(claims.first.text, 'Retry backoff is a tracked follow-up.');
+    });
+  });
+
+  group('a guide names the suite that covers what it describes', () {
+    test('every suite and script a guide names exists', () {
+      final missing = [
+        for (final (name, lines) in _guides())
+          ..._missingArtifacts(name, lines),
+      ];
+      expect(
+        missing.map((a) => '${a.file}:${a.line} ${a.path}'),
+        isEmpty,
+        reason:
+            'A guide that tells the reader which suite covers something has to '
+            'name one that is there. This is what makes the attribution worth '
+            'writing: `doc/datasources.md` used to characterise its coverage '
+            'without naming a suite, so when a second suite arrived there was '
+            'no name to go stale and the sentence just went on being wrong. '
+            'Rename or move a suite and this fails, which is the point.',
+      );
+    });
+
+    test('the sweep is looking at the references it claims to check', () {
+      // Emptiness is also what a regex that matches nothing produces. The
+      // guides really do name their suites — thirty-odd times — and that is
+      // the fact this check stands on.
+      final found = [
+        for (final (_, lines) in _guides())
+          for (final line in lines) ..._artifactReference.allMatches(line),
+      ];
+      expect(
+        found.length,
+        greaterThan(25),
+        reason:
+            'the guides attribute their coverage by filename; if this '
+            'drops, the check above is asserting that nothing matches nothing',
+      );
+      // The two this module owns, one from each side of the db gate.
+      final paths = found.map((m) => m.group(0)).toSet();
+      expect(paths, contains('test/datasources_test.dart'));
+      expect(paths, contains('test/datasources_db_test.dart'));
+      expect(paths, contains('tool/run_db_tests.sh'));
+    });
+
+    test('a reference is resolved the three ways the guides write one', () {
+      final missing = _missingArtifacts('synthetic.md', [
+        'Prose naming `test/datasources_test.dart` in full.',
+        '',
+        // Once the sentence has said where it lives, the guides drop the
+        // directory — `doc/db_migration.md` lists three suites this way.
+        'and the bare `datasources_test.dart` beside it.',
+        '',
+        '```bash',
+        'tool/run_db_tests.sh',
+        '```',
+        '',
+        // A worked example points into a sibling package, so the path is
+        // relative to that package and cannot resolve here. Naming the
+        // package is what makes it legible, so naming it is the exemption.
+        "**Worked example.** `advanced_ops_server`'s own",
+        '`test/ops_anchor_test.dart` asserts the publisher has no job.',
+        '',
+        'But `test/no_such_test.dart` is nowhere, and neither is',
+        '`tool/no_such_script.sh`.',
+        '',
+        // A fenced command is the line a reader copies, so a broken one is the
+        // most expensive kind to leave lying about — and it is the only case
+        // that distinguishes reading fences from skipping them.
+        '```bash',
+        'tool/no_such_runner.sh',
+        '```',
+      ]);
+
+      expect(
+        missing.map((a) => '${a.line}:${a.path}'),
+        [
+          '12:test/no_such_test.dart',
+          '13:tool/no_such_script.sh',
+          '16:tool/no_such_runner.sh',
+        ],
+        reason:
+            'the full path, the bare basename, the working fenced command '
+            'and the sample-package reference all resolve; the two invented '
+            'prose paths and the invented fenced command do not',
+      );
     });
   });
 }

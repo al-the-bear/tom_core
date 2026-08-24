@@ -746,6 +746,42 @@
 
 ### Internal
 
+- **`doc/datasources.md` gains a Verification section, and a named suite is
+  made load-bearing (tcinc467).** The MariaDB driver chapter ended with a
+  blockquote saying the unit tests covered "the connection-independent surface"
+  — the dialect, the typed values, the transaction state machine — and named no
+  suite. Two suites cover the driver. `test/datasources_test.dart` reaches much
+  further than the blockquote allowed: the positional-parameter rewriting, the
+  placeholder scan shared with `crud_repository`, `normalizeGeneratedId`,
+  `parsePort` / `normalizePort`, the `initializeDatasourceInfo` guard,
+  `isLostConnectionFailure`, and the connection lifecycle asserted state by
+  state against every execution entry point. `test/datasources_db_test.dart`
+  drives connect, `executeCommand`, row mapping, prepared statements and the
+  transaction lifecycle against a live server. The reader was told about
+  neither, and given no pointer to `tool/run_db_tests.sh`, which brings a
+  throwaway MariaDB up on 3309 and runs the gated suite against it.
+
+  The blockquote is replaced by a `## Verification` section in the shape the
+  other guides use — `doc/cache.md`, `doc/cmdline.md`, `doc/configuration.md`
+  and `doc/scheduling.md` each have one, always immediately before
+  `## Core Components`, which is exactly where the blockquote was sitting. It
+  states what each suite covers, why a connection-free suite can assert
+  connection behaviour at all (the lifecycle table and the scripted
+  `executeCommand`), and how to run the gated one — via the script, or against
+  your own server through `TOM_CORE_SERVER_TEST_DB_*`.
+
+  Why it went stale is again the durable half, and it is the same lesson as
+  tcinc466 in a new domain: an unattributed claim is an uncheckable one. There
+  was no suite name in the sentence, so nothing could falsify it and a second
+  suite arriving changed nothing about it.
+  `test/api_reference_coverage_test.dart` now requires every `…_test.dart` and
+  `….sh` a guide names to be a file that exists — 36 references across the
+  guides today — so moving a suite fails the build and puts whoever moved it in
+  front of the prose. A path in a sibling sample package is excused when the
+  paragraph names that package, which is the same information a reader needs to
+  make sense of it. The paragraph walk the tcinc466 check introduced is now
+  shared by both.
+
 - **A claim of unfinished work has to live where it gets swept (tcinc466).**
   `doc/datasources.md` told the reader that escaping of directly-interpolated
   literals was "a tracked follow-up — see the completion steps". It is not: the

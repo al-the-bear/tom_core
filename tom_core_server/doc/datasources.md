@@ -21,6 +21,7 @@ layer.
 - [Data Sources and Drivers](#data-sources-and-drivers)
 - [When a Write Fails](#when-a-write-fails)
 - [The MariaDB Driver](#the-mariadb-driver)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -609,11 +610,52 @@ situation. And it is thrown as the module's own type rather than a bare
 `catch` narrow enough to act on the one case the caller can fix cannot be
 written against it.
 
-> The MariaDB driver needs a live connection for anything that reaches the
-> database, so the unit tests cover the connection-independent surface: the
-> dialect's SQL generation, the SQL-typed value conversions, and the
-> transaction state machine, which is driven by overriding `executeCommand` to
-> script each command's outcome and record the SQL it was given.
+## Verification
+
+Two suites cover the driver, split by what needs a server rather than by what
+is interesting.
+
+`test/datasources_test.dart` always runs, and reaches further into the driver
+than "no connection" suggests. Beyond the dialect's SQL generation and the
+`TomDbType.of` conversions it covers `MariadbPreparedStatement`'s
+`buildPositionalParameters` and `normalizeGeneratedId`,
+`MariaDbDatasource.toPositionalStatement` and the placeholder scan it shares
+with `crud_repository`, `parsePort` / `normalizePort`, the
+`initializeDatasourceInfo` configuration guard, `isLostConnectionFailure` —
+the retry decision described in [When a Write Fails](#when-a-write-fails) — and
+the rule that a driver owns its dialect.
+
+Two things there are worth knowing about, because they are what let a
+connection-free suite assert connection behaviour at all. The **connection
+lifecycle** table above is asserted state by state: never-opened, closed, and a
+link that dropped, each against every execution entry point. And the
+**transaction state machine** is driven by overriding `executeCommand` to
+script each command's outcome and record the SQL it was given, which is how a
+failed `XA START` / `XA END` / `XA ROLLBACK` can be shown to clear the branch
+id — a cleared id surfaces as the literal `XA COMMIT null`, so the recording is
+the assertion.
+
+`test/datasources_db_test.dart` covers what only a real server can settle:
+`connect` opening a live link, `executeCommand` reporting an affected-row
+count, `executeQuery` mapping result rows onto a reflected entity and binding
+named parameters, `prepareStatement` binding positional parameters, and the
+plain transaction lifecycle actually committing or discarding rows. It also
+re-asserts the second-concurrent-transaction refusal that the scripted suite
+covers, because on a real server the guard and a genuine database failure are
+both reachable through the same call — which is the only place the module's own
+exception type is doing work that `isA<Exception>()` could not.
+
+That suite is tagged `db` and skips itself when no MariaDB is reachable, so the
+default `testkit :test` run stays green with no database. To run it:
+
+```bash
+tool/run_db_tests.sh     # boots a throwaway MariaDB on 3309, runs, tears down
+```
+
+The script needs Docker with Compose v2 and a free host port 3309. To run
+against a server you already have, export `TOM_CORE_SERVER_TEST_DB_HOST`,
+`_PORT`, `_USER`, `_PASSWORD` and `_NAME` instead and run
+`dart test --tags db test/datasources_db_test.dart`.
 
 ## Core Components
 
