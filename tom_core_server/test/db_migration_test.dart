@@ -1061,12 +1061,11 @@ class _RecordingMigrator implements TomDbMigrator {
   void reset() => events.add('reset');
 
   @override
-  Future<int> initializeMigration(
+  Future<void> initializeMigration(
     TomDataSourceInfo dsi,
     String schemaName,
   ) async {
     events.add('init:$schemaName');
-    return -1;
   }
 
   @override

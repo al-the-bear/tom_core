@@ -256,6 +256,15 @@ with `mariadb_migration.apply_migration.not_initialized_for_schema` — to run
 against any pair the instance is not currently bound to, rather than judging a
 migration against another schema's history.
 
+That loaded list **is** the method's output — it returns nothing. The history is
+what a caller wants, and no single number stands for it: once environment tags
+(C-16) are in play, "the lowest version" and "the version installed first" are
+different rows. The list comes back in **installation order, oldest first**
+(`installedRank`, read with an explicit `ORDER BY`), which is *not* version
+order whenever migrations were applied out of numeric order — a box switched to
+`dev` applies `[1]@dev` after the untagged `[3]` it already had, leaving the
+history `3, 1, 2`. Sort a copy by `version` if version order is what you need.
+
 `applyMigration` then, per script:
 
 - if the `version` is already recorded, verifies the **description matches**, the

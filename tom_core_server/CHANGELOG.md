@@ -2,6 +2,32 @@
 
 ### Fixed
 
+- **`TomDbMigrator.initializeMigration` returns `Future<void>`, and the loaded
+  history is ordered in SQL (tcinc486).** The method was declared `Future<int>`
+  and documented as returning "the earliest recorded version". It returned
+  neither: the value was `versions[0].version` after a client-side sort by
+  `installedRank`, which is the version of the row *installed first* — a
+  different row from the lowest version the moment migrations are applied out of
+  numeric order, which environment tags (C-16) make ordinary. A test written
+  against the documented promise, run against a real server with install order
+  `3, 1, 2`, reported `Expected: <1>  Actual: <3>`.
+
+  No caller read the value — not `migrateDataSource`, not any test — so the
+  choice was between inventing a meaning for a number nobody wants and dropping
+  it. It is dropped. `MariadbMigrationAdaptor.versions` already publishes the
+  whole applied-version history, which strictly dominates any single int, and
+  the interface now says so rather than promising a number it cannot define.
+  `versions` is deliberately *not* promoted onto `TomDbMigrator`: there is one
+  implementation, and the orchestrator does not read it.
+
+  Mutation testing then found the ordering guarantee was untested for a second
+  reason: the `SELECT` carried no `ORDER BY`, and removing the client-side sort
+  changed nothing, because InnoDB happens to return this table in
+  `installedRank` order — it is the clustered primary key. An accident of the
+  storage engine is not a guarantee, so the ordering moved into the statement as
+  `ORDER BY installedRank` and the redundant sort was deleted. `versions` is now
+  documented as **installation order, oldest first**, and asserted to be so.
+
 - **A missing migrations directory is now the same failure in both tools, and a
   `TomDbMigrationException` in the engine (tcinc485).** The two entry points over
   one tree disagreed about whether the tree being absent was an error at all.

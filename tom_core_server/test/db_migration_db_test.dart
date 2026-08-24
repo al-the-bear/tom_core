@@ -466,5 +466,81 @@ void main() async {
         );
       });
     });
+
+    // What `initializeMigration` produces is the loaded history, and the order
+    // it is in is the only part of that not already asserted above. It matters
+    // because the SELECT carries no ORDER BY: without the adaptor's own sort
+    // the order is whatever the server felt like, and nothing else in the suite
+    // would notice.
+    group('the loaded history', () {
+      /// Creates the versioning table and records [versions] in that order,
+      /// letting `installedRank` AUTO_INCREMENT assign install order.
+      ///
+      /// Written directly rather than driven through `migrateDatabases`,
+      /// because the orchestrator applies files in ascending version order by
+      /// construction — the very case that cannot distinguish install order
+      /// from version order is the only one it can produce.
+      Future<void> recordInstallOrder(List<int> versions) async {
+        await dsi.datasource.executeCommand(
+          'CREATE TABLE IF NOT EXISTS ${_schemaName}_versioning ('
+          '  installedRank INTEGER(11) AUTO_INCREMENT PRIMARY KEY,'
+          '  version INTEGER(11) NOT NULL DEFAULT -1,'
+          '  description VARCHAR(500) NOT NULL DEFAULT \'\','
+          '  script MEDIUMTEXT NOT NULL DEFAULT \'\','
+          '  checksum VARCHAR(200) NOT NULL DEFAULT \'\','
+          '  installedBy VARCHAR(30) NOT NULL DEFAULT CURRENT_USER,'
+          '  installedOn TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,'
+          '  executionTimeMs INTEGER(11) NOT NULL DEFAULT 0,'
+          '  success INTEGER(1) NOT NULL DEFAULT 0)',
+        );
+        for (final version in versions) {
+          await dsi.datasource.executeCommand(
+            'INSERT INTO ${_schemaName}_versioning (version, description, '
+            'success) VALUES (:version, :description, 1)',
+            {'version': version, 'description': 'migration_$version'},
+          );
+        }
+      }
+
+      test('comes back in installation order, not version order', () async {
+        // Install order 3, 1, 2 — the ordinary shape once migrations carry
+        // environment tags (C-16): an untagged [3] applies everywhere, and
+        // [1]@dev / [2]@dev only reach this box later, after it is switched to
+        // `dev`. Deliberately not ascending, so a list that came back in
+        // version order — or in whatever order the server chose — fails here.
+        await recordInstallOrder([3, 1, 2]);
+
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+
+        expect(adaptor.versions.map((v) => v.version), [3, 1, 2]);
+        // The ranks are ascending, which is what "installation order" means;
+        // asserted separately so a sort that happened to reproduce the version
+        // sequence by luck cannot pass as an install-order sort.
+        expect(
+          adaptor.versions.map((v) => v.installedRank),
+          orderedEquals([1, 2, 3]),
+        );
+      });
+
+      test('is empty, not absent, for a schema with no history', () async {
+        await recordInstallOrder([]);
+
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+
+        // An empty history binds like any other: the next `applyMigration`
+        // must be accepted, not refused for want of a binding.
+        expect(adaptor.versions, isEmpty);
+        await adaptor.applyMigration(
+          dsi,
+          _schemaName,
+          0,
+          'create_fixture_widget',
+          'SELECT 1',
+        );
+        expect((await appliedVersions()).single.version, 0);
+      });
+    });
   }, skip: skipReason);
 }

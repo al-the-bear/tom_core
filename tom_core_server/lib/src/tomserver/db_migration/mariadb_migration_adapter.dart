@@ -111,9 +111,21 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
   /// The migrations already applied to the schema this instance is bound to,
   /// as read from that schema's versioning table by [initializeMigration].
   ///
+  /// Ordered by **installation order, oldest first** (by
+  /// [TomDbVersion.installedRank]) — the order the migrations were actually
+  /// applied, not their version order. The two differ whenever migrations were
+  /// applied out of numeric order, which environment tags (C-16) make ordinary:
+  /// a box switched to `dev` applies `[1]@dev` after the untagged `[3]` it
+  /// already had, leaving the history `3, 1, 2`. Sort a copy by
+  /// [TomDbVersion.version] if version order is what you need.
+  ///
   /// It is a snapshot taken at initialisation and is **not** extended as
   /// [applyMigration] runs — a migration applied during this run is written to
   /// the table, not added here.
+  ///
+  /// This is the whole output of [initializeMigration]: the method returns
+  /// nothing, because the history is what callers want and a single number
+  /// cannot carry it.
   List<TomDbVersion> versions = [];
 
   @override
@@ -267,7 +279,7 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
   }
 
   @override
-  Future<int> initializeMigration(
+  Future<void> initializeMigration(
     TomDataSourceInfo dsi,
     String schemaName,
   ) async {
@@ -305,9 +317,15 @@ CREATE TABLE IF NOT EXISTS ${schemaName}_versioning (
         rootException: error,
       );
     }
+    // The ORDER BY is what makes [versions] install-ordered. A SELECT without
+    // one promises nothing about row order — InnoDB happens to return this
+    // table by `installedRank` anyway, because it is the clustered primary key,
+    // and that is exactly why the ordering has to be *stated*: an accident of
+    // the storage engine is not a guarantee, and nothing would report it if the
+    // accident stopped holding.
     String versionQuery =
         '''
-SELECT installedRank, version, description, checksum, installedBy, installedOn, executionTimeMs, success, script FROM ${schemaName}_versioning 
+SELECT installedRank, version, description, checksum, installedBy, installedOn, executionTimeMs, success, script FROM ${schemaName}_versioning ORDER BY installedRank
 ''';
 
     List<TomDbVersion>? currentVersions;
@@ -323,15 +341,10 @@ SELECT installedRank, version, description, checksum, installedBy, installedOn, 
         rootException: error,
       );
     }
-    currentVersions.sort(
-      (v1, v2) => (v1.installedRank).compareTo(v2.installedRank),
-    );
     // Assigned, never appended: the list describes this schema's history and
     // must not carry the previous schema's versions into it.
     versions = currentVersions;
     _boundTo = _binding(dsi, schemaName);
-    if (currentVersions.isEmpty) return -1;
-    return currentVersions[0].version;
   }
 }
 

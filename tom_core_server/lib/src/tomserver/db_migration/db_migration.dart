@@ -37,8 +37,7 @@ class TomDbMigrationAdaptor {
 /// A migrator instance serves **one schema at a time**. [initializeMigration]
 /// binds it to a `(data source, schema)` pair and prepares that pair's
 /// version-tracking state (e.g. creating a versioning table and reading
-/// already-applied versions), returning the earliest recorded version (or a
-/// sentinel when none). Each migration script is then handed to
+/// already-applied versions). Each migration script is then handed to
 /// [applyMigration] in ascending version order; an already-applied version is
 /// verified (description/checksum) and skipped, a new one is executed and
 /// recorded. [reset] releases the binding so the same instance can serve the
@@ -51,15 +50,21 @@ class TomDbMigrationAdaptor {
 /// orchestrator therefore resets once per schema, not once per data source —
 /// see [TomDbMigrations.migrateDataSource].
 abstract class TomDbMigrator {
-  /// Binds this migrator to [schemaName] in data source [dsi], prepares that
-  /// pair's version tracking, and returns the earliest recorded version
-  /// (implementation-defined sentinel when nothing has been applied yet).
+  /// Binds this migrator to [schemaName] in data source [dsi] and prepares that
+  /// pair's version tracking.
   ///
   /// Binding is a **rebind**: whatever pair the instance was serving before is
   /// dropped, along with its applied-version state. An implementation must not
   /// accumulate — the version list after this call describes [schemaName] and
   /// nothing else.
-  Future<int> initializeMigration(TomDataSourceInfo dsi, String schemaName);
+  ///
+  /// Returns nothing on purpose. The applied-version history it loads is the
+  /// useful output, and no single number stands for it: "the earliest version"
+  /// and "the version installed first" are different numbers the moment
+  /// migrations are applied out of numeric order, which environment tags
+  /// (C-16) make ordinary. The history belongs to the implementation that
+  /// knows how to represent it — see [MariadbMigrationAdaptor.versions].
+  Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName);
 
   /// Applies — or verifies, if already applied — the migration identified by
   /// [version] / [description] with body [sql] to [schemaName] in [dsi].

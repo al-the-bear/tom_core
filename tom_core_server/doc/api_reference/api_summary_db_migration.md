@@ -106,7 +106,7 @@ history.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initializeMigration` | `Future<int> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | Binds this migrator to the `(dsi, schemaName)` pair — **rebinding**, so the loaded version state is replaced, not accumulated — prepares that pair's version tracking, and returns the earliest recorded version (implementation-defined sentinel when none). |
+| `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | Binds this migrator to the `(dsi, schemaName)` pair — **rebinding**, so the loaded version state is replaced, not accumulated — and prepares that pair's version tracking. Returns nothing: the applied-version history it loads is the useful output, and no single number stands for it, so representing it is left to the implementation (see `MariadbMigrationAdaptor.versions`). |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | Applies — or verifies, if already applied — the identified migration. |
 | `reset` | `void reset()` | Releases the current `(data source, schema)` binding and its applied-version state, so this instance can serve the next pair. |
 
@@ -175,7 +175,7 @@ MariadbMigrationAdaptor()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `versions` | `List<TomDbVersion>` | The migrations already applied to the schema this instance is bound to — a snapshot taken by `initializeMigration`, **not** extended as `applyMigration` runs (an applied migration is written to the table, not added here). |
+| `versions` | `List<TomDbVersion>` | The migrations already applied to the schema this instance is bound to — a snapshot taken by `initializeMigration`, **not** extended as `applyMigration` runs (an applied migration is written to the table, not added here). Ordered by **installation order, oldest first** (`installedRank`), which differs from version order whenever migrations were applied out of numeric order — ordinary once environment tags (C-16) are in play. Sort a copy by `version` if version order is what you need. |
 
 #### Static Methods
 
@@ -190,7 +190,7 @@ MariadbMigrationAdaptor()
 | ------ | --------- | ----------- |
 | `reset` | `void reset()` | *(override)* Drops the `(data source, schema)` binding and the applied-versions list. |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `mariadb_migration.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs the script and records the outcome. Verification of an applied version fails with `description_mismatch`, `checksum_unreadable` (the stored value is not a digest this adaptor could have written) or `checksum_mismatch` (it is a digest, but a different one) — each message naming the data source, schema and version, since one instance walks them all. |
-| `initializeMigration` | `Future<int> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent and **replacing** `versions` with that schema's history; returns the earliest version (or `-1`). |
+| `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent and **replacing** `versions` with that schema's history, read `ORDER BY installedRank`. `versions` is its whole output. |
 
 ### TomSqlLexer
 
