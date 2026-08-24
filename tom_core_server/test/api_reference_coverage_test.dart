@@ -129,6 +129,41 @@
 /// line linking to it is allowed anywhere, as is a fenced block, which may be
 /// quoting code as an example of what not to write.
 ///
+/// The two groups after it ask a blunter question than anything above: not
+/// whether a documented thing is documented correctly, but whether the document
+/// knows the file exists at all. `api_summary_datasources.md` ran to 1116 lines
+/// about a unit of ten source files while naming eight of them, and the two it
+/// omitted were `framework_table.dart` and `sql_instant.dart` — the declaration
+/// every framework-owned table is derived from, and the one encoding of an
+/// instant every table stores. No check above can see that. An Overview table,
+/// a Properties table, an attribution check and a contract listing all measure
+/// what a summary already mentions, so a file it never mentions is invisible to
+/// every one of them, and the more thorough the page looks the more completely
+/// the omission is hidden.
+///
+/// So each summary's `Source:` list is compared against the barrel. The barrel
+/// is the right anchor because it *is* the definition of the public surface: a
+/// file it exports is one a reader can reach, and a file it does not export is
+/// not the summary's business. Both directions fail. An exported file missing
+/// from the list is undocumented; a listed file that is no longer exported is
+/// worse, because it sends the reader to a page describing something they
+/// cannot import.
+///
+/// The group after it asks the same question of the index, where the answer
+/// carries further. `api_summary_index.md` is the only place in the package
+/// where a reader can conclude that a name does not exist without opening a
+/// file — which is precisely why it is the place where that conclusion must not
+/// be drawable wrongly. Fifty-three exported names across seven modules were
+/// in neither of its two tables, [TomSchemaModel] and [TomFileEndpoint] among
+/// them, so the reader who looked them up was told, by the document built to
+/// answer that question, that there was nothing to find.
+///
+/// Both carry a quarantine, because both were measured across all twenty
+/// modules before being enforced and both found debt older than the module that
+/// exposed them. The quarantines are visible skips naming their quest todos,
+/// and a meta-test fails when an entry has nothing left to suppress, so the
+/// exemption expires by itself rather than by being remembered.
+///
 /// The last group is the first check in this file whose subject is the document
 /// as a document rather than as a set of claims about code, and it is the same
 /// completeness failure as the Overview table one level up again. A guide's
@@ -349,6 +384,47 @@ List<String>? _overviewTableTypes(String module) {
   }
   return names.toList()..sort();
 }
+
+/// The files the package barrel exports for [module], as `<module>/<file>`
+/// pairs, sorted.
+///
+/// The same anchor [_exportedApi] reads, one level coarser: what a summary's
+/// `Source:` list is claiming to have covered is a set of *files*, and naming
+/// them by hand is exactly the step that gets skipped when a file is added.
+List<String> _exportedFiles(String module) => [
+  for (final export in _barrelExport.allMatches(
+    File('lib/tom_core_server.dart').readAsStringSync(),
+  ))
+    if (export.group(1) == module) '$module/${export.group(2)}',
+]..sort();
+
+/// The `<module>/<file>` pairs the `Source:` list at the top of [summary]
+/// names, in the order given — or `null` when it has no such list.
+///
+/// The list runs from the `Source:` line (some summaries write `Sources:`) to
+/// the first blank line after it, which is how all twenty write it. Taking it
+/// as a string rather than a module lets the shapes below be checked against a
+/// fixture instead of only against the package.
+List<String>? _sourceListOf(String summary) {
+  final start = RegExp(r'^Sources?:', multiLine: true).firstMatch(summary);
+  if (start == null) return null;
+  final rest = summary.substring(start.start);
+  final blank = rest.indexOf('\n\n');
+  return RegExp(r'`lib/src/tomserver/([^/`]+)/([^`]+)`')
+      .allMatches(blank < 0 ? rest : rest.substring(0, blank))
+      .map((match) => '${match.group(1)}/${match.group(2)}')
+      .toList();
+}
+
+/// The `Source:` list of `doc/api_reference/api_summary_<module>.md`.
+List<String>? _summarySourceList(String module) => _sourceListOf(
+  File('doc/api_reference/api_summary_$module.md').readAsStringSync(),
+);
+
+/// Whether [index] names [api] — as a bare `` `name` `` or as a generic
+/// `` `name<T>` ``, which is how the index writes the type parameters.
+bool _indexNames(String index, String api) =>
+    RegExp('`${RegExp.escape(api)}[<`]').hasMatch(index);
 
 /// The body of `class <className>`, from its opening brace to the end of the
 /// file, with the constructs that would otherwise be misread removed.
@@ -1247,6 +1323,27 @@ const Set<String> _tablesPendingReconciliation = {
   'scheduling',
 };
 
+/// The modules whose summary `Source:` list has not been reconciled against the
+/// barrel yet — quest todo `tcincb121_ahxs`.
+const Set<String> _sourceListsPendingReconciliation = {
+  'authorization',
+  'db_migration',
+  'endpoints',
+  'object_persistence',
+};
+
+/// The modules whose exported names are not all in the index yet — quest todo
+/// `tcincb122_ahxs`.
+const Set<String> _indexPendingReconciliation = {
+  'audit',
+  'authentication',
+  'authorization',
+  'configuration',
+  'db_migration',
+  'endpoints',
+  'object_persistence',
+};
+
 void main() {
   group('doc/api_reference mirrors lib/src/tomserver', () {
     test('every module has an API summary', () {
@@ -1458,6 +1555,153 @@ class RealClass {}
   // never learn exists — the same failure as an unlisted type, one level up.
   // Nothing kept the two in step, and adding a section is exactly when the
   // omission happens, because the section is the part being thought about.
+  group('each summary\'s Source list names every file it covers', () {
+    for (final module in _modules()) {
+      test(
+        module,
+        () {
+          final listed = _summarySourceList(module);
+          expect(
+            listed,
+            isNotNull,
+            reason:
+                'api_summary_$module.md has no "Source:" line. Every other '
+                'summary opens its Overview with one, and it is the only place '
+                'the document says which files it claims to cover.',
+          );
+
+          final exported = _exportedFiles(module);
+
+          final missing = exported.where((f) => !listed!.contains(f)).toList();
+          expect(
+            missing,
+            isEmpty,
+            reason:
+                'api_summary_$module.md\'s Source list does not name these '
+                'files, which the barrel exports: ${missing.join(', ')}. A '
+                'file left off the list is a file whose public types nobody '
+                'notices are undocumented — which is how framework_table.dart '
+                'and sql_instant.dart, four types and four functions between '
+                'them, stayed out of this package\'s API reference.',
+          );
+
+          final orphaned = listed!.where((f) => !exported.contains(f)).toList();
+          expect(
+            orphaned,
+            isEmpty,
+            reason:
+                'api_summary_$module.md\'s Source list names these, which the '
+                'barrel does not export from $module: ${orphaned.join(', ')}. '
+                'Either the file moved, or it is module-internal and the '
+                'summary is documenting an API a consumer cannot import.',
+          );
+        },
+        skip: _sourceListsPendingReconciliation.contains(module)
+            ? 'Source list not reconciled yet — quest todo tcincb121_ahxs.'
+            : null,
+      );
+    }
+
+    test('every quarantined module still has files missing from its list', () {
+      final clean = _sourceListsPendingReconciliation.where((module) {
+        final listed = _summarySourceList(module);
+        return listed != null &&
+            _exportedFiles(module).every(listed.contains) &&
+            listed.every(_exportedFiles(module).contains);
+      }).toList();
+      expect(
+        clean,
+        isEmpty,
+        reason:
+            'These modules are quarantined but their Source lists already '
+            'agree with the barrel: ${clean.join(', ')}. A quarantine entry '
+            'that suppresses nothing reads as outstanding debt that is not, '
+            'and it silently disarms the check if the list drifts again.',
+      );
+    });
+
+    test('the parser reads a list the way the summaries write one', () {
+      // Both spellings, a list wrapped across lines, and the blank line that
+      // ends it — the shapes the twenty summaries actually use.
+      expect(
+        _sourceListOf(
+          'Source: `lib/src/tomserver/cache/server_cache.dart`.\n'
+          '\n'
+          'Prose that happens to mention '
+          '`lib/src/tomserver/cache/not_a_source.dart`.\n',
+        ),
+        ['cache/server_cache.dart'],
+      );
+      expect(
+        _sourceListOf(
+          'Sources: `lib/src/tomserver/cmdline/args.dart`,\n'
+          '`lib/src/tomserver/cmdline/env_file.dart`.\n'
+          '\n',
+        ),
+        ['cmdline/args.dart', 'cmdline/env_file.dart'],
+      );
+      expect(_sourceListOf('# A summary with no Source line\n'), isNull);
+    });
+  });
+
+  group('the index names every exported name', () {
+    final index = File(
+      'doc/api_reference/api_summary_index.md',
+    ).readAsStringSync();
+
+    for (final module in _modules()) {
+      test(
+        module,
+        () {
+          final missing = _exportedApi(
+            module,
+          ).where((name) => !_indexNames(index, name)).toList();
+          expect(
+            missing,
+            isEmpty,
+            reason:
+                'api_summary_index.md names none of these, which the barrel '
+                'exports from $module: ${missing.join(', ')}. The index is '
+                'where a reader who does not yet know which module owns a name '
+                'goes to look it up, so a name absent from it is a name that '
+                'can only be found by someone who did not need the index.',
+          );
+        },
+        skip: _indexPendingReconciliation.contains(module)
+            ? 'Index not reconciled yet — quest todo tcincb122_ahxs.'
+            : null,
+      );
+    }
+
+    test('every quarantined module still has names missing', () {
+      final clean = _indexPendingReconciliation
+          .where((m) => _exportedApi(m).every((n) => _indexNames(index, n)))
+          .toList();
+      expect(
+        clean,
+        isEmpty,
+        reason:
+            'These modules are quarantined but the index already names '
+            'everything they export: ${clean.join(', ')}. Remove the entry, '
+            'or the check stays off for a module that has nothing left to fix.',
+      );
+    });
+
+    test('the sweep is reading the index it claims to check', () {
+      // Every finding above is an emptiness assertion, so an index that failed
+      // to load — or a matcher that matched nothing — would pass in silence.
+      expect(index, contains('## Alphabetical Type Index'));
+      expect(_indexNames(index, 'TomDataSource'), isTrue);
+      // The generic shape, which is why the matcher admits a `<` as well as a
+      // closing backtick: the index writes `TomDbType<T>`, not `TomDbType`.
+      expect(_indexNames(index, 'TomDbType'), isTrue);
+      // A prefix must not satisfy a longer name, or `TomDataSource` would
+      // vouch for `TomDataSourceInfo` and half the check would be vacuous.
+      expect(_indexNames(index, 'TomDataSourceInf'), isFalse);
+      expect(_indexNames(index, 'TomNoSuchTypeAtAll'), isFalse);
+    });
+  });
+
   group('every guide\'s table of contents matches its sections', () {
     for (final guide in _docs('doc')) {
       test(guide, () {

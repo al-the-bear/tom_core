@@ -230,10 +230,23 @@ surface documented here.
 | `MariaDbXADatasource` | class | XA-capable MariaDB datasource. |
 | `MariadbPreparedStatement<T>` | class | MariaDB prepared statement. |
 | `SqlPlaceholderScan` | class | SQL placeholder scanner. |
+| `TomFrameworkTable` | class | The single declaration of a table the framework itself owns. |
+| `TomFrameworkColumn` | class | One column of a framework-owned table. |
+| `TomFrameworkKey` | class | One index or unique constraint of a framework-owned table. |
 | `TomDatasourceInitException` | class | Init error (extends `TomException`). |
 | `MariadbDatasourceException` | class | MariaDB error (extends `TomServerException`). |
 | `MariadbPreparedStatementException` | class | Prepared-statement error. |
+| `TomAggregateFunction` | enum | The aggregate functions the typed query layer can express. |
+| `TomSqlTypeFamily` | enum | The coarse type class a stored column belongs to. |
+| `TomSqlFailureMode` | enum | Whether a failed write definitely did not apply, or may have. |
 | `SqlString` | typedef | Alias for `String`. |
+| `classifySqlFailure` | function | Classifies a write failure as `definite` or `ambiguous`. |
+| `sqlFailureCauses` | function | A failure and every `rootException` beneath it, outermost first. |
+| `isLostConnectionFailure` | function | Whether the statement was left with no live link, so one retry is worth it. |
+| `sqlInstant` | function | Renders an instant as the UTC `DATETIME(6)` literal the columns bind. |
+| `parseSqlInstant` | function | Reads a stored `DATETIME(6)` back as a UTC `DateTime`. |
+| `parseOptionalSqlInstant` | function | The same, treating an empty column as absent. |
+| `unknownFrameworkColumns` | function | Audits a statement for column references no framework table declares. |
 
 ### Database Migration (`lib/src/tomserver/db_migration/`)
 
@@ -483,6 +496,7 @@ surface documented here.
 | `blobManifestTableDdl` | File Storage |
 | `BoolCol` | Object Persistence |
 | `BoolLiteral` | Object Persistence |
+| `classifySqlFailure` | Datasources |
 | `contextSetupMiddleware` | Server |
 | `DateCol` | Object Persistence |
 | `DateLiteral` | Object Persistence |
@@ -511,6 +525,7 @@ surface documented here.
 | `InMemoryPrincipalResourceGrantStore` | Authorization |
 | `IntCol` | Object Persistence |
 | `IntegerLiteral` | Object Persistence |
+| `isLostConnectionFailure` | Datasources |
 | `IsNotNull` | Object Persistence |
 | `IsNull` | Object Persistence |
 | `isSchedulerNodeFailed` | Scheduling |
@@ -540,6 +555,8 @@ surface documented here.
 | `Or` | Object Persistence |
 | `Parameter` | Object Persistence |
 | `parseAuditLines` | Audit |
+| `parseOptionalSqlInstant` | Datasources |
+| `parseSqlInstant` | Datasources |
 | `PrincipalDelegationStore` | Authorization |
 | `PrincipalResourceGrantStore` | Authorization |
 | `Regexp` | Object Persistence |
@@ -548,6 +565,8 @@ surface documented here.
 | `schedulerNodeFailedAfter` | Scheduling |
 | `schedulerNodeTable` | Scheduling |
 | `schedulerNodeTableDdl` | Scheduling |
+| `sqlFailureCauses` | Datasources |
+| `sqlInstant` | Datasources |
 | `SqlPlaceholderScan` | Datasources |
 | `SqlString` | Datasources |
 | `StringCol` | Object Persistence |
@@ -559,6 +578,7 @@ surface documented here.
 | `Tom2FARegistry` | Authentication |
 | `Tom2FAService` | Authentication |
 | `Tom2FASubmission` | Authentication |
+| `TomAggregateFunction` | Datasources |
 | `TomAnnotationAnalyzer` | Object Persistence |
 | `TomAnnotationAnalyzerException` | Object Persistence |
 | `TomAnnotationAnalyzerSyntaxException` | Object Persistence |
@@ -707,6 +727,9 @@ surface documented here.
 | `TomFileAuditSink` | Audit |
 | `TomFileMessageTransport` | Messaging |
 | `tomFormatCellAsText` | Export |
+| `TomFrameworkColumn` | Datasources |
+| `TomFrameworkKey` | Datasources |
+| `TomFrameworkTable` | Datasources |
 | `TomGeneratedQuery` | Datasources |
 | `TomGradedAccessControlInformation` | Authorization |
 | `TomHealthServer` | Health Check |
@@ -823,10 +846,12 @@ surface documented here.
 | `TomSocketSmtpConnection` | Messaging |
 | `TomSqlAuditSink` | Audit |
 | `TomSqlDatasourceRepository` | Object Persistence |
+| `TomSqlFailureMode` | Datasources |
 | `TomSqlJobStore` | Scheduling |
 | `TomSqlLeaseLock` | Scheduling |
 | `TomSqlOAuthStateStore` | Authentication |
 | `TomSqlSchedulerNodes` | Scheduling |
+| `TomSqlTypeFamily` | Datasources |
 | `TomStandardSqlDialect` | Datasources |
 | `TomStorageException` | File Storage |
 | `TomStoredBlob` | File Storage |
@@ -851,5 +876,6 @@ surface documented here.
 | `TomUnaryOperator` | Object Persistence |
 | `TomXlsxRenderer` | Export |
 | `TomYaml` | Configuration |
+| `unknownFrameworkColumns` | Datasources |
 | `verifyAgainstAnchor` | Audit |
 | `verifyAuditChain` | Audit |

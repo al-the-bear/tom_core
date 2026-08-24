@@ -5,8 +5,11 @@ typed operator tree (`TomOperator<R>`), a SQL dialect that renders that tree to
 SQL fragments (`TomStandardSqlDialect`), reusable query objects (`TomSelect`,
 `TomCount`, `TomDelete`, `TomLiteralSelect`), and the data-source / driver
 abstraction (`TomDataSource`, `TomDatasourceDriver`, `TomDataSourceInfo`) with a
-MariaDB implementation. The object-persistence module builds its query DSL and
-repositories on top of this layer.
+MariaDB implementation. Two smaller surfaces sit beside them because every
+table has them whichever module owns it: `TomFrameworkTable` declares a table
+the framework itself owns, once, and `sqlInstant` / `parseSqlInstant` are the
+one encoding of an instant in a `DATETIME(6)` column. The object-persistence
+module builds its query DSL and repositories on top of this layer.
 
 ## Table of Contents
 
@@ -48,6 +51,10 @@ repositories on top of this layer.
     - [MariadbPreparedStatement&lt;T&gt;](#mariadbpreparedstatementt)
   - [Placeholder Scanning](#placeholder-scanning)
     - [SqlPlaceholderScan](#sqlplaceholderscan)
+  - [Framework-Owned Tables](#framework-owned-tables)
+    - [TomFrameworkColumn](#tomframeworkcolumn)
+    - [TomFrameworkKey](#tomframeworkkey)
+    - [TomFrameworkTable](#tomframeworktable)
   - [Exceptions](#exceptions)
     - [TomDatasourceInitException](#tomdatasourceinitexception)
     - [MariadbDatasourceException](#mariadbdatasourceexception)
@@ -61,11 +68,13 @@ repositories on top of this layer.
 ## Overview
 
 Source: `lib/src/tomserver/datasources/datasource_initialization.dart`,
+`lib/src/tomserver/datasources/framework_table.dart`,
 `lib/src/tomserver/datasources/mariadb_datasource.dart`,
 `lib/src/tomserver/datasources/mariadb_sql_dialect.dart`,
 `lib/src/tomserver/datasources/queries.dart`,
 `lib/src/tomserver/datasources/sql_dialects.dart`,
 `lib/src/tomserver/datasources/sql_failure_mode.dart`,
+`lib/src/tomserver/datasources/sql_instant.dart`,
 `lib/src/tomserver/datasources/sql_placeholder_scan.dart`,
 `lib/src/tomserver/datasources/types_operator.dart`.
 
@@ -84,6 +93,21 @@ sources. The MariaDB driver (`MariaDbDatasource`, plus the XA variant
 `MariaDbXADatasource`) implements the full surface, and `SqlPlaceholderScan`
 rewrites the generated `:name` placeholders into the positional `?` form the
 MySQL binary protocol binds.
+
+Two surfaces here are about *tables* rather than about queries, and are in this
+module because they belong to no single module that uses them. A
+`TomFrameworkTable` — with its `TomFrameworkColumn` and `TomFrameworkKey`
+parts — is the single declaration of a table the framework itself owns (the job
+queue, the lease table, the blob pair, the audit trail), from which its DDL,
+its column lists and its inserts are all derived, and `unknownFrameworkColumns`
+audits the column references that a column list cannot cover. `sqlInstant`,
+`parseSqlInstant` and `parseOptionalSqlInstant` are the one encoding of an
+instant in a `DATETIME(6)` column: always UTC, always six fractional digits.
+That convention is not optional — a `DATETIME` carries no zone, so a column
+read with a bare `DateTime.parse` yields the *reader's* wall clock rather than
+the writer's moment. See [Instants Are UTC](../datasources.md#instants-are-utc)
+and [Framework-Owned Tables](../datasources.md#framework-owned-tables) for the
+reasoning behind both.
 
 ## Class Hierarchy
 
@@ -126,6 +150,9 @@ TomTransactionParticipant  (server)
 
 TomDataSourceInfo
 SqlPlaceholderScan
+TomFrameworkTable
+TomFrameworkColumn
+TomFrameworkKey
 
 TomException  (kernel)
     └── TomDatasourceInitException
@@ -229,7 +256,7 @@ TomDbDateTime(DateTime? value)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `of` | `static TomDbDateTime of(String? s)` | Parses `s` via `DateTime.parse` (or `null` when `s` is `null`). |
+| `of` | `static TomDbDateTime of(String? s)` | Reads a stored instant back as **UTC**, via `parseOptionalSqlInstant`. A `null` *or empty* column yields a box holding `null`. |
 
 #### TomDbDate
 
@@ -1013,6 +1040,136 @@ implementation both the MariaDB datasource and the CRUD repository use.
 | `toPositional` | `static (String, List<String>) toPositional(String namedSql)` | Rewrites every outside-of-literal `:name` placeholder to `?`, returning the rewritten SQL and placeholder names in order (repeats included). |
 | `extractNames` | `static List<String> extractNames(String namedSql)` | The placeholder names in textual order (repeats included), skipping any inside a string literal. |
 
+### Framework-Owned Tables
+
+The framework's own tables — the job queue, the lease table, the scheduler roll
+call, the blob manifest/chunk pair, the audit trail — are not entities, so the
+entity-to-migration convergence check does not reach them. A
+`TomFrameworkTable` is the one declaration they get instead, and everything
+else is derived from it: the create-if-missing DDL, the column lists the
+hand-written statements interpolate, the `INSERT`/`REPLACE` shape, and the
+`TomSchemaModel` the convergence guard compares. Declared here rather than in
+`db_migration/` because the stores that own these tables already depend on
+`datasources/` and must not be made to depend on the migration module — a
+deployment can run the scheduler without ever running a migration.
+
+It is deliberately not a query builder: the statements over these tables are
+conditional writes whose exact shape is load-bearing (the affected-row count of
+`UPDATE … WHERE state = 'pending'` *is* the arbitration), so only the pure
+repetition — the DDL and the column *lists* — is generated. Column references
+inside `SET` and `WHERE` stay written out and are audited by
+`unknownFrameworkColumns` instead. See [Framework-Owned
+Tables](../datasources.md#framework-owned-tables).
+
+#### TomFrameworkColumn
+
+One column of a framework-owned table.
+
+##### Constructors
+
+```dart
+const TomFrameworkColumn(
+  String name,
+  String type, {
+  bool nullable = false,
+  String? defaultValue,
+  bool autoIncrement = false,
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `name` | `String` | The column name, exactly as it is spelled in SQL. |
+| `type` | `String` | The SQL type, including any length or precision — `VARCHAR(191)`. |
+| `nullable` | `bool` | Whether the column accepts `NULL`. |
+| `defaultValue` | `String?` | The `DEFAULT` clause's value as SQL text, or `null` for no default. |
+| `autoIncrement` | `bool` | Whether the column carries `AUTO_INCREMENT`. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `ddl` | `String ddl(int nameWidth, int typeWidth)` | The column's line in a `CREATE TABLE` body, padded to the two widths so a reader can scan the types in a column. |
+| `toString` | `String toString()` | *(override)* `"<name> <type>"`. |
+
+#### TomFrameworkKey
+
+One index or unique constraint of a framework-owned table. The name is built
+from the table's name and `suffix` rather than given outright, because the table
+name is a per-instance argument of the owning store: two stores over
+differently-named tables in one schema would otherwise collide on an index name
+and the second `CREATE TABLE` would fail.
+
+##### Constructors
+
+```dart
+const TomFrameworkKey(String suffix, List<String> columns, {bool unique = false})
+const TomFrameworkKey.unique(String suffix, List<String> columns)
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `suffix` | `String` | The part of the key's name that identifies what it is for. |
+| `columns` | `List<String>` | The columns the key covers, in key order. |
+| `unique` | `bool` | Whether the key is a uniqueness constraint rather than an index. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `nameOn` | `String nameOn(String table)` | The key's name on `table` — `ix_<table>_<suffix>`, or `uq_…` when unique. |
+| `ddl` | `String ddl(String table)` | The key's line in a `CREATE TABLE` body. |
+
+#### TomFrameworkTable
+
+A table the framework owns, declared once. The constructor checks that every
+primary-key part and every key column names a column of this table, because a
+descriptor is built once at start-up: a typo would otherwise surface as a
+`CREATE TABLE` failure against a live server, which is the class of failure this
+type exists to remove.
+
+##### Constructors
+
+```dart
+TomFrameworkTable({
+  required String name,
+  required List<TomFrameworkColumn> columns,
+  required String origin,
+  List<String> primaryKey = const [],
+  List<TomFrameworkKey> keys = const [],
+})
+```
+
+Throws `ArgumentError` when `primaryKey` or a key names a column the table does
+not declare.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `name` | `String` | The table's name, which is a per-instance argument of the owning store. |
+| `columns` | `List<TomFrameworkColumn>` | The columns, in declaration order. |
+| `primaryKey` | `List<String>` | The primary-key column names, in key order. |
+| `keys` | `List<TomFrameworkKey>` | The unique constraints and secondary indexes. |
+| `origin` | `String` | The library-level function that declares this table, named so a divergence report says where to go and not merely what is wrong. |
+| `columnNames` | `List<String>` | The column names, in declaration order. |
+| `columnList` | `String` | Every column as a `SELECT`/`INSERT` list, in declaration order. |
+| `createTableDdl` | `String` | The `CREATE TABLE IF NOT EXISTS` statement that builds this table. `IF NOT EXISTS` because every store calls it on first use and a second process must not fail on a table the first one created. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `has` | `bool has(String column)` | Whether a column called `column` exists, case-insensitively. |
+| `column` | `TomFrameworkColumn? column(String column)` | The named column, or `null`. |
+| `columnsOf` | `String columnsOf(Iterable<String> names)` | `names` as a column list, in the order given. Throws `ArgumentError` when a name is not a column — a projection that outlived the column it names fails at the first call rather than at the database. |
+| `insert` | `String insert(String verb, Map<String, String> values)` | Renders a row-writing statement. `verb` is the whole leading clause (`INSERT`, `REPLACE`, `INSERT IGNORE`); `values` maps a column name to the SQL text that supplies it, usually a `:bind` but sometimes a literal. Keyed by name rather than by position, because a positional list would let a column inserted in the descriptor silently shift every value one place along. Throws `ArgumentError` on an unknown column. |
+| `toString` | `String toString()` | *(override)* `"TomFrameworkTable(<name>)"`. |
+
 ### Exceptions
 
 #### TomDatasourceInitException
@@ -1132,6 +1289,10 @@ Fails](../datasources.md#when-a-write-fails).
 | `classifySqlFailure` | `TomSqlFailureMode classifySqlFailure(Object? error)` | Classifies the failure of a data-source write: `definite` when the chain contains a `MySQLServerException` (the server received the statement and rejected it), `ambiguous` for everything else. |
 | `sqlFailureCauses` | `Iterable<Object> sqlFailureCauses(Object? error)` | `error` and every `rootException` beneath it, outermost first — exposed so a caller that has decided a failure is ambiguous can name the driver exception several wrappers down. |
 | `isLostConnectionFailure` | `bool isLostConnectionFailure(Object? error, {required bool connected})` | Whether the statement was left with no live link to have run on, so one reconnect-and-retry is worth it: true when `connected` is false *and* the chain holds no `MySQLServerException`. Drives `MariadbPreparedStatement.execute`'s single retry. |
+| `sqlInstant` | `String sqlInstant(DateTime value)` | Renders `value` as the UTC `DATETIME(6)` literal the columns bind — always UTC, always six fractional digits, so nodes that disagree about the local zone still agree about the instant and the text stays comparable in SQL as well as in Dart. |
+| `parseSqlInstant` | `DateTime parseSqlInstant(String value)` | Reads a stored `DATETIME(6)` back as a UTC `DateTime`. `DateTime.parse` on the column text alone would produce a *local* value, which compares unequal to the UTC one that was written; appending the zone marker is what makes the round trip exact. |
+| `parseOptionalSqlInstant` | `DateTime? parseOptionalSqlInstant(String? value)` | Reads an optional stored `DATETIME(6)`, treating an empty column as absent — the driver reports a `NULL` instant as either `null` or `''` depending on the row mapper, and the two are collapsed here rather than at every caller. |
+| `unknownFrameworkColumns` | `List<String> unknownFrameworkColumns(String sql, Iterable<TomFrameworkTable> tables)` | The identifiers in `sql` that are not a column of any of `tables`, not one of their names or index names, and not SQL. The guard for the half of a statement a column list cannot cover — the references inside `SET`, `WHERE` and `ORDER BY` — driven by passing every statement a store issued through it. String literals, `:bind` placeholders and numbers are stripped first, and anything surviving that is not a known SQL word is reported: a missing word is a noisy false positive in a test, a missed column reference is a production failure. |
 
 `SqlString` (in `sql_dialects.dart`) is a typedef alias for `String` that
 documents "this is a SQL fragment" at call sites.

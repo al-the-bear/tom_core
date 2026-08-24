@@ -746,6 +746,55 @@
 
 ### Internal
 
+- **`api_summary_datasources.md` mirrors two source files it had never noticed,
+  and two checks now make "never noticed" a failure (tcinc469).** The summary
+  ran to 1116 lines about a unit of ten source files while naming eight of them
+  in its `Source:` list, and the two it omitted were `framework_table.dart` and
+  `sql_instant.dart` — the declaration from which every framework-owned table's
+  DDL, column list, inserts and schema model are derived, and the one encoding
+  of an instant in a `DATETIME(6)` column. Four public types and four public
+  functions that the package barrel exports were absent from the document whose
+  only purpose is to mirror the public surface. The summary now has a
+  `### Framework-Owned Tables` section covering `TomFrameworkColumn`,
+  `TomFrameworkKey` and `TomFrameworkTable` member by member, its Global
+  Functions table lists all seven free functions rather than two, and the
+  contents list, the class hierarchy and the Source list are extended to match.
+
+  One row was not missing but wrong, which is the more expensive of the two.
+  `TomDbDateTime.of` was documented as parsing its argument "via
+  `DateTime.parse` (or `null` when `s` is `null`)" — the behaviour before the
+  UTC convention landed. A reader who believed it would expect a local
+  `DateTime` back and an empty column to throw; it returns UTC and treats `''`
+  as absent. A stale row is indistinguishable from a current one, which is why
+  a mirror is checked rather than trusted.
+
+  The first of the two new guards asks a blunter question than anything already
+  in `api_reference_coverage_test.dart`: not whether a documented thing is
+  documented correctly, but whether the document knows the file exists. Every
+  existing check — the Overview table, the Properties table, attribution,
+  contract listings — measures what a summary already mentions, so a file it
+  never mentions is invisible to all of them, and the more thorough the page
+  looks the more completely the omission hides. Each summary's `Source:` list is
+  now compared against the barrel's exports for that module, in both directions:
+  an exported file missing from the list is undocumented, and a listed file that
+  is no longer exported is worse, because it sends the reader to a page
+  describing something they cannot import.
+
+  The second asks the same question of `api_summary_index.md`, where the answer
+  carries further. The index is the only place in the package where a reader can
+  conclude that a name does not exist without opening a file — which is exactly
+  why that conclusion must not be drawable wrongly there. Its two tables gain
+  the thirteen datasources names they lacked, and the check pins every exported
+  name against them.
+
+  Both guards were measured across all twenty modules before being enforced and
+  both found debt older than the module that exposed them: four modules'
+  Source lists are short by eleven files, and 53 exported names across seven
+  modules are in neither of the index's tables. Those are quarantined as visible
+  skips naming their quest todos, each backed by a meta-test that fails when an
+  entry has nothing left to suppress, so the exemption expires by itself rather
+  than by being remembered.
+
 - **`doc/datasources.md` documents three source files it had never mentioned,
   and the completeness check that lets it (tcinc468).** The guide contained no
   occurrence of `sqlInstant`, `parseSqlInstant` or `SqlPlaceholderScan`, and one
