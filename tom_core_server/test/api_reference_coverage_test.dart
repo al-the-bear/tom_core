@@ -2467,11 +2467,14 @@ const Set<String> _moduleReadmesPendingReconciliation = {
 /// readme is the source directory answering a reader's first question with
 /// nothing, and it is invisible to every check that reads a table, because
 /// there is no table to read.
+/// `messaging` left this set with tcinc577: nine exported files, four layers,
+/// and nothing in the directory saying which file held which — the module whose
+/// structure was least recoverable from its file names was the one with no
+/// readme at all.
 const Set<String> _modulesWithoutReadme = {
   'audit',
   'export',
   'file_storage',
-  'messaging',
   'resources',
 };
 

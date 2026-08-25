@@ -2618,6 +2618,35 @@
 
 ### Documentation
 
+- **The `messaging` source directory had no `readme.md` (tcinc577).** Fifteen of
+  the twenty modules under `lib/src/tomserver/` carried one; the module that did
+  not was the one whose structure is least recoverable from its file names.
+  Nothing in the directory said that `message_transport.dart` holds the router
+  and all three network-free transports as well as the contract, that the two
+  real transports each hide their wire behind an injectable seam, or that
+  `templated_message_service.dart` is the base the two services share — so a
+  developer arriving at nine files had to read them to find out which four
+  layers they formed.
+
+  `lib/src/tomserver/messaging/readme.md` now follows the reconciled sibling
+  shape: what the module is for, the four layers named file by file, `Key types`
+  tables grouped per source file, a `Quick start` that composes a message and
+  sends it through the stand-in transport, and pointers to the guide, example
+  and suite. `messaging` accordingly leaves the `_modulesWithoutReadme`
+  quarantine in `test/api_reference_coverage_test.dart`, so
+  `each module readme reaches every exported file` now *runs* for it rather than
+  skipping — one test moved from skipped to passing — and every one of the nine
+  exported files is held to having a representative in the table.
+
+  Two things the writing corrected, both found by checking rather than
+  recalling: the `Quick start` snippet was compiled and run before being
+  committed, which caught it printing `sent` where `TomDeliveryOutcome` says
+  `delivered`; and the `TomDeliveryReceipt` row described a per-recipient
+  outcome, when the receipt is per-message and carries `rejectedRecipients` for
+  the partial case. The todo pointed at `scheduling/readme.md` as the model to
+  follow, but that readme is itself quarantined as non-conforming — it has no
+  `| Type |` table — so `db_migration/readme.md` was used instead.
+
 - **`doc/messaging.md` never named `TomMessage.sms`, the factory every
   application SMS is composed through (tcinc576).** The guide showed
   `TomMessage.email` when it introduced the message shape, described what SMS
