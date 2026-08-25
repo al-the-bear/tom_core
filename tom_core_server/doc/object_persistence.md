@@ -14,6 +14,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 - [Query Sentences](#query-sentences)
   - [`IS IN` lists](#is-in-lists)
   - [Column types a predicate can address](#column-types-a-predicate-can-address)
+  - [What a comparison compares](#what-a-comparison-compares)
   - [Writing a value inline](#writing-a-value-inline)
     - [Inside a text literal](#inside-a-text-literal)
 - [The Query Builder DSL](#the-query-builder-dsl)
@@ -260,6 +261,34 @@ three cover the same six families: `String`, `int`, `double`, `bool`,
 spellings, plus the `TomDb…` names when an entity gives `columnType:`
 explicitly. A column outside them raises
 `query_sentence_compiler.create_column.failed`.
+
+### What a comparison compares
+
+The six comparison operators — `=`, `<>`, `<`, `<=`, `>`, `>=` — each take a
+column on the left and **exactly one operand** on the right: a literal, a bound
+parameter, or another column. The operand ends there. Whatever follows is part
+of the surrounding predicate, not part of the comparison:
+
+```text
+find by done = TRUE and priority > 3
+find by not ( done = :flag ) and priority > 3
+```
+
+Brackets group *predicates*, never operands. `find by amount > ( 1.5 )` is a
+syntax error (`…build_expression.separator_in_operand_position`) — there is no
+form in which a comparison is written against a parenthesised expression.
+
+This is uniform: it holds for all six operators over all six column families.
+**A boolean column is not special.** It used to be — `=` and `<>` parsed a
+boolean right-hand side as a whole predicate, so `done = TRUE and priority > 3`
+was refused and `not ( done = TRUE ) and priority > 3` compiled to
+`NOT ( done = true AND priority > 3 )`, a different question from the one
+written. Both now behave as the table above says.
+
+`and`, `or` and `not` combine predicates, and brackets set their scope. `not`
+binds to the single predicate or bracketed group that follows it, so
+`not a = 1 and b = 2` negates only the first conjunct; write
+`not ( a = 1 and b = 2 )` for the other reading.
 
 ### Writing a value inline
 

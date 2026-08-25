@@ -193,12 +193,11 @@ void main() {
     });
 
     test('a literal on the right-hand side of an AND', () {
-      // The left conjunct is a double comparison rather than the more obvious
-      // `done = TRUE`, because a *boolean* column comparison cannot be
-      // followed by `and` at all — `=` and `<>` parse a boolean right-hand
-      // side through `_buildQuery`, which swallows the conjunction. That is
-      // unrelated to quoting and tracked separately (tcincb2); using it here
-      // would test that defect instead of this one.
+      expect(
+        where("find by done = TRUE and title = 'in progress'"),
+        "WHERE fixture_export.done = true AND "
+        "fixture_export.title = 'in progress'",
+      );
       expect(
         where("find by amount > 1.5 and title = 'in progress'"),
         "WHERE fixture_export.amount > 1.5 AND "

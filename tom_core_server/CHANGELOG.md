@@ -281,6 +281,45 @@
 
 ### Fixed
 
+- **A boolean comparison read past its own operand, and past its own closing
+  bracket (tcinc592).** The six comparison builders share one dispatch, but the
+  dispatch took a flag: `=` and `<>` parsed a *boolean* right-hand side with
+  `_buildQuery`, the statement-level entry point, while the four ordering
+  comparisons used `_buildExpression`, the operand-level one. `_buildQuery`
+  reads `and`, `or` and `)` as its own, so a boolean operand did not stop at the
+  comparison.
+
+  Two consequences, and the second is the dangerous one:
+
+  - `find by done = TRUE and priority > 3` was **refused**. The conjunction was
+    pulled into the operand, `priority` was then read as a second boolean
+    column, and the failure named a cast rather than the sentence. The same
+    sentence with the boolean predicate *last* worked, which is why every suite
+    missed it — every boolean predicate they contained happened to be final.
+    Binding made no difference: `done = :flag and …` failed identically,
+    although binding is the style the documentation recommends.
+  - `find by not ( done = TRUE ) and priority > 3` was **mis-compiled** to
+    `NOT ( done = true AND priority > 3 )`. The closing bracket was consumed by
+    the `=`, so the group closed one conjunct too late and the negation covered
+    both. `NOT (A AND B)` is not `NOT (A) AND B` — that sentence returned rows
+    it excluded, with no error anywhere.
+
+  The comment on the flag justified it by `done = ( a > 1 or b > 2 )`, a
+  comparison against a whole bracketed predicate. That form has never compiled:
+  `_buildQuery` threads the boolean column into the bracket, so the first column
+  inside is read as a second operand of *that* column's type and refused. There
+  was nothing to preserve, and the flag is gone — all six builders now parse a
+  boolean operand exactly as they parse the other five types, and the `TomDbBool`
+  arm of the switch is one line like its neighbours.
+
+  A bracket standing where an operand is expected is now refused as
+  `query_sentence_compiler.build_expression.separator_in_operand_position`. It
+  previously reached the column resolver as a field name and was answered by the
+  *annotation analyzer* — outside the exception family this compiler documents —
+  naming a column the author never wrote. That was already true for every other
+  column type (`find by id = ( 2 )`), so this closes the case for all six rather
+  than only for the boolean one it would otherwise have moved there.
+
 - **The query-sentence tokeniser tore quoted string literals apart
   (tcinc591).** `_splitQuerySentence` inserted spaces around every `,()=<>`,
   collapsed runs of whitespace and split the result — with no notion of a

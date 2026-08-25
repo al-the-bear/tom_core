@@ -694,12 +694,19 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
   /// [symbol] name the operator in the failure a type outside the switch
   /// produces, so the six callers stay distinguishable in an error message.
   ///
-  /// [groupedBoolOperand] selects how the right-hand side of a comparison
-  /// against a *boolean* operand is parsed. `=` and `<>` route it through
-  /// [_buildQuery], so `done = ( a > 1 or b > 2 )` compares against a whole
-  /// predicate; the four ordering comparisons parse a plain expression instead.
-  /// The distinction predates this dispatch and is preserved deliberately —
-  /// collapsing it would silently widen what `<` accepts.
+  /// Every arm parses the right-hand side with [_buildExpression], the
+  /// operand-level entry point, including the boolean one. `=` and `<>` used to
+  /// route a *boolean* operand through [_buildQuery] instead — the
+  /// statement-level entry point, which reads `and`, `or` and `)` as its own.
+  /// A boolean right-hand side therefore did not stop at the comparison:
+  /// `done = TRUE and id > 2` pulled the conjunction into the operand and was
+  /// refused, and `not ( done = TRUE ) and id > 2` had its closing bracket
+  /// consumed by the `=`, compiling to `NOT ( done = true AND id > 2 )` — a
+  /// different predicate from the one written. The comment on the flag
+  /// justified it by `done = ( a > 1 or b > 2 )`, a comparison against a whole
+  /// predicate; that form has never compiled, because [_buildQuery] threads the
+  /// boolean column into the bracket and the first column inside is then read
+  /// as a second operand of *its* type.
   (TomOperator<TomDbBool>, int) _createComparison(
     List<String> qp,
     String qs,
@@ -709,7 +716,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     required _ComparisonFactory build,
     required String key,
     required String symbol,
-    required bool groupedBoolOperand,
   }) {
     (TomOperator<TomDbBool>, int) compareAs<T>() {
       final (nextOperation, index) = _buildExpression<T>(
@@ -734,10 +740,7 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       case TomDbDate:
         return compareAs<TomDbDate>();
       case TomDbBool:
-        if (!groupedBoolOperand) return compareAs<TomDbBool>();
-        final operand = current as TomOperator<TomDbBool>;
-        final (nextOperation, index) = _buildQuery(qp, qs, i, column, operand);
-        return (build<TomDbBool>(operand, nextOperation), index);
+        return compareAs<TomDbBool>();
     }
     throw TomQuerySyntaxException(
       key,
@@ -760,7 +763,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     build: eq,
     key: "query_sentence_compiler.create_eq.failed",
     symbol: "=",
-    groupedBoolOperand: true,
   );
 
   (TomOperator<TomDbBool>, int) _createNeq(
@@ -778,7 +780,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     build: neq,
     key: "query_sentence_compiler.create_neq.failed",
     symbol: "<>",
-    groupedBoolOperand: true,
   );
 
   (TomOperator<TomDbBool>, int) _createLt(
@@ -796,7 +797,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     build: lt,
     key: "query_sentence_compiler.create_lt.failed",
     symbol: "<",
-    groupedBoolOperand: false,
   );
 
   (TomOperator<TomDbBool>, int) _createLte(
@@ -814,7 +814,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     build: lte,
     key: "query_sentence_compiler.create_lte.failed",
     symbol: "<=",
-    groupedBoolOperand: false,
   );
 
   (TomOperator<TomDbBool>, int) _createGt(
@@ -832,7 +831,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     build: gt,
     key: "query_sentence_compiler.create_gt.failed",
     symbol: ">",
-    groupedBoolOperand: false,
   );
 
   (TomOperator<TomDbBool>, int) _createGte(
@@ -850,7 +848,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     build: gte,
     key: "query_sentence_compiler.create_gte.failed",
     symbol: ">=",
-    groupedBoolOperand: false,
   );
 
   /// `<column> IN ( <options...> )`, with the options parsed as the column's
@@ -1468,6 +1465,21 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
                   as TomOperator<QT>;
         }
         return (currentOperation, indx);
+      } else if (_separatorCharacters.contains(qp[i])) {
+        // Everything past this point is read as a column name, so a bare `(`,
+        // `)` or `,` would reach the column resolver as a field — and be
+        // answered by the *annotation analyzer*, outside the exception family
+        // this compiler documents, naming a column the author never wrote.
+        // (`=`, `<` and `>` are separators too, but their own branches above
+        // have already claimed them.)
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.build_expression."
+              "separator_in_operand_position",
+          "The QuerySentence $qs cannot be compiled. [${qp[i]}] stands where a "
+              "value or a column name is expected. A comparison takes a single "
+              "operand — a literal, a bound parameter or a column; a "
+              "parenthesised predicate is not one.",
+        );
       } else {
         if (column == null) {
           column = determineColumn(qp[i]);
