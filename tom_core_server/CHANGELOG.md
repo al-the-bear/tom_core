@@ -2,6 +2,42 @@
 
 ### Fixed
 
+- **The routing table was keyed by URI alone, so several methods on one route
+  collapsed to one entry (tcinc506).** `createRoutesForEndpoint` wrote
+  `routingInfo[tep.uri]` *inside* its loop over `tep.methods`, and again on the
+  socket path. An endpoint declaring `[get, put, delete]` therefore overwrote
+  its own entry twice, and — the case that actually loses information — two
+  endpoints splitting one path between them kept only whichever was mounted
+  last. The router was never wrong: each method was registered on the shelf
+  `Router` before the overwrite, so nothing 404s and no request-level assertion
+  could see any of it. What was wrong is the *diagnostic*, which reported one
+  handler where several were mounted, and reported it to exactly the tooling
+  that exists to enumerate the served surface.
+
+  `routingInfo` is now keyed by `TomEndpointRouteKey` — a record
+  `({String uri, String method})` naming the declared route and the uppercase
+  HTTP method name. The method is a `String` rather than a `TomHttpMethod`
+  because `TomHttpMethod` defines no value equality, and a diagnostic API should
+  not require its callers to hold the canonical constants. Each
+  `TomEndpointRoutingInfo` also carries the single `method` it stands for, so
+  enumerating `.values` is a complete picture without consulting the keys. Only
+  *declared* methods are listed; the automatic `OPTIONS` preflight is mounted for
+  every route and recording it would add one entry per route saying what already
+  holds for all of them.
+
+  Fixed alongside it, in the same loop: the `router.options` preflight
+  registration was also per-method, mounting one unreachable copy per declared
+  method after the first. It is now registered once per route.
+
+  Three fixture endpoints were added, because none existed to see this with —
+  every fixture declared exactly one method, so the loop had nothing to iterate.
+  One declares three methods; two split a single path. Eight tests cover the
+  shape, and six mutations were run against them: reverting the key to the
+  last-declared method, collapsing the method to a constant (the original
+  defect), recording the wrong method on the value, keying the socket entry off
+  the handshake GET, listing the preflight as an endpoint, and dropping the
+  preflight registration — each killed, most by a single test.
+
 - **`globalSettingLogRequestsDefault` governed nothing, because every log site
   re-tested the raw annotation (tcinc505).** The pipeline computed the effective
   decision — `logRequests ?? globalSettingLogRequestsDefault` — stored it on the

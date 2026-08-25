@@ -30,6 +30,13 @@ import 'fixtures/reflection_fixture.reflection.dart';
 
 const _boundary = 'tomtestboundary';
 
+/// The routing-table entry mounted for [path] under [method].
+///
+/// The table is keyed by route *and* method; every route this file looks up is
+/// a `GET`, including the socket one — a handshake is a GET.
+TomEndpointRoutingInfo _routeInfo(String path, [String method = 'GET']) =>
+    TomEndpointRouting.routingInfo[(uri: path, method: method)]!;
+
 /// One text part of a `multipart/form-data` body.
 String _textPart(String name, String value) =>
     'content-disposition: form-data; name="$name"\r\n\r\n$value';
@@ -497,7 +504,10 @@ void main() {
       final routing = TomEndpointRouting();
       routing.initializeRouter();
       expect(
-        TomEndpointRouting.routingInfo.containsKey('/fixture/socket'),
+        TomEndpointRouting.routingInfo.containsKey((
+          uri: '/fixture/socket',
+          method: 'GET',
+        )),
         isTrue,
       );
     });
@@ -505,26 +515,17 @@ void main() {
     test('its metadata records that it is a socket endpoint', () {
       final routing = TomEndpointRouting();
       routing.initializeRouter();
-      final handler =
-          TomEndpointRouting.routingInfo['/fixture/socket']!.handler;
+      final handler = _routeInfo('/fixture/socket').handler;
       expect(handler.metadata.webSocket, isNotNull);
       // The HTTP siblings are unaffected — the field is what distinguishes
       // them, not a separate discovery path.
-      expect(
-        TomEndpointRouting
-            .routingInfo['/fixture/health']!
-            .handler
-            .metadata
-            .webSocket,
-        isNull,
-      );
+      expect(_routeInfo('/fixture/health').handler.metadata.webSocket, isNull);
     });
 
     test('handleWebSocketCall on a non-socket endpoint is refused', () async {
       final routing = TomEndpointRouting();
       routing.initializeRouter();
-      final handler =
-          TomEndpointRouting.routingInfo['/fixture/health']!.handler;
+      final handler = _routeInfo('/fixture/health').handler;
       await expectLater(
         handler.handleWebSocketCall(
           Request('GET', Uri.parse('http://localhost/fixture/health')),

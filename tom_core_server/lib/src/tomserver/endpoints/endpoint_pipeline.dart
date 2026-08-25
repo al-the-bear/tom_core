@@ -1213,7 +1213,31 @@ class TomEndpointHandler {
   }
 }
 
-/// Pairs a mounted route's [handler] with the [endpoint] it was built from.
+/// Identifies one mounted route: a path template *and* the HTTP method it was
+/// mounted for.
+///
+/// The method belongs in the key because a path alone does not identify a
+/// route. One endpoint may answer several methods, and — legally — two
+/// endpoints may divide the methods of a single path between them, so a table
+/// keyed by path holds one entry where several routes are mounted and silently
+/// reports whichever was written last.
+///
+/// [uri] is the route as *declared* (`/items/{id}`), not the `shelf_router`
+/// translation of it, so a caller can look an entry up with the string it wrote
+/// in the annotation. [method] is the HTTP method's uppercase wire name
+/// (`TomHttpMethod.name`) rather than the [TomHttpMethod] instance, because
+/// `TomHttpMethod` does not define value equality — two instances naming the
+/// same method are only interchangeable as map keys while both are the
+/// canonical constants, which is a precondition a diagnostic API should not
+/// impose on its callers.
+typedef TomEndpointRouteKey = ({String uri, String method});
+
+/// Pairs a mounted route's [handler] with the [endpoint] it was built from and
+/// the HTTP [method] this particular mount answers.
+///
+/// [endpoint] lists every method the endpoint *declares*; [method] is the one
+/// this entry stands for. Both are needed: enumerating `routingInfo.values`
+/// then yields a complete picture without having to consult the keys.
 class TomEndpointRoutingInfo {
   /// The handler invoked for the route.
   TomEndpointHandler handler;
@@ -1221,8 +1245,14 @@ class TomEndpointRoutingInfo {
   /// The endpoint definition the route was built from.
   TomEndpoint endpoint;
 
-  /// Pairs [handler] with its [endpoint].
-  TomEndpointRoutingInfo(this.handler, this.endpoint);
+  /// The single HTTP method this entry was mounted for.
+  ///
+  /// A WebSocket endpoint records [TomHttpMethod.get]: a handshake is a GET,
+  /// and that is the method its route is registered under.
+  TomHttpMethod method;
+
+  /// Pairs [handler] with its [endpoint] for one mounted [method].
+  TomEndpointRoutingInfo(this.handler, this.endpoint, this.method);
 }
 
 /// Builds the shelf [Router] for the application by reflecting over annotated
@@ -1232,13 +1262,25 @@ class TomEndpointRoutingInfo {
 /// implementations, and components; [initializeRouter] resolves each service's
 /// instance (via [TomComponentReference], bean lookup, or a matching component
 /// class) and mounts its endpoint methods. The mounted handlers and a
-/// uri→[TomEndpointRoutingInfo] map are exposed statically for diagnostics.
+/// [TomEndpointRouteKey]→[TomEndpointRoutingInfo] map are exposed statically for
+/// diagnostics.
 class TomEndpointRouting {
   /// Every endpoint handler mounted during the last [initializeRouter] run.
   static List<TomEndpointHandler> handlers = [];
 
-  /// Mounted routes keyed by URI, for diagnostics.
-  static Map<String, TomEndpointRoutingInfo> routingInfo = {};
+  /// Mounted routes for diagnostics, one entry per route *and* HTTP method.
+  ///
+  /// See [TomEndpointRouteKey] for why the method is part of the key. An
+  /// endpoint declaring three methods contributes three entries sharing one
+  /// handler; two endpoints splitting a path between them contribute one entry
+  /// each, and remain distinguishable.
+  ///
+  /// Only the methods an endpoint *declares* are listed. Every route also gets
+  /// an automatic `OPTIONS` registration for CORS preflight, which is framework
+  /// plumbing rather than part of the endpoint's surface: recording it would
+  /// double the table with entries that say nothing an operator does not
+  /// already know holds for every route.
+  static Map<TomEndpointRouteKey, TomEndpointRoutingInfo> routingInfo = {};
 
   /// Translates a Tom route template into the `shelf_router` path syntax.
   ///
@@ -1469,7 +1511,8 @@ class TomEndpointRouting {
       // browser can discover the route the same way it discovers any other.
       router.get(route, teph.handleWebSocketCall);
       router.options(route, teph.handleMethodCall);
-      routingInfo[tep.uri] = TomEndpointRoutingInfo(teph, tep);
+      routingInfo[(uri: tep.uri, method: TomHttpMethod.get.name)] =
+          TomEndpointRoutingInfo(teph, tep, TomHttpMethod.get);
       tomLog.info("mounted websocket endpoint ${teph.name} $tep");
       handlers.add(teph);
       return;
@@ -1500,9 +1543,17 @@ class TomEndpointRouting {
             "Endpoint method $method invalid for ${mmd.methodMirror.simpleName}-${instanceClassMirror.simpleName}",
           );
       }
-      router.options(route, teph.handleMethodCall);
-      routingInfo[tep.uri] = TomEndpointRoutingInfo(teph, tep);
+      routingInfo[(uri: tep.uri, method: method.name)] = TomEndpointRoutingInfo(
+        teph,
+        tep,
+        method,
+      );
     }
+    // Preflight is a property of the *route*, not of each method mounted on it.
+    // Registering it inside the loop above mounted one copy per declared method,
+    // and shelf dispatches to the first match, so every copy after the first was
+    // unreachable.
+    router.options(route, teph.handleMethodCall);
     tomLog.info("mounted endpoint ${teph.name} $tep");
     handlers.add(teph);
   }

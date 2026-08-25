@@ -22,6 +22,7 @@ method, and runs the per-request handling.
   - [TomEndpointHandlerException](#tomendpointhandlerexception)
   - [TomEndpointPipelineException](#tomendpointpipelineexception)
   - [TomEndpointHandler](#tomendpointhandler)
+  - [TomEndpointRouteKey](#tomendpointroutekey)
   - [TomEndpointRoutingInfo](#tomendpointroutinginfo)
   - [TomEndpointRouting](#tomendpointrouting)
   - [TomMethodMetadata](#tommethodmetadata)
@@ -443,14 +444,27 @@ TomEndpointHandler({
 | `automaticProtectionKeys` | `(String container, String member) get automaticProtectionKeys` | The pair of resource keys this endpoint is automatically protected under: the API id/interface name granting all of it, and the `<container>.<member>` key granting this one endpoint. |
 | `checkAutomaticAccess` | `bool checkAutomaticAccess(bool accessCheck)` | Second-chance access check over `automaticProtectionKeys`; returns the possibly-upgraded decision. |
 
+### TomEndpointRouteKey
+
+Identifies one mounted route: a path template *and* the HTTP method it was
+mounted for. `uri` is the route as declared (`/items/{id}`), not its
+`shelf_router` translation; `method` is the uppercase wire name
+(`TomHttpMethod.name`) rather than the instance, because `TomHttpMethod` does
+not define value equality.
+
+```dart
+typedef TomEndpointRouteKey = ({String uri, String method})
+```
+
 ### TomEndpointRoutingInfo
 
-Pairs a mounted route's handler with the endpoint it was built from.
+Pairs a mounted route's handler with the endpoint it was built from and the HTTP
+method this particular mount answers.
 
 #### Constructors
 
 ```dart
-TomEndpointRoutingInfo(TomEndpointHandler handler, TomEndpoint endpoint)
+TomEndpointRoutingInfo(TomEndpointHandler handler, TomEndpoint endpoint, TomHttpMethod method)
 ```
 
 #### Properties
@@ -459,13 +473,14 @@ TomEndpointRoutingInfo(TomEndpointHandler handler, TomEndpoint endpoint)
 | -------- | ---- | ----------- |
 | `handler` | `TomEndpointHandler` | The handler invoked for the route. |
 | `endpoint` | `TomEndpoint` | The endpoint definition the route was built from. |
+| `method` | `TomHttpMethod` | The single HTTP method this entry was mounted for; a WebSocket endpoint records `GET`. |
 
 ### TomEndpointRouting
 
 Builds the shelf `Router` for the application by reflecting over annotated
 service/API classes and mounting one route per endpoint method. The mounted
-handlers and a uri→`TomEndpointRoutingInfo` map are exposed statically for
-diagnostics.
+handlers and a `TomEndpointRouteKey`→`TomEndpointRoutingInfo` map are exposed
+statically for diagnostics.
 
 #### Constructors
 
@@ -484,7 +499,7 @@ TomEndpointRouting()
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `handlers` | `static List<TomEndpointHandler>` | Every endpoint handler mounted during the last `initializeRouter` run. |
-| `routingInfo` | `static Map<String, TomEndpointRoutingInfo>` | Mounted routes keyed by URI, for diagnostics. |
+| `routingInfo` | `static Map<TomEndpointRouteKey, TomEndpointRoutingInfo>` | Mounted routes for diagnostics, one entry per route *and* HTTP method. Only declared methods are listed; the automatic `OPTIONS` preflight is not. |
 
 #### Methods
 

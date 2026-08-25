@@ -17,7 +17,7 @@ transaction.
 | ---- | -------------- |
 | `TomEndpoint` | The method annotation: `methods`, `uri`, `formFields`, `consumes`/`produces`, CORS, `errorHandler`. |
 | `TomService` · `TomApiImplementation` | Base classes whose annotated methods become endpoints. |
-| `TomEndpointRouting` | Scans annotations and assembles the request router; `TomEndpointRoutingInfo` / `TomClassScanResult` / `TomMethodMetadata` hold the scan results. |
+| `TomEndpointRouting` | Scans annotations and assembles the request router; `TomEndpointRoutingInfo` (keyed by `TomEndpointRouteKey` — route *and* method) / `TomClassScanResult` / `TomMethodMetadata` hold the scan results. |
 | `TomEndpointHandler` | Runs one request through the decode/authorize/invoke/encode pipeline. |
 | `TomErrorHandler` · `TomDefaultErrorHandler` | Map a thrown error to a response. |
 | `TomTransactional` | Annotation that runs the call inside a `TomTransaction`. |

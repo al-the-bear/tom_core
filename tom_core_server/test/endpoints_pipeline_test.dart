@@ -44,6 +44,14 @@ class _CapturingLogOutput extends TomLogOutput {
   ) => lines.add(convertToString(message));
 }
 
+/// The routing-table entry mounted for [path] under [method].
+///
+/// The table is keyed by route *and* method, so a lookup has to name both; most
+/// fixture endpoints are `GET`, which is why that is the default rather than a
+/// value every call site repeats.
+TomEndpointRoutingInfo _routeInfo(String path, [String method = 'GET']) =>
+    TomEndpointRouting.routingInfo[(uri: path, method: method)]!;
+
 /// A GET request carrying the [TomRequestLogInfo] the pipeline reads from the
 /// request context (the pipeline casts it unconditionally, so it must be
 /// present). No principal/token is placed in the zone — the fixture endpoints
@@ -239,11 +247,17 @@ void main() {
 
     test('createRoutesForEndpoint records mounted routes in routingInfo', () {
       expect(
-        TomEndpointRouting.routingInfo.containsKey('/fixture/health'),
+        TomEndpointRouting.routingInfo.containsKey((
+          uri: '/fixture/health',
+          method: 'GET',
+        )),
         isTrue,
       );
       expect(
-        TomEndpointRouting.routingInfo.containsKey('/fixture/unguarded'),
+        TomEndpointRouting.routingInfo.containsKey((
+          uri: '/fixture/unguarded',
+          method: 'GET',
+        )),
         isTrue,
       );
     });
@@ -261,6 +275,128 @@ void main() {
         expect(response.statusCode, inInclusiveRange(200, 299));
       },
     );
+  });
+
+  // The routing table is a diagnostic: it answers "what is mounted here?" for
+  // operator tooling and for tests. Keyed by URI alone it could not answer that
+  // question — an endpoint's own methods overwrote each other, and two
+  // endpoints sharing a path lost one of themselves outright. The router was
+  // never wrong (each method was registered before the overwrite), so nothing
+  // 404s and no request-level assertion can see any of this. Only the table can.
+  group('routingInfo is keyed by route and method', () {
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      // The table is static and accumulates across runs, so it is cleared here
+      // rather than trusted: a stale entry from an earlier initializeRouter
+      // would let an absent route look present.
+      TomEndpointRouting.routingInfo.clear();
+      TomEndpointRouting().initializeRouter();
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    test('every method of a multi-method endpoint is retrievable', () {
+      for (final method in ['GET', 'PUT', 'DELETE']) {
+        expect(
+          TomEndpointRouting.routingInfo.containsKey((
+            uri: '/fixture/multi_method',
+            method: method,
+          )),
+          isTrue,
+          reason:
+              '$method is declared by the endpoint and mounted on its route',
+        );
+      }
+    });
+
+    test('the three entries share the one handler they were built from', () {
+      final get = _routeInfo('/fixture/multi_method');
+      final put = _routeInfo('/fixture/multi_method', 'PUT');
+      final delete = _routeInfo('/fixture/multi_method', 'DELETE');
+      // One endpoint means one handler: the entries differ in their key and in
+      // `method`, not in what serves them. This is what makes the collapse so
+      // quiet — the value the old table kept was never the *wrong* value, only
+      // the sole survivor of three identical ones.
+      expect(put.handler, same(get.handler));
+      expect(delete.handler, same(get.handler));
+    });
+
+    test('an undeclared method is absent rather than mounted', () {
+      // The endpoint declares GET/PUT/DELETE. Keying by method would be no
+      // improvement if every method were recorded for every route.
+      expect(
+        TomEndpointRouting.routingInfo.containsKey((
+          uri: '/fixture/multi_method',
+          method: 'POST',
+        )),
+        isFalse,
+      );
+    });
+
+    test('two endpoints splitting one route stay distinguishable', () {
+      // The discriminating case. A multi-method endpoint writes the same value
+      // once per method, so a table keyed by URI alone still holds something
+      // correct; here the two halves are different handlers and one of them was
+      // being dropped.
+      final read = _routeInfo('/fixture/split_route');
+      final write = _routeInfo('/fixture/split_route', 'POST');
+      expect(read.handler, isNot(same(write.handler)));
+      expect(read.endpoint.methods, [TomHttpMethod.get]);
+      expect(write.endpoint.methods, [TomHttpMethod.post]);
+    });
+
+    test('both halves of the split route answer their own method', () {
+      // The table now agrees with the router. Asserted because the table is
+      // only worth keying correctly if it describes what is actually mounted.
+      final read = _routeInfo('/fixture/split_route');
+      final write = _routeInfo('/fixture/split_route', 'POST');
+      expect(read.handler.metadata.methodMirror.simpleName, 'splitRouteRead');
+      expect(write.handler.metadata.methodMirror.simpleName, 'splitRouteWrite');
+    });
+
+    test('each entry records the single method it was mounted for', () {
+      // `routingInfo.values` has to be a complete picture on its own — a
+      // diagnostic that dumps the values cannot reach back into the keys.
+      for (final entry in TomEndpointRouting.routingInfo.entries) {
+        expect(
+          entry.value.method.name,
+          entry.key.method,
+          reason: 'the value must describe the pair its key names',
+        );
+        // Including the socket entries: `TomWebSocketEndpoint` converts to an
+        // endpoint declaring `[get]`, so a handshake route is as much a
+        // declared method as any other and needs no exemption here.
+        expect(entry.value.endpoint.methods, contains(entry.value.method));
+      }
+    });
+
+    test('a socket endpoint is recorded under the handshake GET', () {
+      expect(
+        TomEndpointRouting.routingInfo.containsKey((
+          uri: '/fixture/socket',
+          method: 'GET',
+        )),
+        isTrue,
+      );
+      expect(
+        _routeInfo('/fixture/socket').handler.metadata.webSocket,
+        isNotNull,
+      );
+    });
+
+    test('the automatic OPTIONS preflight is not listed as an endpoint', () {
+      // Preflight is mounted for every route, so recording it would add an
+      // entry per route that tells an operator nothing. The contract is that
+      // the table lists *declared* methods; assert it rather than leave the
+      // absence looking like an oversight.
+      expect(
+        TomEndpointRouting.routingInfo.keys.where((k) => k.method == 'OPTIONS'),
+        isEmpty,
+      );
+    });
   });
 
   group('healthcheck GET /health route', () {
@@ -309,10 +445,8 @@ void main() {
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
-      publicHandler =
-          TomEndpointRouting.routingInfo['/fixture/health']!.handler;
-      unguardedHandler =
-          TomEndpointRouting.routingInfo['/fixture/unguarded']!.handler;
+      publicHandler = _routeInfo('/fixture/health').handler;
+      unguardedHandler = _routeInfo('/fixture/unguarded').handler;
     });
 
     tearDown(TomBean.resetBeanContext);
@@ -393,15 +527,12 @@ void main() {
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
-      contractGatedHandler = TomEndpointRouting
-          .routingInfo['/fixture-access/contract-gated']!
-          .handler;
-      overriddenHandler =
-          TomEndpointRouting.routingInfo['/fixture-access/overridden']!.handler;
-      inlineHandler =
-          TomEndpointRouting.routingInfo['/fixture-access/inline']!.handler;
-      unguardedHandler =
-          TomEndpointRouting.routingInfo['/fixture/unguarded']!.handler;
+      contractGatedHandler = _routeInfo(
+        '/fixture-access/contract-gated',
+      ).handler;
+      overriddenHandler = _routeInfo('/fixture-access/overridden').handler;
+      inlineHandler = _routeInfo('/fixture-access/inline').handler;
+      unguardedHandler = _routeInfo('/fixture/unguarded').handler;
     });
 
     tearDown(TomBean.resetBeanContext);
@@ -844,7 +975,7 @@ void main() {
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
-      parseHandler = TomEndpointRouting.routingInfo['/fixture/parse']!.handler;
+      parseHandler = _routeInfo('/fixture/parse', 'POST').handler;
     });
 
     tearDown(TomBean.resetBeanContext);
@@ -962,13 +1093,10 @@ void main() {
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
-      pairHandler = TomEndpointRouting.routingInfo['/fixture/pair']!.handler;
-      optionalTailHandler =
-          TomEndpointRouting.routingInfo['/fixture/optional_tail']!.handler;
-      optionalGapHandler =
-          TomEndpointRouting.routingInfo['/fixture/optional_gap']!.handler;
-      namedTailHandler =
-          TomEndpointRouting.routingInfo['/fixture/named_tail']!.handler;
+      pairHandler = _routeInfo('/fixture/pair').handler;
+      optionalTailHandler = _routeInfo('/fixture/optional_tail').handler;
+      optionalGapHandler = _routeInfo('/fixture/optional_gap').handler;
+      namedTailHandler = _routeInfo('/fixture/named_tail').handler;
     });
 
     tearDown(TomBean.resetBeanContext);

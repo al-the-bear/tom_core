@@ -22,6 +22,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Request Logging](#request-logging)
 - [Error Handling](#error-handling)
 - [Building the Router](#building-the-router)
+  - [The Routing Table](#the-routing-table)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -399,11 +400,48 @@ detail never leaks. If a handler itself throws, the pipeline raises a
 
 `TomEndpointRouting().initializeRouter()` (called by `TomServer`) scans the
 reflected classes, mounts every endpoint method, and returns the shelf
-`Router`. The mounted handlers and a uri→`TomEndpointRoutingInfo` map are kept
-statically for diagnostics. Conflicting annotations (a class with both
-`@tomService` and `@TomApiImplementation`, duplicate tags, a missing
+`Router`. The mounted handlers and a `TomEndpointRouteKey`→`TomEndpointRoutingInfo`
+map are kept statically for diagnostics. Conflicting annotations (a class with
+both `@tomService` and `@TomApiImplementation`, duplicate tags, a missing
 `@TomApiImplementation` for a registry endpoint, or an unsupported HTTP method)
 abort the build with `TomEndpointPipelineException`.
+
+### The Routing Table
+
+`TomEndpointRouting.routingInfo` is the diagnostic answer to "what is mounted
+here?". It is keyed by **route and HTTP method** together — a
+`TomEndpointRouteKey`, which is a record `({String uri, String method})`:
+
+```dart
+final entry = TomEndpointRouting.routingInfo[(uri: '/items', method: 'GET')];
+```
+
+`uri` is the route as *declared* (`/items/{id}`), not its `shelf_router`
+translation, so an entry is looked up with the string that was written in the
+annotation. `method` is the uppercase wire name (`TomHttpMethod.name`) rather
+than the `TomHttpMethod` instance, because `TomHttpMethod` does not define value
+equality.
+
+A path alone does not identify a route, which is why the method is part of the
+key:
+
+| Declaration | Entries |
+| ----------- | ------- |
+| `methods: [get, put, delete]` on one endpoint | three, sharing one handler |
+| `get` on one endpoint and `post` on another, same `uri` | two, with different handlers |
+| `@TomWebSocketEndpoint` | one, under `GET` — a handshake is a GET |
+
+Each `TomEndpointRoutingInfo` names the single `method` it stands for alongside
+the `endpoint` that declares them all, so enumerating `routingInfo.values` is a
+complete picture without consulting the keys.
+
+Only **declared** methods are listed. Every route also gets an automatic
+`OPTIONS` registration for CORS preflight; that is framework plumbing rather
+than part of an endpoint's surface, and recording it would add one entry per
+route saying something that holds for every route.
+
+The table is a diagnostic, not the router — the router is authoritative about
+what is served, and it is keyed by method already.
 
 ## Not Yet Implemented
 
@@ -432,7 +470,8 @@ abort the build with `TomEndpointPipelineException`.
   contract.
 - **Pipeline** (`endpoint_pipeline.dart`) — `TomEndpointRouting` (scan + build),
   `TomEndpointHandler` (per-request serving), `TomMethodMetadata`,
-  `TomClassScanResult`, `TomEndpointRoutingInfo`, and the two exception types.
+  `TomClassScanResult`, `TomEndpointRouteKey` / `TomEndpointRoutingInfo`, and the
+  two exception types.
 - **File endpoint** (`file_endpoint.dart`) — `TomFileService` / `TomFileServer`,
   `TomFileEndpoint`, the `TomFileSlots` registry, and the `TomFormFile.storeIn`
   extension that joins an uploaded form part to a file slot; documented in

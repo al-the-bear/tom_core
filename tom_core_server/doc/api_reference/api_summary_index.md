@@ -293,7 +293,8 @@ surface documented here.
 | `TomApiEndpointImplementation<Req, Res>` | class | API endpoint implementation. |
 | `TomEndpointHandler` | class | Dispatches requests to endpoints. |
 | `TomEndpointRouting` | class | Route table. |
-| `TomEndpointRoutingInfo` | class | Route entry. |
+| `TomEndpointRouteKey` | typedef | Route-table key: declared uri + HTTP method name. |
+| `TomEndpointRoutingInfo` | class | Route entry: handler, endpoint, and the one method it was mounted for. |
 | `TomMethodMetadata` | class | Reflected method metadata. |
 | `TomClassScanResult` | class | Result of scanning a service class. |
 | `TomErrorHandler` | abstract class | Error-handler contract. |
@@ -727,6 +728,7 @@ surface documented here.
 | `TomEndpointHandler` | Endpoints |
 | `TomEndpointHandlerException` | Endpoints |
 | `TomEndpointPipelineException` | Endpoints |
+| `TomEndpointRouteKey` | Endpoints |
 | `TomEndpointRouting` | Endpoints |
 | `TomEndpointRoutingInfo` | Endpoints |
 | `TomEntityId` | Object Persistence |

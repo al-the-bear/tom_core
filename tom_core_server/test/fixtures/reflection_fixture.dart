@@ -267,6 +267,47 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> transactionalWork();
 
+  /// One endpoint answering **three** HTTP methods on a single route.
+  ///
+  /// Every other fixture endpoint declares exactly one method, so the routing
+  /// table's per-method loop had nothing to iterate and the collapse it caused
+  /// could not be seen. Three methods make the table's shape observable: the
+  /// route is mounted three times and must be retrievable three times.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get, TomHttpMethod.put, TomHttpMethod.delete],
+    uri: '/fixture/multi_method',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> multiMethod();
+
+  /// The `GET` half of a route whose methods are split across **two** endpoints.
+  ///
+  /// Splitting one URI between handlers is legal — the router keys on method as
+  /// well as path — and it is the case that distinguishes a real fix from a
+  /// cosmetic one. A multi-method endpoint writes the *same* handler once per
+  /// method, so a table keyed by URI alone still holds the right value; here the
+  /// two entries differ, and keying by URI alone loses one of them outright.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/split_route',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> splitRouteRead();
+
+  /// The `POST` half of [splitRouteRead]'s route, on a different handler.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/split_route',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> splitRouteWrite();
+
   /// A WebSocket endpoint: invoked once per accepted connection, with the live
   /// socket among its parameters.
   ///
@@ -437,6 +478,21 @@ class FixtureApiServer implements FixtureApiService {
 
   @override
   Future<Object> moved() async => TomRedirect.seeOther('/fixture/health');
+
+  @override
+  Future<Map<String, Object>> multiMethod() async => <String, Object>{
+    'route': 'multi',
+  };
+
+  @override
+  Future<Map<String, Object>> splitRouteRead() async => <String, Object>{
+    'half': 'read',
+  };
+
+  @override
+  Future<Map<String, Object>> splitRouteWrite() async => <String, Object>{
+    'half': 'write',
+  };
 
   @override
   Future<void> socket(TomWebSocketConnection connection) async {
