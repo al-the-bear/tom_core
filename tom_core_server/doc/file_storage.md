@@ -52,9 +52,14 @@ without the second; the second is built entirely on the first.
 | `TomBlobStore` | abstract class | The contract: `put` / `get` / `describe` / `exists` / `delete` by key |
 | `TomStoredBlob` | class | What was stored — key, media type, size, time, name, location |
 | `TomStorageException` | class | The module's base error |
+| `TomBlobStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete`, each carrying a stable error key |
 | `TomMemoryBlobStore` | class | In-memory; tests and development |
 | `TomDirectoryBlobStore` | class | A directory on disk, with a metadata sidecar |
 | `TomDatabaseBlobStore` | class | Chunk rows in an existing data source |
+| `blobManifestTable` / `blobChunkTable` | function | The database backend's two table declarations, from which its DDL, its statements and the convergence guard's schema model all derive |
+| `blobManifestTableDdl` / `blobChunkTableDdl` | function | The `CREATE TABLE` text of those two, for a deployment that applies schema by hand |
+| `defaultBlobManifestTable` / `defaultBlobChunkTable` | constant | The default names of those two tables — `tom_blob` and `tom_blob_chunk` |
+| `TomBlobManifestRow` / `TomBlobChunkRow` | class | The reflected row types the database backend's result mapper materialises |
 | `TomS3BlobStore` | class | Any S3-compatible object store, single-PUT or multipart |
 | `TomAwsV4Signer` / `TomAwsCredentials` | class | AWS SigV4 request signing |
 | `TomBlobStoreInfo` | class | The configured stores, by name, with a default |
