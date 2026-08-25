@@ -74,6 +74,39 @@
 
 ### Fixed
 
+- **The blob store registry restated all four file-storage defaults as
+  literals, defeating the single-declaration rule `database_blob_sql.dart`
+  exists to enforce (tcinc540).** That file's own doc says a table name should
+  "exist in the code in exactly one place", and the store's constructors
+  honoured it — but `_databaseBackend` passed `'tom_blob'`, `'tom_blob_chunk'`
+  and `256 * 1024` explicitly, so on the *configured* path, the one every
+  deployment takes, the declarations were dead and three copies three files
+  away were live. `_s3Backend` did the same with `8 * 1024 * 1024`. The
+  fixtures had drifted too: `dropBlobTables` spelled both names out directly
+  above a `dropSchedulingTables` that already used its constants, and two
+  statements in the DB suite hardcoded the chunk table. Nothing could catch any
+  of it, because every copy agreed with its original — the divergence only
+  arrives with a rename, and by then it is a silent read from a table that no
+  longer exists. All four now resolve from the declarations, the two sizes
+  having gained ones: `TomDatabaseBlobStore.defaultChunkSize` and
+  `TomS3BlobStore.defaultPartSize`, which also give the numbers somewhere to
+  carry their rationale. Because no value-based assertion can distinguish a
+  copy from its original, the expectation is written against the declaration
+  count instead: two source scans over `lib/` and `test/` fail on any
+  re-spelling. The registry's database backend also had no test whatsoever —
+  it is the only backend that cannot be built without a registered data source,
+  so the suite covering the other two stopped at its door, which is how the
+  drift went unremarked. Three DB-backed tests now pin what a store with no
+  settings comes out as, that settings still override each default, and that
+  the tables the defaults name are the ones it really provisions and reads.
+  Eight mutations confirm the whole set bites: each of the four literals
+  reinstated is caught by the scans and by nothing else (they are
+  value-identical, so any other failure would mean a test coupled to spelling),
+  each of two defaults made unoverridable is caught by the configured-path
+  tests, swapping the two table names is caught only by the store being used,
+  and re-spelling the fixtures shows why the scans cover `test/` and not just
+  `lib/`.
+
 - **`TomS3BlobStore` joined its `keyPrefix` below the boundary that checks key
   length, so a prefix and a key that each fit could reach a signed request
   together (tcinc539).** The prefix was already held to the key grammar at

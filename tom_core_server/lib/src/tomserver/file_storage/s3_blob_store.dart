@@ -55,16 +55,16 @@ class TomS3BlobStore extends TomBlobStore {
   /// wildcard DNS and a certificate to match. Set it `false` for Amazon, which
   /// prefers virtual-host addressing.
   ///
-  /// [partSize] is the multipart part size and the upload buffer bound. S3
-  /// requires every part except the last to be at least 5 MiB, so values below
-  /// that are rejected.
+  /// [partSize] is the multipart part size and the upload buffer bound,
+  /// defaulting to [defaultPartSize]. S3 requires every part except the last to
+  /// be at least [minimumPartSize], so values below that are rejected.
   TomS3BlobStore({
     required this.endpoint,
     required this.bucket,
     required this.region,
     required TomAwsCredentials credentials,
     this.pathStyle = true,
-    this.partSize = 8 * 1024 * 1024,
+    this.partSize = defaultPartSize,
     this.keyPrefix,
     http.Client? client,
   }) : signer = TomAwsV4Signer(credentials: credentials, region: region),
@@ -118,6 +118,17 @@ class TomS3BlobStore extends TomBlobStore {
 
   /// S3's minimum size for any part but the last.
   static const int minimumPartSize = 5 * 1024 * 1024;
+
+  /// The default bytes per multipart part, 8 MiB.
+  ///
+  /// Above [minimumPartSize] with room to spare, so the common case is not
+  /// sitting on the protocol's floor, and small enough that the upload buffer
+  /// it bounds stays a reasonable per-upload allocation.
+  ///
+  /// Declared here rather than repeated at each defaulting site, for the same
+  /// reason the table names are declared in `database_blob_sql.dart`: a default
+  /// restated is a default that can diverge.
+  static const int defaultPartSize = 8 * 1024 * 1024;
 
   /// The header the original file name is carried in.
   static const String fileNameHeader = 'x-amz-meta-filename';

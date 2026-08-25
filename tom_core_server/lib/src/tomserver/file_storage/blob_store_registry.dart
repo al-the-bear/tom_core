@@ -32,6 +32,7 @@ import 'dart:io';
 
 import 'aws_v4_signer.dart';
 import 'blob_store.dart';
+import 'database_blob_sql.dart';
 import 'database_blob_store.dart';
 import 'directory_blob_store.dart';
 import 's3_blob_store.dart';
@@ -218,9 +219,10 @@ class TomBlobStoreInfo {
     }
     return TomDatabaseBlobStore.named(
       datasource,
-      manifestTable: '${settings['manifestTable'] ?? 'tom_blob'}',
-      chunkTable: '${settings['chunkTable'] ?? 'tom_blob_chunk'}',
-      chunkSize: _asInt(settings['chunkSize']) ?? 256 * 1024,
+      manifestTable: '${settings['manifestTable'] ?? defaultBlobManifestTable}',
+      chunkTable: '${settings['chunkTable'] ?? defaultBlobChunkTable}',
+      chunkSize:
+          _asInt(settings['chunkSize']) ?? TomDatabaseBlobStore.defaultChunkSize,
       createSchema: settings['createSchema'] != false,
     );
   }
@@ -242,7 +244,7 @@ class TomBlobStoreInfo {
         sessionToken: settings['sessionToken'] as String?,
       ),
       pathStyle: settings['pathStyle'] != false,
-      partSize: _asInt(settings['partSize']) ?? 8 * 1024 * 1024,
+      partSize: _asInt(settings['partSize']) ?? TomS3BlobStore.defaultPartSize,
       keyPrefix: settings['keyPrefix'] as String?,
     );
   }

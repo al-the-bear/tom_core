@@ -383,7 +383,7 @@ TomDatabaseBlobStore(
   TomDataSource datasource, {
   String manifestTable = defaultBlobManifestTable,
   String chunkTable = defaultBlobChunkTable,
-  int chunkSize = 256 * 1024,
+  int chunkSize = defaultChunkSize,
   bool createSchema = true,
 })
 ```
@@ -395,7 +395,7 @@ factory TomDatabaseBlobStore.named(
   String datasourceName, {
   String manifestTable = defaultBlobManifestTable,
   String chunkTable = defaultBlobChunkTable,
-  int chunkSize = 256 * 1024,
+  int chunkSize = defaultChunkSize,
   bool createSchema = true,
 })
 ```
@@ -404,6 +404,12 @@ Resolves the registered data source named `datasourceName`, throwing
 `storage.database.unknown_datasource` when there is none — a configuration
 error far better caught at start-up than on the first upload.
 
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultChunkSize` | `static const int` | The default raw bytes per chunk row: 256 KiB — large enough that a megabyte-scale file is a handful of round trips, small enough that a chunk statement stays inside MariaDB's default `max_allowed_packet` (the stored text is base64, so ~4/3 of this). Declared once here rather than repeated at each defaulting site, so a change lands everywhere. |
+
 #### Properties
 
 | Property | Type | Description |
@@ -411,7 +417,7 @@ error far better caught at start-up than on the first upload.
 | `datasource` | `TomDataSource` | The data source the two tables live in (final). |
 | `manifestTable` | `String` | The one-row-per-blob manifest table (final). |
 | `chunkTable` | `String` | The many-rows-per-blob content table (final). |
-| `chunkSize` | `int` | Raw bytes per chunk row; the stored text is ~4/3 of that. The 256 KiB default keeps a chunk statement inside MariaDB's default `max_allowed_packet` while making a megabyte-scale file a handful of round trips (final). |
+| `chunkSize` | `int` | Raw bytes per chunk row, defaulting to `defaultChunkSize`; the stored text is ~4/3 of that (final). |
 | `createSchema` | `bool` | Whether to create the tables on first use; set `false` when the schema is owned by the migration module and the application's database user may not run DDL (final). |
 
 #### Methods
@@ -562,7 +568,7 @@ TomS3BlobStore({
   required String region,
   required TomAwsCredentials credentials,
   bool pathStyle = true,
-  int partSize = 8 * 1024 * 1024,
+  int partSize = defaultPartSize,
   String? keyPrefix,
   http.Client? client,
 })
@@ -582,6 +588,7 @@ creates and owns one, and `close` disposes of it.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `minimumPartSize` | `static const int` | S3's minimum size for any part but the last: 5 MiB. |
+| `defaultPartSize` | `static const int` | The default bytes per multipart part: 8 MiB — above `minimumPartSize` with room to spare, and small enough that the upload buffer it bounds stays a reasonable per-upload allocation. Declared once here rather than repeated at each defaulting site, so a change lands everywhere. |
 | `fileNameHeader` | `static const String` | The header the original file name is carried in: `x-amz-meta-filename`. |
 
 #### Static Methods
@@ -598,7 +605,7 @@ creates and owns one, and `close` disposes of it.
 | `bucket` | `String` | The bucket every key resolves inside (final). |
 | `region` | `String` | The region the credential scope names (final). |
 | `pathStyle` | `bool` | Whether objects are addressed as `<endpoint>/<bucket>/<key>`; `true` by default because every self-hosted implementation accepts it, `false` for Amazon's virtual-host addressing (final). |
-| `partSize` | `int` | Bytes per multipart part, and the upload buffer bound (final). |
+| `partSize` | `int` | Bytes per multipart part, and the upload buffer bound; defaults to `defaultPartSize` (final). |
 | `keyPrefix` | `String?` | A prefix prepended to every key, so one bucket can host several stores. Checked twice, because one check cannot cover it: at construction against `TomBlobStore.isValidKeyPrefix`, and at every request against `TomBlobStore.maxKeyLength` on the joined key, which cannot be settled before a key arrives. Either refusal is `storage.blob.invalid_key_prefix` (final). |
 | `signer` | `TomAwsV4Signer` | The request signer, built from the constructor's credentials and region (final). |
 

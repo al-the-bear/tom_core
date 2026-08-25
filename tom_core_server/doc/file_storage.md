@@ -377,7 +377,7 @@ files:
 attachments:
   type: database
   datasource: main
-  chunkSize: 262144
+  chunkSize: 65536
 
 archive:
   type: s3
@@ -396,6 +396,17 @@ final store = TomBlobStoreInfo.defaultStore;          // or .storeNamed('archive
 One entry may carry `default: true`; when exactly one store is configured it
 becomes the default without saying so, because a server with one place to put
 files has no ambiguity to resolve.
+
+Every setting a backend does not require is optional, and each omitted one falls
+back to the declaration that owns it — `defaultBlobManifestTable` and
+`defaultBlobChunkTable` for the database backend's two tables,
+`TomDatabaseBlobStore.defaultChunkSize` and `TomS3BlobStore.defaultPartSize` for
+the two sizes. Configuration reads those constants rather than restating their
+values, so a rename or a retune reaches the configured path along with every
+other one. That matters more here than it looks: the tables are also the ones
+the migration module's convergence check compares against, and a configured
+store that had drifted to an old name would be checked against a schema it no
+longer used.
 
 An application with a backend of its own registers a factory under a name, and
 from then on spells it in configuration like any built-in:

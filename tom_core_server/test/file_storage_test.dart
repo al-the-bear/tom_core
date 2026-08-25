@@ -1505,4 +1505,96 @@ fileStores:
       expect(TomBlobStoreInfo.defaultStoreName, isNull);
     });
   });
+
+  group('the defaults are declared once', () {
+    // `database_blob_sql.dart` exists so that a table or column name "exists in
+    // the code in exactly one place" — its own words. A default restated as a
+    // literal somewhere else breaks that silently: both spellings agree today,
+    // so no test can tell them apart by *value*, and the divergence only
+    // appears when one of them is renamed and the other is not. The check has
+    // to be on the declaration, not on what it currently says.
+    //
+    // Searched for by deriving the patterns from the constants, so this test
+    // does not restate the names it is guarding either.
+    //
+    // Matched on a word boundary rather than as a quoted token: the names also
+    // appear mid-string in hand-written SQL (`DELETE FROM tom_blob_chunk ...`),
+    // which a quoted-token search silently misses — and that is exactly the
+    // shape the fixtures had. The boundary also keeps `tom_blob` from matching
+    // inside `tom_blob_chunk` or the `tom_blob_dir_test` temp-directory
+    // prefixes, since `_` is a word character. Comment lines are skipped: prose
+    // naming the default is documentation, not a second declaration.
+    const declaringFile = 'database_blob_sql.dart';
+
+    List<String> literalsIn(Iterable<String> names) {
+      final patterns = {
+        for (final name in names) name: RegExp('\\b$name\\b'),
+      };
+      final offenders = <String>[];
+      for (final root in const ['lib', 'test']) {
+        for (final entry in Directory(root).listSync(recursive: true)) {
+          if (entry is! File || !entry.path.endsWith('.dart')) continue;
+          if (entry.path.endsWith(declaringFile)) continue;
+          final lines = entry.readAsLinesSync();
+          for (var i = 0; i < lines.length; i++) {
+            if (lines[i].trimLeft().startsWith('//')) continue;
+            for (final entry2 in patterns.entries) {
+              if (entry2.value.hasMatch(lines[i])) {
+                offenders.add('${entry.path}:${i + 1} — ${entry2.key}');
+              }
+            }
+          }
+        }
+      }
+      return offenders;
+    }
+
+    test('no source spells a blob table name as a literal', () {
+      // The registry did, three files from the constants, and defeated the
+      // rule for every configured store: a rename would have left them all
+      // pointing at the old name with nothing failing to compile. The fixtures
+      // did too — `dropBlobTables` right above a `dropSchedulingTables` that
+      // uses its constants, and two raw statements in the DB suite.
+      expect(
+        literalsIn(const [defaultBlobManifestTable, defaultBlobChunkTable]),
+        isEmpty,
+        reason: 'use the exported constants, not the names they hold',
+      );
+    });
+
+    test('the two size defaults are declared once as well', () {
+      // The same defect, on the two lines beside it: `256 * 1024` stood in the
+      // primary constructor, the factory and the registry, and `8 * 1024 *
+      // 1024` in two of the three. A number restated is worse than a name
+      // restated, because nothing about it reads as a default.
+      //
+      // Scoped to this module, unlike the table names above, because a number
+      // carries no namespace: `TomMultipartForm.globalSettingMaxFilePartBytes`
+      // is also 8 MiB and is also declared exactly once, and it is a different
+      // setting that happens to agree. Widening this scan would make it a test
+      // of arithmetic coincidence rather than of the single-declaration rule.
+      final offenders = <String>[];
+      final module = Directory('lib/src/tomserver/file_storage');
+      for (final entry in module.listSync(recursive: true)) {
+        if (entry is! File || !entry.path.endsWith('.dart')) continue;
+        final lines = entry.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i];
+          if (line.contains('defaultChunkSize =') ||
+              line.contains('defaultPartSize =')) {
+            continue; // the one declaration each is allowed
+          }
+          if (RegExp(r'\b256 \* 1024\b|\b8 \* 1024 \* 1024\b').hasMatch(line)) {
+            offenders.add('${entry.path}:${i + 1} — ${line.trim()}');
+          }
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'use TomDatabaseBlobStore.defaultChunkSize / '
+            'TomS3BlobStore.defaultPartSize',
+      );
+    });
+  });
 }

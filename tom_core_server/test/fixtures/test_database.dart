@@ -310,8 +310,8 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
   /// a run that changed the schema would otherwise keep the previous shape.
   static Future<void> dropBlobTables(
     TomDataSourceInfo dsi, {
-    String manifestTable = 'tom_blob',
-    String chunkTable = 'tom_blob_chunk',
+    String manifestTable = defaultBlobManifestTable,
+    String chunkTable = defaultBlobChunkTable,
   }) async {
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $chunkTable');
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $manifestTable');

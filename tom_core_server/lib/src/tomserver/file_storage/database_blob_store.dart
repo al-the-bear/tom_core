@@ -46,13 +46,22 @@ import 'database_blob_sql.dart';
 
 /// A blob store that keeps its content in two tables of a [TomDataSource].
 class TomDatabaseBlobStore extends TomBlobStore {
+  /// The default number of *raw* bytes per chunk row, 256 KiB.
+  ///
+  /// Large enough that a megabyte-scale file is a handful of round trips rather
+  /// than hundreds, and small enough that a chunk statement stays comfortably
+  /// inside MariaDB's default `max_allowed_packet` — the stored text is base64,
+  /// so ~4/3 of this, and the statement is larger again.
+  ///
+  /// Declared here rather than repeated at each defaulting site, for the same
+  /// reason the table names are declared in `database_blob_sql.dart`: a default
+  /// restated is a default that can diverge.
+  static const int defaultChunkSize = 256 * 1024;
+
   /// Creates a store over [datasource].
   ///
   /// [manifestTable] and [chunkTable] name the two tables; [chunkSize] is the
-  /// number of *raw* bytes per chunk row (the stored text is ~4/3 of that).
-  /// The 256 KiB default keeps a chunk statement comfortably inside MariaDB's
-  /// default `max_allowed_packet` while being large enough that a megabyte-scale
-  /// file is a handful of round trips rather than hundreds.
+  /// number of *raw* bytes per chunk row, defaulting to [defaultChunkSize].
   ///
   /// With [createSchema] left `true` the two tables are created on first use;
   /// set it `false` when the schema is owned by the migration module and the
@@ -61,7 +70,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
     this.datasource, {
     this.manifestTable = defaultBlobManifestTable,
     this.chunkTable = defaultBlobChunkTable,
-    this.chunkSize = 256 * 1024,
+    this.chunkSize = defaultChunkSize,
     this.createSchema = true,
   });
 
@@ -74,7 +83,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
     String datasourceName, {
     String manifestTable = defaultBlobManifestTable,
     String chunkTable = defaultBlobChunkTable,
-    int chunkSize = 256 * 1024,
+    int chunkSize = defaultChunkSize,
     bool createSchema = true,
   }) {
     final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);

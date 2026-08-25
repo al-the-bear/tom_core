@@ -264,7 +264,8 @@ void main() async {
       // Simulates the one residue the store tolerates: a chunk-delete that did
       // not happen (a replace or delete whose cleanup failed).
       await dsi.datasource.executeCommand(
-        'INSERT INTO tom_blob_chunk (upload_id, chunk_index, chunk_data) '
+        'INSERT INTO ${store.chunkTable} '
+        '(upload_id, chunk_index, chunk_data) '
         "VALUES ('vanished-upload', 0, 'AAAA')",
       );
 
@@ -303,7 +304,7 @@ void main() async {
       // forced here so the detection is proven rather than assumed.
       await store.put(key: 'db/truncated.bin', bytes: _stream([_bytes(3000)]));
       await dsi.datasource.executeCommand(
-        'DELETE FROM tom_blob_chunk WHERE chunk_index = 1',
+        'DELETE FROM ${store.chunkTable} WHERE chunk_index = 1',
       );
 
       await expectLater(
@@ -349,6 +350,82 @@ void main() async {
           ),
         ),
       );
+    });
+  }, skip: skipReason);
+
+  group('a database store built from configuration', () {
+    // The registry's database backend had no test at all: it is the only
+    // caller that cannot be reached without a registered data source, so the
+    // suite that covers the other two backends stops at its door. That gap is
+    // how it came to restate all three of the store's defaults as literals —
+    // nothing ever asked it what a store with no settings comes out as.
+    late TomDataSourceInfo dsi;
+
+    setUpAll(() async {
+      initializeReflection();
+      dsi = await TestDatabase.register();
+    });
+
+    setUp(() async => TestDatabase.dropBlobTables(dsi));
+    tearDown(TomBlobStoreInfo.closeAll);
+    tearDownAll(TestDatabase.reset);
+
+    Future<TomDatabaseBlobStore> configured(Map<String, dynamic> what) async {
+      await TomBlobStoreInfo.initializeBlobStores({
+        'files': {'type': 'database', ...what},
+      });
+      return TomBlobStoreInfo.storeNamed('files') as TomDatabaseBlobStore;
+    }
+
+    test('takes its defaults from the declarations, not from copies', () async {
+      // Asserted against the constants rather than against their values: this
+      // has to keep holding after a rename, which is the only circumstance in
+      // which the defect was ever visible.
+      final store = await configured({'datasource': TestDatabase.datasourceName});
+
+      expect(store.manifestTable, defaultBlobManifestTable);
+      expect(store.chunkTable, defaultBlobChunkTable);
+      expect(store.chunkSize, TomDatabaseBlobStore.defaultChunkSize);
+      expect(store.createSchema, isTrue);
+    });
+
+    test('settings still override each of them', () async {
+      // The other half: the defaults must not have become unconditional. Table
+      // names are deployment choices — two stores sharing one schema is the
+      // reason the parameters exist.
+      final store = await configured({
+        'datasource': TestDatabase.datasourceName,
+        'manifestTable': 'custom_blob',
+        'chunkTable': 'custom_blob_chunk',
+        'chunkSize': 4096,
+        'createSchema': false,
+      });
+
+      expect(store.manifestTable, 'custom_blob');
+      expect(store.chunkTable, 'custom_blob_chunk');
+      expect(store.chunkSize, 4096);
+      expect(store.createSchema, isFalse);
+    });
+
+    test('the configured store is usable, not merely constructed', () async {
+      // Guards the assertions above against being satisfied by a store that
+      // resolves its names correctly and works with none of them: the tables
+      // the defaults name are the tables it actually provisions and reads.
+      final store = await configured({'datasource': TestDatabase.datasourceName});
+      await store.put(key: 'cfg/round-trip.txt', bytes: _text('configured'));
+
+      expect(
+        utf8.decode(await store.getBytes('cfg/round-trip.txt')),
+        'configured',
+      );
+      // Named explicitly rather than through `store.chunkTable`, so the
+      // assertion is that the *declared* default is where the row landed and
+      // not merely that the store agrees with itself.
+      final deleted = await dsi.datasource.executeCommand(
+        'DELETE FROM $defaultBlobManifestTable WHERE storage_key = :key',
+        {'key': 'cfg/round-trip.txt'},
+      );
+      expect(deleted, BigInt.one);
     });
   }, skip: skipReason);
 
