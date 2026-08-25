@@ -165,6 +165,10 @@ class TomDirectoryBlobStore extends TomBlobStore {
   Stream<List<int>> doGet(String key) async* {
     final file = _fileFor(key);
     if (!file.existsSync()) throw TomBlobStore.notFound(key);
+    // `yield*` is safe for the same reason it is in the S3 backend: the errors
+    // `openRead` raises after the first bytes — a disk that goes away, a file
+    // truncated under the reader — are translated by [TomBlobStore.get], which
+    // consumes this with `await for` inside its `try` rather than forwarding it.
     yield* file.openRead();
   }
 

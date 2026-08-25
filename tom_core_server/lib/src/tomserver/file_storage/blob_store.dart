@@ -265,11 +265,22 @@ abstract class TomBlobStore {
   /// handing back an unmodifiable view would instead make that same consumer
   /// throw on the backend the tests run on and succeed on every other, which is
   /// the worse trade.
+  ///
+  /// A transfer that breaks partway **still delivers the chunks that arrived**,
+  /// and then fails. Both halves are the contract. A consumer that has already
+  /// written the first megabytes to a file can truncate what it has; one handed
+  /// nothing at all cannot tell a broken download from an empty object. That is
+  /// why the failure is translated *around* the forwarding rather than by
+  /// draining the backend's stream first: buffering here would be invisible to
+  /// anyone reading a small blob, and would quietly turn every interrupted
+  /// download into an empty one.
   Stream<List<int>> get(String key) async* {
     try {
       // `await for`, not `yield*`: a `yield*` forwards the inner stream's
       // *errors* straight to the output stream, past the enclosing try, so the
       // translation below would never see the failure it exists to translate.
+      // Re-yielding each chunk as it arrives is also what keeps the read
+      // streaming, and so what keeps the partial delivery above true.
       await for (final chunk in doGet(validateKey(key))) {
         yield chunk;
       }

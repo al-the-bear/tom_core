@@ -168,6 +168,12 @@ abstract class TomExportStore {
   /// gone has hit a real fault — an expiry it did not expect, a store it is not
   /// pointed at — and an empty stream would disguise that as an empty file. A
   /// read that fails for any other reason is `export.store.read_failed`.
+  ///
+  /// A transfer that breaks partway still delivers the chunks that arrived, and
+  /// then fails — the same contract [TomBlobStore.get] states, for the same
+  /// reason and by the same means. Stated here too because the two are only
+  /// *coincidentally* the same code: a reader of this method has no cause to go
+  /// looking at the other module for what this one promises.
   Stream<List<int>> open(String key) async* {
     try {
       // `await for`, not `yield*`: a `yield*` forwards the inner stream's

@@ -17,6 +17,7 @@ without the second; the second is built entirely on the first.
 - [The Shape of the Design](#the-shape-of-the-design)
 - [Streaming Is the Requirement](#streaming-is-the-requirement)
   - [Who Owns a Chunk](#who-owns-a-chunk)
+  - [A Broken Transfer Delivers What It Got](#a-broken-transfer-delivers-what-it-got)
 - [Keys Are a Grammar, Not a String](#keys-are-a-grammar-not-a-string)
   - [Prefixes obey the same grammar](#prefixes-obey-the-same-grammar)
 - [The Backends](#the-backends)
@@ -133,6 +134,27 @@ the tests run on and succeed on every backend they deploy to — a divergence
 discovered in production, which is the one place this backend exists to keep
 faults out of. `getBytes` inherits whatever `get` yields: it collects with a
 non-copying builder, which returns a lone chunk untouched.
+
+### A Broken Transfer Delivers What It Got
+
+A download that fails partway **yields the chunks that arrived, and then
+throws**. Both halves are the contract, and the second is the reason the first
+has to be stated: it would be easy to satisfy "a failed read throws a
+`storage.blob.read_failed`" by draining the backend's stream first and throwing
+before yielding anything, and every test of the error would still pass.
+
+It would also be wrong twice over. It reintroduces the buffering this whole
+section exists to prevent — on the read side, where the file is largest. And it
+destroys the only information a consumer has to act on: a caller that has
+written the first megabytes to disk can truncate them and retry a range; a
+caller handed an error and nothing else cannot distinguish a transfer that broke
+from an object that was empty.
+
+So the translation wraps the *forwarding* rather than replacing it. `get`
+re-yields each chunk as it arrives inside the `try` that names the failure,
+which is why every backend can hand its raw stream — an `openRead`, an HTTP
+response body, a cursor over chunk rows — straight up without wrapping anything
+itself. `TomExportStore.open` states and does the same.
 
 ## Keys Are a Grammar, Not a String
 
@@ -360,9 +382,12 @@ file read is what failed.
 The translating is `TomBlobStore`'s own, not each backend's. `put`, `get`,
 `describe`, `exists` and `delete` are the contract's methods; a backend
 implements `doPut`, `doGet`, `doDescribe`, `doDelete` and lets its failures out
-raw, and the wrapper around each names the operation. That is also where the key
-is validated, which is what makes the two guarantees hold for a backend written
-later — the ones this module ships, and the ones an application writes. A
+raw, and the wrapper around each names the operation. For `get` this covers the
+whole transfer and not just its opening: a socket that dies after the first
+megabyte is translated exactly as a connection that never opened is, which is
+what lets each backend forward its underlying stream unguarded. That is also
+where the key is validated, which is what makes the two guarantees hold for a
+backend written later — the ones this module ships, and the ones an application writes. A
 backend still raises a storage exception by hand where it knows something the
 wrapper cannot: `storage.blob.not_found` for a key that holds nothing, and the
 database backend's `storage.blob.missing_chunk` for a row whose parts are

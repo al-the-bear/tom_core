@@ -36,12 +36,20 @@ import 'package:yaml/yaml.dart';
 
 import 'fixtures/posix_permissions.dart';
 
-/// A stream that delivers [chunks] and then fails — the interrupted upload.
-Stream<List<int>> _failingStream(List<List<int>> chunks) async* {
+/// A stream that delivers [chunks] and then fails with [error].
+///
+/// Both halves of a transfer that breaks partway: an upload whose source dies
+/// after the first chunk, and a download whose socket does. The default is the
+/// upload case; the download cases pass the transport's own exception, so the
+/// translation under test has something realistic to translate.
+Stream<List<int>> _failingStream(
+  List<List<int>> chunks, {
+  Object? error,
+}) async* {
   for (final chunk in chunks) {
     yield chunk;
   }
-  throw StateError('upload interrupted');
+  throw error ?? StateError('upload interrupted');
 }
 
 /// `count` bytes of predictable content, as one chunk.
@@ -60,6 +68,36 @@ TomS3BlobStore _s3(
   bool pathStyle = true,
   int partSize = TomS3BlobStore.minimumPartSize,
   String? keyPrefix,
+}) => _s3WithClient(
+  MockClient(handler),
+  pathStyle: pathStyle,
+  partSize: partSize,
+  keyPrefix: keyPrefix,
+);
+
+/// Builds an S3 store whose responses are *streamed* rather than buffered.
+///
+/// [MockClient] turns its handler's `http.Response` into bytes before the store
+/// ever sees it, so a body that fails partway cannot be expressed through it at
+/// all: the failure would surface from `send`, before `doGet` returned, which
+/// is the easy case and already covered. `MockClient.streaming` hands the store
+/// the stream itself, which is the only way to put the error where a real
+/// interrupted download puts it — after the first bytes have already reached
+/// the caller.
+TomS3BlobStore _s3Streaming(
+  Future<http.StreamedResponse> Function(
+    http.BaseRequest request,
+    http.ByteStream body,
+  )
+  handler,
+) => _s3WithClient(MockClient.streaming(handler));
+
+/// The store both builders above return; only the client differs.
+TomS3BlobStore _s3WithClient(
+  http.Client client, {
+  bool pathStyle = true,
+  int partSize = TomS3BlobStore.minimumPartSize,
+  String? keyPrefix,
 }) => TomS3BlobStore(
   endpoint: Uri.parse('https://s3.example.com'),
   bucket: 'examplebucket',
@@ -68,7 +106,7 @@ TomS3BlobStore _s3(
   pathStyle: pathStyle,
   partSize: partSize,
   keyPrefix: keyPrefix,
-  client: MockClient(handler),
+  client: client,
 );
 
 /// A data source that fails the test if anything asks it to do work.
@@ -1477,6 +1515,79 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('a download that fails after the first bytes is still a named '
+        'storage error', () async {
+      // The longest-lived operation the module has, and the one place a
+      // transport error is most likely to arrive *after* the call that could
+      // have translated it returned. Everything before the first byte is
+      // covered by the 404 and 5xx cases above; this covers everything after.
+      //
+      // A caller has been taught to catch `TomStorageException`, so a
+      // `ClientException` — a type from `package:http` — reaching it mid-
+      // download would be the module's abstraction leaking at exactly the
+      // point the caller is least able to do anything about it.
+      final store = _s3Streaming(
+        (request, _) async => http.StreamedResponse(
+          _failingStream(
+            [utf8.encode('the first part')],
+            error: http.ClientException(
+              'Connection reset by peer',
+              request.url,
+            ),
+          ),
+          200,
+        ),
+      );
+
+      await expectLater(
+        store.get('big.bin').toList(),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.key, 'key', 'storage.blob.read_failed')
+              .having(
+                (e) => e.parameters?['key'],
+                "the caller's key",
+                'big.bin',
+              )
+              // The transport error is kept rather than summarised: the caller
+              // needs a key it can branch on, whoever reads the log needs the
+              // reason the socket actually died.
+              .having(
+                (e) => e.rootException,
+                'rootException',
+                isA<http.ClientException>(),
+              ),
+        ),
+      );
+    });
+
+    test('the bytes that arrived before a mid-download failure are still '
+        'delivered', () async {
+      // Translating the error must not turn a partial download into an empty
+      // one. A consumer that has already written the first bytes to a file and
+      // then sees the failure can truncate; a consumer handed nothing at all
+      // cannot tell a broken download from an empty object.
+      final store = _s3Streaming(
+        (request, _) async => http.StreamedResponse(
+          _failingStream(
+            [utf8.encode('the first part')],
+            error: http.ClientException(
+              'Connection reset by peer',
+              request.url,
+            ),
+          ),
+          200,
+        ),
+      );
+
+      final received = <int>[];
+      await expectLater(
+        store.get('big.bin').forEach(received.addAll),
+        throwsA(isA<TomStorageException>()),
+      );
+      expect(utf8.decode(received), 'the first part');
     });
 
     test('describe reads the object metadata, or answers null', () async {

@@ -247,6 +247,14 @@ class TomS3BlobStore extends TomBlobStore {
       final body = await response.stream.bytesToString();
       throw _failure('get', key, response.statusCode, body);
     }
+    // `yield*` is correct here, and only because of where this runs.
+    // [TomBlobStore.get] consumes this stream with `await for` inside its
+    // translating `try`, so a socket that dies after the first bytes still
+    // reaches the caller as `storage.blob.read_failed` carrying the key. Read
+    // in isolation this line looks like the module leaking a `ClientException`
+    // — it is not, and the difference is one caller away. Do not "fix" it by
+    // catching here: the base class owns the translation so that every backend
+    // gets it, and a second layer would only restate what it already says.
     yield* response.stream;
   }
 

@@ -2,6 +2,40 @@
 
 ### Testing
 
+- **An interrupted download was believed to leak a `package:http` exception; it
+  does not, and what was actually untested was the bytes it delivers first
+  (tcinc546).** The reported defect was `TomS3BlobStore.doGet`'s
+  `yield* response.stream` — a socket that dies mid-transfer reaching the caller
+  as a `ClientException` rather than a named storage error. Read on its own that
+  is exactly what the line does. It is not what the module does: `doGet` is
+  consumed by `TomBlobStore.get`, which uses `await for` inside its translating
+  `try` precisely so that inner-stream errors cannot bypass it, and the failure
+  arrives as `storage.blob.read_failed` carrying the caller's key with the
+  transport error kept as `rootException`. The premise predated that wrapper.
+
+  The test the report asked for was still missing, and writing it found a
+  different gap. Every existing mid-stream test fails on the *first* byte — a
+  data source that throws, a file the filesystem refuses — so nothing measured
+  what happens to bytes that already arrived. Making `get` drain its backend
+  before yielding leaves the entire suite green: the translation still fires,
+  and a broken download silently becomes an empty one. A consumer that has
+  written the first megabytes to a file can truncate; one handed nothing cannot
+  tell a failed transfer from an empty object.
+
+  So `get` and `TomExportStore.open` now *state* the partial-delivery guarantee
+  rather than merely having it, and two tests in `file_storage_test.dart` pin
+  it: a `MockClient.streaming` response that yields bytes and then raises a
+  `ClientException` must produce the named error, and must produce it *after*
+  handing over what arrived. Four mutations, each naming the test that has to
+  catch it. The buffering mutant is the one that matters — it is caught by the
+  new partial-delivery test and by nothing else, which is why the two tests are
+  two rather than one.
+
+  `s3_blob_store.dart` and `directory_blob_store.dart` now say at their `yield*`
+  why forwarding is correct there and where the translation lives. That comment
+  is the actual fix this report earned: the line was right, and reading it in
+  isolation reasonably suggested otherwise.
+
 - **`blobManifestTableDdl` and `blobChunkTableDdl` were documented public API
   with no callers anywhere (tcinc543).** Both were exported, both were in the
   api reference, and nothing in `lib/`, `test/` or `example/` called either, so
