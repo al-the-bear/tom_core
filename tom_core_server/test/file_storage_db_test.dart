@@ -171,6 +171,53 @@ void main() async {
       },
     );
 
+    test('the write time survives the round trip exactly, and as UTC', () async {
+      // The column is the only place a blob's metadata leaves the process and
+      // comes back, so it is the only place the instant convention can actually
+      // be checked. The store used to render `stored_at` itself — a local
+      // `DateTime`, formatted to whole seconds and bound as text — which put
+      // the writing host's wall-clock reading in a column everything else
+      // treats as UTC. Read back on a host at a different offset, the same row
+      // named a different moment; read back on the *same* host it still failed
+      // to equal what `put` returned, because that was local and this is not.
+      //
+      // Both halves are asserted on purpose, and together they pin more than
+      // either does alone. `isUtc` by itself would pass for a store that
+      // mislabelled a local reading as UTC — precisely the old defect.
+      //
+      // Equality is the stronger half, and it reaches all the way into the
+      // column, because the two sides are derived independently: `stored`
+      // comes from `TomStoredBlob` normalising the writer's own `DateTime.now`,
+      // while `described` comes from the text MariaDB actually holds. Anything
+      // that writes local time into the column — the old formatter, or a
+      // `sqlInstant` that forgot its `toUtc` — makes the second disagree with
+      // the first by exactly the host's offset. So this cannot be satisfied by
+      // a conversion applied symmetrically on both sides and wrong in the
+      // database, which is the failure that would otherwise stay invisible
+      // until some other client read the same rows.
+      final stored = await store.put(
+        key: 'db/stamped.bin',
+        bytes: _stream([_bytes(64)]),
+      );
+      final described = await store.describe('db/stamped.bin');
+
+      expect(stored.storedAt.isUtc, isTrue);
+      expect(described!.storedAt.isUtc, isTrue);
+      expect(described.storedAt, stored.storedAt);
+
+      // Sub-second precision is part of "exactly". `sqlInstant` always writes
+      // six fractional digits, so a column narrower than `DATETIME(6)` rounds
+      // them and moves the stored moment by up to half a second — silently,
+      // and in whichever direction the fraction happened to fall. A row whose
+      // microseconds are all zero would be the tell.
+      final roundTripped = await store.describe('db/stamped.bin');
+      expect(roundTripped!.storedAt, stored.storedAt);
+      expect(
+        roundTripped.storedAt.microsecondsSinceEpoch,
+        stored.storedAt.microsecondsSinceEpoch,
+      );
+    });
+
     test(
       'splits a payload across chunk rows and streams them back in order',
       () async {

@@ -17,22 +17,29 @@
 /// instant, differently labelled, which is the right answer for a cluster whose
 /// nodes must never compare wall clocks.
 ///
-/// ## Both ways of writing SQL go through here
+/// ## Every way an instant reaches a column goes through here
 ///
-/// There are two of those in this server, and the convention is one convention:
+/// There are three routes, and they are one convention:
 ///
-///  * **Hand-written SQL** — the scheduling, OAuth-state, audit and file-storage
-///    stores build their own statements and call [sqlInstant] /
-///    [parseSqlInstant] at each seam explicitly.
-///  * **Reflected entity columns** — a `@TomDbColumn<DateTime?, TomDbDateTime>`
-///    field names no conversion at all, so the data source applies this one on
-///    its behalf: the MariaDB bind boundary renders every bound `DateTime`
-///    through [sqlInstant], and `TomDbDateTime.of` reads a column back through
-///    [parseOptionalSqlInstant]. An entity therefore stores UTC and reads UTC
-///    without saying so, and a `DATETIME` literal inlined into generated SQL is
-///    rendered the same way.
+///  * **Bound as a `DateTime`** — the MariaDB bind boundary renders every bound
+///    `DateTime` through [sqlInstant], whoever built the statement. A reflected
+///    `@TomDbColumn<DateTime?, TomDbDateTime>` field names no conversion at all
+///    and gets this on its behalf; so does the file-storage manifest, which
+///    writes hand-built SQL but binds the value rather than rendering it.
+///  * **Rendered explicitly before binding** — the scheduling, OAuth-state and
+///    audit stores call [sqlInstant] at each seam themselves. Same text, one
+///    more place to forget it. This was not a preference: `executeQuery` and
+///    `executeCommand` used to hand their parameter map to the driver
+///    unmarshalled, so for a hand-built statement the explicit call was the
+///    only thing standing between a `DateTime` and the driver's own encoding.
+///    That hole is closed, and these calls are now belt-and-braces.
+///  * **Inlined as a literal** — a `DATETIME` literal in generated SQL is
+///    rendered by the dialect, again through [sqlInstant].
 ///
-/// The second case is why this is stated here rather than left to each entity.
+/// Reading back is one route: `TomDbDateTime.of` and the hand-written mappers
+/// both go through [parseOptionalSqlInstant], so a column read is UTC.
+///
+/// The first case is why this is stated here rather than left to each entity.
 /// A validity window, an expiry, a lease deadline — the instants that decide
 /// something are exactly the ones an entity is most likely to carry, and the
 /// wall-clock reading of whichever node happened to write the row is not an

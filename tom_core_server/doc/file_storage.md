@@ -675,7 +675,10 @@ cannot drift, because they share the code that defines the shape.
 | `DELETE` | — | `204` | `404` |
 
 The descriptor is `{"key", "mediaType", "byteCount", "fileName"?, "storedAt"?}`.
-Note that the client never names a key: the server mints it from the column's
+`storedAt` is always UTC and therefore always carries the zone marker on the
+wire — `TomStoredBlob` normalises it whatever backend produced it, so a client
+never has to guess which server's local zone an instant was read in. Note that
+the client never names a key: the server mints it from the column's
 `keyPrefix`, so a caller cannot address, guess or collide with a storage
 location. `404` on `GET`/`HEAD` deliberately means *both* "the slot holds no
 file" and "there is no such slot" — telling them apart would tell an

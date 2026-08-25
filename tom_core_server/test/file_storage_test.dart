@@ -251,6 +251,115 @@ void main() {
     });
   });
 
+  group('every backend reports storedAt as UTC', () {
+    // An instant carrying no zone is not an instant. `storedAt` is the only
+    // field of `TomStoredBlob` that denotes a moment, and every backend built
+    // it from a local source — `DateTime.now()` on three of them, the
+    // filesystem's `stat.modified` on the fourth — so a descriptor written in
+    // Berlin and read in Denver disagreed with itself by the offset. Worse,
+    // `DateTime.==` compares `isUtc` as well as the instant, so the value a
+    // round trip through storage gave back did not compare equal to the one
+    // `put` had just returned even on a single host.
+    //
+    // Normalising inside `TomStoredBlob` rather than at each construction site
+    // is what makes this a property of the *type*: a backend added later cannot
+    // forget it, and there is one place to read the rule. That is the same
+    // arrangement `TomAuditAnchor` and `TomOAuthTokens` already use.
+    //
+    // The database backend needs a server; its round trip is asserted in
+    // `file_storage_db_test.dart`.
+
+    test('the descriptor normalises what it is given, rather than trusting '
+        'its caller', () {
+      // The single point the other cases depend on. A local `DateTime` is not
+      // rejected — it is the ordinary thing a backend has in hand — it is
+      // relabelled, and the instant it denotes must survive that exactly.
+      final local = DateTime(2026, 3, 14, 15, 9, 26, 535, 897);
+      final blob = TomStoredBlob(
+        key: 'k',
+        mediaType: 'text/plain',
+        byteCount: 1,
+        storedAt: local,
+      );
+      expect(blob.storedAt.isUtc, isTrue);
+      expect(blob.storedAt, local.toUtc());
+      expect(
+        blob.storedAt.microsecondsSinceEpoch,
+        local.microsecondsSinceEpoch,
+        reason: 'relabelling must not move the moment',
+      );
+    });
+
+    test('a value that is already UTC is left exactly as it is', () {
+      // The other half: normalising must be idempotent, or a descriptor built
+      // from a stored value would drift each time it was rebuilt.
+      final utc = DateTime.utc(2026, 3, 14, 15, 9, 26, 535, 897);
+      expect(
+        TomStoredBlob(
+          key: 'k',
+          mediaType: 'text/plain',
+          byteCount: 1,
+          storedAt: utc,
+        ).storedAt,
+        utc,
+      );
+    });
+
+    test('memory', () async {
+      final store = TomMemoryBlobStore();
+      final stored = await store.putBytes(key: 'k', bytes: const [1]);
+      expect(stored.storedAt.isUtc, isTrue);
+      expect((await store.describe('k'))!.storedAt.isUtc, isTrue);
+    });
+
+    test('directory', () async {
+      // The backend worth naming separately: `describe` does not replay what
+      // `put` recorded, it reads the file's `stat.modified`, which the platform
+      // hands back in local time. So this is the one case where the conversion
+      // is doing work rather than confirming a `DateTime.now()` was relabelled.
+      final root = await Directory.systemTemp.createTemp('tom_blob_utc_test');
+      addTearDown(() async {
+        if (root.existsSync()) await root.delete(recursive: true);
+      });
+      final store = TomDirectoryBlobStore(root);
+      final stored = await store.putBytes(key: 'k', bytes: const [1]);
+      expect(stored.storedAt.isUtc, isTrue);
+
+      final described = await store.describe('k');
+      expect(described!.storedAt.isUtc, isTrue);
+      // Same file, same moment: the mtime the store reports is the mtime the
+      // filesystem holds, converted rather than reinterpreted.
+      expect(
+        described.storedAt,
+        File('${root.path}/k').statSync().modified.toUtc(),
+      );
+    });
+
+    test('s3', () async {
+      // `put` has no server-supplied time to use — S3's PUT response carries
+      // none — so it stamps its own, and that stamp is the one at risk.
+      final store = _s3((request) async => http.Response('', 200));
+      final stored = await store.putBytes(key: 'k', bytes: const [1]);
+      expect(stored.storedAt.isUtc, isTrue);
+    });
+
+    test('s3 falls back to a UTC stamp when the object carries no date', () {
+      // The fallback path inside `describe`: a HEAD without `last-modified`
+      // (or with one that will not parse) still has to produce an instant, and
+      // that manufactured one is as much a moment as a parsed one.
+      final store = _s3(
+        (request) async => http.Response('', 200, headers: const {
+          'content-length': '1',
+          'last-modified': 'not a date at all',
+        }),
+      );
+      return expectLater(
+        store.describe('k').then((d) => d!.storedAt.isUtc),
+        completion(isTrue),
+      );
+    });
+  });
+
   group('key grammar', () {
     test('accepts relative, slash-separated, unreserved keys', () {
       for (final key in const [

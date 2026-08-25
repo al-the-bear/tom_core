@@ -41,9 +41,14 @@ const String defaultBlobChunkTable = 'tom_blob_chunk';
 ///    truncating the download.
 ///  * `file_name` is nullable and that is the ordinary case: most blobs are
 ///    written by key, not by name.
-///  * `stored_at` is a plain `DATETIME`, not `DATETIME(6)` — a blob's write time
-///    is metadata for a human, never an ordering the code depends on, so the
-///    sub-second precision the scheduling tables need would be noise here.
+///  * `stored_at` is `DATETIME(6)`, and the width is not a precision
+///    preference — it is the column agreeing with its writer. Every `DateTime`
+///    bound by this data source is rendered by `sqlInstant`, which always emits
+///    six fractional digits, and MariaDB does not reject the extra precision on
+///    a narrower column: it silently *rounds* it. A plain `DATETIME` therefore
+///    did not hold a coarser version of the right moment but a different one, up
+///    to half a second away, making the value `put` returned unequal to the one
+///    `describe` read back. `sql_instant.dart` states the general rule.
 TomFrameworkTable blobManifestTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'blobManifestTable',
@@ -54,7 +59,7 @@ TomFrameworkTable blobManifestTable(String table) => TomFrameworkTable(
     const TomFrameworkColumn('file_name', 'VARCHAR(255)', nullable: true),
     const TomFrameworkColumn('byte_count', 'BIGINT'),
     const TomFrameworkColumn('chunk_count', 'INT'),
-    const TomFrameworkColumn('stored_at', 'DATETIME'),
+    const TomFrameworkColumn('stored_at', 'DATETIME(6)'),
   ],
   primaryKey: const ['storage_key'],
 );

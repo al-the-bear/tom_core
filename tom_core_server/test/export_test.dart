@@ -2258,6 +2258,36 @@ void main() {
       }
       expect(keys, everyElement('export.store.write_failed'));
     });
+
+    test('every backend reports storedAt as UTC', () async {
+      // Same reasoning as the error key above, applied to the one field of
+      // `TomStoredExport` that denotes a moment: swapping the backend must not
+      // change what the descriptor means.
+      //
+      // This type needed the guarantee more than `TomStoredBlob` did, because
+      // its backends did not merely each get the zone wrong — they disagreed.
+      // Directory and memory stamp `DateTime.now()`, while `TomBlobExportStore`
+      // forwards the blob store's stamp, so once blobs were normalised two of
+      // the three would have answered in local time and the third in UTC.
+      // Normalising in the constructor is what makes the three agree by
+      // construction rather than by each backend remembering.
+      for (final store in <TomExportStore>[
+        TomDirectoryExportStore(root),
+        TomMemoryExportStore(),
+        TomBlobExportStore(TomMemoryBlobStore()),
+      ]) {
+        final stored = await store.store(
+          key: 'a.csv',
+          bytes: Stream.value(utf8.encode('id\n1\n')),
+          mediaType: 'text/csv',
+        );
+        expect(
+          stored.storedAt.isUtc,
+          isTrue,
+          reason: '$store returned a descriptor with a zoneless stamp',
+        );
+      }
+    });
   });
 
   // ===========================================================================

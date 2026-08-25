@@ -29,9 +29,13 @@
 --  * `chunk_count` is what a download iterates, so a manifest and its chunks
 --    disagree loudly (a missing-chunk error) rather than quietly truncating the
 --    file.
---  * `stored_at` is a plain DATETIME, not DATETIME(6). A blob's write time is
---    metadata for a human, never an ordering the code depends on, so the
---    sub-second precision the scheduling tables need would be noise here.
+--  * `stored_at` is DATETIME(6), and the width is not a precision preference —
+--    it is the column agreeing with its writer. Every DateTime the framework
+--    binds is rendered with six fractional digits, and MariaDB does not reject
+--    the extra precision on a narrower column: it silently rounds it. A plain
+--    DATETIME here would not hold a coarser version of the right moment but a
+--    different one, up to half a second away, so the value a write returns would
+--    not equal the one a later read gives back.
 CREATE TABLE IF NOT EXISTS tom_blob (
   storage_key VARCHAR(512) NOT NULL,
   upload_id   VARCHAR(64)  NOT NULL,
@@ -39,6 +43,6 @@ CREATE TABLE IF NOT EXISTS tom_blob (
   file_name   VARCHAR(255) NULL,
   byte_count  BIGINT       NOT NULL,
   chunk_count INT          NOT NULL,
-  stored_at   DATETIME     NOT NULL,
+  stored_at   DATETIME(6)  NOT NULL,
   PRIMARY KEY (storage_key)
 );

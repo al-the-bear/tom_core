@@ -572,7 +572,7 @@ by `TomExportStore.store` rather than assembled by the caller, because
 #### Constructors
 
 ```dart
-const TomStoredExport({
+TomStoredExport({
   required String key,
   required String mediaType,
   required int byteCount,
@@ -588,7 +588,7 @@ const TomStoredExport({
 | `key` | `String` | The key the export was stored under, as given to `TomExportStore.store` (final). |
 | `mediaType` | `String` | The IANA media type the bytes should be served as (final). |
 | `byteCount` | `int` | The number of bytes written (final). |
-| `storedAt` | `DateTime` | When the write completed (final). |
+| `storedAt` | `DateTime` | When the write completed, always in UTC — the constructor normalises it, so the three backends agree (final). |
 | `location` | `Uri?` | A backend-specific address — a `file:` URI, an object-store URL — useful for a human chasing an export down, but never the thing to read it back with (final). |
 
 ### TomExportStoreOperation

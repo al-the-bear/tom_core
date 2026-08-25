@@ -192,7 +192,7 @@ Returned by `TomBlobStore.put` rather than assembled by the caller, because
 #### Constructors
 
 ```dart
-const TomStoredBlob({
+TomStoredBlob({
   required String key,
   required String mediaType,
   required int byteCount,
@@ -201,6 +201,9 @@ const TomStoredBlob({
   Uri? location,
 })
 ```
+
+`storedAt` is normalised to UTC by the constructor, so the zone is a property
+of the type rather than of whichever backend built the descriptor.
 
 #### Static Properties
 
@@ -215,7 +218,7 @@ const TomStoredBlob({
 | `key` | `String` | The key the blob is stored under (final). |
 | `mediaType` | `String` | The IANA media type the bytes should be served as (final). |
 | `byteCount` | `int` | The number of bytes stored (final). |
-| `storedAt` | `DateTime` | When the write completed (final). |
+| `storedAt` | `DateTime` | When the write completed, always in UTC — the constructor normalises whatever it is given (final). |
 | `fileName` | `String?` | The original file name, when one was supplied — kept because the storage key is chosen by the framework while the name a person expects in their downloads folder is the one they uploaded (final). |
 | `location` | `Uri?` | A backend-specific address (a `file:` URI, an object-store URL); useful to a human chasing a blob down, never the thing to read it back with (final). |
 
@@ -462,7 +465,7 @@ TomBlobManifestRow()
 | `fileName` | `String?` | The original file name, or `null` when none was supplied — the ordinary case, since most blobs are written by key (column `file_name`). |
 | `byteCount` | `int` | The blob's size in bytes (column `byte_count`). |
 | `chunkCount` | `int` | How many chunk rows the content occupies (column `chunk_count`). |
-| `storedAt` | `DateTime` | When the write completed (column `stored_at`). |
+| `storedAt` | `DateTime` | When the write completed, read back as UTC (column `stored_at`). |
 
 ### TomBlobChunkRow
 
@@ -712,7 +715,7 @@ could describe still gets an entry that can build itself.
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
-| `blobManifestTable` | `TomFrameworkTable blobManifestTable(String table)` | The one declaration of the one-row-per-blob manifest table: `storage_key` as the primary key, sized from `TomBlobStore.maxKeyLength` so it cannot silently truncate a key the validator accepted; `upload_id` naming the committed upload; `media_type`, the nullable `file_name`, `byte_count`, `chunk_count`, and a plain `DATETIME` `stored_at`. |
+| `blobManifestTable` | `TomFrameworkTable blobManifestTable(String table)` | The one declaration of the one-row-per-blob manifest table: `storage_key` as the primary key, sized from `TomBlobStore.maxKeyLength` so it cannot silently truncate a key the validator accepted; `upload_id` naming the committed upload; `media_type`, the nullable `file_name`, `byte_count`, `chunk_count`, and `stored_at` as `DATETIME(6)` — the width the framework's instant rendering writes, since a narrower column would silently round the microseconds and move the stored moment. |
 | `blobChunkTable` | `TomFrameworkTable blobChunkTable(String table)` | The one declaration of the many-rows-per-blob content table, keyed on `(upload_id, chunk_index)` so the chunks of an in-flight write are addressable before anything commits to them. `chunk_data` is `LONGTEXT` holding base64, because the driver decodes every column value into a Dart `String`. |
 | `blobManifestTableDdl` | `String blobManifestTableDdl(String table)` | The `CREATE TABLE` statement for the manifest table, derived from `blobManifestTable`. What a deployment applies by hand when its credential may not run DDL: for the default name that text is the shipped `[1]-create_tom_blob.sql`, and for a store constructed with `manifestTable:` there is no shipped file, so this is the only source. |
 | `blobChunkTableDdl` | `String blobChunkTableDdl(String table)` | The `CREATE TABLE` statement for the chunk table, derived from `blobChunkTable` — the `[2]-create_tom_blob_chunk.sql` counterpart of `blobManifestTableDdl`, and the same answer for a renamed `chunkTable:`. |

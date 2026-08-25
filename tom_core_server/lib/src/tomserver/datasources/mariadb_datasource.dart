@@ -137,41 +137,6 @@ class MariadbPreparedStatement<T extends Object>
     return [for (final p in parameterList) _toBindValue(params[p])];
   }
 
-  /// Marshals one bind [value] into a driver primitive: a [TomDbType] box is
-  /// unwrapped to the Dart value it holds; a Dart `bool` becomes its MariaDB
-  /// integer encoding; a [DateTime] becomes its UTC `DATETIME(6)` text; every
-  /// other value is bound as-is.
-  ///
-  /// MariaDB has no native boolean type — `BOOLEAN` is an alias for
-  /// `TINYINT(1)` stored as `1`/`0`. The driver serializes a bound Dart `bool`
-  /// as the *string* `'true'`/`'false'`, which the server rejects for an
-  /// integer column ("Incorrect integer value: 'false'", error 1366).
-  /// Translating `bool`→`int` here keeps that kernel→driver mapping at the
-  /// single data-source boundary that already owns the [TomDbType] unwrap.
-  ///
-  /// MariaDB has no zone-aware `DATETIME` either, and the driver serializes a
-  /// bound [DateTime] through its `toString()` — which for a UTC instant ends in
-  /// `Z`. The server rejects the suffix ("Incorrect datetime value:
-  /// '2000-01-01 00:00:00.000Z'", error 1292), so a `DateTime` must reach the
-  /// driver with no zone designator — `DateTime.utc(...)` is the ordinary case,
-  /// not an exotic one.
-  ///
-  /// Rendered through [sqlInstant] rather than converted with `toLocal()`.
-  /// `toLocal()` also produces an acceptable suffix-less value and round-trips
-  /// on the node that wrote it, which is why it stood for a while — but what it
-  /// stores is *that node's wall clock*, so two servers of one cluster leave
-  /// different characters in the column for the same moment and each reads the
-  /// other's rows off by the difference in their offsets. [sqlInstant] writes
-  /// the instant, identically everywhere, and `TomDbDateTime.of` reads it back
-  /// as UTC. Callers keep whichever flag they like on their own `DateTime`;
-  /// only what reaches the driver is normalised.
-  static Object? _toBindValue(Object? value) {
-    final unwrapped = value is TomDbType ? value.get() : value;
-    if (unwrapped is bool) return unwrapped ? 1 : 0;
-    if (unwrapped is DateTime) return sqlInstant(unwrapped);
-    return unwrapped;
-  }
-
   @override
   Future<List<T>> execute([Map<String, Object?>? params]) async {
     final List<Object?> parameters = buildPositionalParameters(
@@ -295,6 +260,60 @@ typedef _PendingReference = ({
 /// they point at different faults.
 @tomReflector
 @TomDatasourceDriver("mariadb")
+/// Marshals one bind [value] into a driver primitive: a [TomDbType] box is
+/// unwrapped to the Dart value it holds; a Dart `bool` becomes its MariaDB
+/// integer encoding; a [DateTime] becomes its UTC `DATETIME(6)` text; every
+/// other value is bound as-is.
+///
+/// MariaDB has no native boolean type — `BOOLEAN` is an alias for
+/// `TINYINT(1)` stored as `1`/`0`. The driver serializes a bound Dart `bool`
+/// as the *string* `'true'`/`'false'`, which the server rejects for an
+/// integer column ("Incorrect integer value: 'false'", error 1366).
+/// Translating `bool`→`int` here keeps that kernel→driver mapping at the
+/// single data-source boundary that already owns the [TomDbType] unwrap.
+///
+/// MariaDB has no zone-aware `DATETIME` either, and the driver serializes a
+/// bound [DateTime] through its `toString()` — which for a UTC instant ends in
+/// `Z`. The server rejects the suffix ("Incorrect datetime value:
+/// '2000-01-01 00:00:00.000Z'", error 1292), so a `DateTime` must reach the
+/// driver with no zone designator — `DateTime.utc(...)` is the ordinary case,
+/// not an exotic one.
+///
+/// Rendered through [sqlInstant] rather than converted with `toLocal()`.
+/// `toLocal()` also produces an acceptable suffix-less value and round-trips
+/// on the node that wrote it, which is why it stood for a while — but what it
+/// stores is *that node's wall clock*, so two servers of one cluster leave
+/// different characters in the column for the same moment and each reads the
+/// other's rows off by the difference in their offsets. [sqlInstant] writes
+/// the instant, identically everywhere, and `TomDbDateTime.of` reads it back
+/// as UTC. Callers keep whichever flag they like on their own `DateTime`;
+/// only what reaches the driver is normalised.
+Object? _toBindValue(Object? value) {
+  final unwrapped = value is TomDbType ? value.get() : value;
+  if (unwrapped is bool) return unwrapped ? 1 : 0;
+  if (unwrapped is DateTime) return sqlInstant(unwrapped);
+  return unwrapped;
+}
+
+/// Marshals a whole named-parameter map through [_toBindValue].
+///
+/// Both statement paths need this and only one of them used to have it. The
+/// prepared-statement path marshals positionally through
+/// [MariadbPreparedStatement.buildPositionalParameters]; `executeQuery` and
+/// `executeCommand` handed their map to the driver untouched, so a hand-written
+/// store binding a `DateTime` or a `bool` got the driver's own encoding rather
+/// than this one — a local wall-clock reading in a column read back as UTC, and
+/// the string `'false'` in an integer column. That is why the scheduling, audit
+/// and OAuth-state stores render every instant with `sqlInstant` before binding
+/// it: they were routing around this hole rather than choosing to. Marshalling
+/// here makes the boundary one boundary, whichever path a statement takes.
+Map<String, dynamic>? _toBindParams(Map<String, dynamic>? params) =>
+    params == null
+    ? null
+    : {
+        for (final entry in params.entries) entry.key: _toBindValue(entry.value),
+      };
+
 class MariaDbDatasource implements TomDataSource {
   final MariadbSqlDialect _sqlDialect = MariadbSqlDialect();
 
@@ -672,7 +691,7 @@ class MariaDbDatasource implements TomDataSource {
     final link = await _openConnection("executeQuery");
     IResultSet qResult = await runChecked<IResultSet>(
       () async {
-        return await link.execute(command, params);
+        return await link.execute(command, _toBindParams(params));
       },
       (e, StackTrace s) {
         tomLog.warn("Error when executing SQL: $e");
@@ -1259,7 +1278,7 @@ class MariaDbDatasource implements TomDataSource {
   ]) async {
     final link = await _openConnection("executeCommand");
     var qResult = await runChecked<IResultSet>(
-      () async => await link.execute(command, params),
+      () async => await link.execute(command, _toBindParams(params)),
       (e, s) {
         return MariadbDatasourceException(
           "error.result_processing.executecommand_failed",

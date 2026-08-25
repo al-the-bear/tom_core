@@ -95,12 +95,26 @@ void main() {
       expect(nullable, ['file_name']);
     });
 
-    test('write time is a plain DATETIME, not the scheduler\'s DATETIME(6)', () {
-      // Metadata for a human, never an ordering the code depends on — the
-      // sub-second precision the job queue and the lease table need would be
-      // noise here.
-      expect(manifest, contains('stored_at   DATETIME     NOT NULL'));
-      expect(manifest, isNot(contains('DATETIME(6)')));
+    test('write time is DATETIME(6), the width the instant convention writes', () {
+      // This test previously asserted the opposite, on the grounds that a
+      // blob's write time is metadata for a human rather than an ordering the
+      // code depends on, so the scheduler's sub-second precision would be noise
+      // here. That reasoning was about whether the precision is *useful*, and
+      // it asked the wrong question.
+      //
+      // The column does not get to choose its width independently of what is
+      // written into it. Every `DateTime` bound by this data source is rendered
+      // by `sqlInstant`, which always emits six fractional digits; MariaDB does
+      // not reject the extra precision on a narrower column, it silently
+      // *rounds* it. So a plain `DATETIME` here did not store a coarser version
+      // of the right moment — it stored a different moment, up to half a second
+      // away and in whichever direction the fraction fell, and made the value
+      // `put` returned unequal to the one `describe` read back.
+      //
+      // `DATETIME(6)` is therefore not a precision preference; it is the column
+      // agreeing with its writer. `sql_instant.dart` states this as the general
+      // corollary for any column holding an instant.
+      expect(manifest, contains('stored_at   DATETIME(6)  NOT NULL'));
     });
 
     test('chunks are keyed on the upload, not on the blob', () {

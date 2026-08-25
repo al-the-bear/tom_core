@@ -49,13 +49,19 @@ import 'tabular_result.dart';
 /// caller most often needs next (a `Content-Length`, a quota check, a log line).
 class TomStoredExport {
   /// Creates a stored-export descriptor.
-  const TomStoredExport({
+  ///
+  /// [storedAt] is normalised to UTC for the same reason [TomStoredBlob] does
+  /// it, and this type needed it more: the directory and memory backends stamp
+  /// `DateTime.now()` while the blob-backed one forwards the blob's own stamp,
+  /// so without normalising here the three backends of one interface would have
+  /// disagreed with each other about the zone.
+  TomStoredExport({
     required this.key,
     required this.mediaType,
     required this.byteCount,
-    required this.storedAt,
+    required DateTime storedAt,
     this.location,
-  });
+  }) : storedAt = storedAt.toUtc();
 
   /// The key the export was stored under, as given to [TomExportStore.store].
   final String key;
@@ -66,7 +72,7 @@ class TomStoredExport {
   /// The number of bytes written.
   final int byteCount;
 
-  /// When the write completed.
+  /// When the write completed, always in UTC.
   final DateTime storedAt;
 
   /// A backend-specific address — a `file:` URI, an object-store URL.

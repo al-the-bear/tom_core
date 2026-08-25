@@ -19,8 +19,8 @@
   `test/file_storage_schema_test.dart` adds it: each shipped migration compared
   against the text the corresponding function renders, plus what the schema
   claims — `storage_key` exactly as wide as `TomBlobStore.maxKeyLength`,
-  `file_name` as the one nullable column, `stored_at` as a plain `DATETIME`
-  rather than the scheduler's `DATETIME(6)`, chunks keyed on the upload rather
+  `file_name` as the one nullable column, `stored_at`'s width, chunks keyed on
+  the upload rather
   than the blob, and `chunk_data` as text because the driver decodes every
   column into a `String`.
 
@@ -116,6 +116,78 @@
   and dropping the denial audit each fail exactly the tests that claim them.
 
 ### Fixed
+
+- **A blob's `storedAt` was a local `DateTime`, and the database backend wrote
+  that local reading into a column everything else reads as UTC (tcinc545).**
+  Two separate defects met in one field. `TomDatabaseBlobStore` rendered
+  `stored_at` itself, through a private `_sqlDateTime` that formatted
+  `DateTime.now()` to whole seconds and bound the result as text — so the column
+  held the *writing host's wall clock*, while the read path appended `Z` and
+  called it UTC. A server at UTC+2 wrote 14:00 local and read back 14:00 UTC,
+  wrong by the offset; on a UTC host it was accidentally right, which is why
+  nothing caught it. Independently, all four backends handed back a zoneless
+  `DateTime` (`DateTime.now()` on three, the filesystem's `stat.modified` on the
+  fourth), and since `DateTime.==` compares `isUtc` as well as the instant, a
+  descriptor did not compare equal to itself across a round trip even on one
+  host.
+
+  `stored_at` is now bound as a `DateTime` and `_sqlDateTime` is gone: the
+  MariaDB bind boundary renders every instant through `sqlInstant`, so the
+  module uses the convention the rest of the server uses instead of a
+  file-storage spelling of it. The zone is fixed one level up, in
+  `TomStoredBlob`'s constructor, which normalises whatever it is given —
+  making UTC a property of the *type*, so a backend added later cannot forget
+  it, exactly as `TomAuditAnchor` and `TomOAuthTokens` already do it. That
+  single change fixes all four backends at once.
+
+  `TomStoredExport` got the same treatment, where the need was sharper: its
+  directory and memory backends stamp `DateTime.now()` while `TomBlobExportStore`
+  forwards the blob's stamp, so normalising blobs alone would have left the three
+  backends of one interface disagreeing with each other about the zone.
+
+  The manifest column widened from `DATETIME` to `DATETIME(6)`, in the
+  descriptor and in the reference migration. This is not a precision
+  preference: `sqlInstant` always emits six fractional digits and MariaDB does
+  not reject the excess on a narrower column, it silently *rounds* it — so a
+  plain `DATETIME` stored a different moment, up to half a second away, and made
+  the value `put` returned unequal to the one `describe` read back. The
+  file-storage schema test previously asserted the opposite on the grounds that
+  a blob's write time is metadata for a human rather than an ordering the code
+  depends on. That reasoning was about whether the precision is *useful* and
+  asked the wrong question; the column does not get to choose its width
+  independently of what is written into it. **The test's premise was rewritten
+  deliberately, not loosened.**
+
+  Seven connection-free tests pin the contract across all four blob backends
+  and all three export backends, and a db-tagged test writes a blob, reads its
+  descriptor back and asserts both halves: `isUtc`, and equality with the value
+  written. Both halves are needed — `isUtc` alone would pass for a store that
+  mislabelled a local reading as UTC, which is precisely the old defect, while
+  equality reaches into the column because the two sides are derived
+  independently (one from the descriptor's own normalisation, one from the text
+  MariaDB holds) and so disagree by exactly the host's offset if local time ever
+  reaches the column again.
+
+  **That db-tagged test then failed, and found something bigger.** Binding the
+  `DateTime` was supposed to be enough, because `MariadbPreparedStatement`
+  marshals every bound value through `_toBindValue` — which renders an instant
+  with `sqlInstant`. But `executeQuery` and `executeCommand` do not go through
+  the prepared-statement path: they handed their named-parameter map to the
+  driver **untouched**. So for any hand-built statement, a bound `DateTime`
+  reached the driver raw and was encoded as the writing node's wall clock, and a
+  bound `bool` was serialised as the string `'true'`/`'false'` that MariaDB
+  rejects for an integer column. The marshalling was documented as living at
+  "the single data-source boundary" and in fact lived on one of the two paths
+  through it.
+
+  This also explains, retroactively, why the scheduling, audit and OAuth-state
+  stores call `sqlInstant` at every seam by hand: they were not being explicit
+  by preference, they were routing around this hole — which is why the pattern
+  looked like a convention and behaved like a workaround, and why file storage
+  omitting it was a live bug rather than a style difference. `_toBindValue` is
+  now a library-level function applied by both paths, so the boundary is one
+  boundary; the existing explicit calls are unaffected (a pre-rendered `String`
+  passes through) and are now belt-and-braces rather than load-bearing.
 
 - **A blob chunk size of zero was accepted, and turned the first upload into a
   loop that never ends (tcinc544).** `TomDatabaseBlobStore` validated nothing

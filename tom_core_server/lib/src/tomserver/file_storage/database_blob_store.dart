@@ -240,7 +240,11 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'fileName': fileName,
         'byteCount': byteCount,
         'chunkCount': chunkIndex,
-        'storedAt': _sqlDateTime(storedAt),
+        // Bound as a `DateTime`, not as text this store renders itself. The
+        // data source binds every instant through `sqlInstant`, which is what
+        // puts a UTC reading in the column; a local one formatted here read
+        // back as though it were UTC and was wrong by the host's offset.
+        'storedAt': storedAt,
       },
     );
 
@@ -364,10 +368,6 @@ class TomDatabaseBlobStore extends TomBlobStore {
     'DELETE FROM $chunkTable WHERE upload_id = :uploadId',
     {'uploadId': uploadId},
   );
-
-  /// Renders [value] in the `YYYY-MM-DD HH:MM:SS` form a SQL `DATETIME` binds.
-  static String _sqlDateTime(DateTime value) =>
-      value.toIso8601String().substring(0, 19).replaceFirst('T', ' ');
 
   @override
   String toString() => 'TomDatabaseBlobStore($manifestTable)';

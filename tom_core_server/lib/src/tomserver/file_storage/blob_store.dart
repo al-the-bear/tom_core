@@ -140,14 +140,22 @@ enum TomBlobStoreOperation {
 /// caller most often needs next (a `Content-Length`, a quota check, a log line).
 class TomStoredBlob {
   /// Creates a stored-blob descriptor.
-  const TomStoredBlob({
+  ///
+  /// [storedAt] is normalised to UTC here rather than at each construction
+  /// site, which is what makes the zone a property of the *type*: a backend
+  /// added later cannot forget it, and there is one place to read the rule.
+  /// Every backend sources the value locally — `DateTime.now()` on three of
+  /// them, the filesystem's `stat.modified` on the fourth — so without this a
+  /// descriptor written in Berlin and read in Denver disagreed with itself by
+  /// the offset. `TomAuditAnchor` and `TomOAuthTokens` normalise the same way.
+  TomStoredBlob({
     required this.key,
     required this.mediaType,
     required this.byteCount,
-    required this.storedAt,
+    required DateTime storedAt,
     this.fileName,
     this.location,
-  });
+  }) : storedAt = storedAt.toUtc();
 
   /// The key the blob is stored under.
   final String key;
@@ -158,7 +166,7 @@ class TomStoredBlob {
   /// The number of bytes stored.
   final int byteCount;
 
-  /// When the write completed.
+  /// When the write completed, always in UTC.
   final DateTime storedAt;
 
   /// The original file name, when one was supplied.
