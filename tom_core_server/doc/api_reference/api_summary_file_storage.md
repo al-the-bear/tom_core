@@ -213,12 +213,12 @@ const TomBlobStore()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | Writes `bytes` under `key`, replacing anything already there, and returns the descriptor. A failure must leave nothing readable under `key` beyond what was there before: implementations commit atomically or not at all. |
-| `get` | `Stream<List<int>> get(String key)` | Reads the blob stored under `key`; throws `storage.blob.not_found` when the key holds nothing, rather than disguising a missing blob as an empty file. |
+| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | Writes `bytes` under `key`, replacing anything already there, and returns the descriptor. A failure must leave nothing readable under `key` beyond what was there before: implementations commit atomically or not at all. A chunk from `bytes` is borrowed for the duration of the `await` — consume or copy it before asking for the next, never retain it, since a producer refilling one scratch buffer per chunk is the ordinary shape of an encoder. |
+| `get` | `Stream<List<int>> get(String key)` | Reads the blob stored under `key`; throws `storage.blob.not_found` when the key holds nothing, rather than disguising a missing blob as an empty file. Each chunk belongs to the caller: writable, and aliased with nothing the store keeps. |
 | `describe` | `Future<TomStoredBlob?> describe(String key)` | The descriptor for `key`, or `null` when it holds nothing — the one read allowed to answer "nothing" without throwing. |
 | `delete` | `Future<bool> delete(String key)` | Deletes `key`, returning whether anything was there to delete. |
 | `exists` | `Future<bool> exists(String key)` | Whether `key` currently holds a blob; defined in terms of `describe` so a backend implements one lookup, overridden where a cheaper probe exists. |
-| `getBytes` | `Future<Uint8List> getBytes(String key)` | Reads `key` fully into memory — the convenience for call sites that genuinely know their blobs are small. A helper on the streaming API, not a second contract method, so a backend author cannot implement it instead of streaming. |
+| `getBytes` | `Future<Uint8List> getBytes(String key)` | Reads `key` fully into memory — the convenience for call sites that genuinely know their blobs are small. A helper on the streaming API, not a second contract method, so a backend author cannot implement it instead of streaming. Collects with a non-copying builder, which returns a lone chunk untouched: it is exactly as aliased as what the backend yielded, which is why `get` promises the caller owns its chunks. |
 | `putBytes` | `Future<TomStoredBlob> putBytes({required String key, required List<int> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | The buffered counterpart to `getBytes`; delegates to `put` with a single-value stream. |
 | `close` | `Future<void> close()` | Releases whatever the backend holds open. Idempotent; the default does nothing, because most backends hold nothing. |
 
@@ -227,6 +227,10 @@ const TomBlobStore()
 A store that keeps its contents in memory, for tests and for a development
 server that should not leave files behind. It buffers whole blobs by definition,
 which is why it is not a default.
+
+Holding the bytes rather than reading them back off a disk or a bucket makes it
+the only backend that can accidentally share a buffer with a caller, in either
+direction — so it is the only one that copies on purpose, in both.
 
 - **Extends:** `TomBlobStore`
 
@@ -249,8 +253,8 @@ TomMemoryBlobStore()
 | ------ | --------- | ----------- |
 | `textOf` | `String textOf(String key)` | The stored bytes for `key` decoded as UTF-8 text (malformed input allowed), for tests that assert on content; throws `storage.blob.not_found` when the key holds nothing. |
 | `clear` | `void clear()` | Forgets everything, for a test that reuses one store across cases. |
-| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Validates the key and drains the stream fully before either map is touched, so a stream that throws half way leaves no half-written blob. |
-| `get` | `Stream<List<int>> get(String key)` | *(override)* Yields the buffered bytes as one chunk; throws `storage.blob.not_found` when absent. |
+| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Validates the key and drains the stream fully before either map is touched, so a stream that throws half way leaves no half-written blob. Copies each chunk as it arrives rather than retaining it, so a producer reusing one scratch buffer stores what it streamed. |
+| `get` | `Stream<List<int>> get(String key)` | *(override)* Yields the buffered bytes as one chunk, copied so the reader owns it; throws `storage.blob.not_found` when absent. |
 | `describe` | `Future<TomStoredBlob?> describe(String key)` | *(override)* The descriptor recorded by `put`, or `null`. |
 | `exists` | `Future<bool> exists(String key)` | *(override)* Answers straight from the content map rather than through `describe`. |
 | `delete` | `Future<bool> delete(String key)` | *(override)* Drops the content and its descriptor, returning whether content was present. |

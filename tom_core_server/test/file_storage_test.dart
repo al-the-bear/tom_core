@@ -273,6 +273,65 @@ void main() {
       );
       expect(read, isFalse);
     });
+
+    test('a chunk handed to a reader belongs to the reader', () async {
+      // Writable, because every other backend reads its chunks off a file, a
+      // socket or a row and hands the consumer something it owns; and
+      // disconnected, because this backend used to yield the very list held in
+      // its map, so a consumer decoding in place edited the stored blob.
+      await store.putBytes(key: 'k', bytes: utf8.encode('abc'));
+
+      final chunk = (await store.get('k').toList()).single;
+      chunk[0] = 0x7a; // 'z'
+
+      expect(chunk[0], 0x7a, reason: 'the chunk is the reader\'s to write to');
+      expect(store.textOf('k'), 'abc', reason: 'and the store is untouched');
+    });
+
+    test('getBytes hands back a buffer of the caller\'s own', () async {
+      // The buffered convenience is where a caller most plausibly writes in
+      // place — it exists for the blobs small enough to decode whole. It
+      // collects with a non-copying builder, which returns a lone chunk
+      // untouched, so it is only as safe as what [get] yields.
+      await store.putBytes(key: 'k', bytes: utf8.encode('abc'));
+
+      final bytes = await store.getBytes('k');
+      bytes[0] = 0x7a;
+
+      expect(store.textOf('k'), 'abc');
+    });
+
+    test('a writer that reuses one buffer stores what it streamed', () async {
+      // A fixed-size scratch buffer refilled per chunk is the normal shape of
+      // an encoder, and this store collected with `BytesBuilder(copy: false)`,
+      // which retains the lists it is given. Every chunk being the same list,
+      // the join saw its last state once per chunk: 'ccc', not 'abc'.
+      final scratch = Uint8List(1);
+      Stream<List<int>> reusing() async* {
+        for (final byte in 'abc'.codeUnits) {
+          scratch[0] = byte;
+          yield scratch;
+        }
+      }
+
+      await store.put(key: 'k', bytes: reusing());
+      expect(store.textOf('k'), 'abc');
+
+      scratch[0] = 0x7a;
+      expect(store.textOf('k'), 'abc', reason: 'and later writes miss it');
+    });
+
+    test('putBytes does not adopt the list it was handed', () async {
+      // The one-shot form of the same fault: `putBytes` wraps the caller's list
+      // in a single-element stream, which is exactly the case a non-copying
+      // builder passes through without copying.
+      final source = Uint8List.fromList(utf8.encode('abc'));
+      await store.putBytes(key: 'k', bytes: source);
+
+      source[0] = 0x7a;
+
+      expect(store.textOf('k'), 'abc');
+    });
   });
 
   group('TomDirectoryBlobStore', () {

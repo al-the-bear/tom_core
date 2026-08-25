@@ -16,7 +16,9 @@ without the second; the second is built entirely on the first.
 - [Overview](#overview)
 - [The Shape of the Design](#the-shape-of-the-design)
 - [Streaming Is the Requirement](#streaming-is-the-requirement)
+  - [Who Owns a Chunk](#who-owns-a-chunk)
 - [Keys Are a Grammar, Not a String](#keys-are-a-grammar-not-a-string)
+  - [Prefixes obey the same grammar](#prefixes-obey-the-same-grammar)
 - [The Backends](#the-backends)
   - [Memory](#memory)
   - [Directory](#directory)
@@ -104,6 +106,33 @@ streams, the database store fetches chunk row *n* only once the consumer has
 taken row *n-1*, and the S3 store switches to multipart above a threshold so a
 large upload is never assembled in memory either.
 
+### Who Owns a Chunk
+
+Streaming makes ownership a question worth answering, in both directions, and
+the contract answers it the same way each time: **the chunk belongs to whoever
+did not produce it, for exactly as long as it takes to use it.**
+
+- A chunk `get` yields is the **reader's own** — writable, and aliased with
+  nothing the store keeps. A consumer decoding in place is doing something
+  ordinary, and it must not edit the stored blob by doing it.
+- A chunk handed to `put` is **borrowed for the duration of the `await`**. The
+  store consumes or copies it before asking for the next one and never retains
+  it, because a producer refilling one fixed-size buffer per chunk is the
+  ordinary shape of an encoder.
+
+The three backends that read and write elsewhere satisfy both without trying: a
+chunk off a file, a row or a socket is fresh, and a chunk written to one is gone.
+`TomMemoryBlobStore` is the only backend holding the bytes it serves, so it is
+the only one that can accidentally share a buffer — and it copies, on both
+sides. The same asymmetry applies to `TomMemoryExportStore` in the export module.
+
+The copy is deliberate rather than an unmodifiable view, which would be cheaper.
+An unmodifiable chunk would make the same in-place consumer throw on the backend
+the tests run on and succeed on every backend they deploy to — a divergence
+discovered in production, which is the one place this backend exists to keep
+faults out of. `getBytes` inherits whatever `get` yields: it collects with a
+non-copying builder, which returns a lone chunk untouched.
+
 ## Keys Are a Grammar, Not a String
 
 A key is a name in somebody else's namespace — a path under a directory, an
@@ -152,6 +181,10 @@ on the caller's key, so it stays with `validateKey` on the joined key.
 definition, which is the one place in this module where that is acceptable, and
 the reason it is not a default. It is what tests use, and what a development
 server uses when it should not leave files behind.
+
+It is also the only backend that copies deliberately, in both directions — see
+[Who Owns a Chunk](#who-owns-a-chunk). The others store their bytes somewhere
+else and get the same property for nothing.
 
 ### Directory
 

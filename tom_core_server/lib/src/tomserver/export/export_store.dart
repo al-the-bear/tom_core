@@ -35,6 +35,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 
@@ -203,6 +204,11 @@ abstract class TomExportStore {
   /// vocabulary the backend has — [store] translates it — but a backend that
   /// has a *better* key than `export.store.write_failed` for the failure should
   /// throw a [TomExportException] carrying it, which passes through untouched.
+  ///
+  /// A chunk from [bytes] is **borrowed for the duration of the `await`**:
+  /// consume or copy it before asking for the next, and do not retain it. A
+  /// renderer refilling one scratch buffer per chunk is ordinary, and a backend
+  /// that kept the list would store that buffer's last state once per chunk.
   Future<TomStoredExport> doStore({
     required String key,
     required Stream<List<int>> bytes,
@@ -214,6 +220,14 @@ abstract class TomExportStore {
   /// Throws [TomExportException] (`export.store.not_found`) when the key holds
   /// nothing — the one error a backend must raise itself, because only it knows
   /// the difference between absent and unreadable.
+  ///
+  /// Each chunk **belongs to the caller**: writable, and aliased with nothing
+  /// the backend keeps. A backend reading from a file or a blob has this
+  /// already; one holding its exports in memory must copy. Both halves are
+  /// load-bearing — yielding an internal buffer lets a consumer decoding in
+  /// place edit the stored export, while yielding an unmodifiable view would
+  /// make that consumer throw on the backend the tests use and work on every
+  /// backend they deploy to.
   Stream<List<int>> doOpen(String key);
 
   /// Whether [key] holds an export. Implemented by backends; called by
@@ -377,6 +391,13 @@ class TomDirectoryExportStore extends TomExportStore {
 /// For tests, and for the development server that should not leave files
 /// behind. It buffers whole exports by definition, so it is the one place in
 /// this module where that is acceptable — and the reason it is not the default.
+///
+/// Holding the bytes rather than reading them off a disk makes it the only
+/// backend that could hand a caller a reference into its own state, so it is
+/// the only one that has to copy on purpose: a chunk it yields is the reader's
+/// own, and a chunk streamed into it is copied before the next is asked for.
+/// Both are what [TomExportStore.doOpen] and [TomExportStore.doStore] require
+/// of any backend — stated here because here they cost something.
 class TomMemoryExportStore extends TomExportStore {
   /// Creates an empty in-memory store.
   TomMemoryExportStore();
@@ -424,6 +445,9 @@ class TomMemoryExportStore extends TomExportStore {
     // halfway leaves the key holding what it held before — the same "a failed
     // write leaves nothing readable" the filesystem backend gets from its
     // `.part` rename, and the reason both report `export.store.write_failed`.
+    //
+    // `addAll` copies each chunk as it arrives, which is what [doStore] asks
+    // of a backend: the chunk is the renderer's, lent for this iteration only.
     await for (final chunk in bytes) {
       buffer.addAll(chunk);
     }
@@ -448,7 +472,11 @@ class TomMemoryExportStore extends TomExportStore {
         parameters: {'key': key},
       );
     }
-    yield bytes;
+    // Copied, so a consumer decoding in place edits its own chunk and not the
+    // stored export. See [doOpen] on the base class for why a copy rather than
+    // an unmodifiable view: the backend the tests run on must not refuse what
+    // the backends they deploy to allow.
+    yield Uint8List.fromList(bytes);
   }
 
   @override

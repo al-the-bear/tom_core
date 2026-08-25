@@ -635,8 +635,8 @@ const TomExportStore()
 | `open` | `Stream<List<int>> open(String key)` | Reads the export stored under `key`; throws `TomExportException` when the key holds nothing, rather than disguising a missing export as an empty file. Validates the key, dispatches to `doOpen`, and reports any other failure as `export.store.read_failed`. |
 | `exists` | `Future<bool> exists(String key)` | Whether `key` currently holds an export. Validates the key, dispatches to `doExists`, and reports any failure as `export.store.probe_failed`. |
 | `delete` | `Future<bool> delete(String key)` | Deletes `key`, returning whether anything was there to delete. Validates the key, dispatches to `doDelete`, and reports any failure as `export.store.delete_failed`. |
-| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | Implemented by backends; called by `store` with an already-validated `key`. May fail in its own vocabulary — the caller never sees it. |
-| `doOpen` | `Stream<List<int>> doOpen(String key)` | Implemented by backends; called by `open` with an already-validated `key`. Raising `export.store.not_found` is the one error a backend must produce itself, because only it knows the difference between absent and unreadable. |
+| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | Implemented by backends; called by `store` with an already-validated `key`. May fail in its own vocabulary — the caller never sees it. A chunk from `bytes` is borrowed for the duration of the `await`: consume or copy it before asking for the next, never retain it. |
+| `doOpen` | `Stream<List<int>> doOpen(String key)` | Implemented by backends; called by `open` with an already-validated `key`. Raising `export.store.not_found` is the one error a backend must produce itself, because only it knows the difference between absent and unreadable. Each chunk belongs to the caller: writable, and aliased with nothing the backend keeps. |
 | `doExists` | `Future<bool> doExists(String key)` | Implemented by backends; called by `exists` with an already-validated `key`. |
 | `doDelete` | `Future<bool> doDelete(String key)` | Implemented by backends; called by `delete` with an already-validated `key`. |
 
@@ -675,6 +675,10 @@ An export store that keeps its contents in memory, for tests and for a
 development server that should not leave files behind. It buffers whole exports
 by definition, which is why it is not the default.
 
+Holding the bytes rather than reading them off a disk makes it the only backend
+that could hand a caller a reference into its own state, so it is the only one
+that has to copy on purpose — on the way in and on the way out.
+
 - **Extends:** `TomExportStore`
 
 #### Constructors
@@ -695,8 +699,8 @@ TomMemoryExportStore()
 | ------ | --------- | ----------- |
 | `descriptorFor` | `TomStoredExport? descriptorFor(String key)` | The descriptor recorded for `key`, or `null` when it holds nothing. Throws `TomExportException` (`export.store.invalid_key`) for a key the store would not have accepted, rather than answering `null` — `null` means *this valid key holds nothing*. |
 | `textOf` | `String textOf(String key)` | The stored bytes for `key` decoded as UTF-8 (malformed input allowed), for tests that assert on content; throws `TomExportException` (`export.store.not_found`) when the key holds nothing, or (`export.store.invalid_key`) when it is not a valid key. |
-| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Drains `bytes` into a buffer and records the descriptor, publishing neither until the stream completes — so a failed write leaves nothing readable here either. |
-| `doOpen` | `Stream<List<int>> doOpen(String key)` | *(override)* Yields the buffered bytes for `key`; throws `TomExportException` (`export.store.not_found`) when it holds nothing. |
+| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Drains `bytes` into a buffer and records the descriptor, publishing neither until the stream completes — so a failed write leaves nothing readable here either. Each chunk is copied as it arrives, so a renderer reusing one scratch buffer stores what it streamed. |
+| `doOpen` | `Stream<List<int>> doOpen(String key)` | *(override)* Yields the buffered bytes for `key` as one chunk, copied so the reader owns it rather than a reference into the store; throws `TomExportException` (`export.store.not_found`) when it holds nothing. |
 | `doExists` | `Future<bool> doExists(String key)` | *(override)* Whether `key` is held. |
 | `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Drops the content and descriptor for `key`, returning whether anything was there. |
 

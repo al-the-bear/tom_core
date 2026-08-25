@@ -131,6 +131,12 @@ abstract class TomBlobStore {
   ///
   /// A failure must leave **nothing** readable under [key] beyond what was
   /// there before: implementations commit atomically or not at all.
+  ///
+  /// A chunk arriving from [bytes] is **borrowed for the duration of the
+  /// `await`**: an implementation must consume or copy it before asking for the
+  /// next one, and must not retain it. A producer refilling one scratch buffer
+  /// per chunk is the ordinary shape of an encoder, and a store that kept the
+  /// list would record that buffer's last state once per chunk.
   Future<TomStoredBlob> put({
     required String key,
     required Stream<List<int>> bytes,
@@ -144,6 +150,15 @@ abstract class TomBlobStore {
   /// holds nothing: a caller reading a blob it holds a reference to and finding
   /// it gone has hit a real fault — an expiry it did not expect, a store it is
   /// not pointed at — and an empty stream would disguise that as an empty file.
+  ///
+  /// Each chunk **belongs to the caller**: writable, and not aliased with
+  /// anything the store keeps. The backends that read from a file, a row or a
+  /// socket get this for free — the memory backend is the only one that has to
+  /// choose, and it copies. Both halves are load-bearing. Handing back an
+  /// internal buffer lets a consumer decoding in place edit the stored blob;
+  /// handing back an unmodifiable view would instead make that same consumer
+  /// throw on the backend the tests run on and succeed on every other, which is
+  /// the worse trade.
   Stream<List<int>> get(String key);
 
   /// The descriptor for [key], or `null` when it holds nothing.
@@ -169,6 +184,9 @@ abstract class TomBlobStore {
   /// precisely so that a backend author cannot implement it *instead of*
   /// streaming.
   Future<Uint8List> getBytes(String key) async {
+    // Non-copying, which is safe only because [get] yields chunks the caller
+    // owns: a lone chunk comes back from `takeBytes` untouched, so this method
+    // is exactly as aliased as what the backend yielded.
     final builder = BytesBuilder(copy: false);
     await for (final chunk in get(key)) {
       builder.add(chunk);
@@ -291,6 +309,13 @@ abstract class TomBlobStore {
 /// For tests, and for a development server that should not leave files behind.
 /// It buffers whole blobs by definition, so it is the one place in this module
 /// where that is acceptable — and the reason it is not the default.
+///
+/// Because it holds the bytes instead of reading them back off a disk or a
+/// bucket, it is the only backend that can accidentally share a buffer with a
+/// caller, in either direction. So it is the only one that copies on purpose:
+/// what [get] yields is the reader's own, and what [put] is streamed is copied
+/// before the next chunk is asked for. [TomBlobStore] requires both of every
+/// backend; they are noted here because here they are a choice.
 class TomMemoryBlobStore extends TomBlobStore {
   /// Creates an empty in-memory store.
   TomMemoryBlobStore();
@@ -325,7 +350,12 @@ class TomMemoryBlobStore extends TomBlobStore {
     String? fileName,
   }) async {
     TomBlobStore.validateKey(key);
-    final builder = BytesBuilder(copy: false);
+    // Copying, because the chunks are the caller's and are only borrowed for
+    // the `await`. The non-copying builder retains the lists it is given, so a
+    // producer refilling one scratch buffer stored that buffer's last state
+    // once per chunk, and `putBytes` — a single-element stream — adopted the
+    // caller's list outright.
+    final builder = BytesBuilder();
     // Drained before either map is touched: a stream that throws half way must
     // not leave a half-written blob behind, exactly as on the other backends.
     await for (final chunk in bytes) {
@@ -348,7 +378,11 @@ class TomMemoryBlobStore extends TomBlobStore {
   Stream<List<int>> get(String key) async* {
     final bytes = _content[key];
     if (bytes == null) throw TomBlobStore.notFound(key);
-    yield bytes;
+    // Copied, so the caller gets what [TomBlobStore.get] promises and what
+    // every other backend produces without trying: a writable chunk of its own.
+    // The cost is one memcpy per read on the backend that exists for tests and
+    // development servers — the one place where fidelity beats speed.
+    yield Uint8List.fromList(bytes);
   }
 
   @override

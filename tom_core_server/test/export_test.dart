@@ -1491,6 +1491,54 @@ void main() {
         expect(store.keys, isEmpty);
       },
     );
+
+    test('a chunk handed to a reader belongs to the reader', () async {
+      // Both halves matter, and they pull in opposite directions. The chunk
+      // must be *writable*, because every other backend reads one off a file or
+      // a socket and hands the consumer something it owns — a decoder working
+      // in place runs on production and must not throw on the backend the tests
+      // use. And the write must go nowhere: this backend used to yield the list
+      // held in its own map, so a consumer decoding in place edited the stored
+      // export.
+      final store = TomMemoryExportStore();
+      await store.store(
+        key: 'a.csv',
+        bytes: Stream.value(utf8.encode('x,y')),
+        mediaType: 'text/csv',
+      );
+
+      final chunk = (await store.open('a.csv').toList()).single;
+      chunk[0] = 0x7a; // 'z'
+
+      expect(chunk[0], 0x7a, reason: 'the chunk is the reader\'s to write to');
+      expect(
+        store.textOf('a.csv'),
+        'x,y',
+        reason: 'and the store is untouched',
+      );
+    });
+
+    test('a writer that reuses one buffer stores what it streamed', () async {
+      // The mirror of the read case, and the one a streaming producer hits
+      // without doing anything unusual: a fixed-size scratch buffer refilled
+      // per chunk is the normal shape of an encoder. A backend that retained
+      // the chunks instead of copying them would store the buffer's *last*
+      // state once per chunk — 'ccc' rather than 'abc'.
+      final store = TomMemoryExportStore();
+      final scratch = Uint8List(1);
+      Stream<List<int>> reusing() async* {
+        for (final byte in 'abc'.codeUnits) {
+          scratch[0] = byte;
+          yield scratch;
+        }
+      }
+
+      await store.store(key: 'a.csv', bytes: reusing(), mediaType: 'text/csv');
+      expect(store.textOf('a.csv'), 'abc');
+
+      scratch[0] = 0x7a;
+      expect(store.textOf('a.csv'), 'abc', reason: 'and later writes miss it');
+    });
   });
 
   group('TomExportStore (one error contract across backends)', () {

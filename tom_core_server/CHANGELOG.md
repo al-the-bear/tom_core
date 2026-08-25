@@ -74,6 +74,41 @@
 
 ### Fixed
 
+- **The two in-memory stores shared their buffers with callers, in both
+  directions (tcinc526).** `TomMemoryExportStore.doOpen` ended in `yield bytes`,
+  where `bytes` is the list held in its map — so a consumer that writes into the
+  chunk it received, which is what decoding in place means, edited the stored
+  export. `TomMemoryBlobStore.get` did the same, and because
+  `TomBlobStore.getBytes` collects with a non-copying builder that returns a
+  lone chunk untouched, the aliasing reached the buffered convenience too — the
+  method that exists precisely for the blobs small enough to decode whole.
+
+  The survey that found the sibling found the mirror image as well.
+  `TomMemoryBlobStore.put` collected with `BytesBuilder(copy: false)`, which
+  *retains* the lists it is given, so a producer refilling one fixed-size
+  scratch buffer per chunk — the ordinary shape of an encoder — had its buffer's
+  last state stored once per chunk: `'ccc'` for a stream of `'a'`, `'b'`, `'c'`.
+  `putBytes` was the one-shot form of the same fault, adopting the caller's list
+  outright. The export store was already correct here, copying each chunk with
+  `addAll` as it arrived, which nothing said was load-bearing.
+
+  Both directions are now stated on the interfaces rather than left to each
+  backend: a chunk from `get`/`doOpen` **belongs to the caller**, and a chunk
+  handed to `put`/`doStore` is **borrowed for the duration of the `await`**. The
+  backends that read and write elsewhere satisfy both without trying — a chunk
+  off a file, a row or a socket is fresh, and one written to it is gone — so the
+  two memory backends are the only ones that had to choose, and they copy.
+
+  A copy, deliberately, and not the cheaper unmodifiable view: an unmodifiable
+  chunk would make that same in-place consumer throw on the backend the tests
+  run on and succeed on every backend they deploy to. That is the tcinc524
+  principle in the other direction — the development backend must not diverge
+  from production by being *stricter* about what it hands back any more than by
+  being laxer about what it accepts. Six tests pin both halves at both stores
+  and through `getBytes` and `putBytes`; five mutations confirm they bite,
+  including one that swaps the copy for an unmodifiable view, so the choice is
+  asserted rather than merely commented.
+
 - **Three components joined an unchecked key prefix to a checked key
   (tcinc525).** A prefix is not a separate notion from a key — it is joined as
   `"$keyPrefix/$key"` — so every clause a key must satisfy the prefix must

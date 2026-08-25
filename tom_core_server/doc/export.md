@@ -465,6 +465,17 @@ Properties that are load-bearing rather than incidental:
   reference to and finding it gone has hit a real fault — an unexpected expiry, a
   store it is not pointed at — and an empty stream would disguise that as an
   empty file.
+- **A chunk belongs to whoever did not produce it.** What `open` yields is the
+  reader's own — writable, and aliased with nothing the backend keeps, so a
+  consumer decoding in place cannot edit the stored export. What `store` is
+  handed is borrowed for the duration of the `await` — copied before the next
+  chunk is requested, so a renderer refilling one scratch buffer stores what it
+  streamed rather than that buffer's last state once per chunk. A backend over a
+  file or a blob gets both for free; `TomMemoryExportStore` holds the bytes it
+  serves, so it is the only one that copies on purpose. The copy is deliberately
+  not an unmodifiable view, which would be cheaper but would make an in-place
+  consumer throw on the backend the tests use and work on every backend they
+  deploy to.
 - **Keys are validated centrally.** Relative, slash-separated, unreserved
   characters only, no `.`/`..` segments. The obvious backend maps keys onto
   paths, so a key of `../../etc/passwd` would be a directory traversal handed to
@@ -488,7 +499,10 @@ exports by definition, which is why it is not the default; it exposes `keys`,
 `descriptorFor` and `textOf` so a test can assert on content without touching a
 filesystem. Those two accessors validate their key like the four store methods
 do, because a backend that accepts keys the production backends reject is one a
-test can pass on and a deployment fail on.
+test can pass on and a deployment fail on. The copying above is the same
+principle in the other direction: the development backend must not *diverge*
+from production, whether by being laxer about what it accepts or stricter about
+what it hands back.
 
 ## Every Backend at Once
 
