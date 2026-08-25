@@ -236,15 +236,12 @@ Future<void> run() async {
     'send() returns once the message is durably stored, without delivering it',
   );
 
-  // A tick *starts* the pass and returns; it does not wait the deliveries out,
-  // because one slow transport must not hold up the next window of a fast one.
-  // So "has it been delivered yet?" is answered by [TomMessageOutbox.receipts],
-  // not by the tick's future. Subscribe before ticking — the stream is a
-  // broadcast, so a listener attached afterwards would miss the receipt it is
-  // waiting for and wait forever.
-  final delivered = outbox.receipts.first;
+  // A tick is a *completed* pass: it returns once every message it picked up
+  // has been through a transport and its outcome recorded. That is what makes
+  // the count below true on the very next line, rather than only after a
+  // receipt subscription or an event-queue pump — and what lets a shutdown
+  // path empty the queue before it closes.
   await outbox.tick();
-  await delivered;
   print('   delivered after a tick    : ${memory.count}');
   check(memory.count == 1, 'the tick delivered the queued message');
 

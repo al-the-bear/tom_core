@@ -1508,14 +1508,32 @@ void main() {
     test('a tick delivers what was queued', () async {
       await outbox.send(_mail(id: 'm1'));
       await outbox.tick();
-      await pumpEventQueue();
       expect(transport.count, 1);
       expect(transport.last!.id, 'm1');
     });
 
+    test('an awaited tick is a completed pass', () async {
+      // The contract `tick()`'s name and return type promise, asserted with no
+      // `pumpEventQueue()` between the tick and the assertion. It did not hold:
+      // the scheduler starts runs and does not wait them out, so `tick()`
+      // returned with the delivery still pending as a microtask and every test
+      // here pumped the queue to compensate — encoding the workaround rather
+      // than reporting the gap. The example did not pump, and asserted a
+      // delivery count of 1 while observing 0.
+      await outbox.send(_mail(id: 'm1'));
+      await outbox.send(_mail(id: 'm2'));
+      await outbox.tick();
+      expect(transport.count, 2);
+      final runs = await outbox.store.all();
+      expect(
+        runs.map((r) => r.state),
+        everyElement(TomJobRunState.succeeded),
+        reason: 'a completed pass has written every run outcome to the store',
+      );
+    });
+
     test('sendNow queues and delivers in one step', () async {
       await outbox.sendNow(_mail(id: 'm1'));
-      await pumpEventQueue();
       expect(transport.count, 1);
     });
 
@@ -1529,7 +1547,6 @@ void main() {
         await outbox.send(_mail(id: 'm1'));
         await outbox.send(_mail(id: 'm2'));
         await outbox.tick();
-        await pumpEventQueue();
         expect(transport.sent.map((m) => m.id), containsAll(['m1', 'm2']));
       },
     );
@@ -1542,7 +1559,6 @@ void main() {
       await outbox.send(message);
       expect(await outbox.store.all(), hasLength(1));
       await outbox.tick();
-      await pumpEventQueue();
       expect(transport.count, 1);
     });
 
@@ -1559,6 +1575,10 @@ void main() {
       final receipts = <TomDeliveryReceipt>[];
       outbox.receipts.listen(receipts.add);
       await outbox.sendNow(_mail(id: 'm1'));
+      // Not redundant with the drained `sendNow`: the delivery is finished by
+      // the time it returns, but `receipts` is a broadcast stream, and a
+      // broadcast stream hands events to its listeners on a later microtask.
+      // This waits for the *notification*, not for the delivery.
       await pumpEventQueue();
       expect(receipts, hasLength(1));
       expect(receipts.single.messageId, 'm1');
@@ -1611,14 +1631,12 @@ void main() {
       );
 
       await outbox.sendNow(_mail(id: 'm1'));
-      await pumpEventQueue();
       expect(transport.count, 0, reason: 'the first attempt failed');
 
       // The backoff is the scheduler's, not the outbox's — there is no second
       // retry loop to advance.
       clock.advance(const Duration(minutes: 2));
       await outbox.tick();
-      await pumpEventQueue();
 
       expect(transport.count, 1);
       final run = (await outbox.store.all()).single;
@@ -1638,7 +1656,6 @@ void main() {
         );
 
         await outbox.sendNow(_mail(id: 'm1'));
-        await pumpEventQueue();
 
         final run = (await outbox.store.all()).single;
         expect(run.state, TomJobRunState.failed);
@@ -1658,11 +1675,9 @@ void main() {
 
       await outbox.sendNow(_mail(id: 'm1'));
       for (var i = 0; i < 4; i++) {
-        await pumpEventQueue();
         clock.advance(const Duration(minutes: 10));
         await outbox.tick();
       }
-      await pumpEventQueue();
 
       final run = (await outbox.store.all()).single;
       expect(run.state, TomJobRunState.failed);
@@ -1689,7 +1704,6 @@ void main() {
             recipients: [TomRecipient('+100')],
           ),
         );
-        await pumpEventQueue();
 
         final run = (await outbox.store.all()).single;
         expect(run.state, TomJobRunState.failed);
@@ -1713,7 +1727,6 @@ void main() {
           ),
         );
         await outbox.tick();
-        await pumpEventQueue();
 
         final run = (await outbox.store.all()).single;
         expect(run.state, TomJobRunState.failed);
@@ -1725,7 +1738,6 @@ void main() {
       'purgeFinished drops delivered history but keeps pending work',
       () async {
         await outbox.sendNow(_mail(id: 'done'));
-        await pumpEventQueue();
         clock.advance(const Duration(hours: 1));
         await outbox.send(_mail(id: 'waiting'));
 

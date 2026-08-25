@@ -644,6 +644,17 @@ by a human staring at an inbox — a password reset, say. A failure still retrie
 on the queue exactly as `send` would; the only difference is that the first
 attempt does not wait.
 
+`tick()` is a *completed* pass: it returns once every message it picked up has
+been through a transport and its outcome has been recorded — delivered,
+scheduled for retry, or failed for good. (It does not mean the queue is empty; a
+pass claims at most `maxRunsPerTick` messages, so a backlog takes several.) That
+is what makes `await outbox.tick(); expect(transport.count, 1)` true on the very
+next line, and what lets a shutdown path empty the queue before it closes. It
+costs nothing at run time: the scheduler's own pass still *starts* its runs and
+returns, so one slow relay handshake never holds up the next window — the outbox
+composes `TomScheduler.tick()` with `TomScheduler.drain()` to get both
+properties at once.
+
 `outbox.close()` stops delivery and releases the scheduler, and leaves the
 router open: a router shared with the rest of the application must not be torn
 down because the outbox stopped.

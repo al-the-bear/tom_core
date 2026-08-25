@@ -2252,6 +2252,141 @@ void main() {
       });
     });
 
+    group('drain', () {
+      // `tick()` starts runs and returns; that is deliberate, and the timer
+      // path depends on it. But there was no way to wait for what a pass
+      // started, which is why every test above reaches for `pumpEventQueue()`
+      // and why `TomMessageOutbox.tick()` promised a completed pass it could
+      // not deliver. `drain()` is that missing half.
+      test('completes only once a dispatched run has finished', () async {
+        final gate = Completer<Object?>();
+        var finished = false;
+        final scheduler = schedulerFor(
+          store,
+          clock,
+          dispatcher: RecordingDispatcher(
+            handler: (_) async {
+              await gate.future;
+              finished = true;
+              return null;
+            },
+          ),
+          alerts: alerts,
+        );
+        addTearDown(scheduler.close);
+        scheduler.register(dailyJob());
+
+        await scheduler.tick(); // plans the next window
+        clock.now = DateTime.utc(2026, 3, 2, 0, 1);
+        await scheduler.tick(); // dispatches it, without waiting
+
+        expect(
+          finished,
+          isFalse,
+          reason: 'the pass starts the run; it does not wait it out',
+        );
+        var drained = false;
+        final draining = scheduler.drain().then((_) => drained = true);
+
+        await pumpEventQueue();
+        expect(
+          drained,
+          isFalse,
+          reason: 'drain must still be waiting while the body is blocked',
+        );
+
+        gate.complete('done');
+        await draining;
+        expect(finished, isTrue);
+        expect(scheduler.inFlightCount, 0);
+      });
+
+      test('a pass followed by a drain is a completed pass', () async {
+        // The property `TomMessageOutbox.tick()` is built on: no
+        // `pumpEventQueue()`, and the run's outcome is on record afterwards.
+        final dispatcher = RecordingDispatcher();
+        final scheduler = schedulerFor(
+          store,
+          clock,
+          dispatcher: dispatcher,
+          alerts: alerts,
+        );
+        addTearDown(scheduler.close);
+        scheduler.register(dailyJob());
+
+        await scheduler.tick();
+        clock.now = DateTime.utc(2026, 3, 2, 0, 1);
+        await scheduler.tick();
+        await scheduler.drain();
+
+        expect(dispatcher.dispatched, hasLength(1));
+        final run = (await store.all()).firstWhere(
+          (r) => r.scheduledFor == DateTime.utc(2026, 3, 2),
+        );
+        expect(run.state, TomJobRunState.succeeded);
+      });
+
+      test('with nothing in flight it completes without waiting', () async {
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        expect(scheduler.inFlightCount, 0);
+        await scheduler.drain();
+      });
+
+      test('waits out every run of a pass, not merely the first', () async {
+        // One wave is not enough on its own: a drain that awaited only the
+        // first run would return with the rest of an overlapping job's pass
+        // still going, which is precisely the bug being fixed one level up.
+        final gates = [Completer<Object?>(), Completer<Object?>()];
+        var finished = 0;
+        var next = 0;
+        final scheduler = schedulerFor(
+          store,
+          clock,
+          dispatcher: RecordingDispatcher(
+            handler: (_) async {
+              await gates[next++].future;
+              finished++;
+              return null;
+            },
+          ),
+          alerts: alerts,
+        );
+        addTearDown(scheduler.close);
+        scheduler.register(dailyJob(allowOverlap: true));
+
+        final past = clock.now.subtract(const Duration(hours: 1));
+        for (final id in ['a', 'b']) {
+          await store.enqueue(
+            TomJobRun(
+              id: id,
+              jobName: 'daily',
+              scheduledFor: past,
+              runAt: past,
+            ),
+          );
+        }
+
+        await scheduler.tick();
+        expect(scheduler.inFlightCount, 2);
+
+        var drained = false;
+        final draining = scheduler.drain().then((_) => drained = true);
+
+        gates[0].complete('done');
+        await pumpEventQueue();
+        expect(
+          drained,
+          isFalse,
+          reason: 'one run of two finishing is not a drained scheduler',
+        );
+
+        gates[1].complete('done');
+        await draining;
+        expect(finished, 2);
+      });
+    });
+
     group('overlap', () {
       test(
         'allowOverlap false holds a second run back while one is in flight',

@@ -281,6 +281,33 @@
 
 ### Fixed
 
+- **`TomMessageOutbox.tick()` documented a completed pass and delivered a
+  started one (tcinc584).** It was a one-line forward to `TomScheduler.tick()`,
+  and a scheduler pass *starts* the runs it claims — deliberately, so that one
+  slow relay handshake cannot hold up the next window. So `await outbox.tick()`
+  returned with the deliveries still pending as microtasks, and its own dartdoc
+  ("completing when the pass has finished") was false. `messaging_example.dart`
+  believed the dartdoc, asserted a delivered count of 1 and observed 0; the four
+  messaging suites did not, and compensated with 23 `await pumpEventQueue()`
+  calls — encoding the workaround so thoroughly that nothing was left to report
+  the gap.
+
+  Fixed where it belongs, in the kernel: `TomScheduler` gained `drain()`, which
+  completes once every run in flight has finished and recorded its outcome, and
+  `tick()` keeps its fire-and-forget semantics unchanged. The outbox now
+  composes the two, so it gets both properties at once — the pass still returns
+  promptly for the timer, and the *outbox's* tick means what it says. `sendNow`
+  goes through it rather than calling `scheduler.tick()` directly, so the caller
+  that reached for it over `send` gets a resolved first attempt rather than a
+  started one. Every `pumpEventQueue()` the gap forced is gone; the one that
+  remains, in the receipt-stream test, is annotated with the reason it is not
+  the same thing — a broadcast stream notifies its listeners on a later
+  microtask whatever the delivery did. Both examples now assert the count on the
+  line after the tick instead of subscribing to `receipts` to find out, and
+  `doc/messaging.md` states what "the pass has finished" covers and what it does
+  not (a pass claims at most `maxRunsPerTick` messages, so a backlog still takes
+  several).
+
 - **A `close` that threw could un-deliver an accepted message, and a socket
   teardown discarded its errors into a comment (tcinc575).**
   `TomSocketSmtpConnection.close` swallowed failures in a `catch (_)` whose body

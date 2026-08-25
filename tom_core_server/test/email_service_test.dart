@@ -392,14 +392,12 @@ void main() {
       expect(await outbox.store.all(), hasLength(1));
 
       await outbox.tick();
-      await pumpEventQueue();
       expect(transport.count, 1);
       expect(transport.last!.subject, 'Reset your password, Erin');
     });
 
     test('sendNow delivers without waiting for a tick', () async {
       await service.sendNow(reset());
-      await pumpEventQueue();
       expect(transport.count, 1);
     });
 

@@ -460,12 +460,9 @@ Future<void> run() async {
     'send() stores the message and returns, without delivering it',
   );
 
-  // 10. A tick starts the pass. Subscribe before ticking — the receipt stream
-  //     is a broadcast, so a listener attached afterwards misses what it is
-  //     waiting for.
-  final bothDelivered = outbox.receipts.take(2).toList();
+  // 10. A tick is a completed pass: it returns once every message it picked up
+  //     has been through a transport, so both counts below are already final.
   await outbox.tick();
-  await bothDelivered;
   print(
     '10. delivered after a tick    : mail=${mail.count} sms=${handsets.count}',
   );

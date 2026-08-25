@@ -538,6 +538,16 @@ testable without waiting on wall-clock time. `start()` runs a pass immediately
 and then every `tickInterval`; `stop()` halts the timer but leaves the scheduler
 usable; `close()` releases held leases and refuses further registration.
 
+Note the third step: dispatch *starts* the runs it claims. Awaiting `tick()`
+therefore awaits the pass, not the work — deliberately, so that one slow job
+cannot hold up the next window of a fast one, and so `start()` does not block a
+process's startup on the first batch. `drain()` is the other half: it completes
+once every run in flight has finished and written its outcome to the store,
+which is what a test asserting an effect, or a shutdown emptying its queue,
+actually needs. `tick()` then `drain()` is a completed pass; `stop()` then
+`drain()` quiesces the scheduler. In that order — draining one that is still
+ticking races the timer for what "idle" means.
+
 Two settings shape the rhythm rather than the semantics, and both exist because
 several nodes share one queue:
 
@@ -877,7 +887,9 @@ Three questions and where they are answered:
   charges or ships should keep it. `recoveryDeclined` then tells an operator that
   a run needs a human, which is better than a silent re-run.
 - **Prefer `tick()` in tests.** It is awaitable, which removes wall-clock waits
-  from the suite entirely.
+  from the suite entirely. Follow it with `drain()` when the assertion is about
+  what the run *did* rather than that the pass happened — otherwise the test
+  needs a `pumpEventQueue()`, which is a guess dressed as a wait.
 
 ## Dependencies
 

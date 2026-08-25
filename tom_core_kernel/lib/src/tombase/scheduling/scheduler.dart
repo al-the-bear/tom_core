@@ -154,12 +154,19 @@ class TomScheduler implements TomClosable {
   final Map<String, TomJobDefinition> _jobs = {};
   final Map<String, StreamSubscription<Object?>> _eventSubscriptions = {};
 
-  /// Runs currently dispatched: run id to job name.
+  /// Runs currently dispatched: run id to the attempt in progress.
   ///
   /// The in-process view of what the store has leased to us. Keyed by run so a
-  /// completion removes exactly its own entry; valued by job so the
-  /// [TomJobDefinition.allowOverlap] check is a lookup rather than a scan.
-  final Map<String, String> _inFlight = {};
+  /// completion removes exactly its own entry; the entry names the job so the
+  /// [TomJobDefinition.allowOverlap] check is a lookup rather than a scan, and
+  /// carries the attempt's future so [drain] can wait for it.
+  ///
+  /// The future is a completer's rather than [_runOne]'s own, because
+  /// [_runOne] removes its entry from this map on the way out: reading the
+  /// future back out of the map to await it would be a race with the removal
+  /// that ends it. A completer is written once, at dispatch, and completed once,
+  /// after the run is finished and its entry gone.
+  final Map<String, ({String jobName, Future<void> finished})> _inFlight = {};
 
   /// Coordination leases currently held, keyed by run id.
   ///
@@ -420,6 +427,11 @@ class TomScheduler implements TomClosable {
   }
 
   /// Stops the periodic timer. In-flight runs are left to finish.
+  ///
+  /// Returns immediately: it stops new passes, not the work already started.
+  /// `stop()` followed by `await drain()` is the pair that quiesces a
+  /// scheduler, and in that order — draining one that is still ticking races
+  /// the timer for what "idle" means.
   void stop() {
     _timer?.cancel();
     _timer = null;
@@ -429,7 +441,9 @@ class TomScheduler implements TomClosable {
   /// dispatcher.
   ///
   /// Runs already dispatched are not waited for — [close] is the shutdown path,
-  /// and their leases will expire so another process picks them up.
+  /// and their leases will expire so another process picks them up. A shutdown
+  /// that would rather finish the work than hand it on calls [stop] and awaits
+  /// [drain] first; [close] itself cannot, being synchronous.
   ///
   /// Held leases are released on the way out so peers can take the work
   /// immediately instead of waiting out [leaseTtl]. That release is
@@ -459,12 +473,17 @@ class TomScheduler implements TomClosable {
   // THE PASS
   // ===========================================================================
 
-  /// Runs one complete scheduling pass.
+  /// Runs one complete scheduling pass, **starting** the runs it finds due.
   ///
-  /// Safe to call directly — this is the unit tests drive. Overlapping calls
+  /// Safe to call directly — this is what unit tests drive. Overlapping calls
   /// are collapsed: a pass still running when the timer fires again is not
   /// re-entered, because two concurrent planners would both see the same window
   /// as unplanned.
+  ///
+  /// Awaiting this does **not** await the work. A pass recovers, plans, claims
+  /// and dispatches; the bodies it dispatched are still running when it
+  /// returns, deliberately, so that a slow job cannot hold up the next window
+  /// of a fast one. To wait for them, follow it with [drain].
   Future<void> tick() async {
     if (_closed || _ticking) return;
     _ticking = true;
@@ -479,6 +498,33 @@ class TomScheduler implements TomClosable {
       await _dispatchDue(now);
     } finally {
       _ticking = false;
+    }
+  }
+
+  /// Completes once every run this scheduler has in flight has finished.
+  ///
+  /// The other half of [tick]. A pass returns as soon as the work is started,
+  /// which is right for a timer and useless to anyone who needs to know the
+  /// work is *done* — a test asserting an effect, a shutdown path that wants
+  /// the queue emptied before it closes, or a caller like
+  /// `TomMessageOutbox.tick()` whose own contract is "the pass is complete".
+  /// Without this they had only `pumpEventQueue()` and a guess.
+  ///
+  /// "Finished" means the attempt returned and its outcome was written to the
+  /// store — success, a scheduled retry, or terminal failure — not that the run
+  /// succeeded. A drain reports that nothing is still executing here; the store
+  /// reports what happened.
+  ///
+  /// Re-checks after each wave, because a run that finishes may leave another
+  /// claimable and a concurrent pass may have started more. It therefore
+  /// completes only when the scheduler is genuinely idle, which also means a
+  /// caller draining a *running* scheduler is racing the timer: call [stop]
+  /// first if the intent is to quiesce.
+  Future<void> drain() async {
+    while (true) {
+      final pending = [for (final entry in _inFlight.values) entry.finished];
+      if (pending.isEmpty) return;
+      await Future.wait(pending);
     }
   }
 
@@ -710,7 +756,7 @@ class TomScheduler implements TomClosable {
 
   /// Claims every due run this scheduler is willing to take, and starts it.
   Future<void> _dispatchDue(DateTime now) async {
-    final busy = _inFlight.values.toSet();
+    final busy = {for (final entry in _inFlight.values) entry.jobName};
     final claimed = await store.claimDue(
       now,
       ownerId,
@@ -741,10 +787,15 @@ class TomScheduler implements TomClosable {
         await store.release(run);
         continue;
       }
-      _inFlight[run.id] = run.jobName;
+      final attempt = Completer<void>();
+      _inFlight[run.id] = (jobName: run.jobName, finished: attempt.future);
       // Not awaited: a tick starts runs, it does not wait them out. A slow job
-      // must not hold up the next window of a fast one.
-      unawaited(_runOne(job, run, lease));
+      // must not hold up the next window of a fast one — and because the
+      // periodic timer re-arms before calling `tick`, awaiting here would also
+      // hold the `_ticking` guard for the run's whole duration and collapse
+      // every pass that fell inside it. Callers that do want to wait use
+      // [drain], which waits without blocking the pass.
+      unawaited(_runOne(job, run, lease).whenComplete(attempt.complete));
     }
   }
 

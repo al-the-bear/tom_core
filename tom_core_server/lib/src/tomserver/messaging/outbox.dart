@@ -231,14 +231,35 @@ class TomMessageOutbox implements TomClosable {
   /// is felt by a human staring at an inbox. A failure still retries on the
   /// queue exactly as [send] would; the only difference is that the first
   /// attempt does not wait.
+  ///
+  /// Returns when that first attempt has finished, not merely when it has
+  /// started: a caller reaching for `sendNow` over `send` wants the delivery
+  /// resolved, and going through [tick] rather than the scheduler's pass
+  /// directly is what makes the await mean that.
   Future<void> sendNow(TomMessage message) async {
     await send(message);
-    await scheduler.tick();
+    await tick();
   }
 
-  /// Runs one delivery pass. Called by [start]'s timer; exposed so a test can
-  /// drive delivery without waiting on wall-clock time.
-  Future<void> tick() => scheduler.tick();
+  /// Runs one delivery pass, completing when the pass has finished.
+  ///
+  /// Called by [start]'s timer; exposed so a test can drive delivery without
+  /// waiting on wall-clock time — and so a shutdown path can empty the queue
+  /// before closing.
+  ///
+  /// "Finished" means every message this pass picked up has been through a
+  /// transport and its outcome recorded: delivered, scheduled for retry, or
+  /// failed for good. It does not mean the queue is empty — a pass claims at
+  /// most `maxRunsPerTick` messages, so a backlog takes several.
+  ///
+  /// The [TomScheduler.drain] is what makes that true. A scheduler pass
+  /// *starts* the runs it finds due and returns, so that one slow job cannot
+  /// hold up the next window of a fast one; awaiting the pass alone would
+  /// return with the deliveries still pending as microtasks.
+  Future<void> tick() async {
+    await scheduler.tick();
+    await scheduler.drain();
+  }
 
   /// Begins delivering on the scheduler's tick interval.
   void start() => scheduler.start();

@@ -959,7 +959,8 @@ the interval is defaulted from it.
 | `start` | `Future<void> start()` | Runs one `tick` immediately — which is what recovers abandoned leases and catches up on restart — then repeats roughly every `tickInterval`. |
 | `stop` | `void stop()` | Stops the timer; in-flight runs are left to finish. |
 | `close` | `void close()` | *(override)* Shutdown: stops, cancels subscriptions, and releases held leases fire-and-forget so peers can take the work at once instead of waiting out `leaseTtl`. |
-| `tick` | `Future<void> tick()` | One complete pass — recover, plan, claim, dispatch. Safe to call directly (this is what tests drive); overlapping calls are collapsed rather than re-entered. |
+| `tick` | `Future<void> tick()` | One complete pass — recover, plan, claim, dispatch. Safe to call directly (this is what tests drive); overlapping calls are collapsed rather than re-entered. Awaiting it awaits the pass, not the runs it started — for that, follow with `drain`. |
+| `drain` | `Future<void> drain()` | Completes once every run in flight has finished and written its outcome to the store — success, scheduled retry, or terminal failure. The affordance a test asserting an effect, or a shutdown emptying its queue, needs; `stop()` then `await drain()` quiesces the scheduler. |
 
 ## Enums
 

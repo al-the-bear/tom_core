@@ -201,7 +201,6 @@ void main() {
           ),
         ),
       );
-      await pumpEventQueue();
       expect(await outbox.store.all(), isEmpty);
     });
 
@@ -277,7 +276,6 @@ void main() {
       await service.send(code());
       expect(transport.count, 0);
       await outbox.tick();
-      await pumpEventQueue();
       expect(transport.count, 1);
       expect(
         transport.sent.single.textBody!.content,
@@ -287,14 +285,12 @@ void main() {
 
     test('sendNow delivers without waiting for a tick', () async {
       await service.sendNow(code());
-      await pumpEventQueue();
       expect(transport.count, 1);
     });
 
     test('the message id is the idempotence key', () async {
       await service.send(code(messageId: 'reset-42'));
       await service.send(code(messageId: 'reset-42'));
-      await pumpEventQueue();
       expect(await outbox.store.all(), hasLength(1));
     });
 

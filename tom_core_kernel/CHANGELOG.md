@@ -9,6 +9,32 @@ anyone who was writing them.
 
 ### Added
 
+- **`TomScheduler.drain()` — the missing way to wait for what a pass started
+  (tcinc584).** A `tick()` claims the runs that are due and *starts* them:
+  `_dispatchDue` deliberately leaves each `_runOne` unawaited, so that one slow
+  job cannot hold up the next window of a fast one and so `start()` does not
+  block a process's startup on the first batch. Both properties are worth
+  keeping. What was missing was the other half — any way to ask "and is that
+  work done?". Callers had only `pumpEventQueue()`, which is a guess about how
+  many microtasks a delivery takes rather than a wait, and the kernel's own
+  suite reached for it 31 times. Downstream it was worse than untidy:
+  `TomMessageOutbox.tick()` was a one-line forward to `scheduler.tick()` while
+  documenting itself as a completed pass, so `messaging_example.dart` asserted a
+  delivered count of 1 and observed 0, and every messaging test papered over the
+  gap with a pump. `drain()` completes once every run in flight has finished and
+  written its outcome to the store — succeeded, scheduled for retry, or failed
+  for good — and re-checks after each wave, since a finishing run can leave
+  another claimable. `tick()` then `drain()` is a completed pass; `stop()` then
+  `drain()` quiesces the scheduler, which is also the graceful-shutdown
+  affordance `close()` cannot offer, being synchronous. Implementing it retyped
+  `_inFlight` from a run-id-to-job-name map to one carrying a per-dispatch
+  completer's future: `_runOne` removes its own entry on the way out, so reading
+  a future back out of the map to await it would race the removal that ends it,
+  whereas a completer is written once at dispatch and completed once after the
+  entry is gone. `tick()`, `stop()` and `close()` now say which of the two they
+  are, and `doc/scheduling/scheduling.md` states the pair rather than leaving
+  "awaitable" to be read as "awaits the work".
+
 - **`tomSetupTimezones` and `tomSetupTimezonesSync` are exported from the
   barrel (tcinc323).** They never were. `timezones.dart` pulled the
   platform-conditional implementation in with an `import`, which brings names

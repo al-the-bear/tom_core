@@ -766,12 +766,10 @@ void main() {
       addTearDown(outbox.close);
 
       await outbox.sendNow(_sms());
-      await pumpEventQueue();
       expect(call, 1);
 
       clock.advance(const Duration(minutes: 2));
       await outbox.tick();
-      await pumpEventQueue();
 
       final run = (await outbox.store.all()).single;
       expect(run.state, TomJobRunState.succeeded);
@@ -788,7 +786,6 @@ void main() {
       addTearDown(outbox.close);
 
       await outbox.sendNow(_sms());
-      await pumpEventQueue();
 
       final run = (await outbox.store.all()).single;
       expect(run.state, TomJobRunState.failed);
@@ -817,7 +814,6 @@ void main() {
         ),
       );
       await shared.sendNow(_sms());
-      await pumpEventQueue();
 
       expect(mail.count, 1);
       expect(t.gateway.requests, hasLength(1));
