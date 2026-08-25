@@ -123,26 +123,35 @@ class TomDeliveryReceipt {
 
 /// A delivery attempt that did not succeed.
 ///
-/// [isPermanent] is the whole point of the type. A permanent failure also mixes
-/// in the kernel's [TomPermanentFailure], so it does not merely *describe*
-/// itself as unretryable — the scheduler reads the marker and acts on it,
-/// without the outbox translating anything.
-class TomDeliveryException extends TomMessagingException {
+/// [isPermanent] is the whole point of the type, and it is deliberately *not* a
+/// field: it reads the [TomPermanentFailure] marker, which is what the
+/// scheduler branches on. The two used to be set independently — a stored flag
+/// and a mixin, agreeing only because the factories happened to write both — so
+/// the public general constructor could produce an exception whose `toString`
+/// said `(permanent)` while the scheduler retried it forever, because it
+/// carried no marker. One fact now has one representation, and the class is
+/// abstract so that every instance is one of the two classified subtypes.
+///
+/// Throw through [TomDeliveryException.permanent] and
+/// [TomDeliveryException.transient]. A transport needing to carry extra data
+/// may subclass instead; mixing in [TomPermanentFailure] is what makes such a
+/// subclass permanent, and it is the only thing that does.
+abstract class TomDeliveryException extends TomMessagingException {
   /// Whether retrying this exact message could ever succeed.
-  final bool isPermanent;
+  ///
+  /// Derived from the marker rather than stored beside it, so the description
+  /// and the scheduler's decision cannot disagree.
+  bool get isPermanent => this is TomPermanentFailure;
 
   /// The protocol's own status code, when it had one (e.g. SMTP `550`).
   final int? statusCode;
 
-  /// Creates a delivery failure.
+  /// Creates a delivery failure, for subclasses to call.
   ///
-  /// Prefer [TomDeliveryException.permanent] and
-  /// [TomDeliveryException.transient], which cannot be built with the wrong
-  /// classification by accident.
+  /// The classification is not a parameter — it follows from the subtype.
   TomDeliveryException(
     super.key,
     super.defaultUserMessage, {
-    required this.isPermanent,
     this.statusCode,
     super.parameters,
     super.rootException,
@@ -167,17 +176,16 @@ class TomDeliveryException extends TomMessagingException {
   );
 
   /// A failure that a later attempt may well survive.
-  static TomDeliveryException transient(
+  static TomTransientDeliveryException transient(
     String key,
     String message, {
     int? statusCode,
     Map<String, dynamic>? parameters,
     Object? rootException,
     StackTrace? stack,
-  }) => TomDeliveryException(
+  }) => TomTransientDeliveryException(
     key,
     message,
-    isPermanent: false,
     statusCode: statusCode,
     parameters: parameters,
     rootException: rootException,
@@ -193,8 +201,9 @@ class TomDeliveryException extends TomMessagingException {
 
 /// A [TomDeliveryException] the scheduler will not retry.
 ///
-/// A separate type only so it can carry the [TomPermanentFailure] marker; every
-/// caller should reach it through [TomDeliveryException.permanent].
+/// The [TomPermanentFailure] marker is the payload: the scheduler branches on
+/// it, and [TomDeliveryException.isPermanent] reads it. Reach this through
+/// [TomDeliveryException.permanent].
 class TomPermanentDeliveryException extends TomDeliveryException
     with TomPermanentFailure {
   /// Creates a permanent delivery failure.
@@ -205,7 +214,30 @@ class TomPermanentDeliveryException extends TomDeliveryException
     super.parameters,
     super.rootException,
     super.stack,
-  }) : super(isPermanent: true);
+  });
+}
+
+/// A [TomDeliveryException] worth another attempt.
+///
+/// It exists so that the two classifications are two types rather than one type
+/// and its absence: `transient` returns this the way `permanent` returns
+/// [TomPermanentDeliveryException], and `on TomTransientDeliveryException`
+/// reads as the mirror of `on TomPermanentDeliveryException`. It carries no
+/// marker, which is precisely what makes it retryable.
+///
+/// It is not the only retryable type — any [TomDeliveryException] without
+/// [TomPermanentFailure] is one — so code deciding whether to retry should ask
+/// [TomDeliveryException.isPermanent] rather than test for this class.
+class TomTransientDeliveryException extends TomDeliveryException {
+  /// Creates a transient delivery failure.
+  TomTransientDeliveryException(
+    super.key,
+    super.defaultUserMessage, {
+    super.statusCode,
+    super.parameters,
+    super.rootException,
+    super.stack,
+  });
 }
 
 // =============================================================================

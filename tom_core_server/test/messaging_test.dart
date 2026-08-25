@@ -683,6 +683,78 @@ void main() {
       expect(failure, isNot(isA<TomPermanentFailure>()));
     });
 
+    test('both factories return their own subtype', () {
+      // The pair used to be lopsided: `permanent` returned
+      // `TomPermanentDeliveryException` and `transient` returned the base,
+      // because the base *was* the transient case. Nothing about the design
+      // meant that — it was the shape the classes happened to have — and it
+      // left `on ... catch` usable for one half of a deliberately symmetric
+      // pair.
+      expect(
+        TomDeliveryException.permanent('k', 'm'),
+        isA<TomPermanentDeliveryException>(),
+      );
+      expect(
+        TomDeliveryException.transient('k', 'm'),
+        isA<TomTransientDeliveryException>(),
+      );
+    });
+
+    test('catching by subtype works symmetrically for both', () {
+      // The mirror of the above, written the way a caller would: if the two
+      // are a pair, `on` has to read the same on both sides.
+      // A narrower `on` clause that does not match lets the exception escape
+      // the try and fails the test, so reaching the `expect` at all is half the
+      // assertion; the flag carries the other half.
+      var transientCaught = false;
+      try {
+        throw TomDeliveryException.transient('k', 'try later');
+      } on TomTransientDeliveryException catch (e) {
+        transientCaught = !e.isPermanent;
+      }
+      expect(transientCaught, isTrue);
+
+      var permanentCaught = false;
+      try {
+        throw TomDeliveryException.permanent('k', 'refused');
+      } on TomPermanentDeliveryException catch (e) {
+        permanentCaught = e.isPermanent;
+      }
+      expect(permanentCaught, isTrue);
+    });
+
+    test('isPermanent is read from the marker, not stored beside it', () {
+      // The point of the change this test guards. `isPermanent` used to be a
+      // constructor parameter set independently of the mixin, so the public
+      // general constructor could build a failure that printed `(permanent)`
+      // while carrying no marker — and the scheduler branches on the *marker*
+      // (`scheduler.dart`: `if (error is TomPermanentFailure || ...)`), so it
+      // would have retried that failure forever.
+      //
+      // These two subclasses pass no classification anywhere. Their answers
+      // come entirely from whether they mix in the marker, which is the only
+      // way the two can no longer disagree.
+      expect(_VendorPermanentFailure('k', 'm').isPermanent, isTrue);
+      expect(_VendorTransientFailure('k', 'm').isPermanent, isFalse);
+    });
+
+    test('the classification survives being described', () {
+      // `toString` renders the same fact it branches on, so a log line cannot
+      // claim one thing while the scheduler does another.
+      expect(
+        TomDeliveryException.permanent('k', 'm', statusCode: 550).toString(),
+        contains('(permanent, status 550)'),
+      );
+      expect(
+        TomDeliveryException.transient('k', 'm').toString(),
+        contains('(transient)'),
+      );
+      expect(
+        _VendorPermanentFailure('k', 'm').toString(),
+        contains('permanent'),
+      );
+    });
+
     test('wrong channel is permanent: retrying adds no transport', () async {
       final transport = TomMemoryMessageTransport(
         channel: TomMessageChannel.sms,
@@ -1603,6 +1675,28 @@ void main() {
       expect(source, contains('void check(bool ok, String expectation)'));
     });
   });
+}
+
+/// A transport-specific permanent failure, of the kind a gateway integration
+/// would declare to carry its own vendor fields.
+///
+/// It exists here to show that mixing in [TomPermanentFailure] is the *only*
+/// thing that makes a delivery exception permanent — this class passes no
+/// classification to any constructor, and there is no parameter left with which
+/// it could contradict the marker.
+class _VendorPermanentFailure extends TomDeliveryException
+    with TomPermanentFailure {
+  _VendorPermanentFailure(super.key, super.defaultUserMessage);
+}
+
+/// The counterpart with no marker, and therefore transient.
+///
+/// Note it extends [TomDeliveryException] rather than
+/// [TomTransientDeliveryException]: retryability is the absence of the marker,
+/// not membership of one class, which is why callers are told to ask
+/// `isPermanent` instead of testing for a type.
+class _VendorTransientFailure extends TomDeliveryException {
+  _VendorTransientFailure(super.key, super.defaultUserMessage);
 }
 
 /// A transport that supports neither copies nor attachments, to exercise

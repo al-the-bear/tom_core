@@ -518,8 +518,13 @@ TomDeliveryReceipt({
 A delivery attempt that did not succeed. `isPermanent` is the whole point of the
 type: it records whether retrying this exact message could ever succeed, and
 only the transport can make that call because only the transport read the far
-side's answer. Prefer the `permanent` and `transient` builders, which cannot be
-given the wrong classification by accident.
+side's answer.
+
+The class is **abstract**, and `isPermanent` is a **getter reading the
+`TomPermanentFailure` marker** rather than a stored flag, so the description and
+the scheduler's decision cannot disagree. Every instance is therefore one of the
+two classified subtypes, or a transport's own subclass of them. Throw through
+the `permanent` and `transient` builders.
 
 - **Extends:** `TomMessagingException`
 
@@ -529,7 +534,6 @@ given the wrong classification by accident.
 TomDeliveryException(
   String key,
   String defaultUserMessage, {
-  required bool isPermanent,
   int? statusCode,
   Map<String, Object?>? parameters,
   Object? rootException,
@@ -537,18 +541,21 @@ TomDeliveryException(
 })
 ```
 
+For subclasses to call. The classification is not a parameter — it follows from
+whether the subtype mixes in `TomPermanentFailure`.
+
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `permanent` | `static TomPermanentDeliveryException permanent(String key, String message, {int? statusCode, Map<String, dynamic>? parameters, Object? rootException, Object? stack})` | A failure that retrying cannot fix; the returned type carries the scheduler's give-up marker. |
-| `transient` | `static TomDeliveryException transient(String key, String message, {int? statusCode, Map<String, dynamic>? parameters, Object? rootException, Object? stack})` | A failure that a later attempt may well survive. |
+| `transient` | `static TomTransientDeliveryException transient(String key, String message, {int? statusCode, Map<String, dynamic>? parameters, Object? rootException, Object? stack})` | A failure that a later attempt may well survive. |
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `isPermanent` | `bool` | Whether retrying this exact message could ever succeed (final). |
+| `isPermanent` | `bool` | *(getter)* Whether retrying this exact message could ever succeed. Reads the `TomPermanentFailure` marker rather than storing the answer beside it. |
 | `statusCode` | `int?` | The protocol's own status code, when it had one — e.g. SMTP `550` (final). |
 
 #### Methods
@@ -559,9 +566,9 @@ TomDeliveryException(
 
 ### TomPermanentDeliveryException
 
-A `TomDeliveryException` the scheduler will not retry. A separate type only so
-it can carry the kernel's `TomPermanentFailure` marker; callers should reach it
-through `TomDeliveryException.permanent`.
+A `TomDeliveryException` the scheduler will not retry. The `TomPermanentFailure`
+marker is the payload: the scheduler branches on it and `isPermanent` reads it.
+Callers should reach this through `TomDeliveryException.permanent`.
 
 - **Extends:** `TomDeliveryException`
 - **Mixes in:** `TomPermanentFailure`
@@ -570,6 +577,34 @@ through `TomDeliveryException.permanent`.
 
 ```dart
 TomPermanentDeliveryException(
+  String key,
+  String defaultUserMessage, {
+  int? statusCode,
+  Map<String, Object?>? parameters,
+  Object? rootException,
+  Object? stack,
+})
+```
+
+### TomTransientDeliveryException
+
+A `TomDeliveryException` worth another attempt. It exists so that the two
+classifications are two types rather than one type and its absence: `transient`
+returns this the way `permanent` returns `TomPermanentDeliveryException`, and
+`on TomTransientDeliveryException` reads as the mirror of
+`on TomPermanentDeliveryException`. It carries no marker, which is precisely what
+makes it retryable.
+
+It is not the only retryable type — any `TomDeliveryException` without
+`TomPermanentFailure` is one — so code deciding whether to retry should ask
+`isPermanent` rather than test for this class.
+
+- **Extends:** `TomDeliveryException`
+
+#### Constructors
+
+```dart
+TomTransientDeliveryException(
   String key,
   String defaultUserMessage, {
   int? statusCode,

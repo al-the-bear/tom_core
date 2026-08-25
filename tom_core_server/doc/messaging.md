@@ -57,7 +57,7 @@ lets it be made on the merits rather than around a missing substrate.
 | `TomMessageChannel` | class | An open named value — `email`, `sms`, `push`, `webhook`, or yours |
 | `TomMessageTransport` | abstract class | One delivery channel: one attempt at one message |
 | `TomDeliveryReceipt` / `TomDeliveryOutcome` | class / enum | What became of an attempt, including partial delivery |
-| `TomDeliveryException` / `TomPermanentDeliveryException` | classes | A failure, classified transient or permanent |
+| `TomDeliveryException` / `TomPermanentDeliveryException` / `TomTransientDeliveryException` | classes | A failure, classified transient or permanent |
 | `TomMessageRouter` | class | Maps a channel to its transport |
 | `TomMemoryMessageTransport` | class | Captures messages in memory; the test stand-in |
 | `TomNoOpMessageTransport` | class | Accepts and discards; the local-run stand-in |
@@ -156,10 +156,25 @@ Two properties make this decision load-bearing rather than advisory:
 
 1. **The transport makes the call**, because only the transport can read the far
    side's answer. `TomDeliveryException.permanent(...)` and `.transient(...)`
-   cannot be built with the wrong classification by accident.
+   return `TomPermanentDeliveryException` and `TomTransientDeliveryException`
+   respectively, so the classification is visible in the type and `on ... catch`
+   reads the same on both sides.
 2. **A permanent failure mixes in the kernel's `TomPermanentFailure`**, which
    `TomScheduler` already honours. The judgement is made once, at the point
    where the evidence is, and nothing downstream re-derives it.
+3. **`isPermanent` reads that marker rather than storing the answer beside it.**
+   This is what makes the first two points a guarantee instead of a convention.
+   While the flag was a separate constructor parameter, a failure could describe
+   itself as permanent and carry no marker — its `toString` said `(permanent)`
+   and the scheduler retried it forever. `TomDeliveryException` is abstract and
+   takes no classification argument, so mixing in `TomPermanentFailure` is now
+   the only way to be permanent, and there is nothing left to contradict.
+
+A transport that needs to carry vendor-specific data may subclass
+`TomDeliveryException` directly; mixing in `TomPermanentFailure` is what makes
+such a subclass permanent. Because retryability is the *absence* of the marker
+rather than membership of one class, code deciding whether to retry should ask
+`isPermanent` rather than test for `TomTransientDeliveryException`.
 
 The default is *transient*. An unrecognised error is retried, because retrying a
 permanent failure costs a few wasted attempts whereas dropping a transient one
@@ -809,8 +824,9 @@ report that a number was empty.
   `TomAttachment` / `TomMessageChannel`** — the composed message and its JSON
   round-trip.
 - **`TomMessageTransport` / `TomDeliveryReceipt` / `TomDeliveryOutcome` /
-  `TomDeliveryException` / `TomPermanentDeliveryException`** — the delivery
-  contract and its classified failures.
+  `TomDeliveryException` / `TomPermanentDeliveryException` /
+  `TomTransientDeliveryException`** — the delivery contract and its classified
+  failures.
 - **`TomMessageRouter`** — channel → transport.
 - **`TomMemoryMessageTransport` / `TomNoOpMessageTransport` /
   `TomFileMessageTransport`** — delivery without a network.

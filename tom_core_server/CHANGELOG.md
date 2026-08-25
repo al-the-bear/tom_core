@@ -268,6 +268,49 @@
 
 ### Fixed
 
+- **A delivery failure could call itself permanent and be retried forever
+  (tcinc574).** `TomDeliveryException` stored `isPermanent` as a constructor
+  parameter *and* signalled permanence by mixing in the kernel's
+  `TomPermanentFailure`. Two representations of one fact, agreeing only because
+  the `permanent` / `transient` builders happened to write both — and the public
+  general constructor bypassed the builders. `TomDeliveryException('k', 'm',
+  isPermanent: true)` produced an exception whose `toString` ended `(permanent)`
+  while carrying no marker, and `TomScheduler._failAttempt` branches on
+  `error is TomPermanentFailure`, so it would have retried that failure to the
+  end of its budget. The inverse was equally reachable. Nothing in `lib/` used
+  the general constructor, so the defect was latent rather than live — but it
+  was reachable by any caller, and `messaging_example.dart` was *asserting* the
+  invariant that the flag and the marker agree, which the type system did not
+  provide.
+
+  `isPermanent` is now a getter — `this is TomPermanentFailure` — so the
+  description and the scheduler's decision are the same expression and cannot
+  drift. With no flag left to pass, the classification is no longer a
+  constructor argument at all; `TomDeliveryException` becomes abstract, and
+  mixing in the marker is the only way to be permanent.
+
+  That change also settles the asymmetry this todo was filed for. `permanent`
+  returned `TomPermanentDeliveryException` while `transient` returned the base,
+  because the base *was* the transient case — nothing about the design meant
+  that, and it left `on ... catch` usable on only one half of a deliberately
+  symmetric pair. An abstract base cannot be the transient case, so
+  `TomTransientDeliveryException` now exists and `transient` returns it. The
+  analyzer's verdict on the example is the neatest evidence the symmetry is
+  real: `deferred is TomTransientDeliveryException` is now rejected as always
+  true, because the builder's *static* type already says so.
+
+  Retryability remains the absence of the marker, not membership of one class —
+  a transport may subclass `TomDeliveryException` directly to carry vendor
+  fields — so callers deciding whether to retry are told to ask `isPermanent`
+  rather than test for `TomTransientDeliveryException`. Two tests declare
+  exactly such subclasses, passing no classification anywhere, to pin that their
+  answers come from the marker alone.
+
+  The example loses its `isPermanent == (failure is TomPermanentFailure)`
+  check, which the fix turns into a tautology; a check that cannot fail is the
+  same dead weight this package's meta-tests exist to prevent. It now pins what
+  a caller acts on: each builder yields the classification it names.
+
 - **`TomMessage.textBody` missed a body spelled `Text/Plain`, and the SMS
   transport then sent the HTML one instead (tcinc573).** The two kind checks on
   `TomMessageBody` disagreed about case: `isHtml` lowercased its media type

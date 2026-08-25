@@ -184,25 +184,37 @@ Future<void> run() async {
   //    states it on the wire — 4xx means "try later", 5xx means "do not" — and
   //    a permanent failure carries a marker the *scheduler* honours, so the
   //    decision is made once and not re-derived at every layer.
-  final failures = <TomDeliveryException>[
-    TomDeliveryException.transient('x.deferred', 'Greylisted, try later.'),
-    TomDeliveryException.permanent('x.rejected', 'No such mailbox.'),
-  ];
-  for (final failure in failures) {
+  final deferred = TomDeliveryException.transient(
+    'x.deferred',
+    'Greylisted, try later.',
+  );
+  final rejected = TomDeliveryException.permanent(
+    'x.rejected',
+    'No such mailbox.',
+  );
+  for (final failure in <TomDeliveryException>[deferred, rejected]) {
     print(
       '8. ${failure.key.padRight(12)} '
       'permanent=${failure.isPermanent} '
       'scheduler gives up=${failure is TomPermanentFailure}',
     );
-    // The marker and the flag agree because they are the same decision: the
-    // scheduler stops retrying on [TomPermanentFailure], and nothing else in
-    // the stack re-derives the classification.
-    check(
-      failure.isPermanent == (failure is TomPermanentFailure),
-      'the isPermanent flag and the marker the scheduler honours are one '
-      'decision, not two that could disagree',
-    );
   }
+  // Two checks that could once have been written here are deliberately absent.
+  // Asserting `isPermanent == (failure is TomPermanentFailure)` would assert
+  // nothing: `isPermanent` *is* that test, one fact with one representation.
+  // And asserting `deferred is TomTransientDeliveryException` is rejected by
+  // the analyzer as always true, because the builders are statically typed to
+  // their own subtypes — the compiler proving it outright is the stronger
+  // statement. What is left is the classification a caller actually acts on.
+  check(
+    !deferred.isPermanent,
+    'transient() yields a failure the scheduler will retry',
+  );
+  check(
+    rejected.isPermanent,
+    'permanent() yields a failure carrying the marker that stops the retry '
+    'loop',
+  );
 
   // 9. Delivery is queued, not synchronous. `send` returns once the message is
   //    durably stored; the outbox's scheduler delivers afterwards. There is no

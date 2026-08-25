@@ -425,8 +425,9 @@ surface documented here.
 | `TomSmsRequest` | class | What to send, to which number, with which values — a template key, never a text. |
 | `TomSmsService` | class | Renders resource-keyed SMS, caps its segments, and queues it on the outbox. |
 | `TomMessagingException` | class | The module's base error (extends `TomServerException`). |
-| `TomDeliveryException` | class | A delivery failure, classified transient or permanent. |
+| `TomDeliveryException` | class | A delivery failure, classified transient or permanent (abstract). |
 | `TomPermanentDeliveryException` | class | A delivery failure the scheduler will not retry. |
+| `TomTransientDeliveryException` | class | A delivery failure worth another attempt. |
 | `tomMimeLineEnding` / `tomMimeMaxLineLength` | top-level | MIME line ending and maximum line length. |
 | `tomOutboxJobName` | top-level | The default job name the outbox registers under. |
 
@@ -851,6 +852,7 @@ surface documented here.
 | `tomOutboxJobName` | Messaging |
 | `TomPdfRenderer` | Export |
 | `TomPermanentDeliveryException` | Messaging |
+| `TomTransientDeliveryException` | Messaging |
 | `TomPersistenceEventHandler` | Object Persistence |
 | `TomPersistentExternalIdentityStore` | Authentication |
 | `TomPersistentOAuthTokenStore` | Authentication |
