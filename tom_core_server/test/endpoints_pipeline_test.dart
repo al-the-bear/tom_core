@@ -1037,6 +1037,159 @@ void main() {
     });
   });
 
+  // The group above establishes *which* keys protect an endpoint, by calling
+  // `checkAutomaticAccess` directly. What a direct call cannot show is that
+  // anything ever makes it. `enforceAccess` reaches the rule down two
+  // conditions — the ordinary check must have refused, and
+  // `globalSettingUseAutomaticEndpointProtection` must be on — and that switch
+  // was assigned `true` in exactly no place in the package: not a test, not a
+  // sample, not a default. So every key pinned above was pinned against a rule
+  // no request had been shown to reach, and the question an operator actually
+  // asks — "I minted a key for this API; does it open the endpoint?" — had no
+  // answer in the suite. These tests ask it through `enforceAccess`, which is
+  // the unit that owns both conditions and the denial that follows them.
+  group('automatic protection through enforceAccess', () {
+    late TomEndpointHandler contractGatedHandler;
+    late TomEndpointHandler overriddenHandler;
+
+    setUp(() {
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      addTearDown(() {
+        TomResourceKeyProtection.globalSettingProtectionDefault = false;
+        TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection =
+            false;
+      });
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomEndpointRouting().initializeRouter();
+      contractGatedHandler = _routeInfo(
+        '/fixture-access/contract-gated',
+      ).handler;
+      overriddenHandler = _routeInfo('/fixture-access/overridden').handler;
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    /// Runs [handler]'s full access enforcement as a principal holding exactly
+    /// [keys] and [roles] — the call the pipeline makes before it materialises
+    /// a single argument.
+    ///
+    /// Both fixture endpoints are gated by a role the principal is given only
+    /// when a test says so, so the default is a principal the ordinary check
+    /// refuses. That refusal is the precondition of everything here: it is what
+    /// makes the second chance reachable at all.
+    Future<void> enforceAs(
+      TomEndpointHandler handler, {
+      List<String> keys = const [],
+      List<String> roles = const [],
+    }) => runZoned(
+      handler.enforceAccess,
+      zoneValues: {
+        TomPrincipal: TomPrincipal(
+          user: TomUser(id: 1, username: 'keyholder'),
+          authenticated: true,
+          aci: TomAccessControlInformation(resourceKeys: keys, roles: roles),
+        ),
+      },
+    );
+
+    test('a resource key opens nothing while the gate is off', () async {
+      // The half that makes the gate a gate. The principal holds exactly the
+      // key the rule would honour, and the endpoint stays shut because nothing
+      // asks. Without this the next test would pass just as well against an
+      // `enforceAccess` that consulted the rule unconditionally.
+      await expectLater(
+        enforceAs(contractGatedHandler, keys: ['fixture_access']),
+        throwsA(isA<TomEndpointHandlerException>()),
+      );
+    });
+
+    test('the gate admits the API-id key as a second chance', () async {
+      TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection =
+          true;
+      // Same principal, same key, one switch different: the contract identity
+      // now opens the endpoint its contract declares, through the production
+      // call site rather than by calling the rule directly.
+      await expectLater(
+        enforceAs(contractGatedHandler, keys: ['fixture_access']),
+        completes,
+      );
+    });
+
+    test('the implementation class name opens nothing through the gate', () {
+      TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection =
+          true;
+      // The security half, end to end: renaming the class must not be a change
+      // to the authorization surface, so its name must not be a key.
+      expect(
+        enforceAs(contractGatedHandler, keys: ['FixtureAccessApiService']),
+        throwsA(isA<TomEndpointHandlerException>()),
+      );
+    });
+
+    test('a -<member> exception shuts one endpoint and spares its sibling', () {
+      TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection =
+          true;
+      const keys = ['fixture_access', '-fixture_access.contractGated'];
+      expect(
+        enforceAs(contractGatedHandler, keys: keys),
+        throwsA(isA<TomEndpointHandlerException>()),
+        reason: 'the named endpoint is carved out of the API-wide grant',
+      );
+      expect(
+        enforceAs(overriddenHandler, keys: keys),
+        completes,
+        reason: 'an exception names one member, not the container',
+      );
+    });
+
+    test('the second chance cannot lower a grant the role already made', () {
+      TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection =
+          true;
+      // `enforceAccess` consults the rule only after a refusal, so a principal
+      // the contract role already admits never reaches it — which is why the
+      // carve-out this principal is also subject to changes nothing.
+      //
+      // The key set is chosen so that the rule, *if* it ran, would refuse:
+      // holding the container with the member revoked is exactly the shape that
+      // returns false. So a second chance wired to run unconditionally would
+      // turn this legitimate role-granted request into a denial, and the test
+      // fails. With a weaker key set the rule would fall through to the
+      // decision it was given and the mutation would survive.
+      expect(
+        enforceAs(
+          contractGatedHandler,
+          keys: ['fixture_access', '-fixture_access.contractGated'],
+          roles: ['fixture-contract-role'],
+        ),
+        completes,
+      );
+    });
+
+    test('a denial that survives the second chance is audited', () async {
+      TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection =
+          true;
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      addTearDown(TomAuditTrail.uninstall);
+
+      await expectLater(
+        enforceAs(contractGatedHandler, keys: ['some-other-api']),
+        throwsA(isA<TomEndpointHandlerException>()),
+      );
+
+      // `contractGated` carries no `@TomAudited`, so this entry exists purely
+      // because a denial is recorded whether or not the endpoint opted in — the
+      // one auditable event the repository chokepoint cannot see, since the
+      // request is refused before it reaches any data.
+      final record = sink.records.single;
+      expect(record.outcome, TomAuditOutcome.denied);
+      expect(record.action, TomAuditAction.execute);
+    });
+  });
+
   // `logRequests` is a three-state flag: true logs, false does not, and **null
   // defers to `globalSettingLogRequestsDefault`** — which is what the
   // annotation's own documentation promises. The pipeline computed that

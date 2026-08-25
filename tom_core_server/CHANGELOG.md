@@ -1,5 +1,25 @@
 ## 1.3.0
 
+### Testing
+
+- **Nothing had ever switched automatic endpoint protection on (tcinc516).**
+  `tcinc504` established which keys protect an endpoint, but every one of its
+  ten tests called `checkAutomaticAccess` directly.
+  `globalSettingUseAutomaticEndpointProtection` — the switch `enforceAccess`
+  consults before it will consider a resource key at all — was assigned `true`
+  nowhere in the package: not in a test, not in a sample, not in a default. So
+  the keys were pinned against a rule no request had been shown to reach, and
+  the question an operator actually asks, "I minted a key for this API, does it
+  open the endpoint?", had no answer in the suite. Six tests now ask it through
+  `enforceAccess`: that the key is inert while the gate is off and admits while
+  it is on, that the implementation class name opens nothing, that a
+  `-<apiId>.<endpointId>` exception shuts one endpoint and spares its sibling,
+  that the second chance cannot lower a grant the ordinary check already made,
+  and that a denial surviving it is audited even though the endpoint carries no
+  `@TomAudited`. Five mutations confirm each bites: removing the gate, running
+  the rule unconditionally, ignoring the revocation, keying on the class name,
+  and dropping the denial audit each fail exactly the tests that claim them.
+
 ### Fixed
 
 - **`doc/endpoints.md` named three open ends where the internal list named
