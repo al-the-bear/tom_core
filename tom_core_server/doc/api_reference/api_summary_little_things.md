@@ -35,8 +35,9 @@ The module declares one of those subtypes itself: `TomLoginException`, which
 sits here rather than in `authentication` so the 2FA subsystem can throw it
 without importing the server that catches it. It adds no members — its
 constructor forwards the base payload minus `clientThrow`, so a
-`TomLoginException` is always *born* with the base default `true` (the field
-itself stays writable, as on any subtype). It is documented in
+`TomLoginException` always carries the base default `true` — and because the
+field is `final`, that is an invariant of the type rather than a starting value.
+It is documented in
 [api_summary_authentication.md](api_summary_authentication.md#tomloginexception),
 under the module a reader meets it in; the index files it there too, and this
 summary gives it no section of its own so that the two documents cannot drift
@@ -112,8 +113,8 @@ Copies the current zone's `TomRequestId` UUID into `requestUuid` when present.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `isolateName` | `String` | The debug name of the isolate that constructed this exception (falls back to `"unnamed isolate"`). |
-| `clientThrow` | `bool` | Whether this exception is safe to propagate to the client (default `true`). |
+| `isolateName` | `final String` | The debug name of the isolate that constructed this exception (falls back to `"unnamed isolate"`). |
+| `clientThrow` | `final bool` | Whether this exception is safe to propagate to the client (default `true`). Fixed at construction — a catch site that must not surface a particular failure masks it in the response it builds. |
 
 #### Methods
 

@@ -28,14 +28,22 @@ class TomServerException extends TomException {
   ///
   /// Resolved from `Isolate.current.debugName` at construction time, falling
   /// back to `"unnamed isolate"` when the current isolate has no debug name.
-  String isolateName = Isolate.current.debugName ?? "unnamed isolate";
+  ///
+  /// Final, so the attribution can be trusted: the isolate named here is the
+  /// one that raised the error, not one that later handled it.
+  final String isolateName = Isolate.current.debugName ?? "unnamed isolate";
 
   /// Whether this exception is safe to propagate to the client.
   ///
   /// When `true` (the default) the endpoints pipeline may surface the
   /// exception's user message to the caller; when `false` it should be treated
   /// as internal and masked behind a generic error response.
-  bool clientThrow;
+  ///
+  /// Final, so this is a property of the exception *type*, fixed where the
+  /// error is raised and by the party that knows what the message contains. A
+  /// catch site that decides a particular failure must not leave the server
+  /// masks it in the response it builds; it does not rewrite the error.
+  final bool clientThrow;
 
   /// Creates a server exception.
   ///

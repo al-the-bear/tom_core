@@ -147,7 +147,7 @@ void main() {
       expect(e.parameters, containsPair('username', 'mallory'));
     });
 
-    test('is born client-visible', () {
+    test('is client-visible', () {
       // Deliberate: the constructor does not accept `clientThrow`, so every
       // TomLoginException carries the base default `true`. That is not the
       // package-wide norm being restated — fifteen of the twenty-eight
@@ -158,16 +158,11 @@ void main() {
       // TomOAuthException re-defaults it to `false`. TomLoginException is the
       // one failure that subsystem raises whose message is written for the
       // person who mistyped a password, so it is the one that may reach them.
+      //
+      // Because `clientThrow` is final, this is an invariant of the type and
+      // not merely the value it is born with: no instance of
+      // TomLoginException is ever hidden from the caller.
       expect(TomLoginException('K', 'm').clientThrow, isTrue);
-    });
-
-    test('can still be masked after construction', () {
-      // `clientThrow` is a plain mutable field on the base, so what the
-      // omitted constructor parameter fixes is the *default*, not the value: a
-      // catch site that decides the detail must not leave the server can set
-      // it before rethrowing.
-      final e = TomLoginException('K', 'm')..clientThrow = false;
-      expect(e.clientThrow, isFalse);
     });
 
     test('captures a non-empty isolate name like the base', () {

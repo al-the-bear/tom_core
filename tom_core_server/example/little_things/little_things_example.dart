@@ -78,9 +78,11 @@ void run() {
   }, zoneValues: {TomRequestId: requestId});
 
   // 6. TomLoginException adds no members, so one clause written for the base
-  //    type catches it along with every other server exception. Note it is born
+  //    type catches it along with every other server exception. Note it is
   //    client-visible: its constructor does not accept `clientThrow`, while
   //    the rest of the authentication subsystem's exceptions set it false.
+  //    `clientThrow` is final, so that holds for every instance rather than
+  //    just the one this example builds.
   try {
     throw TomLoginException(
       'error.invalid-user-or-password',

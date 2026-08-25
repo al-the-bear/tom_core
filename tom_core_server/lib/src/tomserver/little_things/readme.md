@@ -24,8 +24,8 @@ the 2FA subsystem can throw it without importing that server.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomRequestId` | Per-request v4 UUID. Created once per request by `tomDefaultAuthenticationMiddleware` and published into the request zone; recovered with `getFromCurrentZone<TomRequestId>()` for log and exception correlation. |
-| `TomServerException` | Base server error: carries `key` + `defaultUserMessage`, records `isolateName`, exposes `clientThrow`, and copies the active request UUID into `requestUuid` for correlation. |
-| `TomLoginException` | A login that cannot succeed. Adds no members to the base — it is a name the authentication services throw and `TomAuthenticationServer` catches. Its constructor omits `clientThrow`, so it is born client-visible, unlike the rest of the authentication subsystem's exceptions. See `doc/authentication.md`. |
+| `TomServerException` | Base server error: carries `key` + `defaultUserMessage`, records `isolateName`, exposes `clientThrow` (both `final` — fixed where the error is raised), and copies the active request UUID into `requestUuid` for correlation. |
+| `TomLoginException` | A login that cannot succeed. Adds no members to the base — it is a name the authentication services throw and `TomAuthenticationServer` catches. Its constructor omits `clientThrow`, so it is client-visible, unlike the rest of the authentication subsystem's exceptions. See `doc/authentication.md`. |
 
 ## Quick start
 

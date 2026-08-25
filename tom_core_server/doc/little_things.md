@@ -124,8 +124,8 @@ detail must not leak.
 
 `TomLoginException` does not offer the choice at construction: its constructor
 forwards the rest of the payload but not `clientThrow`, so every
-`TomLoginException` is *born* client-visible. Omitting the parameter is the
-common shape — fifteen of the package's twenty-eight subtypes inherit the `true`
+`TomLoginException` is client-visible. Omitting the parameter is the common
+shape — fifteen of the package's twenty-eight subtypes inherit the `true`
 default the same way — but the neighbourhood makes it a decision rather than an
 omission. Every other exception the authentication subsystem raises is hidden:
 `Tom2FAException` and `TomServerSelfLoginException` hard-wire
@@ -133,13 +133,16 @@ omission. Every other exception the authentication subsystem raises is hidden:
 login failure is the exception whose message is written for the person who
 mistyped a password, so it is the one that may reach them.
 
-The field stays writable afterwards — it is a plain `bool` on the base, not a
-`final` — so a catch site that decides a particular rejection must not leave the
-server can still set it before rethrowing. What the constructor fixes is the
-default, not the value. In practice neither matters much on this path, because
-`TomAuthenticationServer` catches the exception and turns its `key` into a
-failed `TomAuthenticationResult` rather than letting it reach the pipeline that
-reads the flag.
+Both `clientThrow` and `isolateName` are `final`, so what the constructor fixes
+is the value and not merely a default. That is deliberate: an exception is a
+value describing something that has already happened, and both fields record a
+fact about the moment it was raised — which worker produced it, and whether the
+party that wrote the message intended it for a client. A catch site that decides
+a particular failure must not leave the server masks it in the response it
+builds, rather than rewriting the error's account of itself. On this path the
+question rarely arises anyway, because `TomAuthenticationServer` catches the
+exception and turns its `key` into a failed `TomAuthenticationResult` rather
+than letting it reach the pipeline that reads the flag.
 
 ## Core Components
 

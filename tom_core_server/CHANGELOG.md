@@ -3948,6 +3948,31 @@
 
 ### Behaviour Changes
 
+- **`TomServerException.isolateName` and `TomServerException.clientThrow` are
+  now `final` (tcinc568).** Both were plain mutable fields, which put the
+  `isolateName` dartdoc at odds with its own declaration: it promised the name
+  was "resolved at construction time" while the field let any holder overwrite
+  it afterwards, so nothing about a logged attribution could be relied upon.
+  `clientThrow` had the matching problem one level up — a subtype that omits
+  the parameter (fifteen of the twenty-eight do) was documented as fixing a
+  behaviour it only fixed as a default.
+
+  An exception is a value describing something that has already happened, and
+  both fields record a fact about the moment it was raised: which worker
+  produced it, and whether the party that wrote the message intended it for a
+  client. Neither is a decision for a later frame to revise. A catch site that
+  must not surface a particular failure masks it in the response it builds
+  instead of rewriting the error's account of itself.
+
+  Nothing in `lib/` ever assigned to either field: the seven `clientThrow`
+  overrides all pass through `super.clientThrow`, and `server.dart`'s
+  `body["clientThrow"]` is a read. The only mutation anywhere was one test
+  asserting the mutability itself, which is deleted; the sibling test now
+  states the invariant rather than the starting value. Generated reflection
+  code is unaffected — the `isolateName=` setters in `*.reflection.dart` belong
+  to the kernel's `TomLogMessage`, and no generated file mentions `clientThrow`
+  at all.
+
 - **`TomLoginException` and `TomCacheException` name their second constructor
   argument `defaultUserMessage`, as every other exception type does
   (tcinc567).** Both declared it as `super.userMessage`. Dart allows that — a
