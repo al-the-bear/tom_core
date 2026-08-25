@@ -1573,6 +1573,38 @@
 
 ### Internal
 
+- **The SQL escape matrix is now one shared table, asserted against all three
+  consumers of the lexer rather than one (tcinc501).** `TomSqlLexer` exists
+  because five hand-rolled scanners each had their own idea of MariaDB's
+  escaping rules, their own tests, and so stayed green while disagreeing with
+  each other (tcinc476). The consolidation fixed the implementations but left
+  the tests in the older shape: nine hand-written cases exercising
+  `TomSqlLexer.splitStatements` alone. The other two consumers each walk the
+  text a second time with their own loop, and neither walk was covered — a
+  `TomSchemaDdlReader.stripComments` rewritten to scan naively passed the entire
+  package, and so did a naive `splitTopLevel`.
+
+  The cases are now a table — three quote characters times the two escape forms,
+  `''` doubling and `\'` backslash — and every splitter is run against it. Two
+  further guards keep it honest. The table's *shape* is asserted, so a cell
+  dropped during a refactor fails rather than silently taking its coverage with
+  it. And because `stripComments` copies quoted text through verbatim, running a
+  case against it is not the same as testing it: a misparse only becomes
+  observable when it moves a *comment marker* across a quoted-run boundary, so a
+  meta-test requires a marker-bearing case per quote character. The first draft
+  of the table lacked exactly that and was vacuous for the reader in all nine
+  cases.
+
+  The backtick row is where the two directions separate, and both are now
+  pinned: ``CREATE TABLE `bs\` (id INT)`` creates a table genuinely named
+  ``bs\``, so a scanner that honours the backslash there swallows the closing
+  backtick (over-escaping, welding two statements into one), while one that
+  ignores it inside a string literal ends `'it\'s'` early (under-escaping,
+  cutting a statement in half). Where the reader and the lexer legitimately
+  disagree — the reader strips a comment the lexer is required to keep verbatim,
+  since `/*!40101 … */` is executable SQL — the table records both expectations
+  rather than weakening the assertion to accommodate the difference.
+
 - **`TomOperator` is documented as the tree it is, and every summary's class
   sections are now checked member by member against source (tcinc471).** The
   datasources summary described `TomOperator` at length and never mentioned
