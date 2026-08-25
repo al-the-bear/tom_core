@@ -35,8 +35,11 @@ Source: `lib/src/tomserver/file_storage/blob_store.dart`,
 `lib/src/tomserver/file_storage/aws_v4_signer.dart`,
 `lib/src/tomserver/file_storage/blob_store_registry.dart`.
 
-`TomBlobStore` is the contract: four operations — `put`, `get`, `describe`,
-`delete` — over a key and a `Stream<List<int>>`. There is no `list`, no rename
+`TomBlobStore` is the contract: five operations — `put`, `get`, `describe`,
+`exists` and `delete` — over a key and a `Stream<List<int>>`. A *backend*
+implements four of them; `exists` defaults to `describe(key) != null`, so the
+count differs depending on which side of the abstraction is being counted.
+There is no `list`, no rename
 and no partial read, because nothing in the framework needs them and every one
 of them would constrain the backends. `TomStoredBlob` is what a write returns
 (key, media type, byte count, timestamp, optional original file name and a

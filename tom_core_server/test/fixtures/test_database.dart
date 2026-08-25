@@ -317,6 +317,43 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $manifestTable');
   }
 
+  /// Whether [table] currently exists in the fixture schema.
+  ///
+  /// Answered by running a statement that selects no rows and seeing whether
+  /// the server accepts it: MariaDB resolves the table name before it discovers
+  /// that the `WHERE` matches nothing, so a rejection means the table is
+  /// missing rather than that the probe went wrong. The exception is not being
+  /// swallowed — it **is** the answer, the same arrangement as
+  /// `TomSqlAuditSink._permits`.
+  ///
+  /// Exists so a test can assert that a store left the schema alone. A store
+  /// built with `createSchema: false` must issue no DDL, and the only honest
+  /// evidence for that is the database still not having the table afterwards.
+  static Future<bool> tableExists(TomDataSourceInfo dsi, String table) async {
+    try {
+      await dsi.datasource.executeCommand('SELECT 1 FROM $table WHERE 1 = 0');
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Creates the blob store's two tables from the module's own shipped DDL.
+  ///
+  /// The migration-owned arrangement, expressed the way a deployment expresses
+  /// it: the schema arrives from somewhere that is not the store. Built from
+  /// [blobManifestTableDdl] / [blobChunkTableDdl] rather than from a copy of
+  /// the `CREATE TABLE` text, so a test running against tables the framework
+  /// did not create is still running against the framework's own shape.
+  static Future<void> createBlobTables(
+    TomDataSourceInfo dsi, {
+    String manifestTable = defaultBlobManifestTable,
+    String chunkTable = defaultBlobChunkTable,
+  }) async {
+    await dsi.datasource.executeCommand(blobManifestTableDdl(manifestTable));
+    await dsi.datasource.executeCommand(blobChunkTableDdl(chunkTable));
+  }
+
   /// Drops the relational scheduler's tables (CSEXB3, CSEXC2).
   ///
   /// Dropped rather than truncated for the same reason as the blob tables: the

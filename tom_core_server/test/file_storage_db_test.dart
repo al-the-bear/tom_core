@@ -398,6 +398,145 @@ void main() async {
         ),
       );
     });
+
+    /// `createSchema: false` — the configuration a deployment runs in when the
+    /// two tables belong to the migration chain rather than to first use, and
+    /// its database user is not allowed to run DDL.
+    ///
+    /// The enclosing `setUp` has already dropped both tables, so every test
+    /// here starts from the state that distinguishes this flag from the
+    /// default: a store whose schema is *not* there. The three claims are that
+    /// the flag is obeyed (no DDL), that the resulting failure is the module's
+    /// own error rather than the driver's, and — the one the other two are
+    /// worthless without — that the arrangement actually works once the schema
+    /// arrives from elsewhere.
+    group('with createSchema: false', () {
+      late TomDatabaseBlobStore unprovisioned;
+
+      setUp(() {
+        unprovisioned = TomDatabaseBlobStore(
+          dsi.datasource,
+          chunkSize: 1024,
+          createSchema: false,
+        );
+      });
+
+      test('ensureSchema creates nothing', () async {
+        // Not merely "no error": the point of the flag is that the DDL is not
+        // issued, and only the database can testify to that.
+        await unprovisioned.ensureSchema();
+
+        expect(
+          await TestDatabase.tableExists(dsi, defaultBlobManifestTable),
+          isFalse,
+        );
+        expect(
+          await TestDatabase.tableExists(dsi, defaultBlobChunkTable),
+          isFalse,
+        );
+      });
+
+      test(
+        'a put reports a named storage error and still creates nothing',
+        () async {
+          Object? raised;
+          try {
+            await unprovisioned.put(
+              key: 'db/unprovisioned.txt',
+              bytes: _text('no schema here'),
+            );
+            fail('a put against a missing schema must not succeed');
+          } on Object catch (error) {
+            raised = error;
+          }
+
+          // The module's own vocabulary, not the driver's: a caller branching on
+          // storage errors keeps working when the schema is the fault, and the
+          // `MySQLServerException` never becomes part of anyone's API.
+          expect(
+            raised,
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.write_failed',
+            ),
+          );
+
+          // The generic key is only defensible because the specific cause
+          // survives underneath it — this is what an operator reads to learn that
+          // the migration has not been applied, so it is asserted rather than
+          // assumed.
+          expect(
+            classifySqlFailure(raised),
+            TomSqlFailureMode.definite,
+            reason:
+                'the server answered 1146, so the write definitely did not '
+                'take effect',
+          );
+          expect(raised.toString(), contains(defaultBlobManifestTable));
+
+          // The failure must not have provisioned on the way out.
+          expect(
+            await TestDatabase.tableExists(dsi, defaultBlobManifestTable),
+            isFalse,
+          );
+          expect(
+            await TestDatabase.tableExists(dsi, defaultBlobChunkTable),
+            isFalse,
+          );
+        },
+      );
+
+      test('the reads are named too, and by the operation that asked', () async {
+        // `probe` rather than `read`, because the caller asked what was there.
+        await expectLater(
+          unprovisioned.describe('db/unprovisioned.txt'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.probe_failed',
+            ),
+          ),
+        );
+
+        await expectLater(
+          unprovisioned.get('db/unprovisioned.txt').toList(),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.read_failed',
+            ),
+          ),
+        );
+      });
+
+      test(
+        'round-trips a blob once the schema arrives from elsewhere',
+        () async {
+          // The production arrangement, and the control the two negative tests
+          // above need: a store that simply never worked would satisfy them
+          // both. The tables are created from the module's own exported DDL —
+          // what the shipped `[1]`/`[2]` reference migrations apply — so the
+          // store is running against the schema a migration chain would have
+          // left it, not against one this test invented.
+          await TestDatabase.createBlobTables(dsi);
+
+          final stored = await unprovisioned.put(
+            key: 'db/migrated.bin',
+            bytes: _stream([_bytes(3000)]),
+            mediaType: 'application/octet-stream',
+          );
+
+          expect(stored.byteCount, 3000);
+          // A multi-chunk payload, so the chunk table is exercised too and not
+          // merely the manifest.
+          expect(await unprovisioned.getBytes('db/migrated.bin'), _bytes(3000));
+          expect(await unprovisioned.delete('db/migrated.bin'), isTrue);
+        },
+      );
+    });
   }, skip: skipReason);
 
   group('a database store built from configuration', () {
@@ -428,7 +567,9 @@ void main() async {
       // Asserted against the constants rather than against their values: this
       // has to keep holding after a rename, which is the only circumstance in
       // which the defect was ever visible.
-      final store = await configured({'datasource': TestDatabase.datasourceName});
+      final store = await configured({
+        'datasource': TestDatabase.datasourceName,
+      });
 
       expect(store.manifestTable, defaultBlobManifestTable);
       expect(store.chunkTable, defaultBlobChunkTable);
@@ -458,7 +599,9 @@ void main() async {
       // Guards the assertions above against being satisfied by a store that
       // resolves its names correctly and works with none of them: the tables
       // the defaults name are the tables it actually provisions and reads.
-      final store = await configured({'datasource': TestDatabase.datasourceName});
+      final store = await configured({
+        'datasource': TestDatabase.datasourceName,
+      });
       await store.put(key: 'cfg/round-trip.txt', bytes: _text('configured'));
 
       expect(
@@ -475,31 +618,34 @@ void main() async {
       expect(deleted, BigInt.one);
     });
 
-    test('a chunk size of zero is refused at start-up, not on first put', () async {
-      // The route the constructor check exists for. `file_storage_test.dart`
-      // proves the constructor refuses it; this proves nothing between YAML and
-      // the constructor swallows the value first — the registry reads the
-      // setting, `.named` resolves the data source, and the refusal still
-      // arrives out of `initializeBlobStores`.
-      //
-      // Which is where a deployment can act on it. Left to the store, the same
-      // setting produces an upload that never returns: `doPut` slices with a
-      // clamp that is 0 for every iteration, so the loop cannot advance and
-      // there is no exception to log.
-      await expectLater(
-        configured({
-          'datasource': TestDatabase.datasourceName,
-          'chunkSize': 0,
-        }),
-        throwsA(
-          isA<TomStorageException>().having(
-            (e) => e.key,
-            'key',
-            'storage.database.chunk_size_not_positive',
+    test(
+      'a chunk size of zero is refused at start-up, not on first put',
+      () async {
+        // The route the constructor check exists for. `file_storage_test.dart`
+        // proves the constructor refuses it; this proves nothing between YAML and
+        // the constructor swallows the value first — the registry reads the
+        // setting, `.named` resolves the data source, and the refusal still
+        // arrives out of `initializeBlobStores`.
+        //
+        // Which is where a deployment can act on it. Left to the store, the same
+        // setting produces an upload that never returns: `doPut` slices with a
+        // clamp that is 0 for every iteration, so the loop cannot advance and
+        // there is no exception to log.
+        await expectLater(
+          configured({
+            'datasource': TestDatabase.datasourceName,
+            'chunkSize': 0,
+          }),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.database.chunk_size_not_positive',
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }, skip: skipReason);
 
   group('file-reference columns end to end', () {
