@@ -208,6 +208,11 @@ group count ( * ) as total over status by age >= :min
   A skip needs a cap, and only `find` and `group` accept one. For `group` this
   part also carries the aggregate projection and the optional `over <fields>`
   group key — see [Grouping and Aggregation](#grouping-and-aggregation).
+  Each of these four keywords takes exactly one whole, non-negative number
+  after it. An argument that is missing, non-numeric or negative is a syntax
+  error, not a request for some other window: `find first x by …` and
+  `find first by …` are refused rather than read as `first 1`. `0` is allowed
+  and means *unpaged* — the same reading `TomPageRequest` gives `limit: 0`.
 - The part after `by` is the predicate, optionally followed by a `having
   <predicate>` clause (`group` only) and
   `order by <field> [asc|desc] [, <field> [asc|desc]]…`. A direction keyword

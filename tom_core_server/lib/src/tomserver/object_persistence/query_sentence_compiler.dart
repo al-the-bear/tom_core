@@ -517,8 +517,16 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
   /// returning `-1` when neither appears.
   ///
   /// Naming the same option twice is a contradiction rather than a preference,
-  /// so it is rejected with [conflictKey]; a non-numeric argument falls back to
-  /// `1`, which is the behaviour `top`/`first` has always had.
+  /// so it is rejected with [conflictKey]. The argument itself is rejected —
+  /// never guessed at — when it is missing, non-numeric, or negative: a window
+  /// the compiler had to invent would return a different result set than the
+  /// sentence asked for, without saying so.
+  ///
+  /// Zero is accepted and means *unpaged*, the reading
+  /// [TomPageRequest.assertWindow] gives `limit: 0` for a window built
+  /// programmatically. Negative is refused for the same reason it is there, and
+  /// for one more here: `-1` is this method's own "absent" sentinel, so an
+  /// accepted `first -1` could not be told apart from a sentence with no cap.
   int _countOption(
     List<String> options,
     String qs,
@@ -537,11 +545,38 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     }
     if (index == -1) index = other;
     if (index == -1) return -1;
-    try {
-      return int.parse(options[index + 1]);
-    } catch (error) {
-      return 1;
+
+    // The keyword as the author spelled it: `top` and `first` are one option
+    // internally, and quoting the other one sends the reader looking for a
+    // word their sentence does not contain.
+    final keyword = options[index].toLowerCase();
+    if (index + 1 >= options.length) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.${keyword}_missing_argument",
+        "The QuerySentence $qs cannot be compiled. [$keyword] takes a row "
+            "count, but the sentence reaches [by] with nothing after it.",
+        parameters: {"option": keyword},
+      );
     }
+    final argument = options[index + 1];
+    final count = int.tryParse(argument);
+    if (count == null) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.${keyword}_not_numeric",
+        "The QuerySentence $qs cannot be compiled. [$keyword] takes a whole "
+            "row count, but [$argument] is not one.",
+        parameters: {"option": keyword, "argument": argument},
+      );
+    }
+    if (count < 0) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.${keyword}_negative",
+        "The QuerySentence $qs cannot be compiled. [$keyword] may not be "
+            "negative, but was $count. Use 0 for no $keyword at all.",
+        parameters: {"option": keyword, "argument": count},
+      );
+    }
+    return count;
   }
 
   /// Parses the trailing `order by <field> [asc|desc] …` clause into sort terms

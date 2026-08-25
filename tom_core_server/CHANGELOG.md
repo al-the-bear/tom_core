@@ -281,6 +281,38 @@
 
 ### Fixed
 
+- **A window option the compiler could not read was guessed at as `1`
+  (tcinc588).** `_countOption` wrapped `int.parse` in a bare `catch` that
+  returned `1`, and its own dartdoc defended the fallback as "the behaviour
+  `top`/`first` has always had". Four different mistakes therefore produced a
+  silently different result set instead of an error, which is the one failure
+  mode a query language cannot afford:
+
+  - `find first x by …` — a mistyped count capped at one row (the reported
+    symptom);
+  - `find first by …` — the keyword with *no* argument capped at one row too,
+    because `options[index + 1]` threw `RangeError` inside the same `try`;
+  - `find first 5 skip x by …` — `skip`/`offset` shared the fallback, so a
+    mistyped page position silently skipped exactly one row. The dartdoc's
+    excuse did not even cover these two keywords;
+  - `find first -5 by …` — a negative argument parsed cleanly, then failed the
+    `> 0` test gating the clause, so the cap vanished and every row came back.
+
+  All four keywords now take exactly one whole, non-negative number. Missing,
+  non-numeric and negative arguments each raise `TomQuerySyntaxException` under
+  a key naming the keyword the author actually wrote — `compile.first_not_numeric`,
+  `compile.skip_missing_argument`, `compile.offset_negative` — since `top` and
+  `first` are one option internally and quoting the other one sends the reader
+  looking for a word their sentence does not contain.
+
+  `0` is accepted and means *unpaged*. That is not a new rule but the existing
+  one: `TomPageRequest.assertWindow` rejects only negative bounds and
+  `isUnpaged` reads `limit <= 0`, so a sentence and a programmatic window now
+  agree about what a zero means. A test asserts the agreement from both sides
+  rather than restating it. Refusing a negative also protects the compiler's
+  own `-1` "option absent" sentinel, which an accepted `first -1` would have
+  been indistinguishable from.
+
 - **A query sentence that stopped on a keyword escaped as `RangeError` or
   `TypeError` instead of a syntax error (tcinc587).** `_lookAhead` bounded its
   read with `<` where the token it is asked about sits at `start + ahead`, so a
