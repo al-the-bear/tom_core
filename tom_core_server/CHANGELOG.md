@@ -74,6 +74,29 @@
 
 ### Fixed
 
+- **`TomMemoryExportStore`'s two inspection accessors accepted keys every other
+  door rejected (tcinc524).** The interface owns key validation so that "every
+  backend gets the check, including ones written later"; making the four store
+  methods final (tcinc523) delivered that for `store`, `open`, `exists` and
+  `delete` on every backend at once, but `textOf` and `descriptorFor` are this
+  backend's own and stayed outside it. They are the accessors a *test* reads an
+  export through, on the backend a development server runs, which is precisely
+  where a key too lax for production must not pass: a key built from a report
+  title could be asserted on all the way through a green suite and fail on
+  deployment. The wrong answer was also the misleading one — `textOf('../x')`
+  reported `export.store.not_found` and `descriptorFor('../x')` answered `null`,
+  both of which say *nothing was written here* about a string that is not a key
+  at all, sending the reader after a missing write. Both now validate;
+  `not_found` and `null` keep their real meaning, which a second test pins so a
+  fix that makes every unhappy path throw the same thing cannot pass.
+
+  The test that was supposed to cover this was named
+  `validates keys exactly as the filesystem backend does` and exercised `store`
+  alone — the five other entry points could each have accepted `../escape` with
+  it still green. It now walks all six. Three mutations confirm the pair bites:
+  dropping validation from either accessor, and conflating absence with
+  invalidity.
+
 - **An export store's error contract depended on which backend was configured
   (tcinc523).** The module documented one promise — every failure is a
   `TomExportException` carrying a documented key — and seven sites broke it.

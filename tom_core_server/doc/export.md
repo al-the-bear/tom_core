@@ -486,7 +486,9 @@ Properties that are load-bearing rather than incidental:
 `TomMemoryExportStore` is the test and development backend. It buffers whole
 exports by definition, which is why it is not the default; it exposes `keys`,
 `descriptorFor` and `textOf` so a test can assert on content without touching a
-filesystem.
+filesystem. Those two accessors validate their key like the four store methods
+do, because a backend that accepts keys the production backends reject is one a
+test can pass on and a deployment fail on.
 
 ## Every Backend at Once
 

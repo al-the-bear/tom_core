@@ -693,8 +693,8 @@ TomMemoryExportStore()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `descriptorFor` | `TomStoredExport? descriptorFor(String key)` | The descriptor recorded for `key`, or `null` when it holds nothing. |
-| `textOf` | `String textOf(String key)` | The stored bytes for `key` decoded as UTF-8 (malformed input allowed), for tests that assert on content; throws `TomExportException` (`export.store.not_found`) when the key holds nothing. |
+| `descriptorFor` | `TomStoredExport? descriptorFor(String key)` | The descriptor recorded for `key`, or `null` when it holds nothing. Throws `TomExportException` (`export.store.invalid_key`) for a key the store would not have accepted, rather than answering `null` — `null` means *this valid key holds nothing*. |
+| `textOf` | `String textOf(String key)` | The stored bytes for `key` decoded as UTF-8 (malformed input allowed), for tests that assert on content; throws `TomExportException` (`export.store.not_found`) when the key holds nothing, or (`export.store.invalid_key`) when it is not a valid key. |
 | `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Drains `bytes` into a buffer and records the descriptor, publishing neither until the stream completes — so a failed write leaves nothing readable here either. |
 | `doOpen` | `Stream<List<int>> doOpen(String key)` | *(override)* Yields the buffered bytes for `key`; throws `TomExportException` (`export.store.not_found`) when it holds nothing. |
 | `doExists` | `Future<bool> doExists(String key)` | *(override)* Whether `key` is held. |

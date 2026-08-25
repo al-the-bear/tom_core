@@ -388,11 +388,21 @@ class TomMemoryExportStore extends TomExportStore {
   Iterable<String> get keys => _content.keys;
 
   /// The descriptor recorded for [key], or `null` when it holds nothing.
-  TomStoredExport? descriptorFor(String key) => _descriptors[key];
+  ///
+  /// Throws [TomExportException] (`export.store.invalid_key`) for a key the
+  /// store would not have accepted, rather than answering `null`: `null` means
+  /// *this valid key holds nothing*, and using it for *this is not a key* would
+  /// send the reader looking for a write that never happened.
+  TomStoredExport? descriptorFor(String key) =>
+      _descriptors[TomExportStore.validateKey(key)];
 
   /// The stored bytes for [key] as text, for tests that assert on content.
+  ///
+  /// Validates like the four store methods do. This backend is what tests and
+  /// development servers run on, so a key it accepts and a production backend
+  /// rejects is a failure that appears only on deployment.
   String textOf(String key) {
-    final bytes = _content[key];
+    final bytes = _content[TomExportStore.validateKey(key)];
     if (bytes == null) {
       throw TomExportException(
         'export.store.not_found',

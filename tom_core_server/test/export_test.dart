@@ -1402,14 +1402,54 @@ void main() {
       expect(() => store.textOf('a.csv'), throwsA(isA<TomExportException>()));
     });
 
-    test('validates keys exactly as the filesystem backend does', () {
-      expect(
-        TomMemoryExportStore().store(
-          key: '../x.csv',
+    test('every method that takes a key refuses an invalid one', () async {
+      // The previous version of this test was named for the filesystem backend
+      // and exercised `store` alone, so the three inherited methods and the two
+      // inspection accessors could each accept `../escape` with it still green.
+      // This backend is the one tests and development servers run on, which is
+      // exactly where a key too lax for production must not pass.
+      final store = TomMemoryExportStore();
+      for (final operation in <Future<Object?> Function()>[
+        () => store.store(
+          key: '../escape',
           bytes: const Stream.empty(),
           mediaType: 'text/csv',
         ),
-        throwsA(isA<TomExportException>()),
+        () => _collect(store.open('../escape')),
+        () => store.exists('../escape'),
+        () => store.delete('../escape'),
+        () async => store.textOf('../escape'),
+        () async => store.descriptorFor('../escape'),
+      ]) {
+        await expectLater(
+          operation(),
+          throwsA(
+            isA<TomExportException>().having(
+              (e) => e.key,
+              'key',
+              'export.store.invalid_key',
+            ),
+          ),
+        );
+      }
+    });
+
+    test('an absent key and an invalid one are different diagnoses', () {
+      // `descriptorFor` answering `null` and `textOf` answering `not_found` for
+      // a key that is not a key at all sends the reader looking for a missing
+      // write. The two faults are told apart here so a fix that makes every
+      // unhappy path throw the same thing cannot pass.
+      final store = TomMemoryExportStore();
+      expect(store.descriptorFor('absent.csv'), isNull);
+      expect(
+        () => store.textOf('absent.csv'),
+        throwsA(
+          isA<TomExportException>().having(
+            (e) => e.key,
+            'key',
+            'export.store.not_found',
+          ),
+        ),
       );
     });
 
