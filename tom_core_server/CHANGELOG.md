@@ -2618,6 +2618,26 @@
 
 ### Documentation
 
+- **A messaging completion-document sample claimed output `toString()` does not
+  emit (tcinc579).** The segmentation passage printed the object —
+  `print(TomSmsSegmentation.of('Your code is 123456.'))` — and annotated it
+  `// gsm7, units=20, segments=1, singleCapacity=160`, listing `partCapacity`
+  and `isMultipart` in the neighbouring samples. Every number was right and
+  every name was a real property, but none of the three capacities is part of
+  the string: `TomSmsSegmentation.toString()` emits the encoding, the units and
+  the segment count only, so no `print` of the object has ever produced the
+  documented line. A reader running the sample saw different output and could
+  not tell whether the document or their build was wrong. The samples now read
+  the properties they narrate, which is also the more useful shape — the
+  capacities are the interesting part of that passage — and a sample that prints
+  what it claims stays true if `toString()` changes. The block is followed by
+  what `toString()` actually gives, so the difference is stated rather than left
+  to be discovered. Sweeping the rest of the document for the same defect found
+  none: the five other object-printing samples (`TomRecipient`,
+  `TomAttachment`, `TomDeliveryReceipt`, `TomSmtpSettings`,
+  `TomSmsGatewaySettings`) and the three deterministic `TomMimeEncoder` claims
+  all reproduce their annotations exactly.
+
 - **`messaging` source dartdoc narrated its own development (tcinc578).** Three
   comments described the code's history rather than the code: the
   `sms_transport.dart` library header opened with a `## Why this file exists at
