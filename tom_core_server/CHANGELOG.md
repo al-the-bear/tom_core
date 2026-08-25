@@ -281,6 +281,42 @@
 
 ### Fixed
 
+- **An unanchored integer test made every other literal — and every
+  digit-bearing identifier — unwritable in a query sentence (tcinc586).** The
+  scanner in `_buildExpression` recognised an integer with `RegExp(r"[0-9]+")`,
+  which matches a token that merely *contains* a digit, and tried it before the
+  double, date and datetime rules. So each of those tokens was claimed as an
+  integer and then rejected for not being one: `find by amount > 1.5`,
+  `find by tag_day = 2026-07-05` and `find by created_at >= 2026-07-05T10:00:00Z`
+  all failed with `…build_expression.int_literal_invalid_type_expected`. Only
+  the integer could be written inline; the double, date and datetime branches
+  below it were unreachable, and the ordering hid it — the datetime rule sat
+  last although a datetime literal contains a date, which contains digits.
+
+  The reach was wider than the literals. An identifier is resolved only *after*
+  every literal rule declines the token, so any name carrying a digit —
+  `line1`, or a `having` alias called `total1` — was read as an integer literal
+  and never reached column resolution. That symptom was not in the report and
+  is the most user-visible of the four.
+
+  The four hand-written branches are replaced by one table, `_scalarLiterals`,
+  holding each kind's anchored pattern, SQL type, exception noun and node
+  factory, tried most-specific-first (datetime, date, double, integer). Both
+  properties are load-bearing and now stated where the table is defined:
+  anchoring means a token matches a kind by *being* it rather than by
+  containing it, and the ordering keeps a kind from being swallowed by the
+  broader one that encloses it. The signed forms `-5` and `+5` — which worked
+  before and would have been lost to a naive anchoring — are kept, and pinned
+  by tests. The exception key now names the kind the token actually spells
+  rather than whichever rule happened to claim it.
+
+  The comma decimal form the old rule nominally accepted (`1,5`) is gone
+  deliberately: `_splitQuerySentence` puts spaces around every `,` so an
+  `IS IN ( a , b )` list separates, which tore `1,5` into three tokens before
+  any literal rule saw it. It never worked, and a comma that could be either a
+  decimal point or a list separator is ambiguous in exactly the place `IS IN`
+  needs it not to be. Decimals are written with a point.
+
 - **A `double` column could not be used in a query sentence at all
   (tcinc585).** `TomQuerySentenceCompiler` types a predicate through three
   independent switches — the column node, the bind parameter, and the

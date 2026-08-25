@@ -26,6 +26,96 @@ typedef _ComparisonFactory =
 typedef _UnaryPredicateFactory =
     TomOperator<TomDbBool> Function<T>(TomOperator<T>);
 
+/// One kind of scalar value a query sentence can spell **inline**, as opposed
+/// to binding it — `find by priority > 3`, `find by due = 2026-07-05`.
+///
+/// The four kinds are recognised by shape alone, and their shapes nest: every
+/// datetime literal contains a date, every date contains digits, and a bare
+/// digit test matches any token that merely *contains* one. So two rules keep
+/// them all reachable, and both are load-bearing —
+///
+/// * every [pattern] is **anchored**, so a token matches a kind only by being
+///   that kind entirely rather than by containing one somewhere; and
+/// * `_scalarLiterals` is ordered **most specific first**, so the datetime is
+///   tested before the date it contains and the date before its digits.
+///
+/// Drop either and the later kinds become unreachable: the token is claimed by
+/// a broader rule that then rejects it for having the wrong type.
+class _ScalarLiteral {
+  const _ScalarLiteral({
+    required this.kind,
+    required this.noun,
+    required this.sqlType,
+    required this.pattern,
+    required this.build,
+  });
+
+  /// Names the kind in the exception key (`<kind>_literal_…`).
+  final String kind;
+
+  /// Names the kind, with its article, in the exception message.
+  final String noun;
+
+  /// The SQL type a literal of this kind can stand for.
+  final Type sqlType;
+
+  /// Anchored — see the class comment.
+  final RegExp pattern;
+
+  /// Builds the literal node from the matched token.
+  final TomOperator Function(TomQueryBuilder builder, String token) build;
+}
+
+/// The scalar literal kinds, **most specific first** — see [_ScalarLiteral].
+///
+/// A decimal is written with a point. The comma form is not accepted, and
+/// cannot be: `_splitQuerySentence` puts spaces around every `,` so that an
+/// `IS IN ( a , b )` list separates, which would tear `1,5` into three tokens
+/// before any literal rule saw it — and a comma that could be either a decimal
+/// point or a list separator is ambiguous in exactly the place `IS IN` needs it
+/// not to be.
+final _scalarLiterals = <_ScalarLiteral>[
+  _ScalarLiteral(
+    kind: 'datetime',
+    noun: 'a datetime',
+    sqlType: TomDbDateTime,
+    pattern: RegExp(
+      r"^[0-9]{4}-?[0-9]{2}-?[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+\-][0-9]{2}:[0-9]{2})$",
+    ),
+    build: (builder, token) => builder.dateTimeOp(DateTime.parse(token)),
+  ),
+  _ScalarLiteral(
+    kind: 'date',
+    noun: 'a date',
+    sqlType: TomDbDate,
+    pattern: RegExp(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"),
+    build: (builder, token) => builder.dateOp(DateTime.parse(token)),
+  ),
+  _ScalarLiteral(
+    kind: 'double',
+    noun: 'a double',
+    sqlType: TomDbDouble,
+    pattern: RegExp(r"^[-+]?([0-9]+\.[0-9]*|\.[0-9]+)$"),
+    build: (builder, token) => builder.doubleOp(double.parse(token)),
+  ),
+  _ScalarLiteral(
+    kind: 'int',
+    noun: 'an integer',
+    sqlType: TomDbInt,
+    pattern: RegExp(r"^[-+]?[0-9]+$"),
+    build: (builder, token) => builder.intOp(int.parse(token)),
+  ),
+];
+
+/// The literal kind [token] spells, or `null` if it spells none — in which case
+/// it is an identifier (a column or a `having` alias), not a value.
+_ScalarLiteral? _scalarLiteralFor(String token) {
+  for (final literal in _scalarLiterals) {
+    if (literal.pattern.hasMatch(token)) return literal;
+  }
+  return null;
+}
+
 /// Compiles a Spring-Data-style *query sentence* into a [TomQuery].
 ///
 /// A query sentence is a whitespace-separated phrase such as
@@ -1263,74 +1353,27 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         // i++;
         index = i;
         break;
-      } else if (RegExp(r"[0-9]+").hasMatch(qp[i])) {
-        if (QT != TomDbInt) {
+      } else if (_scalarLiteralFor(qp[i]) case final literal?) {
+        // One branch for all four numeric and temporal literal kinds: they
+        // differ only in the shape they match and the node they build, and
+        // spelling each out separately is what let the shapes drift into
+        // overlapping (see [_ScalarLiteral]).
+        if (QT != literal.sqlType) {
           throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.int_literal_invalid_type_expected",
-            "A integer literal is always for type integer, but the required type is $QT",
+            "query_sentence_compiler.build_expression."
+                "${literal.kind}_literal_invalid_type_expected",
+            "[${qp[i]}] is ${literal.noun} literal, so it always stands for "
+                "type ${literal.sqlType}, but the required type here is $QT",
           );
         }
         if (inNegationMode) {
           throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.int_literal_negation_attempt",
-            "You can't negate an integer literal: ${qp[i]}",
+            "query_sentence_compiler.build_expression."
+                "${literal.kind}_literal_negation_attempt",
+            "You can't negate ${literal.noun} literal: ${qp[i]}",
           );
         }
-        currentOperation = intOp(int.parse(qp[i])) as TomOperator<QT>;
-        // i++;
-        index = i;
-        break;
-      } else if (RegExp(r"[0-9]+[.,][0-9]*").hasMatch(qp[i])) {
-        if (QT != TomDbDouble) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.double_literal_invalid_type_expected",
-            "A double literal is always for type double, but the required type is $QT",
-          );
-        }
-        if (inNegationMode) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.double_literal_negation_attempt",
-            "You can't negate an double literal: ${qp[i]}",
-          );
-        }
-        currentOperation = doubleOp(double.parse(qp[i])) as TomOperator<QT>;
-        // i++;
-        index = i;
-        break;
-      } else if (RegExp(r"[0-9]{4}-[0-9]{2}-[0-9]{2}").hasMatch(qp[i])) {
-        if (QT != TomDbDate) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.date_literal_invalid_type_expected",
-            "A date literal is always for type date, but the required type is $QT",
-          );
-        }
-        if (inNegationMode) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.date_literal_negation_attempt",
-            "You can't negate an date literal: ${qp[i]}",
-          );
-        }
-        currentOperation = dateOp(DateTime.parse(qp[i])) as TomOperator<QT>;
-        // i++;
-        index = i;
-        break;
-      } else if (RegExp(
-        r"[0-9]{4}-?[0-9]{2}-?[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}(Z|([+\-][0-9]{2}:[0-9]{2}))",
-      ).hasMatch(qp[i])) {
-        if (QT != TomDbDateTime) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.datetime_literal_invalid_type_expected",
-            "A datetime literal is always for type datetime, but the required type is $QT",
-          );
-        }
-        if (inNegationMode) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.datetime_literal_negation_attempt",
-            "You can't negate an datetime literal: ${qp[i]}",
-          );
-        }
-        currentOperation = dateTimeOp(DateTime.parse(qp[i])) as TomOperator<QT>;
-        // i++;
+        currentOperation = literal.build(this, qp[i]) as TomOperator<QT>;
         index = i;
         break;
       } else if (_aliasOperands.containsKey(qp[i])) {

@@ -13,6 +13,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 - [The Repository Contract](#the-repository-contract)
 - [Query Sentences](#query-sentences)
   - [Column types a predicate can address](#column-types-a-predicate-can-address)
+  - [Writing a value inline](#writing-a-value-inline)
 - [The Query Builder DSL](#the-query-builder-dsl)
 - [Row Scopes](#row-scopes)
 - [Grouping and Aggregation](#grouping-and-aggregation)
@@ -236,12 +237,32 @@ spellings, plus the `TomDb…` names when an entity gives `columnType:`
 explicitly. A column outside them raises
 `query_sentence_compiler.create_column.failed`.
 
-**Decimal *literals* are the exception.** A `double` column compares against a
-bind parameter (`find by amount > :floor`) and takes `IS IN`, `IS NULL` and
-`MIN`/`MAX`, but a sentence that spells the value inline — `find by amount >
-1.5` — is refused: the lexer reads `1.5` as an integer literal and then finds
-it does not match the column's type. Bind the value instead, which is the
-better habit regardless.
+### Writing a value inline
+
+A value in a predicate is normally *bound* (`find by amount > :floor`), but it
+can also be written out. Six literal forms are recognised, by shape:
+
+| Form | Example | SQL type |
+| ---- | ------- | -------- |
+| Text | `find by title = 'draft'` | `String` |
+| Boolean | `find by done = TRUE` | `bool` |
+| Integer | `find by priority > 3`, `find by delta > -5` | `int` |
+| Decimal | `find by amount > 1.5`, `find by amount > -0.25` | `double` |
+| Date | `find by tag_day = 2026-07-05` | `TomZonedDate` |
+| Timestamp | `find by created_at >= 2026-07-05T10:00:00Z` | `DateTime` |
+
+A literal stands for exactly one type, so comparing one against a column of
+another raises `…build_expression.<kind>_literal_invalid_type_expected`, and
+negating one raises `…_literal_negation_attempt`.
+
+Two shapes worth knowing. A **decimal is written with a point**, never a comma:
+a comma separates an `IS IN` list, so a value spelled `1,5` is read as two
+values rather than one. And a **timestamp is converted to UTC** as it compiles,
+whether written with `Z` or with an offset — `2026-07-05T12:00:00+02:00` and
+`2026-07-05T10:00:00Z` produce the same literal.
+
+Binding is still the better habit: a bound value is typed by the parameter
+rather than by its spelling, and it leaves the sentence reusable.
 
 ## The Query Builder DSL
 
