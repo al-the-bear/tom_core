@@ -37,7 +37,9 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [What Returns a Future, and Why](#what-returns-a-future-and-why)
 - [Reading raw SQL: one lexer, not five](#reading-raw-sql-one-lexer-not-five)
   - [Structure comes from tokens, never from `indexOf`](#structure-comes-from-tokens-never-from-indexof)
+- [Verification](#verification)
 - [Core Components](#core-components)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
 
 ---
@@ -856,6 +858,64 @@ So the reader derives structure two ways only, and never a third:
   the bracket that opens a group skips quoted runs via `TomSqlLexer`, so brackets
   inside an identifier are passed over.
 
+## Verification
+
+Three suites always run, one per half of the module plus the orchestrator.
+
+`test/db_migration_test.dart` covers the connection-free surface: file-name
+parsing and its refusals, ascending-version ordering on the parsed integer,
+duplicate basenames and duplicate versions, environment tag parsing and
+selection, `resolveActiveEnvironment` and its uninitialised-environment
+fallback, adaptor discovery and instantiation, the checksum and its
+well-formedness test, and the missing-directory refusal. It also drives
+`migrateDataSource` through a stub migrator, which is how the schema lifecycle
+— rebind, apply, reset — is asserted without a server.
+
+`test/schema_convergence_test.dart` covers the reading half: type-family
+classification and compatibility, `TomSchemaBuilder`, the DDL reader's statement
+lexing and its replay of `CREATE` / `ALTER` / `DROP`, `TomEntitySchemaReader`,
+and `TomSchemaConvergenceCheck` end to end, including the duplicate-basename and
+missing-directory refusals. Two of its groups check the *document* rather than
+the code — that the tolerance the summary states is the tolerance the code
+applies, and that the builder documents the contract it actually has.
+
+`test/framework_schema_test.dart` covers the framework-table check against the
+shipped migrations, the reflected row types and the statements the stores issue,
+and `test/reference_migrations_test.dart` pins the seven entity-owned
+migrations; both are described under [Schema
+Convergence](#schema-convergence).
+
+`test/db_migration_db_test.dart` is what only a real server can substantiate:
+`migrateDatabases` walking the committed tree under `test/fixtures/migrations/`,
+the adaptor creating the `<schema>_versioning` table, running the script and
+recording the row — then skipping it idempotently on a second run. It carries
+the cases a stub cannot reach honestly: the recorded execution time on both the
+succeeding and the failing path, an unreadable stored checksum, a script full of
+quote characters going in and coming back out intact, and **two schemas under
+one data source**, which is the only arrangement that can tell a migrator whose
+applied-version state is per `(data source, schema)` pair from one whose state
+is per data source. `test/framework_schema_db_test.dart` adds the live
+`information_schema` comparison. Both are tagged `db` and skip themselves when
+no server is reachable, so the default `testkit :test` run stays green without
+one; bring a server up with `tool/run_db_tests.sh`.
+
+`example/db_migration/db_migration_example.dart` shows the connection-free
+surface a caller touches — the `TomDbMigrationAdaptor` type binding, a
+`TomDbVersion` row with its checksum, the file-name grammar and the ordering
+rule. The names it exhibits are **parsed rather than printed**, so an example
+that claimed a legal name the parser rejects would throw instead of misinforming
+its reader.
+
+One guard is worth naming separately, because it is the reason this page can be
+trusted on the subject it is most likely to be wrong about. The file-name
+grammar is stated in three places — the source, this guide and the example — and
+`db_migration_test.dart` holds all three to what
+`parseMigrationFileName` actually accepts, reading the canonical form out of the
+parser's own refusal message. It further requires every migration file name any
+of the three *exhibits* to parse, and fails on any text still claiming
+migrations run in name order. Prose about a grammar drifts from the grammar;
+here it cannot drift silently.
+
 ## Core Components
 
 - **`TomSqlLexer`** — the shared SQL lexing primitives: `endOfQuotedRun`,
@@ -874,6 +934,42 @@ So the reader derives structure two ways only, and never a third:
   `verifyRowTypes`, `verifyLive`, and `frameworkOwnedTables()`.
 - **`TomFrameworkTable`** (in the datasources module) — the single declaration
   every framework table's DDL and statements are derived from.
+
+## Not Yet Implemented
+
+- **A failed migration is recorded and never reconsidered.** `applyMigration`
+  writes the outcome row on both paths — `success = 0` when the script threw —
+  and then rethrows, so the run aborts. But nothing ever reads `success` back.
+  The next run loads the history, finds the version present, agrees on the
+  description and the checksum (both were written from the same script) and
+  returns as though the migration had succeeded. So a migration that failed is
+  skipped from then on, and the column that records the failure is written by
+  this module and read by nobody in it. There is no repair or retry path
+  either: the fix is a hand-written correction to the versioning table. What the
+  right behaviour *is* takes a decision rather than an implementation — MariaDB
+  does not roll DDL back, so a script that failed halfway has already applied
+  the statements before the failure, and re-running it blindly is not obviously
+  safer than skipping it.
+- **Migrations are forward-only.** `TomDbMigrator` is `initializeMigration` /
+  `applyMigration` / `reset`; there is no down-migration and no `TomDbVersion`
+  state for one. Undoing a release means writing the next migration.
+- **Nothing arbitrates between two processes migrating at once.** There is no
+  lock of any kind — advisory, table-based or otherwise. Two servers starting
+  together both read an applied-version list that predates the other, and both
+  apply. What saves an ordinary deployment is that the versioning table's insert
+  is the only write either of them makes to shared state, not any guard here.
+- **One adaptor ships.** `MariadbMigrationAdaptor` is the only implementation of
+  `TomDbMigrator` in the package. The annotation-driven discovery described
+  under [Adaptor Discovery](#adaptor-discovery) is a real seam — a second
+  adaptor needs no change here — but it has never been exercised by a second
+  implementation.
+- **The application-entity check never reads a live database.**
+  `TomFrameworkSchemaCheck` has [a live half](#what-the-live-check-adds);
+  `TomSchemaConvergenceCheck` has no counterpart. It compares the entity model
+  to the *migration chain*, so it proves the chain would build the right shape
+  and says nothing about the shape a given server actually has. A hand-edited
+  application table is invisible to it, which is precisely the class of drift
+  the framework-table check added `verifyLive` to catch.
 
 ## Dependencies
 

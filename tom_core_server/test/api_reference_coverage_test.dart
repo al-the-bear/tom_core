@@ -1716,7 +1716,6 @@ bool _hasLimitationsSection(String module) =>
 /// the run. Tracked by quest todo `tcincb126_ahxt`.
 const Set<String> _limitationsPendingSection = {
   'authorization',
-  'db_migration',
   'healthcheck',
   'little_things',
   'preferences',
@@ -1933,22 +1932,54 @@ final RegExp _suiteReference = RegExp(r'[\w./-]*_test\.dart\b');
 /// Migration SQL under `example/<module>/migrations/` does not count, because
 /// it is reference data a guide cites while explaining a table, not something
 /// a reader runs; only `.dart` and `.sh` artefacts are looked for.
+///
+/// The suite half is *every* name-matched suite, not merely one, because naming
+/// one is the easy half and the misleading half. `doc/db_migration.md` named
+/// three suites and none of them was its own: it cited the framework-table and
+/// reference-migration suites while discussing convergence, and the reader who
+/// checked whether the module was covered found three filenames and stopped
+/// looking — with the two suites that actually exercise the orchestrator, and
+/// the one that exercises the whole reading half, unmentioned. A guide that
+/// names *a* suite reads exactly like a guide that names them all.
 List<String> _unnamedVerification(String module) {
   final text = File('doc/$module.md').readAsStringSync();
   final examples = _exampleArtifacts(module);
+  final unnamed = _moduleSuites(module).where((s) => !text.contains(s));
   return [
-    if (!_suiteReference.hasMatch(text)) 'names no test suite',
+    if (_moduleSuites(module).isEmpty && !_suiteReference.hasMatch(text))
+      'names no test suite',
+    if (unnamed.isNotEmpty) 'does not name ${unnamed.join(', ')}',
     if (examples.isNotEmpty && !examples.any(text.contains))
       'names none of its examples (${examples.join(', ')})',
   ];
 }
 
-/// The modules whose guide does not yet name the suite and the example that
+/// The suites whose filename identifies them as [module]'s, as basenames.
+///
+/// A **lower bound on the module's coverage, not the whole of it**, and
+/// deliberately so. `test/schema_convergence_test.dart` exercises nothing but
+/// `db_migration` and is not named after it, so no filename rule will find it;
+/// inferring ownership from a suite's imports would, but it would also claim
+/// every suite that touches a module in passing, and a guard that demands a
+/// guide name thirty incidental suites gets switched off. The name is the one
+/// signal that is unambiguous in the direction that matters: a file called
+/// `db_migration_db_test.dart` is *certainly* this module's, so a guide that
+/// does not name it has certainly left something out.
+List<String> _moduleSuites(String module) =>
+    Directory('test')
+        .listSync()
+        .whereType<File>()
+        .map((entry) => entry.uri.pathSegments.last)
+        .where((name) => name.startsWith(module) && name.endsWith('_test.dart'))
+        .toList()
+      ..sort();
+
+/// The modules whose guide does not yet name every suite and the example that
 /// verify it — quest todo `tcincb125_ahxt`.
 const Set<String> _verificationPendingAttribution = {
   'audit',
   'authentication',
-  'db_migration',
+  'authorization',
   'endpoints',
   'export',
   'file_storage',
@@ -3727,7 +3758,7 @@ One: `TomKind`, documented beside the type that carries it.
       // measurement can see the debt at all — so drive it over one of each.
       expect(_unnamedVerification('datasources'), isEmpty);
       expect(_unnamedVerification('transactions'), [
-        'names no test suite',
+        'does not name transactions_test.dart',
         startsWith('names none of its examples'),
       ]);
       // Reference migrations are not an example a reader runs, and `audit.md`
@@ -3735,7 +3766,46 @@ One: `TomKind`, documented beside the type that carries it.
       // pointing at a program.
       expect(_exampleArtifacts('audit'), ['example/audit/audit_example.dart']);
       expect(_unnamedVerification('audit'), [
+        startsWith('does not name audit_anchor_test.dart'),
         startsWith('names none of its examples'),
+      ]);
+    });
+
+    test('naming one suite is not naming the module\'s suites', () {
+      // The distinction the strengthened rule turns on, and the one no live
+      // module can demonstrate any more now that `db_migration` is settled:
+      // `authorization` names *a* suite — several, in fact, belonging to other
+      // modules — while leaving its own unnamed. Before the change that was
+      // indistinguishable from full attribution, which is how a guide came to
+      // cite three suites and own none of them.
+      final text = File('doc/authorization.md').readAsStringSync();
+      expect(
+        _suiteReference.hasMatch(text),
+        isTrue,
+        reason: 'the weak rule is satisfied — a suite is named',
+      );
+      expect(
+        _unnamedVerification('authorization'),
+        ['does not name authorization_test.dart'],
+        reason: 'the strengthened rule is not: its own suite is missing',
+      );
+    });
+
+    test('a module with no name-matched suite still has to name one', () {
+      // The two clauses are alternatives, so the fallback has to keep working
+      // or a module whose suites are all named for something else would be
+      // exempted by the very rule meant to tighten the check. `preferences` is
+      // that module — no `preferences*_test.dart` exists at all, and it
+      // satisfies the check by naming the suite that does cover it.
+      expect(_moduleSuites('preferences'), isEmpty);
+      expect(
+        _unnamedVerification('preferences'),
+        isNot(contains('names no test suite')),
+        reason: 'it does name a suite, just not one carrying its own name',
+      );
+      expect(_moduleSuites('db_migration'), [
+        'db_migration_db_test.dart',
+        'db_migration_test.dart',
       ]);
     });
   });

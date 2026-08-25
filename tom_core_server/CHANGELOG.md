@@ -740,6 +740,57 @@
 
 ### Documentation
 
+- **The `db_migration` guide names the suites that cover it, and the gaps it
+  still has (tcinc498).** The guide named five test files — among them
+  `framework_schema_test.dart`, `framework_schema_db_test.dart` and
+  `reference_migrations_test.dart` — and not one was its own. A reader checking
+  whether the module was covered found filenames, and stopped looking. The
+  guide now carries
+  a **Verification** section that names the three suites which always run
+  (`db_migration_test.dart` for the connection-free surface,
+  `schema_convergence_test.dart` for the reading half,
+  `db_migration_db_test.dart` for what only a live server can substantiate),
+  says what each one establishes, keeps the cross-references to the two
+  framework-schema suites, and names `tool/run_db_tests.sh` and
+  `example/db_migration/db_migration_example.dart` — the latter with the reason
+  it is worth citing: the example *parses* the names it shows rather than
+  printing them, so a name the parser rejects throws instead of misinforming
+  its reader. The file-name grammar is stated in three places (source, guide,
+  example) and `db_migration_test.dart` holds all three to what
+  `parseMigrationFileName` accepts, reading the canonical form out of the
+  parser's own refusal message.
+
+  A **Not Yet Implemented** section came with it, five gaps each read out of the
+  source rather than inferred: a failed migration writes `success = 0` and
+  nothing ever reads the column back, so the next run finds the version, agrees
+  on description and checksum, and returns as though it had succeeded;
+  migrations are forward-only (`TomDbMigrator` is `initializeMigration` /
+  `applyMigration` / `reset`); nothing arbitrates between two processes
+  migrating at once; `MariadbMigrationAdaptor` is the only implementation, so
+  the discovery seam is real but never exercised by a second; and
+  `TomSchemaConvergenceCheck` has no `verifyLive` counterpart to
+  `TomFrameworkSchemaCheck`'s, so a hand-edited application table is invisible
+  to it. The first of those is a defect, not merely an undocumented limit, and
+  is tracked as `tcincb133` — what the next run *should* do with a `success = 0`
+  row is a genuine choice, because MariaDB does not roll DDL back and the failed
+  script may be half-applied.
+
+  The guard that should have caught this already existed and was too weak.
+  `_unnamedVerification` demanded that a guide name *a* suite, and this guide
+  named five; naming one suite reads exactly like naming them all. It now
+  demands every suite whose **filename** identifies it as the module's — a lower
+  bound on coverage and deliberately so, since `schema_convergence_test.dart`
+  exercises nothing but `db_migration` and no filename rule will find it, while
+  inferring ownership from imports would claim every suite that touches a module
+  in passing and produce a guard people switch off. Strengthening it cost
+  exactly one net quarantine entry: `db_migration` leaves both
+  `_verificationPendingAttribution` and `_limitationsPendingSection` — the
+  designed expiry, not an exemption removed by hand — and `authorization`, which
+  names several suites and not its own, is newly caught. Two fixtures pin the
+  distinction the change turns on: that naming one suite is not naming the
+  module's suites, and that a module with *no* name-matched suite
+  (`preferences`) still has to satisfy the fallback clause.
+
 - **The `db_migration` guide groups its Overview by half, and names the whole
   environment-tag surface (tcinc497).** The Overview was one flat list of 26
   rows. It was complete — `a1d38e52` had already grown it from the original
