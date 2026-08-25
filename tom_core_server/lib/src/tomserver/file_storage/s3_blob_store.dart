@@ -101,9 +101,13 @@ class TomS3BlobStore extends TomBlobStore {
 
   /// A prefix prepended to every key, so one bucket can host several stores.
   ///
-  /// Validated at construction against [TomBlobStore.isValidKeyPrefix]: it is
-  /// joined to keys that have already been checked, so it must meet the same
-  /// grammar or the joined key is one no store should be asked for.
+  /// Checked twice, because one check cannot cover it. At construction it is
+  /// held to [TomBlobStore.isValidKeyPrefix], the grammar of the keys it will
+  /// be joined to; at each request the join itself is held to
+  /// [TomBlobStore.maxKeyLength], which depends on the key and so cannot be
+  /// settled before one arrives. Either refusal is
+  /// `storage.blob.invalid_key_prefix`: the prefix is the half a deployment
+  /// chose, and the half that is wrong for every key rather than for one.
   final String? keyPrefix;
 
   /// The request signer.
@@ -370,10 +374,35 @@ class TomS3BlobStore extends TomBlobStore {
     };
   }
 
+  /// [key] under [keyPrefix], refused if the two are unusable together.
+  ///
+  /// Both halves are already known to be valid on their own — the prefix at
+  /// construction, the key by [TomBlobStore.put] and its siblings — so the only
+  /// clause left is the one neither can settle alone: two keys inside
+  /// [TomBlobStore.maxKeyLength] can join past it. S3 would not object, its own
+  /// limit being twice ours, so the refusal has to come from here or from
+  /// nowhere; without it this backend alone would store keys every other
+  /// backend refuses.
+  ///
+  /// Named against the prefix rather than the key because the key is the
+  /// caller's and is fine: it is the deployment's prefix that leaves no room,
+  /// for this key and every other one this store will be asked for.
+  String _prefixed(String key) {
+    if (keyPrefix == null) return key;
+    final joined = '$keyPrefix/$key';
+    if (joined.length > TomBlobStore.maxKeyLength) {
+      throw TomStorageException(
+        'storage.blob.invalid_key_prefix',
+        'The configured key prefix is not a valid storage key prefix.',
+        parameters: {'keyPrefix': keyPrefix, 'key': key},
+      );
+    }
+    return joined;
+  }
+
   /// The URL of [key], honouring [pathStyle] and [keyPrefix].
   Uri _objectUri(String key, Map<String, String> query) {
-    final fullKey = keyPrefix == null ? key : '$keyPrefix/$key';
-    final segments = fullKey.split('/');
+    final segments = _prefixed(key).split('/');
     return endpoint.replace(
       host: pathStyle ? endpoint.host : '$bucket.${endpoint.host}',
       pathSegments: [

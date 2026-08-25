@@ -426,10 +426,13 @@ abstract class TomBlobStore {
   /// join supplies the separator, so `exports/` would yield
   /// `exports//sales.csv`, which the grammar rejects for the doubled slash.
   ///
-  /// Length is the one clause a valid prefix cannot settle on its own — a
-  /// prefix and a key may each be within [maxKeyLength] and still exceed it
-  /// once joined. That depends on the key, so it stays where it can be seen:
-  /// [validateKey], on the joined key, at the point of use.
+  /// Length is the one clause this cannot settle — a prefix and a key may each
+  /// be within [maxKeyLength] and still exceed it once joined, which depends on
+  /// a key that has not arrived yet. So the obligation belongs to whoever
+  /// performs the join, and every site that performs one discharges it: those
+  /// that join *above* a store hand the result to [validateKey] and get it for
+  /// free, and `TomS3BlobStore`, which joins below that boundary — the prefix
+  /// goes straight into a signed URI — checks the length itself.
   static bool isValidKeyPrefix(String? keyPrefix) =>
       keyPrefix == null || keyPrefix.isEmpty || isValidKey(keyPrefix);
 

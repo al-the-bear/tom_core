@@ -74,6 +74,33 @@
 
 ### Fixed
 
+- **`TomS3BlobStore` joined its `keyPrefix` below the boundary that checks key
+  length, so a prefix and a key that each fit could reach a signed request
+  together (tcinc539).** The prefix was already held to the key grammar at
+  construction, which caught a `..` before it became a traversal segment in a
+  request path. But `_objectUri` joined it to the caller's key *after* the
+  public methods had validated that key, and measured nothing: two parts each
+  inside `maxKeyLength` (512) join past it, S3 accepts the result because its own
+  limit is 1024, and this one backend then held keys every other backend
+  refuses. `maxKeyLength` meant something different depending on where a blob
+  happened to be stored. The join now runs through a `_prefixed` helper — the
+  single point at which a key becomes an address on this backend, as `_fileFor`
+  is on the directory one — which raises `storage.blob.invalid_key_prefix`
+  naming both halves. It names the *prefix* because the caller's key is valid
+  and unchangeable from the deployment's side, while a prefix that leaves no
+  room for this key leaves none for any other. This closes the clause
+  `isValidKeyPrefix` cannot settle alone: length depends on a key that has not
+  arrived yet, so it belongs to whoever performs the join. `TomBlobExportStore`
+  and `@TomFileReference` join *above* a store and get it from `validateKey`;
+  S3 was the one site joining below, and now discharges it itself. Two tests
+  pin the boundary from both sides — an over-long join refused on all five
+  methods by a store whose client fails the test on any request, and a join of
+  exactly 512 going out unmolested — and six mutations confirm each bites:
+  dropping the check, measuring the key instead of the join, moving the
+  boundary by one, blaming the caller's key, bypassing the helper in
+  `_objectUri`, and dropping the constructor's grammar check each fail exactly
+  the tests that claim them, and nothing else.
+
 - **Three of the four blob backends validated the key on `put` alone, so the
   same rejected key answered differently depending on which backend was
   configured (tcinc538).** `TomBlobStore.validateKey` was called at the top of

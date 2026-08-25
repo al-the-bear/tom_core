@@ -148,17 +148,21 @@ Map<String, Future<Object?> Function()> _everyMethod(
   'delete': () async => store.delete(key),
 };
 
-/// Asserts [store] refuses [key] with `storage.blob.invalid_key` everywhere.
-Future<void> _refusesEverywhere(TomBlobStore store, String key) async {
+/// Asserts [store] refuses [key] with [errorKey] on every one of its methods.
+///
+/// [errorKey] defaults to the caller's-mistake case; a store whose *prefix* is
+/// what makes the key unusable reports the deployment's fault instead, and gets
+/// the same sweep rather than a second one shaped like it.
+Future<void> _refusesEverywhere(
+  TomBlobStore store,
+  String key, {
+  String errorKey = 'storage.blob.invalid_key',
+}) async {
   for (final method in _everyMethod(store, key).entries) {
     await expectLater(
       method.value(),
       throwsA(
-        isA<TomStorageException>().having(
-          (e) => e.key,
-          'key',
-          'storage.blob.invalid_key',
-        ),
+        isA<TomStorageException>().having((e) => e.key, 'key', errorKey),
       ),
       reason: '${method.key} must refuse the key before it acts on it',
     );
@@ -1079,8 +1083,12 @@ void main() {
       // a traversal segment in a *signed* request path rather than an error.
       for (final prefix in const ['..', '/tenant-7', 'a//b', 'tenant-7/']) {
         expect(
-          () =>
-              _s3((request) async => http.Response('', 200), keyPrefix: prefix),
+          // The handler makes "before any request is issued" an assertion
+          // rather than a claim: reaching the network at all fails the test.
+          () => _s3(
+            (request) => fail('a request was issued: ${request.url}'),
+            keyPrefix: prefix,
+          ),
           throwsA(
             isA<TomStorageException>()
                 .having((e) => e.key, 'key', 'storage.blob.invalid_key_prefix')
@@ -1089,6 +1097,41 @@ void main() {
           reason: '"$prefix"',
         );
       }
+    });
+
+    test('a prefix and a key that each fit can still be refused together', () {
+      // The one clause a valid prefix cannot settle at construction, because it
+      // depends on the key it will be joined to. Both halves are inside
+      // maxKeyLength and their join is not, and S3 would have accepted the
+      // result — its own limit is 1024 — so nothing downstream would object to
+      // a key this framework does not accept, and the same blob key would be
+      // refused by every other backend. Reported against the *prefix*: that is
+      // the half a deployment can shorten, and the half that is wrong for every
+      // key this store will ever be asked for.
+      final store = _s3(
+        (request) => fail('the joined key reached the network: ${request.url}'),
+        keyPrefix: 'p' * 400,
+      );
+      return _refusesEverywhere(
+        store,
+        'k' * 200,
+        errorKey: 'storage.blob.invalid_key_prefix',
+      );
+    });
+
+    test('a join of exactly the maximum is accepted', () async {
+      // The other side of the same boundary, so that "too long" cannot quietly
+      // become "as long as the limit". 300 + separator + 211 is maxKeyLength
+      // exactly, and the request is expected to go out.
+      late http.Request seen;
+      final prefix = 'p' * 300;
+      final key = 'k' * (TomBlobStore.maxKeyLength - prefix.length - 1);
+      final store = _s3((request) async {
+        seen = request;
+        return http.Response('', 200);
+      }, keyPrefix: prefix);
+      await store.putBytes(key: key, bytes: utf8.encode('x'));
+      expect(seen.url.path, '/examplebucket/$prefix/$key');
     });
 
     test(

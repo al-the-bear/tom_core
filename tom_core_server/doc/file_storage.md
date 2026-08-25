@@ -180,9 +180,23 @@ or `export.store.invalid_key` in the export module's own vocabulary). The point
 is *whose* mistake the error describes: a misconfigured prefix used to surface
 on the first write, as an invalid-key error about a key the caller never wrote.
 
-Length is the one clause a prefix cannot settle on its own — a prefix and a key
-may each be within `maxKeyLength` and still exceed it once joined. That depends
-on the caller's key, so it stays with `validateKey` on the joined key.
+Length is the one clause that check cannot settle — a prefix and a key may each
+be within `maxKeyLength` and still exceed it once joined, which depends on a key
+that has not arrived yet. The obligation therefore belongs to whoever performs
+the join, and where the join happens decides how it is discharged.
+`TomBlobExportStore` and `@TomFileReference` join *above* a blob store, so the
+joined key passes through `validateKey` like any other and the length is checked
+for free. `TomS3BlobStore` joins *below* that boundary — the prefix goes into a
+signed request URI, not through the public methods — and so checks the joined
+length itself, at every request.
+
+That last check is not redundant with what the object store would do. S3's own
+limit is 1024 bytes, twice ours, so an over-long joined key is accepted there:
+without the check, this one backend would hold keys every other backend refuses,
+and `maxKeyLength` would mean something different depending on where a blob
+happened to be stored. Both refusals name the prefix rather than the key, for the
+reason above: the caller's key is fine, and the prefix that leaves no room for it
+leaves no room for any other key either.
 
 ## The Backends
 
