@@ -2,6 +2,32 @@
 
 ### Testing
 
+- **No test had ever read an `Access-Control` header off a response
+  (tcinc519).** The one test touching the preflight path sent an `OPTIONS` and
+  asserted `inInclusiveRange(200, 299)`, which did not check what its caption
+  claimed: it read "returns without invoking", but `/fixture/health` answers
+  200 when it *is* invoked, so the assertion held either way. Neither the three
+  shipped defaults nor a per-endpoint override was pinned anywhere. CORS is the
+  one boundary whose failures are invisible to every test the package has —
+  `curl` ignores these headers, the router-level tests get their answer
+  regardless, and the integration suites speak Dart — so a regression reaches
+  production intact and surfaces only as "the web app cannot call the API".
+  Eight tests now assert the headers as a browser sees them: the three
+  defaults, their shipped values stated once so a change of posture is a
+  deliberate edit, the empty preflight body that distinguishes answering from
+  invoking, an origin-only override leaving methods and headers at their
+  defaults, an all-three override, a default changed *after* the routes were
+  mounted still reaching them, a role-gated endpoint answering preflight with
+  no principal in the zone, and a socket route answering it like any other. Two
+  fixture endpoints were added to make the override paths reachable at all —
+  with no endpoint stating `corsAllowedMethods` or `corsAllowedHeaders`,
+  dropping their fallback entirely would have left the suite green. Seven
+  mutations confirm each bites: ignoring each of the three overrides, running
+  preflight after access control, not mounting `OPTIONS` on a socket route,
+  changing the shipped default, and hard-coding the default instead of reading
+  the setting each fail exactly the tests that claim them. No production change
+  was needed — the behaviour was correct and unasserted.
+
 - **`injectQueryParameters` was pinned in OAuth's suite, not in the endpoints
   suite beside its two siblings (tcinc518).** The three folds are applied in a
   fixed order by one pipeline — `injectFormFields`, then

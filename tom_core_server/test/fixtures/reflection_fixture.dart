@@ -325,6 +325,46 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> inlineHeaders();
 
+  /// An endpoint overriding **only** the CORS origin.
+  ///
+  /// The three `Access-Control-*` values are resolved independently — each is
+  /// its own `endpoint.corsAllowedX ?? globalSettingCorsAllowedXDefault` — and
+  /// no fixture overrode any of them, so a preflight could only ever be
+  /// observed answering with the defaults. This one narrows the origin and
+  /// leaves methods and headers unstated, which is the shape a real deployment
+  /// has: the origin is the value that differs per endpoint, the other two are
+  /// policy for the whole server.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/cors_origin',
+    produces: TomMimeType.json,
+    corsAllowedOrigins: 'https://origin.example.com',
+    logRequests: false,
+  )
+  Future<Map<String, Object>> corsOrigin();
+
+  /// An endpoint overriding **all three** CORS values.
+  ///
+  /// [corsOrigin] alone cannot distinguish "each header falls back on its own"
+  /// from "only the origin is overridable at all": with methods and headers
+  /// never stated by any endpoint, dropping their `??` override entirely would
+  /// leave every test green. This states all three so each override path is
+  /// reachable, and deliberately lists a *narrower* method and header set than
+  /// the defaults so a fallback shows up as a wider answer rather than as an
+  /// absent one.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/cors_full',
+    produces: TomMimeType.json,
+    corsAllowedOrigins: 'https://full.example.com',
+    corsAllowedMethods: 'GET, HEAD',
+    corsAllowedHeaders: 'Authorization',
+    logRequests: false,
+  )
+  Future<Map<String, Object>> corsFull();
+
   /// A WebSocket endpoint: invoked once per accepted connection, with the live
   /// socket among its parameters.
   ///
@@ -532,6 +572,16 @@ class FixtureApiServer implements FixtureApiService {
   @override
   Future<Map<String, Object>> inlineHeaders() async => <String, Object>{
     'style': 'inline',
+  };
+
+  @override
+  Future<Map<String, Object>> corsOrigin() async => <String, Object>{
+    'cors': 'origin-only',
+  };
+
+  @override
+  Future<Map<String, Object>> corsFull() async => <String, Object>{
+    'cors': 'full',
   };
 
   @override
