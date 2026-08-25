@@ -24,6 +24,26 @@ import 'fixtures/reflection_fixture.dart'
         registerFixtureAccessApi;
 import 'fixtures/reflection_fixture.reflection.dart';
 
+/// A [TomLogOutput] that keeps every message handed to it.
+///
+/// Deliberately captures without consulting the level: the question these tests
+/// ask is whether the *pipeline decided to log*, which is a different question
+/// from whether the logger's configured level would have printed it.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> lines = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp,
+    String? origin,
+  ) => lines.add(convertToString(message));
+}
+
 /// A GET request carrying the [TomRequestLogInfo] the pipeline reads from the
 /// request context (the pipeline casts it unconditionally, so it must be
 /// present). No principal/token is placed in the zone — the fixture endpoints
@@ -522,6 +542,208 @@ void main() {
       expect(overriddenHandler.interface, isNull);
       expect(inlineHandler.interface?.simpleName, 'FixtureAccessApiService');
       expect(unguardedHandler.interface?.simpleName, 'FixtureApiService');
+    });
+  });
+
+  // `logRequests` is a three-state flag: true logs, false does not, and **null
+  // defers to `globalSettingLogRequestsDefault`** — which is what the
+  // annotation's own documentation promises. The pipeline computed that
+  // decision and stored it on the request log info, then every log site
+  // re-tested the raw annotation with `== true`, so the computed value reached
+  // none of them and the global setting governed nothing.
+  //
+  // What made it invisible is that the request was still logged: the pipeline
+  // stayed silent, the log info said `shouldBeLogged`, and the server's logging
+  // middleware emitted its generic fallback line instead. The count of log
+  // lines was therefore unchanged — only their *content* was, losing the
+  // per-exit detail (which exit produced the response, the produced mime type,
+  // the encoding) that the pipeline's lines carry and the middleware's cannot.
+  //
+  // So these tests assert on the emitted text rather than on the
+  // `hasBeenLogged` flag. The flag would have looked correct throughout.
+  group('logRequests and the computed logging default', () {
+    late Router router;
+    late _CapturingLogOutput captured;
+    late TomLogOutput previousOutput;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      router = TomEndpointRouting().initializeRouter();
+
+      previousOutput = tomLog.logOutput;
+      captured = _CapturingLogOutput();
+      tomLog.logOutput = captured;
+      addTearDown(() => tomLog.logOutput = previousOutput);
+
+      final priorDefault = TomEndpointHandler.globalSettingLogRequestsDefault;
+      addTearDown(
+        () => TomEndpointHandler.globalSettingLogRequestsDefault = priorDefault,
+      );
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    /// Serves [path] and reports whether the *pipeline* logged it.
+    ///
+    /// Matched on the pipeline's own success line rather than on the path
+    /// alone: trace output names the path too, and so does the middleware's
+    /// fallback line. `[Normal processing]` appears in exactly one place.
+    Future<bool> pipelineLogged(String path) async {
+      captured.lines.clear();
+      final response = await router.call(_get(path));
+      expect(response.statusCode, 200, reason: 'the request must succeed');
+      return captured.lines.any(
+        (l) => l.contains('[Normal processing]') && l.contains(path),
+      );
+    }
+
+    test(
+      'an unannotated endpoint logs when the global default is true',
+      () async {
+        TomEndpointHandler.globalSettingLogRequestsDefault = true;
+        expect(await pipelineLogged('/fixture/default_logging'), isTrue);
+      },
+    );
+
+    test(
+      'an unannotated endpoint is silent when the global default is false',
+      () async {
+        // The other direction, and the one that shows the setting is a *setting*:
+        // before the fix both directions produced the same output, because the
+        // raw annotation was null in both and `null == true` is false either way.
+        TomEndpointHandler.globalSettingLogRequestsDefault = false;
+        expect(await pipelineLogged('/fixture/default_logging'), isFalse);
+      },
+    );
+
+    test(
+      'an explicit false is not overridden by a true global default',
+      () async {
+        // The boundary in the other direction: the fix replaces the *fallback*,
+        // not the annotation. Reading the computed decision must not start
+        // logging an endpoint that asked not to be logged.
+        TomEndpointHandler.globalSettingLogRequestsDefault = true;
+        expect(await pipelineLogged('/fixture/unguarded'), isFalse);
+      },
+    );
+
+    test(
+      'an explicit true is not overridden by a false global default',
+      () async {
+        TomEndpointHandler.globalSettingLogRequestsDefault = false;
+        expect(await pipelineLogged('/fixture/health'), isTrue);
+      },
+    );
+
+    test(
+      'the flag handed to the middleware agrees with what was logged',
+      () async {
+        // `shouldBeLogged` is the pipeline's instruction to
+        // `tomLoggingMiddleware`: "log this if nobody else did". Handing it `true`
+        // while declining to log is what produced the generic fallback line, so
+        // the two must not be able to disagree.
+        TomEndpointHandler.globalSettingLogRequestsDefault = true;
+        final logged = TomRequestLogInfo();
+        await router.call(
+          Request(
+            'GET',
+            Uri.parse('http://localhost/fixture/default_logging'),
+            context: {TomRequestLogInfo.contextName: logged},
+          ),
+        );
+        expect(logged.shouldBeLogged, isTrue);
+        expect(
+          logged.hasBeenLogged,
+          isTrue,
+          reason: 'the pipeline logged, so the middleware must not log again',
+        );
+
+        TomEndpointHandler.globalSettingLogRequestsDefault = false;
+        final silent = TomRequestLogInfo();
+        await router.call(
+          Request(
+            'GET',
+            Uri.parse('http://localhost/fixture/default_logging'),
+            context: {TomRequestLogInfo.contextName: silent},
+          ),
+        );
+        expect(
+          silent.shouldBeLogged,
+          isFalse,
+          reason: 'opting out must reach the middleware too, or it logs anyway',
+        );
+        expect(silent.hasBeenLogged, isFalse);
+      },
+    );
+
+    test(
+      'the handler-supplied-response exit follows the same default',
+      () async {
+        // One log statement per exit, all five of them the same decision. The
+        // conversion exit is covered above; this is the other one a successful
+        // request can leave by, and the one streaming endpoints always take.
+        Future<bool> exitLogged(bool globalDefault) async {
+          TomEndpointHandler.globalSettingLogRequestsDefault = globalDefault;
+          captured.lines.clear();
+          final response = await router.call(
+            _get('/fixture/default_logging_response'),
+          );
+          expect(response.statusCode, 200);
+          return captured.lines.any(
+            (l) => l.contains('[handler-supplied response]'),
+          );
+        }
+
+        expect(await exitLogged(true), isTrue);
+        expect(await exitLogged(false), isFalse);
+      },
+    );
+
+    test('the error-handler exit follows the same default', () async {
+      // The exit whose log line matters most: for a failed request it is the
+      // only record that the failure happened, and the middleware's fallback
+      // line cannot say which exit produced the 500.
+      Future<bool> exitLogged(bool globalDefault) async {
+        TomEndpointHandler.globalSettingLogRequestsDefault = globalDefault;
+        captured.lines.clear();
+        final response = await router.call(
+          _get('/fixture/default_logging_error'),
+        );
+        expect(response.statusCode, 500, reason: 'the handler throws');
+        return captured.lines.any(
+          (l) => l.contains('[handleInvocationError by error handler]'),
+        );
+      }
+
+      expect(await exitLogged(true), isTrue);
+      expect(await exitLogged(false), isFalse);
+    });
+
+    test('the socket path follows the same default', () async {
+      // `handleWebSocketCall` computes and consults the decision separately from
+      // the HTTP path, so it needs its own assertion or reverting it alone goes
+      // unnoticed. `/fixture/socket` declares no `logRequests`, which is exactly
+      // the case at issue.
+      //
+      // Reached with a plain GET — no `Upgrade` header — which `shelf_web_socket`
+      // refuses with a 404. That is the only way into this log line from a test:
+      // an *accepted* handshake hijacks the connection, and `hijack` throws
+      // `HijackException`, so the statement after `await handler(req)` never
+      // runs (quest todo
+      // tcincb136_ahye-websocket-handshake-log-unreachable-on-accepted-upgrade).
+      Future<bool> socketLogged(bool globalDefault) async {
+        TomEndpointHandler.globalSettingLogRequestsDefault = globalDefault;
+        captured.lines.clear();
+        final response = await router.call(_get('/fixture/socket'));
+        expect(response.statusCode, 404, reason: 'not a WebSocket request');
+        return captured.lines.any((l) => l.contains('[WebSocket handshake]'));
+      }
+
+      expect(await socketLogged(true), isTrue);
+      expect(await socketLogged(false), isFalse);
     });
   });
 

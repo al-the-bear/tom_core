@@ -19,6 +19,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Multipart Forms](#multipart-forms)
 - [Redirects](#redirects)
 - [WebSocket Endpoints](#websocket-endpoints)
+- [Request Logging](#request-logging)
 - [Error Handling](#error-handling)
 - [Building the Router](#building-the-router)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -342,6 +343,48 @@ handshake. `allowedOrigins` is the handshake-time counterpart of CORS — the
 `Origin` header is set by browsers and only by browsers, so it is what stops a
 page on another site from opening an authenticated socket in a visitor's
 session.
+
+## Request Logging
+
+`TomEndpoint.logRequests` is **three-state**, and the third state is the point
+of it:
+
+| Value | Meaning |
+| ----- | ------- |
+| `true` | This endpoint's requests are logged. |
+| `false` | They are not — however the global setting is configured. |
+| `null` (the default) | Defer to `TomEndpointHandler.globalSettingLogRequestsDefault` (itself `true`). |
+
+An endpoint that states nothing is the case the global setting exists to
+govern, so the decision is computed once, per request, as
+`logRequests ?? globalSettingLogRequestsDefault` and read through
+`TomEndpointHandler.shouldLogRequests`. Every log statement in the pipeline
+consults that getter — reading the annotation directly would collapse `null`
+into `false` and make the setting inert for exactly the endpoints it is for.
+
+A `@TomApiImplementation` sets the flag for its whole contract through
+`logRequestsDefault`, which `convertToTomEndpoint` folds into each endpoint that
+does not state its own. Registry-backed endpoints therefore arrive with a
+non-null value; the `null` case is a plain `@TomEndpoint` method that omits the
+argument.
+
+### Who writes the line
+
+The pipeline logs **once per exit**, and the line names the exit it came from —
+`[Normal processing]`, `[handler-supplied response]`,
+`[handleInvocationError by error handler]`, `[handleConversionError]`, or
+`[WebSocket handshake]` — together with the produced mime type and the encoding.
+
+`tomLoggingMiddleware` is the backstop. The pipeline publishes its decision on
+the request's `TomRequestLogInfo` (`shouldBeLogged`) and records that it wrote
+the line (`hasBeenLogged`); the middleware emits a single generic access-log
+line only when the request *was* meant to be logged and nothing logged it — a
+request that never reached an endpoint, for instance.
+
+The two flags must therefore agree with what actually happened. Telling the
+middleware `shouldBeLogged` while declining to log does not produce silence: it
+produces the middleware's generic line instead of the pipeline's detailed one,
+at the same line count. That is a degradation no request counter can see.
 
 ## Error Handling
 

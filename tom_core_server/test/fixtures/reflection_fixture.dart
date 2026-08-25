@@ -61,6 +61,51 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> unguarded();
 
+  /// An endpoint that says **nothing** about request logging, so
+  /// `TomEndpoint.logRequests` is null and the decision falls to
+  /// `TomEndpointHandler.globalSettingLogRequestsDefault`.
+  ///
+  /// Every other fixture endpoint states the flag explicitly, which is why the
+  /// global default had no coverage at all: the setting exists to govern
+  /// precisely the endpoints that stay silent, and there were none.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/default_logging',
+    produces: TomMimeType.json,
+  )
+  Future<Map<String, Object>> defaultLogging();
+
+  /// The same silence about `logRequests`, but leaving by the *handler-supplied
+  /// response* exit rather than the conversion one.
+  ///
+  /// The pipeline has one log statement per exit, and they are five copies of
+  /// one decision — so each exit needs its own witness or a copy can drift back
+  /// to reading the raw annotation unnoticed. This is the exit streaming
+  /// endpoints take (see `TomFileService`), where the pipeline's line is the
+  /// only per-request record there is.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/default_logging_response',
+    produces: TomMimeType.json,
+  )
+  Future<Response> defaultLoggingResponse();
+
+  /// The same silence about `logRequests`, leaving by the *error-handler* exit.
+  ///
+  /// Every endpoint has an error handler by default, so a throwing handler takes
+  /// the branch that answers from `handleInvocationError` — a third copy of the
+  /// same logging decision, and the only exit whose log line is the sole record
+  /// that a request failed at all.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/default_logging_error',
+    produces: TomMimeType.json,
+  )
+  Future<Map<String, Object>> defaultLoggingError();
+
   /// An endpoint whose *invocation* is itself the auditable act (CE-LG).
   ///
   /// Endpoint auditing is declared rather than automatic — most endpoint calls
@@ -317,6 +362,19 @@ class FixtureApiServer implements FixtureApiService {
   Future<Map<String, Object>> unguarded() async => <String, Object>{
     'guarded': false,
   };
+
+  @override
+  Future<Map<String, Object>> defaultLogging() async => <String, Object>{
+    'logging': 'default',
+  };
+
+  @override
+  Future<Response> defaultLoggingResponse() async =>
+      Response.ok('{"logging":"default-response"}');
+
+  @override
+  Future<Map<String, Object>> defaultLoggingError() async =>
+      throw StateError('the handler failed');
 
   @override
   Future<Map<String, Object>> auditedAction() async => <String, Object>{

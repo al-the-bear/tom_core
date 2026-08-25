@@ -797,8 +797,7 @@ class TomEndpointHandler {
 
     TomRequestLogInfo logInfo =
         req.context[TomRequestLogInfo.contextName] as TomRequestLogInfo;
-    logInfo.shouldBeLogged =
-        metadata.endpoint.logRequests ?? globalSettingLogRequestsDefault;
+    logInfo.shouldBeLogged = shouldLogRequests;
 
     final requestId = getFromCurrentZone<TomRequestId>();
     final reqId = requestId == null ? "" : requestId.uuid;
@@ -875,7 +874,7 @@ class TomEndpointHandler {
             },
           );
         }
-        if (metadata.endpoint.logRequests == true) {
+        if (shouldLogRequests) {
           tomLog.info(
             "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name} /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} ${response.encoding} [handleInvocationError by error handler]",
           );
@@ -910,7 +909,7 @@ class TomEndpointHandler {
       // handler's own answer is lost to a 500. This is the escape hatch that
       // makes streaming endpoints (see `TomFileService`) possible at all.
       if (result is Response) {
-        if (metadata.endpoint.logRequests == true) {
+        if (shouldLogRequests) {
           tomLog.info(
             "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name ?? "no encoding"} /$reqId-${req.url} ${req.requestedUri} => ${result.statusCode} [handler-supplied response]",
           );
@@ -958,7 +957,7 @@ class TomEndpointHandler {
       response ??= Response.internalServerError(
         body: "Internal result processing failed.",
       );
-      if (metadata.endpoint.logRequests == true) {
+      if (shouldLogRequests) {
         tomLog.info(
           "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name ?? "no encoding"} /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} ${metadata.endpoint.produces} ${response.encoding?.name} [Normal processing]",
         );
@@ -970,12 +969,12 @@ class TomEndpointHandler {
         try {
           Response response = metadata.endpoint.errorHandler!
               .handleConversionError(error, stacktrace, req, result);
-          if (metadata.endpoint.logRequests == true) {
+          if (shouldLogRequests) {
             tomLog.info(
               "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name ?? "no encoding"} /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} ${response.encoding} [handleConversionError]",
             );
+            logInfo.hasBeenLogged = true;
           }
-          logInfo.hasBeenLogged = true;
           return response;
         } catch (error2, stacktrace2) {
           throw TomEndpointHandlerException(
@@ -1034,8 +1033,7 @@ class TomEndpointHandler {
     // exercised without the logging middleware in front of it.
     final logInfo =
         req.context[TomRequestLogInfo.contextName] as TomRequestLogInfo?;
-    logInfo?.shouldBeLogged =
-        metadata.endpoint.logRequests ?? globalSettingLogRequestsDefault;
+    logInfo?.shouldBeLogged = shouldLogRequests;
 
     final requestId = getFromCurrentZone<TomRequestId>();
     final reqId = requestId == null ? "" : requestId.uuid;
@@ -1079,7 +1077,7 @@ class TomEndpointHandler {
     );
 
     final response = await handler(req);
-    if (metadata.endpoint.logRequests == true) {
+    if (shouldLogRequests) {
       tomLog.info(
         "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} [WebSocket handshake]",
       );
@@ -1123,6 +1121,18 @@ class TomEndpointHandler {
       await connection.close(1011, "Handler failed");
     }
   }
+
+  /// Whether requests to this endpoint are logged.
+  ///
+  /// `TomEndpoint.logRequests` is three-state: `true` logs, `false` does not,
+  /// and `null` — the value for any endpoint that says nothing — defers to
+  /// [globalSettingLogRequestsDefault]. Reading the annotation directly
+  /// collapses the third state into the second, which silently makes the global
+  /// setting govern nothing: it exists for exactly the endpoints that stay
+  /// silent. Every logging decision in the pipeline goes through here so that
+  /// the fallback cannot be bypassed by accident.
+  bool get shouldLogRequests =>
+      metadata.endpoint.logRequests ?? globalSettingLogRequestsDefault;
 
   /// Decides whether [principal] may call this endpoint from its resolved
   /// [TomAccessControl] — the handler-side override if present, otherwise the

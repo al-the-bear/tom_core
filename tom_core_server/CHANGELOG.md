@@ -2,6 +2,40 @@
 
 ### Fixed
 
+- **`globalSettingLogRequestsDefault` governed nothing, because every log site
+  re-tested the raw annotation (tcinc505).** The pipeline computed the effective
+  decision — `logRequests ?? globalSettingLogRequestsDefault` — stored it on the
+  request log info, and then ignored it: all five log statements asked
+  `metadata.endpoint.logRequests == true` instead. `logRequests` is `bool?` and
+  documented as "`null` = use the global default", so `null == true` collapsed
+  the third state into `false` and the setting reached exactly none of the
+  endpoints it exists for — the ones that say nothing. The socket path repeated
+  the same computation and the same mistake.
+
+  The decision is now read once, through the new
+  `TomEndpointHandler.shouldLogRequests`, which every log statement and both
+  computation sites consult. `TomEndpoint.logRequests` behaves as documented:
+  `true` logs, `false` does not, `null` follows the global setting.
+
+  The defect was invisible because the request was still logged — by the wrong
+  component. The pipeline declined, left `hasBeenLogged` false while
+  `shouldBeLogged` was true, and `tomLoggingMiddleware` emitted its generic
+  fallback line. The *count* of log lines was unchanged; what was lost was the
+  per-exit detail only the pipeline's line carries (which exit produced the
+  response, the produced mime type, the encoding). No request counter could see
+  it, so the tests assert on the emitted text rather than on the flags.
+
+  Also folded in: in the conversion-error branch `logInfo.hasBeenLogged = true`
+  sat *outside* its `if` while its four siblings set it inside. It is now inside
+  like the others — one of four differing invites a reader to hunt for a reason
+  that is not there.
+
+  No fixture endpoint had omitted `logRequests`, so the global default had no
+  coverage at all. Three unannotated fixture endpoints were added, one per
+  reachable exit (conversion, handler-supplied response, error handler), and
+  the socket path is covered through a refused upgrade — an accepted one cannot
+  reach the line at all, which is a separate defect (tcincb136).
+
 - **Automatic endpoint protection keyed registry-backed endpoints on the wrong
   name, composed member keys nobody could author, and inverted its own
   revocation (tcinc504).** `checkAutomaticAccess` grants a denied request a
