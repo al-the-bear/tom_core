@@ -28,6 +28,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 - [The Two Delivery Channels](#the-two-delivery-channels)
 - [Untrusted Text in Four Places](#untrusted-text-in-four-places)
 - [Wiring a Server](#wiring-a-server)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -202,6 +203,16 @@ not rows, so nothing is pulled until a renderer subscribes — and cells stay a
 positional `List` parallel to the columns. A reflected projection that quietly
 turned every row into a map would give back exactly the per-row allocation the
 type exists to avoid.
+
+**Worked example.** Step 5 of `example/export/export_example.dart` renders the
+sales report of step 4 a second time, from a stream of `ExampleSaleRecord`
+instead of a written-out column list, and compares the two files **byte for
+byte**. That equality is this section's claim stated as something that can fail:
+the entity is field for field the hand-written projection, so a type or an order
+changed in one place and not the other breaks the run. The step also shows what
+deriving does *not* remove — the entity declares the schema, not the
+presentation, so the derived header carries field names until `titles` supplies
+the headings, and only then are the two files identical.
 
 **Columns are keyed by declared field name**, not by database column: `createdAt`,
 not `created_at`. That is how the audit trail keys its own image, for the same
@@ -749,6 +760,54 @@ final stored = await exports.storeAs(
 Both calls take the same result, the same format id and the same report name;
 the only difference is where the bytes go — and, because the two grammars
 differ, how the name is spelled once it gets there.
+
+## Verification
+
+Two suites, split by which of the module's two routes into a column set they
+cover, and one example that runs both.
+
+`test/export_test.dart` covers the explicit route and everything downstream of
+it: the tabular shape's construction guards, the single meaning of a width, the
+format registry including an application format plugged in from outside, and
+each renderer against its own format's rules — CSV's quoting, formula
+neutralisation and CRLF; the XLSX archive's parts, relationships, cell types and
+document properties; the PDF's pagination. Then the storage seam — both own
+backends and the blob adaptor, against one shared error contract — the two
+delivery channels, and the file-name and key grammars that differ between them.
+The streaming claim is asserted rather than described: bytes are required to
+reach the output *before* the row stream closes.
+
+`test/export_entities_test.dart` covers the derived route, and holds the one
+claim no single run can make. Drift needs two versions of an entity that differ
+by exactly one column, so the suite derives from both — with no export-side edit
+between them — and shows the added column reaching the rendered bytes. It also
+covers what a live run can only sample: the type derivation including the
+`TomZonedDate` fallback to text, the keying by declared field name, both
+exclusion rules in both directions, and the two properties the tabular type was
+designed around — rows pulled one at a time, cells positional.
+
+`example/export/export_example.dart` is the readable path through all of it, in
+fourteen numbered steps: the tabular shape and its stream, the derived column
+set of step 5, the renderer contract, what each format makes of one result, the
+registry, storage across all three backends at once, and both delivery channels.
+Its entity lives beside it in `example/export/export_entities.dart`, because a
+type the reflection generator captures cannot also live in a file that imports
+the generator's output; it is registered in `example/example_reflection.dart`,
+the example suite's shared reflection root.
+
+```bash
+dart run example/export/export_example.dart
+```
+
+`test/export_test.dart` runs it under precisely that command and requires it to
+exit 0 having reported all fourteen steps. Its expectations are a local
+`check(bool, String)` that **throws**, not `assert`: `dart run` leaves assertions
+disabled — that is what `--enable-asserts` is for — so an `assert` here would
+compile out under the command above, leaving an example that prints a plausible
+transcript and exits 0 with every expectation in it violated. The suite guards
+all three halves of that: the steps reported, the absence of `assert(`, and —
+by importing the example and calling `check` — that the helper fails the run
+rather than narrating it.
 
 ## Core Components
 

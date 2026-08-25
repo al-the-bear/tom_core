@@ -74,6 +74,52 @@
 
 ### Fixed
 
+- **The export example demonstrated the route `doc/export.md` argues *against*
+  for entity exports, and the recommended one only in a test file (tcinc533).**
+  Every one of the example's steps built its columns from a hand-written
+  `TomTabularColumn` list, so the module's executable documentation showed the
+  second declaration the guide's longest section exists to remove, and a reader
+  looking for `ofEntities` was sent to `test/export_entities_test.dart` — which
+  is a suite, not a worked example. A new **step 5** renders the sales report of
+  step 4 a second time from a stream of `ExampleSaleRecord` and compares the two
+  files **byte for byte**, which is the guide's claim stated as something that
+  can fail rather than as a paragraph: the entity is field for field the
+  hand-written projection, so a type or an order changed in one place and not
+  the other breaks the run. The comparison is made in two beats — the data rows
+  match immediately, the whole file only once `titles` is supplied — because the
+  entity declares the schema and not the presentation, and showing exactly which
+  of the two the derivation removes is more honest than an equality that hides
+  it. The derived names and types are compared against `columns()` rather than
+  against a written-out list, since a list would be the third declaration.
+
+  The step also shows the two default-excluded kinds of column as the asymmetry
+  they are rather than as two identical throws: naming a redacted field in
+  `include` **fails** with `export.entities.redacted_column`, while a
+  `@TomFileReference` merely opens on request — and opening it leaves the
+  redaction rule shut. What no single run can show is the drift itself, since an
+  entity cannot grow a field mid-run; the step says so and points at the suite
+  that derives from two versions of one entity.
+
+  `ExampleSaleRecord` lives in a new `example/export/export_entities.dart`,
+  because a type the reflection generator captures cannot also live in a file
+  that imports the generator's output, and is registered in the existing shared
+  `example/example_reflection.dart` root as that file's own header instructs — a
+  second root would capture the same framework surface again for ~1.7 MB of
+  generated source. Inserting the step at 5 rather than at the end renumbered
+  the nine steps after it, which surfaced a pre-existing transcript defect: the
+  two-digit step labels had always printed their colon one column left of the
+  single-digit ones. All fourteen are now aligned. Seven mutations confirm the
+  new expectations bite: dropping the `id` exclusion, dropping `titles`,
+  diverging one entity value from its hand-written twin, not asking for the
+  redacted field, not opening the file rule, reverting a check to an `assert`,
+  and swapping two fields of the entity.
+
+  `doc/export.md` gains a **Verification** section naming both suites and both
+  example files, so the guard in `api_reference_coverage_test.dart` no longer
+  needs to skip the module; `export` leaves `_verificationPendingAttribution`,
+  which its meta-test requires once nothing is left to suppress. Eleven modules
+  remain in it (`tcincb125_ahxt`).
+
 - **The export example's header promised the blob adaptor and the run never
   constructed one — and the twenty-six checks it did make were compiled out
   (tcinc532).** The library dartdoc advertised "the storage seam and its adaptor

@@ -2,14 +2,17 @@
 ///
 /// Demonstrates the rendering engines end to end without a database, a browser
 /// or a filesystem the run does not clean up: the streaming tabular shape the
-/// renderers consume, the one abstraction all three formats implement, the
-/// registry that keeps the format set open, what each format does with the same
-/// result, the storage seam and its adaptor onto the framework's blob store,
-/// and the two delivery channels an endpoint actually calls.
+/// renderers consume, the same shape with its columns derived from a reflected
+/// entity instead of written out, the one abstraction all three formats
+/// implement, the registry that keeps the format set open, what each format
+/// does with the same result, the storage seam and its adaptor onto the
+/// framework's blob store, and the two delivery channels an endpoint actually
+/// calls.
 ///
 /// The thing to watch for is what is *absent*: at no point is a whole result or
 /// a whole document held. Step 3 proves it — bytes arrive while rows are still
-/// being produced.
+/// being produced. Nor is a second declaration of the column set: step 5
+/// renders the same file from `@TomDbColumn` and compares it byte for byte.
 ///
 /// Run with `dart run example/export/export_example.dart`. Every step checks
 /// its own result and the run fails when one does not hold, so a green run is a
@@ -23,6 +26,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+// The reflected entity step 5 derives its columns from, and the generated
+// reflection that makes those annotations readable at run time. The root is
+// `example/example_reflection.dart`, shared with the other two examples that
+// need a reflector — see its header for why there is one and not three.
+import '../example_reflection.reflection.dart';
+import 'export_entities.dart';
 
 // ignore_for_file: avoid_print
 
@@ -70,6 +80,38 @@ TomTabularResult salesResult() => TomTabularResult.single(
     title: 'Regions',
   ),
 );
+
+/// The same two rows as [salesResult], as the entity that declares their shape.
+///
+/// Every value matches, because step 5 renders both and compares the bytes: a
+/// difference here would make that comparison fail for a reason that has
+/// nothing to do with the projection. The three fields the hand-written columns
+/// have no counterpart for are populated on purpose — a column that leaked into
+/// the export would then be visible in it, where a `null` one would render as
+/// an empty cell and hide the leak.
+Stream<ExampleSaleRecord> sales() => Stream.fromIterable([
+  ExampleSaleRecord()
+    ..id = 1
+    ..product = 'Widget'
+    ..amount = 19.5
+    ..sold = DateTime(2026, 7, 1)
+    ..active = true
+    ..internalRank = 'A2'
+    ..receipt = 'sales/receipt/1.pdf',
+  ExampleSaleRecord()
+    ..id = 2
+    ..product = 'Gadget, large'
+    ..amount = 4.0
+    ..sold = DateTime(2026, 7, 2, 14, 30)
+    ..active = false
+    ..internalRank = 'B1'
+    ..receipt = 'sales/receipt/2.pdf',
+]);
+
+/// The declared field names of a section's columns, in output order.
+List<String> names(TomTabularSection section) => [
+  for (final column in section.columns) column.name,
+];
 
 Future<void> run() async {
   // 1. The input is a *shape*, not a format. Rows are a stream because an
@@ -141,7 +183,141 @@ Future<void> run() async {
   //    A comma inside a value is quoted, not escaped away.
   check(csv.contains('"Gadget, large"'), 'a comma in a value is quoted');
 
-  // 5. A cell beginning `=`, `+`, `-` or `@` is a *formula* to a spreadsheet:
+  // 5. The same file, with no second declaration. `columns()` at the top of
+  //    this file restates what `ExampleSaleRecord` already says in
+  //    `@TomDbColumn`, and two declarations drift both ways: a column added to
+  //    the entity never reaches the export, and a type changed on it leaves
+  //    cells formatted under a stale `TomColumnType`. `fromEntities` reads the
+  //    column set off the annotations instead — so this step renders the same
+  //    two rows from a stream of *entities* and compares the output with step
+  //    4's, which is the claim in one equality rather than in a paragraph.
+  //
+  //    What no single run can show is the drift itself, since an entity cannot
+  //    grow a field while the program is running:
+  //    `test/export_entities_test.dart` derives from two versions of one entity
+  //    that differ by exactly one column, with no export-side edit between them.
+  //
+  //    Deriving reads annotations rather than rows, so a section's columns
+  //    exist before anything subscribes — which is what keeps this a
+  //    constructor and not a `Future`, and is the same reason the module refuses
+  //    to infer columns from a first row.
+  var pulled = 0;
+  final derivedSection = TomTabularSection.ofEntities<ExampleSaleRecord>(
+    sales().map((record) {
+      pulled++;
+      return record;
+    }),
+    exclude: {'id'},
+  );
+  print('5. derived columns           : ${names(derivedSection).join(', ')}');
+  check(pulled == 0, 'deriving the columns pulls no rows');
+  //    Compared against `columns()` rather than against a written-out list,
+  //    because "the hand-written projection is redundant" is exactly the claim,
+  //    and a list here would be a third declaration to keep in step.
+  check(
+    names(derivedSection).join() == columns().map((c) => c.name).join(),
+    'the derived column set is the hand-written one',
+  );
+  check(
+    derivedSection.columns.map((c) => c.type).join() ==
+        columns().map((c) => c.type).join(),
+    'and each column is typed from the field it was derived from',
+  );
+  //    `id` left by `exclude`, keyed by declared field name — `id`, never the
+  //    `id` column; the two happen to agree here and `createdAt`/`created_at`
+  //    would not. `internalRank` and `receipt` left without being named, under
+  //    the two rules below.
+  check(
+    !names(derivedSection).contains('internalRank') &&
+        !names(derivedSection).contains('receipt'),
+    'a redacted field and a file reference are absent by default',
+  );
+
+  //    Both defaults are "not exported", and there the resemblance stops.
+  //    Redaction is a declaration that the value must not exist in a second
+  //    place at all, and an export is a second place — so `include` cannot
+  //    reach the field, and asking is an error rather than a quiet override.
+  var redactedKey = '';
+  try {
+    TomTabularSection.ofEntities<ExampleSaleRecord>(
+      const Stream.empty(),
+      include: ['product', 'internalRank'],
+    );
+  } on TomExportException catch (e) {
+    redactedKey = e.key;
+    print('   asking for a redacted field: ${e.key}');
+  }
+  check(
+    redactedKey == 'export.entities.redacted_column',
+    'a redacted field cannot be exported by naming it',
+  );
+
+  //    A file column is merely default-closed: it holds a storage *key* rather
+  //    than content, which is a small leak and useless to most readers — but an
+  //    audience with a use for the keys gets them by asking. Opening that rule
+  //    does not open the other one.
+  final withFiles = TomTabularSection.ofEntities<ExampleSaleRecord>(
+    const Stream.empty(),
+    exclude: {'id'},
+    includeFileReferences: true,
+  );
+  print('   with file references      : ${names(withFiles).join(', ')}');
+  check(
+    names(withFiles).contains('receipt') &&
+        !names(withFiles).contains('internalRank'),
+    'the file rule opens on request and the redaction rule does not',
+  );
+
+  //    The entity declares the schema and not the presentation, so the derived
+  //    header carries field names where step 4 carried headings. Every data row
+  //    is already identical; `titles` supplies the headings, and then the whole
+  //    file is.
+  final derivedCsv = utf8.decode(
+    await collect(
+      formats,
+      TomTabularResult.single(
+        title: 'Sales',
+        section: TomTabularSection.ofEntities<ExampleSaleRecord>(
+          sales(),
+          exclude: {'id'},
+        ),
+      ),
+      'csv',
+    ),
+  );
+  //    Everything after the header line, which is where the headings live.
+  String body(String file) => file.split('\r\n').skip(1).join('\r\n');
+  check(
+    body(derivedCsv) == body(csv),
+    'the derived rows are the hand-written rows, byte for byte',
+  );
+  final titledCsv = utf8.decode(
+    await collect(
+      formats,
+      TomTabularResult.fromEntities<ExampleSaleRecord>(
+        sales(),
+        title: 'Sales',
+        sectionTitle: 'Regions',
+        metadata: {'Filter': 'region = EU', 'As of': '2026-07-28'},
+        exclude: {'id'},
+        titles: {
+          'product': 'Product',
+          'amount': 'Amount',
+          'sold': 'Sold',
+          'active': 'Active',
+        },
+      ),
+      'csv',
+    ),
+  );
+  print(
+    '   derived vs step 4 csv     : '
+    'rows ${body(derivedCsv) == body(csv)}, '
+    'file ${derivedCsv == csv} -> with titles ${titledCsv == csv}',
+  );
+  check(titledCsv == csv, 'the derived export is the hand-written export');
+
+  // 6. A cell beginning `=`, `+`, `-` or `@` is a *formula* to a spreadsheet:
   //    an exported value someone else supplied becoming code on the machine
   //    that opens the file. Quoting alone does not stop it; a leading tab does,
   //    and is stripped on display.
@@ -169,7 +345,7 @@ Future<void> run() async {
   );
   final injectedText = utf8.decode(injected);
   print(
-    '5. formula neutralised       : '
+    '6. formula neutralised       : '
     '${injectedText.contains('"\t=1+1",-7')}',
   );
   check(
@@ -177,25 +353,25 @@ Future<void> run() async {
     'a formula is tab-guarded and a negative number is not',
   );
 
-  // 6. XLSX is a ZIP of XML parts, which is the one office format producible
+  // 7. XLSX is a ZIP of XML parts, which is the one office format producible
   //    strictly front-to-back — inline strings instead of a shared-strings
   //    table, and ZIP data descriptors instead of up-front CRCs. Hence
   //    streamsRows stays true for the rich format too.
   final xlsx = await collect(formats, salesResult(), 'xlsx');
   print(
-    '6. xlsx bytes                : ${xlsx.length} '
+    '7. xlsx bytes                : ${xlsx.length} '
     '(starts with "PK": ${xlsx[0] == 0x50 && xlsx[1] == 0x4B})',
   );
   check(xlsx[0] == 0x50 && xlsx[1] == 0x4B, 'the xlsx output is a ZIP');
 
-  // 7. PDF is the exception, and says so. Its file structure ends with a table
+  // 8. PDF is the exception, and says so. Its file structure ends with a table
   //    of byte offsets into everything before it, so no conforming writer can
   //    emit the first page before placing the last object. The renderer states
   //    its ceiling rather than discovering it — and *fails* at the limit, since
   //    a silently shortened report is a wrong report that looks right.
   final pdf = await collect(formats, salesResult(), 'pdf');
   print(
-    '7. pdf bytes                 : ${pdf.length} '
+    '8. pdf bytes                 : ${pdf.length} '
     '(streams rows: ${formats.rendererFor('pdf').streamsRows})',
   );
   check(
@@ -241,13 +417,13 @@ Future<void> run() async {
     'the pdf renderer refuses a result past its row limit',
   );
 
-  // 8. The registry is open. An application adds the fixed-width extract a
+  // 9. The registry is open. An application adds the fixed-width extract a
   //    partner insists on without the export service learning about it, and
   //    re-registering an id *replaces* — a semicolon CSV for a European locale
   //    is still `csv`, and should not need a new name.
   formats.register(const TomCsvRenderer(fieldSeparator: ';'));
   final semicolons = utf8.decode(await collect(formats, salesResult(), 'csv'));
-  print('8. re-registered csv         : ${semicolons.split('\r\n').first}');
+  print('9. re-registered csv         : ${semicolons.split('\r\n').first}');
   check(
     semicolons.contains('Product;Amount'),
     're-registering an id replaces the renderer under it',
@@ -268,14 +444,14 @@ Future<void> run() async {
     'an unregistered format id is refused by name',
   );
 
-  // 9. Storage is deliberately the narrowest interface an export needs — put a
-  //    stream under a key, read it back, ask, delete. That narrowness is what
-  //    lets `TomBlobExportStore` put every `file_storage` backend behind the
-  //    same four methods, in four delegating lines, without anything that
-  //    renders or delivers an export knowing which backend ran. The module's
-  //    two own backends remain because an export module that works with no
-  //    storage configured at all is worth the hundred lines. Step 10 runs one
-  //    export through all three.
+  // 10. Storage is deliberately the narrowest interface an export needs — put
+  //     a stream under a key, read it back, ask, delete. That narrowness is
+  //     what lets `TomBlobExportStore` put every `file_storage` backend behind
+  //     the same four methods, in four delegating lines, without anything that
+  //     renders or delivers an export knowing which backend ran. The module's
+  //     two own backends remain because an export module that works with no
+  //     storage configured at all is worth the hundred lines. Step 11 runs one
+  //     export through all three.
   final store = TomMemoryExportStore();
   final service = TomExportService(store: store);
 
@@ -292,7 +468,7 @@ Future<void> run() async {
   );
   final stored = await service.storeAs(salesResult(), 'csv', key: key);
   print(
-    '9. stored                    : ${stored.key} '
+    '10. stored                   : ${stored.key} '
     '(${stored.byteCount} bytes, ${stored.mediaType})',
   );
   check(
@@ -310,7 +486,7 @@ Future<void> run() async {
   // lives on the interface, so every backend gets it — including ones written
   // later.
   print(
-    '   traversal neutralised     : '
+    '    traversal neutralised    : '
     '${service.keyFor('../../etc/passwd', 'csv')}',
   );
   check(
@@ -322,14 +498,14 @@ Future<void> run() async {
     TomExportStore.validateKey('../../etc/passwd');
   } on TomExportException catch (e) {
     invalidKeyKey = e.key;
-    print('   traversal rejected        : ${e.key}');
+    print('    traversal rejected       : ${e.key}');
   }
   check(
     invalidKeyKey == 'export.store.invalid_key',
     'a traversal in an assembled key is refused',
   );
 
-  // 10. The seam, run rather than described. One rendered report under one
+  // 11. The seam, run rather than described. One rendered report under one
   //     key, through three backends — the module's own two and the adaptor
   //     that stands in for every `file_storage` backend there is. The service
   //     is constructed the same way each time and nothing above this line
@@ -349,7 +525,7 @@ Future<void> run() async {
   final scratch = Directory.systemTemp.createTempSync('tom_export_example_');
   final exportRoot = Directory('${scratch.path}/exports');
   try {
-    print('10. one export, three stores :');
+    print('11. one export, three stores :');
     check(
       !exportRoot.existsSync(),
       'the directory store is configured before its root exists',
@@ -395,7 +571,7 @@ Future<void> run() async {
     //     prefix. The blob store therefore sees `exports/…` while the
     //     `TomStoredExport` records what the caller passed: reporting the
     //     prefixed key would hand back something `open` does not accept.
-    print('    key in the blob store   : ${blobs.keys.single}');
+    print('    key in the blob store    : ${blobs.keys.single}');
     check(
       blobs.keys.single == 'exports/$key',
       'the prefix reaches the blob store and nothing else does',
@@ -408,7 +584,7 @@ Future<void> run() async {
     scratch.deleteSync(recursive: true);
   }
 
-  // 11. The apiResponse channel: the renderer's stream *is* the response body.
+  // 12. The apiResponse channel: the renderer's stream *is* the response body.
   //     No Content-Length, because the length is not known until the last row
   //     and the only alternative to omitting it is buffering the document to
   //     measure it. A million-row CSV starts arriving while the query runs.
@@ -417,12 +593,12 @@ Future<void> run() async {
     'xlsx',
     baseName: reportName,
   );
-  print('11. content-type             : ${response.headers['content-type']}');
+  print('12. content-type             : ${response.headers['content-type']}');
   print(
-    '    disposition             : '
+    '    disposition              : '
     '${response.headers['content-disposition']}',
   );
-  print('    content-length          : ${response.headers['content-length']}');
+  print('    content-length           : ${response.headers['content-length']}');
   check(
     response.headers['content-length'] == null,
     'no Content-Length, because measuring it would mean buffering',
@@ -443,11 +619,11 @@ Future<void> run() async {
     'and the same name is accepted as a key, spelled with an underscore',
   );
 
-  // 12. A file name reaches that header from a report title, which reaches it
+  // 13. A file name reaches that header from a report title, which reaches it
   //     from a user. A quote or a newline in it would end the parameter and
   //     start another header — the download equivalent of an injection.
   print(
-    '12. sanitised               : '
+    '13. sanitised                : '
     '"${TomExportService.sanitiseFileName('a".csv\r\nX-Evil: 1')}"',
   );
   check(
@@ -455,7 +631,7 @@ Future<void> run() async {
     'a quote cannot close the filename parameter',
   );
 
-  // 13. Storing without a configured store is a *configuration* error and says
+  // 14. Storing without a configured store is a *configuration* error and says
   //     so. The store is optional because a server that only streams exports
   //     back through its API never needs one, and requiring it would force a
   //     filesystem decision on a deployment with no use for it.
@@ -464,7 +640,7 @@ Future<void> run() async {
     await TomExportService().storeAs(salesResult(), 'csv', key: 'sales.csv');
   } on TomExportException catch (e) {
     noStoreKey = e.key;
-    print('13. no store configured     : ${e.key}');
+    print('14. no store configured      : ${e.key}');
   }
   check(
     noStoreKey == 'export.service.no_store',
@@ -489,5 +665,10 @@ Future<List<int>> collect(
 }
 
 Future<void> main() async {
+  // Reflection first: step 5 derives its columns from `@TomDbColumn`, so
+  // `ofEntities` throws "Reflection has not been initialized" without this. It
+  // is what any deployment does at start-up, and it is the derived route's only
+  // prerequisite — no database, and nothing read off a row.
+  initializeReflection();
   await run();
 }

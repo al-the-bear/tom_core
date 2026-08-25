@@ -2234,7 +2234,7 @@ void main() {
       // rather than anywhere in the output, because `contains('1. ')` is also
       // satisfied by `11. ` and would stop being a check for step 1.
       final lines = const LineSplitter().convert(result.stdout as String);
-      for (var step = 1; step <= 13; step++) {
+      for (var step = 1; step <= 14; step++) {
         expect(
           lines.any((line) => line.startsWith('$step. ')),
           isTrue,
