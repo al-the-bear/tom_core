@@ -111,6 +111,17 @@ single assignment applies to every request.
 
 ## Dependencies
 
-- `tom_core_kernel` — `tomReflector`, `TomHttpMethod`, `TomMimeType`.
-- The endpoints module — `@tomService`, `@tomComponent`, `@TomEndpoint`,
-  `@TomPublicAccess` (annotation discovery, routing, public access).
+`health_check.dart` imports exactly two things, and between them they supply
+every symbol it uses:
+
+- `package:tom_core_kernel/tom_core_kernel.dart` — `tomReflector`
+  (reflection), `tomComponent` (the bean locator's component annotation),
+  `TomPublicAccess` (an access control), and `TomHttpMethod` / `TomMimeType`
+  (the HTTP vocabulary the endpoint annotation is written in).
+- `../endpoints/endpoint_annotation.dart` — `tomService` and `TomEndpoint`,
+  the two annotations by which the endpoints pipeline discovers the route.
+
+Note that `@tomComponent` and `@TomPublicAccess` are *kernel* annotations even
+though the endpoints pipeline is what acts on them: the pipeline resolves the
+component's bean and enforces the access control, but neither symbol belongs to
+the endpoints module.
