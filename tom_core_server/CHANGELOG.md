@@ -2,6 +2,48 @@
 
 ### Fixed
 
+- **Automatic endpoint protection keyed registry-backed endpoints on the wrong
+  name, composed member keys nobody could author, and inverted its own
+  revocation (tcinc504).** `checkAutomaticAccess` grants a denied request a
+  second chance when it holds the right resource key. Three independent defects
+  meant it granted almost nothing and protected almost nothing under the names
+  it documented. All three survived because the feature is gated behind
+  `globalSettingUseAutomaticEndpointProtection`, which is off by default, so
+  nothing in the workspace had ever evaluated the rule.
+
+  1. *The API branch was dead code.* The method branched on `interface != null`
+     and fell back to `metadata.apiEndpoint` for registry-backed endpoints, but
+     the single construction site always passed a non-null `interface` holding
+     the **implementation** class. A registry-backed endpoint was therefore
+     protected under its Dart class name — `TomOAuthServer` rather than
+     `tomOAuth` — so an operator who granted a key by the API id the contract
+     declares and the client calls granted nothing.
+  2. *The member key was unusable.* `methodName` was populated with the mirror's
+     **qualified** name, so the composed key read
+     `FixtureApiService..FixtureApiService.contractGated` instead of the
+     documented `<Interface>.<method>`.
+  3. *The revocation was backwards.* The `-<member>` exception denied when the
+     principal **lacked** the revocation key and allowed when it held it. Since
+     holding a container key always fell into that branch, holding a container
+     key denied every endpoint under it.
+
+  Endpoints now key on the identity their contract declares where they have one
+  (`<apiId>` / `<apiId>.<endpointId>`) and on the type they are routed through
+  otherwise (`<Type>.<method>`) — chosen per *method*, since a
+  `@TomApiImplementation` class may also carry plain `@TomEndpoint` methods with
+  no contract entry. The pair is exposed as the new
+  `TomEndpointHandler.automaticProtectionKeys`, which is non-nullable so that
+  "every endpoint has a pair" holds by construction rather than by an
+  unreachable guard. `interface` is now null exactly when the method has a
+  contract, matching what its documentation always claimed.
+
+  One further trap is now handled: `TomResourceKeyProtection.isProtected`
+  answers "held" for *every* key once protection is globally off, so the
+  `-<member>` revocation is consulted only while protection is actually on.
+  Asking it unconditionally reported every conceivable revocation as issued and
+  turned the open default into a blanket denial. See `doc/endpoints.md` §
+  Automatic endpoint protection for the full rule.
+
 - **A parameter that cannot be bound no longer shifts every later argument one
   place to the left (tcinc503).** `TomEndpointHandler.bindParameters` builds a
   *positional* argument list, and a positional list has no way to say "this one

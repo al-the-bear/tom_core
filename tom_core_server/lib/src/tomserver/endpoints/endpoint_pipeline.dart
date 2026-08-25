@@ -103,12 +103,16 @@ class TomEndpointHandler {
   MethodMirror method;
 
   /// The service interface/annotation type, when routed via an interface.
+  ///
+  /// `null` for a registry-backed method, which is identified by its contract
+  /// instead — see [automaticProtectionKeys], the one thing this is read for.
   ClassMirror? interface;
 
   /// The concrete implementation class mirror.
   ClassMirror implementation;
 
-  /// The qualified name of the method to invoke.
+  /// The method's own name, unqualified, as it appears in a resource key
+  /// (`<Interface>.<methodName>`).
   String methodName;
 
   /// The collected annotation metadata (endpoint, access, transaction, API).
@@ -1131,49 +1135,71 @@ class TomEndpointHandler {
     return !TomResourceKeyProtection.globalSettingProtectionDefault;
   }
 
-  /// Second-chance access check via resource-key protection: grants access when
-  /// the interface/API (and not the specific method/endpoint) is unprotected,
-  /// honouring per-method `-Interface.method` exceptions. Takes the prior
-  /// [accessCheck] and returns the possibly-upgraded decision.
-  bool checkAutomaticAccess(bool accessCheck) {
-    if (interface != null) {
-      if (!TomResourceKeyProtection.isProtected(interface!.simpleName)) {
-        // if interface is accessible check if method was specified as an exception
-        if (TomResourceKeyProtection.isProtected(
-          "-${interface!.simpleName}.$methodName",
-        )) {
-          accessCheck = false;
-        } else {
-          accessCheck = true;
-        }
-      } else {
-        // if interface is not accessible, check access to method
-        if (!TomResourceKeyProtection.isProtected(
-          "${interface!.simpleName}.$methodName",
-        )) {
-          accessCheck = true;
-        }
-      }
-    } else if (metadata.apiEndpoint != null) {
-      if (!TomResourceKeyProtection.isProtected(metadata.apiEndpoint!.api.id)) {
-        // if endpoint is accessible check if method was specified as an exception
-        if (TomResourceKeyProtection.isProtected(
-          "-${metadata.apiEndpoint!.api.id}.${metadata.apiEndpoint!.id}",
-        )) {
-          accessCheck = false;
-        } else {
-          accessCheck = true;
-        }
-      } else {
-        // if endpoint is not accessible, check access to method
-        if (!TomResourceKeyProtection.isProtected(
-          "${metadata.apiEndpoint!.api.id}.${metadata.apiEndpoint!.id}",
-        )) {
-          accessCheck = true;
-        }
-      }
+  /// The two resource keys this endpoint is automatically protected under: the
+  /// `container` granting the whole interface/API, and the `member` granting
+  /// this one method within it.
+  ///
+  /// A registry-backed endpoint is keyed on the identity its **contract**
+  /// declares (`<apiId>` / `<apiId>.<endpointId>`); everything else on the Dart
+  /// type it is routed through (`<Interface>` / `<Interface>.<method>`). The
+  /// contract identity is preferred wherever one exists for two reasons: it is
+  /// the name the operator granting keys actually has in front of them, and it
+  /// survives a rename of the implementation class — which a key an operator
+  /// has already issued must.
+  ///
+  /// The choice is made per *method*, not per class, because it is a method
+  /// that does or does not have a contract entry: a `@TomApiImplementation`
+  /// class may also carry plain `@TomEndpoint` methods, and those have no
+  /// contract identity to be keyed on.
+  ///
+  /// Every endpoint has a pair — there is no "unprotectable" endpoint. When a
+  /// method is routed neither through an interface nor through a contract it
+  /// keys on [implementation], which is then the very type it was mounted from.
+  /// The return is non-nullable so that this stays true by construction rather
+  /// than by a guard nobody can reach: `interface` is null exactly when
+  /// `metadata.apiEndpoint` is not.
+  (String container, String member) get automaticProtectionKeys {
+    final contractEndpoint = metadata.apiEndpoint;
+    if (contractEndpoint != null) {
+      final apiId = contractEndpoint.api.id;
+      return (apiId, "$apiId.${contractEndpoint.id}");
     }
-    return accessCheck;
+    final typeName = (interface ?? implementation).simpleName;
+    return (typeName, "$typeName.$methodName");
+  }
+
+  /// Second-chance access check via resource-key protection, over the pair of
+  /// keys [automaticProtectionKeys] names. Takes the prior [accessCheck] and
+  /// returns the possibly-upgraded decision.
+  ///
+  /// The rule is: **holding the container key grants every member of it, unless
+  /// the principal also holds the negated member key `-<member>`; otherwise
+  /// only the member key itself grants.** A principal holding neither is left
+  /// with the decision it arrived with — `enforceAccess` only consults this
+  /// after the ordinary check has already refused, so this can raise a refusal
+  /// to a grant but never invents one of its own.
+  ///
+  /// Note the polarity of [TomResourceKeyProtection.isProtected]: it answers
+  /// "the principal *lacks* this key". Every key in the list, `-<member>`
+  /// included, is something the principal **holds** — the minus is part of the
+  /// name of a revocation, not a negation of the test.
+  bool checkAutomaticAccess(bool accessCheck) {
+    final (container, member) = automaticProtectionKeys;
+
+    final holdsContainer = !TomResourceKeyProtection.isProtected(container);
+    if (holdsContainer) {
+      // The revocation is only consulted while protection is actually on.
+      // `isProtected` answers "false" — *held* — for every key once protection
+      // is switched off, and asking it about `-<member>` there would report
+      // every conceivable revocation as issued and deny every endpoint. A
+      // revocation exists only by having been granted to someone.
+      final revoked =
+          TomResourceKeyProtection.globalSettingProtectionDefault &&
+          !TomResourceKeyProtection.isProtected("-$member");
+      return !revoked;
+    }
+    final holdsMember = !TomResourceKeyProtection.isProtected(member);
+    return holdsMember ? true : accessCheck;
   }
 }
 
@@ -1352,9 +1378,14 @@ class TomEndpointRouting {
               "${tep.uri}-${tep.methods} to ${mmd.methodMirror.qualifiedName} in ${instanceClassMirror.qualifiedName}",
           instance: instanceMirror,
           method: instanceMethodMirror,
-          interface: serviceType,
+          // Only when the method really is routed via an interface. A
+          // registry-backed method carries its own contract identity, and
+          // `serviceType` there is the *implementation* class — setting it
+          // would key the endpoint's automatic protection on a Dart class name
+          // instead of on the API id its contract declares.
+          interface: mmd.apiEndpoint == null ? serviceType : null,
           implementation: instanceClassMirror,
-          methodName: mmd.methodMirror.qualifiedName,
+          methodName: mmd.methodMirror.simpleName,
           metadata: mmd,
         );
         createRoutesForEndpoint(tep, router, teph, mmd, instanceClassMirror);

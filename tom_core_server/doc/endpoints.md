@@ -136,11 +136,49 @@ it holds no positional slot, so it can shift nothing.
 ## Access Control
 
 `checkAccess` consults the method's `@TomAccessControl` (if any), otherwise the
-global protection default. When access is denied and automatic endpoint
-protection is enabled, `checkAutomaticAccess` gives a second chance based on
-resource-key protection of the interface/API — honouring per-method
-`-Interface.method` exceptions. A still-denied request throws
+global protection default. A still-denied request throws
 `TomEndpointHandlerException`.
+
+### Automatic endpoint protection
+
+When `TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection` is
+on — it is **off by default** — a denial gets a second chance from
+`checkAutomaticAccess`, which grants access if the principal holds the right
+resource key. It is only ever a second chance: `enforceAccess` calls it after
+the ordinary check has already refused, so it can raise a refusal to a grant,
+but a request the ordinary check allowed never reaches it and a principal
+holding no relevant key keeps the decision it arrived with.
+
+Every endpoint has **two** keys:
+
+| Key | Grants |
+| --- | ------ |
+| `<container>` | every endpoint of the interface/API |
+| `<container>.<member>` | that one endpoint |
+| `-<container>.<member>` | *revokes* that one endpoint from a granted container |
+
+The container/member **names** depend on how the endpoint is identified:
+
+| Endpoint | Container | Member |
+| -------- | --------- | ------ |
+| Method with `@TomApiEndpointImplementation` | the API id (`<apiId>`) | `<apiId>.<endpointId>` |
+| Any other endpoint | the Dart type it is routed through | `<Type>.<methodName>` |
+
+Registry-backed endpoints key on the identity their **contract** declares, not
+on the implementation class. That is the name the operator issuing keys has in
+front of them, it is the name the client calls, and it survives a rename of the
+implementation class — which a key already issued to a principal must.
+
+The choice is made per **method**, not per class: a `@TomApiImplementation`
+class may also carry plain `@TomEndpoint` methods, and those have no contract
+entry, so they key on the class like any other endpoint. So a single class can
+have some endpoints keyed on its API id and others on its type name.
+
+Note the polarity of the revocation. Every key a principal holds is a *grant*,
+`-<container>.<member>` included: the minus is part of the name of a revocation
+the principal has been issued, not a negation of a test. Holding the container
+key grants every member of it **unless** the matching `-<container>.<member>` is
+also held.
 
 ## Transactions
 

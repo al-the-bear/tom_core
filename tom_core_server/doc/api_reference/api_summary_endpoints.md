@@ -418,9 +418,9 @@ TomEndpointHandler({
 | `name` | `String` | A human-readable identifier for the route (used in logs). |
 | `instance` | `InstanceMirror` | The reflected service instance the method is invoked on. |
 | `method` | `MethodMirror` | The reflected endpoint method. |
-| `interface` | `ClassMirror?` | The service interface/annotation type, when routed via an interface. |
+| `interface` | `ClassMirror?` | The service interface/annotation type, when routed via an interface; `null` for a registry-backed method, which is identified by its contract instead. |
 | `implementation` | `ClassMirror` | The concrete implementation class mirror. |
-| `methodName` | `String` | The qualified name of the method to invoke. |
+| `methodName` | `String` | The method's own name, unqualified, as it appears in a resource key (`<Interface>.<methodName>`). |
 | `metadata` | `TomMethodMetadata` | The collected annotation metadata (endpoint, access, transaction, API). |
 | `globalSettingLogRequestsDefault` | `static bool` | Whether requests are logged when an endpoint does not specify `logRequests`. |
 | `globalSettingCorsAllowedOriginsDefault` | `static String` | Default `Access-Control-Allow-Origin` when an endpoint does not override it. |
@@ -439,7 +439,8 @@ TomEndpointHandler({
 | `enforceAccess` | `Future<void> enforceAccess()` | Runs the access check and its denial audit; shared by the HTTP and WebSocket paths. |
 | `bindParameters` | `Future<List<Object>> bindParameters(Request req, {Map<Type, Object> extraByType = const {}})` | Builds the method's positional arguments from the request; `extraByType` supplies values only the endpoint kind knows (the socket connection). |
 | `checkAccess` | `bool checkAccess(TomPrincipal? principal)` | Decides whether `principal` may call this endpoint from its resolved access control, falling back to the global protection default. |
-| `checkAutomaticAccess` | `bool checkAutomaticAccess(bool accessCheck)` | Second-chance access check via resource-key protection; returns the possibly-upgraded decision. |
+| `automaticProtectionKeys` | `(String container, String member) get automaticProtectionKeys` | The pair of resource keys this endpoint is automatically protected under: the API id/interface name granting all of it, and the `<container>.<member>` key granting this one endpoint. |
+| `checkAutomaticAccess` | `bool checkAutomaticAccess(bool accessCheck)` | Second-chance access check over `automaticProtectionKeys`; returns the possibly-upgraded decision. |
 
 ### TomEndpointRoutingInfo
 

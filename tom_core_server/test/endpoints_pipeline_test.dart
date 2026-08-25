@@ -323,6 +323,12 @@ void main() {
       () {
         // Default (protection off): the interface is unprotected, so a prior
         // false decision is upgraded to true.
+        //
+        // This also pins the one case where `isProtected` must *not* be asked
+        // about the `-<member>` revocation. With protection off it answers
+        // "held" for every key there is, so consulting it here would read as
+        // "this endpoint has been revoked" — for every endpoint — and turn the
+        // open default into a blanket denial.
         expect(unguardedHandler.checkAutomaticAccess(false), isTrue);
       },
     );
@@ -335,6 +341,187 @@ void main() {
       // Protection on with no principal -> interface is protected, method is
       // protected -> the false decision stands.
       expect(unguardedHandler.checkAutomaticAccess(false), isFalse);
+    });
+  });
+
+  // Automatic protection is a *second chance*: `enforceAccess` reaches it only
+  // after the ordinary check has already refused, and only while
+  // `globalSettingUseAutomaticEndpointProtection` is on. Both facts are why the
+  // rule below could be wrong in three independent ways without a single test
+  // or sample noticing — the switch is off by default, so nothing in the
+  // workspace ever evaluated it.
+  //
+  // The rule has two keys per endpoint. The *container* key grants the whole
+  // interface/API; the *member* key grants one method within it, and its
+  // negated form `-<member>` carves one method back out of a granted container.
+  // Which pair of names an endpoint uses is the question this group pins:
+  // registry-backed endpoints are keyed on the identity their **contract**
+  // declares, everything else on the Dart class it is routed through.
+  group('automatic protection keys', () {
+    late TomEndpointHandler contractGatedHandler;
+    late TomEndpointHandler overriddenHandler;
+    late TomEndpointHandler inlineHandler;
+    late TomEndpointHandler unguardedHandler;
+
+    setUp(() {
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      addTearDown(
+        () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
+      );
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomEndpointRouting().initializeRouter();
+      contractGatedHandler = TomEndpointRouting
+          .routingInfo['/fixture-access/contract-gated']!
+          .handler;
+      overriddenHandler =
+          TomEndpointRouting.routingInfo['/fixture-access/overridden']!.handler;
+      inlineHandler =
+          TomEndpointRouting.routingInfo['/fixture-access/inline']!.handler;
+      unguardedHandler =
+          TomEndpointRouting.routingInfo['/fixture/unguarded']!.handler;
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    /// Asks [handler] for its automatic decision as a principal holding exactly
+    /// [keys], starting from the refusal the production call site always passes.
+    bool accessHolding(TomEndpointHandler handler, List<String> keys) =>
+        runZoned(
+          () => handler.checkAutomaticAccess(false),
+          zoneValues: {
+            TomPrincipal: TomPrincipal(
+              user: TomUser(id: 1, username: 'keyholder'),
+              authenticated: true,
+              aci: TomAccessControlInformation(resourceKeys: keys),
+            ),
+          },
+        );
+
+    test('a registry-backed endpoint is keyed on its API id', () {
+      // The id the contract declares and the client calls — not the name of the
+      // Dart class that happens to implement it.
+      expect(accessHolding(contractGatedHandler, ['fixture_access']), isTrue);
+    });
+
+    test('the implementation class name grants nothing', () {
+      // The security half of the same claim. Keying authorization on an
+      // implementation class name would make renaming that class a silent
+      // change to the authorization surface, and would let a key minted for one
+      // API open an unrelated one that shares an implementation.
+      expect(
+        accessHolding(contractGatedHandler, ['FixtureAccessApiService']),
+        isFalse,
+      );
+    });
+
+    test('a per-endpoint key grants one endpoint of an ungranted API', () {
+      expect(
+        accessHolding(contractGatedHandler, ['fixture_access.contractGated']),
+        isTrue,
+        reason: 'the member key is <apiId>.<endpointId>',
+      );
+      expect(
+        accessHolding(overriddenHandler, ['fixture_access.contractGated']),
+        isFalse,
+        reason: 'a member key grants its own endpoint and no sibling',
+      );
+    });
+
+    test('a -<member> exception carves one endpoint out of a granted API', () {
+      const keys = ['fixture_access', '-fixture_access.contractGated'];
+      // Both halves matter. Without the second the exception could be
+      // implemented as "deny everything once any exception is present"; without
+      // the first it could be ignored entirely.
+      expect(
+        accessHolding(contractGatedHandler, keys),
+        isFalse,
+        reason: 'the named endpoint is carved out',
+      );
+      expect(
+        accessHolding(overriddenHandler, keys),
+        isTrue,
+        reason: 'its siblings keep the API-wide grant',
+      );
+    });
+
+    test('an inline endpoint on an API class keys on the class', () {
+      // The discriminator between "registry-backed" meaning *this method* and
+      // meaning *this class*. FixtureAccessApiService is a
+      // @TomApiImplementation, but inlineGated is a plain @TomEndpoint with no
+      // registry entry — it has no contract identity to key on, so it must fall
+      // back to the class. Keying off which scan loop mounted the class would
+      // get this one wrong.
+      expect(accessHolding(inlineHandler, ['FixtureAccessApiService']), isTrue);
+      expect(
+        accessHolding(inlineHandler, ['fixture_access']),
+        isFalse,
+        reason: 'it is not part of the API contract',
+      );
+    });
+
+    test('an interface-routed endpoint keys on the plain method name', () {
+      expect(
+        accessHolding(unguardedHandler, ['FixtureApiService.unguarded']),
+        isTrue,
+        reason:
+            'the member key is <Interface>.<method>, not the qualified name',
+      );
+    });
+
+    test('a granted interface grants its methods', () {
+      expect(accessHolding(unguardedHandler, ['FixtureApiService']), isTrue);
+    });
+
+    test('a -<Interface>.<method> exception denies that one method', () {
+      expect(
+        accessHolding(unguardedHandler, [
+          'FixtureApiService',
+          '-FixtureApiService.unguarded',
+        ]),
+        isFalse,
+      );
+    });
+
+    test('holding no relevant key leaves the prior decision alone', () {
+      // The boundary: this is a second chance, not an independent verdict. With
+      // neither key held it must return what it was given, both ways round.
+      expect(accessHolding(unguardedHandler, ['something-else']), isFalse);
+      expect(
+        runZoned(
+          () => unguardedHandler.checkAutomaticAccess(true),
+          zoneValues: {
+            TomPrincipal: TomPrincipal(
+              aci: TomAccessControlInformation(
+                resourceKeys: ['something-else'],
+              ),
+            ),
+          },
+        ),
+        isTrue,
+      );
+    });
+
+    test('interface is null exactly when the method has a contract', () {
+      // The invariant the keying rests on, asserted directly rather than
+      // through its consequences. `interface` means "routed via an interface";
+      // a registry-backed method is identified by its contract instead, so the
+      // field must be empty for it.
+      //
+      // This is tested structurally because it cannot be tested behaviourally:
+      // `automaticProtectionKeys` consults the contract first, so it would key
+      // a registry-backed endpoint correctly even if this field were wrongly
+      // populated. The two are deliberately redundant — the getter is safe on
+      // its own, and so is this. What only this can catch is the field lying to
+      // anyone who reads it for another purpose, and a rename of the
+      // implementation class silently re-entering the keying if the getter's
+      // branch order is ever changed.
+      expect(contractGatedHandler.interface, isNull);
+      expect(overriddenHandler.interface, isNull);
+      expect(inlineHandler.interface?.simpleName, 'FixtureAccessApiService');
+      expect(unguardedHandler.interface?.simpleName, 'FixtureApiService');
     });
   });
 
