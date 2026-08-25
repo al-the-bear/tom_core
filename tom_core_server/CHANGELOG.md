@@ -2631,6 +2631,48 @@
 
 ### Documentation
 
+- **The messaging example demonstrated none of the layer applications actually
+  use (tcinc583).** `example/messaging/messaging_example.dart` composes a
+  `TomMessage` by hand throughout — that is the substrate, and it is the part
+  most application code should not touch, for the same reason most application
+  code does not write SQL strings. Neither `TomEmailService` nor `TomSmsService`
+  appeared anywhere in it, so the module's whole templated layer, and the SMS
+  channel with it, had no runnable demonstration: a reader who wanted to send an
+  application email had the one file that shows how not to.
+
+  A second example, `example/messaging/messaging_templated_example.dart`, now
+  covers that layer in twelve steps. A request carries a template key rather
+  than a body, and the type enforces it — `TomEmailRequest` has no `subject`
+  field, so a user-facing string cannot be passed even by accident. Rendering
+  resolves the three sub-keys, in the recipient's locale, with a key the second
+  bundle lacks falling back to the default rather than rendering blank, and a
+  missing sub-key throwing at render — before the outbox is touched — while
+  naming the exact resource key that is absent. `toPrincipal` derives the
+  address, display name and locale that every send site would otherwise
+  re-derive. SMS is the same rule with one sub-key plus the concern email has no
+  equivalent of: a single accented character moves a message from GSM-7 to
+  UCS-2 and halves the room in a segment, so a *parameter* can change what a
+  message costs while its template did not, and the service cap refuses the
+  over-long message at render rather than on next month's invoice. The last
+  four steps are the seam: both services queue on one outbox, one tick delivers
+  both, and only then does a vendor appear — a `TomSmsTransport` with a
+  `TomFieldMappedSmsProtocol`, driven over a scripted channel so that one dead
+  number among two can be shown to be a partial delivery rather than a failure,
+  and a rate limit to be thrown for retry rather than recorded as a rejection.
+  A real gateway will produce neither on demand, which is why the seam exists.
+
+  `doc/messaging.md` gained the `Verification` section it lacked, naming the
+  four suites that cover the module and both examples with what each step shows,
+  so a reader asking what substantiates the document has an answer in it. That
+  settles messaging's entry in `api_reference_coverage_test.dart`'s attribution
+  quarantine, which is now dropped — the module is checked rather than skipped.
+  The "runs green" guard in `test/messaging_test.dart` was made a function taking
+  the example path and its step count, since there are now two examples needing
+  the identical pair of tests; both are run under plain `dart run`, both must
+  exit 0 with every numbered step reported, and both must state their
+  expectations through a throwing `check` rather than `assert`, which `dart run`
+  compiles out.
+
 - **A messaging completion-document sample claimed output `toString()` does not
   emit (tcinc579).** The segmentation passage printed the object —
   `print(TomSmsSegmentation.of('Your code is 123456.'))` — and annotated it

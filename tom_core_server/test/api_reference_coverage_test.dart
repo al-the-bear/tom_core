@@ -2372,7 +2372,6 @@ const Set<String> _verificationPendingAttribution = {
   'file_storage',
   'healthcheck',
   'little_things',
-  'messaging',
   'object_persistence',
   'server',
   'transactions',

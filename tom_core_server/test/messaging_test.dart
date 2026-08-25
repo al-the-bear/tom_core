@@ -1799,11 +1799,23 @@ void main() {
     });
   });
 
-  group('The example runs green', () {
-    const examplePath = 'example/messaging/messaging_example.dart';
+  // The module ships two examples — the hand-composed substrate and the
+  // templated services above it — and both need the same two guarantees, so
+  // the group is written once and instantiated twice rather than copied.
+  _exampleRunsGreen('example/messaging/messaging_example.dart', steps: 12);
+  _exampleRunsGreen(
+    'example/messaging/messaging_templated_example.dart',
+    steps: 12,
+  );
+}
 
+/// Declares the guard group for one runnable example: it exits 0 under the
+/// command its own header documents, every numbered step reports, and its
+/// expectations are stated in a way that survives that command.
+void _exampleRunsGreen(String examplePath, {required int steps}) {
+  group('${examplePath.split('/').last} runs green', () {
     test('under exactly the command its header documents', () async {
-      // The example is the module's worked demonstration and the source of the
+      // An example is the module's worked demonstration and the source of the
       // completion document's snippets, so it drifts silently unless something
       // runs it. Run it the way a reader would — plain `dart run`, no extra
       // flags — and require the exit code its own checks produce.
@@ -1821,11 +1833,11 @@ void main() {
       //
       // Anchored to the start of a line rather than matched as a bare
       // substring, which is where this differs from the same guard in
-      // `cache_test.dart`. That example has nine steps; this one has twelve,
+      // `cache_test.dart`. That example has nine steps; these have twelve,
       // and `'1. '` occurs inside `'11. '` — so a substring test would accept
       // a run in which step 1 never printed.
       final out = result.stdout as String;
-      for (var step = 1; step <= 12; step++) {
+      for (var step = 1; step <= steps; step++) {
         expect(
           out,
           matches(RegExp('^$step\\. ', multiLine: true)),
@@ -1839,10 +1851,11 @@ void main() {
       // checks nothing exits 0 too. `dart run` leaves assertions disabled —
       // that is what `--enable-asserts` is for — so an `assert` in the example
       // is compiled out under the very command the test above uses, and the
-      // run stays green with every expectation violated. That was this file's
-      // actual state: step 9 asserted a delivery count of 1 while the run
-      // printed 0. The example therefore states its expectations through a
-      // throwing helper, and this guards against quietly reverting them.
+      // run stays green with every expectation violated. That was
+      // `messaging_example.dart`'s actual state: step 9 asserted a delivery
+      // count of 1 while the run printed 0. Both examples therefore state
+      // their expectations through a throwing helper, and this guards against
+      // quietly reverting them.
       final source = File(examplePath).readAsStringSync();
       expect(
         source,

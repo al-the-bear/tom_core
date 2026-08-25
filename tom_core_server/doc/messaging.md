@@ -42,6 +42,7 @@ lets it be made on the merits rather than around a missing substrate.
   - [The shared base](#the-shared-base)
   - [Two caps, deliberately](#two-caps-deliberately)
   - [Addressing a principal](#addressing-a-principal)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -863,6 +864,68 @@ diagnose.
 A principal reachable by neither raises at composition, where the caller still
 knows *which user* it was reaching. A transport discovering it later can only
 report that a number was empty.
+
+## Verification
+
+Four suites cover the module, split along the same seam this document is: the
+substrate below the services, and the templated layer above it.
+
+`test/messaging_test.dart` covers the substrate — the message shape and its
+JSON round-trip, the MIME document, the router, the three stand-in transports,
+the SMTP line protocol under each security mode, the transient/permanent
+classification described in
+[The One Distinction a Transport Must Get Right](#the-one-distinction-a-transport-must-get-right),
+and the outbox's queueing and retry. `test/sms_transport_test.dart` covers the
+gateway: the field mapping, the two layers of classification, and each branch a
+real gateway would need a bad number or a rate limit to produce.
+`test/email_service_test.dart` and `test/sms_service_test.dart` cover the
+templated services — sub-key resolution, locale selection and fallback, the
+failure that fires before anything is queued, and the segment budget.
+
+Two examples run the module end to end, one per layer.
+
+`example/messaging/messaging_example.dart` is the substrate, in twelve numbered
+steps: composing a message and reading its channel; registering a channel the
+enum never named; the envelope's three recipient kinds; the
+`multipart/alternative` document a text-plus-HTML message produces; capture by
+the memory transport; the no-op transport's `discarded` outcome; routing by
+channel; the permanence marker deciding whether the scheduler gives up;
+`send` returning before delivery; two sends sharing one run; the file
+transport's output; and settings resolved from configuration.
+
+`example/messaging/messaging_templated_example.dart` is the layer above it,
+also in twelve steps: a request that carries a template key rather than a body;
+the three sub-keys of an email; the same key rendered in `de`, and a key the
+`de` bundle lacks falling back rather than rendering blank; a missing sub-key
+naming the exact resource key it wanted; `toPrincipal` deriving address,
+display name and locale; the single sub-key an SMS has; one accented character
+moving a message from GSM-7 to UCS-2 and halving the room in a segment; the
+service cap refusing an over-long message at render; both services queueing on
+one outbox; one tick delivering both; a gateway accepting a submission and its
+id arriving back on the receipt; and one dead number among two being a partial
+delivery rather than a failure, with a rate limit thrown for retry instead.
+
+```bash
+dart run example/messaging/messaging_example.dart
+dart run example/messaging/messaging_templated_example.dart
+```
+
+`test/messaging_test.dart` runs both under precisely those commands and requires
+each to exit 0 having printed all twelve of its steps, so the transcripts in the
+files are what the module currently does rather than what it did when they were
+written. Their expectations are written as a local `check(bool, String)` that
+throws, not as `assert`: `dart run` leaves assertions disabled — that is what
+its `--enable-asserts` flag is for — so an `assert` would compile out under the
+very command documented above, leaving an example that prints a plausible
+transcript and exits 0 with every expectation in it violated. A second test per
+example holds that line, failing if `assert(` reappears.
+
+Neither example opens a socket. The templated one drives a real
+`TomSmsTransport` through the injectable channel described in
+[Describing a gateway](#describing-a-gateway), against a client whose answers
+are scripted — which is the only way steps 11 and 12 can show an
+invalid-number rejection and a rate limit at all, since a real gateway will not
+produce either on demand.
 
 ## Core Components
 
