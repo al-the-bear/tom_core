@@ -10,6 +10,12 @@ import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
+// The example is imported, not merely executed, so that the helper carrying
+// every one of its expectations can be tested for the one property that makes
+// those expectations real: that it throws. Prefixed because the example's own
+// fixtures share names with this file's.
+import '../example/export/export_example.dart' as example;
+
 /// Export-rendering tests: the tabular envelope, three renderers, two channels.
 ///
 /// Every assertion here is made on the **bytes that leave the renderer**, not
@@ -1567,46 +1573,50 @@ void main() {
         expect(absent.existsSync(), isFalse);
       });
 
-      test('the first write creates it, and the key\'s directories with it',
-          () async {
-        final store = TomDirectoryExportStore(absent);
-        await store.store(
-          key: '2026/07/28/sales.csv',
-          bytes: Stream.value(utf8.encode('a,b\n')),
-          mediaType: 'text/csv',
-        );
-        expect(absent.existsSync(), isTrue);
-        expect(
-          File('${absent.path}/2026/07/28/sales.csv').existsSync(),
-          isTrue,
-        );
-      });
+      test(
+        'the first write creates it, and the key\'s directories with it',
+        () async {
+          final store = TomDirectoryExportStore(absent);
+          await store.store(
+            key: '2026/07/28/sales.csv',
+            bytes: Stream.value(utf8.encode('a,b\n')),
+            mediaType: 'text/csv',
+          );
+          expect(absent.existsSync(), isTrue);
+          expect(
+            File('${absent.path}/2026/07/28/sales.csv').existsSync(),
+            isTrue,
+          );
+        },
+      );
 
-      test('the three read paths report absence rather than creating it',
-          () async {
-        // Deliberate, and the half of the behaviour a caller is most likely to
-        // be surprised by: asking a store whether it holds something is a
-        // question, and a question should not have a filesystem side effect.
-        final store = TomDirectoryExportStore(absent);
+      test(
+        'the three read paths report absence rather than creating it',
+        () async {
+          // Deliberate, and the half of the behaviour a caller is most likely to
+          // be surprised by: asking a store whether it holds something is a
+          // question, and a question should not have a filesystem side effect.
+          final store = TomDirectoryExportStore(absent);
 
-        expect(await store.exists('sales.csv'), isFalse);
-        expect(absent.existsSync(), isFalse);
+          expect(await store.exists('sales.csv'), isFalse);
+          expect(absent.existsSync(), isFalse);
 
-        expect(await store.delete('sales.csv'), isFalse);
-        expect(absent.existsSync(), isFalse);
+          expect(await store.delete('sales.csv'), isFalse);
+          expect(absent.existsSync(), isFalse);
 
-        await expectLater(
-          _collect(store.open('sales.csv')),
-          throwsA(
-            isA<TomExportException>().having(
-              (e) => e.key,
-              'key',
-              'export.store.not_found',
+          await expectLater(
+            _collect(store.open('sales.csv')),
+            throwsA(
+              isA<TomExportException>().having(
+                (e) => e.key,
+                'key',
+                'export.store.not_found',
+              ),
             ),
-          ),
-        );
-        expect(absent.existsSync(), isFalse);
-      });
+          );
+          expect(absent.existsSync(), isFalse);
+        },
+      );
 
       test('a root that disappears after construction comes back', () async {
         // What lazy creation buys over doing it once in the constructor: a
@@ -2199,6 +2209,76 @@ void main() {
       final long = TomBlobStore.sanitiseKeySegment('n' * 600);
       expect(long.length, 600);
       expect(TomBlobStore.isValidKey(long), isFalse);
+    });
+  });
+
+  group('The example runs green', () {
+    const examplePath = 'example/export/export_example.dart';
+
+    test('under exactly the command its header documents', () async {
+      // The example is the module's worked demonstration, so it drifts
+      // silently unless something runs it. Run it the way a reader would —
+      // plain `dart run`, no extra flags — and require the exit code its own
+      // checks produce.
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        examplePath,
+      ]);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'example failed: ${result.stdout}${result.stderr}',
+      );
+      // A crash partway would also exit 0 if it were swallowed, so pin that
+      // every numbered step actually reported. Matched at the start of a line
+      // rather than anywhere in the output, because `contains('1. ')` is also
+      // satisfied by `11. ` and would stop being a check for step 1.
+      final lines = const LineSplitter().convert(result.stdout as String);
+      for (var step = 1; step <= 13; step++) {
+        expect(
+          lines.any((line) => line.startsWith('$step. ')),
+          isTrue,
+          reason: 'step $step reported nothing',
+        );
+      }
+    });
+
+    test('with its expectations checked rather than asserted', () async {
+      // The test above cannot see the difference on its own: an example that
+      // checks nothing exits 0 too. `dart run` leaves assertions disabled —
+      // that is what `--enable-asserts` is for — so an `assert` in the example
+      // is compiled out under the very command the test above uses, and the
+      // run stays green with every expectation in it violated. This example
+      // spent its whole life in that state: twenty-six `assert`s, none of
+      // which ran under the command its own header gives. They are now a
+      // throwing helper, and this guards the regression of reverting them.
+      final source = File(examplePath).readAsStringSync();
+      expect(
+        source,
+        isNot(contains('assert(')),
+        reason: 'an assert in the example does not run under `dart run`',
+      );
+      expect(source, contains('void check(bool ok, String expectation)'));
+    });
+
+    test('through a helper that fails the run rather than narrating it', () {
+      // The two tests above are both satisfied by a `check` that prints. That
+      // is not a hypothetical: it is the *same* defect as the asserts, in a
+      // shape the ban on `assert(` cannot see — every call site intact, every
+      // expectation stated, and the run green regardless of whether any of
+      // them hold. So this asserts the helper's behaviour rather than its
+      // spelling, which is also why the example is imported at all.
+      expect(
+        () => example.check(false, 'a violated expectation'),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('a violated expectation'),
+          ),
+        ),
+      );
+      expect(() => example.check(true, 'a held expectation'), returnsNormally);
     });
   });
 }

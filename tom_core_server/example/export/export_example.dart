@@ -11,16 +11,33 @@
 /// a whole document held. Step 3 proves it — bytes arrive while rows are still
 /// being produced.
 ///
-/// Run with `dart run example/export/export_example.dart`.
-/// The same behaviour is covered by `test/export_test.dart`.
+/// Run with `dart run example/export/export_example.dart`. Every step checks
+/// its own result and the run fails when one does not hold, so a green run is a
+/// verification and not just a transcript. `test/export_test.dart` runs this
+/// file under that exact command and requires it to exit 0, which is what keeps
+/// the checks honest once nobody runs the example by hand.
 library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
 
 // ignore_for_file: avoid_print
+
+/// Throws unless [ok] holds, naming the expectation that failed.
+///
+/// Deliberately not `assert`: `dart run` leaves assertions **disabled** — that
+/// is what its `--enable-asserts` flag is for — so an `assert` here compiles
+/// out under the very command this file's header gives. An example whose
+/// checks vanish under its own documented invocation is worse than one with no
+/// checks at all, because it still prints a plausible transcript and still
+/// exits 0 while every expectation in it is violated. A plain `if`/`throw`
+/// holds however the file is run.
+void check(bool ok, String expectation) {
+  if (!ok) throw StateError('export example failed: $expectation');
+}
 
 /// The columns every step below renders, typed as the query layer types them.
 List<TomTabularColumn> columns() => [
@@ -66,7 +83,10 @@ Future<void> run() async {
     '${result.sections.length} section(s), '
     '${result.sections.first.columns.length} columns',
   );
-  assert(result.metadata['Filter'] == 'region = EU');
+  check(
+    result.metadata['Filter'] == 'region = EU',
+    'metadata travels with the result',
+  );
 
   // 2. One abstraction, three formats. Each renderer answers the same four
   //    questions and returns the same kind of stream, which is what makes the
@@ -79,7 +99,10 @@ Future<void> run() async {
       'streams=${renderer.streamsRows}  ${renderer.mediaType}',
     );
   }
-  assert(formats.formatIds.toSet().containsAll({'csv', 'xlsx', 'pdf'}));
+  check(
+    formats.formatIds.toSet().containsAll({'csv', 'xlsx', 'pdf'}),
+    'the standard registry ships csv, xlsx and pdf',
+  );
 
   // 3. Streaming, demonstrated rather than asserted in prose. Rows are fed one
   //    at a time and the first bytes are already out before the row stream is
@@ -99,7 +122,7 @@ Future<void> run() async {
   rows.add(const TomTabularRow(['Widget', 1.0, null, true]));
   await Future<void>.delayed(Duration.zero);
   print('3. bytes out before close    : ${chunks.length}');
-  assert(chunks.isNotEmpty);
+  check(chunks.isNotEmpty, 'bytes are out before the row stream is closed');
   await rows.close();
   await done;
 
@@ -116,7 +139,7 @@ Future<void> run() async {
     '${csv.replaceAll('\r\n', ' | ').trim()}',
   );
   //    A comma inside a value is quoted, not escaped away.
-  assert(csv.contains('"Gadget, large"'));
+  check(csv.contains('"Gadget, large"'), 'a comma in a value is quoted');
 
   // 5. A cell beginning `=`, `+`, `-` or `@` is a *formula* to a spreadsheet:
   //    an exported value someone else supplied becoming code on the machine
@@ -149,7 +172,10 @@ Future<void> run() async {
     '5. formula neutralised       : '
     '${injectedText.contains('"\t=1+1",-7')}',
   );
-  assert(injectedText.contains('"\t=1+1",-7'));
+  check(
+    injectedText.contains('"\t=1+1",-7'),
+    'a formula is tab-guarded and a negative number is not',
+  );
 
   // 6. XLSX is a ZIP of XML parts, which is the one office format producible
   //    strictly front-to-back — inline strings instead of a shared-strings
@@ -160,7 +186,7 @@ Future<void> run() async {
     '6. xlsx bytes                : ${xlsx.length} '
     '(starts with "PK": ${xlsx[0] == 0x50 && xlsx[1] == 0x4B})',
   );
-  assert(xlsx[0] == 0x50 && xlsx[1] == 0x4B);
+  check(xlsx[0] == 0x50 && xlsx[1] == 0x4B, 'the xlsx output is a ZIP');
 
   // 7. PDF is the exception, and says so. Its file structure ends with a table
   //    of byte offsets into everything before it, so no conforming writer can
@@ -172,7 +198,10 @@ Future<void> run() async {
     '7. pdf bytes                 : ${pdf.length} '
     '(streams rows: ${formats.rendererFor('pdf').streamsRows})',
   );
-  assert(utf8.decode(pdf.take(5).toList()) == '%PDF-');
+  check(
+    utf8.decode(pdf.take(5).toList()) == '%PDF-',
+    'the pdf output carries the PDF signature',
+  );
 
   //    A width is a count of characters, in every format — the one unit that
   //    says something about the data rather than about one output. Only
@@ -189,18 +218,28 @@ Future<void> run() async {
     '   column widths (chars)     : '
     '${columns().map((c) => '${c.label}=${c.effectiveWidth}').join(' ')}',
   );
-  assert(columns()[0].effectiveWidth == 24); // stated
-  assert(columns()[2].effectiveWidth == 23); // inferred from `timestamp`
+  check(columns()[0].effectiveWidth == 24, 'a stated width is kept');
+  check(
+    columns()[2].effectiveWidth == 23,
+    'an unstated width is inferred from the column type',
+  );
 
+  var rowLimitKey = '';
   try {
     await const TomPdfRenderer(rowLimit: 1).render(salesResult()).drain<void>();
   } on TomExportException catch (e) {
+    rowLimitKey = e.key;
     print(
       '   over the row limit        : ${e.key} '
       '-> use ${e.parameters?['formats']}',
     );
-    assert(e.key == 'export.pdf.row_limit_exceeded');
   }
+  // Outside the `catch`, so that *not throwing* fails too — a silently
+  // shortened report is the failure this limit exists to prevent.
+  check(
+    rowLimitKey == 'export.pdf.row_limit_exceeded',
+    'the pdf renderer refuses a result past its row limit',
+  );
 
   // 8. The registry is open. An application adds the fixed-width extract a
   //    partner insists on without the export service learning about it, and
@@ -209,25 +248,34 @@ Future<void> run() async {
   formats.register(const TomCsvRenderer(fieldSeparator: ';'));
   final semicolons = utf8.decode(await collect(formats, salesResult(), 'csv'));
   print('8. re-registered csv         : ${semicolons.split('\r\n').first}');
-  assert(semicolons.contains('Product;Amount'));
+  check(
+    semicolons.contains('Product;Amount'),
+    're-registering an id replaces the renderer under it',
+  );
 
+  var unknownFormatKey = '';
   try {
     formats.rendererFor('ods');
   } on TomExportException catch (e) {
+    unknownFormatKey = e.key;
     print(
       '   unknown format            : ${e.key} '
       '(have ${e.parameters?['available']})',
     );
-    assert(e.key == 'export.format.unknown');
   }
+  check(
+    unknownFormatKey == 'export.format.unknown',
+    'an unregistered format id is refused by name',
+  );
 
   // 9. Storage is deliberately the narrowest interface an export needs — put a
   //    stream under a key, read it back, ask, delete. That narrowness is what
   //    lets `TomBlobExportStore` put every `file_storage` backend behind the
   //    same four methods, in four delegating lines, without anything that
-  //    renders or delivers an export knowing which backend ran. The two own
-  //    backends below remain because an export module that works with no
-  //    storage configured at all is worth the hundred lines.
+  //    renders or delivers an export knowing which backend ran. The module's
+  //    two own backends remain because an export module that works with no
+  //    storage configured at all is worth the hundred lines. Step 10 runs one
+  //    export through all three.
   final store = TomMemoryExportStore();
   final service = TomExportService(store: store);
 
@@ -247,8 +295,11 @@ Future<void> run() async {
     '9. stored                    : ${stored.key} '
     '(${stored.byteCount} bytes, ${stored.mediaType})',
   );
-  assert(stored.key == '2026/07/28/Q3_sales.csv');
-  assert(await store.exists(key));
+  check(
+    stored.key == '2026/07/28/Q3_sales.csv',
+    'a partitioned key is a date path and a sanitised name',
+  );
+  check(await store.exists(key), 'the stored export is there under its key');
 
   // A key becomes a path in the obvious backend, so one built from a report
   // title is a directory traversal waiting to happen. Two defences, and the
@@ -262,15 +313,102 @@ Future<void> run() async {
     '   traversal neutralised     : '
     '${service.keyFor('../../etc/passwd', 'csv')}',
   );
-  assert(service.keyFor('../../etc/passwd', 'csv') == '.._.._etc_passwd.csv');
+  check(
+    service.keyFor('../../etc/passwd', 'csv') == '.._.._etc_passwd.csv',
+    'a traversal in a report name is neutralised rather than refused',
+  );
+  var invalidKeyKey = '';
   try {
     TomExportStore.validateKey('../../etc/passwd');
   } on TomExportException catch (e) {
+    invalidKeyKey = e.key;
     print('   traversal rejected        : ${e.key}');
-    assert(e.key == 'export.store.invalid_key');
+  }
+  check(
+    invalidKeyKey == 'export.store.invalid_key',
+    'a traversal in an assembled key is refused',
+  );
+
+  // 10. The seam, run rather than described. One rendered report under one
+  //     key, through three backends — the module's own two and the adaptor
+  //     that stands in for every `file_storage` backend there is. The service
+  //     is constructed the same way each time and nothing above this line
+  //     changes, which is the whole of what the narrow interface buys.
+  //
+  //     (`example/file_storage/` reaches the same adaptor from the other side:
+  //     raw bytes through the blob API, no renderer and no service. Here the
+  //     point is that the *service* cannot tell which backend it was given.)
+  //
+  //     The directory store is handed a path that does not exist: it is
+  //     configured before it is a directory, and the first `store` creates the
+  //     root and the key's `2026/07/28` together. That matters because the
+  //     alternative — create the root at construction — makes configuring an
+  //     export store a filesystem write, which a config parse has no business
+  //     doing.
+  final blobs = TomMemoryBlobStore();
+  final scratch = Directory.systemTemp.createTempSync('tom_export_example_');
+  final exportRoot = Directory('${scratch.path}/exports');
+  try {
+    print('10. one export, three stores :');
+    check(
+      !exportRoot.existsSync(),
+      'the directory store is configured before its root exists',
+    );
+    for (final backend in <TomExportStore>[
+      TomMemoryExportStore(),
+      TomDirectoryExportStore(exportRoot),
+      TomBlobExportStore(blobs, keyPrefix: 'exports'),
+    ]) {
+      final written = await TomExportService(
+        store: backend,
+      ).storeAs(salesResult(), 'csv', key: key);
+      final read = await backend.open(key).expand((chunk) => chunk).toList();
+      print(
+        '    ${backend.runtimeType.toString().padRight(24)}'
+        // The location's *scheme*, not the URI: one is this machine's own
+        // path. What differs across backends is whether an address is offered
+        // at all — a store with none legitimately reports null.
+        '${written.byteCount} bytes, reads back ${read.length}, '
+        'location ${written.location?.scheme ?? '(none)'}',
+      );
+      check(written.key == key, '$backend records the key it was given');
+      check(
+        read.length == written.byteCount,
+        '$backend reads back what it counted',
+      );
+      check(await backend.exists(key), '$backend holds the export it wrote');
+    }
+
+    //     What the directory store made of the key while the loop was not
+    //     looking: the slashes in `2026/07/28/…` are real directories, so a
+    //     retention rule can be a `find`, and two reports from the same day
+    //     land beside each other rather than in one flat pile of names.
+    check(
+      File('${exportRoot.path}/$key').existsSync(),
+      'the key becomes a path under a root the first store created',
+    );
+
+    //     The prefix is the one thing that does not travel back — which is why
+    //     the loop above could check one key against all three. It exists
+    //     because an export store is usually pointed at a bucket holding other
+    //     things, and namespacing them makes a retention rule expressible as a
+    //     prefix. The blob store therefore sees `exports/…` while the
+    //     `TomStoredExport` records what the caller passed: reporting the
+    //     prefixed key would hand back something `open` does not accept.
+    print('    key in the blob store   : ${blobs.keys.single}');
+    check(
+      blobs.keys.single == 'exports/$key',
+      'the prefix reaches the blob store and nothing else does',
+    );
+    check(
+      await blobs.exists('exports/$key'),
+      'the prefixed key is the one the blob store answers for',
+    );
+  } finally {
+    scratch.deleteSync(recursive: true);
   }
 
-  // 10. The apiResponse channel: the renderer's stream *is* the response body.
+  // 11. The apiResponse channel: the renderer's stream *is* the response body.
   //     No Content-Length, because the length is not known until the last row
   //     and the only alternative to omitting it is buffering the document to
   //     measure it. A million-row CSV starts arriving while the query runs.
@@ -279,13 +417,16 @@ Future<void> run() async {
     'xlsx',
     baseName: reportName,
   );
-  print('10. content-type             : ${response.headers['content-type']}');
+  print('11. content-type             : ${response.headers['content-type']}');
   print(
     '    disposition             : '
     '${response.headers['content-disposition']}',
   );
   print('    content-length          : ${response.headers['content-length']}');
-  assert(response.headers['content-length'] == null);
+  check(
+    response.headers['content-length'] == null,
+    'no Content-Length, because measuring it would mean buffering',
+  );
 
   //     The same name on both channels, spelled two ways and refused by
   //     neither. A `Content-Disposition` filename is a Latin-1 quoted string
@@ -293,30 +434,42 @@ Future<void> run() async {
   //     space survives on one side and becomes `_` on the other. What must not
   //     differ is which names are *accepted* — `keyFor` used to throw on this
   //     one while `respondWith` served it.
-  assert(response.headers['content-disposition']!.contains('"Q3 sales.xlsx"'));
-  assert(service.keyFor(reportName, 'xlsx') == 'Q3_sales.xlsx');
+  check(
+    response.headers['content-disposition']!.contains('"Q3 sales.xlsx"'),
+    'the space survives into the download name',
+  );
+  check(
+    service.keyFor(reportName, 'xlsx') == 'Q3_sales.xlsx',
+    'and the same name is accepted as a key, spelled with an underscore',
+  );
 
-  // 11. A file name reaches that header from a report title, which reaches it
+  // 12. A file name reaches that header from a report title, which reaches it
   //     from a user. A quote or a newline in it would end the parameter and
   //     start another header — the download equivalent of an injection.
   print(
-    '11. sanitised               : '
+    '12. sanitised               : '
     '"${TomExportService.sanitiseFileName('a".csv\r\nX-Evil: 1')}"',
   );
-  assert(
+  check(
     !TomExportService.sanitiseFileName('a".csv\r\nX-Evil: 1').contains('"'),
+    'a quote cannot close the filename parameter',
   );
 
-  // 12. Storing without a configured store is a *configuration* error and says
+  // 13. Storing without a configured store is a *configuration* error and says
   //     so. The store is optional because a server that only streams exports
   //     back through its API never needs one, and requiring it would force a
   //     filesystem decision on a deployment with no use for it.
+  var noStoreKey = '';
   try {
     await TomExportService().storeAs(salesResult(), 'csv', key: 'sales.csv');
   } on TomExportException catch (e) {
-    print('12. no store configured     : ${e.key}');
-    assert(e.key == 'export.service.no_store');
+    noStoreKey = e.key;
+    print('13. no store configured     : ${e.key}');
   }
+  check(
+    noStoreKey == 'export.service.no_store',
+    'storing with no store configured names the configuration fault',
+  );
 }
 
 /// Renders [result] as [format] and gathers the bytes — for printing only.

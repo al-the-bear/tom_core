@@ -74,6 +74,47 @@
 
 ### Fixed
 
+- **The export example's header promised the blob adaptor and the run never
+  constructed one — and the twenty-six checks it did make were compiled out
+  (tcinc532).** The library dartdoc advertised "the storage seam and its adaptor
+  onto the framework's blob store", but every step ran against
+  `TomMemoryExportStore`; `TomBlobExportStore` and `TomDirectoryExportStore`
+  appeared nowhere, although the latter is the backend `doc/export.md` wires into
+  its server example. A new step 10 sends **one rendered report under one key
+  through all three backends** — the service constructed identically each time,
+  nothing above the loop changing — which is what the module's indifference claim
+  actually asserts, and prints `exports/2026/07/28/Q3_sales.csv` reaching the
+  blob store while the returned `TomStoredExport` keeps the caller's unprefixed
+  key, since reporting the prefixed one would hand back something `open` does not
+  accept. The directory store is handed a root that does not yet exist and the
+  run checks it into being, so the "configured before it is a directory" property
+  is exercised rather than described; the temp tree is removed in a `finally`,
+  which is what finally earns the header's "or a filesystem the run does not
+  clean up".
+
+  Writing that step surfaced the larger defect. All twenty-six of the example's
+  expectations were `assert`s, and `dart run` — the command the file's own header
+  gives — leaves assertions **disabled**. The example therefore printed a
+  plausible transcript and exited 0 with every expectation in it unevaluated, the
+  same failure the datasources example carried for a year. They are now the
+  package's throwing `check(condition, expectation)` helper, with the four
+  expected-throw blocks reshaped so that *not* throwing fails too, and a
+  three-test "The example runs green" group in `test/export_test.dart`: the
+  example is executed under exactly `dart run` with each numbered step required
+  to report (matched at line start, because `contains('1. ')` is satisfied by
+  `11. `), the source is required to carry the helper and no `assert(`, and the
+  helper itself is **imported and called**, because a `check` that printed would
+  satisfy both source-shape tests while leaving the run green and every
+  expectation violated. Seven mutations confirm the checks bite: dropping the
+  prefix, pointing the directory store at an existing root, collapsing the loop
+  back to the memory store, returning the prefixed key from the adaptor,
+  reverting one check to an `assert`, emptying the helper, and renaming it.
+
+  `api_reference_coverage_test.dart`'s `_examplesAssertingExpectations`
+  quarantine loses the export entry as a result, which its own meta-test
+  required: an exemption with nothing left to suppress turns a checked example
+  back into an unchecked one. Fifteen examples remain in it (`tcincb134_ahyc`).
+
 - **`TomColumnType.forValue` was documented as used by adapters that do not
   exist, in a module that argues against ever writing one (tcinc531).** Its
   dartdoc read "used by adapters that infer columns from data rather than being
