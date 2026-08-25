@@ -130,11 +130,12 @@ final Map<String, String> _guardedElsewhere = {
       'trigger, not a table — audit_sql_test.dart compares the file to '
       'auditTrailNoDeleteTriggerDdl',
   _migration('file_storage', '[1]-create_tom_blob.sql'):
-      'descriptor table — framework_schema_test.dart converges the chain '
-      'against blobManifestTable(defaultBlobManifestTable)',
+      'descriptor table — framework_schema_test.dart converges the chain, and '
+      'file_storage_schema_test.dart compares the file to '
+      'blobManifestTableDdl',
   _migration('file_storage', '[2]-create_tom_blob_chunk.sql'):
-      'descriptor table — framework_schema_test.dart converges the chain '
-      'against blobChunkTable(defaultBlobChunkTable)',
+      'descriptor table — framework_schema_test.dart converges the chain, and '
+      'file_storage_schema_test.dart compares the file to blobChunkTableDdl',
   _migration('scheduling', '[1]-create_tom_job_run.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'scheduling_schema_test.dart compares the file to jobRunTableDdl',

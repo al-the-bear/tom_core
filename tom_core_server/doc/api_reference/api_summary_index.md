@@ -365,7 +365,7 @@ surface documented here.
 | `TomBlobStoreOperation` | enum | The four operations a storage failure is reported as. |
 | `defaultBlobManifestTable` / `defaultBlobChunkTable` | top-level | Default table names. |
 | `blobManifestTable` / `blobChunkTable` | top-level | The table descriptors. |
-| `blobManifestTableDdl` / `blobChunkTableDdl` | top-level | The `CREATE TABLE` statements. |
+| `blobManifestTableDdl` / `blobChunkTableDdl` | top-level | The `CREATE TABLE` statements, for a deployment that applies its own schema. |
 
 ### Health Check (`lib/src/tomserver/healthcheck/`)
 

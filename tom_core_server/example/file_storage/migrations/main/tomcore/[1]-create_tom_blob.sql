@@ -2,13 +2,18 @@
 -- (`TomDatabaseBlobStore`).
 --
 -- Creates `tom_blob`: one row per stored blob. This file is the canonical DDL
--- and is kept in sync with the `blobManifestTable()` descriptor in
+-- and is kept in sync with `blobManifestTableDdl()` in
 -- `lib/src/tomserver/file_storage/database_blob_sql.dart`;
--- `test/framework_schema_test.dart` fails if the two drift apart.
+-- `test/file_storage_schema_test.dart` fails if the two drift apart, and
+-- `test/framework_schema_test.dart` additionally replays this chain and
+-- compares the schema it builds against the descriptor.
 --
 -- Apply this file (and its `[2]` sibling) when the application's database user
 -- is not permitted to run DDL, and construct the store with
--- `createSchema: false`. Both tables must live in the same database as each
+-- `createSchema: false`. A store over renamed tables ships no migration of its
+-- own: call `blobManifestTableDdl()` / `blobChunkTableDdl()` with the names you
+-- passed the constructor and apply what they return. Both tables must live in
+-- the same database as each
 -- other: a manifest whose chunks are unreachable is not a degraded store, it is
 -- a store that reports files it cannot serve.
 --

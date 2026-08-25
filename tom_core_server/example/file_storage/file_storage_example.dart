@@ -18,7 +18,8 @@
 ///
 /// Run with `dart run example/file_storage/file_storage_example.dart`.
 /// The same behaviour is covered by `test/file_storage_test.dart`,
-/// `test/file_reference_test.dart` and `test/file_storage_db_test.dart`.
+/// `test/file_reference_test.dart`, `test/file_storage_schema_test.dart` and
+/// `test/file_storage_db_test.dart`.
 library;
 
 import 'dart:convert';
@@ -28,6 +29,17 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'package:yaml/yaml.dart';
 
 // ignore_for_file: avoid_print
+
+/// Fails the run when [ok] is false, naming the [expectation] that did not
+/// hold.
+///
+/// Deliberately not `assert`, which `dart run` compiles out — under the very
+/// command this file's header gives, an asserting example still prints a
+/// plausible transcript and still exits 0 with every expectation in it
+/// violated. A plain `if`/`throw` holds however the file is run.
+void check(bool ok, String expectation) {
+  if (!ok) throw StateError('file storage example failed: $expectation');
+}
 
 /// A payload of [count] bytes, delivered in 64 KiB events — a stand-in for a
 /// socket or a file read, neither of which hands over the whole thing at once.
@@ -174,6 +186,29 @@ archive:
   //     can tell "removed" from "already gone" without a second round trip.
   print('11. delete existing         : ${await exports.delete(export.key)}');
   print('    delete again            : ${await exports.delete(export.key)}');
+
+  // 12. The database backend is the one that needs a schema, and a deployment
+  //     whose credential may not run DDL has to apply that schema itself. For
+  //     the default table names the two files in
+  //     `example/file_storage/migrations/main/tomcore/` are exactly it; for a
+  //     store constructed with `manifestTable:` / `chunkTable:` there is no
+  //     shipped file, and these two functions are where its DDL comes from.
+  //     Construct such a store with `createSchema: false` and apply what they
+  //     return.
+  final manifestDdl = blobManifestTableDdl('archive_blob');
+  print('\n12. DDL for a renamed manifest table:');
+  print(manifestDdl);
+  //     The name is carried through, so two stores can share one schema.
+  check(
+    manifestDdl.contains('CREATE TABLE IF NOT EXISTS archive_blob'),
+    'the manifest DDL names the table it was asked for',
+  );
+  check(
+    blobChunkTableDdl(
+      'archive_blob_chunk',
+    ).contains('PRIMARY KEY (upload_id, chunk_index)'),
+    'the chunk DDL is keyed on the upload, whatever the table is called',
+  );
 
   await TomBlobStoreInfo.closeAll();
 }

@@ -2,9 +2,11 @@
 -- (`TomDatabaseBlobStore`).
 --
 -- Creates `tom_blob_chunk`: many rows per blob, one per chunk. This file is the
--- canonical DDL and is kept in sync with the `blobChunkTable()` descriptor in
+-- canonical DDL and is kept in sync with `blobChunkTableDdl()` in
 -- `lib/src/tomserver/file_storage/database_blob_sql.dart`;
--- `test/framework_schema_test.dart` fails if the two drift apart.
+-- `test/file_storage_schema_test.dart` fails if the two drift apart, and
+-- `test/framework_schema_test.dart` additionally replays this chain and
+-- compares the schema it builds against the descriptor.
 --
 -- Keyed on `(upload_id, chunk_index)` rather than on the storage key, because
 -- the chunks of an in-flight write must be addressable *before* anything commits

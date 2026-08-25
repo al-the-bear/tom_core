@@ -2,6 +2,49 @@
 
 ### Testing
 
+- **`blobManifestTableDdl` and `blobChunkTableDdl` were documented public API
+  with no callers anywhere (tcinc543).** Both were exported, both were in the
+  api reference, and nothing in `lib/`, `test/` or `example/` called either, so
+  the reference described a surface no test would notice breaking. The obvious
+  reading was that they were dead and should go — and the evidence says the
+  opposite. There are nine such helpers across four modules and six are live
+  and heavily used (11, 9, 7, 7, 5 and 5 references); removing the file-storage
+  pair would have left one module unable to answer a question the other three
+  answer. That question is a real one: a store constructed with `manifestTable:`
+  or `chunkTable:` set to something else ships no reference migration, so a
+  deployment whose credential may not run DDL has nowhere but these two
+  functions to get its schema from. What file storage was missing was the
+  *guard* its siblings have, not the surface.
+
+  `test/file_storage_schema_test.dart` adds it: each shipped migration compared
+  against the text the corresponding function renders, plus what the schema
+  claims — `storage_key` exactly as wide as `TomBlobStore.maxKeyLength`,
+  `file_name` as the one nullable column, `stored_at` as a plain `DATETIME`
+  rather than the scheduler's `DATETIME(6)`, chunks keyed on the upload rather
+  than the blob, and `chunk_data` as text because the driver decodes every
+  column into a `String`.
+
+  This does not duplicate `framework_schema_test.dart`, which replays the chain
+  and compares the schema it *arrives at*. That check is deliberately blind to
+  how a statement is spelled, and the mutation run made the gap concrete:
+  narrowing `storage_key` to `VARCHAR(255)` and dropping `file_name`'s
+  nullability both leave convergence green. A spelling is what a deployment
+  copies, and nothing had been measuring it.
+
+  Six mutations confirm the guard bites. Each helper rendering the *other*
+  table's DDL is killed separately, because a suite comparing only one file
+  would catch one and pass the other. Deleting the new suite is the control: it
+  leaves everything else green, which is what "no callers anywhere" means when
+  it is measured rather than asserted.
+
+  `normaliseSql` and `readMigration` moved into `test/fixtures/sql_text.dart`;
+  they had been written out twice and were about to be written a third time.
+  The extraction has its own cost — one function now decides what "the same
+  statement" means for three modules, and a version returning the empty string
+  would turn nine assertions into `'' == ''` with every suite still green — so
+  `test/sql_text_test.dart` guards it, the load-bearing case being that two
+  different statements stay different.
+
 - **No test had ever read an `Access-Control` header off a response
   (tcinc519).** The one test touching the preflight path sent an `OPTIONS` and
   asserted `inInclusiveRange(200, 299)`, which did not check what its caption

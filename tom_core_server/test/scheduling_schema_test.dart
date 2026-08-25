@@ -13,46 +13,33 @@
 /// an index in production — is invisible until it is expensive.
 library;
 
-import 'dart:io';
-
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
-/// Strips SQL comments and collapses whitespace, so the comparison is about the
-/// statement rather than about how it was laid out or documented.
-String _normalise(String sql) => sql
-    .split('\n')
-    .map((line) => line.trim())
-    .where((line) => line.isNotEmpty && !line.startsWith('--'))
-    .join(' ')
-    .replaceAll(RegExp(r'\s+'), ' ')
-    .replaceAll(RegExp(r';\s*$'), '')
-    .trim();
+import 'fixtures/sql_text.dart';
 
-String _migration(String basename) => File(
-  'example/scheduling/migrations/main/tomcore/$basename',
-).readAsStringSync();
+String _migration(String basename) => readMigration('scheduling', basename);
 
 void main() {
   group('scheduling migration files match the shipped DDL', () {
     test('the job queue migration is the DDL the store creates', () {
       expect(
-        _normalise(_migration('[1]-create_tom_job_run.sql')),
-        _normalise(jobRunTableDdl(defaultJobRunTable)),
+        normaliseSql(_migration('[1]-create_tom_job_run.sql')),
+        normaliseSql(jobRunTableDdl(defaultJobRunTable)),
       );
     });
 
     test('the lease migration is the DDL the lock creates', () {
       expect(
-        _normalise(_migration('[2]-create_tom_lease.sql')),
-        _normalise(leaseTableDdl(defaultLeaseTable)),
+        normaliseSql(_migration('[2]-create_tom_lease.sql')),
+        normaliseSql(leaseTableDdl(defaultLeaseTable)),
       );
     });
 
     test('the roll-call migration is the DDL the node table creates', () {
       expect(
-        _normalise(_migration('[3]-create_tom_scheduler_node.sql')),
-        _normalise(schedulerNodeTableDdl(defaultSchedulerNodeTable)),
+        normaliseSql(_migration('[3]-create_tom_scheduler_node.sql')),
+        normaliseSql(schedulerNodeTableDdl(defaultSchedulerNodeTable)),
       );
     });
 

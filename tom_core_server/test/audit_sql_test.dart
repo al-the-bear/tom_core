@@ -19,44 +19,34 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
-/// Strips SQL comments and collapses whitespace, so the comparison is about the
-/// statement rather than about how it was laid out or documented.
-String _normalise(String sql) => sql
-    .split('\n')
-    .map((line) => line.trim())
-    .where((line) => line.isNotEmpty && !line.startsWith('--'))
-    .join(' ')
-    .replaceAll(RegExp(r'\s+'), ' ')
-    .replaceAll(RegExp(r';\s*$'), '')
-    .trim();
+import 'fixtures/sql_text.dart';
 
-String _migration(String basename) =>
-    File('example/audit/migrations/main/tomcore/$basename').readAsStringSync();
+String _migration(String basename) => readMigration('audit', basename);
 
 void main() {
   group('audit migration files match the shipped DDL', () {
     test('the trail migration is the DDL the sink creates', () {
       expect(
-        _normalise(_migration('[1]-create_tom_audit_trail.sql')),
-        _normalise(auditTrailTableDdl(defaultAuditTrailTable)),
+        normaliseSql(_migration('[1]-create_tom_audit_trail.sql')),
+        normaliseSql(auditTrailTableDdl(defaultAuditTrailTable)),
       );
     });
 
     test('the optional update guard is the trigger the module ships', () {
       expect(
-        _normalise(
+        normaliseSql(
           _migration('[2]-guard_tom_audit_trail_no_update@hardened.sql'),
         ),
-        _normalise(auditTrailNoUpdateTriggerDdl(defaultAuditTrailTable)),
+        normaliseSql(auditTrailNoUpdateTriggerDdl(defaultAuditTrailTable)),
       );
     });
 
     test('the optional delete guard is the trigger the module ships', () {
       expect(
-        _normalise(
+        normaliseSql(
           _migration('[3]-guard_tom_audit_trail_no_delete@immutable.sql'),
         ),
-        _normalise(auditTrailNoDeleteTriggerDdl(defaultAuditTrailTable)),
+        normaliseSql(auditTrailNoDeleteTriggerDdl(defaultAuditTrailTable)),
       );
     });
 

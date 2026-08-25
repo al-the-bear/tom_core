@@ -284,14 +284,25 @@ Both tables are declared **once**, as `TomFrameworkTable` descriptors in
 `database_blob_sql.dart`. The `CREATE TABLE` `ensureSchema()` issues, the chunk
 `INSERT`, the manifest `REPLACE` and the column list of every read are all
 derived from those two declarations, so a column exists in the code in exactly
-one place. Hand-written reference migrations for a deployment whose database
-user may not run DDL ship under
-`example/file_storage/migrations/main/tomcore/`, and
-`test/framework_schema_test.dart` compares them against the descriptors, along
-with the reflected row types and every statement the store issues — see
-[Schema Convergence](db_migration.md#schema-convergence) for what each of those
-comparisons rules out, and for the `db`-tagged variant that makes the same
-comparison against a provisioned `information_schema`.
+one place.
+
+A deployment whose database user may not run DDL applies that schema itself and
+constructs the store with `createSchema: false`. For the default table names the
+statements ship as reference migrations under
+`example/file_storage/migrations/main/tomcore/`. For a store constructed with
+`manifestTable:` or `chunkTable:` set to something else there is no shipped file
+— its schema exists only as what `blobManifestTableDdl()` and
+`blobChunkTableDdl()` return for those names, which is what those two functions
+are for.
+
+`test/framework_schema_test.dart` compares the shipped chain against the
+descriptors, along with the reflected row types and every statement the store
+issues — see [Schema Convergence](db_migration.md#schema-convergence) for what
+each of those comparisons rules out, and for the `db`-tagged variant that makes
+the same comparison against a provisioned `information_schema`. That check is
+about the schema a chain *arrives at*, so it is deliberately blind to how a
+statement is spelled; `test/file_storage_schema_test.dart` compares the spelling,
+which is what a deployment actually copies.
 
 ### S3
 
