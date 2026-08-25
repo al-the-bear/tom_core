@@ -2,6 +2,32 @@
 
 ### Testing
 
+- **`injectQueryParameters` was pinned in OAuth's suite, not in the endpoints
+  suite beside its two siblings (tcinc518).** The three folds are applied in a
+  fixed order by one pipeline — `injectFormFields`, then
+  `injectQueryParameters`, then `injectPathParameters` — but only two of them
+  were tested where that order is legible. The query fold's group lived in
+  `oauth_test.dart`, because the callback was the first endpoint to need it,
+  and every case in it was about the helper rather than about OAuth: a
+  synthetic `/callback` endpoint, never `tomOAuthApi`, whose real mapping is
+  declared in the kernel. The group moved to `endpoints_test.dart` rather than
+  being copied, and gained the two cases the sibling groups already had and it
+  did not: that a query parameter overrides a same-named *body* field — a
+  `putIfAbsent` here would reverse the precedence with every other ordering
+  test still green — and that a mapped parameter the caller simply omitted is
+  not manufactured as a null. Four mutations confirm the group bites: an
+  identity fallback, `putIfAbsent`, binding under the wire name instead of the
+  DTO field name, and dropping the per-parameter null guard each fail exactly
+  the test that claims them. The two early returns are not among them, and
+  cannot be: with an empty mapping the loop iterates nothing and with an empty
+  query every lookup is null, so both are optimisations rather than behaviour.
+  The silent drop of an unmapped query parameter — the module's most
+  mistakable rule — comes from the *absence* of an identity fallback, which is
+  what the first mutation pins. That asymmetry against the path fold is
+  deliberate: a route is the endpoint's own declaration, so binding a capture
+  by its own name is safe, while a query string is whatever a caller chose to
+  append.
+
 - **Nothing had ever switched automatic endpoint protection on (tcinc516).**
   `tcinc504` established which keys protect an endpoint, but every one of its
   ten tests called `checkAutomaticAccess` directly.

@@ -19,7 +19,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -463,10 +462,6 @@ class _FakeAdaptor implements Tom2FAService {
     Tom2FASubmission submission,
   ) async => submission.submitted == expected;
 }
-
-/// A shelf request for [uri], with the route captures [params].
-Request _request(String uri, {Map<String, String> params = const {}}) =>
-    Request('GET', Uri.parse(uri), context: {'shelf_router/params': params});
 
 // =============================================================================
 // TESTS
@@ -3184,55 +3179,17 @@ void main() {
   // ===========================================================================
   // THE PIPELINE BINDING THE CALLBACK NEEDS
   // ===========================================================================
-
-  group('TomEndpointHandler.injectQueryParameters', () {
-    TomEndpoint endpoint(Map<String, String> mapping) =>
-        TomEndpoint(uri: '/callback', urlParameterMapping: mapping);
-
-    test('folds mapped query parameters under their DTO field names', () {
-      final data = <String, dynamic>{};
-      TomEndpointHandler.injectQueryParameters(
-        data,
-        _request('https://s/callback?code=abc&error_description=nope'),
-        endpoint({'code': 'code', 'error_description': 'errorDescription'}),
-      );
-      expect(data, {'code': 'abc', 'errorDescription': 'nope'});
-    });
-
-    // No identity fallback: a query string is whatever a caller chose to
-    // append, so an unmapped parameter must not reach a DTO field.
-    test('ignores query parameters the contract does not name', () {
-      final data = <String, dynamic>{};
-      TomEndpointHandler.injectQueryParameters(
-        data,
-        _request('https://s/callback?code=abc&isAdmin=true'),
-        endpoint({'code': 'code'}),
-      );
-      expect(data, {'code': 'abc'});
-    });
-
-    test(
-      'an endpoint that declares no mapping binds nothing from the query',
-      () {
-        final data = <String, dynamic>{};
-        TomEndpointHandler.injectQueryParameters(
-          data,
-          _request('https://s/callback?code=abc'),
-          endpoint({}),
-        );
-        expect(data, isEmpty);
-      },
-    );
-
-    // The route is the stronger statement, so a path capture wins — which is
-    // what the call order in the pipeline guarantees.
-    test('a path capture of the same name wins over a query parameter', () {
-      final data = <String, dynamic>{};
-      final req = _request('https://s/items/7?id=99', params: {'id': '7'});
-      final ep = endpoint({'id': 'id'});
-      TomEndpointHandler.injectQueryParameters(data, req, ep);
-      TomEndpointHandler.injectPathParameters(data, req, ep);
-      expect(data['id'], '7');
-    });
-  });
+  //
+  // `injectQueryParameters` — the fold that makes `?code=…&state=…` reach the
+  // callback's typed DTO — is pinned in `endpoints_test.dart`, beside the two
+  // sibling folds it is applied with. Its group lived here for a while because
+  // the callback was the first endpoint to need it, but every one of its cases
+  // was about the helper rather than about OAuth, built on a synthetic
+  // `/callback` endpoint rather than on `tomOAuthApi`'s own contract. Keeping
+  // a copy here would have duplicated the helper's group into a suite that
+  // cannot own it.
+  //
+  // The OAuth-specific half of the same guarantee — that the contract declares
+  // the mapping at all, `error_description` rename included — is the kernel's:
+  // `tomOAuthApi` is declared in `oauth_contract.dart`.
 }

@@ -10,6 +10,13 @@ Request _reqWithParams(Map<String, String> params) => Request(
   context: {'shelf_router/params': params},
 );
 
+/// Builds a request for [uri], whose *query string* is what
+/// [TomEndpointHandler.injectQueryParameters] reads, optionally carrying
+/// [params] as shelf_router path captures so the two URL folds can be observed
+/// against one request.
+Request _reqWithQuery(String uri, {Map<String, String> params = const {}}) =>
+    Request('GET', Uri.parse(uri), context: {'shelf_router/params': params});
+
 /// Tests for the reflection-free surface of the endpoints module.
 ///
 /// The router builder ([TomEndpointRouting]) and per-request handler
@@ -518,6 +525,148 @@ void main() {
       // A declared mapping must not manufacture a null field the DTO would then
       // have to tolerate.
       expect(json, {'title': 'x'});
+    });
+  });
+
+  // The query half of the same mapping, and the asymmetry that makes it a
+  // separate helper rather than a second call to the one above: a path capture
+  // binds with or without an entry, a query parameter binds *only* with one.
+  // What differs is whose statement the value is. A route is the endpoint's own
+  // declaration, so binding a capture by its own name is safe; a query string is
+  // whatever a caller chose to append, so an identity fallback here would let
+  // any caller write any field of the request DTO of any endpoint.
+  //
+  // That asymmetry is also the module's most mistakable behaviour: an endpoint
+  // that declares no mapping drops the whole query string in silence, and the
+  // author sees a DTO with a missing value — or, if nothing else binds, an
+  // argument-count failure naming neither the parameter nor the query string.
+  // It is pinned here as a decision rather than left to be rediscovered.
+  group('TomEndpointHandler.injectQueryParameters', () {
+    test('binds a mapped query parameter under its DTO field name', () {
+      const endpoint = TomEndpoint(
+        uri: '/callback',
+        urlParameterMapping: {
+          'code': 'code',
+          'error_description': 'errorDescription',
+        },
+      );
+      final json = <String, dynamic>{};
+      TomEndpointHandler.injectQueryParameters(
+        json,
+        _reqWithQuery(
+          'http://localhost/callback?code=abc&error_description=nope',
+        ),
+        endpoint,
+      );
+      // The rename is the point: a provider's snake_cased spelling stops at the
+      // contract, and the DTO is written in Dart.
+      expect(json, {'code': 'abc', 'errorDescription': 'nope'});
+    });
+
+    test('an endpoint that declares no mapping binds nothing', () {
+      const endpoint = TomEndpoint(uri: '/callback');
+      final json = <String, dynamic>{};
+      TomEndpointHandler.injectQueryParameters(
+        json,
+        _reqWithQuery('http://localhost/callback?code=abc&state=xyz'),
+        endpoint,
+      );
+      // The silent drop, stated outright. There is no identity fallback to fall
+      // back to, so an unmapped endpoint is closed to the query string entirely.
+      expect(json, isEmpty);
+    });
+
+    test('a query parameter the mapping does not name is dropped', () {
+      const endpoint = TomEndpoint(
+        uri: '/callback',
+        urlParameterMapping: {'code': 'code'},
+      );
+      final json = <String, dynamic>{};
+      TomEndpointHandler.injectQueryParameters(
+        json,
+        _reqWithQuery('http://localhost/callback?code=abc&isAdmin=true'),
+        endpoint,
+      );
+      // Per parameter, not per endpoint: naming one does not open the rest.
+      // `isAdmin` is the shape of the risk — a field the DTO really has, which
+      // no caller was invited to set.
+      expect(json, {'code': 'abc'});
+    });
+
+    test('a declared mapping binds nothing when there is no query string', () {
+      const endpoint = TomEndpoint(
+        uri: '/callback',
+        urlParameterMapping: {'code': 'code'},
+      );
+      final json = <String, dynamic>{'title': 'x'};
+      TomEndpointHandler.injectQueryParameters(
+        json,
+        _reqWithQuery('http://localhost/callback'),
+        endpoint,
+      );
+      // Same rule the path fold follows: a declared mapping must not
+      // manufacture a null field the DTO would then have to tolerate.
+      expect(json, {'title': 'x'});
+    });
+
+    test('a mapped parameter the caller omitted is not manufactured', () {
+      const endpoint = TomEndpoint(
+        uri: '/callback',
+        urlParameterMapping: {
+          'code': 'code',
+          'error_description': 'errorDescription',
+        },
+      );
+      final json = <String, dynamic>{};
+      TomEndpointHandler.injectQueryParameters(
+        json,
+        _reqWithQuery('http://localhost/callback?code=abc'),
+        endpoint,
+      );
+      // The same rule as the case above, but reached past both early returns —
+      // the mapping is declared *and* the query string is non-empty, so the
+      // per-parameter null guard is the only thing standing between the DTO and
+      // an `errorDescription: null` it never asked for. This is the ordinary
+      // shape of a successful callback: the error half of the contract is
+      // mapped and simply did not arrive.
+      expect(json, {'code': 'abc'});
+    });
+
+    test('a query parameter overrides a same-named body field', () {
+      const endpoint = TomEndpoint(
+        uri: '/callback',
+        urlParameterMapping: {'code': 'code'},
+      );
+      final json = <String, dynamic>{'code': 'from-body'};
+      TomEndpointHandler.injectQueryParameters(
+        json,
+        _reqWithQuery('http://localhost/callback?code=from-query'),
+        endpoint,
+      );
+      // The fold writes unconditionally, and the pipeline runs it *after*
+      // injectFormFields — so the URL wins over the body here for the same
+      // reason it wins in injectPathParameters. Pinning the write, not just the
+      // order: a `putIfAbsent` here would reverse the precedence with every
+      // existing ordering test still green.
+      expect(json, {'code': 'from-query'});
+    });
+
+    test('a path capture overrides a query parameter of the same name', () {
+      const endpoint = TomEndpoint(
+        uri: '/items/{id}',
+        urlParameterMapping: {'id': 'id'},
+      );
+      final json = <String, dynamic>{};
+      final req = _reqWithQuery(
+        'http://localhost/items/7?id=99',
+        params: {'id': '7'},
+      );
+      // Folded in the pipeline's order. Both helpers write unconditionally, so
+      // the order is the whole of the precedence — the route is the addressed
+      // resource, and a query parameter cannot redirect the call to another row.
+      TomEndpointHandler.injectQueryParameters(json, req, endpoint);
+      TomEndpointHandler.injectPathParameters(json, req, endpoint);
+      expect(json, {'id': '7'});
     });
   });
 
