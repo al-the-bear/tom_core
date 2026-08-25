@@ -21,6 +21,7 @@ those bytes back to a caller or write them into storage.
   - [TomXlsxRenderer](#tomxlsxrenderer)
   - [TomPdfRenderer](#tompdfrenderer)
   - [TomStoredExport](#tomstoredexport)
+  - [TomExportStoreOperation](#tomexportstoreoperation)
   - [TomExportStore](#tomexportstore)
   - [TomDirectoryExportStore](#tomdirectoryexportstore)
   - [TomMemoryExportStore](#tommemoryexportstore)
@@ -69,8 +70,14 @@ of byte offsets into everything before it, so `TomPdfRenderer` reports
 `streamsRows` as `false` and states its `rowLimit` rather than discovering it.
 
 Storage is a deliberately narrow four-method contract: put a stream under a
-key, read it back, ask whether it is there, delete it. `TomExportStore` also
-owns central key validation, so no backend can be handed a traversal.
+key, read it back, ask whether it is there, delete it. Those four methods are
+final on `TomExportStore`; a backend implements `doStore`, `doOpen`, `doExists`
+and `doDelete` instead. That split is what makes the interface's two promises
+hold by construction rather than by each backend remembering them — every key is
+validated before any backend sees it, so none can be handed a traversal, and
+every backend failure is translated into a `TomExportException` carrying the
+`TomExportStoreOperation` key for the operation that failed, so the same failure
+reads the same way whichever backend is configured.
 `TomDirectoryExportStore` writes to a sibling `.part` file and renames on
 success, `TomMemoryExportStore` is the test and development backend, and
 `TomBlobExportStore` puts the `file_storage` module's `TomBlobStore` behind the
@@ -97,6 +104,7 @@ TomTabularRenderer  (abstract)
 
 TomExportFormats
 
+TomExportStoreOperation  (enum)
 TomExportStore  (abstract)
     ├── TomDirectoryExportStore
     ├── TomMemoryExportStore
@@ -568,11 +576,42 @@ const TomStoredExport({
 | `storedAt` | `DateTime` | When the write completed (final). |
 | `location` | `Uri?` | A backend-specific address — a `file:` URI, an object-store URL — useful for a human chasing an export down, but never the thing to read it back with (final). |
 
+### TomExportStoreOperation
+
+The four things an export store does, and how each one reports a failure. The
+keys are named here rather than spelled at each throw site so that the same
+failure of the same operation carries the same key whichever backend is
+configured — which is the entire promise `TomExportStore` makes by being an
+interface at all.
+
+#### Values
+
+| Value | Description |
+| ----- | ----------- |
+| `write` | Writing an export: `TomExportStore.store`. Key `export.store.write_failed`. |
+| `read` | Reading one back: `TomExportStore.open`. Key `export.store.read_failed`. |
+| `probe` | Asking whether one is there: `TomExportStore.exists`. Key `export.store.probe_failed`. |
+| `delete` | Removing one: `TomExportStore.delete`. Key `export.store.delete_failed`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `errorKey` | `String` | The `export.store.*` key a failure of this operation carries (final). |
+| `message` | `String` | The default user-facing message for that key (final). |
+
 ### TomExportStore
 
 Stores and retrieves rendered exports by key. Deliberately not a general file
 store: put a stream under a key, read it back, ask whether it is there, delete
 it — no directories to list, no metadata to update, no partial reads.
+
+The four public methods are final, and a backend implements the `do*` hooks
+beside them. Both of the interface's guarantees then hold by construction: every
+key is validated before any backend sees it, and every failure a backend raises
+is translated into a `TomExportException` carrying the operation's key. Both
+were previously left to each backend to honour, and each honoured a different
+subset of them.
 
 - **Extends:** none (abstract)
 
@@ -592,10 +631,14 @@ const TomExportStore()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `store` | `Future<TomStoredExport> store({required String key, required Stream<List<int>> bytes, required String mediaType})` | Writes `bytes` under `key`, replacing anything already there. A failed write must leave nothing readable under `key`. |
-| `open` | `Stream<List<int>> open(String key)` | Reads the export stored under `key`; throws `TomExportException` when the key holds nothing, rather than disguising a missing export as an empty file. |
-| `exists` | `Future<bool> exists(String key)` | Whether `key` currently holds an export. |
-| `delete` | `Future<bool> delete(String key)` | Deletes `key`, returning whether anything was there to delete. |
+| `store` | `Future<TomStoredExport> store({required String key, required Stream<List<int>> bytes, required String mediaType})` | Writes `bytes` under `key`, replacing anything already there. A failed write leaves nothing readable under `key`. Validates the key, dispatches to `doStore`, and reports any failure as `export.store.write_failed`. |
+| `open` | `Stream<List<int>> open(String key)` | Reads the export stored under `key`; throws `TomExportException` when the key holds nothing, rather than disguising a missing export as an empty file. Validates the key, dispatches to `doOpen`, and reports any other failure as `export.store.read_failed`. |
+| `exists` | `Future<bool> exists(String key)` | Whether `key` currently holds an export. Validates the key, dispatches to `doExists`, and reports any failure as `export.store.probe_failed`. |
+| `delete` | `Future<bool> delete(String key)` | Deletes `key`, returning whether anything was there to delete. Validates the key, dispatches to `doDelete`, and reports any failure as `export.store.delete_failed`. |
+| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | Implemented by backends; called by `store` with an already-validated `key`. May fail in its own vocabulary — the caller never sees it. |
+| `doOpen` | `Stream<List<int>> doOpen(String key)` | Implemented by backends; called by `open` with an already-validated `key`. Raising `export.store.not_found` is the one error a backend must produce itself, because only it knows the difference between absent and unreadable. |
+| `doExists` | `Future<bool> doExists(String key)` | Implemented by backends; called by `exists` with an already-validated `key`. |
+| `doDelete` | `Future<bool> doDelete(String key)` | Implemented by backends; called by `delete` with an already-validated `key`. |
 
 ### TomDirectoryExportStore
 
@@ -621,10 +664,10 @@ TomDirectoryExportStore(Directory root)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `store` | `Future<TomStoredExport> store({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Writes to a sibling `.part` file and renames on success, so a reader sees either the previous export or the complete new one. On failure the partial is deleted and the error is wrapped as `export.store.write_failed`. |
-| `open` | `Stream<List<int>> open(String key)` | *(override)* Streams the file for `key`; throws `TomExportException` (`export.store.not_found`) when it does not exist. |
-| `exists` | `Future<bool> exists(String key)` | *(override)* Whether the file for `key` exists. |
-| `delete` | `Future<bool> delete(String key)` | *(override)* Deletes the file for `key`, returning `false` when it was not there. |
+| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Writes to a sibling `.part` file and renames on success, so a reader sees either the previous export or the complete new one. The rename is inside the guarded region, so a cross-device destination or a name already taken leaves no partial behind; the failure reaches the caller as `export.store.write_failed`. |
+| `doOpen` | `Stream<List<int>> doOpen(String key)` | *(override)* Streams the file for `key`; throws `TomExportException` (`export.store.not_found`) when it does not exist. |
+| `doExists` | `Future<bool> doExists(String key)` | *(override)* Whether the file for `key` exists. |
+| `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Deletes the file for `key`, returning `false` when it was not there. |
 
 ### TomMemoryExportStore
 
@@ -652,10 +695,10 @@ TomMemoryExportStore()
 | ------ | --------- | ----------- |
 | `descriptorFor` | `TomStoredExport? descriptorFor(String key)` | The descriptor recorded for `key`, or `null` when it holds nothing. |
 | `textOf` | `String textOf(String key)` | The stored bytes for `key` decoded as UTF-8 (malformed input allowed), for tests that assert on content; throws `TomExportException` (`export.store.not_found`) when the key holds nothing. |
-| `store` | `Future<TomStoredExport> store({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Validates the key, drains `bytes` into a buffer, and records the descriptor. |
-| `open` | `Stream<List<int>> open(String key)` | *(override)* Yields the buffered bytes for `key`; throws `TomExportException` (`export.store.not_found`) when it holds nothing. |
-| `exists` | `Future<bool> exists(String key)` | *(override)* Whether `key` is held. |
-| `delete` | `Future<bool> delete(String key)` | *(override)* Drops the content and descriptor for `key`, returning whether anything was there. |
+| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Drains `bytes` into a buffer and records the descriptor, publishing neither until the stream completes — so a failed write leaves nothing readable here either. |
+| `doOpen` | `Stream<List<int>> doOpen(String key)` | *(override)* Yields the buffered bytes for `key`; throws `TomExportException` (`export.store.not_found`) when it holds nothing. |
+| `doExists` | `Future<bool> doExists(String key)` | *(override)* Whether `key` is held. |
+| `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Drops the content and descriptor for `key`, returning whether anything was there. |
 
 ### TomBlobExportStore
 
@@ -692,10 +735,10 @@ is `null` — the constructor a configured deployment uses.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `store` | `Future<TomStoredExport> store({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Puts the stream into the blob store under the prefixed key and returns a descriptor carrying the caller's own key, so it can be passed back to `open`. |
-| `open` | `Stream<List<int>> open(String key)` | *(override)* Streams the blob for the prefixed key, translating `storage.blob.not_found` into `TomExportException` (`export.store.not_found`) so a caller need not learn a second error vocabulary. |
-| `exists` | `Future<bool> exists(String key)` | *(override)* Delegates to the blob store with the prefixed key. |
-| `delete` | `Future<bool> delete(String key)` | *(override)* Delegates to the blob store with the prefixed key. |
+| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Puts the stream into the blob store under the prefixed key and returns a descriptor carrying the caller's own key, so it can be passed back to `open`. |
+| `doOpen` | `Stream<List<int>> doOpen(String key)` | *(override)* Streams the blob for the prefixed key, translating `storage.blob.not_found` into `TomExportException` (`export.store.not_found`) — the only blob failure it names, because absence is the one thing the base class cannot recognise. Every other storage failure falls through to `open`, which reports it as `export.store.read_failed`. |
+| `doExists` | `Future<bool> doExists(String key)` | *(override)* Delegates to the blob store with the prefixed key. |
+| `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Delegates to the blob store with the prefixed key. |
 
 ### TomExportService
 

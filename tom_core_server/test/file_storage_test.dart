@@ -31,6 +31,40 @@ Stream<List<int>> _failingStream(List<List<int>> chunks) async* {
   throw StateError('upload interrupted');
 }
 
+/// A blob store whose every method fails with [error].
+///
+/// The backends that fail this way in production are the ones no test can have
+/// — an S3 timeout, a revoked credential, a full volume. Injecting the failure
+/// is how the *translation* at the export adaptor's boundary gets asserted
+/// rather than assumed.
+class _FailingBlobStore extends TomBlobStore {
+  _FailingBlobStore(this.error);
+
+  final Object error;
+
+  @override
+  Future<TomStoredBlob> put({
+    required String key,
+    required Stream<List<int>> bytes,
+    String mediaType = TomStoredBlob.defaultMediaType,
+    String? fileName,
+  }) async => throw error;
+
+  @override
+  Stream<List<int>> get(String key) async* {
+    throw error;
+  }
+
+  @override
+  Future<TomStoredBlob?> describe(String key) async => throw error;
+
+  @override
+  Future<bool> delete(String key) async => throw error;
+
+  @override
+  Future<bool> exists(String key) async => throw error;
+}
+
 /// `count` bytes of predictable content, as one chunk.
 Uint8List _bytes(int count, [int seed = 0]) =>
     Uint8List.fromList([for (var i = 0; i < count; i++) (i + seed) % 251]);
@@ -924,6 +958,105 @@ fileStores:
       addTearDown(TomBlobStoreInfo.closeAll);
       expect(TomBlobExportStore.named(null).blobStore, same(blobs));
       expect(TomBlobExportStore.named('files').blobStore, same(blobs));
+    });
+
+    group('every backend failure arrives in the export vocabulary', () {
+      // The adaptor's reason to exist: which backend is configured is a
+      // deployment decision, and a caller of the export module should not have
+      // to catch a second error type because of it. `not_found` used to be the
+      // only translated case — every other storage failure, and every failure
+      // from store/exists/delete, reached the caller as TomStorageException.
+      late TomBlobExportStore failing;
+
+      setUp(() {
+        failing = TomBlobExportStore(
+          _FailingBlobStore(
+            TomStorageException('storage.blob.write_failed', 'nope'),
+          ),
+          keyPrefix: 'exports',
+        );
+      });
+
+      Matcher exportError(String key) => throwsA(
+        isA<TomExportException>()
+            .having((e) => e.key, 'key', key)
+            .having((e) => e.parameters?['key'], 'key parameter', 'r.csv')
+            .having((e) => e.rootException, 'rootException', isNotNull),
+      );
+
+      test('store', () async {
+        await expectLater(
+          failing.store(
+            key: 'r.csv',
+            bytes: Stream.value(utf8.encode('x')),
+            mediaType: 'text/csv',
+          ),
+          exportError('export.store.write_failed'),
+        );
+      });
+
+      test('open, when the failure is not a missing key', () async {
+        await expectLater(
+          failing.open('r.csv').toList(),
+          exportError('export.store.read_failed'),
+        );
+      });
+
+      test('exists', () async {
+        await expectLater(
+          failing.exists('r.csv'),
+          exportError('export.store.probe_failed'),
+        );
+      });
+
+      test('delete', () async {
+        await expectLater(
+          failing.delete('r.csv'),
+          exportError('export.store.delete_failed'),
+        );
+      });
+
+      test('a failure that is not a storage exception is translated too', () {
+        // The backend contract does not promise TomStorageException — an
+        // application's own store may throw whatever it likes, and a socket
+        // timeout deep in a client is not a storage exception either.
+        final wild = TomBlobExportStore(
+          _FailingBlobStore(StateError('socket closed')),
+        );
+        expect(
+          wild.exists('r.csv'),
+          throwsA(
+            isA<TomExportException>()
+                .having((e) => e.key, 'key', 'export.store.probe_failed')
+                .having((e) => e.rootException, 'root', isA<StateError>()),
+          ),
+        );
+      });
+
+      test('an invalid key is still invalid_key, not the operation that '
+          'refused it', () async {
+        for (final operation in <Future<Object?> Function()>[
+          () => failing.exists('../escape'),
+          () => failing.delete('../escape'),
+          () => failing.open('../escape').toList(),
+          () => failing.store(
+            key: '../escape',
+            bytes: const Stream.empty(),
+            mediaType: 'text/csv',
+          ),
+        ]) {
+          await expectLater(
+            operation(),
+            throwsA(
+              isA<TomExportException>().having(
+                (e) => e.key,
+                'key',
+                'export.store.invalid_key',
+              ),
+            ),
+          );
+        }
+      });
     });
   });
 }

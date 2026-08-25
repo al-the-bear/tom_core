@@ -336,6 +336,7 @@ surface documented here.
 | `TomPdfRenderer` | class | Paginated PDF with title, metadata block and tables. |
 | `TomExportFormats` | class | The set of formats an application offers. |
 | `TomExportStore` | abstract class | Stores and retrieves rendered exports by key. |
+| `TomExportStoreOperation` | enum | The four store operations and the error key each failure carries. |
 | `TomDirectoryExportStore` | class | Export store over a local directory tree. |
 | `TomMemoryExportStore` | class | In-memory export store, for tests. |
 | `TomBlobExportStore` | class | Export store backed by a `TomBlobStore`. |
@@ -762,6 +763,7 @@ surface documented here.
 | `TomExportFormats` | Export |
 | `TomExportService` | Export |
 | `TomExportStore` | Export |
+| `TomExportStoreOperation` | Export |
 | `TomExternalIdentity` | Authentication |
 | `TomExternalIdentityDirectory` | Authentication |
 | `TomExternalIdentityLink` | Authentication |

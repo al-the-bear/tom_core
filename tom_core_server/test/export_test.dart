@@ -833,7 +833,7 @@ void main() {
               section: TomTabularSection.ofRows(
                 [TomTabularColumn('a')],
                 [
-                  const TomTabularRow(['a bc']),
+                  const TomTabularRow(['a\u0000b\u0007c']),
                 ],
               ),
             ),
@@ -1276,6 +1276,104 @@ void main() {
         throwsA(isA<TomExportException>()),
       );
     });
+
+    test('a failure in the rename is a write failure, not a raw '
+        'FileSystemException', () async {
+      // The rename is the last step of the write and can fail on its own — a
+      // full disk, a cross-device destination. Here the destination path is
+      // occupied by a directory, which no rename can replace. It used to run
+      // outside the try, so the caller met a FileSystemException and the
+      // .part file stayed behind.
+      final store = TomDirectoryExportStore(root);
+      Directory('${root.path}/blocked.csv').createSync();
+      await expectLater(
+        store.store(
+          key: 'blocked.csv',
+          bytes: Stream.value(utf8.encode('x')),
+          mediaType: 'text/csv',
+        ),
+        throwsA(
+          isA<TomExportException>()
+              .having((e) => e.key, 'key', 'export.store.write_failed')
+              .having((e) => e.rootException, 'rootException', isNotNull),
+        ),
+      );
+      // "A failed write leaves nothing readable" has to include the partial.
+      expect(File('${root.path}/blocked.csv.part').existsSync(), isFalse);
+    });
+
+    test(
+      'a read that fails after the file was found is a read failure',
+      () {
+        // Distinct from not_found: the key does hold an export, and reading it
+        // is what failed. `openRead` reports that on the stream, which a `yield*`
+        // would have forwarded straight past the translation.
+        final store = TomDirectoryExportStore(root);
+        final file = File('${root.path}/locked.csv')
+          ..writeAsStringSync('secret');
+        file.setLastModifiedSync(DateTime.now());
+        Process.runSync('chmod', ['000', file.path]);
+        addTearDown(() => Process.runSync('chmod', ['600', file.path]));
+        expect(
+          _collect(store.open('locked.csv')),
+          throwsA(
+            isA<TomExportException>().having(
+              (e) => e.key,
+              'key',
+              'export.store.read_failed',
+            ),
+          ),
+        );
+      },
+      skip: _chmodIsIneffective ? 'needs a non-root POSIX filesystem' : null,
+    );
+
+    test('a delete that fails is a delete failure, not a raw '
+        'FileSystemException', () async {
+      final store = TomDirectoryExportStore(root);
+      final dir = Directory('${root.path}/ro')..createSync();
+      File('${dir.path}/a.csv').writeAsStringSync('x');
+      Process.runSync('chmod', ['500', dir.path]);
+      addTearDown(() => Process.runSync('chmod', ['700', dir.path]));
+      await expectLater(
+        store.delete('ro/a.csv'),
+        throwsA(
+          isA<TomExportException>().having(
+            (e) => e.key,
+            'key',
+            'export.store.delete_failed',
+          ),
+        ),
+      );
+    }, skip: _chmodIsIneffective ? 'needs a non-root POSIX filesystem' : null);
+
+    test('an invalid key still surfaces as invalid_key, not as the '
+        'operation that was refused', () async {
+      // The translation must not swallow the module's own errors: a caller
+      // catching export.store.invalid_key keeps catching it from every method.
+      final store = TomDirectoryExportStore(root);
+      for (final operation in <Future<Object?> Function()>[
+        () => store.exists('../escape'),
+        () => store.delete('../escape'),
+        () => _collect(store.open('../escape')),
+        () => store.store(
+          key: '../escape',
+          bytes: const Stream.empty(),
+          mediaType: 'text/csv',
+        ),
+      ]) {
+        await expectLater(
+          operation(),
+          throwsA(
+            isA<TomExportException>().having(
+              (e) => e.key,
+              'key',
+              'export.store.invalid_key',
+            ),
+          ),
+        );
+      }
+    });
   });
 
   group('TomMemoryExportStore', () {
@@ -1313,6 +1411,76 @@ void main() {
         ),
         throwsA(isA<TomExportException>()),
       );
+    });
+
+    test('a failing source stream is a write failure, as it is on disk', () {
+      // The memory backend used to let the source stream's own error through
+      // untranslated, so which exception a caller met depended on which
+      // backend happened to be configured.
+      expect(
+        TomMemoryExportStore().store(
+          key: 'a.csv',
+          bytes: _failingHalfway(),
+          mediaType: 'text/csv',
+        ),
+        throwsA(
+          isA<TomExportException>()
+              .having((e) => e.key, 'key', 'export.store.write_failed')
+              .having(
+                (e) => e.rootException,
+                'rootException',
+                isA<StateError>(),
+              ),
+        ),
+      );
+    });
+
+    test(
+      'a failed write leaves nothing readable, as it does on disk',
+      () async {
+        final store = TomMemoryExportStore();
+        await expectLater(
+          store.store(
+            key: 'a.csv',
+            bytes: _failingHalfway(),
+            mediaType: 'text/csv',
+          ),
+          throwsA(isA<TomExportException>()),
+        );
+        expect(await store.exists('a.csv'), isFalse);
+        expect(store.keys, isEmpty);
+      },
+    );
+  });
+
+  group('TomExportStore (one error contract across backends)', () {
+    late Directory root;
+
+    setUp(() => root = Directory.systemTemp.createTempSync('tom_export_'));
+    tearDown(() => root.deleteSync(recursive: true));
+
+    test('the same failure yields the same key whichever backend is '
+        'configured', () async {
+      // The point of the abstract store: swapping the backend in configuration
+      // must not change what a caller has to catch.
+      final keys = <String>[];
+      for (final store in <TomExportStore>[
+        TomDirectoryExportStore(root),
+        TomMemoryExportStore(),
+        TomBlobExportStore(TomMemoryBlobStore()),
+      ]) {
+        try {
+          await store.store(
+            key: 'a.csv',
+            bytes: _failingHalfway(),
+            mediaType: 'text/csv',
+          );
+          fail('$store accepted a failing stream');
+        } on TomExportException catch (e) {
+          keys.add(e.key);
+        }
+      }
+      expect(keys, everyElement('export.store.write_failed'));
     });
   });
 
@@ -1480,6 +1648,29 @@ Stream<List<int>> _failingHalfway() async* {
   yield utf8.encode('partial');
   throw StateError('query died');
 }
+
+/// Whether `chmod` cannot be relied on to deny this process access.
+///
+/// The store's I/O failure paths are only reachable by making the filesystem
+/// refuse — which Windows has no `chmod` for, and which root ignores. Probing
+/// once, rather than assuming, keeps the tests honest: they run where they can
+/// prove something and say why they did not where they cannot.
+final bool _chmodIsIneffective = () {
+  if (Platform.isWindows) return true;
+  final probe = File(
+    '${Directory.systemTemp.createTempSync('tom_chmod_').path}/p',
+  )..writeAsStringSync('x');
+  Process.runSync('chmod', ['000', probe.path]);
+  try {
+    probe.readAsBytesSync();
+    return true; // Read anyway — running as root.
+  } on FileSystemException {
+    return false;
+  } finally {
+    Process.runSync('chmod', ['600', probe.path]);
+    probe.parent.deleteSync(recursive: true);
+  }
+}();
 
 /// An application-supplied format, proving the registry is genuinely open.
 class _JsonLinesRenderer extends TomTabularRenderer {

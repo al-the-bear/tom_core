@@ -409,12 +409,24 @@ interface an export needs:
 
 ```dart
 abstract class TomExportStore {
+  // What a caller calls. Each one validates the key, dispatches to the hook
+  // beside it, and reports any failure as a TomExportException (see below).
   Future<TomStoredExport> store({required String key,
                                  required Stream<List<int>> bytes,
-                                 required String mediaType});
-  Stream<List<int>> open(String key);
-  Future<bool> exists(String key);
-  Future<bool> delete(String key);
+                                 required String mediaType}) { /* → doStore */ }
+  Stream<List<int>> open(String key) { /* → doOpen */ }
+  Future<bool> exists(String key) { /* → doExists */ }
+  Future<bool> delete(String key) { /* → doDelete */ }
+
+  // What a backend implements. Each receives an already-validated key and may
+  // fail in its own vocabulary.
+  Future<TomStoredExport> doStore({required String key,
+                                   required Stream<List<int>> bytes,
+                                   required String mediaType});
+  Stream<List<int>> doOpen(String key);
+  Future<bool> doExists(String key);
+  Future<bool> doDelete(String key);
+
   static String validateKey(String key);
 }
 ```
@@ -423,6 +435,11 @@ No directories to list, no metadata to update, no partial reads. Keeping it that
 narrow is what made `TomBlobExportStore` four delegating methods when the blob
 storage arrived (see [Every Backend at Once](#every-backend-at-once)); nothing
 that renders or delivers an export changed.
+
+The split into a final public method and a `do*` hook is what makes the two
+guarantees below hold *by construction* rather than by every backend remembering
+to honour them — which, before the split, three backends each honoured a
+different subset of.
 
 **Worked example.** `advanced_ops_server` renders a weekly report into the *same*
 `tom_blob` pair that holds an item attachment, separated only by a key prefix —
@@ -451,8 +468,20 @@ Properties that are load-bearing rather than incidental:
 - **Keys are validated centrally.** Relative, slash-separated, unreserved
   characters only, no `.`/`..` segments. The obvious backend maps keys onto
   paths, so a key of `../../etc/passwd` would be a directory traversal handed to
-  whatever built the key from a report title. Validating in `TomExportStore`
-  means every backend gets the check, including ones written later.
+  whatever built the key from a report title. `TomExportStore` validates before
+  dispatching to any `do*` hook, so every backend gets the check — including ones
+  written later, and including ones that map keys onto something other than
+  paths and might not think to.
+- **Every failure arrives as a `TomExportException`.** The four public methods
+  translate whatever a backend raises — a `FileSystemException`, a
+  `TomStorageException`, a `StateError` from a source stream that died — into
+  the key naming the operation that failed: `write_failed`, `read_failed`,
+  `probe_failed` or `delete_failed`, with the original in `rootException`. So
+  the same failure of the same operation carries the same key whichever backend
+  is configured, which is the whole reason for the interface to exist. The
+  module's own exceptions pass through untouched: a caller catching
+  `export.store.invalid_key` keeps catching it rather than meeting the name of
+  whichever operation happened to refuse the key.
 
 `TomMemoryExportStore` is the test and development backend. It buffers whole
 exports by definition, which is why it is not the default; it exposes `keys`,
@@ -478,9 +507,14 @@ Two things it does rather than delegate:
   returned `TomStoredExport` is still the caller's — an export whose key could
   not be passed back to `open` would be a trap — and validation happens *before*
   prefixing, so a traversal cannot be smuggled in relative to the prefix.
-- **`storage.blob.not_found` is translated to `export.store.not_found`.** A
-  caller of this module catches `TomExportException` and should not have to
-  learn a second error vocabulary because of which backend was configured.
+- **`storage.blob.not_found` is translated to `export.store.not_found`.** It is
+  the only blob failure this adaptor names, because it is the only one it knows
+  something about that `TomExportStore` does not: a blob store reports absence
+  as an error, and absence has to become `not_found` rather than the generic
+  `read_failed`. Every *other* storage failure — a permission error, an S3
+  timeout — falls through to the base class, which translates it like any other.
+  A caller of this module catches `TomExportException` and never has to learn a
+  second error vocabulary because of which backend was configured.
 
 ## The Two Delivery Channels
 

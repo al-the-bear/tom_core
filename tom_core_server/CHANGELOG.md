@@ -74,6 +74,52 @@
 
 ### Fixed
 
+- **An export store's error contract depended on which backend was configured
+  (tcinc523).** The module documented one promise — every failure is a
+  `TomExportException` carrying a documented key — and seven sites broke it.
+  `TomDirectoryExportStore` closed its sink and renamed the `.part` file
+  *outside* the guarded region, so a full disk or a cross-device destination
+  surfaced a raw `FileSystemException` *and* left the partial behind; its
+  `open`, `exists` and `delete` never translated at all. `TomMemoryExportStore`
+  let a failing source stream propagate untouched where the directory backend
+  wrapped the same failure as `export.store.write_failed`. `TomBlobExportStore`
+  named only `storage.blob.not_found` and rethrew every other
+  `TomStorageException`, and translated nothing in `store`, `exists` or
+  `delete`, so a permission error or an object-store timeout reached a caller
+  in the storage module's vocabulary. An eighth defect, in the same family and
+  not in the report: `TomMemoryExportStore` never called `validateKey` on
+  `open`, `exists` or `delete`, so the memory backend accepted `../escape`
+  where the other two refused it — falsifying the documented claim that
+  validating centrally means every backend gets the check.
+
+  **The fix is structural, because three backends independently forgot the same
+  two things.** `store`, `open`, `exists` and `delete` are now final on
+  `TomExportStore` and wrap new `doStore`, `doOpen`, `doExists` and `doDelete`
+  hooks. Each public method validates the key, dispatches, and converts whatever
+  the hook raises into the key for that operation, keeping the original in
+  `rootException`; the module's own exceptions pass through, so a caller
+  catching `export.store.invalid_key` still catches it rather than meeting the
+  name of whichever operation refused the key. A new exported enum,
+  `TomExportStoreOperation`, names the four keys once. Both guarantees now hold
+  by construction rather than by convention, and a backend written later gets
+  them without knowing they exist.
+
+  Three error keys are new — `export.store.read_failed`,
+  `export.store.probe_failed`, `export.store.delete_failed` — joining
+  `write_failed`, which now applies to every backend rather than only the
+  directory one. `not_found` remains the one storage error a backend raises
+  itself, because only it knows absent from unreadable.
+
+  Thirteen tests assert the boundary, including one that runs the same failing
+  source stream through all three backends and expects a single key from each.
+  Seven mutations confirm they bite: dropping the `TomExportException`
+  passthrough, moving the rename back outside the try, removing the translation
+  entirely, dropping `validateKey` from one dispatch site, giving `probe` the
+  wrong key, making the blob adaptor rethrow `not_found`, and restoring the
+  `yield*` in `open` — which forwards inner-stream errors past the enclosing
+  `try`, and is why reading is the one operation that cannot share the
+  `_translating` helper.
+
 - **The CSV formula guard tab-prefixed every negative number, so a numeric
   column arrived in a spreadsheet as text (tcinc522).** `TomCsvRenderer` ran its
   injection guard on the formatted text of every cell with no knowledge of what

@@ -48,19 +48,16 @@ class TomBlobExportStore extends TomExportStore {
   /// The prefix prepended to every key before it reaches [blobStore].
   final String keyPrefix;
 
-  /// The blob key for the export key [key], validated in the export module's
-  /// error vocabulary before the prefix is applied.
+  /// The blob key for the export key [key].
   ///
-  /// Validated *before* prefixing so a traversal cannot be smuggled in relative
-  /// to the prefix, and so the rejected key in the error is the one the caller
-  /// actually passed.
-  String _blobKey(String key) {
-    TomExportStore.validateKey(key);
-    return keyPrefix.isEmpty ? key : '$keyPrefix/$key';
-  }
+  /// [key] arrives validated — [TomExportStore] checks it before dispatching —
+  /// and the prefix is applied *after*, so a traversal cannot be smuggled in
+  /// relative to the prefix and the rejected key in the error is the one the
+  /// caller actually passed.
+  String _blobKey(String key) => keyPrefix.isEmpty ? key : '$keyPrefix/$key';
 
   @override
-  Future<TomStoredExport> store({
+  Future<TomStoredExport> doStore({
     required String key,
     required Stream<List<int>> bytes,
     required String mediaType,
@@ -83,7 +80,7 @@ class TomBlobExportStore extends TomExportStore {
   }
 
   @override
-  Stream<List<int>> open(String key) async* {
+  Stream<List<int>> doOpen(String key) async* {
     try {
       // `await for`, not `yield*`: a `yield*` forwards the inner stream's
       // *errors* straight to the output stream, past the enclosing try — so the
@@ -93,9 +90,12 @@ class TomBlobExportStore extends TomExportStore {
         yield chunk;
       }
     } on TomStorageException catch (error) {
-      // Translated, not propagated: a caller of the export module catches
-      // [TomExportException] and should not have to learn a second error type
-      // because of which backend was configured.
+      // Only the missing-key case is named here, because it is the only one
+      // this adaptor knows something about that [TomExportStore.open] does not:
+      // a blob store reports absence as an error, and it has to become the
+      // export module's own `not_found` rather than its `read_failed`. Every
+      // other storage failure falls through to `open`, which translates it —
+      // a caller catches [TomExportException] whichever backend is configured.
       if (error.key != 'storage.blob.not_found') rethrow;
       throw TomExportException(
         'export.store.not_found',
@@ -107,10 +107,10 @@ class TomBlobExportStore extends TomExportStore {
   }
 
   @override
-  Future<bool> exists(String key) => blobStore.exists(_blobKey(key));
+  Future<bool> doExists(String key) => blobStore.exists(_blobKey(key));
 
   @override
-  Future<bool> delete(String key) => blobStore.delete(_blobKey(key));
+  Future<bool> doDelete(String key) => blobStore.delete(_blobKey(key));
 
   @override
   String toString() =>

@@ -80,35 +80,180 @@ class TomStoredExport {
   String toString() => 'TomStoredExport($key, $byteCount bytes)';
 }
 
+/// The four things a store does, and how each one reports a failure.
+///
+/// The keys are named here rather than spelled at each throw site so that the
+/// same failure of the same operation carries the same key whichever backend
+/// is configured — which is the entire promise [TomExportStore] makes by being
+/// an interface at all.
+enum TomExportStoreOperation {
+  /// Writing an export: [TomExportStore.store].
+  write('export.store.write_failed', 'The export could not be written.'),
+
+  /// Reading one back: [TomExportStore.open].
+  read('export.store.read_failed', 'The stored export could not be read.'),
+
+  /// Asking whether one is there: [TomExportStore.exists].
+  probe(
+    'export.store.probe_failed',
+    'Storage could not be asked whether the export exists.',
+  ),
+
+  /// Removing one: [TomExportStore.delete].
+  delete(
+    'export.store.delete_failed',
+    'The stored export could not be deleted.',
+  );
+
+  const TomExportStoreOperation(this.errorKey, this.message);
+
+  /// The `export.store.*` key a failure of this operation carries.
+  final String errorKey;
+
+  /// The default user-facing message for that key.
+  final String message;
+}
+
 /// Stores and retrieves rendered exports by key.
+///
+/// ## Why the four methods are final
+///
+/// A backend implements [doStore], [doOpen], [doExists] and [doDelete]; the
+/// four public methods are this class's own and wrap them. That indirection
+/// buys two guarantees no backend can forget:
+///
+/// - **Every key is validated**, so a backend written later — or by an
+///   application — cannot be handed a directory traversal.
+/// - **Every failure arrives as a [TomExportException]** carrying the key
+///   [TomExportStoreOperation] names for the operation that failed. A backend
+///   touches a filesystem, an S3 client or a database driver, each with an
+///   exception vocabulary of its own; without this, which exception a caller
+///   had to catch depended on which backend was configured.
+///
+/// Both properties were previously left to each backend to honour, and each
+/// backend honoured a different subset of them.
 abstract class TomExportStore {
   /// Creates a store.
   const TomExportStore();
 
   /// Writes [bytes] under [key], replacing anything already there.
   ///
-  /// A failed write must leave **nothing** readable under [key] — a truncated
+  /// A failed write leaves **nothing** readable under [key] — a truncated
   /// export is indistinguishable from a complete one to whoever downloads it
   /// next, which is the one outcome worse than a failure that is reported.
+  ///
+  /// Throws [TomExportException] (`export.store.invalid_key`) for a key that is
+  /// not relative, or (`export.store.write_failed`) when the write fails.
   Future<TomStoredExport> store({
+    required String key,
+    required Stream<List<int>> bytes,
+    required String mediaType,
+  }) => _translating(
+    TomExportStoreOperation.write,
+    key,
+    () => doStore(key: validateKey(key), bytes: bytes, mediaType: mediaType),
+  );
+
+  /// Reads the export stored under [key].
+  ///
+  /// Throws [TomExportException] (`export.store.not_found`) when the key holds
+  /// nothing: a caller reading an export it has a reference to and finding it
+  /// gone has hit a real fault — an expiry it did not expect, a store it is not
+  /// pointed at — and an empty stream would disguise that as an empty file. A
+  /// read that fails for any other reason is `export.store.read_failed`.
+  Stream<List<int>> open(String key) async* {
+    try {
+      // `await for`, not `yield*`: a `yield*` forwards the inner stream's
+      // *errors* straight to the output stream, past the enclosing try — so the
+      // translation below would never run. Re-yielding each chunk keeps the
+      // read streaming and puts the errors back inside the handler.
+      await for (final chunk in doOpen(validateKey(key))) {
+        yield chunk;
+      }
+    } on TomExportException {
+      rethrow;
+    } on Object catch (error, stack) {
+      throw _asExportException(TomExportStoreOperation.read, key, error, stack);
+    }
+  }
+
+  /// Whether [key] currently holds an export.
+  ///
+  /// Throws [TomExportException] (`export.store.probe_failed`) when storage
+  /// could not answer — which is not the same as answering `false`.
+  Future<bool> exists(String key) => _translating(
+    TomExportStoreOperation.probe,
+    key,
+    () => doExists(validateKey(key)),
+  );
+
+  /// Deletes [key], returning whether anything was there to delete.
+  ///
+  /// Throws [TomExportException] (`export.store.delete_failed`) when the
+  /// deletion itself fails; a key that held nothing is `false`, not an error.
+  Future<bool> delete(String key) => _translating(
+    TomExportStoreOperation.delete,
+    key,
+    () => doDelete(validateKey(key)),
+  );
+
+  /// Writes [bytes] under [key]. Implemented by backends; called by [store].
+  ///
+  /// [key] has already been validated. A failure may be thrown in whatever
+  /// vocabulary the backend has — [store] translates it — but a backend that
+  /// has a *better* key than `export.store.write_failed` for the failure should
+  /// throw a [TomExportException] carrying it, which passes through untouched.
+  Future<TomStoredExport> doStore({
     required String key,
     required Stream<List<int>> bytes,
     required String mediaType,
   });
 
-  /// Reads the export stored under [key].
+  /// Reads [key]. Implemented by backends; called by [open].
   ///
-  /// Throws [TomExportException] when the key holds nothing: a caller reading
-  /// an export it has a reference to and finding it gone has hit a real fault
-  /// — an expiry it did not expect, a store it is not pointed at — and an empty
-  /// stream would disguise that as an empty file.
-  Stream<List<int>> open(String key);
+  /// Throws [TomExportException] (`export.store.not_found`) when the key holds
+  /// nothing — the one error a backend must raise itself, because only it knows
+  /// the difference between absent and unreadable.
+  Stream<List<int>> doOpen(String key);
 
-  /// Whether [key] currently holds an export.
-  Future<bool> exists(String key);
+  /// Whether [key] holds an export. Implemented by backends; called by
+  /// [exists].
+  Future<bool> doExists(String key);
 
-  /// Deletes [key], returning whether anything was there to delete.
-  Future<bool> delete(String key);
+  /// Deletes [key]. Implemented by backends; called by [delete].
+  Future<bool> doDelete(String key);
+
+  /// Runs [operation], reporting any failure in this module's vocabulary.
+  static Future<T> _translating<T>(
+    TomExportStoreOperation kind,
+    String key,
+    Future<T> Function() operation,
+  ) async {
+    try {
+      return await operation();
+    } on TomExportException {
+      // The module's own errors pass through: a caller catching
+      // `export.store.invalid_key` should keep catching it, rather than meeting
+      // the name of whichever operation happened to refuse the key.
+      rethrow;
+    } on Object catch (error, stack) {
+      throw _asExportException(kind, key, error, stack);
+    }
+  }
+
+  /// The exception [kind]'s failure on [key] is reported as.
+  static TomExportException _asExportException(
+    TomExportStoreOperation kind,
+    String key,
+    Object error,
+    StackTrace stack,
+  ) => TomExportException(
+    kind.errorKey,
+    kind.message,
+    parameters: {'key': key},
+    rootException: error,
+    stack: stack,
+  );
 
   /// Validates a storage key and returns it.
   ///
@@ -149,7 +294,7 @@ class TomDirectoryExportStore extends TomExportStore {
   final Directory root;
 
   @override
-  Future<TomStoredExport> store({
+  Future<TomStoredExport> doStore({
     required String key,
     required Stream<List<int>> bytes,
     required String mediaType,
@@ -172,19 +317,17 @@ class TomDirectoryExportStore extends TomExportStore {
         }),
       );
       await sink.flush();
-    } on Object catch (error, stack) {
+      await sink.close();
+      // Inside the try, because the rename is the step that publishes the
+      // export and has failure modes of its own — a cross-device destination,
+      // a name already taken by a directory. Outside it, those left the
+      // partial behind and reached the caller untranslated.
+      await partial.rename(file.path);
+    } on Object {
       await sink.close().catchError((Object _) {});
       await partial.delete().catchError((Object _) => partial);
-      throw TomExportException(
-        'export.store.write_failed',
-        'The export could not be written to storage.',
-        parameters: {'key': key},
-        rootException: error,
-        stack: stack,
-      );
+      rethrow;
     }
-    await sink.close();
-    await partial.rename(file.path);
 
     return TomStoredExport(
       key: key,
@@ -196,7 +339,7 @@ class TomDirectoryExportStore extends TomExportStore {
   }
 
   @override
-  Stream<List<int>> open(String key) async* {
+  Stream<List<int>> doOpen(String key) async* {
     final file = _fileFor(key);
     if (!file.existsSync()) {
       throw TomExportException(
@@ -209,19 +352,21 @@ class TomDirectoryExportStore extends TomExportStore {
   }
 
   @override
-  Future<bool> exists(String key) => _fileFor(key).exists();
+  Future<bool> doExists(String key) => _fileFor(key).exists();
 
   @override
-  Future<bool> delete(String key) async {
+  Future<bool> doDelete(String key) async {
     final file = _fileFor(key);
     if (!file.existsSync()) return false;
     await file.delete();
     return true;
   }
 
-  /// The file [key] names, having checked that it stays under [root].
-  File _fileFor(String key) =>
-      File(p.join(root.path, TomExportStore.validateKey(key)));
+  /// The file [key] names, beneath [root].
+  ///
+  /// [key] arrives validated — [TomExportStore] checks it before dispatching to
+  /// any backend — so this is a join, not a gate.
+  File _fileFor(String key) => File(p.join(root.path, key));
 
   @override
   String toString() => 'TomDirectoryExportStore(${root.path})';
@@ -259,13 +404,16 @@ class TomMemoryExportStore extends TomExportStore {
   }
 
   @override
-  Future<TomStoredExport> store({
+  Future<TomStoredExport> doStore({
     required String key,
     required Stream<List<int>> bytes,
     required String mediaType,
   }) async {
-    TomExportStore.validateKey(key);
     final buffer = <int>[];
+    // Drained fully before anything is recorded, so a source stream that fails
+    // halfway leaves the key holding what it held before — the same "a failed
+    // write leaves nothing readable" the filesystem backend gets from its
+    // `.part` rename, and the reason both report `export.store.write_failed`.
     await for (final chunk in bytes) {
       buffer.addAll(chunk);
     }
@@ -281,7 +429,7 @@ class TomMemoryExportStore extends TomExportStore {
   }
 
   @override
-  Stream<List<int>> open(String key) async* {
+  Stream<List<int>> doOpen(String key) async* {
     final bytes = _content[key];
     if (bytes == null) {
       throw TomExportException(
@@ -294,10 +442,10 @@ class TomMemoryExportStore extends TomExportStore {
   }
 
   @override
-  Future<bool> exists(String key) async => _content.containsKey(key);
+  Future<bool> doExists(String key) async => _content.containsKey(key);
 
   @override
-  Future<bool> delete(String key) async {
+  Future<bool> doDelete(String key) async {
     _descriptors.remove(key);
     return _content.remove(key) != null;
   }
