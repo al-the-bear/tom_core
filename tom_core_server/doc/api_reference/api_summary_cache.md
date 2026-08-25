@@ -89,7 +89,7 @@ have no cause to pass.
 ```dart
 TomCacheException(
   String key,
-  String userMessage, {
+  String defaultUserMessage, {
   Map<String, Object?>? parameters,
   Object? stack,
   Object? rootException,

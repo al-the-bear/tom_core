@@ -336,7 +336,7 @@ Thrown by a `TomAuthenticationService` when a login cannot succeed;
 ```dart
 TomLoginException(
   String key,
-  String userMessage, {
+  String defaultUserMessage, {
   Map<String, Object?>? parameters,
   Object? stack,
   Object? rootException,

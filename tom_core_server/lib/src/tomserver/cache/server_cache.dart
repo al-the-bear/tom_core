@@ -22,7 +22,7 @@ import '../little_things/server_exception.dart';
 class TomCacheException extends TomServerException {
   TomCacheException(
     super.key,
-    super.userMessage, {
+    super.defaultUserMessage, {
     super.parameters,
     super.stack,
     super.rootException,

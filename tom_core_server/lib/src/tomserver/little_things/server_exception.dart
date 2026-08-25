@@ -98,7 +98,7 @@ class TomLoginException extends TomServerException {
   /// Creates a login failure with a resource [key] and a default user message.
   TomLoginException(
     super.key,
-    super.userMessage, {
+    super.defaultUserMessage, {
     super.parameters,
     super.stack,
     super.rootException,

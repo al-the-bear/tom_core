@@ -3948,6 +3948,21 @@
 
 ### Behaviour Changes
 
+- **`TomLoginException` and `TomCacheException` name their second constructor
+  argument `defaultUserMessage`, as every other exception type does
+  (tcinc567).** Both declared it as `super.userMessage`. Dart allows that — a
+  positional super-parameter need not reuse the super constructor's parameter
+  name, which is why the analyzer was silent — but it gave one argument two
+  public names: the IDE hint at a `TomLoginException(...)` call site read
+  `userMessage`, while the field the caller then reads off the caught object is
+  `defaultUserMessage`, because that is the base field name and the subclass
+  spelling never existed as anything but a label.
+
+  No call site changes: the argument is positional, so the name was never
+  written at a raise site. The scan that produced this finding named only
+  `TomLoginException`; a sweep of `super.userMessage` across the workspace
+  found `TomCacheException` as a second instance, and both are fixed here.
+
 - **`LoginException` is renamed to `TomLoginException` (tcinc566).** It was the
   only exported exception type in the package without the `Tom` prefix, and it
   is declared in `little_things` directly beside `TomServerException`, the base
