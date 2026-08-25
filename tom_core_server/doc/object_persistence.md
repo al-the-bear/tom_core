@@ -15,6 +15,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [`IS IN` lists](#is-in-lists)
   - [Column types a predicate can address](#column-types-a-predicate-can-address)
   - [Writing a value inline](#writing-a-value-inline)
+    - [Inside a text literal](#inside-a-text-literal)
 - [The Query Builder DSL](#the-query-builder-dsl)
 - [Row Scopes](#row-scopes)
 - [Grouping and Aggregation](#grouping-and-aggregation)
@@ -284,8 +285,32 @@ values rather than one. And a **timestamp is converted to UTC** as it compiles,
 whether written with `Z` or with an offset — `2026-07-05T12:00:00+02:00` and
 `2026-07-05T10:00:00Z` produce the same literal.
 
+#### Inside a text literal
+
+A pair of `'…'` is one token whatever it contains. Spaces, commas, brackets and
+comparison signs are all data inside the quotes, and a word that would otherwise
+be a keyword or a column name is data too:
+
+```text
+find by title = 'in progress, phase (2)'
+find by title = 'group by phase'
+find by title IS IN ( 'a b' , 'c,d' )
+```
+
+An **apostrophe is written by doubling it**, as in SQL:
+
+```text
+find by title = 'O''Brien, Ltd'
+```
+
+A literal that is opened and never closed is refused with
+`query_sentence_compiler.split_query_sentence.unterminated_string_literal`. Note
+that this makes a lone `'` unwritable except as `''''` — there is no
+backslash escape, only the doubling.
+
 Binding is still the better habit: a bound value is typed by the parameter
-rather than by its spelling, and it leaves the sentence reusable.
+rather than by its spelling, it leaves the sentence reusable, and it keeps
+untrusted text out of the statement text altogether.
 
 ## The Query Builder DSL
 

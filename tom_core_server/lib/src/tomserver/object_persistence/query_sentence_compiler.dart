@@ -1387,21 +1387,19 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         i = indx;
         index = i;
         break;
-      } else if (qp[i].startsWith("'") && qp[i].endsWith("'")) {
-        if (qp[i].length < 2) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.invalid_string_literal",
-            "Not a valid string [${qp[i]}]",
-          );
-        }
+      } else if (qp[i].startsWith("'")) {
+        // Only [_splitQuerySentence] produces a token starting with a quote,
+        // and it produces one only for a region it saw closed — so the quotes
+        // are known to be balanced here and the length known to be at least
+        // two. The malformed cases are refused during tokenising, where the
+        // position of the opening quote is still known.
         if (QT != TomDbString) {
           throw TomQuerySyntaxException(
             "query_sentence_compiler.build_expression.string_literal_invalid_type_expected",
             "A String literal is always for type String, but the required type is $QT",
           );
         }
-        String value = qp[i].substring(1, qp[i].length - 1);
-        currentOperation = text(value) as TomOperator<QT>;
+        currentOperation = text(_decodeStringLiteral(qp[i])) as TomOperator<QT>;
         // i++;
         index = i;
         break;
@@ -1707,11 +1705,117 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     );
   }
 
+  /// The characters that end a token on their own, outside a quoted region.
+  static const _separatorCharacters = {',', '(', ')', '=', '<', '>'};
+
+  /// The two-character operators, matched before the single-character ones so
+  /// `<=` is one token rather than `<` followed by `=`. This is the whole
+  /// vocabulary [_buildExpression] recognises; anything else made of these
+  /// characters splits into singles and is refused there by name.
+  static const _twoCharacterOperators = {'<=', '<>', '>='};
+
+  /// Splits [qs] into tokens: words, separators, and whole string literals.
+  ///
+  /// Quoting is why this is a hand-written scan rather than the
+  /// regex-and-split it replaced. That version inserted spaces around every
+  /// `,()=<>`, collapsed runs of whitespace and split on the result — with no
+  /// notion of a quoted region, so a literal was only writable if it contained
+  /// none of those characters and no space. `title = 'in progress, phase (2)'`
+  /// became eight tokens, the first of them `'in`, and the failure that came
+  /// back named a column `['in]`: a fragment the author never wrote, raised by
+  /// the annotation analyzer rather than as a query-syntax error.
+  ///
+  /// A quoted region is returned as **one token with its quotes still on**, so
+  /// the literal branch of [_buildExpression] recognises it the same way it
+  /// always has, and so a token that merely *looks* like a keyword or a column
+  /// name cannot be mistaken for one — `by`, `order` and `and` are all found by
+  /// scanning this list.
+  ///
+  /// An apostrophe inside a literal is written the SQL way, by doubling it.
+  /// The doubling is left in the token here and undone by
+  /// [_decodeStringLiteral], so a token still reads back as it was written
+  /// when it appears in an error message.
   List<String> _splitQuerySentence(String qs) {
-    qs = qs.replaceAllMapped(RegExp("[,()=<>][=>]?"), (m) => " ${m.group(0)} ");
-    qs = qs.replaceAll(RegExp(" +"), " ");
-    qs = qs.trim();
-    var parts = qs.split(" ");
-    return parts;
+    final tokens = <String>[];
+    final word = StringBuffer();
+
+    void endWord() {
+      if (word.isNotEmpty) {
+        tokens.add(word.toString());
+        word.clear();
+      }
+    }
+
+    var i = 0;
+    while (i < qs.length) {
+      final character = qs[i];
+
+      if (character == "'") {
+        endWord();
+        final start = i;
+        i++;
+        while (i < qs.length) {
+          if (qs[i] != "'") {
+            i++;
+            continue;
+          }
+          // A doubled quote is an escaped apostrophe and continues the
+          // literal; a lone one ends it. Telling the two apart is the only
+          // reason this scan cannot be a search for the next `'`.
+          if (i + 1 < qs.length && qs[i + 1] == "'") {
+            i += 2;
+            continue;
+          }
+          break;
+        }
+        if (i >= qs.length) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.split_query_sentence."
+                "unterminated_string_literal",
+            "The QuerySentence $qs cannot be compiled. The string literal "
+                "opened at position $start is never closed. An apostrophe "
+                "inside a literal is written by doubling it: 'O''Brien'.",
+          );
+        }
+        i++; // the closing quote
+        tokens.add(qs.substring(start, i));
+        continue;
+      }
+
+      if (character.trim().isEmpty) {
+        endWord();
+        i++;
+        continue;
+      }
+
+      if (_separatorCharacters.contains(character)) {
+        endWord();
+        final pair = i + 1 < qs.length ? qs.substring(i, i + 2) : null;
+        if (pair != null && _twoCharacterOperators.contains(pair)) {
+          tokens.add(pair);
+          i += 2;
+        } else {
+          tokens.add(character);
+          i++;
+        }
+        continue;
+      }
+
+      word.write(character);
+      i++;
+    }
+    endWord();
+    return tokens;
   }
+
+  /// The value a quoted [token] stands for: the quotes removed and each
+  /// doubled apostrophe folded back to one.
+  ///
+  /// The fold belongs here rather than in the dialect, which does the opposite
+  /// job — [TomStandardSqlDialect.text] escapes `'` to `''` on the way out.
+  /// Skipping this step left the author's escape in the value, so the dialect
+  /// doubled it a second time and `'O''Brien'` reached SQL as `'O''''Brien'`,
+  /// an apostrophe richer than what was written.
+  static String _decodeStringLiteral(String token) =>
+      token.substring(1, token.length - 1).replaceAll("''", "'");
 }

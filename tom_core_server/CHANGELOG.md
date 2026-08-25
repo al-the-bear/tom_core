@@ -281,6 +281,39 @@
 
 ### Fixed
 
+- **The query-sentence tokeniser tore quoted string literals apart
+  (tcinc591).** `_splitQuerySentence` inserted spaces around every `,()=<>`,
+  collapsed runs of whitespace and split the result — with no notion of a
+  quoted region. A literal was therefore only writable if it happened to
+  contain none of those characters and no space:
+  `find by title = 'in progress, phase (2)'` became eight tokens, the first of
+  them `'in`, and the failure that came back named a column `['in]` — a
+  fragment the author never wrote, raised by the annotation analyzer as
+  `TomAnnotationAnalyzerSyntaxException` rather than as a query-syntax error.
+
+  The quieter half of the same defect was the escape. `'O''Brien'` had no space
+  to split on and so *did* compile, but the sentence-level doubling was never
+  decoded: the parser passed both characters through and the dialect escaped
+  them a second time, so the value reached SQL as `'O''''Brien'` — an
+  apostrophe richer than what was written. A mis-compilation rather than a
+  rejection, and the reason this is a `### Fixed` entry rather than a
+  limitation lifted.
+
+  The tokeniser is now a character scan that returns a quoted region as one
+  token, quotes still attached, whatever it contains — spaces, commas,
+  brackets, comparison signs, or a word that would otherwise read as the `by`,
+  `order` or `and` keyword. An apostrophe inside a literal is written the SQL
+  way, by doubling it; the parser decodes `''` back to `'` and leaves the
+  re-escaping to the dialect, which is the layer that owns it. An unterminated
+  literal is now refused during tokenising, as
+  `query_sentence_compiler.split_query_sentence.unterminated_string_literal`,
+  while the position of the opening quote is still known.
+
+  Two-character operator pairing is restricted to exactly `<=`, `<>` and `>=`
+  — the vocabulary `_buildExpression` actually recognises. The regex it
+  replaced matched `[,()=<>][=>]?`, which would also have made `(=` and `,>` a
+  single token apiece.
+
 - **An `IS IN` list silently dropped the predicate that followed it
   (tcinc589).** `_createIsIn` reported one token more than it consumed. The
   index contract in this parser is *the last token I consumed* — the `IS NULL`
