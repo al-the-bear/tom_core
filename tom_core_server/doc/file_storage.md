@@ -148,8 +148,18 @@ static const int maxKeyLength = 512;
 and separately rejected for `..`, a leading or doubled `/`, and a trailing `/`.
 The rule is deliberately narrower than any single backend requires, because the
 alternative is a per-backend escaping rule and a key that is safe in one store
-and a traversal in the next. `TomBlobStore.validateKey` is called at the top of
-every `put`, so an invalid key never reaches the filesystem, the network or SQL.
+and a traversal in the next.
+
+`TomBlobStore.validateKey` is called by `put`, `get`, `describe`, `exists` and
+`delete` alike — those five are the contract's own methods and a backend is
+reached only through the `do*` method beneath each — so an invalid key never
+reaches the filesystem, the network or SQL, on a read any more than on a write.
+Putting the check in the contract rather than in each backend is also what makes
+that sentence true of a backend an application writes. It was not always: the
+check sat at the top of each backend's `put`, three of the four validated
+nowhere else, and `get('../escape')` therefore answered `invalid_key` on a
+directory store and `not_found` on a memory one — the wrong error, and for a
+caller branching on the two, the wrong branch.
 
 ### Prefixes obey the same grammar
 
@@ -290,7 +300,7 @@ configured with — and slips past every `on TomServerException` between the sto
 and the request boundary, so the pipeline's generic handler is the first thing
 that sees it.
 
-So a backend translates into four keys, one per operation:
+So every failure is translated into four keys, one per operation:
 
 | Key | Raised when |
 | --- | ----------- |
@@ -303,25 +313,35 @@ The division is by *what the caller asked for*, not by which call threw: a
 sidecar that cannot be read during a `describe` is a probe failure even though a
 file read is what failed.
 
-One backend cannot raise one of them, and it is worth knowing which. The
-directory backend's `exists` never reports `storage.blob.probe_failed`, because
-`dart:io`'s `File.exists` answers from a `stat` and turns every failure of that
-`stat` — a permission-denied parent directory, a symlink loop, a dead NFS mount
-— into a plain `false`. There is no exception to translate, and no errno exposed
-that would let one be reconstructed. So on that backend `exists` answers
-"visible to this process" rather than "present in storage", and a caller that
-must tell an unreadable blob from an absent one should ask `describe`, which
-reaches real I/O and does report the failure.
+The translating is `TomBlobStore`'s own, not each backend's. `put`, `get`,
+`describe`, `exists` and `delete` are the contract's methods; a backend
+implements `doPut`, `doGet`, `doDescribe`, `doDelete` and lets its failures out
+raw, and the wrapper around each names the operation. That is also where the key
+is validated, which is what makes the two guarantees hold for a backend written
+later — the ones this module ships, and the ones an application writes. A
+backend still raises a storage exception by hand where it knows something the
+wrapper cannot: `storage.blob.not_found` for a key that holds nothing, and the
+database backend's `storage.blob.missing_chunk` for a row whose parts are
+incomplete.
 
 The module's own answers pass through untranslated, because callers branch on
 them — `storage.blob.not_found` (which `TomBlobExportStore` re-reports as
 `export.store.not_found` and the file endpoint turns into a 404),
-`storage.blob.invalid_key`, and the database backend's
-`storage.blob.missing_chunk`. `TomBlobStore.translating` is the helper that does
-both halves, and `TomBlobStore.operationFailed` builds the exception on its own
-for a backend whose failure path is shaped differently. The original fault is
-kept as `rootException` in either case: the caller needs a key it can branch on,
-whoever reads the log needs the `errno` that explains it.
+`storage.blob.invalid_key`, and `storage.blob.missing_chunk`. Everything else is
+wrapped, and the original fault kept as `rootException`: the caller needs a key
+it can branch on, whoever reads the log needs the `errno` that explains it.
+
+One of the four keys is unreachable on one backend, and it is worth knowing
+which. The directory backend's `exists` never reports
+`storage.blob.probe_failed` — not because it is exempt from the wrapper but
+because it hands the wrapper nothing to translate. `dart:io`'s `File.exists`
+answers from a `stat` and turns every failure of that `stat` — a
+permission-denied parent directory, a symlink loop, a dead NFS mount — into a
+plain `false`. There is no exception, and no errno exposed that would let one be
+reconstructed. So on that backend `exists` answers "visible to this process"
+rather than "present in storage", and a caller that must tell an unreadable blob
+from an absent one should ask `describe`, which reaches real I/O and does report
+the failure.
 
 The same four operations exist in the export module as
 `TomExportStoreOperation`. That is deliberate — the same questions are being

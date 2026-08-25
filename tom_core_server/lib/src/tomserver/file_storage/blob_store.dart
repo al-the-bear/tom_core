@@ -46,10 +46,16 @@
 /// depend on which backend it was configured with, and slips past every
 /// `on TomServerException` between it and the request boundary.
 ///
-/// So each backend translates into [TomBlobStoreOperation]'s four keys, keeping
+/// So a failure is translated into [TomBlobStoreOperation]'s four keys, keeping
 /// the original as `rootException`. The module's own answers — `not_found`,
 /// `invalid_key`, `missing_chunk` — pass through untranslated, because callers
-/// branch on them. [TomBlobStore.translating] is the helper that does both.
+/// branch on them.
+///
+/// The translation is [TomBlobStore]'s own, not each backend's: a backend
+/// implements `doPut`, `doGet`, `doDescribe`, `doDelete` and the five public
+/// methods wrap them. The same wrapper is what validates the key, so both
+/// obligations hold for every backend including ones written later — see
+/// [TomBlobStore]'s "Why the five methods are final".
 library;
 
 import 'dart:async';
@@ -101,7 +107,10 @@ class TomStorageException extends TomServerException {
 /// though a file read is what failed.
 enum TomBlobStoreOperation {
   /// Storing bytes under a key.
-  write('storage.blob.write_failed', 'The file could not be written to storage.'),
+  write(
+    'storage.blob.write_failed',
+    'The file could not be written to storage.',
+  ),
 
   /// Reading a blob's bytes back.
   read('storage.blob.read_failed', 'The stored file could not be read.'),
@@ -179,6 +188,27 @@ class TomStoredBlob {
 /// Implemented by [TomMemoryBlobStore], `TomDirectoryBlobStore`,
 /// `TomDatabaseBlobStore` and `TomS3BlobStore`; an application registers its own
 /// with `TomBlobStoreInfo.registerBackend`.
+///
+/// ## Why the five methods are final
+///
+/// A backend implements [doPut], [doGet], [doDescribe], [doDelete] and
+/// optionally [doExists]; the five public methods are this class's own and wrap
+/// them. That indirection buys two guarantees no backend can forget:
+///
+/// - **Every key is validated**, on reads as well as writes, so a key that is
+///   refused is refused the same way whichever backend is configured — and a
+///   backend written later, or by an application, cannot be handed a directory
+///   traversal.
+/// - **Every failure arrives as a [TomStorageException]** carrying the error key
+///   [TomBlobStoreOperation] names for the operation that failed, so a caller
+///   catches one type rather than a socket exception here and a database
+///   exception there.
+///
+/// Both properties were previously left to each backend to honour, and each
+/// backend honoured a different subset of them: three of the four validated on
+/// `put` alone, so `get('../escape')` answered `invalid_key` on a directory
+/// store and `not_found` on a memory one — the wrong error, and for a caller
+/// branching on the two, the wrong branch.
 abstract class TomBlobStore {
   /// Creates a store.
   const TomBlobStore();
@@ -201,7 +231,16 @@ abstract class TomBlobStore {
     required Stream<List<int>> bytes,
     String mediaType = TomStoredBlob.defaultMediaType,
     String? fileName,
-  });
+  }) => _translating(
+    TomBlobStoreOperation.write,
+    key,
+    () => doPut(
+      key: validateKey(key),
+      bytes: bytes,
+      mediaType: mediaType,
+      fileName: fileName,
+    ),
+  );
 
   /// Reads the blob stored under [key].
   ///
@@ -218,22 +257,71 @@ abstract class TomBlobStore {
   /// handing back an unmodifiable view would instead make that same consumer
   /// throw on the backend the tests run on and succeed on every other, which is
   /// the worse trade.
-  Stream<List<int>> get(String key);
+  Stream<List<int>> get(String key) async* {
+    try {
+      // `await for`, not `yield*`: a `yield*` forwards the inner stream's
+      // *errors* straight to the output stream, past the enclosing try, so the
+      // translation below would never see the failure it exists to translate.
+      await for (final chunk in doGet(validateKey(key))) {
+        yield chunk;
+      }
+    } on TomStorageException {
+      rethrow;
+    } on Object catch (error, stack) {
+      throw _asStorageException(TomBlobStoreOperation.read, key, error, stack);
+    }
+  }
 
   /// The descriptor for [key], or `null` when it holds nothing.
   ///
   /// The one read that is *allowed* to answer "nothing" without throwing,
   /// because asking what is there is a different question from asking for it.
-  Future<TomStoredBlob?> describe(String key);
+  Future<TomStoredBlob?> describe(String key) => _translating(
+    TomBlobStoreOperation.probe,
+    key,
+    () => doDescribe(validateKey(key)),
+  );
 
   /// Deletes [key], returning whether anything was there to delete.
-  Future<bool> delete(String key);
+  Future<bool> delete(String key) => _translating(
+    TomBlobStoreOperation.delete,
+    key,
+    () => doDelete(validateKey(key)),
+  );
 
   /// Whether [key] currently holds a blob.
+  Future<bool> exists(String key) => _translating(
+    TomBlobStoreOperation.probe,
+    key,
+    () => doExists(validateKey(key)),
+  );
+
+  /// Writes a validated [key]. Implemented by backends; called by [put].
   ///
-  /// Defined in terms of [describe] so a backend implements one lookup, not
+  /// A backend that fails part-way through cleans up and lets the failure out:
+  /// [put] names the operation. Throwing a [TomStorageException] by hand is for
+  /// the cases where the backend knows something the wrapper cannot.
+  Future<TomStoredBlob> doPut({
+    required String key,
+    required Stream<List<int>> bytes,
+    String mediaType = TomStoredBlob.defaultMediaType,
+    String? fileName,
+  });
+
+  /// Reads a validated [key]. Implemented by backends; called by [get].
+  Stream<List<int>> doGet(String key);
+
+  /// Describes a validated [key]. Implemented by backends; called by [describe].
+  Future<TomStoredBlob?> doDescribe(String key);
+
+  /// Deletes a validated [key]. Implemented by backends; called by [delete].
+  Future<bool> doDelete(String key);
+
+  /// Whether a validated [key] holds a blob. Called by [exists].
+  ///
+  /// Defined in terms of [doDescribe] so a backend implements one lookup, not
   /// two; override when a cheaper existence probe exists.
-  Future<bool> exists(String key) async => await describe(key) != null;
+  Future<bool> doExists(String key) async => await doDescribe(key) != null;
 
   /// Reads [key] fully into memory.
   ///
@@ -431,7 +519,7 @@ abstract class TomBlobStore {
   /// The original is kept as `rootException` rather than summarised into the
   /// message: the caller needs a key it can branch on, and whoever reads the
   /// log needs the `errno` that actually explains it.
-  static TomStorageException operationFailed(
+  static TomStorageException _asStorageException(
     TomBlobStoreOperation operation,
     String key,
     Object error,
@@ -452,10 +540,10 @@ abstract class TomBlobStore {
   /// them (`TomBlobExportStore` on `not_found`, the file endpoint on its 404)
   /// must keep hearing them rather than the operation that stopped.
   ///
-  /// Offered here rather than left to each backend because a backend that
-  /// translates *some* of its methods is the state this replaced, and because
-  /// the try/rethrow/wrap shape is identical every time it is written out.
-  static Future<T> translating<T>(
+  /// Private, because the wrapping is now the contract's own job rather than
+  /// something a backend opts into: a helper a backend *may* call is a helper a
+  /// backend may forget, which is the state this replaced.
+  static Future<T> _translating<T>(
     TomBlobStoreOperation operation,
     String key,
     Future<T> Function() body,
@@ -465,7 +553,7 @@ abstract class TomBlobStore {
     } on TomStorageException {
       rethrow;
     } on Object catch (error, stack) {
-      throw operationFailed(operation, key, error, stack);
+      throw _asStorageException(operation, key, error, stack);
     }
   }
 }
@@ -496,8 +584,11 @@ class TomMemoryBlobStore extends TomBlobStore {
   int get length => _content.length;
 
   /// The stored bytes for [key] as text, for tests that assert on content.
+  ///
+  /// Validates like the contract's own methods do, so a test that mistypes a
+  /// key is told it mistyped one rather than that the blob is missing.
   String textOf(String key) {
-    final bytes = _content[key];
+    final bytes = _content[TomBlobStore.validateKey(key)];
     if (bytes == null) throw TomBlobStore.notFound(key);
     return utf8.decode(bytes, allowMalformed: true);
   }
@@ -509,13 +600,12 @@ class TomMemoryBlobStore extends TomBlobStore {
   }
 
   @override
-  Future<TomStoredBlob> put({
+  Future<TomStoredBlob> doPut({
     required String key,
     required Stream<List<int>> bytes,
     String mediaType = TomStoredBlob.defaultMediaType,
     String? fileName,
   }) async {
-    TomBlobStore.validateKey(key);
     // Copying, because the chunks are the caller's and are only borrowed for
     // the `await`. The non-copying builder retains the lists it is given, so a
     // producer refilling one scratch buffer stored that buffer's last state
@@ -541,7 +631,7 @@ class TomMemoryBlobStore extends TomBlobStore {
   }
 
   @override
-  Stream<List<int>> get(String key) async* {
+  Stream<List<int>> doGet(String key) async* {
     final bytes = _content[key];
     if (bytes == null) throw TomBlobStore.notFound(key);
     // Copied, so the caller gets what [TomBlobStore.get] promises and what
@@ -552,13 +642,13 @@ class TomMemoryBlobStore extends TomBlobStore {
   }
 
   @override
-  Future<TomStoredBlob?> describe(String key) async => _descriptors[key];
+  Future<TomStoredBlob?> doDescribe(String key) async => _descriptors[key];
 
   @override
-  Future<bool> exists(String key) async => _content.containsKey(key);
+  Future<bool> doExists(String key) async => _content.containsKey(key);
 
   @override
-  Future<bool> delete(String key) async {
+  Future<bool> doDelete(String key) async {
     _descriptors.remove(key);
     return _content.remove(key) != null;
   }

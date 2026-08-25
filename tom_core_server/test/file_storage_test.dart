@@ -71,7 +71,182 @@ TomS3BlobStore _s3(
   client: MockClient(handler),
 );
 
+/// A data source that fails the test if anything asks it to do work.
+///
+/// The point of a key check is that it happens *before* the backend acts, and
+/// the only way to assert "before" is to make acting observable. `noSuchMethod`
+/// covers the whole interface, so this cannot fall out of step with
+/// `TomDataSource` the way a hand-written stub of two methods would.
+class _UntouchableDataSource implements TomDataSource {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => fail(
+    'the key reached SQL: '
+    '${invocation.memberName.toString().split('"').elementAtOrNull(1)}',
+  );
+}
+
+/// A data source whose every statement fails the way a driver's does.
+///
+/// `noSuchMethod` for the same reason [_UntouchableDataSource] uses it: the
+/// whole interface is covered, so a method added to `TomDataSource` later
+/// cannot slip past a hand-written stub of four. The throw is *synchronous*,
+/// which is the harder of the two shapes — a backend's `async` body turns it
+/// into a failed future, and a wrapper that caught only failed futures would
+/// let it through.
+class _FailingDataSource implements TomDataSource {
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw const SocketException('connection reset by peer');
+}
+
+/// The error key each method reports when the layer underneath it fails.
+///
+/// The division is by *what the caller asked for*, not by which call threw, so
+/// `describe` and `exists` share one key: both are the caller asking storage a
+/// question about a blob rather than for one.
+const Map<String, String> _failureKeyOf = {
+  'put': 'storage.blob.write_failed',
+  'get': 'storage.blob.read_failed',
+  'describe': 'storage.blob.probe_failed',
+  'exists': 'storage.blob.probe_failed',
+  'delete': 'storage.blob.delete_failed',
+};
+
+/// Asserts every method of [store] names its own failure and keeps [cause].
+Future<void> _namesEveryFailure(TomBlobStore store, Matcher cause) async {
+  for (final method in _everyMethod(store, 'reports/blob.bin').entries) {
+    await expectLater(
+      method.value(),
+      throwsA(
+        isA<TomStorageException>()
+            .having((e) => e.key, 'key', _failureKeyOf[method.key])
+            .having((e) => e.rootException, 'rootException', cause),
+      ),
+      reason: '${method.key} must name the operation the caller asked for',
+    );
+  }
+}
+
+/// Every method on the contract, named, so a test can walk the whole surface
+/// instead of naming four of the five and leaving the fifth to drift.
+///
+/// `putBytes`/`getBytes` rather than `put`/`get` only because a buffered call
+/// is one expression; they are the same two methods underneath.
+///
+/// The bodies are `async` so that a backend which rejects the key *before* its
+/// first `await` — a synchronous throw — is accepted alongside one that returns
+/// a failed future. A caller's `try`/`await` catches both identically, so
+/// insisting on one of the two would pin an incidental detail.
+Map<String, Future<Object?> Function()> _everyMethod(
+  TomBlobStore store,
+  String key,
+) => {
+  'put': () async => store.putBytes(key: key, bytes: const [1]),
+  'get': () async => store.getBytes(key),
+  'describe': () async => store.describe(key),
+  'exists': () async => store.exists(key),
+  'delete': () async => store.delete(key),
+};
+
+/// Asserts [store] refuses [key] with `storage.blob.invalid_key` everywhere.
+Future<void> _refusesEverywhere(TomBlobStore store, String key) async {
+  for (final method in _everyMethod(store, key).entries) {
+    await expectLater(
+      method.value(),
+      throwsA(
+        isA<TomStorageException>().having(
+          (e) => e.key,
+          'key',
+          'storage.blob.invalid_key',
+        ),
+      ),
+      reason: '${method.key} must refuse the key before it acts on it',
+    );
+  }
+}
+
 void main() {
+  group('every backend refuses an invalid key on every method', () {
+    // The grammar was enforced on `put` and left to each backend elsewhere, so
+    // the same rejected key answered differently depending on which backend was
+    // configured: `get('../escape')` was `invalid_key` on a directory store and
+    // `not_found` on a memory one — the wrong error, and for a caller branching
+    // on the two, the wrong branch. Three of the four backends checked `put`
+    // alone; the directory backend was right only because `_fileFor` happened
+    // to be the single point at which a key became an address.
+    //
+    // Each store below is built so that *acting* on the key is observable: the
+    // S3 client fails the test if a request is made, the data source fails it
+    // if a statement is run, and the directory root does not exist. So these
+    // assert the documented property — an invalid key never reaches the
+    // filesystem, the network or SQL — and not merely the error key.
+
+    const traversal = '../escape';
+
+    test('memory', () => _refusesEverywhere(TomMemoryBlobStore(), traversal));
+
+    test('directory', () {
+      final root = Directory(
+        '${Directory.systemTemp.path}/tom_never_created_${pid}',
+      );
+      addTearDown(() {
+        if (root.existsSync()) root.deleteSync(recursive: true);
+      });
+      return _refusesEverywhere(TomDirectoryBlobStore(root), traversal);
+    });
+
+    test('database', () {
+      final store = TomDatabaseBlobStore(_UntouchableDataSource());
+      return _refusesEverywhere(store, traversal);
+    });
+
+    test('s3', () {
+      final store = _s3(
+        (request) => fail('the key reached the network: ${request.url}'),
+      );
+      return _refusesEverywhere(store, traversal);
+    });
+
+    test('and a key that is merely too long is refused the same way', () {
+      // The one clause that cannot be seen by reading the key: a prefix and a
+      // key may each be valid and still join past the maximum. It shares the
+      // error with a traversal because both are "this key is not usable", and
+      // splitting them would make a caller handle two.
+      final store = TomMemoryBlobStore();
+      return _refusesEverywhere(store, 'a' * (TomBlobStore.maxKeyLength + 1));
+    });
+  });
+
+  group('every backend names an infrastructure failure as a storage error', () {
+    // The companion sweep to the one above, and the other half of what the
+    // contract's wrappers are for. The directory backend's failure paths are
+    // pinned in detail further down (they need real permissions to provoke);
+    // these two are the ones whose infrastructure a connection-free suite can
+    // only take away, which is also why they had never been asserted at all —
+    // a `MySqlException` or a socket error escaping either of them would have
+    // been the same defect the directory backend was fixed for, with a
+    // different exception type and no test to notice.
+    //
+    // One fault, asked about five ways, gets five names: the operation the
+    // *caller* asked for is what the key reports, not the statement that threw.
+    // The original stays reachable as `rootException` — a caller needs a key it
+    // can branch on, whoever reads the log needs the errno that explains it.
+
+    final socketFailure = isA<SocketException>();
+
+    test('database', () {
+      final store = TomDatabaseBlobStore(_FailingDataSource());
+      return _namesEveryFailure(store, socketFailure);
+    });
+
+    test('s3', () {
+      final store = _s3(
+        (request) => throw const SocketException('connection reset by peer'),
+      );
+      return _namesEveryFailure(store, socketFailure);
+    });
+  });
+
   group('key grammar', () {
     test('accepts relative, slash-separated, unreserved keys', () {
       for (final key in const [
@@ -232,9 +407,22 @@ void main() {
     });
 
     test('a stream that fails mid-way stores nothing', () async {
+      // `write_failed`, like every other backend: the producer's `StateError`
+      // is the *cause*, and a caller that has to name it to catch it would be
+      // handling a different exception type per backend. It is not discarded —
+      // it arrives as `rootException`, which is where the errno-level detail
+      // belongs.
       await expectLater(
         store.put(key: 'k', bytes: _failingStream([utf8.encode('half')])),
-        throwsA(isA<StateError>()),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.key, 'key', 'storage.blob.write_failed')
+              .having(
+                (e) => e.rootException,
+                'rootException',
+                isA<StateError>(),
+              ),
+        ),
       );
       expect(await store.exists('k'), isFalse);
     });
@@ -488,23 +676,27 @@ void main() {
       // caller as the platform's own exception type, so a pipeline catching
       // `TomServerException` did not catch it at all.
 
-      test('reading a file the filesystem refuses is a read failure', () async {
-        final file = File('${root.path}/locked.bin')
-          ..writeAsStringSync('secret');
-        Process.runSync('chmod', ['000', file.path]);
-        addTearDown(() => Process.runSync('chmod', ['600', file.path]));
+      test(
+        'reading a file the filesystem refuses is a read failure',
+        () async {
+          final file = File('${root.path}/locked.bin')
+            ..writeAsStringSync('secret');
+          Process.runSync('chmod', ['000', file.path]);
+          addTearDown(() => Process.runSync('chmod', ['600', file.path]));
 
-        await expectLater(
-          store.getBytes('locked.bin'),
-          throwsA(
-            isA<TomStorageException>().having(
-              (e) => e.key,
-              'key',
-              'storage.blob.read_failed',
+          await expectLater(
+            store.getBytes('locked.bin'),
+            throwsA(
+              isA<TomStorageException>().having(
+                (e) => e.key,
+                'key',
+                'storage.blob.read_failed',
+              ),
             ),
-          ),
-        );
-      }, skip: chmodSkipReason);
+          );
+        },
+        skip: chmodSkipReason,
+      );
 
       test('describing a file the filesystem refuses is a probe '
           'failure', () async {

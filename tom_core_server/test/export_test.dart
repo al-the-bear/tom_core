@@ -127,7 +127,7 @@ class _FailingBlobStore extends TomBlobStore {
   final Object error;
 
   @override
-  Future<TomStoredBlob> put({
+  Future<TomStoredBlob> doPut({
     required String key,
     required Stream<List<int>> bytes,
     String mediaType = TomStoredBlob.defaultMediaType,
@@ -135,18 +135,18 @@ class _FailingBlobStore extends TomBlobStore {
   }) async => throw error;
 
   @override
-  Stream<List<int>> get(String key) async* {
+  Stream<List<int>> doGet(String key) async* {
     throw error;
   }
 
   @override
-  Future<TomStoredBlob?> describe(String key) async => throw error;
+  Future<TomStoredBlob?> doDescribe(String key) async => throw error;
 
   @override
-  Future<bool> delete(String key) async => throw error;
+  Future<bool> doDelete(String key) async => throw error;
 
   @override
-  Future<bool> exists(String key) async => throw error;
+  Future<bool> doExists(String key) async => throw error;
 }
 
 // =============================================================================
@@ -2173,9 +2173,12 @@ void main() {
       });
 
       test('a failure that is not a storage exception is translated too', () {
-        // The backend contract does not promise TomStorageException — an
-        // application's own store may throw whatever it likes, and a socket
-        // timeout deep in a client is not a storage exception either.
+        // A socket timeout deep in a client is not a storage exception, and an
+        // application's own backend may throw whatever it likes. Two boundaries
+        // now stand between that and the caller — `TomBlobStore` names it as a
+        // blob probe failure, `TomExportStore` as an export one — so this pins
+        // the whole chain: the export vocabulary at the top, and the original
+        // error still reachable at the bottom rather than summarised away.
         final wild = TomBlobExportStore(
           _FailingBlobStore(StateError('socket closed')),
         );
@@ -2184,7 +2187,17 @@ void main() {
           throwsA(
             isA<TomExportException>()
                 .having((e) => e.key, 'key', 'export.store.probe_failed')
-                .having((e) => e.rootException, 'root', isA<StateError>()),
+                .having(
+                  (e) => e.rootException,
+                  'root',
+                  isA<TomStorageException>()
+                      .having((e) => e.key, 'key', 'storage.blob.probe_failed')
+                      .having(
+                        (e) => e.rootException,
+                        'the original',
+                        isA<StateError>(),
+                      ),
+                ),
           ),
         );
       });

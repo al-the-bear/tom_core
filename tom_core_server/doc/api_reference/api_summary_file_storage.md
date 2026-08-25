@@ -43,8 +43,11 @@ of them would constrain the backends. `TomStoredBlob` is what a write returns
 backend-specific `location`), and `TomStorageException` is the module's error,
 subtyping `TomServerException` so storage faults reach the ordinary server error
 mapping. The key grammar is defined once, on `TomBlobStore`: `isValidKey`,
-`maxKeyLength` and `validateKey` are called at the top of every `put`, so an
-invalid key never reaches a filesystem, a network or SQL. The same grammar
+`maxKeyLength` and `validateKey` are applied by all five of `put`, `get`,
+`describe`, `exists` and `delete` — the contract's own methods, each of which
+reaches its backend only through a `do*` method — so an invalid key never
+reaches a filesystem, a network or SQL, on a read any more than on a write. The
+same grammar
 covers the *namespacing prefixes* several components join onto keys —
 `isValidKeyPrefix` and `validateKeyPrefix` check one at construction, so a
 misconfigured prefix fails naming itself rather than surfacing later as an
@@ -253,18 +256,27 @@ const TomBlobStore()
 | `isValidKeyPrefix` | `static bool isValidKeyPrefix(String? keyPrefix)` | Whether `keyPrefix` is usable as a key namespace. A prefix is joined as `"$keyPrefix/$key"`, so it must satisfy `isValidKey` itself; `null` and `''` both mean no namespace, and a trailing slash is not a second spelling (the join supplies the separator). Length is the one clause a prefix cannot settle alone — two valid parts can join past `maxKeyLength`, which `validateKey` catches on the joined key. |
 | `validateKeyPrefix` | `static String? validateKeyPrefix(String? keyPrefix)` | Returns `keyPrefix` when `isValidKeyPrefix` accepts it, otherwise throws `storage.blob.invalid_key_prefix` naming the prefix. A distinct error from `invalid_key` because the two faults have different fixes: a bad key is a caller's mistake, a bad prefix a deployment's. |
 | `notFound` | `static TomStorageException notFound(String key)` | Builds the `storage.blob.not_found` error, spelled once so every backend agrees and a caller can match on the key string. |
-| `operationFailed` | `static TomStorageException operationFailed(TomBlobStoreOperation operation, String key, Object error, StackTrace stack)` | `error` restated as the storage failure of `operation` on `key`. The original is kept as `rootException` rather than summarised into the message: the caller needs a key it can branch on, whoever reads the log needs the `errno` that explains it. |
-| `translating` | `static Future<T> translating<T>(TomBlobStoreOperation operation, String key, Future<T> Function() body)` | Runs `body`, reporting any infrastructure failure as `operation` on `key`. A `TomStorageException` passes through untouched — the clause that makes this safe to wrap a whole method in, since `not_found`, `invalid_key` and `missing_chunk` are the module's own answers and callers branch on them. Offered on the contract because a backend that translates only some of its methods is the state this replaced, and because the try/rethrow/wrap shape is identical every time it is written out. |
 
 #### Methods
 
+The five public methods are the contract's own and are not overridden: each
+validates the key and translates any failure, then defers to the `do*` method a
+backend implements. That is what makes both obligations hold for every backend
+— including one an application writes — rather than leaving each to honour a
+different subset of them, which is what the four shipped backends did.
+
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | Writes `bytes` under `key`, replacing anything already there, and returns the descriptor. A failure must leave nothing readable under `key` beyond what was there before: implementations commit atomically or not at all. A chunk from `bytes` is borrowed for the duration of the `await` — consume or copy it before asking for the next, never retain it, since a producer refilling one scratch buffer per chunk is the ordinary shape of an encoder. |
-| `get` | `Stream<List<int>> get(String key)` | Reads the blob stored under `key`; throws `storage.blob.not_found` when the key holds nothing, rather than disguising a missing blob as an empty file. Each chunk belongs to the caller: writable, and aliased with nothing the store keeps. |
-| `describe` | `Future<TomStoredBlob?> describe(String key)` | The descriptor for `key`, or `null` when it holds nothing — the one read allowed to answer "nothing" without throwing. |
-| `delete` | `Future<bool> delete(String key)` | Deletes `key`, returning whether anything was there to delete. |
-| `exists` | `Future<bool> exists(String key)` | Whether `key` currently holds a blob; defined in terms of `describe` so a backend implements one lookup, overridden where a cheaper probe exists. |
+| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | Validates `key`, calls `doPut`, reports any other failure as `storage.blob.write_failed`. Writes `bytes` under `key`, replacing anything already there, and returns the descriptor. A failure must leave nothing readable under `key` beyond what was there before: implementations commit atomically or not at all. A chunk from `bytes` is borrowed for the duration of the `await` — consume or copy it before asking for the next, never retain it, since a producer refilling one scratch buffer per chunk is the ordinary shape of an encoder. |
+| `get` | `Stream<List<int>> get(String key)` | Validates `key`, reads through `doGet`, reports any other failure as `storage.blob.read_failed`. Throws `storage.blob.not_found` when the key holds nothing, rather than disguising a missing blob as an empty file. Each chunk belongs to the caller: writable, and aliased with nothing the store keeps. Consumes the backend's stream with `await for` rather than `yield*`, because a `yield*` forwards the inner stream's errors past the enclosing `try` and the translation would never run. |
+| `describe` | `Future<TomStoredBlob?> describe(String key)` | Validates `key`, calls `doDescribe`, reports any other failure as `storage.blob.probe_failed`. The descriptor for `key`, or `null` when it holds nothing — the one read allowed to answer "nothing" without throwing. |
+| `delete` | `Future<bool> delete(String key)` | Validates `key`, calls `doDelete`, reports any other failure as `storage.blob.delete_failed`. Returns whether anything was there to delete. |
+| `exists` | `Future<bool> exists(String key)` | Validates `key`, calls `doExists`, reports any other failure as `storage.blob.probe_failed`. |
+| `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(abstract)* Implemented by a backend; called by `put` with an already-validated key. A backend that fails part-way through cleans up and lets the failure out — `put` names the operation — rather than building a `write_failed` of its own. |
+| `doGet` | `Stream<List<int>> doGet(String key)` | *(abstract)* Implemented by a backend; called by `get` with an already-validated key. Throws `notFound` when the key holds nothing. |
+| `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(abstract)* Implemented by a backend; called by `describe` with an already-validated key. |
+| `doDelete` | `Future<bool> doDelete(String key)` | *(abstract)* Implemented by a backend; called by `delete` with an already-validated key. |
+| `doExists` | `Future<bool> doExists(String key)` | Called by `exists` with an already-validated key. Defined in terms of `doDescribe` so a backend implements one lookup, not two; overridden where a cheaper existence probe exists. |
 | `getBytes` | `Future<Uint8List> getBytes(String key)` | Reads `key` fully into memory — the convenience for call sites that genuinely know their blobs are small. A helper on the streaming API, not a second contract method, so a backend author cannot implement it instead of streaming. Collects with a non-copying builder, which returns a lone chunk untouched: it is exactly as aliased as what the backend yielded, which is why `get` promises the caller owns its chunks. |
 | `putBytes` | `Future<TomStoredBlob> putBytes({required String key, required List<int> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | The buffered counterpart to `getBytes`; delegates to `put` with a single-value stream. |
 | `close` | `Future<void> close()` | Releases whatever the backend holds open. Idempotent; the default does nothing, because most backends hold nothing. |
@@ -298,13 +310,13 @@ TomMemoryBlobStore()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `textOf` | `String textOf(String key)` | The stored bytes for `key` decoded as UTF-8 text (malformed input allowed), for tests that assert on content; throws `storage.blob.not_found` when the key holds nothing. |
+| `textOf` | `String textOf(String key)` | The stored bytes for `key` decoded as UTF-8 text (malformed input allowed), for tests that assert on content. Validates the key like the contract's own methods do — so a test that mistypes one is told it mistyped one — and throws `storage.blob.not_found` when the key holds nothing. |
 | `clear` | `void clear()` | Forgets everything, for a test that reuses one store across cases. |
-| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Validates the key and drains the stream fully before either map is touched, so a stream that throws half way leaves no half-written blob. Copies each chunk as it arrives rather than retaining it, so a producer reusing one scratch buffer stores what it streamed. |
-| `get` | `Stream<List<int>> get(String key)` | *(override)* Yields the buffered bytes as one chunk, copied so the reader owns it; throws `storage.blob.not_found` when absent. |
-| `describe` | `Future<TomStoredBlob?> describe(String key)` | *(override)* The descriptor recorded by `put`, or `null`. |
-| `exists` | `Future<bool> exists(String key)` | *(override)* Answers straight from the content map rather than through `describe`. |
-| `delete` | `Future<bool> delete(String key)` | *(override)* Drops the content and its descriptor, returning whether content was present. |
+| `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Drains the stream fully before either map is touched, so a stream that throws half way leaves no half-written blob. Copies each chunk as it arrives rather than retaining it, so a producer reusing one scratch buffer stores what it streamed. |
+| `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Yields the buffered bytes as one chunk, copied so the reader owns it; throws `storage.blob.not_found` when absent. |
+| `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* The descriptor recorded by `doPut`, or `null`. |
+| `doExists` | `Future<bool> doExists(String key)` | *(override)* Answers straight from the content map rather than through `doDescribe`. |
+| `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Drops the content and its descriptor, returning whether content was present. |
 | `toString` | `String toString()` | *(override)* Renders `TomMemoryBlobStore(<n> blobs)`. |
 
 ### TomDirectoryBlobStore
@@ -345,11 +357,11 @@ TomDirectoryBlobStore.at(String path)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Streams to a sibling `<key>~part` and renames it into place, so a reader sees the previous blob or the complete new one. The close, the rename and the sidecar write are all inside the failure path, because each has filesystem faults of its own — a full disk surfaces at `close`, a rename fails on a cross-device root or an occupied target — and each of them fails *after* the partial exists. The rollback deletes whichever residue the failure left: the partial before the rename, the newly committed blob after it. Every failure is `storage.blob.write_failed` carrying the original as `rootException`. |
-| `get` | `Stream<List<int>> get(String key)` | *(override)* Streams the file with `openRead`; throws `storage.blob.not_found` when it does not exist, `storage.blob.read_failed` for anything else. Consumes the file stream with `await for` rather than `yield*`, since a `yield*` forwards the inner stream's errors past the enclosing translation. |
-| `describe` | `Future<TomStoredBlob?> describe(String key)` | *(override)* Size and mtime from `stat()`, media type and file name from the sidecar when it is present and parseable — so a directory populated by `scp` is still readable. A sidecar that cannot be *read* (as opposed to parsed) is `storage.blob.probe_failed`. |
-| `exists` | `Future<bool> exists(String key)` | *(override)* A direct file-existence probe, and the one method here that raises no operation failure: `File.exists` answers from a `stat` and maps every failure of it — an unreadable parent directory included — to `false`, so there is nothing to translate. It therefore means "visible to this process" rather than "present in storage"; ask `describe` to tell an unreadable blob from an absent one. |
-| `delete` | `Future<bool> delete(String key)` | *(override)* Deletes the file and its sidecar, returning whether the file was there; a filesystem refusal is `storage.blob.delete_failed`. |
+| `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Streams to a sibling `<key>~part` and renames it into place, so a reader sees the previous blob or the complete new one. The close, the rename and the sidecar write are all inside the failure path, because each has filesystem faults of its own — a full disk surfaces at `close`, a rename fails on a cross-device root or an occupied target — and each of them fails *after* the partial exists. The rollback deletes whichever residue the failure left: the partial before the rename, the newly committed blob after it, then rethrows so that `put` reports it as `storage.blob.write_failed` with the original as `rootException`. |
+| `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Streams the file with `openRead`; throws `storage.blob.not_found` when it does not exist. A mid-read filesystem fault becomes `storage.blob.read_failed` at `get`. |
+| `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* Size and mtime from `stat()`, media type and file name from the sidecar when it is present and parseable — so a directory populated by `scp` is still readable. A sidecar that cannot be *read* (as opposed to parsed) surfaces as `storage.blob.probe_failed`. |
+| `doExists` | `Future<bool> doExists(String key)` | *(override)* A direct file-existence probe. `exists` translates whatever this throws, but here there is nothing to translate: `File.exists` answers from a `stat` and maps every failure of it — an unreadable parent directory included — to `false`. It therefore means "visible to this process" rather than "present in storage"; ask `describe` to tell an unreadable blob from an absent one. |
+| `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Deletes the file and its sidecar, returning whether the file was there; a filesystem refusal surfaces as `storage.blob.delete_failed`. |
 | `toString` | `String toString()` | *(override)* Renders `TomDirectoryBlobStore(<root path>)`. |
 
 ### TomDatabaseBlobStore
@@ -407,10 +419,10 @@ error far better caught at start-up than on the first upload.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `ensureSchema` | `Future<void> ensureSchema()` | Creates the two tables if they do not exist. Idempotent and called automatically by every operation; exposed so a start-up sequence can provision the schema before serving traffic. |
-| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Slices the incoming stream into `chunkSize` chunk rows under a fresh upload id, then replaces the manifest row — the commit point. A failure deletes the chunks it wrote and throws `storage.blob.write_failed`; superseded chunks are removed afterwards and a failure to do so is logged, not raised. |
-| `get` | `Stream<List<int>> get(String key)` | *(override)* Reads the manifest, then fetches and base64-decodes one chunk row per consumer demand; throws `storage.blob.not_found` for an unknown key and `storage.blob.missing_chunk` when the manifest and its chunks disagree. |
-| `describe` | `Future<TomStoredBlob?> describe(String key)` | *(override)* Builds the descriptor from the manifest row, or `null`. An empty `file_name` is treated as absent, so a `NOT NULL` variant of the table behaves the same. |
-| `delete` | `Future<bool> delete(String key)` | *(override)* Deletes the manifest row first — that is the point at which the blob is gone — then its chunks; returns whether a manifest was there. |
+| `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Slices the incoming stream into `chunkSize` chunk rows under a fresh upload id, then replaces the manifest row — the commit point. A failure deletes the chunks it wrote and rethrows, so `put` reports `storage.blob.write_failed`; superseded chunks are removed afterwards and a failure to do so is logged, not raised. |
+| `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Reads the manifest, then fetches and base64-decodes one chunk row per consumer demand; throws `storage.blob.not_found` for an unknown key and `storage.blob.missing_chunk` when the manifest and its chunks disagree. |
+| `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* Builds the descriptor from the manifest row, or `null`. An empty `file_name` is treated as absent, so a `NOT NULL` variant of the table behaves the same. |
+| `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Deletes the manifest row first — that is the point at which the blob is gone — then its chunks; returns whether a manifest was there. |
 | `purgeOrphanedChunks` | `Future<int> purgeOrphanedChunks()` | Deletes chunk rows no manifest refers to, returning how many were removed. Housekeeping for the residue of a replace or delete whose chunk cleanup failed; belongs on a schedule rather than in the request path. |
 | `toString` | `String toString()` | *(override)* Renders `TomDatabaseBlobStore(<manifestTable>)`. |
 
@@ -592,10 +604,10 @@ disposes of it.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Buffers up to `partSize`: a stream that ends inside the first buffer is one signed `PUT`, otherwise each full buffer becomes a part and the upload is completed at the end. Any failure issues an `AbortMultipartUpload` and raises `storage.blob.write_failed` (or the storage exception already thrown). |
-| `get` | `Stream<List<int>> get(String key)` | *(override)* Streams the response body of a signed `GET`; `404` drains the body and throws `storage.blob.not_found`, any other error status throws `storage.s3.request_failed`. |
-| `describe` | `Future<TomStoredBlob?> describe(String key)` | *(override)* A signed `HEAD`, mapping `content-type`, `content-length`, `last-modified` and `x-amz-meta-filename` into the descriptor; `null` on `404`. |
-| `delete` | `Future<bool> delete(String key)` | *(override)* Probes with `exists` first, because S3 answers `204` to a delete whether or not the object was there, then sends the signed `DELETE`. |
+| `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Buffers up to `partSize`: a stream that ends inside the first buffer is one signed `PUT`, otherwise each full buffer becomes a part and the upload is completed at the end. Any failure issues an `AbortMultipartUpload` and rethrows, so `put` reports `storage.blob.write_failed` — or passes through the storage exception already thrown. |
+| `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Streams the response body of a signed `GET`; `404` drains the body and throws `storage.blob.not_found`, any other error status throws `storage.s3.request_failed`. |
+| `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* A signed `HEAD`, mapping `content-type`, `content-length`, `last-modified` and `x-amz-meta-filename` into the descriptor; `null` on `404`. |
+| `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Probes with `doExists` first, because S3 answers `204` to a delete whether or not the object was there, then sends the signed `DELETE`. |
 | `close` | `Future<void> close()` | *(override)* Closes the HTTP client, but only the one this store created. |
 | `toString` | `String toString()` | *(override)* Renders `TomS3BlobStore(<bucket> at <endpoint>)`. |
 

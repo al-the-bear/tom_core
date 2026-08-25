@@ -91,14 +91,12 @@ class TomDirectoryBlobStore extends TomBlobStore {
   static const String partialSuffix = '${TomBlobStore.auxiliaryMarker}part';
 
   @override
-  Future<TomStoredBlob> put({
+  Future<TomStoredBlob> doPut({
     required String key,
     required Stream<List<int>> bytes,
     String mediaType = TomStoredBlob.defaultMediaType,
     String? fileName,
   }) async {
-    // Outside the guard below, so a mis-spelled key is reported as the caller's
-    // mistake rather than as a write that failed.
     final file = _fileFor(key);
 
     // Written under a sibling name and renamed on success. A rename within one
@@ -156,92 +154,65 @@ class TomDirectoryBlobStore extends TomBlobStore {
       await sink?.close().catchError((Object _) {});
       final residue = committed ? file : partial;
       await residue.delete().catchError((Object _) => residue);
-      throw TomBlobStore.operationFailed(
-        TomBlobStoreOperation.write,
-        key,
-        error,
-        stack,
-      );
+      // Rethrown rather than wrapped: [TomBlobStore.put] names the operation.
+      // This block exists for the rollback, and having done it must not swallow
+      // what caused it.
+      Error.throwWithStackTrace(error, stack);
     }
   }
 
   @override
-  Stream<List<int>> get(String key) async* {
+  Stream<List<int>> doGet(String key) async* {
     final file = _fileFor(key);
-    try {
-      if (!file.existsSync()) throw TomBlobStore.notFound(key);
-      // `await for`, not `yield*`: a `yield*` forwards the inner stream's
-      // *errors* straight to this method's output stream, past the enclosing
-      // try — so the translation below would never run, and a mid-read I/O
-      // fault would reach the caller as a `FileSystemException`.
-      await for (final chunk in file.openRead()) {
-        yield chunk;
-      }
-    } on TomStorageException {
-      rethrow;
-    } on Object catch (error, stack) {
-      throw TomBlobStore.operationFailed(
-        TomBlobStoreOperation.read,
-        key,
-        error,
-        stack,
-      );
-    }
+    if (!file.existsSync()) throw TomBlobStore.notFound(key);
+    yield* file.openRead();
   }
 
   @override
-  Future<TomStoredBlob?> describe(String key) {
+  Future<TomStoredBlob?> doDescribe(String key) async {
     final file = _fileFor(key);
-    return TomBlobStore.translating(TomBlobStoreOperation.probe, key, () async {
-      if (!file.existsSync()) return null;
-      final stat = await file.stat();
-      final meta = await _readMetadata(file);
-      return TomStoredBlob(
-        key: key,
-        mediaType:
-            meta?['mediaType'] as String? ?? TomStoredBlob.defaultMediaType,
-        byteCount: stat.size,
-        storedAt: stat.modified,
-        fileName: meta?['fileName'] as String?,
-        location: file.absolute.uri,
-      );
-    });
+    if (!file.existsSync()) return null;
+    final stat = await file.stat();
+    final meta = await _readMetadata(file);
+    return TomStoredBlob(
+      key: key,
+      mediaType:
+          meta?['mediaType'] as String? ?? TomStoredBlob.defaultMediaType,
+      byteCount: stat.size,
+      storedAt: stat.modified,
+      fileName: meta?['fileName'] as String?,
+      location: file.absolute.uri,
+    );
   }
 
   /// Whether [key] is *visible* — see the note below on what that excludes.
   ///
-  /// Alone among the five methods this one has no [TomBlobStore.translating]
-  /// wrapper, and the omission is deliberate rather than an oversight:
-  /// `File.exists` cannot fail. `dart:io` answers it from a `stat` and maps
-  /// every failure of that `stat` — permission denied on a parent directory, a
-  /// symlink loop, an over-long name, a dead NFS mount — to plain `false`, so
-  /// there is no exception here for a translation to catch and rename.
+  /// [TomBlobStore.exists] translates whatever this throws, but on this backend
+  /// it has nothing to translate: `File.exists` cannot fail. `dart:io` answers
+  /// it from a `stat` and maps every failure of that `stat` — permission denied
+  /// on a parent directory, a symlink loop, an over-long name, a dead NFS mount
+  /// — to plain `false`.
   ///
   /// The consequence is the caller's to know: on this backend a blob the
   /// process is not *allowed* to see is reported absent rather than as a probe
   /// failure, and `exists` therefore means "visible to this process", not "not
   /// present in storage". It cannot be fixed from here — `File.stat` swallows
   /// the same errors the same way, and `dart:io` exposes no errno to tell
-  /// `ENOENT` from `EACCES`. [describe] does reach real I/O (it reads the
-  /// sidecar) and does report [TomBlobStoreOperation.probe] failures, so a
-  /// caller that must tell the two apart should ask it instead.
+  /// `ENOENT` from `EACCES`. [doDescribe] does reach real I/O (it reads the
+  /// sidecar) and so a probe through [TomBlobStore.describe] does report
+  /// [TomBlobStoreOperation.probe] failures; a caller that must tell the two
+  /// apart should ask it instead.
   @override
-  Future<bool> exists(String key) => _fileFor(key).exists();
+  Future<bool> doExists(String key) => _fileFor(key).exists();
 
   @override
-  Future<bool> delete(String key) {
+  Future<bool> doDelete(String key) async {
     final file = _fileFor(key);
-    return TomBlobStore.translating(
-      TomBlobStoreOperation.delete,
-      key,
-      () async {
-        if (!file.existsSync()) return false;
-        await file.delete();
-        final meta = _metadataFileFor(file);
-        if (meta.existsSync()) await meta.delete();
-        return true;
-      },
-    );
+    if (!file.existsSync()) return false;
+    await file.delete();
+    final meta = _metadataFileFor(file);
+    if (meta.existsSync()) await meta.delete();
+    return true;
   }
 
   File _metadataFileFor(File file) => File('${file.path}$metadataSuffix');

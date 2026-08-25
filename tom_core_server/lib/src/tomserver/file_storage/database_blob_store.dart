@@ -134,13 +134,12 @@ class TomDatabaseBlobStore extends TomBlobStore {
   }
 
   @override
-  Future<TomStoredBlob> put({
+  Future<TomStoredBlob> doPut({
     required String key,
     required Stream<List<int>> bytes,
     String mediaType = TomStoredBlob.defaultMediaType,
     String? fileName,
   }) async {
-    TomBlobStore.validateKey(key);
     await ensureSchema();
 
     final uploadId = _uuid.v4();
@@ -186,14 +185,11 @@ class TomDatabaseBlobStore extends TomBlobStore {
       }
       await flush();
     } on Object catch (error, stack) {
+      // Rethrown rather than wrapped: [TomBlobStore.put] reports it as
+      // `storage.blob.write_failed`. This block exists for the chunk cleanup,
+      // and having done it must not swallow what caused it.
       await _deleteChunks(uploadId).catchError((Object _) {});
-      throw TomStorageException(
-        'storage.blob.write_failed',
-        'The file could not be written to storage.',
-        parameters: {'key': key},
-        rootException: error,
-        stack: stack,
-      );
+      Error.throwWithStackTrace(error, stack);
     }
 
     final storedAt = DateTime.now();
@@ -243,7 +239,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
   }
 
   @override
-  Stream<List<int>> get(String key) async* {
+  Stream<List<int>> doGet(String key) async* {
     await ensureSchema();
     final manifest = await _manifestOf(key);
     if (manifest == null) throw TomBlobStore.notFound(key);
@@ -272,7 +268,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
   }
 
   @override
-  Future<TomStoredBlob?> describe(String key) async {
+  Future<TomStoredBlob?> doDescribe(String key) async {
     await ensureSchema();
     final manifest = await _manifestOf(key);
     if (manifest == null) return null;
@@ -288,7 +284,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
   }
 
   @override
-  Future<bool> delete(String key) async {
+  Future<bool> doDelete(String key) async {
     await ensureSchema();
     final manifest = await _manifestOf(key);
     if (manifest == null) return false;

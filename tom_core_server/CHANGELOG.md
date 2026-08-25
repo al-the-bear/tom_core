@@ -74,6 +74,44 @@
 
 ### Fixed
 
+- **Three of the four blob backends validated the key on `put` alone, so the
+  same rejected key answered differently depending on which backend was
+  configured (tcinc538).** `TomBlobStore.validateKey` was called at the top of
+  each backend's `put` and nowhere else on the memory, database and S3 stores.
+  `get('../escape')` therefore raised `storage.blob.invalid_key` on a directory
+  store and `storage.blob.not_found` on a memory one — the wrong error, and for
+  a caller branching on the two, the wrong branch. The directory store was
+  right only by accident: its `_fileFor` happened to be the single point at
+  which a key became a path. The guide claimed the check ran on all five
+  methods; it ran on one. The cause was structural — an abstract contract makes
+  a cross-cutting obligation a per-backend convention, and each backend honoured
+  a different subset of it — so the fix is the one `TomExportStore` in this same
+  package already uses: `put`, `get`, `describe`, `exists` and `delete` are
+  `TomBlobStore`'s own methods and wrap `doPut`, `doGet`, `doDescribe`,
+  `doExists` and `doDelete`. The wrapper validates the key and names the
+  operation, so both obligations hold for a backend written later or by an
+  application, and a directory traversal cannot be handed to one. Two
+  consequences worth stating: `translating` and `operationFailed` became
+  private, a helper a backend *may* call being a helper a backend may forget;
+  and the memory backend stopped leaking a producer's raw error from `put`,
+  which now arrives as `write_failed` with the original as `rootException`, as
+  the directory backend's equivalent test already required. The tcinc537
+  limitation is preserved verbatim — the directory `exists` still means
+  "visible to this process", because `File.exists` hands the wrapper nothing to
+  translate. Five tests walk every method of every backend against a traversal
+  key and an over-long one, with each store built so that *acting* on the key is
+  observable (an S3 client that fails the test on any request, a data source
+  that fails it on any statement, a root directory that does not exist), so they
+  pin the documented property and not merely the error key. Two more take the
+  infrastructure away instead — a data source and an HTTP client that fail every
+  call — and assert that the database and S3 backends name the operation the
+  caller asked for rather than leaking a `SocketException`. Neither had ever
+  been asserted; tcinc537 had fixed the identical defect on the directory
+  backend, and the other two were never audited for it. Nine mutations confirm
+  each expectation bites: dropping the check from each of the five methods in
+  turn, dropping the translation from three, and restoring the `yield*` that
+  forwards a read failure past the catch.
+
 - **The directory backend's commit and read steps sat outside its failure
   path, so they raised `FileSystemException` and left the partial behind
   (tcinc537).** `put`'s rollback guarded the stream copy alone: `close`,

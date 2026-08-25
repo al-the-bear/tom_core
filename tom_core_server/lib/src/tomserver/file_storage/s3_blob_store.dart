@@ -119,13 +119,12 @@ class TomS3BlobStore extends TomBlobStore {
   static const String fileNameHeader = 'x-amz-meta-filename';
 
   @override
-  Future<TomStoredBlob> put({
+  Future<TomStoredBlob> doPut({
     required String key,
     required Stream<List<int>> bytes,
     String mediaType = TomStoredBlob.defaultMediaType,
     String? fileName,
   }) async {
-    TomBlobStore.validateKey(key);
     final metadata = <String, String>{
       'content-type': mediaType,
       if (fileName != null) fileNameHeader: fileName,
@@ -194,14 +193,10 @@ class TomS3BlobStore extends TomBlobStore {
         // that will never be completed.
         await _abortMultipartUpload(key, uploadId!).catchError((Object _) {});
       }
-      if (error is TomStorageException) rethrow;
-      throw TomStorageException(
-        'storage.blob.write_failed',
-        'The file could not be written to storage.',
-        parameters: {'key': key},
-        rootException: error,
-        stack: stack,
-      );
+      // Rethrown rather than wrapped: [TomBlobStore.put] reports it as
+      // `storage.blob.write_failed`. This block exists for the abort, and
+      // having done it must not swallow what caused it.
+      Error.throwWithStackTrace(error, stack);
     }
 
     return TomStoredBlob(
@@ -215,8 +210,7 @@ class TomS3BlobStore extends TomBlobStore {
   }
 
   @override
-  Stream<List<int>> get(String key) async* {
-    TomBlobStore.validateKey(key);
+  Stream<List<int>> doGet(String key) async* {
     final uri = _objectUri(key, const {});
     final request = http.Request('GET', uri)
       ..headers.addAll(
@@ -242,8 +236,7 @@ class TomS3BlobStore extends TomBlobStore {
   }
 
   @override
-  Future<TomStoredBlob?> describe(String key) async {
-    TomBlobStore.validateKey(key);
+  Future<TomStoredBlob?> doDescribe(String key) async {
     final response = await _send(
       method: 'HEAD',
       uri: _objectUri(key, const {}),
@@ -262,10 +255,10 @@ class TomS3BlobStore extends TomBlobStore {
   }
 
   @override
-  Future<bool> delete(String key) async {
+  Future<bool> doDelete(String key) async {
     // S3 answers `204` to a delete whether or not the object was there, so the
     // "did it exist" the contract promises has to be asked separately.
-    if (!await exists(key)) return false;
+    if (!await doExists(key)) return false;
     await _send(method: 'DELETE', uri: _objectUri(key, const {}));
     return true;
   }
