@@ -10,6 +10,7 @@ method, and converts the result (or any error) into a `Response`.
 
 - [Overview](#overview)
 - [Declaring an Endpoint](#declaring-an-endpoint)
+  - [Declared Response Headers](#declared-response-headers)
 - [Resolving the Implementation Instance](#resolving-the-implementation-instance)
 - [The Request Pipeline](#the-request-pipeline)
 - [Parameter Binding](#parameter-binding)
@@ -65,6 +66,37 @@ endpoint declared centrally in the remote-API registry is bound with
 annotated `@TomApiImplementation(apiId: ...)`; the route details come from the
 registry and the annotation only carries implementation-side overrides
 (`errorHandler`, `logRequests`, CORS).
+
+### Declared Response Headers
+
+An endpoint can declare headers the server adds to every response it produces —
+alongside the `Content-Type` derived from `produces` and any
+`contentDisposition`:
+
+```dart
+@TomEndpoint(uri: '/report', headers: {'x-report-version': '2'})
+Future<Report> report() async => …;
+```
+
+`TomEndpoint.headers` is **outbound only**. The name is bare `headers` because
+an endpoint declaration only ever speaks for the response: the pipeline copies
+these onto the response and reads nothing from them. There is no field for
+headers an endpoint *requires* of a request, and no request is rejected for
+lacking one.
+
+The registry-backed style states the two directions separately, and only one of
+them is the server's business:
+
+| Contract field | Direction | Where it goes |
+| -------------- | --------- | ------------- |
+| `TomApiEndpoint.responseHeaders` | server → client | becomes `TomEndpoint.headers`, so the response carries it |
+| `TomApiEndpoint.requestHeaders` | client → server | read by `TomServerConnection` when a *client* calls the endpoint; the server reads it nowhere |
+
+The distinction is easy to lose because getting it wrong stays well-formed: a
+response that echoes the caller's own obligations back at it looks like a
+deliberate acknowledgement rather than a mistake. So the two declaration styles
+are held to the same statement — whichever way an endpoint is declared, its
+response carries what was declared *for the response*, and nothing else.
 
 ## Resolving the Implementation Instance
 

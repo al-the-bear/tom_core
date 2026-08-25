@@ -308,6 +308,23 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> splitRouteWrite();
 
+  /// An **inline** endpoint declaring fixed response headers.
+  ///
+  /// `TomEndpoint.headers` is copied onto every response the pipeline builds,
+  /// and no fixture declared any, so the whole field went unserved: nothing
+  /// established what the inline declaration style *does* with headers, which
+  /// is the baseline the registry style has to agree with. Its registry
+  /// counterpart is `FixtureAccessApiService.headerDeclaring`.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/inline_headers',
+    produces: TomMimeType.json,
+    headers: {'x-fixture-inline': 'from-inline-declaration'},
+    logRequests: false,
+  )
+  Future<Map<String, Object>> inlineHeaders();
+
   /// A WebSocket endpoint: invoked once per accepted connection, with the live
   /// socket among its parameters.
   ///
@@ -495,6 +512,11 @@ class FixtureApiServer implements FixtureApiService {
   };
 
   @override
+  Future<Map<String, Object>> inlineHeaders() async => <String, Object>{
+    'style': 'inline',
+  };
+
+  @override
   Future<void> socket(TomWebSocketConnection connection) async {
     // Read from the zone the pipeline captured at handshake time. If the zone
     // were not re-established for the callback, both of these would be null.
@@ -565,9 +587,37 @@ void registerFixtureAccessApi() {
         method: TomHttpMethod.get,
         access: fixtureContractAccess,
       ),
+      // A contract declaring **both** header directions, which is the only way
+      // to tell them apart: an entry declaring one of them cannot show which
+      // one the server picked up. `requestHeaders` is what a *client* is told
+      // to send (`TomServerConnection` reads it); `responseHeaders` is what the
+      // server is told to answer with. Nothing in the package declared either,
+      // so the server's reading of the contract went unasserted.
+      TomApiEndpoint<Object, Object>(
+        id: 'headerDeclaring',
+        uri: '/headers',
+        method: TomHttpMethod.get,
+        requestHeaders: fixtureContractRequestHeaders,
+        responseHeaders: fixtureContractResponseHeaders,
+      ),
     ],
   );
 }
+
+/// Headers the contract tells a **client** to send to
+/// [FixtureAccessApiService.headerDeclaring].
+///
+/// The value names its direction so a wrongly-wired mapping is legible in the
+/// failure message rather than being a bare string mismatch.
+const fixtureContractRequestHeaders = {
+  'x-fixture-request': 'sent-by-the-client',
+};
+
+/// Headers the contract tells the **server** to answer
+/// [FixtureAccessApiService.headerDeclaring] with.
+const fixtureContractResponseHeaders = {
+  'x-fixture-response': 'sent-by-the-server',
+};
 
 /// A registry-backed API implementation covering the three ways an endpoint can
 /// acquire (or fail to acquire) an access policy (C-12 / G-API-3).
@@ -621,6 +671,22 @@ class FixtureAccessApiService {
   )
   Future<Map<String, Object>> inlineGated() async => <String, Object>{
     'source': 'inline',
+  };
+
+  /// The registry counterpart of [FixtureApiService.inlineHeaders]: its headers
+  /// come from the contract entry rather than from the annotation.
+  ///
+  /// The two declaration styles must agree about what a response carries, and
+  /// the only way to catch them diverging is an endpoint whose contract states
+  /// *both* directions — then a response either carries the one the contract
+  /// meant for it or carries the one meant for the caller.
+  @TomPublicAccess()
+  @TomApiEndpointImplementation(
+    apiId: fixtureAccessApiId,
+    endpointId: 'headerDeclaring',
+  )
+  Future<Map<String, Object>> headerDeclaring() async => <String, Object>{
+    'style': 'registry',
   };
 }
 

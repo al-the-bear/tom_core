@@ -2,6 +2,40 @@
 
 ### Fixed
 
+- **A registry endpoint's `requestHeaders` were emitted as its *response*
+  headers (tcinc507).** `TomApiEndpointImplementation.convertToTomEndpoint`
+  passed `endpoint.requestHeaders` into `TomEndpoint.headers` — the field the
+  pipeline copies onto every response it builds. The contract distinguishes the
+  two directions (`requestHeaders` is what a *client* is told to send, and is
+  read by `TomServerConnection`; `responseHeaders` is what the server is told to
+  answer with), so a registry-backed endpoint declaring required request headers
+  had them re-emitted back at the caller, while an inline endpoint declaring the
+  same thing did not. The mapping now reads `responseHeaders`.
+
+  Nothing failed loudly, which is why it survived: a response that echoes the
+  caller's own obligations back at it is well-formed and reads like a deliberate
+  acknowledgement. The other half of the same defect is that
+  `TomApiEndpoint.responseHeaders` — the field that *is* the server's business —
+  had no consumer anywhere in the workspace, so a contract's response-header
+  declaration was simply inert. It is now served.
+
+  `TomEndpoint.headers` states its direction in its own dartdoc: outbound only,
+  with no field for headers an endpoint requires of a request, and a pointer to
+  which of the contract's two fields fills it. `doc/endpoints.md` gains a
+  *Declared Response Headers* section carrying the same table.
+
+  Coverage was nil in both directions. No fixture declared `TomEndpoint.headers`
+  at all, so the pipeline's response-header copy was unreached — deleting that
+  block outright passed the whole suite — and no registry entry declared either
+  header field, so the conversion's reading of the contract was unasserted. Three
+  fixtures were added: an inline endpoint declaring headers (the baseline the
+  registry style has to agree with), and a registry entry declaring **both**
+  directions with distinguishable values, which is the only shape that can show
+  *which* one the server picked up. Four mutations, all killed: restoring
+  `requestHeaders` (5 tests), dropping the mapping (3), mapping **both**
+  directions (4 — the case a loosely-written test would wave through), and
+  deleting the pipeline's header copy (3).
+
 - **The routing table was keyed by URI alone, so several methods on one route
   collapsed to one entry (tcinc506).** `createRoutesForEndpoint` wrote
   `routingInfo[tep.uri]` *inside* its loop over `tep.methods`, and again on the

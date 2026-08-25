@@ -212,7 +212,12 @@ class TomApiEndpointImplementation<
           apiImplementation?.errorHandler ??
           _tomDefaultErrorHandler,
       logRequests: logRequests ?? apiImplementation?.logRequestsDefault,
-      headers: endpoint.requestHeaders,
+      // The contract states both directions; only the response one belongs
+      // here. `endpoint.requestHeaders` is an instruction to the *client*
+      // (`TomServerConnection` reads it when calling this endpoint) and has no
+      // server-side counterpart — a header the caller was told to send is not
+      // one to send back.
+      headers: endpoint.responseHeaders,
       corsAllowedOrigins: corsAllowedOrigins,
       corsAllowedMethods: corsAllowedMethods,
       corsAllowedHeaders: corsAllowedHeaders,
@@ -275,7 +280,20 @@ class TomEndpoint<requestType extends Object, resultType extends Object>
   /// Whether to log requests to this endpoint (`null` = use the global default).
   final bool? logRequests;
 
-  /// Fixed headers added to every response from this endpoint.
+  /// Fixed headers the server adds to every response this endpoint produces.
+  ///
+  /// **Outbound only.** The name is bare `headers` because an endpoint
+  /// declaration only ever speaks for the response: the pipeline copies these
+  /// onto the response it builds (alongside the `Content-Type` derived from
+  /// [produces] and any [contentDisposition]) and reads nothing from them. An
+  /// endpoint cannot declare headers it *requires* of a request here — there is
+  /// no field for that, and no request is rejected for lacking one.
+  ///
+  /// The registry-backed declaration style states the two directions
+  /// separately, as `TomApiEndpoint.responseHeaders` and
+  /// `TomApiEndpoint.requestHeaders`; only the former maps onto this field.
+  /// `requestHeaders` instructs a *client* (`TomServerConnection` sends them
+  /// when it calls the endpoint) and reaches nothing on the server.
   final Map<String, String> headers;
 
   /// `Access-Control-Allow-Origin` override for this endpoint.

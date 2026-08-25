@@ -240,7 +240,7 @@ const TomApiEndpointImplementation({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `convertToTomEndpoint` | `TomEndpoint<requestType, resultType> convertToTomEndpoint([TomApiImplementation? apiImplementation])` | *(override)* Reads the registry entry and merges it with this annotation's overrides and the API-wide defaults into a `TomEndpoint`. |
+| `convertToTomEndpoint` | `TomEndpoint<requestType, resultType> convertToTomEndpoint([TomApiImplementation? apiImplementation])` | *(override)* Reads the registry entry and merges it with this annotation's overrides and the API-wide defaults into a `TomEndpoint`. The entry's `responseHeaders` become `TomEndpoint.headers`; its `requestHeaders` are a client-side instruction and are not read here. |
 
 ### TomEndpoint&lt;requestType, resultType&gt;
 
@@ -284,7 +284,7 @@ const TomEndpoint({
 | `contentDisposition` | `String?` | Optional `Content-Disposition` header for the response. |
 | `errorHandler` | `TomErrorHandler?` | Per-endpoint error handler (defaults to `TomDefaultErrorHandler`). |
 | `logRequests` | `bool?` | Whether to log requests (`null` = use the global default). |
-| `headers` | `Map<String, String>` | Fixed headers added to every response from this endpoint. |
+| `headers` | `Map<String, String>` | Fixed headers the server adds to every **response** this endpoint produces. Outbound only — an endpoint cannot declare headers it requires of a request. A registry-backed endpoint fills this from `TomApiEndpoint.responseHeaders`; that entry's `requestHeaders` instruct a *client* and reach nothing on the server. |
 | `corsAllowedOrigins` | `String?` | `Access-Control-Allow-Origin` override for this endpoint. |
 | `corsAllowedMethods` | `String?` | `Access-Control-Allow-Methods` override for this endpoint. |
 | `corsAllowedHeaders` | `String?` | `Access-Control-Allow-Headers` override for this endpoint. |

@@ -19,6 +19,8 @@ import 'fixtures/reflection_fixture.dart'
         FixtureConflictingAccessService,
         FixtureParseRequest,
         fixtureContractAccess,
+        fixtureContractRequestHeaders,
+        fixtureContractResponseHeaders,
         fixtureHandlerAccess,
         fixtureInlineAccess,
         registerFixtureAccessApi;
@@ -396,6 +398,75 @@ void main() {
         TomEndpointRouting.routingInfo.keys.where((k) => k.method == 'OPTIONS'),
         isEmpty,
       );
+    });
+  });
+
+  // An endpoint may declare headers the server adds to every response. There
+  // are two ways to declare them — inline on `@TomEndpoint`, or on the registry
+  // contract — and a contract states the two *directions* separately:
+  // `requestHeaders` are what a client is told to send, `responseHeaders` what
+  // the server is told to answer with. Reading the wrong one fails silently: a
+  // response that echoes the caller's own obligations back at it is well-formed
+  // and looks deliberate. Only a contract declaring both, with different
+  // values, can tell which one the server picked up.
+  group('declared response headers', () {
+    late Router router;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      router = TomEndpointRouting().initializeRouter();
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    test('an inline endpoint answers with the headers it declares', () async {
+      final response = await router.call(_get('/fixture/inline_headers'));
+      expect(response.statusCode, 200);
+      expect(response.headers['x-fixture-inline'], 'from-inline-declaration');
+    });
+
+    test(
+      'a registry endpoint answers with the contract responseHeaders',
+      () async {
+        final response = await router.call(_get('/fixture-access/headers'));
+        expect(response.statusCode, 200);
+        expect(
+          response.headers['x-fixture-response'],
+          fixtureContractResponseHeaders['x-fixture-response'],
+        );
+      },
+    );
+
+    test(
+      'a registry endpoint does not echo the contract requestHeaders',
+      () async {
+        final response = await router.call(_get('/fixture-access/headers'));
+        // The header a *client* was told to send is not one to send back. It is
+        // an obligation on the caller, and re-emitting it states something about
+        // the response that is not true of it.
+        expect(response.headers.keys, isNot(contains('x-fixture-request')));
+        expect(
+          response.headers.values,
+          isNot(contains(fixtureContractRequestHeaders['x-fixture-request'])),
+        );
+      },
+    );
+
+    test('both declaration styles add their headers and nothing else', () async {
+      // Beyond the content type the pipeline always sets, a response carries
+      // exactly what was declared for it — so neither style leaks a header the
+      // other does not, which is the divergence this group exists to pin.
+      final inline = await router.call(_get('/fixture/inline_headers'));
+      final registry = await router.call(_get('/fixture-access/headers'));
+      expect(inline.headers.keys.where((k) => k.startsWith('x-fixture-')), [
+        'x-fixture-inline',
+      ]);
+      expect(registry.headers.keys.where((k) => k.startsWith('x-fixture-')), [
+        'x-fixture-response',
+      ]);
     });
   });
 

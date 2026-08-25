@@ -95,6 +95,10 @@ void main() {
             id: 'create',
             uri: '/create',
             method: TomHttpMethod.post,
+            // Both directions, distinguishable by value: an entry declaring one
+            // of them cannot show which one the conversion picked up.
+            requestHeaders: const {'x-client-sends': 'request'},
+            responseHeaders: const {'x-server-answers': 'response'},
           ),
         ],
       );
@@ -158,6 +162,36 @@ void main() {
       );
       final endpoint = impl.convertToTomEndpoint();
       expect(endpoint.logRequests, isNull);
+    });
+
+    // TomEndpoint.headers is the *response* direction — the pipeline copies it
+    // onto every response it builds — and the contract states both directions
+    // separately. Taking the wrong one does not fail loudly: it re-emits a
+    // caller's obligations back at the caller, which reads like a deliberate
+    // echo rather than a bug.
+    test(
+      'the contract responseHeaders become the endpoint response headers',
+      () {
+        const impl = TomApiEndpointImplementation(
+          apiId: 'orders',
+          endpointId: 'create',
+        );
+        final endpoint = impl.convertToTomEndpoint();
+        expect(endpoint.headers, {'x-server-answers': 'response'});
+      },
+    );
+
+    test('the contract requestHeaders reach nothing on the server', () {
+      const impl = TomApiEndpointImplementation(
+        apiId: 'orders',
+        endpointId: 'create',
+      );
+      final endpoint = impl.convertToTomEndpoint();
+      // requestHeaders instruct a *client* (TomServerConnection reads them when
+      // it calls the endpoint); the served endpoint has no field for them, and
+      // the header the client was told to send is not one to send back.
+      expect(endpoint.headers.keys, isNot(contains('x-client-sends')));
+      expect(endpoint.headers.values, isNot(contains('request')));
     });
   });
 
