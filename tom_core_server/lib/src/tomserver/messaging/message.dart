@@ -219,8 +219,24 @@ class TomMessageBody {
       content = content,
       charset = 'utf-8';
 
+  /// Whether [mediaType] names [type], which is spelled in lower case.
+  ///
+  /// Media types are case-insensitive by specification, so the comparison has
+  /// to be too. It lives in one place because the alternative was tried: the
+  /// HTML check lowercased, the plain-text check was an inline `==` inside a
+  /// selector, and the two drifted apart — a body spelled `Text/Plain` was not
+  /// found while `Text/HTML` was. Predicates that share an implementation
+  /// cannot disagree about their own rule.
+  ///
+  /// Matching only; the caller's own spelling is what [mediaType] keeps and
+  /// what the MIME encoder puts on the wire.
+  bool _mediaTypeIs(String type) => mediaType.toLowerCase() == type;
+
+  /// Whether this part is plain text.
+  bool get isPlainText => _mediaTypeIs('text/plain');
+
   /// Whether this part is HTML.
-  bool get isHtml => mediaType.toLowerCase() == 'text/html';
+  bool get isHtml => _mediaTypeIs('text/html');
 
   /// Encodes this part as a JSON-native map.
   Map<String, Object?> toJson() => {
@@ -460,13 +476,14 @@ class TomMessage {
   /// The richest body offered, or `null` when the message has none.
   TomMessageBody? get preferredBody => bodies.isEmpty ? null : bodies.last;
 
-  /// The plain-text representation, when one was offered.
+  /// The plain-text representation, matched case-insensitively, when one was
+  /// offered.
   TomMessageBody? get textBody => bodies.cast<TomMessageBody?>().firstWhere(
-    (b) => b!.mediaType == 'text/plain',
+    (b) => b!.isPlainText,
     orElse: () => null,
   );
 
-  /// The HTML representation, when one was offered.
+  /// The HTML representation, matched case-insensitively, when one was offered.
   TomMessageBody? get htmlBody => bodies.cast<TomMessageBody?>().firstWhere(
     (b) => b!.isHtml,
     orElse: () => null,

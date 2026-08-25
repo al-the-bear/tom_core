@@ -317,6 +317,7 @@ factory TomMessageBody.fromJson(Map<String, Object?> map)
 | `mediaType` | `String` | The IANA media type, e.g. `text/plain` or `text/html` (final). |
 | `content` | `String` | The content itself (final). |
 | `charset` | `String` | The character set the content is in; defaults to `utf-8` (final). |
+| `isPlainText` | `bool` | *(getter)* Whether `mediaType` is `text/plain`, case-insensitively. |
 | `isHtml` | `bool` | *(getter)* Whether `mediaType` is `text/html`, case-insensitively. |
 
 #### Methods
@@ -448,8 +449,8 @@ factory TomMessage.fromJson(Map<String, Object?> map)
 | `createdAt` | `DateTime` | When the message was composed; defaults to now (final). |
 | `envelopeAddresses` | `List<String>` | *(getter)* Every recipient address in declaration order, blind copies included — this is the envelope a transport delivers to. |
 | `preferredBody` | `TomMessageBody?` | *(getter)* The richest body offered (the last), or `null` when there is none. |
-| `textBody` | `TomMessageBody?` | *(getter)* The `text/plain` representation, when one was offered. |
-| `htmlBody` | `TomMessageBody?` | *(getter)* The HTML representation, when one was offered. |
+| `textBody` | `TomMessageBody?` | *(getter)* The `text/plain` representation, matched case-insensitively, when one was offered. |
+| `htmlBody` | `TomMessageBody?` | *(getter)* The HTML representation, matched case-insensitively, when one was offered. |
 | `hasInlineAttachments` | `bool` | *(getter)* Whether any attachment is referenced from a body rather than listed. |
 
 #### Methods

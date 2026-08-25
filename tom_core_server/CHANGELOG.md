@@ -268,6 +268,45 @@
 
 ### Fixed
 
+- **`TomMessage.textBody` missed a body spelled `Text/Plain`, and the SMS
+  transport then sent the HTML one instead (tcinc573).** The two kind checks on
+  `TomMessageBody` disagreed about case: `isHtml` lowercased its media type
+  before comparing, while the plain-text check was a bare `== 'text/plain'`
+  inlined in the `textBody` selector. IANA media types are case-insensitive by
+  specification, so `Text/HTML` was found and `Text/Plain` was not. The
+  convenience constructors `.text` and `.html` always write lower case, which is
+  why the defect stayed invisible — it is only reachable through the general
+  `TomMessageBody(mediaType, content)` constructor, i.e. exactly the callers who
+  supply their own media type from a database column, a config file or an
+  upstream API, none of which is obliged to normalise it.
+
+  The consequence was worse than a getter returning `null`. `TomSmsTransport`
+  picks `message.textBody ?? message.preferredBody`, and `bodies` is documented
+  as least-preferred-first, so `preferredBody` is the *last* body — the HTML
+  alternative in a text+html message. An unrecognised plain-text part therefore
+  did not fail, it fell through to the markup: a subscriber to a text+html
+  message whose text part was spelled `Text/Plain` received
+  `<p>Your code is <b>123456</b>.</p>` as an SMS. Nothing threw and nothing
+  logged, so the only way to observe it was to read the delivered message.
+
+  Both predicates now route through one private `_mediaTypeIs(String)` helper,
+  and `textBody` asks `isPlainText` rather than comparing inline. Two call sites
+  do not normally justify an extraction; this one is justified by the defect
+  itself — the two comparisons were written independently and drifted apart, and
+  a predicate that shares its sibling's implementation cannot disagree with it.
+  `isPlainText` is new public surface, added because the selector needed it and
+  a caller inspecting a body had only the HTML half of the pair. Matching is
+  case-insensitive; storage is not — `mediaType` keeps whatever spelling the
+  caller gave, and that is what the MIME encoder puts on the wire, which is
+  pinned by a test so a later "normalise on construction" cannot quietly rewrite
+  a caller's header.
+
+  Parameter-bearing media types (`text/plain; charset=utf-8`) are deliberately
+  still not matched. The field is documented as the media type alone, `charset`
+  is a separate field on the same class, and both convenience constructors
+  populate them that way; accepting parameters here would invent a requirement
+  no caller has asked for and blur where the charset lives.
+
 - **The messaging example verified nothing under the command its own header
   documents; its sixteen expectations are now checked (tcinc571).** `dart run`
   leaves assertions disabled — that is what `--enable-asserts` is for — so

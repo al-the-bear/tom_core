@@ -152,6 +152,34 @@ void main() {
     });
   });
 
+  group('TomMessageBody', () {
+    test('the kind predicates are case-insensitive in both directions', () {
+      // One rule, stated once, for both predicates. `isHtml` was already
+      // case-insensitive and the plain-text check was a literal `==` buried in
+      // a selector, which is how the two came to disagree: a predicate written
+      // beside its sibling gets compared to it, an inline comparison does not.
+      expect(const TomMessageBody('Text/Plain', 'x').isPlainText, isTrue);
+      expect(const TomMessageBody('TEXT/PLAIN', 'x').isPlainText, isTrue);
+      expect(const TomMessageBody('text/plain', 'x').isPlainText, isTrue);
+      expect(const TomMessageBody('Text/HTML', 'x').isHtml, isTrue);
+      expect(const TomMessageBody('TEXT/HTML', 'x').isHtml, isTrue);
+      expect(const TomMessageBody('text/html', 'x').isHtml, isTrue);
+    });
+
+    test('the predicates stay mutually exclusive', () {
+      // Case-insensitivity must not widen either predicate into the other's
+      // territory, and neither should claim a type that is simply something
+      // else.
+      final html = const TomMessageBody('Text/HTML', 'x');
+      expect(html.isPlainText, isFalse);
+      final plain = const TomMessageBody('Text/Plain', 'x');
+      expect(plain.isHtml, isFalse);
+      final other = const TomMessageBody('text/markdown', 'x');
+      expect(other.isPlainText, isFalse);
+      expect(other.isHtml, isFalse);
+    });
+  });
+
   group('TomMessage', () {
     test('an unaddressed message is rejected at composition', () {
       // Not at delivery: the caller who forgot the recipient is on the stack
@@ -175,6 +203,45 @@ void main() {
       expect(message.preferredBody!.isHtml, isTrue);
       expect(message.textBody!.content, 'plain');
       expect(message.htmlBody!.content, '<p>rich</p>');
+    });
+
+    test('the body selectors ignore media-type case, as IANA does', () {
+      // Media types are case-insensitive by specification, so a body is a
+      // plain-text body whatever case it was spelled in. The two selectors used
+      // to disagree about that — `htmlBody` lowercased and `textBody` did not —
+      // which meant an identically-built message lost one of its two parts
+      // depending only on which one the caller capitalised.
+      //
+      // The general constructor is what exposes this: it takes the media type
+      // as a free string, so a body built from a stored template, a gateway
+      // response or a spec file arrives spelled however that source spells it.
+      // `TomMessageBody.text` and `.html` always write lower case, so no
+      // in-package path reaches it and no existing test did either.
+      final message = TomMessage(
+        recipients: [TomRecipient('to@example.com')],
+        bodies: const [
+          TomMessageBody('Text/Plain', 'plain'),
+          TomMessageBody('TEXT/HTML', '<p>rich</p>'),
+        ],
+      );
+      expect(message.textBody?.content, 'plain');
+      expect(message.htmlBody?.content, '<p>rich</p>');
+    });
+
+    test('the selectors preserve the spelling they were given', () {
+      // Case-insensitive *matching* must not become case-*normalising*
+      // storage. The spelling belongs to the caller and goes out on the wire in
+      // the Content-Type header, so the selector answers "is this the text
+      // part?" without editing the answer it hands back.
+      final message = TomMessage(
+        recipients: [TomRecipient('to@example.com')],
+        bodies: const [TomMessageBody('Text/Plain', 'plain')],
+      );
+      expect(message.textBody!.mediaType, 'Text/Plain');
+      expect(
+        TomMimeEncoder().encode(message),
+        contains('Content-Type: Text/Plain'),
+      );
     });
 
     test('the envelope includes blind copies', () {

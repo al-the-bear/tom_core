@@ -373,6 +373,33 @@ void main() {
       expect(t.transport.supportsAttachments, isFalse);
     });
 
+    test('sends the text part even when its media type is capitalised', () async {
+      // `send` picks `textBody ?? preferredBody`, and bodies are ordered
+      // least-preferred first — so when the plain-text part is not recognised,
+      // the fallback is the *HTML* one and the subscriber receives markup in a
+      // text message. That made the case-sensitive plain-text match a delivery
+      // defect rather than a null getter: nothing throws, nothing logs, and the
+      // SMS goes out wrong.
+      final t = _transport(
+        (_) async => _answer('{"sid":"SM1","status":"queued"}'),
+      );
+      final message = TomMessage(
+        id: 's1',
+        channel: TomMessageChannel.sms,
+        recipients: [TomRecipient('+41791234567')],
+        bodies: const [
+          TomMessageBody('Text/Plain', 'Your code is 123456.'),
+          TomMessageBody('Text/HTML', '<p>Your code is <b>123456</b>.</p>'),
+        ],
+      );
+
+      await t.transport.send(message);
+
+      final sent = t.gateway.bodies.single;
+      expect(sent, contains(Uri.encodeQueryComponent('Your code is 123456.')));
+      expect(sent, isNot(contains('%3Cp%3E')));
+    });
+
     test('a copied recipient is refused permanently', () async {
       final t = _transport((_) async => _answer('{"status":"queued"}'));
       final message = TomMessage(
