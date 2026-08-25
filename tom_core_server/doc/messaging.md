@@ -22,6 +22,7 @@ lets it be made on the merits rather than around a missing substrate.
 - [Stand-In Transports](#stand-in-transports)
 - [SMTP](#smtp)
 - [SMS: One Gateway Shape, No Vendor Names](#sms-one-gateway-shape-no-vendor-names)
+  - [Composing one](#composing-one)
   - [Segments, not characters](#segments-not-characters)
   - [Two layers of classification](#two-layers-of-classification)
   - [Describing a gateway](#describing-a-gateway)
@@ -108,6 +109,11 @@ final message = TomMessage.email(
 
 Notes on the shape, each of which is a decision rather than an accident:
 
+- **Two factories, one type.** `TomMessage.email` is shown above;
+  [`TomMessage.sms`](#composing-one) composes the other channel. They differ in
+  what they *accept* — a subject and two bodies against one text and a sender id
+  — and not at all in what they produce, which is why one transport contract and
+  one outbox carry both.
 - **`TomRecipient.address`, not `emailAddress`.** For SMS it is a phone number,
   for push a device token, for a webhook a URL. Naming the field after the one
   channel that happens to use `@` is how a transport-neutral type stops being
@@ -322,6 +328,33 @@ One HTTP request per recipient. A gateway that accepts a list of numbers would
 save requests and cost the receipt its per-number outcome, and partial delivery
 is precisely the case that matters — one dead number must not cost the others
 their message, exactly as a refused `RCPT TO` does not over SMTP.
+
+### Composing one
+
+`TomMessage.sms` is the entry point for the whole SMS composition path —
+`TomSmsService.render` builds every application SMS through it, and a caller
+sending one directly uses the same factory:
+
+```dart
+final message = TomMessage.sms(
+  to: [TomRecipient('+441234567890')],
+  text: 'Your code is 402913. It expires in 5m.',
+  senderId: 'ACME',
+);
+```
+
+It takes no `subject`, no `html` and no `attachments`, because none of them
+survive the trip: the factory composes exactly one text body, which is what
+`TomSmsTransport` reads through `textBody`. Offering the fields and dropping
+them later would put the discovery at delivery time, in another isolate, long
+after the caller who supplied them has gone.
+
+`senderId` is a parameter rather than a `from` recipient, and lands in
+`metadata` — the row above is the whole reason. A short code is not an
+addressee: nobody replies to one, so modelling it as a `TomRecipient` would
+offer a `displayName` and a `TomRecipientKind` that mean nothing on this
+channel. An empty or omitted `senderId` adds no entry at all, so a gateway
+protocol that maps the key sees its absence rather than a blank.
 
 ### Segments, not characters
 
@@ -771,6 +804,12 @@ sms:
   two_factor:
     text: "Your code is {code}. It expires in {minutes}m."
 ```
+
+What `render` hands back is a plain
+[`TomMessage.sms`](#composing-one) — the resolved text, the request's
+recipients, and `TomSmsRequest.from` as the sender id. Past that point a
+templated SMS and a hand-composed one are indistinguishable, so the outbox, the
+transport and the receipt need to know nothing about templates.
 
 ### The shared base
 

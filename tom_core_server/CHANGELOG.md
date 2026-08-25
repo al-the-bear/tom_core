@@ -2618,6 +2618,37 @@
 
 ### Documentation
 
+- **`doc/messaging.md` never named `TomMessage.sms`, the factory every
+  application SMS is composed through (tcinc576).** The guide showed
+  `TomMessage.email` when it introduced the message shape, described what SMS
+  needed from that shape, and explained the templated SMS path — without once
+  naming the constructor that all of it goes through. A reader following the
+  guide end to end learned the channel's rules and not how to compose for it.
+
+  The SMS section gains a `### Composing one` subsection with a worked snippet
+  and the two decisions behind the signature: it accepts no `subject`, `html` or
+  `attachments` because none survive the trip, so offering them would move the
+  discovery to delivery time in another isolate; and `senderId` is a parameter
+  landing in `metadata` rather than a `from` recipient, because a short code is
+  not an addressee and modelling it as one would offer a `displayName` and a
+  `TomRecipientKind` that mean nothing here. The Message Shape notes gain a
+  "two factories, one type" bullet — they differ in what they accept and not at
+  all in what they produce, which is why one transport contract and one outbox
+  carry both — and Application SMS now says what `TomSmsService.render` hands
+  back, since a templated SMS being indistinguishable from a hand-composed one
+  past that point is why the outbox needs to know nothing about templates.
+
+  The API summary half of this finding was already closed under tcinc471; the
+  omission was confined to the guide. Worth recording is what the investigation
+  ruled out: the coverage guard was suspected of being structurally blind to
+  named constructors, and it is not — `_parseDeclarations` collects them as
+  members, so removing `TomMessage.sms` from the summary turns
+  `every class section names the members its class declares` red. The earlier
+  probe that suggested otherwise had left a `.bak` copy of the summary inside
+  `doc/api_reference/`, where the parser read it as a second summary and found
+  the symbol there. No new guard was added, because one that duplicates a check
+  already in the file is dead weight.
+
 - **Four `little_things` artefacts said the module contributes "a single type"
   when it ships two (tcinc561).** `LoginException` is declared in
   `little_things/server_exception.dart`, exported from the barrel, and thrown 33
