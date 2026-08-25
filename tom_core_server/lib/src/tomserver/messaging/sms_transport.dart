@@ -403,23 +403,23 @@ class TomSmsGatewayAnswer {
   });
 
   /// The gateway took the message.
-  const TomSmsGatewayAnswer.accepted({String? remoteId, String? detail})
+  const TomSmsGatewayAnswer.accepted({this.remoteId, this.detail})
     : isAccepted = true,
-      remoteId = remoteId,
-      detail = detail,
       isPermanent = null,
       providerCode = null;
 
   /// The gateway refused it. [permanent] `null` defers to the HTTP status.
+  ///
+  /// [permanent] keeps its own name rather than becoming an initialising formal
+  /// for [isPermanent]: at a call site `permanent: true` reads as the caller's
+  /// claim about this refusal, which is what a rejection is being told.
   const TomSmsGatewayAnswer.rejected({
     bool? permanent,
-    String? detail,
-    String? providerCode,
+    this.detail,
+    this.providerCode,
   }) : isAccepted = false,
        remoteId = null,
-       detail = detail,
-       isPermanent = permanent,
-       providerCode = providerCode;
+       isPermanent = permanent;
 
   @override
   String toString() =>

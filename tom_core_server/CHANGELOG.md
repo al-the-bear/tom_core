@@ -3653,6 +3653,28 @@
 
 ### Internal
 
+- **Six constructor initialisers read as no-op self-assignments (tcinc582).**
+  `TomMessageBody.text` and `.html` each took a `String content` parameter and
+  then wrote `content = content` in the initialiser list, and
+  `TomSmsGatewayAnswer.accepted` and `.rejected` did the same for `remoteId`,
+  `detail` and `providerCode`. Every one of them was correct — in an initialiser
+  list the right-hand side resolves to the parameter, not the field — but
+  reading them as correct requires knowing that scoping rule, and a line that
+  looks like a mistake costs every reader the moment it takes to prove it isn't
+  one. All six are now initialising formals (`this.content`, `this.remoteId`,
+  and so on), which state the same thing without the ambiguity and drop the
+  redundant line. `TomSmsGatewayAnswer.rejected` keeps `permanent` as an
+  ordinary parameter, because it deliberately differs from the field it feeds
+  (`isPermanent`) and reads better at the call site; a comment now says so, so
+  the asymmetry is not mistaken for an oversight.
+
+  These were the only instances in the package: a sweep of `lib` for the shape
+  now reports none. The two constructors in `TomMessageBody` are the ones almost
+  every caller uses, so this was the first thing a reader of the class met.
+  Behaviour and signatures are unchanged — the parameter names, their types and
+  their `const`-ness are all as before, so no call site and no documented
+  signature moves.
+
 - **Two SMTP reply checks were `async` without awaiting anything (tcinc581).**
   `_expectAuth` and `_expect` each inspect a reply that has already been read
   and either return it or throw, but both were declared `async`, so both

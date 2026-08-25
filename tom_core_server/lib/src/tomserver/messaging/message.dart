@@ -208,15 +208,13 @@ class TomMessageBody {
   const TomMessageBody(this.mediaType, this.content, {this.charset = 'utf-8'});
 
   /// A `text/plain` part.
-  const TomMessageBody.text(String content)
+  const TomMessageBody.text(this.content)
     : mediaType = 'text/plain',
-      content = content,
       charset = 'utf-8';
 
   /// A `text/html` part.
-  const TomMessageBody.html(String content)
+  const TomMessageBody.html(this.content)
     : mediaType = 'text/html',
-      content = content,
       charset = 'utf-8';
 
   /// Whether [mediaType] names [type], which is spelled in lower case.
