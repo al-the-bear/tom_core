@@ -21,6 +21,36 @@ import 'package:tom_core_server/tom_core_server.dart';
 // FIXTURES
 // =============================================================================
 
+/// A [TomLogOutput] that keeps every message handed to it.
+///
+/// Deliberately captures without consulting the level: the question these tests
+/// ask is whether the transport *decided to record* a swallowed error, which is
+/// a different question from whether the logger's configured level would have
+/// printed it.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> lines = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp,
+    String? origin,
+  ) => lines.add(convertToString(message));
+}
+
+/// Captures log output for the duration of the calling test.
+List<String> _captureLog() {
+  final previousOutput = tomLog.logOutput;
+  final captured = _CapturingLogOutput();
+  tomLog.logOutput = captured;
+  addTearDown(() => tomLog.logOutput = previousOutput);
+  return captured.lines;
+}
+
 /// A clock that only moves when a test moves it.
 class _FakeClock {
   DateTime now;
@@ -43,6 +73,13 @@ class _ScriptedSmtpConnection implements TomSmtpConnection {
   String? data;
   bool upgraded = false;
   bool closed = false;
+
+  /// When set, [close] records the call and then throws this.
+  ///
+  /// A real socket connection practically never fails to close — which is why
+  /// the case has to be scripted to be tested at all.
+  Object? closeError;
+
   int _next = 0;
 
   _ScriptedSmtpConnection(this.replies);
@@ -72,7 +109,10 @@ class _ScriptedSmtpConnection implements TomSmtpConnection {
   Future<void> upgradeToTls() async => upgraded = true;
 
   @override
-  Future<void> close() async => closed = true;
+  Future<void> close() async {
+    closed = true;
+    if (closeError != null) throw closeError!;
+  }
 }
 
 TomSmtpReply _reply(int code, String text) => TomSmtpReply(code, [text]);
@@ -1287,6 +1327,66 @@ void main() {
       expect(receipt.remoteId, 'queued as XYZ');
     });
 
+    test('a swallowed failure is recorded at debug, naming the stage', () async {
+      // Swallowing is right; swallowing *silently* is not. A relay that
+      // consistently errors on QUIT is invisible until someone reads a packet
+      // capture, so the discarded error is written down — and the line names
+      // the stage, because these are read long after the fact and "an error
+      // was ignored" tells the reader nothing about which one.
+      final lines = _captureLog();
+      final connection = _ScriptedSmtpConnection([
+        ..._opening(),
+        _reply(250, 'ok'),
+        _reply(250, 'ok'),
+        _reply(354, 'go'),
+        _reply(250, 'queued as XYZ'),
+      ]);
+      final receipt = await TomSmtpTransport(
+        _settings(),
+        connect: (_) async => connection,
+      ).send(_mail());
+
+      expect(receipt.isDelivered, isTrue);
+      expect(
+        lines,
+        contains(
+          allOf(
+            // The stage as the *logger* names it, not merely the string `QUIT`
+            // — the discarded error's own text happens to end in the command
+            // list, so asserting `contains('QUIT')` would be satisfied by the
+            // payload whether or not the line named the stage at all.
+            contains('during QUIT after delivery'),
+            contains('test.smtp.script_exhausted'),
+          ),
+        ),
+      );
+    });
+
+    test('a connection that fails to close does not undo the delivery', () async {
+      // `send` closes in a `finally`, so an exception there would replace the
+      // receipt the relay already committed to on the 250 — and the retry would
+      // deliver a second copy. The teardown is subject to the same policy as
+      // QUIT: record it, do not raise it.
+      final lines = _captureLog();
+      final connection = _ScriptedSmtpConnection([
+        ..._opening(),
+        _reply(250, 'ok'),
+        _reply(250, 'ok'),
+        _reply(354, 'go'),
+        _reply(250, 'queued as XYZ'),
+        _reply(221, 'bye'),
+      ])..closeError = StateError('socket already gone');
+
+      final receipt = await TomSmtpTransport(
+        _settings(),
+        connect: (_) async => connection,
+      ).send(_mail());
+
+      expect(receipt.isDelivered, isTrue);
+      expect(receipt.remoteId, 'queued as XYZ');
+      expect(lines, contains(contains('socket already gone')));
+    });
+
     test('the connection is closed even when delivery fails', () async {
       final connection = _ScriptedSmtpConnection([
         ..._opening(),
@@ -1300,6 +1400,57 @@ void main() {
         throwsA(isA<TomDeliveryException>()),
       );
       expect(connection.closed, isTrue);
+    });
+  });
+
+  // ===========================================================================
+  // THE SOCKET CONNECTION
+  // ===========================================================================
+
+  group('TomSocketSmtpConnection', () {
+    // The only tests here that need a socket, and they need one precisely
+    // because what is under test is the teardown of a real one.
+
+    /// A listener that greets and then drops the connection, and the settings
+    /// pointing at it. Torn down with the test.
+    Future<TomSmtpSettings> droppingRelay() async {
+      final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      server.listen((socket) {
+        socket.write('220 relay.example.com ESMTP$tomMimeLineEnding');
+        // Unawaited on purpose: the listener is a `void` callback, and the
+        // test's synchronisation point is the greeting arriving on the client
+        // side, not the server finishing its write.
+        unawaited(socket.flush().then((_) => socket.destroy()));
+      });
+      return TomSmtpSettings(
+        host: server.address.address,
+        port: server.port,
+        security: TomSmtpSecurity.none,
+      );
+    }
+
+    test(
+      'closing a connection the far side already dropped does not throw',
+      () async {
+        final connection = await TomSocketSmtpConnection.open(
+          await droppingRelay(),
+        );
+        // Let the greeting arrive and the far side go away first, so the close
+        // below is genuinely a close of a dead socket.
+        expect((await connection.readReply()).code, 220);
+        await expectLater(connection.close(), completes);
+      },
+    );
+
+    test('closing twice does not throw', () async {
+      // `send` closes in a `finally`; a caller that also closes defensively
+      // must not turn tidiness into a delivery failure.
+      final connection = await TomSocketSmtpConnection.open(
+        await droppingRelay(),
+      );
+      await connection.close();
+      await expectLater(connection.close(), completes);
     });
   });
 

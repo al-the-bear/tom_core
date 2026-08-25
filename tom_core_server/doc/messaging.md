@@ -283,8 +283,15 @@ Details worth knowing:
   continuing in the clear would send the password in the clear.
 - **A rejected credential names `smtpPassword`** in the failure, because the
   operator's next action is to fix a setting, and the setting should be named.
-- **`QUIT` and `close` are best-effort.** A failure while hanging up does not
-  undo a delivery the server already accepted.
+- **`QUIT` and `close` are best-effort, but not silent.** A failure while
+  hanging up does not undo a delivery the server already accepted — reporting
+  one would produce a *duplicate* on the retry — so it is written to the debug
+  log with the stage that produced it (`QUIT after delivery`, `connection
+  close`, `socket teardown`) rather than raised. The close is best-effort for
+  *any* `TomSmtpConnection`, not only the socket one: `send` hangs up in a
+  `finally`, where an exception would replace whatever the conversation
+  produced. A relay that consistently errors on `QUIT`, or a TLS socket that
+  never shuts down cleanly, is otherwise invisible short of a packet capture.
 
 The protocol runs against the `TomSmtpConnection` interface, and the transport
 takes an injectable `connect` function. That is how `test/messaging_test.dart`

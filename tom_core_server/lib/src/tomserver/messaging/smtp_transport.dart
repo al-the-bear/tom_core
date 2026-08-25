@@ -182,6 +182,34 @@ class TomSmtpSettings {
 }
 
 // =============================================================================
+// AFTER-THE-FACT FAILURES
+// =============================================================================
+
+/// Runs [action], writing any failure down instead of raising it.
+///
+/// The policy is the same wherever this is used: the outcome that matters is
+/// already decided, and an error while tidying up afterwards must not be
+/// allowed to contradict it. A relay that drops the socket instead of
+/// answering `QUIT` has not un-delivered the message it accepted on the `250`,
+/// and reporting a failure there would produce a *duplicate* on the retry.
+///
+/// Swallowing is not the same as discarding. A relay that consistently errors
+/// on `QUIT`, or a TLS socket that never shuts down cleanly, is invisible
+/// until someone reads a packet capture — so the error is logged at debug,
+/// where it costs nothing until somebody goes looking.
+///
+/// [stage] names where the failure happened. These lines are read long after
+/// the fact, when the reader has no idea which half of a teardown produced
+/// them, so "an error was ignored" on its own is barely better than silence.
+Future<void> _quietly(String stage, Future<void> Function() action) async {
+  try {
+    await action();
+  } catch (error) {
+    tomLog.debug('Ignoring SMTP error during $stage: $error');
+  }
+}
+
+// =============================================================================
 // TRANSPORT
 // =============================================================================
 
@@ -245,7 +273,11 @@ class TomSmtpTransport extends TomMessageTransport {
     try {
       return await _converse(connection, outgoing, sender);
     } finally {
-      await connection.close();
+      // A `finally` that throws replaces whatever the body produced, so an
+      // unprotected close here could turn an accepted message into a reported
+      // failure — and the retry would deliver a second copy. Same policy as
+      // QUIT, one stage later.
+      await _quietly('connection close', connection.close);
     }
   }
 
@@ -333,7 +365,7 @@ class TomSmtpTransport extends TomMessageTransport {
     await connection.writeData(encoder.encode(message));
     final accepted = await _expect(await connection.readReply(), 250, 'body');
 
-    await _quietly(() async {
+    await _quietly('QUIT after delivery', () async {
       await connection.write('QUIT');
       await connection.readReply();
     });
@@ -458,19 +490,6 @@ class TomSmtpTransport extends TomMessageTransport {
             parameters: parameters,
           );
   }
-
-  /// Runs [action], ignoring failure.
-  ///
-  /// Used only for `QUIT`. The message is already accepted by then; a relay
-  /// that drops the socket instead of answering has not un-delivered it, and
-  /// turning that into a failure would cause a *duplicate* on the retry.
-  Future<void> _quietly(Future<void> Function() action) async {
-    try {
-      await action();
-    } catch (error) {
-      tomLog.debug('Ignoring SMTP error after delivery: $error');
-    }
-  }
 }
 
 // =============================================================================
@@ -528,6 +547,10 @@ abstract class TomSmtpConnection {
   Future<void> upgradeToTls();
 
   /// Closes the connection.
+  ///
+  /// May throw, but cannot be used to signal a delivery problem:
+  /// [TomSmtpTransport] hangs up in a `finally` and logs a failure here at
+  /// debug instead of letting it replace whatever the conversation produced.
   Future<void> close();
 }
 
@@ -630,13 +653,14 @@ class TomSocketSmtpConnection implements TomSmtpConnection {
 
   @override
   Future<void> close() async {
-    try {
+    // Closing a socket the far side already dropped is not a delivery failure
+    // — the outcome was decided before we got here — but it is worth a line.
+    await _quietly('socket teardown', () async {
       await _lines.cancel(immediate: true);
       await _socket.close();
-    } catch (_) {
-      // Closing a socket the far side already dropped is not an error worth
-      // reporting; the delivery outcome was decided before we got here.
-    }
+    });
+    // Outside the wrapper on purpose: `destroy` releases the resource and does
+    // not throw, so it must run whether or not the graceful close did.
     _socket.destroy();
   }
 }

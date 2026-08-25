@@ -1105,7 +1105,7 @@ TomSmtpTransport(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `send` | `Future<TomDeliveryReceipt> send(TomMessage message)` | *(override)* Runs one conversation — greeting, `EHLO` falling back to `HELO`, `STARTTLS` and re-greet when configured, `AUTH PLAIN` or `LOGIN` when credentials are set, `MAIL FROM`, one `RCPT TO` per envelope address, `DATA` and the document, then a best-effort `QUIT`. A message with no sender and no configured default fails permanently; an unreachable relay fails transiently; refused recipients are collected onto the receipt unless every one is refused. |
+| `send` | `Future<TomDeliveryReceipt> send(TomMessage message)` | *(override)* Runs one conversation — greeting, `EHLO` falling back to `HELO`, `STARTTLS` and re-greet when configured, `AUTH PLAIN` or `LOGIN` when credentials are set, `MAIL FROM`, one `RCPT TO` per envelope address, `DATA` and the document, then a best-effort `QUIT`. A message with no sender and no configured default fails permanently; an unreachable relay fails transiently; refused recipients are collected onto the receipt unless every one is refused. The connection is closed in a `finally`, best-effort: a `close` that throws is logged at debug rather than allowed to replace the receipt the relay already committed to. |
 
 ### TomSmtpReply
 
@@ -1154,7 +1154,7 @@ fake, and none of them is conveniently reachable against a real relay.
 | `writeData` | `Future<void> writeData(String data)` | Sends the message body and the terminating `.`. |
 | `readReply` | `Future<TomSmtpReply> readReply()` | Reads one complete reply, following multi-line continuations. |
 | `upgradeToTls` | `Future<void> upgradeToTls()` | Upgrades the connection to TLS after a `220` to `STARTTLS`. |
-| `close` | `Future<void> close()` | Closes the connection. |
+| `close` | `Future<void> close()` | Closes the connection. Implementations may throw; `TomSmtpTransport` logs the failure at debug rather than letting it replace the delivery outcome, so a `close` that fails cannot be used to signal one. |
 
 ### TomSocketSmtpConnection
 
@@ -1182,7 +1182,7 @@ None — the constructor is private; obtain instances via
 | `writeData` | `Future<void> writeData(String data)` | *(override)* Writes the body with dot-stuffing — any line starting with `.` is escaped, or the message would be truncated there — then the terminating `.` line. |
 | `readReply` | `Future<TomSmtpReply> readReply()` | *(override)* Accumulates continuation lines until one carries a space in the fourth column. A connection that closes mid-reply is a transient failure, because no answer at all is not a refusal. |
 | `upgradeToTls` | `Future<void> upgradeToTls()` | *(override)* Secures the existing socket and re-attaches the line reader to it. |
-| `close` | `Future<void> close()` | *(override)* Cancels the line reader and closes then destroys the socket, ignoring errors — the delivery outcome was decided before this point. |
+| `close` | `Future<void> close()` | *(override)* Cancels the line reader and closes the socket, logging any failure at debug under the stage `socket teardown` rather than raising it — the delivery outcome was decided before this point. `destroy` runs afterwards either way, so the resource is released even when the graceful close failed. |
 
 ### TomSmsEncoding
 

@@ -268,6 +268,45 @@
 
 ### Fixed
 
+- **A `close` that threw could un-deliver an accepted message, and a socket
+  teardown discarded its errors into a comment (tcinc575).**
+  `TomSocketSmtpConnection.close` swallowed failures in a `catch (_)` whose body
+  was a comment, while thirty lines up `TomSmtpTransport._quietly` handled the
+  same "an error after the work is done does not undo the work" case *and*
+  logged it. One policy, two spellings, one of them silent — and a relay that
+  consistently errors on `QUIT`, or a TLS socket that never shuts down cleanly,
+  was invisible short of a packet capture.
+
+  `_quietly` is now a top-level helper taking the stage that failed, so the
+  policy has one implementation and its log lines say which teardown produced
+  them (`QUIT after delivery`, `connection close`, `socket teardown`).
+
+  Routing the socket close through it needed the helper promoted out of
+  `TomSmtpTransport` — it was a private *instance* method there, and `close`
+  belongs to the unrelated `TomSocketSmtpConnection` — and that promotion
+  exposed a third site with the same policy and no protection at all:
+  `TomSmtpTransport.send` hangs up in a `finally`, where an exception replaces
+  whatever the body produced. Only the socket connection's internal swallow was
+  keeping that safe, and `TomSmtpConnection` is a public injectable interface,
+  so any other implementation whose `close` threw would have turned a message
+  the relay accepted on the `250` into a reported failure — and the retry would
+  have delivered a second copy. That call site is now best-effort too, which is
+  what `doc/messaging.md` already claimed for it.
+
+  `close` on the interface is documented as unable to signal a delivery
+  problem, since the transport will not propagate it.
+
+  Four tests. A scripted connection whose `close` throws pins that the receipt
+  survives it; the exhausted-script case pins that the swallowed error is
+  written down under its stage name (asserting the *logger's* phrasing, because
+  the discarded error's own text ends in the command list and would satisfy a
+  looser match on its own). Two more open a real loopback socket against a relay
+  that greets and drops, because what the todo names is the teardown of a real
+  socket: closing a dead one and closing twice both complete rather than throw.
+  Neither forces the catch — `Socket.close` does not fail on either path, which
+  is why the throwing case has to be scripted — so they stand as regression
+  guards over the site rather than as coverage of its catch.
+
 - **A delivery failure could call itself permanent and be retried forever
   (tcinc574).** `TomDeliveryException` stored `isPermanent` as a constructor
   parameter *and* signalled permanence by mixing in the kernel's
