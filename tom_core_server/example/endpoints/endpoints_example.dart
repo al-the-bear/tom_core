@@ -4,11 +4,12 @@
 /// annotated service classes and serves live HTTP requests, so it needs a
 /// running server and generated reflection — it is described in
 /// `doc/endpoints.md` rather than run here. This example shows the
-/// reflection-free surface: the endpoint-defining annotations and the default
-/// error handler's `Response`.
+/// reflection-free surface: the endpoint-defining annotations, the default
+/// error handler's `Response`, and the file slot's default-closed rule.
 ///
 /// Run with `dart run example/endpoints/endpoints_example.dart`.
-/// The same behaviour is covered by `test/endpoints_test.dart`.
+/// The same behaviour is covered by `test/endpoints_test.dart` and, for the
+/// file slot, `test/file_endpoint_test.dart`.
 library;
 
 import 'dart:typed_data';
@@ -16,7 +17,7 @@ import 'dart:typed_data';
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
-void run() {
+Future<void> run() async {
   // 1. An inline endpoint declaration. Every field has a default, so a bare
   //    @TomEndpoint() is a JSON GET at "/".
   const endpoint = TomEndpoint(
@@ -137,9 +138,51 @@ void run() {
   assert(identical(asBase, socketEndpoint));
   assert(converted.methods.single == TomHttpMethod.get);
 
+  // 10. A file slot. Expectations from here down are written as `if`/`throw`
+  //     rather than `assert`, because `dart run` — the command this file's own
+  //     header documents — compiles an assert out, so the checks above print
+  //     their transcript without ever being evaluated.
+  //
+  //     The route is fixed and the address is derived: a slot is
+  //     `<table>/<id>/<column>`, and both names come from annotations the
+  //     entity already carries, so no mapping table exists here to go stale.
+  print('10. file route: ${TomFileEndpoint.routeUri}');
+  if (TomFileEndpoint.routeUri !=
+      '${TomFileEndpoint.basePath}/{entity}/{id}/{column}') {
+    throw StateError('a file route must carry the three slot segments');
+  }
+
+  //     Exposure is default-closed, and that is observable with nothing
+  //     registered. Reflection can see every file column of every entity and
+  //     publishes none of them: a column becomes reachable only when a
+  //     repository is registered, and then only if its `@TomFileReference` says
+  //     `exposed: true`. Registration itself needs generated reflection and so
+  //     belongs with the running server in `doc/endpoints.md` — but what it
+  //     decides is visible from here.
+  if (TomFileSlots.slots.isNotEmpty) {
+    throw StateError('no slot is reachable before a repository is registered');
+  }
+  if (TomFileSlots.resolve('document', 'attachment') != null) {
+    throw StateError('an unregistered column must not resolve to a slot');
+  }
+
+  //     Which is the answer step 7's form part gets. `storeIn` is the join
+  //     between the two upload shapes — a multipart part reaches the store
+  //     through the *same* slot the raw-body endpoint uses — so it meets the
+  //     same closed door and reports it the same way. Over HTTP that key is a
+  //     404: a closed column is answered exactly as a non-existent one, rather
+  //     than telling a caller which columns exist but are not theirs.
+  try {
+    await attachment.storeIn('document', 'attachment', '42');
+    throw StateError('storing into an unregistered slot must not succeed');
+  } on TomFileSlotException catch (error) {
+    print('10. storeIn without a registered slot => ${error.key}');
+    if (error.key != 'file_endpoint.unknown_slot') rethrow;
+  }
+
   print('\nEndpoints example completed.');
 }
 
-void main() {
-  run();
+Future<void> main() async {
+  await run();
 }

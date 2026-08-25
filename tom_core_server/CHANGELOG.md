@@ -1184,6 +1184,25 @@
 
 ### Documentation
 
+- **`endpoints_example.dart` had nine facets and none was a file slot
+  (tcinc517).** The example showed the endpoint-defining annotations and the
+  default error handler, so a reader met `TomFormFile` in step 7 and was never
+  shown where such a part goes. A tenth step now closes that: it reads the
+  derived route (`/files/{entity}/{id}/{column}`), shows the default-closed rule
+  from the outside — nothing resolves before a repository is registered, and
+  then only for a column whose `@TomFileReference` says `exposed: true` — and
+  hands step 7's own form part to `TomFormFile.storeIn`, which meets that closed
+  door and reports it as `file_endpoint.unknown_slot`, the key the HTTP surface
+  renders as a 404. Registration needs generated reflection and stays out, in
+  keeping with the file's reflection-free scope; what registration *decides* is
+  visible without it. The step's expectations are written as `if`/`throw` rather
+  than the `assert` the nine steps above still use, because `dart run` — the
+  command this file's own header documents — compiles an assert out, so those
+  nine print their transcript unevaluated (their conversion is quest todo
+  `tcincb134_ahyc`). Three mutations confirm the new step bites: shortening
+  `routeUri`, renaming the `unknown_slot` key, and seeding the slot registry
+  each fail it.
+
 - **The API-reference guard now asks whether a summary names a type at all, not
   only whether it presents it in the expected shape (tcinc500).** Every existing
   group in `api_reference_coverage_test.dart` polices one *presentation* — an
