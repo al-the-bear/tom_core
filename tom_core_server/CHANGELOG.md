@@ -2,6 +2,32 @@
 
 ### Fixed
 
+- **`file_endpoint.dart` and the seven types it exports were mirrored in no API
+  summary at all (tcinc511).** The endpoints summary listed five of its unit's
+  six sources; the sixth — the 663-line file that serves and stores uploads —
+  was absent, and with it `TomFileSlotException`, `TomFileSlot`, `TomFileSlots`,
+  `TomFileEndpoint`, `TomFileService`, `TomFileServer` and the
+  `TomFormFileStorage` extension on `TomFormFile`. The neighbouring file-storage
+  summary did not cover them either: its `Source:` list is the blob-store
+  directory, a different tier. A publicly exported surface therefore had prose
+  coverage in `doc/file_storage.md` and `doc/endpoints.md` but no entry anywhere
+  under `doc/api_reference/`. `api_summary_endpoints.md` now names
+  `file_endpoint.dart` on its `Source:` list and carries a section per type with
+  constructors, properties and methods.
+
+  Which summary *owns* the types was not a judgement call: the coverage sweep
+  derives a file's module from its source directory, so only the endpoints
+  summary can satisfy the guard for a file under `endpoints/`. The split that
+  made it feel ambiguous is real, though, and now says so — the file-storage
+  summary states that it is the storage half only and stops at the key, and each
+  of the three file-related summaries names the other two. One existing pointer
+  turned out to be dangling: the endpoints summary already said "see
+  `TomFormFile.storeIn` in the File Storage summary", a document that mentions
+  neither `storeIn` nor any file-endpoint type; it now resolves in-document.
+  `endpoints` leaves `_sourceListsPendingReconciliation` and
+  `_apiNamesPendingReconciliation`, both of which guard in the other direction
+  and would have failed had it stayed.
+
 - **The Access Control document omitted contract-declared authorization — the
   path most registry endpoints take (tcinc510).** `doc/endpoints.md` described
   access resolution as "the method's annotation, otherwise the global protection

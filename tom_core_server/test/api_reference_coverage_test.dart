@@ -2108,24 +2108,26 @@ const Set<String> _tablesPendingReconciliation = {
 /// barrel yet — quest todo `tcincb121_ahxs`.
 const Set<String> _sourceListsPendingReconciliation = {
   'authorization',
-  'endpoints',
   'object_persistence',
 };
 
 /// The modules whose summaries do not yet name every type the barrel exports —
 /// quest todo `tcincb135_ahyc`.
 ///
-/// Both entries are the same omission: the file-slot upload API
-/// (`TomFileServer`, `TomFileSlots`, `TomFileEndpoint` and their companions in
-/// `endpoints`, `TomFileRepository` and `TomFileReference` in
-/// `object_persistence`) is absent from the API reference in its entirety —
-/// eleven exported types with no row, no section and no mention. Not eleven
-/// oversights but one: a feature area shipped without its documentation, which
-/// is the failure mode this whole file exists to make visible.
-const Set<String> _apiNamesPendingReconciliation = {
-  'endpoints',
-  'object_persistence',
-};
+/// One omission, split across two modules: the file-slot upload API was absent
+/// from the API reference in its entirety — no row, no section and no mention.
+/// Not many oversights but one, a feature area shipped without its
+/// documentation, which is the failure mode this whole file exists to make
+/// visible.
+///
+/// The `endpoints` half is settled (tcinc511): `file_endpoint.dart` is on the
+/// summary's `Source:` list and its seven exported names — `TomFileService`,
+/// `TomFileServer`, `TomFileEndpoint`, `TomFileSlot`, `TomFileSlots`,
+/// `TomFileSlotException` and the `TomFormFileStorage` extension — each have a
+/// section. What remains is the persistence half: `TomFileRepository` and
+/// `TomFileReference`, the row-side contract that binds a column to a stored
+/// key.
+const Set<String> _apiNamesPendingReconciliation = {'object_persistence'};
 
 /// The modules whose class sections do not yet name every member their classes
 /// declare — quest todos `tcincb123_ahxt` (authentication) and

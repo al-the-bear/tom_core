@@ -34,6 +34,13 @@ method, and runs the per-request handling.
   - [TomWebSocketException](#tomwebsocketexception)
   - [TomWebSocketEndpoint&lt;requestType, resultType&gt;](#tomwebsocketendpointrequesttype-resulttype)
   - [TomWebSocketConnection](#tomwebsocketconnection)
+  - [TomFileSlotException](#tomfileslotexception)
+  - [TomFileSlot](#tomfileslot)
+  - [TomFileSlots](#tomfileslots)
+  - [TomFormFileStorage](#tomformfilestorage)
+  - [TomFileEndpoint](#tomfileendpoint)
+  - [TomFileService](#tomfileservice)
+  - [TomFileServer](#tomfileserver)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -42,7 +49,8 @@ Source: `lib/src/tomserver/endpoints/endpoint_annotation.dart`,
 `lib/src/tomserver/endpoints/endpoint_pipeline.dart`,
 `lib/src/tomserver/endpoints/form_binding.dart`,
 `lib/src/tomserver/endpoints/endpoint_results.dart`,
-`lib/src/tomserver/endpoints/web_socket_endpoint.dart`.
+`lib/src/tomserver/endpoints/web_socket_endpoint.dart`,
+`lib/src/tomserver/endpoints/file_endpoint.dart`.
 
 `endpoint_annotation.dart` defines the declarative surface: `@tomService` /
 `@TomApiImplementation` mark a class as a routable service, `@TomEndpoint`
@@ -68,6 +76,27 @@ endpoint kind: `TomWebSocketEndpoint` is a `TomEndpointBase`, so it is scanned,
 authorized and parameter-bound by the same pipeline, and the handler talks
 through a `TomWebSocketConnection`.
 
+`file_endpoint.dart` is the framework's own endpoint rather than a way to
+declare one: a single service, `TomFileService` (default implementation
+`TomFileServer`), serving `POST`/`PUT`/`GET`/`HEAD`/`DELETE` on
+`/files/{entity}/{id}/{column}` through `TomFileEndpoint.handle`. The three path
+segments name a **slot** — an addressable file column — and slots are derived
+from reflection rather than declared: `TomFileSlots.register` walks an entity's
+`@TomFileReference` columns and exposes the ones marked `exposed: true`, so
+there is no second copy of a table or column name to drift. `TomFileSlot` is
+what a registration produces, the interface where the entity and key generics
+stop, and `TomFileSlotException` reports a registration or slot-resolution
+failure. The `TomFormFileStorage` extension is the same registry reached from
+the other upload shape: a `TomFormFile` from a multipart request stores through
+the identical slot, so exposure, row scope and column grade apply to both.
+
+This module owns the *HTTP* half of file transfer. The bytes themselves live in
+a `TomBlobStore` — see the
+[File Storage](api_summary_file_storage.md) summary for the backends, the key
+grammar and the store registry — and the row-side contract
+(`TomFileRepository`, `@TomFileReference`) belongs to
+[Object Persistence](api_summary_object_persistence.md).
+
 ## Class Hierarchy
 
 ```
@@ -89,7 +118,13 @@ TomServerException  (server module)
     ├── TomEndpointHandlerException
     ├── TomEndpointPipelineException
     ├── TomFormBindingException
-    └── TomWebSocketException
+    ├── TomWebSocketException
+    └── TomFileSlotException
+
+TomFileSlot  (abstract)
+
+TomFileService  (abstract)
+    └── TomFileServer  (implements)
 
 TomEndpointHandler
 TomEndpointRoutingInfo
@@ -100,6 +135,10 @@ TomFormFile
 TomMultipartForm
 TomRedirect
 TomWebSocketConnection
+TomFileSlots
+TomFileEndpoint
+
+extension TomFormFileStorage on TomFormFile
 ```
 
 ## Classes
@@ -628,9 +667,8 @@ TomFormFile({
 | ------ | --------- | ----------- |
 | `openRead` | `Stream<List<int>> openRead()` | The part's bytes as a stream, for handing to a store. |
 
-See also `TomFormFile.storeIn` in the
-[File Storage](api_summary_file_storage.md) summary, which uploads the part
-through the file-slot registry.
+See also [TomFormFileStorage](#tomformfilestorage) below, the extension that
+uploads a part through the file-slot registry.
 
 ### TomMultipartForm
 
@@ -781,6 +819,184 @@ TomWebSocketConnection()
 | `sendText` | `void sendText(String message)` | Sends a text frame. |
 | `sendBytes` | `void sendBytes(List<int> bytes)` | Sends a binary frame. |
 | `close` | `Future<void> close([int? code, String? reason])` | Closes the socket; idempotent. |
+
+### TomFileSlotException
+
+Thrown while registering or resolving a file slot. Registration failures are
+**scan-time** errors — they surface when the application wires itself up rather
+than when a user uploads a file, which is the point of deriving slots from
+reflection instead of from a hand-written mapping table.
+
+#### Constructors
+
+```dart
+TomFileSlotException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = true,
+})
+```
+
+### TomFileSlot
+
+One addressable file column: everything the endpoint needs to serve
+`<table>/<id>/<column>`, with the entity and key types already bound.
+
+This is where the generics stop. The endpoint is not generic and cannot be — a
+URL carries strings, and the entity type behind a slot is known only once the
+application registers its repository — so `TomFileSlots` stores slots as
+`TomFileSlot` and each one closes over the `<T, K>` it was registered with.
+Implementations are produced by `TomFileSlots.register`; applications hold the
+interface, not a class of their own.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `table` | `String` | The table name the slot is addressed by (`@TomDbTable.table`). |
+| `column` | `String` | The column name the slot is addressed by (the mapped column name). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `upload` | `Future<TomFileMetadata> upload(String rawId, Stream<List<int>> bytes, {String? mediaType, String? fileName})` | Stores `bytes` against row `rawId` and returns the descriptor. The storage key is minted by the store, never named by the caller — a client that could choose a key could choose someone else's. |
+| `describe` | `Future<TomFileMetadata?> describe(String rawId)` | The descriptor of the file on row `rawId`, or `null` when the row holds none. |
+| `open` | `Stream<List<int>> open(String rawId)` | Streams the file on row `rawId`. |
+| `clear` | `Future<bool> clear(String rawId)` | Removes the file on row `rawId`; `false` when there was none to remove. |
+
+### TomFileSlots
+
+The registry of HTTP-reachable file columns, keyed by table and column name.
+
+Registration is per **repository**, not per column: the repository already
+carries the entity type, the key type and — through the entity's annotations —
+the table name, the column names and the blob store. Anything an application had
+to restate is something that could drift.
+
+Exposure is default-closed. Reflection can see every `@TomFileReference` column;
+it publishes only those declaring `exposed: true`. What exposure decides is
+*which* column a slot names, never *whether* a caller may have it — that stays
+with the row scope (C-3) and column grade (C-4) the repository enforces, and the
+endpoint access check the pipeline runs first.
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `register` | `static void register<T extends Object, K>(TomFileRepository<T, K> repository)` | Registers every exposed `@TomFileReference` column of `T`. Throws `TomFileSlotException` at wire-up time when the entity declares no `@TomDbTable` (`entity_not_mapped`), exposes no file column (`no_exposed_column`), would produce an ambiguous slot (`ambiguous_slot`), or collides with one already registered (`duplicate_slot`). |
+| `resolve` | `static TomFileSlot? resolve(String table, String column)` | The slot serving `<table>/<column>`, or `null` when none is exposed. A non-exposed column is deliberately indistinguishable from a non-existent one. |
+| `reset` | `static void reset()` | Forgets every registration. For tests, which build a fresh registry per case; an application registers once at startup. |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `slots` | `List<String>` | Every registered slot as `<table>/<column>` — for diagnostics and tests. |
+
+### TomFormFileStorage
+
+An extension on `TomFormFile`: stores a file that arrived as one part of a
+`multipart/form-data` request.
+
+The join between the two upload shapes, and deliberately thin — a form part
+reaches the blob store through the *same* `TomFileSlot` the raw-body endpoint
+uses, so exposure, the row scope (C-3) and the column grade (C-4) all apply to
+it unchanged. Multipart changes only how the bytes reach the handler.
+
+The call is the handler's rather than the pipeline's, and that ordering is
+load-bearing: on a create the row does not exist while the body is being read,
+so the id the slot is addressed by is known only once the handler has saved the
+entity.
+
+```dart
+final saved = await documents.save(request.toDocument());
+await attachment.storeIn('document', 'attachment', '${saved.id}');
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `storeIn` | `Future<TomFileMetadata> storeIn(String table, String column, String rowId)` | Stores this part in the file slot `<table>/<column>` of row `rowId`. Throws `TomFileSlotException` (`unknown_slot`) when no such slot is exposed — the same answer the HTTP endpoint gives, because it is the same registry and the same default-closed rule. |
+
+### TomFileEndpoint
+
+Serves the file-transfer wire contract over the registered `TomFileSlots`. Not
+constructible: the whole surface is static, because everything a request needs
+is in the request and the registry.
+
+`handle` takes a shelf `Request` and returns a shelf `Response` rather than a
+reflected DTO because both directions must stream — a file large enough to be
+worth storing is large enough not to want in memory twice.
+
+The status codes are a deliberate set rather than a default mapping. A column
+refusal (C-4) is **403**: the caller is addressing a slot that exists and may
+not have it. A row refusal (C-3) is **404**, because the id in the slot is
+supplied by the caller and a 403 would confirm that a guessed id names a real
+row belonging to someone else. An unknown or unexposed slot is 404, an
+unparseable id is 400, and an unsupported method is 405.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `basePath` | `String` | The path the endpoint is mounted at (`/files`); a client's `baseUri` ends here. |
+| `routeUri` | `String` | The route pattern, with the three slot segments as path variables (`/files/{entity}/{id}/{column}`). |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `handle` | `static Future<Response> handle(Request request)` | Serves one file request, dispatching on the HTTP method. |
+
+### TomFileService
+
+The file-transfer service interface, mounted by the endpoints pipeline like any
+other `@tomService`.
+
+One method for all five verbs: the wire contract addresses a single resource and
+varies only the method, and splitting it would mean four copies of a slot
+resolution that has to be identical across them. Its `consumes` is deliberately
+**not** JSON — the pipeline reads a body into a string only for a JSON endpoint,
+so declaring octet-stream is what leaves the upload stream intact all the way to
+the blob store.
+
+The endpoint carries `@TomAuthenticatedAccess()` because its other protections
+cannot stand in for it: the row scope and the column grade are both
+principal-*relative*, so an exposed column on an unscoped, ungraded entity would
+otherwise be world-readable. An application wanting anonymous file access
+declares its own `TomFileService` component with a different access control — a
+handler-side annotation is a local override (G-API-3).
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `file` | `Future<Response> file(Request request)` | `POST`/`PUT`/`GET`/`HEAD`/`DELETE` on `/files/{entity}/{id}/{column}`. |
+
+### TomFileServer
+
+The default `TomFileService` implementation, and the bean an application
+registers to mount the endpoint:
+
+```dart
+TomFileSlots.register(documentRepository); // TomFileRepository<Document, int>
+TomBean.withType(TomFileServer, TomFileServer());
+```
+
+Holds no state — the registry is `TomFileSlots` and the request is the argument
+— so the pipeline may construct it itself when an application has registered no
+bean of its own.
+
+#### Constructors
+
+```dart
+TomFileServer()
+```
 
 ## Global Functions and Constants
 

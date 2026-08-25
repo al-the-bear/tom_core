@@ -72,6 +72,18 @@ configured stores — the same shape as `TomDataSourceInfo` — and
 through, so a deployment spells a custom backend in configuration exactly like a
 built-in one.
 
+This module is the storage half only, and stops at the key. Nothing here is
+reachable over HTTP: the endpoint that serves a stored file —
+`TomFileService`/`TomFileServer` on `/files/{entity}/{id}/{column}`, and the
+`TomFileSlots` registry that decides which columns are exposed at all — lives in
+`lib/src/tomserver/endpoints/file_endpoint.dart` and is documented in the
+[Endpoints](api_summary_endpoints.md) summary. The row-side contract that binds
+a column to a key in one of these stores (`TomFileRepository`,
+`@TomFileReference`) belongs to
+[Object Persistence](api_summary_object_persistence.md). The split is by tier
+rather than by subject, so a reader looking for "files" has three places to
+look; each summary names the other two.
+
 ## Class Hierarchy
 
 ```
