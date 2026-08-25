@@ -1447,8 +1447,20 @@ for a refused or unverifiable handshake.
 #### Constructors
 
 ```dart
-TomOAuthException(String key, String defaultUserMessage, {bool clientThrow = false})
+TomOAuthException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  Object? rootException,
+  StackTrace? stack,
+  bool clientThrow = false,
+})
 ```
+
+`clientThrow` defaults to `false` rather than to `TomServerException`'s `true`:
+a misconfigured provider is an operator's problem, and its detail — endpoint
+URLs, client ids — is not a caller's business. `autoLog` is the one inherited
+parameter this constructor does *not* forward.
 
 Keys raised: `oauth.config.missing_value`, `oauth.config.not_a_map`,
 `oauth.config.provider_not_a_map`, `oauth.config.unknown_provider`,

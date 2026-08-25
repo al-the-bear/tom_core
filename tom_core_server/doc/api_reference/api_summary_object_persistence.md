@@ -373,9 +373,14 @@ TomColumnInformation(
   TomPersistenceEventHandler? eventHandler,
   Type declaredType,
   String declaredName,
-  String field,
-)
+  String field, {
+  TomFileReference? fileReference,
+})
 ```
+
+`fileReference` is named and optional because it arrived after the positional
+list was already in use across the module; only a file-reference column passes
+it.
 
 ##### Properties
 
@@ -387,6 +392,7 @@ TomColumnInformation(
 | `entityId` | `TomEntityId?` | The entity-id annotation, if this field is the primary key. |
 | `reference` | `TomReference?` | The reference annotation, if this field is an association. |
 | `eventHandler` | `TomPersistenceEventHandler?` | The lifecycle-callback annotation, if any. |
+| `fileReference` | `TomFileReference?` | The file-reference annotation, if this column holds a blob storage key. |
 | `declaredType` | `Type` | The declared Dart type of the field. |
 | `declaredName` | `String` | The field's name on the entity. |
 | `field` | `String` | The mapped column name. |

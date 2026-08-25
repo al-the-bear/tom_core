@@ -1102,6 +1102,16 @@ class _Declaration {
 
   /// The names in the `extends` / `implements` / `with` clause.
   final Set<String> supertypes = {};
+
+  /// The parameter names of each constructor, keyed by constructor name — the
+  /// empty string for the unnamed one.
+  ///
+  /// Separate from [members] because a parameter is not a member. Most are
+  /// both, since `this.x` declares a field and takes it; the ones that are only
+  /// parameters — `super.stack`, a plain `Type value` consumed in the body —
+  /// belong to no member list and so are invisible to every check that reads
+  /// one, while still being what a caller has to write.
+  final Map<String, List<String>> constructorParameters = {};
 }
 
 /// Matches a type declaration that can own members, anchored at column zero.
@@ -1309,6 +1319,85 @@ String? _memberNameOf(String rawLine) {
   return _trailingIdentifier.firstMatch(remainder)?.group(1);
 }
 
+/// The text between the parentheses of the list opening at [open] in [text].
+///
+/// Depth-counted rather than read to the first `)`, because a parameter can be
+/// function-typed — `void Function(Object error) onFailure` closes a
+/// parenthesis that is not the list's own.
+String _parenthesisBody(String text, int open) {
+  var depth = 0;
+  for (var i = open; i < text.length; i++) {
+    if (text[i] == '(') depth++;
+    if (text[i] == ')' && --depth == 0) return text.substring(open + 1, i);
+  }
+  return '';
+}
+
+/// The parameter names declared in a parameter-list body, in source order.
+///
+/// Every shape a parameter is written in ends with its name — `this.slot`,
+/// `super.stack`, `required TomApi api`, `Map<String, Object?>? parameters`,
+/// `@deprecated int retries = 3` — so the name is the trailing identifier of
+/// each comma-separated chunk once the default value is cut. That is why this
+/// reads names and not types: the name is at a fixed place in every shape, and
+/// the type is not.
+List<String> _parameterNames(String body) {
+  // The `{`/`[` that open the named and optional groups wrap the parameters
+  // rather than belonging to one, so they are dropped before splitting; a `[`
+  // inside a `const []` default goes with them, which costs nothing because the
+  // default is cut below.
+  final flattened = StringBuffer();
+  var depth = 0;
+  for (final character in body.split('')) {
+    if (character == '(' || character == '<') depth++;
+    if (character == ')' || character == '>') depth--;
+    if (depth == 0 && '{}[]'.contains(character)) continue;
+    flattened.write(character);
+  }
+
+  final chunks = <String>[];
+  final chunk = StringBuffer();
+  depth = 0;
+  for (final character in flattened.toString().split('')) {
+    if (character == '(' || character == '<') depth++;
+    if (character == ')' || character == '>') depth--;
+    if (character == ',' && depth == 0) {
+      chunks.add(chunk.toString());
+      chunk.clear();
+      continue;
+    }
+    chunk.write(character);
+  }
+  chunks.add(chunk.toString());
+
+  final names = <String>[];
+  for (final raw in chunks) {
+    var declaration = raw;
+    var nesting = 0;
+    for (var i = 0; i < declaration.length; i++) {
+      final character = declaration[i];
+      if (character == '(' || character == '<') nesting++;
+      if (character == ')' || character == '>') nesting--;
+      if (nesting == 0 && character == '=') {
+        declaration = declaration.substring(0, i);
+        break;
+      }
+    }
+    final name = _trailingIdentifier.firstMatch(declaration.trim())?.group(1);
+    if (name != null) names.add(name);
+  }
+  return names;
+}
+
+/// Matches the header of a constructor of [type], named or not, wherever it can
+/// appear: at two-space indentation in source, or at the start of a line in a
+/// summary's fenced listing.
+RegExp _constructorHeader(String type) => RegExp(
+  r'(?:^|\n)[ ]*(?:const\s+|factory\s+|external\s+)*'
+  '${RegExp.escape(type)}'
+  r'(?:\.(\w+))?\s*\(',
+);
+
 /// Every type the package declares, keyed by name.
 ///
 /// The multi-line string literals and block comments go first: their contents
@@ -1330,6 +1419,10 @@ Map<String, _Declaration> _parseDeclarations() {
         .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
 
     _Declaration? current;
+    // Recomputed whenever the enclosing class changes rather than per line: the
+    // pattern is built from the class name, and building one for every line of
+    // every source file is the slowest thing this walk could do.
+    RegExp? constructorHeader;
     // The declaration header, while it is still open. A long type parameter
     // list is wrapped across lines and closes with a `>` at column zero, which
     // read as the end of the class body and dropped every member of the four
@@ -1365,6 +1458,7 @@ Map<String, _Declaration> _parseDeclarations() {
       if (declared != null) {
         final name = declared.group(1)!;
         current = declarations.putIfAbsent(name, () => _Declaration(name));
+        constructorHeader = _constructorHeader(name);
         current.isAbstract = line.startsWith('abstract ');
         if (line.contains('{')) {
           readSupertypes(line);
@@ -1387,6 +1481,26 @@ Map<String, _Declaration> _parseDeclarations() {
       }
       final value = _enumValue.firstMatch(line);
       if (value != null) current.members.add(value.group(1)!);
+
+      // Exactly two spaces, the same test [_memberNameOf] makes, because a
+      // deeper indent is a constructor *call* inside a method body — and a call
+      // matches this pattern as readily as a declaration does. Reading one
+      // would replace a constructor's parameters with some call site's
+      // arguments, which is worse than not reading it at all.
+      //
+      // A wrapped parameter list runs past this line, so the constructor is
+      // read from the lines that follow it as well. Forty is the same reach
+      // [_endsWithoutBody] uses and comfortably clears the longest one here.
+      final constructor = line.startsWith('  ') && !line.startsWith('   ')
+          ? constructorHeader!.firstMatch('\n$line')
+          : null;
+      if (constructor != null) {
+        final text = lines.skip(index).take(40).join('\n');
+        current.constructorParameters[constructor.group(1) ??
+            ''] = _parameterNames(
+          _parenthesisBody(text, text.indexOf('(', constructor.end - 2)),
+        );
+      }
     }
   }
   return declarations;
@@ -1447,6 +1561,14 @@ const Set<String> _memberSectionHeadings = {
   'Properties and Methods',
 };
 
+/// The member headings under which a fenced block is a constructor signature
+/// rather than an example.
+const Set<String> _constructorSectionHeadings = {
+  'Constructors',
+  'Constructor',
+  'Factory Constructors',
+};
+
 /// A qualifier appended to a member heading to say *which* members it holds:
 /// `Methods — aggregates`, `Properties (DbCol)`.
 final RegExp _memberSectionQualifier = RegExp(r'\s(?:[—–-]\s.*|\(.*\))$');
@@ -1492,7 +1614,33 @@ typedef _ClassSection = ({
   String type,
   List<({int line, String member})> rows,
   Set<String> mentions,
+  List<_ConstructorListing> constructors,
 });
+
+/// One constructor as a summary's `Constructors` block writes it.
+///
+/// Read apart from [_ClassSection.mentions] although it sits inside them,
+/// because the two answer different questions. A mention says the name occurs
+/// somewhere under the class; a listing is a *signature*, and a signature is
+/// read as the whole of what the caller passes.
+typedef _ConstructorListing = ({int line, String name, Set<String> parameters});
+
+/// The constructors of [type] that [text] — the body of one fenced block —
+/// lists, with the line each starts on given a block starting at [firstLine].
+List<_ConstructorListing> _constructorListingsOf(
+  String type,
+  String text,
+  int firstLine,
+) => [
+  for (final match in _constructorHeader(type).allMatches(text))
+    (
+      line: firstLine + '\n'.allMatches(text.substring(0, match.start)).length,
+      name: match.group(1) ?? '',
+      parameters: _parameterNames(
+        _parenthesisBody(text, match.end - 1),
+      ).toSet(),
+    ),
+];
 
 /// The class sections of one summary [file] whose content is [lines].
 ///
@@ -1517,16 +1665,51 @@ List<_ClassSection> _classSectionsOf(String file, List<String> lines) {
 
   final sections = <_ClassSection>[];
   _ClassSection? current;
+  // A fenced block is a constructor listing only under a constructor heading —
+  // the same class's `Methods` section fences example calls, and reading those
+  // as signatures would compare a listing against whatever a sample happened to
+  // pass.
+  var underConstructors = false;
+  var openedAt = -1;
+  final fenced = <String>[];
   for (var i = 0; i < lines.length; i++) {
+    if (lines[i].trimLeft().startsWith('```')) {
+      if (openedAt < 0) {
+        openedAt = i + 2;
+      } else {
+        if (current != null && underConstructors) {
+          current.constructors.addAll(
+            _constructorListingsOf(current.type, fenced.join('\n'), openedAt),
+          );
+        }
+        openedAt = -1;
+        fenced.clear();
+      }
+    } else if (openedAt >= 0) {
+      fenced.add(lines[i]);
+    }
+
     final title = heading.firstMatch(lines[i])?.group(1);
     if (title != null) {
-      if (_isMemberSection(title)) continue;
+      if (_isMemberSection(title)) {
+        underConstructors = _constructorSectionHeadings.contains(
+          title.replaceFirst(_memberSectionQualifier, ''),
+        );
+        continue;
+      }
       final type = title.replaceAll(typeParameters, '').trim();
+      underConstructors = false;
       if (!typeName.hasMatch(type) || !_declarations.containsKey(type)) {
         current = null;
         continue;
       }
-      current = (file: file, type: type, rows: [], mentions: {});
+      current = (
+        file: file,
+        type: type,
+        rows: [],
+        mentions: {},
+        constructors: [],
+      );
       sections.add(current);
       continue;
     }
@@ -1604,6 +1787,29 @@ List<String> _undocumentedMembers(String type) =>
         .where((member) => !_mentionsMember(type, member))
         .toList()
       ..sort();
+
+/// Every constructor listing in [module]'s summary that names fewer parameters
+/// than the constructor it claims to be — empty when the summary is complete.
+///
+/// One-directional on purpose. A listing that names a parameter the source does
+/// not have is a different fault with a different cause, and the check for it
+/// would have to know that a summary may legitimately abbreviate an inherited
+/// parameter list. What is asserted here is the property a caller depends on:
+/// a signature they can copy is a signature that is *whole*.
+List<String> _underListedConstructorsOf(String module) => [
+  for (final section in _classSections)
+    if (section.file == 'api_summary_$module.md')
+      for (final listing in section.constructors)
+        if (_declarations[section.type]?.constructorParameters[listing.name]
+            case final declared?)
+          if (declared
+                  .where((parameter) => !listing.parameters.contains(parameter))
+                  .toList()
+              case final missing when missing.isNotEmpty)
+            '${section.file}:${listing.line} ${section.type}'
+                '${listing.name.isEmpty ? '' : '.${listing.name}'} '
+                'omits ${missing.join(', ')}',
+];
 
 /// `type: a, b, c` for every class documented in [module]'s summary that has
 /// undocumented members — empty when the summary is complete.
@@ -4248,6 +4454,106 @@ One: `TomKind`, documented beside the type that carries it.
       );
       expect(section.mentions, contains('column'));
       expect(section.mentions, isNot(contains('tomStray')));
+    });
+  });
+
+  group('every constructor listing names every parameter it takes', () {
+    for (final module in _modules()) {
+      test(module, () {
+        final underListed = _underListedConstructorsOf(module);
+        expect(
+          underListed,
+          isEmpty,
+          reason:
+              'these constructor listings in '
+              'doc/api_reference/api_summary_$module.md name fewer parameters '
+              'than the constructor declares: ${underListed.join('; ')}. A '
+              'signature is the one part of a summary a reader copies rather '
+              'than reads, so an omitted parameter is not a thin description — '
+              'it is a parameter the reader will not know exists.',
+        );
+      });
+    }
+
+    test('a parameter that is not also a member is still checked', () {
+      // The reason this group exists rather than leaning on the member sweep.
+      // `TomOAuthException` forwards to its supertype with `super.stack`: a
+      // real parameter of the constructor, a member of no class, and therefore
+      // invisible to every check that reads a member list.
+      final oauth = _declarations['TomOAuthException']!;
+      expect(oauth.constructorParameters[''], contains('stack'));
+      expect(oauth.members, isNot(contains('stack')));
+    });
+
+    test('the sweep is reading the listings it claims to check', () {
+      // Each assertion above passes when nothing is parsed, so the parse is
+      // what has to be pinned — on both sides, because a listing compared
+      // against a constructor that was never read is also vacuously complete.
+      final listings = _classSections
+          .expand((section) => section.constructors)
+          .length;
+      expect(
+        listings,
+        greaterThan(200),
+        reason:
+            'the summaries list two hundred-odd constructors; if this drops, '
+            'the checks above are asserting that nothing is missing from '
+            'nothing',
+      );
+      expect(
+        _declarations.values.where((d) => d.constructorParameters.isNotEmpty),
+        hasLength(greaterThan(250)),
+      );
+
+      // The class this guard was written for, read end to end: the wrapped
+      // parameter list, the named group, and the parameter that started it.
+      expect(_declarations['TomMethodMetadata']!.constructorParameters[''], [
+        'endpoint',
+        'methodMirror',
+        'access',
+        'transactionInfo',
+        'audited',
+        'webSocket',
+        'apiEndpointImplementation',
+        'apiImplementation',
+        'api',
+        'apiEndpoint',
+      ]);
+      final metadata = _classSections.singleWhere(
+        (section) => section.type == 'TomMethodMetadata',
+      );
+      expect(metadata.constructors.single.parameters, contains('audited'));
+    });
+
+    test('a listing is measured the way the summaries write one', () {
+      final sections = _classSectionsOf('synthetic.md', [
+        '### TomOperator',
+        '',
+        '#### Constructors',
+        '',
+        '```dart',
+        'const TomOperator.column(',
+        '  String name, {',
+        // A function-typed parameter closes a parenthesis that is not the
+        // list's own; a default value holds a comma inside type arguments.
+        '  void Function(Object error) onFailure,',
+        '  Map<String, int> seeds = const {},',
+        '})',
+        '```',
+        '',
+        '#### Methods',
+        '',
+        '```dart',
+        // Under a non-constructor heading the same shape is an example call,
+        // not a signature — reading it would compare the class against its own
+        // sample arguments.
+        'TomOperator.column("id", onFailure: report)',
+        '```',
+      ]);
+
+      final listing = sections.single.constructors.single;
+      expect(listing.name, 'column');
+      expect(listing.parameters, {'name', 'onFailure', 'seeds'});
     });
   });
 }

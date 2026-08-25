@@ -2,6 +2,31 @@
 
 ### Fixed
 
+- **Nothing checked that a documented constructor listing named every parameter
+  the constructor takes (tcinc512).** A signature is the one part of a summary a
+  reader copies rather than reads, so an omitted parameter is not a thin
+  description — it is a parameter the reader will not know exists. Two guards
+  looked as though they covered this and did not. The member guard is satisfied
+  by an identifier appearing anywhere in a class section *including inside a
+  fenced listing*, so a listing could vouch for itself; and a constructor
+  parameter that is not also a field — `super.stack` — is a member of no class,
+  so no member list could ever see it. `test/api_reference_coverage_test.dart`
+  now parses the source constructors of every declared type and every listing
+  under a `Constructors` heading, and asserts that each listing names every
+  parameter its constructor declares.
+
+  The sweep found two: `TomOAuthException`, whose one-line listing hid all six
+  parameters including the `clientThrow` that decides whether a provider
+  misconfiguration reaches the browser, and `TomColumnInformation`, which had
+  gained a `fileReference` parameter — and a `fileReference` property row —
+  without either reaching the summary. Both are fixed, so the guard ships with
+  **no quarantine set**: all twenty modules are checked from the first run.
+  `TomMethodMetadata`'s `audited`, the omission that prompted this work, had
+  already been restored by tcinc471; the check is what makes that repair stick.
+  A related but distinct defect — twenty-two listings typing the inherited
+  `stack` as `Object?` where `TomException` declares `StackTrace?` — is a type
+  question rather than a presence question and is tracked separately.
+
 - **`file_endpoint.dart` and the seven types it exports were mirrored in no API
   summary at all (tcinc511).** The endpoints summary listed five of its unit's
   six sources; the sixth — the 663-line file that serves and stores uploads —
