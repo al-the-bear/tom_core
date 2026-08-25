@@ -49,7 +49,7 @@ without the second; the second is built entirely on the first.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomBlobStore` | abstract class | The contract: `put` / `get` / `describe` / `delete` by key |
+| `TomBlobStore` | abstract class | The contract: `put` / `get` / `describe` / `exists` / `delete` by key |
 | `TomStoredBlob` | class | What was stored — key, media type, size, time, name, location |
 | `TomStorageException` | class | The module's base error |
 | `TomMemoryBlobStore` | class | In-memory; tests and development |
@@ -62,7 +62,7 @@ without the second; the second is built entirely on the first.
 | `TomFileReference` | annotation | Marks a column as holding a storage key |
 | `TomFileReferenceKeys` | class | Key generation and store resolution for that annotation |
 | `TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` / `.clearFile` | methods | The entity-level file API |
-| `TomFileRepository` | abstract class | The four-method file contract, independent of SQL |
+| `TomFileRepository` | abstract class | The five-method file contract — `findById`, `saveFile`, `openFile`, `describeFile`, `clearFile` — independent of SQL |
 | `TomFileSlots` / `TomFileSlot` | class | Reflection-derived `<table>/<column>` slot registry |
 | `TomFileEndpoint` | class | The HTTP handler: POST / GET / HEAD / DELETE over a slot |
 | `TomFileService` / `TomFileServer` | service / component | Mounts the handler at `/files/{entity}/{id}/{column}` |
@@ -73,7 +73,7 @@ without the second; the second is built entirely on the first.
 
 Three things, each replaceable without touching the other two:
 
-1. **A contract** — `TomBlobStore`. Four methods over a key and a byte stream.
+1. **A contract** — `TomBlobStore`. Five methods over a key and a byte stream.
 2. **A backend** — one of four, or one an application writes. Selected from
    configuration, never named in the code that stores a file.
 3. **A reference** — a `@TomFileReference` column. The entity owns the file; the
@@ -853,9 +853,10 @@ pins `TomExportStore.validateKey` against `TomBlobStore.validateKey`.
   key scheme, and store resolution.
 - **`TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` /
   `.clearFile`** — the entity-level file API and its cascade.
-- **`TomFileRepository`** — the four-method contract those methods satisfy,
-  named separately so the HTTP endpoint depends on the capability rather than on
-  the SQL implementation.
+- **`TomFileRepository`** — the five-method contract those four satisfy: the four
+  above plus `findById`, because the endpoint has to load the row before it can
+  move any bytes. Named separately so the HTTP endpoint depends on the capability
+  rather than on the SQL implementation.
 - **`TomFileSlots` / `TomFileSlot`** — the reflection-derived slot registry:
   `register(repository)` publishes an entity's `exposed` file columns as
   `<table>/<column>`, and `resolve` finds one.
