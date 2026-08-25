@@ -63,6 +63,25 @@ class TomEndpointPipelineException extends TomServerException {
   });
 }
 
+/// Occupies the slot of a parameter no binding strategy could fill.
+///
+/// A positional argument list cannot express "absent" — leaving a parameter out
+/// does not leave it unset, it shortens the list and moves everything after it
+/// one place to the left. So binding fills one slot per declared parameter and
+/// marks the ones it could not resolve, and the shape of the call is decided
+/// afterwards, when the whole picture is visible. Only then is it knowable
+/// whether an unfilled slot is a trailing optional (droppable) or a hole
+/// (not).
+class _UnboundParameter {
+  const _UnboundParameter();
+  @override
+  String toString() => '<unbound>';
+}
+
+/// The single marker instance; compared by [identical], so no real bound value
+/// can be mistaken for it.
+const _UnboundParameter _unbound = _UnboundParameter();
+
 /// Serves one endpoint: binds a reflected service [method] to a route and runs
 /// the per-request pipeline.
 ///
@@ -669,11 +688,79 @@ class TomEndpointHandler {
           rootException: error,
         );
       }
+      // No strategy matched. Mark the slot rather than skipping it: whether
+      // this parameter may be left out at all is a question about the
+      // parameters that come *after* it, which are not bound yet.
       tomLog.warn(
         "$reqId-${req.url}: Setting parameter ${pm.simpleName} of type ${pm.reflectedType} failed",
       );
+      positionalArguments.add(_unbound);
     }
-    return positionalArguments;
+    return _toPositionalArguments(positionalArguments);
+  }
+
+  /// Turns the one-slot-per-parameter list built by [bindParameters] into the
+  /// argument list [InstanceMirror.invoke] is called with, or throws naming the
+  /// parameter that makes the call impossible.
+  ///
+  /// Exactly one shortening is legitimate: dropping *trailing* optionals, which
+  /// is how Dart applies their defaults. Every other unfilled slot is refused,
+  /// because there is no way to express it — an omission anywhere else silently
+  /// moves later arguments into earlier parameters, and where the types happen
+  /// to line up the method is invoked successfully with the wrong values in it.
+  /// A named exception identifying the parameter is the alternative to that:
+  /// "wrong number of arguments" points at the generated call site, this points
+  /// at the declaration that cannot be satisfied.
+  List<Object> _toPositionalArguments(List<Object> slots) {
+    final parameters = method.parameters;
+    final positional = <Object>[];
+    final positionalParameters = <ParameterMirror>[];
+    for (var i = 0; i < parameters.length; i++) {
+      final parameter = parameters[i];
+      if (parameter.isNamed) {
+        // A named parameter holds no positional slot, so an unfilled one costs
+        // nothing — its default applies. A *filled* one has nowhere to go: the
+        // pipeline invokes with positional arguments only, so appending it
+        // would put it in the slot of the next positional parameter.
+        if (identical(slots[i], _unbound)) continue;
+        throw TomEndpointHandlerException(
+          "endpoint_pipeline.bind_parameters.named_parameter_not_supported",
+          "Endpoint $name declares the named parameter '${parameter.simpleName}' of type ${parameter.type.reflectedType}, which request binding filled but cannot pass: endpoint methods are invoked with positional arguments only. Declare it positionally.",
+          parameters: {"parameter": parameter.simpleName, "endpoint": name},
+          autoLog: true,
+        );
+      }
+      positional.add(slots[i]);
+      positionalParameters.add(parameter);
+    }
+
+    var lastBound = -1;
+    for (var i = 0; i < positional.length; i++) {
+      if (!identical(positional[i], _unbound)) lastBound = i;
+    }
+
+    for (var i = 0; i < positional.length; i++) {
+      if (!identical(positional[i], _unbound)) continue;
+      final parameter = positionalParameters[i];
+      if (!parameter.isOptional) {
+        throw TomEndpointHandlerException(
+          "endpoint_pipeline.bind_parameters.unbindable_parameter",
+          "Endpoint $name requires the parameter '${parameter.simpleName}' of type ${parameter.type.reflectedType}, and no binding strategy could supply it from the request.",
+          parameters: {"parameter": parameter.simpleName, "endpoint": name},
+          autoLog: true,
+        );
+      }
+      if (i < lastBound) {
+        throw TomEndpointHandlerException(
+          "endpoint_pipeline.bind_parameters.unbindable_optional_parameter",
+          "Endpoint $name could not bind the optional parameter '${parameter.simpleName}' of type ${parameter.type.reflectedType}, but did bind '${positionalParameters[lastBound].simpleName}' after it. An optional parameter can only be omitted when every parameter following it is omitted too.",
+          parameters: {"parameter": parameter.simpleName, "endpoint": name},
+          autoLog: true,
+        );
+      }
+    }
+
+    return positional.sublist(0, lastBound + 1);
   }
 
   /// Runs the full request pipeline for this endpoint and returns the response.

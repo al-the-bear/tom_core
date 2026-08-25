@@ -501,14 +501,196 @@ void main() {
       );
     });
 
-    test('an empty body is not an error — it falls through to binding', () {
+    test('an empty body is not a body error — it falls through to binding', () {
       // The boundary this change must not cross. "No body" is how a body-less
-      // GET reaches a DTO built from path and query values alone, so it stays a
-      // warning and a fallthrough; only a body that *is* there and *is* wrong
-      // throws.
+      // GET reaches a DTO built from path and query values alone, so the body
+      // branch must decline it rather than reject it; only a body that *is*
+      // there and *is* wrong is a body error.
+      //
+      // What proves the fallthrough is *which* failure arrives. There is no
+      // context bean of this type either, so binding runs out of strategies and
+      // reports the parameter it could not fill — a later, different diagnosis
+      // than "your body is malformed". Asserting the key rather than merely
+      // `returnsNormally` is what makes this a test of the fallthrough: a
+      // request_body_not_json here would mean the body branch had claimed a
+      // request it has nothing to say about.
       expect(
         () => parseHandler.bindParameters(_post('/fixture/parse', '')),
-        returnsNormally,
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'endpoint_pipeline.bind_parameters.unbindable_parameter',
+          ),
+        ),
+      );
+    });
+  });
+
+  // `bindParameters` returns a *positional* list, and a positional list has no
+  // way to say "this one is absent". Skipping a parameter it could not fill
+  // therefore does not leave that parameter unset — it shortens the list, and
+  // every parameter after it moves one place to the left. The consequence is
+  // worse than the wrong-argument-count error it usually becomes: where the
+  // shifted value happens to fit the earlier parameter's type, the method is
+  // invoked successfully with the wrong argument in it, and nothing anywhere
+  // reports that a value was misplaced.
+  //
+  // So the returned list is now asserted to be *positionally faithful*: entry i
+  // is the value of parameter i, and the list ends where the bound parameters
+  // end. That admits exactly one kind of shortening — dropping trailing
+  // optionals, which is how Dart applies their defaults — and refuses every
+  // other, each with a key naming the parameter at fault.
+  group('binding preserves argument positions', () {
+    late TomEndpointHandler pairHandler;
+    late TomEndpointHandler optionalTailHandler;
+    late TomEndpointHandler optionalGapHandler;
+    late TomEndpointHandler namedTailHandler;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomEndpointRouting().initializeRouter();
+      pairHandler = TomEndpointRouting.routingInfo['/fixture/pair']!.handler;
+      optionalTailHandler =
+          TomEndpointRouting.routingInfo['/fixture/optional_tail']!.handler;
+      optionalGapHandler =
+          TomEndpointRouting.routingInfo['/fixture/optional_gap']!.handler;
+      namedTailHandler =
+          TomEndpointRouting.routingInfo['/fixture/named_tail']!.handler;
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    test('the FIRST of two parameters being unbindable fails the request', () {
+      // The case the whole group exists for. `first` is a request DTO on a GET
+      // with no body, no path capture and no query mapping, so nothing can fill
+      // it; `second` binds from the query string. Skipping `first` yields the
+      // single-element list ['hello'] — and 'hello' is then the argument for
+      // `first`, not for `second`.
+      expect(
+        () => pairHandler.bindParameters(_get('/fixture/pair?second=hello')),
+        throwsA(
+          isA<TomEndpointHandlerException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'endpoint_pipeline.bind_parameters.unbindable_parameter',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(contains('first'), contains('FixtureParseRequest')),
+              ),
+        ),
+        reason:
+            'naming the parameter is the point: "wrong number of arguments" '
+            'sends the reader to the call site, which is generated, instead of '
+            'to the declaration that cannot be satisfied',
+      );
+    });
+
+    test('a trailing optional that nothing binds is omitted, not an error', () {
+      // The counter-case, and the reason "unbound" cannot simply mean "error".
+      // A default value is the declaration saying the parameter may be absent,
+      // and dropping a *trailing* optional from the positional list is exactly
+      // how Dart applies that default.
+      expect(
+        optionalTailHandler.bindParameters(
+          _get('/fixture/optional_tail?first=a'),
+        ),
+        completion(equals(['a'])),
+      );
+    });
+
+    test('a trailing optional that does bind is still passed', () {
+      expect(
+        optionalTailHandler.bindParameters(
+          _get('/fixture/optional_tail?first=a&second=b'),
+        ),
+        completion(equals(['a', 'b'])),
+      );
+    });
+
+    test('an optional hole between two bound parameters fails', () {
+      // `?first=1&third=3` leaves `second` unfilled with `third` filled after
+      // it. Omitting `second` does not apply its default — it slides '3' into
+      // `second`'s slot and leaves `third` on its own default, so the method
+      // runs with two wrong arguments and no complaint. An optional may be
+      // dropped only when everything after it is dropped too.
+      expect(
+        () => optionalGapHandler.bindParameters(
+          _get('/fixture/optional_gap?first=1&third=3'),
+        ),
+        throwsA(
+          isA<TomEndpointHandlerException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'endpoint_pipeline.bind_parameters.unbindable_optional_parameter',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('second'),
+              ),
+        ),
+      );
+    });
+
+    test('all optionals bound is unaffected', () {
+      expect(
+        optionalGapHandler.bindParameters(
+          _get('/fixture/optional_gap?first=1&second=2&third=3'),
+        ),
+        completion(equals(['1', '2', '3'])),
+      );
+    });
+
+    test('a named parameter nothing binds is simply absent', () {
+      // A named parameter occupies no positional slot, so leaving it out cannot
+      // shift anything. Its default applies, exactly as declared.
+      expect(
+        namedTailHandler.bindParameters(_get('/fixture/named_tail?first=a')),
+        completion(equals(['a'])),
+      );
+    });
+
+    test('a named parameter that binds is refused, not mis-placed', () {
+      // The corruption arriving from the other direction: the pipeline invokes
+      // with positional arguments only, so a bound named value has nowhere
+      // legitimate to go. Appending it positionally puts it in the slot of
+      // whichever positional parameter follows — here it would simply be a
+      // second argument to a one-positional-parameter method. Refusing it names
+      // a declaration the binder cannot honour instead of silently honouring it
+      // wrongly.
+      expect(
+        () => namedTailHandler.bindParameters(
+          _get('/fixture/named_tail?first=a&tag=b'),
+        ),
+        throwsA(
+          isA<TomEndpointHandlerException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'endpoint_pipeline.bind_parameters.named_parameter_not_supported',
+              )
+              .having((e) => e.defaultUserMessage, 'message', contains('tag')),
+        ),
+      );
+    });
+
+    test('the failure reaches the caller as a failed request', () {
+      // Asserted through the router, not just the binder: the point of throwing
+      // is that the request stops. Were the exception to be absorbed anywhere
+      // between here and the handler, the method would still be invoked with
+      // the shifted list.
+      final router = TomEndpointRouting().initializeRouter();
+      expect(
+        router.call(_get('/fixture/pair?second=hello')),
+        throwsA(isA<TomEndpointHandlerException>()),
       );
     });
   });

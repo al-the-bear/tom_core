@@ -127,6 +127,75 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> parse(FixtureParseRequest request);
 
+  /// Two parameters of which the **first** cannot be bound by any strategy.
+  ///
+  /// [first] is a request DTO on a `GET` with no body, no path capture and no
+  /// query mapping, so nothing can fill it; [second] binds from `?second=`.
+  /// The order is the point: a binder that simply skips what it cannot fill
+  /// produces a one-element list, and that element — the value of `second` —
+  /// arrives in the slot of `first`. Everything after an unbindable parameter
+  /// moves one place left, which is a wrong *value* in a right-looking call,
+  /// not merely a wrong count.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/pair',
+    logRequests: false,
+  )
+  Future<Map<String, Object>> pair(FixtureParseRequest first, String second);
+
+  /// A trailing **optional** parameter that nothing binds.
+  ///
+  /// The counter-case to [pair], and the reason "unbound" cannot simply mean
+  /// "error": a default value is the declaration saying this parameter may be
+  /// absent, and omitting a trailing optional from the positional list is
+  /// exactly how Dart applies that default. Positions are preserved, so this
+  /// must keep working.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/optional_tail',
+    logRequests: false,
+  )
+  Future<Map<String, Object>> optionalTail(
+    String first, [
+    String second = 'fallback',
+  ]);
+
+  /// Two trailing optionals of which only the **later** one can be bound.
+  ///
+  /// Requested as `?first=1&third=3`, so `second` is a *hole*: omitting it from
+  /// the positional list does not apply its default, it slides `third`'s value
+  /// into `second`'s slot. This is why "a trailing optional may be omitted" is
+  /// the whole rule and not half of it — an optional may be dropped only when
+  /// everything after it is dropped too.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/optional_gap',
+    logRequests: false,
+  )
+  Future<Map<String, Object>> optionalGap(
+    String first, [
+    String second = 'two',
+    String third = 'three',
+  ]);
+
+  /// A **named** parameter that a binding strategy can fill from `?tag=`.
+  ///
+  /// The pipeline invokes with positional arguments only, so a bound named
+  /// parameter has nowhere legitimate to go: appending it positionally puts it
+  /// in the slot of whichever positional parameter comes next. That is the same
+  /// corruption as [pair] arriving from the opposite direction, which is why
+  /// binding has to refuse it rather than quietly mis-place it.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/named_tail',
+    logRequests: false,
+  )
+  Future<Map<String, Object>> namedTail(String first, {String tag = 'none'});
+
   /// An endpoint that answers with a redirect directive rather than a value.
   @TomPublicAccess()
   @TomEndpoint(
@@ -278,6 +347,35 @@ class FixtureApiServer implements FixtureApiService {
         'label': request.label,
         'when': request.when.toIso8601String(),
       };
+
+  @override
+  Future<Map<String, Object>> pair(
+    FixtureParseRequest first,
+    String second,
+  ) async => <String, Object>{'label': first.label, 'second': second};
+
+  @override
+  Future<Map<String, Object>> optionalTail(
+    String first, [
+    String second = 'fallback',
+  ]) async => <String, Object>{'first': first, 'second': second};
+
+  @override
+  Future<Map<String, Object>> optionalGap(
+    String first, [
+    String second = 'two',
+    String third = 'three',
+  ]) async => <String, Object>{
+    'first': first,
+    'second': second,
+    'third': third,
+  };
+
+  @override
+  Future<Map<String, Object>> namedTail(
+    String first, {
+    String tag = 'none',
+  }) async => <String, Object>{'first': first, 'tag': tag};
 
   @override
   Future<Object> moved() async => TomRedirect.seeOther('/fixture/health');

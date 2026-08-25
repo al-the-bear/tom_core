@@ -2,6 +2,38 @@
 
 ### Fixed
 
+- **A parameter that cannot be bound no longer shifts every later argument one
+  place to the left (tcinc503).** `TomEndpointHandler.bindParameters` builds a
+  *positional* argument list, and a positional list has no way to say "this one
+  is absent" — when no strategy matched, the loop logged a warning and appended
+  nothing, which did not leave the parameter unset but shortened the list and
+  moved every argument after it into the preceding parameter's slot. The usual
+  outcome was a wrong-argument-count error from `invoke` pointing at neither the
+  parameter nor the request; the dangerous outcome was that where the shifted
+  value happened to fit the earlier parameter's type, the method was invoked
+  **successfully with the wrong argument in it** and nothing anywhere reported
+  that a value had been misplaced. `doc/endpoints.md` described this as "logged
+  and left unset", an outcome the code could not produce.
+
+  Binding now fills one slot per declared parameter, marking the ones it could
+  not resolve, and decides the shape of the call afterwards — because whether an
+  unfilled slot may be dropped at all is a question about the parameters that
+  come *after* it, which is not yet knowable at the moment the parameter fails
+  to bind. Exactly one shortening survives: dropping **trailing optional**
+  parameters, which is how Dart applies their defaults. Everything else fails
+  the request with a `TomEndpointHandlerException` naming the parameter at
+  fault, so the diagnosis points at the declaration that cannot be satisfied
+  rather than at a generated call site:
+
+  | Key (under `endpoint_pipeline.bind_parameters.`) | Raised when |
+  | ------------------------------------------------ | ----------- |
+  | `unbindable_parameter` | A **required** parameter no strategy could supply. |
+  | `unbindable_optional_parameter` | An **optional** parameter was not bound but one *after* it was — omitting it would slide the later value into its slot. |
+  | `named_parameter_not_supported` | A **named** parameter was bound. Endpoint methods are invoked with positional arguments only, so appending it would have put it in the next positional parameter's slot — the same corruption arriving from the opposite direction, and previously silent. Declare it positionally instead. |
+
+  A named parameter that is *not* bound remains simply absent and its default
+  applies; it holds no positional slot, so it can shift nothing.
+
 - **A request body that cannot become the endpoint's DTO is now reported to the
   client instead of being logged and discarded (tcinc502).** The JSON branch of
   `TomEndpointHandler.bindParameters` wrapped its whole body in

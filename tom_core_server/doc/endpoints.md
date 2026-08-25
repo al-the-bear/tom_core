@@ -108,8 +108,30 @@ the parameter's `String`/`num`/`bool` type by `coercePrimitiveParameter`), a
 the same way — this is how `GET /projects?workspaceId=` binds a bare
 `String workspaceId`), a value from the `TomExecutionContext`, the JSON request
 body (deserialised onto the parameter type via reflection, merged with path
-params), and finally a `Map`-typed context entry. A parameter that cannot be
-filled is logged and left unset.
+params), and finally a `Map`-typed context entry.
+
+### Parameters that cannot be filled
+
+The result is a *positional* argument list, and a positional list has no way to
+say "this one is absent" — leaving a parameter out does not leave it unset, it
+shortens the list and moves every later argument one place to the left. Where
+the shifted value happens to fit the earlier parameter's type, the method is
+invoked successfully with the wrong argument in it and nothing reports that a
+value was misplaced.
+
+So the list is positionally faithful: entry *i* is the value of parameter *i*.
+Exactly one shortening is legitimate — dropping **trailing optional**
+parameters, which is how Dart applies their defaults. Everything else fails the
+request with a `TomEndpointHandlerException` naming the parameter at fault:
+
+| Key (under `endpoint_pipeline.bind_parameters.`) | Raised when |
+| ------------------------------------------------ | ----------- |
+| `unbindable_parameter` | A **required** parameter that no strategy could supply. |
+| `unbindable_optional_parameter` | An **optional** parameter was not bound, but one *after* it was — omitting it would slide the later value into its slot. |
+| `named_parameter_not_supported` | A **named** parameter was bound. Endpoint methods are invoked with positional arguments only, so declare it positionally instead. |
+
+A named parameter that is *not* bound is simply absent and its default applies;
+it holds no positional slot, so it can shift nothing.
 
 ## Access Control
 
