@@ -62,10 +62,24 @@ class TomServerException extends TomException {
   }
 
   /// Returns the base [TomException] string extended with the originating
-  /// [isolateName], the [clientThrow] flag, and the correlated request UUID.
+  /// [isolateName], the [clientThrow] flag, and — for an exception raised
+  /// inside a request — a labelled `request: <uuid>` segment.
+  ///
+  /// The request segment is omitted entirely when [TomException.requestUuid] is
+  /// null. An exception raised outside a request has no correlation to report,
+  /// and the base already contributes three unset fields of its own; a fourth,
+  /// trailing and unlabelled, reads as a stray value rather than as data.
+  ///
+  /// The segment is not redundant with the base string. [TomException] leads
+  /// with the composite token `<exception-uuid>-<request-uuid>`, and because v4
+  /// UUIDs themselves contain hyphens that token cannot be split back into its
+  /// two ids by eye or by a simple pattern — the labelled trailing copy is what
+  /// makes the correlation greppable in a log.
   @override
-  String toString() =>
-      "${super.toString()} $isolateName client-throw: $clientThrow $requestUuid";
+  String toString() {
+    String request = requestUuid == null ? "" : " request: $requestUuid";
+    return "${super.toString()} $isolateName client-throw: $clientThrow$request";
+  }
 }
 
 /// A server-side login failure.

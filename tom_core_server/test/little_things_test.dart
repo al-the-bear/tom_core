@@ -86,6 +86,40 @@ void main() {
       expect(s, contains('client-throw: true'));
       expect(s, contains(TomServerException('K', 'm').isolateName));
     });
+
+    test('toString omits the request segment outside a request zone', () {
+      // An exception raised outside a request has no correlation to report, so
+      // the segment is dropped rather than rendered as `request: null`. The
+      // base contributes three nulls of its own; a fourth, trailing and
+      // unlabelled, reads as a formatting fault rather than as data.
+      final s = TomServerException('K', 'm').toString();
+      expect(s, endsWith('client-throw: true'));
+      expect(s, isNot(contains('request:')));
+    });
+
+    test('toString labels the request uuid inside a request zone', () {
+      // The base already carries the id, but only inside the composite leading
+      // token `<exception-uuid>-<request-uuid>` — two v4 UUIDs joined by a
+      // hyphen, and v4 UUIDs contain hyphens, so that token cannot be split by
+      // eye. The labelled trailing segment is what makes the correlation
+      // greppable.
+      final requestId = TomRequestId();
+      runZoned(() {
+        final s = TomServerException('K', 'm').toString();
+        expect(s, endsWith(' request: ${requestId.uuid}'));
+        expect(s, contains('client-throw: true'));
+      }, zoneValues: {TomRequestId: requestId});
+    });
+
+    test('toString labels the request uuid for a masked exception too', () {
+      // The request segment trails `client-throw`, so the two must not collide
+      // when the flag is false and the id is present.
+      final requestId = TomRequestId();
+      runZoned(() {
+        final s = TomServerException('K', 'm', clientThrow: false).toString();
+        expect(s, endsWith('client-throw: false request: ${requestId.uuid}'));
+      }, zoneValues: {TomRequestId: requestId});
+    });
   });
 
   group('LoginException', () {

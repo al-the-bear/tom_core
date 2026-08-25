@@ -119,7 +119,7 @@ Copies the current zone's `TomRequestId` UUID into `requestUuid` when present.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `toString` | `String toString()` | *(override)* The base `TomException` string extended with `isolateName`, the `clientThrow` flag, and the correlated request UUID. |
+| `toString` | `String toString()` | *(override)* The base `TomException` string extended with `isolateName`, the `clientThrow` flag, and — only when the exception was raised inside a request — a labelled ` request: <uuid>` segment. The segment is omitted entirely when `requestUuid` is null. |
 
 ## Global Functions and Constants
 

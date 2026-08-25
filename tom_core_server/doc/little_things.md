@@ -99,6 +99,21 @@ the request that triggered it without any code threading the id through the call
 stack. Outside a request zone (e.g. during startup) `requestUuid` is simply left
 unset.
 
+`toString()` renders the correlation as a trailing `request: <uuid>` segment,
+and omits that segment altogether when the exception was raised outside a
+request:
+
+```text
+<uuid>-<request-uuid>, TomServerException: K, m, ... main client-throw: true request: <request-uuid>
+<uuid>-null, TomServerException: K, m, ... main client-throw: true
+```
+
+The label matters more than it looks. The base `TomException` already carries
+the id, but only inside the composite leading token
+`<exception-uuid>-<request-uuid>` — and because v4 UUIDs contain hyphens
+themselves, that token cannot be split back into its two ids by eye or by a
+simple pattern. The labelled copy is what makes the correlation greppable.
+
 ## The clientThrow Flag
 
 `clientThrow` (default `true`) marks whether the exception is safe to surface to

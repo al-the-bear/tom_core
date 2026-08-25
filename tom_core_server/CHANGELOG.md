@@ -3948,6 +3948,21 @@
 
 ### Behaviour Changes
 
+- **`TomServerException.toString()` labels the request UUID and omits it when
+  there is no request (tcinc565).** The rendering ended
+  `client-throw: $clientThrow $requestUuid`, interpolating the correlation id
+  bare. Outside a request that produced a trailing `null` — indistinguishable
+  from the three other nulls the base contributes, and reading as a stray value
+  or a formatting fault rather than as data. It is now
+  `client-throw: $clientThrow` plus a ` request: <uuid>` segment that is present
+  only when the exception was raised inside a request zone.
+
+  The labelled copy is not redundant with the base string. `TomException` leads
+  with the composite token `<exception-uuid>-<request-uuid>`, and because v4
+  UUIDs contain hyphens themselves that token cannot be split back into its two
+  ids by eye or by a simple pattern — the trailing segment is the only greppable
+  form of the correlation, which is why it is labelled rather than dropped.
+
 - **The health-check module's three off-convention names are renamed
   (tcinc558).** `HealthAnalyzer` → `TomHealthAnalyzer`,
   `DefaultHealthAnalyzer` → `TomDefaultHealthAnalyzer`, and the static field

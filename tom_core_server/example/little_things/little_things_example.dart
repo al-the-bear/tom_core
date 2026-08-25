@@ -53,12 +53,18 @@ void run() {
   print('3. internal clientThrow => ${internal.clientThrow}');
   assert(internal.clientThrow == false);
 
-  // 4. Constructed outside a request zone, requestUuid is unset.
+  // 4. Constructed outside a request zone, requestUuid is unset — and the
+  //    rendering drops the request segment rather than trailing a bare null.
   print('4. requestUuid (no zone) => ${basic.requestUuid}');
+  print('   rendered         => $basic');
   assert(basic.requestUuid == null);
+  assert(basic.toString().endsWith('client-throw: true'));
 
   // 5. Constructed inside a zone carrying a TomRequestId, the exception
-  //    correlates itself with the active request automatically.
+  //    correlates itself with the active request automatically, and says so
+  //    with a label. The base string leads with the composite token
+  //    `<exception-uuid>-<request-uuid>`, which cannot be split by eye because
+  //    v4 UUIDs contain hyphens — the labelled copy is the greppable one.
   final requestId = TomRequestId();
   runZoned(() {
     final correlated = TomServerException(
@@ -66,7 +72,9 @@ void run() {
       'Bad input',
     );
     print('5. requestUuid (in zone) => ${correlated.requestUuid}');
+    print('   rendered         => $correlated');
     assert(correlated.requestUuid == requestId.uuid);
+    assert(correlated.toString().endsWith(' request: ${requestId.uuid}'));
   }, zoneValues: {TomRequestId: requestId});
 
   // 6. LoginException adds no members, so one clause written for the base type
