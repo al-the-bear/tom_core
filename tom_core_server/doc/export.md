@@ -478,6 +478,32 @@ needs a real font: build a `pw.ThemeData` over an embedded TTF and pass it as
 `theme`. This is left to the application because a Unicode font is a
 megabyte-scale asset and which one is right is a deployment's decision.
 
+**The default prints a warning, and it is a developer-only one.** Rendering with
+it emits `Helvetica has no Unicode support …` on stdout, twice per document —
+once for the body face and once for the bold header face. It looks like a leak
+into a server's log stream, and it is not one, for a reason worth stating
+because it is not guessable: `package:pdf` emits the line from a bare `print`
+**inside an `assert`**. Assertions are compiled out of a `dart compile exe`
+binary and of `dart run` without `--enable-asserts`, so the line reaches test
+runs and assert-enabled runs and nothing else. A deployment sees none of it.
+
+That also settles how to stop it in the runs where it *does* appear, and rules
+out the obvious answer. It is not a logger call, so there is no level to raise
+and no scope to narrow; the only interception point is the surrounding zone's
+`print` handler, which would mean matching the library's own message text and
+would swallow every other print the render makes. It is also easy to get wrong
+in a way that looks right: the font is created while the page is laid out, in
+`addPage`, not while the document is serialised, so a zone around
+`document.save()` — the natural place for it — suppresses nothing. A working
+one has to enclose the whole build. The supported way is the one
+the knob already exists for: pass a `theme` with an embedded font and no base-14
+face is created, so nothing warns. Suppressing it any other way would suppress
+the answer to a question this module decided deliberately.
+
+`test/export_test.dart` pins both halves of that — the diagnostic under
+assertions, the silence without them — because the paragraph above is a claim
+about a third-party library, and a claim like that rots quietly.
+
 ## Storage: A Deliberately Narrow Seam
 
 `TomExportStore` is explicitly **not** a general file store — the `file_storage`

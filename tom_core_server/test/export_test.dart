@@ -51,6 +51,20 @@ import '../example/export/export_example.dart' as example;
 // FIXTURES
 // =============================================================================
 
+/// The module's worked example, run as a subprocess by two groups below.
+///
+/// Both need a *real* process rather than an in-process render, because what
+/// they are separating — whether assertions are enabled — is fixed for the
+/// lifetime of a VM and is on inside `dart test`.
+const _examplePath = 'example/export/export_example.dart';
+
+/// The stable half of `package:pdf`'s base-14 diagnostic.
+///
+/// Matched without its URL so a reworded link does not fail the suite; the
+/// wording itself is the library's, and if *that* changes the tests below are
+/// meant to fail, because the paragraphs they pin describe it.
+const _base14Warning = 'has no Unicode support';
+
 /// The columns used by most tests: one of every type.
 List<TomTabularColumn> _columns() => [
   TomTabularColumn('id', label: 'ID', type: TomColumnType.integer),
@@ -1236,6 +1250,76 @@ void main() {
       expect(text, contains('(EU)'));
       expect(text, contains('(Widget)'));
       expect(text, contains('(Amount)'));
+    });
+
+    // `package:pdf` announces the base-14 default on every document that uses
+    // it, and the announcement is a bare `print` — not a logger, so there is no
+    // level to raise and no scope to silence. The two tests below are the pair
+    // that makes the guide's paragraph checkable: the diagnostic exists, and it
+    // cannot reach a deployment. Neither half means anything without the other.
+    group('the base-14 default announces itself, but only to a developer', () {
+      test('once for each face the document uses, when asserts are on', () async {
+        // `dart test` runs with assertions enabled, so this process is the
+        // "developer" case and needs no subprocess. The print is captured
+        // rather than watched, because a test that merely eyeballed stdout
+        // would pass whether or not anything was written.
+        final printed = <String>[];
+        await runZoned(
+          () => _collect(const TomPdfRenderer().render(_sampleResult())),
+          zoneSpecification: ZoneSpecification(
+            print: (self, parent, zone, line) => printed.add(line),
+          ),
+        );
+
+        final warnings = printed
+            .where((line) => line.contains(_base14Warning))
+            .toList();
+        // Two, not one: the renderer sets header text bold, so a document draws
+        // on two of the base-14 faces and `package:pdf` names each as it is
+        // created. The count is pinned because it is the number the guide
+        // quotes, and because a document that suddenly warned once would mean
+        // the bold header had stopped being bold.
+        expect(warnings, hasLength(2));
+        expect(warnings.join('\n'), contains('Helvetica '));
+        expect(warnings.join('\n'), contains('Helvetica-Bold '));
+      });
+
+      test('and says nothing at all under the command a deployment runs', () async {
+        // The claim that matters, and the one that cannot be made from inside
+        // this process. `package:pdf` emits the line from inside an `assert`,
+        // so it compiles out of every production shape — a `dart compile exe`
+        // binary, or `dart run` without `--enable-asserts`. Run the example
+        // exactly as a deployment would and require silence.
+        //
+        // The same fact about `dart run` that makes an `assert` a *bug* in the
+        // example (see 'The example runs green') is what makes this diagnostic
+        // harmless: assertions are developer-only. One mechanism, two opposite
+        // consequences, and both are pinned in this file.
+        final run = await Process.run(Platform.resolvedExecutable, [
+          'run',
+          _examplePath,
+        ]);
+        expect(
+          run.exitCode,
+          0,
+          reason: 'example failed: ${run.stdout}${run.stderr}',
+        );
+        // The example renders a PDF at step 8, so this is silence from a run
+        // that really did exercise the default — not from one that skipped it.
+        expect(
+          (run.stdout as String).contains('8. pdf bytes'),
+          isTrue,
+          reason:
+              'the run rendered no PDF, so it proves nothing about the font',
+        );
+        expect(
+          '${run.stdout}${run.stderr}',
+          isNot(contains(_base14Warning)),
+          reason:
+              'the base-14 diagnostic reached a production-shaped run; '
+              'doc/export.md and pdf_renderer.dart claim it cannot',
+        );
+      });
     });
 
     test('a section title is printed above its table', () async {
@@ -2493,8 +2577,6 @@ void main() {
   });
 
   group('The example runs green', () {
-    const examplePath = 'example/export/export_example.dart';
-
     test('under exactly the command its header documents', () async {
       // The example is the module's worked demonstration, so it drifts
       // silently unless something runs it. Run it the way a reader would —
@@ -2502,7 +2584,7 @@ void main() {
       // checks produce.
       final result = await Process.run(Platform.resolvedExecutable, [
         'run',
-        examplePath,
+        _examplePath,
       ]);
       expect(
         result.exitCode,
@@ -2532,7 +2614,7 @@ void main() {
       // spent its whole life in that state: twenty-six `assert`s, none of
       // which ran under the command its own header gives. They are now a
       // throwing helper, and this guards the regression of reverting them.
-      final source = File(examplePath).readAsStringSync();
+      final source = File(_examplePath).readAsStringSync();
       expect(
         source,
         isNot(contains('assert(')),

@@ -550,7 +550,7 @@ const TomPdfRenderer({
 | `rowLimit` | `int` | The largest number of rows, across all sections, this renderer accepts. Exceeding it throws `TomExportException` (`export.pdf.row_limit_exceeded`) on the output stream rather than truncating (final). |
 | `maxPages` | `int` | The page ceiling handed to `package:pdf`, whose own default is 20 (final). |
 | `baseFontSize` | `double` | The body text size in points; header text is one point larger and bold (final). |
-| `theme` | `pw.ThemeData?` | An optional theme, typically supplying an embedded Unicode font — needed for text outside Latin-1, since the default base-14 Helvetica encodes only WinAnsi (final). |
+| `theme` | `pw.ThemeData?` | An optional theme, typically supplying an embedded Unicode font — needed for text outside Latin-1, since the default base-14 Helvetica encodes only WinAnsi. Also the only way to stop `package:pdf`'s `has no Unicode support` diagnostic, which it prints twice per document from inside an `assert` and so never emits in a deployment (final). |
 | `compress` | `bool` | Whether to deflate the document's object streams; `false` leaves the text readable in a hex dump (final). |
 | `formatId` | `String` | *(getter, override)* `pdf`. |
 | `mediaType` | `String` | *(getter, override)* `application/pdf`. |

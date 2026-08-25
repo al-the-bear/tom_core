@@ -74,6 +74,46 @@
 
 ### Fixed
 
+- **Nothing recorded that the PDF renderer's base-14 default prints a library
+  diagnostic, or that it cannot reach a deployment (tcinc535).** Every render
+  emits `Helvetica has no Unicode support …` and the same for `Helvetica-Bold`
+  — twice per document, because a bold header draws on a second face — and all
+  three places that documented the default as deliberate said nothing about it.
+  It reads like a framework leaking into a server's log stream. The renderer's
+  library documentation, `doc/export.md`'s PDF section and the `theme` row of
+  the API summary now state what it is, why it is not suppressed, and how to
+  stop it in the runs where it does appear.
+- The investigation overturned the premise the report was written on. The line
+  is emitted from a bare `print` **inside an `assert`** in `package:pdf`'s
+  `PdfType1Font.create`, so it is compiled out of a `dart compile exe` binary
+  and of `dart run` without `--enable-asserts` — measured at zero occurrences
+  under the example's own documented command and two under `--enable-asserts`.
+  A deployment never sees it; the noise is confined to test runs, where the
+  export suites emit fourteen lines. There is also no logger to silence, as had
+  been supposed: no level, no scope, and the only interception point is the
+  enclosing zone's `print` handler, which would mean string-matching another
+  package's message text and swallowing every print the render makes.
+- Suppression is additionally easy to get wrong in a way that looks right, which
+  the mutation run established rather than assumed. A zone around
+  `document.save()` — the natural place for it — suppresses nothing, because the
+  base-14 font is created while the page is laid out inside `addPage`. A working
+  suppression has to enclose the whole build, widening precisely the blast
+  radius that made it a bad idea. The supported answer is the knob that already
+  exists: a `theme` carrying an embedded font creates no base-14 face, so
+  nothing warns.
+- Because those paragraphs are claims about a third-party library, they are
+  pinned rather than asserted in prose. `test/export_test.dart` now captures the
+  render's `print` output and requires the diagnostic once per face under
+  assertions, and separately runs the example as a subprocess under plain
+  `dart run` and requires silence from a run that demonstrably rendered a PDF.
+  Neither half means anything alone: the first would pass if the line escaped
+  into production, the second if the renderer had silently stopped warning. Four
+  mutants — bold removed, the example's PDF step switched to CSV, a working zone
+  suppression, and the diagnostic escaping its assert — were each required to
+  kill a *declared* subset of the two tests, and all four did.
+- The same fact about `dart run` underlies two opposite conclusions now recorded
+  in one file: assertions being developer-only is what makes an `assert` in an
+  example a silent bug (tcinc533) and what makes this diagnostic harmless.
 - **The export module's blob adaptor was tested in the `file_storage` suite, so
   the export module read as though it had none (tcinc534).**
   `TomBlobExportStore` is declared in `lib/src/tomserver/export/` and is the

@@ -42,6 +42,44 @@
 /// it as [theme]. This is left to the application because a Unicode font is a
 /// megabyte-scale asset and which one is right is a deployment's decision, not
 /// the framework's.
+///
+/// ### The default announces itself, and that is not a leak
+///
+/// `package:pdf` prints `Helvetica has no Unicode support …` as it builds each
+/// document, and the same for `Helvetica-Bold`, because a bold header draws on
+/// a second base-14 face. Three things are worth knowing before treating that
+/// as log noise to be fixed.
+///
+/// It is **not a logger call**, so it cannot be silenced the way a logger can:
+/// it is a bare `print` inside an `assert` in `PdfType1Font.create`. There is no
+/// level to raise and no scope to narrow, and the only interception point is the
+/// enclosing [Zone]'s print handler — which would mean string-matching the
+/// library's own message, and would swallow every other print the render makes,
+/// including the application's. This renderer does not try.
+///
+/// It is also easy to get wrong in a way that looks right. The font is created
+/// while the page is laid out, inside `addPage`, not while the document is
+/// serialised — so a zone wrapped around `document.save()`, which is where one
+/// would naturally put it, suppresses nothing at all. A suppression has to
+/// enclose the whole build, which widens exactly the blast radius that made it
+/// a bad idea.
+///
+/// Sitting inside an `assert` is also why it **cannot reach a deployment**.
+/// Assertions are compiled out of a `dart compile exe` binary and of `dart run`
+/// without `--enable-asserts`, so the line appears in test runs and in
+/// explicitly assert-enabled runs, and nowhere else. It is a developer
+/// diagnostic delivered by the only channel a package has before an application
+/// has configured a logger.
+///
+/// And it stops for the reason it exists: pass a [theme] carrying an embedded
+/// font and no base-14 face is ever created, so nothing warns. Suppressing it
+/// any other way would be suppressing the answer to a question this module has
+/// already decided on purpose.
+///
+/// `test/export_test.dart` pins both halves — that the diagnostic is emitted
+/// once per face under assertions, and that a production-shaped run of the
+/// example is silent — because this paragraph is a claim about someone else's
+/// library and would otherwise rot without anyone noticing.
 library;
 
 import 'dart:async';
@@ -89,6 +127,11 @@ class TomPdfRenderer extends TomTabularRenderer {
   final double baseFontSize;
 
   /// An optional theme, typically supplying an embedded Unicode font.
+  ///
+  /// Supplying one is also the only way to stop `package:pdf`'s base-14
+  /// diagnostic, because it stops the base-14 font from being created at all —
+  /// see *The default announces itself* in this library's documentation for why
+  /// that is the only way, and why the line never reaches a deployment.
   final pw.ThemeData? theme;
 
   /// Whether to deflate the document's object streams.
