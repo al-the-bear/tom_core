@@ -5,18 +5,18 @@
 
 A pluggable liveness/health endpoint. `TomHealthService.health()` returns a
 status string; `TomHealthServer` is the default implementation, delegating the
-actual assessment to a `HealthAnalyzer` (the `DefaultHealthAnalyzer` reports
-healthy). Swap in a custom analyzer to probe datasources, caches, or downstream
-services.
+actual assessment to a `TomHealthAnalyzer` (the `TomDefaultHealthAnalyzer`
+reports healthy). Swap in a custom analyzer to probe datasources, caches, or
+downstream services.
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomHealthService` | Abstract contract: `Future<String> health()`. |
-| `TomHealthServer` | Default service; runs the configured `HealthAnalyzer` and returns its string as the body, unchanged. |
-| `HealthAnalyzer` | Abstract probe that decides the health verdict. |
-| `DefaultHealthAnalyzer` | Always-healthy analyzer used when no custom probe is supplied. |
+| `TomHealthServer` | Default service; runs the configured `TomHealthAnalyzer` and returns its string as the body, unchanged. |
+| `TomHealthAnalyzer` | Abstract probe that decides the health verdict. |
+| `TomDefaultHealthAnalyzer` | Always-healthy analyzer used when no custom probe is supplied. |
 
 ## Quick start
 
@@ -27,7 +27,7 @@ Future<void> main() async {
   final TomHealthService service = TomHealthServer();
   final status = await service.health();
 
-  print(status); // OK  (from the default DefaultHealthAnalyzer)
+  print(status); // OK  (from the default TomDefaultHealthAnalyzer)
 }
 ```
 

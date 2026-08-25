@@ -2,8 +2,8 @@
 
 A ready-made `GET /health` endpoint for an orchestrator's liveness probe. The
 endpoint is public (no authentication) and unlogged, and returns a plain-text
-status string produced by a pluggable `HealthAnalyzer` — `"OK"` by default, or
-any descriptive string a custom analyzer returns.
+status string produced by a pluggable `TomHealthAnalyzer` — `"OK"` by default,
+or any descriptive string a custom analyzer returns.
 
 One endpoint, one process-wide analyzer, one verdict. Liveness ("am I running")
 and readiness ("can I serve traffic") cannot be answered separately, so this is
@@ -28,8 +28,8 @@ not a readiness endpoint — see
 | ---- | ---- | ------- |
 | `TomHealthService` | reflected service | Declares the `GET /health` endpoint |
 | `TomHealthServer` | reflected component | The default implementation; delegates to the analyzer |
-| `HealthAnalyzer` | abstract class | The pluggable health-check contract (`analyzeHealth`) |
-| `DefaultHealthAnalyzer` | class | The default analyzer; always returns `"OK"` |
+| `TomHealthAnalyzer` | abstract class | The pluggable health-check contract (`analyzeHealth`) |
+| `TomDefaultHealthAnalyzer` | class | The default analyzer; always returns `"OK"` |
 
 ## The /health Endpoint
 
@@ -69,11 +69,11 @@ configured to look only at the status code cannot distinguish any two verdicts.
 
 ## Customizing the Health Check
 
-The endpoint's body is delegated to a single global `HealthAnalyzer`. Replace it
-before the server starts to add real checks:
+The endpoint's body is delegated to a single global `TomHealthAnalyzer`.
+Replace it before the server starts to add real checks:
 
 ```dart
-class MyHealthAnalyzer extends HealthAnalyzer {
+class MyHealthAnalyzer extends TomHealthAnalyzer {
   @override
   Future<String> analyzeHealth() async {
     final dbOk = await checkDatabaseConnection();
@@ -84,7 +84,7 @@ class MyHealthAnalyzer extends HealthAnalyzer {
 }
 
 // Set globally before the server starts:
-TomHealthServer.globalSettingsHealthAnalyzer = MyHealthAnalyzer();
+TomHealthServer.healthAnalyzer = MyHealthAnalyzer();
 ```
 
 The analyzer returns a free-form string: `"OK"` for healthy, anything else to
@@ -105,9 +105,9 @@ single assignment applies to every request.
 - **`TomHealthService`** — the reflected service interface carrying the
   `GET /health` endpoint annotation.
 - **`TomHealthServer`** — the reflected default implementation; holds the global
-  `HealthAnalyzer` and delegates `health()` to it.
-- **`HealthAnalyzer`** / **`DefaultHealthAnalyzer`** — the analyzer contract and
-  its always-`"OK"` default.
+  `TomHealthAnalyzer` and delegates `health()` to it.
+- **`TomHealthAnalyzer`** / **`TomDefaultHealthAnalyzer`** — the analyzer
+  contract and its always-`"OK"` default.
 
 ## Dependencies
 

@@ -3223,13 +3223,10 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[857, 858, 859, 860, 861, 1609],
         const <int>[1610, 1611],
         117,
+        {r'healthAnalyzer': () => prefix76.TomHealthServer.healthAnalyzer},
         {
-          r'globalSettingsHealthAnalyzer': () =>
-              prefix76.TomHealthServer.globalSettingsHealthAnalyzer,
-        },
-        {
-          r'globalSettingsHealthAnalyzer=': (dynamic value) =>
-              prefix76.TomHealthServer.globalSettingsHealthAnalyzer = value,
+          r'healthAnalyzer=': (dynamic value) =>
+              prefix76.TomHealthServer.healthAnalyzer = value,
         },
         {
           r'': (bool b) =>
@@ -8650,9 +8647,9 @@ final _data = <r.Reflection, r.ReflectorData>{
         const [],
         null,
       ),
-      r.NonGenericClassMirrorImpl<prefix76.HealthAnalyzer>(
-        r'HealthAnalyzer',
-        r'.HealthAnalyzer',
+      r.NonGenericClassMirrorImpl<prefix76.TomHealthAnalyzer>(
+        r'TomHealthAnalyzer',
+        r'.TomHealthAnalyzer',
         134218247,
         157,
         const prefix31.TomReflector(),
@@ -17943,7 +17940,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <Object>[const prefix88.TomDbColumn(columnName: "chunk_data")],
       ),
       r.VariableMirrorImpl(
-        r'globalSettingsHealthAnalyzer',
+        r'healthAnalyzer',
         134348821,
         62,
         const prefix31.TomReflector(),
@@ -85257,7 +85254,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       prefix88.TomDbTable,
       prefix62.TomDataSourceInfo,
       prefix13.Request,
-      prefix76.HealthAnalyzer,
+      prefix76.TomHealthAnalyzer,
       prefix66.TomOperator,
       prefix88.TomColumnInformation,
       prefix0.Stream,

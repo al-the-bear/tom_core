@@ -13,7 +13,7 @@ import '../endpoints/endpoint_annotation.dart';
 /// ## Example
 ///
 /// ```dart
-/// class MyHealthAnalyzer extends HealthAnalyzer {
+/// class MyHealthAnalyzer extends TomHealthAnalyzer {
 ///   @override
 ///   Future<String> analyzeHealth() async {
 ///     final dbOk = await checkDatabaseConnection();
@@ -26,9 +26,9 @@ import '../endpoints/endpoint_annotation.dart';
 /// }
 ///
 /// // Set globally before server starts
-/// TomHealthServer.globalSettingsHealthAnalyzer = MyHealthAnalyzer();
+/// TomHealthServer.healthAnalyzer = MyHealthAnalyzer();
 /// ```
-abstract class HealthAnalyzer {
+abstract class TomHealthAnalyzer {
   /// Analyzes the health of the server and returns a status string.
   ///
   /// Returns "OK" for healthy status, or a descriptive message for
@@ -37,7 +37,7 @@ abstract class HealthAnalyzer {
 }
 
 /// Default health analyzer that always returns "OK".
-class DefaultHealthAnalyzer extends HealthAnalyzer {
+class TomDefaultHealthAnalyzer extends TomHealthAnalyzer {
   @override
   Future<String> analyzeHealth() async {
     return "OK";
@@ -48,8 +48,8 @@ class DefaultHealthAnalyzer extends HealthAnalyzer {
 ///
 /// Declares the `GET /health` endpoint that container orchestration tools
 /// (Docker, Kubernetes) call to verify server availability. The response body
-/// is whatever the installed [HealthAnalyzer] returns, verbatim — `"OK"` is
-/// the [DefaultHealthAnalyzer]'s answer, not a constant of the endpoint.
+/// is whatever the installed [TomHealthAnalyzer] returns, verbatim — `"OK"` is
+/// the [TomDefaultHealthAnalyzer]'s answer, not a constant of the endpoint.
 ///
 /// Which is what decides how the probe should be written. Every analyzer
 /// string is served with HTTP 200, because mapping a status to a status code
@@ -75,20 +75,23 @@ abstract class TomHealthService {
 
 /// Default implementation of [TomHealthService].
 ///
-/// Delegates health checks to [globalSettingsHealthAnalyzer].
-/// Set [globalSettingsHealthAnalyzer] to a custom [HealthAnalyzer]
-/// implementation before server startup for custom health check logic.
+/// Delegates every request to [healthAnalyzer]; assign a custom
+/// [TomHealthAnalyzer] there before server startup to add real checks.
 @tomReflector
 @tomComponent
 class TomHealthServer implements TomHealthService {
-  /// Global health analyzer instance used by all health check requests.
+  /// The analyzer every `/health` request is answered by.
   ///
-  /// Defaults to [DefaultHealthAnalyzer] which returns "OK".
-  /// Replace with a custom implementation for advanced health checks.
-  static HealthAnalyzer globalSettingsHealthAnalyzer = DefaultHealthAnalyzer();
+  /// Defaults to [TomDefaultHealthAnalyzer], which returns `"OK"`. Replace it
+  /// with a custom implementation before the server starts.
+  ///
+  /// It is `static`, so it is process-wide: one assignment applies to every
+  /// request and to every [TomHealthServer] instance. There is no per-instance
+  /// or per-request override.
+  static TomHealthAnalyzer healthAnalyzer = TomDefaultHealthAnalyzer();
 
   @override
   Future<String> health() async {
-    return globalSettingsHealthAnalyzer.analyzeHealth();
+    return healthAnalyzer.analyzeHealth();
   }
 }

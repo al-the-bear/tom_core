@@ -371,8 +371,8 @@ surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `HealthAnalyzer` | abstract class | Health-analysis contract. |
-| `DefaultHealthAnalyzer` | class | Default analyzer. |
+| `TomHealthAnalyzer` | abstract class | Health-analysis contract. |
+| `TomDefaultHealthAnalyzer` | class | Default analyzer. |
 | `TomHealthService` | abstract class | Health-check service (`@tomService`). |
 | `TomHealthServer` | class | Health-check server component. |
 
@@ -546,7 +546,6 @@ surface documented here.
 | `defaultAuditTrailTable` | Audit |
 | `defaultBlobChunkTable` | File Storage |
 | `defaultBlobManifestTable` | File Storage |
-| `DefaultHealthAnalyzer` | Health Check |
 | `defaultJobRunTable` | Scheduling |
 | `defaultLeaseTable` | Scheduling |
 | `defaultNodeFailureSlack` | Scheduling |
@@ -560,7 +559,6 @@ surface documented here.
 | `Group` | Object Persistence |
 | `Gt` | Object Persistence |
 | `Gte` | Object Persistence |
-| `HealthAnalyzer` | Health Check |
 | `In` | Object Persistence |
 | `InMemoryPrincipalDelegationStore` | Authorization |
 | `InMemoryPrincipalResourceGrantStore` | Authorization |
@@ -735,6 +733,7 @@ surface documented here.
 | `TomDdlReplayResult` | Database Migration |
 | `tomDefaultAuthenticationMiddleware` | Server |
 | `TomDefaultErrorHandler` | Endpoints |
+| `TomDefaultHealthAnalyzer` | Health Check |
 | `TomDelegationMode` | Authorization |
 | `TomDelegationResolver` | Authorization |
 | `TomDelete` | Datasources |
@@ -793,6 +792,7 @@ surface documented here.
 | `TomFrameworkTable` | Datasources |
 | `TomGeneratedQuery` | Datasources |
 | `TomGradedAccessControlInformation` | Authorization |
+| `TomHealthAnalyzer` | Health Check |
 | `TomHealthServer` | Health Check |
 | `TomHealthService` | Health Check |
 | `TomHttpOAuthTokenTransport` | Authentication |

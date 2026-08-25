@@ -2,7 +2,7 @@
 ///
 /// The `GET /health` route itself is mounted by the reflection-based endpoints
 /// pipeline and needs a running server (see `doc/healthcheck.md`); this example
-/// shows the server-free surface: the pluggable [HealthAnalyzer] and the way
+/// shows the server-free surface: the pluggable [TomHealthAnalyzer] and the way
 /// [TomHealthServer.health] delegates to it.
 ///
 /// Run with `dart run example/healthcheck/healthcheck_example.dart`.
@@ -12,7 +12,7 @@ library;
 import 'package:tom_core_server/tom_core_server.dart';
 
 /// A custom analyzer that reports a degraded status from injected flags.
-class _DemoAnalyzer extends HealthAnalyzer {
+class _DemoAnalyzer extends TomHealthAnalyzer {
   final bool dbOk;
   final bool cacheOk;
   _DemoAnalyzer({required this.dbOk, required this.cacheOk});
@@ -26,7 +26,7 @@ Future<void> run() async {
   final server = TomHealthServer();
 
   // 1. The default analyzer always reports OK.
-  final defaultStatus = await DefaultHealthAnalyzer().analyzeHealth();
+  final defaultStatus = await TomDefaultHealthAnalyzer().analyzeHealth();
   print('1. default analyzer => $defaultStatus');
   assert(defaultStatus == 'OK');
 
@@ -36,17 +36,14 @@ Future<void> run() async {
   assert(healthDefault == 'OK');
 
   // 3. Swapping the global analyzer changes what every request returns.
-  final previous = TomHealthServer.globalSettingsHealthAnalyzer;
+  final previous = TomHealthServer.healthAnalyzer;
   try {
-    TomHealthServer.globalSettingsHealthAnalyzer = _DemoAnalyzer(
-      dbOk: true,
-      cacheOk: false,
-    );
+    TomHealthServer.healthAnalyzer = _DemoAnalyzer(dbOk: true, cacheOk: false);
     final degraded = await server.health();
     print('3. health() with degraded analyzer => $degraded');
     assert(degraded == 'DEGRADED: db=true, cache=false');
   } finally {
-    TomHealthServer.globalSettingsHealthAnalyzer = previous;
+    TomHealthServer.healthAnalyzer = previous;
   }
 
   print('\nHealth-check example completed.');

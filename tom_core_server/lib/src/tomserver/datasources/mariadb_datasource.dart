@@ -222,44 +222,6 @@ typedef _PendingReference = ({
   InstanceMirror row,
 });
 
-/// A MariaDB / MySQL [TomDataSource] driver (registered for the `"mariadb"`
-/// type).
-///
-/// Connection settings ([username], [password], [host], [port],
-/// [databaseName], [timeOut]) are filled from the configuration map by
-/// reflection in [initialize], which then opens the [connection]. The driver
-/// implements the full data-source surface — [prepareStatement], [executeQuery]
-/// (with reflection-based row→object mapping), [executeCommand] — and
-/// participates in transactions via plain `START TRANSACTION` / `COMMIT` /
-/// `ROLLBACK` (see [MariaDbXADatasource] for the XA variant).
-///
-/// ## Connection lifecycle
-///
-/// **A data source is opened explicitly, and never by the statement that wants
-/// to run.** Opening it means either [initialize], which binds the settings and
-/// connects, or setting the connection fields and calling [connect] — the two
-/// forms the package documents. Every execution entry point
-/// ([prepareStatement], [executeQuery], [executeCommand]) then requires an open
-/// connection and throws a [MariadbDatasourceException] if it is reached before
-/// one exists, so all three behave the same way on the same data source.
-///
-/// Opening on demand is not offered because it could not work: [connect] binds
-/// [host], [port] and the credentials, and until they are configured it would
-/// dial `:-1` — turning "never opened" into "the database is unreachable".
-///
-/// A link that *was* opened and has since dropped is a separate case, and is
-/// re-opened automatically: the settings are known, so every entry point
-/// reconnects and carries on.
-///
-/// [close] releases the link **and lets go of it**, which puts the data source
-/// back to not-open: a closed data source refuses statements exactly as one
-/// that was never opened does, rather than being silently re-opened by the next
-/// one to arrive. Deliberate teardown is not a dropped link. [isOperational]
-/// and [connected] report the current state, and [toString] distinguishes the
-/// two ways of holding no connection — `closed` from `never opened` — because
-/// they point at different faults.
-@tomReflector
-@TomDatasourceDriver("mariadb")
 /// Marshals one bind [value] into a driver primitive: a [TomDbType] box is
 /// unwrapped to the Dart value it holds; a Dart `bool` becomes its MariaDB
 /// integer encoding; a [DateTime] becomes its UTC `DATETIME(6)` text; every
@@ -314,6 +276,44 @@ Map<String, dynamic>? _toBindParams(Map<String, dynamic>? params) =>
         for (final entry in params.entries) entry.key: _toBindValue(entry.value),
       };
 
+/// A MariaDB / MySQL [TomDataSource] driver (registered for the `"mariadb"`
+/// type).
+///
+/// Connection settings ([username], [password], [host], [port],
+/// [databaseName], [timeOut]) are filled from the configuration map by
+/// reflection in [initialize], which then opens the [connection]. The driver
+/// implements the full data-source surface — [prepareStatement], [executeQuery]
+/// (with reflection-based row→object mapping), [executeCommand] — and
+/// participates in transactions via plain `START TRANSACTION` / `COMMIT` /
+/// `ROLLBACK` (see [MariaDbXADatasource] for the XA variant).
+///
+/// ## Connection lifecycle
+///
+/// **A data source is opened explicitly, and never by the statement that wants
+/// to run.** Opening it means either [initialize], which binds the settings and
+/// connects, or setting the connection fields and calling [connect] — the two
+/// forms the package documents. Every execution entry point
+/// ([prepareStatement], [executeQuery], [executeCommand]) then requires an open
+/// connection and throws a [MariadbDatasourceException] if it is reached before
+/// one exists, so all three behave the same way on the same data source.
+///
+/// Opening on demand is not offered because it could not work: [connect] binds
+/// [host], [port] and the credentials, and until they are configured it would
+/// dial `:-1` — turning "never opened" into "the database is unreachable".
+///
+/// A link that *was* opened and has since dropped is a separate case, and is
+/// re-opened automatically: the settings are known, so every entry point
+/// reconnects and carries on.
+///
+/// [close] releases the link **and lets go of it**, which puts the data source
+/// back to not-open: a closed data source refuses statements exactly as one
+/// that was never opened does, rather than being silently re-opened by the next
+/// one to arrive. Deliberate teardown is not a dropped link. [isOperational]
+/// and [connected] report the current state, and [toString] distinguishes the
+/// two ways of holding no connection — `closed` from `never opened` — because
+/// they point at different faults.
+@tomReflector
+@TomDatasourceDriver("mariadb")
 class MariaDbDatasource implements TomDataSource {
   final MariadbSqlDialect _sqlDialect = MariadbSqlDialect();
 

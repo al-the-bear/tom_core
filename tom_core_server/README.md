@@ -115,7 +115,7 @@ abstract, so other backends can be added.
 | `file_storage` | `TomBlobStore`, `TomDatabaseBlobStore`, `TomDirectoryBlobStore`, `TomS3BlobStore`, `TomMemoryBlobStore`, `TomBlobStoreInfo`, `TomFileReference` | Streaming blob storage behind one four-method contract, backends chosen in configuration, and entity columns that hold a storage key instead of the bytes |
 | `scheduling` | `TomSqlJobStore`, `TomSqlLeaseLock` | The kernel's job-store and lease-lock contracts over a shared database, so a cluster whose nodes share no filesystem still runs each window exactly once |
 | `preferences` | `TomUserPreference`, `TomUserPreferenceRepository`, `TomUserPreferences`, `TomUserPreferencesServer` | Per-principal preferences that follow the user across devices: one scoped table, a typed service that reads its caller from the request zone, and the `/preferences/*` endpoints behind the kernel's contract |
-| `healthcheck` | `TomHealthService`, `TomHealthServer`, `HealthAnalyzer` | Health endpoints and analyzers |
+| `healthcheck` | `TomHealthService`, `TomHealthServer`, `TomHealthAnalyzer` | Health endpoints and analyzers |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
 | `little_things` | `TomServerException`, `LoginException` | Server exception base (extends kernel `TomException`) and the login failure it raises |
 
@@ -236,7 +236,7 @@ authorization decisions on an isolate, over grants that are graded per key
 (`TomResourceGrant`), held per resource (`TomPrincipalResourceGrant`), and
 lendable to another principal (`TomPrincipalDelegation`).
 `TomHealthService` / `TomHealthServer` expose health endpoints backed by
-`HealthAnalyzer`s.
+`TomHealthAnalyzer`s.
 
 Those same grants filter the database. Install `TomResourceDataScope` once and
 every entity carrying a `resource_key` column is scoped to the keys the current

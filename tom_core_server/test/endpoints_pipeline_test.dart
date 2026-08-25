@@ -930,7 +930,7 @@ void main() {
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
-      TomHealthServer.globalSettingsHealthAnalyzer = DefaultHealthAnalyzer();
+      TomHealthServer.healthAnalyzer = TomDefaultHealthAnalyzer();
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -945,11 +945,10 @@ void main() {
       },
     );
 
-    test('reflects the configured HealthAnalyzer status', () async {
-      TomHealthServer.globalSettingsHealthAnalyzer = _DegradedAnalyzer();
+    test('reflects the configured TomHealthAnalyzer status', () async {
+      TomHealthServer.healthAnalyzer = _DegradedAnalyzer();
       addTearDown(
-        () => TomHealthServer.globalSettingsHealthAnalyzer =
-            DefaultHealthAnalyzer(),
+        () => TomHealthServer.healthAnalyzer = TomDefaultHealthAnalyzer(),
       );
       // Rebuild so the route binds the same singleton server, whose health()
       // delegates to the now-degraded analyzer.
@@ -2003,9 +2002,9 @@ void main() {
   });
 }
 
-/// A [HealthAnalyzer] returning a non-OK status, to prove the route reflects the
-/// configured analyzer rather than a hardcoded string.
-class _DegradedAnalyzer extends HealthAnalyzer {
+/// A [TomHealthAnalyzer] returning a non-OK status, to prove the route
+/// reflects the configured analyzer rather than a hardcoded string.
+class _DegradedAnalyzer extends TomHealthAnalyzer {
   @override
   Future<String> analyzeHealth() async => 'DEGRADED';
 }

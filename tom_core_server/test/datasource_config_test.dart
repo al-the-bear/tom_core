@@ -43,7 +43,10 @@ class _ConfigBlock {
   /// Every settings key the block presents to a reader.
   final Set<String> keys;
 
-  _ConfigBlock(this.location, this.keys);
+  /// The driver name the block's `type:` entry selects (`mariadb`, …).
+  final String driverType;
+
+  _ConfigBlock(this.location, this.keys, this.driverType);
 }
 
 /// The `type:` entry that anchors a data-source configuration.
@@ -84,13 +87,15 @@ _ConfigBlock _blockAt(List<String> lines, int index, String path) {
   final line = lines[index];
   final match = _anchor.firstMatch(line)!;
 
+  final driverType = match.group(1)!;
+
   final open = line.lastIndexOf('{', match.start);
   if (open >= 0) {
     final close = line.indexOf('}', match.end);
     final inner = line.substring(open, close < 0 ? line.length : close);
     return _ConfigBlock(location, {
       for (final key in _inlineKey.allMatches(inner)) key.group(1)!,
-    });
+    }, driverType);
   }
 
   final indent = _indent(line);
@@ -108,7 +113,7 @@ _ConfigBlock _blockAt(List<String> lines, int index, String path) {
       keys.add(key.group(1)!);
     }
   }
-  return _ConfigBlock(location, keys);
+  return _ConfigBlock(location, keys, driverType);
 }
 
 /// Every data-source configuration shipped with the package.
@@ -183,6 +188,36 @@ void main() {
       // that — which is exactly why they are pinned as absent.
       expect(bindable, isNot(contains('user')));
       expect(bindable, isNot(contains('database')));
+    });
+
+    test('every documented type name resolves to a registered driver', () {
+      // The first thing a configuration block does is name a driver, and the
+      // keys below it are worth checking only if that name resolves. It is
+      // reached through the same call the server startup makes, because the
+      // failure this pins is not a property of the source text: the driver
+      // scan walks `tomReflector.annotatedClasses`, so a class that stops
+      // being `@tomReflector`-annotated silently leaves the registry and every
+      // server configured for its type dies at startup with
+      // `no_driver_found`.
+      //
+      // Which is not hypothetical. `@tomReflector` and
+      // `@TomDatasourceDriver("mariadb")` sat above `MariaDbDatasource` until
+      // two private helpers were inserted between them and the class, at which
+      // point both annotations bound to the first helper instead. Nothing
+      // caught it: the DB-backed suite that exercises discovery skips without a
+      // server, and the checked-in reflection artifacts still carried the old,
+      // correct data — so the defect stayed invisible until they were
+      // regenerated. Asserting through `createDatasourceOf` here keeps the
+      // check running on every machine, with no database.
+      final unresolved = <String>[];
+      for (final block in _shippedConfigBlocks()) {
+        try {
+          expect(TomDataSource.createDatasourceOf(block.driverType), isNotNull);
+        } catch (e) {
+          unresolved.add('${block.location} ${block.driverType}: $e');
+        }
+      }
+      expect(unresolved, isEmpty);
     });
 
     test('a key no field matches is dropped in silence', () {

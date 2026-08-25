@@ -151,6 +151,39 @@
 
 ### Fixed
 
+- **`MariaDbDatasource` had lost both its annotations, so the `"mariadb"`
+  driver was not discoverable (tcinc558).** `@tomReflector` and
+  `@TomDatasourceDriver("mariadb")` were written above the class, but two
+  private helpers — `_toBindValue` and `_toBindParams` — were later inserted
+  *between* the annotations and `class MariaDbDatasource`. Dart binds an
+  annotation to the declaration that follows it, so both attached to
+  `_toBindValue`, a private function. The helpers are moved above the class's
+  dartdoc; nothing else changed.
+
+  The consequence was not confined to reflection. `TomDataSource`'s driver scan
+  walks `tomReflector.annotatedClasses` and reads `@TomDatasourceDriver` off
+  each one, so an unannotated class is absent from the registry entirely and
+  `createDatasourceOf("mariadb")` throws `no_driver_found` — every server
+  configured for the type failing at startup. `MariaDbXADatasource` was
+  unaffected and would still have registered `"mariadb_xa"`, which is the
+  shape of failure that is hardest to read: one driver of two missing, from a
+  file whose source still visibly carries the annotation.
+
+  Two things had to be true at once for this to stay hidden, and both were.
+  The suite that exercises driver discovery is `@Tags(['db'])` and skips itself
+  without a reachable MariaDB, so it is skipped on every default run. And the
+  checked-in `.reflection.dart` artifacts predated the insertion, so they still
+  carried the correct metadata — the generated code disagreed with the source
+  it was generated from, and the tests believed the generated code. The defect
+  surfaced only when an unrelated change caused the artifacts to be
+  regenerated.
+
+  The regression test is in `datasource_config_test.dart`, which needs no
+  database: every `type:` name in a shipped configuration block is now resolved
+  through `createDatasourceOf`, the same call server startup makes. It fails on
+  the un-fixed source with the same `no_driver_found` a deployment would have
+  seen.
+
 - **`TomAwsV4Signer.canonicalQuery` signed only the last value of a repeated
   query parameter (tcinc548).** It read `uri.queryParameters`, a
   `Map<String, String>`, which keeps one value per name. SigV4 canonicalises
@@ -3762,6 +3795,29 @@
   is dropped.
 
 ### Behaviour Changes
+
+- **The health-check module's three off-convention names are renamed
+  (tcinc558).** `HealthAnalyzer` → `TomHealthAnalyzer`,
+  `DefaultHealthAnalyzer` → `TomDefaultHealthAnalyzer`, and the static field
+  `TomHealthServer.globalSettingsHealthAnalyzer` → `TomHealthServer.healthAnalyzer`.
+
+  The two types were the module's only unprefixed ones, sitting beside
+  `TomHealthService` and `TomHealthServer`. The package does export other
+  unprefixed types, but each belongs to a group with a reason — the query DSL
+  (`And`, `Eq`, `Gt`), terse on purpose, and the driver classes
+  (`MariaDbDatasource`), named after what they wrap. A general-purpose
+  extension point is neither, and `HealthAnalyzer` is a plausible name for an
+  application's *own* type, which the barrel was occupying in every consumer's
+  namespace.
+
+  The field name was worse than merely inconsistent: `globalSettings*` matched
+  no other identifier in `lib/src`, and none of it was true — the field is not
+  a settings object and is not read from settings. What the prefix was
+  gesturing at is that the field is `static`, and that is now stated in its
+  dartdoc, where a reader can act on it: one assignment applies process-wide,
+  to every request and every `TomHealthServer` instance, with no per-instance
+  or per-request override. Dropping `global` from the identifier is only safe
+  because the comment picks the fact up.
 
 - **The nested-transaction guard throws the module's own exception type
   (tcinc460).** Both `startTransaction` implementations signalled a second

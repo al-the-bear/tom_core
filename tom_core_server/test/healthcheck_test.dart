@@ -5,9 +5,9 @@ import 'package:test/test.dart';
 ///
 /// The `GET /health` route is mounted by the reflection-based endpoints
 /// pipeline and is covered by `doc/healthcheck.md` and integration tests, not
-/// here. This suite pins the pluggable [HealthAnalyzer] contract and the way
-/// [TomHealthServer.health] delegates to the global analyzer.
-class _FixedAnalyzer extends HealthAnalyzer {
+/// here. This suite pins the pluggable [TomHealthAnalyzer] contract and the
+/// way [TomHealthServer.health] delegates to the global analyzer.
+class _FixedAnalyzer extends TomHealthAnalyzer {
   final String status;
   _FixedAnalyzer(this.status);
 
@@ -17,23 +17,20 @@ class _FixedAnalyzer extends HealthAnalyzer {
 
 void main() {
   // Restore the global analyzer after each test so swaps do not leak.
-  final original = TomHealthServer.globalSettingsHealthAnalyzer;
+  final original = TomHealthServer.healthAnalyzer;
   tearDown(() {
-    TomHealthServer.globalSettingsHealthAnalyzer = original;
+    TomHealthServer.healthAnalyzer = original;
   });
 
-  group('DefaultHealthAnalyzer', () {
+  group('TomDefaultHealthAnalyzer', () {
     test('always returns OK', () async {
-      expect(await DefaultHealthAnalyzer().analyzeHealth(), 'OK');
+      expect(await TomDefaultHealthAnalyzer().analyzeHealth(), 'OK');
     });
   });
 
   group('TomHealthServer', () {
     test('defaults to the always-OK analyzer', () {
-      expect(
-        TomHealthServer.globalSettingsHealthAnalyzer,
-        isA<DefaultHealthAnalyzer>(),
-      );
+      expect(TomHealthServer.healthAnalyzer, isA<TomDefaultHealthAnalyzer>());
     });
 
     test('health() returns OK with the default analyzer', () async {
@@ -41,14 +38,12 @@ void main() {
     });
 
     test('health() delegates to the swapped global analyzer', () async {
-      TomHealthServer.globalSettingsHealthAnalyzer = _FixedAnalyzer(
-        'DEGRADED: db=false',
-      );
+      TomHealthServer.healthAnalyzer = _FixedAnalyzer('DEGRADED: db=false');
       expect(await TomHealthServer().health(), 'DEGRADED: db=false');
     });
 
     test('the analyzer is shared across instances (static field)', () async {
-      TomHealthServer.globalSettingsHealthAnalyzer = _FixedAnalyzer('CUSTOM');
+      TomHealthServer.healthAnalyzer = _FixedAnalyzer('CUSTOM');
       expect(await TomHealthServer().health(), 'CUSTOM');
       expect(await TomHealthServer().health(), 'CUSTOM');
     });
