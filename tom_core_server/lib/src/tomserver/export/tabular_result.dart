@@ -410,7 +410,11 @@ class TomTabularResult {
     ],
   );
 
-  /// The document title: the PDF heading, the XLSX workbook title.
+  /// The document title.
+  ///
+  /// Printed as the PDF heading and carried in that document's info
+  /// dictionary; carried by XLSX as `dc:title` in the workbook's core
+  /// properties. CSV has nowhere to put it and drops it.
   final String title;
 
   /// The sections, in output order. One XLSX sheet each.
@@ -418,10 +422,15 @@ class TomTabularResult {
 
   /// Free-form name/value pairs describing how the result was produced.
   ///
-  /// Rendered as a header block by the formats that have one (PDF), and
-  /// ignored by the ones that do not (CSV). Typical entries: the filter that
-  /// produced the rows, the account that ran it, the as-of timestamp — the
-  /// context that makes a downloaded file interpretable months later.
+  /// Typical entries: the filter that produced the rows, the account that ran
+  /// it, the as-of timestamp — the context that makes a downloaded file
+  /// interpretable months later. Each format puts it where it has room:
+  ///
+  /// - **PDF** prints it as a header block, above the first table.
+  /// - **XLSX** writes it to the workbook's custom document properties, not to
+  ///   cells — a header block would move the header row by however many
+  ///   entries there were, and cost the sheet its machine-readability.
+  /// - **CSV** has neither and drops it.
   final Map<String, String> metadata;
 
   @override

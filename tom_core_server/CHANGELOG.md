@@ -74,6 +74,41 @@
 
 ### Fixed
 
+- **The XLSX renderer wrote neither the result title nor its metadata, which
+  four documents said it did (tcinc521).** `TomTabularResult.title` was
+  documented as "the PDF heading, the XLSX workbook title" and `metadata` as
+  the context "that makes a downloaded file interpretable months later", but
+  the workbook carried no `docProps` part at all: rendering a result titled
+  `Ledger Title 2026` with metadata `{Filter: x}` at `compressionLevel: 0` and
+  searching the uncompressed archive found neither string. The api-summary
+  mirror compounded it by naming CSV as the format that ignores metadata and
+  leaving XLSX unmentioned, so a reader concluded XLSX rendered it.
+
+  The renderer now emits `docProps/core.xml` carrying the title as `dc:title`,
+  and — when the result has metadata — `docProps/custom.xml` carrying each
+  entry as a user-defined property, both declared in `[Content_Types].xml` and
+  related from `_rels/.rels`. That makes XLSX do for the title exactly what the
+  PDF renderer already did by passing it to the document info dictionary.
+
+  **The metadata goes to the document properties, not to cells.** A header
+  block above the table was the alternative and would push the header row down
+  by however many metadata entries there happened to be, so a consumer reading
+  the sheet as a table would find its columns at a row number that varies with
+  the metadata — and being machine-readable is the reason to ask for a
+  spreadsheet rather than a PDF. Two smaller decisions follow the module's
+  existing habits: `core.xml` carries no `dcterms:created`/`modified`, because
+  a timestamp would break the byte-determinism the zeroed MS-DOS ZIP fields
+  exist to preserve; and a metadata name that escapes to nothing (empty, or
+  only control characters XML cannot carry) is dropped rather than written,
+  since a custom property with an empty `name` is what makes Excel declare the
+  file corrupt — the same trade `_escapeXml` already makes for cell text. A
+  result whose metadata is entirely unusable gets no custom-properties part.
+
+  Nine tests assert it, seven mutations kill (title constant, title unescaped,
+  `core.xml` omitted, `custom.xml` emitted unconditionally, unnameable entries
+  kept, ids numbered from 0, the content-type override dropped). All four
+  documents — the two dartdocs, `doc/export.md` and `api_summary_export.md` —
+  now describe per format where the title and the metadata actually land.
 - **`doc/endpoints.md` named three open ends where the internal list named
   eight (tcinc515).** The user-facing "Not Yet Implemented" section carried the
   three limitations of the *form* module and none of the five a caller is most

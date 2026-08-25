@@ -473,6 +473,7 @@ void main() {
         containsAll([
           '[Content_Types].xml',
           '_rels/.rels',
+          'docProps/core.xml',
           'xl/workbook.xml',
           'xl/_rels/workbook.xml.rels',
           'xl/styles.xml',
@@ -525,6 +526,157 @@ void main() {
       expect(
         parts['xl/worksheets/sheet1.xml'],
         contains('s="2"><v>46231.6041666667</v>'),
+      );
+    });
+  });
+
+  /// The title and metadata land in the package's document properties.
+  ///
+  /// Asserted on the parts rather than on a cell because that *is* the choice:
+  /// a header block above the table would move the header row by however many
+  /// metadata entries there were, and a consumer reading the sheet as a table
+  /// would find its columns at a varying row. So these tests are what stops the
+  /// context from being quietly dropped again, and equally what stops it from
+  /// reappearing in the data region.
+  group('TomXlsxRenderer (document properties)', () {
+    late Map<String, String> parts;
+
+    setUpAll(() async {
+      parts = _ZipReader(await _render(_sampleResult(), 'xlsx')).read();
+    });
+
+    test('the result title is the workbook title', () {
+      expect(
+        parts['docProps/core.xml'],
+        contains('<dc:title>Sales</dc:title>'),
+      );
+    });
+
+    test('the core properties part is declared and related', () {
+      expect(
+        parts['[Content_Types].xml'],
+        contains('PartName="/docProps/core.xml"'),
+      );
+      expect(parts['_rels/.rels'], contains('Target="docProps/core.xml"'));
+    });
+
+    test('each metadata entry becomes a custom property', () {
+      expect(
+        parts['docProps/custom.xml'],
+        contains('name="Filter"><vt:lpwstr>region = EU</vt:lpwstr>'),
+      );
+    });
+
+    test('the custom properties part is declared and related', () {
+      expect(
+        parts['[Content_Types].xml'],
+        contains('PartName="/docProps/custom.xml"'),
+      );
+      expect(parts['_rels/.rels'], contains('Target="docProps/custom.xml"'));
+    });
+
+    test('property ids number from 2, which is the first id not reserved', () {
+      expect(parts['docProps/custom.xml'], contains('pid="2"'));
+      expect(parts['docProps/custom.xml'], isNot(contains('pid="0"')));
+      expect(parts['docProps/custom.xml'], isNot(contains('pid="1"')));
+    });
+
+    test(
+      'the title is escaped, so a report named after a range still opens',
+      () async {
+        final escaped = _ZipReader(
+          await _render(_sampleResult(title: 'Q1 & Q2 <all>'), 'xlsx'),
+        ).read();
+        expect(
+          escaped['docProps/core.xml'],
+          contains('<dc:title>Q1 &amp; Q2 &lt;all&gt;</dc:title>'),
+        );
+      },
+    );
+
+    test(
+      'a result without metadata carries no custom properties part',
+      () async {
+        final bare = _ZipReader(
+          await _render(
+            TomTabularResult.single(
+              title: 'Bare',
+              section: TomTabularSection.ofRows(
+                [TomTabularColumn('a')],
+                [
+                  const TomTabularRow(['x']),
+                ],
+              ),
+            ),
+            'xlsx',
+          ),
+        ).read();
+        expect(bare.keys, isNot(contains('docProps/custom.xml')));
+        expect(
+          bare['[Content_Types].xml'],
+          isNot(contains('PartName="/docProps/custom.xml"')),
+        );
+        expect(bare['_rels/.rels'], isNot(contains('docProps/custom.xml')));
+        // The title has no such condition — every workbook carries one.
+        expect(
+          bare['docProps/core.xml'],
+          contains('<dc:title>Bare</dc:title>'),
+        );
+      },
+    );
+
+    test('a metadata name XML cannot carry is dropped, not written', () async {
+      final odd = _ZipReader(
+        await _render(
+          TomTabularResult.single(
+            title: 't',
+            section: TomTabularSection.ofRows(
+              [TomTabularColumn('a')],
+              [
+                const TomTabularRow(['x']),
+              ],
+            ),
+            metadata: const {
+              '': 'dropped-because-nameless',
+              // A name of only control characters: XML 1.0 cannot carry
+              // them even as numeric references, so escaping leaves
+              // nothing to name the property with.
+              '\u0001': 'dropped-because-unnameable',
+              'Kept': 'survives',
+            },
+          ),
+          'xlsx',
+        ),
+      ).read();
+      final custom = odd['docProps/custom.xml'];
+      expect(custom, contains('name="Kept"><vt:lpwstr>survives</vt:lpwstr>'));
+      expect(custom, isNot(contains('dropped-because-nameless')));
+      expect(custom, isNot(contains('dropped-because-unnameable')));
+      expect(custom, isNot(contains('name=""')));
+      // The survivor is renumbered, not left at the id its position implied.
+      expect(custom, contains('pid="2"'));
+    });
+
+    test('metadata of only unusable names produces no part at all', () async {
+      final none = _ZipReader(
+        await _render(
+          TomTabularResult.single(
+            title: 't',
+            section: TomTabularSection.ofRows(
+              [TomTabularColumn('a')],
+              [
+                const TomTabularRow(['x']),
+              ],
+            ),
+            metadata: const {'': 'x'},
+          ),
+          'xlsx',
+        ),
+      ).read();
+      expect(none.keys, isNot(contains('docProps/custom.xml')));
+      expect(
+        none['[Content_Types].xml'],
+        isNot(contains('PartName="/docProps/custom.xml"')),
       );
     });
   });

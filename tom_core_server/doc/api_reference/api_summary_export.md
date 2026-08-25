@@ -350,9 +350,9 @@ factory TomTabularResult.single({
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `title` | `String` | The document title: the PDF heading, the XLSX workbook title (final). |
+| `title` | `String` | The document title: printed as the PDF heading and carried in that document's info dictionary, carried by XLSX as `dc:title` in the workbook's core properties, dropped by CSV, which has nowhere to put it (final). |
 | `sections` | `List<TomTabularSection>` | The sections, in output order; one XLSX sheet each (final). |
-| `metadata` | `Map<String, String>` | Unmodifiable name/value pairs describing how the result was produced — the filter, the account, the as-of timestamp. Rendered as a header block by the formats that have one (PDF), ignored by the ones that do not (CSV) (final). |
+| `metadata` | `Map<String, String>` | Unmodifiable name/value pairs describing how the result was produced — the filter, the account, the as-of timestamp. Each format puts it where it has room: PDF prints it as a header block, XLSX writes it to the workbook's custom document properties rather than to cells, and CSV drops it (final). |
 
 ### TomTabularRenderer
 
@@ -464,7 +464,11 @@ keep peak memory at one row of XML plus the deflate window; archive timestamps
 are zero so the same result renders byte-identically. Sheet names are
 sanitised, truncated to 31 characters and made unique, empty cells are omitted,
 and a value whose type does not match its column renders as text rather than
-failing.
+failing. The result's `title` becomes `dc:title` in `docProps/core.xml` and its
+`metadata` becomes user-defined properties in `docProps/custom.xml` — the
+document properties rather than cells, so the header row stays at row 1
+whatever the metadata holds. A result with no usable metadata names gets no
+custom-properties part at all.
 
 - **Extends:** `TomTabularRenderer`
 
@@ -487,7 +491,7 @@ const TomXlsxRenderer({int compressionLevel = 6})
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Emits the fixed package parts, then one worksheet part per section as its rows arrive, then the ZIP central directory. Numbers are numeric cells, booleans `t="b"`, timestamps Excel date serials computed from calendar fields. |
+| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Emits the fixed package parts — content types, relationships, `docProps/core.xml`, `docProps/custom.xml` when there is metadata, the workbook and its styles — then one worksheet part per section as its rows arrive, then the ZIP central directory. Numbers are numeric cells, booleans `t="b"`, timestamps Excel date serials computed from calendar fields. |
 
 ### TomPdfRenderer
 

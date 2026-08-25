@@ -110,8 +110,18 @@ Decisions in that shape worth knowing:
   caller who built it wrong is still on the stack.
 
 `metadata` is the context that makes a downloaded file interpretable months
-later — the filter that produced it, who ran it, as of when. Formats that have a
-header block (PDF) render it; formats that do not (CSV) ignore it.
+later — the filter that produced it, who ran it, as of when. Each format puts it
+where it has room: PDF prints it as a header block above the first table, XLSX
+writes it to the workbook's custom document properties, and CSV, which has
+neither, drops it.
+
+XLSX keeps it out of the cells deliberately. A header block above the table
+would push the header row down by however many metadata entries there happened
+to be, so a consumer reading the sheet as a table would find its columns at a
+row number that varies with the metadata — and being machine-readable is the
+reason to ask for a spreadsheet at all. `title` is carried the same way, as
+`dc:title` in the workbook's core properties; the PDF both prints it and stores
+it in the document info dictionary.
 
 ## Columns Derived from the Entity
 

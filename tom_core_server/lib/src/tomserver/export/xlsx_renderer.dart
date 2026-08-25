@@ -20,8 +20,26 @@
 /// The alternative was not "write a spreadsheet format". The **hard** parts of
 /// XLSX — a formula engine, styles, charts, shared strings, the reading side —
 /// are exactly the parts an export does not use. What is left is a fixed set of
-/// six small XML parts and a ZIP container, and the ZIP compression itself is
+/// small XML parts — six, plus one per sheet, plus one more when the result
+/// carries metadata — and a ZIP container, and the ZIP compression itself is
 /// `dart:io`'s `ZLibEncoder`. So this renderer takes no dependency at all.
+///
+/// ## Where the title and the metadata go
+///
+/// Both land in the package's document properties rather than in a cell:
+/// [TomTabularResult.title] as `dc:title` in `docProps/core.xml`, and
+/// [TomTabularResult.metadata] as user-defined properties in
+/// `docProps/custom.xml`. That is the same choice the PDF renderer makes when
+/// it passes the title to the document's info dictionary — with the difference
+/// that the PDF *also* prints both, because a page has somewhere to print them
+/// and a sheet does not.
+///
+/// A header block above the table was the alternative and is the wrong answer
+/// here: it would push the header row down by however many metadata entries
+/// there happened to be, so a consumer reading the sheet as a table would find
+/// its columns at a row number that varies with the metadata. A spreadsheet's
+/// value is that it is machine-readable; the properties carry the context
+/// without spending that.
 ///
 /// ## How it streams
 ///
@@ -75,9 +93,23 @@ class TomXlsxRenderer extends TomTabularRenderer {
   Stream<List<int>> render(TomTabularResult result) async* {
     final zip = _ZipStreamWriter(compressionLevel);
     final sheetNames = _sheetNames(result);
+    final properties = _customPropertyEntries(result.metadata);
 
-    yield* zip.addText('[Content_Types].xml', _contentTypes(sheetNames.length));
-    yield* zip.addText('_rels/.rels', _rootRels);
+    yield* zip.addText(
+      '[Content_Types].xml',
+      _contentTypes(
+        sheetNames.length,
+        withCustomProperties: properties.isNotEmpty,
+      ),
+    );
+    yield* zip.addText(
+      '_rels/.rels',
+      _rootRels(withCustomProperties: properties.isNotEmpty),
+    );
+    yield* zip.addText('docProps/core.xml', _coreProperties(result.title));
+    if (properties.isNotEmpty) {
+      yield* zip.addText('docProps/custom.xml', _customProperties(properties));
+    }
     yield* zip.addText('xl/workbook.xml', _workbook(sheetNames));
     yield* zip.addText(
       'xl/_rels/workbook.xml.rels',
@@ -232,18 +264,37 @@ class TomXlsxRenderer extends TomTabularRenderer {
       'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
   static const String _nsRel =
       'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  static const String _nsPackageRel =
+      'http://schemas.openxmlformats.org/package/2006/relationships';
+  static const String _nsCoreProperties =
+      'http://schemas.openxmlformats.org/package/2006/metadata/core-properties';
+  static const String _nsDc = 'http://purl.org/dc/elements/1.1/';
+  static const String _nsCustomProperties =
+      'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties';
+  static const String _nsDocPropsTypes =
+      'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes';
 
-  static String _contentTypes(int sheetCount) {
+  static String _contentTypes(
+    int sheetCount, {
+    required bool withCustomProperties,
+  }) {
     final sheets = [
       for (var i = 1; i <= sheetCount; i++)
         '<Override PartName="/xl/worksheets/sheet$i.xml" ContentType='
             '"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>',
     ].join();
+    final custom = withCustomProperties
+        ? '<Override PartName="/docProps/custom.xml" ContentType='
+              '"application/vnd.openxmlformats-officedocument.custom-properties+xml"/>'
+        : '';
     return '$_xmlDeclaration'
         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
         '<Default Extension="rels" ContentType='
         '"application/vnd.openxmlformats-package.relationships+xml"/>'
         '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/docProps/core.xml" ContentType='
+        '"application/vnd.openxmlformats-package.core-properties+xml"/>'
+        '$custom'
         '<Override PartName="/xl/workbook.xml" ContentType='
         '"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
         '<Override PartName="/xl/styles.xml" ContentType='
@@ -251,11 +302,69 @@ class TomXlsxRenderer extends TomTabularRenderer {
         '$sheets</Types>';
   }
 
-  static const String _rootRels =
+  static String _rootRels({required bool withCustomProperties}) {
+    final custom = withCustomProperties
+        ? '<Relationship Id="rId3" Type="$_nsRel/custom-properties" '
+              'Target="docProps/custom.xml"/>'
+        : '';
+    return '$_xmlDeclaration'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="$_nsRel/officeDocument" Target="xl/workbook.xml"/>'
+        '<Relationship Id="rId2" Type="$_nsPackageRel/metadata/core-properties" '
+        'Target="docProps/core.xml"/>'
+        '$custom'
+        '</Relationships>';
+  }
+
+  /// The core properties part, carrying the result title as `dc:title`.
+  ///
+  /// It deliberately carries no `dcterms:created` or `dcterms:modified`. Those
+  /// are the two fields a real authoring tool always writes, and writing either
+  /// would make the same result render to different bytes on two runs — the
+  /// property the zeroed MS-DOS timestamps in [_ZipStreamWriter._localHeader]
+  /// exist to preserve. An export has no author and no edit history; it has a
+  /// title, and that is what it says.
+  static String _coreProperties(String title) =>
       '$_xmlDeclaration'
-      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-      '<Relationship Id="rId1" Type="$_nsRel/officeDocument" Target="xl/workbook.xml"/>'
-      '</Relationships>';
+      '<cp:coreProperties xmlns:cp="$_nsCoreProperties" xmlns:dc="$_nsDc">'
+      '<dc:title>${_escapeXml(title)}</dc:title>'
+      '</cp:coreProperties>';
+
+  /// The metadata entries that can become custom properties, escaped.
+  ///
+  /// An entry whose name escapes to nothing — empty, or made only of control
+  /// characters XML cannot carry — is dropped rather than written. A custom
+  /// property with an empty `name` is what makes Excel declare the file
+  /// corrupt, and the same trade is made here as in [_escapeXml]: losing one
+  /// entry of context beats a workbook that will not open.
+  static List<MapEntry<String, String>> _customPropertyEntries(
+    Map<String, String> metadata,
+  ) {
+    final entries = <MapEntry<String, String>>[];
+    for (final entry in metadata.entries) {
+      final name = _escapeXml(entry.key);
+      if (name.isEmpty) continue;
+      entries.add(MapEntry(name, _escapeXml(entry.value)));
+    }
+    return entries;
+  }
+
+  /// The custom properties part: one user-defined property per metadata entry.
+  ///
+  /// `fmtid` is the format id OOXML reserves for user-defined properties, and
+  /// `pid` numbers them from 2 — 0 and 1 are reserved by the underlying
+  /// property-set format, and a property claiming either is rejected.
+  static String _customProperties(List<MapEntry<String, String>> entries) {
+    final properties = [
+      for (var i = 0; i < entries.length; i++)
+        '<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" '
+            'pid="${i + 2}" name="${entries[i].key}">'
+            '<vt:lpwstr>${entries[i].value}</vt:lpwstr></property>',
+    ].join();
+    return '$_xmlDeclaration'
+        '<Properties xmlns="$_nsCustomProperties" xmlns:vt="$_nsDocPropsTypes">'
+        '$properties</Properties>';
+  }
 
   static String _workbook(List<String> sheetNames) {
     final sheets = [
