@@ -605,6 +605,19 @@ part that would otherwise be copied into every endpoint that exports something.
 | `fileExport` | `storeAs(result, format, key:)` | A `TomStoredExport` descriptor |
 | *(neither)* | `render(result, format)` | The raw byte stream, for everything else |
 
+**`render` is the one place a format id becomes bytes**, and the two channels
+deliver whatever stream it returns. That is what makes it an extension point
+rather than a convenience: a subclass that overrides it to add a metric, a trace
+or a row limit is on every channel's path, not only on the path of the callers
+who invoke it explicitly — which is the rarest of the three.
+
+An override may wrap, meter or refuse the stream. It should not change *which
+format* it produces. The channels ask the registry what a format **is** — its
+media type, its file extension — and ask `render` only what it **produces**, so
+a substituted format would go out under the original's labels. Splitting the
+question that way is also what lets an unknown format fail before a `Response`
+object exists, rather than as an error on a body already being written.
+
 **The response is unbuffered and carries no `Content-Length`.** A CSV of a
 million rows starts arriving at the client while the query is still running, and
 the server's memory does not know the difference between that and ten rows. The

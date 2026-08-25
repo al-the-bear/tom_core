@@ -1852,11 +1852,100 @@ void main() {
       );
     });
 
-    test('render is the primitive both channels share', () async {
-      final bytes = await _collect(
-        TomExportService().render(_sampleResult(), 'csv'),
+    test(
+      'render answers directly, for the caller neither channel fits',
+      () async {
+        final bytes = await _collect(
+          TomExportService().render(_sampleResult(), 'csv'),
+        );
+        expect(utf8.decode(bytes), contains('Widget'));
+      },
+    );
+  });
+
+  // `render` is documented as the primitive both channels are built on, which
+  // is a claim about the *call graph* and not about output. Nothing asserted it
+  // — and it was false: `respondWith` and `storeAs` each reached past it to
+  // `formats.rendererFor(format).render(result)`, so an override adding a
+  // metric, a trace or a limit saw only the callers who used `render`
+  // explicitly, which the same documentation calls the rarest case.
+  //
+  // Being on the path is not the same as being *called*, so these tests assert
+  // both: the format the override was asked for, and the byte count it could
+  // only have if the channel carried the stream it returned.
+  group('TomExportService.render (the primitive both channels share)', () {
+    test('respondWith streams the bytes render returned', () async {
+      final service = _MeteredExportService();
+      final response = service.respondWith(
+        _sampleResult(),
+        'csv',
+        baseName: 'sales',
       );
-      expect(utf8.decode(bytes), contains('Widget'));
+      // The body is read as bytes rather than as a string: `readAsString`
+      // strips the CSV renderer's UTF-8 BOM, so a re-encoded string is three
+      // bytes short of what actually crossed the wire.
+      final body = await _collect(response.read());
+
+      expect(service.renders, ['csv']);
+      expect(utf8.decode(body), contains('Widget'));
+      expect(
+        service.byteCount,
+        body.length,
+        reason: "the response body is the override's stream, not a second one",
+      );
+    });
+
+    test('storeAs stores the bytes render returned', () async {
+      final store = TomMemoryExportStore();
+      final service = _MeteredExportService(store: store);
+      final stored = await service.storeAs(
+        _sampleResult(),
+        'xlsx',
+        key: 'sales.xlsx',
+      );
+
+      expect(service.renders, ['xlsx']);
+      expect(stored.byteCount, service.byteCount);
+      expect(await store.exists('sales.xlsx'), isTrue);
+    });
+
+    test('a limit check placed in render guards both channels', () async {
+      final store = TomMemoryExportStore();
+      final service = _MeteredExportService(store: store, refuses: 'pdf');
+
+      // The apiResponse channel: the refusal surfaces on the body rather than
+      // from the call, because the body is a stream and the response object is
+      // built before a byte is produced.
+      final response = service.respondWith(
+        _sampleResult(),
+        'pdf',
+        baseName: 'r',
+      );
+      await expectLater(response.read(), emitsError(isA<TomExportException>()));
+
+      // The fileExport channel: nothing is written.
+      await expectLater(
+        service.storeAs(_sampleResult(), 'pdf', key: 'r.pdf'),
+        throwsA(isA<TomExportException>()),
+      );
+      expect(await store.exists('r.pdf'), isFalse);
+      expect(service.renders, ['pdf', 'pdf']);
+    });
+
+    test('the headers still describe the format, not the override', () async {
+      final service = _MeteredExportService();
+      final response = service.respondWith(
+        _sampleResult(),
+        'pdf',
+        baseName: 'r',
+      );
+      // The registry is asked what a format *is*; `render` is asked what it
+      // *produces*. Overriding the latter does not silently relabel the former.
+      expect(response.headers['content-type'], 'application/pdf');
+      expect(
+        response.headers['content-disposition'],
+        'attachment; filename="r.pdf"',
+      );
     });
   });
 
@@ -1920,6 +2009,38 @@ final bool _chmodIsIneffective = () {
     probe.parent.deleteSync(recursive: true);
   }
 }();
+
+/// A service that meters `render`, the way a real subclass would.
+///
+/// The three reasons to override `render` named in the module's own
+/// documentation are a metric, a trace and a limit check, and this fixture is
+/// all three: it records what it was asked for ([renders]), it counts what came
+/// back ([byteCount]) — which it can only do by being on the path the bytes
+/// take — and it [refuses] a format outright.
+class _MeteredExportService extends TomExportService {
+  _MeteredExportService({super.store, this.refuses});
+
+  /// The format this service declines to render at all, if any.
+  final String? refuses;
+
+  /// One entry per `render`, in call order.
+  final List<String> renders = [];
+
+  /// The bytes that actually passed through this override.
+  int byteCount = 0;
+
+  @override
+  Stream<List<int>> render(TomTabularResult result, String format) async* {
+    renders.add(format);
+    if (format == refuses) {
+      throw TomExportException('test.refused', 'Not on this service.');
+    }
+    await for (final chunk in super.render(result, format)) {
+      byteCount += chunk.length;
+      yield chunk;
+    }
+  }
+}
 
 /// An application-supplied format, proving the registry is genuinely open.
 class _JsonLinesRenderer extends TomTabularRenderer {

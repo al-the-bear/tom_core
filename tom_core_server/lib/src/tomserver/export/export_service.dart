@@ -52,6 +52,19 @@ class TomExportService {
   /// The primitive both channels are built on, and the one to call directly
   /// when neither fits — attaching an export to a message, piping it into a
   /// hash, writing it to a socket.
+  ///
+  /// This is the **only** place in this class where a format id becomes bytes:
+  /// [respondWith] and [storeAs] deliver whatever stream this returns. That is
+  /// what makes it an extension point rather than a convenience — an override
+  /// adding a metric, a trace or a row limit is on every channel's path, not
+  /// only on the path of the callers who invoke it explicitly, which is the
+  /// rarest case of the three.
+  ///
+  /// An override may wrap, meter or refuse the stream. It should not change
+  /// which *format* is produced: the channels ask [formats] what a format id
+  /// **is** — its media type, its file extension — and ask this method only
+  /// what it **produces**, so a substituted format would be delivered under the
+  /// original's labels.
   Stream<List<int>> render(TomTabularResult result, String format) =>
       formats.rendererFor(format).render(result);
 
@@ -76,10 +89,13 @@ class TomExportService {
     required String baseName,
     bool inline = false,
   }) {
+    // The registry is asked what the format *is*; [render] is asked what it
+    // *produces*. Resolving here also means an unknown format fails before a
+    // response object exists, rather than as an error on its body.
     final renderer = formats.rendererFor(format);
     final fileName = renderer.fileNameFor(baseName);
     return Response.ok(
-      renderer.render(result),
+      render(result, format),
       headers: {
         TomHeader.contentType: renderer.mediaType,
         TomHeader.contentDisposition:
@@ -108,11 +124,10 @@ class TomExportService {
         parameters: {'key': key},
       );
     }
-    final renderer = formats.rendererFor(format);
     return target.store(
       key: key,
-      bytes: renderer.render(result),
-      mediaType: renderer.mediaType,
+      bytes: render(result, format),
+      mediaType: formats.rendererFor(format).mediaType,
     );
   }
 

@@ -74,6 +74,37 @@
 
 ### Fixed
 
+- **`TomExportService.render` was documented as the primitive both channels are
+  built on, and neither channel called it (tcinc528).** `respondWith` and
+  `storeAs` each reached past it to `formats.rendererFor(format).render(result)`,
+  so the two-step lookup appeared three times and `render` was on no other
+  method's path. The cost is not the duplication: it is that a subclass
+  overriding `render` to add a metric, a trace or a row limit saw only the
+  callers who invoked it explicitly — which the same documentation calls the
+  rarest of the three cases.
+
+  Both channels now deliver the stream `render` returns, making it the only
+  place in the class where a format id becomes bytes. What the channels still
+  resolve for themselves is the format's *description* — its media type and file
+  extension. That split is deliberate and is now stated: the registry is asked
+  what a format **is**, `render` only what it **produces**, so an override may
+  wrap, meter or refuse a stream without being able to silently relabel it, and
+  an unknown format still fails before a `Response` object exists rather than as
+  an error on a body already being written.
+
+  The test that claimed this was true asserted only that `render` produced CSV
+  bytes — it would have passed had neither channel ever touched the method,
+  which was the actual state. It is now four tests over a metering subclass, and
+  they assert being *called* and being *on the path* separately: the format each
+  channel asked for, and the byte count the override could only have if the
+  channel carried the stream it returned. Six mutations confirm each bites —
+  either channel bypassing `render`, either channel rendering a format other
+  than the one it labels, `storeAs` calling `render` for the metric but storing
+  a second rendering, and dropping the response content type. A seventh, calling
+  `render` twice and delivering the second, is an equivalent mutant: a stream
+  from an `async*` body that nothing listens to never runs, which is exactly why
+  the byte-count assertion rather than the call count is the load-bearing one.
+
 - **A column width meant two different things, and the module's own example
   showed the damage (tcinc527).** `TomTabularColumn.width` was documented as "a
   hint": XLSX wrote it as an absolute character count, PDF read it as a flex
