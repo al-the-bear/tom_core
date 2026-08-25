@@ -148,6 +148,34 @@ flavours: a parsed query sentence (`findByQuerySentence`), a built `TomQuery`
 not fit the find/delete/count pattern (see
 [Grouping and Aggregation](#grouping-and-aggregation)).
 
+### How a repository fails
+
+Every repository rejection is a keyed `TomServerException`, never a bare
+`Exception`, so a handler can match on the key and a catalogue can localise it.
+
+`TomRepositoryException` covers the repository's own preconditions, under
+`crud_repository.<method>.<condition>` keys:
+
+| Key | Raised when |
+| --- | ----------- |
+| `crud_repository.constructor.datasource_not_registered` | The entity's `@TomDbTable` names a datasource no `TomDataSourceInfo` was registered for. |
+| `crud_repository.find_by_id.duplicate_primary_key` | A primary-key lookup matched more than one row. |
+| `crud_repository.count.illegal_count_result` | `count()`'s `COUNT(*)` returned other than exactly one row. |
+| `crud_repository.count_by_query.illegal_count_result` | Ditto for `countByQuery`. |
+| `crud_repository.count_by_query_sentence.illegal_count_result` | Ditto for `countByQuerySentence`. |
+| `crud_repository.save.insert_not_readable` | An `INSERT` reported success but the new row could not be read back. |
+| `crud_repository.save.update_not_readable` | An `UPDATE` ran but the row could not be re-read. |
+
+All seven are *server* faults — a broken deployment, a table contradicting its
+own key, a driver that reported a write it then could not read — so
+`clientThrow` defaults to `false`: the key travels to the caller, the message
+(which names internals) does not.
+
+The `*ByQuerySentence` methods add three keys of their own,
+`crud_repository.<method>.sentence_verb_mismatch`, raised as
+`TomQuerySyntaxException` because a sentence whose verb does not match the method
+is the caller's mistake and the caller's to correct.
+
 ### Paging and Sorting
 
 Every read that can return more than one row takes an optional `TomPageRequest`:
@@ -233,7 +261,11 @@ group count ( * ) as total over status by age >= :min
 find first 25 skip 50 by status = :status order by priority desc due_date asc
 ```
 
-A malformed sentence raises `TomQuerySyntaxException`.
+A malformed sentence raises `TomQuerySyntaxException`. So does a *well-formed*
+sentence of the wrong kind: the verb decides what the compiler produces, so
+`countByQuerySentence('find by …')` is refused under
+`crud_repository.count_by_query_sentence.sentence_verb_mismatch` rather than
+failing on the cast.
 
 ### `IS IN` lists
 

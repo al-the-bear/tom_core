@@ -281,6 +281,51 @@
 
 ### Fixed
 
+- **The CRUD repository threw ten errors a caller could not identify
+  (tcinc593).** Seven were bare `throw Exception(...)`: the constructor's
+  datasource lookup, `findById`'s duplicate-primary-key guard, the read-back
+  guards in both halves of `save`, and the "a `COUNT(*)` returned other than one
+  row" guard, which appeared three times verbatim. A bare `Exception` carries no
+  key, so no handler can match it, no catalogue can localise it, it falls
+  outside the family the framework auto-logs, and the endpoints pipeline — which
+  classifies by type — sees an unclassified error. They were the only failures
+  in the module that reached a caller with nothing to match on, and the module's
+  API summary stated as a fact that all of its exceptions extend
+  `TomServerException`.
+
+  All seven now raise the new `TomRepositoryException` under
+  `crud_repository.<method>.<condition>` keys. It defaults `clientThrow` to
+  `false`: every one of its causes is a server fault — a broken deployment, a
+  table contradicting its own key, a driver that reported a write it then could
+  not read — and every message names internals, so the key travels and the
+  message does not. The triplicated count guard became one `_singleCount`
+  helper that takes its key as a literal argument, so each method's key stays
+  greppable at its own call site.
+
+  The other three had the same shape without being `throw` statements:
+  `findByQuerySentence`, `deleteByQuerySentence` and `countByQuerySentence` each
+  cast the compiled sentence to the kind they need (`as TomSelect` /
+  `as TomDelete` / `as TomCount`). The sentence is caller-supplied and its
+  *verb* decides what the compiler produces, so `countByQuerySentence('find by
+  …')` surfaced a raw `TypeError` — "type 'TomSelect' is not a subtype of type
+  'TomCount' in type cast" — naming two internal classes the caller never wrote
+  and not saying which of its own words was wrong. They now go through a checked
+  `_compileSentenceAs<Q>` that raises `TomQuerySyntaxException` under
+  `crud_repository.<method>.sentence_verb_mismatch` and names the verb the
+  method expects. `TomQuerySyntaxException` rather than a repository error
+  because this one *is* the caller's to correct. The two `as TomDelete` casts on
+  internally-built literal sentences are left alone — those operands are the
+  repository's own.
+
+  All ten are covered connection-free: the repository is driven against a
+  scripted `TomDataSource` registered through a `TomDataSourceInfo` whose
+  `datasource` getter is overridden. A database would contribute nothing but the
+  ability to produce the answers, and two of them (two rows for one primary key;
+  a `COUNT(*)` returning no row) are states a correct server will not produce on
+  request. Three further guards scan the source itself: no `throw Exception(`
+  remains, every `crud_repository.*` key has exactly three dotted segments, and
+  every raise site in the file names a `Tom*Exception`.
+
 - **A boolean comparison read past its own operand, and past its own closing
   bracket (tcinc592).** The six comparison builders share one dispatch, but the
   dispatch took a flag: `=` and `<>` parsed a *boolean* right-hand side with

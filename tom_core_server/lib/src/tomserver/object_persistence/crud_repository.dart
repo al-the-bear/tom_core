@@ -8,9 +8,11 @@ import '../datasources/sql_dialects.dart';
 import '../datasources/sql_placeholder_scan.dart';
 import '../datasources/types_operator.dart';
 import '../file_storage/blob_store.dart';
+import '../little_things/server_exception.dart';
 
 import 'grouped_query.dart';
 import 'file_reference.dart';
+import 'operators_expressions.dart';
 import 'paging.dart';
 import 'persistence_annotations.dart';
 import 'query_sentence_compiler.dart';
@@ -18,6 +20,39 @@ import 'query_builder.dart';
 import 'annotation_analyzer.dart';
 import 'column_authorization.dart';
 import 'data_scope.dart';
+
+/// Raised when a repository operation cannot complete for a reason that is not
+/// the caller's fault: the entity's data source was never registered, a
+/// primary-key lookup matched more than one row, a `COUNT(*)` returned other
+/// than one row, or a row written by [TomCrudRepository.save] could not be read
+/// back.
+///
+/// These are all *server* faults — a broken registration or a database that
+/// contradicts its own schema — so [TomServerException.clientThrow] defaults to
+/// `false` and the message is kept off the wire; the `key` is what a caller
+/// matches on and what the endpoints pipeline logs.
+///
+/// It sits beside the repository rather than in the module's other exception
+/// files because those describe *inputs* the repository rejects
+/// ([TomQuerySyntaxException], [TomColumnAuthorizationException],
+/// [TomDataScopeException]); this one describes the repository's own
+/// preconditions failing.
+class TomRepositoryException extends TomServerException {
+  /// Creates a repository failure with a `crud_repository.<method>.<condition>`
+  /// [key] and a default user message.
+  ///
+  /// [clientThrow] defaults to `false` — override it only where the message is
+  /// known to be safe for the caller.
+  TomRepositoryException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.clientThrow = false,
+  });
+}
 
 /// Result holder for a `COUNT(*)` query: a single [count] field populated by
 /// the row mapper. Reflectable so the data source can materialise it.
@@ -237,7 +272,8 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     if (dsInfo != null) {
       datasourceInfo = dsInfo;
     } else {
-      throw Exception(
+      throw TomRepositoryException(
+        'crud_repository.constructor.datasource_not_registered',
         "No datasource information obtainable for datasource ${dbTable.datasource} which was specified for class ${this.queryTypes[0]}",
       );
     }
@@ -1126,10 +1162,27 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     } else if (result.isEmpty) {
       return null;
     } else {
-      throw Exception(
+      throw TomRepositoryException(
+        'crud_repository.find_by_id.duplicate_primary_key',
         "Found more than one record with the same ID, this is not possible for a primary key",
       );
     }
+  }
+
+  /// Unwraps the single row a `COUNT(*)` must return, raising
+  /// [TomRepositoryException] under [key] when it returned any other number.
+  ///
+  /// Shared by [count], [countByQuery] and [countByQuerySentence]. [key] is
+  /// passed in rather than derived from the caller so that each method's key
+  /// stays a literal at its own call site and remains greppable.
+  static TomDbInt _singleCount(List<TomCountResult> rows, String key) {
+    if (rows.length != 1) {
+      throw TomRepositoryException(
+        key,
+        "Illegal count result. Must have exactly one result row, but had ${rows.length}",
+      );
+    }
+    return TomDbInt(rows[0].count);
   }
 
   TomPreparedStatement<TomCountResult>? _countQuery;
@@ -1156,12 +1209,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
         TomCountResult,
       );
     }
-    if (result.length != 1) {
-      throw Exception(
-        "Illegal count result. Must have exactly one result row, but had ${result.length}",
-      );
-    }
-    return TomDbInt(result[0].count);
+    return _singleCount(result, 'crud_repository.count.illegal_count_result');
   }
 
   /// Whether [primaryKey] marks an entity that has **not** yet been persisted,
@@ -1343,9 +1391,10 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
         );
         return newRow;
       }
-      throw Exception(
+      throw TomRepositoryException(
+        'crud_repository.save.insert_not_readable',
         "Insert failed. When saving object with primary key $rowKey no "
-        "record was created.",
+            "record was created.",
       );
     } else {
       // UPDATE
@@ -1389,9 +1438,10 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
         }
         return newRow;
       }
-      throw Exception(
+      throw TomRepositoryException(
+        'crud_repository.save.update_not_readable',
         "Update failed. When saving object with primary key $primaryKey the "
-        "record could not be retrieved.",
+            "record could not be retrieved.",
       );
     }
   }
@@ -1451,6 +1501,32 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   static List<String> _extractPlaceholderNames(String sql) =>
       SqlPlaceholderScan.extractNames(sql);
 
+  /// Compiles a caller-supplied [querySentence] and checks that it is the kind
+  /// of query [Q] the calling method can actually run, raising
+  /// [TomQuerySyntaxException] under [key] when it is not.
+  ///
+  /// The sentence's verb selects the compiled type — `find by …` yields a
+  /// [TomSelect], `count by …` a [TomCount], `delete by …` a [TomDelete] — so
+  /// handing `find by …` to a counting method is a caller mistake, and a
+  /// mistake in the *sentence*, which is why it reuses the compiler's own
+  /// [TomQuerySyntaxException] rather than a repository error. [verb] names the
+  /// verb the method expects, so the message says what to write instead.
+  ///
+  /// A bare cast would surface a raw `TypeError` naming internal query classes:
+  /// unclassified, unlocalisable, and outside the module's exception family.
+  Q _compileSentenceAs<Q extends TomQuery>(
+    String querySentence,
+    String key,
+    String verb,
+  ) {
+    final compiled = _qsc.compileQuerySentence(querySentence);
+    if (compiled is Q) return compiled;
+    throw TomQuerySyntaxException(
+      key,
+      'Query sentence must start with "$verb", but was "$querySentence".',
+    );
+  }
+
   @override
   Future<Iterable<T>> findByQuerySentence(
     String querySentence,
@@ -1458,7 +1534,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     Type? resultType,
     TomPageRequest? page,
   ]) async {
-    TomSelect select = _qsc.compileQuerySentence(querySentence) as TomSelect;
+    TomSelect select = _compileSentenceAs<TomSelect>(
+      querySentence,
+      'crud_repository.find_by_query_sentence.sentence_verb_mismatch',
+      'find by',
+    );
     final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     final rows = await _runPrepared<T>(
@@ -1476,7 +1556,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     String querySentence,
     Map<String, Object?> params,
   ) async {
-    TomDelete select = _qsc.compileQuerySentence(querySentence) as TomDelete;
+    TomDelete select = _compileSentenceAs<TomDelete>(
+      querySentence,
+      'crud_repository.delete_by_query_sentence.sentence_verb_mismatch',
+      'delete by',
+    );
     // C-3: filter the delete to the principal's scope, mirroring the scoped
     // reads — a query-based delete cannot reach out-of-scope rows.
     final scope = await _resolveScope();
@@ -1493,7 +1577,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     String querySentence,
     Map<String, Object?> params,
   ) async {
-    TomCount select = _qsc.compileQuerySentence(querySentence) as TomCount;
+    TomCount select = _compileSentenceAs<TomCount>(
+      querySentence,
+      'crud_repository.count_by_query_sentence.sentence_verb_mismatch',
+      'count by',
+    );
     final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     List<TomCountResult> result = await _runPrepared<TomCountResult>(
@@ -1501,12 +1589,10 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       effective,
       TomCountResult,
     );
-    if (result.length != 1) {
-      throw Exception(
-        "Illegal count result. Must have exactly one result row, but had ${result.length}",
-      );
-    }
-    return TomDbInt(result[0].count);
+    return _singleCount(
+      result,
+      'crud_repository.count_by_query_sentence.illegal_count_result',
+    );
   }
 
   @override
@@ -1553,12 +1639,10 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       effective,
       TomCountResult,
     );
-    if (result.length != 1) {
-      throw Exception(
-        "Illegal count result. Must have exactly one result row, but had ${result.length}",
-      );
-    }
-    return TomDbInt(result[0].count);
+    return _singleCount(
+      result,
+      'crud_repository.count_by_query.illegal_count_result',
+    );
   }
 
   @override

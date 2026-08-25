@@ -96,7 +96,8 @@ TomServerException  (server)
     ├── TomColumnAuthorizationException
     ├── TomDataScopeException
     ├── TomDataScopeAuthorizationException
-    └── TomQuerySyntaxException
+    ├── TomQuerySyntaxException
+    └── TomRepositoryException
 
 TomRepository<T, K>
     └── TomSqlDatasourceRepository<T, K>  (with TomQueryBuilder)
@@ -1216,12 +1217,27 @@ All extend the server `TomServerException`.
 | `TomColumnAuthorizationException` | `column_authorization.dart` | A write changes a column visible-but-not-editable to the principal (C-4 violation). |
 | `TomDataScopeException` | `data_scope.dart` | A `@TomDbScope` names a scope kind no resolver is registered for. |
 | `TomDataScopeAuthorizationException` | `data_scope.dart` | A write targets a row outside the current principal's `@TomDbScope` (C-3). |
-| `TomQuerySyntaxException` | `operators_expressions.dart` | A query expression is malformed (e.g. `BETWEEN` without exactly two bounds; also raised by the query-sentence compiler). |
+| `TomQuerySyntaxException` | `operators_expressions.dart` | A query expression is malformed (e.g. `BETWEEN` without exactly two bounds; also raised by the query-sentence compiler, and by the repository when a sentence's verb does not match the method it was handed to). |
+| `TomRepositoryException` | `crud_repository.dart` | A repository precondition fails: the entity's datasource is not registered, a primary-key lookup matched more than one row, a `COUNT(*)` returned other than one row, or a row `save` wrote could not be read back. |
 
 Each exception constructor forwards the standard `TomServerException` positional
 `key` and `defaultUserMessage` plus the optional named `parameters`, `stack`,
 `rootException`, `autoLog` (and, for `TomColumnAuthorizationException` /
-`TomDataScopeAuthorizationException`, `clientThrow`).
+`TomDataScopeAuthorizationException` / `TomRepositoryException`, `clientThrow`).
+
+`TomRepositoryException` is the one whose `clientThrow` defaults to **`false`**.
+Each of its causes is a server fault — a broken deployment, a table that
+contradicts its own key, a driver that reported a write it then could not read —
+and each message names internals, so the key travels to the caller and the
+message does not.
+
+Its keys follow `crud_repository.<method>.<condition>`, for example
+`crud_repository.save.insert_not_readable` or
+`crud_repository.count_by_query.illegal_count_result`. The repository's three
+sentence-verb mismatches are keyed the same way
+(`crud_repository.count_by_query_sentence.sentence_verb_mismatch`) but raise
+`TomQuerySyntaxException`, because handing `find by …` to a counting method is a
+mistake in the *sentence*, which is the caller's to correct.
 
 ## Enums
 
