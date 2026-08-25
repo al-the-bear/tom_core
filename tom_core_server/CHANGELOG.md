@@ -740,6 +740,29 @@
 
 ### Documentation
 
+- **The API-reference guard now asks whether a summary names a type at all, not
+  only whether it presents it in the expected shape (tcinc500).** Every existing
+  group in `api_reference_coverage_test.dart` polices one *presentation* — an
+  Overview-table row, an enum block, a class section's member list. Each is
+  right about the shape it owns, and together they left a gap that none of them
+  could see: an exported class that appears in *no* presentation is omitted from
+  no list, so every check passes and the type is simply absent. Eleven were —
+  the entire file-slot upload API (`TomFileEndpoint`, `TomFileServer`,
+  `TomFileSlots` and four companions in `endpoints`; `TomFileRepository`,
+  `TomFileReference`, `TomFileReferenceKeys` and `TomResourceScopeSource` in
+  `object_persistence`) has zero occurrences in its module's summary. The new
+  `no summary omits a name its module exports` group compares each barrel's
+  exported names against every name the summary puts in front of a reader, and
+  is deliberately neutral about how: a heading and an identifier inside an
+  inline code span both count, because the package legitimately uses both and a
+  rule demanding headings would condemn the thirty query operators of
+  `object_persistence`, correctly presented as one table row each. A mention
+  inside a fenced block does not count — a sample that uses a type does not
+  document it. Renaming a documented class heading was, before this, caught by
+  nothing in the file. The two modules holding the eleven are quarantined
+  against quest todo `tcincb135_ahyc`, with a meta-test that fails once either
+  is reconciled, so the exemption cannot outlive the debt.
+
 - **The `db_migration` example demonstrates the module's connection-free
   surface, and its expectations are now actually evaluated (tcinc499).** The
   example reached three of the module's public types and printed a transcript

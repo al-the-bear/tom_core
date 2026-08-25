@@ -859,6 +859,50 @@ String? _enumSection(String summary) {
 String _summary(String module) =>
     File('doc/api_reference/api_summary_$module.md').readAsStringSync();
 
+/// Every name [summary] puts in front of a reader — its headings, and every
+/// identifier inside an inline code span outside a fenced block.
+///
+/// Both shapes count, because the package legitimately uses both and a rule
+/// naming one would condemn documentation that is already right. A class gets a
+/// section: `MariadbMigrationException` is a `####` heading with no backticks
+/// anywhere near it. The thirty query operators of `object_persistence` get a
+/// table instead — one row each, with type, constructor and purpose — which is
+/// the better presentation for thirty variations on a theme, and demanding a
+/// heading apiece would be demanding that it be made worse. Typedefs are the
+/// same: `TomDataScopeResolver` is a row in a typedef table.
+///
+/// Fenced blocks are removed first because a name that appears only inside one
+/// is not documented by it: a class-hierarchy diagram shows where a type sits,
+/// and a code sample shows a call that mentions it, but neither tells a reader
+/// what it is for. That is a judgement about meaning, not a workaround — across
+/// today's twenty summaries the stripping changes the result for none of them,
+/// because the span pattern below already refuses to cross a newline and so
+/// never pairs one fence delimiter with another. It is kept, and pinned by a
+/// test, so that the rule survives that pattern being loosened later: a summary
+/// must not be able to discharge its duty to a type by mentioning it in a
+/// sample.
+Set<String> _namesIn(String summary) {
+  final prose = summary.replaceAll(
+    RegExp(r'^```[\s\S]*?^```', multiLine: true),
+    '',
+  );
+  return {
+    ..._headingNamesOf(summary),
+    for (final span in RegExp(r'`([^`\n]+)`').allMatches(prose))
+      for (final word in RegExp(r'[A-Za-z_]\w*').allMatches(span.group(1)!))
+        word.group(0)!,
+  };
+}
+
+/// Every name [module]'s summary puts in front of a reader.
+Set<String> _summaryNames(String module) => _namesIn(_summary(module));
+
+/// The exported API of [module] that its summary never names.
+List<String> _unnamedApi(String module) {
+  final named = _summaryNames(module);
+  return _exportedApi(module).where((name) => !named.contains(name)).toList();
+}
+
 /// The body of `class <className>`, from its opening brace to the end of the
 /// file, with the constructs that would otherwise be misread removed.
 ///
@@ -2061,6 +2105,21 @@ const Set<String> _sourceListsPendingReconciliation = {
   'object_persistence',
 };
 
+/// The modules whose summaries do not yet name every type the barrel exports —
+/// quest todo `tcincb135_ahyc`.
+///
+/// Both entries are the same omission: the file-slot upload API
+/// (`TomFileServer`, `TomFileSlots`, `TomFileEndpoint` and their companions in
+/// `endpoints`, `TomFileRepository` and `TomFileReference` in
+/// `object_persistence`) is absent from the API reference in its entirety —
+/// eleven exported types with no row, no section and no mention. Not eleven
+/// oversights but one: a feature area shipped without its documentation, which
+/// is the failure mode this whole file exists to make visible.
+const Set<String> _apiNamesPendingReconciliation = {
+  'endpoints',
+  'object_persistence',
+};
+
 /// The modules whose class sections do not yet name every member their classes
 /// declare — quest todos `tcincb123_ahxt` (authentication) and
 /// `tcincb124_ahxt` (object_persistence).
@@ -2791,6 +2850,123 @@ None — this module exposes no top-level functions or constants.
       // — which is what keeps "lists every free function" a falsifiable claim.
       expect(_declaredFunctions("const String aTable = 'tom_x';"), isEmpty);
       expect(_declaredApi("const String aTable = 'tom_x';"), isEmpty);
+    });
+  });
+
+  group('no summary omits a name its module exports', () {
+    // The groups above each police one *shape* of documentation — the Source
+    // list, the Overview table, the Global Functions section, the Enums
+    // section, the per-class member tables. Each is exact within its shape,
+    // and between them they leave a gap that is invisible precisely because
+    // every individual check passes: a type that belongs to none of those
+    // shapes — a plain exported class that never made it into the summary at
+    // all — is not omitted from any list, because there is no list it was
+    // supposed to be on. It is simply absent, and absence is what none of the
+    // other rules can see.
+    //
+    // This is the file-name-set problem one level in. The opening group
+    // establishes that a summary *exists* for every module; this one
+    // establishes that the summary *accounts for* every name the module
+    // exports. Deliberately the weakest possible statement of that — named
+    // somewhere, in any shape — because the strong version is already carried
+    // by the shape-specific groups, and a second strict rule laid over them
+    // would start rejecting documentation they accept.
+    for (final module in _modules()) {
+      test(
+        module,
+        () {
+          final unnamed = _unnamedApi(module);
+          expect(
+            unnamed,
+            isEmpty,
+            reason:
+                'api_summary_$module.md never names these, which the barrel '
+                'exports from $module: ${unnamed.join(', ')}. Not "documents '
+                'thinly" — never names, so a reader who has the type in hand '
+                'and comes here to look it up finds nothing and concludes it '
+                'is internal.',
+          );
+        },
+        skip: _apiNamesPendingReconciliation.contains(module)
+            ? 'exported names not all in the summary yet — quest todo '
+                  'tcincb135_ahyc.'
+            : null,
+      );
+    }
+
+    test('every quarantined module still has a name missing', () {
+      final clean = _apiNamesPendingReconciliation
+          .where((module) => _unnamedApi(module).isEmpty)
+          .toList();
+      expect(
+        clean,
+        isEmpty,
+        reason:
+            'These modules are quarantined but their summaries already name '
+            'every exported type: ${clean.join(', ')}. A quarantine entry that '
+            'suppresses nothing reads as outstanding debt that is not, and it '
+            'disarms the check if the summary drifts again.',
+      );
+    });
+
+    test('the name reader sees both shapes the summaries use', () {
+      // The finding above is an emptiness assertion over a set difference, so
+      // a reader that over-collected would report every summary as complete.
+      // These two are the shapes that matter, and they are checked against
+      // real summaries rather than a fixture because the hazard is that the
+      // documents drift away from what the reader expects, not that the
+      // reader has a bug on invented input.
+      expect(
+        _summaryNames('db_migration'),
+        contains('MariadbMigrationException'),
+        reason: 'a `####` heading with no backticks is how a class is filed',
+      );
+      expect(
+        _summaryNames('object_persistence'),
+        contains('And'),
+        reason:
+            'a first-column table cell is how the query operators are '
+            'filed, thirty of them, and none has a heading',
+      );
+    });
+
+    test('a mention inside a fenced block does not count as naming', () {
+      // Written against a fixture rather than a real summary, because no real
+      // summary can show this: every type any of them mentions in a sample is
+      // also documented properly, so none of them would change its verdict
+      // either way. The rule still has to hold — a summary must not be able to
+      // discharge its duty to a type by using it in a code sample — and a
+      // fixture is the only place the two cases can be held apart.
+      const document = '''
+#### SectionedType
+
+Prose that mentions `MentionedType` in passing.
+
+```dart
+final x = SampledType();
+// see `BacktickedInsideFence` for the slow path
+```
+''';
+      final names = _namesIn(document);
+      expect(
+        names,
+        containsAll(<String>['SectionedType', 'MentionedType']),
+        reason:
+            'a heading and an inline mention are both ways a summary names '
+            'a type, and the reader must see both',
+      );
+      expect(
+        names,
+        isNot(contains('SampledType')),
+        reason: 'appearing in a code sample is not being documented by it',
+      );
+      expect(
+        names,
+        isNot(contains('BacktickedInsideFence')),
+        reason:
+            'nor is being backticked inside one — the fence is stripped '
+            'before spans are read, so the span pattern never reaches in',
+      );
     });
   });
 
