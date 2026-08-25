@@ -351,6 +351,85 @@ void main() {
       },
     );
 
+    test('a negative number is not mistaken for a formula', () async {
+      final text = await _renderCsv(
+        TomTabularResult.single(
+          title: 't',
+          section: TomTabularSection.ofRows(
+            [
+              TomTabularColumn('balance', type: TomColumnType.decimal),
+              TomTabularColumn('count', type: TomColumnType.integer),
+            ],
+            [
+              TomTabularRow([-1234.5, -7]),
+            ],
+          ),
+        ),
+      );
+      // Bare, so the spreadsheet reads two numbers. A tab-prefixed quoted
+      // field is text: totals stop summing and sorting turns lexical.
+      expect(text, contains('-1234.5,-7\r\n'));
+      expect(text, isNot(contains('\t')));
+    });
+
+    test(
+      'a number is judged by its value, not by the column it sits in',
+      () async {
+        final text = await _renderCsv(
+          TomTabularResult.single(
+            title: 't',
+            section: TomTabularSection.ofRows(
+              // Declared text, holding a num. The guard exists for text someone
+              // else supplied; a Dart num cannot be an expression whatever
+              // column it was declared under.
+              [TomTabularColumn('note')],
+              [
+                TomTabularRow([-42]),
+              ],
+            ),
+          ),
+        );
+        expect(text, contains('-42\r\n'));
+        expect(text, isNot(contains('\t')));
+      },
+    );
+
+    test(
+      'text in a numeric column is still guarded, mismatch or not',
+      () async {
+        final text = await _renderCsv(
+          TomTabularResult.single(
+            title: 't',
+            section: TomTabularSection.ofRows(
+              // A String reaching an integer column is a mismatch the renderers
+              // tolerate by formatting it as text — so it is exactly the cell
+              // that would smuggle a formula past a column-type-based guard.
+              [TomTabularColumn('count', type: TomColumnType.integer)],
+              [
+                const TomTabularRow(['=1+1']),
+              ],
+            ),
+          ),
+        );
+        expect(text, contains('"\t=1+1"'));
+      },
+    );
+
+    test('a column label that looks like a formula is still guarded', () async {
+      final text = await _renderCsv(
+        TomTabularResult.single(
+          title: 't',
+          section: TomTabularSection.ofRows(
+            [TomTabularColumn('a', label: '=cmd')],
+            [
+              TomTabularRow([1]),
+            ],
+          ),
+        ),
+      );
+      expect(text, contains('"\t=cmd"'));
+    });
+
     test(
       'a whole double loses its .0 so it does not read as approximate',
       () async {

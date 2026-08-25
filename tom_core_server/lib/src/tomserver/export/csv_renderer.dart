@@ -86,7 +86,13 @@ class TomCsvRenderer extends TomTabularRenderer {
         final buffer = StringBuffer();
         for (var i = 0; i < section.columns.length; i++) {
           if (i > 0) buffer.write(fieldSeparator);
-          buffer.write(_escape(tomFormatCellAsText(row.cell(i))));
+          final value = row.cell(i);
+          buffer.write(
+            _escape(
+              tomFormatCellAsText(value),
+              guardFormula: _mayCarryFormula(value),
+            ),
+          );
         }
         buffer.write('\r\n');
         yield utf8.encode(buffer.toString());
@@ -94,15 +100,44 @@ class TomCsvRenderer extends TomTabularRenderer {
     }
   }
 
+  /// Whether [value] could reach the file as an expression someone else wrote.
+  ///
+  /// The formula guard costs something — a guarded field is quoted and
+  /// tab-prefixed, and a spreadsheet reads that as *text*. Applying it to a
+  /// number turns a financial column into strings: totals stop summing and
+  /// sorting turns lexical, while the value still looks right on screen. So the
+  /// guard has to be applied to the cells that can carry a formula and no
+  /// others.
+  ///
+  /// [tomFormatCellAsText] decides that set. `null`, [DateTime], [num] and
+  /// [bool] each have a formatting branch that can only produce a literal — a
+  /// `-` in front of a [num] is a minus sign, never an operator. Every other
+  /// value falls through to `toString()`, whose output is whatever the object
+  /// chose to return, so it is guarded.
+  ///
+  /// This tests the *value*, not the column type. A [String] landing in a
+  /// numeric column is a mismatch the renderers tolerate rather than reject
+  /// (see [tomFormatCellAsText]), so a column-type test would emit `=1+1` from
+  /// an integer column unguarded — the exact payload the guard exists to stop.
+  static bool _mayCarryFormula(Object? value) =>
+      value != null && value is! num && value is! bool && value is! DateTime;
+
   /// Quotes [field] when RFC 4180 requires it, doubling any embedded quote.
   ///
-  /// A leading `=`, `+`, `-` or `@` is also quoted *and prefixed with a tab*:
-  /// spreadsheets treat such a field as a formula, which is how an exported
-  /// value someone else supplied becomes code executing on the machine that
-  /// opens the file. Quoting alone does not stop it; the tab does, and is
-  /// stripped on display.
-  String _escape(String field) {
-    final injectable = field.isNotEmpty && '=+-@'.contains(field[0]);
+  /// When [guardFormula] is true, a leading `=`, `+`, `-` or `@` is also quoted
+  /// *and prefixed with a tab*: spreadsheets treat such a field as a formula,
+  /// which is how an exported value someone else supplied becomes code
+  /// executing on the machine that opens the file. Quoting alone does not stop
+  /// it; the tab does, and is stripped on display.
+  ///
+  /// Callers pass `guardFormula: false` for text they produced themselves —
+  /// currently only the formatting of a cell whose value cannot be an
+  /// expression, per [_mayCarryFormula]. Section titles and column labels are
+  /// always guarded: they are strings the caller supplied, so they are as
+  /// untrusted as any cell.
+  String _escape(String field, {bool guardFormula = true}) {
+    final injectable =
+        guardFormula && field.isNotEmpty && '=+-@'.contains(field[0]);
     final escaped = field.replaceAll('"', '""');
     final needsQuotes =
         injectable ||

@@ -122,24 +122,34 @@ Future<void> run() async {
   //    an exported value someone else supplied becoming code on the machine
   //    that opens the file. Quoting alone does not stop it; a leading tab does,
   //    and is stripped on display.
+  //
+  //    The guard tests the value's runtime type, not the column's declared
+  //    type. A tab-prefixed field reads as *text*, so guarding a number would
+  //    cost every negative figure its arithmetic — `-7` below stays bare. And
+  //    a `String` reaching a numeric column is a tolerated mismatch, so the
+  //    `=1+1` here is guarded whatever column it was declared under.
   final injected = await collect(
     formats,
     TomTabularResult.single(
       title: 'Injection',
       section: TomTabularSection.ofRows(
-        [TomTabularColumn('note')],
         [
-          const TomTabularRow(['=1+1']),
+          TomTabularColumn('note'),
+          TomTabularColumn('delta', type: TomColumnType.integer),
+        ],
+        [
+          const TomTabularRow(['=1+1', -7]),
         ],
       ),
     ),
     'csv',
   );
+  final injectedText = utf8.decode(injected);
   print(
     '5. formula neutralised       : '
-    '${utf8.decode(injected).contains('"\t=1+1"')}',
+    '${injectedText.contains('"\t=1+1",-7')}',
   );
-  assert(utf8.decode(injected).contains('"\t=1+1"'));
+  assert(injectedText.contains('"\t=1+1",-7'));
 
   // 6. XLSX is a ZIP of XML parts, which is the one office format producible
   //    strictly front-to-back — inline strings instead of a shared-strings

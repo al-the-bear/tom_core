@@ -527,9 +527,24 @@ user, and all three end up somewhere that interprets them:
 
 | Where | Risk | Defence |
 | ----- | ---- | ------- |
-| A CSV cell | A leading `=`, `+`, `-` or `@` is a **formula** to a spreadsheet — an exported value becoming code on the machine that opens the file | Quoted *and* prefixed with a tab. Quoting alone does not stop it; the tab does, and is stripped on display |
+| A CSV title, column label, or cell holding a non-numeric value | A leading `=`, `+`, `-` or `@` is a **formula** to a spreadsheet — an exported value becoming code on the machine that opens the file | Quoted *and* prefixed with a tab. Quoting alone does not stop it; the tab does, and is stripped on display |
 | A `Content-Disposition` filename | A `"` or a newline ends the parameter and starts another header — the download equivalent of an injection | `TomExportService.sanitiseFileName` replaces everything outside printable ASCII, plus `" \ ; /`, with `_`; an empty result becomes `export` |
 | An XLSX sheet name or cell | A `/` or `[` produces a workbook Excel refuses to open; a `<` breaks the XML | Sheet names sanitised and made unique; all text XML-escaped |
+
+**The CSV formula guard applies to the value's runtime type, not the column's
+declared type.** A guarded field is quoted and tab-prefixed, and a spreadsheet
+reads that as *text* — so guarding a number is not free: totals stop summing,
+sorting turns lexical, and the value still looks right on screen. `null`, `num`,
+`bool` and `DateTime` are therefore exempt, because `tomFormatCellAsText`
+formats each of them into a literal and a `-` in front of a number is a minus
+sign, never an operator. Every other value reaches `toString()`, whose output is
+whatever the object chose to return, and is guarded.
+
+Testing the *value* rather than the column matters because a `String` landing in
+a numeric column is a mismatch the renderers tolerate rather than reject: a
+column-type test would emit `=1+1` from an integer column unguarded — the exact
+payload the guard exists to stop. Section titles and column labels are always
+guarded; they are caller-supplied strings, as untrusted as any cell.
 
 `filename=` is a Latin-1 field, so non-ASCII is transliterated away rather than
 escaped. A caller needing the original name in full should add its own

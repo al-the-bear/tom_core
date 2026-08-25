@@ -74,6 +74,37 @@
 
 ### Fixed
 
+- **The CSV formula guard tab-prefixed every negative number, so a numeric
+  column arrived in a spreadsheet as text (tcinc522).** `TomCsvRenderer` ran its
+  injection guard on the formatted text of every cell with no knowledge of what
+  the value was, and `-` is one of the four characters that make a spreadsheet
+  read a field as a formula. A section with a decimal and an integer column
+  holding `-1234.5` and `-7` rendered as `"\t-1234.5","\t-7"`; Excel and every
+  other spreadsheet read a tab-prefixed quoted field as text, so a financial
+  export silently lost each negative figure as a number — totals stopped
+  summing, sorting turned lexical, and the value still looked right on screen.
+  The guard now applies only where a formula can actually originate.
+
+  **The rule is the value's runtime type, not the column's declared type.**
+  `tomFormatCellAsText` formats `null`, `num`, `bool` and `DateTime` into
+  literals — a `-` in front of a number is a minus sign, never an operator — so
+  those four are exempt. Everything else falls through to `toString()`, whose
+  output is whatever the object chose to return, and stays guarded. Testing the
+  column type instead would have been a regression in the other direction: a
+  `String` landing in a numeric column is a mismatch the renderers tolerate
+  rather than reject, so `=1+1` in an integer column would have been emitted
+  unguarded — the exact payload the guard exists to stop. Section titles and
+  column labels remain guarded unconditionally; they are caller-supplied
+  strings, as untrusted as any cell.
+
+  Four mutations confirm the tests bite: guarding unconditionally, inverting
+  the exemption, dropping the guard, and gating on `TomColumnType.text` each
+  fail exactly the tests that claim them — the last one failing the
+  numeric-column injection test, which is what rules that approach out.
+  `doc/export.md` and `doc/api_reference/api_summary_export.md` now say which
+  fields the guard covers and what a guarded field costs, and the export
+  example demonstrates both halves in one row.
+
 - **The XLSX renderer wrote neither the result title nor its metadata, which
   four documents said it did (tcinc521).** `TomTabularResult.title` was
   documented as "the PDF heading, the XLSX workbook title" and `metadata` as

@@ -454,7 +454,7 @@ const TomCsvRenderer({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Emits the optional BOM, then per section a header row and one CRLF-terminated line per row. Fields are quoted where RFC 4180 requires; a field starting `=`, `+`, `-` or `@` is quoted *and* tab-prefixed so a spreadsheet does not treat an exported value as a formula. |
+| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Emits the optional BOM, then per section a header row and one CRLF-terminated line per row. Fields are quoted where RFC 4180 requires. A title, a column label, or a cell whose value is not a `num`, `bool` or `DateTime` is additionally tab-prefixed when it starts `=`, `+`, `-` or `@`, so a spreadsheet does not treat an exported value as a formula. Numbers are exempt by *value* type rather than column type: a tab-prefixed field reads as text, which would cost a negative figure its arithmetic, while a `String` in a numeric column is a tolerated mismatch that still has to be guarded. |
 
 ### TomXlsxRenderer
 
