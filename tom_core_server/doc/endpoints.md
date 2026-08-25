@@ -1,7 +1,7 @@
 # Endpoints Module
 
 Annotation-driven HTTP endpoints. You annotate service methods; at startup the
-pipeline reflects over the annotated classes, mounts one [shelf] route per
+pipeline reflects over the annotated classes, mounts one `shelf` route per
 endpoint, and — per request — enforces access, binds the method's parameters
 from the request, optionally wraps the call in a transaction, invokes the
 method, and converts the result (or any error) into a `Response`.
