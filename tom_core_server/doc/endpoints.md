@@ -575,6 +575,29 @@ what is served, and it is keyed by method already.
 
 ## Not Yet Implemented
 
+Every limitation below has a consequence a caller can observe — a value that
+never arrives, a request that is not rejected, an audit trail thinner than it
+looks. It is not a survey of everything unfinished inside the module: edges with
+no outward effect are tracked with the quest rather than here, so a limitation's
+absence from this list means "nothing a caller can see", not "nothing at all".
+
+- **An unmapped query parameter is dropped in silence.** A path capture binds
+  under its own name whether or not `urlParameterMapping` names it; a query
+  parameter binds **only** when the map names it, and nothing warns about one it
+  does not. An endpoint expecting `?token=…` with an empty mapping therefore
+  receives a request DTO without it — or, when the route captures nothing at
+  all, no DTO and an argument-count failure that names neither the parameter nor
+  the query string.
+- **A URL value that will not parse falls through rather than failing.**
+  `coercePrimitiveParameter` answers `null` both for "this type is not a
+  primitive" and for "this primitive would not parse", and its caller cannot
+  tell the two apart. So `?count=abc` on an `int` parameter is not a 400: it
+  reads as "not bindable this way", the next binding strategy is tried, and
+  whatever fails last is what the client is told about.
+- **`bool` accepts exactly one spelling.** Coercion is `raw == 'true'`, so
+  `?flag=1`, `?flag=yes` and `?flag=TRUE` all arrive as `false` rather than as
+  an error. An endpoint that must tell "false" from "not a boolean" takes the
+  value as a `String` and parses it itself.
 - **A repeated text field cannot become a list.** Both form shapes keep the
   last value of a repeated field, the way a query string does, because a DTO
   field is one value. An endpoint that needs a repeated *text* field declares a
@@ -585,11 +608,26 @@ what is served, and it is keyed by method already.
   `globalSettingMaxFilePartBytes` bounds it. Streaming a part lazily is not
   expressible over a sequential envelope; bulk transfer belongs on the raw-body
   [file endpoint](file_storage.md#serving-a-file-over-http), which streams.
+- **`TomFileSlots` is a process-wide registry.** The map of exposed file columns
+  is static, so it is scoped to the *process* rather than to a repository or a
+  server: two isolates serving the same entity each register their own copy, and
+  `TomFileSlots.reset()` exists for tests that want a fresh registry, not for
+  re-registration at runtime.
 - **A socket has no server-side push registry.** A handler owns its own
   connection and can write to it at any time, but there is no shared registry to
   broadcast to every connection of a user or a topic. That is a feature of
   whatever wants to broadcast, and inventing its addressing model before a
   caller has one would be guessing.
+- **A socket is audited at its ends only.** `handleWebSocketCall` records one
+  entry when the connection is accepted and — only if the handler throws — one
+  when it fails; nothing during the conversation and nothing on a clean close.
+  An hour-long session is therefore one audit entry, and what was said inside it
+  is the handler's own to record.
+- **`TomErrorHandler` receives the stack trace as `Object`.**
+  `handleErrorDefault` — the one method a concrete handler must implement — and
+  the three hooks that delegate to it all declare `Object stacktrace`, so an
+  implementation that wants to walk the trace casts it to `StackTrace` first.
+  The value the pipeline passes always is one.
 
 ## Core Components
 

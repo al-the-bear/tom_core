@@ -2,6 +2,27 @@
 
 ### Fixed
 
+- **`doc/endpoints.md` named three open ends where the internal list named
+  eight (tcinc515).** The user-facing "Not Yet Implemented" section carried the
+  three limitations of the *form* module and none of the five a caller is most
+  likely to meet: that an unmapped query parameter is dropped without a warning,
+  that `coercePrimitiveParameter` cannot tell "not a primitive" from "would not
+  parse" so `?count=abc` falls through instead of becoming a 400, that `bool`
+  coercion accepts only the exact string `true`, that `TomFileSlots` is a
+  process-wide static registry, and that a socket is audited at its ends only. A
+  sixth, that `TomErrorHandler` hands `handleErrorDefault` an `Object`
+  stacktrace, is user-visible for the same reason — it is the one method a
+  concrete handler must write. All six are now in the section, each verified
+  against the source, and the section opens by saying what it does and does not
+  cover, so its silence no longer reads as "no edges". The one genuinely
+  internal item — the public mutable route table on `TomEndpointRouting` — stays
+  in the internal list, which now states the relationship between the two.
+
+  No guard ships with this. The rival list lives in the `_ai` quest repo, so a
+  test that compared them would skip in any standalone clone and protect nothing
+  where it matters; the in-package half of the idea — checking that a bullet
+  still names code that exists — is quest todo `tcincb139_ahyh` and wants a
+  measurement across all twelve guides before it is built.
 - **The mirror described `urlParameterMapping` as path-only, hiding that it is
   the query-binding opt-in (tcinc514).** It said "Binds URL path parameters to
   typed request-DTO field names", which is close to the reverse of the contract:
