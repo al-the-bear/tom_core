@@ -281,6 +281,40 @@
 
 ### Fixed
 
+- **An `IS IN` list silently dropped the predicate that followed it
+  (tcinc589).** `_createIsIn` reported one token more than it consumed. The
+  index contract in this parser is *the last token I consumed* — the `IS NULL`
+  branch returns the index of `null`, and the caller resumes with `i = index`
+  and then increments — but the `IN` builder added one to the closing bracket.
+  Whatever stood after the list was therefore skipped, and when that was `and`
+  the conjunction was never seen at all:
+  `find by id is in ( 1 , 2 ) and done = TRUE` compiled to
+  `WHERE done = true`, with the `IN` filter gone. The statement stayed
+  *plausible*, so nothing downstream could notice; a query simply returned rows
+  its sentence excluded. Sentences with the list on the right of the `AND`, or
+  parenthesised, were unaffected — the overshoot ran into the end of the
+  sentence or into a bracket that absorbed it, which is why the defect survived
+  the existing tests.
+
+  Two more failures at the same boundary, both found while confirming the
+  first:
+
+  - The scan for the closing bracket had no upper bound, so an unclosed list
+    (`find by id is in ( 1 , 2`) walked past the end of the token list and threw
+    a raw `RangeError` — outside the `TomQuerySyntaxException` family this
+    module documents as covering every rejection, and reaching the caller as an
+    internal error rather than a bad-request one, which matters because a
+    sentence can arrive in a request parameter. It now raises
+    `get_in_options.unterminated_list`.
+  - An empty list was accepted and rendered as `IN ()`, which no SQL dialect
+    parses. The rejection happened at the database instead, one layer too late
+    and phrased as a complaint about SQL the author never wrote. It now raises
+    `get_in_options.empty_list`.
+
+  The new tests assert the *whole* rendered predicate rather than a
+  containment, since a dropped conjunct is invisible to a `contains` check on
+  the half that survived.
+
 - **A window option the compiler could not read was guessed at as `1`
   (tcinc588).** `_countOption` wrapped `int.parse` in a bare `catch` that
   returned `1`, and its own dartdoc defended the fallback as "the behaviour

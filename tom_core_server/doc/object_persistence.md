@@ -12,6 +12,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [Associations (`@TomReference`)](#associations-tomreference)
 - [The Repository Contract](#the-repository-contract)
 - [Query Sentences](#query-sentences)
+  - [`IS IN` lists](#is-in-lists)
   - [Column types a predicate can address](#column-types-a-predicate-can-address)
   - [Writing a value inline](#writing-a-value-inline)
 - [The Query Builder DSL](#the-query-builder-dsl)
@@ -231,6 +232,23 @@ find first 25 skip 50 by status = :status order by priority desc due_date asc
 ```
 
 A malformed sentence raises `TomQuerySyntaxException`.
+
+### `IS IN` lists
+
+`IS IN` / `IS NOT IN` take a bracketed, comma-separated list whose elements are
+parsed as the column's own type, so a bind or literal in the list cannot be
+typed differently from what it is compared against:
+
+```text
+find by status IS IN ( :a , :b ) and done = TRUE
+delete by id IS NOT IN ( 1 , 2 , 3 )
+```
+
+The brackets are required and the list may not be empty — SQL has no `IN ()`,
+so an empty list is refused at compile time rather than handed to the database.
+A list that is never closed (`by id is in ( 1 , 2`) is a syntax error like any
+other. A boolean column is refused outright: `IN` over the two values a boolean
+can take is a predicate written the long way round.
 
 ### Column types a predicate can address
 

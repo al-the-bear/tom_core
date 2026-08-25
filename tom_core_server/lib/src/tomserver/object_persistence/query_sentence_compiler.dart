@@ -859,6 +859,14 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
   ///
   /// A boolean column reaches [_getInOptions] and is refused there: `IN` over
   /// two possible values is a predicate written the long way round.
+  ///
+  /// Returns the index of the **last token consumed**, which is the closing
+  /// bracket — the same contract every other branch of [_buildExpression] keeps
+  /// (`IS NULL` returns the index of `null`, not the one after it), because the
+  /// caller resumes with `i = index` and then increments. Reporting one more
+  /// than that skipped whatever followed the list: with `and` there, the
+  /// conjunction was never seen and `id is in ( 1 , 2 ) and done = TRUE`
+  /// compiled to `done = true` alone, silently dropping the `IN` filter.
   (TomOperator<TomDbBool>, int) _createIsIn(
     List<String> qp,
     String qs,
@@ -874,7 +882,7 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         column,
         current,
       );
-      return (isIn<T>(current as TomOperator<T>, options), index + 1);
+      return (isIn<T>(current as TomOperator<T>, options), index);
     }
 
     switch (current.returnType) {
@@ -1537,8 +1545,12 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     }
     List<TomOperator<OT>> options = [];
     var scanAt = i; // after the bracket
-    while (qp[scanAt] != ")") {
-      // stop at closing bracket
+    // Bounded by `qp.length` as well as by the bracket: an unclosed list used
+    // to walk off the end and throw `RangeError`, which is outside the
+    // exception family this module documents as covering every rejection — and
+    // reaches the caller as an internal error rather than a bad request, which
+    // matters because a sentence can arrive in a request parameter.
+    while (scanAt < qp.length && qp[scanAt] != ")") {
       if (qp[scanAt] == ",") {
         // jump over commas
         scanAt++;
@@ -1554,6 +1566,25 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       options.add(nextExpression);
       scanAt = index + 1;
     }
+    if (scanAt >= qp.length) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.get_in_options.unterminated_list",
+        "The QuerySentence $qs cannot be compiled. The IS IN list opened with "
+            "[(] is never closed with [)].",
+      );
+    }
+    if (options.isEmpty) {
+      // `IN ()` parses in no SQL dialect, so accepting it here only moved the
+      // rejection to the database — one layer too late, and phrased as a
+      // complaint about SQL the author never wrote.
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.get_in_options.empty_list",
+        "The QuerySentence $qs cannot be compiled. The IS IN list is empty, "
+            "and SQL has no empty IN list. Give it at least one value.",
+      );
+    }
+    // The index of the closing bracket, which is the last token this scan
+    // consumed — see the contract on [_createIsIn].
     return (options, scanAt);
   }
 
