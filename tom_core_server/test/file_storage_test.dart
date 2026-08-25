@@ -1379,6 +1379,64 @@ void main() {
       expect(TomBlobStoreInfo.hasDefaultStore, isTrue);
     });
 
+    test('a store handed over as an instance describes itself buildably', () async {
+      final store = TomMemoryBlobStore();
+      final info = TomBlobStoreInfo.register('files', store);
+
+      // The configured path has its `.type` asserted further down; this is
+      // the other half of the same claim and the half that was missing. An
+      // entry naming a type its own `open()` cannot resolve is not a
+      // description of itself, only a label that happens to be a string.
+      expect(info.type, TomBlobStoreInfo.providedType);
+
+      // Self-consistent means the entry can act on what it says about
+      // itself. This used to raise `unknown_backend` — the entry's own type
+      // was absent from the one table its own `open()` consults.
+      await info.open();
+      expect(TomBlobStoreInfo.storeNamed('files'), same(store));
+    });
+
+    test('the provided type is not a backend a configuration can name', () async {
+      // The type names how the store arrived, not a way to build one from
+      // settings: there is no instance in a YAML file to hand over. Making
+      // `open()` work by adding it to the backend table would have bought
+      // self-consistency by advertising a configurable backend that cannot
+      // be configured, so this pins the boundary the fix chose.
+      expect(
+        TomBlobStoreInfo.backendTypes,
+        isNot(contains(TomBlobStoreInfo.providedType)),
+      );
+      await expectLater(
+        TomBlobStoreInfo.initializeBlobStores({
+          'files': {'type': TomBlobStoreInfo.providedType},
+        }),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.registry.unknown_backend',
+          ),
+        ),
+      );
+    });
+
+    test('closeAll then reopen returns the store that was handed over', () async {
+      final store = TomMemoryBlobStore();
+      final info = TomBlobStoreInfo.register('files', store);
+      await TomBlobStoreInfo.closeAll();
+      expect(TomBlobStoreInfo.stores, isEmpty);
+
+      await info.open();
+
+      // The registry hands back what it was given, because it cannot rebuild
+      // an instance it did not build. That is the honest answer rather than a
+      // convenient one — and `close()` is idempotent by contract, so the
+      // store is usable rather than merely present.
+      expect(TomBlobStoreInfo.storeNamed('files'), same(store));
+      await store.putBytes(key: 'reopened.txt', bytes: utf8.encode('still here'));
+      expect(utf8.decode(await store.getBytes('reopened.txt')), 'still here');
+    });
+
     test('an unknown name and an absent default are named errors', () {
       expect(
         () => TomBlobStoreInfo.storeNamed('nope'),

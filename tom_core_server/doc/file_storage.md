@@ -426,7 +426,18 @@ TomBlobStoreInfo.registerBackend('gcs', (name, settings) => GcsBlobStore(setting
 ```
 
 `TomBlobStoreInfo.register(name, store, asDefault: true)` is the seam for a test
-or for an application that builds its store in code.
+or for an application that builds its store in code. Such an entry records
+`TomBlobStoreInfo.providedType` and carries a factory closing over the instance
+it was handed — the same trick the backend table relies on, a factory being a
+closure that can capture what no settings map could carry. So the entry is
+buildable like any configured one, and reopening it after a `closeAll` hands
+back the store it was given: the registry cannot rebuild an instance it did not
+build, and `close()` is idempotent by contract.
+
+The provided type is not itself a registered backend, and `backendTypes` does
+not list it. It names how the store arrived rather than a way to build one, and
+there is no instance in a YAML file to hand over, so a configuration naming it
+fails like any other unknown type.
 
 ## File-Reference Columns
 

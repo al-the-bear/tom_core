@@ -25,6 +25,11 @@
 ///
 /// The four built-ins register themselves, so a configuration naming
 /// `database`, `directory`, `memory` or `s3` needs no code at all.
+///
+/// A store already in hand takes the same route by the shortest path:
+/// [TomBlobStoreInfo.register] gives its entry a factory that closes over the
+/// instance. Nothing about such an entry is special-cased — it is the closure
+/// argument carried to its limit.
 library;
 
 import 'dart:async';
@@ -44,13 +49,24 @@ typedef TomBlobStoreFactory =
 /// The process-wide registry of named, configured blob stores.
 class TomBlobStoreInfo {
   /// Creates an (unopened) registry entry from [name] and [settings].
-  TomBlobStoreInfo(this.name, this.settings);
+  ///
+  /// [factory] builds the store when [open] is called. When it is null — the
+  /// configured case — the backend named by `settings['type']` is looked up
+  /// among the registered backends instead. Passing one is how a store that no
+  /// settings map could describe still gets an entry that can build itself;
+  /// see [register], which passes a factory closing over the instance it was
+  /// handed.
+  TomBlobStoreInfo(this.name, this.settings, {TomBlobStoreFactory? factory})
+    : _factory = factory;
 
   /// The registry key / logical name of this store.
   final String name;
 
   /// The raw configuration for this store.
   final Map<String, dynamic> settings;
+
+  /// This entry's own builder, when it has one; see the constructor.
+  final TomBlobStoreFactory? _factory;
 
   late TomBlobStore _store;
 
@@ -59,6 +75,14 @@ class TomBlobStoreInfo {
 
   /// The backend type, from `settings['type']`.
   String get type => '${settings['type'] ?? ''}';
+
+  /// The [type] recorded for a store handed over as an instance.
+  ///
+  /// Deliberately *not* a registered backend: it names how the store arrived
+  /// rather than a way to build one, and there is no instance in a YAML file
+  /// to hand over. A configuration naming it fails like any other unknown
+  /// type, and [backendTypes] does not list it.
+  static const String providedType = 'provided';
 
   /// All registered stores, keyed by name.
   static final Map<String, TomBlobStoreInfo> stores = {};
@@ -172,12 +196,25 @@ class TomBlobStoreInfo {
 
   /// Registers a ready-made [store] under [name] — the seam a test, or an
   /// application that builds its store in code, uses instead of configuration.
+  ///
+  /// The entry records [providedType] and carries a factory closing over
+  /// [store], which is the same trick the module argues for above: a factory
+  /// is a closure, so it can capture what no settings map could carry. The
+  /// entry is therefore buildable like any other, and [open] on it — after a
+  /// [closeAll], say — hands back the store it was given. That is the only
+  /// honest answer, since the registry cannot rebuild an instance it did not
+  /// build; `close()` is idempotent by contract, so the store is usable and
+  /// not merely present.
   static TomBlobStoreInfo register(
     String name,
     TomBlobStore store, {
     bool asDefault = false,
   }) {
-    final info = TomBlobStoreInfo(name, <String, dynamic>{'type': 'provided'});
+    final info = TomBlobStoreInfo(
+      name,
+      <String, dynamic>{'type': providedType},
+      factory: (_, _) => store,
+    );
     info._store = store;
     stores[name] = info;
     if (asDefault) defaultStoreName = name;
@@ -193,9 +230,14 @@ class TomBlobStoreInfo {
     defaultStoreName = null;
   }
 
-  /// Builds this entry's store from its [settings] and registers it.
+  /// Builds this entry's store and registers it.
+  ///
+  /// From the entry's own factory when it has one, and otherwise from the
+  /// backend its [type] names. An entry always has one or the other, so
+  /// `unknown_backend` reports a configuration naming a backend nobody
+  /// registered and never an entry that cannot describe itself.
   Future<void> open() async {
-    final factory = _backends[type];
+    final factory = _factory ?? _backends[type];
     if (factory == null) {
       throw TomStorageException(
         'storage.registry.unknown_backend',

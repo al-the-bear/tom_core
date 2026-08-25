@@ -74,6 +74,32 @@
 
 ### Fixed
 
+- **A store handed over as an instance was recorded with a backend type
+  nothing could build (tcinc542).** `register` stored `{'type': 'provided'}`,
+  but no factory was registered under that name — `backendTypes` held only
+  `memory`, `directory`, `database` and `s3` — so the entry described itself
+  with a type its own `open()` could not resolve. Two things followed:
+  `getBlobStoreInfo(name)!.type` returned a string a caller could not act on,
+  and `open()` on such an entry raised `storage.registry.unknown_backend`,
+  which is the registry refusing to build a store it was already holding. The
+  entry now carries its own factory, closing over the instance it was handed,
+  and `open()` prefers it to the backend table. That is the argument the module
+  doc already makes for explicit backend registration — a factory is a closure,
+  so it can capture what no settings map could carry — taken to its limit;
+  nothing about an instance-registered entry is special-cased. Reopening one
+  after a `closeAll` hands back the store it was given, which is the only
+  honest answer, since the registry cannot rebuild an instance it did not
+  build and `close()` is idempotent by contract. The type is now the exported
+  `TomBlobStoreInfo.providedType` and remains deliberately absent from the
+  backend table: it names how the store arrived rather than a way to build one,
+  and there is no instance in a YAML file to hand over, so a configuration
+  naming it still fails like any other unknown type. Three tests pin the entry
+  describing itself buildably, that boundary, and the reopen returning the same
+  usable store. Five mutations confirm each bites, including the two shortcuts
+  that would have made `open()` succeed while advertising a backend that cannot
+  be configured, and one that returns a fresh store instead of the one given —
+  which passes any test asserting only that reopening does not throw.
+
 - **The implicit single-store default was decided over every store in the
   process rather than over the stores the configuration named (tcinc541).**
   `initializeBlobStores` promises that a configuration naming exactly one store
