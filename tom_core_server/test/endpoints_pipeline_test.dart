@@ -17,6 +17,7 @@ import 'fixtures/reflection_fixture.dart'
         FixtureAccessApiService,
         FixtureApiServer,
         FixtureConflictingAccessService,
+        FixtureParseRequest,
         fixtureContractAccess,
         fixtureHandlerAccess,
         fixtureInlineAccess,
@@ -30,6 +31,15 @@ import 'fixtures/reflection_fixture.reflection.dart';
 Request _get(String path) => Request(
   'GET',
   Uri.parse('http://localhost$path'),
+  context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
+);
+
+/// A POST carrying [body] as its JSON request body, with the same context the
+/// pipeline requires of any request.
+Request _post(String path, String body) => Request(
+  'POST',
+  Uri.parse('http://localhost$path'),
+  body: body,
   context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
 );
 
@@ -399,6 +409,107 @@ void main() {
       TomAuditTrail.uninstall();
       final response = await router.call(_get('/fixture/audited'));
       expect(response.statusCode, 200);
+    });
+  });
+
+  // A request body that cannot become the endpoint's DTO is a *reportable*
+  // failure, and for a long time it was not reportable at all: both throw sites
+  // in the JSON branch of `bindParameters` were enclosed by a catch that did
+  // nothing but log. The named exception never left the method, the parameter
+  // was simply never added to `positionalArguments`, and the request failed much
+  // later inside `invoke` with a wrong-argument-count error naming neither the
+  // parameter nor the body that could not be decoded — the one diagnosis a
+  // client cannot act on, produced from the one situation where the client is
+  // the party who can fix it.
+  //
+  // The two failures are kept apart because a client can do different things
+  // about them: `request_body_not_json` means the bytes were not a JSON object
+  // at all, `parameter_instantiation_failed` means they were, and the DTO
+  // refused a value inside them. Each is asserted at its own throw site.
+  group('a body that cannot become a DTO is reported, not swallowed', () {
+    late TomEndpointHandler parseHandler;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomEndpointRouting().initializeRouter();
+      parseHandler = TomEndpointRouting.routingInfo['/fixture/parse']!.handler;
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    test('a well-formed body still binds', () async {
+      // The control. Everything below asserts a throw, so without this the group
+      // would be satisfied by a `bindParameters` that rejected every body.
+      final bound = await parseHandler.bindParameters(
+        _post('/fixture/parse', '{"label":"x","when":"2026-08-25T00:00:00Z"}'),
+      );
+      expect(bound, hasLength(1));
+      expect((bound.single as FixtureParseRequest).label, 'x');
+    });
+
+    test('a value the DTO refuses surfaces parameter_instantiation_failed', () {
+      // `when` is a DateTime, so this body is valid JSON that the DTO cannot be
+      // built from — the reflector raises reflection.set.date_parse_failed and
+      // the pipeline is supposed to name it as its own.
+      expect(
+        () => parseHandler.bindParameters(
+          _post('/fixture/parse', '{"label":"x","when":"not-a-date"}'),
+        ),
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'endpoint_pipeline.handle_method_call.parameter_instantiation_failed',
+          ),
+        ),
+        reason:
+            'the key exists precisely so a client can be told which failure it '
+            'hit; a catch that logs and continues means no client can ever '
+            'receive it',
+      );
+    });
+
+    test('a body that is not JSON surfaces request_body_not_json', () {
+      expect(
+        () => parseHandler.bindParameters(_post('/fixture/parse', '{not json')),
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'endpoint_pipeline.handle_method_call.request_body_not_json',
+          ),
+        ),
+      );
+    });
+
+    test('a body that is JSON but not an object surfaces the same key', () {
+      // `[1,2,3]` decodes without complaint and then fails the cast to a field
+      // map. Same remedy for the client — send an object — so the same key,
+      // rather than leaving this one as the bare TypeError it used to be.
+      expect(
+        () => parseHandler.bindParameters(_post('/fixture/parse', '[1,2,3]')),
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'endpoint_pipeline.handle_method_call.request_body_not_json',
+          ),
+        ),
+      );
+    });
+
+    test('an empty body is not an error — it falls through to binding', () {
+      // The boundary this change must not cross. "No body" is how a body-less
+      // GET reaches a DTO built from path and query values alone, so it stays a
+      // warning and a fallthrough; only a body that *is* there and *is* wrong
+      // throws.
+      expect(
+        () => parseHandler.bindParameters(_post('/fixture/parse', '')),
+        returnsNormally,
+      );
     });
   });
 

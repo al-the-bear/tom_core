@@ -409,6 +409,7 @@ TomEndpointHandler({
 | `injectPathParameters` | `static void injectPathParameters(Map<String, dynamic> jsonBodyData, Request req, TomEndpoint endpoint)` | Folds the request's URL path parameters into `jsonBodyData` under the DTO field names declared by `endpoint.urlParameterMapping`. |
 | `injectQueryParameters` | `static void injectQueryParameters(Map<String, dynamic> jsonBodyData, Request req, TomEndpoint endpoint)` | Folds query-string values into `jsonBodyData`, but only those the endpoint explicitly maps. |
 | `injectFormFields` | `static void injectFormFields(Map<String, dynamic> jsonBodyData, TomMultipartForm form, TomEndpoint endpoint)` | Folds a form body's text fields into `jsonBodyData`, narrowed by `endpoint.formFields` when it is non-empty. |
+| `decodeJsonObjectBody` | `static Map<String, dynamic> decodeJsonObjectBody(String body, ClassMirror parameterMirror)` | Decodes a request body that must be a JSON object, raising `request_body_not_json` both for bytes that are not valid JSON and for JSON that is not an object. |
 
 #### Properties
 

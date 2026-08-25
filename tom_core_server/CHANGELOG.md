@@ -2,6 +2,42 @@
 
 ### Fixed
 
+- **A request body that cannot become the endpoint's DTO is now reported to the
+  client instead of being logged and discarded (tcinc502).** The JSON branch of
+  `TomEndpointHandler.bindParameters` wrapped its whole body in
+  `catch (ex) { tomLog.error(...) }`. That catch sat *outside* the site that
+  throws `parameter_instantiation_failed`, so the named exception never left the
+  method: the parameter was simply never added to `positionalArguments`, binding
+  fell through to the "Setting parameter … failed" warning, and the request died
+  much later inside `invoke` with a wrong-argument-count error naming neither
+  the parameter nor the body that could not be decoded. That is the one
+  diagnosis a client cannot act on, produced from the one situation where the
+  client is the party who can fix it — and the error key existed the whole time,
+  reachable by nobody.
+
+  The catch is **removed** rather than narrowed. Every failure it stood over is
+  a statement about the request: `req.readAsString`, the JSON decode, and
+  `createInstanceFromJson`, the last of which already wraps itself. The three
+  `inject*` helpers it also covered do not throw at all. So it had nothing
+  legitimate left to absorb, and a catch with nothing to absorb is not
+  protection, it is a hole.
+
+  Body decoding gets its own key,
+  `endpoint_pipeline.handle_method_call.request_body_not_json`, via the new
+  `decodeJsonObjectBody`. It covers both the bytes that are not JSON and the
+  JSON that is not an object — previously a raw `FormatException` and a bare
+  `TypeError` from `jsonDecode(body) as Map<String, dynamic>`. Keeping it
+  distinct from `parameter_instantiation_failed` is the point of naming either:
+  one says the bytes never were a field map, the other says they were and the
+  DTO refused a value inside them, and a client does different things about
+  each.
+
+  What deliberately did **not** change: an *empty* body is still not an error.
+  It remains a warning and a fallthrough, because that is how a body-less
+  request reaches a DTO built from path and query values alone, or reaches the
+  context branch below. Only a body that is present and wrong now throws. A test
+  pins that boundary alongside one per throw site.
+
 - **Two migration files claiming the same version are refused (tcinc495).**
   `collectMigrationFiles` rejected two files that stripped to the same
   *basename*, and the orchestrator's own comment claimed a directory holding two

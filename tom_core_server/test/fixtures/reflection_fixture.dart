@@ -109,6 +109,24 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> uploadDeclared(FixtureUploadRequest request);
 
+  /// A JSON endpoint whose request DTO can refuse the body it is handed.
+  ///
+  /// [FixtureParseRequest.when] is a `DateTime`, so `{"when": "not-a-date"}` is
+  /// a body the DTO genuinely cannot be built from — the reflector raises
+  /// `reflection.set.date_parse_failed`. That is the failure the pipeline is
+  /// supposed to report as a named endpoint exception, and it needs an endpoint
+  /// that consumes JSON to reach: every other fixture endpoint is either a GET
+  /// or a multipart form.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/parse',
+    consumes: TomMimeType.json,
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> parse(FixtureParseRequest request);
+
   /// An endpoint that answers with a redirect directive rather than a value.
   @TomPublicAccess()
   @TomEndpoint(
@@ -163,6 +181,25 @@ class FixtureUploadRequest {
 
   /// Creates an empty request; the pipeline fills the fields by reflection.
   FixtureUploadRequest();
+}
+
+/// The request DTO of [FixtureApiService.parse], built from a JSON body.
+///
+/// The `DateTime` field is the point of it: it is the cheapest way to write a
+/// body that is *valid JSON* and still cannot become this DTO, which is the
+/// case that separates "the client sent nonsense" from "the client sent
+/// nothing". A `String` field would accept anything and a missing field is
+/// tolerated by the converter, so neither could fail.
+@tomReflector
+class FixtureParseRequest {
+  /// Free-text label; accepts whatever arrives.
+  String label = '';
+
+  /// The field a malformed body fails on — see the class doc.
+  DateTime when = DateTime.utc(2026);
+
+  /// Creates an empty request; the pipeline fills the fields by reflection.
+  FixtureParseRequest();
 }
 
 /// Live implementation of [FixtureApiService]; the pipeline invokes these
@@ -234,6 +271,13 @@ class FixtureApiServer implements FixtureApiService {
   Future<Map<String, Object>> uploadDeclared(
     FixtureUploadRequest request,
   ) async => <String, Object>{'title': request.title, 'tags': request.tags};
+
+  @override
+  Future<Map<String, Object>> parse(FixtureParseRequest request) async =>
+      <String, Object>{
+        'label': request.label,
+        'when': request.when.toIso8601String(),
+      };
 
   @override
   Future<Object> moved() async => TomRedirect.seeOther('/fixture/health');

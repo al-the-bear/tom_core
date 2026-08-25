@@ -235,6 +235,41 @@ class TomEndpointHandler {
     }
   }
 
+  /// Decodes a request body that is required to be a JSON **object**, or throws
+  /// a named endpoint exception.
+  ///
+  /// Both failure modes are one answer to the client — *send a JSON object* —
+  /// so both carry the same key rather than the bare `FormatException` /
+  /// `TypeError` a raw `jsonDecode(...) as Map` produced. That key is worth
+  /// distinguishing from the neighbouring `parameter_instantiation_failed`:
+  /// this one says the bytes never were a field map, that one says they were
+  /// and the DTO refused a value inside them. A client can act differently on
+  /// each, which is the whole reason for naming them separately.
+  static Map<String, dynamic> decodeJsonObjectBody(
+    String body,
+    ClassMirror parameterMirror,
+  ) {
+    Object? decoded;
+    try {
+      decoded = jsonDecode(body);
+    } catch (ex) {
+      throw TomEndpointHandlerException(
+        "endpoint_pipeline.handle_method_call.request_body_not_json",
+        "Request body for ${parameterMirror.simpleName} is not valid JSON: $ex",
+        autoLog: true,
+        rootException: ex,
+      );
+    }
+    if (decoded is! Map<String, dynamic>) {
+      throw TomEndpointHandlerException(
+        "endpoint_pipeline.handle_method_call.request_body_not_json",
+        "Request body for ${parameterMirror.simpleName} decoded to ${decoded.runtimeType}, but a JSON object is required to build the parameter.",
+        autoLog: true,
+      );
+    }
+    return decoded;
+  }
+
   /// Whether requests are logged when an endpoint does not specify
   /// `logRequests`.
   static bool globalSettingLogRequestsDefault = true;
@@ -523,56 +558,69 @@ class TomEndpointHandler {
             tomReflector.reflectType(pm.reflectedType) as ClassMirror;
         if ((metadata.endpoint.consumes == TomMimeType.json || form != null) &&
             req.method != TomHttpMethod.trace.name) {
-          try {
-            // A form and a JSON body are two spellings of the same thing here:
-            // both end as a map of field names, and the DTO is built from that
-            // map either way. Only the decoding differs — and the form has
-            // already been decoded once, before the loop.
-            String body = "";
-            final Map<String, dynamic> jsonBodyData = {};
-            if (form != null) {
-              injectFormFields(jsonBodyData, form, metadata.endpoint);
-              body = "$form";
-            } else {
-              body = await req.readAsString();
-              // Fold the JSON body (when present) and the mapped URL parameters
-              // into one map, then build the request DTO from it. URL parameters
-              // must reach the DTO even for a body-less GET
-              // (`GET /items/{id}` -> `request.id`), so the DTO is instantiated
-              // whenever there is a body *or* at least one URL parameter.
-              if (body.isNotEmpty) {
-                jsonBodyData.addAll(jsonDecode(body) as Map<String, dynamic>);
-              }
+          // A form and a JSON body are two spellings of the same thing here:
+          // both end as a map of field names, and the DTO is built from that
+          // map either way. Only the decoding differs — and the form has
+          // already been decoded once, before the loop.
+          //
+          // Nothing here is wrapped in a catch of its own. Every failure below
+          // is a statement about the *request* — bytes that are not a JSON
+          // object, or a value the DTO refuses — and each leaves as a named
+          // TomEndpointHandlerException that the caller is meant to receive.
+          // Swallowing them left the parameter unbound and the request failing
+          // much later inside `invoke` with a wrong-argument-count error that
+          // named neither the parameter nor the body: the one diagnosis a
+          // client cannot act on, produced from the one situation where the
+          // client is the party who can fix it.
+          String body = "";
+          final Map<String, dynamic> jsonBodyData = {};
+          if (form != null) {
+            injectFormFields(jsonBodyData, form, metadata.endpoint);
+            body = "$form";
+          } else {
+            body = await req.readAsString();
+            // Fold the JSON body (when present) and the mapped URL parameters
+            // into one map, then build the request DTO from it. URL parameters
+            // must reach the DTO even for a body-less GET
+            // (`GET /items/{id}` -> `request.id`), so the DTO is instantiated
+            // whenever there is a body *or* at least one URL parameter.
+            if (body.isNotEmpty) {
+              jsonBodyData.addAll(decodeJsonObjectBody(body, parameterMirror));
             }
-            injectQueryParameters(jsonBodyData, req, metadata.endpoint);
-            injectPathParameters(jsonBodyData, req, metadata.endpoint);
-            if (jsonBodyData.isNotEmpty) {
-              try {
-                // Builds the parameter or throws — there is no null result to
-                // test for.
-                final parameterObject = tomReflectionInfo
-                    .createInstanceFromJson(parameterMirror, jsonBodyData);
-                positionalArguments.add(parameterObject);
-                tomLog.trace(
-                  "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from jsonbody $body to $parameterObject ${req.params}",
-                );
-                continue;
-              } on TomEndpointHandlerException {
-                rethrow;
-              } catch (ex) {
-                throw TomEndpointHandlerException(
-                  "endpoint_pipeline.handle_method_call.parameter_instantiation_failed",
-                  "Request body contains content for ${parameterMirror.simpleName} but instantiation from JSON $jsonBodyData failed: $ex",
-                );
-              }
-            } else {
-              tomLog.warn(
-                "Was trying to set parameter ${pm.simpleName} ${pm.type.reflectedType} from json request to ${req.requestedUri} but body was empty and no URL parameters were present.",
+          }
+          injectQueryParameters(jsonBodyData, req, metadata.endpoint);
+          injectPathParameters(jsonBodyData, req, metadata.endpoint);
+          if (jsonBodyData.isNotEmpty) {
+            try {
+              // Builds the parameter or throws — there is no null result to
+              // test for.
+              final parameterObject = tomReflectionInfo.createInstanceFromJson(
+                parameterMirror,
+                jsonBodyData,
+              );
+              positionalArguments.add(parameterObject);
+              tomLog.trace(
+                "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from jsonbody $body to $parameterObject ${req.params}",
+              );
+              continue;
+            } on TomEndpointHandlerException {
+              // Already named — re-wrapping would bury the specific key under
+              // the generic one.
+              rethrow;
+            } catch (ex) {
+              throw TomEndpointHandlerException(
+                "endpoint_pipeline.handle_method_call.parameter_instantiation_failed",
+                "Request body contains content for ${parameterMirror.simpleName} but instantiation from JSON $jsonBodyData failed: $ex",
+                autoLog: true,
+                rootException: ex,
               );
             }
-          } catch (ex) {
-            tomLog.error(
-              "$reqId-${req.url}: Failed to parse json/set values $ex",
+          } else {
+            // Not an error: "no body and no URL parameters" is how a body-less
+            // request falls through to the context branch below, which is a
+            // legitimate way to bind this parameter.
+            tomLog.warn(
+              "Was trying to set parameter ${pm.simpleName} ${pm.type.reflectedType} from json request to ${req.requestedUri} but body was empty and no URL parameters were present.",
             );
           }
         }
