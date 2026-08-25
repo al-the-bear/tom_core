@@ -388,6 +388,13 @@ TomDatabaseBlobStore(
 })
 ```
 
+Throws `storage.database.chunk_size_not_positive` when `chunkSize` is zero or
+less. `doPut` slices its incoming events with a clamp that is `0` on every
+iteration for such a size, so the write loop cannot advance: the store would not
+fail an upload but hang on one, with no exception to log. Construction is the
+last moment at which the deployment can be told, which is the same reason
+`TomS3BlobStore` checks its part size here.
+
 #### Factory Constructors
 
 ```dart
@@ -417,7 +424,7 @@ error far better caught at start-up than on the first upload.
 | `datasource` | `TomDataSource` | The data source the two tables live in (final). |
 | `manifestTable` | `String` | The one-row-per-blob manifest table (final). |
 | `chunkTable` | `String` | The many-rows-per-blob content table (final). |
-| `chunkSize` | `int` | Raw bytes per chunk row, defaulting to `defaultChunkSize`; the stored text is ~4/3 of that (final). |
+| `chunkSize` | `int` | Raw bytes per chunk row, defaulting to `defaultChunkSize` and refused by the constructor when zero or less; the stored text is ~4/3 of that, and the upper bound on it is the server's `max_allowed_packet`, which no constructor can know (final). |
 | `createSchema` | `bool` | Whether to create the tables on first use; set `false` when the schema is owned by the migration module and the application's database user may not run DDL (final). |
 
 #### Methods

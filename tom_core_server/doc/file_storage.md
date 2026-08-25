@@ -280,6 +280,25 @@ Three design points, each forced rather than chosen:
   `purgeOrphanedChunks()` collects the residue of a cleanup that itself failed —
   housekeeping for a schedule, not repair.
 
+`chunkSize` sizes those rows, in *raw* bytes, and defaults to
+`TomDatabaseBlobStore.defaultChunkSize` — 256 KiB, declared once so the number
+has somewhere to carry its reasoning. Only one of its two bounds can be
+enforced, and the store enforces that one: a size of zero or less is refused at
+construction with `storage.database.chunk_size_not_positive`, because `put`
+slices its incoming events with a clamp that is `0` on every iteration once
+`chunkSize` is, so such a store does not fail an upload — it hangs on one, with
+no exception to log and nothing for a caller to catch. Construction is the last
+moment at which a deployment can be told.
+
+The other bound is real and belongs to the server. A chunk is stored as base64,
+so its wire size is ~4/3 of `chunkSize` and the statement carrying it is larger
+again; all of it has to fit inside MariaDB's `max_allowed_packet`. That is a
+server variable, not a protocol constant — a deployment may raise it, and a
+constructor that guessed its value would refuse a configuration that works. So
+this bound is a sizing note rather than a check: the 256 KiB default sits well
+inside the usual 16 MiB, and a store configured far above it will fail its first
+upload with a driver-level packet error.
+
 Both tables are declared **once**, as `TomFrameworkTable` descriptors in
 `database_blob_sql.dart`. The `CREATE TABLE` `ensureSchema()` issues, the chunk
 `INSERT`, the manifest `REPLACE` and the column list of every read are all

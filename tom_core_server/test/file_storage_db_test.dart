@@ -427,6 +427,32 @@ void main() async {
       );
       expect(deleted, BigInt.one);
     });
+
+    test('a chunk size of zero is refused at start-up, not on first put', () async {
+      // The route the constructor check exists for. `file_storage_test.dart`
+      // proves the constructor refuses it; this proves nothing between YAML and
+      // the constructor swallows the value first — the registry reads the
+      // setting, `.named` resolves the data source, and the refusal still
+      // arrives out of `initializeBlobStores`.
+      //
+      // Which is where a deployment can act on it. Left to the store, the same
+      // setting produces an upload that never returns: `doPut` slices with a
+      // clamp that is 0 for every iteration, so the loop cannot advance and
+      // there is no exception to log.
+      await expectLater(
+        configured({
+          'datasource': TestDatabase.datasourceName,
+          'chunkSize': 0,
+        }),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.database.chunk_size_not_positive',
+          ),
+        ),
+      );
+    });
   }, skip: skipReason);
 
   group('file-reference columns end to end', () {

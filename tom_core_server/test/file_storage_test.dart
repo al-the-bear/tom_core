@@ -910,6 +910,61 @@ void main() {
     });
   });
 
+  group('TomDatabaseBlobStore, on what needs no database', () {
+    // Everything else this store does needs a real driver and lives in
+    // `file_storage_db_test.dart`. What a construction check must *not* need is
+    // a database, which is the whole point of moving it to construction:
+    // `_UntouchableDataSource` fails the test if the store touches its data
+    // source, so these cases assert the refusal and its timing at once.
+    //
+    // The `.named` factory and the registry reach the same check by delegating
+    // to the constructor below, and the route a `chunkSize: 0` in YAML actually
+    // takes is asserted end to end where a data source exists to register —
+    // `file_storage_db_test.dart`, 'a database store built from configuration'.
+
+    Matcher refusesChunkSize(int chunkSize) => throwsA(
+      isA<TomStorageException>()
+          .having((e) => e.key, 'key', 'storage.database.chunk_size_not_positive')
+          .having((e) => e.parameters?['chunkSize'], 'chunkSize', chunkSize),
+    );
+
+    test('a chunk size of zero is refused at construction', () {
+      // Not a preference about efficiency: `doPut` slices its incoming events
+      // with `(chunkSize - buffer.length).clamp(0, ...)`, which is 0 for every
+      // iteration when `chunkSize` is 0, so `offset` never advances and the
+      // upload loops forever. The store cannot report that itself — a hung
+      // request has nothing to throw — so construction is the last moment at
+      // which the deployment can still be told.
+      expect(
+        () => TomDatabaseBlobStore(_UntouchableDataSource(), chunkSize: 0),
+        refusesChunkSize(0),
+      );
+    });
+
+    test('a negative chunk size is refused the same way', () {
+      // The clamp floors at 0, so a negative size is the identical hang rather
+      // than a different failure, and deserves the identical answer.
+      expect(
+        () => TomDatabaseBlobStore(_UntouchableDataSource(), chunkSize: -1),
+        refusesChunkSize(-1),
+      );
+    });
+
+    test('one byte is odd but legal, and the default is accepted', () {
+      // The other half of a validity check, without which "refuses everything"
+      // would pass the two above. One byte per row is a terrible configuration
+      // and a working one; the boundary is positivity, not sensibleness.
+      expect(
+        TomDatabaseBlobStore(_UntouchableDataSource(), chunkSize: 1).chunkSize,
+        1,
+      );
+      expect(
+        TomDatabaseBlobStore(_UntouchableDataSource()).chunkSize,
+        TomDatabaseBlobStore.defaultChunkSize,
+      );
+    });
+  });
+
   group('TomAwsV4Signer', () {
     test('derives the published signing key', () {
       // AWS docs, "Examples of how to derive a signing key": the one vector

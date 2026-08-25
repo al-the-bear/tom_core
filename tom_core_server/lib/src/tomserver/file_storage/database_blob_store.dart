@@ -61,7 +61,17 @@ class TomDatabaseBlobStore extends TomBlobStore {
   /// Creates a store over [datasource].
   ///
   /// [manifestTable] and [chunkTable] name the two tables; [chunkSize] is the
-  /// number of *raw* bytes per chunk row, defaulting to [defaultChunkSize].
+  /// number of *raw* bytes per chunk row, defaulting to [defaultChunkSize] and
+  /// rejected with `storage.database.chunk_size_not_positive` when it is zero
+  /// or less.
+  ///
+  /// That rejection is not a preference about efficiency. [doPut] slices each
+  /// incoming event with `(chunkSize - buffer.length).clamp(0, ...)`, which is
+  /// `0` on every iteration once `chunkSize` is, so the write loop never
+  /// advances and the upload hangs rather than failing. A hung request has
+  /// nothing to throw, which makes construction the last moment at which the
+  /// deployment can still be told — the same reason [TomS3BlobStore] refuses a
+  /// part size below the protocol minimum here rather than on first use.
   ///
   /// With [createSchema] left `true` the two tables are created on first use;
   /// set it `false` when the schema is owned by the migration module and the
@@ -72,7 +82,15 @@ class TomDatabaseBlobStore extends TomBlobStore {
     this.chunkTable = defaultBlobChunkTable,
     this.chunkSize = defaultChunkSize,
     this.createSchema = true,
-  });
+  }) {
+    if (chunkSize <= 0) {
+      throw TomStorageException(
+        'storage.database.chunk_size_not_positive',
+        'The configured blob chunk size must be a positive number of bytes.',
+        parameters: {'chunkSize': chunkSize},
+      );
+    }
+  }
 
   /// Creates a store over the registered data source named [datasourceName].
   ///

@@ -117,6 +117,40 @@
 
 ### Fixed
 
+- **A blob chunk size of zero was accepted, and turned the first upload into a
+  loop that never ends (tcinc544).** `TomDatabaseBlobStore` validated nothing
+  about `chunkSize`, which the registry reads straight out of YAML, so a
+  `chunkSize: 0` in a configuration file reached the store intact. The result
+  is worse than a bad setting. `doPut` slices each incoming event with
+  `(chunkSize - buffer.length).clamp(0, ...)`, which is `0` on every iteration
+  for a non-positive size: `offset` never advances, the loop cannot terminate,
+  and the upload hangs. There is no exception to log and nothing for the caller
+  to catch, so the deployment sees a request that never returns and no
+  indication of why. A negative size clamps to the same `0` and hangs
+  identically.
+
+  The constructor now refuses it with
+  `storage.database.chunk_size_not_positive`, which is where the module already
+  keeps this kind of check: `TomS3BlobStore` rejects a part size below the
+  protocol minimum at construction rather than on first use, for the weaker
+  version of the same reason — a store that cannot work should not be built.
+  The check sits in the generative constructor alone, so `.named` and the
+  registry reach it by delegating rather than by restating it. Four tests pin
+  the two refusals, the timing (an `_UntouchableDataSource` fails the test if
+  the store touches its data source, so the refusal is provably before any I/O)
+  and the boundary — one byte per row is a terrible configuration and a working
+  one, without which "refuses everything" would pass. A db-tagged test asserts
+  the same refusal arriving out of `initializeBlobStores`, which is the route a
+  misconfigured deployment actually takes.
+
+  The upper bound is left unchecked, deliberately. A chunk is stored as base64,
+  so its wire size is ~4/3 of `chunkSize` and has to fit inside MariaDB's
+  `max_allowed_packet` — but that is a server variable a deployment may raise,
+  not a protocol constant like S3's minimum part size, and a constructor
+  guessing its value would refuse configurations that work. It is documented as
+  a sizing note in `doc/file_storage.md` and on the property, where a caller
+  choosing a value will read it, rather than enforced against an assumption.
+
 - **A store handed over as an instance was recorded with a backend type
   nothing could build (tcinc542).** `register` stored `{'type': 'provided'}`,
   but no factory was registered under that name — `backendTypes` held only
