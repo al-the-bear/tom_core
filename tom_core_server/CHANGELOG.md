@@ -151,6 +151,46 @@
 
 ### Fixed
 
+- **Every S3 request failure reported the full bucket-and-prefix path in the
+  parameter named `key` (tcinc547).** `TomS3BlobStore._send` built each failure
+  with the request's `uri.path`, so a `storage.s3.request_failed` raised for
+  caller key `a.txt` reported `/examplebucket/tenant-7/a.txt`. Two things were
+  wrong with that. `key` is a contract rather than a label — every other error
+  in this module and in `TomBlobStore` puts the caller's key there, so a handler
+  logging or rendering `parameters['key']` printed a value the caller never
+  supplied and could not look up. And in a multi-tenant deployment the prefix
+  *is* the tenant while the bucket is infrastructure detail, both travelling
+  inside an error a server may surface. The class already disagreed with itself:
+  the two paths that build their own failure — `doGet` and the multipart
+  completion — passed the caller's key, and one of them had a test asserting it.
+
+  `_send` now takes `key` and `operation` alongside `method` and `uri`, and the
+  failure reports the caller's key under `key` with the request path preserved
+  under `objectPath`. The path is worth keeping: these errors carry
+  `autoLog: true`, and which bucket and prefix refused a request is exactly what
+  the operator reading that log needs. Naming it separately is what makes the
+  difference — code rendering parameters wholesale now visibly opts into
+  infrastructure detail instead of being handed it by a field called `key`.
+
+  `operation` was the same defect in the same function and is fixed with it. It
+  carried the HTTP verb, so a failed part upload and a failed single `PUT` both
+  said `PUT` and a `describe` said `HEAD`, while the two hand-built failures said
+  `get` and `complete`. One parameter, two vocabularies, and which one you got
+  depended on the code path that raised. Every site now names the store
+  operation: `put`, `get`, `describe`, `delete`, `uploadPart`,
+  `createMultipartUpload`, `completeMultipartUpload`, `abortMultipartUpload`.
+
+  Three tests pin it. The first drives `put`, `get`, `describe`, `exists` and
+  `delete` against a store with a `keyPrefix` and compares the collected
+  `parameters['key']` as one map rather than asserting per iteration — which
+  methods leak was the whole diagnosis, and a per-iteration expectation stops at
+  the first. That test is also why it covers the whole surface: `get` was
+  already correct, so a test of a single method would have passed or failed
+  depending on which one it picked. Four mutations, each naming the test that
+  must catch it; the two that restore a half-fix — dropping `objectPath`, and
+  reverting `operation` to the verb — are held apart by `must_not_catch`, so the
+  three tests are provably three rather than one written thrice.
+
 - **A blob's `storedAt` was a local `DateTime`, and the database backend wrote
   that local reading into a column everything else reads as UTC (tcinc545).**
   Two separate defects met in one field. `TomDatabaseBlobStore` rendered

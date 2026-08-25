@@ -155,6 +155,8 @@ class TomS3BlobStore extends TomBlobStore {
       final partNumber = etags.length + 1;
       final response = await _send(
         method: 'PUT',
+        operation: 'uploadPart',
+        key: key,
         uri: _objectUri(key, {
           'partNumber': '$partNumber',
           'uploadId': uploadId!,
@@ -194,6 +196,8 @@ class TomS3BlobStore extends TomBlobStore {
         // bookkeeping to clean up if it fails.
         await _send(
           method: 'PUT',
+          operation: 'put',
+          key: key,
           uri: _objectUri(key, const {}),
           headers: metadata,
           body: List<int>.of(buffer),
@@ -245,7 +249,7 @@ class TomS3BlobStore extends TomBlobStore {
     }
     if (response.statusCode >= 300) {
       final body = await response.stream.bytesToString();
-      throw _failure('get', key, response.statusCode, body);
+      throw _failure('get', key, uri, response.statusCode, body);
     }
     // `yield*` is correct here, and only because of where this runs.
     // [TomBlobStore.get] consumes this stream with `await for` inside its
@@ -262,6 +266,8 @@ class TomS3BlobStore extends TomBlobStore {
   Future<TomStoredBlob?> doDescribe(String key) async {
     final response = await _send(
       method: 'HEAD',
+      operation: 'describe',
+      key: key,
       uri: _objectUri(key, const {}),
       allowNotFound: true,
     );
@@ -282,7 +288,12 @@ class TomS3BlobStore extends TomBlobStore {
     // S3 answers `204` to a delete whether or not the object was there, so the
     // "did it exist" the contract promises has to be asked separately.
     if (!await doExists(key)) return false;
-    await _send(method: 'DELETE', uri: _objectUri(key, const {}));
+    await _send(
+      method: 'DELETE',
+      operation: 'delete',
+      key: key,
+      uri: _objectUri(key, const {}),
+    );
     return true;
   }
 
@@ -297,6 +308,8 @@ class TomS3BlobStore extends TomBlobStore {
   ) async {
     final response = await _send(
       method: 'POST',
+      operation: 'createMultipartUpload',
+      key: key,
       uri: _objectUri(key, const {'uploads': ''}),
       headers: metadata,
       body: const [],
@@ -326,24 +339,50 @@ class TomS3BlobStore extends TomBlobStore {
       );
     }
     xml.write('</CompleteMultipartUpload>');
+    // Hoisted out of the call below because the failure built here has to
+    // report the same URI the request went to, and rebuilding it would let the
+    // two drift.
+    final uri = _objectUri(key, {'uploadId': uploadId});
     final response = await _send(
       method: 'POST',
-      uri: _objectUri(key, {'uploadId': uploadId}),
+      operation: 'completeMultipartUpload',
+      key: key,
+      uri: uri,
       headers: const {'content-type': 'application/xml'},
       body: utf8.encode(xml.toString()),
     );
     // S3 can answer `200` and *then* report a failure in the body — the one
     // place where the status code is not the answer.
     if (response.body.contains('<Error>')) {
-      throw _failure('complete', key, response.statusCode, response.body);
+      throw _failure(
+        'completeMultipartUpload',
+        key,
+        uri,
+        response.statusCode,
+        response.body,
+      );
     }
   }
 
-  Future<void> _abortMultipartUpload(String key, String uploadId) =>
-      _send(method: 'DELETE', uri: _objectUri(key, {'uploadId': uploadId}));
+  Future<void> _abortMultipartUpload(String key, String uploadId) => _send(
+    method: 'DELETE',
+    operation: 'abortMultipartUpload',
+    key: key,
+    uri: _objectUri(key, {'uploadId': uploadId}),
+  );
 
+  /// Signs and sends one request, turning a rejection into a named failure.
+  ///
+  /// [operation] and [key] are what the *caller* is doing and to which object —
+  /// not what this method is sending. They are separate parameters from
+  /// [method] and [uri] because they answer a different question: an operator
+  /// reading a failed request needs to know that a part upload stopped, and a
+  /// caller needs its own key back. `PUT /examplebucket/tenant-7/big.bin` is
+  /// neither, and is reported alongside rather than instead.
   Future<http.Response> _send({
     required String method,
+    required String operation,
+    required String key,
     required Uri uri,
     Map<String, String> headers = const {},
     List<int>? body,
@@ -365,7 +404,7 @@ class TomS3BlobStore extends TomBlobStore {
     );
     if (response.statusCode == 404 && allowNotFound) return response;
     if (response.statusCode >= 300) {
-      throw _failure(method, uri.path, response.statusCode, response.body);
+      throw _failure(operation, key, uri, response.statusCode, response.body);
     }
     return response;
   }
@@ -433,9 +472,24 @@ class TomS3BlobStore extends TomBlobStore {
     );
   }
 
+  /// Builds the module's one "the store said no" error.
+  ///
+  /// [key] is the caller's key, never the request path. Every error in this
+  /// module and in [TomBlobStore] puts the caller's key under `key`, and a
+  /// handler that logs or renders `parameters['key']` cannot know that one
+  /// backend meant something else by it. Under a [keyPrefix] the path is worse
+  /// than merely unrecognisable — the prefix is typically the tenant, and the
+  /// bucket is infrastructure detail.
+  ///
+  /// The path is still reported, under [Uri.path] as `objectPath`. It is what
+  /// an operator reading a rejected request actually needs, and `autoLog: true`
+  /// means one will read it. The separate name is the point: rendering
+  /// parameters wholesale then visibly opts into infrastructure detail instead
+  /// of being handed it by a field called `key`.
   TomStorageException _failure(
     String operation,
     String key,
+    Uri uri,
     int status,
     String body,
   ) => TomStorageException(
@@ -444,6 +498,7 @@ class TomS3BlobStore extends TomBlobStore {
     parameters: {
       'operation': operation,
       'key': key,
+      'objectPath': uri.path,
       'status': status,
       'code': _element(body, 'Code') ?? '',
       'message': _element(body, 'Message') ?? '',

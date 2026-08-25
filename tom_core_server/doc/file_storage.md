@@ -26,6 +26,7 @@ without the second; the second is built entirely on the first.
   - [Database](#database)
   - [S3](#s3)
 - [A Failure Is a Storage Error, Not the Backend's](#a-failure-is-a-storage-error-not-the-backends)
+  - [`key` Is the Caller's Key, on Every Error](#key-is-the-callers-key-on-every-error)
 - [Configuration Selects the Backend](#configuration-selects-the-backend)
 - [File-Reference Columns](#file-reference-columns)
 - [Where the Key Comes From](#where-the-key-comes-from)
@@ -416,6 +417,42 @@ The same four operations exist in the export module as
 `TomExportStoreOperation`. That is deliberate — the same questions are being
 asked of the same kinds of infrastructure, and two different answers for one
 fault would be an accident of which module the caller came through.
+
+### `key` Is the Caller's Key, on Every Error
+
+Every storage exception this module raises carries a `key` parameter, and it is
+always **the key the caller passed** — never a path, a URL, a row id or a file
+name derived from it. The parameter is a contract rather than a label. A handler
+that logs `parameters['key']`, or renders it into a message, has no way to know
+that one backend meant something else by it; a value the caller never supplied
+and cannot look up is worse than no value at all.
+
+That matters most where a key is decorated on the way to storage. Under a
+`keyPrefix` the S3 backend's request path is `/bucket/prefix/key` — in a
+multi-tenant deployment the prefix *is* the tenant and the bucket is
+infrastructure detail, both of them travelling inside an error a server may
+surface.
+
+Backends do report where a request actually went, under names that say so. The
+S3 backend's `storage.s3.request_failed` carries:
+
+| Parameter | Meaning |
+| --------- | ------- |
+| `key` | The caller's key. |
+| `objectPath` | The full request path, bucket and prefix included. |
+| `operation` | The store operation — `put`, `get`, `describe`, `delete`, `uploadPart`, `createMultipartUpload`, `completeMultipartUpload`, `abortMultipartUpload`. |
+| `status` | The HTTP status the store answered. |
+| `code`, `message` | The store's own error code and text, when it sent one. |
+
+`objectPath` exists because these errors are logged (`autoLog: true`), and which
+bucket and prefix a request was rejected from is exactly what the operator
+reading that log needs. The separate name is the point: code that renders
+parameters wholesale is then visibly opting into infrastructure detail, rather
+than being handed it by a field called `key`.
+
+`operation` names the *store* operation, not the HTTP verb. A multipart upload
+issues four different requests and three of them are `POST` or `PUT`, so the
+verb cannot say which one stopped.
 
 ## Configuration Selects the Backend
 

@@ -1279,6 +1279,136 @@ void main() {
       expect(seen.url.path, '/examplebucket/tenant-7/k.txt');
     });
 
+    test("a rejected request names the caller's key, not the object "
+        'path', () async {
+      // `parameters['key']` is a contract rather than a label: every other
+      // error in both storage modules puts the caller's key there, and a
+      // handler that logs or renders it cannot know that one backend meant
+      // something else. The path the test above pins —
+      // `/examplebucket/tenant-7/k.txt` — is a value the caller never supplied
+      // and cannot look up, and in a multi-tenant deployment the prefix *is*
+      // the tenant.
+      //
+      // Driven across the whole surface rather than one method, because the
+      // leak was in `_send`, which five of them share, while the two paths that
+      // build their own failure were already correct. A test of a single
+      // method would have passed either way depending on which one it picked.
+      final store = _s3(
+        (request) async => http.Response(
+          '<Error><Code>AccessDenied</Code><Message>no</Message></Error>',
+          403,
+        ),
+        keyPrefix: 'tenant-7',
+      );
+
+      final operations = <String, Future<void> Function()>{
+        'put': () => store.putBytes(key: 'a.txt', bytes: utf8.encode('x')),
+        'get': () => store.getBytes('a.txt'),
+        'describe': () => store.describe('a.txt'),
+        'exists': () => store.exists('a.txt'),
+        'delete': () => store.delete('a.txt'),
+      };
+
+      // Collected and compared as a whole rather than asserted in the loop: a
+      // per-iteration expectation stops at the first leak, and which methods
+      // leak is the whole diagnosis.
+      final reported = <String, Object?>{};
+      for (final entry in operations.entries) {
+        try {
+          await entry.value();
+          fail('${entry.key} did not fail');
+        } on TomStorageException catch (error) {
+          reported[entry.key] = error.parameters?['key'];
+        }
+      }
+      expect(reported, {
+        'put': 'a.txt',
+        'get': 'a.txt',
+        'describe': 'a.txt',
+        'exists': 'a.txt',
+        'delete': 'a.txt',
+      });
+    });
+
+    test('a rejected request still reports where it went, under a name that '
+        'says so', () async {
+      // Renaming the leak away would have cost the one thing it was good for.
+      // Which bucket, which prefix, and whether the URI was even built the way
+      // the deployment intended is what an operator reading a 403 needs, and
+      // `autoLog: true` means these go to a log. So the path stays — under
+      // `objectPath`, where a handler rendering parameters wholesale is
+      // visibly opting into infrastructure detail rather than being handed it
+      // by a field called `key`.
+      final store = _s3(
+        (request) async => http.Response(
+          '<Error><Code>AccessDenied</Code><Message>no</Message></Error>',
+          403,
+        ),
+        keyPrefix: 'tenant-7',
+      );
+
+      await expectLater(
+        store.describe('a.txt'),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.key, 'key', 'storage.s3.request_failed')
+              .having(
+                (e) => e.parameters?['objectPath'],
+                'objectPath',
+                '/examplebucket/tenant-7/a.txt',
+              )
+              // The store operation, not the HTTP verb. `_send` used to report
+              // the method, so a failed part upload and a failed single PUT
+              // were both `PUT` and told an operator nothing about which one
+              // stopped — while the two paths building their own failure named
+              // `get` and `complete`. One parameter, one vocabulary.
+              .having((e) => e.parameters?['operation'], 'operation', 'describe')
+              .having((e) => e.parameters?['status'], 'status', 403)
+              .having((e) => e.parameters?['code'], 'code', 'AccessDenied'),
+        ),
+      );
+    });
+
+    test('every operation names itself in a rejected request', () async {
+      // The `operation` parameter is only worth having if it distinguishes the
+      // requests a single method issues. A multipart upload makes four
+      // different ones and three of them are POST or PUT, so the HTTP verb
+      // cannot tell them apart — which is what it was reporting.
+      var partsSeen = 0;
+      final store = _s3((request) async {
+        if (request.method == 'POST' && request.url.query.contains('uploads')) {
+          return http.Response('<UploadId>upload-1</UploadId>', 200);
+        }
+        if (request.method == 'PUT') {
+          partsSeen++;
+          return http.Response(
+            '<Error><Code>SlowDown</Code><Message>later</Message></Error>',
+            503,
+          );
+        }
+        return http.Response('', 204);
+      }, keyPrefix: 'tenant-7');
+
+      const mib = 1024 * 1024;
+      await expectLater(
+        store.put(
+          key: 'big.bin',
+          bytes: Stream.fromIterable([for (var i = 0; i < 6; i++) _bytes(mib)]),
+        ),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.parameters?['operation'], 'operation', 'uploadPart')
+              .having((e) => e.parameters?['key'], 'key', 'big.bin')
+              .having(
+                (e) => e.parameters?['objectPath'],
+                'objectPath',
+                '/examplebucket/tenant-7/big.bin',
+              ),
+        ),
+      );
+      expect(partsSeen, 1, reason: 'the first part failing ends the upload');
+    });
+
     test('a key prefix that is not a key is refused at construction', () {
       // Worse here than anywhere else: this prefix is not re-validated, it is
       // joined and handed to `Uri.replace(pathSegments:)`. A `..` prefix became

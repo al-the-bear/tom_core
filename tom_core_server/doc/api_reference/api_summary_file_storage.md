@@ -593,6 +593,19 @@ each valid but join past `TomBlobStore.maxKeyLength`; S3's own limit is twice
 ours, so nothing downstream would object. When no `client` is supplied the store
 creates and owns one, and `close` disposes of it.
 
+Every request the store rejects becomes one `storage.s3.request_failed`, whose
+parameters are `key` — always the *caller's* key, never the request path, so a
+handler that logs or renders it prints something the caller supplied and can
+look up — `objectPath` for the full path with bucket and prefix, `operation` for
+the store operation (`put`, `get`, `describe`, `delete`, `uploadPart`,
+`createMultipartUpload`, `completeMultipartUpload`, `abortMultipartUpload`, and
+not the HTTP verb, which cannot tell a multipart upload's four requests apart),
+`status`, and the store's own `code` and `message` when it sent them. The path
+is reported under its own name rather than as the key because these errors are
+logged: an operator needs to know which bucket and prefix refused the request,
+while a `keyPrefix` is typically the tenant and belongs nowhere a caller might
+render it unawares.
+
 #### Static Properties
 
 | Property | Type | Description |
