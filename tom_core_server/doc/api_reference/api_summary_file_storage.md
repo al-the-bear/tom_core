@@ -43,7 +43,11 @@ backend-specific `location`), and `TomStorageException` is the module's error,
 subtyping `TomServerException` so storage faults reach the ordinary server error
 mapping. The key grammar is defined once, on `TomBlobStore`: `isValidKey`,
 `maxKeyLength` and `validateKey` are called at the top of every `put`, so an
-invalid key never reaches a filesystem, a network or SQL.
+invalid key never reaches a filesystem, a network or SQL. The same grammar
+covers the *namespacing prefixes* several components join onto keys —
+`isValidKeyPrefix` and `validateKeyPrefix` check one at construction, so a
+misconfigured prefix fails naming itself rather than surfacing later as an
+invalid key nobody wrote.
 
 Four backends implement the contract. `TomMemoryBlobStore` holds everything in a
 map — for tests and for a development server that should leave nothing behind.
@@ -201,6 +205,8 @@ const TomBlobStore()
 | ------ | --------- | ----------- |
 | `isValidKey` | `static bool isValidKey(String key)` | Whether `key` is a well-formed storage key: non-empty, at most `maxKeyLength`, no leading or trailing `/`, no backslash, no `//`, only `A-Za-z0-9._/-`, and no `.` or `..` segment. |
 | `validateKey` | `static String validateKey(String key)` | Returns `key` when `isValidKey` accepts it, otherwise throws `storage.blob.invalid_key`. |
+| `isValidKeyPrefix` | `static bool isValidKeyPrefix(String? keyPrefix)` | Whether `keyPrefix` is usable as a key namespace. A prefix is joined as `"$keyPrefix/$key"`, so it must satisfy `isValidKey` itself; `null` and `''` both mean no namespace, and a trailing slash is not a second spelling (the join supplies the separator). Length is the one clause a prefix cannot settle alone — two valid parts can join past `maxKeyLength`, which `validateKey` catches on the joined key. |
+| `validateKeyPrefix` | `static String? validateKeyPrefix(String? keyPrefix)` | Returns `keyPrefix` when `isValidKeyPrefix` accepts it, otherwise throws `storage.blob.invalid_key_prefix` naming the prefix. A distinct error from `invalid_key` because the two faults have different fixes: a bad key is a caller's mistake, a bad prefix a deployment's. |
 | `notFound` | `static TomStorageException notFound(String key)` | Builds the `storage.blob.not_found` error, spelled once so every backend agrees and a caller can match on the key string. |
 
 #### Methods
@@ -495,8 +501,11 @@ TomS3BlobStore({
 ```
 
 Throws `storage.s3.part_size_too_small` when `partSize` is below
-`minimumPartSize`. When no `client` is supplied the store creates and owns one,
-and `close` disposes of it.
+`minimumPartSize`, and `storage.blob.invalid_key_prefix` when `keyPrefix` is not
+a usable namespace — the prefix is joined *after* the per-call key check and the
+result goes straight into a signed request URI, so it is checked nowhere else.
+When no `client` is supplied the store creates and owns one, and `close`
+disposes of it.
 
 #### Static Properties
 
@@ -520,7 +529,7 @@ and `close` disposes of it.
 | `region` | `String` | The region the credential scope names (final). |
 | `pathStyle` | `bool` | Whether objects are addressed as `<endpoint>/<bucket>/<key>`; `true` by default because every self-hosted implementation accepts it, `false` for Amazon's virtual-host addressing (final). |
 | `partSize` | `int` | Bytes per multipart part, and the upload buffer bound (final). |
-| `keyPrefix` | `String?` | A prefix prepended to every key, so one bucket can host several stores (final). |
+| `keyPrefix` | `String?` | A prefix prepended to every key, so one bucket can host several stores. Validated at construction against `TomBlobStore.isValidKeyPrefix` (final). |
 | `signer` | `TomAwsV4Signer` | The request signer, built from the constructor's credentials and region (final). |
 
 #### Methods

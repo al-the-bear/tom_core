@@ -55,6 +55,12 @@ class TomFileReferenceKeys {
     String? fileName,
     DateTime? now,
   }) {
+    // Checked separately from the joined key below, and first, because the two
+    // faults have different fixes: the annotation's prefix is something a
+    // developer wrote and can go and correct, whereas the key it appears in is
+    // mostly a UUID nobody chose. Checked here rather than on the annotation
+    // because that is a `const` constructor and cannot refuse a value.
+    TomBlobStore.validateKeyPrefix(reference.keyPrefix);
     final stamp = now ?? DateTime.now();
     final month = stamp.month.toString().padLeft(2, '0');
     final segments = <String>[
@@ -63,6 +69,8 @@ class TomFileReferenceKeys {
       month,
       '${_uuid.v4()}${extensionOf(fileName)}',
     ];
+    // Still validated as a whole: the joined key can exceed the length limit
+    // that neither part breaches on its own.
     return TomBlobStore.validateKey(segments.join('/'));
   }
 

@@ -214,6 +214,25 @@ abstract class TomBlobStore {
       _keyPattern.hasMatch(key) &&
       !key.split('/').any((segment) => segment == '.' || segment == '..');
 
+  /// Whether [keyPrefix] is usable as a key namespace.
+  ///
+  /// A prefix is not a separate notion from a key: it is joined to one as
+  /// `"$keyPrefix/$key"`, so it must satisfy [isValidKey] itself or the join
+  /// produces something no backend accepts. `null` and `''` both mean *no
+  /// namespace* — a configured store leaves the setting unset, an unconfigured
+  /// one defaults it to empty, and neither should have to say so twice.
+  ///
+  /// A trailing slash is deliberately **not** a second accepted spelling: the
+  /// join supplies the separator, so `exports/` would yield
+  /// `exports//sales.csv`, which the grammar rejects for the doubled slash.
+  ///
+  /// Length is the one clause a valid prefix cannot settle on its own — a
+  /// prefix and a key may each be within [maxKeyLength] and still exceed it
+  /// once joined. That depends on the key, so it stays where it can be seen:
+  /// [validateKey], on the joined key, at the point of use.
+  static bool isValidKeyPrefix(String? keyPrefix) =>
+      keyPrefix == null || keyPrefix.isEmpty || isValidKey(keyPrefix);
+
   /// The longest key any backend accepts.
   ///
   /// 512 is comfortably under the shortest limit in play (S3 allows 1024 bytes;
@@ -236,6 +255,26 @@ abstract class TomBlobStore {
       );
     }
     return key;
+  }
+
+  /// Validates [keyPrefix] and returns it, throwing
+  /// `storage.blob.invalid_key_prefix` when it does not satisfy
+  /// [isValidKeyPrefix].
+  ///
+  /// A distinct error key from [validateKey], because the two faults call for
+  /// different actions: a bad key is a caller's mistake, a bad prefix is a
+  /// deployment's. The parameter is named `keyPrefix` and carries the prefix
+  /// itself rather than a key derived from it — the derived key is one the
+  /// caller never wrote, and naming it sends the reader to the wrong place.
+  static String? validateKeyPrefix(String? keyPrefix) {
+    if (!isValidKeyPrefix(keyPrefix)) {
+      throw TomStorageException(
+        'storage.blob.invalid_key_prefix',
+        'The configured key prefix is not a valid key namespace.',
+        parameters: {'keyPrefix': keyPrefix},
+      );
+    }
+    return keyPrefix;
   }
 
   /// The error raised when [key] holds nothing — one spelling, so a caller can

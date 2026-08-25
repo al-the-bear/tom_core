@@ -159,6 +159,53 @@ void main() {
         ),
       );
     });
+
+    test('a key prefix is held to the key grammar it will be joined to', () {
+      // A prefix is namespacing, not a separate notion: it is joined as
+      // `"$prefix/$key"`, and every clause a key must satisfy the prefix must
+      // satisfy too or the join produces something no backend accepts.
+      for (final prefix in const ['exports', 'a/b', 'exports-2026_07']) {
+        expect(TomBlobStore.isValidKeyPrefix(prefix), isTrue, reason: prefix);
+      }
+      for (final prefix in const [
+        '..',
+        'a/../..',
+        '/exports',
+        'a//b',
+        r'a\b',
+        'has space',
+      ]) {
+        expect(
+          TomBlobStore.isValidKeyPrefix(prefix),
+          isFalse,
+          reason: '"$prefix"',
+        );
+      }
+    });
+
+    test('the empty prefix means no namespace; a trailing slash is not a '
+        'prefix form', () {
+      // Two ways to say "no prefix" would be one too many, and null is what a
+      // configured backend leaves unset, so both spell the same thing.
+      expect(TomBlobStore.isValidKeyPrefix(''), isTrue);
+      expect(TomBlobStore.isValidKeyPrefix(null), isTrue);
+      // The join supplies the separator, so `exports/` would produce
+      // `exports//sales.csv` — rejected by the very grammar it must satisfy.
+      expect(TomBlobStore.isValidKeyPrefix('exports/'), isFalse);
+    });
+
+    test('validateKeyPrefix names the prefix, not a key derived from it', () {
+      expect(TomBlobStore.validateKeyPrefix('exports'), 'exports');
+      expect(TomBlobStore.validateKeyPrefix(null), isNull);
+      expect(
+        () => TomBlobStore.validateKeyPrefix('..'),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.key, 'key', 'storage.blob.invalid_key_prefix')
+              .having((e) => e.parameters?['keyPrefix'], 'keyPrefix', '..'),
+        ),
+      );
+    });
   });
 
   group('TomMemoryBlobStore', () {
@@ -507,6 +554,24 @@ void main() {
       }, keyPrefix: 'tenant-7');
       await store.putBytes(key: 'k.txt', bytes: utf8.encode('x'));
       expect(seen.url.path, '/examplebucket/tenant-7/k.txt');
+    });
+
+    test('a key prefix that is not a key is refused at construction', () {
+      // Worse here than anywhere else: this prefix is not re-validated, it is
+      // joined and handed to `Uri.replace(pathSegments:)`. A `..` prefix became
+      // a traversal segment in a *signed* request path rather than an error.
+      for (final prefix in const ['..', '/tenant-7', 'a//b', 'tenant-7/']) {
+        expect(
+          () =>
+              _s3((request) async => http.Response('', 200), keyPrefix: prefix),
+          throwsA(
+            isA<TomStorageException>()
+                .having((e) => e.key, 'key', 'storage.blob.invalid_key_prefix')
+                .having((e) => e.parameters?['keyPrefix'], 'keyPrefix', prefix),
+          ),
+          reason: '"$prefix"',
+        );
+      }
     });
 
     test(
@@ -950,6 +1015,56 @@ fileStores:
                 '../escape',
               ),
         ),
+      );
+    });
+
+    test('a prefix that is not a usable namespace is refused at '
+        'construction', () {
+      // The prefix is a deployment setting, not caller input, so the failure
+      // belongs where the misconfiguration is — at construction, naming the
+      // prefix. Before this it surfaced on the first store, as a storage error
+      // about `../2026/sales.csv`: a key the caller never wrote.
+      for (final prefix in const ['..', '/exports', 'a//b', 'exports/']) {
+        expect(
+          () => TomBlobExportStore(blobs, keyPrefix: prefix),
+          throwsA(
+            isA<TomExportException>()
+                .having((e) => e.key, 'key', 'export.store.invalid_key')
+                .having((e) => e.parameters?['keyPrefix'], 'keyPrefix', prefix),
+          ),
+          reason: '"$prefix"',
+        );
+      }
+    });
+
+    test('the named constructor checks the prefix too', () {
+      // The constructor a configured deployment actually uses — so it is the
+      // one a bad setting arrives through.
+      TomBlobStoreInfo.register('files', blobs, asDefault: true);
+      addTearDown(TomBlobStoreInfo.closeAll);
+      expect(
+        () => TomBlobExportStore.named('files', keyPrefix: '..'),
+        throwsA(
+          isA<TomExportException>().having(
+            (e) => e.key,
+            'key',
+            'export.store.invalid_key',
+          ),
+        ),
+      );
+    });
+
+    test('no prefix is still no prefix', () {
+      // The empty default must survive a check written for non-empty prefixes.
+      final plain = TomBlobExportStore(blobs);
+      expect(plain.keyPrefix, isEmpty);
+      expect(
+        plain.store(
+          key: 'r.csv',
+          bytes: Stream.value(utf8.encode('x')),
+          mediaType: 'text/csv',
+        ),
+        completes,
       );
     });
 

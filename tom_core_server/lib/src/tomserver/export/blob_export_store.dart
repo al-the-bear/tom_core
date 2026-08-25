@@ -27,7 +27,12 @@ class TomBlobExportStore extends TomExportStore {
   /// [keyPrefix] exists because an export store is often pointed at a bucket
   /// that holds other things; `exports/2026/07/sales.xlsx` keeps them apart and
   /// makes a retention rule expressible as a prefix.
-  TomBlobExportStore(this.blobStore, {this.keyPrefix = ''});
+  ///
+  /// Throws [TomExportException] (`export.store.invalid_key`) when [keyPrefix]
+  /// is not a usable namespace — it is joined to keys the store has already
+  /// checked, so an unchecked prefix would produce a key no backend accepts.
+  TomBlobExportStore(this.blobStore, {String keyPrefix = ''})
+    : keyPrefix = _validPrefix(keyPrefix);
 
   /// Wraps the blob store registered under [name], or the default store when
   /// [name] is `null` — the constructor a configured deployment uses.
@@ -46,14 +51,44 @@ class TomBlobExportStore extends TomExportStore {
   final TomBlobStore blobStore;
 
   /// The prefix prepended to every key before it reaches [blobStore].
+  ///
+  /// Checked at construction, and `''` when there is none.
   final String keyPrefix;
+
+  /// Returns [keyPrefix] if it is a usable namespace, in the export module's
+  /// own error vocabulary.
+  ///
+  /// The rule is [TomBlobStore]'s, because the prefixed key is what a blob
+  /// backend has to accept; the exception type is this module's, because a
+  /// caller configuring an export store should not have to catch a storage
+  /// error to learn its own setting is wrong. The parameter is `keyPrefix`
+  /// rather than `key` for the same reason — this is a misconfiguration, and
+  /// the derived key it would otherwise name is one nobody wrote.
+  static String _validPrefix(String keyPrefix) {
+    if (!TomBlobStore.isValidKeyPrefix(keyPrefix)) {
+      throw TomExportException(
+        'export.store.invalid_key',
+        'The configured export key prefix is not a valid key namespace.',
+        parameters: {'keyPrefix': keyPrefix},
+      );
+    }
+    return keyPrefix;
+  }
 
   /// The blob key for the export key [key].
   ///
-  /// [key] arrives validated — [TomExportStore] checks it before dispatching —
-  /// and the prefix is applied *after*, so a traversal cannot be smuggled in
-  /// relative to the prefix and the rejected key in the error is the one the
-  /// caller actually passed.
+  /// Both halves are checked, in the two places each belongs. [key] arrives
+  /// validated — [TomExportStore] checks it before dispatching — and the prefix
+  /// was validated at construction, where a deployment setting can be blamed
+  /// for itself. The prefix is applied *after* the key check, so a traversal
+  /// cannot be smuggled in relative to the prefix and the rejected key in a
+  /// key error is the one the caller actually passed.
+  ///
+  /// What neither check can settle is length: two individually valid parts can
+  /// join past [TomBlobStore.maxKeyLength]. That depends on the caller's key,
+  /// so the backend's own [TomBlobStore.validateKey] remains the one that
+  /// catches it — as `export.store.write_failed` and friends, translated by
+  /// [TomExportStore], like any other backend refusal.
   String _blobKey(String key) => keyPrefix.isEmpty ? key : '$keyPrefix/$key';
 
   @override

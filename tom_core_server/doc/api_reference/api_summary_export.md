@@ -715,6 +715,12 @@ knowing any of them exist.
 TomBlobExportStore(TomBlobStore blobStore, {String keyPrefix = ''})
 ```
 
+Throws `TomExportException` (`export.store.invalid_key`, parameter `keyPrefix`)
+when `keyPrefix` is not a usable namespace. The rule is `TomBlobStore`'s —
+`isValidKeyPrefix` — because the prefixed key is what a backend has to accept;
+the exception type is the export module's, because configuring an export store
+should not require catching a storage error to learn the setting is wrong.
+
 #### Factory Constructors
 
 ```dart
@@ -722,14 +728,16 @@ factory TomBlobExportStore.named(String? name, {String keyPrefix = ''})
 ```
 
 Wraps the blob store registered under `name`, or the default store when `name`
-is `null` — the constructor a configured deployment uses.
+is `null` — the constructor a configured deployment uses, and so the one a bad
+prefix arrives through. It delegates to the unnamed constructor, so the prefix
+check applies here too.
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `blobStore` | `TomBlobStore` | The blob store the exports are kept in; named `blobStore` because `store` is this interface's write method (final). |
-| `keyPrefix` | `String` | The prefix prepended to every key before it reaches `blobStore`, namespacing exports inside a store that holds other things and making a retention rule expressible as a prefix. Keys are validated *before* prefixing (final). |
+| `keyPrefix` | `String` | The prefix prepended to every key before it reaches `blobStore`, namespacing exports inside a store that holds other things and making a retention rule expressible as a prefix. `''` when there is none. Both halves of the joined key are checked, in the two places each belongs: the caller's key on every call and *before* prefixing, the prefix once at construction (final). |
 
 #### Methods
 

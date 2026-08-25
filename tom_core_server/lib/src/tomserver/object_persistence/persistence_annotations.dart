@@ -213,6 +213,11 @@ class TomFileReference {
   final String? store;
 
   /// The prefix generated keys are placed under, e.g. `invoices`.
+  ///
+  /// Must satisfy `TomBlobStore.isValidKeyPrefix`: it is joined to the rest of
+  /// the key, so it obeys the same grammar and carries no trailing slash. A
+  /// `const` constructor cannot refuse a value, so the check happens where the
+  /// key is minted — `TomFileReferenceKeys.generate`.
   final String keyPrefix;
 
   /// Whether deleting (or clearing) the owning row deletes the blob.

@@ -74,6 +74,46 @@
 
 ### Fixed
 
+- **Three components joined an unchecked key prefix to a checked key
+  (tcinc525).** A prefix is not a separate notion from a key — it is joined as
+  `"$keyPrefix/$key"` — so every clause a key must satisfy the prefix must
+  satisfy too, or the join produces something no backend accepts. Each of the
+  three places that build such a join validated only the half the *caller*
+  supplied. `TomBlobExportStore` took its prefix as a plain constructor
+  argument from a deployment setting and prefixed after validating, so a
+  misconfigured `..` failed on the first `store` as a `TomStorageException`
+  from whichever backend was underneath, naming the prefixed key rather than
+  the setting. `TomS3BlobStore` was worse and had no error at all: its prefix
+  is joined in `_objectUri` and split straight into
+  `Uri.replace(pathSegments:)`, so an unchecked `..` became a literal traversal
+  segment in a *signed* request path. `@TomFileReference(keyPrefix:)` was
+  caught — `TomFileReferenceKeys.generate` ends in `validateKey` on the joined
+  key — but reported as an invalid key that is mostly a UUID nobody chose,
+  rather than as the annotation a developer can go and correct.
+
+  Because three independent components each forgot, the rule went where
+  `isValidKey` already lives: `TomBlobStore.isValidKeyPrefix` as the predicate
+  and `validateKeyPrefix` as the throwing form, so a fourth prefix site gets
+  the check by construction. Each site enforces it in its own vocabulary and at
+  its earliest point — `storage.blob.invalid_key_prefix` from the two storage
+  components at construction and at key-mint time respectively (the annotation
+  is a `const` constructor and cannot refuse a value), and
+  `export.store.invalid_key` from the export store, whose callers should not
+  have to catch a storage error to learn their own setting is wrong. Every one
+  of them names the parameter `keyPrefix` carrying the prefix itself, because
+  the derived key it would otherwise report is one nobody wrote.
+
+  Two decisions the fix had to settle. A trailing slash is **not** a second
+  accepted spelling of a prefix: the join supplies the separator, so `exports/`
+  yields `exports//sales.csv`, which the grammar rejects for the doubled slash
+  — pinned by an explicit test at each of the three sites. And length is the
+  one clause a valid prefix cannot settle on its own: two individually valid
+  parts can join past `maxKeyLength`, which depends on the caller's key, so
+  `validateKey` on the joined key remains the backstop and says so in its
+  dartdoc. Seven tests cover the predicate, the empty and null prefix, the
+  error's parameter, and refusal at construction in each component; five
+  mutations confirm they bite.
+
 - **`TomMemoryExportStore`'s two inspection accessors accepted keys every other
   door rejected (tcinc524).** The interface owns key validation so that "every
   backend gets the check, including ones written later"; making the four store

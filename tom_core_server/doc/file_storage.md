@@ -121,6 +121,29 @@ alternative is a per-backend escaping rule and a key that is safe in one store
 and a traversal in the next. `TomBlobStore.validateKey` is called at the top of
 every `put`, so an invalid key never reaches the filesystem, the network or SQL.
 
+### Prefixes obey the same grammar
+
+Several components namespace keys by joining a configured prefix onto them —
+`TomS3BlobStore.keyPrefix` so one bucket can host several stores,
+`TomBlobExportStore.keyPrefix` so exports sit apart from whatever else is in the
+store, `@TomFileReference(keyPrefix:)` so one column's blobs are addressable as
+a partition. A prefix is not a separate notion from a key: it is joined as
+`"$keyPrefix/$key"`, so `isValidKeyPrefix` holds it to `isValidKey`. `null` and
+`''` both mean *no namespace*; a trailing slash is **not** a second spelling,
+because the join supplies the separator and `exports/` would produce
+`exports//sales.csv`.
+
+Each of these checks its prefix as early as it can — at construction for the two
+stores, at key generation for the annotation, whose `const` constructor cannot
+refuse a value — and fails naming the prefix (`storage.blob.invalid_key_prefix`,
+or `export.store.invalid_key` in the export module's own vocabulary). The point
+is *whose* mistake the error describes: a misconfigured prefix used to surface
+on the first write, as an invalid-key error about a key the caller never wrote.
+
+Length is the one clause a prefix cannot settle on its own — a prefix and a key
+may each be within `maxKeyLength` and still exceed it once joined. That depends
+on the caller's key, so it stays with `validateKey` on the joined key.
+
 ## The Backends
 
 ### Memory
@@ -284,7 +307,7 @@ carries four settings:
 
 | Setting | Meaning |
 | ------- | ------- |
-| `keyPrefix` | The leading segment of every generated key — the partition a retention rule addresses |
+| `keyPrefix` | The leading segment of every generated key — the partition a retention rule addresses. Held to the [prefix grammar](#prefixes-obey-the-same-grammar) |
 | `store` | The configured store name; the default store when omitted |
 | `cascadeDelete` | Whether deleting the row deletes the bytes (default `true`) |
 | `mediaType` | The media type to store when the caller supplies none |
@@ -301,7 +324,9 @@ documents/attachment/2026/07/1f0c…-4a2b….pdf
 The prefix comes from the annotation, the year/month partition makes a retention
 or archival rule expressible as a prefix (and keeps a directory backend's
 directories a sane size), and the UUID makes the key unguessable and
-collision-free.
+collision-free. The prefix is validated first and the assembled key second, so a
+bad `keyPrefix` is reported as a bad *prefix* — the thing a developer can go and
+fix — rather than as an invalid key that is mostly a UUID.
 
 The extension is the one part derived from caller-supplied text, and it is
 filtered rather than escaped: `TomFileReferenceKeys.extensionOf` carries a short

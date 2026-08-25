@@ -507,8 +507,14 @@ Two things it does rather than delegate:
 - **`keyPrefix` namespaces the exports** inside a store that holds other things,
   and makes a retention rule expressible as a prefix. The key recorded in the
   returned `TomStoredExport` is still the caller's — an export whose key could
-  not be passed back to `open` would be a trap — and validation happens *before*
-  prefixing, so a traversal cannot be smuggled in relative to the prefix.
+  not be passed back to `open` would be a trap. Both halves of the joined key
+  are checked, in the two places each belongs: the caller's key on every call
+  and *before* prefixing, so a traversal cannot be smuggled in relative to the
+  prefix; the prefix itself once, at construction, where the failure names the
+  misconfigured setting rather than a derived key nobody wrote. A prefix must be
+  a valid key in its own right — `..`, `/exports` and `exports/` are all refused
+  with `export.store.invalid_key`, the last because the join supplies the
+  separator and `exports/` would yield `exports//sales.csv`.
 - **`storage.blob.not_found` is translated to `export.store.not_found`.** It is
   the only blob failure this adaptor names, because it is the only one it knows
   something about that `TomExportStore` does not: a blob store reports absence

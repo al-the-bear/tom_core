@@ -96,6 +96,28 @@ void main() {
         expect(TomBlobStore.isValidKey(key), isTrue, reason: '$name -> $key');
       }
     });
+
+    test('a prefix that is not a namespace is blamed for itself', () {
+      // The annotation's prefix is joined the same way every other prefix in
+      // the framework is, and was checked only through the key it produced —
+      // so a bad `@TomFileReference(keyPrefix: '..')` was reported as an
+      // invalid *key* containing a UUID nobody chose. The prefix is the thing
+      // a developer can go and fix, so it is the thing the error names.
+      expect(
+        () => TomFileReferenceKeys.generate(
+          const TomFileReference(keyPrefix: '../escape'),
+        ),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.key, 'key', 'storage.blob.invalid_key_prefix')
+              .having(
+                (e) => e.parameters?['keyPrefix'],
+                'keyPrefix',
+                '../escape',
+              ),
+        ),
+      );
+    });
   });
 
   group('TomFileReferenceKeys.storeFor', () {

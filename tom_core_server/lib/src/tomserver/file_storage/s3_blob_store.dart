@@ -77,6 +77,11 @@ class TomS3BlobStore extends TomBlobStore {
         parameters: {'partSize': partSize, 'minimum': minimumPartSize},
       );
     }
+    // Checked here because it is checked nowhere else: [put] and its siblings
+    // validate the caller's key, but the prefix is joined *after* that and the
+    // result goes straight into a signed request URI. An unchecked `..` was a
+    // traversal segment in the path this store asks the object store to act on.
+    TomBlobStore.validateKeyPrefix(keyPrefix);
   }
 
   /// The service root, without the bucket.
@@ -95,6 +100,10 @@ class TomS3BlobStore extends TomBlobStore {
   final int partSize;
 
   /// A prefix prepended to every key, so one bucket can host several stores.
+  ///
+  /// Validated at construction against [TomBlobStore.isValidKeyPrefix]: it is
+  /// joined to keys that have already been checked, so it must meet the same
+  /// grammar or the joined key is one no store should be asked for.
   final String? keyPrefix;
 
   /// The request signer.
