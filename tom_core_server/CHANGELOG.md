@@ -74,6 +74,45 @@
 
 ### Fixed
 
+- **`TomColumnType.forValue` was documented as used by adapters that do not
+  exist, in a module that argues against ever writing one (tcinc531).** Its
+  dartdoc read "used by adapters that infer columns from data rather than being
+  told"; nothing in the workspace called it, and the only thing that ever had
+  was the test asserting its own mapping. It was the enum's one member without a
+  consumer — `dartType` is read by `_TomEntityProjection.columnTypeOf` and
+  `naturalWidth` by `_derivedWidth`.
+
+  It has been **removed** rather than given a caller or a softer sentence. The
+  caller the todo suggested — an `ofMaps` variant deriving columns from the
+  first row — is the wrong shape for this family twice over: a section's columns
+  must exist before its stream is subscribed, so inference would make it the one
+  constructor here that has to be awaited, and a first row is the worst
+  available witness, since a `null` cell declares nothing and every later row
+  would be formatted under whichever row happened to arrive first. The module
+  already takes that position for widths — `TomTabularColumn`'s width comes from
+  the schema and never from the rows, because XLSX is written a row at a time
+  and cannot measure them either — and already answers the "derive my columns"
+  request with `ofEntities`, which reads `@TomDbColumn`: a declaration, ordered
+  and named and typed, rather than a sample. Keeping the method and describing
+  it as "offered for callers that need it" would have been the speculative API
+  the guidelines rule out, left standing as a signpost toward a design the
+  module rejects. The inverse is a six-line switch on the day a real caller
+  appears.
+
+  The knowledge is now written where someone looking for the missing method will
+  be: `ofMaps`'s dartdoc, the API mirror's factory prose and `doc/export.md` all
+  state that **columns are declared or derived from a schema, never inferred
+  from the rows**, with the reason and the pointer to `ofEntities`.
+
+  The deleted test's value was kept by repointing it at `dartType` — the binding
+  that has a consumer, and one whose failure mode is silent: `columnTypeOf`
+  keeps its family-derived candidate only when the declared Dart type can
+  inhabit it, so a wrong entry demotes that family's columns to `text` and the
+  export formats its dates as strings with nothing reported anywhere. Eight
+  mutations confirm the rewritten test pins that table: each of the five
+  `dartType` entries falsified in turn, the inhabitability guard dropped, the
+  guard inverted, and a sixth column type appended.
+
 - **`TomDirectoryExportStore`'s constructor dartdoc described a filesystem
   effect the constructor does not have (tcinc530).** It read "a store rooted at
   `root`, which is created if it does not exist"; the constructor assigns the

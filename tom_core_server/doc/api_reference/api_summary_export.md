@@ -154,17 +154,11 @@ no rule for.
 | `boolean` | A truth value; rendered as `true`/`false`, as an XLSX boolean. Accepts `bool`. |
 | `timestamp` | A point in time; rendered ISO-8601, as an XLSX date serial. Accepts `DateTime`. |
 
-#### Static Methods
-
-| Method | Signature | Description |
-| ------ | --------- | ----------- |
-| `forValue` | `static TomColumnType? forValue(Object? value)` | The column type matching `value`'s runtime type, or `null` when it has none; used by adapters that infer columns from data rather than being told. |
-
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `dartType` | `Type` | The Dart type a cell of this column must hold (or `null`) (final). |
+| `dartType` | `Type` | The Dart type a cell of this column must hold (or `null`). Load-bearing rather than descriptive: `TomTabularSection.ofEntities` derives a candidate type from the field's SQL type family and keeps it only when the declared Dart type can inhabit it, so this is what stops a JSON column typed `text` in the database being exported as anything other than text (final). |
 | `naturalWidth` | `int` | How wide a cell of this type renders, in characters — `integer` 11, `decimal` 12, `text` 16, `boolean` 5, `timestamp` 23. Measured against what this package emits, not against the type's range, and used as the width of a column that states none (final). |
 
 ### TomTabularColumn
@@ -283,6 +277,16 @@ factory TomTabularSection.ofMaps(
 fixture — where streaming buys nothing. `ofMaps` is the adapter for anything
 handing back values by name (a `TomGroupedRow`'s values, decoded JSON, a
 driver's row map) and orders each map against `columns` once.
+
+Both take their columns from the caller; **neither infers them from the rows**.
+Inference would mean reading the first row to learn the shape, and a first row
+is the worst available witness — a `null` cell declares nothing, so a column
+would be typed by whichever row arrived first and every later row formatted
+under that guess. It is also unavailable: a section's columns must exist before
+its stream is subscribed, so an inferring constructor would be the one in the
+family that had to be awaited. The same argument governs widths, which
+`effectiveWidth` takes from the schema rather than measuring the data. A caller
+that wants derived columns has `ofEntities`, which reads a declaration.
 
 #### Static Methods
 

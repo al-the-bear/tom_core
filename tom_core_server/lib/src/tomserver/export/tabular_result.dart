@@ -121,18 +121,6 @@ enum TomColumnType {
   /// adding a type here means deciding its width — which is why it is a
   /// constructor argument and not a defaulted switch somewhere else.
   final int naturalWidth;
-
-  /// The column type for [value]'s runtime type, or `null` if it has none.
-  ///
-  /// Used by adapters that infer columns from data rather than being told.
-  static TomColumnType? forValue(Object? value) => switch (value) {
-    int() => TomColumnType.integer,
-    double() => TomColumnType.decimal,
-    String() => TomColumnType.text,
-    bool() => TomColumnType.boolean,
-    DateTime() => TomColumnType.timestamp,
-    _ => null,
-  };
 }
 
 /// One typed column of a [TomTabularSection].
@@ -321,6 +309,20 @@ class TomTabularSection {
   ///
   /// The adapter for anything that hands back values by name — a
   /// `TomGroupedRow`'s values, decoded JSON, a driver's row map.
+  ///
+  /// **The caller declares the columns; they are never inferred from the rows.**
+  /// Inferring them would mean reading the first row to learn the shape, and a
+  /// first row is the worst available witness: a `null` cell declares nothing,
+  /// so the column would be typed by whichever row happened to arrive first and
+  /// every later row formatted under that guess. It is also unavailable — a
+  /// section's columns must exist before its stream is subscribed, so inference
+  /// would make this the one constructor in the family that has to be awaited.
+  /// The same argument governs widths: [TomTabularColumn.effectiveWidth] falls
+  /// back to the schema and never measures the rows, because XLSX is written a
+  /// row at a time and cannot measure them either. A caller that wants its
+  /// columns derived rather than written out has [ofEntities], which reads them
+  /// from `@TomDbColumn` — a declaration, ordered and named and typed, rather
+  /// than a sample.
   factory TomTabularSection.ofMaps(
     List<TomTabularColumn> columns,
     Stream<Map<String, Object?>> rows, {

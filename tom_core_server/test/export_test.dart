@@ -198,12 +198,27 @@ void main() {
     });
 
     test('column types cover exactly what the query layer produces', () {
-      expect(TomColumnType.forValue(1), TomColumnType.integer);
-      expect(TomColumnType.forValue(1.5), TomColumnType.decimal);
-      expect(TomColumnType.forValue('s'), TomColumnType.text);
-      expect(TomColumnType.forValue(true), TomColumnType.boolean);
-      expect(TomColumnType.forValue(DateTime.now()), TomColumnType.timestamp);
-      expect(TomColumnType.forValue(<int>[]), isNull);
+      // The table this asserts is load-bearing rather than descriptive:
+      // `_TomEntityProjection.columnTypeOf` derives a candidate type from the
+      // SQL type family and then keeps it only if `dartType` says the declared
+      // Dart type can inhabit it. A wrong entry here would not fail loudly —
+      // it would silently demote that family's columns to `text`, and an
+      // export would format its dates as strings with nothing reported.
+      expect(TomColumnType.integer.dartType, int);
+      expect(TomColumnType.decimal.dartType, double);
+      expect(TomColumnType.text.dartType, String);
+      expect(TomColumnType.boolean.dartType, bool);
+      expect(TomColumnType.timestamp.dartType, DateTime);
+      // The set is exactly `TomGroupedRow`'s, so an aggregate result adapts
+      // without a lossy conversion and a renderer never meets a value it has
+      // no rule for. A type added here is a renderer change, not a data one.
+      expect(TomColumnType.values.map((type) => type.dartType), [
+        int,
+        double,
+        String,
+        bool,
+        DateTime,
+      ]);
     });
 
     test('ofMaps adapts a stream of keyed rows', () async {

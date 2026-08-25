@@ -244,6 +244,17 @@ majority, and the one a declarative report definition can express. It is not for
 
 Those keep `ofRows` / `ofMaps`, which are correct and are not deprecated by this.
 
+In all three of those cases the caller writes its columns out, and that is the
+only alternative to `ofEntities` the module offers: **columns are declared or
+derived from a schema, never inferred from the rows.** Inference would have to
+read the first row to learn the shape, and a first row is the worst available
+witness — a `null` cell declares nothing, so the column would be typed by
+whichever row happened to arrive first and every later row formatted under that
+guess. It is also unavailable, because a section's columns must exist before its
+stream is subscribed; an inferring constructor would be the only one in the
+family that had to be awaited. This is the same rule as the one governing widths
+below, arrived at from the other end.
+
 ### Deriving the Column Type
 
 `TomAnnotationAnalyzer.familyOf` reduces a column's annotations to a
