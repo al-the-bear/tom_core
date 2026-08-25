@@ -2,6 +2,36 @@
 
 ### Testing
 
+- **Two of the `/health` endpoint's three deliberate choices were documented as
+  load-bearing and asserted nowhere (tcinc559).** `doc/healthcheck.md` presents
+  `@TomPublicAccess`, `produces: TomMimeType.plainText` and
+  `logRequests: false` as decisions "a deployment might otherwise try to undo".
+  Only the public access was covered, and only as a side effect of an
+  unauthenticated call returning 200.
+
+  Both gaps regress silently in production, which is why they are worth
+  assertions rather than review. `produces` defaults to `TomMimeType.json`, so
+  deleting the argument does not drop the Content-Type header — it turns the
+  body into an `application/json` one, and a probe matching the body for `OK`
+  still finds those two characters inside the JSON. And a probe log flooding at
+  orchestrator frequency breaks nothing anyone reports; it is noticed days
+  later by whoever next reads the log.
+
+  The `healthcheck GET /health route` group now asserts that the response
+  Content-Type starts with `text/plain` (matched by prefix, since the charset
+  parameter is the serializer's business), and that a `GET /health` produces no
+  pipeline log line. The logging test sets
+  `globalSettingLogRequestsDefault = true` first, so silence can only come from
+  the endpoint's own annotation — without that, removing `logRequests: false`
+  leaves the flag null and the test would pass on the fallback. It then asserts
+  that `/fixture/health`, which carries `logRequests: true`, *is* logged: an
+  assertion that nothing was logged passes equally well against a capture that
+  was never wired up.
+
+  Each mutation is caught by its own test with the other left green. The
+  existing 200 assertion also now names what it pins, so all three choices read
+  as deliberate at the point they are checked.
+
 - **An interrupted download was believed to leak a `package:http` exception; it
   does not, and what was actually untested was the bytes it delivers first
   (tcinc546).** The reported defect was `TomS3BlobStore.doGet`'s

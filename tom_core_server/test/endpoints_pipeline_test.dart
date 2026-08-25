@@ -940,10 +940,85 @@ void main() {
       'mounts /health and returns the analyzer status as plain text',
       () async {
         final response = await router.call(_get('/health'));
-        expect(response.statusCode, 200);
+        // No principal is established anywhere in this call, so the 200 is the
+        // first of the endpoint's three deliberate choices: `@TomPublicAccess`
+        // is what lets an orchestrator probe — which holds no token and cannot
+        // be issued one — reach the route at all. Guarding it turns this into
+        // an access-denied response.
+        expect(
+          response.statusCode,
+          200,
+          reason: '@TomPublicAccess: an unauthenticated probe reaches /health',
+        );
         expect(await response.readAsString(), 'OK');
+
+        // The caption's second clause, which until now was only a caption. The
+        // pipeline sets Content-Type from `TomEndpoint.produces`, whose default
+        // is `TomMimeType.json` — so deleting the endpoint's
+        // `produces: TomMimeType.plainText` does not remove the header, it
+        // silently turns the body into an `application/json` one.
+        //
+        // Which is the reason this needs asserting at all rather than being
+        // left to the reader of the annotation: a probe matching the body for
+        // `OK` still finds those two characters inside a JSON-wrapped payload,
+        // so the regression reaches production intact and shows up only in
+        // whatever downstream parses the response strictly.
+        //
+        // Matched with `startsWith` because the charset parameter is the
+        // header serializer's business, not this endpoint's contract.
+        expect(
+          response.headers[TomHeader.contentType],
+          startsWith('text/plain'),
+          reason: 'produces: TomMimeType.plainText, not the JSON default',
+        );
       },
     );
+
+    test('a probe of /health is not written to the request log', () async {
+      // The third documented-as-deliberate choice, and the one whose regression
+      // is least visible: `logRequests: false` exists so orchestrator probes —
+      // which arrive every few seconds, forever — do not fill the log. Flipping
+      // it to true breaks nothing a test would notice and nothing a user would
+      // report; it just quietly costs a line per probe until someone reads a
+      // log days later and finds nothing else in it.
+      final previousOutput = tomLog.logOutput;
+      final captured = _CapturingLogOutput();
+      tomLog.logOutput = captured;
+      addTearDown(() => tomLog.logOutput = previousOutput);
+
+      // Deliberately hostile: with the global default at `true`, silence can
+      // only come from the endpoint's own annotation. Left at whatever the
+      // default happens to be, this test would keep passing after the
+      // annotation was deleted.
+      final priorDefault = TomEndpointHandler.globalSettingLogRequestsDefault;
+      TomEndpointHandler.globalSettingLogRequestsDefault = true;
+      addTearDown(
+        () => TomEndpointHandler.globalSettingLogRequestsDefault = priorDefault,
+      );
+
+      // The pipeline's own success line. Matched on rather than on the path
+      // alone because trace output and the logging middleware's fallback line
+      // both name the path too; `[Normal processing]` appears in one place.
+      bool loggedLineFor(String path) => captured.lines.any(
+        (l) => l.contains('[Normal processing]') && l.contains(path),
+      );
+
+      expect((await router.call(_get('/health'))).statusCode, 200);
+      expect(loggedLineFor('/health'), isFalse);
+
+      // The other half, and what stops this being a test of a broken harness:
+      // an assertion that *nothing* was logged passes just as happily when the
+      // capture is not wired up, the router is misbuilt, or the pipeline logs
+      // nowhere at all. `/fixture/health` carries `logRequests: true`, so a
+      // line for it proves the observation works and isolates the difference
+      // to the annotation.
+      expect((await router.call(_get('/fixture/health'))).statusCode, 200);
+      expect(
+        loggedLineFor('/fixture/health'),
+        isTrue,
+        reason: 'the capture observes logging when an endpoint asks for it',
+      );
+    });
 
     test('reflects the configured TomHealthAnalyzer status', () async {
       TomHealthServer.healthAnalyzer = _DegradedAnalyzer();
