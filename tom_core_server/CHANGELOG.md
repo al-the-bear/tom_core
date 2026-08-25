@@ -2,12 +2,42 @@
 
 ### Testing
 
+- **The health-check test and example pointed at coverage that does not exist
+  (tcinc560).** Both headers said the `GET /health` route was "covered by
+  `doc/healthcheck.md` and integration tests, not here". A document covers no
+  route, and this package has no integration suite — while the route is in fact
+  covered in the same package, by `endpoints_pipeline_test.dart`'s group
+  `healthcheck GET /health route`, which neither header named. Coverage nobody
+  can find gets written a second time by the next person to add a route
+  assertion, and deleted by the next person who reads the group's name as
+  belonging to another module.
+
+  Both headers, and `doc/healthcheck.md`'s endpoint section, now name that
+  group. They name it by *group name* rather than line number so the pointer
+  survives edits to the file it points into — this todo's own stored reference
+  had already gone stale by ~700 lines. The example's header also claimed the
+  route "needs a running server"; it does not, and that claim was the reason
+  the in-package coverage looked impossible.
+
+  Writing the pointer turned up a hole in what it pointed at.
+  `@TomPublicAccess` was **not** in fact pinned: `checkAccess` falls back to
+  `!globalSettingProtectionDefault` when an endpoint declares no access
+  control, which under the suites' permissive default is `true` — the same
+  answer the annotation gives. Deleting the annotation and regenerating
+  reflection left the whole group green. The group now also asserts that
+  `/health` serves anonymously with
+  `TomResourceKeyProtection.globalSettingProtectionDefault` turned **on**,
+  which is the only setting under which the annotation is observable, and the
+  deployment the endpoint actually has to survive: a hardened server still owes
+  its orchestrator a liveness probe, and a probe holds no token.
+
 - **Two of the `/health` endpoint's three deliberate choices were documented as
   load-bearing and asserted nowhere (tcinc559).** `doc/healthcheck.md` presents
   `@TomPublicAccess`, `produces: TomMimeType.plainText` and
   `logRequests: false` as decisions "a deployment might otherwise try to undo".
-  Only the public access was covered, and only as a side effect of an
-  unauthenticated call returning 200.
+  The public access appeared to be covered by an unauthenticated call returning
+  200; tcinc560 established that it was not covered at all, and closed that
+  third gap.
 
   Both gaps regress silently in production, which is why they are worth
   assertions rather than review. `produces` defaults to `TomMimeType.json`, so

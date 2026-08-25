@@ -940,15 +940,18 @@ void main() {
       'mounts /health and returns the analyzer status as plain text',
       () async {
         final response = await router.call(_get('/health'));
-        // No principal is established anywhere in this call, so the 200 is the
-        // first of the endpoint's three deliberate choices: `@TomPublicAccess`
-        // is what lets an orchestrator probe — which holds no token and cannot
-        // be issued one — reach the route at all. Guarding it turns this into
-        // an access-denied response.
+        // An unauthenticated probe reaches the route: no principal is
+        // established anywhere in this call.
+        //
+        // Note what this does *not* pin. Under the suite's permissive default
+        // an endpoint declaring no access control at all serves anonymously
+        // too, so deleting `@TomPublicAccess` leaves this 200 exactly where it
+        // is. That the annotation is load-bearing is pinned by 'stays
+        // anonymous when the deployment protects by default', below.
         expect(
           response.statusCode,
           200,
-          reason: '@TomPublicAccess: an unauthenticated probe reaches /health',
+          reason: 'an unauthenticated probe reaches /health',
         );
         expect(await response.readAsString(), 'OK');
 
@@ -973,6 +976,38 @@ void main() {
         );
       },
     );
+
+    test('stays anonymous when the deployment protects by default', () async {
+      // What makes `@TomPublicAccess` load-bearing rather than decorative, and
+      // the only condition under which it can be observed at all: with the
+      // suite's permissive default, `checkAccess` falls back to
+      // `!globalSettingProtectionDefault` for an endpoint that declares
+      // nothing — which is `true`, the same answer the annotation gives. So
+      // every assertion made against the open default passes with the
+      // annotation deleted.
+      //
+      // Flipping the default is what separates the two: an endpoint declaring
+      // nothing is then refused, and only a declared public policy still
+      // serves. Which is precisely the deployment this endpoint has to survive
+      // — a hardened server still owes its orchestrator a liveness probe, and
+      // a probe cannot hold a token or be issued one, so a /health that
+      // answered 403 under hardening would take the pod down with it.
+      //
+      // Deliberately shares its name with the test of the same property on the
+      // `/todos` route, in the 'the readme Quick start' group above: same
+      // property, same reason, same shape.
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      addTearDown(
+        () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
+      );
+      final response = await router.call(_get('/health'));
+      expect(
+        response.statusCode,
+        200,
+        reason: '@TomPublicAccess: /health survives a protect-by-default server',
+      );
+      expect(await response.readAsString(), 'OK');
+    });
 
     test('a probe of /health is not written to the request log', () async {
       // The third documented-as-deliberate choice, and the one whose regression

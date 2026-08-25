@@ -39,6 +39,18 @@ reach it without a token), and sets `logRequests: false` so frequent probe
 traffic does not flood the logs. Like every endpoint it is mounted by the
 endpoints pipeline (see `doc/endpoints.md`) when the server starts.
 
+All three of those choices are asserted against the mounted route, in
+`test/endpoints_pipeline_test.dart`'s group `healthcheck GET /health route`;
+deleting any one of the three fails that group. It is also where the route's
+answer to a swapped-in analyzer is pinned. `test/healthcheck_test.dart` covers
+the analyzer contract itself, away from the route.
+
+`@TomPublicAccess` is checked against a server with
+`TomResourceKeyProtection.globalSettingProtectionDefault` turned **on**, because
+that is the only setting under which it can be observed: with protection off, an
+endpoint declaring no access control serves anonymously anyway, so an ordinary
+unauthenticated request cannot tell the annotation from its absence.
+
 ## One Verdict for the Process
 
 There is one route, one static analyzer and therefore one answer. Point an

@@ -1,12 +1,18 @@
 /// Executable example for the health-check module of `tom_core_server`.
 ///
-/// The `GET /health` route itself is mounted by the reflection-based endpoints
-/// pipeline and needs a running server (see `doc/healthcheck.md`); this example
-/// shows the server-free surface: the pluggable [TomHealthAnalyzer] and the way
-/// [TomHealthServer.health] delegates to it.
+/// This example shows the surface you can drive directly: the pluggable
+/// [TomHealthAnalyzer] and the way [TomHealthServer.health] delegates to it.
+/// The `GET /health` route that publishes it is mounted by the reflection-based
+/// endpoints pipeline, so showing it here would mean initializing generated
+/// reflection and building a router — machinery that would bury the one thing
+/// this example is about. See `doc/healthcheck.md` for how the route is
+/// declared and wired.
 ///
 /// Run with `dart run example/healthcheck/healthcheck_example.dart`.
-/// The same behaviour is covered by `test/healthcheck_test.dart`.
+///
+/// The behaviour shown here is pinned by `test/healthcheck_test.dart`; the
+/// mounted route is pinned by `test/endpoints_pipeline_test.dart`, in the group
+/// named `healthcheck GET /health route`.
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';
