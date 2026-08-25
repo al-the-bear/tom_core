@@ -12,6 +12,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [Associations (`@TomReference`)](#associations-tomreference)
 - [The Repository Contract](#the-repository-contract)
 - [Query Sentences](#query-sentences)
+  - [Column types a predicate can address](#column-types-a-predicate-can-address)
 - [The Query Builder DSL](#the-query-builder-dsl)
 - [Row Scopes](#row-scopes)
 - [Grouping and Aggregation](#grouping-and-aggregation)
@@ -224,6 +225,23 @@ find first 25 skip 50 by status = :status order by priority desc due_date asc
 ```
 
 A malformed sentence raises `TomQuerySyntaxException`.
+
+### Column types a predicate can address
+
+A predicate addresses a column through three separate type dispatches — the
+column node, the bind parameter, and the comparison that joins them — and all
+three cover the same six families: `String`, `int`, `double`, `bool`,
+`DateTime` and `TomZonedDate`, each with its `Tom…` and nullable `TomN…`
+spellings, plus the `TomDb…` names when an entity gives `columnType:`
+explicitly. A column outside them raises
+`query_sentence_compiler.create_column.failed`.
+
+**Decimal *literals* are the exception.** A `double` column compares against a
+bind parameter (`find by amount > :floor`) and takes `IS IN`, `IS NULL` and
+`MIN`/`MAX`, but a sentence that spells the value inline — `find by amount >
+1.5` — is refused: the lexer reads `1.5` as an integer literal and then finds
+it does not match the column's type. Bind the value instead, which is the
+better habit regardless.
 
 ## The Query Builder DSL
 

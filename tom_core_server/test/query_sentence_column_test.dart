@@ -52,6 +52,18 @@ void main() {
       );
     });
 
+    test('a double column compiles', () {
+      // The second occurrence of the same defect, in a different family: the
+      // declared-type switch enumerated String/int/bool/DateTime/TomZonedDate
+      // and simply omitted `double`, so a decimal column was untypeable no
+      // matter how it was written. `DoubleCol` existed and `_createAggregate`
+      // already had an arm for it — nothing could ever produce one.
+      expect(
+        select('find by amount > :amount').generateQuery(dialect),
+        contains('fixture_export.amount > :amount'),
+      );
+    });
+
     test('a bool column compiles', () {
       expect(
         select('find by done = :done').generateQuery(dialect),
@@ -98,6 +110,94 @@ void main() {
         () => compiler.compileQuerySentence('find by nosuch = :x'),
         throwsA(isA<TomServerException>()),
       );
+    });
+  });
+
+  // Typing a column is only the first of three switches a predicate passes
+  // through: the column node, the bind parameter, and the comparison that
+  // joins them each dispatch on the type independently. `double` was absent
+  // from all three, so proving one arm reachable proves nothing about the
+  // next — hence one test per operator rather than one per type.
+  group('double columns across the predicate forms', () {
+    test('every comparison operator accepts a double column', () {
+      for (final (symbol, sentence) in const [
+        ('=', 'find by amount = :amount'),
+        ('<>', 'find by amount <> :amount'),
+        ('<', 'find by amount < :amount'),
+        ('<=', 'find by amount <= :amount'),
+        ('>', 'find by amount > :amount'),
+        ('>=', 'find by amount >= :amount'),
+      ]) {
+        expect(
+          select(sentence).generateQuery(dialect),
+          contains('fixture_export.amount $symbol :amount'),
+          reason: 'the $symbol comparison should type a double column',
+        );
+      }
+    });
+
+    test('a double column binds its parameter as a decimal', () {
+      // The parameter's *type* is what carries the value across the bind
+      // boundary; typing it as text or int would round-trip a decimal wrong
+      // even where the SQL looks right. Asserted on the node, because the
+      // rendered `:amount` is identical for every family.
+      final query = select('find by amount >= :floor');
+      expect(query.getParameters(dialect), ['floor']);
+      expect(query.query, isA<Gte<TomDbDouble>>());
+    });
+
+    test('a double column takes IS NULL and IS NOT NULL', () {
+      expect(
+        select('find by amount is null').generateQuery(dialect),
+        contains('fixture_export.amount IS NULL'),
+      );
+      expect(
+        select('find by amount is not null').generateQuery(dialect),
+        contains('fixture_export.amount IS NOT NULL'),
+      );
+    });
+
+    test('a double column takes IS IN', () {
+      expect(
+        select('find by amount is in ( :a , :b )').generateQuery(dialect),
+        contains('fixture_export.amount IN (:a,:b)'),
+      );
+    });
+
+    test('a double column orders and combines with another predicate', () {
+      final query = select(
+        'find by amount >= :floor and done = :done order by amount desc',
+      ).generateQuery(dialect);
+      expect(query, contains('fixture_export.amount >= :floor'));
+      expect(query, contains('ORDER BY fixture_export.amount DESC'));
+    });
+  });
+
+  // The aggregate switch dispatches on the *node* `_createColumn` produced, so
+  // its `DoubleCol` arm was unreachable for as long as nothing could build one:
+  // dead code that looked handled. These are what make it live.
+  group('aggregates over a double column', () {
+    test('min over a double column yields a double-typed aggregate', () {
+      final query =
+          compiler.compileQuerySentence(
+                'group min ( amount ) as lo over done by id > 0',
+              )
+              as TomGroupedSelect;
+      expect(query.aggregates.single, isA<Min<TomDbDouble, double>>());
+      expect(
+        query.generateQuery(dialect),
+        contains('MIN(fixture_export.amount) AS lo'),
+      );
+    });
+
+    test('max over a double column yields a double-typed aggregate', () {
+      final query =
+          compiler.compileQuerySentence(
+                'group max ( amount ) as hi over done by id > 0',
+              )
+              as TomGroupedSelect;
+      expect(query.aggregates.single, isA<Max<TomDbDouble, double>>());
+      expect(query.aggregates.single.valueType, double);
     });
   });
 }

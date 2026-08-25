@@ -10,6 +10,22 @@ import 'paging.dart';
 import 'persistence_annotations.dart';
 import 'query_builder.dart';
 
+/// A two-operand comparison node factory: [TomQueryBuilder.eq],
+/// [TomQueryBuilder.neq], [TomQueryBuilder.lt], [TomQueryBuilder.lte],
+/// [TomQueryBuilder.gt] and [TomQueryBuilder.gte] all have this shape.
+///
+/// Naming it is what lets a *single* dispatch over the operand's SQL type serve
+/// all six operators. Without it each operator needs its own copy of the
+/// switch, and a type added to one is silently missing from the other five —
+/// which is exactly how `double` came to be unsupported.
+typedef _ComparisonFactory =
+    TomOperator<TomDbBool> Function<T>(TomOperator<T>, TomOperator<T>);
+
+/// A one-operand predicate factory: [TomQueryBuilder.isNull] and
+/// [TomQueryBuilder.isNotNull].
+typedef _UnaryPredicateFactory =
+    TomOperator<TomDbBool> Function<T>(TomOperator<T>);
+
 /// Compiles a Spring-Data-style *query sentence* into a [TomQuery].
 ///
 /// A query sentence is a whitespace-separated phrase such as
@@ -537,86 +553,82 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     return list[start + ahead].toUpperCase() == forWhat.toUpperCase();
   }
 
+  /// Dispatches a two-operand comparison on the SQL type of its left operand.
+  ///
+  /// The right-hand side is parsed *as* that type, so the parse and the node
+  /// construction have to agree — which is why this is one method taking a
+  /// [build] factory rather than a copy of the switch per operator. [key] and
+  /// [symbol] name the operator in the failure a type outside the switch
+  /// produces, so the six callers stay distinguishable in an error message.
+  ///
+  /// [groupedBoolOperand] selects how the right-hand side of a comparison
+  /// against a *boolean* operand is parsed. `=` and `<>` route it through
+  /// [_buildQuery], so `done = ( a > 1 or b > 2 )` compares against a whole
+  /// predicate; the four ordering comparisons parse a plain expression instead.
+  /// The distinction predates this dispatch and is preserved deliberately —
+  /// collapsing it would silently widen what `<` accepts.
+  (TomOperator<TomDbBool>, int) _createComparison(
+    List<String> qp,
+    String qs,
+    int i,
+    TomColumnInformation? column,
+    TomOperator current, {
+    required _ComparisonFactory build,
+    required String key,
+    required String symbol,
+    required bool groupedBoolOperand,
+  }) {
+    (TomOperator<TomDbBool>, int) compareAs<T>() {
+      final (nextOperation, index) = _buildExpression<T>(
+        qp,
+        qs,
+        i,
+        column,
+        current,
+      );
+      return (build<T>(current as TomOperator<T>, nextOperation), index);
+    }
+
+    switch (current.returnType) {
+      case TomDbString:
+        return compareAs<TomDbString>();
+      case TomDbInt:
+        return compareAs<TomDbInt>();
+      case TomDbDouble:
+        return compareAs<TomDbDouble>();
+      case TomDbDateTime:
+        return compareAs<TomDbDateTime>();
+      case TomDbDate:
+        return compareAs<TomDbDate>();
+      case TomDbBool:
+        if (!groupedBoolOperand) return compareAs<TomDbBool>();
+        final operand = current as TomOperator<TomDbBool>;
+        final (nextOperation, index) = _buildQuery(qp, qs, i, column, operand);
+        return (build<TomDbBool>(operand, nextOperation), index);
+    }
+    throw TomQuerySyntaxException(
+      key,
+      "Attempt to _create $symbol operation for unknown type ${current.returnType}",
+    );
+  }
+
   (TomOperator<TomDbBool>, int) _createEq(
     List<String> qp,
     String qs,
     int i,
     TomColumnInformation? column,
     TomOperator current,
-  ) {
-    int index;
-    switch (current.returnType) {
-      case TomDbString:
-        TomOperator<TomDbString>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbString>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          eq<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
-          index,
-        );
-      case TomDbInt:
-        TomOperator<TomDbInt>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbInt>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          eq<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
-          index,
-        );
-      case TomDbBool:
-        TomOperator<TomDbBool>? nextOperation;
-        (nextOperation, index) = _buildQuery(
-          qp,
-          qs,
-          i,
-          column,
-          current as TomOperator<TomDbBool>,
-        );
-        return (eq<TomDbBool>(current, nextOperation), index);
-      case TomDbDateTime:
-        TomOperator<TomDbDateTime>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDateTime>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          eq<TomDbDateTime>(
-            current as TomOperator<TomDbDateTime>,
-            nextOperation,
-          ),
-          index,
-        );
-      case TomDbDate:
-        TomOperator<TomDbDate>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDate>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          eq<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
-          index,
-        );
-    }
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_eq.failed",
-      "Attempt to _create = operation for unknown type ${current.returnType}",
-    );
-  }
+  ) => _createComparison(
+    qp,
+    qs,
+    i,
+    column,
+    current,
+    build: eq,
+    key: "query_sentence_compiler.create_eq.failed",
+    symbol: "=",
+    groupedBoolOperand: true,
+  );
 
   (TomOperator<TomDbBool>, int) _createNeq(
     List<String> qp,
@@ -624,80 +636,17 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     int i,
     TomColumnInformation? column,
     TomOperator current,
-  ) {
-    int index;
-    switch (current.returnType) {
-      case TomDbString:
-        TomOperator<TomDbString>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbString>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          neq<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
-          index,
-        );
-      case TomDbInt:
-        TomOperator<TomDbInt>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbInt>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          neq<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
-          index,
-        );
-      case TomDbBool:
-        TomOperator<TomDbBool>? nextOperation;
-        (nextOperation, index) = _buildQuery(
-          qp,
-          qs,
-          i,
-          column,
-          current as TomOperator<TomDbBool>,
-        );
-        return (neq<TomDbBool>(current, nextOperation), index);
-      case TomDbDateTime:
-        TomOperator<TomDbDateTime>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDateTime>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          neq<TomDbDateTime>(
-            current as TomOperator<TomDbDateTime>,
-            nextOperation,
-          ),
-          index,
-        );
-      case TomDbDate:
-        TomOperator<TomDbDate>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDate>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          neq<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
-          index,
-        );
-    }
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_neq.failed",
-      "Attempt to _create <> operation for unknown type ${current.returnType}",
-    );
-  }
+  ) => _createComparison(
+    qp,
+    qs,
+    i,
+    column,
+    current,
+    build: neq,
+    key: "query_sentence_compiler.create_neq.failed",
+    symbol: "<>",
+    groupedBoolOperand: true,
+  );
 
   (TomOperator<TomDbBool>, int) _createLt(
     List<String> qp,
@@ -705,83 +654,17 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     int i,
     TomColumnInformation? column,
     TomOperator current,
-  ) {
-    int index;
-    switch (current.returnType) {
-      case TomDbString:
-        TomOperator<TomDbString>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbString>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lt<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
-          index,
-        );
-      case TomDbInt:
-        TomOperator<TomDbInt>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbInt>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lt<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
-          index,
-        );
-      case TomDbBool:
-        TomOperator<TomDbBool>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbBool>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lt<TomDbBool>(current as TomOperator<TomDbBool>, nextOperation),
-          index,
-        );
-      case TomDbDateTime:
-        TomOperator<TomDbDateTime>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDateTime>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lt<TomDbDateTime>(
-            current as TomOperator<TomDbDateTime>,
-            nextOperation,
-          ),
-          index,
-        );
-      case TomDbDate:
-        TomOperator<TomDbDate>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDate>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lt<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
-          index,
-        );
-    }
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_lt.failed",
-      "Attempt to _create < operation for unknown type ${current.returnType}",
-    );
-  }
+  ) => _createComparison(
+    qp,
+    qs,
+    i,
+    column,
+    current,
+    build: lt,
+    key: "query_sentence_compiler.create_lt.failed",
+    symbol: "<",
+    groupedBoolOperand: false,
+  );
 
   (TomOperator<TomDbBool>, int) _createLte(
     List<String> qp,
@@ -789,83 +672,17 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     int i,
     TomColumnInformation? column,
     TomOperator current,
-  ) {
-    int index;
-    switch (current.returnType) {
-      case TomDbString:
-        TomOperator<TomDbString>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbString>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lte<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
-          index,
-        );
-      case TomDbInt:
-        TomOperator<TomDbInt>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbInt>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lte<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
-          index,
-        );
-      case TomDbBool:
-        TomOperator<TomDbBool>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbBool>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lte<TomDbBool>(current as TomOperator<TomDbBool>, nextOperation),
-          index,
-        );
-      case TomDbDateTime:
-        TomOperator<TomDbDateTime>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDateTime>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lte<TomDbDateTime>(
-            current as TomOperator<TomDbDateTime>,
-            nextOperation,
-          ),
-          index,
-        );
-      case TomDbDate:
-        TomOperator<TomDbDate>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDate>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          lte<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
-          index,
-        );
-    }
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_lte.failed",
-      "Attempt to _create <= operation for unknown type ${current.returnType}",
-    );
-  }
+  ) => _createComparison(
+    qp,
+    qs,
+    i,
+    column,
+    current,
+    build: lte,
+    key: "query_sentence_compiler.create_lte.failed",
+    symbol: "<=",
+    groupedBoolOperand: false,
+  );
 
   (TomOperator<TomDbBool>, int) _createGt(
     List<String> qp,
@@ -873,83 +690,17 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     int i,
     TomColumnInformation? column,
     TomOperator current,
-  ) {
-    int index;
-    switch (current.returnType) {
-      case TomDbString:
-        TomOperator<TomDbString>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbString>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gt<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
-          index,
-        );
-      case TomDbInt:
-        TomOperator<TomDbInt>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbInt>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gt<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
-          index,
-        );
-      case TomDbBool:
-        TomOperator<TomDbBool>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbBool>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gt<TomDbBool>(current as TomOperator<TomDbBool>, nextOperation),
-          index,
-        );
-      case TomDbDateTime:
-        TomOperator<TomDbDateTime>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDateTime>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gt<TomDbDateTime>(
-            current as TomOperator<TomDbDateTime>,
-            nextOperation,
-          ),
-          index,
-        );
-      case TomDbDate:
-        TomOperator<TomDbDate>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDate>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gt<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
-          index,
-        );
-    }
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_gt.failed",
-      "Attempt to _create > operation for unknown type ${current.returnType}",
-    );
-  }
+  ) => _createComparison(
+    qp,
+    qs,
+    i,
+    column,
+    current,
+    build: gt,
+    key: "query_sentence_compiler.create_gt.failed",
+    symbol: ">",
+    groupedBoolOperand: false,
+  );
 
   (TomOperator<TomDbBool>, int) _createGte(
     List<String> qp,
@@ -957,84 +708,24 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     int i,
     TomColumnInformation? column,
     TomOperator current,
-  ) {
-    int index;
-    switch (current.returnType) {
-      case TomDbString:
-        TomOperator<TomDbString>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbString>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gte<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
-          index,
-        );
-      case TomDbInt:
-        TomOperator<TomDbInt>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbInt>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gte<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
-          index,
-        );
-      case TomDbBool:
-        TomOperator<TomDbBool>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbBool>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gte<TomDbBool>(current as TomOperator<TomDbBool>, nextOperation),
-          index,
-        );
-      case TomDbDateTime:
-        TomOperator<TomDbDateTime>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDateTime>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gte<TomDbDateTime>(
-            current as TomOperator<TomDbDateTime>,
-            nextOperation,
-          ),
-          index,
-        );
-      case TomDbDate:
-        TomOperator<TomDbDate>? nextOperation;
-        (nextOperation, index) = _buildExpression<TomDbDate>(
-          qp,
-          qs,
-          i,
-          column,
-          current,
-        );
-        return (
-          gte<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
-          index,
-        );
-    }
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_gte.failed",
-      "Attempt to _create >= operation for unknown type ${current.returnType}",
-    );
-  }
+  ) => _createComparison(
+    qp,
+    qs,
+    i,
+    column,
+    current,
+    build: gte,
+    key: "query_sentence_compiler.create_gte.failed",
+    symbol: ">=",
+    groupedBoolOperand: false,
+  );
 
+  /// `<column> IN ( <options...> )`, with the options parsed as the column's
+  /// own type so a bind or literal in the list cannot be typed differently
+  /// from what it is compared against.
+  ///
+  /// A boolean column reaches [_getInOptions] and is refused there: `IN` over
+  /// two possible values is a predicate written the long way round.
   (TomOperator<TomDbBool>, int) _createIsIn(
     List<String> qp,
     String qs,
@@ -1042,111 +733,82 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     TomColumnInformation? column,
     TomOperator current,
   ) {
+    (TomOperator<TomDbBool>, int) inOptionsAs<T>() {
+      final (List<TomOperator<T>> options, index) = _getInOptions<T>(
+        i + 1,
+        qp,
+        qs,
+        column,
+        current,
+      );
+      return (isIn<T>(current as TomOperator<T>, options), index + 1);
+    }
+
     switch (current.returnType) {
       case TomDbString:
-        var (List<TomOperator<TomDbString>> options, index) = _getInOptions(
-          i + 1,
-          qp,
-          qs,
-          column,
-          current,
-        );
-        return (
-          isIn<TomDbString>(current as TomOperator<TomDbString>, options),
-          index + 1,
-        );
+        return inOptionsAs<TomDbString>();
       case TomDbInt:
-        var (List<TomOperator<TomDbInt>> options, index) = _getInOptions(
-          i + 1,
-          qp,
-          qs,
-          column,
-          current,
-        );
-        return (
-          isIn<TomDbInt>(current as TomOperator<TomDbInt>, options),
-          index + 1,
-        );
+        return inOptionsAs<TomDbInt>();
+      case TomDbDouble:
+        return inOptionsAs<TomDbDouble>();
       case TomDbBool:
-        var (List<TomOperator<TomDbBool>> options, index) = _getInOptions(
-          i + 1,
-          qp,
-          qs,
-          column,
-          current,
-        );
-        return (
-          isIn<TomDbBool>(current as TomOperator<TomDbBool>, options),
-          index + 1,
-        );
+        return inOptionsAs<TomDbBool>();
       case TomDbDateTime:
-        var (List<TomOperator<TomDbDateTime>> options, index) = _getInOptions(
-          i + 1,
-          qp,
-          qs,
-          column,
-          current,
-        );
-        return (
-          isIn<TomDbDateTime>(current as TomOperator<TomDbDateTime>, options),
-          index + 1,
-        );
+        return inOptionsAs<TomDbDateTime>();
       case TomDbDate:
-        var (List<TomOperator<TomDbDate>> options, index) = _getInOptions(
-          i + 1,
-          qp,
-          qs,
-          column,
-          current,
-        );
-        return (
-          isIn<TomDbDate>(current as TomOperator<TomDbDate>, options),
-          index + 1,
-        );
+        return inOptionsAs<TomDbDate>();
     }
     throw TomQuerySyntaxException(
       "query_sentence_compiler.create_is_in.failed",
-      "Attempt to _create >= operation for unknown type ${current.returnType}",
+      "Attempt to _create IS IN operation for unknown type ${current.returnType}",
     );
   }
 
-  TomOperator<TomDbBool> _createIsNull(TomOperator current) {
+  /// Dispatches a null test on the operand's SQL type.
+  ///
+  /// The node is the same shape for every type, but it is *generic* in that
+  /// type, so the type still has to be recovered from [TomOperator.returnType]
+  /// before the node can be built. [build] is [isNull] or [isNotNull].
+  TomOperator<TomDbBool> _createNullTest(
+    TomOperator current, {
+    required _UnaryPredicateFactory build,
+    required String key,
+    required String name,
+  }) {
     switch (current.returnType) {
       case TomDbString:
-        return isNull<TomDbString>(current as TomOperator<TomDbString>);
+        return build<TomDbString>(current as TomOperator<TomDbString>);
       case TomDbInt:
-        return isNull<TomDbInt>(current as TomOperator<TomDbInt>);
+        return build<TomDbInt>(current as TomOperator<TomDbInt>);
+      case TomDbDouble:
+        return build<TomDbDouble>(current as TomOperator<TomDbDouble>);
       case TomDbBool:
-        return isNull<TomDbBool>(current as TomOperator<TomDbBool>);
+        return build<TomDbBool>(current as TomOperator<TomDbBool>);
       case TomDbDateTime:
-        return isNull<TomDbDateTime>(current as TomOperator<TomDbDateTime>);
+        return build<TomDbDateTime>(current as TomOperator<TomDbDateTime>);
       case TomDbDate:
-        return isNull<TomDbDate>(current as TomOperator<TomDbDate>);
+        return build<TomDbDate>(current as TomOperator<TomDbDate>);
     }
     throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_is_null.failed",
-      "Attempt to _create IS NULL operation for unknown type ${current.returnType}",
+      key,
+      "Attempt to _create $name operation for unknown type ${current.returnType}",
     );
   }
 
-  TomOperator<TomDbBool> _createIsNotNull(TomOperator current) {
-    switch (current.returnType) {
-      case TomDbString:
-        return isNotNull<TomDbString>(current as TomOperator<TomDbString>);
-      case TomDbInt:
-        return isNotNull<TomDbInt>(current as TomOperator<TomDbInt>);
-      case TomDbBool:
-        return isNotNull<TomDbBool>(current as TomOperator<TomDbBool>);
-      case TomDbDateTime:
-        return isNotNull<TomDbDateTime>(current as TomOperator<TomDbDateTime>);
-      case TomDbDate:
-        return isNotNull<TomDbDate>(current as TomOperator<TomDbDate>);
-    }
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_is_not_null.failed",
-      "Attempt to _create IS NOT NULL operation for unknown type ${current.returnType}",
-    );
-  }
+  TomOperator<TomDbBool> _createIsNull(TomOperator current) => _createNullTest(
+    current,
+    build: isNull,
+    key: "query_sentence_compiler.create_is_null.failed",
+    name: "IS NULL",
+  );
+
+  TomOperator<TomDbBool> _createIsNotNull(TomOperator current) =>
+      _createNullTest(
+        current,
+        build: isNotNull,
+        key: "query_sentence_compiler.create_is_not_null.failed",
+        name: "IS NOT NULL",
+      );
 
   (TomOperator<TomDbBool>, int) _buildQuery(
     List<String> qp,
@@ -1801,6 +1463,10 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       case TomInt:
       case TomNInt:
         return Parameter<TomDbInt>(field) as Parameter<QT>;
+      case double:
+      case TomDouble:
+      case TomNDouble:
+        return Parameter<TomDbDouble>(field) as Parameter<QT>;
       case bool:
       case TomBool:
       case TomNBool:
@@ -1832,6 +1498,11 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         case TomInt:
         case TomNInt:
           return IntCol(column.tableType, field, column);
+        case double:
+        case TomDbDouble:
+        case TomDouble:
+        case TomNDouble:
+          return DoubleCol(column.tableType, field, column);
         case bool:
         case TomDbBool:
         case TomBool:
@@ -1856,6 +1527,10 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       case TomInt:
       case TomNInt:
         return IntCol(column.tableType, field, column);
+      case double:
+      case TomDouble:
+      case TomNDouble:
+        return DoubleCol(column.tableType, field, column);
       case bool:
       case TomBool:
       case TomNBool:

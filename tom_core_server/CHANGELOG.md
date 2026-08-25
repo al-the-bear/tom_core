@@ -281,6 +281,40 @@
 
 ### Fixed
 
+- **A `double` column could not be used in a query sentence at all
+  (tcinc585).** `TomQuerySentenceCompiler` types a predicate through three
+  independent switches — the column node, the bind parameter, and the
+  comparison joining them — and `double` was in none of them. Any sentence
+  naming a decimal column failed with
+  `query_sentence_compiler.create_column.failed`, so an entity with a money or
+  measurement field had no query-sentence access to it. The damage reached
+  further than the predicate: `DoubleCol` and `_createAggregate`'s
+  `case DoubleCol()` arm both existed and looked handled, but nothing in the
+  compiler could construct a `DoubleCol`, so `min`/`max` over a decimal column
+  was unreachable code that read as supported.
+
+  The fix does not add nine more copies of the missing arm. The five-way type
+  switch was written out nine times — once per comparison operator, once for
+  `IS IN`, once each for `IS NULL` / `IS NOT NULL` — which is why a type could
+  be handled by one and forgotten by the rest, and adding `double` nine times
+  over would preserve exactly that. The six comparison builders now share one
+  `_createComparison` dispatch parameterised by the node factory, `IS IN` uses
+  one generic local, and the two null tests share `_createNullTest`; the
+  `double` arm is added once in each of the three. The one asymmetry between
+  the operators is preserved deliberately and named in the code: `=` and `<>`
+  parse a boolean right-hand side through `_buildQuery` (so
+  `done = ( a > 1 or b > 2 )` compares against a whole predicate) where the
+  four ordering comparisons parse a plain expression. ~610 lines became ~250.
+
+  `IS IN`'s failure message said `>=`, a copy-paste artefact; it now says
+  `IS IN`. The exception key is unchanged.
+
+  **Decimal literals are still refused** — `find by amount > 1.5` reads `1.5`
+  as an integer literal, because the lexer's `[0-9]+` test is unanchored and
+  precedes the decimal test. That is a separate defect in the literal scanner
+  (tcinc586) and is documented as a current limitation in
+  `doc/object_persistence.md`; binding the value works.
+
 - **`TomMessageOutbox.tick()` documented a completed pass and delivered a
   started one (tcinc584).** It was a one-line forward to `TomScheduler.tick()`,
   and a scheduler pass *starts* the runs it claims — deliberately, so that one
