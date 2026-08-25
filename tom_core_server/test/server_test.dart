@@ -5,7 +5,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
 /// Tests for the socket-free surface of the server module: the per-request
-/// value objects ([TomRequestId], [TomRequestLogInfo]), the credential reader
+/// log state ([TomRequestLogInfo]), the credential reader
 /// ([extractAuthentication]), the pipeline middlewares that can run without
 /// binding a port ([contextSetupMiddleware], [tomLoggingMiddleware],
 /// [tomDefaultAuthenticationMiddleware], [noopHandler]), and the default
@@ -58,21 +58,6 @@ class _CapturingLogOutput extends TomLogOutput {
 }
 
 void main() {
-  group('TomRequestId', () {
-    test('generates a non-empty v4 uuid', () {
-      expect(TomRequestId().uuid, isNotEmpty);
-    });
-
-    test('generates distinct ids per instance', () {
-      expect(TomRequestId().uuid, isNot(TomRequestId().uuid));
-    });
-
-    test('toString carries the uuid', () {
-      final id = TomRequestId();
-      expect(id.toString(), 'TomRequestId: ${id.uuid}');
-    });
-  });
-
   group('TomRequestLogInfo', () {
     test('defaults to should-be-logged, not-yet-logged', () {
       final info = TomRequestLogInfo();

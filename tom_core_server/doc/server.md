@@ -4,9 +4,12 @@ The HTTP entry point of a Tom server application. `TomServer` takes a
 `TomBaseServerConfiguration`, assembles a [shelf](https://pub.dev/packages/shelf)
 middleware pipeline in front of the endpoint router, and binds it to a socket.
 The module also provides the middleware that the pipeline is built from —
-context setup, authentication, error mapping, and request logging — plus the
-per-request value objects (`TomRequestId`, `TomRequestLogInfo`) that flow through
-the request zone.
+context setup, authentication, error mapping, and request logging — plus
+`TomRequestLogInfo`, the per-request logging state that travels in the request
+context. The other per-request value object, the correlation id `TomRequestId`,
+is *produced* here — the authentication middleware seeds a fresh one into every
+request zone — but declared in the little-things module, beside the exception
+base that reads it; see [little_things.md](little_things.md#tomrequestid).
 
 ## Table of Contents
 
@@ -26,7 +29,6 @@ the request zone.
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
 | `TomServer` | class | Composes the pipeline and binds the socket |
-| `TomRequestId` | class | Per-request v4-UUID correlation id |
 | `TomRequestLogInfo` | class | Per-request logging state in the request context |
 | `contextSetupMiddleware` | function | Seeds entries into the request context |
 | `tomDefaultAuthenticationMiddleware` | function | Extracts credentials and publishes request zone values |
@@ -87,7 +89,8 @@ Two channels carry per-request state:
 - **The request `Zone`** (established by `tomDefaultAuthenticationMiddleware`)
   exposes a `TomZoneValues` bundle: the shelf `Request`, the ambient
   `TomExecutionContext`, the resolved `TomPrincipal`, the `TomClientJwtToken`,
-  and a fresh `TomRequestId`. Downstream code recovers any of them with
+  and a fresh `TomRequestId` (declared in the little-things module). Downstream
+  code recovers any of them with
   `getFromCurrentZone<T>()` — this is how the endpoints pipeline and
   `TomServerException` obtain the request id and principal.
 
@@ -145,9 +148,8 @@ pipeline as a kind of endpoint — see
 - `tom_core_kernel` — `TomPrincipal`, `TomClientJwtToken`,
   `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`,
   `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`.
-- `uuid` — v4 UUID generation for `TomRequestId`.
 - The little-things module — `TomServerException` (its `clientThrow` flag feeds
-  the error response).
+  the error response) and `TomRequestId` (seeded into every request zone).
 - The configuration module — `TomBaseServerConfiguration`.
 - The endpoints module — `TomEndpointRouting` (router initialisation).
 - The authorization module — `TomAuthorizationCache` (principal resolution).

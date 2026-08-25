@@ -117,7 +117,7 @@ abstract, so other backends can be added.
 | `preferences` | `TomUserPreference`, `TomUserPreferenceRepository`, `TomUserPreferences`, `TomUserPreferencesServer` | Per-principal preferences that follow the user across devices: one scoped table, a typed service that reads its caller from the request zone, and the `/preferences/*` endpoints behind the kernel's contract |
 | `healthcheck` | `TomHealthService`, `TomHealthServer`, `TomHealthAnalyzer` | Health endpoints and analyzers |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
-| `little_things` | `TomServerException`, `LoginException` | Server exception base (extends kernel `TomException`) and the login failure it raises |
+| `little_things` | `TomServerException`, `LoginException`, `TomRequestId` | Server exception base (extends kernel `TomException`), the login failure it raises, and the per-request correlation id it reads from the zone |
 
 ## Quick start
 

@@ -21,13 +21,13 @@ surface documented here.
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
-| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`. |
+| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException` and the per-request correlation id `TomRequestId` it reads. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, data scoping, column authorization. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
-| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, request identity/logging, and middleware. |
+| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state, and middleware. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants. |
 
 ## Modules
@@ -380,6 +380,7 @@ surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
+| `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone. |
 | `TomServerException` | class | Server-side base exception (extends `TomException`). |
 
 ### Messaging (`lib/src/tomserver/messaging/`)
@@ -500,7 +501,6 @@ surface documented here.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomServer` | class | The HTTP server. |
-| `TomRequestId` | class | Per-request identity. |
 | `TomRequestLogInfo` | class | Per-request log record. |
 | `contextSetupMiddleware` | function | Establishes the execution context per request. |
 | `extractAuthentication` | function | Extracts principal + JWT from a request. |
@@ -868,7 +868,7 @@ surface documented here.
 | `TomReference` | Object Persistence |
 | `TomRepository` | Object Persistence |
 | `TomRepositoryType` | Object Persistence |
-| `TomRequestId` | Server |
+| `TomRequestId` | Little Things |
 | `TomRequestLogInfo` | Server |
 | `TomResourceDataScope` | Authorization |
 | `TomResourceGrant` | Authorization |

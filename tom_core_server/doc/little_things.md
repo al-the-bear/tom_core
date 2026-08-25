@@ -1,13 +1,15 @@
 # Little Things Module
 
-The server-side base exception. This module contributes two types:
-`TomServerException`, which every other `tom_core_server` exception extends, and
-`LoginException`, the one subclass declared here rather than beside the module
-that raises it.
+The server-side base exception and the correlation id it reads. This module
+contributes three types: `TomServerException`, which every other
+`tom_core_server` exception extends; `LoginException`, the one subclass declared
+here rather than beside the module that raises it; and `TomRequestId`, the
+per-request id the exception constructor recovers from the zone.
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [TomRequestId](#tomrequestid)
 - [TomServerException](#tomserverexception)
 - [Isolate Attribution](#isolate-attribution)
 - [Request Correlation](#request-correlation)
@@ -21,6 +23,7 @@ that raises it.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
+| `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone by the server's authentication middleware |
 | `TomServerException` | class | Base class for all server-raised exceptions; extends the kernel's `TomException` |
 | `LoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds nothing |
 
@@ -28,6 +31,30 @@ The kernel already provides `TomException` (UUID tracking, parameters,
 auto-logging, request UUID). `TomServerException` layers two server-specific
 concerns on top: it records **which isolate** produced the error and it
 **correlates** the error with the active request.
+
+## TomRequestId
+
+```dart
+final id = TomRequestId();
+print(id.uuid);      // 4f8c…  a fresh v4 UUID
+print(id);           // TomRequestId: 4f8c…
+```
+
+A request id is an identity and nothing else: a UUID generated in the
+constructor and a `toString` that prints it. It is *produced* by the server
+module — `tomDefaultAuthenticationMiddleware` puts a fresh one into `zoneValues`
+for every incoming request — and *consumed* here, by the `TomServerException`
+constructor, as well as by the endpoints pipeline (which logs it) and the audit
+trail (which stores it on every entry).
+
+It is declared in this module rather than beside the middleware that seeds it
+because the dependency arrow has to point this way. `little_things` holds the
+base class that twenty-seven types across every other module extend, so it is
+the most depended-upon module in the package; `server` is the largest and most
+concrete. Declaring the id beside its producer would have made the first import
+the second, which is the cycle this placement avoids. The same move takes the
+audit trail off the server module entirely — `TomRequestId` was the only thing
+it imported from there.
 
 ## TomServerException
 
@@ -63,8 +90,9 @@ site having to record the isolate explicitly.
 
 ## Request Correlation
 
-The endpoints pipeline sets a `TomRequestId` in the zone for the lifetime of a
-request. When a `TomServerException` is constructed inside that zone, its
+`tomDefaultAuthenticationMiddleware` sets a `TomRequestId` in the zone for the
+lifetime of a request. When a `TomServerException` is constructed inside that
+zone, its
 constructor reads the id via `getFromCurrentZone<TomRequestId>()` and copies the
 UUID into the inherited `requestUuid` field. The error is therefore linked to
 the request that triggered it without any code threading the id through the call
@@ -100,6 +128,10 @@ reads the flag.
 
 ## Core Components
 
+- **`TomRequestId`** — a per-request v4 UUID and nothing else. Created once per
+  request by `tomDefaultAuthenticationMiddleware` and published into the request
+  zone; recovered with `getFromCurrentZone<TomRequestId>()` by the exception
+  base, the endpoints pipeline and `TomAuditTrail.currentRequestId`.
 - **`TomServerException`** — the base server exception. Adds `isolateName`
   (originating worker), `clientThrow` (client-safe flag), and zone-based
   `requestUuid` population to the kernel's `TomException`.
@@ -120,5 +152,8 @@ one.
 ## Dependencies
 
 - `tom_core_kernel` — `TomException` (the base class), `getFromCurrentZone`.
-- The server module — `TomRequestId` (the zone-carried request identifier).
+- `uuid` — v4 UUID generation for `TomRequestId`.
 - `dart:isolate` — `Isolate.current` for the worker's debug name.
+
+The module imports no other module of this package, which is the point: it sits
+at the bottom of the dependency graph and everything else may depend on it.

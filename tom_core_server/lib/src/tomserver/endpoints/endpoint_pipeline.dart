@@ -9,6 +9,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../audit/audit_record.dart';
 import '../audit/audit_trail.dart';
+import '../little_things/request_id.dart';
 import '../little_things/server_exception.dart';
 import '../server/server.dart';
 import '../transactions/transaction_manager.dart';

@@ -10,7 +10,6 @@ helpers, and per-request state that make up that pipeline.
 - [Overview](#overview)
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
-  - [TomRequestId](#tomrequestid)
   - [TomRequestLogInfo](#tomrequestloginfo)
   - [TomServer](#tomserver)
 - [Global Functions and Constants](#global-functions-and-constants)
@@ -30,43 +29,24 @@ The module exposes the composable middleware as top-level functions
 (`contextSetupMiddleware`, `tomDefaultAuthenticationMiddleware`,
 `tomLoggingMiddleware`), a credential helper (`extractAuthentication`), and a
 `noopHandler`. Per-request state travels in the request context
-(`TomRequestLogInfo`) and the request zone (`TomRequestId`).
+(`TomRequestLogInfo`) and the request zone. The zone-carried correlation id
+`TomRequestId` is *produced* here — `tomDefaultAuthenticationMiddleware` puts a
+fresh one into `zoneValues` for every request — but declared in `little_things`,
+beside the exception base that consumes it, so that the most depended-upon
+module of the package does not have to import the largest one. It is documented
+in
+[api_summary_little_things.md](api_summary_little_things.md#tomrequestid).
 
 ## Class Hierarchy
 
 ```
-TomRequestId
 TomRequestLogInfo
 TomServer
 ```
 
-All three classes are standalone (no Tom base class).
+Both classes are standalone (no Tom base class).
 
 ## Classes
-
-### TomRequestId
-
-A per-request correlation id. `tomDefaultAuthenticationMiddleware` creates one
-per incoming request and publishes it into the request zone, so any code under
-that request can recover it with `getFromCurrentZone<TomRequestId>()`.
-
-#### Constructors
-
-```dart
-TomRequestId()
-```
-
-#### Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `uuid` | `String` | A freshly generated v4 UUID identifying this request (`late final`). |
-
-#### Methods
-
-| Method | Signature | Description |
-| ------ | --------- | ----------- |
-| `toString` | `String toString()` | *(override)* Returns `"TomRequestId: <uuid>"`. |
 
 ### TomRequestLogInfo
 

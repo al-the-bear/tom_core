@@ -74,6 +74,7 @@ export 'src/tomserver/file_storage/database_blob_store.dart';
 export 'src/tomserver/file_storage/directory_blob_store.dart';
 export 'src/tomserver/file_storage/s3_blob_store.dart';
 export 'src/tomserver/healthcheck/health_check.dart';
+export 'src/tomserver/little_things/request_id.dart';
 export 'src/tomserver/little_things/server_exception.dart';
 export 'src/tomserver/messaging/email_service.dart';
 export 'src/tomserver/messaging/message.dart';

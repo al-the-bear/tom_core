@@ -918,6 +918,11 @@ and therefore auditable in its own right.
 - `crypto` — SHA-256 for the hash chain.
 - `pointycastle` — the `RSAPrivateKey` / `RSAPublicKey` types anchor signing
   takes.
+- The little-things module — `TomRequestId`, recovered from the zone to supply
+  `requestId`. This is the module's only intra-package dependency below the
+  endpoints/persistence layer, and it is deliberately the bottom one: the id
+  type lives beside the exception base, so attributing an entry to its request
+  does not drag the whole server module in.
 - The endpoints module — `TomEndpointHandler` calls the trail at the denial and
   declared-invocation points.
 - The object-persistence module — `TomSqlDatasourceRepository` calls the trail

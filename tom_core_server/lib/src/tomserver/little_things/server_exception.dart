@@ -2,7 +2,7 @@ import 'dart:isolate';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../server/server.dart';
+import 'request_id.dart';
 
 /// Base class for every exception raised by `tom_core_server`.
 ///
@@ -14,14 +14,15 @@ import '../server/server.dart';
 ///   work is spread across an isolate pool, so the bare message alone is
 ///   ambiguous).
 /// - **Request correlation** — if the surrounding zone carries a
-///   [TomRequestId] (set by the endpoints pipeline for the lifetime of a
-///   request), the constructor copies its UUID into [TomException.requestUuid],
+///   [TomRequestId] (seeded by `tomDefaultAuthenticationMiddleware` for the
+///   lifetime of a request), the constructor copies its UUID into
+///   [TomException.requestUuid],
 ///   linking the error to the request that triggered it without the call site
 ///   having to thread the id through.
 ///
 /// Every server exception type (for example `TomEndpointHandlerException`,
 /// `TomCacheException`, `MariadbMigrationException`) subtypes this class, so a
-/// `catch (e) on TomServerException` reaches all of them.
+/// single `on TomServerException catch (e)` clause reaches all of them.
 class TomServerException extends TomException {
   /// The debug name of the isolate that constructed this exception.
   ///

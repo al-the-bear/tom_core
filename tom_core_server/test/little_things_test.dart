@@ -1,4 +1,10 @@
-/// Tests for the little-things module: the two types it contributes.
+/// Tests for the little-things module: the three types it contributes.
+///
+/// [TomRequestId] is the per-request correlation id the rest of the package
+/// reads out of the zone. It is produced by the server module's authentication
+/// middleware — that seeding is covered in `server_test.dart`, where the
+/// middleware lives — and consumed here, which is why it is declared in this
+/// module rather than beside its producer.
 ///
 /// [TomServerException] is the base class every other `tom_core_server`
 /// exception extends; its zone-free surface (construction, defaults, the kernel
@@ -20,6 +26,21 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('TomRequestId', () {
+    test('generates a non-empty v4 uuid', () {
+      expect(TomRequestId().uuid, isNotEmpty);
+    });
+
+    test('generates distinct ids per instance', () {
+      expect(TomRequestId().uuid, isNot(TomRequestId().uuid));
+    });
+
+    test('toString carries the uuid', () {
+      final id = TomRequestId();
+      expect(id.toString(), 'TomRequestId: ${id.uuid}');
+    });
+  });
+
   group('TomServerException', () {
     test('forwards key and message to TomException', () {
       final e = TomServerException('test.error.code', 'Something went wrong');

@@ -1,20 +1,23 @@
 # Tom Core Server API Reference: Little Things Module
 
 The base exception type for every error raised by `tom_core_server`, adding
-isolate attribution and request correlation to the kernel exception — and
-`LoginException`, the one subclass declared beside it.
+isolate attribution and request correlation to the kernel exception — plus
+`LoginException`, the one subclass declared beside it, and `TomRequestId`, the
+correlation id the base reads out of the zone.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
+  - [TomRequestId](#tomrequestid)
   - [TomServerException](#tomserverexception)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Source: `lib/src/tomserver/little_things/server_exception.dart`.
+Sources: `lib/src/tomserver/little_things/request_id.dart`,
+`lib/src/tomserver/little_things/server_exception.dart`.
 
 `TomServerException` is the root of the server's exception hierarchy: every
 server exception type (e.g. `TomEndpointHandlerException`, `TomCacheException`,
@@ -42,6 +45,8 @@ apart.
 ## Class Hierarchy
 
 ```
+TomRequestId          (standalone)
+
 TomException  (kernel)
     └── TomServerException
             ├── LoginException   (declared here; documented under Authentication)
@@ -49,6 +54,36 @@ TomException  (kernel)
 ```
 
 ## Classes
+
+### TomRequestId
+
+A per-request correlation id. `tomDefaultAuthenticationMiddleware` (server
+module) creates one per incoming request and publishes it into the request zone,
+so any code under that request can recover it with
+`getFromCurrentZone<TomRequestId>()`. It is read by the `TomServerException`
+constructor, by the endpoints pipeline, and by
+`TomAuditTrail.currentRequestId()`.
+
+It is declared in this module rather than beside the middleware that produces it
+so that the package's most depended-upon module does not import its largest one.
+
+#### Constructors
+
+```dart
+TomRequestId()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `uuid` | `String` | A freshly generated v4 UUID identifying this request (`late final`). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Returns `"TomRequestId: <uuid>"`. |
 
 ### TomServerException
 

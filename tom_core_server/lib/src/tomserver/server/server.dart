@@ -6,8 +6,8 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:uuid/v4.dart';
 import '../authentication/server_self_login.dart';
+import '../little_things/request_id.dart';
 import '../little_things/server_exception.dart';
 import '../configuration/base_server_configuration.dart';
 import '../endpoints/endpoint_pipeline.dart';
@@ -70,28 +70,6 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
     }
   }
   return (resultA, resultB);
-}
-
-/// A per-request correlation id.
-///
-/// [tomDefaultAuthenticationMiddleware] creates one [TomRequestId] per incoming
-/// request and publishes it into the request zone (keyed by `TomRequestId`), so
-/// any code running under that request can recover it with
-/// `getFromCurrentZone<TomRequestId>()`. It is the source of the
-/// `requestUuid` stamped onto server exceptions ([TomServerException]) and of
-/// the request id surfaced by the endpoints pipeline.
-class TomRequestId {
-  /// A freshly generated v4 UUID identifying this request.
-  late final String uuid;
-
-  /// Creates a request id with a new random v4 [uuid].
-  TomRequestId() {
-    var generator = UuidV4();
-    uuid = generator.generate();
-  }
-
-  @override
-  String toString() => "TomRequestId: $uuid";
 }
 
 /// The default authentication [Middleware] of a [TomServer].

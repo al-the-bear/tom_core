@@ -70,7 +70,7 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../server/server.dart';
+import '../little_things/request_id.dart';
 import 'audit_record.dart';
 import 'audit_sink.dart';
 

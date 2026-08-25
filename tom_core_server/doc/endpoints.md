@@ -662,5 +662,6 @@ absence from this list means "nothing a caller can see", not "nothing at all".
   `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`,
   `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`,
   `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `tomLog`.
-- The server module — `TomRequestLogInfo`, `TomRequestId`.
+- The server module — `TomRequestLogInfo`.
+- The little-things module — `TomServerException`, `TomRequestId`.
 - The transactions module — `TomTransactionManager` / `TomTransaction`.

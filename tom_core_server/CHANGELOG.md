@@ -3339,6 +3339,30 @@
 
 ### Internal
 
+- **`TomRequestId` moved from `server` to `little_things`, breaking the cycle
+  between them (tcinc563).** `little_things` holds `TomServerException`, the base
+  every other server exception extends, so it is the module every other one
+  depends on. Its constructor recovers the ambient `TomRequestId` to stamp
+  `requestUuid` — and that type was declared in `server`, the largest and most
+  concrete module in the package. The most depended-upon module therefore
+  imported the least depended-upon one, and `server` imported it back for
+  `TomServerException`: a genuine two-way edge, not merely an awkward one.
+
+  The id is now `little_things/request_id.dart`, in its own file because a
+  correlation id is not an exception. `server` still *produces* it —
+  `tomDefaultAuthenticationMiddleware` seeds a fresh one into every request zone
+  — but no longer declares it, so `little_things` imports no other module of the
+  package at all, which is what its position in the graph requires.
+
+  Two consumers benefit beyond the cycle itself. `audit_trail.dart` imported
+  `server/server.dart` for `TomRequestId` and nothing else, so the audit module
+  is now off the server module entirely; `endpoint_pipeline.dart` genuinely
+  needs both and gains an import rather than swapping one. The three
+  `TomRequestId` tests moved from `server_test.dart` to `little_things_test.dart`
+  to follow the declaration, and the example step moved the same way — the
+  middleware test that asserts the *seeding* stays in `server_test.dart`, where
+  the producer lives.
+
 - **The SQL escape matrix is now one shared table, asserted against all three
   consumers of the lexer rather than one (tcinc501).** `TomSqlLexer` exists
   because five hand-rolled scanners each had their own idea of MariaDB's
