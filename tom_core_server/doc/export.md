@@ -560,10 +560,15 @@ Properties that are load-bearing rather than incidental:
   renderer's stream directly, so a result flows from the database to the disk
   without ever being whole in memory.
 - **A failed write leaves nothing readable.** `TomDirectoryExportStore` writes to
-  a sibling `.part` file and renames on success — a rename within one filesystem
-  is atomic, so a reader sees either the previous export or the complete new one,
-  never the half that had been flushed when the query died on its last row. The
-  partial is deleted and the error is wrapped as `export.store.write_failed`.
+  a sibling `<key>~part` file and renames on success — a rename within one
+  filesystem is atomic, so a reader sees either the previous export or the
+  complete new one, never the half that had been flushed when the query died on
+  its last row. The partial is deleted and the error is wrapped as
+  `export.store.write_failed`. The `~` is doing work: it is the one character
+  `TomBlobStore.isValidKey` cannot produce, so the staging file is unreachable
+  from the key space. Spelled `<key>.part` it was not — `a.csv.part` is a key a
+  caller may legitimately choose, and storing `a.csv` overwrote that caller's
+  export with a half-written stream and then renamed it away.
 - **`open` on a missing key throws.** A caller reading an export it holds a
   reference to and finding it gone has hit a real fault — an unexpected expiry, a
   store it is not pointed at — and an empty stream would disguise that as an

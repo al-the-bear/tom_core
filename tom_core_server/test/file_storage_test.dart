@@ -387,7 +387,12 @@ void main() {
         ),
       );
       expect(File('${root.path}/k.bin').existsSync(), isFalse);
-      expect(File('${root.path}/k.bin.part').existsSync(), isFalse);
+      expect(
+        File(
+          '${root.path}/k.bin${TomDirectoryBlobStore.partialSuffix}',
+        ).existsSync(),
+        isFalse,
+      );
     });
 
     test('a failed overwrite leaves the previous content intact', () async {
@@ -409,6 +414,107 @@ void main() {
         ).existsSync(),
         isFalse,
       );
+    });
+
+    test('delete works on a blob that never had a sidecar', () async {
+      // The other half of "a blob dropped in by hand still reads": having
+      // accepted a file placed by `scp`, the store has to be able to remove it
+      // again, and there is nothing beside it to remove. `delete` checks the
+      // sidecar exists before unlinking it for exactly this case — a mutation
+      // run found the check unguarded by any test.
+      await File('${root.path}/hand.txt').writeAsString('placed');
+
+      expect(await store.delete('hand.txt'), isTrue);
+      expect(await store.exists('hand.txt'), isFalse);
+    });
+
+    group('one key cannot reach another key\'s bookkeeping', () {
+      // The backend keeps two auxiliary files beside each blob — the sidecar
+      // and the partial a write is staged in. Both used to be named with a
+      // suffix the key grammar can spell, so a caller who chose `a.meta` or
+      // `a.part` was addressing another caller's bookkeeping without either of
+      // them doing anything wrong: `.` is an ordinary key character, and only
+      // the segments `.` and `..` are reserved.
+
+      test('the auxiliary suffixes are unspellable in a key', () {
+        // The load-bearing assertion. Every case below follows from this one,
+        // so if the suffixes ever move back inside the grammar this fails
+        // first and names the reason, rather than leaving four scenario tests
+        // to fail with a mysterious `hasLength`.
+        for (final suffix in const [
+          TomDirectoryBlobStore.metadataSuffix,
+          TomDirectoryBlobStore.partialSuffix,
+        ]) {
+          expect(
+            TomBlobStore.isValidKey('a$suffix'),
+            isFalse,
+            reason: 'a caller could name "a$suffix" and collide with "a"',
+          );
+        }
+      });
+
+      test('deleting a blob leaves a same-named neighbour readable', () async {
+        // `delete` removed the sidecar unconditionally, so this reported
+        // success while destroying a blob the caller never named.
+        await store.putBytes(key: 'a', bytes: utf8.encode('first'));
+        await store.putBytes(key: 'a.meta', bytes: utf8.encode('second'));
+
+        expect(await store.delete('a'), isTrue);
+
+        expect(await store.exists('a.meta'), isTrue);
+        expect(utf8.decode(await store.getBytes('a.meta')), 'second');
+      });
+
+      test('writing a same-named neighbour keeps a blob describable', () async {
+        // The other direction: the second `put` overwrote the sidecar with
+        // blob content, and `describe('a')` fell back to the generic media
+        // type — a silent loss, since the bytes still read back fine.
+        await store.putBytes(
+          key: 'a',
+          bytes: utf8.encode('first'),
+          mediaType: 'application/pdf',
+          fileName: 'Quarterly Report.pdf',
+        );
+        await store.putBytes(key: 'a.meta', bytes: utf8.encode('not json'));
+
+        final described = await store.describe('a');
+        expect(described!.mediaType, 'application/pdf');
+        expect(described.fileName, 'Quarterly Report.pdf');
+      });
+
+      test('a sidecar is not served as a blob of its own', () async {
+        // Nothing was ever stored under `a.meta`, so reading it is a miss —
+        // not a stream of the store's own JSON bookkeeping.
+        await store.putBytes(
+          key: 'a',
+          bytes: utf8.encode('first'),
+          mediaType: 'application/pdf',
+        );
+
+        expect(await store.exists('a.meta'), isFalse);
+        expect(await store.describe('a.meta'), isNull);
+        expect(
+          () => store.getBytes('a.meta'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.not_found',
+            ),
+          ),
+        );
+      });
+
+      test('a write does not stage over a same-named neighbour', () async {
+        // The same defect in the write path, which the todo did not report:
+        // `put('a')` staged into `a.part` and renamed it away, so the
+        // neighbour was first overwritten and then gone.
+        await store.putBytes(key: 'a.part', bytes: utf8.encode('neighbour'));
+        await store.putBytes(key: 'a', bytes: utf8.encode('mine'));
+
+        expect(utf8.decode(await store.getBytes('a.part')), 'neighbour');
+        expect(utf8.decode(await store.getBytes('a')), 'mine');
+      });
     });
 
     test('a traversal key cannot reach outside the root', () async {

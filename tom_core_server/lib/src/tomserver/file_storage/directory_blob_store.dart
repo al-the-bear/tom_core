@@ -20,13 +20,31 @@ import 'blob_store.dart';
 /// ## Where the metadata goes
 ///
 /// A filesystem stores bytes and nothing else, so the media type and original
-/// file name are written to a sidecar `<key>.meta` holding one JSON object.
+/// file name are written to a sidecar `<key>~meta` holding one JSON object.
 /// The alternative — extended attributes — is not portable across the
 /// filesystems this runs on (and is silently dropped by most copy tools), and
 /// encoding the media type into the key would make the key un-chooseable by the
 /// caller. A blob whose sidecar is missing still reads back: [describe] falls
 /// back to the file's size and mtime with a generic media type, so a directory
 /// populated by `scp` is usable.
+///
+/// ## The bookkeeping is out of the caller's reach
+///
+/// Both auxiliary files — the [metadataSuffix] sidecar and the [partialSuffix]
+/// a write is staged in — hang off [TomBlobStore.auxiliaryMarker], a character
+/// the shared key grammar cannot produce. That is the whole of the guarantee,
+/// and it is why the marker is not a matter of taste: with a spellable suffix
+/// such as `.meta`, one caller's perfectly valid key named another caller's
+/// bookkeeping, and the two of them destroyed each other's data without either
+/// doing anything wrong. `put('a')` followed by `put('a.meta')` cost the first
+/// blob its media type; `delete('a')` then deleted the second blob outright and
+/// reported success.
+///
+/// Note that the *keys* are not restricted: `a.meta` remains a perfectly good
+/// key and stores a perfectly ordinary blob. Refusing it here would have made
+/// the accepted key space depend on which backend is configured — the same key
+/// working on S3 and failing on disk — and the stores would stop being drop-in
+/// replacements for one another.
 class TomDirectoryBlobStore extends TomBlobStore {
   /// Creates a store rooted at [root]; the directory is created on first write.
   TomDirectoryBlobStore(this.root);
@@ -37,11 +55,18 @@ class TomDirectoryBlobStore extends TomBlobStore {
   /// The directory every key resolves beneath.
   final Directory root;
 
-  /// The sidecar suffix. Chosen to be invalid in a key ([TomBlobStore
-  /// .isValidKey] allows it, but a caller's key plus this suffix can only
-  /// collide with a caller who deliberately spells one), so a metadata file can
-  /// never be mistaken for a blob.
-  static const String metadataSuffix = '.meta';
+  /// The sidecar suffix, holding one JSON object per blob.
+  ///
+  /// Hung off [TomBlobStore.auxiliaryMarker], which no valid key can contain,
+  /// so the sidecar is unreachable from the key space rather than merely
+  /// unlikely to be hit. Adjacent to its blob rather than in a parallel
+  /// `root/.meta/` tree: that keeps the directory browsable with `ls`, and it
+  /// would not have helped anyway — `.meta` is a valid key *segment*, so the
+  /// key `.meta/a` would collide in turn.
+  static const String metadataSuffix = '${TomBlobStore.auxiliaryMarker}meta';
+
+  /// The suffix a write stages under before renaming into place.
+  static const String partialSuffix = '${TomBlobStore.auxiliaryMarker}part';
 
   @override
   Future<TomStoredBlob> put({
@@ -57,7 +82,7 @@ class TomDirectoryBlobStore extends TomBlobStore {
     // filesystem is atomic, so a reader either sees the previous blob or the
     // complete new one — never the half of it that had been flushed when the
     // upload connection dropped.
-    final partial = File('${file.path}.part');
+    final partial = File('${file.path}$partialSuffix');
     var written = 0;
     final sink = partial.openWrite();
     try {

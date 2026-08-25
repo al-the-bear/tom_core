@@ -74,6 +74,35 @@
 
 ### Fixed
 
+- **A directory-backed store named its bookkeeping with suffixes a caller
+  could spell, so two callers with ordinary keys destroyed each other's data
+  (tcinc536).** `TomDirectoryBlobStore` kept a `<key>.meta` sidecar and staged
+  writes in `<key>.part`; `TomDirectoryExportStore` staged in `<key>.part` too.
+  All three are valid keys — `.` is an ordinary key character and the grammar
+  reserves only the segments `.` and `..` — so the bookkeeping sat *inside* the
+  key space. `put('a')` then `put('a.meta')` overwrote the first blob's sidecar
+  with the second blob's bytes and `a` silently lost its media type and file
+  name; `delete('a')` then removed `a.meta` unconditionally, destroying a blob
+  its caller had never named and returning `true`; `get('a.meta')` served the
+  store's own JSON as a blob; and `put('a')` overwrote and then renamed away
+  whatever `a.part` held. Every one of them was a legitimate key meeting a
+  legitimate key, with neither caller doing anything wrong. Both backends now
+  hang their suffixes off `TomBlobStore.auxiliaryMarker` (`~`), a character
+  `isValidKey` cannot produce, so the bookkeeping is unaddressable rather than
+  merely unlikely to be hit — `<key>~meta` and `<key>~part`. The marker sits on
+  the contract because it is a fact about the shared grammar, which
+  `TomExportStore.validateKey` also uses; the suffixes stay with each backend
+  because they are its storage layout. The keys themselves are *not*
+  restricted: `a.meta` remains a perfectly good key holding a perfectly
+  ordinary blob, because refusing it would have made the accepted key space
+  depend on which backend was configured and stopped the stores being drop-in
+  replacements for one another. Seven tests: the four destructive scenarios,
+  two invariants asserting each suffix is unspellable, and a delete of a
+  sidecar-less blob that a mutation run found unguarded. No migration — a
+  pre-existing `.meta` file becomes an ordinary blob and its former owner falls
+  back to `stat()` plus the generic media type, which is the hand-placed-file
+  case `describe` already documents.
+
 - **Nothing recorded that the PDF renderer's base-14 default prints a library
   diagnostic, or that it cannot reach a deployment (tcinc535).** Every render
   emits `Helvetica has no Unicode support …` and the same for `Helvetica-Bold`

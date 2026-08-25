@@ -78,7 +78,7 @@ validated before any backend sees it, so none can be handed a traversal, and
 every backend failure is translated into a `TomExportException` carrying the
 `TomExportStoreOperation` key for the operation that failed, so the same failure
 reads the same way whichever backend is configured.
-`TomDirectoryExportStore` writes to a sibling `.part` file and renames on
+`TomDirectoryExportStore` writes to a sibling `<key>~part` file and renames on
 success, `TomMemoryExportStore` is the test and development backend, and
 `TomBlobExportStore` puts the `file_storage` module's `TomBlobStore` behind the
 same four methods — every configured blob backend at once. `TomExportService`
@@ -681,6 +681,12 @@ store the application may never write to. It also means the root is recreated if
 it goes away (a remounted volume, a reaped tmpfs), where a store that made it
 once would report itself configured and fail every write after.
 
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `partialSuffix` | `static const String` | The suffix a write stages under before renaming into place, `~part` — hung off `TomBlobStore.auxiliaryMarker`, which `validateKey` cannot admit, so the staging file is unreachable from the key space. With the obvious `<key>.part` it was not: storing `a.csv` overwrote the export held under the valid key `a.csv.part` and then renamed it away. |
+
 #### Properties
 
 | Property | Type | Description |
@@ -691,7 +697,7 @@ once would report itself configured and fail every write after.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Writes to a sibling `.part` file and renames on success, so a reader sees either the previous export or the complete new one. The rename is inside the guarded region, so a cross-device destination or a name already taken leaves no partial behind; the failure reaches the caller as `export.store.write_failed`. |
+| `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | *(override)* Writes to a sibling `<key>~part` file and renames on success, so a reader sees either the previous export or the complete new one. The rename is inside the guarded region, so a cross-device destination or a name already taken leaves no partial behind; the failure reaches the caller as `export.store.write_failed`. |
 | `doOpen` | `Stream<List<int>> doOpen(String key)` | *(override)* Streams the file for `key`; throws `TomExportException` (`export.store.not_found`) when it does not exist. |
 | `doExists` | `Future<bool> doExists(String key)` | *(override)* Whether the file for `key` exists. |
 | `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Deletes the file for `key`, returning `false` when it was not there. |

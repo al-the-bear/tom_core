@@ -191,14 +191,31 @@ else and get the same property for nothing.
 `TomDirectoryBlobStore` maps the key onto a path under a root directory. Two
 details are load-bearing:
 
-- **A write goes to `<key>.part` and is renamed into place.** Rename is atomic
+- **A write goes to `<key>~part` and is renamed into place.** Rename is atomic
   on every filesystem this runs on, so a reader sees either the previous file or
   the complete new one, never a half-written one. A failed write deletes the
   partial and leaves the previous file untouched.
-- **A `<key>.meta` JSON sidecar** holds what a filesystem cannot: the media type
+- **A `<key>~meta` JSON sidecar** holds what a filesystem cannot: the media type
   and the original file name. `describe` falls back to `stat()` when the sidecar
   is missing, so a file placed in the directory by hand — a migration, an
   `rsync` — is still readable.
+- **Both auxiliary suffixes hang off `~`**, which the
+  [key grammar](#keys-are-a-grammar-not-a-string) cannot produce: it admits
+  `[A-Za-z0-9._/-]` and nothing else. The suffixes used to be `.part` and
+  `.meta`, which the grammar *can* spell, and that was not a cosmetic
+  problem — two callers picking ordinary keys destroyed
+  each other's data. `put('a')` then `put('a.meta')` overwrote the first blob's
+  sidecar with the second blob's bytes, so `a` silently lost its media type;
+  `delete('a')` then deleted `a.meta` unconditionally and reported success,
+  taking a blob its caller had never named. The marker closes both by making the
+  bookkeeping unaddressable rather than by policing keys.
+
+  It stays in this backend rather than moving into the shared grammar for the
+  reason the grammar is shared: a key the directory backend refused would be a
+  key S3 and the database refused too, for a reason belonging to neither, and
+  the backends would stop being drop-in replacements for one another. A parallel
+  `root/.meta/<key>` tree was the other candidate and fixes nothing — `.meta` is
+  a valid key *segment*, so the key `.meta/a` collides in turn.
 
 ### Database
 

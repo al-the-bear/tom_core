@@ -1547,7 +1547,47 @@ void main() {
         throwsA(isA<TomExportException>()),
       );
       expect(await store.exists('broken.csv'), isFalse);
-      expect(File('${root.path}/broken.csv.part').existsSync(), isFalse);
+      expect(
+        File(
+          '\${root.path}/broken.csv\${TomDirectoryExportStore.partialSuffix}',
+        ).existsSync(),
+        isFalse,
+      );
+    });
+
+    test('a write does not stage over a same-named neighbour', () async {
+      // The staging file is inside the key space unless its suffix uses a
+      // character the grammar cannot produce. It used to be `<key>.part`,
+      // which a caller may legitimately spell, so storing `a.csv` overwrote
+      // the export held under `a.csv.part` and then renamed it away. Same
+      // defect as the blob store's sidecar — see `TomBlobStore
+      // .auxiliaryMarker`, which both backends now hang their suffixes off.
+      final store = TomDirectoryExportStore(root);
+      await store.store(
+        key: 'a.csv.part',
+        bytes: Stream.value(utf8.encode('neighbour')),
+        mediaType: 'text/csv',
+      );
+      await store.store(
+        key: 'a.csv',
+        bytes: Stream.value(utf8.encode('mine')),
+        mediaType: 'text/csv',
+      );
+
+      expect(
+        utf8.decode(await _collect(store.open('a.csv.part'))),
+        'neighbour',
+      );
+      expect(utf8.decode(await _collect(store.open('a.csv'))), 'mine');
+    });
+
+    test('the staging suffix is unspellable in a key', () {
+      expect(
+        TomBlobStore.isValidKey(
+          'a.csv${TomDirectoryExportStore.partialSuffix}',
+        ),
+        isFalse,
+      );
     });
 
     test('storing the same key again replaces the previous export', () async {
@@ -1616,7 +1656,12 @@ void main() {
         ),
       );
       // "A failed write leaves nothing readable" has to include the partial.
-      expect(File('${root.path}/blocked.csv.part').existsSync(), isFalse);
+      expect(
+        File(
+          '\${root.path}/blocked.csv\${TomDirectoryExportStore.partialSuffix}',
+        ).existsSync(),
+        isFalse,
+      );
     });
 
     test(

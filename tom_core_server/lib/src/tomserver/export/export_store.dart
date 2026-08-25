@@ -325,6 +325,15 @@ class TomDirectoryExportStore extends TomExportStore {
   /// Created on demand — see the constructor for when.
   final Directory root;
 
+  /// The suffix a write stages under before renaming into place.
+  ///
+  /// Hung off [TomBlobStore.auxiliaryMarker], which [TomExportStore.validateKey]
+  /// cannot admit, so the staging file is unreachable from the key space. With
+  /// the obvious `<key>.part` it was not: `a.csv.part` is a key a caller may
+  /// legitimately choose, and storing `a.csv` overwrote that caller's export
+  /// with a half-written stream and then renamed it away.
+  static const String partialSuffix = '${TomBlobStore.auxiliaryMarker}part';
+
   @override
   Future<TomStoredExport> doStore({
     required String key,
@@ -338,7 +347,7 @@ class TomDirectoryExportStore extends TomExportStore {
     // filesystem is atomic, so a reader either sees the previous export or the
     // complete new one — never the half of it that had been flushed when the
     // query failed on its last row.
-    final partial = File('${file.path}.part');
+    final partial = File('${file.path}$partialSuffix');
     var written = 0;
     final sink = partial.openWrite();
     try {

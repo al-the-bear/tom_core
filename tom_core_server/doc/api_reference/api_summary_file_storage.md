@@ -55,8 +55,10 @@ its own grammar produces output the check it exists to satisfy refuses.
 Four backends implement the contract. `TomMemoryBlobStore` holds everything in a
 map — for tests and for a development server that should leave nothing behind.
 `TomDirectoryBlobStore` maps keys onto paths beneath a root directory, writing
-to a sibling `.part` file and renaming it into place, with a `<key>.meta` JSON
-sidecar for the media type and file name a filesystem cannot store.
+to a sibling `<key>~part` file and renaming it into place, with a `<key>~meta`
+JSON sidecar for the media type and file name a filesystem cannot store. Both
+auxiliary suffixes hang off `auxiliaryMarker`, a character the shared key
+grammar cannot produce, so no valid key can address another key's bookkeeping.
 `TomDatabaseBlobStore` keeps blobs as base64 chunk rows in a `TomDataSource` the
 application already has, committing by replacing a one-row manifest once every
 chunk has landed. `TomS3BlobStore` speaks the S3 REST API against anything
@@ -201,6 +203,7 @@ const TomBlobStore()
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `maxKeyLength` | `static const int` | The longest key any backend accepts (512) — comfortably under the shortest limit in play, so the database backend can declare a fixed-width indexed column and a filesystem is never handed a name the OS rejects. |
+| `auxiliaryMarker` | `static const String` | A character no valid key can contain (`~`), for backends keeping bookkeeping files alongside the blobs. Suffixing with it makes that bookkeeping *unaddressable*, where the obvious `<key>.meta` is a key a caller may legitimately choose — so two callers picking ordinary keys destroyed each other's data. Lives on the contract because it is a fact about `isValidKey`, which `TomExportStore` shares; the suffixes themselves stay with each backend. |
 
 #### Static Methods
 
@@ -269,7 +272,10 @@ TomMemoryBlobStore()
 A blob store over a directory tree on the local filesystem: keys become paths
 beneath `root`, so `2026/07/invoice.pdf` is a file two directories down and the
 stored blobs are browsable with `ls`. Media type and original file name go to a
-`<key>.meta` JSON sidecar, since a filesystem stores bytes and nothing else.
+`<key>~meta` JSON sidecar, since a filesystem stores bytes and nothing else. The
+sidecar and the `<key>~part` staging file both hang off `auxiliaryMarker`, a
+character the shared key grammar cannot produce, so a caller's key can never
+name another caller's bookkeeping.
 
 - **Extends:** `TomBlobStore`
 
@@ -285,7 +291,9 @@ TomDirectoryBlobStore.at(String path)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `metadataSuffix` | `static const String` | The sidecar suffix, `.meta` — chosen so a metadata file can never be mistaken for a blob. |
+| `auxiliaryMarker` | `static const String` | The character separating a blob's path from this backend's bookkeeping, `~` — outside the shared key grammar, so no valid key can name an auxiliary file. |
+| `metadataSuffix` | `static const String` | The sidecar suffix, `~meta`, holding one JSON object per blob. |
+| `partialSuffix` | `static const String` | The suffix a write stages under before renaming into place, `~part`. |
 
 #### Properties
 
@@ -297,7 +305,7 @@ TomDirectoryBlobStore.at(String path)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Streams to a sibling `<file>.part` and renames it into place, so a reader sees the previous blob or the complete new one; a failure deletes the partial and throws `storage.blob.write_failed`. The sidecar is written after the rename. |
+| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Streams to a sibling `<key>~part` and renames it into place, so a reader sees the previous blob or the complete new one; a failure deletes the partial and throws `storage.blob.write_failed`. The sidecar is written after the rename. |
 | `get` | `Stream<List<int>> get(String key)` | *(override)* Streams the file with `openRead`; throws `storage.blob.not_found` when it does not exist. |
 | `describe` | `Future<TomStoredBlob?> describe(String key)` | *(override)* Size and mtime from `stat()`, media type and file name from the sidecar when it is present and parseable — so a directory populated by `scp` is still readable. |
 | `exists` | `Future<bool> exists(String key)` | *(override)* A direct file-existence probe. |

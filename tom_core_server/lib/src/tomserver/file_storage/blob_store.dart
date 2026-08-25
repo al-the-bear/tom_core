@@ -295,6 +295,29 @@ abstract class TomBlobStore {
   /// handed a name the OS will reject.
   static const int maxKeyLength = 512;
 
+  /// A character no valid key can contain, for backends that keep bookkeeping
+  /// files alongside the blobs themselves.
+  ///
+  /// A backend storing blobs as files needs somewhere to put what a filesystem
+  /// will not hold — a metadata sidecar, the partial a write is staged in — and
+  /// the obvious naming, `<key>.meta`, is a trap: `.` is an ordinary key
+  /// character and only the segments `.` and `..` are reserved, so `a.meta` is
+  /// a key a caller may legitimately choose. Two callers picking ordinary keys
+  /// then destroy each other's data, neither having done anything wrong.
+  ///
+  /// Suffixing with this marker instead makes the bookkeeping *unaddressable*:
+  /// [isValidKey] admits `[A-Za-z0-9._/-]` and nothing else, so no key that
+  /// reaches a backend can name a file suffixed with it. `~` is legal in a
+  /// filename everywhere this runs — POSIX reserves only `/`, Windows only
+  /// `<>:"/\|?*` — and is the conventional mark of an auxiliary file.
+  ///
+  /// It lives on the contract rather than in a backend because it is a fact
+  /// about [isValidKey], which is defined here and shared by every store
+  /// including `TomExportStore`. The *suffixes* are each backend's own storage
+  /// layout and stay with the backend; only the guarantee that they cannot be
+  /// spelled is common.
+  static const String auxiliaryMarker = '~';
+
   static final RegExp _keyPattern = RegExp(r'^[A-Za-z0-9._/-]+$');
 
   /// What [sanitiseKeySegment] replaces: [_keyPattern]'s character class
