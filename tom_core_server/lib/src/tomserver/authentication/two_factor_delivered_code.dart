@@ -250,7 +250,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
   Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context) async {
     final destination = await resolveDestination(context);
     if (destination == null) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.not-enrolled',
         'There is no address on record to send a one-time code to',
         parameters: {'mechanism': type},
@@ -332,7 +332,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
     // the step a tautology that can never move a user to a new address.
     final destination = destinationOnRecord(context)?.trim();
     if (destination == null || destination.isEmpty) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.no-destination',
         'There is no address on record to confirm',
         parameters: {'mechanism': type},
@@ -370,7 +370,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
   ) async {
     final destination = offer.enrolmentData[destinationKey];
     if (destination is! String || destination.trim().isEmpty) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.enrolment-offer-invalid',
         'This enrolment can no longer be completed; please start again',
         parameters: {'mechanism': type},
@@ -381,7 +381,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
       // Throwing rather than returning a nullable enrolment: the only value this
       // method can return is a confirmed one, so a caller cannot store an
       // unproven destination by forgetting a null check.
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.enrolment-code-invalid',
         'That code does not match the one that was just sent',
         parameters: {'mechanism': type},
@@ -410,8 +410,8 @@ abstract class TomDeliveredCode2FAService<S extends Object>
   /// Two kinds of failure pass through unchanged, because both are already
   /// classified and re-labelling them would lose the classification:
   ///
-  /// - [LoginException] — a subclass that already decided how this login fails
-  ///   knows more than this wrapper does;
+  /// - [TomLoginException] — a subclass that already decided how this login
+  ///   fails knows more than this wrapper does;
   /// - [Tom2FAException] — a **wiring** fault (no messaging service installed,
   ///   no gateway configured), which has a different owner and a different fix
   ///   from a relay that is down. Reported as a delivery failure it would send
@@ -436,12 +436,12 @@ abstract class TomDeliveredCode2FAService<S extends Object>
         templateKey: templateKey,
         validity: validity,
       );
-    } on LoginException {
+    } on TomLoginException {
       rethrow;
     } on Tom2FAException {
       rethrow;
     } catch (error, stack) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.delivery-failed',
         'The one-time code could not be sent',
         parameters: {'mechanism': type, 'templateKey': templateKey},

@@ -100,7 +100,7 @@ delegates to `AuthTokenService.login` (`:59`), which verifies the password
 through `AdvancedAuthenticationService.authenticateUser` and then issues the
 **pair** of JWTs in `_issueFor` (`:95-121`): a public *authentication* token and
 an *authorization* token carrying the encrypted access-control payload, both with
-the 2-hour `tokenLifetime` (`:45`). A rejected login throws `LoginException`,
+the 2-hour `tokenLifetime` (`:45`). A rejected login throws `TomLoginException`,
 which `LoginUnauthorizedErrorHandler` (`:148`) maps to a bare **401** carrying
 only the opaque key — never *which* of username/password was wrong (no
 account-existence leak).

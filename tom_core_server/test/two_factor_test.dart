@@ -258,7 +258,7 @@ class _EnrollableAdaptor implements Tom2FAService, Tom2FAEnrolmentSupport {
   ) async {
     confirmed++;
     if (submitted != confirmation) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.enrolment-invalid-code',
         'The confirmation code does not match the offered factor',
       );
@@ -1201,7 +1201,7 @@ void main() {
       await expectLater(
         TomTotp2FAService().issueChallenge(context()),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.not-enrolled',
@@ -1282,7 +1282,7 @@ void main() {
       await expectLater(
         TomTotp2FAService().issueChallenge(context()),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.not-enrolled',
@@ -1536,7 +1536,7 @@ void main() {
       await expectLater(
         adaptor.confirmEnrolment(context(), offer, '000000'),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.enrolment-code-invalid',
@@ -1557,7 +1557,7 @@ void main() {
           '000000',
         ),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.enrolment-offer-invalid',
@@ -1591,7 +1591,7 @@ void main() {
             tampered,
             TomTotp2FAService.expectedCode(attackerSecret),
           ),
-          throwsA(isA<LoginException>()),
+          throwsA(isA<TomLoginException>()),
         );
 
         final enrolment = await adaptor.confirmEnrolment(
@@ -2346,12 +2346,12 @@ void main() {
 
     // An adaptor that cannot challenge this user (no enrolled device) must fail
     // the login rather than show a prompt that can never be satisfied.
-    test('a LoginException from the adaptor surfaces its own key', () async {
+    test('a TomLoginException from the adaptor surfaces its own key', () async {
       Tom2FARegistry.reset();
       Tom2FARegistry.register(
         'fake',
         _FakeAdaptor(
-          failIssueWith: LoginException(
+          failIssueWith: TomLoginException(
             'login.error.2fa.not-enrolled',
             'nothing enrolled',
           ),
@@ -2619,7 +2619,7 @@ void main() {
       expect(
         () => Tom2FAEnrolmentState.fromClaims(payload, secret),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.enrolment-offer-invalid',
@@ -2639,7 +2639,7 @@ void main() {
 
         expect(
           () => Tom2FAEnrolmentState.fromClaims(payload, secret),
-          throwsA(isA<LoginException>()),
+          throwsA(isA<TomLoginException>()),
           reason: '$raw (${raw.runtimeType}) is not a readable instant',
         );
       }

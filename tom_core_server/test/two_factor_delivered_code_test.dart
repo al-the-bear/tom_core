@@ -392,7 +392,7 @@ void main() {
       await expectLater(
         email.issueChallenge(_context(email: null)),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.not-enrolled',
@@ -443,7 +443,7 @@ void main() {
       await expectLater(
         text.issueChallenge(_context(mobile: null)),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.not-enrolled',
@@ -472,7 +472,7 @@ void main() {
         await expectLater(
           email.issueChallenge(_context()),
           throwsA(
-            isA<LoginException>().having(
+            isA<TomLoginException>().having(
               (e) => e.key,
               'key',
               'login.error.2fa.delivery-failed',
@@ -492,7 +492,7 @@ void main() {
       await expectLater(
         text.issueChallenge(_context()),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.delivery-failed',
@@ -514,7 +514,7 @@ void main() {
       await expectLater(
         email.issueChallenge(_context()),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.delivery-failed',
@@ -718,7 +718,7 @@ void main() {
       await expectLater(
         email.confirmEnrolment(_context(), offer, '000000'),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.enrolment-code-invalid',
@@ -738,7 +738,7 @@ void main() {
       await expectLater(
         email.confirmEnrolment(_context(), offer, '123456'),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.2fa.enrolment-offer-invalid',
@@ -753,7 +753,7 @@ void main() {
         await expectLater(
           email.beginEnrolment(_context(email: null)),
           throwsA(
-            isA<LoginException>().having(
+            isA<TomLoginException>().having(
               (e) => e.key,
               'key',
               'login.error.2fa.no-destination',

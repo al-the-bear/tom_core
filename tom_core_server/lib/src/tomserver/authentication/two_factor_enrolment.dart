@@ -444,7 +444,7 @@ class Tom2FAEnrolmentState {
   /// kernel returns `null` (it has no error channel and only has to decline to
   /// render a panel), this one throws (it must fail the pass).
   ///
-  /// Throws [LoginException] with `login.error.2fa.enrolment-offer-invalid`
+  /// Throws [TomLoginException] with `login.error.2fa.enrolment-offer-invalid`
   /// when a begun enrolment's expiry claim is absent or is not a parsable
   /// instant.
   static Tom2FAEnrolmentState? fromClaims(
@@ -483,7 +483,7 @@ class Tom2FAEnrolmentState {
         ? DateTime.tryParse(expiresAtRaw)
         : null;
     if (expiresAt == null) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.enrolment-offer-invalid',
         'The pending enrolment carries no usable expiry',
       );
@@ -616,8 +616,8 @@ abstract class Tom2FAEnrolmentSupport {
   /// Begins setting this mechanism up for [context]'s principal: generates
   /// whatever the factor needs and returns it as an offer.
   ///
-  /// Nothing is persisted. Throws [LoginException] when this user cannot enrol
-  /// this mechanism at all (no phone number on file, a quota reached).
+  /// Nothing is persisted. Throws [TomLoginException] when this user cannot
+  /// enrol this mechanism at all (no phone number on file, a quota reached).
   Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context);
 
   /// Confirms [offer] against what the user typed back, returning the enrolment
@@ -625,7 +625,7 @@ abstract class Tom2FAEnrolmentSupport {
   ///
   /// Returns only on success — the return type is non-nullable precisely so that
   /// "an enrolment came back" cannot mean anything but "confirmed". A wrong
-  /// [submitted] throws [LoginException]; the caller may re-offer the same
+  /// [submitted] throws [TomLoginException]; the caller may re-offer the same
   /// offer until [Tom2FAEnrolmentOffer.attemptsAllowed] is spent.
   ///
   /// Implementations must derive the expected answer from

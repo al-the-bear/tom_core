@@ -384,7 +384,7 @@ class _StubDirectory implements TomExternalIdentityDirectory {
     TomAuthenticationData authData,
   ) async {
     if (!canProvision) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.oauth.provisioning-unsupported',
         'This directory does not provision.',
       );
@@ -2450,7 +2450,7 @@ void main() {
           store: TomMemoryExternalIdentityStore(),
         ),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.oauth.no-local-account',
@@ -2538,7 +2538,7 @@ void main() {
       await expectLater(
         login(directory: directory, store: TomMemoryExternalIdentityStore()),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.oauth.no-local-account',
@@ -2565,7 +2565,7 @@ void main() {
           provisioning: TomOAuthProvisioning.autoProvision,
         ),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.oauth.linked-account-missing',
@@ -2584,7 +2584,7 @@ void main() {
             provisioning: TomOAuthProvisioning.autoProvision,
           ),
           throwsA(
-            isA<LoginException>().having(
+            isA<TomLoginException>().having(
               (e) => e.key,
               'key',
               'login.error.oauth.provisioning-unsupported',
@@ -2615,7 +2615,7 @@ void main() {
       expect(
         pending,
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.oauth.provisioning-unsupported',
@@ -2653,7 +2653,7 @@ void main() {
       await expectLater(
         service.authenticateUser(_authData(username: 'bob', key: 'pa55word')),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'login.error.oauth.credential-not-supported',
@@ -2681,7 +2681,7 @@ void main() {
               ..key = TomOAuthCredential(code: 'c', state: begun.state),
           ),
           throwsA(
-            isA<LoginException>().having(
+            isA<TomLoginException>().having(
               (e) => e.key,
               'key',
               'login.error.oauth.no-identity-store',
@@ -2821,7 +2821,7 @@ void main() {
             tokenStore: tokens,
           ),
           throwsA(
-            isA<LoginException>().having(
+            isA<TomLoginException>().having(
               (e) => e.key,
               'key',
               'login.error.oauth.no-local-account',

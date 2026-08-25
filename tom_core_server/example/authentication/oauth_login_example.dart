@@ -181,7 +181,7 @@ class _AccountDirectory implements TomExternalIdentityDirectory {
     TomAuthenticationData authData,
   ) async {
     if (!canProvision) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.oauth.provisioning-unsupported',
         'This directory does not create accounts',
       );
@@ -461,7 +461,7 @@ Future<String> _loginKey(TomOAuthProviders providers) async {
       _authData()..key = TomOAuthCredential(code: 'c', state: begun.state),
     );
     throw StateError('the login was expected to fail');
-  } on LoginException catch (e) {
+  } on TomLoginException catch (e) {
     return e.key;
   }
 }

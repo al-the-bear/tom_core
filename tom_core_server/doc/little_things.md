@@ -2,9 +2,9 @@
 
 The server-side base exception and the correlation id it reads. This module
 contributes three types: `TomServerException`, which every other
-`tom_core_server` exception extends; `LoginException`, the one subclass declared
-here rather than beside the module that raises it; and `TomRequestId`, the
-per-request id the exception constructor recovers from the zone.
+`tom_core_server` exception extends; `TomLoginException`, the one subclass
+declared here rather than beside the module that raises it; and `TomRequestId`,
+the per-request id the exception constructor recovers from the zone.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ per-request id the exception constructor recovers from the zone.
 | ---- | ---- | ------- |
 | `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone by the server's authentication middleware |
 | `TomServerException` | class | Base class for all server-raised exceptions; extends the kernel's `TomException` |
-| `LoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds nothing |
+| `TomLoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds nothing |
 
 The kernel already provides `TomException` (UUID tracking, parameters,
 auto-logging, request UUID). `TomServerException` layers two server-specific
@@ -122,10 +122,10 @@ the caller. The endpoints pipeline may relay the user message of a
 masked behind a generic error response — use it for internal failures whose
 detail must not leak.
 
-`LoginException` does not offer the choice at construction: its constructor
+`TomLoginException` does not offer the choice at construction: its constructor
 forwards the rest of the payload but not `clientThrow`, so every
-`LoginException` is *born* client-visible. Omitting the parameter is the common
-shape — fifteen of the package's twenty-eight subtypes inherit the `true`
+`TomLoginException` is *born* client-visible. Omitting the parameter is the
+common shape — fifteen of the package's twenty-eight subtypes inherit the `true`
 default the same way — but the neighbourhood makes it a decision rather than an
 omission. Every other exception the authentication subsystem raises is hidden:
 `Tom2FAException` and `TomServerSelfLoginException` hard-wire
@@ -150,7 +150,7 @@ reads the flag.
 - **`TomServerException`** — the base server exception. Adds `isolateName`
   (originating worker), `clientThrow` (client-safe flag), and zone-based
   `requestUuid` population to the kernel's `TomException`.
-- **`LoginException`** — a login that cannot succeed: unknown client or user,
+- **`TomLoginException`** — a login that cannot succeed: unknown client or user,
   invalid credentials, no enrolled second factor, an expired challenge. Raised
   by `TomAuthenticationService`, `Tom2FAService` and their helpers, and caught
   by `TomAuthenticationServer`, which turns its `key` into a failed
@@ -158,7 +158,7 @@ reads the flag.
   methods, no behaviour; it exists so that the two sides can name the same
   failure. See `doc/authentication.md` for the login flow it belongs to.
 
-`LoginException` is declared here, next to the base class, rather than beside
+`TomLoginException` is declared here, next to the base class, rather than beside
 the authentication server that consumes it, so that the 2FA subsystem can throw
 it without importing that server. The cost of that placement is this guide: a
 reader looking up the module finds a type whose whole meaning lives in another

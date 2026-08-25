@@ -105,7 +105,7 @@ abstract class TomExternalIdentityDirectory {
     TomExternalIdentity identity,
     TomAuthenticationData authData,
   ) async {
-    throw LoginException(
+    throw TomLoginException(
       'login.error.oauth.provisioning-unsupported',
       'Provider auto-provisioning is configured, but this deployment\'s '
           'TomExternalIdentityDirectory does not implement '
@@ -177,7 +177,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
 
     final store = identityStore ?? TomExternalIdentityStore.resolve();
     if (store == null) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.oauth.no-identity-store',
         'External identity login requires a TomExternalIdentityStore, but none '
             'is installed. Register one (for example '
@@ -198,7 +198,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
         // safe answer: provisioning here would recreate a deleted account from
         // a stale row, which is precisely the state an administrator was trying
         // to reach when they deleted it.
-        throw LoginException(
+        throw TomLoginException(
           'login.error.oauth.linked-account-missing',
           "The external identity $identity is linked to the local account "
               "'$linkedUsername', which no longer exists.",
@@ -282,7 +282,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
     }
 
     if (provider.provisioning == TomOAuthProvisioning.refuse) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.oauth.no-local-account',
         'The external identity $identity authenticated successfully, but no '
             'local account is linked to it and provider '
@@ -338,7 +338,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
   ) async {
     final next = delegate;
     if (next == null) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.oauth.credential-not-supported',
         'This deployment authenticates only through an external identity '
             'provider, and the login carried a '

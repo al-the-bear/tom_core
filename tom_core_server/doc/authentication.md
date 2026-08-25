@@ -29,7 +29,7 @@ principal into an authentication token and an authorization token.
 | `TomAuthenticationData` | class (`@tomReflector`) | The data carried into one authentication attempt |
 | `TomAuthenticationInfo` | class | A service's success result: principal + access-control definition |
 | `TomDummyAuthenticationService` | class | Scaffolding-only default service (accepts any non-`GUEST` user) |
-| `LoginException` | exception | A login failure; carried back as a failed result |
+| `TomLoginException` | exception | A login failure; carried back as a failed result |
 | `TomAuthenticationAdaptor` | annotation (`@tomReflector`) | Marks an adaptor and constrains it to guest/user flows |
 | `Tom2FAAdaptor` | annotation (`@tomReflector`) | Marks a 2FA adaptor for a mechanism `type` |
 | `Tom2FAService` | abstract (`@tomReflector`) | The contract a second-factor mechanism implements: issue a challenge, verify a submission |
@@ -96,7 +96,7 @@ TomAuthenticationServer.authenticatePass1 / authenticateGuest
         ▼
 TomAuthenticationService.authenticateUser   ← your implementation
         │  returns TomAuthenticationInfo (principal + acd)
-        │  or throws LoginException
+        │  or throws TomLoginException
         ▼
         │
         ├─ 2FA policy owes a factor ?  ──► see Two-Factor Authentication
@@ -109,7 +109,7 @@ TomAuthenticationResult
    └─ authorizationToken    (JWT of public claims + encrypted acd)
 ```
 
-A thrown `LoginException` is **not** propagated — the server catches it and
+A thrown `TomLoginException` is **not** propagated — the server catches it and
 returns a `TomAuthenticationResult` carrying the exception's `key` so the client
 can show a localized message. Any other error becomes a
 `"login.error.unknown"` result.
@@ -126,7 +126,10 @@ class MyAuthService implements TomAuthenticationService {
   ) async {
     final user = await _lookup(authData.client, authData.username);
     if (!_verify(authData.key, user)) {
-      throw LoginException('error.invalid-user-or-password', 'Invalid login');
+      throw TomLoginException(
+        'error.invalid-user-or-password',
+        'Invalid login',
+      );
     }
     final principal = _buildPrincipal(user, authData);
     final acd = await _accessControl(user);
@@ -451,7 +454,7 @@ shipped mechanisms implement it.
 | `validity` | Default 10 minutes |
 
 `confirmEnrolment` either returns the `Tom2FAEnrolment` to store or **throws a
-`LoginException`**. There is no `false` return: a wrong code and an unusable
+`TomLoginException`**. There is no `false` return: a wrong code and an unusable
 offer are both failures, and the exception's `key` is what the client is told.
 
 **What the deployment supplies: `Tom2FAEnrolmentStore`.**
@@ -1817,7 +1820,7 @@ select the services and JWT issuer process-wide.
 
 The contract you implement and the value it returns. `authenticateUser` either
 returns a `TomAuthenticationInfo` (the `TomPrincipal` plus its
-`TomAccessControlDefinition`) or throws a `LoginException`.
+`TomAccessControlDefinition`) or throws a `TomLoginException`.
 
 ### `TomAuthenticationData`
 
@@ -2120,7 +2123,7 @@ resolves the pending record for its context and calls
   delivered message and every mechanism name — no user-facing text originates
   in this module.
 - **Little Things** (this package): `TomServerException`, the base of
-  `LoginException`, `Tom2FAException`, `TomServerSelfLoginException` and
+  `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException` and
   `TomOAuthException`.
 - **Endpoints** (this package): `TomOAuthServer` implements the kernel's
   `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()`

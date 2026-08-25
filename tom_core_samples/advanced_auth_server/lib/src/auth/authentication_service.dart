@@ -4,8 +4,8 @@
 /// It verifies a username/password against `auth_db`, loads the user's role keys
 /// and group names, and builds the authenticated [TomPrincipal] +
 /// [TomAccessControlDefinition] the server encodes into the bearer-token pair. A
-/// rejected login throws [LoginException], which the server turns into a failed
-/// `TomAuthenticationResult`.
+/// rejected login throws [TomLoginException], which the server turns into a
+/// failed `TomAuthenticationResult`.
 ///
 /// The DB reads sit behind an [AuthUserStore] seam so the service is unit-testable
 /// without a database or the reflection runtime: [RepositoryAuthUserStore] is the
@@ -66,7 +66,7 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
   AdvancedAuthenticationService(this.store);
 
   /// Resolves [authData] into an authenticated [TomAuthenticationInfo], or throws
-  /// [LoginException] when the login is rejected.
+  /// [TomLoginException] when the login is rejected.
   ///
   /// Rejects an unknown user and a wrong password with the *same* generic key
   /// (`error.invalid-user-or-password`) so the response never reveals which of
@@ -79,19 +79,19 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
   ) async {
     final record = await store.findByUsername(authData.username);
     if (record == null || record.id == null) {
-      throw LoginException(
+      throw TomLoginException(
         'error.invalid-user-or-password',
         'Invalid user or password',
       );
     }
 
     if (record.status == UserStatus.suspended.name) {
-      throw LoginException('error.user.suspended', 'Account is suspended');
+      throw TomLoginException('error.user.suspended', 'Account is suspended');
     }
 
     final password = authData.key?.toString() ?? '';
     if (!verifyUserPassword(record, password)) {
-      throw LoginException(
+      throw TomLoginException(
         'error.invalid-user-or-password',
         'Invalid user or password',
       );
@@ -129,10 +129,7 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
         email: record.email,
         attributes: {},
       ),
-      aci: TomAccessControlInformation(
-        roles: roleKeys,
-        groups: groupNames,
-      ),
+      aci: TomAccessControlInformation(roles: roleKeys, groups: groupNames),
     );
 
     // The definition mirrors the user's directly-assigned roles/groups; the
@@ -242,9 +239,9 @@ class InMemoryAuthUserStore implements AuthUserStore {
     required List<UserRecord> users,
     Map<int, List<String>> roleKeysByUserId = const {},
     Map<int, List<String>> groupNamesByUserId = const {},
-  })  : _users = users,
-        _roleKeysByUserId = roleKeysByUserId,
-        _groupNamesByUserId = groupNamesByUserId;
+  }) : _users = users,
+       _roleKeysByUserId = roleKeysByUserId,
+       _groupNamesByUserId = groupNamesByUserId;
 
   @override
   Future<UserRecord?> findByUsername(String username) async {

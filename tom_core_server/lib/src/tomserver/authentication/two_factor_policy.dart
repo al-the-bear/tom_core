@@ -153,7 +153,7 @@ abstract class Tom2FAPolicy {
   /// The obligation this login carries.
   ///
   /// [context] is the same value the adaptors receive — the principal plus the
-  /// tenant and locale coordinates of the attempt. Throwing [LoginException]
+  /// tenant and locale coordinates of the attempt. Throwing [TomLoginException]
   /// fails the login with that exception's own key; any other error is masked
   /// behind the generic login failure, as everywhere else in this flow.
   Future<Tom2FADecision> decideFor(Tom2FAContext context);

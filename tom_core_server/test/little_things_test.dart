@@ -12,7 +12,7 @@
 /// its zone-based request correlation via a `runZoned` carrying a
 /// [TomRequestId] are covered first.
 ///
-/// [LoginException] is the one subclass declared beside the base rather than
+/// [TomLoginException] is the one subclass declared beside the base rather than
 /// beside the module that raises it. It adds no members, so what is pinned here
 /// is that it inherits the base surface unchanged and that its constructor does
 /// **not** forward `clientThrow` — the property that belongs to the declaration
@@ -122,15 +122,15 @@ void main() {
     });
   });
 
-  group('LoginException', () {
+  group('TomLoginException', () {
     test('is a TomServerException and a TomException', () {
-      final e = LoginException('K', 'm');
+      final e = TomLoginException('K', 'm');
       expect(e, isA<TomServerException>());
       expect(e, isA<TomException>());
     });
 
     test('forwards key and message to the base', () {
-      final e = LoginException(
+      final e = TomLoginException(
         'error.invalid-user-or-password',
         'The username or password is not correct.',
       );
@@ -139,22 +139,26 @@ void main() {
     });
 
     test('forwards parameters to the base', () {
-      final e = LoginException('K', 'm', parameters: {'username': 'mallory'});
+      final e = TomLoginException(
+        'K',
+        'm',
+        parameters: {'username': 'mallory'},
+      );
       expect(e.parameters, containsPair('username', 'mallory'));
     });
 
     test('is born client-visible', () {
       // Deliberate: the constructor does not accept `clientThrow`, so every
-      // LoginException carries the base default `true`. That is not the
+      // TomLoginException carries the base default `true`. That is not the
       // package-wide norm being restated — fifteen of the twenty-eight
       // subclasses inherit `true` by omitting the parameter the same way. It
       // is specific to the authentication neighbourhood, where every other
       // exception is hidden from the caller: Tom2FAException and
       // TomServerSelfLoginException hard-wire `clientThrow: false` and
-      // TomOAuthException re-defaults it to `false`. LoginException is the one
-      // failure that subsystem raises whose message is written for the person
-      // who mistyped a password, so it is the one that may reach them.
-      expect(LoginException('K', 'm').clientThrow, isTrue);
+      // TomOAuthException re-defaults it to `false`. TomLoginException is the
+      // one failure that subsystem raises whose message is written for the
+      // person who mistyped a password, so it is the one that may reach them.
+      expect(TomLoginException('K', 'm').clientThrow, isTrue);
     });
 
     test('can still be masked after construction', () {
@@ -162,22 +166,22 @@ void main() {
       // omitted constructor parameter fixes is the *default*, not the value: a
       // catch site that decides the detail must not leave the server can set
       // it before rethrowing.
-      final e = LoginException('K', 'm')..clientThrow = false;
+      final e = TomLoginException('K', 'm')..clientThrow = false;
       expect(e.clientThrow, isFalse);
     });
 
     test('captures a non-empty isolate name like the base', () {
-      expect(LoginException('K', 'm').isolateName, isNotEmpty);
+      expect(TomLoginException('K', 'm').isolateName, isNotEmpty);
     });
 
     test('requestUuid is unset when constructed outside a request zone', () {
-      expect(LoginException('K', 'm').requestUuid, isNull);
+      expect(TomLoginException('K', 'm').requestUuid, isNull);
     });
 
     test('correlates requestUuid from a TomRequestId in the zone', () {
       final requestId = TomRequestId();
       runZoned(() {
-        expect(LoginException('K', 'm').requestUuid, requestId.uuid);
+        expect(TomLoginException('K', 'm').requestUuid, requestId.uuid);
       }, zoneValues: {TomRequestId: requestId});
     });
 
@@ -186,11 +190,11 @@ void main() {
       // server exception, including the ones declared elsewhere.
       Object? caught;
       try {
-        throw LoginException('auth.rejected', 'Login rejected.');
+        throw TomLoginException('auth.rejected', 'Login rejected.');
       } on TomServerException catch (e) {
         caught = e;
       }
-      expect(caught, isA<LoginException>());
+      expect(caught, isA<TomLoginException>());
     });
   });
 }

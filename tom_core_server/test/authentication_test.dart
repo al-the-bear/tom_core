@@ -21,7 +21,7 @@ class _DemoAuthService implements TomAuthenticationService {
     TomAuthenticationData a,
   ) async {
     if (a.username != 'alice' || a.key != 's3cret') {
-      throw LoginException(
+      throw TomLoginException(
         'error.invalid-user-or-password',
         'Invalid user or password',
         parameters: {'username': a.username},
@@ -178,20 +178,20 @@ void main() {
       expect(info.principal.user.username, 'alice');
     });
 
-    test('rejects a wrong credential with a LoginException', () {
+    test('rejects a wrong credential with a TomLoginException', () {
       expect(
         () => service.authenticateUser(_login('alice', password: 'nope')),
-        throwsA(isA<LoginException>()),
+        throwsA(isA<TomLoginException>()),
       );
     });
 
     test(
-      'LoginException carries its key/parameters and is a server exception',
+      'TomLoginException carries its key/parameters and is a server exception',
       () async {
         try {
           await service.authenticateUser(_login('mallory'));
-          fail('expected LoginException');
-        } on LoginException catch (e) {
+          fail('expected TomLoginException');
+        } on TomLoginException catch (e) {
           expect(e.key, 'error.invalid-user-or-password');
           expect(e.parameters, containsPair('username', 'mallory'));
           expect(e, isA<TomServerException>());
@@ -258,12 +258,12 @@ void main() {
   // The login orchestration (authenticateUser and the authenticatePass1 /
   // authenticateGuest flows that delegate to it) is the meat of the module:
   // it routes to the guest or user service, mints the authentication +
-  // authorization JWTs on success, and maps a LoginException / any other error
-  // to a failed result. All of it is connection-free — the JWTs are signed and
-  // RSA-encrypted with the framework's bundled default configuration — so the
-  // full flow is unit-testable without a live server or user store. These tests
-  // mutate global service/protection settings, so setUp/tearDown snapshot and
-  // restore them to keep the suite order-independent.
+  // authorization JWTs on success, and maps a TomLoginException / any other
+  // error to a failed result. All of it is connection-free — the JWTs are signed
+  // and RSA-encrypted with the framework's bundled default configuration — so
+  // the full flow is unit-testable without a live server or user store. These
+  // tests mutate global service/protection settings, so setUp/tearDown snapshot
+  // and restore them to keep the suite order-independent.
   group('TomAuthenticationServer login flow', () {
     late TomAuthenticationService savedUserService;
     late TomAuthenticationService savedGuestService;
@@ -470,11 +470,11 @@ void main() {
     );
 
     test(
-      'a LoginException maps to a failed result carrying its key, no tokens',
+      'a TomLoginException maps to a failed result carrying its key, no tokens',
       () async {
         TomAuthenticationServer.globalSettingUserAuthenticationService =
             _RecordingAuthService(
-              throwThis: LoginException('auth.bad-credentials', 'nope'),
+              throwThis: TomLoginException('auth.bad-credentials', 'nope'),
             );
 
         final result = await TomAuthenticationServer().authenticatePass1(

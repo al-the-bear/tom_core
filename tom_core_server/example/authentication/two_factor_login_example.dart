@@ -63,7 +63,7 @@ class _DirectoryService implements TomAuthenticationService {
     TomAuthenticationData a,
   ) async {
     if (a.key != 's3cret') {
-      throw LoginException(
+      throw TomLoginException(
         'error.invalid-user-or-password',
         'Invalid user or password',
       );

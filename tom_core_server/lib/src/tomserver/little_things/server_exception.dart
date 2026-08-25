@@ -94,9 +94,9 @@ class TomServerException extends TomException {
 /// It lives here, next to the exception base, rather than beside the
 /// authentication server, so that the 2FA subsystem can throw it without
 /// importing the server that consumes it.
-class LoginException extends TomServerException {
+class TomLoginException extends TomServerException {
   /// Creates a login failure with a resource [key] and a default user message.
-  LoginException(
+  TomLoginException(
     super.key,
     super.userMessage, {
     super.parameters,

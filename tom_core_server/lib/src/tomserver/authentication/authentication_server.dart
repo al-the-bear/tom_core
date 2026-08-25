@@ -83,7 +83,7 @@ class TomAuthenticationData {
 /// Implementations resolve the [TomAuthenticationData] against their user store
 /// (database, directory, etc.) and return a [TomAuthenticationInfo] carrying the
 /// authenticated principal and its access-control definition. On failure they
-/// throw a [LoginException]. The default implementation,
+/// throw a [TomLoginException]. The default implementation,
 /// [TomDummyAuthenticationService], accepts everything and is for scaffolding
 /// only.
 ///
@@ -106,7 +106,7 @@ class TomAuthenticationData {
 @tomReflector
 abstract class TomAuthenticationService {
   /// Authenticates [authData], returning the principal and its access rights,
-  /// or throwing a [LoginException] when the login is rejected.
+  /// or throwing a [TomLoginException] when the login is rejected.
   Future<TomAuthenticationInfo> authenticateUser(
     TomAuthenticationData authData,
   );
@@ -270,7 +270,7 @@ class TomAuthenticationServer {
     try {
       final token = challengeToken ?? getFromCurrentZone<TomClientJwtToken>();
       if (token == null) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.no-challenge',
           'No pending two-factor challenge was presented',
         );
@@ -278,19 +278,19 @@ class TomAuthenticationServer {
 
       final challenge = Tom2FAChallenge.fromClaims(token.payload);
       if (challenge == null) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.no-challenge',
           'The presented token carries no two-factor challenge',
         );
       }
       if (challenge.isExpired()) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.expired',
           'The two-factor challenge has expired',
         );
       }
       if (challenge.isExhausted) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.attempts-exhausted',
           'No two-factor attempts remain',
         );
@@ -298,7 +298,7 @@ class TomAuthenticationServer {
 
       final adaptor = Tom2FARegistry.lookup(challenge.type);
       if (adaptor == null) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.unsupported-mechanism',
           'No adaptor is registered for two-factor mechanism '
               '"${challenge.type}"',
@@ -329,7 +329,7 @@ class TomAuthenticationServer {
       }
 
       if (consumed.isExhausted) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.attempts-exhausted',
           'No two-factor attempts remain',
         );
@@ -378,7 +378,7 @@ class TomAuthenticationServer {
   /// one — because there would be nowhere to record an enrolment, and offering
   /// one that could not be saved would be a lie.
   ///
-  /// A [LoginException] yields a failed result carrying its `key`; any other
+  /// A [TomLoginException] yields a failed result carrying its `key`; any other
   /// error yields a `"login.error.unknown"` result.
   Future<TomAuthenticationResult> authenticateUser(
     TomAuthenticationMessage m,
@@ -470,7 +470,7 @@ class TomAuthenticationServer {
   /// *calling* it rather than by agreeing with it.
   ///
   /// Exceptions propagate: both callers already wrap their own resolution step
-  /// in the `try` that turns a [LoginException] into a failed result, and a
+  /// in the `try` that turns a [TomLoginException] into a failed result, and a
   /// second catch here would make the failure path two places as well.
   Future<TomAuthenticationResult> _completeLogin(
     TomAuthenticationInfo authInfo,
@@ -488,7 +488,7 @@ class TomAuthenticationServer {
     // as a null adaptor further down.
     final offerable = decision.offerableMechanisms;
     if (offerable.isEmpty) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.unsupported-mechanism',
         decision.allowedMechanisms.isEmpty
             ? 'The account requires a second factor but names no mechanism'
@@ -571,14 +571,14 @@ class TomAuthenticationServer {
 
       final type = m.password.trim();
       if (!state.offeredTypes.contains(type)) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.enrolment-not-offered',
           'Two-factor mechanism "$type" was not offered for enrolment',
         );
       }
       final support = Tom2FARegistry.enrolmentSupportFor(type);
       if (support == null) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.unsupported-mechanism',
           'No enrollable adaptor is registered for two-factor mechanism '
               '"$type"',
@@ -624,19 +624,19 @@ class TomAuthenticationServer {
 
       final offer = state.offer;
       if (offer == null) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.enrolment-offer-invalid',
           'No two-factor enrolment has been begun on this token',
         );
       }
       if (state.isExpired()) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.enrolment-expired',
           'The two-factor enrolment has expired',
         );
       }
       if (state.isExhausted) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.enrolment-attempts-exhausted',
           'No two-factor enrolment attempts remain',
         );
@@ -644,7 +644,7 @@ class TomAuthenticationServer {
 
       final support = Tom2FARegistry.enrolmentSupportFor(offer.type);
       if (support == null) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.unsupported-mechanism',
           'No enrollable adaptor is registered for two-factor mechanism '
               '"${offer.type}"',
@@ -652,7 +652,7 @@ class TomAuthenticationServer {
       }
       final store = Tom2FAEnrolmentStore.resolve();
       if (store == null) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.enrolment-unavailable',
           'This deployment has no two-factor enrolment store, so the factor '
               'cannot be recorded',
@@ -668,12 +668,12 @@ class TomAuthenticationServer {
       final Tom2FAEnrolment confirmed;
       try {
         confirmed = await support.confirmEnrolment(context, offer, m.password);
-      } on LoginException catch (ex) {
+      } on TomLoginException catch (ex) {
         // The confirmation contract signals every failure by throwing, so a
         // throw here is treated the way a `false` from `verifySubmission` is:
         // one attempt spent, then the same offer handed back.
         if (consumed.isExhausted) {
-          throw LoginException(
+          throw TomLoginException(
             'login.error.2fa.enrolment-attempts-exhausted',
             'No two-factor enrolment attempts remain',
           );
@@ -721,7 +721,7 @@ class TomAuthenticationServer {
     try {
       final (token, state) = _pendingEnrolment(enrolmentToken);
       if (!state.skippable) {
-        throw LoginException(
+        throw TomLoginException(
           'login.error.2fa.enrolment-required',
           'This two-factor enrolment cannot be declined',
         );
@@ -745,7 +745,7 @@ class TomAuthenticationServer {
   }
 
   /// The interim token and the enrolment it carries, or a thrown
-  /// [LoginException] when it carries none.
+  /// [TomLoginException] when it carries none.
   ///
   /// This is what stops the enrolment passes from being an unauthenticated way
   /// to attach a factor to an account: a completed token has no pending
@@ -757,7 +757,7 @@ class TomAuthenticationServer {
   ) {
     final token = presented ?? getFromCurrentZone<TomClientJwtToken>();
     if (token == null) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.no-enrolment',
         'No pending two-factor enrolment was presented',
       );
@@ -767,7 +767,7 @@ class TomAuthenticationServer {
       token.secretData,
     );
     if (state == null) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.no-enrolment',
         'The presented token carries no pending two-factor enrolment',
       );
@@ -793,7 +793,7 @@ class TomAuthenticationServer {
         if (Tom2FARegistry.enrolmentSupportFor(type) != null) type,
     ];
     if (enrollable.isEmpty) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.unsupported-mechanism',
         'The account requires a second factor it has not set up, and none of '
             'the mechanisms it may use can be enrolled here: '
@@ -1007,11 +1007,11 @@ class TomAuthenticationServer {
     return raw is Map ? raw.cast<String, Object?>() : const <String, Object?>{};
   }
 
-  /// Maps a thrown error onto a failed result: a [LoginException] surfaces its
-  /// stable `key`, anything else is masked behind `"login.error.unknown"` so an
-  /// internal fault never describes itself to the caller.
+  /// Maps a thrown error onto a failed result: a [TomLoginException] surfaces
+  /// its stable `key`, anything else is masked behind `"login.error.unknown"` so
+  /// an internal fault never describes itself to the caller.
   TomAuthenticationResult _failedResult(Object ex, StackTrace s) {
-    if (ex is LoginException) {
+    if (ex is TomLoginException) {
       tomLog.info("Login failed ${ex.key} ${ex.parameters}");
       return TomAuthenticationResult(ex.key);
     }

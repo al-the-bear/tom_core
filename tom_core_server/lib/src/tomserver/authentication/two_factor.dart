@@ -71,7 +71,7 @@ class Tom2FAAdaptor {
 /// Raised for 2FA *configuration* faults — a duplicate or unusable adaptor
 /// registration, or a mechanism that cannot be constructed.
 ///
-/// Distinct from [LoginException]: a login that fails because the user typed
+/// Distinct from [TomLoginException]: a login that fails because the user typed
 /// the wrong code is an expected outcome and yields a failed
 /// [TomAuthenticationResult]; a deployment whose adaptors are wired wrongly is a
 /// fault that must surface loudly. Not client-throwable — an authentication
@@ -214,7 +214,7 @@ abstract class Tom2FAService {
   /// coupling the adaptor contract exists to remove.
   Tom2FAMethodDescriptor get descriptor;
 
-  /// Issues a challenge for [context], or throws [LoginException] when this
+  /// Issues a challenge for [context], or throws [TomLoginException] when this
   /// user cannot be challenged at all (no enrolled device, no configured
   /// secret) — a condition the login must fail on rather than paper over.
   Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context);
@@ -693,7 +693,7 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
     // that can never be satisfied.
     final secret = await _resolveSecret(context);
     if (secret == null) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.not-enrolled',
         'No authenticator is enrolled for this account',
       );
@@ -785,7 +785,7 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
     if (secret is! String ||
         secret.isEmpty ||
         TomTotp.decodeBase32(secret).isEmpty) {
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.enrolment-offer-invalid',
         'This enrolment can no longer be completed; please start again',
       );
@@ -795,7 +795,7 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
       // Throwing rather than returning a nullable enrolment: the only value this
       // method can return is a *confirmed* one, so a caller cannot accidentally
       // store an unconfirmed secret by forgetting a null check.
-      throw LoginException(
+      throw TomLoginException(
         'login.error.2fa.enrolment-code-invalid',
         'That code does not match the authenticator that was just set up',
       );

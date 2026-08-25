@@ -718,8 +718,8 @@ final _IndexTables _indexTables = _indexTablesOf(
 ///
 /// The **summary**, not the source directory, is what the index is measured
 /// against. The two disagree, and the summary is right where they do:
-/// `LoginException` is declared in `little_things/server_exception.dart` and
-/// documented under `### LoginException` in `api_summary_authentication.md`,
+/// `TomLoginException` is declared in `little_things/server_exception.dart` and
+/// documented under `### TomLoginException` in `api_summary_authentication.md`,
 /// because authentication is where a reader meets it. The index files it under
 /// Authentication too, so index and summary agree — and a directory-driven
 /// check would report that agreement as a defect.
@@ -3132,10 +3132,10 @@ class RealClass {}
       // `little_things`, documented under Authentication, and filed there by
       // the index. Measured against the source directory this would be a
       // false positive, which is why the summary is the source of truth.
-      expect(_sectionedTypes['authentication'], contains('LoginException'));
+      expect(_sectionedTypes['authentication'], contains('TomLoginException'));
       expect(
         _sectionedTypes['little_things'],
-        isNot(contains('LoginException')),
+        isNot(contains('TomLoginException')),
       );
     });
   });

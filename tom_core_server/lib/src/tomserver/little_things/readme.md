@@ -15,7 +15,7 @@ that seeds it: it is consumed by the base exception's constructor, and this is
 the module every other one depends on, so declaring it beside its producer would
 have pointed the dependency arrow backwards.
 
-One further subclass is declared here too: `LoginException`, which lives next
+One further subclass is declared here too: `TomLoginException`, which lives next
 to the base rather than beside the authentication server that consumes it, so
 the 2FA subsystem can throw it without importing that server.
 
@@ -25,7 +25,7 @@ the 2FA subsystem can throw it without importing that server.
 | ---- | -------------- |
 | `TomRequestId` | Per-request v4 UUID. Created once per request by `tomDefaultAuthenticationMiddleware` and published into the request zone; recovered with `getFromCurrentZone<TomRequestId>()` for log and exception correlation. |
 | `TomServerException` | Base server error: carries `key` + `defaultUserMessage`, records `isolateName`, exposes `clientThrow`, and copies the active request UUID into `requestUuid` for correlation. |
-| `LoginException` | A login that cannot succeed. Adds no members to the base — it is a name the authentication services throw and `TomAuthenticationServer` catches. Its constructor omits `clientThrow`, so it is born client-visible, unlike the rest of the authentication subsystem's exceptions. See `doc/authentication.md`. |
+| `TomLoginException` | A login that cannot succeed. Adds no members to the base — it is a name the authentication services throw and `TomAuthenticationServer` catches. Its constructor omits `clientThrow`, so it is born client-visible, unlike the rest of the authentication subsystem's exceptions. See `doc/authentication.md`. |
 
 ## Quick start
 

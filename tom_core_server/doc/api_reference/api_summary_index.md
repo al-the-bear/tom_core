@@ -112,7 +112,7 @@ surface documented here.
 | `Tom2FAAdaptor` | class | Reflection marker for 2FA adaptors. |
 | `TomAuthenticationData` | class | Reflected authentication payload. |
 | `TomAuthenticationInfo` | class | Resolved authentication result. |
-| `LoginException` | class | Login failure (extends `TomServerException`). |
+| `TomLoginException` | class | Login failure (extends `TomServerException`). |
 | `TomServerSelfLogin` | class | Logs the deployment in as itself and installs the server principal. |
 | `TomServiceCredential` | class | The deployment's own login credential and where to present it. |
 | `TomServiceLoginTransport` | abstract class | The one-JSON-POST seam the self-login runs over. |
@@ -573,7 +573,7 @@ surface documented here.
 | `leaseTable` | Scheduling |
 | `leaseTableDdl` | Scheduling |
 | `Like` | Object Persistence |
-| `LoginException` | Authentication |
+| `TomLoginException` | Authentication |
 | `Lt` | Object Persistence |
 | `Lte` | Object Persistence |
 | `MariaDbDatasource` | Datasources |

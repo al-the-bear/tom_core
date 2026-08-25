@@ -3948,6 +3948,20 @@
 
 ### Behaviour Changes
 
+- **`LoginException` is renamed to `TomLoginException` (tcinc566).** It was the
+  only exported exception type in the package without the `Tom` prefix, and it
+  is declared in `little_things` directly beside `TomServerException`, the base
+  it extends — so the inconsistency was visible within a single file.
+  `LoginException` is also a plausible name for an application's *own* type,
+  and the barrel was occupying it in every consumer's namespace.
+
+  The rename is mechanical but carries one trap: `TomServerSelfLoginException`
+  contains `LoginException` as a substring, so a plain search-and-replace turns
+  it into `TomServerSelfTomLoginException`. The rename was applied with a
+  negative lookbehind on the preceding identifier character, and the
+  `TomServerSelfLoginException` occurrence count was verified unchanged
+  afterwards.
+
 - **`TomServerException.toString()` labels the request UUID and omits it when
   there is no request (tcinc565).** The rendering ended
   `client-throw: $clientThrow $requestUuid`, interpolating the correlation id

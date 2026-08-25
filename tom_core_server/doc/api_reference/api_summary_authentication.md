@@ -12,7 +12,7 @@ server's own self-login against an auth server.
 - [Classes](#classes)
   - [TomAuthenticationAdaptor](#tomauthenticationadaptor)
   - [Tom2FAAdaptor](#tom2faadaptor)
-  - [LoginException](#loginexception)
+  - [TomLoginException](#tomloginexception)
   - [Tom2FAException](#tom2faexception)
   - [TomAuthenticationData](#tomauthenticationdata)
   - [TomAuthenticationService](#tomauthenticationservice)
@@ -109,8 +109,8 @@ and delegates credential checking to a configured `TomAuthenticationService`
 logs an error, for scaffolding only). On success the resolved
 `TomAuthenticationInfo` (principal + access-control definition) is encoded into
 two JWTs — an authentication token and an authorization token — inside the
-returned `TomAuthenticationResult`. `LoginException` (a `TomServerException`) is
-caught and turned into a failed result. `TomAuthenticationAdaptor`,
+returned `TomAuthenticationResult`. `TomLoginException` (a `TomServerException`)
+is caught and turned into a failed result. `TomAuthenticationAdaptor`,
 `Tom2FAAdaptor`, `TomAuthenticationService`, and `Tom2FAService` are
 reflection-discoverable (`@tomReflector`) so a runtime can enumerate and route
 to the registered adaptors.
@@ -183,7 +183,7 @@ deployment skips this silently; a configured one that fails raises
 
 ```
 TomServerException  (tom_core_server)
-    ├── LoginException
+    ├── TomLoginException
     ├── Tom2FAException
     ├── TomServerSelfLoginException
     └── TomOAuthException
@@ -323,7 +323,7 @@ const Tom2FAAdaptor(String type)
 | -------- | ---- | ----------- |
 | `type` | `String` | The 2FA mechanism this adaptor implements (e.g. `'totp'`, `'sms'`). |
 
-### LoginException
+### TomLoginException
 
 A server-side login failure carrying the `TomServerException` payload.
 Thrown by a `TomAuthenticationService` when a login cannot succeed;
@@ -334,7 +334,7 @@ Thrown by a `TomAuthenticationService` when a login cannot succeed;
 #### Constructors
 
 ```dart
-LoginException(
+TomLoginException(
   String key,
   String userMessage, {
   Map<String, Object?>? parameters,
@@ -347,7 +347,7 @@ LoginException(
 ### Tom2FAException
 
 A 2FA *configuration* fault — a duplicate or unusable adaptor registration, or a
-mechanism that cannot be constructed. Distinct from `LoginException`: a wrong
+mechanism that cannot be constructed. Distinct from `TomLoginException`: a wrong
 code is an expected outcome and yields a failed `TomAuthenticationResult`, while
 a wrongly wired deployment must surface loudly. Constructed with
 `clientThrow: false`, so an authentication misconfiguration is never described
@@ -409,7 +409,7 @@ TomAuthenticationData({
 The contract an application implements to authenticate a login
 (reflection-discoverable, `@tomReflector`). Implementations resolve the
 `TomAuthenticationData` against their user store and return a
-`TomAuthenticationInfo`, or throw a `LoginException` on failure.
+`TomAuthenticationInfo`, or throw a `TomLoginException` on failure.
 
 Everything the returned principal asserts is the implementation's answer — the
 identity, the locale, the ACI, and the client limits (`principal.cli`, the
@@ -423,7 +423,7 @@ holds no subscription store. The one value it overwrites is
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `authenticateUser` | `Future<TomAuthenticationInfo> authenticateUser(TomAuthenticationData authData)` | Authenticates `authData`, returning the principal and its access rights, or throwing a `LoginException` when rejected. |
+| `authenticateUser` | `Future<TomAuthenticationInfo> authenticateUser(TomAuthenticationData authData)` | Authenticates `authData`, returning the principal and its access rights, or throwing a `TomLoginException` when rejected. |
 
 ### Tom2FAContext
 
@@ -530,7 +530,7 @@ through a login implements `Tom2FAEnrolmentSupport` in addition.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | Issues a challenge for `context`, or throws `LoginException` when this user cannot be challenged at all (no enrolled device, no configured secret). |
+| `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | Issues a challenge for `context`, or throws `TomLoginException` when this user cannot be challenged at all (no enrolled device, no configured secret). |
 | `verifySubmission` | `Future<bool> verifySubmission(Tom2FAContext context, Tom2FASubmission submission)` | Whether `submission` correctly answers the challenge. Returns `false` for a wrong answer; throws only when verification could not be *performed*. |
 
 ### Tom2FAPrerequisite
@@ -823,7 +823,7 @@ by `Tom2FARegistry.enrolmentSupportFor` for one mechanism and
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `beginEnrolment` | `Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context)` | Proposes a setup for `context`, or throws `LoginException` when this principal cannot enrol this mechanism at all (`login.error.2fa.no-destination` for a delivered code with no address on record). |
+| `beginEnrolment` | `Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context)` | Proposes a setup for `context`, or throws `TomLoginException` when this principal cannot enrol this mechanism at all (`login.error.2fa.no-destination` for a delivered code with no address on record). |
 | `confirmEnrolment` | `Future<Tom2FAEnrolment> confirmEnrolment(Tom2FAContext context, Tom2FAEnrolmentOffer offer, String submitted)` | Checks `submitted` against `offer` and yields the enrolment to store. **Throws** rather than returning a nullable enrolment, so a caller cannot store an unconfirmed factor by forgetting a null check. |
 
 ### Tom2FAEnrolmentState
@@ -869,7 +869,7 @@ Tom2FAEnrolmentState({
 | `withConsumedAttempt` | `Tom2FAEnrolmentState withConsumedAttempt()` | The state after one confirmation has been spent. |
 | `toClaims` | `Map<String, Object?> toClaims()` | The public half, for the interim token's claims. |
 | `secretClaims` | `Map<String, Object?>?` | The encrypted half — the offer's `enrolmentData` — or `null` when nothing has been chosen. |
-| `fromClaims` | `static Tom2FAEnrolmentState? fromClaims(Map<String, dynamic>? payload, [Map<String, dynamic>? secretData])` | Reads a pending enrolment back out of a token, or `null` when it carries none. An offer that cannot be decrypted degrades to the *offered* shape rather than throwing, so an undecryptable token sends the user back to the choice instead of failing the login. Every boolean claim is read with `Tom2FAClaims.isTrue` (either wire encoding), the same rule the kernel's `Tom2FAPendingEnrolment.fromClaims` applies — the two decode the same token, one to render the UI and one to authorise the enrolment passes, so they must not disagree about what `skippable` says. An unreadable **expiry** on a begun offer is the one input it refuses outright, throwing `LoginException('login.error.2fa.enrolment-offer-invalid')`: the offer travels encrypted and so is authentic, while its deadline travels in the public payload, and reading a missing deadline as *no deadline* would leave a generated secret confirmable for as long as somebody keeps the token. The kernel twin declines the same payload by returning `null` — it renders a panel rather than authorising a pass, so it has no error to raise. |
+| `fromClaims` | `static Tom2FAEnrolmentState? fromClaims(Map<String, dynamic>? payload, [Map<String, dynamic>? secretData])` | Reads a pending enrolment back out of a token, or `null` when it carries none. An offer that cannot be decrypted degrades to the *offered* shape rather than throwing, so an undecryptable token sends the user back to the choice instead of failing the login. Every boolean claim is read with `Tom2FAClaims.isTrue` (either wire encoding), the same rule the kernel's `Tom2FAPendingEnrolment.fromClaims` applies — the two decode the same token, one to render the UI and one to authorise the enrolment passes, so they must not disagree about what `skippable` says. An unreadable **expiry** on a begun offer is the one input it refuses outright, throwing `TomLoginException('login.error.2fa.enrolment-offer-invalid')`: the offer travels encrypted and so is authentic, while its deadline travels in the public payload, and reading a missing deadline as *no deadline* would leave a generated secret confirmable for as long as somebody keeps the token. The kernel twin declines the same payload by returning `null` — it renders a panel rather than authorising a pass, so it has no error to raise. |
 
 ### Tom2FAEnrolmentStore
 
@@ -1049,10 +1049,10 @@ TomTotp2FAService()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | *(override)* Resolves the secret — throwing `LoginException('login.error.2fa.not-enrolled')` when there is none — and returns a spec whose `clientData` names the code shape (`digits`, `periodSeconds`) so a UI can size its input field. |
+| `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | *(override)* Resolves the secret — throwing `TomLoginException('login.error.2fa.not-enrolled')` when there is none — and returns a spec whose `clientData` names the code shape (`digits`, `periodSeconds`) so a UI can size its input field. |
 | `verifySubmission` | `Future<bool> verifySubmission(Tom2FAContext context, Tom2FASubmission submission)` | *(override)* Re-resolves the secret and compares the trimmed submission against the codes in the skew window, in constant time. Rejects a submission of the wrong width before hashing. |
 | `beginEnrolment` | `Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context)` | *(override)* Generates a secret and offers it as `clientData` — the base32 string plus the `otpauth://` URI under `clientDataUriKey` — with the secret also held in the offer's server-only `enrolmentData`. |
-| `confirmEnrolment` | `Future<Tom2FAEnrolment> confirmEnrolment(Tom2FAContext context, Tom2FAEnrolmentOffer offer, String submitted)` | *(override)* Checks `submitted` against the offered secret and yields the enrolment to store, filed under `enrolmentId: mechanismType` so re-enrolling replaces the old authenticator instead of accumulating one per attempt. Throws `LoginException` otherwise. |
+| `confirmEnrolment` | `Future<Tom2FAEnrolment> confirmEnrolment(Tom2FAContext context, Tom2FAEnrolmentOffer offer, String submitted)` | *(override)* Checks `submitted` against the offered secret and yields the enrolment to store, filed under `enrolmentId: mechanismType` so re-enrolling replaces the old authenticator instead of accumulating one per attempt. Throws `TomLoginException` otherwise. |
 | `generateSecret` | `static String generateSecret()` | A fresh base32 secret of `globalSettingSecretBytes` bytes from the framework's CSPRNG. |
 | `provisioningUri` | `static String provisioningUri(String secret, Tom2FAContext context)` | The `otpauth://totp/...` URI an authenticator app scans, carrying this verifier's own digits and period. |
 | `issuerFor` | `static String issuerFor(Tom2FAContext context)` | `globalSettingIssuer`, or the application being logged into when it is empty. |
@@ -1123,7 +1123,7 @@ answerable at registration rather than discovered at the challenge.
 | `resolveDestination` | `Future<String?> resolveDestination(Tom2FAContext context)` | The destination a challenge goes to: the **confirmed** enrolment first, then the record — so an attacker who can edit a profile field cannot redirect the second factor. A malformed enrolment row is skipped rather than treated as an answer. |
 | `beginEnrolment` | `Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context)` | *(override)* Sends a code to the destination **on record** (not the confirmed one — that would be a tautology) and returns an offer carrying the sealed code and the destination in its encrypted half. Throws `login.error.2fa.no-destination` when the record names none. |
 | `confirmEnrolment` | `Future<Tom2FAEnrolment> confirmEnrolment(Tom2FAContext context, Tom2FAEnrolmentOffer offer, String submitted)` | *(override)* Yields an enrolment only when `submitted` matches; throws `login.error.2fa.enrolment-code-invalid` (or `.enrolment-offer-invalid` for an offer with no destination) rather than returning a nullable, so an unproven destination cannot be stored by forgetting a check. `enrolmentId` is the mechanism type, making re-confirmation an upsert. |
-| `deliverOrFail` | `Future<void> deliverOrFail(Tom2FAContext context, {required String destination, required String code, required String templateKey, required Duration validity})` | Calls `deliver` and turns an unclassified failure into `LoginException('login.error.2fa.delivery-failed')`, logged, with the cause attached. `LoginException` and `Tom2FAException` pass through unchanged — both are already classified, and a wiring fault has a different owner from a relay that is down. |
+| `deliverOrFail` | `Future<void> deliverOrFail(Tom2FAContext context, {required String destination, required String code, required String templateKey, required Duration validity})` | Calls `deliver` and turns an unclassified failure into `TomLoginException('login.error.2fa.delivery-failed')`, logged, with the cause attached. `TomLoginException` and `Tom2FAException` pass through unchanged — both are already classified, and a wiring fault has a different owner from a relay that is down. |
 | `localeFor` | `TomTextLocale? localeFor(Tom2FAContext context)` | The principal's stored language first, then the login attempt's client locale, then `null` so the bundle set applies its own default. |
 | `templateParameters` | `Map<String, Object?> templateParameters(Tom2FAContext context, {required String code, required Duration validity})` | `code`, `minutes`, `username`, `firstname`, `lastname`, `application` — supplied whether or not a template mentions them. |
 | `generateNumericCode` | `static String generateNumericCode(int digits)` | A decimal code from `RsaKeyHelper.getSecureRandom()`, rejection-sampled so `0`–`5` are no likelier than `6`–`9`. |

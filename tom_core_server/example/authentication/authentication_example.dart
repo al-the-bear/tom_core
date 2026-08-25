@@ -3,9 +3,9 @@
 /// Demonstrates the [TomAuthenticationService] contract end to end without a
 /// running HTTP server or database: building [TomAuthenticationData], resolving
 /// it through a service into a [TomAuthenticationInfo], rejecting a login with a
-/// [LoginException], reading the adaptor-annotation configuration, choosing the
-/// pending-authorization store through [TomOAuthStateStoreSettings], setting
-/// how much clock skew an ID token's expiry is read against, listing an
+/// [TomLoginException], reading the adaptor-annotation configuration, choosing
+/// the pending-authorization store through [TomOAuthStateStoreSettings],
+/// setting how much clock skew an ID token's expiry is read against, listing an
 /// account's external identities as detached snapshots, and watching a grant
 /// that can never again mint a token be deleted rather than kept.
 ///
@@ -53,7 +53,7 @@ class DemoAuthService implements TomAuthenticationService {
     TomAuthenticationData authData,
   ) async {
     if (authData.username != 'alice' || authData.key != 's3cret') {
-      throw LoginException(
+      throw TomLoginException(
         'error.invalid-user-or-password',
         'Invalid user or password',
         parameters: {'username': authData.username},
@@ -80,10 +80,10 @@ Future<void> run() async {
   );
   print('alice authenticated as:    ${ok.principal.user.username}');
 
-  // Example 3: a wrong credential is rejected with a LoginException.
+  // Example 3: a wrong credential is rejected with a TomLoginException.
   try {
     await service.authenticateUser(_login('alice', password: 'wrong'));
-  } on LoginException catch (e) {
+  } on TomLoginException catch (e) {
     print('rejected with key:         ${e.key}');
   }
 

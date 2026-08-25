@@ -48,9 +48,10 @@ guarantees the pipeline already rejected any request without a principal, so the
 zone value is non-null inside those methods.
 
 A rejected login is the *expected* outcome of bad credentials, so the `login`
-endpoint declares a `LoginUnauthorizedErrorHandler` that maps `LoginException` to
-**HTTP 401** carrying only the stable error key; any other error falls back to the
-opaque 500. Crucially, an unknown user and a wrong password are rejected with the
+endpoint declares a `LoginUnauthorizedErrorHandler` that maps
+`TomLoginException` to **HTTP 401** carrying only the stable error key; any
+other error falls back to the opaque 500. Crucially, an unknown user and a
+wrong password are rejected with the
 *same* generic key (`error.invalid-user-or-password`), so the response never
 reveals which of the two failed — no account-existence leak. A suspended account
 is rejected distinctly (`error.user.suspended`) because that is an actionable

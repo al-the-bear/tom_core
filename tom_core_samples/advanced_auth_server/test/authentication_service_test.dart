@@ -5,7 +5,7 @@
 /// reflection. They assert the two paths the plan calls out: the **accept** path
 /// returns an authenticated [TomPrincipal] carrying the user's expected roles and
 /// groups, and the **reject** paths (wrong password, unknown user, suspended
-/// account, credential-less row) each throw a [LoginException] rather than
+/// account, credential-less row) each throw a [TomLoginException] rather than
 /// returning a principal.
 library;
 
@@ -58,41 +58,44 @@ InMemoryAuthUserStore _storeWith({
 
 void main() {
   group('AdvancedAuthenticationService.authenticateUser', () {
-    test('accepts the right password and builds the authenticated principal',
-        () async {
-      final service = AdvancedAuthenticationService(_storeWith());
+    test(
+      'accepts the right password and builds the authenticated principal',
+      () async {
+        final service = AdvancedAuthenticationService(_storeWith());
 
-      final info = await service.authenticateUser(_login('ada', 's3cret'));
+        final info = await service.authenticateUser(_login('ada', 's3cret'));
 
-      expect(info.principal.authenticated, isTrue);
-      expect(info.principal.username, 'ada');
-      expect(info.principal.user.id, 1);
-      expect(info.principal.user.email, 'ada@example.com');
-    });
-
-    test('the principal carries the user\'s expected roles and groups',
-        () async {
-      final service = AdvancedAuthenticationService(
-        _storeWith(
-          roleKeysByUserId: const {
-            1: ['editor', 'viewer'],
-          },
-          groupNamesByUserId: const {
-            1: ['Engineering'],
-          },
-        ),
-      );
-
-      final info = await service.authenticateUser(_login('ada', 's3cret'));
-
-      expect(info.principal.aci.roles, containsAll(['editor', 'viewer']));
-      expect(info.principal.aci.groups, contains('Engineering'));
-      // The access-control definition mirrors the assigned roles/groups.
-      expect(info.acd.toString(), contains('2 roles'));
-    });
+        expect(info.principal.authenticated, isTrue);
+        expect(info.principal.username, 'ada');
+        expect(info.principal.user.id, 1);
+        expect(info.principal.user.email, 'ada@example.com');
+      },
+    );
 
     test(
-        'the login does not fold effective per-resource roles into the token '
+      'the principal carries the user\'s expected roles and groups',
+      () async {
+        final service = AdvancedAuthenticationService(
+          _storeWith(
+            roleKeysByUserId: const {
+              1: ['editor', 'viewer'],
+            },
+            groupNamesByUserId: const {
+              1: ['Engineering'],
+            },
+          ),
+        );
+
+        final info = await service.authenticateUser(_login('ada', 's3cret'));
+
+        expect(info.principal.aci.roles, containsAll(['editor', 'viewer']));
+        expect(info.principal.aci.groups, contains('Engineering'));
+        // The access-control definition mirrors the assigned roles/groups.
+        expect(info.acd.toString(), contains('2 roles'));
+      },
+    );
+
+    test('the login does not fold effective per-resource roles into the token '
         '(RCD3, option b)', () async {
       // The bearer token is opaque and never read for enforcement; the app
       // server re-resolves grants/shares live from auth_db and the client reads
@@ -105,21 +108,21 @@ void main() {
       expect(info.principal.aci.resourceRoles, isEmpty);
     });
 
-    test('rejects the wrong password with a LoginException', () async {
+    test('rejects the wrong password with a TomLoginException', () async {
       final service = AdvancedAuthenticationService(_storeWith());
 
       await expectLater(
         service.authenticateUser(_login('ada', 'wrong')),
-        throwsA(isA<LoginException>()),
+        throwsA(isA<TomLoginException>()),
       );
     });
 
-    test('rejects an unknown user with a LoginException', () async {
+    test('rejects an unknown user with a TomLoginException', () async {
       final service = AdvancedAuthenticationService(_storeWith());
 
       await expectLater(
         service.authenticateUser(_login('nobody', 's3cret')),
-        throwsA(isA<LoginException>()),
+        throwsA(isA<TomLoginException>()),
       );
     });
 
@@ -138,7 +141,7 @@ void main() {
       await expectLater(
         service.authenticateUser(_login('bob', 'hunter2')),
         throwsA(
-          isA<LoginException>().having(
+          isA<TomLoginException>().having(
             (e) => e.key,
             'key',
             'error.user.suspended',
@@ -147,37 +150,44 @@ void main() {
       );
     });
 
-    test('rejects a credential-less row (freshly seeded, no password)',
-        () async {
-      // Step-8 seeds leave password_hash NULL until a password is set.
-      final seeded = UserRecord()
-        ..id = 3
-        ..username = 'carol'
-        ..status = UserStatus.active.name;
-      final service = AdvancedAuthenticationService(
-        _storeWith(extraUsers: [seeded]),
-      );
+    test(
+      'rejects a credential-less row (freshly seeded, no password)',
+      () async {
+        // Step-8 seeds leave password_hash NULL until a password is set.
+        final seeded = UserRecord()
+          ..id = 3
+          ..username = 'carol'
+          ..status = UserStatus.active.name;
+        final service = AdvancedAuthenticationService(
+          _storeWith(extraUsers: [seeded]),
+        );
 
-      await expectLater(
-        service.authenticateUser(_login('carol', 'anything')),
-        throwsA(isA<LoginException>()),
-      );
-    });
+        await expectLater(
+          service.authenticateUser(_login('carol', 'anything')),
+          throwsA(isA<TomLoginException>()),
+        );
+      },
+    );
 
-    test('unknown user and wrong password share the same generic key', () async {
-      final service = AdvancedAuthenticationService(_storeWith());
+    test(
+      'unknown user and wrong password share the same generic key',
+      () async {
+        final service = AdvancedAuthenticationService(_storeWith());
 
-      Future<String> keyFor(String user, String password) async {
-        try {
-          await service.authenticateUser(_login(user, password));
-          fail('expected a LoginException');
-        } on LoginException catch (e) {
-          return e.key;
+        Future<String> keyFor(String user, String password) async {
+          try {
+            await service.authenticateUser(_login(user, password));
+            fail('expected a TomLoginException');
+          } on TomLoginException catch (e) {
+            return e.key;
+          }
         }
-      }
 
-      expect(await keyFor('nobody', 's3cret'),
-          await keyFor('ada', 'definitely-wrong'));
-    });
+        expect(
+          await keyFor('nobody', 's3cret'),
+          await keyFor('ada', 'definitely-wrong'),
+        );
+      },
+    );
   });
 }

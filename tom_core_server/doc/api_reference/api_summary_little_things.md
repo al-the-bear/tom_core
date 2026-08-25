@@ -2,8 +2,8 @@
 
 The base exception type for every error raised by `tom_core_server`, adding
 isolate attribution and request correlation to the kernel exception — plus
-`LoginException`, the one subclass declared beside it, and `TomRequestId`, the
-correlation id the base reads out of the zone.
+`TomLoginException`, the one subclass declared beside it, and `TomRequestId`,
+the correlation id the base reads out of the zone.
 
 ## Table of Contents
 
@@ -21,7 +21,7 @@ Sources: `lib/src/tomserver/little_things/request_id.dart`,
 
 `TomServerException` is the root of the server's exception hierarchy: every
 server exception type (e.g. `TomEndpointHandlerException`, `TomCacheException`,
-`MariadbMigrationException`, and `LoginException`) subtypes it, so a single
+`MariadbMigrationException`, and `TomLoginException`) subtypes it, so a single
 `on TomServerException catch (e)` clause reaches all of them. Over the kernel's
 `TomException` it adds two server-specific concerns: **isolate attribution** —
 it captures `isolateName` at construction so a logged or serialized error
@@ -31,13 +31,13 @@ UUID into `TomException.requestUuid`, linking the error to the request that
 triggered it. The `clientThrow` flag marks whether the exception is safe to
 surface to the client.
 
-The module declares one of those subtypes itself: `LoginException`, which sits
-here rather than in `authentication` so the 2FA subsystem can throw it without
-importing the server that catches it. It adds no members — its constructor
-forwards the base payload minus `clientThrow`, so a `LoginException` is always
-*born* with the base default `true` (the field itself stays writable, as on any
-subtype). It is documented in
-[api_summary_authentication.md](api_summary_authentication.md#loginexception),
+The module declares one of those subtypes itself: `TomLoginException`, which
+sits here rather than in `authentication` so the 2FA subsystem can throw it
+without importing the server that catches it. It adds no members — its
+constructor forwards the base payload minus `clientThrow`, so a
+`TomLoginException` is always *born* with the base default `true` (the field
+itself stays writable, as on any subtype). It is documented in
+[api_summary_authentication.md](api_summary_authentication.md#tomloginexception),
 under the module a reader meets it in; the index files it there too, and this
 summary gives it no section of its own so that the two documents cannot drift
 apart.
@@ -49,8 +49,8 @@ TomRequestId          (standalone)
 
 TomException  (kernel)
     └── TomServerException
-            ├── LoginException   (declared here; documented under Authentication)
-            └── …                (every other module's exception type)
+            ├── TomLoginException  (declared here; documented under Auth)
+            └── …                  (every other module's exception type)
 ```
 
 ## Classes
