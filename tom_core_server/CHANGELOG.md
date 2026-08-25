@@ -740,6 +740,43 @@
 
 ### Documentation
 
+- **The `db_migration` example demonstrates the module's connection-free
+  surface, and its expectations are now actually evaluated (tcinc499).** The
+  example reached three of the module's public types and printed a transcript
+  that looked like a demonstration of the rest. Ordering, environment
+  selection, the schema accumulator, statement splitting, the DDL replay, the
+  type-family comparison and the convergence check — everything the module can
+  do without a database — were absent. It is now ten numbered steps covering
+  all of them, ending on a convergence report that genuinely diverges: the
+  chain contains an `ALTER TABLE` against a table no earlier artifact creates,
+  so the replay reports one error, and no entity types are offered, so the one
+  table the chain does create reads as unmapped. Both are printed. The two
+  halves that need more than a Dart VM — the orchestrator and the entity side,
+  which reads `@TomDbTable` types out of `tomReflector` — are named in the
+  header with the reason they are described in `doc/db_migration.md` instead of
+  run here, rather than quietly omitted.
+
+  The more consequential half of this is that **the example's expectations were
+  not being checked at all.** Its seven `assert`s were compiled out by the
+  `dart run` command its own header documents — that is what `--enable-asserts`
+  is for — so the file printed a plausible transcript and exited 0 whether or
+  not anything it claimed was true. They are now a plain `if`/`throw` helper
+  whose dartdoc records why, matching `example/datasources`. Measuring the rest
+  of the package found the same defect in **16 of 28 example programs**; those
+  are quarantined by name in `api_reference_coverage_test.dart` under quest todo
+  `tcincb134_ahyc`, with a per-file rule that fails the moment a new example
+  ships an `assert` and three meta-tests that stop the quarantine outliving its
+  cause — one fails when a quarantined file no longer has an assert to suppress,
+  one when it names a file that no longer exists, and one when the directory
+  sweep stops finding examples at all, which would otherwise report a clean pass
+  over an empty set. `db_migration_test.dart` runs the example under exactly the
+  command its header gives and pins the printed step list, the header's own list
+  of surfaces, and the fourteen types it must reach. Four of those fourteen are
+  *returned* values whose types inference would reach without ever spelling —
+  `TomDdlReplayResult`, `TomDdlReplayError`, `TomSchemaConvergenceReport`,
+  `TomSchemaTable` — so the example writes those declarations out in full,
+  giving a reader a name to look up.
+
 - **The `db_migration` guide names the suites that cover it, and the gaps it
   still has (tcinc498).** The guide named five test files — among them
   `framework_schema_test.dart`, `framework_schema_db_test.dart` and

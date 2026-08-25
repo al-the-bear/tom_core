@@ -1256,6 +1256,107 @@ void main() {
       }
     });
   });
+
+  group('The example runs green', () {
+    final examplePath = p.join(
+      'example',
+      'db_migration',
+      'db_migration_example.dart',
+    );
+
+    test('under exactly the command its header documents', () async {
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        examplePath,
+      ]);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'example failed: ${result.stdout}${result.stderr}',
+      );
+      // The transcript's step numbers, in the order they were printed. The
+      // whole list is compared rather than each step being looked for in turn,
+      // because only one of the two failures is caught by looking: a step that
+      // stopped printing fails either way, but a step *added* without being
+      // listed here is a surface nothing checks — and that is the state this
+      // example was in, with four steps standing for ten connection-free
+      // surfaces and a header claiming the rest needed a database.
+      final printed = RegExp(r'^(\d+)\. ', multiLine: true)
+          .allMatches(result.stdout as String)
+          .map((match) => match.group(1)!)
+          .toList();
+      expect(printed, [
+        for (var step = 1; step <= 10; step++) '$step',
+      ], reason: 'the example demonstrates ten surfaces, in order');
+    });
+
+    test('with its expectations checked rather than asserted', () {
+      // The example's own header gives `dart run`, under which `assert` is
+      // compiled out. Checks that vanish under the documented invocation are
+      // worse than none: the transcript still looks plausible and the exit
+      // code is still 0.
+      final source = File(examplePath).readAsStringSync();
+      expect(
+        source,
+        isNot(contains('assert(')),
+        reason: 'an assert in the example does not run under `dart run`',
+      );
+      expect(source, contains('void check(bool ok, String expectation)'));
+    });
+
+    test('demonstrating the surface it says it demonstrates', () {
+      // A header list and a transcript can drift apart in either direction, and
+      // both directions are silent: a surface dropped from the code leaves a
+      // header entry pointing at nothing, and one added without a header entry
+      // is undocumented. Neither is visible to the step-count check above,
+      // which only reads what was printed.
+      final source = File(examplePath).readAsStringSync();
+      final headerEntries = RegExp(
+        r'^///\s+(\d+)\. ',
+        multiLine: true,
+      ).allMatches(source).map((match) => match.group(1)!).toList();
+      expect(headerEntries, [for (var step = 1; step <= 10; step++) '$step']);
+
+      // Every type the todo counted as the module's connection-free surface,
+      // named in the file the reader is sent to. Listed explicitly rather than
+      // derived from the barrel, because the barrel also exports the half that
+      // genuinely needs a server, and a rule that demanded those would be
+      // satisfiable only by a lie.
+      //
+      // Four of them — the replay result and its errors, the convergence report
+      // and the schema table — are *returned*, so `var`/`final` would reach them
+      // without ever spelling them. That reads fine and teaches nothing: a
+      // reader who wants to know what `replay()` handed back has no name to look
+      // up. The example therefore writes those declarations out in full, and
+      // this list is what keeps it doing so.
+      for (final type in const [
+        'TomDbMigrationAdaptor',
+        'TomDbVersion',
+        'MariadbMigrationAdaptor',
+        'TomDbMigrations',
+        'TomMigrationFileName',
+        'TomSchemaBuilder',
+        'TomSchemaColumn',
+        'TomSchemaModel',
+        'TomSchemaTable',
+        'TomSqlLexer',
+        'TomMigrationArtifact',
+        'TomSchemaDdlReader',
+        'TomDdlReplayResult',
+        'TomDdlReplayError',
+        'TomSqlTypeFamily',
+        'TomSchemaConvergenceCheck',
+        'TomSchemaConvergenceReport',
+        'TomSchemaDivergenceKind',
+      ]) {
+        expect(
+          source,
+          contains(type),
+          reason: '$type is connection-free and the example never reaches it',
+        );
+      }
+    });
+  });
 }
 
 /// The texts that state the migration file-name grammar in full.
