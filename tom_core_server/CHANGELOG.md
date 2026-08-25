@@ -2,6 +2,19 @@
 
 ### Testing
 
+- **The only `Date:` header test used the one offset that cannot show a padding
+  bug (tcinc580).** `formatRfc5322Date` was asserted against
+  `DateTime.utc(...)`, whose offset is `+0000` — where the hour is `0`, the
+  minute is `0`, and `0 % 60` is `0`, so a dropped `padLeft` and a dropped
+  `% 60` produce a wrong string only in ways that all three zero values happen
+  to share. A second test formats a *local* `DateTime` and asserts the shape
+  (`[+-]\d{4}`, four digits always) and then parses the offset back out and
+  compares it to `timeZoneOffset` — read back rather than recomputed the way the
+  encoder computes it, so the test disagrees with a wrong implementation instead
+  of copying it. It exercises whatever zone the machine runs in, which is a
+  single-digit hour on most of them and a non-zero `% 60` in India, Iran and
+  Nepal.
+
 - **Nothing checked that the package was formatted, and it had already drifted
   twice (tcinc572).** `dart analyze` — the gate this workspace mandates and the
   one everybody actually runs — reports nothing about line wrapping, so a file
@@ -3639,6 +3652,18 @@
   has to stop its caches to return.
 
 ### Internal
+
+- **The RFC 5322 date helper is a nested function, and now the only zero-padder
+  in its method (tcinc580).** `TomMimeEncoder.formatRfc5322Date` bound its
+  two-digit padder to a final local — `final two = (int n) => ...` — which is
+  the idiom for a closure that gets passed somewhere or reassigned, and this one
+  is neither. It was the only lambda-in-a-local in the whole of `lib`, so it read
+  as an oversight rather than a house style; `sqlInstant` in `datasources` does
+  the identical job as a nested function declaration. The helper is now declared
+  the same way, at the top of the method rather than four lines into it, and the
+  numeric-offset fields use it instead of spelling `padLeft(2, '0')` inline a
+  second and third time. Behaviour is unchanged — the substitution is the same
+  expression under a different name.
 
 - **`TomRequestId` moved from `server` to `little_things`, breaking the cycle
   between them (tcinc563).** `little_things` holds `TomServerException`, the base

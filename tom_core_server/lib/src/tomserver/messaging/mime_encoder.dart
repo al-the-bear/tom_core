@@ -141,14 +141,15 @@ class TomMimeEncoder {
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
+    String two(int n) => n.toString().padLeft(2, '0');
+
     final day = days[when.weekday - 1];
     final month = months[when.month - 1];
     final offset = when.timeZoneOffset;
     final sign = offset.isNegative ? '-' : '+';
     final abs = offset.abs();
-    final hh = abs.inHours.toString().padLeft(2, '0');
-    final mm = (abs.inMinutes % 60).toString().padLeft(2, '0');
-    final two = (int n) => n.toString().padLeft(2, '0');
+    final hh = two(abs.inHours);
+    final mm = two(abs.inMinutes % 60);
     return '$day, ${two(when.day)} $month ${when.year} '
         '${two(when.hour)}:${two(when.minute)}:${two(when.second)} '
         '$sign$hh$mm';

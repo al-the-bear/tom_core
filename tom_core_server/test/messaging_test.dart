@@ -459,6 +459,32 @@ void main() {
       },
     );
 
+    test('a non-UTC offset is signed and padded to four digits', () {
+      // The case above pins the whole string but only ever sees `+0000`, which
+      // is the one offset that looks right without any padding. A zone like
+      // +05:30 or -03:00 is where a missing `padLeft` shows up, so assert the
+      // shape on whatever zone this machine actually runs in — and read the
+      // offset back out rather than recomputing it the way the encoder does,
+      // so the test disagrees with a wrong implementation instead of copying
+      // it.
+      final when = DateTime(2026, 7, 28, 9, 5, 3);
+      final formatted = TomMimeEncoder.formatRfc5322Date(when);
+
+      expect(
+        formatted,
+        matches(
+          RegExp(r'^\w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}$'),
+        ),
+      );
+
+      final offset = RegExp(r'([+-])(\d{2})(\d{2})$').firstMatch(formatted)!;
+      final minutes = int.parse(offset[2]!) * 60 + int.parse(offset[3]!);
+      expect(
+        offset[1] == '-' ? -minutes : minutes,
+        when.timeZoneOffset.inMinutes,
+      );
+    });
+
     test('caller headers come last, so a deployment can override', () {
       final document = encoder.encode(
         TomMessage(
