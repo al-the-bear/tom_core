@@ -10,6 +10,17 @@
 /// The properties worth pinning here are the ones the rest of the framework
 /// relies on: keys cannot escape their store, a failed write leaves nothing
 /// readable, and a read is a stream rather than a buffer.
+///
+/// **`TomBlobExportStore` is not covered here**, although it is the one class
+/// that puts these backends behind another module's interface. It is declared
+/// in `lib/src/tomserver/export/` and is the export module's, so its tests are
+/// in `export_test.dart`, beside the two backends it is interchangeable with.
+/// This module does not know the export module exists, and a suite that covered
+/// the adaptor here was the only thing suggesting otherwise.
+///
+/// What stays is the one claim that is about the two modules *agreeing*: an
+/// export key and a blob key are one grammar in two vocabularies, and the
+/// grammar is defined here.
 library;
 
 import 'dart:async';
@@ -29,40 +40,6 @@ Stream<List<int>> _failingStream(List<List<int>> chunks) async* {
     yield chunk;
   }
   throw StateError('upload interrupted');
-}
-
-/// A blob store whose every method fails with [error].
-///
-/// The backends that fail this way in production are the ones no test can have
-/// — an S3 timeout, a revoked credential, a full volume. Injecting the failure
-/// is how the *translation* at the export adaptor's boundary gets asserted
-/// rather than assumed.
-class _FailingBlobStore extends TomBlobStore {
-  _FailingBlobStore(this.error);
-
-  final Object error;
-
-  @override
-  Future<TomStoredBlob> put({
-    required String key,
-    required Stream<List<int>> bytes,
-    String mediaType = TomStoredBlob.defaultMediaType,
-    String? fileName,
-  }) async => throw error;
-
-  @override
-  Stream<List<int>> get(String key) async* {
-    throw error;
-  }
-
-  @override
-  Future<TomStoredBlob?> describe(String key) async => throw error;
-
-  @override
-  Future<bool> delete(String key) async => throw error;
-
-  @override
-  Future<bool> exists(String key) async => throw error;
 }
 
 /// `count` bytes of predictable content, as one chunk.
@@ -1002,235 +979,6 @@ fileStores:
       await TomBlobStoreInfo.closeAll();
       expect(TomBlobStoreInfo.stores, isEmpty);
       expect(TomBlobStoreInfo.defaultStoreName, isNull);
-    });
-  });
-
-  group('TomBlobExportStore (the export module over blob storage)', () {
-    late TomMemoryBlobStore blobs;
-    late TomBlobExportStore exports;
-
-    setUp(() {
-      blobs = TomMemoryBlobStore();
-      exports = TomBlobExportStore(blobs, keyPrefix: 'exports');
-    });
-
-    test('an export is stored in the blob store under the prefix', () async {
-      final stored = await exports.store(
-        key: '2026/07/sales.csv',
-        bytes: Stream.fromIterable([
-          utf8.encode('a,b\n'),
-          utf8.encode('1,2\n'),
-        ]),
-        mediaType: 'text/csv',
-      );
-      // The caller's key comes back, not the prefixed one: the prefix is the
-      // adapter's business and a recorded key must be passable back to `open`.
-      expect(stored.key, '2026/07/sales.csv');
-      expect(stored.byteCount, 8);
-      expect(stored.mediaType, 'text/csv');
-      expect(blobs.keys, ['exports/2026/07/sales.csv']);
-      expect(
-        utf8.decode(
-          await exports.open('2026/07/sales.csv').expand((c) => c).toList(),
-        ),
-        'a,b\n1,2\n',
-      );
-    });
-
-    test('exists and delete work in the caller\'s key space', () async {
-      await exports.store(
-        key: 'r.csv',
-        bytes: Stream.value(utf8.encode('x')),
-        mediaType: 'text/csv',
-      );
-      expect(await exports.exists('r.csv'), isTrue);
-      expect(await exports.delete('r.csv'), isTrue);
-      expect(await exports.exists('r.csv'), isFalse);
-      expect(await exports.delete('r.csv'), isFalse);
-    });
-
-    test('a missing export raises the export module\'s own error', () async {
-      // Translated, not propagated: a caller of the export module should not
-      // have to learn a storage error type because of the configured backend.
-      expect(
-        () => exports.open('gone.csv').toList(),
-        throwsA(
-          isA<TomExportException>()
-              .having((e) => e.key, 'key', 'export.store.not_found')
-              .having((e) => e.parameters?['key'], 'key parameter', 'gone.csv'),
-        ),
-      );
-    });
-
-    test('an invalid key is refused before the prefix is applied', () {
-      expect(
-        () => exports.exists('../escape'),
-        throwsA(
-          isA<TomExportException>()
-              .having((e) => e.key, 'key', 'export.store.invalid_key')
-              .having(
-                (e) => e.parameters?['key'],
-                'key parameter',
-                '../escape',
-              ),
-        ),
-      );
-    });
-
-    test('a prefix that is not a usable namespace is refused at '
-        'construction', () {
-      // The prefix is a deployment setting, not caller input, so the failure
-      // belongs where the misconfiguration is — at construction, naming the
-      // prefix. Before this it surfaced on the first store, as a storage error
-      // about `../2026/sales.csv`: a key the caller never wrote.
-      for (final prefix in const ['..', '/exports', 'a//b', 'exports/']) {
-        expect(
-          () => TomBlobExportStore(blobs, keyPrefix: prefix),
-          throwsA(
-            isA<TomExportException>()
-                .having((e) => e.key, 'key', 'export.store.invalid_key')
-                .having((e) => e.parameters?['keyPrefix'], 'keyPrefix', prefix),
-          ),
-          reason: '"$prefix"',
-        );
-      }
-    });
-
-    test('the named constructor checks the prefix too', () {
-      // The constructor a configured deployment actually uses — so it is the
-      // one a bad setting arrives through.
-      TomBlobStoreInfo.register('files', blobs, asDefault: true);
-      addTearDown(TomBlobStoreInfo.closeAll);
-      expect(
-        () => TomBlobExportStore.named('files', keyPrefix: '..'),
-        throwsA(
-          isA<TomExportException>().having(
-            (e) => e.key,
-            'key',
-            'export.store.invalid_key',
-          ),
-        ),
-      );
-    });
-
-    test('no prefix is still no prefix', () {
-      // The empty default must survive a check written for non-empty prefixes.
-      final plain = TomBlobExportStore(blobs);
-      expect(plain.keyPrefix, isEmpty);
-      expect(
-        plain.store(
-          key: 'r.csv',
-          bytes: Stream.value(utf8.encode('x')),
-          mediaType: 'text/csv',
-        ),
-        completes,
-      );
-    });
-
-    test('the named constructor resolves a configured store', () async {
-      TomBlobStoreInfo.register('files', blobs, asDefault: true);
-      addTearDown(TomBlobStoreInfo.closeAll);
-      expect(TomBlobExportStore.named(null).blobStore, same(blobs));
-      expect(TomBlobExportStore.named('files').blobStore, same(blobs));
-    });
-
-    group('every backend failure arrives in the export vocabulary', () {
-      // The adaptor's reason to exist: which backend is configured is a
-      // deployment decision, and a caller of the export module should not have
-      // to catch a second error type because of it. `not_found` used to be the
-      // only translated case — every other storage failure, and every failure
-      // from store/exists/delete, reached the caller as TomStorageException.
-      late TomBlobExportStore failing;
-
-      setUp(() {
-        failing = TomBlobExportStore(
-          _FailingBlobStore(
-            TomStorageException('storage.blob.write_failed', 'nope'),
-          ),
-          keyPrefix: 'exports',
-        );
-      });
-
-      Matcher exportError(String key) => throwsA(
-        isA<TomExportException>()
-            .having((e) => e.key, 'key', key)
-            .having((e) => e.parameters?['key'], 'key parameter', 'r.csv')
-            .having((e) => e.rootException, 'rootException', isNotNull),
-      );
-
-      test('store', () async {
-        await expectLater(
-          failing.store(
-            key: 'r.csv',
-            bytes: Stream.value(utf8.encode('x')),
-            mediaType: 'text/csv',
-          ),
-          exportError('export.store.write_failed'),
-        );
-      });
-
-      test('open, when the failure is not a missing key', () async {
-        await expectLater(
-          failing.open('r.csv').toList(),
-          exportError('export.store.read_failed'),
-        );
-      });
-
-      test('exists', () async {
-        await expectLater(
-          failing.exists('r.csv'),
-          exportError('export.store.probe_failed'),
-        );
-      });
-
-      test('delete', () async {
-        await expectLater(
-          failing.delete('r.csv'),
-          exportError('export.store.delete_failed'),
-        );
-      });
-
-      test('a failure that is not a storage exception is translated too', () {
-        // The backend contract does not promise TomStorageException — an
-        // application's own store may throw whatever it likes, and a socket
-        // timeout deep in a client is not a storage exception either.
-        final wild = TomBlobExportStore(
-          _FailingBlobStore(StateError('socket closed')),
-        );
-        expect(
-          wild.exists('r.csv'),
-          throwsA(
-            isA<TomExportException>()
-                .having((e) => e.key, 'key', 'export.store.probe_failed')
-                .having((e) => e.rootException, 'root', isA<StateError>()),
-          ),
-        );
-      });
-
-      test('an invalid key is still invalid_key, not the operation that '
-          'refused it', () async {
-        for (final operation in <Future<Object?> Function()>[
-          () => failing.exists('../escape'),
-          () => failing.delete('../escape'),
-          () => failing.open('../escape').toList(),
-          () => failing.store(
-            key: '../escape',
-            bytes: const Stream.empty(),
-            mediaType: 'text/csv',
-          ),
-        ]) {
-          await expectLater(
-            operation(),
-            throwsA(
-              isA<TomExportException>().having(
-                (e) => e.key,
-                'key',
-                'export.store.invalid_key',
-              ),
-            ),
-          );
-        }
-      });
     });
   });
 }

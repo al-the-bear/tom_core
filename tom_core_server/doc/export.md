@@ -777,6 +777,24 @@ delivery channels, and the file-name and key grammars that differ between them.
 The streaming claim is asserted rather than described: bytes are required to
 reach the output *before* the row stream closes.
 
+`TomBlobExportStore` is covered there and not in `test/file_storage_test.dart`,
+which is worth saying because it spent its life in the neighbour's suite. It is
+declared in `lib/src/tomserver/export/` and it is this module's class — the
+dependency arrow runs export → `file_storage`, and the adaptor is the arrowhead.
+Its group covers its own four methods, its prefix validation and its translation
+of every backend failure into the export vocabulary: one class's unit tests, not
+a claim about two modules agreeing. So it sits beside the two backends it is
+interchangeable with, immediately before the contract group that drives all
+three. What held it next door was that the failing-backend fixture driving the
+translation happened to be declared there — fixture convenience, which left a
+reader auditing this module's coverage concluding the adaptor was untested. The
+claim that genuinely *is* about the two modules agreeing — that an export key and
+a blob key are one grammar in two vocabularies — stays in
+`test/file_storage_test.dart`, where the grammar is defined. And
+`TomBlobStore.sanitiseKeySegment`, a `file_storage` symbol, is tested here for
+the mirror-image reason: `TomExportService.keyFor` applies it and then hands the
+result to `validateKey`, so it is tested where it would break.
+
 `test/export_entities_test.dart` covers the derived route, and holds the one
 claim no single run can make. Drift needs two versions of an entity that differ
 by exactly one column, so the suite derives from both — with no export-side edit

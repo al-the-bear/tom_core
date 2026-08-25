@@ -74,6 +74,50 @@
 
 ### Fixed
 
+- **The export module's blob adaptor was tested in the `file_storage` suite, so
+  the export module read as though it had none (tcinc534).**
+  `TomBlobExportStore` is declared in `lib/src/tomserver/export/` and is the
+  export module's class — `doc/export.md` states the arrow explicitly, that the
+  `file_storage` module is *"used only by `TomBlobExportStore`; the rest of the
+  module does not know it exists"* — yet its fourteen tests lived in
+  `test/file_storage_test.dart`, and neither export suite mentioned it. A reader
+  auditing the export module's coverage concluded the adaptor was untested. The
+  group and its failing-backend fixture now sit in `test/export_test.dart`,
+  beside the two backends the adaptor is interchangeable with and immediately
+  before the contract group that drives all three.
+- Nothing was holding the group next door but the fixture: `_FailingBlobStore`
+  happened to be declared in the neighbour's file, and the tests followed it.
+  That is convenience, not a design reason — the group covers one class's own
+  four methods, its prefix validation and its error translation, none of which
+  is a claim about two modules agreeing. The one claim that *is* stays put: an
+  export key and a blob key are one grammar in two vocabularies, and
+  `test/file_storage_test.dart` still pins `TomExportStore.validateKey` against
+  `TomBlobStore.validateKey`, where the grammar is defined. After the move that
+  suite covers no export class at all, which is what the module's own
+  documentation already said was true.
+- A mirror-image placement was found and deliberately left alone.
+  `TomBlobStore.sanitiseKeySegment` is a `file_storage` symbol tested in
+  `export_test.dart`, and it belongs there for the opposite reason: the property
+  it pins is one the *export* module depends on — `TomExportService.keyFor`
+  applies it and hands the result to `validateKey` — so it is tested where it
+  would break. The rule reconciling all three cases is now written into both
+  suite headers rather than left to be re-derived: a class's own tests live in
+  its module's suite; a test pinning a neighbour's contract stays with the
+  dependant; a claim about two modules agreeing stays where the grammar is
+  defined. `doc/export.md`'s Verification section and `doc/file_storage.md`'s
+  export section record the same thing for readers who never open a test file.
+- Seven mutants of `blob_export_store.dart` — a dropped prefix, the prefixed key
+  recorded instead of the caller's, an untranslated `not_found`, an unchecked
+  `keyPrefix`, unprefixed `exists` and `delete`, and the `yield*` trap the source
+  warns about — were each required to turn `test/export_test.dart` red **and**
+  leave `test/file_storage_test.dart` green. All seven did, which is the
+  difference between a move and a copy: had the group been spliced in without
+  being cut, both suites would have failed.
+- The todo's secondary complaint, that the adaptor's coverage was narrower than
+  the class, was already stale. tcinc523 and tcinc525 had closed both gaps; the
+  group is fourteen tests, not the five the todo recorded, and includes the
+  `keyPrefix` edge cases and the translation of every backend failure, not just
+  `not_found`. Nothing was added.
 - **The export example demonstrated the route `doc/export.md` argues *against*
   for entity exports, and the recommended one only in a test file (tcinc533).**
   Every one of the example's steps built its columns from a hand-written

@@ -583,6 +583,15 @@ retention rule expressible. The key *recorded* in the returned `TomStoredExport`
 is the caller's, not the prefixed one — an export whose recorded key could not
 be passed back to `open` would be a trap.
 
+The adaptor is documented here because this is where its backends are, but it is
+**not this module's class** — it is declared in `lib/src/tomserver/export/`, and
+this module does not know the export module exists. Its tests are in
+`test/export_test.dart` accordingly, beside the two export backends it is
+interchangeable with. What stays here is the one claim that is about the two
+modules *agreeing*: an export key and a blob key are one grammar in two
+vocabularies, and the grammar is defined here, so `test/file_storage_test.dart`
+pins `TomExportStore.validateKey` against `TomBlobStore.validateKey`.
+
 ## Core Components
 
 - **`TomBlobStore` / `TomStoredBlob` / `TomStorageException`** — the contract,
