@@ -2393,7 +2393,6 @@ const Set<String> _tablesPendingReconciliation = {
   'endpoints',
   'export',
   'file_storage',
-  'little_things',
   'object_persistence',
   'preferences',
   'scheduling',

@@ -1,9 +1,12 @@
 /// Executable example for the little-things module of `tom_core_server`.
 ///
-/// The module contributes a single type, [TomServerException], the base class
-/// for every server-raised exception. This example shows its three
+/// The module contributes two types. [TomServerException] is the base class for
+/// every server-raised exception, and this example shows its three
 /// distinguishing features: isolate attribution, the `clientThrow` flag, and
-/// zone-based request correlation.
+/// zone-based request correlation. [LoginException] is the one subclass
+/// declared beside it; it adds nothing to that surface, so there is nothing
+/// further to demonstrate here — `doc/authentication.md` shows the login flow
+/// that raises and catches it.
 ///
 /// Run with `dart run example/little_things/little_things_example.dart`.
 /// The same behaviour is covered by `test/little_things_test.dart`.

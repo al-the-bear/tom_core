@@ -9,11 +9,16 @@ the message may surface to the caller or must be masked as an internal error),
 and automatic correlation with the active `TomRequestId` when one is present in
 the current zone. Every other server module raises a subclass of this type.
 
+One of those subclasses is declared here too: `LoginException`, which lives next
+to the base rather than beside the authentication server that consumes it, so
+the 2FA subsystem can throw it without importing that server.
+
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomServerException` | Base server error: carries `key` + `defaultUserMessage`, records `isolateName`, exposes `clientThrow`, and copies the active request UUID into `requestUuid` for correlation. |
+| `LoginException` | A login that cannot succeed. Adds nothing to the base — it is a name the authentication services throw and `TomAuthenticationServer` catches. See `doc/authentication.md`. |
 
 ## Quick start
 

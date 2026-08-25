@@ -186,7 +186,7 @@ a test suite keep the in-memory store and need no database at all.
 | `TomAuthenticationServer` | Orchestrates pass-1 / pass-2 authentication, the external-identity pass and the 2FA handshake. |
 | `Tom2FAService` · `Tom2FAAdaptor` | Optional second-factor contract and adaptor. |
 | `TomDummyAuthenticationService` | No-op service that authenticates any non-`"GUEST"` user (tests / bring-up). |
-| `LoginException` | A `TomServerException` raised on failed authentication. |
+| `LoginException` | A `TomServerException` raised on failed authentication. Declared in `little_things`, next to its base class, so the 2FA subsystem can throw it without importing the server that catches it. |
 | `TomOAuthAuthenticationService` | `TomAuthenticationService` for authorization-code + PKCE logins; delegates everything else. |
 | `TomOAuthProviderConfig` · `TomOAuthProviders` | Provider configuration as **data**, read from the configuration tree under `oauth.providers`. |
 | `TomOAuthFlow` · `TomOAuthPkce` · `TomOAuthStateStore` | The authorization-code + PKCE handshake and its pending-authorization records. |

@@ -1,7 +1,8 @@
 # Tom Core Server API Reference: Little Things Module
 
 The base exception type for every error raised by `tom_core_server`, adding
-isolate attribution and request correlation to the kernel exception.
+isolate attribution and request correlation to the kernel exception — and
+`LoginException`, the one subclass declared beside it.
 
 ## Table of Contents
 
@@ -27,11 +28,23 @@ UUID into `TomException.requestUuid`, linking the error to the request that
 triggered it. The `clientThrow` flag marks whether the exception is safe to
 surface to the client.
 
+The module declares one of those subtypes itself: `LoginException`, which sits
+here rather than in `authentication` so the 2FA subsystem can throw it without
+importing the server that catches it. It adds no members — its constructor
+forwards the base payload minus `clientThrow`, which is therefore always the
+base default `true`. It is documented in
+[api_summary_authentication.md](api_summary_authentication.md#loginexception),
+under the module a reader meets it in; the index files it there too, and this
+summary gives it no section of its own so that the two documents cannot drift
+apart.
+
 ## Class Hierarchy
 
 ```
 TomException  (kernel)
     └── TomServerException
+            ├── LoginException   (declared here; documented under Authentication)
+            └── …                (every other module's exception type)
 ```
 
 ## Classes

@@ -2379,6 +2379,41 @@
 
 ### Documentation
 
+- **Four `little_things` artefacts said the module contributes "a single type"
+  when it ships two (tcinc561).** `LoginException` is declared in
+  `little_things/server_exception.dart`, exported from the barrel, and thrown 33
+  times across five files of the authentication and 2FA subsystems — and the
+  module guide, the directory readme, the API summary and the example between
+  them mentioned it once, in a parenthetical list of subtypes. A reader who went
+  to the module to find out what it contains was told, by every document written
+  to answer that question, that the second type does not exist.
+
+  All four now describe both: `doc/little_things.md` gains an Overview row and a
+  Core Components entry saying what `LoginException` is (a login that cannot
+  succeed) and what it adds over the base (nothing); the directory readme gains
+  a Key types row; the example's header says two types and explains why only one
+  of them is demonstrated. Each also records *why* the type sits here rather
+  than in `authentication` — so the 2FA subsystem can throw it without importing
+  the server that catches it — because that placement is the whole reason the
+  omission was easy to make. `authentication/readme.md`, which documents the
+  type from the consumer side, now names its declaring module so the two agree.
+
+  One correction to the type's own surface came out of reading it: its
+  constructor forwards the base payload *minus* `clientThrow`, so every
+  `LoginException` carries the default `true` and a caller cannot mask one.
+  `doc/little_things.md`'s `clientThrow` section says so, since a flag that one
+  type in the package silently opts out of is exactly what a reader of that
+  section is trying to learn.
+
+  The API summary is the one artefact that does **not** gain a class section.
+  `LoginException` is documented under `api_summary_authentication.md`, where a
+  reader meets it, and `api_reference_coverage_test.dart` measures the index
+  against the summaries' sections — a second section here would demand a second
+  index attribution and leave two constructor listings to drift apart. It gains
+  the hierarchy line, and prose saying where the section is. With the Overview
+  row added, `little_things` also leaves the Overview-table quarantine
+  (`tcincb3_ahwn`), and that guard now runs against it.
+
 - **`endpoints_example.dart` built a form by hand and never decoded one, and
   never registered the file slot it described (tcinc520).** Step 7 constructed a
   `TomMultipartForm` with its own constructor and read a file back out, which
