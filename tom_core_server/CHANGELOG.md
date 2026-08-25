@@ -2,6 +2,32 @@
 
 ### Fixed
 
+- **The endpoints module readme's Quick start did not compile, and would not
+  have mounted if it had (tcinc508).** The snippet showed
+  `class TodoApi extends TomApiImplementation` — but `TomService` and
+  `TomApiImplementation` are *annotations*, not base classes, and
+  `TomApiImplementation`'s only constructor requires `apiId`, so the first code
+  a reader of this module copies failed `no_default_super_constructor`. The
+  Key types table said the same thing one row earlier ("Base classes whose
+  annotated methods become endpoints"), which is where the snippet got it.
+
+  The quieter half is that compiling would not have been enough. `scanClasses`
+  partitions on a class's own `metadata` and never walks the supertype chain, so
+  a subclass of an annotation is invisible to `initializeRouter`; and
+  `findServiceInstance` matches an implementation to its service by *supertype*,
+  so a single self-referential `@tomService @tomComponent` class resolves to no
+  instance. A service is two types because it has to be.
+
+  The Quick start is now the real recipe — `@tomReflector @tomService abstract
+  class TodoApi` plus `@tomReflector @tomComponent class TodoApiServer
+  implements TodoApi`, the bean registration and the `initializeRouter` call —
+  and the table calls the two annotations annotations. It is no longer prose: the
+  same pair is declared verbatim in `test/fixtures/reflection_fixture.dart`, and
+  `test/endpoints_pipeline_test.dart` asserts that it mounts `GET /todos`, serves
+  the body the snippet returns, resolves the `@tomComponent` as the service
+  instance, and — because the snippet declares `@TomPublicAccess()` — still
+  answers anonymously once a deployment turns automatic protection on.
+
 - **A registry endpoint's `requestHeaders` were emitted as its *response*
   headers (tcinc507).** `TomApiEndpointImplementation.convertToTomEndpoint`
   passed `endpoint.requestHeaders` into `TomEndpoint.headers` — the field the

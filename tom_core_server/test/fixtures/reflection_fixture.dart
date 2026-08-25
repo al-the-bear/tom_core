@@ -690,6 +690,39 @@ class FixtureAccessApiService {
   };
 }
 
+/// The Quick start of `lib/src/tomserver/endpoints/readme.md`, as compiled code.
+///
+/// The readme previously showed `class TodoApi extends TomApiImplementation`,
+/// which does not compile — `TomApiImplementation` is an *annotation* whose only
+/// constructor requires `apiId`, so the snippet a reader would copy first fails
+/// `no_default_super_constructor` and, had it compiled, would still never have
+/// been mounted. A prose snippet can say anything; this pair and
+/// [FixtureApiServer]'s sibling test are what make the readme's claim checkable,
+/// so the two are kept **verbatim identical** and the names are deliberately
+/// un-prefixed: renaming them to the fixture convention would break the very
+/// correspondence the test exists to enforce.
+///
+/// The declaration is split across two types because it has to be.
+/// `findServiceInstance` matches an implementation to a service by *supertype*,
+/// and a class is not its own supertype — so a single self-referential
+/// `@tomService @tomComponent` class resolves to nothing.
+@tomReflector
+@tomService
+abstract class TodoApi {
+  /// The one endpoint the readme declares.
+  @TomPublicAccess()
+  @TomEndpoint(methods: [TomHttpMethod.get], uri: '/todos')
+  Future<List<String>> listTodos();
+}
+
+/// The implementation half of the readme's Quick start. See [TodoApi].
+@tomReflector
+@tomComponent
+class TodoApiServer implements TodoApi {
+  @override
+  Future<List<String>> listTodos() async => ['buy milk', 'write readme'];
+}
+
 /// A class whose endpoint method carries **two** `TomAccessControl` annotations
 /// — the shape `getClassMethodMetadata` rejects with
 /// `endpoint_pipeline.get_class_method_metadata.multiple_access_control`.

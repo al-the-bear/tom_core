@@ -18,6 +18,7 @@ import 'fixtures/reflection_fixture.dart'
         FixtureApiServer,
         FixtureConflictingAccessService,
         FixtureParseRequest,
+        TodoApiServer,
         fixtureContractAccess,
         fixtureContractRequestHeaders,
         fixtureContractResponseHeaders,
@@ -467,6 +468,80 @@ void main() {
       expect(registry.headers.keys.where((k) => k.startsWith('x-fixture-')), [
         'x-fixture-response',
       ]);
+    });
+  });
+
+  // The module readme's Quick start is the first code a reader of this module
+  // copies, and for a scanned pipeline "it compiles" is only half the claim: a
+  // declaration can be perfectly well-formed Dart and still mount nothing,
+  // because what mounts a route is the annotation set and the instance
+  // resolution, neither of which the compiler checks. The readme previously got
+  // both halves wrong — `extends TomApiImplementation` does not compile, and the
+  // class it described would not have been scanned if it had. So the snippet is
+  // declared as real reflected code in the fixture ([TodoApi] / [TodoApiServer])
+  // and asserted here, end to end, in the three steps the readme names.
+  group('the readme Quick start', () {
+    late Router router;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      // Step 2 of the readme: register the implementation as its own bean. The
+      // router would fall back to default-constructing it, but the readme shows
+      // the explicit registration because that is the step an application with a
+      // real constructor cannot skip.
+      TomBean.withType(TodoApiServer, TodoApiServer());
+      router = TomEndpointRouting().initializeRouter();
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    test('mounts the route the snippet declares', () {
+      // The annotation says `GET /todos`; the routing table is the record of
+      // what the scan actually made of it.
+      expect(
+        TomEndpointRouting.routingInfo.containsKey((
+          uri: '/todos',
+          method: 'GET',
+        )),
+        isTrue,
+      );
+    });
+
+    test('serves the body the snippet returns', () async {
+      final response = await router.call(_get('/todos'));
+      expect(response.statusCode, 200);
+      expect(jsonDecode(await response.readAsString()), [
+        'buy milk',
+        'write readme',
+      ]);
+    });
+
+    test('resolves the @tomComponent as the @tomService instance', () {
+      // The two halves are separate types on purpose: `findServiceInstance`
+      // matches by supertype, so a single self-referential class resolves to
+      // nothing and the route mounts against no instance. This is the assertion
+      // that fails if the readme is ever collapsed back into one class.
+      expect(
+        _routeInfo('/todos').handler.instance.reflectee,
+        isA<TodoApiServer>(),
+      );
+    });
+
+    test('stays anonymous when the deployment protects by default', () async {
+      // The snippet declares `@TomPublicAccess()`, and under the suite's
+      // permissive default an endpoint that declared nothing would serve
+      // anonymously too — so the annotation looks decorative. It is not: a
+      // deployment that turns automatic protection on is exactly the case it
+      // exists for, and without it the readme's first route would answer 403 the
+      // moment the reader hardened their server.
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      addTearDown(
+        () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
+      );
+      final response = await router.call(_get('/todos'));
+      expect(response.statusCode, 200);
     });
   });
 
