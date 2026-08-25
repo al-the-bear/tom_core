@@ -1,15 +1,16 @@
 /// The framework's HTTP file endpoint: the server half of the file-transfer
 /// wire contract the kernel's `TomHttpFileTransferClient` speaks.
 ///
-/// The two halves of file storage already existed and did not meet over HTTP.
-/// The server owned the *store* — blob backends, `@TomFileReference` columns and
-/// the four repository methods `saveFile` / `openFile` / `describeFile` /
-/// `clearFile`. The kernel owned the *client* — `POST`/`GET`/`HEAD`/`DELETE` on
-/// `<baseUri>/<slot>`, the JSON descriptor, the `x-tom-file` headers. What was
-/// missing was the handler in between, and that handler is the same in every
+/// The two halves of file storage live in different packages. The server owns
+/// the *store* — blob backends, `@TomFileReference` columns and the four
+/// repository methods `saveFile` / `openFile` / `describeFile` / `clearFile`.
+/// The kernel owns the *client* — `POST`/`GET`/`HEAD`/`DELETE` on
+/// `<baseUri>/<slot>`, the JSON descriptor, the `x-tom-file` headers. This class
+/// is the handler between them, and that handler is the same in every
 /// application: map a slot to an entity and a file column, stream the request
 /// body into `saveFile`, stream `openFile` back out, answer `HEAD` from
-/// `describeFile`, `clearFile` on `DELETE`. Written once, here.
+/// `describeFile`, `clearFile` on `DELETE`. Which is why it lives here, once,
+/// rather than in every application that serves a file.
 ///
 /// ## The slot is derived, not declared
 ///
