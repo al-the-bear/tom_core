@@ -1637,11 +1637,18 @@ final RegExp _listingHeader = RegExp(r'^abstract class ([A-Za-z_]\w*)');
 ///
 /// `doc/audit.md` shows an invented `AdminApi` to demonstrate that
 /// `@TomAudited` on a method audits the invocation; nothing in `lib/` declares
-/// it, and nothing should. Naming the exemption rather than skipping every
-/// unresolvable class keeps the reach check able to say what it is for: a
+/// it, and nothing should. `doc/endpoints.md` shows `TickerService` the same
+/// way, for the WebSocket example. Naming the exemption rather than skipping
+/// every unresolvable class keeps the reach check able to say what it is for: a
 /// listing whose class has quietly been renamed still fails, because the
 /// rename produces a name that is not on this list.
-const Set<String> _illustrativeListings = {'AdminApi'};
+///
+/// An entry here exempts a class from *resolution*, not from being correct. The
+/// socket example is checked by other means — the same declaration is compiled
+/// as `FixtureApiService.ticker` and asserted in `endpoints_pipeline_test.dart`
+/// — which is the standard an illustration has to meet before it earns a place
+/// on this list.
+const Set<String> _illustrativeListings = {'AdminApi', 'TickerService'};
 
 /// A member declaration that cannot be abstract whatever its shape.
 ///

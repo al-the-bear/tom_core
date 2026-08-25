@@ -2,6 +2,39 @@
 
 ### Fixed
 
+- **Two documented socket snippets annotated the *abstract* access control, and
+  the mistake analyzes clean (tcinc509).** `doc/endpoints.md`'s WebSocket
+  example and `web_socket_endpoint.dart`'s library dartdoc both wrote
+  `@TomAccessControl(resourceKey: 'ticker')`. `TomAccessControl` is abstract and
+  its only constructor takes no arguments; the pipeline names that type because
+  it is what the scan *matches* (`tag is TomAccessControl`), never what a
+  declaration writes. The concrete control for the intent is
+  `TomResourceKeyAccess`, and it takes its key **positionally**. The same
+  snippets also read `who.userName`, where the member is `username`.
+
+  What makes this worth more than a correction is where the error hides: Dart
+  reports `instantiate_abstract_class` for a `const` variable and for an
+  expression, but **not** for metadata. `@TomAccessControl()` therefore passes
+  analysis and gates nothing — the reader's compiler agrees with the document
+  and the endpoint is still wrong. The security annotation is the one part of an
+  endpoint declaration nobody should be guessing at, so the corrected snippet is
+  no longer prose: it is declared verbatim as `FixtureApiService.ticker` and
+  `test/endpoints_pipeline_test.dart` asserts that the scan resolves
+  `TomResourceKeyAccess('ticker')`, that the key is enforced once
+  `TomResourceKeyProtection.globalSettingProtectionDefault` is on (and grants
+  everyone while it is off), and that a denied caller is refused *before* the
+  upgrade rather than through a socket that opens and dies.
+
+  `doc/endpoints.md` gained a **Which control to annotate with** table naming the
+  concrete subclass per intent, including the two traps a reader would otherwise
+  hit by trying: `TomGradedAccess` cannot be an annotation at all (its
+  constructor is not `const`), and `TomCustomAccess.handler` is the *name* of a
+  handler registered with `registerHandler`, not the function. Both snippets were
+  additionally made two-type (`abstract class TickerService` +
+  `@tomComponent class TickerServer implements TickerService`), since a snippet
+  that is correct on the security line and mounts nothing on the next is no
+  better than the one it replaced.
+
 - **The endpoints module readme's Quick start did not compile, and would not
   have mounted if it had (tcinc508).** The snippet showed
   `class TodoApi extends TomApiImplementation` — but `TomService` and

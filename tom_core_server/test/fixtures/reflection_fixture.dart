@@ -336,6 +336,24 @@ abstract class FixtureApiService {
   @TomPublicAccess()
   @TomWebSocketEndpoint(uri: '/fixture/socket')
   Future<void> socket(TomWebSocketConnection connection);
+
+  /// The socket example of `doc/endpoints.md` and of `web_socket_endpoint.dart`'s
+  /// library dartdoc, as compiled code — a socket endpoint gated by resource key.
+  ///
+  /// Both documents previously annotated this with `@TomAccessControl`, which is
+  /// **abstract**: it is the type the scan matches (`tag is TomAccessControl`),
+  /// never a thing you can write. The concrete control for the intent is
+  /// [TomResourceKeyAccess], and it takes its key *positionally*.
+  ///
+  /// Kept here rather than left as prose because the annotation position hides
+  /// the error: `instantiate_abstract_class` is reported for a `const` variable
+  /// or an expression, but **not** for metadata — so `@TomAccessControl()`
+  /// analyzes clean and fails later, where the reader will not connect it to
+  /// what they wrote. The security annotation is the one part of an endpoint
+  /// declaration that must not be guessed at, so it is asserted instead.
+  @TomResourceKeyAccess('ticker')
+  @TomWebSocketEndpoint(uri: '/fixture/ticker')
+  Future<void> ticker(TomWebSocketConnection connection);
 }
 
 /// The request DTO of the fixture's form endpoints.
@@ -530,6 +548,11 @@ class FixtureApiServer implements FixtureApiService {
       if (message == 'bye') return;
       connection.sendText('echo:$message');
     }
+  }
+
+  @override
+  Future<void> ticker(TomWebSocketConnection connection) async {
+    connection.sendText('tick');
   }
 }
 

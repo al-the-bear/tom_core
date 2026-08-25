@@ -28,13 +28,28 @@
 ///
 /// ## Example
 ///
+/// The access annotation names a **concrete** [TomAccessControl] subclass —
+/// [TomResourceKeyAccess] here, and equally [TomPublicAccess],
+/// [TomAuthenticatedAccess], [TomRoleAccess] and their siblings.
+/// [TomAccessControl] itself is abstract: it is the type the scan matches
+/// (`tag is TomAccessControl`), not one you write.
+///
 /// ```dart
 /// @tomService
-/// class TickerService {
+/// abstract class TickerService {
 ///   @TomWebSocketEndpoint(uri: '/ws/ticker')
-///   @TomAccessControl(...)
-///   Future<void> ticker(TomWebSocketConnection socket, TomPrincipal who) async {
-///     socket.sendText('hello ${who.userName}');
+///   @TomResourceKeyAccess('ticker')
+///   Future<void> ticker(TomWebSocketConnection socket, TomPrincipal who);
+/// }
+///
+/// @tomComponent
+/// class TickerServer implements TickerService {
+///   @override
+///   Future<void> ticker(
+///     TomWebSocketConnection socket,
+///     TomPrincipal who,
+///   ) async {
+///     socket.sendText('hello ${who.username}');
 ///     await for (final message in socket.messages) {
 ///       socket.sendText('echo: $message');
 ///     }

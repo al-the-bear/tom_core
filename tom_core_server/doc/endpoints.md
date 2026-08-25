@@ -169,9 +169,52 @@ it holds no positional slot, so it can shift nothing.
 
 ## Access Control
 
-`checkAccess` consults the method's `@TomAccessControl` (if any), otherwise the
-global protection default. A still-denied request throws
+`checkAccess` consults the method's access-control annotation (if any),
+otherwise the global protection default. A still-denied request throws
 `TomEndpointHandlerException`.
+
+### Which control to annotate with
+
+The scan matches on the abstract base — `tag is TomAccessControl` — so an
+endpoint accepts *any* control in the family. `TomAccessControl` itself is
+abstract and takes no arguments: it is what the pipeline tests for, never what
+you write. Reach for the concrete subclass that names the intent:
+
+| Intent | Annotation |
+| ------ | ---------- |
+| Anyone, including anonymous callers | `@TomPublicAccess()` |
+| Any authenticated principal | `@TomAuthenticatedAccess()` |
+| Guests (unauthenticated but admitted) | `@TomGuestAccess()` |
+| Nobody — closed outright | `@TomNoAccess()` |
+| **Protected by resource key** | `@TomResourceKeyAccess('<key>')` |
+| A named role | `@TomRoleAccess(['<role>'])` |
+| A named group | `@TomGroupAccess([...])` |
+| A licensed feature | `@TomEntitlementAccess(['<pattern>'])` |
+| A rule of your own | `@TomCustomAccess(handler: '<name>', resourceId: '<id>')` |
+
+`TomCustomAccess.handler` is the **name** of a handler registered with
+`TomCustomAccess.registerHandler(name, fn)`, not the function itself — an
+annotation is a constant, so it can carry the name but not the closure.
+
+`TomGradedAccess` is deliberately absent: its constructor is not `const`, so it
+cannot be written as an annotation at all. It composes other controls into
+read/disabled grades for field-level authorization, and is built in code.
+
+Two wrinkles are worth knowing before you pick a control. The resource **key is
+positional** — `@TomResourceKeyAccess('ticker')`, not a named argument — and
+resource keys are not enforced at all while
+`TomResourceKeyProtection.globalSettingProtectionDefault` is `false`, so a
+resource-key endpoint serves everyone until the deployment turns protection on
+and then starts refusing. That is the intended second operand, not a bug, but it
+does mean the annotation looks inert in a permissive development setup.
+
+Only one access annotation per method: a second one throws
+`endpoint_pipeline.get_class_method_metadata.multiple_access_control`.
+
+> Writing the abstract base by mistake is unusually easy to miss, because Dart
+> reports `instantiate_abstract_class` for a `const` variable or an expression
+> but **not** for metadata — `@TomAccessControl()` analyzes clean and gates
+> nothing.
 
 ### Automatic endpoint protection
 
@@ -337,11 +380,17 @@ A socket is declared as a *kind of endpoint*, not served by a second server:
 
 ```dart
 @tomService
-class TickerService {
+abstract class TickerService {
   @TomWebSocketEndpoint(uri: '/ws/ticker')
-  @TomAccessControl(resourceKey: 'ticker')
+  @TomResourceKeyAccess('ticker')
+  Future<void> ticker(TomWebSocketConnection socket, TomPrincipal who);
+}
+
+@tomComponent
+class TickerServer implements TickerService {
+  @override
   Future<void> ticker(TomWebSocketConnection socket, TomPrincipal who) async {
-    socket.sendText('hello ${who.userName}');
+    socket.sendText('hello ${who.username}');
     await for (final message in socket.messages) {
       socket.sendText('echo: $message');
     }

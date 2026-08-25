@@ -545,6 +545,129 @@ void main() {
     });
   });
 
+  // The socket example carried by `doc/endpoints.md` and by
+  // `web_socket_endpoint.dart`'s library dartdoc. Both annotated it
+  // `@TomAccessControl`, which is abstract — the type the scan matches
+  // (`tag is TomAccessControl`), never a thing you can write.
+  //
+  // What makes that worth a test rather than a correction is where the error
+  // hides. `instantiate_abstract_class` is reported for a `const` variable and
+  // for an expression, but **not** for metadata: `@TomAccessControl()` analyzes
+  // clean. So the reader's compiler agrees with the document, and the endpoint
+  // is wrong anyway. The security annotation is the one part of a declaration
+  // nobody should be guessing at, so the corrected snippet is compiled as
+  // [FixtureApiService.ticker] and its behaviour asserted here.
+  group('the documented resource-key socket endpoint', () {
+    late Router router;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      router = TomEndpointRouting().initializeRouter();
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    /// Runs [body] as a principal holding exactly [keys].
+    T asHolderOf<T>(List<String> keys, T Function() body) => runZoned(
+      body,
+      zoneValues: {
+        TomPrincipal: TomPrincipal(
+          user: TomUser(id: 1, username: 'keyholder'),
+          authenticated: true,
+          aci: TomAccessControlInformation(resourceKeys: keys),
+        ),
+      },
+    );
+
+    test('the scan resolves the concrete control the document names', () {
+      // Not merely "some access rule was recorded": the document tells a reader
+      // which class to write and with which argument, and this is that claim.
+      final access = _routeInfo('/fixture/ticker').handler.metadata.access;
+      expect(access, isA<TomResourceKeyAccess>());
+      expect((access as TomResourceKeyAccess).key, 'ticker');
+    });
+
+    test('grants everyone while resource-key protection is off', () {
+      // The second operand this control has and its siblings do not: until the
+      // global switch is on, resource keys are not enforced at all. Worth
+      // pinning, because it is why a reader can paste the snippet and see it
+      // work, and then have it stop working when the deployment hardens.
+      expect(_routeInfo('/fixture/ticker').handler.checkAccess(null), isTrue);
+    });
+
+    group('once resource-key protection is on', () {
+      setUp(() {
+        TomResourceKeyProtection.globalSettingProtectionDefault = true;
+        addTearDown(
+          () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
+        );
+      });
+
+      test('a principal holding the key is granted', () {
+        expect(
+          _routeInfo('/fixture/ticker').handler.checkAccess(
+            TomPrincipal(
+              user: TomUser(id: 1, username: 'keyholder'),
+              authenticated: true,
+              aci: TomAccessControlInformation(resourceKeys: ['ticker']),
+            ),
+          ),
+          isTrue,
+        );
+      });
+
+      test('a principal without the key is denied', () {
+        // The half that makes the annotation load-bearing rather than
+        // decorative. If this passed, `@TomResourceKeyAccess('ticker')` would
+        // be gating nothing and the document would be recommending a no-op.
+        expect(
+          _routeInfo('/fixture/ticker').handler.checkAccess(
+            TomPrincipal(
+              user: TomUser(id: 1, username: 'nobody'),
+              authenticated: true,
+              aci: TomAccessControlInformation(resourceKeys: ['other']),
+            ),
+          ),
+          isFalse,
+        );
+      });
+
+      test('the handshake is refused before the upgrade', () async {
+        // The document's actual claim about sockets: a socket endpoint is
+        // authorized by exactly the code that authorizes every other endpoint.
+        // `handleWebSocketCall` awaits `enforceAccess()` before it builds the
+        // connection, so a denied caller never reaches the upgrade — the
+        // failure is an ordinary access denial, not a socket that opens and
+        // dies. Reached with a plain GET, which an accepted request would
+        // answer 404 ('not a WebSocket request'); getting that 404 here would
+        // mean the check had been skipped on the socket path.
+        await expectLater(
+          router.call(_get('/fixture/ticker')),
+          throwsA(
+            isA<TomEndpointHandlerException>().having(
+              (e) => e.key,
+              'key',
+              'endpoint_handler.handle_method_call.access_denied',
+            ),
+          ),
+        );
+      });
+
+      test('a key-holding caller reaches the upgrade', () async {
+        // The converse, and the reason the test above is about *access* rather
+        // than about sockets being broken in general: the same request from a
+        // principal holding the key gets past `enforceAccess` and fails only on
+        // not being a WebSocket handshake.
+        final response = await asHolderOf([
+          'ticker',
+        ], () => router.call(_get('/fixture/ticker')));
+        expect(response.statusCode, 404, reason: 'not a WebSocket request');
+      });
+    });
+  });
+
   group('healthcheck GET /health route', () {
     late Router router;
 
