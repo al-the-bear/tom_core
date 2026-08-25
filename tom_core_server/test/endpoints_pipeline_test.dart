@@ -955,6 +955,17 @@ void main() {
       // delegates to the now-degraded analyzer.
       final response = await router.call(_get('/health'));
       expect(await response.readAsString(), 'DEGRADED');
+
+      // 200, *not* a 5xx — this module deliberately does not map a status
+      // string to a status code, so a degraded server still answers OK at the
+      // HTTP level. Asserted rather than left implicit because it is the whole
+      // reason the docs tell a probe author to match the body: a probe that
+      // checks only the status code stays green through this response.
+      expect(
+        response.statusCode,
+        200,
+        reason: 'the analyzer verdict is carried in the body, not the status',
+      );
     });
   });
 

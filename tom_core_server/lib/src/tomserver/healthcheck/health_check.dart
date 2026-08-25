@@ -46,9 +46,17 @@ class DefaultHealthAnalyzer extends HealthAnalyzer {
 
 /// Health check service interface for server health monitoring.
 ///
-/// Provides a simple `/health` endpoint that returns "OK" when the server
-/// is running. Used by container orchestration tools (Docker, Kubernetes)
-/// to verify server availability.
+/// Declares the `GET /health` endpoint that container orchestration tools
+/// (Docker, Kubernetes) call to verify server availability. The response body
+/// is whatever the installed [HealthAnalyzer] returns, verbatim — `"OK"` is
+/// the [DefaultHealthAnalyzer]'s answer, not a constant of the endpoint.
+///
+/// Which is what decides how the probe should be written. Every analyzer
+/// string is served with HTTP 200, because mapping a status to a status code
+/// is deliberately left to the deployment (see `doc/healthcheck.md`). So a
+/// probe that checks only for a 200 is testing liveness alone, and will keep
+/// reporting healthy while a custom analyzer answers `"DEGRADED: db=false"`.
+/// A probe that is meant to act on the verdict has to read the body.
 @tomReflector
 @tomService
 abstract class TomHealthService {

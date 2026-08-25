@@ -22,10 +22,17 @@ Source: `lib/src/tomserver/healthcheck/health_check.dart`.
 `TomHealthService` is a `@tomService` interface declaring the `GET /health`
 endpoint (public, unlogged). `TomHealthServer` is its `@tomComponent`
 implementation; it delegates each request to the static
-`globalSettingsHealthAnalyzer`. Applications provide custom logic by extending
-`HealthAnalyzer` (overriding `analyzeHealth`) and assigning an instance to
+`globalSettingsHealthAnalyzer` and returns that analyzer's string as the body,
+unchanged. Applications provide custom logic by extending `HealthAnalyzer`
+(overriding `analyzeHealth`) and assigning an instance to
 `TomHealthServer.globalSettingsHealthAnalyzer` before startup; the shipped
 `DefaultHealthAnalyzer` always returns `"OK"`.
+
+Every analyzer string is served with HTTP 200 — this module does not map a
+status to a status code, by design (see `doc/healthcheck.md`). A probe that
+checks only for a 200 is therefore a liveness check, and stays green while a
+custom analyzer answers `"DEGRADED: ..."`; acting on the verdict means reading
+the body.
 
 ## Class Hierarchy
 
@@ -73,10 +80,11 @@ DefaultHealthAnalyzer()
 
 ### TomHealthService
 
-Health check service interface for server health monitoring. Provides a simple
-`/health` endpoint that returns `"OK"` when the server is running, used by
-container orchestration tools to verify availability. Annotated
-`@tomReflector` / `@tomService`.
+Health check service interface for server health monitoring. Declares the
+`GET /health` endpoint that container orchestration tools call to verify
+availability. The response body is the installed `HealthAnalyzer`'s string
+verbatim, so `"OK"` is the `DefaultHealthAnalyzer`'s answer rather than a
+constant of the endpoint. Annotated `@tomReflector` / `@tomService`.
 
 - **Extends:** none (abstract)
 

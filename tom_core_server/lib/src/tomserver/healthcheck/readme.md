@@ -14,7 +14,7 @@ services.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomHealthService` | Abstract contract: `Future<String> health()`. |
-| `TomHealthServer` | Default service; runs the configured `HealthAnalyzer` and renders its verdict. |
+| `TomHealthServer` | Default service; runs the configured `HealthAnalyzer` and returns its string as the body, unchanged. |
 | `HealthAnalyzer` | Abstract probe that decides the health verdict. |
 | `DefaultHealthAnalyzer` | Always-healthy analyzer used when no custom probe is supplied. |
 
