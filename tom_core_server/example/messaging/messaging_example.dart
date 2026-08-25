@@ -158,7 +158,15 @@ Future<void> run() async {
   print('9. delivered before a tick   : ${memory.count}');
   assert(memory.count == 0);
 
+  // A tick *starts* the pass and returns; it does not wait the deliveries out,
+  // because one slow transport must not hold up the next window of a fast one.
+  // So "has it been delivered yet?" is answered by [TomMessageOutbox.receipts],
+  // not by the tick's future. Subscribe before ticking — the stream is a
+  // broadcast, so a listener attached afterwards would miss the receipt it is
+  // waiting for and wait forever.
+  final delivered = outbox.receipts.first;
   await outbox.tick();
+  await delivered;
   print('   delivered after a tick    : ${memory.count}');
   assert(memory.count == 1);
 

@@ -244,6 +244,32 @@
 
 ### Fixed
 
+- **The messaging example's step 9 asserted a delivery that had not happened
+  yet, and observed `0` where its narration claimed `1` (tcinc570).** The step
+  sent a message through a `TomMessageOutbox`, called `await outbox.tick()`,
+  and asserted `memory.count == 1`. Run with `dart run --enable-asserts` it
+  failed at that line, having printed `delivered after a tick : 0` immediately
+  above — the example's own output contradicting the claim beside it.
+
+  The cause is not a bug in the outbox. `TomScheduler._dispatchDue` starts each
+  claimed run with `unawaited(...)` on purpose, so that one slow transport
+  cannot hold up the next window of a fast one; `tick()` therefore returns with
+  the deliveries still pending. The example was reading the tick's future as a
+  completion signal, which it is not and was never meant to be.
+
+  The fix uses the API's own answer to "has it been delivered?" —
+  `TomMessageOutbox.receipts` — rather than the `await pumpEventQueue()` the
+  test suite uses, which is a `package:test` helper and has no place in an
+  example a reader may copy into a server. The subscription is taken *before*
+  the tick, because `receipts` is a broadcast stream and a listener attached
+  afterwards would miss the receipt it is waiting for and wait forever; the
+  added comment says so, since that ordering is the one part of the pattern
+  that is not self-evident.
+
+  Only the example changed. Whether `tick()` should instead be made to await
+  its own pass is a live question tracked separately (tcinc584) and
+  deliberately not pre-empted here.
+
 - **`MariaDbDatasource` had lost both its annotations, so the `"mariadb"`
   driver was not discoverable (tcinc558).** `@tomReflector` and
   `@TomDatasourceDriver("mariadb")` were written above the class, but two
