@@ -460,6 +460,74 @@ void main() {
         'room': 'roomId',
       });
     });
+
+    // The mapping's *query* half, composed the way the pipeline composes it.
+    // The test above proves the map reaches the converted endpoint and the
+    // oauth suite proves `injectQueryParameters` honours a map; neither says
+    // that a handshake's query string is therefore bindable, which is the one
+    // question a socket author actually has. A handshake is a GET with no
+    // body, so the URL is the only thing the request DTO can be built from —
+    // making this map the difference between a `?token=…` that arrives and one
+    // that does not.
+    test('a mapped query parameter binds on the handshake URL', () {
+      const declaration = TomWebSocketEndpoint(
+        uri: '/ws/rooms/{room}',
+        urlParameterMapping: {'room': 'roomId', 'token': 'accessToken'},
+      );
+      final jsonBodyData = <String, dynamic>{};
+      final req =
+          Request(
+            'GET',
+            Uri.parse('https://s/ws/rooms/lobby?token=abc'),
+          ).change(
+            context: {
+              'shelf_router/params': const {'room': 'lobby'},
+            },
+          );
+
+      TomEndpointHandler.injectQueryParameters(
+        jsonBodyData,
+        req,
+        declaration.convertToTomEndpoint(),
+      );
+      TomEndpointHandler.injectPathParameters(
+        jsonBodyData,
+        req,
+        declaration.convertToTomEndpoint(),
+      );
+
+      expect(jsonBodyData, {'roomId': 'lobby', 'accessToken': 'abc'});
+    });
+
+    test('an unmapped query parameter does not bind on the handshake', () {
+      // The asymmetry, from the socket side: the route capture binds with no
+      // entry at all, the query parameter binds only with one. An author who
+      // leaves the mapping empty and expects `?token=…` gets a DTO without it.
+      const declaration = TomWebSocketEndpoint(uri: '/ws/rooms/{room}');
+      final jsonBodyData = <String, dynamic>{};
+      final req =
+          Request(
+            'GET',
+            Uri.parse('https://s/ws/rooms/lobby?token=abc'),
+          ).change(
+            context: {
+              'shelf_router/params': const {'room': 'lobby'},
+            },
+          );
+
+      TomEndpointHandler.injectQueryParameters(
+        jsonBodyData,
+        req,
+        declaration.convertToTomEndpoint(),
+      );
+      TomEndpointHandler.injectPathParameters(
+        jsonBodyData,
+        req,
+        declaration.convertToTomEndpoint(),
+      );
+
+      expect(jsonBodyData, {'room': 'lobby'});
+    });
   });
 
   group('TomWebSocketConnection', () {

@@ -2,6 +2,32 @@
 
 ### Fixed
 
+- **The mirror described `urlParameterMapping` as path-only, hiding that it is
+  the query-binding opt-in (tcinc514).** It said "Binds URL path parameters to
+  typed request-DTO field names", which is close to the reverse of the contract:
+  a path capture the map does not name binds under its own name, so an *empty*
+  map already binds every path parameter, whereas a query parameter binds only
+  when the map names it — `injectQueryParameters` returns immediately on an
+  empty map. A reader following the mirror would leave the map empty and find
+  their query parameters silently dropped. Both entries now state the two roles
+  and the asymmetry between them, and the sibling on
+  `TomWebSocketEndpoint` says what the asymmetry costs there: a handshake is a
+  `GET` with no body, so the URL is the only thing a socket's request DTO can
+  be built from.
+
+  The document had in fact contradicted itself for some time — the
+  `injectQueryParameters` method row 120 lines further down said "only those
+  the endpoint explicitly maps" — and the property row is the one a reader
+  consults. Two tests are added for the socket side, which nothing covered:
+  the forwarding test proved the map reaches the converted endpoint and the
+  oauth suite proved the injector honours a map, but neither said that a
+  handshake's query string is therefore bindable, which is the only question a
+  socket author has. No guard ships with this: three candidate checks were
+  measured against the package and all were rejected on precision — a
+  row-length ratio fires on 19 rows of which most are legitimate abbreviation,
+  and an emphasis-preservation check scored one true positive against three
+  rows that carry their content and merely drop the bold.
+
 - **The API index's Endpoints table described two of the unit's six sources
   (tcinc513).** It listed eighteen types, all of them annotations and pipeline
   machinery, and none of the three transports the unit gained — form binding,

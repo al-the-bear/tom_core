@@ -285,8 +285,10 @@ const TomApiEndpointImplementation({
 
 Method-level annotation that declares an HTTP endpoint inline (without a
 registry entry). It fully describes the route: HTTP `methods` and `uri`, what
-the body `consumes` / `produces`, fixed `headers` / `contentDisposition`, the
-per-endpoint `errorHandler` and `logRequests`, and CORS overrides.
+the body `consumes` / `produces` and which of its `formFields` are folded into
+the request DTO, how `urlParameterMapping` binds the URL onto that DTO, fixed
+`headers` / `contentDisposition`, the per-endpoint `errorHandler` and
+`logRequests`, and CORS overrides.
 
 - **Implements:** `TomEndpointBase<requestType, resultType>`
 - **Type Parameters:** `requestType extends Object`, `resultType extends Object`.
@@ -327,7 +329,7 @@ const TomEndpoint({
 | `corsAllowedOrigins` | `String?` | `Access-Control-Allow-Origin` override for this endpoint. |
 | `corsAllowedMethods` | `String?` | `Access-Control-Allow-Methods` override for this endpoint. |
 | `corsAllowedHeaders` | `String?` | `Access-Control-Allow-Headers` override for this endpoint. |
-| `urlParameterMapping` | `Map<String, String>` | Binds URL path parameters to typed request-DTO field names. |
+| `urlParameterMapping` | `Map<String, String>` | Binds URL parameters — path captures **and** query-string parameters — to typed request-DTO field names. The two are not symmetric. A path capture the map does not name binds under its own name, so an **empty map still binds every path parameter** and the map is needed only to rename one. A query parameter binds **only** when the map names it, with no identity fallback, so this map is the per-parameter opt-in to query binding and an endpoint that leaves it empty receives nothing at all from the query string. See `TomEndpointHandler.injectPathParameters` and `injectQueryParameters`. |
 
 #### Methods
 
@@ -782,7 +784,7 @@ const TomWebSocketEndpoint({
 | `protocols` | `List<String>` | Subprotocols the endpoint will speak, in preference order; empty = none. |
 | `allowedOrigins` | `List<String>` | Browser origins allowed to open the socket; empty = any. |
 | `pingInterval` | `Duration?` | How often to ping an idle connection, or `null` to never ping. |
-| `urlParameterMapping` | `Map<String, String>` | Binds URL parameters to typed request-DTO fields. |
+| `urlParameterMapping` | `Map<String, String>` | Binds URL parameters to typed request-DTO fields, forwarded verbatim to the `TomEndpoint` the handshake routes with, and read with the same asymmetry described under `TomEndpoint.urlParameterMapping`: path captures bind with or without an entry, query-string parameters **only** with one. A handshake is a `GET` with no body, so the URL is the only place a socket endpoint's request DTO can come from — an empty map leaves a `?token=…` unbound. |
 | `logRequests` | `bool?` | Whether handshake requests are logged (`null` = default). |
 
 #### Methods

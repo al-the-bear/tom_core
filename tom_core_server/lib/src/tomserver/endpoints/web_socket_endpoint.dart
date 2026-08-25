@@ -121,7 +121,18 @@ class TomWebSocketEndpoint<
   final Duration? pingInterval;
 
   /// Binds URL parameters to typed request-DTO fields, as
-  /// [TomEndpoint.urlParameterMapping] does for an HTTP endpoint.
+  /// [TomEndpoint.urlParameterMapping] does for an HTTP endpoint — forwarded
+  /// verbatim by [convertToTomEndpoint] and read with the same asymmetry: a
+  /// path capture binds with or without an entry, a query-string parameter
+  /// **only** with one.
+  ///
+  /// That opt-in matters more here than it does over HTTP. A handshake is a
+  /// `GET` with no body, so the URL is the *only* place a socket endpoint's
+  /// request DTO can be built from. An endpoint that leaves this empty while
+  /// expecting `?token=…` does not get told so: if the route captures anything
+  /// at all the DTO is built without the token, and if it captures nothing the
+  /// DTO is not built and the call fails on argument count, naming neither the
+  /// parameter nor the query string.
   final Map<String, String> urlParameterMapping;
 
   /// Whether handshake requests to this endpoint are logged (`null` = default).
