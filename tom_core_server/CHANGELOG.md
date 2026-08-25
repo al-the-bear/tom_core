@@ -3653,6 +3653,31 @@
 
 ### Internal
 
+- **Two SMTP reply checks were `async` without awaiting anything (tcinc581).**
+  `_expectAuth` and `_expect` each inspect a reply that has already been read
+  and either return it or throw, but both were declared `async`, so both
+  returned a `Future` and every one of their ten call sites paid an `await` for
+  it. The signatures overstated what the functions did — an `await` is a reader's
+  signal that control can leave the method here, and control never did — and
+  each added a microtask to a step of the SMTP conversation, which is the one
+  path in the module that runs per protocol round trip. `_failureFor`, the
+  neighbour doing comparable work, was already synchronous, so the two markers
+  were inconsistent with the file's own convention rather than with an external
+  one. Both are now `void _expectAuth(TomSmtpReply)` and `TomSmtpReply
+  _expect(TomSmtpReply, int, String)`, and the call sites keep only the inner
+  `await connection.readReply()`, which is the one that genuinely suspends.
+  Behaviour is unchanged: every caller is an `async` method, where a synchronous
+  throw becomes the same rejected future it did before, and the failure paths of
+  both helpers are asserted through the public `send` — `535` for the credential
+  check, `451` and `552` for the reply check.
+
+  Sweeping the module for the same shape found four more `async` bodies without
+  an `await`, all of them left alone: three are `@override`s of an asynchronous
+  contract and the fourth is that contract's own no-op default, where `async` is
+  the idiomatic way to hand back an already-completed future. The distinction is
+  the point — those satisfy a signature they do not choose, while these two were
+  private helpers free to be synchronous and simply were not.
+
 - **The RFC 5322 date helper is a nested function, and now the only zero-padder
   in its method (tcinc580).** `TomMimeEncoder.formatRfc5322Date` bound its
   two-digit padder to a final local — `final two = (int n) => ...` — which is

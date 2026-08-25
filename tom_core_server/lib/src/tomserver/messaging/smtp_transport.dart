@@ -306,7 +306,7 @@ class TomSmtpTransport extends TomMessageTransport {
     TomMessage message,
     TomRecipient sender,
   ) async {
-    await _expect(await connection.readReply(), 220, 'greeting');
+    _expect(await connection.readReply(), 220, 'greeting');
 
     var capabilities = await _greet(connection);
 
@@ -323,7 +323,7 @@ class TomSmtpTransport extends TomMessageTransport {
         );
       }
       await connection.write('STARTTLS');
-      await _expect(await connection.readReply(), 220, 'STARTTLS');
+      _expect(await connection.readReply(), 220, 'STARTTLS');
       await connection.upgradeToTls();
       // The capability list before an upgrade is not binding afterwards — most
       // servers only advertise AUTH once the channel is private, which is the
@@ -336,7 +336,7 @@ class TomSmtpTransport extends TomMessageTransport {
     }
 
     await connection.write('MAIL FROM:<${sender.address}>');
-    await _expect(await connection.readReply(), 250, 'MAIL FROM');
+    _expect(await connection.readReply(), 250, 'MAIL FROM');
 
     final rejected = <String>[];
     for (final address in message.envelopeAddresses) {
@@ -361,9 +361,9 @@ class TomSmtpTransport extends TomMessageTransport {
     }
 
     await connection.write('DATA');
-    await _expect(await connection.readReply(), 354, 'DATA');
+    _expect(await connection.readReply(), 354, 'DATA');
     await connection.writeData(encoder.encode(message));
-    final accepted = await _expect(await connection.readReply(), 250, 'body');
+    final accepted = _expect(await connection.readReply(), 250, 'body');
 
     await _quietly('QUIT after delivery', () async {
       await connection.write('QUIT');
@@ -391,7 +391,7 @@ class TomSmtpTransport extends TomMessageTransport {
       return reply.lines.map((l) => l.trim().toUpperCase()).toSet();
     }
     await connection.write('HELO ${settings.clientName}');
-    await _expect(await connection.readReply(), 250, 'HELO');
+    _expect(await connection.readReply(), 250, 'HELO');
     return const {};
   }
 
@@ -420,16 +420,16 @@ class TomSmtpTransport extends TomMessageTransport {
         utf8.encode('\x00${settings.username}\x00${settings.password}'),
       );
       await connection.write('AUTH PLAIN $token');
-      await _expectAuth(await connection.readReply());
+      _expectAuth(await connection.readReply());
       return;
     }
     if (mechanisms.contains('LOGIN')) {
       await connection.write('AUTH LOGIN');
-      await _expect(await connection.readReply(), 334, 'AUTH LOGIN');
+      _expect(await connection.readReply(), 334, 'AUTH LOGIN');
       await connection.write(base64.encode(utf8.encode(settings.username!)));
-      await _expect(await connection.readReply(), 334, 'AUTH LOGIN username');
+      _expect(await connection.readReply(), 334, 'AUTH LOGIN username');
       await connection.write(base64.encode(utf8.encode(settings.password!)));
-      await _expectAuth(await connection.readReply());
+      _expectAuth(await connection.readReply());
       return;
     }
     throw TomDeliveryException.permanent(
@@ -440,7 +440,12 @@ class TomSmtpTransport extends TomMessageTransport {
     );
   }
 
-  Future<void> _expectAuth(TomSmtpReply reply) async {
+  /// Requires [reply] to be a positive completion of an `AUTH` exchange.
+  ///
+  /// Synchronous, like [_failureFor] and [_expect]: it inspects a reply that
+  /// has already been read. A `Future` here would only add a microtask per
+  /// protocol step and promise a suspension that never happens.
+  void _expectAuth(TomSmtpReply reply) {
     if (reply.isPositive) return;
     // Permanent by the letter of the RFC, and worth a message that names the
     // configuration: a rejected credential is far more often a deployment that
@@ -457,11 +462,11 @@ class TomSmtpTransport extends TomMessageTransport {
   }
 
   /// Requires [reply] to carry [expected], failing with the right judgement.
-  Future<TomSmtpReply> _expect(
-    TomSmtpReply reply,
-    int expected,
-    String stage,
-  ) async {
+  ///
+  /// Synchronous for the same reason as [_expectAuth]: the reply is already in
+  /// hand, so the only thing `async` would add is a microtask on every step of
+  /// the conversation.
+  TomSmtpReply _expect(TomSmtpReply reply, int expected, String stage) {
     if (reply.code == expected) return reply;
     throw _failureFor(reply, stage);
   }
