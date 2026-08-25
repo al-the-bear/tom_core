@@ -1,14 +1,24 @@
+/// Tests for the little-things module: the two types it contributes.
+///
+/// [TomServerException] is the base class every other `tom_core_server`
+/// exception extends; its zone-free surface (construction, defaults, the kernel
+/// [TomException] inheritance, isolate attribution, the `toString` format) and
+/// its zone-based request correlation via a `runZoned` carrying a
+/// [TomRequestId] are covered first.
+///
+/// [LoginException] is the one subclass declared beside the base rather than
+/// beside the module that raises it. It adds no members, so what is pinned here
+/// is that it inherits the base surface unchanged and that its constructor does
+/// **not** forward `clientThrow` — the property that belongs to the declaration
+/// rather than to the login flow. The login flow itself is covered by
+/// `authentication_test.dart`.
+library;
+
 import 'dart:async';
 
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
-/// Tests for the little-things module: the [TomServerException] base class.
-///
-/// Covers the zone-free surface (construction, defaults, the kernel
-/// [TomException] inheritance, isolate attribution, the `toString` format) and
-/// the zone-based request correlation via a `runZoned` carrying a
-/// [TomRequestId].
 void main() {
   group('TomServerException', () {
     test('forwards key and message to TomException', () {
@@ -54,6 +64,81 @@ void main() {
       final s = TomServerException('K', 'm').toString();
       expect(s, contains('client-throw: true'));
       expect(s, contains(TomServerException('K', 'm').isolateName));
+    });
+  });
+
+  group('LoginException', () {
+    test('is a TomServerException and a TomException', () {
+      final e = LoginException('K', 'm');
+      expect(e, isA<TomServerException>());
+      expect(e, isA<TomException>());
+    });
+
+    test('forwards key and message to the base', () {
+      final e = LoginException(
+        'error.invalid-user-or-password',
+        'The username or password is not correct.',
+      );
+      expect(e.key, 'error.invalid-user-or-password');
+      expect(
+        e.defaultUserMessage,
+        'The username or password is not correct.',
+      );
+    });
+
+    test('forwards parameters to the base', () {
+      final e = LoginException('K', 'm', parameters: {'username': 'mallory'});
+      expect(e.parameters, containsPair('username', 'mallory'));
+    });
+
+    test('is born client-visible', () {
+      // Deliberate: the constructor does not accept `clientThrow`, so every
+      // LoginException carries the base default `true`. That is not the
+      // package-wide norm being restated — fifteen of the twenty-eight
+      // subclasses inherit `true` by omitting the parameter the same way. It
+      // is specific to the authentication neighbourhood, where every other
+      // exception is hidden from the caller: Tom2FAException and
+      // TomServerSelfLoginException hard-wire `clientThrow: false` and
+      // TomOAuthException re-defaults it to `false`. LoginException is the one
+      // failure that subsystem raises whose message is written for the person
+      // who mistyped a password, so it is the one that may reach them.
+      expect(LoginException('K', 'm').clientThrow, isTrue);
+    });
+
+    test('can still be masked after construction', () {
+      // `clientThrow` is a plain mutable field on the base, so what the
+      // omitted constructor parameter fixes is the *default*, not the value: a
+      // catch site that decides the detail must not leave the server can set
+      // it before rethrowing.
+      final e = LoginException('K', 'm')..clientThrow = false;
+      expect(e.clientThrow, isFalse);
+    });
+
+    test('captures a non-empty isolate name like the base', () {
+      expect(LoginException('K', 'm').isolateName, isNotEmpty);
+    });
+
+    test('requestUuid is unset when constructed outside a request zone', () {
+      expect(LoginException('K', 'm').requestUuid, isNull);
+    });
+
+    test('correlates requestUuid from a TomRequestId in the zone', () {
+      final requestId = TomRequestId();
+      runZoned(() {
+        expect(LoginException('K', 'm').requestUuid, requestId.uuid);
+      }, zoneValues: {TomRequestId: requestId});
+    });
+
+    test('is caught by a clause written for the base type', () {
+      // The pattern the api summary advertises: one clause reaches every
+      // server exception, including the ones declared elsewhere.
+      Object? caught;
+      try {
+        throw LoginException('auth.rejected', 'Login rejected.');
+      } on TomServerException catch (e) {
+        caught = e;
+      }
+      expect(caught, isA<LoginException>());
     });
   });
 }

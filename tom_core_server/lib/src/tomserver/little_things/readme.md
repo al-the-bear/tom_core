@@ -18,7 +18,7 @@ the 2FA subsystem can throw it without importing that server.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomServerException` | Base server error: carries `key` + `defaultUserMessage`, records `isolateName`, exposes `clientThrow`, and copies the active request UUID into `requestUuid` for correlation. |
-| `LoginException` | A login that cannot succeed. Adds nothing to the base — it is a name the authentication services throw and `TomAuthenticationServer` catches. See `doc/authentication.md`. |
+| `LoginException` | A login that cannot succeed. Adds no members to the base — it is a name the authentication services throw and `TomAuthenticationServer` catches. Its constructor omits `clientThrow`, so it is born client-visible, unlike the rest of the authentication subsystem's exceptions. See `doc/authentication.md`. |
 
 ## Quick start
 

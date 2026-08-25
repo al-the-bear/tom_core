@@ -2,6 +2,39 @@
 
 ### Testing
 
+- **`LoginException` had no coverage in the module that declares it
+  (tcinc562).** It is thrown from thirty-three sites across the authentication
+  and 2FA code, but `little_things_test.dart` never named it and the module's
+  example never constructed one. Its only direct assertions lived in
+  `authentication_test.dart`, filed under the module that raises it — which
+  covers the login flow, not the declaration. A `LoginException` group now pins
+  the inherited surface from this side (`isA<TomServerException>()` and
+  `isA<TomException>()`, `key`/`defaultUserMessage`/`parameters` forwarding,
+  isolate attribution, zone-based `requestUuid` correlation both inside and
+  outside a request zone) and a fifth example step throws one and catches it
+  with `on TomServerException catch (e)`, which is the pattern the api summary
+  advertises and nothing demonstrated.
+
+- **The `clientThrow` claim the documents made about `LoginException` was wrong
+  twice over (tcinc562).** Four artefacts said it was "the one type in the
+  package that does not offer the choice" and that "a caller cannot mask one".
+  Classifying all twenty-eight `TomServerException` subtypes refutes the first:
+  fifteen of them — the largest group, `LoginException` among them — inherit
+  the `true` default by omitting the parameter exactly the same way, so the
+  omission is the norm rather than an exception to it. The true claim is
+  narrower and more useful: within the *authentication* subsystem it is the
+  outlier, because `Tom2FAException` and `TomServerSelfLoginException`
+  hard-wire `clientThrow: false` and `TomOAuthException` re-defaults it to
+  `false` — a login failure's message is written for the person who mistyped a
+  password, so it is the one that may reach them. The second claim fails on the
+  declaration: `clientThrow` is a plain mutable `bool` on the base, not a
+  `final`, so a catch site can flip it before rethrowing. What the omitted
+  constructor parameter fixes is the default, not the value; the type
+  guarantees no invariant, and code needing "never shown to a client" must
+  enforce it at the handler. Both facts are now asserted rather than asserted
+  about, and the guide, the module readme, the api summary and the test comment
+  say the accurate thing.
+
 - **The health-check test and example pointed at coverage that does not exist
   (tcinc560).** Both headers said the `GET /health` route was "covered by
   `doc/healthcheck.md` and integration tests, not here". A document covers no

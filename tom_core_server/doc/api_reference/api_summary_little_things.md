@@ -18,8 +18,8 @@ Source: `lib/src/tomserver/little_things/server_exception.dart`.
 
 `TomServerException` is the root of the server's exception hierarchy: every
 server exception type (e.g. `TomEndpointHandlerException`, `TomCacheException`,
-`MariadbMigrationException`, and `LoginException`) subtypes it, so a
-`catch (e) on TomServerException` reaches all of them. Over the kernel's
+`MariadbMigrationException`, and `LoginException`) subtypes it, so a single
+`on TomServerException catch (e)` clause reaches all of them. Over the kernel's
 `TomException` it adds two server-specific concerns: **isolate attribution** —
 it captures `isolateName` at construction so a logged or serialized error
 identifies the worker isolate that produced it — and **request correlation** —
@@ -31,8 +31,9 @@ surface to the client.
 The module declares one of those subtypes itself: `LoginException`, which sits
 here rather than in `authentication` so the 2FA subsystem can throw it without
 importing the server that catches it. It adds no members — its constructor
-forwards the base payload minus `clientThrow`, which is therefore always the
-base default `true`. It is documented in
+forwards the base payload minus `clientThrow`, so a `LoginException` is always
+*born* with the base default `true` (the field itself stays writable, as on any
+subtype). It is documented in
 [api_summary_authentication.md](api_summary_authentication.md#loginexception),
 under the module a reader meets it in; the index files it there too, and this
 summary gives it no section of its own so that the two documents cannot drift
