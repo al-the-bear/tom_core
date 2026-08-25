@@ -34,6 +34,8 @@ import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:yaml/yaml.dart';
 
+import 'fixtures/posix_permissions.dart';
+
 /// A stream that delivers [chunks] and then fails — the interrupted upload.
 Stream<List<int>> _failingStream(List<List<int>> chunks) async* {
   for (final chunk in chunks) {
@@ -402,6 +404,187 @@ void main() {
         throwsA(isA<TomStorageException>()),
       );
       expect(utf8.decode(await store.getBytes('k.bin')), 'original');
+    });
+
+    group('a commit step fails like the copy it follows', () {
+      // The rollback used to guard the stream copy alone: `close`, `rename` and
+      // the sidecar write sat one line past the `try` that deletes the partial.
+      // That is backwards — the copy fails on the producer's terms, while the
+      // three steps after it are the ones with filesystem failure modes of
+      // their own, and each of them fails *after* the partial exists.
+
+      test('a rename that cannot commit is a write failure', () async {
+        // A directory standing where the blob goes: `rename` cannot replace it,
+        // which is the same fault as a cross-device root or a read-only mount
+        // and the cheapest of the three to arrange.
+        Directory('${root.path}/k.bin').createSync(recursive: true);
+
+        await expectLater(
+          store.putBytes(key: 'k.bin', bytes: utf8.encode('mine')),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.write_failed',
+            ),
+          ),
+        );
+        expect(
+          File(
+            '${root.path}/k.bin${TomDirectoryBlobStore.partialSuffix}',
+          ).existsSync(),
+          isFalse,
+          reason: 'the rollback that owns the partial must have run',
+        );
+      });
+
+      test('a sidecar that cannot be written takes the blob with it', () async {
+        // The sidecar is written after the rename, so by the time it fails the
+        // commit has already happened and the residue is the blob itself. A
+        // rollback that only knew about the partial would leave a blob readable
+        // under a key whose `put` reported failure — and with the media type
+        // and file name of the descriptor the caller never received.
+        Directory(
+          '${root.path}/k.bin${TomDirectoryBlobStore.metadataSuffix}',
+        ).createSync(recursive: true);
+
+        await expectLater(
+          store.putBytes(
+            key: 'k.bin',
+            bytes: utf8.encode('mine'),
+            mediaType: 'application/pdf',
+          ),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.write_failed',
+            ),
+          ),
+        );
+        expect(await store.exists('k.bin'), isFalse);
+      });
+
+      test('an invalid key is still invalid_key, not the step it stopped', () {
+        // The translation must not swallow the module's own errors: a caller
+        // who spelled the key wrong needs to hear that, not that a write
+        // failed.
+        expect(
+          store.putBytes(key: '../escape', bytes: utf8.encode('x')),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.invalid_key',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('a read that fails is named, not a raw FileSystemException', () {
+      // Absence is `not_found` and always was. What the filesystem reports for
+      // everything *else* — a permission denied, an I/O error — reached the
+      // caller as the platform's own exception type, so a pipeline catching
+      // `TomServerException` did not catch it at all.
+
+      test('reading a file the filesystem refuses is a read failure', () async {
+        final file = File('${root.path}/locked.bin')
+          ..writeAsStringSync('secret');
+        Process.runSync('chmod', ['000', file.path]);
+        addTearDown(() => Process.runSync('chmod', ['600', file.path]));
+
+        await expectLater(
+          store.getBytes('locked.bin'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.read_failed',
+            ),
+          ),
+        );
+      }, skip: chmodSkipReason);
+
+      test('describing a file the filesystem refuses is a probe '
+          'failure', () async {
+        // `describe` reads the sidecar, so an unreadable sidecar is a fault
+        // even though the blob itself is fine — and a fault about *asking*,
+        // which is what `probe` names.
+        await store.putBytes(
+          key: 'locked.bin',
+          bytes: utf8.encode('x'),
+          mediaType: 'application/pdf',
+        );
+        final meta = File(
+          '${root.path}/locked.bin${TomDirectoryBlobStore.metadataSuffix}',
+        );
+        Process.runSync('chmod', ['000', meta.path]);
+        addTearDown(() => Process.runSync('chmod', ['600', meta.path]));
+
+        await expectLater(
+          store.describe('locked.bin'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.probe_failed',
+            ),
+          ),
+        );
+      }, skip: chmodSkipReason);
+
+      test('a delete that fails is a delete failure', () async {
+        final dir = Directory('${root.path}/ro')..createSync();
+        File('${dir.path}/a.bin').writeAsStringSync('x');
+        Process.runSync('chmod', ['500', dir.path]);
+        addTearDown(() => Process.runSync('chmod', ['700', dir.path]));
+
+        await expectLater(
+          store.delete('ro/a.bin'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.delete_failed',
+            ),
+          ),
+        );
+      }, skip: chmodSkipReason);
+
+      test('a blob the process may not see is reported absent, not '
+          'a probe failure', () async {
+        // The one method that does *not* translate, because it has nothing to
+        // translate: `File.exists` answers from a `stat` and turns every
+        // failure of it — this unreadable parent included — into `false`. So
+        // `exists` means "visible to this process" here, and this test pins
+        // that rather than the probe failure the other three paths raise. If
+        // `dart:io` ever surfaces the errno, this is the test that should fail
+        // and send someone to the note on `exists`.
+        final dir = Directory('${root.path}/hidden')..createSync();
+        File('${dir.path}/a.bin').writeAsStringSync('x');
+        Process.runSync('chmod', ['000', dir.path]);
+        addTearDown(() => Process.runSync('chmod', ['700', dir.path]));
+
+        expect(await store.exists('hidden/a.bin'), isFalse);
+      }, skip: chmodSkipReason);
+
+      test('a missing key is still not_found, not a read failure', () {
+        // The one filesystem answer that is not a fault. It has to keep its own
+        // error key through the translation, because callers branch on it —
+        // `TomBlobExportStore` translates exactly this one and lets the rest
+        // through, and the file endpoint maps it to a 404.
+        expect(
+          store.getBytes('absent.bin'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.not_found',
+            ),
+          ),
+        );
+      });
     });
 
     test('delete removes the blob and its sidecar', () async {

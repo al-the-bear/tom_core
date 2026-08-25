@@ -362,6 +362,7 @@ surface documented here.
 | `TomBlobManifestRow` | class | One row of the blob manifest table. |
 | `TomBlobChunkRow` | class | One chunk row's payload. |
 | `TomStorageException` | class | Storage failure (extends `TomServerException`). |
+| `TomBlobStoreOperation` | enum | The four operations a storage failure is reported as. |
 | `defaultBlobManifestTable` / `defaultBlobChunkTable` | top-level | Default table names. |
 | `blobManifestTable` / `blobChunkTable` | top-level | The table descriptors. |
 | `blobManifestTableDdl` / `blobChunkTableDdl` | top-level | The `CREATE TABLE` statements. |
@@ -677,6 +678,7 @@ surface documented here.
 | `TomBlobStore` | File Storage |
 | `TomBlobStoreFactory` | File Storage |
 | `TomBlobStoreInfo` | File Storage |
+| `TomBlobStoreOperation` | File Storage |
 | `TomBoolConfig` | Configuration |
 | `TomCache` | Cache |
 | `TomCacheEntry` | Cache |

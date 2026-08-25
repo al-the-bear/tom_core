@@ -10,6 +10,7 @@ named registry that selects one from configuration.
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
   - [TomStorageException](#tomstorageexception)
+  - [TomBlobStoreOperation](#tomblobstoreoperation)
   - [TomStoredBlob](#tomstoredblob)
   - [TomBlobStore](#tomblobstore)
   - [TomMemoryBlobStore](#tommemoryblobstore)
@@ -99,6 +100,8 @@ look; each summary names the other two.
 TomServerException  (little_things)
     └── TomStorageException
 
+TomBlobStoreOperation  (enum)
+
 TomBlobStore  (abstract)
     ├── TomMemoryBlobStore
     ├── TomDirectoryBlobStore
@@ -141,6 +144,41 @@ TomStorageException(
   bool clientThrow = true,
 })
 ```
+
+### TomBlobStoreOperation
+
+What a store was doing when its infrastructure refused — the vocabulary every
+backend translates a `FileSystemException`, a driver error or an HTTP status
+into. Letting those through would make a caller's error handling depend on which
+backend it was configured with, and would slip past every `on TomServerException`
+between the store and the request boundary.
+
+Mirrors `TomExportStoreOperation` in the export module deliberately: the same
+four questions are asked of the same kinds of infrastructure, and two different
+answers for one fault would be an accident of which module the caller came
+through.
+
+The division is by *what the caller asked for*, not by which call threw — so a
+sidecar that cannot be read during a `describe` is a `probe` failure even though
+a file read is what failed.
+
+- **Type:** `enum`
+
+#### Values
+
+| Value | Error key | Meaning |
+| ----- | --------- | ------- |
+| `write` | `storage.blob.write_failed` | Storing bytes under a key did not complete. |
+| `read` | `storage.blob.read_failed` | Reading a blob's bytes back failed. |
+| `probe` | `storage.blob.probe_failed` | `describe` or `exists` could not ask storage about the key. |
+| `delete` | `storage.blob.delete_failed` | Removing what a key holds failed. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `errorKey` | `String` | The stable error key a caller matches on (final). |
+| `message` | `String` | The user-facing message carried by the raised exception (final). |
 
 ### TomStoredBlob
 
@@ -215,6 +253,8 @@ const TomBlobStore()
 | `isValidKeyPrefix` | `static bool isValidKeyPrefix(String? keyPrefix)` | Whether `keyPrefix` is usable as a key namespace. A prefix is joined as `"$keyPrefix/$key"`, so it must satisfy `isValidKey` itself; `null` and `''` both mean no namespace, and a trailing slash is not a second spelling (the join supplies the separator). Length is the one clause a prefix cannot settle alone — two valid parts can join past `maxKeyLength`, which `validateKey` catches on the joined key. |
 | `validateKeyPrefix` | `static String? validateKeyPrefix(String? keyPrefix)` | Returns `keyPrefix` when `isValidKeyPrefix` accepts it, otherwise throws `storage.blob.invalid_key_prefix` naming the prefix. A distinct error from `invalid_key` because the two faults have different fixes: a bad key is a caller's mistake, a bad prefix a deployment's. |
 | `notFound` | `static TomStorageException notFound(String key)` | Builds the `storage.blob.not_found` error, spelled once so every backend agrees and a caller can match on the key string. |
+| `operationFailed` | `static TomStorageException operationFailed(TomBlobStoreOperation operation, String key, Object error, StackTrace stack)` | `error` restated as the storage failure of `operation` on `key`. The original is kept as `rootException` rather than summarised into the message: the caller needs a key it can branch on, whoever reads the log needs the `errno` that explains it. |
+| `translating` | `static Future<T> translating<T>(TomBlobStoreOperation operation, String key, Future<T> Function() body)` | Runs `body`, reporting any infrastructure failure as `operation` on `key`. A `TomStorageException` passes through untouched — the clause that makes this safe to wrap a whole method in, since `not_found`, `invalid_key` and `missing_chunk` are the module's own answers and callers branch on them. Offered on the contract because a backend that translates only some of its methods is the state this replaced, and because the try/rethrow/wrap shape is identical every time it is written out. |
 
 #### Methods
 
@@ -305,11 +345,11 @@ TomDirectoryBlobStore.at(String path)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Streams to a sibling `<key>~part` and renames it into place, so a reader sees the previous blob or the complete new one; a failure deletes the partial and throws `storage.blob.write_failed`. The sidecar is written after the rename. |
-| `get` | `Stream<List<int>> get(String key)` | *(override)* Streams the file with `openRead`; throws `storage.blob.not_found` when it does not exist. |
-| `describe` | `Future<TomStoredBlob?> describe(String key)` | *(override)* Size and mtime from `stat()`, media type and file name from the sidecar when it is present and parseable — so a directory populated by `scp` is still readable. |
-| `exists` | `Future<bool> exists(String key)` | *(override)* A direct file-existence probe. |
-| `delete` | `Future<bool> delete(String key)` | *(override)* Deletes the file and its sidecar, returning whether the file was there. |
+| `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Streams to a sibling `<key>~part` and renames it into place, so a reader sees the previous blob or the complete new one. The close, the rename and the sidecar write are all inside the failure path, because each has filesystem faults of its own — a full disk surfaces at `close`, a rename fails on a cross-device root or an occupied target — and each of them fails *after* the partial exists. The rollback deletes whichever residue the failure left: the partial before the rename, the newly committed blob after it. Every failure is `storage.blob.write_failed` carrying the original as `rootException`. |
+| `get` | `Stream<List<int>> get(String key)` | *(override)* Streams the file with `openRead`; throws `storage.blob.not_found` when it does not exist, `storage.blob.read_failed` for anything else. Consumes the file stream with `await for` rather than `yield*`, since a `yield*` forwards the inner stream's errors past the enclosing translation. |
+| `describe` | `Future<TomStoredBlob?> describe(String key)` | *(override)* Size and mtime from `stat()`, media type and file name from the sidecar when it is present and parseable — so a directory populated by `scp` is still readable. A sidecar that cannot be *read* (as opposed to parsed) is `storage.blob.probe_failed`. |
+| `exists` | `Future<bool> exists(String key)` | *(override)* A direct file-existence probe, and the one method here that raises no operation failure: `File.exists` answers from a `stat` and maps every failure of it — an unreadable parent directory included — to `false`, so there is nothing to translate. It therefore means "visible to this process" rather than "present in storage"; ask `describe` to tell an unreadable blob from an absent one. |
+| `delete` | `Future<bool> delete(String key)` | *(override)* Deletes the file and its sidecar, returning whether the file was there; a filesystem refusal is `storage.blob.delete_failed`. |
 | `toString` | `String toString()` | *(override)* Renders `TomDirectoryBlobStore(<root path>)`. |
 
 ### TomDatabaseBlobStore

@@ -45,6 +45,28 @@ import 'blob_store.dart';
 /// the accepted key space depend on which backend is configured — the same key
 /// working on S3 and failing on disk — and the stores would stop being drop-in
 /// replacements for one another.
+///
+/// ## What a failed write leaves behind
+///
+/// [put] stages into a sibling [partialSuffix] file and renames it into place,
+/// so the rename is the commit — and therefore the line that decides what a
+/// later failure has to clean up. Before it, the leftover is the partial and
+/// the key still holds whatever it held; after it, the partial is gone and the
+/// leftover is the new blob. The rollback deletes whichever of the two exists,
+/// which gives the honest guarantee:
+///
+/// - a failure **before** the rename leaves the previous content intact;
+/// - a failure **after** it leaves the key empty.
+///
+/// The second half is the best a rename-based commit can offer, because the
+/// rename is itself the destructive step — the previous blob is gone the
+/// instant the new one is in place, and there is nothing left to restore. Only
+/// the sidecar write happens after it, and it is not tolerated silently: see
+/// [put].
+///
+/// Every failure here is a [TomStorageException] carrying the original
+/// `FileSystemException` as its `rootException`, per
+/// [TomBlobStoreOperation].
 class TomDirectoryBlobStore extends TomBlobStore {
   /// Creates a store rooted at [root]; the directory is created on first write.
   TomDirectoryBlobStore(this.root);
@@ -75,8 +97,9 @@ class TomDirectoryBlobStore extends TomBlobStore {
     String mediaType = TomStoredBlob.defaultMediaType,
     String? fileName,
   }) async {
+    // Outside the guard below, so a mis-spelled key is reported as the caller's
+    // mistake rather than as a write that failed.
     final file = _fileFor(key);
-    await file.parent.create(recursive: true);
 
     // Written under a sibling name and renamed on success. A rename within one
     // filesystem is atomic, so a reader either sees the previous blob or the
@@ -84,8 +107,15 @@ class TomDirectoryBlobStore extends TomBlobStore {
     // upload connection dropped.
     final partial = File('${file.path}$partialSuffix');
     var written = 0;
-    final sink = partial.openWrite();
+    // Whether the rename has happened, which is what decides *what the residue
+    // is* if a later step fails. Before it, the leftover is the partial and the
+    // previous blob is untouched; after it, there is no partial and the
+    // leftover is the new blob itself.
+    var committed = false;
+    IOSink? sink;
     try {
+      await file.parent.create(recursive: true);
+      sink = partial.openWrite();
       await sink.addStream(
         bytes.map((chunk) {
           written += chunk.length;
@@ -93,69 +123,125 @@ class TomDirectoryBlobStore extends TomBlobStore {
         }),
       );
       await sink.flush();
+      // Inside the guard, all three of them. `close` is where the buffer is
+      // actually flushed, so it is where a full disk surfaces; `rename` fails
+      // on a cross-device root, a read-only mount or a target occupied by a
+      // directory; the sidecar write fails for the same reasons the blob write
+      // does. Outside, each of them escaped as a raw `FileSystemException` and
+      // left behind exactly the residue this rollback exists to prevent.
+      await sink.close();
+      sink = null;
+      await partial.rename(file.path);
+      committed = true;
+
+      final descriptor = TomStoredBlob(
+        key: key,
+        mediaType: mediaType,
+        byteCount: written,
+        storedAt: DateTime.now(),
+        fileName: fileName,
+        location: file.absolute.uri,
+      );
+      // After the rename: the blob is the thing that must be complete, and a
+      // sidecar written first would describe a file that does not exist yet.
+      //
+      // A failure here is *not* tolerated even though a blob without a sidecar
+      // reads back fine (see the class comment). `put` is about to return a
+      // descriptor naming a media type and a file name that a later `describe`
+      // would contradict — and it will not return at all, so the caller is
+      // entitled to assume nothing was stored.
+      await _writeMetadata(file, descriptor);
+      return descriptor;
     } on Object catch (error, stack) {
-      await sink.close().catchError((Object _) {});
-      await partial.delete().catchError((Object _) => partial);
-      throw TomStorageException(
-        'storage.blob.write_failed',
-        'The file could not be written to storage.',
-        parameters: {'key': key},
-        rootException: error,
-        stack: stack,
+      await sink?.close().catchError((Object _) {});
+      final residue = committed ? file : partial;
+      await residue.delete().catchError((Object _) => residue);
+      throw TomBlobStore.operationFailed(
+        TomBlobStoreOperation.write,
+        key,
+        error,
+        stack,
       );
     }
-    await sink.close();
-    await partial.rename(file.path);
-
-    final descriptor = TomStoredBlob(
-      key: key,
-      mediaType: mediaType,
-      byteCount: written,
-      storedAt: DateTime.now(),
-      fileName: fileName,
-      location: file.absolute.uri,
-    );
-    // After the rename: the blob is the thing that must be complete, and a
-    // sidecar written first would describe a file that does not exist yet.
-    await _writeMetadata(file, descriptor);
-    return descriptor;
   }
 
   @override
   Stream<List<int>> get(String key) async* {
     final file = _fileFor(key);
-    if (!file.existsSync()) throw TomBlobStore.notFound(key);
-    yield* file.openRead();
+    try {
+      if (!file.existsSync()) throw TomBlobStore.notFound(key);
+      // `await for`, not `yield*`: a `yield*` forwards the inner stream's
+      // *errors* straight to this method's output stream, past the enclosing
+      // try — so the translation below would never run, and a mid-read I/O
+      // fault would reach the caller as a `FileSystemException`.
+      await for (final chunk in file.openRead()) {
+        yield chunk;
+      }
+    } on TomStorageException {
+      rethrow;
+    } on Object catch (error, stack) {
+      throw TomBlobStore.operationFailed(
+        TomBlobStoreOperation.read,
+        key,
+        error,
+        stack,
+      );
+    }
   }
 
   @override
-  Future<TomStoredBlob?> describe(String key) async {
+  Future<TomStoredBlob?> describe(String key) {
     final file = _fileFor(key);
-    if (!file.existsSync()) return null;
-    final stat = await file.stat();
-    final meta = await _readMetadata(file);
-    return TomStoredBlob(
-      key: key,
-      mediaType:
-          meta?['mediaType'] as String? ?? TomStoredBlob.defaultMediaType,
-      byteCount: stat.size,
-      storedAt: stat.modified,
-      fileName: meta?['fileName'] as String?,
-      location: file.absolute.uri,
-    );
+    return TomBlobStore.translating(TomBlobStoreOperation.probe, key, () async {
+      if (!file.existsSync()) return null;
+      final stat = await file.stat();
+      final meta = await _readMetadata(file);
+      return TomStoredBlob(
+        key: key,
+        mediaType:
+            meta?['mediaType'] as String? ?? TomStoredBlob.defaultMediaType,
+        byteCount: stat.size,
+        storedAt: stat.modified,
+        fileName: meta?['fileName'] as String?,
+        location: file.absolute.uri,
+      );
+    });
   }
 
+  /// Whether [key] is *visible* — see the note below on what that excludes.
+  ///
+  /// Alone among the five methods this one has no [TomBlobStore.translating]
+  /// wrapper, and the omission is deliberate rather than an oversight:
+  /// `File.exists` cannot fail. `dart:io` answers it from a `stat` and maps
+  /// every failure of that `stat` — permission denied on a parent directory, a
+  /// symlink loop, an over-long name, a dead NFS mount — to plain `false`, so
+  /// there is no exception here for a translation to catch and rename.
+  ///
+  /// The consequence is the caller's to know: on this backend a blob the
+  /// process is not *allowed* to see is reported absent rather than as a probe
+  /// failure, and `exists` therefore means "visible to this process", not "not
+  /// present in storage". It cannot be fixed from here — `File.stat` swallows
+  /// the same errors the same way, and `dart:io` exposes no errno to tell
+  /// `ENOENT` from `EACCES`. [describe] does reach real I/O (it reads the
+  /// sidecar) and does report [TomBlobStoreOperation.probe] failures, so a
+  /// caller that must tell the two apart should ask it instead.
   @override
   Future<bool> exists(String key) => _fileFor(key).exists();
 
   @override
-  Future<bool> delete(String key) async {
+  Future<bool> delete(String key) {
     final file = _fileFor(key);
-    if (!file.existsSync()) return false;
-    await file.delete();
-    final meta = _metadataFileFor(file);
-    if (meta.existsSync()) await meta.delete();
-    return true;
+    return TomBlobStore.translating(
+      TomBlobStoreOperation.delete,
+      key,
+      () async {
+        if (!file.existsSync()) return false;
+        await file.delete();
+        final meta = _metadataFileFor(file);
+        if (meta.existsSync()) await meta.delete();
+        return true;
+      },
+    );
   }
 
   File _metadataFileFor(File file) => File('${file.path}$metadataSuffix');

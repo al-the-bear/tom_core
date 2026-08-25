@@ -24,6 +24,7 @@ without the second; the second is built entirely on the first.
   - [Directory](#directory)
   - [Database](#database)
   - [S3](#s3)
+- [A Failure Is a Storage Error, Not the Backend's](#a-failure-is-a-storage-error-not-the-backends)
 - [Configuration Selects the Backend](#configuration-selects-the-backend)
 - [File-Reference Columns](#file-reference-columns)
 - [Where the Key Comes From](#where-the-key-comes-from)
@@ -193,8 +194,20 @@ details are load-bearing:
 
 - **A write goes to `<key>~part` and is renamed into place.** Rename is atomic
   on every filesystem this runs on, so a reader sees either the previous file or
-  the complete new one, never a half-written one. A failed write deletes the
-  partial and leaves the previous file untouched.
+  the complete new one, never a half-written one. The rename is therefore the
+  commit, and it is what decides what a failure has to clean up: **before** it
+  the leftover is the partial and the previous file is untouched; **after** it
+  there is no partial and the leftover is the new file. The rollback deletes
+  whichever exists, so a failure before the rename leaves the previous content
+  intact and a failure after it leaves the key empty. The second half is the
+  best a rename-based commit can do — the rename is itself the destructive step,
+  and there is nothing left to restore once it has happened.
+
+  Only the sidecar write comes after the rename, and it is not tolerated
+  quietly. A blob without a sidecar reads back fine, but `put` was about to
+  return a descriptor naming a media type and file name that a later `describe`
+  would contradict — and it will not return at all, so the caller is entitled to
+  assume nothing was stored.
 - **A `<key>~meta` JSON sidecar** holds what a filesystem cannot: the media type
   and the original file name. `describe` falls back to `stat()` when the sidecar
   is missing, so a file placed in the directory by hand — a migration, an
@@ -266,6 +279,54 @@ An upload smaller than `partSize` (8 MiB by default) is a single signed `PUT`.
 A larger one becomes a multipart upload: initiate, one part per `partSize`
 window, complete. A part failure aborts the upload, so a half-uploaded object is
 not left to be billed for. `x-amz-meta-filename` carries the original name.
+
+## A Failure Is a Storage Error, Not the Backend's
+
+The faults that stop a store come from the layer underneath it and speak that
+layer's language: a `FileSystemException` from the directory backend, a driver
+error from the database one, an HTTP status from S3. A backend that lets those
+through makes the caller's error handling depend on which backend it was
+configured with — and slips past every `on TomServerException` between the store
+and the request boundary, so the pipeline's generic handler is the first thing
+that sees it.
+
+So a backend translates into four keys, one per operation:
+
+| Key | Raised when |
+| --- | ----------- |
+| `storage.blob.write_failed` | Storing bytes under a key did not complete. |
+| `storage.blob.read_failed` | The key holds a blob; reading its bytes failed. |
+| `storage.blob.probe_failed` | `describe` or `exists` could not ask storage about the key. |
+| `storage.blob.delete_failed` | The key holds a blob; removing it failed. |
+
+The division is by *what the caller asked for*, not by which call threw: a
+sidecar that cannot be read during a `describe` is a probe failure even though a
+file read is what failed.
+
+One backend cannot raise one of them, and it is worth knowing which. The
+directory backend's `exists` never reports `storage.blob.probe_failed`, because
+`dart:io`'s `File.exists` answers from a `stat` and turns every failure of that
+`stat` — a permission-denied parent directory, a symlink loop, a dead NFS mount
+— into a plain `false`. There is no exception to translate, and no errno exposed
+that would let one be reconstructed. So on that backend `exists` answers
+"visible to this process" rather than "present in storage", and a caller that
+must tell an unreadable blob from an absent one should ask `describe`, which
+reaches real I/O and does report the failure.
+
+The module's own answers pass through untranslated, because callers branch on
+them — `storage.blob.not_found` (which `TomBlobExportStore` re-reports as
+`export.store.not_found` and the file endpoint turns into a 404),
+`storage.blob.invalid_key`, and the database backend's
+`storage.blob.missing_chunk`. `TomBlobStore.translating` is the helper that does
+both halves, and `TomBlobStore.operationFailed` builds the exception on its own
+for a backend whose failure path is shaped differently. The original fault is
+kept as `rootException` in either case: the caller needs a key it can branch on,
+whoever reads the log needs the `errno` that explains it.
+
+The same four operations exist in the export module as
+`TomExportStoreOperation`. That is deliberate — the same questions are being
+asked of the same kinds of infrastructure, and two different answers for one
+fault would be an accident of which module the caller came through.
 
 ## Configuration Selects the Backend
 

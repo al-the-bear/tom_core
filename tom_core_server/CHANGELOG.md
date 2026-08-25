@@ -74,6 +74,43 @@
 
 ### Fixed
 
+- **The directory backend's commit and read steps sat outside its failure
+  path, so they raised `FileSystemException` and left the partial behind
+  (tcinc537).** `put`'s rollback guarded the stream copy alone: `close`,
+  `rename` and the sidecar write were each one line past the `try` that deletes
+  the partial. That was backwards. The copy fails on the *producer's* terms,
+  while those three are the steps with filesystem failure modes of their own —
+  `close` is where the buffer is actually flushed, so a full disk surfaces
+  there; `rename` fails on a cross-device root, a read-only mount or a target
+  occupied by a directory — and every one of them fails *after* the partial
+  exists. So the two faults the staging design was built for were exactly the
+  two it did not cover: the caller got a raw `FileSystemException` that no
+  `on TomServerException` in the pipeline caught, and a `<key>~part` file
+  survived to be found by whoever looked at the directory next. `get`,
+  `describe` and `delete` leaked the same exception type for anything that was
+  not plain absence. All four now report `TomBlobStoreOperation`'s keys —
+  `storage.blob.write_failed`, `read_failed`, `probe_failed`,
+  `delete_failed` — keeping the original as `rootException`, while the module's
+  own answers (`not_found`, `invalid_key`, `missing_chunk`) pass through
+  untranslated because callers branch on them. The rollback became
+  residue-aware rather than simply wider: `_writeMetadata` runs after the
+  rename, so the leftover after a commit is the *blob*, but deleting it
+  unconditionally would destroy the previous content on a failed overwrite — a
+  case the suite already pinned. It deletes the partial before the rename and
+  the new blob after it, which is the honest guarantee a rename-based commit
+  can offer, the rename being itself the destructive step. A sidecar failure
+  now fails the `put` loudly instead of being tolerated, because the descriptor
+  about to be returned names a media type a later `describe` would contradict.
+  Seven tests cover it, and seven mutations confirm each bites — including the
+  pre-fix `put` restored verbatim. One of them reported a fact rather than a
+  gap: `exists` had been wrapped too, but `File.exists` answers from a `stat`
+  and maps every failure of it — unreadable parent, symlink loop, over-long
+  name, all three probed — to plain `false`, so the wrapper guarded a call that
+  cannot throw. It was removed rather than left as untestable defence, and the
+  limitation it hid is now documented and pinned: on this backend `exists`
+  means "visible to this process", and `describe` is what distinguishes an
+  unreadable blob from an absent one.
+
 - **A directory-backed store named its bookkeeping with suffixes a caller
   could spell, so two callers with ordinary keys destroyed each other's data
   (tcinc536).** `TomDirectoryBlobStore` kept a `<key>.meta` sidecar and staged

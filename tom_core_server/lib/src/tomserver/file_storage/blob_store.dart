@@ -37,6 +37,19 @@
 /// chunks and only then the manifest row, S3 by aborting an incomplete
 /// multipart upload. A [TomBlobStore.put] that throws has left the key holding
 /// either its previous content or nothing at all.
+///
+/// ## Why every failure arrives as a storage error
+///
+/// The faults that stop a store come from the layer underneath it and speak
+/// that layer's language: a `FileSystemException`, a driver error, an HTTP
+/// status. A backend that lets those through makes the caller's error handling
+/// depend on which backend it was configured with, and slips past every
+/// `on TomServerException` between it and the request boundary.
+///
+/// So each backend translates into [TomBlobStoreOperation]'s four keys, keeping
+/// the original as `rootException`. The module's own answers — `not_found`,
+/// `invalid_key`, `missing_chunk` — pass through untranslated, because callers
+/// branch on them. [TomBlobStore.translating] is the helper that does both.
 library;
 
 import 'dart:async';
@@ -63,6 +76,52 @@ class TomStorageException extends TomServerException {
     super.autoLog,
     super.clientThrow,
   });
+}
+
+/// What a store was doing when its infrastructure refused.
+///
+/// Storage faults come from somewhere else — a full disk, a denied permission,
+/// a bucket that answered 500 — and arrive as that layer's own exception type:
+/// a `FileSystemException`, a `MySqlException`, a socket error. Letting those
+/// reach the caller means a pipeline that catches [TomServerException] does not
+/// catch storage at all, and a caller that wants to distinguish *what failed*
+/// has to know which backend it was configured with.
+///
+/// So each backend translates, and this enum is the vocabulary it translates
+/// into: four operations, one error key and one user-facing message each,
+/// spelled once so every backend agrees. It mirrors `TomExportStoreOperation`
+/// in the export module deliberately — the same four questions are being asked
+/// of the same kinds of infrastructure, and two different answers for one fault
+/// would be an accident of which module the caller came through.
+///
+/// The division is by *what the caller asked for*, not by which call threw:
+/// [read] is "give me the bytes", [probe] is "tell me about the blob"
+/// ([TomBlobStore.describe] and [TomBlobStore.exists]), and a sidecar that
+/// cannot be read during a `describe` is therefore a [probe] failure even
+/// though a file read is what failed.
+enum TomBlobStoreOperation {
+  /// Storing bytes under a key.
+  write('storage.blob.write_failed', 'The file could not be written to storage.'),
+
+  /// Reading a blob's bytes back.
+  read('storage.blob.read_failed', 'The stored file could not be read.'),
+
+  /// Asking what is stored under a key, or whether anything is.
+  probe(
+    'storage.blob.probe_failed',
+    'Storage could not be asked about the file.',
+  ),
+
+  /// Removing what a key holds.
+  delete('storage.blob.delete_failed', 'The stored file could not be deleted.');
+
+  const TomBlobStoreOperation(this.errorKey, this.message);
+
+  /// The stable error key a caller matches on.
+  final String errorKey;
+
+  /// The user-facing message carried by the raised exception.
+  final String message;
 }
 
 /// What a stored blob is: its key, what it contains, how big it turned out.
@@ -366,6 +425,49 @@ abstract class TomBlobStore {
     'No stored file exists for the requested key.',
     parameters: {'key': key},
   );
+
+  /// [error] restated as the storage failure of [operation] on [key].
+  ///
+  /// The original is kept as `rootException` rather than summarised into the
+  /// message: the caller needs a key it can branch on, and whoever reads the
+  /// log needs the `errno` that actually explains it.
+  static TomStorageException operationFailed(
+    TomBlobStoreOperation operation,
+    String key,
+    Object error,
+    StackTrace stack,
+  ) => TomStorageException(
+    operation.errorKey,
+    operation.message,
+    parameters: {'key': key},
+    rootException: error,
+    stack: stack,
+  );
+
+  /// Runs [body], reporting any infrastructure failure as [operation] on [key].
+  ///
+  /// A [TomStorageException] passes through untouched, which is the clause that
+  /// makes this safe to wrap a whole method in: `not_found`, `invalid_key` and
+  /// `missing_chunk` are the module's own answers, and a caller branching on
+  /// them (`TomBlobExportStore` on `not_found`, the file endpoint on its 404)
+  /// must keep hearing them rather than the operation that stopped.
+  ///
+  /// Offered here rather than left to each backend because a backend that
+  /// translates *some* of its methods is the state this replaced, and because
+  /// the try/rethrow/wrap shape is identical every time it is written out.
+  static Future<T> translating<T>(
+    TomBlobStoreOperation operation,
+    String key,
+    Future<T> Function() body,
+  ) async {
+    try {
+      return await body();
+    } on TomStorageException {
+      rethrow;
+    } on Object catch (error, stack) {
+      throw operationFailed(operation, key, error, stack);
+    }
+  }
 }
 
 /// A store that keeps its contents in memory.

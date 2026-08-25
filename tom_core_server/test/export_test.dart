@@ -15,6 +15,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 // those expectations real: that it throws. Prefixed because the example's own
 // fixtures share names with this file's.
 import '../example/export/export_example.dart' as example;
+import 'fixtures/posix_permissions.dart';
 
 /// Export tests: the tabular envelope, three renderers, three stores, two
 /// channels.
@@ -1687,7 +1688,7 @@ void main() {
           ),
         );
       },
-      skip: _chmodIsIneffective ? 'needs a non-root POSIX filesystem' : null,
+      skip: chmodSkipReason,
     );
 
     test('a delete that fails is a delete failure, not a raw '
@@ -1707,7 +1708,7 @@ void main() {
           ),
         ),
       );
-    }, skip: _chmodIsIneffective ? 'needs a non-root POSIX filesystem' : null);
+    }, skip: chmodSkipReason);
 
     test('an invalid key still surfaces as invalid_key, not as the '
         'operation that was refused', () async {
@@ -2698,29 +2699,6 @@ Stream<List<int>> _failingHalfway() async* {
   yield utf8.encode('partial');
   throw StateError('query died');
 }
-
-/// Whether `chmod` cannot be relied on to deny this process access.
-///
-/// The store's I/O failure paths are only reachable by making the filesystem
-/// refuse — which Windows has no `chmod` for, and which root ignores. Probing
-/// once, rather than assuming, keeps the tests honest: they run where they can
-/// prove something and say why they did not where they cannot.
-final bool _chmodIsIneffective = () {
-  if (Platform.isWindows) return true;
-  final probe = File(
-    '${Directory.systemTemp.createTempSync('tom_chmod_').path}/p',
-  )..writeAsStringSync('x');
-  Process.runSync('chmod', ['000', probe.path]);
-  try {
-    probe.readAsBytesSync();
-    return true; // Read anyway — running as root.
-  } on FileSystemException {
-    return false;
-  } finally {
-    Process.runSync('chmod', ['600', probe.path]);
-    probe.parent.deleteSync(recursive: true);
-  }
-}();
 
 /// A service that meters `render`, the way a real subclass would.
 ///
