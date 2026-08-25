@@ -1845,13 +1845,6 @@ void main() {
       );
     });
 
-    test('keyFor rejects a base name that would escape the store', () {
-      expect(
-        () => TomExportService().keyFor('../etc/passwd', 'csv'),
-        throwsA(isA<TomExportException>()),
-      );
-    });
-
     test(
       'render answers directly, for the caller neither channel fits',
       () async {
@@ -1974,6 +1967,144 @@ void main() {
 
     test('a name that sanitises to nothing still yields a file name', () {
       expect(TomExportService.sanitiseFileName('   '), 'export');
+    });
+  });
+
+  // `respondWith` sanitised its base name and `keyFor` only validated one, so a
+  // single report name — anything with a space in it, which is most report
+  // names — was a download on the apiResponse channel and an
+  // `export.store.invalid_key` on the fileExport channel. The module's own
+  // example stepped over it by passing `sales` to one and `Q3 sales` to the
+  // other, so nothing put the same name through both. These tests do.
+  //
+  // The two channels still *spell* a name differently, and must: a
+  // `Content-Disposition` filename is a Latin-1 quoted string and a storage key
+  // is a relative path made of unreserved characters. What is now symmetric is
+  // which names are **accepted**, which is the property a caller can act on.
+  group('TomExportService naming (one report name, both channels)', () {
+    test('a name with a space is accepted by both channels', () async {
+      const reportName = 'Q3 sales';
+      final store = TomMemoryExportStore();
+      final service = TomExportService(store: store);
+
+      final response = service.respondWith(
+        _sampleResult(),
+        'csv',
+        baseName: reportName,
+      );
+      final key = service.keyFor(reportName, 'csv');
+      final stored = await service.storeAs(_sampleResult(), 'csv', key: key);
+
+      expect(
+        response.headers['content-disposition'],
+        'attachment; filename="Q3 sales.csv"',
+      );
+      expect(stored.key, 'Q3_sales.csv');
+      expect(await store.exists(key), isTrue);
+    });
+
+    test('an empty name falls back to the same word on both channels', () {
+      expect(TomExportService.sanitiseFileName('   '), 'export');
+      expect(TomExportService().keyFor('   ', 'csv'), 'export.csv');
+    });
+
+    test('a report name cannot bring path structure of its own', () {
+      // The only structure `keyFor` adds is the partition, which it owns. A
+      // slash in a report name is a slash in a report name — "Sales / Returns"
+      // is a title, not two directories.
+      expect(
+        TomExportService().keyFor(
+          'Q3/2026 sales',
+          'pdf',
+          partitionOn: DateTime(2026, 7, 8),
+        ),
+        '2026/07/08/Q3_2026_sales.pdf',
+      );
+    });
+
+    test('a traversal in a report name is neutralised, not refused', () {
+      // This previously threw. Refusing was safe but asymmetric — the same name
+      // downloads happily on the other channel — and replacing the characters
+      // keeps the traversal impossible *and* keeps the channels agreeing.
+      expect(
+        TomExportService().keyFor('../etc/passwd', 'csv'),
+        '.._etc_passwd.csv',
+      );
+    });
+
+    test('a name too long to be a key is still refused, loudly', () {
+      // The one refusal left, and deliberately not sanitised away: truncating
+      // would make two different reports share a key, and the second export
+      // would overwrite the first with nothing reported anywhere.
+      expect(
+        () => TomExportService().keyFor('n' * 600, 'csv'),
+        throwsA(
+          isA<TomExportException>().having(
+            (e) => e.key,
+            'key',
+            'export.store.invalid_key',
+          ),
+        ),
+      );
+    });
+  });
+
+  // The sanitiser lives next to `isValidKey` because the two are one grammar
+  // spelled twice, and a sanitiser that drifts from its own validator produces
+  // the worst output available: something refused by the check it exists to
+  // satisfy. These tests hold the two together mechanically.
+  group('TomBlobStore.sanitiseKeySegment', () {
+    test('every code unit it can meet sanitises into a valid key', () {
+      // The property, not a sample of it. A character added to one side of the
+      // grammar and not the other fails here rather than in a deployment.
+      for (var unit = 0; unit < 0x250; unit++) {
+        final segment = TomBlobStore.sanitiseKeySegment(
+          String.fromCharCode(unit),
+        );
+        expect(
+          TomBlobStore.isValidKey(segment),
+          isTrue,
+          reason:
+              'U+${unit.toRadixString(16).padLeft(4, '0')} '
+              'sanitised to "$segment", which is not a valid key',
+        );
+      }
+    });
+
+    test('a plain name passes through untouched', () {
+      expect(
+        TomBlobStore.sanitiseKeySegment('sales-2026_Q3.csv'),
+        'sales-2026_Q3.csv',
+      );
+    });
+
+    test('a separator cannot survive, so one segment stays one segment', () {
+      expect(TomBlobStore.sanitiseKeySegment('a/b'), 'a_b');
+      expect(TomBlobStore.sanitiseKeySegment(r'a\b'), 'a_b');
+      expect(
+        TomBlobStore.sanitiseKeySegment('../../etc/passwd'),
+        '.._.._etc_passwd',
+      );
+    });
+
+    test('the two segments the grammar reserves become the fallback', () {
+      expect(TomBlobStore.sanitiseKeySegment('.'), 'file');
+      expect(TomBlobStore.sanitiseKeySegment('..'), 'file');
+      expect(TomBlobStore.sanitiseKeySegment(''), 'file');
+      expect(TomBlobStore.sanitiseKeySegment('   '), 'file');
+      expect(
+        TomBlobStore.sanitiseKeySegment('  ', fallback: 'export'),
+        'export',
+      );
+    });
+
+    test('length is the one fault it does not repair', () {
+      // Deliberate: truncating would give two different names one key, and the
+      // second write would replace the first in silence. It hands the caller a
+      // name `validateKey` refuses instead of a collision nothing reports.
+      final long = TomBlobStore.sanitiseKeySegment('n' * 600);
+      expect(long.length, 600);
+      expect(TomBlobStore.isValidKey(long), isFalse);
     });
   });
 }

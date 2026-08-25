@@ -74,6 +74,47 @@
 
 ### Fixed
 
+- **A report name that downloaded fine could not be stored (tcinc529).**
+  `TomExportService.respondWith` sanitised the `baseName` it was given;
+  `keyFor` — which takes the *same* report name — only validated one against the
+  key grammar. So `Q3 sales`, which is what report names actually look like,
+  served a file on the `apiResponse` channel and threw
+  `export.store.invalid_key` on the `fileExport` channel. The module's own
+  example stepped over the asymmetry by passing `sales` to one call and
+  `Q3 sales` to the other, so nothing ever put one name through both.
+
+  `keyFor` now sanitises. Its contract is stated where it was previously only
+  implied: **it takes a report name, not a path**, and the only path structure in
+  its result is the partition, which it owns. A `/` in a name is therefore
+  replaced rather than honoured — `Sales / Returns` is one file, and
+  `../etc/passwd` is *neutralised* by having nothing left to traverse with rather
+  than refused. That reverses one previous test deliberately: refusing a name
+  the other channel serves happily was the asymmetry itself.
+  `TomExportStore.validateKey` still refuses, and the difference is the point —
+  a key is assembled by code, so a malformed one is a bug worth surfacing; a
+  name comes from a person, so mangling beats rejecting.
+
+  Two things are deliberately *not* unified. The character sets still differ,
+  because the grammars do: a `Content-Disposition` filename is a Latin-1 quoted
+  string and a storage key is a relative path of unreserved characters, so
+  `Q3 sales` downloads as `Q3 sales.csv` and stores as `Q3_sales.csv`. What is
+  symmetric is the *accepted set*, which is the property a caller can act on.
+  And length is not repaired: a name too long to be a key still throws, because
+  truncating would silently give two different reports one key and let the
+  second export overwrite the first with nothing reported anywhere.
+
+  The sanitiser itself is new API — `TomBlobStore.sanitiseKeySegment`, placed
+  beside `isValidKey` and the pattern it negates rather than in the export
+  module, because a sanitiser and its validator are one grammar spelled twice
+  and the worst output available is something refused by the check it exists to
+  satisfy. A test over the code-unit range asserts the agreement mechanically
+  instead of a comment asking that the two be kept in step. Ten tests were added
+  and one removed; eight mutations confirm each bites — skipping the sanitiser,
+  sanitising the whole file name instead of the untrusted half, the two channels
+  disagreeing about what to call an unnamed export, the sanitiser letting the
+  separator or the reserved segments through, dropping the trim, and truncating
+  instead of refusing an over-long name.
+
 - **`TomExportService.render` was documented as the primitive both channels are
   built on, and neither channel called it (tcinc528).** `respondWith` and
   `storeAs` each reached past it to `formats.rendererFor(format).render(result)`,

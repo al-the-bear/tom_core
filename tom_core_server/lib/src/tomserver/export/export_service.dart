@@ -26,6 +26,7 @@ import 'dart:async';
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../file_storage/blob_store.dart';
 import 'export_store.dart';
 import 'tabular_renderer.dart';
 import 'tabular_result.dart';
@@ -136,8 +137,35 @@ class TomExportService {
   /// Exports accumulate, and a flat directory of them becomes unlistable long
   /// before it becomes large. Partitioning by day is the cheap fix that also
   /// makes expiry a matter of deleting a prefix.
+  ///
+  /// [baseName] is the **same report name [respondWith] takes**, and this
+  /// method sanitises it for the same reason that one does — a report name
+  /// comes from a user, and neither channel should refuse a name the other
+  /// accepts. The two grammars genuinely differ, so the *spelling* differs:
+  /// `Q3 sales` downloads as `Q3 sales.csv` and stores as `Q3_sales.csv`,
+  /// because a `Content-Disposition` filename is a Latin-1 quoted string and a
+  /// storage key is a relative path of unreserved characters. What is the same
+  /// is which names are accepted, which is what a caller can act on.
+  ///
+  /// The only path structure in the result is the partition, which this method
+  /// owns: a `/` in the name is replaced, not honoured. So `Sales / Returns` is
+  /// one file rather than a directory, and `../etc/passwd` is defused by having
+  /// nothing left to traverse with rather than by being refused — refusing it
+  /// here while [respondWith] served it happily was the asymmetry itself.
+  ///
+  /// Throws [TomExportException] (`export.store.invalid_key`) for a name too
+  /// long to be a key. That fault is deliberately not sanitised away:
+  /// truncating would give two different reports one key, and the second export
+  /// would overwrite the first in silence.
   String keyFor(String baseName, String format, {DateTime? partitionOn}) {
-    final fileName = formats.rendererFor(format).fileNameFor(baseName);
+    final fileName = formats
+        .rendererFor(format)
+        .fileNameFor(
+          TomBlobStore.sanitiseKeySegment(
+            baseName,
+            fallback: _unnamedExportBaseName,
+          ),
+        );
     if (partitionOn == null) return TomExportStore.validateKey(fileName);
     final month = partitionOn.month.toString().padLeft(2, '0');
     final day = partitionOn.day.toString().padLeft(2, '0');
@@ -145,6 +173,13 @@ class TomExportService {
       '${partitionOn.year}/$month/$day/$fileName',
     );
   }
+
+  /// What both channels name an export whose base name sanitises to nothing.
+  ///
+  /// One constant rather than two literals: an empty report name is an odd
+  /// input, and the two channels disagreeing about what to call it would be
+  /// discovered by whoever hit it, on whichever channel they hit second.
+  static const String _unnamedExportBaseName = 'export';
 
   /// Makes [fileName] safe to place inside a quoted header parameter.
   ///
@@ -155,6 +190,13 @@ class TomExportService {
   /// non-ASCII is transliterated away because `filename=` is a Latin-1 field.
   /// Callers needing the original name in full should add their own
   /// `filename*=UTF-8''…` parameter.
+  ///
+  /// This is the `apiResponse` channel's half of the naming rule;
+  /// [TomBlobStore.sanitiseKeySegment], which [keyFor] applies, is the
+  /// `fileExport` channel's. They keep different characters because a header
+  /// parameter and a storage key allow different ones — a space survives here
+  /// and becomes `_` there — but they accept the same names, so a report name
+  /// works on both channels or on neither.
   static String sanitiseFileName(String fileName) {
     final buffer = StringBuffer();
     for (final rune in fileName.runes) {
@@ -168,6 +210,6 @@ class TomExportService {
       buffer.writeCharCode(safe ? rune : 0x5F);
     }
     final sanitised = buffer.toString().trim();
-    return sanitised.isEmpty ? 'export' : sanitised;
+    return sanitised.isEmpty ? _unnamedExportBaseName : sanitised;
   }
 }

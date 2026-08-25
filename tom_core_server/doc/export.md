@@ -26,7 +26,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 - [Storage: A Deliberately Narrow Seam](#storage-a-deliberately-narrow-seam)
 - [Every Backend at Once](#every-backend-at-once)
 - [The Two Delivery Channels](#the-two-delivery-channels)
-- [Untrusted Text in Three Places](#untrusted-text-in-three-places)
+- [Untrusted Text in Four Places](#untrusted-text-in-four-places)
 - [Wiring a Server](#wiring-a-server)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -633,6 +633,28 @@ worth it only for PDF — the one of the three a browser can display itself.
 unlistable long before it becomes large; partitioning by day is the cheap fix
 that also makes expiry a matter of deleting a prefix.
 
+**`keyFor` takes the same report name `respondWith` does, and sanitises it for
+the same reason.** A report is named by a person, so `Q3 sales` is the ordinary
+case; a channel that refuses a name the other serves is an asymmetry a caller
+discovers on whichever channel they reach second. The two *spellings* differ,
+and must — a `Content-Disposition` filename is a Latin-1 quoted string and a
+storage key is a relative path of unreserved characters, so the space survives
+on one side and becomes `_` on the other. What is the same is which names are
+**accepted**, which is the property a caller can act on.
+
+The only path structure in a key is the partition, which `keyFor` owns: a `/` in
+a name is replaced, not honoured, so `Sales / Returns` is one file rather than
+two directories and `../etc/passwd` is defused by having nothing left to
+traverse with. That is a different defence from `TomExportStore.validateKey`,
+which still *refuses* — deliberately, because a key is assembled by code and a
+malformed one is a bug, while a name comes from a person and mangling it beats
+rejecting it.
+
+One fault is not sanitised away: a name too long to be a key throws
+`export.store.invalid_key`. Truncating would give two different reports the same
+key, and the second export would overwrite the first with nothing reported
+anywhere — a refusal the caller can see beats a collision it cannot.
+
 `storeAs` without a configured store throws `export.service.no_store`. The store
 is optional because an application that only streams exports back through its API
 never needs one, and requiring it would force a filesystem decision on a
@@ -644,15 +666,16 @@ the `messaging` module's subject; it composes by rendering to bytes or to the
 store and attaching the result. Inventing a third path here would duplicate the
 outbox's retry and delivery semantics — the one thing that module exists to own.
 
-## Untrusted Text in Three Places
+## Untrusted Text in Four Places
 
-A report's title, its column labels and its cell values all originate with a
-user, and all three end up somewhere that interprets them:
+A report's name, its title, its column labels and its cell values all originate
+with a user, and all of them end up somewhere that interprets them:
 
 | Where | Risk | Defence |
 | ----- | ---- | ------- |
 | A CSV title, column label, or cell holding a non-numeric value | A leading `=`, `+`, `-` or `@` is a **formula** to a spreadsheet — an exported value becoming code on the machine that opens the file | Quoted *and* prefixed with a tab. Quoting alone does not stop it; the tab does, and is stripped on display |
 | A `Content-Disposition` filename | A `"` or a newline ends the parameter and starts another header — the download equivalent of an injection | `TomExportService.sanitiseFileName` replaces everything outside printable ASCII, plus `" \ ; /`, with `_`; an empty result becomes `export` |
+| A storage key built from a report name | A `/` or a `..` is a directory the caller never asked for, and in the obvious backend a path outside the export root | `TomBlobStore.sanitiseKeySegment`, applied by `keyFor`, keeps only `A-Za-z0-9._-` and so cannot emit a separator; an empty result becomes `export` too |
 | An XLSX sheet name or cell | A `/` or `[` produces a workbook Excel refuses to open; a `<` breaks the XML | Sheet names sanitised and made unique; all text XML-escaped |
 
 **The CSV formula guard applies to the value's runtime type, not the column's
@@ -681,23 +704,30 @@ final exports = TomExportService(
   store: TomDirectoryExportStore(Directory('/var/lib/app/exports')),
 );
 
+// One report name, both channels. Written as a constant on purpose: two
+// literals that happen to differ is how the two channels' naming rules drifted
+// apart without anything noticing.
+const reportName = 'Q3 sales';
+
 // apiResponse — stream it straight back.
 Response salesCsv(Request request) => exports.respondWith(
       buildSalesResult(),
       request.url.queryParameters['format'] ?? 'csv',
-      baseName: 'sales',
+      baseName: reportName, // downloads as "Q3 sales.csv"
     );
 
 // fileExport — render it into storage and keep the reference.
 final stored = await exports.storeAs(
   buildSalesResult(),
   'xlsx',
-  key: exports.keyFor('sales', 'xlsx', partitionOn: DateTime.now()),
+  // stores as 2026/07/28/Q3_sales.xlsx
+  key: exports.keyFor(reportName, 'xlsx', partitionOn: DateTime.now()),
 );
 ```
 
-Both calls take the same result and the same format id; the only difference is
-where the bytes go.
+Both calls take the same result, the same format id and the same report name;
+the only difference is where the bytes go — and, because the two grammars
+differ, how the name is spelled once it gets there.
 
 ## Core Components
 

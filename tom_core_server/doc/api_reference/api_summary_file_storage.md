@@ -47,7 +47,10 @@ invalid key never reaches a filesystem, a network or SQL. The same grammar
 covers the *namespacing prefixes* several components join onto keys —
 `isValidKeyPrefix` and `validateKeyPrefix` check one at construction, so a
 misconfigured prefix fails naming itself rather than surfacing later as an
-invalid key nobody wrote.
+invalid key nobody wrote. `sanitiseKeySegment` completes the set by going the
+other way — turning a human-chosen name *into* a segment — and lives beside the
+validator for the same reason the predicate does: a sanitiser that drifts from
+its own grammar produces output the check it exists to satisfy refuses.
 
 Four backends implement the contract. `TomMemoryBlobStore` holds everything in a
 map — for tests and for a development server that should leave nothing behind.
@@ -205,6 +208,7 @@ const TomBlobStore()
 | ------ | --------- | ----------- |
 | `isValidKey` | `static bool isValidKey(String key)` | Whether `key` is a well-formed storage key: non-empty, at most `maxKeyLength`, no leading or trailing `/`, no backslash, no `//`, only `A-Za-z0-9._/-`, and no `.` or `..` segment. |
 | `validateKey` | `static String validateKey(String key)` | Returns `key` when `isValidKey` accepts it, otherwise throws `storage.blob.invalid_key`. |
+| `sanitiseKeySegment` | `static String sanitiseKeySegment(String name, {String fallback = 'file'})` | `name` rewritten into one key segment, so a human-chosen name can *become* a key rather than only be tested against the grammar. The result is a valid key for every `name` short enough to be one — asserted over the code-unit range, not merely intended. `/` and `\` are replaced like any other disallowed character, so a name contributes no path structure; that is what defuses `../../etc/passwd`, by leaving it nothing to traverse with. Length is the one fault it does not repair: an over-long name comes back over-long and `validateKey` refuses it, because truncating would silently give two different names one key. `fallback` is returned when nothing usable survives — an empty name, whitespace, or one of the two segments the grammar reserves — and must itself be a valid key. |
 | `isValidKeyPrefix` | `static bool isValidKeyPrefix(String? keyPrefix)` | Whether `keyPrefix` is usable as a key namespace. A prefix is joined as `"$keyPrefix/$key"`, so it must satisfy `isValidKey` itself; `null` and `''` both mean no namespace, and a trailing slash is not a second spelling (the join supplies the separator). Length is the one clause a prefix cannot settle alone — two valid parts can join past `maxKeyLength`, which `validateKey` catches on the joined key. |
 | `validateKeyPrefix` | `static String? validateKeyPrefix(String? keyPrefix)` | Returns `keyPrefix` when `isValidKeyPrefix` accepts it, otherwise throws `storage.blob.invalid_key_prefix` naming the prefix. A distinct error from `invalid_key` because the two faults have different fixes: a bad key is a caller's mistake, a bad prefix a deployment's. |
 | `notFound` | `static TomStorageException notFound(String key)` | Builds the `storage.blob.not_found` error, spelled once so every backend agrees and a caller can match on the key string. |

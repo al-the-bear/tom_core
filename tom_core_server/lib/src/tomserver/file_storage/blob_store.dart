@@ -232,6 +232,41 @@ abstract class TomBlobStore {
       _keyPattern.hasMatch(key) &&
       !key.split('/').any((segment) => segment == '.' || segment == '..');
 
+  /// [name] rewritten into one key segment, so that a human-chosen name can
+  /// *become* a key rather than merely be tested against the grammar.
+  ///
+  /// It lives beside [isValidKey] because the two are one grammar spelled
+  /// twice, and a sanitiser that drifts from its own validator produces the
+  /// worst outcome available: output that is refused by the check it was
+  /// written to satisfy. `sanitiseKeySegment(x)` is a valid key for every [name]
+  /// short enough to be one — asserted over the code-unit range in
+  /// `export_test.dart`, not merely intended.
+  ///
+  /// **One segment, never two.** `/` and `\` are replaced like any other
+  /// disallowed character, so a name cannot contribute path structure. Whatever
+  /// builds a key decides its shape; a name is only ever a part of it. That is
+  /// also what defuses `../../etc/passwd` — not by refusing it, but by leaving
+  /// it nothing to traverse with.
+  ///
+  /// **Length is the one fault it does not repair.** A name over
+  /// [maxKeyLength] comes back over [maxKeyLength] and [validateKey] refuses
+  /// it. Truncating would silently give two different names the same key, and
+  /// the second write would replace the first with nothing reported anywhere —
+  /// a refusal the caller can see is strictly better than a collision it
+  /// cannot.
+  ///
+  /// [fallback] is returned when nothing usable survives — an empty name,
+  /// whitespace, or one of the two segments the grammar reserves. It must
+  /// itself be a valid key.
+  static String sanitiseKeySegment(String name, {String fallback = 'file'}) {
+    assert(isValidKey(fallback), 'the fallback must itself be a valid key');
+    final sanitised = name.trim().replaceAll(_unsafeSegmentCharacters, '_');
+    if (sanitised.isEmpty || sanitised == '.' || sanitised == '..') {
+      return fallback;
+    }
+    return sanitised;
+  }
+
   /// Whether [keyPrefix] is usable as a key namespace.
   ///
   /// A prefix is not a separate notion from a key: it is joined to one as
@@ -261,6 +296,12 @@ abstract class TomBlobStore {
   static const int maxKeyLength = 512;
 
   static final RegExp _keyPattern = RegExp(r'^[A-Za-z0-9._/-]+$');
+
+  /// What [sanitiseKeySegment] replaces: [_keyPattern]'s character class
+  /// negated, minus the separator — a *segment* may not contain one even though
+  /// a key may. Kept adjacent so the one deliberate difference between the two
+  /// is visible rather than inferred.
+  static final RegExp _unsafeSegmentCharacters = RegExp(r'[^A-Za-z0-9._-]');
 
   /// Validates [key] and returns it, throwing `storage.blob.invalid_key` when
   /// it does not satisfy [isValidKey].

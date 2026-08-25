@@ -231,8 +231,14 @@ Future<void> run() async {
   final store = TomMemoryExportStore();
   final service = TomExportService(store: store);
 
+  // One report name, used for *both* channels below. Reports are named by
+  // people, so `Q3 sales` is the ordinary case and not the awkward one — and an
+  // example that quietly passed `sales` here and `Q3 sales` to `respondWith`
+  // would demonstrate nothing about whether the two agree.
+  const reportName = 'Q3 sales';
+
   final key = service.keyFor(
-    'sales',
+    reportName,
     'csv',
     partitionOn: DateTime(2026, 7, 28),
   );
@@ -241,12 +247,22 @@ Future<void> run() async {
     '9. stored                    : ${stored.key} '
     '(${stored.byteCount} bytes, ${stored.mediaType})',
   );
-  assert(stored.key == '2026/07/28/sales.csv');
+  assert(stored.key == '2026/07/28/Q3_sales.csv');
   assert(await store.exists(key));
 
   // A key becomes a path in the obvious backend, so one built from a report
-  // title is a directory traversal waiting to happen. The check lives on the
-  // interface, so every backend gets it — including ones written later.
+  // title is a directory traversal waiting to happen. Two defences, and the
+  // difference between them is the point: `keyFor` *neutralises* a name,
+  // because refusing one that `respondWith` would serve happily is an
+  // asymmetry a caller trips over; `validateKey` still *refuses* a key,
+  // because a key is assembled by code and a malformed one is a bug. The check
+  // lives on the interface, so every backend gets it — including ones written
+  // later.
+  print(
+    '   traversal neutralised     : '
+    '${service.keyFor('../../etc/passwd', 'csv')}',
+  );
+  assert(service.keyFor('../../etc/passwd', 'csv') == '.._.._etc_passwd.csv');
   try {
     TomExportStore.validateKey('../../etc/passwd');
   } on TomExportException catch (e) {
@@ -261,7 +277,7 @@ Future<void> run() async {
   final response = service.respondWith(
     salesResult(),
     'xlsx',
-    baseName: 'Q3 sales',
+    baseName: reportName,
   );
   print('10. content-type             : ${response.headers['content-type']}');
   print(
@@ -270,6 +286,15 @@ Future<void> run() async {
   );
   print('    content-length          : ${response.headers['content-length']}');
   assert(response.headers['content-length'] == null);
+
+  //     The same name on both channels, spelled two ways and refused by
+  //     neither. A `Content-Disposition` filename is a Latin-1 quoted string
+  //     and a storage key is a relative path of unreserved characters, so the
+  //     space survives on one side and becomes `_` on the other. What must not
+  //     differ is which names are *accepted* — `keyFor` used to throw on this
+  //     one while `respondWith` served it.
+  assert(response.headers['content-disposition']!.contains('"Q3 sales.xlsx"'));
+  assert(service.keyFor(reportName, 'xlsx') == 'Q3_sales.xlsx');
 
   // 11. A file name reaches that header from a report title, which reaches it
   //     from a user. A quote or a newline in it would end the parameter and
