@@ -539,7 +539,7 @@ const TomAwsV4Signer({
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `canonicalPath` | `static String canonicalPath(Uri uri)` | The canonical (percent-encoded, slash-preserving) path; an empty path canonicalises to `/` and every segment is encoded with the unreserved-character set. |
-| `canonicalQuery` | `static String canonicalQuery(Uri uri)` | The canonical query string: every parameter encoded and sorted, values included even when empty (`?uploads` signs as `uploads=`). |
+| `canonicalQuery` | `static String canonicalQuery(Uri uri)` | The canonical query string: every parameter encoded and sorted, values included even when empty (`?uploads` signs as `uploads=`). A repeated name contributes all of its values, sorted among themselves (`?x=2&x=1` → `x=1&x=2`) — read from `queryParametersAll`, because `queryParameters` keeps only the last value of a repeated name and signing a subset of what is sent yields `SignatureDoesNotMatch`. Encoded before sorting, so the order is over the bytes the server re-derives. |
 | `encodeRfc3986` | `static String encodeRfc3986(String value)` | Percent-encodes `value` leaving only the RFC 3986 unreserved characters — stricter than `Uri.encodeComponent`, which leaves `!`, `*`, `'`, `(` and `)` alone. |
 | `hashPayload` | `static String hashPayload(List<int> payload)` | The hex SHA-256 of `payload` — the payload hash of a signed body. |
 

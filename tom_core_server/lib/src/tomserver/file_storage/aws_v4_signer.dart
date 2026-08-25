@@ -167,11 +167,23 @@ class TomAwsV4Signer {
 
   /// The canonical query string of [uri]: every parameter encoded and sorted,
   /// values included even when empty (`?uploads` signs as `uploads=`).
+  ///
+  /// A repeated name contributes *all* of its values, sorted among themselves —
+  /// `?x=2&x=1` signs as `x=1&x=2`. Read from [Uri.queryParametersAll] rather
+  /// than [Uri.queryParameters], which is a `Map<String, String>` and so keeps
+  /// only the last value of a repeated name: signing a subset of what is sent
+  /// yields `SignatureDoesNotMatch` from the store and no local explanation.
+  /// Nothing this module sends repeats a name, so the distinction is here for
+  /// the caller signing a request it does not make.
+  ///
+  /// Encoded before sorting, not after, so the order is over the bytes the
+  /// server re-derives rather than over their decoded forms.
   static String canonicalQuery(Uri uri) {
     final parameters =
         <MapEntry<String, String>>[
-          for (final entry in uri.queryParameters.entries)
-            MapEntry(encodeRfc3986(entry.key), encodeRfc3986(entry.value)),
+          for (final entry in uri.queryParametersAll.entries)
+            for (final value in entry.value)
+              MapEntry(encodeRfc3986(entry.key), encodeRfc3986(value)),
         ]..sort(
           (a, b) => a.key == b.key
               ? a.value.compareTo(b.value)

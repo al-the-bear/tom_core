@@ -151,6 +151,46 @@
 
 ### Fixed
 
+- **`TomAwsV4Signer.canonicalQuery` signed only the last value of a repeated
+  query parameter (tcinc548).** It read `uri.queryParameters`, a
+  `Map<String, String>`, which keeps one value per name. SigV4 canonicalises
+  every parameter sorted by name and then by value, so `?x=2&x=1` was signed
+  over `x=1` alone while both were sent — the store answers
+  `SignatureDoesNotMatch` and nothing in this module can explain why. Now reads
+  `queryParametersAll`.
+
+  Latent rather than live, and it stays fixed for a reason worth stating: no
+  request `TomS3BlobStore` issues repeats a name — `_objectUri` takes a
+  `Map<String, String>` and so structurally cannot build one. But
+  `canonicalQuery` is a public static, and both its dartdoc and
+  `doc/file_storage.md` present the signer as a SigV4 implementation rather than
+  as a helper for the four requests this store happens to make. The caller who
+  first repeats a parameter will be signing a request this module never sends.
+
+  The rewrite has one trap, and the existing suite already guarded it:
+  `queryParametersAll` yields `['']` — a one-element list — for `?uploads`, so
+  the empty value survives the expansion. Had it yielded an empty list the
+  parameter would have vanished from the canonical form, breaking every
+  multipart upload, whose initiate call is `?uploads` and nothing else. Verified
+  against the actual `Uri` behaviour rather than assumed; `['']` and `[]` print
+  identically, which is how one would assume wrongly.
+
+  Four assertions pin the rule — all values kept, sorted by value rather than
+  left in written order, the empty value kept and sorting first, and encoding
+  applied before the comparison. Four mutants, each naming the assertion that
+  must catch it, and each required to leave the published-vector tests green:
+  if changing the query canonicalisation breaks AWS's own documented
+  signatures, the fix is wrong whatever the new assertions say.
+
+  Two of those assertions turn out to be the only thing pinning their rule.
+  Sorting by value is invisible to the first case, because for `?x=2&x=1` the
+  sorted order and the arrival order coincide — hence the separate
+  `?b=1&a=2&a=1`. And nothing in the suite covered encode-before-sort at all:
+  every query value in the pre-existing tests is unreserved (`uploadId=7`,
+  `partNumber=2`, `uploads=`) and neither AWS vector carries a query. That was
+  established by the harness rejecting a wrong prediction about which test
+  would catch the mutant, not by reading the tests.
+
 - **Every S3 request failure reported the full bucket-and-prefix path in the
   parameter named `key` (tcinc547).** `TomS3BlobStore._send` built each failure
   with the request's `uri.path`, so a `storage.s3.request_failed` raised for

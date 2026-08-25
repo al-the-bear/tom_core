@@ -352,6 +352,13 @@ which is what a deployment actually copies.
 anything SigV4-compatible — with no SDK dependency. Requests are signed by
 `TomAwsV4Signer`, which is verified against AWS's own published test vectors.
 
+The signer implements SigV4, not just the handful of requests this store makes,
+because it is public API and separable: signing is a pure function of a request
+and a key, so it is testable against those vectors rather than against a live
+bucket. That is why it canonicalises cases the store never produces — a repeated
+query parameter contributes every one of its values, though no request here
+repeats a name.
+
 An upload smaller than `partSize` (8 MiB by default) is a single signed `PUT`.
 A larger one becomes a multipart upload: initiate, one part per `partSize`
 window, complete. A part failure aborts the upload, so a half-uploaded object is

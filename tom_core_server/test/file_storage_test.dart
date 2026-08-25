@@ -1210,6 +1210,46 @@ void main() {
         TomAwsV4Signer.emptyPayloadHash,
       );
     });
+
+    test('a repeated query parameter signs every value, in order', () {
+      // SigV4 canonicalises *every* parameter, sorted by name and then by
+      // value. Reading `uri.queryParameters` — a `Map<String, String>` — keeps
+      // only the last value of a repeated name, so `?x=2&x=1` would be signed
+      // over `x=1` alone while both were sent, and the store would answer
+      // SignatureDoesNotMatch with nothing in this module able to say why.
+      //
+      // Latent rather than live: no request this store issues repeats a name.
+      // It is pinned because `canonicalQuery` is a public static documented as
+      // a SigV4 implementation, so the caller who first repeats one will be
+      // someone signing a request this module never makes.
+      expect(
+        TomAwsV4Signer.canonicalQuery(Uri.parse('https://h/k?x=2&x=1')),
+        'x=1&x=2',
+      );
+
+      // Sorted by value, not left in the order they were written — which is
+      // the half of the rule a single repeated pair cannot distinguish, since
+      // `x=1&x=2` is both the sorted order and the insertion order above.
+      expect(
+        TomAwsV4Signer.canonicalQuery(Uri.parse('https://h/k?b=1&a=2&a=1')),
+        'a=1&a=2&b=1',
+      );
+
+      // An empty value is a value: it sorts first and keeps its `=`. This is
+      // the case a naive rewrite drops — and dropping it would break every
+      // multipart upload, whose initiate call is `?uploads` and nothing else.
+      expect(
+        TomAwsV4Signer.canonicalQuery(Uri.parse('https://h/k?x=1&x=')),
+        'x=&x=1',
+      );
+
+      // Encoded before being compared, so the sort is over the bytes the
+      // server re-derives rather than over what Dart decoded them into.
+      expect(
+        TomAwsV4Signer.canonicalQuery(Uri.parse('https://h/k?x=b%20c&x=b!')),
+        'x=b%20c&x=b%21',
+      );
+    });
   });
 
   group('TomS3BlobStore', () {
