@@ -899,6 +899,17 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       case TomDbDate:
         return inOptionsAs<TomDbDate>();
     }
+    // The only failure message in the `_create*` family still written out by
+    // hand — its eight relatives interpolate the operator from the `symbol:` /
+    // `name:` their shared helper takes, so they cannot drift from what they
+    // build. This one can, and once did: it said `>=`, copied from the builder
+    // beside it, sending a reader to the wrong six methods.
+    //
+    // It has no test because it has no reachable input. `current.returnType` is
+    // whatever [_createColumn] or [_createParameter] produced, and both of those
+    // narrow to exactly the six cases above before this method is ever entered —
+    // an unmapped type is refused there, with their own message. The arm is kept
+    // because the switch is over a `Type` and so cannot be proven exhaustive.
     throw TomQuerySyntaxException(
       "query_sentence_compiler.create_is_in.failed",
       "Attempt to _create IS IN operation for unknown type ${current.returnType}",
@@ -910,6 +921,10 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
   /// The node is the same shape for every type, but it is *generic* in that
   /// type, so the type still has to be recovered from [TomOperator.returnType]
   /// before the node can be built. [build] is [isNull] or [isNotNull].
+  ///
+  /// [key] and [name] name the operator in the failure a type outside the
+  /// switch produces, so the two callers stay distinguishable in an error
+  /// message — the same arrangement [_createComparison] makes for its six.
   TomOperator<TomDbBool> _createNullTest(
     TomOperator current, {
     required _UnaryPredicateFactory build,
