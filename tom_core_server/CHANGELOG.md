@@ -74,6 +74,37 @@
 
 ### Fixed
 
+- **The implicit single-store default was decided over every store in the
+  process rather than over the stores the configuration named (tcinc541).**
+  `initializeBlobStores` promises that a configuration naming exactly one store
+  gets it as the default without having to say `default: true`, because a
+  server with one place to put files has no ambiguity to resolve. It decided
+  that with `stores.length == 1` and then `stores.keys.first` — both over the
+  static, process-wide registry rather than over the entries the call had just
+  built. So an application that registers a store in code before reading its
+  configuration, which is the ordinary shape for a scratch area or a test
+  double, saw two stores and got no default at all; `defaultStore` then raised
+  `storage.registry.no_default_store` for a deployment that names exactly one
+  place to put files. The second half was worse than the first: had the count
+  been corrected alone, insertion order would have handed the default to the
+  code-registered store, and writes meant for the configured one would have
+  gone silently into a scratch area instead of failing. The rule now reads over
+  the names this call registered, and the dartdoc, the module doc and the API
+  summary say so. Four tests pin it: a store registered in code no longer
+  suppresses the implicit default (and the code-registered one is *not* the
+  store chosen, which the old rule's insertion order would have made it); a
+  default nominated with `asDefault` in code survives, because the single-store
+  rule is an inference drawn when nothing was stated and an inference must not
+  overturn a statement; a `default: true` in the configuration still displaces
+  a code default, being a statement of its own and a later one; and a non-map
+  entry beside the stores is neither counted nor allowed to take the default
+  away — previously untested, and newly load-bearing now that the same count
+  decides the default rather than only the return value. Six mutations confirm
+  each bites, including one that reverts the rule wholesale and comes back with
+  every pre-existing test green, which is what made the defect invisible: the
+  one test covering it ran against an empty registry, where "the stores this
+  call made" and "every store in the process" are the same collection.
+
 - **The blob store registry restated all four file-storage defaults as
   literals, defeating the single-declaration rule `database_blob_sql.dart`
   exists to enforce (tcinc540).** That file's own doc says a table name should

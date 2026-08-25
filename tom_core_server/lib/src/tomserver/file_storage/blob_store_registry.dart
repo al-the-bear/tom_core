@@ -128,9 +128,22 @@ class TomBlobStoreInfo {
   /// [configuration], returning the number registered.
   ///
   /// Each entry carries a `type` naming a registered backend and that backend's
-  /// settings. One entry may carry `default: true`; when exactly one store is
-  /// configured it becomes the default without saying so, because a server with
-  /// one place to put files has no ambiguity to resolve.
+  /// settings. One entry may carry `default: true`; when [configuration] names
+  /// exactly one store it becomes the default without saying so, because a
+  /// server with one place to put files has no ambiguity to resolve.
+  ///
+  /// That count is over the entries **this call** registered, not over
+  /// [stores]. The two differ whenever an application built a store in code
+  /// before reading its configuration — a scratch area, a test double — and it
+  /// is the configuration that the rule is about: a deployment naming one place
+  /// to put files should not have to say `default: true` because the process
+  /// happens to hold another store it never mentioned.
+  ///
+  /// Only ever fills a default that is still unset, so it cannot overturn an
+  /// [register] that passed `asDefault`. That is a statement and this is an
+  /// inference drawn when nothing was stated. A `default: true` *in this
+  /// configuration* does overturn it, being a statement of its own and a later
+  /// one.
   ///
   /// Keys are read defensively for the same reason [TomDataSourceInfo] reads
   /// them defensively: configuration decoded from YAML arrives as a `YamlMap`
@@ -139,7 +152,7 @@ class TomBlobStoreInfo {
   static Future<int> initializeBlobStores(
     Map<String, dynamic> configuration,
   ) async {
-    var count = 0;
+    final registered = <String>[];
     for (final entry in configuration.entries) {
       if (entry.value is! Map) continue;
       final raw = entry.value as Map;
@@ -149,12 +162,12 @@ class TomBlobStoreInfo {
       final info = TomBlobStoreInfo(entry.key, settings);
       await info.open();
       if (settings['default'] == true) defaultStoreName = entry.key;
-      count++;
+      registered.add(entry.key);
     }
-    if (defaultStoreName == null && stores.length == 1) {
-      defaultStoreName = stores.keys.first;
+    if (defaultStoreName == null && registered.length == 1) {
+      defaultStoreName = registered.single;
     }
-    return count;
+    return registered.length;
   }
 
   /// Registers a ready-made [store] under [name] — the seam a test, or an

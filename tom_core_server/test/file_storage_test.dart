@@ -1415,6 +1415,87 @@ void main() {
       },
     );
 
+    test(
+      'a store registered in code does not suppress the implicit default',
+      () async {
+        // The rule is about what the *configuration* says, and the test above
+        // cannot tell: from an empty registry, "the stores this call made" and
+        // "every store in the process" are the same collection, so a rule
+        // stated over either one passes. Here they differ, which is the
+        // ordinary case for a server that builds a store in code — a scratch
+        // area, a test double, an application-specific archive — and then
+        // reads its real configuration from YAML. Its configuration names one
+        // place to put files, so there is nothing to resolve and it should not
+        // have to say `default: true` to get what the dartdoc promises.
+        TomBlobStoreInfo.register('scratch', TomMemoryBlobStore());
+
+        final count = await TomBlobStoreInfo.initializeBlobStores({
+          'files': {'type': 'memory'},
+        });
+
+        // `scratch` was registered first, so it is `stores.keys.first`. Both
+        // halves of the old rule pointed at it: the count included it and the
+        // name it picked *was* it. So this also pins that the implicit default
+        // is chosen from the entries the call registered, not merely counted
+        // over them.
+        expect(count, 1, reason: 'the call configured exactly one store');
+        expect(TomBlobStoreInfo.defaultStoreName, 'files');
+        expect(
+          TomBlobStoreInfo.storeNamed('scratch'),
+          isA<TomMemoryBlobStore>(),
+          reason: 'the code-registered store is still there, just not default',
+        );
+      },
+    );
+
+    test('a default nominated in code outranks the implicit rule', () async {
+      // The other side of the guard. `asDefault: true` is a statement; the
+      // single-store rule is an inference drawn when nothing was stated. An
+      // inference must not overturn a statement, or a server could not name
+      // its own default in code and then configure anything at all.
+      final scratch = TomMemoryBlobStore();
+      TomBlobStoreInfo.register('scratch', scratch, asDefault: true);
+
+      await TomBlobStoreInfo.initializeBlobStores({
+        'files': {'type': 'memory'},
+      });
+
+      expect(TomBlobStoreInfo.defaultStoreName, 'scratch');
+      expect(TomBlobStoreInfo.defaultStore, same(scratch));
+    });
+
+    test('an explicit `default: true` still outranks a code default', () async {
+      // Explicit against explicit, where the later word wins: configuration is
+      // read after the code that registered the store, and a deployment saying
+      // `default: true` means it. Distinguishes "an inference is weaker than a
+      // statement" from "whatever was set first cannot be changed".
+      TomBlobStoreInfo.register('scratch', TomMemoryBlobStore(), asDefault: true);
+
+      await TomBlobStoreInfo.initializeBlobStores({
+        'files': {'type': 'memory', 'default': true},
+      });
+
+      expect(TomBlobStoreInfo.defaultStoreName, 'files');
+    });
+
+    test('a non-store entry is not a store for either purpose', () async {
+      // Entries that are not maps are skipped, which used to be visible only
+      // in the returned count and so was never asserted. It matters more now
+      // that the same collection decides the implicit default: a scalar
+      // sitting beside the stores — a comment key, a stray setting a hand-
+      // edited config grew — must not make a one-store deployment look like a
+      // two-store one and take its default away. Skipped and uncounted are the
+      // same claim, so this pins both.
+      final count = await TomBlobStoreInfo.initializeBlobStores({
+        'note': 'files live on the SAN now',
+        'files': {'type': 'memory'},
+      });
+
+      expect(count, 1, reason: 'only the map-valued entry is a store');
+      expect(TomBlobStoreInfo.stores.keys, ['files']);
+      expect(TomBlobStoreInfo.defaultStoreName, 'files');
+    });
+
     test('with several stores, `default: true` nominates one', () async {
       final root = await Directory.systemTemp.createTemp('tom_blob_cfg_test');
       addTearDown(() => root.delete(recursive: true));

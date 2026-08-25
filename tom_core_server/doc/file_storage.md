@@ -393,9 +393,19 @@ await TomBlobStoreInfo.initializeBlobStores(config);
 final store = TomBlobStoreInfo.defaultStore;          // or .storeNamed('archive')
 ```
 
-One entry may carry `default: true`; when exactly one store is configured it
-becomes the default without saying so, because a server with one place to put
-files has no ambiguity to resolve.
+One entry may carry `default: true`; when the configuration names exactly one
+store it becomes the default without saying so, because a server with one place
+to put files has no ambiguity to resolve.
+
+That count is over the entries the call registered, not over every store the
+process happens to hold. An application that builds a store in code first — a
+scratch area, a test double, an application-specific archive — and then reads
+its real configuration still gets the implicit default, because the rule is
+about what the configuration says. A default nominated in code with
+`register(..., asDefault: true)` survives, though: that is a statement, and the
+single-store rule is an inference drawn when nothing was stated. A `default:
+true` in the configuration does displace it, being a statement of its own and a
+later one.
 
 Every setting a backend does not require is optional, and each omitted one falls
 back to the declaration that owns it — `defaultBlobManifestTable` and
