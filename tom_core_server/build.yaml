@@ -10,15 +10,16 @@ targets:
           # test/fixtures/reflection_fixture.reflection.dart, whose
           # initializeReflection() the test suite calls in setUpAll.
           - test/fixtures/reflection_fixture.dart
-          # The cluster demonstration's reflection root. It needs its own,
-          # separate from the test fixture's, because it is not a test: the demo
-          # runs as standalone processes under
-          # example/scheduling/cluster/run_cluster_demo.sh and cannot reach into
-          # test/. Every read the SQL scheduler stores perform goes through
-          # executeQuery<T>, which resolves T through the reflector, so without
-          # this the demo fails at its first query with "Reflection has not been
-          # initialized". Emits
-          # example/scheduling/cluster/cluster_reflection.reflection.dart.
-          - example/scheduling/cluster/cluster_reflection.dart
+          # The example suite's reflection root. It needs its own, separate from
+          # the test fixture's, because an example is not a test and cannot
+          # reach into test/ — the cluster demonstration in particular runs as
+          # standalone processes under
+          # example/scheduling/cluster/run_cluster_demo.sh. One root serves
+          # every example that needs reflection (the cluster demo's row type,
+          # the endpoints example's file-slot entity): each root reaches the
+          # package barrel and so costs a further ~1.7 MB of generated source
+          # capturing the same framework surface. Emits
+          # example/example_reflection.reflection.dart.
+          - example/example_reflection.dart
         options:
           formatted: true

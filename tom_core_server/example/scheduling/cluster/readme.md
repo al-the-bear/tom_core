@@ -42,7 +42,7 @@ any claim fails, and prints every node's testimony when it does.
 | `cluster_node.dart` | One node. Started twice per scenario with a different `--node` and `--scenario`; reports what it observed as JSON lines on stdout. |
 | `cluster_verify.dart` | The judge. Reads every node's log *and* the database, and turns the pair into the four assertions. |
 | `cluster_support.dart` | Connection coordinates, the fenced-resource table, and the event record the halves communicate through. |
-| `cluster_reflection.dart` | The reflection root for the demo's own row type — `executeQuery<T>` resolves `T` through the reflector, so a demo without a generated root throws at its first query. Regenerate with `./reflection_generation.sh`. |
+| `cluster_reflection.dart` | The demo's own reflected row type — `executeQuery<T>` resolves `T` through the reflector, so a demo without generated reflection throws at its first query. Captured by the example suite's shared root, `example/example_reflection.dart`; regenerate with `./reflection_generation.sh`. |
 
 **A node never asserts anything about the cluster.** It cannot: each one sees
 only its own half. Keeping the judgement in a third process is what makes this a

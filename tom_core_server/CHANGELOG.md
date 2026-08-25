@@ -1236,6 +1236,46 @@
 
 ### Documentation
 
+- **`endpoints_example.dart` built a form by hand and never decoded one, and
+  never registered the file slot it described (tcinc520).** Step 7 constructed a
+  `TomMultipartForm` with its own constructor and read a file back out, which
+  demonstrates the value type but not the operation a reader needs: turning a
+  request into a form. Both decoders — `TomMultipartForm.readForm` and
+  `readUrlEncodedForm` — take a shelf `Request` and need no server, so the
+  example's own header was wrong to file them with the pipeline. Step 7 now
+  decodes a literal `multipart/form-data` body, written out as a browser sends
+  it (boundary delimiters, one part per field, a `filename` on the file part and
+  none on the text parts — the envelope's own distinction, which is what the
+  decoder reads), and shows that a JSON request answers `null` rather than
+  throwing. A new step 8 decodes a url-encoded body, including its
+  percent-escapes and its structural inability to carry a file.
+
+  The file surface gained the half that was missing. `TomFileSlots.register` is
+  now *called*, so the example shows exposure positively as well as negatively:
+  one registration over an entity with two `@TomFileReference` columns produces
+  exactly one slot, and the route it serves —
+  `/files/example_document/{id}/attachment` — is derived and printed rather than
+  asserted about. The closed column still resolves to nothing, and step 7's own
+  decoded form part aimed at it still reports `file_endpoint.unknown_slot`, the
+  key the HTTP surface renders as a 404. New expectations use a `check()`
+  helper (`if`/`throw`) rather than `assert`, which `dart run` compiles out; the
+  older steps' conversion remains quest todo `tcincb134_ahyc`. Five mutations
+  confirm the new steps bite — renaming the file part, removing the
+  registration, pointing the closed-column check at the exposed one, expecting
+  an escape to survive undecoded, and making the not-a-form request a form each
+  fail the expectation that names them.
+
+  Registering a slot needs a reflector, and the example suite now has **one
+  reflection root** for all of it: `example/example_reflection.dart`, which
+  captures the cluster demonstration's `ClusterFenceRow` and the endpoints
+  example's `ExampleDocumentRecord` in a single generated file. Adding a second
+  root would have been the obvious move and the expensive one — every root
+  reaches the package barrel, so each costs a further ~1.7 MB of generated
+  source capturing the same framework surface, a cost the previous root's own
+  doc comment had already flagged. `cluster_reflection.dart` keeps its row type
+  and stops being a root; `build.yaml` and `reflection_generation.sh` name the
+  shared one.
+
 - **`endpoints_example.dart` had nine facets and none was a file slot
   (tcinc517).** The example showed the endpoint-defining annotations and the
   default error handler, so a reader met `TomFormFile` in step 7 and was never

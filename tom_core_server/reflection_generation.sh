@@ -5,10 +5,12 @@
 #
 #   test/fixtures/reflection_fixture.dart
 #     → test/fixtures/reflection_fixture.reflection.dart, for the test suite.
-#   example/scheduling/cluster/cluster_reflection.dart
-#     → example/scheduling/cluster/cluster_reflection.reflection.dart, for the
-#       two-node cluster demonstration, which runs as standalone processes and
-#       so cannot borrow the test fixture's.
+#   example/example_reflection.dart
+#     → example/example_reflection.reflection.dart, for every example that
+#       needs a reflector — the two-node cluster demonstration and the endpoints
+#       example's file slot. One root for all of them: an example cannot borrow
+#       the test fixture's, and a second root would generate a further ~1.7 MB
+#       capturing the same package barrel.
 #
 # Runs flag-free: the generator scans the current project only (framework
 # default scan '.', non-recursive), so no --nested and no workspace registry

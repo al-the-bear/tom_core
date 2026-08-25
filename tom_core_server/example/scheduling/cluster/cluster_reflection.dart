@@ -1,4 +1,5 @@
-/// Reflection root for the two-node cluster demonstration.
+/// The reflected row type the two-node cluster demonstration adds to the
+/// framework's own.
 ///
 /// `TomSqlJobStore`, `TomSqlLeaseLock` and `TomSqlSchedulerNodes` all read their
 /// tables through `executeQuery<T>`, which takes a `ClassMirror` of `T` — so
@@ -7,21 +8,14 @@
 /// it is what any deployment does at start-up, and the demo would be lying about
 /// the wiring if it dodged it.
 ///
-/// The generator (`reflection_generation.sh`, configured in `build.yaml`)
-/// follows this file's import graph and emits `cluster_reflection.reflection.dart`
-/// beside it. Importing the package barrel captures the row holders the three
-/// stores map their rows into (`TomJobRunRow`, `TomLeaseRow`,
-/// `TomSchedulerNodeRow`) along with the rest of the reflected server surface.
-///
-/// [ClusterFenceRow] is declared here rather than in a file of its own so the
-/// demo has exactly one reflection root. A second root would mean a second
-/// ~60k-line generated file capturing the same barrel.
+/// The generated `initializeReflection()` the demo calls comes from
+/// `example/example_reflection.reflection.dart` — the example suite's single
+/// reflection root, which imports this file. It is shared rather than
+/// demo-local because every root reaches the package barrel and so costs a
+/// further ~1.7 MB of generated source capturing the same framework surface.
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';
-
-/// Entry point the reflection generator requires of a root. Never run.
-void main() {}
 
 /// The downstream resource the fencing scenario guards.
 ///

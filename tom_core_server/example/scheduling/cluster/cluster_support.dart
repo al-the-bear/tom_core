@@ -21,11 +21,12 @@ import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
 
-// The root declares the row type; the generated file beside it declares
-// initializeReflection(). Both are needed here, and the generated one does not
-// re-export the root.
+// This file declares the row type; the example suite's shared reflection root
+// (../../example_reflection.dart) captures it, and the generated file beside
+// that root declares initializeReflection(). Both are needed here, and the
+// generated one does not re-export what it captures.
+import '../../example_reflection.reflection.dart';
 import 'cluster_reflection.dart';
-import 'cluster_reflection.reflection.dart';
 
 /// The registered data source name.
 ///
