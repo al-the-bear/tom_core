@@ -638,8 +638,16 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     return -1;
   }
 
+  /// Whether the token [ahead] positions past [start] is [forWhat].
+  ///
+  /// Answers `false` when the sentence ends first. The bound is `<=` because
+  /// the token being asked about is at index `start + ahead`, so a list of
+  /// exactly that length does not contain it — reading it is one past the end.
+  /// While the check was `<`, a sentence ending on a keyword that looks ahead
+  /// (`… title not`) threw `RangeError` out of the compiler instead of a
+  /// [TomQuerySyntaxException], escaping the family callers catch on.
   bool _lookAhead(List<String> list, int start, int ahead, String forWhat) {
-    if (list.length < start + ahead) return false;
+    if (list.length <= start + ahead) return false;
     return list[start + ahead].toUpperCase() == forWhat.toUpperCase();
   }
 
@@ -1160,8 +1168,16 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         i = index;
         break;
       } else if (qp[i].toUpperCase() == "NOT" &&
-          !_lookAhead(qp, i, 1, "NULL") &&
           !_lookAhead(qp, i, 1, "NULL")) {
+        // Standalone negation — `NOT` that owns nothing after it.
+        //
+        // Only `NULL` has to be excluded here. The parallel branch in
+        // [_buildQuery] excludes `LIKE` as well, because that parser has no
+        // `NOT LIKE` branch of its own and must let the phrase reach this one;
+        // here the `NOT LIKE` branch is directly above, so reaching this line
+        // already means `LIKE` did not follow. (It was excluded here too, by a
+        // conjunct that tested `NULL` a second time — a copy of the query-level
+        // guard whose second half never said what it meant.)
         if (QT != TomDbBool) {
           throw TomQuerySyntaxException(
             "query_sentence_compiler.build_expression.not_invalid_type_expected",
@@ -1442,6 +1458,20 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         }
       }
     }
+    // The loop ran out of tokens. Both of the ways that can leave nothing built
+    // are sentences that simply stop early — `… title not`, `… title not like`
+    // — and both used to leave the failure to a cast: the negation below on a
+    // null operand, or the `!` on the return. Those arrive as `TypeError`,
+    // which is outside the exception family this library promises and says
+    // nothing about the sentence that caused it.
+    if (currentOperation == null) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.build_expression.sentence_ended_early",
+        inNegationMode
+            ? "The sentence ends after NOT, with no expression to negate: $qs"
+            : "The sentence ends before the expression is complete: $qs",
+      );
+    }
     if (inNegationMode) {
       if (QT == TomDbBool) {
         currentOperation =
@@ -1454,7 +1484,7 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         );
       }
     }
-    return (currentOperation!, index);
+    return (currentOperation, index);
   }
 
   (List<TomOperator<OT>>, int) _getInOptions<OT>(

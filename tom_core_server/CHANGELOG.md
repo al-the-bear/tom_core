@@ -281,6 +281,40 @@
 
 ### Fixed
 
+- **A query sentence that stopped on a keyword escaped as `RangeError` or
+  `TypeError` instead of a syntax error (tcinc587).** `_lookAhead` bounded its
+  read with `<` where the token it is asked about sits at `start + ahead`, so a
+  list of exactly that length does not contain it. Every sentence ending on a
+  keyword that looks ahead — `find by title not`, `find by not`,
+  `find by title is` — therefore read one past the end and threw `RangeError`
+  out of the compiler: outside the `TomServerException` family every caller of
+  this library catches on, and carrying no indication of which sentence was at
+  fault. The bound is now `<=`.
+
+  Fixing the bound exposed the second half of the same defect. A sentence
+  ending after `not` or `not like` leaves `_buildExpression` with nothing
+  built, and the tail then cast a null operand (`not(null as
+  TomOperator<TomDbBool>)`) or dereferenced it (`currentOperation!`) —
+  `TypeError`, the same user-visible failure by another route. Both sites are
+  replaced by an explicit
+  `…build_expression.sentence_ended_early` exception that says whether the
+  sentence stopped after a `NOT` or simply short.
+
+  The duplicated conjunct that prompted the investigation is **deleted, not
+  repointed.** The standalone-`NOT` branch tested `!_lookAhead(…, "NULL")`
+  twice; the report read the second one as a `LIKE` test that had been
+  miscopied, and concluded that `not like` inside an expression was being
+  routed into the general negation path. It is not — compiling
+  `title not like :p` at the top level, inside parentheses, after `AND`, and
+  parenthesised after `AND` all render `NOT LIKE`. The reason is structural:
+  `_buildExpression`'s `NOT LIKE` branch sits *above* the general `NOT` in the
+  same `else if` chain, so reaching the general branch already proves `LIKE`
+  did not follow. The parallel branch in `_buildQuery` needs its `LIKE`
+  conjunct because that parser has no `NOT LIKE` branch of its own and must let
+  the phrase fall through to this one. Adding the test the report asked for
+  would have made a dead guard look load-bearing; the asymmetry between the two
+  parsers is now stated at the branch instead.
+
 - **An unanchored integer test made every other literal — and every
   digit-bearing identifier — unwritable in a query sentence (tcinc586).** The
   scanner in `_buildExpression` recognised an integer with `RegExp(r"[0-9]+")`,
