@@ -2,6 +2,32 @@
 
 ### Fixed
 
+- **The API index's Endpoints table described two of the unit's six sources
+  (tcinc513).** It listed eighteen types, all of them annotations and pipeline
+  machinery, and none of the three transports the unit gained — form binding,
+  redirects and WebSockets — nor the HTTP surface of file columns. A reader
+  arriving at the index to discover what endpoints can do was told the unit
+  answers with objects, and could not learn from it that
+  `TomMultipartForm`, `TomRedirect`, `TomWebSocketEndpoint` or `TomFileEndpoint`
+  exist at all. Sixteen rows are added to the module table and sixteen to the
+  Alphabetical Type Index, and the module's navigation line now names the
+  transports. Four smaller omissions found by the same sweep are fixed with it:
+  `TomAuditRecordIdGenerator`, `TomResourceDataScope`, `TomConfigurationException`
+  and the six `preferences` types that had a module row and no alphabetical one.
+
+  The index guard could not see any of this. It asks whether the index names a
+  type *anywhere*, so a type in the alphabetical table alone — or under the wrong
+  module — satisfies it, and the missing endpoints names were suppressed
+  wholesale by a module-level quarantine. `test/api_reference_coverage_test.dart`
+  now also slices the index by heading and asserts that every type a per-module
+  summary gives a section to appears under **that** module's table *and* in the
+  alphabetical table. The summary, not the source directory, is the source of
+  truth: `LoginException` is declared in `little_things` and documented under
+  Authentication because that is where a reader meets it, and a
+  directory-driven check would report that agreement as a defect. Both checks
+  share one quarantine set, so a module leaves it only when it satisfies both;
+  giving the new check a set of its own would deadlock the pair.
+
 - **Nothing checked that a documented constructor listing named every parameter
   the constructor takes (tcinc512).** A signature is the one part of a summary a
   reader copies rather than reads, so an omitted parameter is not a thin

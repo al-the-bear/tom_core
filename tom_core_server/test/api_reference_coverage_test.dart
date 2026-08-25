@@ -662,6 +662,97 @@ List<String>? _summarySourceList(String module) => _sourceListOf(
 bool _indexNames(String index, String api) =>
     RegExp('`${RegExp.escape(api)}[<`]').hasMatch(index);
 
+/// The index's two claims about where a type lives: the per-module tables under
+/// `## Modules`, and the flat `## Alphabetical Type Index` beneath them.
+typedef _IndexTables = ({Map<String, Set<String>> byModule, Set<String> alpha});
+
+/// [_IndexTables] read out of the index's own [lines].
+///
+/// Sliced by heading rather than read flat, because the flat reading is
+/// precisely what [_indexNames] already does and precisely what it cannot see
+/// through: a type listed under the wrong module's table, or present in the
+/// alphabetical table and missing from its module's, satisfies "the index names
+/// it" while telling a reader the wrong thing. Only the slice distinguishes
+/// *named* from *filed correctly*.
+///
+/// The module key is taken from the directory the heading cites — `### Endpoints
+/// (`lib/src/tomserver/endpoints/`)` — so the heading's prose title is free to
+/// read as "Database Migration" while the key stays `db_migration`.
+///
+/// A line beginning `#` always ends the current slice, whether or not it opens a
+/// new one. That is what keeps the alphabetical table out of `Transactions`,
+/// the module directly above it.
+_IndexTables _indexTablesOf(List<String> lines) {
+  final heading = RegExp(r'^###\s+.*\(`lib/src/tomserver/(\w+)/`\)\s*$');
+  final byModule = <String, List<String>>{};
+  final alpha = <String>[];
+  List<String>? current;
+  for (final line in lines) {
+    if (line.startsWith('#')) {
+      final module = heading.firstMatch(line)?.group(1);
+      current = module != null
+          ? (byModule[module] ??= <String>[])
+          : line.startsWith('## Alphabetical')
+          ? alpha
+          : null;
+      continue;
+    }
+    current?.add(line);
+  }
+  return (
+    byModule: {
+      for (final entry in byModule.entries)
+        entry.key: _typeTableRows(entry.value).toSet(),
+    },
+    alpha: _typeTableRows(alpha).toSet(),
+  );
+}
+
+/// [_indexTablesOf] applied to the package's own index.
+final _IndexTables _indexTables = _indexTablesOf(
+  File('doc/api_reference/api_summary_index.md').readAsLinesSync(),
+);
+
+/// The types each per-module summary gives a section of its own, keyed by
+/// module.
+///
+/// The **summary**, not the source directory, is what the index is measured
+/// against. The two disagree, and the summary is right where they do:
+/// `LoginException` is declared in `little_things/server_exception.dart` and
+/// documented under `### LoginException` in `api_summary_authentication.md`,
+/// because authentication is where a reader meets it. The index files it under
+/// Authentication too, so index and summary agree — and a directory-driven
+/// check would report that agreement as a defect.
+///
+/// It also keeps the two documents to one contract. An index is a finding aid
+/// for the summaries; what it owes them is that every type they give a section
+/// to can be found, not that it independently re-derives the package.
+final Map<String, Set<String>> _sectionedTypes = () {
+  final byModule = <String, Set<String>>{};
+  for (final section in _classSections) {
+    final module = section.file
+        .replaceFirst('api_summary_', '')
+        .replaceFirst('.md', '');
+    (byModule[module] ??= <String>{}).add(section.type);
+  }
+  return byModule;
+}();
+
+/// The types [module]'s summary sections that its row in the index's module
+/// table omits, sorted.
+List<String> _missingFromIndexTable(String module) => [
+  for (final type in _sectionedTypes[module] ?? const <String>{})
+    if (!(_indexTables.byModule[module] ?? const <String>{}).contains(type))
+      type,
+]..sort();
+
+/// The types [module]'s summary sections that the index's alphabetical table
+/// omits, sorted.
+List<String> _missingFromIndexAlpha(String module) => [
+  for (final type in _sectionedTypes[module] ?? const <String>{})
+    if (!_indexTables.alpha.contains(type)) type,
+]..sort();
+
 /// Matches a top-level `const` or `final` declaration, anchored at column zero.
 ///
 /// Not part of [_declaredApi] — a bare constant is documentation of the field
@@ -2343,14 +2434,23 @@ const Set<String> _memberListsPendingReconciliation = {
   'object_persistence',
 };
 
-/// The modules whose exported names are not all in the index yet — quest todo
+/// The modules the index does not yet describe fully — quest todo
 /// `tcincb122_ahxs`.
+///
+/// Gates **two** checks, deliberately one set for both: that every exported name
+/// appears in the index at all, and that the type appears under its own module's
+/// table and in the alphabetical table. Giving the second check a set of its own
+/// would deadlock the pair — a module fixed for one check has to leave that set,
+/// which makes the other check start running against a module that still fails
+/// it. Sharing the set means a module stays quarantined while *either* is
+/// outstanding, and leaves in one step when both are met.
+///
+/// `endpoints`, `audit`, `authorization` and `configuration` left this set with
+/// tcinc513: the Endpoints table had been listing eighteen types from two of the
+/// unit's six sources, omitting form binding, redirects, WebSockets and the file
+/// surface entirely, and the other three were one name each.
 const Set<String> _indexPendingReconciliation = {
-  'audit',
   'authentication',
-  'authorization',
-  'configuration',
-  'endpoints',
   'object_persistence',
 };
 
@@ -2903,16 +3003,24 @@ class RealClass {}
       );
     }
 
-    test('every quarantined module still has names missing', () {
+    test('every quarantined module still has something missing', () {
+      // A disjunction over both checks the set gates, which is what lets one
+      // set serve both without deadlocking them — see the set's own comment.
       final clean = _indexPendingReconciliation
-          .where((m) => _exportedApi(m).every((n) => _indexNames(index, n)))
+          .where(
+            (m) =>
+                _exportedApi(m).every((n) => _indexNames(index, n)) &&
+                _missingFromIndexTable(m).isEmpty &&
+                _missingFromIndexAlpha(m).isEmpty,
+          )
           .toList();
       expect(
         clean,
         isEmpty,
         reason:
             'These modules are quarantined but the index already names '
-            'everything they export: ${clean.join(', ')}. Remove the entry, '
+            'everything they export, under the right module and in the '
+            'alphabetical table: ${clean.join(', ')}. Remove the entry, '
             'or the check stays off for a module that has nothing left to fix.',
       );
     });
@@ -2929,6 +3037,109 @@ class RealClass {}
       // vouch for `TomDataSourceInfo` and half the check would be vacuous.
       expect(_indexNames(index, 'TomDataSourceInf'), isFalse);
       expect(_indexNames(index, 'TomNoSuchTypeAtAll'), isFalse);
+    });
+  });
+
+  group('the index files every documented type under its own module', () {
+    for (final module in _modules()) {
+      test(
+        module,
+        () {
+          final fromTable = _missingFromIndexTable(module);
+          expect(
+            fromTable,
+            isEmpty,
+            reason:
+                'api_summary_$module.md gives each of these a section of its '
+                'own, but the index\'s $module table has no row for them: '
+                '${fromTable.join(', ')}. The check above only asks whether the '
+                'index names them somewhere, so a type filed under the wrong '
+                'module — or reachable only through the alphabetical table — '
+                'passes it while still telling a reader the wrong thing.',
+          );
+
+          final fromAlpha = _missingFromIndexAlpha(module);
+          expect(
+            fromAlpha,
+            isEmpty,
+            reason:
+                'The Alphabetical Type Index has no row for these, which '
+                'api_summary_$module.md documents: ${fromAlpha.join(', ')}. '
+                'That table is the one a reader uses who knows the name and '
+                'not the module, which is the only case in which an index is '
+                'the document they need.',
+          );
+        },
+        skip: _indexPendingReconciliation.contains(module)
+            ? 'Index not reconciled yet — quest todo tcincb122_ahxs.'
+            : null,
+      );
+    }
+
+    test('the tables are sliced per module, not read flat', () {
+      // Every finding above is an emptiness assertion over a parse, so a
+      // slicer that returned one merged bucket — or none — would pass in
+      // silence while checking nothing.
+      expect(_indexTables.byModule, hasLength(_modules().length));
+      expect(_indexTables.byModule['endpoints'], contains('TomRedirect'));
+      expect(_indexTables.byModule['endpoints'], contains('TomFileEndpoint'));
+      // The property that flat reading cannot have: a name belonging to
+      // another module is absent here, however prominent it is in the index.
+      expect(
+        _indexTables.byModule['endpoints'],
+        isNot(contains('TomDataSource')),
+      );
+      // The alphabetical table is its own slice, and reaches free functions —
+      // it is not a `| Type |` table of classes only.
+      expect(_indexTables.alpha, contains('tomConsumesForm'));
+      expect(_indexTables.alpha, contains('TomDataSource'));
+
+      // A fixture, so the slicing is pinned by something that fails when the
+      // heading shapes change rather than only by the package's own index.
+      final fixture = _indexTablesOf([
+        '## Modules',
+        '',
+        '### Alpha Module (`lib/src/tomserver/alpha/`)',
+        '',
+        '| Type | Kind | Description |',
+        '| ---- | ---- | ----------- |',
+        '| `TomAlpha` | class | One. |',
+        '',
+        '### Beta Module (`lib/src/tomserver/beta/`)',
+        '',
+        '| Type | Kind | Description |',
+        '| ---- | ---- | ----------- |',
+        '| `TomBeta` / `TomBetaToo` | class | Two in one cell. |',
+        '',
+        '## Alphabetical Type Index',
+        '',
+        '| Type | Module |',
+        '| ---- | ------ |',
+        '| `TomAlpha` | Alpha |',
+        '| `TomBeta` | Beta |',
+      ]);
+      expect(fixture.byModule.keys, ['alpha', 'beta']);
+      expect(fixture.byModule['alpha'], {'TomAlpha'});
+      // Both names of a shared cell count — the index writes several types to
+      // one row where they are variations on a theme, and taking only the
+      // first would read `datasources` as half-documented.
+      expect(fixture.byModule['beta'], {'TomBeta', 'TomBetaToo'});
+      // The alphabetical table is not swept into the module above it.
+      expect(fixture.alpha, {'TomAlpha', 'TomBeta'});
+    });
+
+    test('the sections being demanded are the summaries\' own', () {
+      expect(_sectionedTypes, hasLength(_modules().length));
+      expect(_sectionedTypes['endpoints'], contains('TomWebSocketConnection'));
+      // The cross-module case the doc comment records: declared in
+      // `little_things`, documented under Authentication, and filed there by
+      // the index. Measured against the source directory this would be a
+      // false positive, which is why the summary is the source of truth.
+      expect(_sectionedTypes['authentication'], contains('LoginException'));
+      expect(
+        _sectionedTypes['little_things'],
+        isNot(contains('LoginException')),
+      );
     });
   });
 

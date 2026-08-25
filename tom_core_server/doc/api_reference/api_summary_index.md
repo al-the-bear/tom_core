@@ -17,7 +17,7 @@ surface documented here.
 | Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources. |
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements. |
 | Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, and the MariaDB migration adaptor. |
-| Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling. |
+| Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns. |
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
@@ -41,6 +41,7 @@ surface documented here.
 | `TomAuditAction` | enum | What kind of action a record describes. |
 | `TomAuditOutcome` | enum | How the action ended — `denied` stays distinct from `failed`. |
 | `TomAuditEntry` | class | A record plus its position in the hash chain. |
+| `TomAuditRecordIdGenerator` | class | Issues record ids that sort chronologically as plain strings. |
 | `TomAuditChainVerification` | class | The outcome of checking a chain's integrity. |
 | `TomAuditException` | class | Audit failure (extends `TomServerException`). |
 | `TomAuditSink` | abstract class | Where a record is persisted. |
@@ -164,6 +165,7 @@ surface documented here.
 | `TomAuthStateCodec` | class | Encodes/decodes auth state (static). |
 | `TomResourceGrant` | class | A grant of a role on a resource. |
 | `TomGradedAccessControlInformation` | class | Graded (field-level) access info. |
+| `TomResourceDataScope` | class | The grant-driven row scope: filters an entity by the resources the caller holds a grant on. |
 | `TomPrincipalDelegation` | class | Delegation of authority between principals. |
 | `TomDelegationMode` | enum | `share`, `absence`, `intentional`. |
 | `TomDelegationResolver` | class | Resolves effective delegations. |
@@ -207,6 +209,7 @@ surface documented here.
 | `TomDoubleConfig` | class | `double` config value. |
 | `TomBoolConfig` | class | `bool` config value. |
 | `TomYaml` | class | YAML resource helpers (static). |
+| `TomConfigurationException` | class | A property failed the cast to `T` (extends `TomServerException`). |
 | `tomAppId` | top-level getter | The current application id, read from the active configuration's `appId`. |
 
 ### Datasources (`lib/src/tomserver/datasources/`)
@@ -301,6 +304,22 @@ surface documented here.
 | `TomDefaultErrorHandler` | class | Default error handler. |
 | `TomEndpointHandlerException` | class | Handler error. |
 | `TomEndpointPipelineException` | class | Pipeline error. |
+| `TomMultipartForm` | class | A decoded HTML form body: its text fields and its uploaded files. |
+| `TomFormFile` | class | One uploaded file part: the bytes plus what the envelope claimed about them. |
+| `TomFormBindingException` | class | Form decode or bind failure; always caused by what the caller sent. |
+| `tomConsumesForm` | function | Whether a declared media type is an HTML form body, multipart or url-encoded. |
+| `tomConsumesMultipartForm` | function | Whether a declared media type is specifically `multipart/form-data`. |
+| `TomRedirect` | class | The directive a handler returns to answer with a `3xx`. |
+| `TomWebSocketEndpoint<Req, Res>` | class | Method annotation declaring a WebSocket endpoint. |
+| `TomWebSocketConnection` | class | A live WebSocket connection as a handler sees it. |
+| `TomWebSocketException` | class | A socket endpoint declared or used in a way the pipeline cannot serve. |
+| `TomFileSlot` | abstract class | One addressable file column, with its entity and key types already bound. |
+| `TomFileSlots` | class | The registry of HTTP-reachable file columns, keyed by table and column name. |
+| `TomFileSlotException` | class | Slot registration or resolution failure, raised while the application wires up. |
+| `TomFileEndpoint` | class | Serves the file-transfer wire contract over the registered slots. |
+| `TomFileService` | abstract class | The file-transfer service interface, mounted like any other `@tomService`. |
+| `TomFileServer` | class | The default `TomFileService`, and the bean an application registers to mount it. |
+| `TomFormFileStorage` | extension | Stores a `TomFormFile` through the same file slot the raw-body endpoint uses. |
 
 ### Export (`lib/src/tomserver/export/`)
 
@@ -627,6 +646,7 @@ surface documented here.
 | `TomAuditOutcome` | Audit |
 | `TomAuditPolicy` | Audit |
 | `TomAuditRecord` | Audit |
+| `TomAuditRecordIdGenerator` | Audit |
 | `tomAuditRedactedPlaceholder` | Audit |
 | `TomAuditSeqRow` | Audit |
 | `TomAuditSink` | Audit |
@@ -673,6 +693,9 @@ surface documented here.
 | `TomColumnWriteDecision` | Object Persistence |
 | `TomComponentReference` | Endpoints |
 | `TomConfig` | Configuration |
+| `TomConfigurationException` | Configuration |
+| `tomConsumesForm` | Endpoints |
+| `tomConsumesMultipartForm` | Endpoints |
 | `TomCount` | Datasources |
 | `TomCountResult` | Object Persistence |
 | `TomCsvRenderer` | Export |
@@ -732,6 +755,7 @@ surface documented here.
 | `TomEndpointRouting` | Endpoints |
 | `TomEndpointRoutingInfo` | Endpoints |
 | `TomEntityId` | Object Persistence |
+| `TomEntitySchemaReader` | Database Migration |
 | `TomEnvFile` | Command Line |
 | `TomErrorHandler` | Endpoints |
 | `TomExportException` | Export |
@@ -744,13 +768,21 @@ surface documented here.
 | `TomExternalIdentityLinkRepository` | Authentication |
 | `TomExternalIdentityStore` | Authentication |
 | `TomExternalIdentityToken` | Authentication |
-| `TomEntitySchemaReader` | Database Migration |
 | `TomExternalIdentityTokenRepository` | Authentication |
 | `TomFieldMappedSmsProtocol` | Messaging |
 | `TomFileAuditAnchorStore` | Audit |
 | `TomFileAuditSink` | Audit |
+| `TomFileEndpoint` | Endpoints |
 | `TomFileMessageTransport` | Messaging |
+| `TomFileServer` | Endpoints |
+| `TomFileService` | Endpoints |
+| `TomFileSlot` | Endpoints |
+| `TomFileSlotException` | Endpoints |
+| `TomFileSlots` | Endpoints |
 | `tomFormatCellAsText` | Export |
+| `TomFormBindingException` | Endpoints |
+| `TomFormFile` | Endpoints |
+| `TomFormFileStorage` | Endpoints |
 | `TomFrameworkColumn` | Datasources |
 | `TomFrameworkKey` | Datasources |
 | `TomFrameworkSchemaCheck` | Database Migration |
@@ -790,6 +822,7 @@ surface documented here.
 | `TomMimeEncoder` | Messaging |
 | `tomMimeLineEnding` | Messaging |
 | `tomMimeMaxLineLength` | Messaging |
+| `TomMultipartForm` | Endpoints |
 | `TomNoOpMessageTransport` | Messaging |
 | `TomOAuthAuthenticationService` | Authentication |
 | `TomOAuthAuthorizationState` | Authentication |
@@ -827,11 +860,13 @@ surface documented here.
 | `TomQuerySyntaxException` | Object Persistence |
 | `TomRecipient` | Messaging |
 | `TomRecipientKind` | Messaging |
+| `TomRedirect` | Endpoints |
 | `TomReference` | Object Persistence |
 | `TomRepository` | Object Persistence |
 | `TomRepositoryType` | Object Persistence |
 | `TomRequestId` | Server |
 | `TomRequestLogInfo` | Server |
+| `TomResourceDataScope` | Authorization |
 | `TomResourceGrant` | Authorization |
 | `TomResourceLocaleException` | Resources |
 | `TomRowColumnAuthorization` | Object Persistence |
@@ -912,6 +947,15 @@ surface documented here.
 | `TomTypedPersistenceBase` | Datasources |
 | `TomTypePersistenceInfo` | Datasources |
 | `TomUnaryOperator` | Object Persistence |
+| `TomUserPreference` | Preferences |
+| `TomUserPreferenceException` | Preferences |
+| `TomUserPreferenceRepository` | Preferences |
+| `TomUserPreferences` | Preferences |
+| `TomUserPreferencesErrorHandler` | Preferences |
+| `TomUserPreferencesServer` | Preferences |
+| `TomWebSocketConnection` | Endpoints |
+| `TomWebSocketEndpoint` | Endpoints |
+| `TomWebSocketException` | Endpoints |
 | `TomXlsxRenderer` | Export |
 | `TomYaml` | Configuration |
 | `unknownFrameworkColumns` | Datasources |
