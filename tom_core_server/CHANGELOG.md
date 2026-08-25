@@ -2618,6 +2618,21 @@
 
 ### Documentation
 
+- **`messaging` source dartdoc narrated its own development (tcinc578).** Three
+  comments described the code's history rather than the code: the
+  `sms_transport.dart` library header opened with a `## Why this file exists at
+  all` section arguing that `TomMessageTransport` "had exactly one
+  implementation" and that the second channel proved the shape held;
+  `TomSmsGatewayProtocol` justified its boundary as "the boundary the todo
+  behind this file asked for"; and `TomDeliveryException` explained
+  `isPermanent` by recounting a superseded design in which a stored flag and a
+  mixin were set independently. A reader arriving at the file today cannot
+  verify any of it and does not need to: all three now state the current
+  invariant on its own authority — what SMS needs from the shared shape, where
+  the vendor boundary is drawn, and why one fact has one representation. The
+  classification-rule and no-vendor-presets sections of the library header were
+  already AS-IS and are unchanged. Comments only; no behavioural change.
+
 - **The `messaging` source directory had no `readme.md` (tcinc577).** Fifteen of
   the twenty modules under `lib/src/tomserver/` carried one; the module that did
   not was the one whose structure is least recoverable from its file names.

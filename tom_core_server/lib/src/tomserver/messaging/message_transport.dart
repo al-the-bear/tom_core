@@ -125,12 +125,11 @@ class TomDeliveryReceipt {
 ///
 /// [isPermanent] is the whole point of the type, and it is deliberately *not* a
 /// field: it reads the [TomPermanentFailure] marker, which is what the
-/// scheduler branches on. The two used to be set independently — a stored flag
-/// and a mixin, agreeing only because the factories happened to write both — so
-/// the public general constructor could produce an exception whose `toString`
-/// said `(permanent)` while the scheduler retried it forever, because it
-/// carried no marker. One fact now has one representation, and the class is
-/// abstract so that every instance is one of the two classified subtypes.
+/// scheduler branches on. One fact, one representation — so an exception whose
+/// `toString` says `(permanent)` cannot be one the scheduler retries forever.
+/// The class is abstract for the same reason: every instance is one of the two
+/// classified subtypes, and there is no way to construct a failure that carries
+/// a claim without the marker that makes the claim true.
 ///
 /// Throw through [TomDeliveryException.permanent] and
 /// [TomDeliveryException.transient]. A transport needing to carry extra data

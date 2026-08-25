@@ -1,17 +1,17 @@
 /// SMS delivery: the segment arithmetic, the gateway mapping, and the failure
 /// classification that drives every retry decision downstream.
 ///
-/// ## Why this file exists at all
+/// ## What SMS needs from the shared shape
 ///
-/// [TomMessageTransport] had exactly one implementation — SMTP — and an
-/// abstraction with one implementation has never been tested as an
-/// abstraction. The second channel is where a shape that looked general either
-/// holds or does not. It held: nothing in [TomMessage],
-/// [TomDeliveryReceipt] or [TomMessageTransport] had to change. [TomRecipient]
-/// was already documented as carrying a phone number, [TomMessage.metadata] was
-/// already documented as carrying a sender id, and the base's
-/// `supportsCopies`/`supportsAttachments` defaults of `false` were already the
-/// right answer for SMS.
+/// Nothing of its own. [TomSmsTransport] is an ordinary
+/// [TomMessageTransport]: it takes the same [TomMessage] and returns the same
+/// [TomDeliveryReceipt] as SMTP, and the channel's peculiarities are carried by
+/// fields the shared types already have. [TomRecipient.address] is a phone
+/// number here rather than a mailbox, [TomMessage.metadata] carries the sender
+/// id, and the base's `supportsCopies`/`supportsAttachments` defaults of
+/// `false` are the right answer for a channel with neither. A second channel
+/// that fits without widening the contract is the evidence that the contract is
+/// about delivery rather than about email.
 ///
 /// ## The classification rule
 ///
@@ -430,9 +430,10 @@ class TomSmsGatewayAnswer {
 /// Turns a submission into a gateway request and an answer back into a
 /// judgement.
 ///
-/// The whole vendor surface lives behind these two methods. That is the
-/// boundary the todo behind this file asked for: provider specifics confined to
-/// the transport, and within the transport confined to the protocol.
+/// The whole vendor surface lives behind these two methods, which is where the
+/// module draws its boundary: provider specifics are confined to the transport,
+/// and within the transport to the protocol. Nothing above [TomSmsTransport]
+/// names a gateway's field, and nothing beside it has to.
 abstract class TomSmsGatewayProtocol {
   /// Creates a protocol.
   const TomSmsGatewayProtocol();
