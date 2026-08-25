@@ -244,6 +244,41 @@
 
 ### Fixed
 
+- **The messaging example verified nothing under the command its own header
+  documents; its sixteen expectations are now checked (tcinc571).** `dart run`
+  leaves assertions disabled — that is what `--enable-asserts` is for — so
+  every `assert` in the file was compiled out under the one command the header
+  gave. The example printed a plausible transcript, exited 0, and evaluated
+  none of its claims. That is how the false step-9 delivery count (tcinc570)
+  survived: it was wrong, and nothing could notice.
+
+  The header is *not* changed to `--enable-asserts`. This package had already
+  settled the question the other way — `cache`, `cmdline`, `configuration`,
+  `datasources` and `db_migration` state expectations through a throwing
+  `check(bool, String)` helper, and `api_reference_coverage_test.dart` enforces
+  the rule with a quarantine set that expires itself. A helper that throws
+  holds however the file is run: under `dart run`, under `--enable-asserts`,
+  compiled to a binary, and — the case that matters most for an example — when
+  a reader lifts the line into a server, where an `assert` would silently
+  vanish in release mode. Flagging the invocation would have fixed one command;
+  this fixes the file.
+
+  Each converted expectation gains the sentence an `assert` could not carry, so
+  a failure now names what was supposed to be true rather than printing a line
+  number. Step 7 additionally moves its check *out* of the `catch` block that
+  contained it: a check that only runs inside a handler cannot fail when the
+  handler never runs, so a router that quietly accepted an unrouted channel
+  would have left the step green.
+
+  `messaging_test.dart` gains the two guards the converted examples carry — one
+  running the file under plain `dart run` and requiring exit 0 with all twelve
+  numbered steps reported, one rejecting a reintroduced `assert(`. The step
+  check is anchored to line starts rather than matched as a substring, which is
+  where it differs from `cache_test.dart`'s otherwise identical guard: that
+  example has nine steps, this one has twelve, and `1. ` occurs inside `11. `.
+  `example/messaging/messaging_example.dart` is removed from the quarantine
+  set, leaving fifteen examples for tcincb134_ahyc.
+
 - **The messaging example's step 9 asserted a delivery that had not happened
   yet, and observed `0` where its narration claimed `1` (tcinc570).** The step
   sent a message through a `TomMessageOutbox`, called `await outbox.tick()`,

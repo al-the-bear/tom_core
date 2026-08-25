@@ -13,8 +13,11 @@
 /// conversation — STARTTLS, AUTH, a rejected recipient, a `4xx` deferral —
 /// without one.
 ///
-/// Run with `dart run example/messaging/messaging_example.dart`.
-/// The same behaviour is covered by `test/messaging_test.dart`.
+/// Run with `dart run example/messaging/messaging_example.dart`. Every step
+/// checks its own result and the run fails when one does not hold, so a green
+/// run is a verification and not just a transcript. `test/messaging_test.dart`
+/// runs this file under that exact command and requires it to exit 0, which is
+/// what keeps the checks honest once nobody runs the example by hand.
 library;
 
 import 'dart:io';
@@ -22,6 +25,19 @@ import 'dart:io';
 import 'package:tom_core_server/tom_core_server.dart';
 
 // ignore_for_file: avoid_print
+
+/// Throws unless [ok] holds, naming the expectation that failed.
+///
+/// Deliberately not `assert`: `dart run` leaves assertions **disabled** — that
+/// is what its `--enable-asserts` flag is for — so an `assert` here compiles
+/// out under the very command this file's header gives. An example whose
+/// checks vanish under its own documented invocation is worse than one with no
+/// checks at all, because it still prints a plausible transcript and still
+/// exits 0 while every expectation in it is violated. A plain `if`/`throw`
+/// holds however the file is run.
+void check(bool ok, String expectation) {
+  if (!ok) throw StateError('messaging example failed: $expectation');
+}
 
 Future<void> run() async {
   // 1. A message is composed, not "an email is sent". The shape names
@@ -40,14 +56,24 @@ Future<void> run() async {
     '   bodies (least preferred first): '
     '${message.bodies.map((b) => b.mediaType).join(', ')}',
   );
-  assert(message.channel == TomMessageChannel.email);
-  assert(message.preferredBody!.isHtml);
+  check(
+    message.channel == TomMessageChannel.email,
+    'TomMessage.email composes on the email channel',
+  );
+  check(
+    message.preferredBody!.isHtml,
+    'bodies are least-preferred first, so the HTML part is the preferred one',
+  );
 
   // 2. Channels are open, not an enum. A deployment with an internal channel
   //    names it and registers a transport; it does not patch the framework.
   const slack = TomMessageChannel('slack');
   print('2. an unanticipated channel  : ${slack.name}');
-  assert(slack == const TomMessageChannel('slack'));
+  check(
+    slack == const TomMessageChannel('slack'),
+    'channels compare by name, so a deployment can name one the framework '
+        'never anticipated',
+  );
 
   // 3. Blind copies are blind. They ride the delivery *envelope*, which is what
   //    the relay routes on, and never appear in a header, which is what a
@@ -65,8 +91,16 @@ Future<void> run() async {
   final document = TomMimeEncoder().encode(copied);
   print('3. envelope addresses        : ${copied.envelopeAddresses.length}');
   print('   Bcc appears in document?  : ${document.contains('archive@')}');
-  assert(copied.envelopeAddresses.contains('archive@example.com'));
-  assert(!document.contains('archive@example.com'));
+  check(
+    copied.envelopeAddresses.contains('archive@example.com'),
+    'the Bcc address rides the delivery envelope, which is what the relay '
+        'routes on',
+  );
+  check(
+    !document.contains('archive@example.com'),
+    'the Bcc address appears nowhere in the MIME document, which is what a '
+        'recipient reads',
+  );
 
   // 4. The document structure follows the content rather than being fixed:
   //    one body is a single part, text+html is multipart/alternative, an inline
@@ -76,7 +110,10 @@ Future<void> run() async {
     '4. content type              : '
     '${rendered.split('\r\n').firstWhere((l) => l.startsWith('Content-Type'))}',
   );
-  assert(rendered.contains('multipart/alternative'));
+  check(
+    rendered.contains('multipart/alternative'),
+    'a message carrying both text and html encodes as multipart/alternative',
+  );
 
   // 5. A memory transport is what makes a spec that names `email` exercisable.
   //    Nothing leaves the process; the messages are inspectable afterwards.
@@ -86,7 +123,11 @@ Future<void> run() async {
     '5. delivered to memory       : ${receipt.outcome.name}, '
     'captured ${memory.count}',
   );
-  assert(receipt.isDelivered);
+  check(
+    receipt.isDelivered,
+    'the memory transport reports a delivery, so a spec naming `email` is '
+        'exercisable without a relay',
+  );
 
   // 6. A no-op transport is the other stand-in: it accepts and *discards*, so a
   //    local run of a server that sends mail neither fails nor delivers.
@@ -95,7 +136,11 @@ Future<void> run() async {
   const noOp = TomNoOpMessageTransport();
   final discarded = await noOp.send(message);
   print('6. no-op outcome             : ${discarded.outcome.name}');
-  assert(discarded.outcome == TomDeliveryOutcome.discarded);
+  check(
+    discarded.outcome == TomDeliveryOutcome.discarded,
+    'the no-op transport reports `discarded`, not `delivered` — the receipt '
+        'does not claim something that did not happen',
+  );
 
   // 7. The router maps a channel to a transport. An unrouted channel fails
   //    *permanently*: no number of retries adds a transport, and a deployment
@@ -108,6 +153,7 @@ Future<void> run() async {
     '7. routed channels           : '
     '${router.channels.map((c) => c.name).join(', ')}',
   );
+  var unroutedThrew = false;
   try {
     await router.send(
       TomMessage(
@@ -117,9 +163,22 @@ Future<void> run() async {
       ),
     );
   } on TomDeliveryException catch (e) {
+    unroutedThrew = true;
     print('   unrouted "slack"          : permanent=${e.isPermanent}');
-    assert(e.isPermanent);
+    check(
+      e.isPermanent,
+      'an unrouted channel fails permanently: no number of retries adds a '
+          'transport',
+    );
   }
+  // Checked outside the handler on purpose. A check written inside `catch`
+  // cannot fail when the `catch` never runs, so a router that quietly accepted
+  // the unrouted channel would skip the block and leave the step green — the
+  // same "verifies nothing" shape the `check` helper above exists to close.
+  check(
+    unroutedThrew,
+    'sending to an unrouted channel throws rather than silently succeeding',
+  );
 
   // 8. The transient/permanent distinction is the whole retry policy. SMTP
   //    states it on the wire — 4xx means "try later", 5xx means "do not" — and
@@ -138,7 +197,11 @@ Future<void> run() async {
     // The marker and the flag agree because they are the same decision: the
     // scheduler stops retrying on [TomPermanentFailure], and nothing else in
     // the stack re-derives the classification.
-    assert(failure.isPermanent == (failure is TomPermanentFailure));
+    check(
+      failure.isPermanent == (failure is TomPermanentFailure),
+      'the isPermanent flag and the marker the scheduler honours are one '
+          'decision, not two that could disagree',
+    );
   }
 
   // 9. Delivery is queued, not synchronous. `send` returns once the message is
@@ -156,7 +219,10 @@ Future<void> run() async {
 
   await outbox.send(message);
   print('9. delivered before a tick   : ${memory.count}');
-  assert(memory.count == 0);
+  check(
+    memory.count == 0,
+    'send() returns once the message is durably stored, without delivering it',
+  );
 
   // A tick *starts* the pass and returns; it does not wait the deliveries out,
   // because one slow transport must not hold up the next window of a fast one.
@@ -168,7 +234,7 @@ Future<void> run() async {
   await outbox.tick();
   await delivered;
   print('   delivered after a tick    : ${memory.count}');
-  assert(memory.count == 1);
+  check(memory.count == 1, 'the tick delivered the queued message');
 
   // 10. The message id is the idempotence key: a caller retrying a `send` it is
   //     unsure completed replaces the queued run rather than queueing a second
@@ -180,7 +246,11 @@ Future<void> run() async {
       .map((r) => r.id)
       .toSet();
   print('10. distinct runs after two sends: ${queued.length}');
-  assert(queued.length == 1);
+  check(
+    queued.length == 1,
+    'two sends of one message id queue one run, so an uncertain caller '
+        'retrying cannot cause two deliveries',
+  );
   outbox.close();
 
   // 11. A file transport writes each message to a `.eml` file — a local run
@@ -190,7 +260,11 @@ Future<void> run() async {
     final files = TomFileMessageTransport(directory: dir);
     await files.send(message);
     print('11. files written            : ${files.files.length}');
-    assert(files.files.length == 1);
+    check(
+      files.files.length == 1,
+      'the file transport wrote one .eml file, so a local run produces '
+          'something openable without a relay',
+    );
   } finally {
     await dir.delete(recursive: true);
   }
@@ -212,8 +286,15 @@ Future<void> run() async {
     '    toString leaks password? : '
     '${settings.toString().contains('supplied')}',
   );
-  assert(settings.port == 587);
-  assert(!settings.toString().contains('supplied'));
+  check(
+    settings.port == 587,
+    'an unset port resolves from the security mode: STARTTLS means submission '
+        'on 587',
+  );
+  check(
+    !settings.toString().contains('supplied'),
+    'the password does not leak through toString, so settings are safe to log',
+  );
   // In a server this is where the transport would be registered:
   //   router.register(TomSmtpTransport(settings));
   // and the settings would come from configuration:

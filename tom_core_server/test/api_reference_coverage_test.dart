@@ -2299,7 +2299,6 @@ const Set<String> _examplesAssertingExpectations = {
   'example/endpoints/endpoints_example.dart',
   'example/healthcheck/healthcheck_example.dart',
   'example/little_things/little_things_example.dart',
-  'example/messaging/messaging_example.dart',
   'example/object_persistence/object_persistence_example.dart',
   'example/scheduling/scheduling_example.dart',
   'example/server/server_example.dart',

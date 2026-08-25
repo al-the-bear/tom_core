@@ -1482,6 +1482,60 @@ void main() {
       expect(settings.isAuthenticated, isFalse);
     });
   });
+
+  group('The example runs green', () {
+    const examplePath = 'example/messaging/messaging_example.dart';
+
+    test('under exactly the command its header documents', () async {
+      // The example is the module's worked demonstration and the source of the
+      // completion document's snippets, so it drifts silently unless something
+      // runs it. Run it the way a reader would — plain `dart run`, no extra
+      // flags — and require the exit code its own checks produce.
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        examplePath,
+      ]);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'example failed: ${result.stdout}${result.stderr}',
+      );
+      // A crash before the last step would also exit 0 if it were swallowed,
+      // so pin that every numbered step actually reported.
+      //
+      // Anchored to the start of a line rather than matched as a bare
+      // substring, which is where this differs from the same guard in
+      // `cache_test.dart`. That example has nine steps; this one has twelve,
+      // and `'1. '` occurs inside `'11. '` — so a substring test would accept
+      // a run in which step 1 never printed.
+      final out = result.stdout as String;
+      for (var step = 1; step <= 12; step++) {
+        expect(
+          out,
+          matches(RegExp('^$step\\. ', multiLine: true)),
+          reason: 'step $step did not report',
+        );
+      }
+    });
+
+    test('with its expectations checked rather than asserted', () {
+      // The test above cannot see the difference on its own: an example that
+      // checks nothing exits 0 too. `dart run` leaves assertions disabled —
+      // that is what `--enable-asserts` is for — so an `assert` in the example
+      // is compiled out under the very command the test above uses, and the
+      // run stays green with every expectation violated. That was this file's
+      // actual state: step 9 asserted a delivery count of 1 while the run
+      // printed 0. The example therefore states its expectations through a
+      // throwing helper, and this guards against quietly reverting them.
+      final source = File(examplePath).readAsStringSync();
+      expect(
+        source,
+        isNot(contains('assert(')),
+        reason: 'an assert in the example does not run under `dart run`',
+      );
+      expect(source, contains('void check(bool ok, String expectation)'));
+    });
+  });
 }
 
 /// A transport that supports neither copies nor attachments, to exercise
