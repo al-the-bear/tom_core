@@ -72,7 +72,7 @@ Future<void> run() async {
   check(
     slack == const TomMessageChannel('slack'),
     'channels compare by name, so a deployment can name one the framework '
-        'never anticipated',
+    'never anticipated',
   );
 
   // 3. Blind copies are blind. They ride the delivery *envelope*, which is what
@@ -94,12 +94,12 @@ Future<void> run() async {
   check(
     copied.envelopeAddresses.contains('archive@example.com'),
     'the Bcc address rides the delivery envelope, which is what the relay '
-        'routes on',
+    'routes on',
   );
   check(
     !document.contains('archive@example.com'),
     'the Bcc address appears nowhere in the MIME document, which is what a '
-        'recipient reads',
+    'recipient reads',
   );
 
   // 4. The document structure follows the content rather than being fixed:
@@ -126,7 +126,7 @@ Future<void> run() async {
   check(
     receipt.isDelivered,
     'the memory transport reports a delivery, so a spec naming `email` is '
-        'exercisable without a relay',
+    'exercisable without a relay',
   );
 
   // 6. A no-op transport is the other stand-in: it accepts and *discards*, so a
@@ -139,7 +139,7 @@ Future<void> run() async {
   check(
     discarded.outcome == TomDeliveryOutcome.discarded,
     'the no-op transport reports `discarded`, not `delivered` — the receipt '
-        'does not claim something that did not happen',
+    'does not claim something that did not happen',
   );
 
   // 7. The router maps a channel to a transport. An unrouted channel fails
@@ -168,7 +168,7 @@ Future<void> run() async {
     check(
       e.isPermanent,
       'an unrouted channel fails permanently: no number of retries adds a '
-          'transport',
+      'transport',
     );
   }
   // Checked outside the handler on purpose. A check written inside `catch`
@@ -200,7 +200,7 @@ Future<void> run() async {
     check(
       failure.isPermanent == (failure is TomPermanentFailure),
       'the isPermanent flag and the marker the scheduler honours are one '
-          'decision, not two that could disagree',
+      'decision, not two that could disagree',
     );
   }
 
@@ -249,7 +249,7 @@ Future<void> run() async {
   check(
     queued.length == 1,
     'two sends of one message id queue one run, so an uncertain caller '
-        'retrying cannot cause two deliveries',
+    'retrying cannot cause two deliveries',
   );
   outbox.close();
 
@@ -263,7 +263,7 @@ Future<void> run() async {
     check(
       files.files.length == 1,
       'the file transport wrote one .eml file, so a local run produces '
-          'something openable without a relay',
+      'something openable without a relay',
     );
   } finally {
     await dir.delete(recursive: true);
@@ -289,7 +289,7 @@ Future<void> run() async {
   check(
     settings.port == 587,
     'an unset port resolves from the security mode: STARTTLS means submission '
-        'on 587',
+    'on 587',
   );
   check(
     !settings.toString().contains('supplied'),

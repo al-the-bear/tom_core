@@ -2,6 +2,30 @@
 
 ### Testing
 
+- **Nothing checked that the package was formatted, and it had already drifted
+  twice (tcinc572).** `dart analyze` — the gate this workspace mandates and the
+  one everybody actually runs — reports nothing about line wrapping, so a file
+  can be analyzer-clean, test-green and merged while being unformatted. The
+  package paid for that twice: 127 files carried the pre-3.7 short style until
+  they were reformatted wholesale, a 6,000-line commit that could not be
+  deferred because every later change would otherwise drag an arbitrary slice
+  of it into its own diff; and four days after that cleanup the package drifted
+  again, ten hunks in `messaging_example.dart`, added under a todo whose stated
+  gate was `dart analyze`. The new `formatting_test.dart` closes the hole: it
+  walks `lib/`, `example/` and `test/`, runs the SDK formatter over every
+  hand-written file via `Platform.resolvedExecutable` (so the guard and the
+  developer's fix use the same formatter on a machine with several SDKs), and
+  fails naming the offending files. Two meta-tests keep it honest — one that
+  the walk actually reached each directory, since a walk that finds nothing
+  formats nothing and passes; one that the `.reflection.dart` exclusion still
+  matches something, since an exclusion that excludes nothing is a dead rule
+  the next reader cannot recognise as dead. Generated output is excluded on the
+  same reasoning the example sweep in `api_reference_coverage_test.dart` uses:
+  a generator emitting unformatted code is that generator's defect, and failing
+  here would point the reader at the wrong package. The header states that a
+  failure on an untouched machine means the SDK formatter changed, and that the
+  answer is to reformat the package rather than relax the test.
+
 - **`LoginException` had no coverage in the module that declares it
   (tcinc562).** It is thrown from thirty-three sites across the authentication
   and 2FA code, but `little_things_test.dart` never named it and the module's
