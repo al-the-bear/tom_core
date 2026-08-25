@@ -31,5 +31,6 @@ String normaliseSql(String sql) => sql
 ///
 /// Read from disk rather than re-typed, so what is compared is the file a
 /// deployment applies and not a parallel copy of it.
-String readMigration(String module, String basename) =>
-    File('example/$module/migrations/main/tomcore/$basename').readAsStringSync();
+String readMigration(String module, String basename) => File(
+  'example/$module/migrations/main/tomcore/$basename',
+).readAsStringSync();

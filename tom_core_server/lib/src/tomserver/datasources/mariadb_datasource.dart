@@ -273,7 +273,8 @@ Map<String, dynamic>? _toBindParams(Map<String, dynamic>? params) =>
     params == null
     ? null
     : {
-        for (final entry in params.entries) entry.key: _toBindValue(entry.value),
+        for (final entry in params.entries)
+          entry.key: _toBindValue(entry.value),
       };
 
 /// A MariaDB / MySQL [TomDataSource] driver (registered for the `"mariadb"`

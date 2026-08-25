@@ -199,9 +199,7 @@ Future<void> _refusesEverywhere(
   for (final method in _everyMethod(store, key).entries) {
     await expectLater(
       method.value(),
-      throwsA(
-        isA<TomStorageException>().having((e) => e.key, 'key', errorKey),
-      ),
+      throwsA(isA<TomStorageException>().having((e) => e.key, 'key', errorKey)),
       reason: '${method.key} must refuse the key before it acts on it',
     );
   }
@@ -386,10 +384,14 @@ void main() {
       // (or with one that will not parse) still has to produce an instant, and
       // that manufactured one is as much a moment as a parsed one.
       final store = _s3(
-        (request) async => http.Response('', 200, headers: const {
-          'content-length': '1',
-          'last-modified': 'not a date at all',
-        }),
+        (request) async => http.Response(
+          '',
+          200,
+          headers: const {
+            'content-length': '1',
+            'last-modified': 'not a date at all',
+          },
+        ),
       );
       return expectLater(
         store.describe('k').then((d) => d!.storedAt.isUtc),
@@ -1071,7 +1073,11 @@ void main() {
 
     Matcher refusesChunkSize(int chunkSize) => throwsA(
       isA<TomStorageException>()
-          .having((e) => e.key, 'key', 'storage.database.chunk_size_not_positive')
+          .having(
+            (e) => e.key,
+            'key',
+            'storage.database.chunk_size_not_positive',
+          )
           .having((e) => e.parameters?['chunkSize'], 'chunkSize', chunkSize),
     );
 
@@ -1402,7 +1408,11 @@ void main() {
               // were both `PUT` and told an operator nothing about which one
               // stopped — while the two paths building their own failure named
               // `get` and `complete`. One parameter, one vocabulary.
-              .having((e) => e.parameters?['operation'], 'operation', 'describe')
+              .having(
+                (e) => e.parameters?['operation'],
+                'operation',
+                'describe',
+              )
               .having((e) => e.parameters?['status'], 'status', 403)
               .having((e) => e.parameters?['code'], 'code', 'AccessDenied'),
         ),
@@ -1437,7 +1447,11 @@ void main() {
         ),
         throwsA(
           isA<TomStorageException>()
-              .having((e) => e.parameters?['operation'], 'operation', 'uploadPart')
+              .having(
+                (e) => e.parameters?['operation'],
+                'operation',
+                'uploadPart',
+              )
               .having((e) => e.parameters?['key'], 'key', 'big.bin')
               .having(
                 (e) => e.parameters?['objectPath'],
@@ -1824,63 +1838,75 @@ void main() {
       expect(TomBlobStoreInfo.hasDefaultStore, isTrue);
     });
 
-    test('a store handed over as an instance describes itself buildably', () async {
-      final store = TomMemoryBlobStore();
-      final info = TomBlobStoreInfo.register('files', store);
+    test(
+      'a store handed over as an instance describes itself buildably',
+      () async {
+        final store = TomMemoryBlobStore();
+        final info = TomBlobStoreInfo.register('files', store);
 
-      // The configured path has its `.type` asserted further down; this is
-      // the other half of the same claim and the half that was missing. An
-      // entry naming a type its own `open()` cannot resolve is not a
-      // description of itself, only a label that happens to be a string.
-      expect(info.type, TomBlobStoreInfo.providedType);
+        // The configured path has its `.type` asserted further down; this is
+        // the other half of the same claim and the half that was missing. An
+        // entry naming a type its own `open()` cannot resolve is not a
+        // description of itself, only a label that happens to be a string.
+        expect(info.type, TomBlobStoreInfo.providedType);
 
-      // Self-consistent means the entry can act on what it says about
-      // itself. This used to raise `unknown_backend` — the entry's own type
-      // was absent from the one table its own `open()` consults.
-      await info.open();
-      expect(TomBlobStoreInfo.storeNamed('files'), same(store));
-    });
+        // Self-consistent means the entry can act on what it says about
+        // itself. This used to raise `unknown_backend` — the entry's own type
+        // was absent from the one table its own `open()` consults.
+        await info.open();
+        expect(TomBlobStoreInfo.storeNamed('files'), same(store));
+      },
+    );
 
-    test('the provided type is not a backend a configuration can name', () async {
-      // The type names how the store arrived, not a way to build one from
-      // settings: there is no instance in a YAML file to hand over. Making
-      // `open()` work by adding it to the backend table would have bought
-      // self-consistency by advertising a configurable backend that cannot
-      // be configured, so this pins the boundary the fix chose.
-      expect(
-        TomBlobStoreInfo.backendTypes,
-        isNot(contains(TomBlobStoreInfo.providedType)),
-      );
-      await expectLater(
-        TomBlobStoreInfo.initializeBlobStores({
-          'files': {'type': TomBlobStoreInfo.providedType},
-        }),
-        throwsA(
-          isA<TomStorageException>().having(
-            (e) => e.key,
-            'key',
-            'storage.registry.unknown_backend',
+    test(
+      'the provided type is not a backend a configuration can name',
+      () async {
+        // The type names how the store arrived, not a way to build one from
+        // settings: there is no instance in a YAML file to hand over. Making
+        // `open()` work by adding it to the backend table would have bought
+        // self-consistency by advertising a configurable backend that cannot
+        // be configured, so this pins the boundary the fix chose.
+        expect(
+          TomBlobStoreInfo.backendTypes,
+          isNot(contains(TomBlobStoreInfo.providedType)),
+        );
+        await expectLater(
+          TomBlobStoreInfo.initializeBlobStores({
+            'files': {'type': TomBlobStoreInfo.providedType},
+          }),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.registry.unknown_backend',
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
-    test('closeAll then reopen returns the store that was handed over', () async {
-      final store = TomMemoryBlobStore();
-      final info = TomBlobStoreInfo.register('files', store);
-      await TomBlobStoreInfo.closeAll();
-      expect(TomBlobStoreInfo.stores, isEmpty);
+    test(
+      'closeAll then reopen returns the store that was handed over',
+      () async {
+        final store = TomMemoryBlobStore();
+        final info = TomBlobStoreInfo.register('files', store);
+        await TomBlobStoreInfo.closeAll();
+        expect(TomBlobStoreInfo.stores, isEmpty);
 
-      await info.open();
+        await info.open();
 
-      // The registry hands back what it was given, because it cannot rebuild
-      // an instance it did not build. That is the honest answer rather than a
-      // convenient one — and `close()` is idempotent by contract, so the
-      // store is usable rather than merely present.
-      expect(TomBlobStoreInfo.storeNamed('files'), same(store));
-      await store.putBytes(key: 'reopened.txt', bytes: utf8.encode('still here'));
-      expect(utf8.decode(await store.getBytes('reopened.txt')), 'still here');
-    });
+        // The registry hands back what it was given, because it cannot rebuild
+        // an instance it did not build. That is the honest answer rather than a
+        // convenient one — and `close()` is idempotent by contract, so the
+        // store is usable rather than merely present.
+        expect(TomBlobStoreInfo.storeNamed('files'), same(store));
+        await store.putBytes(
+          key: 'reopened.txt',
+          bytes: utf8.encode('still here'),
+        );
+        expect(utf8.decode(await store.getBytes('reopened.txt')), 'still here');
+      },
+    );
 
     test('an unknown name and an absent default are named errors', () {
       expect(
@@ -1972,7 +1998,11 @@ void main() {
       // read after the code that registered the store, and a deployment saying
       // `default: true` means it. Distinguishes "an inference is weaker than a
       // statement" from "whatever was set first cannot be changed".
-      TomBlobStoreInfo.register('scratch', TomMemoryBlobStore(), asDefault: true);
+      TomBlobStoreInfo.register(
+        'scratch',
+        TomMemoryBlobStore(),
+        asDefault: true,
+      );
 
       await TomBlobStoreInfo.initializeBlobStores({
         'files': {'type': 'memory', 'default': true},
@@ -2111,9 +2141,7 @@ fileStores:
     const declaringFile = 'database_blob_sql.dart';
 
     List<String> literalsIn(Iterable<String> names) {
-      final patterns = {
-        for (final name in names) name: RegExp('\\b$name\\b'),
-      };
+      final patterns = {for (final name in names) name: RegExp('\\b$name\\b')};
       final offenders = <String>[];
       for (final root in const ['lib', 'test']) {
         for (final entry in Directory(root).listSync(recursive: true)) {
@@ -2176,7 +2204,8 @@ fileStores:
       expect(
         offenders,
         isEmpty,
-        reason: 'use TomDatabaseBlobStore.defaultChunkSize / '
+        reason:
+            'use TomDatabaseBlobStore.defaultChunkSize / '
             'TomS3BlobStore.defaultPartSize',
       );
     });

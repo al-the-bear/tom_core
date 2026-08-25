@@ -210,11 +210,9 @@ class TomBlobStoreInfo {
     TomBlobStore store, {
     bool asDefault = false,
   }) {
-    final info = TomBlobStoreInfo(
-      name,
-      <String, dynamic>{'type': providedType},
-      factory: (_, _) => store,
-    );
+    final info = TomBlobStoreInfo(name, <String, dynamic>{
+      'type': providedType,
+    }, factory: (_, _) => store);
     info._store = store;
     stores[name] = info;
     if (asDefault) defaultStoreName = name;
@@ -277,7 +275,8 @@ class TomBlobStoreInfo {
       manifestTable: '${settings['manifestTable'] ?? defaultBlobManifestTable}',
       chunkTable: '${settings['chunkTable'] ?? defaultBlobChunkTable}',
       chunkSize:
-          _asInt(settings['chunkSize']) ?? TomDatabaseBlobStore.defaultChunkSize,
+          _asInt(settings['chunkSize']) ??
+          TomDatabaseBlobStore.defaultChunkSize,
       createSchema: settings['createSchema'] != false,
     );
   }

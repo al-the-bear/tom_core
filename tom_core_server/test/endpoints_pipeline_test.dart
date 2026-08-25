@@ -1004,7 +1004,8 @@ void main() {
       expect(
         response.statusCode,
         200,
-        reason: '@TomPublicAccess: /health survives a protect-by-default server',
+        reason:
+            '@TomPublicAccess: /health survives a protect-by-default server',
       );
       expect(await response.readAsString(), 'OK');
     });
