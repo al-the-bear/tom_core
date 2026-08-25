@@ -101,10 +101,7 @@ void main() {
         'The username or password is not correct.',
       );
       expect(e.key, 'error.invalid-user-or-password');
-      expect(
-        e.defaultUserMessage,
-        'The username or password is not correct.',
-      );
+      expect(e.defaultUserMessage, 'The username or password is not correct.');
     });
 
     test('forwards parameters to the base', () {
