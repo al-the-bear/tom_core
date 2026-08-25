@@ -214,6 +214,98 @@ void main() {
     });
   });
 
+  // The behavioural half of the resolution above, and the claim `doc/endpoints.md`
+  // actually makes to a reader: *declare the policy on the contract and the
+  // request is checked against it* — you need not restate it inline.
+  //
+  // The group above pins which object lands in `metadata.access`; the automatic
+  // -protection group calls `checkAutomaticAccess` directly. Neither issues a
+  // request, so "the contract gates the endpoint" was an inference from two
+  // separately-true facts rather than a checked claim — and an inference is
+  // exactly what breaks in the middle. A reader who trusts the document and
+  // omits the inline annotation is relying on the composition, so the
+  // composition is what is asserted here.
+  group('a contract-declared policy gates the live request', () {
+    late Router router;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      router = TomEndpointRouting().initializeRouter();
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    /// Runs [body] as an authenticated principal holding exactly [roles].
+    T asPrincipalWithRoles<T>(List<String> roles, T Function() body) =>
+        runZoned(
+          body,
+          zoneValues: {
+            TomPrincipal: TomPrincipal(
+              user: TomUser(id: 1, username: 'role-holder'),
+              authenticated: true,
+              aci: TomAccessControlInformation(roles: roles),
+            ),
+          },
+        );
+
+    /// The `access_denied` an ordinary (non-socket) request fails with.
+    final accessDenied = throwsA(
+      isA<TomEndpointHandlerException>().having(
+        (e) => e.key,
+        'key',
+        'endpoint_handler.handle_method_call.access_denied',
+      ),
+    );
+
+    test('the contract role admits a handler that declares nothing', () async {
+      final response = await asPrincipalWithRoles([
+        'fixture-contract-role',
+      ], () => router.call(_get('/fixture-access/contract-gated')));
+      expect(response.statusCode, 200);
+      expect(jsonDecode(await response.readAsString())['source'], 'contract');
+    });
+
+    test('a caller without the contract role is refused', () async {
+      // The half that makes the contract policy load-bearing rather than
+      // decorative. If this passed, the document would be telling readers to
+      // rely on a declaration that gates nothing — the worse of the two
+      // possible failures, because the endpoint looks protected.
+      await expectLater(
+        asPrincipalWithRoles([
+          'some-other-role',
+        ], () => router.call(_get('/fixture-access/contract-gated'))),
+        accessDenied,
+      );
+    });
+
+    test('the handler override is what the request is checked against', () {
+      // The override stated as a request outcome rather than as an identity on
+      // a metadata object: holding the *contract's* role does not open an
+      // endpoint whose handler declared a different one. Swapping the two
+      // operands of `tea ?? ae?.access` would widen access here, which is the
+      // direction that matters.
+      expect(
+        asPrincipalWithRoles([
+          'fixture-contract-role',
+        ], () => router.call(_get('/fixture-access/overridden'))),
+        accessDenied,
+      );
+    });
+
+    test('the handler role admits the endpoint that declares it', () async {
+      // The converse, so the test above is about *which* policy applied and not
+      // about the route being broken for everyone.
+      final response = await asPrincipalWithRoles([
+        'fixture-handler-role',
+      ], () => router.call(_get('/fixture-access/overridden')));
+      expect(response.statusCode, 200);
+      expect(jsonDecode(await response.readAsString())['source'], 'handler');
+    });
+  });
+
   group('initializeRouter + live requests', () {
     late Router router;
 

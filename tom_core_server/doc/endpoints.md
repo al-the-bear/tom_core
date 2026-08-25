@@ -169,9 +169,58 @@ it holds no positional slot, so it can shift nothing.
 
 ## Access Control
 
-`checkAccess` consults the method's access-control annotation (if any),
-otherwise the global protection default. A still-denied request throws
-`TomEndpointHandlerException`.
+An endpoint's policy can come from **two** places, and `getClassMethodMetadata`
+resolves them in this order:
+
+| Source | Written as | Applies |
+| ------ | ---------- | ------- |
+| The **handler** | a `TomAccessControl` annotation on the method | whenever present — the more local statement wins |
+| The **contract** | `TomApiEndpoint.access` on the registry entry | when the handler declares none |
+
+For a registry-backed endpoint that is the main path: the policy belongs on the
+contract, and the inline annotation is an **override**, not the only way to
+protect a method. Declare it once and every implementation of that contract is
+checked against it without restating anything:
+
+```dart
+// The contract — registered before anything reflects over the implementation.
+tomRemoteApis['reports'] = TomApi(
+  id: 'reports',
+  uri: '/reports',
+  endpoints: [
+    TomApiEndpoint<Object, Object>(
+      id: 'listReports',
+      uri: '/list',
+      method: TomHttpMethod.get,
+      access: TomRoleAccess(['analyst']),
+    ),
+  ],
+);
+
+// The implementation — no access annotation of its own.
+@tomComponent
+@TomApiImplementation(apiId: 'reports')
+class ReportsApiService {
+  @TomApiEndpointImplementation(apiId: 'reports', endpointId: 'listReports')
+  Future<List<Report>> listReports() async => _store.recent();
+}
+```
+
+`GET /reports/list` is gated by `TomRoleAccess(['analyst'])` although
+`listReports` says nothing about access. Annotating the method — with the same
+control or a different one — replaces the contract's policy for that endpoint
+only; it never merges with it, so an override *widens* access as readily as it
+narrows it.
+
+An **inline** `@TomEndpoint` has no registry entry and therefore no contract
+policy to inherit. It is governed by its own annotation, or by nothing.
+
+`checkAccess` applies whichever control was resolved. When neither source
+declares one it falls back to
+`TomResourceKeyProtection.globalSettingProtectionDefault` — which is `false` by
+default, so an undeclared endpoint is **open** until the deployment turns
+protection on. A still-denied request throws `TomEndpointHandlerException` with
+key `endpoint_handler.handle_method_call.access_denied`.
 
 ### Which control to annotate with
 

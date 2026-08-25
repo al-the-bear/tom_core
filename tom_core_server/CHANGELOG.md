@@ -2,6 +2,33 @@
 
 ### Fixed
 
+- **The Access Control document omitted contract-declared authorization — the
+  path most registry endpoints take (tcinc510).** `doc/endpoints.md` described
+  access resolution as "the method's annotation, otherwise the global protection
+  default", which is only the inline half. `getClassMethodMetadata` resolves
+  `tea ?? ae?.access`: the handler-side annotation is an **override**, and a
+  registry-backed endpoint otherwise inherits the `TomApiEndpoint.access`
+  declared on its contract. A reader following the document would have concluded
+  that a handler with no annotation is governed only by the global default —
+  which is `false` by default, i.e. open — and would have restated inline the
+  policies the contract already carries. The section now gives both sources,
+  says which one wins and that an override *replaces* rather than merges, and
+  shows a contract-gated handler carrying no inline annotation.
+
+  Correcting the prose exposed a gap underneath it. The contract path was pinned
+  at the metadata level (which control object lands in `metadata.access`) and
+  the protection default was pinned by calling `checkAutomaticAccess` directly —
+  but **no test issued a request against a contract-gated endpoint**. "Declare
+  it on the contract and it is enforced" was therefore an inference composed
+  from two separately-true facts, and the composition is precisely what a reader
+  relies on when they omit the annotation. `endpoints_pipeline_test.dart` now
+  asserts the outcome in both directions for both branches: the contract role is
+  served and a caller without it is refused with
+  `endpoint_handler.handle_method_call.access_denied`, while an overriding
+  handler is checked against *its* role and not the contract's. Dropping the
+  contract operand, swapping the two, and short-circuiting `checkAccess` were
+  each confirmed to fail these tests.
+
 - **Two documented socket snippets annotated the *abstract* access control, and
   the mistake analyzes clean (tcinc509).** `doc/endpoints.md`'s WebSocket
   example and `web_socket_endpoint.dart`'s library dartdoc both wrote
