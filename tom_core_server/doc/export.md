@@ -15,6 +15,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 - [Overview](#overview)
 - [The Shape of the Design](#the-shape-of-the-design)
 - [The Input: A Tabular Result](#the-input-a-tabular-result)
+- [What a Width Means](#what-a-width-means)
 - [Columns Derived from the Entity](#columns-derived-from-the-entity)
 - [The Renderer Contract](#the-renderer-contract)
 - [Formats Are a Registry, Not a Switch](#formats-are-a-registry-not-a-switch)
@@ -40,7 +41,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 | `TomTabularResult` | class | A titled document: metadata plus one or more sections |
 | `TomTabularSection` | class | One table: typed columns over a **stream** of rows |
 | `TomTabularSection.ofEntities` / `TomTabularResult.fromEntities` | static | The same, with the columns derived from a reflected entity |
-| `TomTabularColumn` / `TomColumnType` | class / enum | A named, typed, optionally width-hinted column |
+| `TomTabularColumn` / `TomColumnType` | class / enum | A named, typed column, with a width in characters |
 | `TomTabularRow` | class | Cell values positional to the section's columns |
 | `TomTabularRenderer` | abstract class | One format: a result in, a byte stream out |
 | `TomExportFormats` | class | The formats an application offers, by format id |
@@ -122,6 +123,59 @@ row number that varies with the metadata — and being machine-readable is the
 reason to ask for a spreadsheet at all. `title` is carried the same way, as
 `dc:title` in the workbook's core properties; the PDF both prints it and stores
 it in the document info dictionary.
+
+## What a Width Means
+
+`TomTabularColumn.width` is **a count of characters, in every format**, and that
+is the whole of the contract. A caller states 24 because a product name runs to
+about twenty-four characters — a fact about the *data*, equally true of the
+spreadsheet and of the page.
+
+It is deliberately **not** a proportion. A proportion cannot be stated in a
+spreadsheet at all, because a sheet has no total width to be a proportion *of*;
+OOXML's `<col width>` unit is itself a character count, so the number goes
+through as it stands. A page does have a fixed total, so the PDF cannot honour
+24 literally. What it honours instead is the **ratio**: a column asking for 24
+beside one asking for 12 gets twice the room, whatever the paper size, which is
+the most of an absolute request a page can keep.
+
+The characters are not converted to points on the way. The conversion would be a
+single factor applied to every column, and `pw.FlexColumnWidth` is scale
+invariant, so it cancels exactly — arithmetic that changes no output while
+implying a precision the estimate cannot deliver.
+
+**A column that states no width still has one.** `effectiveWidth` is the width
+both renderers actually read: the stated `width`, or else the larger of the
+type's `naturalWidth` and the label's length, capped at
+`TomTabularColumn.maxDerivedWidth` (40) so that one long heading cannot squeeze
+the rest of the table off the page. An explicit width is never capped — a caller
+asking for 200 knows something this does not.
+
+| Type | `naturalWidth` | Because |
+| ---- | -------------- | ------- |
+| `integer` | 11 | A signed 32-bit value written out |
+| `decimal` | 12 | The same with a point and a place |
+| `text` | 16 | A default, not a measurement; free text has no width |
+| `boolean` | 5 | `false` |
+| `timestamp` | 23 | `2026-07-01T00:00:00.000` |
+
+These are measured against what this package *emits*, not against the type's
+range, which is why they live on `TomColumnType` as a constructor argument:
+adding a type means deciding its width, rather than falling through a default
+somewhere else.
+
+The derived width comes from the **schema and never from the rows**. XLSX is
+written a row at a time, so nothing has measured the data by the time `<cols>`
+must be emitted — the same constraint that stops the PDF streaming, met from the
+other end.
+
+Both halves of this rule earn their keep. Before it, the stated case and the
+unstated case meant different things in each format: PDF gave an unhinted column
+a flex of 1 against hints in the twenties, and XLSX left it at Excel's 8.43
+default, which shows an ISO timestamp as `#####`. The module's own example is
+what that looked like — a `product` column at 24 took seven eighths of the
+table, `Amount` came down the remaining strip as `A`, `m`, `ou`, `nt`, and
+twenty rows needed four pages. They need one.
 
 ## Columns Derived from the Entity
 
@@ -368,10 +422,11 @@ Details that make the output actually open:
 
 A PDF ends with a cross-reference table of byte offsets into everything before
 it, so no conforming writer can emit the first page before the last object is
-placed. On top of that, a table's column widths are only known once every cell
-sharing the column has been measured. Both facts point the same way, and neither
-is a property of the library: **PDF is a random-access document format**, and
-rendering one costs memory proportional to the result.
+placed. On top of that, how many pages there are — a number the footer prints on
+the first of them — is only known once every row has been laid out. Both facts
+point the same way, and neither is a property of the library: **PDF is a
+random-access document format**, and rendering one costs memory proportional to
+the result.
 
 So `streamsRows` is `false` here, and the renderer *states* its limits rather
 than discovering them:

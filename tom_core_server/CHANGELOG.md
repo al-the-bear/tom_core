@@ -74,6 +74,49 @@
 
 ### Fixed
 
+- **A column width meant two different things, and the module's own example
+  showed the damage (tcinc527).** `TomTabularColumn.width` was documented as "a
+  hint": XLSX wrote it as an absolute character count, PDF read it as a flex
+  proportion. The two readings disagree on the *unhinted* case rather than the
+  hinted one, and that is where it hurt — PDF gave a column with no width a flex
+  of 1 against hints in the twenties, XLSX left it at Excel's 8.43 default, which
+  shows an ISO timestamp as `#####`. Rendering `example/export/export_example.dart`
+  printed `product` across seven eighths of the table and sent `Amount` down the
+  remaining strip as `A`, `m`, `ou`, `nt`, with twenty rows over four pages.
+
+  The unit is now **a character, in every format**, stated once on the column and
+  read by both renderers. A proportion was the other candidate and is not
+  expressible: a sheet has no total width to be a proportion *of*, and OOXML's
+  `<col width>` unit is itself a character count. A page does have a fixed total,
+  so PDF keeps the *ratio* between the widths — the most of an absolute request a
+  page can hold. The characters are deliberately not converted to points first;
+  `pw.FlexColumnWidth` is scale invariant, so a single conversion factor cancels
+  exactly across every column, and doing the arithmetic would only imply a
+  precision the estimate cannot deliver.
+
+  A column that states no width now has one anyway. `TomColumnType` carries a
+  `naturalWidth` — 23 for `timestamp` because `2026-07-01T00:00:00.000` is 23
+  characters, 5 for `boolean` because `false` is — as a constructor argument, so
+  adding a type means deciding its width; `TomTabularColumn.effectiveWidth`
+  returns the stated width, or the larger of that natural width and the label's
+  length, capped at `maxDerivedWidth` (40) so one long heading cannot squeeze the
+  rest of the table off the page. An explicit width is never capped. The derived
+  width comes from the schema and never from the rows, because XLSX must emit
+  `<cols>` before a row has been seen — the same constraint that stops the PDF
+  streaming, met from the other end. XLSX now writes a `<col>` for every column
+  rather than only the hinted ones. A width below 1 is rejected at construction
+  (`export.column.invalid_width`): 0 hides the column in a spreadsheet and
+  collapses it on a page.
+
+  The same example now renders on one page with its headers and timestamps
+  intact, which is what the two renderer tests assert — one reading the emitted
+  `<col>` elements, one reading the PDF content stream for whole tokens and a
+  single `/Type /Page`. Five unit tests pin `effectiveWidth` itself. Seven
+  mutations confirm they bite: restoring either renderer's old fallback, dropping
+  the label floor, dropping the cap, dropping the width guard, changing a
+  `naturalWidth`, and ignoring an explicit hint each fail exactly the tests that
+  claim them.
+
 - **The two in-memory stores shared their buffers with callers, in both
   directions (tcinc526).** `TomMemoryExportStore.doOpen` ended in `yield bytes`,
   where `bytes` is the list held in its map — so a consumer that writes into the

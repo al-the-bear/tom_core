@@ -174,6 +174,24 @@ Future<void> run() async {
   );
   assert(utf8.decode(pdf.take(5).toList()) == '%PDF-');
 
+  //    A width is a count of characters, in every format — the one unit that
+  //    says something about the data rather than about one output. Only
+  //    `product` above states one; the rest are sized from their type, which is
+  //    why an ISO timestamp gets 23 and a `true`/`false` column gets its
+  //    label's 6.
+  //
+  //    A page's total width is fixed, so the PDF cannot give a column its
+  //    literal 24 characters; what it keeps is the *ratio*. Which is exactly
+  //    why these numbers must not be read as proportions to begin with: doing
+  //    that made this very example print `product` across seven eighths of the
+  //    table and send `Amount` down the margin as `A`, `m`, `ou`, `nt`.
+  print(
+    '   column widths (chars)     : '
+    '${columns().map((c) => '${c.label}=${c.effectiveWidth}').join(' ')}',
+  );
+  assert(columns()[0].effectiveWidth == 24); // stated
+  assert(columns()[2].effectiveWidth == 23); // inferred from `timestamp`
+
   try {
     await const TomPdfRenderer(rowLimit: 1).render(salesResult()).drain<void>();
   } on TomExportException catch (e) {

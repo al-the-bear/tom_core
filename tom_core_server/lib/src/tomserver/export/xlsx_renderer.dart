@@ -130,16 +130,17 @@ class TomXlsxRenderer extends TomTabularRenderer {
   Stream<String> _sheetXml(TomTabularSection section) async* {
     yield '$_xmlDeclaration'
         '<worksheet xmlns="$_nsMain">';
-    final widths = <String>[];
-    for (var i = 0; i < section.columns.length; i++) {
-      final width = section.columns[i].width;
-      if (width != null) {
-        widths.add(
-          '<col min="${i + 1}" max="${i + 1}" width="$width" customWidth="1"/>',
-        );
-      }
-    }
-    if (widths.isNotEmpty) yield '<cols>${widths.join()}</cols>';
+    // Every column, not only the hinted ones. OOXML's width unit is already a
+    // character count, so a hint is written out as it stands; a column without
+    // one would otherwise be left at Excel's default of 8.43, which shows an
+    // ISO timestamp as `#####`. Sizing both from `effectiveWidth` is what makes
+    // an unhinted column mean the same here as it does on a page.
+    final widths = [
+      for (var i = 0; i < section.columns.length; i++)
+        '<col min="${i + 1}" max="${i + 1}" '
+            'width="${section.columns[i].effectiveWidth}" customWidth="1"/>',
+    ];
+    yield '<cols>${widths.join()}</cols>';
     yield '<sheetData>';
 
     final buffer = StringBuffer()..write('<row r="1">');

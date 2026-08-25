@@ -87,25 +87,40 @@ class TomExportException extends TomServerException {
 /// conversion, and a renderer never meets a value it has no rule for.
 enum TomColumnType {
   /// A whole number; rendered unquoted, right-aligned, as an XLSX number.
-  integer(int),
+  integer(int, 11),
 
   /// A fractional number; rendered unquoted, right-aligned, as an XLSX number.
-  decimal(double),
+  decimal(double, 12),
 
   /// Free text; the only type that needs quoting and escaping.
-  text(String),
+  text(String, 16),
 
   /// A truth value; rendered as `true`/`false`, as an XLSX boolean.
-  boolean(bool),
+  boolean(bool, 5),
 
   /// A point in time; rendered ISO-8601, as an XLSX date serial.
-  timestamp(DateTime);
+  timestamp(DateTime, 23);
 
   /// Creates a column type bound to the Dart type it accepts.
-  const TomColumnType(this.dartType);
+  const TomColumnType(this.dartType, this.naturalWidth);
 
   /// The Dart type a cell of this column must hold (or `null`).
   final Type dartType;
+
+  /// How wide a cell of this type renders, in characters.
+  ///
+  /// Measured against what this package actually emits rather than against the
+  /// type's theoretical range: [timestamp] is 23 because that is the length of
+  /// `2026-07-01T00:00:00.000`, and [boolean] is 5 because `false` is. The two
+  /// numeric widths are the only estimates — an `int` can reach 20 digits and a
+  /// `double`'s `toString` can run longer still, but a column of those is a
+  /// count, an id or an amount, and sizing every numeric column for its worst
+  /// case would waste the page on the reports that do not have one.
+  ///
+  /// This is what a column with no [TomTabularColumn.width] is laid out at, so
+  /// adding a type here means deciding its width — which is why it is a
+  /// constructor argument and not a defaulted switch somewhere else.
+  final int naturalWidth;
 
   /// The column type for [value]'s runtime type, or `null` if it has none.
   ///
@@ -139,6 +154,15 @@ class TomTabularColumn {
         'A tabular column must have a name.',
       );
     }
+    final hint = width;
+    if (hint != null && hint < 1) {
+      throw TomExportException(
+        'export.column.invalid_width',
+        'A tabular column width is a count of characters, so it must be at '
+            'least one.',
+        parameters: {'column': name, 'width': '$hint'},
+      );
+    }
   }
 
   /// The machine-facing key: the query alias or map key this column reads.
@@ -150,12 +174,67 @@ class TomTabularColumn {
   /// The value type every cell in this column must hold.
   final TomColumnType type;
 
-  /// An optional presentation width hint, in characters.
+  /// How wide this column should be, in characters, or `null` to be sized by
+  /// its [type] and [label].
   ///
-  /// CSV ignores it; XLSX turns it into a column width; PDF turns it into a
-  /// relative column flex. It is a *hint* — no renderer is required to honour
-  /// it, and omitting it lets each renderer size the column itself.
+  /// **The unit is a character, in every format**, and that is the whole of the
+  /// contract. It is the unit a caller can actually reason about — "a product
+  /// name runs to about 24 characters" is a fact about the data, true of the
+  /// spreadsheet and the printed page alike — and it is the unit OOXML already
+  /// uses, so a spreadsheet column is written out at exactly this number.
+  ///
+  /// It is not a proportion. A proportion cannot be stated in a spreadsheet at
+  /// all, because a sheet has no total width to be a proportion *of*; reading
+  /// the same number both ways is what made `width: 24` mean "about 24
+  /// characters" in XLSX and "twenty-four times every other column" in PDF, and
+  /// left the module's own example printing one column across seven eighths of
+  /// the page while `Amount` broke into four pieces down the margin.
+  ///
+  /// A page does have a fixed total, so the PDF renderer cannot give a column
+  /// its literal 24 characters and stay on the paper. What it honours instead
+  /// is the *ratio* of these widths, which is the closest a fixed page can
+  /// come to an absolute request, and which degrades
+  /// evenly instead of starving one column to feed another.
+  ///
+  /// Must be at least 1 when given: 0 hides the column in a spreadsheet and
+  /// collapses it on a page, which is never what a width was meant to say.
   final int? width;
+
+  /// The width this column is laid out at, in characters.
+  ///
+  /// [width] when the caller gave one, and otherwise a width derived from the
+  /// schema. Both renderers that place columns read *this*, not [width], so
+  /// that a column with no hint means the same thing in both — leaving it to
+  /// each renderer is what let one of them fall back to a flex of 1 while the
+  /// other fell back to whatever Excel's default happened to be.
+  int get effectiveWidth => width ?? _derivedWidth;
+
+  /// The width for a column that was given no [width].
+  ///
+  /// Wide enough for its own header and for what its [type] renders as,
+  /// whichever is greater — a `boolean` labelled `Discontinued?` needs the
+  /// label's 13 characters, not `false`'s 5 — and never wider than
+  /// [maxDerivedWidth].
+  ///
+  /// Derived from the *schema* and never from the rows, which is deliberate:
+  /// XLSX is written a row at a time and has no opportunity to measure the
+  /// data, so a renderer that sized from content would disagree with one that
+  /// could not. This is the same defect as the one above, arrived at from the
+  /// other end.
+  int get _derivedWidth {
+    final natural = type.naturalWidth;
+    final needed = label.length > natural ? label.length : natural;
+    return needed > maxDerivedWidth ? maxDerivedWidth : needed;
+  }
+
+  /// The widest a column with no [width] is sized at, in characters.
+  ///
+  /// The cap applies only to the derived width, because that is the renderer
+  /// guessing: a hundred-character label is a heading, not a column of
+  /// hundred-character values, and letting it ask for a hundred would starve
+  /// the columns beside it exactly as an over-large hint used to. An explicit
+  /// [width] is the caller's decision and is passed through whatever its size.
+  static const int maxDerivedWidth = 40;
 
   @override
   String toString() => 'TomTabularColumn($name: ${type.name})';

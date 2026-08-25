@@ -165,11 +165,12 @@ no rule for.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `dartType` | `Type` | The Dart type a cell of this column must hold (or `null`) (final). |
+| `naturalWidth` | `int` | How wide a cell of this type renders, in characters — `integer` 11, `decimal` 12, `text` 16, `boolean` 5, `timestamp` 23. Measured against what this package emits, not against the type's range, and used as the width of a column that states none (final). |
 
 ### TomTabularColumn
 
 One typed column of a `TomTabularSection`: a machine-facing key, a human-facing
-header, a value type and an optional width hint.
+header, a value type and an optional width in characters.
 
 #### Constructors
 
@@ -182,8 +183,11 @@ TomTabularColumn(
 })
 ```
 
-Throws `TomExportException` (`export.column.name_empty`) when `name` is empty.
-`label` defaults to `name`, so the common case stays a one-argument call.
+Throws `TomExportException` (`export.column.name_empty`) when `name` is empty,
+and (`export.column.invalid_width`) when `width` is given but below one — a
+count of characters cannot be zero or negative, and 0 hides the column in a
+spreadsheet and collapses it on a page. `label` defaults to `name`, so the
+common case stays a one-argument call.
 
 #### Properties
 
@@ -192,7 +196,14 @@ Throws `TomExportException` (`export.column.name_empty`) when `name` is empty.
 | `name` | `String` | The machine-facing key: the query alias or map key this column reads (final). |
 | `label` | `String` | The human-facing header text; defaults to `name` (final). |
 | `type` | `TomColumnType` | The value type every cell in this column must hold (final). |
-| `width` | `int?` | An optional presentation width hint in characters — a hint only: CSV ignores it, XLSX turns it into a column width, PDF into a relative column flex (final). |
+| `width` | `int?` | How wide the column should be, **in characters, in every format**; `null` to let the type and label decide. Not a proportion — a sheet has no total width to be a proportion of. CSV ignores it; XLSX writes it as the OOXML column width, whose unit is already a character count; PDF, whose page total is fixed, cannot honour it literally and keeps the *ratio* between columns instead. Must be at least 1 (final). |
+| `effectiveWidth` | `int` | *(getter)* The width this column is actually laid out at: `width` when it states one, otherwise the larger of `type.naturalWidth` and the label's length, capped at `maxDerivedWidth`. Both renderers read this rather than `width`, which is what makes an unhinted column mean the same thing in a spreadsheet and on a page. |
+
+#### Static Constants
+
+| Constant | Type | Description |
+| -------- | ---- | ----------- |
+| `maxDerivedWidth` | `int` | The ceiling on a *derived* width, 40 characters, so that one long heading cannot squeeze every other column off the page. An explicit `width` is never capped: a caller who asks for 200 knows something about the data that this does not. |
 
 ### TomTabularRow
 
@@ -499,7 +510,7 @@ const TomXlsxRenderer({int compressionLevel = 6})
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Emits the fixed package parts — content types, relationships, `docProps/core.xml`, `docProps/custom.xml` when there is metadata, the workbook and its styles — then one worksheet part per section as its rows arrive, then the ZIP central directory. Numbers are numeric cells, booleans `t="b"`, timestamps Excel date serials computed from calendar fields. |
+| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Emits the fixed package parts — content types, relationships, `docProps/core.xml`, `docProps/custom.xml` when there is metadata, the workbook and its styles — then one worksheet part per section as its rows arrive, then the ZIP central directory. Numbers are numeric cells, booleans `t="b"`, timestamps Excel date serials computed from calendar fields. Every column gets a `<col width>` from its `effectiveWidth` — OOXML's unit is already a character count — rather than only the hinted ones, since Excel's 8.43 default shows an ISO timestamp as `#####`. |
 
 ### TomPdfRenderer
 
@@ -546,7 +557,7 @@ const TomPdfRenderer({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Pulls and formats every section's rows, lays the document out, and yields it as a single chunk. Numeric columns are right-aligned; a column's `width` hint becomes its flex factor, with 1 for a column that has none. |
+| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Pulls and formats every section's rows, lays the document out, and yields it as a single chunk. Numeric columns are right-aligned; every column's `effectiveWidth` becomes its flex factor, so the character counts survive the page fit as a ratio. They are deliberately not converted to points first: flex is scale invariant, so a single conversion factor would cancel exactly across all columns. |
 
 ### TomStoredExport
 

@@ -218,6 +218,67 @@ void main() {
     });
   });
 
+  group('TomTabularColumn.effectiveWidth (one meaning for a width)', () {
+    test('a hint is passed through, whatever its size', () {
+      expect(TomTabularColumn('a', width: 30).effectiveWidth, 30);
+      // Past the cap that governs a *derived* width: an explicit number is the
+      // caller's decision and is not second-guessed.
+      expect(TomTabularColumn('a', width: 200).effectiveWidth, 200);
+    });
+
+    test('without a hint the type decides', () {
+      // The widths a cell of each type actually renders at, so that a column
+      // left alone is wide enough to read rather than wide enough for Excel.
+      expect(
+        TomTabularColumn('a', type: TomColumnType.timestamp).effectiveWidth,
+        23,
+      );
+      expect(
+        TomTabularColumn('a', type: TomColumnType.boolean).effectiveWidth,
+        5,
+      );
+      expect(TomTabularColumn('a').effectiveWidth, 16);
+    });
+
+    test('a label wider than its type raises the column', () {
+      // `false` is five characters, but a header no reader can make out is not
+      // a saving. The header is part of what has to fit.
+      expect(
+        TomTabularColumn(
+          'x',
+          label: 'Discontinued?',
+          type: TomColumnType.boolean,
+        ).effectiveWidth,
+        13,
+      );
+    });
+
+    test('a derived width is capped, so a heading cannot starve a table', () {
+      expect(
+        TomTabularColumn('x', label: 'y' * 200).effectiveWidth,
+        TomTabularColumn.maxDerivedWidth,
+      );
+    });
+
+    test('a width below one character is rejected at construction', () {
+      // Zero is not a narrow column, it is a hidden one in a spreadsheet and a
+      // collapsed one on a page — never what a width was asked to say.
+      for (final bad in [0, -1]) {
+        expect(
+          () => TomTabularColumn('a', width: bad),
+          throwsA(
+            isA<TomExportException>().having(
+              (e) => e.key,
+              'key',
+              'export.column.invalid_width',
+            ),
+          ),
+          reason: 'width $bad',
+        );
+      }
+    });
+  });
+
   // ===========================================================================
   // THE FORMAT REGISTRY
   // ===========================================================================
@@ -865,6 +926,48 @@ void main() {
       );
     });
 
+    test('every column is given a width, not only the hinted ones', () async {
+      // The unhinted case has to mean the same thing in both renderers, and
+      // leaving it to the consumer means it does not: Excel's own default is
+      // 8.43 characters, which shows an ISO timestamp as `#####`. So a column
+      // with no hint is written at the width its type and label imply.
+      final parts = _ZipReader(
+        await _render(
+          TomTabularResult.single(
+            title: 't',
+            section: TomTabularSection.ofRows(
+              [
+                TomTabularColumn('a', width: 24),
+                TomTabularColumn('b', type: TomColumnType.timestamp),
+                TomTabularColumn(
+                  'c',
+                  label: 'Active',
+                  type: TomColumnType.boolean,
+                ),
+              ],
+              [
+                TomTabularRow(['x', DateTime.utc(2026, 7, 1), true]),
+              ],
+            ),
+          ),
+          'xlsx',
+        ),
+      ).read();
+      final sheet = parts['xl/worksheets/sheet1.xml'];
+      expect(
+        sheet,
+        contains('<col min="1" max="1" width="24" customWidth="1"/>'),
+      );
+      expect(
+        sheet,
+        contains('<col min="2" max="2" width="23" customWidth="1"/>'),
+      );
+      expect(
+        sheet,
+        contains('<col min="3" max="3" width="6" customWidth="1"/>'),
+      );
+    });
+
     test(
       'references pass Z into AA, so wide results stay addressable',
       () async {
@@ -1141,6 +1244,64 @@ void main() {
         ).render(_sampleResult()),
       );
       expect(utf8.decode(bytes.sublist(0, 5)), '%PDF-');
+    });
+
+    test('a width hint does not starve the columns beside it', () async {
+      // The module's own example is this shape: one column hinted, the rest
+      // left to the renderer. When the hint was read as a flex factor, 24
+      // against 1 gave that column 89 per cent of the table and what was left
+      // could not hold a word — `Amount` came out as four fragments, `A`, `m`,
+      // `ou`, `nt`, and twenty rows needed four pages. A character count that
+      // both renderers read the same way is what makes this table legible.
+      final bytes = await _collect(
+        const TomPdfRenderer(compress: false).render(
+          TomTabularResult.single(
+            title: 't',
+            section: TomTabularSection.ofRows(
+              [
+                TomTabularColumn('product', label: 'Product', width: 24),
+                TomTabularColumn(
+                  'amount',
+                  label: 'Amount',
+                  type: TomColumnType.decimal,
+                ),
+                TomTabularColumn(
+                  'sold',
+                  label: 'Sold',
+                  type: TomColumnType.timestamp,
+                ),
+                TomTabularColumn(
+                  'active',
+                  label: 'Active',
+                  type: TomColumnType.boolean,
+                ),
+              ],
+              [
+                for (var i = 0; i < 20; i++)
+                  TomTabularRow([
+                    'Widget $i',
+                    19.5,
+                    DateTime(2026, 7, 1),
+                    true,
+                  ]),
+              ],
+            ),
+          ),
+        ),
+      );
+      final text = latin1.decode(bytes, allowInvalid: true);
+      expect(text, contains('(Amount)'), reason: 'the header is one piece');
+      expect(text, contains('(Sold)'));
+      expect(
+        text,
+        contains('(2026-07-01T00:00:00.000)'),
+        reason: 'a timestamp fits the column its type asked for',
+      );
+      expect(
+        RegExp(r'/Type\s*/Page[^s]').allMatches(text).length,
+        1,
+        reason: 'twenty rows are one page once nothing is squeezed',
+      );
     });
   });
 

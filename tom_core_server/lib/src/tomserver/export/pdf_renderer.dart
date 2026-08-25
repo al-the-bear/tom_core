@@ -18,11 +18,11 @@
 ///
 /// A PDF ends with a cross-reference table of byte offsets into everything
 /// before it, so no conforming writer can emit the first page before the last
-/// object is placed. On top of that, a table's column widths are only known
-/// once every cell that shares the column has been measured. Both facts point
-/// the same way, and neither is a property of the library: PDF is a
-/// *random-access* document format, and rendering one costs memory
-/// proportional to the result.
+/// object is placed. On top of that, how many pages there are — a number the
+/// footer prints on the first of them — is only known once every row has been
+/// laid out. Both facts point the same way, and neither is a property of the
+/// library: PDF is a *random-access* document format, and rendering one costs
+/// memory proportional to the result.
 ///
 /// [TomTabularRenderer.streamsRows] is therefore `false` here, and this
 /// renderer states its limits rather than discovering them:
@@ -245,10 +245,26 @@ class TomPdfRenderer extends TomTabularRenderer {
   /// Columns are laid out by flex, not intrinsically. An intrinsic width is the
   /// width of the longest cell, so one row holding a long free-text value would
   /// push the table past the page edge and clip every other column; flex makes
-  /// the text wrap instead. A column's [TomTabularColumn.width] hint becomes its
-  /// flex factor, and a column with no hint gets 1 — so hints are read as
-  /// *proportions*, which is the only thing a width can mean on a page whose
-  /// total width is fixed.
+  /// the text wrap instead.
+  ///
+  /// The flex factors are the columns' [TomTabularColumn.effectiveWidth]s —
+  /// character counts, the same numbers a spreadsheet is written at. A page's
+  /// total width is fixed, so the counts cannot be honoured literally; what
+  /// survives the fit is their *ratio*, and the ratio is what a reader sees.
+  /// A column asking for 24 characters beside one asking for 12 gets twice the
+  /// room whatever the paper size, which is the most of an absolute request a
+  /// page can keep.
+  ///
+  /// The characters are deliberately **not** converted to points first. The
+  /// conversion is a single factor applied to every column, and flex is scale
+  /// invariant, so it would cancel exactly — arithmetic that changes no output
+  /// and implies a precision this has no way to deliver.
+  ///
+  /// What matters far more than the unit is that an unhinted column gets a
+  /// factor of its own. It used to get 1, against hints in the twenties, and
+  /// the module's own example is what that looked like: `product` at 24 took
+  /// seven eighths of the table and `Amount` came down the remaining strip as
+  /// `A`, `m`, `ou`, `nt`.
   pw.Widget _table(_RenderedSection rendered) {
     final columns = rendered.section.columns;
     return pw.TableHelper.fromTextArray(
@@ -272,7 +288,7 @@ class TomPdfRenderer extends TomTabularRenderer {
       },
       columnWidths: {
         for (var i = 0; i < columns.length; i++)
-          i: pw.FlexColumnWidth((columns[i].width ?? 1).toDouble()),
+          i: pw.FlexColumnWidth(columns[i].effectiveWidth.toDouble()),
       },
     );
   }
