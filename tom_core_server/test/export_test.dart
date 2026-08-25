@@ -1535,6 +1535,85 @@ void main() {
         );
       }
     });
+
+    // Every test above hands the store a directory that already exists, which
+    // is how the constructor's dartdoc came to claim it created the root while
+    // the constructor only assigned the field: nothing ever ran against a root
+    // that was missing. The creation is real but lazy, done by the first write.
+    // These tests state *when* it happens, so the dartdoc that now says so has
+    // something holding it to it.
+    group('a root that does not exist yet', () {
+      late Directory absent;
+
+      setUp(() => absent = Directory('${root.path}/nested/exports'));
+
+      test('constructing a store does not create it', () {
+        TomDirectoryExportStore(absent);
+        expect(absent.existsSync(), isFalse);
+      });
+
+      test('the first write creates it, and the key\'s directories with it',
+          () async {
+        final store = TomDirectoryExportStore(absent);
+        await store.store(
+          key: '2026/07/28/sales.csv',
+          bytes: Stream.value(utf8.encode('a,b\n')),
+          mediaType: 'text/csv',
+        );
+        expect(absent.existsSync(), isTrue);
+        expect(
+          File('${absent.path}/2026/07/28/sales.csv').existsSync(),
+          isTrue,
+        );
+      });
+
+      test('the three read paths report absence rather than creating it',
+          () async {
+        // Deliberate, and the half of the behaviour a caller is most likely to
+        // be surprised by: asking a store whether it holds something is a
+        // question, and a question should not have a filesystem side effect.
+        final store = TomDirectoryExportStore(absent);
+
+        expect(await store.exists('sales.csv'), isFalse);
+        expect(absent.existsSync(), isFalse);
+
+        expect(await store.delete('sales.csv'), isFalse);
+        expect(absent.existsSync(), isFalse);
+
+        await expectLater(
+          _collect(store.open('sales.csv')),
+          throwsA(
+            isA<TomExportException>().having(
+              (e) => e.key,
+              'key',
+              'export.store.not_found',
+            ),
+          ),
+        );
+        expect(absent.existsSync(), isFalse);
+      });
+
+      test('a root that disappears after construction comes back', () async {
+        // What lazy creation buys over doing it once in the constructor: a
+        // volume remounted, a tmpfs reaped, a container's writable layer reset.
+        // An eagerly-created root would be just as gone, and every later write
+        // would fail on a store that reported itself configured.
+        final store = TomDirectoryExportStore(absent);
+        await store.store(
+          key: 'a.csv',
+          bytes: Stream.value(utf8.encode('first')),
+          mediaType: 'text/csv',
+        );
+        absent.deleteSync(recursive: true);
+
+        await store.store(
+          key: 'a.csv',
+          bytes: Stream.value(utf8.encode('second')),
+          mediaType: 'text/csv',
+        );
+        expect(utf8.decode(await _collect(store.open('a.csv'))), 'second');
+      });
+    });
   });
 
   group('TomMemoryExportStore', () {

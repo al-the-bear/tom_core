@@ -301,10 +301,28 @@ abstract class TomExportStore {
 /// down — which makes the stored exports browsable with `ls`, and date
 /// partitioning a matter of how the caller spells the key.
 class TomDirectoryExportStore extends TomExportStore {
-  /// Creates a store rooted at [root], which is created if it does not exist.
+  /// Creates a store rooted at [root], **without touching the filesystem**.
+  ///
+  /// [root] is created by the first [store] call, together with whatever
+  /// directories that call's key names — one `create(recursive: true)` covers
+  /// both, so a store is configured long before it is a directory. The three
+  /// read paths do *not* create it: [open] on a missing root is
+  /// `export.store.not_found`, and [exists] and [delete] answer `false`.
+  /// Asking a store whether it holds something is a question, and a question
+  /// should not leave a directory behind.
+  ///
+  /// Deferring the creation is what makes a store safe to configure at startup:
+  /// a constructor cannot await, so creating the root here would mean a
+  /// blocking `createSync` on a path that may be a slow mount, throwing out of
+  /// a field initialiser on a store the application may never write to. It also
+  /// means the root is created *again* if it goes away — a remounted volume, a
+  /// reaped tmpfs — where a store that made it once would report itself
+  /// configured and fail every write after.
   TomDirectoryExportStore(this.root);
 
   /// The directory every key resolves beneath.
+  ///
+  /// Created on demand — see the constructor for when.
   final Directory root;
 
   @override

@@ -520,6 +520,16 @@ Properties that are load-bearing rather than incidental:
   reference to and finding it gone has hit a real fault — an unexpected expiry, a
   store it is not pointed at — and an empty stream would disguise that as an
   empty file.
+- **A directory store is configured before it is a directory.**
+  `TomDirectoryExportStore(root)` touches no filesystem; `root` is created by the
+  first `store`, along with whatever directories that call's key names. A
+  constructor cannot await, so creating it there would mean a blocking
+  `createSync` on a possibly slow mount, thrown from a field initialiser on a
+  store the application may never write to — and a root created once is just as
+  gone when a volume is remounted or a tmpfs reaped, where the lazy one comes
+  back. The read paths never create it: `open` is `export.store.not_found`,
+  `exists` and `delete` are `false`. Asking a store whether it holds something is
+  a question, and a question should not leave a directory behind.
 - **A chunk belongs to whoever did not produce it.** What `open` yields is the
   reader's own — writable, and aliased with nothing the backend keeps, so a
   consumer decoding in place cannot edit the stored export. What `store` is

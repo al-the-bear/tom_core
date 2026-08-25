@@ -74,6 +74,37 @@
 
 ### Fixed
 
+- **`TomDirectoryExportStore`'s constructor dartdoc described a filesystem
+  effect the constructor does not have (tcinc530).** It read "a store rooted at
+  `root`, which is created if it does not exist"; the constructor assigns the
+  field and nothing else. The directory *is* created — lazily, by the
+  `create(recursive: true)` in `doStore` — so the behaviour was defensible and
+  only the prose was wrong, but the two disagreed about whether configuring a
+  store had an effect on disk, and `api_summary_export.md` already carried the
+  accurate wording, so the package documented itself two ways.
+
+  The dartdoc now states when the root is created (the first `store`, together
+  with whatever directories that call's key names), what the read paths do
+  without it (`open` is `export.store.not_found`; `exists` and `delete` answer
+  `false`, and neither creates anything — asking a store whether it holds
+  something is a question), and why the creation is deferred rather than done
+  once: a constructor cannot await, so doing it there means a blocking
+  `createSync` on a possibly slow mount thrown from a field initialiser, on a
+  store the application may never write to — and a root created once is just as
+  gone when a volume is remounted or a tmpfs reaped, where the lazy one comes
+  back. `doc/export.md` and the API mirror now say the same.
+
+  Every existing test in the suite handed the store a directory that already
+  existed, which is how the claim survived: nothing ever ran against a missing
+  root. Four tests now do — construction leaving the filesystem untouched, the
+  first write creating root and key directories together, the three read paths
+  reporting absence without creating anything, and a root deleted after
+  construction coming back on the next write. Seven mutations confirm each
+  sentence of the new dartdoc is held by one of them: creating the root eagerly
+  in the constructor, creating only the root and not the key's directories,
+  creating nothing, creating non-recursively, and each of `exists`, `delete` and
+  `open` creating the root before answering. No production change was needed.
+
 - **A report name that downloaded fine could not be stored (tcinc529).**
   `TomExportService.respondWith` sanitised the `baseName` it was given;
   `keyFor` — which takes the *same* report name — only validated one against the

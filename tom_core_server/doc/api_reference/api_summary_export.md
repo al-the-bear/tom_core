@@ -665,11 +665,23 @@ that needs no infrastructure. Keys become paths beneath `root`, so
 TomDirectoryExportStore(Directory root)
 ```
 
+Touches no filesystem. `root` is created by the first `store` call, together
+with whatever directories that call's key names — one `create(recursive: true)`
+covers both. The read paths never create it: `open` on a missing root is
+`export.store.not_found`, and `exists` and `delete` answer `false`.
+
+Deferring the creation is what makes a store safe to configure at startup — a
+constructor cannot await, so creating the root there would mean a blocking
+`createSync` on a possibly slow mount, thrown from a field initialiser on a
+store the application may never write to. It also means the root is recreated if
+it goes away (a remounted volume, a reaped tmpfs), where a store that made it
+once would report itself configured and fail every write after.
+
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `root` | `Directory` | The directory every key resolves beneath; created on demand (final). |
+| `root` | `Directory` | The directory every key resolves beneath; created on demand by the first `store`, never by a read (final). |
 
 #### Methods
 
