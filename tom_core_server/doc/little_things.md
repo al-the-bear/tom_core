@@ -1,10 +1,12 @@
 # Little Things Module
 
-The server-side base exception and the correlation id it reads. This module
-contributes three types: `TomServerException`, which every other
-`tom_core_server` exception extends; `TomLoginException`, the one subclass
-declared here rather than beside the module that raises it; and `TomRequestId`,
-the per-request id the exception constructor recovers from the zone.
+The server-side base exception, the correlation id it reads, and the wire shape
+it is rendered into. This module contributes three types — `TomServerException`,
+which every other `tom_core_server` exception extends; `TomLoginException`, the
+one subclass declared here rather than beside the module that raises it; and
+`TomRequestId`, the per-request id the exception constructor recovers from the
+zone — plus one function, `tomErrorEnvelope`, which turns any error into the
+body a client receives.
 
 ## Table of Contents
 
@@ -14,6 +16,7 @@ the per-request id the exception constructor recovers from the zone.
 - [Isolate Attribution](#isolate-attribution)
 - [Request Correlation](#request-correlation)
 - [The clientThrow Flag](#the-clientthrow-flag)
+- [The Error Envelope](#the-error-envelope)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -26,6 +29,7 @@ the per-request id the exception constructor recovers from the zone.
 | `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone by the server's authentication middleware |
 | `TomServerException` | class | Base class for all server-raised exceptions; extends the kernel's `TomException` |
 | `TomLoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds nothing |
+| `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses |
 
 The kernel already provides `TomException` (UUID tracking, parameters,
 auto-logging, request UUID). `TomServerException` layers two server-specific
@@ -144,6 +148,46 @@ question rarely arises anyway, because `TomAuthenticationServer` catches the
 exception and turns its `key` into a failed `TomAuthenticationResult` rather
 than letting it reach the pipeline that reads the flag.
 
+## The Error Envelope
+
+`tomErrorEnvelope(error)` is the single definition of what a Tom error looks
+like on the wire. Every error response body the package produces comes from
+here: `TomServer.errorHandler` sends it as the `500` body, and
+`TomUserPreferencesErrorHandler` sends the same body under a `404` or a `400`,
+so a client decodes one shape rather than one shape per endpoint.
+
+```dart
+tomErrorEnvelope(TomServerException('order.not-found', 'No such order.'));
+// {
+//   errorType:   'TomServerException',
+//   errorKey:    'order.not-found',
+//   uuid:        '…',
+//   autoLog:     false,
+//   requestUuid: '…',   // or null outside a request
+//   clientThrow: true,
+// }
+```
+
+The body is built in layers, each reporting only what the error actually
+carries. `errorType` is unconditional — every failure has a runtime type, and a
+client that recognises nothing else can still log something specific.
+`errorKey`, `uuid`, `autoLog` and `requestUuid` are added for a `TomException`,
+which is what a client branches on. `clientThrow` is added for a
+`TomServerException`, and only there.
+
+A field is **absent rather than null** when the error does not carry it, so its
+presence means something. A body with no `errorKey` came from something that is
+not a Tom error at all; a body with no `clientThrow` came from outside this
+package — the kernel raises plain `TomException`s, so a validation refusal
+relayed from there is distinguishable from a failure raised on the server side.
+Padding the shape out with defaults would make every body look like a server
+error and cost a client that distinction.
+
+The function is declared here for the same reason `TomRequestId` is.
+`TomServerException` decides the one conditional field, and this is the module
+every other one already depends on — so both error handlers reach the builder
+without either reaching the other.
+
 ## Core Components
 
 - **`TomRequestId`** — a per-request v4 UUID and nothing else. Created once per
@@ -160,6 +204,11 @@ than letting it reach the pipeline that reads the flag.
   `TomAuthenticationResult`. It adds **nothing** over the base — no fields, no
   methods, no behaviour; it exists so that the two sides can name the same
   failure. See `doc/authentication.md` for the login flow it belongs to.
+- **`tomErrorEnvelope`** — renders any error into the wire error body, reporting
+  `errorType` always, the `TomException` fields for a Tom error, and
+  `clientThrow` for a server one. Used by `TomServer.errorHandler` and
+  `TomUserPreferencesErrorHandler`; a handler that translates a status chooses
+  the status and not the shape.
 
 `TomLoginException` is declared here, next to the base class, rather than beside
 the authentication server that consumes it, so that the 2FA subsystem can throw

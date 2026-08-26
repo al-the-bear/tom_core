@@ -19,6 +19,12 @@ One further subclass is declared here too: `TomLoginException`, which lives next
 to the base rather than beside the authentication server that consumes it, so
 the 2FA subsystem can throw it without importing that server.
 
+The module also owns `tomErrorEnvelope`, the package's single definition of what
+a Tom error looks like on the wire. It is declared here for the same reason
+`TomRequestId` is: `TomServerException` decides the one field the envelope
+reports conditionally, and this is the module every other one already depends
+on, so both error handlers reach the builder without either reaching the other.
+
 ## Key types
 
 | Type | Responsibility |
@@ -26,6 +32,7 @@ the 2FA subsystem can throw it without importing that server.
 | `TomRequestId` | Per-request v4 UUID. Created once per request by `tomDefaultAuthenticationMiddleware` and published into the request zone; recovered with `getFromCurrentZone<TomRequestId>()` for log and exception correlation. |
 | `TomServerException` | Base server error: carries `key` + `defaultUserMessage`, records `isolateName`, exposes `clientThrow` (both `final` — fixed where the error is raised), and copies the active request UUID into `requestUuid` for correlation. |
 | `TomLoginException` | A login that cannot succeed. Adds no members to the base — it is a name the authentication services throw and `TomAuthenticationServer` catches. Its constructor omits `clientThrow`, so it is client-visible, unlike the rest of the authentication subsystem's exceptions. See `doc/authentication.md`. |
+| `tomErrorEnvelope` | Renders any error into the wire error body. Reports `errorType` always, adds `errorKey`/`uuid`/`autoLog`/`requestUuid` for a `TomException` and `clientThrow` for a `TomServerException`. A field is **absent rather than null** when the error does not carry it, so its presence tells a client where the error came from. |
 
 ## Quick start
 

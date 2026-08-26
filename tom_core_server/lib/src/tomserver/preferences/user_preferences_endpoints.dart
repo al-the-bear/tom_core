@@ -31,6 +31,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../endpoints/endpoint_annotation.dart';
 import '../endpoints/endpoint_pipeline.dart';
+import '../little_things/server_exception.dart';
 import 'user_preferences_service.dart';
 
 /// Answers `404` for a preference that was never written and `400` for a key
@@ -68,20 +69,17 @@ class TomUserPreferencesErrorHandler extends TomErrorHandler {
   Response handleInvocationError(Object error, Object stacktrace, Request r) {
     final status = error is TomException ? _statusByErrorKey[error.key] : null;
     if (error is TomException && status != null) {
-      // The body follows the framework's error shape (`TomServer.errorHandler`)
-      // so a client branches on `errorKey`, not on a message or a status alone.
+      // The body is the framework's own envelope, rendered by the same function
+      // `TomServer.errorHandler` uses, so a client branches on `errorKey` and
+      // sees one shape rather than one per endpoint. Only the *status* is this
+      // module's contribution; the body is not.
+      //
       // Which is also why the media type is declared: a client that is expected
       // to decode the body needs to be told there is one to decode, and an
       // undeclared body is one an intermediary may sniff as anything it likes.
       return Response(
         status,
-        body: jsonEncode({
-          'errorType': error.runtimeType.toString(),
-          'errorKey': error.key,
-          'uuid': error.uuid,
-          'autoLog': error.autoLog,
-          'requestUuid': error.requestUuid,
-        }),
+        body: jsonEncode(tomErrorEnvelope(error)),
         headers: {
           'x-tom-error': 'true',
           TomHeader.contentType: TomMimeType.json.toHeaderValue(),

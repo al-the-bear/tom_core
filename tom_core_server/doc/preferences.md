@@ -236,9 +236,16 @@ client read an outage as absence and paper it over with a default. Answering
 `500` for a malformed key makes the
 opposite mistake: it tells a client its own bad request is worth retrying.
 
-Both translated statuses answer with the framework's error envelope
-(`errorType`, `errorKey`, `uuid`, `autoLog`, `requestUuid`), the
+Both translated statuses answer with the framework's error envelope, the
 `x-tom-error: true` header and `Content-Type: application/json;charset=UTF-8`.
+The body is not this module's: it is `tomErrorEnvelope`, the same builder
+`TomServer.errorHandler` renders its `500` from, so what this handler
+contributes is the *status* and nothing else. Which fields the body carries, and
+why one of them is absent for a key refusal, is described in
+[little_things.md](little_things.md#the-error-envelope) — the `404` is raised as
+a `TomServerException` and so reports `clientThrow`, while the `400` arrives from
+the kernel as a plain `TomException` and does not.
+
 The media type is what makes the envelope usable: the argument for the `404` is
 that a client branches on `errorKey` rather than on the status, and a client
 stack that decides whether to parse by media type has nothing to decide on if

@@ -90,6 +90,50 @@ class TomServerException extends TomException {
   }
 }
 
+/// Renders [error] into the framework's wire error envelope.
+///
+/// This is the single definition of what a Tom error looks like on the wire.
+/// The body is built in layers, each one reporting only what the error actually
+/// carries:
+///
+///  * `errorType` — always, because every failure has a runtime type and a
+///    client that recognises nothing else can still log something specific;
+///  * `errorKey`, `uuid`, `autoLog`, `requestUuid` — for a [TomException],
+///    which is what a client branches on;
+///  * `clientThrow` — for a [TomServerException], the masking flag.
+///
+/// A field is **absent rather than null** when the error does not carry it, so
+/// its presence means something: a body with no `errorKey` came from something
+/// that is not a Tom error at all, and one with no `clientThrow` came from
+/// outside the server package (the kernel raises plain [TomException]s). Padding
+/// the shape out with defaults would make every body look like a server error
+/// and cost a client the distinction.
+///
+/// It lives here, beside [TomServerException], because [TomServerException] is
+/// what decides the one conditional field and because this module is the one
+/// every other server module already depends on — so both error handlers reach
+/// it without either reaching the other.
+///
+/// **Every error response body in the package comes from here.** It was written
+/// out by hand twice — once in `TomServer.errorHandler` and once in
+/// `TomUserPreferencesErrorHandler` — and the copies had already drifted: the
+/// preferences `404` reported no `clientThrow`, although every error it
+/// translates is a [TomServerException] and carries one. A wire shape with two
+/// authors has no shape.
+Map<String, Object?> tomErrorEnvelope(Object error) {
+  final envelope = <String, Object?>{'errorType': error.runtimeType.toString()};
+  if (error is TomException) {
+    envelope['errorKey'] = error.key;
+    envelope['uuid'] = error.uuid;
+    envelope['autoLog'] = error.autoLog;
+    envelope['requestUuid'] = error.requestUuid;
+  }
+  if (error is TomServerException) {
+    envelope['clientThrow'] = error.clientThrow;
+  }
+  return envelope;
+}
+
 /// A server-side login failure.
 ///
 /// Thrown by a `TomAuthenticationService`, a `Tom2FAService`, or their helpers

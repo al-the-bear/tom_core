@@ -21,7 +21,7 @@ surface documented here.
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
-| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException` and the per-request correlation id `TomRequestId` it reads. |
+| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, data scoping, column authorization. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
@@ -382,6 +382,7 @@ surface documented here.
 | ---- | ---- | ----------- |
 | `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone. |
 | `TomServerException` | class | Server-side base exception (extends `TomException`). |
+| `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses. |
 
 ### Messaging (`lib/src/tomserver/messaging/`)
 
@@ -761,6 +762,7 @@ surface documented here.
 | `TomEntitySchemaReader` | Database Migration |
 | `TomEnvFile` | Command Line |
 | `TomErrorHandler` | Endpoints |
+| `tomErrorEnvelope` | Little Things |
 | `TomExportException` | Export |
 | `TomExportFormats` | Export |
 | `TomExportService` | Export |

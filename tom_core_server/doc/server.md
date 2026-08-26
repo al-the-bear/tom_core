@@ -103,19 +103,26 @@ returning nulls when the header is absent, not a bearer token, or fails to parse
 
 `TomServer.errorHandler` turns a thrown error into an HTTP 500 JSON response
 carrying the `x-tom-error: true` header and
-`Content-Type: application/json;charset=UTF-8`. The body always includes
-`errorType`; a `TomException` additionally contributes `errorKey`, `uuid`,
-`autoLog`, and `requestUuid`; and a `TomServerException` adds `clientThrow`.
-Provide `TomBaseServerConfiguration.errorHandler` /
-`authenticationErrorHandler` to override the mapping.
+`Content-Type: application/json;charset=UTF-8`. Provide
+`TomBaseServerConfiguration.errorHandler` / `authenticationErrorHandler` to
+override the mapping.
 
-This is the framework's error *envelope*, and the shape every other
-JSON-envelope handler in the package is written to match — including
-`TomUserPreferencesErrorHandler`, whose translated `404`/`400` carry the same
-fields, the same header and the same media type. A body a client is expected to
-decode by `errorKey` has to declare that it is JSON: shelf supplies no default
-here, and an undeclared body leaves a client with only `x-tom-error` to guess
-from and an intermediary free to sniff it as anything it likes.
+The body is `tomErrorEnvelope` — the package's single definition of the wire
+error shape, which this handler *renders* and does not define. It always
+includes `errorType`; a `TomException` additionally contributes `errorKey`,
+`uuid`, `autoLog` and `requestUuid`; and a `TomServerException` adds
+`clientThrow`. The builder lives in `little_things`, beside the exception base
+that decides that last field; see [little_things.md](little_things.md#the-error-envelope)
+for what each field means and why one is absent rather than null when the error
+does not carry it.
+
+Every other JSON-envelope handler in the package calls the same builder —
+including `TomUserPreferencesErrorHandler`, whose translated `404`/`400` carry
+the same fields, the same header and the same media type. A handler that
+translates a status chooses the *status*, not the shape. A body a client is
+expected to decode by `errorKey` has to declare that it is JSON: shelf supplies
+no default here, and an undeclared body leaves a client with only `x-tom-error`
+to guess from and an intermediary free to sniff it as anything it likes.
 
 ## Extending the Pipeline
 

@@ -1,4 +1,5 @@
-/// Tests for the little-things module: the three types it contributes.
+/// Tests for the little-things module: the three types it contributes and the
+/// one function.
 ///
 /// [TomRequestId] is the per-request correlation id the rest of the package
 /// reads out of the zone. It is produced by the server module's authentication
@@ -18,9 +19,18 @@
 /// **not** forward `clientThrow` — the property that belongs to the declaration
 /// rather than to the login flow. The login flow itself is covered by
 /// `authentication_test.dart`.
+///
+/// [tomErrorEnvelope] is the package's single definition of the wire error
+/// shape, and it lives here because [TomServerException] decides its one
+/// conditional field. What is pinned here is the *shape* — which keys each kind
+/// of error contributes, and that a key is absent rather than null when the
+/// error does not carry it. How each error handler uses the envelope is covered
+/// where those handlers live, in `server_test.dart` and
+/// `user_preferences_endpoints_test.dart`.
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -190,6 +200,93 @@ void main() {
         caught = e;
       }
       expect(caught, isA<TomLoginException>());
+    });
+  });
+
+  group('tomErrorEnvelope', () {
+    test('a non-Tom error contributes only its runtime type', () {
+      // Every failure has a runtime type, so `errorType` is the one field that
+      // is never conditional: a client that recognises nothing else about the
+      // body can still log something specific.
+      final envelope = tomErrorEnvelope(StateError('boom'));
+      expect(envelope.keys, ['errorType']);
+      expect(envelope['errorType'], 'StateError');
+    });
+
+    test('a kernel exception contributes the fields a client branches on', () {
+      final error = TomException('some.key', 'Some message');
+      final envelope = tomErrorEnvelope(error);
+
+      expect(envelope['errorType'], 'TomException');
+      expect(envelope['errorKey'], 'some.key');
+      expect(envelope['uuid'], error.uuid);
+      expect(envelope['autoLog'], error.autoLog);
+      expect(envelope['requestUuid'], error.requestUuid);
+    });
+
+    test('a kernel exception carries no clientThrow to report', () {
+      // The flag is a `tom_core_server` concept, so an error raised in the
+      // kernel does not have one — and the envelope leaves the key out rather
+      // than inventing a default. That absence is the signal: a body with no
+      // `clientThrow` came from outside this package.
+      expect(
+        tomErrorEnvelope(
+          TomException('some.key', 'm'),
+        ).containsKey('clientThrow'),
+        isFalse,
+      );
+    });
+
+    test('a server exception adds the masking flag', () {
+      expect(
+        tomErrorEnvelope(
+          TomServerException('some.key', 'm', clientThrow: false),
+        )['clientThrow'],
+        isFalse,
+      );
+      expect(
+        tomErrorEnvelope(TomServerException('some.key', 'm'))['clientThrow'],
+        isTrue,
+      );
+    });
+
+    test('the server arm builds on the kernel arm rather than replacing it', () {
+      // The two conditionals are additive, not alternatives — a
+      // TomServerException is a TomException, so it must report both sets. The
+      // hand-built copy this function replaced got exactly this wrong.
+      final envelope = tomErrorEnvelope(TomServerException('some.key', 'm'));
+      expect(envelope.keys, [
+        'errorType',
+        'errorKey',
+        'uuid',
+        'autoLog',
+        'requestUuid',
+        'clientThrow',
+      ]);
+    });
+
+    test('every value in the envelope is JSON-encodable', () {
+      // The envelope exists to be a response body, so a field that cannot be
+      // encoded is not a rendering detail — it is a 500 raised while reporting
+      // a 500, with the original error lost.
+      final envelope = tomErrorEnvelope(
+        TomServerException('some.key', 'm', parameters: {'k': 'v'}),
+      );
+      expect(
+        jsonDecode(jsonEncode(envelope)),
+        envelope,
+        reason: 'the envelope must survive a round trip through the wire',
+      );
+    });
+
+    test('reports the concrete subtype, not the base it was caught as', () {
+      // `errorType` is read off the instance, so a client sees which failure
+      // this actually was even when every catch site in the package is written
+      // for TomServerException.
+      expect(
+        tomErrorEnvelope(TomLoginException('auth.rejected', 'm'))['errorType'],
+        'TomLoginException',
+      );
     });
   });
 }

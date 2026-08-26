@@ -250,7 +250,7 @@ const TomUserPreferencesErrorHandler()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the two translated ones, carrying the framework's error envelope, the `x-tom-error` header and `Content-Type: application/json` so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
+| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the two translated ones, carrying `tomErrorEnvelope(error)` as the body, the `x-tom-error` header and `Content-Type: application/json` so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
 | `handleErrorDefault` | `Response handleErrorDefault(Object error, Object stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not one of the two translated keys is answered exactly as it would have been without this handler. |
 
 Why only those two keys: a client must be able to tell **"you have no such
@@ -262,12 +262,20 @@ was a server fault worth retrying. Everything else stays opaque: mapping
 `preferences.not_configured` — a deployment fault — to a `404` would let a
 client read it as absence and paper the outage over with a default.
 
-The `404` body carries the usual error envelope (`errorType`, `errorKey`, `uuid`,
-`autoLog`, `requestUuid`), the `x-tom-error: true` header and
-`Content-Type: application/json;charset=UTF-8`, so a client branches on the key
-rather than on message text — and is told there is a body to decode before it
-decides whether to decode one. The opaque `500` from `handleErrorDefault` keeps
-`text/plain`, because it carries no envelope.
+Both translated bodies are `tomErrorEnvelope(error)` — the package's single
+definition of the wire error shape, rendered by
+[`little_things`](api_summary_little_things.md#tomerrorenvelope) and not by this
+handler — under the `x-tom-error: true` header and
+`Content-Type: application/json;charset=UTF-8`. So a client branches on the key
+rather than on message text, is told there is a body to decode before it decides
+whether to decode one, and sees the same shape here as it does from
+`TomServer.errorHandler`. What this handler contributes is the status.
+
+The two do not carry identical *fields*, and that is the envelope working as
+intended: the `404` is raised as a `TomEndpointHandlerException` and therefore
+reports `clientThrow`, while the `400` arrives from the kernel as a plain
+`TomException` and omits it. The opaque `500` from `handleErrorDefault` keeps
+`text/plain`, because it carries no envelope at all.
 
 ## Global Functions and Constants
 

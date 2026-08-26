@@ -2,8 +2,9 @@
 
 The base exception type for every error raised by `tom_core_server`, adding
 isolate attribution and request correlation to the kernel exception — plus
-`TomLoginException`, the one subclass declared beside it, and `TomRequestId`,
-the correlation id the base reads out of the zone.
+`TomLoginException`, the one subclass declared beside it, `TomRequestId`, the
+correlation id the base reads out of the zone, and `tomErrorEnvelope`, which
+renders any of them into the wire error body.
 
 ## Table of Contents
 
@@ -13,11 +14,16 @@ the correlation id the base reads out of the zone.
   - [TomRequestId](#tomrequestid)
   - [TomServerException](#tomserverexception)
 - [Global Functions and Constants](#global-functions-and-constants)
+  - [tomErrorEnvelope](#tomerrorenvelope)
 
 ## Overview
 
 Sources: `lib/src/tomserver/little_things/request_id.dart`,
 `lib/src/tomserver/little_things/server_exception.dart`.
+
+Everything here is what the rest of the package is built on top of: the base
+exception, the id it correlates with, and the function that turns either into
+the body a client receives.
 
 `TomServerException` is the root of the server's exception hierarchy: every
 server exception type (e.g. `TomEndpointHandlerException`, `TomCacheException`,
@@ -124,4 +130,38 @@ Copies the current zone's `TomRequestId` UUID into `requestUuid` when present.
 
 ## Global Functions and Constants
 
-None — this module exposes no top-level functions or constants.
+| Name | Signature | Description |
+| ---- | --------- | ----------- |
+| `tomErrorEnvelope` | `Map<String, Object?> tomErrorEnvelope(Object error)` | Renders `error` into the framework's wire error envelope — the single definition of what a Tom error looks like on the wire, and the body of **every** error response the package produces. |
+
+### tomErrorEnvelope
+
+`TomServer.errorHandler` sends the envelope as the `500` body;
+`TomUserPreferencesErrorHandler` sends the same body under a `404` or a `400`,
+so a client decodes one shape rather than one per endpoint. A handler that
+translates a status chooses the status, not the shape.
+
+The body is built in layers, each reporting only what the error actually
+carries:
+
+- **`errorType`** — for every error: `error.runtimeType.toString()`, the
+  concrete subtype rather than the base it was caught as.
+- **`errorKey`** — for a `TomException`: the stable code a client branches on.
+- **`uuid`** — for a `TomException`: the exception's own id, for matching a
+  client report to a server log.
+- **`autoLog`** — for a `TomException`: whether the error logged itself when
+  raised.
+- **`requestUuid`** — for a `TomException`: the correlated request id, or `null`
+  outside a request.
+- **`clientThrow`** — for a `TomServerException`: the masking flag.
+
+A field is **absent rather than null** when the error does not carry it, so its
+presence means something: a body with no `errorKey` came from something that is
+not a Tom error at all, and one with no `clientThrow` came from outside the
+server package — the kernel raises plain `TomException`s. Padding the shape out
+with defaults would make every body look like a server error and cost a client
+the distinction.
+
+It is declared in this module because `TomServerException` decides the one
+conditional field, and because this is the module every other one already
+depends on — so both error handlers reach it without either reaching the other.

@@ -257,26 +257,13 @@ class TomServer {
 
   /// Maps a thrown error to a JSON error response (HTTP 500).
   ///
-  /// The body always carries `errorType`; a [TomException] additionally
-  /// contributes `errorKey`, `uuid`, `autoLog`, and `requestUuid`, and a
-  /// [TomServerException] adds `clientThrow`. Every response carries the
-  /// `x-tom-error: true` header. Overridden by
+  /// The body is [tomErrorEnvelope] — the package's single definition of the
+  /// wire error shape, which this handler renders and does not define. Every
+  /// response carries the `x-tom-error: true` header and declares
+  /// `application/json`. Overridden by
   /// `TomBaseServerConfiguration.errorHandler` when provided.
   Response? Function(Request, Object, StackTrace) errorHandler =
       (request, error, stacktrace) {
-        Map<String, Object?> body = {"errorType": error.runtimeType.toString()};
-        if (error is TomException) {
-          body = {
-            ...body,
-            "errorKey": error.key,
-            "uuid": error.uuid,
-            "autoLog": error.autoLog,
-            "requestUuid": error.requestUuid,
-          };
-        }
-        if (error is TomServerException) {
-          body["clientThrow"] = error.clientThrow;
-        }
         // The media type is part of the contract, not decoration: the body is
         // an envelope a client is expected to decode and branch on, so it has
         // to be declared as one. Shelf adds no default here, and an undeclared
@@ -286,7 +273,7 @@ class TomServer {
           TomHeader.contentType: TomMimeType.json.toHeaderValue(),
         };
         return Response.internalServerError(
-          body: jsonEncode(body),
+          body: jsonEncode(tomErrorEnvelope(error)),
           headers: headers,
         );
       };

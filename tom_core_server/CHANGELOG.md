@@ -519,6 +519,34 @@
 
 ### Fixed
 
+- **The framework error envelope was hand-built in two places, and the two had
+  already drifted (tcinc612).** `TomServer.errorHandler` and
+  `TomUserPreferencesErrorHandler` each assembled the wire error body from
+  scratch, the second documented as following the first. The preferences `404`
+  reported no `clientThrow` — yet every error it translates under that key is a
+  `TomEndpointHandlerException` and therefore a `TomServerException`, so the
+  flag was always part of what the framework reported and never part of the
+  `404`. A wire shape with two authors has no shape.
+
+  There is now one definition, `tomErrorEnvelope(error)` in `little_things`, and
+  both handlers render it. A handler that translates a status now chooses the
+  *status* and nothing else.
+
+  It lives in `little_things` because `TomServerException` — declared there —
+  decides the envelope's one conditional field, and because that is the module
+  every other one already depends on, so both handlers reach the builder without
+  either reaching the other.
+
+  The asymmetry the extraction exposed is kept rather than smoothed over: the
+  preferences `400` arrives from the kernel as a plain `TomException` and so
+  still carries no `clientThrow`. A field is absent rather than null when the
+  error does not carry it, which is what lets a client tell a failure raised
+  inside this package from one relayed out of the kernel. Both directions are
+  now pinned — the `404` asserts the flag is read from the error rather than
+  assumed, and the `400` asserts its absence — alongside a full-body comparison
+  of the translated `404` against what `TomServer.errorHandler` produces for the
+  same error, which is the assertion that notices when the two stop agreeing.
+
 - **Both JSON error envelopes went out with no `content-type` at all
   (tcinc611).** The preferences miss (`TomUserPreferencesErrorHandler`, a `404`
   or a `400`) and the framework's own `TomServer.errorHandler` (a `500`) each

@@ -27,6 +27,18 @@ import 'fixtures/reflection_fixture.reflection.dart';
 Request _request() =>
     Request('GET', Uri.parse('http://localhost/preferences/tom.theme'));
 
+/// The smallest configuration a [TomServer] can be built from.
+///
+/// Only needed to reach `TomServer.errorHandler`, which is a field and so needs
+/// an instance. `setValues` is overridden away because a real configuration is
+/// generated, and none of its merged values matter here. Mirrors
+/// `server_test.dart`'s `_NoopConfig`.
+class _NoopConfig extends TomBaseServerConfiguration {
+  _NoopConfig() : super([]);
+  @override
+  void setValues(Map<String, Object?> values) {}
+}
+
 /// The refusal [TomUserPreferenceKeys.validate] actually raises for [key].
 ///
 /// Caught from the validator rather than constructed here: the handler selects
@@ -104,6 +116,77 @@ void main() {
         TomMimeType.parse(response.headers[TomHeader.contentType]!),
         TomMimeType.json,
       );
+    });
+
+    test('the miss body is the framework envelope, field for field', () async {
+      // The point of the translated 404 is that its body looks like every other
+      // error body the framework produces, so a client decodes one shape rather
+      // than one per endpoint. Comparing the two handlers is the only assertion
+      // that notices when they stop agreeing — asserting a field list here
+      // would just be a third copy of the same wire shape.
+      final error = TomEndpointHandlerException(
+        'preferences.not_found',
+        "No preference is stored under 'tom.theme'.",
+      );
+      final stack = StackTrace.current;
+
+      final translated =
+          jsonDecode(
+                await handler
+                    .handleInvocationError(error, stack, _request())
+                    .readAsString(),
+              )
+              as Map<String, dynamic>;
+
+      final framework =
+          jsonDecode(
+                await TomServer(
+                  _NoopConfig(),
+                ).errorHandler(_request(), error, stack)!.readAsString(),
+              )
+              as Map<String, dynamic>;
+
+      expect(translated, framework);
+    });
+
+    test('clientThrow is read from the error, not assumed', () async {
+      // `clientThrow` is the field the hand-built copy dropped, and it is not a
+      // constant: every error this handler translates is a
+      // TomEndpointHandlerException and therefore a TomServerException, so the
+      // flag was always part of what the framework reported and never part of
+      // the 404.
+      //
+      // Raised as a bare TomServerException because that is the only way to set
+      // the flag — TomEndpointHandlerException does not forward it, so a real
+      // miss is always `true` and a test built on one could not tell a value
+      // that is read from a value that is assumed.
+      final response = handler.handleInvocationError(
+        TomServerException(
+          'preferences.not_found',
+          "No preference is stored under 'tom.theme'.",
+          clientThrow: false,
+        ),
+        StackTrace.current,
+        _request(),
+      );
+
+      final body = jsonDecode(await response.readAsString()) as Map;
+      expect(body['clientThrow'], isFalse);
+    });
+
+    test('a kernel exception contributes no clientThrow', () async {
+      // The 400 arrives as TomUserPreferenceKeyException, raised in the kernel
+      // and so not a TomServerException at all. The envelope reports what the
+      // error actually carries rather than padding the shape with a default,
+      // which is what makes the field's presence mean something.
+      final response = handler.handleInvocationError(
+        _keyRefusal('a/b'),
+        StackTrace.current,
+        _request(),
+      );
+
+      final body = jsonDecode(await response.readAsString()) as Map;
+      expect(body.containsKey('clientThrow'), isFalse);
     });
 
     test('the rejected key declares it too, from the same arm', () async {
