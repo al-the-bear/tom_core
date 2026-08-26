@@ -2,6 +2,25 @@
 
 ### Testing
 
+- **The preferences round trip asserts *which* refusal an anonymous caller gets,
+  and serves it through the framework's error layer to have one (tcinc615).**
+  The anonymous-caller test asserted `isNot(200)`, which the state it exists to
+  exclude also satisfies: with the contract's `access:` removed the handler runs,
+  reaches `TomUserPreferences.all()` and fails in `_requirePrincipal`, and the
+  answer is a `500` either way. Tightening the status to `500` would not have
+  helped — the two differed in the body by the case of one letter. What the
+  test lacked was the layer that makes them distinguishable. `TomServer.start`
+  always installs `_handleError(errorHandler, "InnerErrorHandler")` between the
+  authentication middleware and the router, and this test's hand-built pipeline
+  did not, so the denial — which is thrown *before* invocation and therefore
+  escapes the endpoint's own `TomEndpoint.errorHandler` — reached shelf uncaught
+  and was served as shelf's bare `500 Internal Server Error`. The pipeline now
+  installs that layer, delegating to the shipped `TomServer.errorHandler` rather
+  than a copy of it, and the test asserts the `x-tom-error` header and the
+  envelope's `errorKey` (`endpoint_handler.handle_method_call.access_denied`) —
+  evidence only the gate produces. Verified by mutation: removing
+  `access: const TomAuthenticatedAccess()` from the list endpoint now fails the
+  test, and fails it at the envelope rather than at the status.
 - **The preferences "endpoint wiring" test asks the router which handler an
   endpoint is served under, instead of asking an annotation (tcinc614).** It
   read `@TomApiEndpointImplementation.errorHandler` off the method's own

@@ -95,6 +95,51 @@ Middleware _signedInByHeader() =>
       );
     };
 
+/// The smallest configuration a [TomServer] can be built from.
+///
+/// Only needed to reach `TomServer.errorHandler`, which is a field and so needs
+/// an instance. `setValues` is overridden away because a real configuration is
+/// generated, and none of its merged values matter here. Mirrors
+/// `user_preferences_endpoints_test.dart`'s `_NoopConfig`.
+class _NoopConfig extends TomBaseServerConfiguration {
+  _NoopConfig() : super([]);
+  @override
+  void setValues(Map<String, Object?> values) {}
+}
+
+/// Renders an escaping error the way a deployed server does.
+///
+/// Load-bearing rather than decorative. `TomServer.start` always installs this
+/// layer — `_handleError(errorHandler, "InnerErrorHandler")`, between the
+/// authentication middleware and the router — so a pipeline without it does not
+/// serve what the framework serves, and a test built on one cannot assert what
+/// a client receives.
+///
+/// It matters here because the error layers are two and not one. An endpoint's
+/// own [TomEndpoint.errorHandler] only sees what the *invoked method* threw,
+/// while the access check runs before the invocation and outside that
+/// `try`/`catch`; a denial therefore escapes the endpoint handler entirely and
+/// is rendered by this layer alone. Without it the denial reached shelf
+/// uncaught, and the anonymous caller's answer was shelf's own
+/// `500 Internal Server Error` — the shape an unhandled bug produces, carrying
+/// no evidence of which failure it was.
+///
+/// The rendering is the shipped `TomServer.errorHandler` itself, not a copy, so
+/// what the test below reads off the wire is the framework's error envelope
+/// rather than this file's idea of one.
+Middleware _rendersErrorsLikeTheServer() {
+  final render = TomServer(_NoopConfig()).errorHandler;
+  return (innerHandler) =>
+      (request) => Future.sync(() => innerHandler(request)).onError<Object>((
+        error,
+        stack,
+      ) {
+        final rendered = render(request, error, stack);
+        if (rendered == null) throw error;
+        return rendered;
+      });
+}
+
 /// One client of the preferences API: its own connection, its own signed-in
 /// user, and not one URI of its own.
 ///
@@ -263,6 +308,10 @@ void main() async {
             }),
           )
           .addMiddleware(_signedInByHeader())
+          // In the same position the shipped pipeline puts it: after the
+          // authentication layer, so that what it renders is a failure of the
+          // request rather than a failure to identify the caller.
+          .addMiddleware(_rendersErrorsLikeTheServer())
           .addHandler(router.call);
       server = await shelf_io.serve(handler, InternetAddress.loopbackIPv4, 0);
       baseUri = Uri.parse('http://127.0.0.1:${server.port}');
@@ -436,12 +485,38 @@ void main() async {
         ),
       );
       final response = await request.close();
-      await response.drain<void>();
+      final body = await response.transform(utf8.decoder).join();
 
-      // The contract declares TomAuthenticatedAccess on every endpoint, and
-      // there is no anonymous preference: a caller who is nobody has nothing to
-      // ask for.
-      expect(response.statusCode, isNot(200));
+      // What is asserted is *which* refusal, and that is not a matter of taste:
+      // the status alone cannot say. The framework renders a pre-invocation
+      // denial opaquely, so the gate answers `500` — and `500` is also what an
+      // *ungated* endpoint answers here, because the handler would then run,
+      // reach `TomUserPreferences.all()` and fail in `_requirePrincipal` with
+      // `preferences.no_principal`. Removing `access:` from the contract and
+      // re-running this test produces the two side by side: `500` either way,
+      // differing in the body only by the case of one letter. So an assertion
+      // on the status — `isNot(200)` or `500` alike — is satisfied by the very
+      // state the test exists to exclude.
+      //
+      // The envelope is what separates them. A denial escapes the endpoint's
+      // own error handler and is rendered by the server layer above, which
+      // emits `x-tom-error` and a JSON [tomErrorEnvelope]; the service failure
+      // is caught *below* it by [TomDefaultErrorHandler] and rendered as bare
+      // text with neither. The key names which of the two happened.
+      expect(response.statusCode, 500);
+      expect(response.headers.value('x-tom-error'), 'true');
+      expect(
+        jsonDecode(body),
+        // Spelled out rather than taken from a constant, as
+        // `endpoints_pipeline_test.dart` spells it: the key is what a client
+        // branches on, so it is part of the wire contract and not an internal
+        // name. Sharing a constant with the thrower would let the two rename
+        // themselves together and leave every deployed client behind.
+        containsPair(
+          'errorKey',
+          'endpoint_handler.handle_method_call.access_denied',
+        ),
+      );
     });
   }, skip: skipReason);
 }
