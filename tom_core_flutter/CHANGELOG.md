@@ -2,6 +2,25 @@
 
 ### Added
 
+- **security: the chooser renders the mechanism's icon (tcinc689).**
+  `Tom2FAClientMechanism.descriptor` was documented as carrying "its label,
+  description and icon, all as resource keys", but `_methodTile` built its
+  `TomListTile` from the first two only, and `iconKey` — populated for every
+  mechanism by `Tom2FAMethodDescriptor.scoped` — was dead data on this tier.
+
+  The chooser now fills `TomListTile.leading`. Resolution is the two-step
+  convention `tom_flutter_ui` already uses everywhere else: the text bundle maps
+  `iconKey` to an icon *name* (`mSecurity`), and the application's `TomUIIcons`
+  adapter maps that name to an `IconData`. No new resource pipeline, and no new
+  dependency — the widget library was already imported.
+
+  The icon is an enhancement, never a requirement. A bundle with no icon entry,
+  an application that installs no adapter, or an adapter that does not carry
+  that icon each render the row without a leading icon and lose nothing else. A
+  missing key cannot leak the way missing text does, either: an unknown key
+  resolves to the key itself, which is conspicuous on a label by design, but
+  `two_factor.sms.icon` is not an icon name, so it resolves to nothing.
+
 - **runtime: the per-read allocation of `clientPlatformUtils` is pinned by test
   (tcinc683).** The getter constructs a new instance on every read, both
   documents say so, and until now nothing observed it — the suite read the

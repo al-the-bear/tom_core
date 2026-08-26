@@ -224,6 +224,9 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
   /// The descriptor is the server's when it sent one and the scoped default
   /// otherwise — so a mechanism keeping to the `two_factor.<type>.*` convention
   /// is labelled correctly whether or not its server bothered to describe it.
+  ///
+  /// All three of the descriptor's keys are rendered: the label, the
+  /// description and the icon.
   Widget _methodTile(String type) {
     final descriptor = widget.controller.availableMethods.firstWhere(
       (d) => d.type == type,
@@ -231,6 +234,7 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
     );
     return TomListTile(
       key: Key('tom-2fa-method-$type'),
+      leading: _methodIcon(descriptor),
       // `titleText`, not a `title` widget: the label is text, and the text form
       // is the one the tile styles from the ambient list-tile theme.
       titleText: Tom2FATexts.text(descriptor.displayNameKey),
@@ -238,6 +242,30 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
       enabled: !_busy,
       onTap: _busy ? null : () => _run(() => widget.controller.chooseMethod(type)),
     );
+  }
+
+  /// The descriptor's icon, or null when this build cannot produce one.
+  ///
+  /// Two steps, which is the convention `tom_flutter_ui` uses throughout:
+  /// [Tom2FAMethodDescriptor.iconKey] resolves through the text bundle to an
+  /// icon *name* (`mSecurity`), and [TomUIIcons] maps that name to an
+  /// [IconData]. The key names an icon rather than pointing at an asset
+  /// precisely so that each client tier can answer it in its own vocabulary —
+  /// this tier's answer is the adapter an application installs at start-up.
+  ///
+  /// Null at any step, and null is a perfectly ordinary outcome rather than a
+  /// misconfiguration: a bundle that never mentions icons, an application that
+  /// installs no adapter, or a mechanism whose icon that adapter does not carry
+  /// all land here. The row then renders without a leading slot and loses
+  /// nothing else, so the icon is an enhancement and never a requirement.
+  ///
+  /// This is also why a missing key cannot leak the way missing text does.
+  /// [TomTextResourceProvider] answers an unknown key with the key itself,
+  /// which is deliberately conspicuous on a label — but `two_factor.sms.icon`
+  /// is not an icon name, so it resolves to null and shows nothing at all.
+  Widget? _methodIcon(Tom2FAMethodDescriptor descriptor) {
+    final icon = TomUIIcons.resolveIcon(Tom2FATexts.text(descriptor.iconKey));
+    return icon == null ? null : Icon(icon);
   }
 
   // --- Stop 2: set the chosen mechanism up ------------------------------

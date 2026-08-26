@@ -80,6 +80,22 @@ its clients offers keys the build has no panel for; listing one would strand
 the user on a blank step they cannot back out of. When *nothing* offered is
 renderable, the stop says so rather than showing an empty list.
 
+**Each chooser tile renders all three of the descriptor's keys** — label,
+description and icon. The icon resolves in two steps, the convention
+`tom_flutter_ui` uses throughout: `iconKey` resolves through the text bundle to
+an icon *name* (`mSecurity`), and the application's `TomUIIcons` adapter maps
+that name to something drawable. A mechanism that wants an icon therefore ships
+a bundle entry rather than an asset, which is what lets one descriptor serve a
+Flutter client and a web one without knowing which is asking.
+
+Only the label and the description are load-bearing. A bundle with no icon
+entry, an application that installs no adapter, or an adapter that does not
+carry that icon all render the row without a leading icon and lose nothing
+else. This is also why a missing icon key cannot leak the way missing text
+does: an unknown key resolves to the key itself, which is deliberately
+conspicuous on a label, but `two_factor.sms.icon` is not an icon name, so it
+resolves to nothing and shows nothing.
+
 **The skip affordance appears only when the server said declining is
 permitted**, and never because the client thinks it should be on offer — that
 would put the policy decision on the side of the wire that does not get to make
@@ -408,7 +424,8 @@ it renderable by the flow — register the mechanism for that.
   makes the annotation reflection-discoverable.
 - **`tom_flutter_ui`**: the widget vocabulary every panel is built from —
   `TomText`, `TomListTile`, `TomTextButton`, `TomSelectableText`,
-  `TomTextField` and `TomFilledButton`.
+  `TomTextField` and `TomFilledButton` — plus `TomUIIcons`, which resolves the
+  chooser's icon names to drawable icons.
 - **`flutter`**: `material` for the flow frame, which styles its title, error
   line and footnotes from the ambient theme; `widgets` for the mechanism panels,
   which have no such need; `services` for the digits-only input formatter.

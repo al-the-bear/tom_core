@@ -19,6 +19,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
+// For the icon adapter the chooser resolves `iconKey` through. Not re-exported
+// by this package's barrel, and should not be — it belongs to the widget
+// library, and an application configures it there.
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Every string the panel currently renders, in tree order.
 ///
@@ -67,6 +71,11 @@ void main() {
         // Descriptors the chooser falls back to when the server sent none.
         'two_factor.totp.name': 'Authenticator app',
         'two_factor.totp.description': 'A code from an app on your phone.',
+        // An icon *name* for the adapter to resolve, not an asset path — the
+        // two-step convention `tom_flutter_ui` uses everywhere else. SMS
+        // deliberately has no icon entry, so one bundle covers both the
+        // configured and the unconfigured mechanism.
+        'two_factor.totp.icon': 'mSecurity',
         'two_factor.sms.name': 'Text message',
         'two_factor.sms.description': 'A code sent to your phone.',
       });
@@ -76,9 +85,15 @@ void main() {
     // Start from a bare registry so a test asserting "this build cannot render
     // that mechanism" is not silently rescued by a leftover registration.
     Tom2FAClientRegistry.reset();
+    TomUIIcons.adapter = AllIconsAdapter();
   });
 
-  tearDown(Tom2FAClientRegistry.reset);
+  tearDown(() {
+    Tom2FAClientRegistry.reset();
+    // The adapter is process-wide, so a test that sets one must put it back —
+    // otherwise "no adapter configured" can never be asserted again.
+    TomUIIcons.reset();
+  });
 
   Future<void> pump(WidgetTester tester, Tom2FAFlowController controller) =>
       tester.pumpWidget(
@@ -111,6 +126,60 @@ void main() {
       // Labelled from the bundle, not from a literal in the framework.
       expect(find.text('Authenticator app'), findsOneWidget);
       expect(find.text('A code sent to your phone.'), findsOneWidget);
+    });
+
+    // The descriptor carries three resource keys and the chooser renders all
+    // three. `iconKey` resolves in two steps — the bundle maps the key to an
+    // icon *name*, the adapter maps the name to an `IconData` — and every step
+    // is allowed to come up empty, because a bundle that never mentions icons
+    // is a legitimate deployment rather than a misconfiguration.
+
+    Finder iconIn(String type) => find.descendant(
+          of: find.byKey(Key('tom-2fa-method-$type')),
+          matching: find.byType(Icon),
+        );
+
+    testWidgets('shows the descriptor icon beside a mechanism that has one',
+        (tester) async {
+      Tom2FAClientRegistry.register(const _SmsMechanism());
+      await pump(
+        tester,
+        _FakeController(
+          enrolment: Tom2FAPendingEnrolment(
+            offeredTypes: const ['totp', 'sms'],
+          ),
+        ),
+      );
+
+      expect(iconIn('totp'), findsOneWidget);
+      expect(
+        tester.widget<Icon>(iconIn('totp')).icon,
+        AllIconsAdapter().resolveIcon('mSecurity'),
+        reason: 'the icon named by two_factor.totp.icon, not an arbitrary one',
+      );
+
+      // SMS has a label and a description in the bundle but no icon entry, so
+      // its row is simply icon-less. An unknown key resolves to the key itself,
+      // which is not an icon name — the row must not sprout a broken glyph.
+      expect(iconIn('sms'), findsNothing);
+    });
+
+    testWidgets('renders no icon when the build configured no icon adapter',
+        (tester) async {
+      // An application that never calls `TomUIIcons.adapter =` still gets a
+      // working chooser; the icon is an enhancement, never a requirement.
+      TomUIIcons.reset();
+      await pump(
+        tester,
+        _FakeController(
+          enrolment: Tom2FAPendingEnrolment(offeredTypes: const ['totp']),
+        ),
+      );
+
+      expect(find.byKey(const Key('tom-2fa-method-totp')), findsOneWidget);
+      expect(iconIn('totp'), findsNothing);
+      // The row is still fully labelled — losing the icon loses nothing else.
+      expect(find.text('Authenticator app'), findsOneWidget);
     });
 
     testWidgets('omits a mechanism no panel is registered for', (tester) async {

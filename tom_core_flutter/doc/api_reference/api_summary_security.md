@@ -167,7 +167,7 @@ const Tom2FAClientMechanism(String type)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `type` | `String` | The mechanism key, matching the server adaptor's (e.g. `'totp'`). |
-| `descriptor` | `Tom2FAMethodDescriptor` | The catalog entry for the chooser — label, description and icon, all as resource keys. Defaults to the `two_factor.<type>.*` convention, so a conforming mechanism says nothing here. |
+| `descriptor` | `Tom2FAMethodDescriptor` | The catalog entry for the chooser — label, description and icon, all as resource keys, and the chooser renders all three. The icon resolves in two steps (bundle key → icon name → `TomUIIcons` adapter) and is optional: no bundle entry or no adapter renders the row without one. Defaults to the `two_factor.<type>.*` convention, so a conforming mechanism says nothing here. |
 
 #### Methods
 

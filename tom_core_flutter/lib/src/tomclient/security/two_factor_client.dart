@@ -155,12 +155,23 @@ abstract class Tom2FAClientMechanism {
   );
 
   /// The mechanism's catalog entry for the chooser — its label, description and
-  /// icon, all as resource keys (G-RES-1).
+  /// icon, all as resource keys (G-RES-1). The chooser renders all three.
   ///
   /// Defaults to the `two_factor.<type>.*` convention the server's descriptors
   /// follow, so a mechanism that keeps to the convention says nothing here and
   /// one that cannot (a vendor SDK whose strings ship under another prefix)
   /// overrides in one place.
+  ///
+  /// The icon resolves in two steps, the convention `tom_flutter_ui` uses
+  /// throughout: the key resolves through the text bundle to an icon *name*
+  /// (`mSecurity`), and the application's `TomUIIcons` adapter maps that name
+  /// to something drawable. A mechanism that wants an icon therefore ships a
+  /// bundle entry, not an asset — which is what lets the same descriptor serve
+  /// a Flutter client and a web one without knowing which is asking.
+  ///
+  /// Only the label and the description are load-bearing. A build with no icon
+  /// bundle entry, or no adapter installed, renders the row without a leading
+  /// icon and loses nothing else.
   Tom2FAMethodDescriptor get descriptor =>
       Tom2FAMethodDescriptor.scoped(type);
 }
