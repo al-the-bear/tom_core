@@ -36,6 +36,28 @@
 
 ### Documentation
 
+- **preferences / configuration: the exception constructor blocks show
+  `autoLog`'s inherited default, and say where their types come from
+  (tcinc664).** Both preferences blocks documented `bool autoLog` with the
+  `= false` default dropped, and `api_summary_configuration.md` documented
+  `bool? autoLog`, which no call site can pass — `autoLog` is non-nullable, so
+  omitting it and passing `null` are not the same thing and the second does not
+  compile. All three now show `bool autoLog = false`.
+
+  The `stack` parameter in the same blocks was **not** wrong and is unchanged.
+  `StackTrace? stack` has now been reported as a mistype three times (tcinc617
+  for the server's summary, tcinc654 for `little_things`, tcinc664 here),
+  always on the same reasoning: the field on `TomBaseException` is `Object?`,
+  so the parameter "should" be too. It should not. These classes declare no
+  types of their own — every parameter arrives by `super.x`, and a
+  super-parameter resolves against the *immediate superclass constructor*.
+  `TomException`'s constructor declares `StackTrace? stack` outright and
+  forwards `stack ?? StackTrace.current`, so `StackTrace?` is what a caller may
+  pass; documenting the parameter from the field declaration is the
+  plausible-looking wrong answer, which is why it keeps being filed. Both
+  summaries now carry the paragraph that says so, joining the one
+  `api_summary_little_things.md` already had.
+
 - **observing: `ValueListenableObserver`'s contract deviation is documented at
   both ends, not one (tcinc662).** The adaptor departs from the
   `ValueListenable` contract in two independent ways — `addListener` replaces
@@ -153,6 +175,22 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **the API-summary constructor mirror is one shared check over three modules
+  (tcinc664).** `little_things_test.dart` carried a parser that reads a
+  constructor's parameters out of a source file, resolves the kernel's
+  `this.x` forms to their field types and compares the result against the
+  summary's code fence. `preferences` and `configuration` needed exactly the
+  same check, so rather than a second and third copy the parser moved to
+  `test/support/exception_constructor_mirror.dart` and all three modules call
+  it; `little_things`' four tests are unchanged in name and in what they
+  assert. The class list each module checks is now *derived* from its sources
+  (`exceptionClassesIn`), so an exception added to a module is covered without
+  anyone extending a hand-written list — and a guard cannot be quietly
+  satisfied by shortening one. Four new tests, three in `preferences_test.dart`
+  and one in `configuration_test.dart`. Verified by mutation: dropping
+  `autoLog`'s default, restoring `bool?`, deleting a constructor block, and
+  making the summary say `Object? stack` each fail exactly the intended test.
 
 - **observing: two lifecycle test comments describe the contract instead of the
   TDD phase they were written in (tcinc663).** Both comments in

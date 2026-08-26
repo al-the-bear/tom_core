@@ -13,6 +13,7 @@ import 'package:tom_core_flutter/src/tomclient/configuration/file_configuration_
     as neutral;
 
 import '../example/configuration/configuration_example.dart' as example;
+import 'support/exception_constructor_mirror.dart';
 
 /// A holder with one setting of each supported type.
 class _TestConfiguration extends TomBaseClientConfiguration {
@@ -708,6 +709,33 @@ void main() {
         isEmpty,
         reason: 'these classes declare a public constructor that $summaryPath '
             'never shows the call shape of',
+      );
+    });
+
+    test('the exception constructor is typed as the kernel types it', () {
+      // The constructor-shape test above only checks that a call shape is
+      // *shown*; it cannot see a wrong type inside one. This block had drifted
+      // to `bool? autoLog`, which no call site can pass — `autoLog` is
+      // non-nullable with an inherited default.
+      //
+      // It also pins `stack` as `StackTrace?` against the recurring correction
+      // to `Object?` (tcinc617, tcinc654, tcinc664): `super.stack` resolves
+      // against `TomException`'s constructor, which narrows the `Object?` field
+      // to `StackTrace?`, not against the field declaration. See
+      // `support/exception_constructor_mirror.dart`.
+      const exceptionSource =
+          'lib/src/tomclient/configuration/client_configuration_store.dart';
+      const className = 'TomClientConfigurationException';
+
+      expect(exceptionClassesIn(const [exceptionSource]), contains(className));
+      expectSummaryListsForwardedParameters(
+        summaryPath: summaryPath,
+        sourcePaths: const [exceptionSource],
+        classNames: const [className],
+      );
+      expectSummaryTypesMatchKernel(
+        summaryPath: summaryPath,
+        classNames: const [className],
       );
     });
 

@@ -181,11 +181,18 @@ TomClientConfigurationException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
 })
 ```
 
-See `TomException` (kernel) for the meaning of each argument.
+See `TomException` (kernel) for the meaning of each argument. The types above are
+the *kernel constructor's*, reached through Dart super-parameters — which resolve
+against the immediate superclass, not against the field's original declaration.
+That matters for `stack`: the field on `TomBaseException` is `Object?`, but
+`TomException`'s constructor narrows it to `StackTrace?`, so that is what a
+caller may pass here. `autoLog` is non-nullable and defaults to `false`; the
+default is inherited too, so omitting it is not the same as passing `null` —
+passing `null` does not compile.
 
 | Key | Raised when |
 | --- | ----------- |

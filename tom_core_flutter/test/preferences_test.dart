@@ -8,6 +8,7 @@ import 'package:tom_core_flutter/tom_core_flutter.dart';
 
 import '../example/preferences/preferences_example.dart' as example;
 import 'preferences_test.reflection.dart';
+import 'support/exception_constructor_mirror.dart';
 
 /// A reflected preference value, so the object round-trip is exercised through
 /// the same reflection path an application's own preference class would take.
@@ -990,6 +991,60 @@ void main() {
       );
       TomBean.withType(TomDevicePreferences, installed);
       expect(identical(TomDevicePreferences.resolve(), installed), isTrue);
+    });
+  });
+
+  group('the API summary mirrors the preferences exception sources', () {
+    // tcinc664. The `stack` parameter in these two constructor blocks has now
+    // been reported as mistyped once (and the same claim was made about
+    // `little_things` in tcinc654 and about the server's summary in tcinc617).
+    // It is not mistyped: `TomException`'s constructor declares
+    // `StackTrace? stack` outright, and `super.stack` resolves against *that*,
+    // not against the `Object? stack` field on `TomBaseException`. Reading the
+    // field is the plausible-looking wrong answer, which is why the mistake
+    // keeps being made by eye.
+    //
+    // So this guard exists as much to reject the "correction" as to catch real
+    // drift — and there was real drift in the same two blocks: both showed
+    // `bool autoLog` with the inherited `= false` default dropped.
+    //
+    // The checks live in `support/exception_constructor_mirror.dart`, shared
+    // with `little_things` and `configuration`; the parser they use is pinned
+    // by `little_things_test.dart`.
+    const summaryPath = 'doc/api_reference/api_summary_preferences.md';
+    const sourcePaths = [
+      'lib/src/tomclient/preferences/device_preferences.dart',
+      'lib/src/tomclient/preferences/user_preferences_client.dart',
+    ];
+    final classNames = exceptionClassesIn(sourcePaths);
+
+    test('both module exceptions are among the classes checked below', () {
+      // The class list is derived from the sources, so it cannot go stale — but
+      // a regex that stopped matching would empty it and leave the two tests
+      // below passing on nothing. These are the two the module declares.
+      expect(
+        classNames,
+        containsAll(const [
+          'TomDevicePreferenceException',
+          'TomUserPreferencesClientException',
+        ]),
+      );
+    });
+
+    test('the summary shows the parameters the sources actually forward', () {
+      expectSummaryListsForwardedParameters(
+        summaryPath: summaryPath,
+        sourcePaths: sourcePaths,
+        classNames: classNames,
+      );
+    });
+
+    test('every parameter type matches the kernel constructor it comes from',
+        () {
+      expectSummaryTypesMatchKernel(
+        summaryPath: summaryPath,
+        classNames: classNames,
+      );
     });
   });
 
