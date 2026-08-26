@@ -181,7 +181,7 @@ Flutter toolchain (`flutter test` / a Flutter entry point).
 | Example | Demonstrates |
 | ------- | ------------ |
 | [`example/observing/`](example/observing/observing_example.dart) | `ValueListenableObserver` bridging a `TomObservable` to a Flutter listener |
-| [`example/resources/`](example/resources/resources_example.dart) | Resolving typed config via `TomProperty` subclasses and `.withDefault` |
+| [`example/resources/`](example/resources/resources_example.dart) | Resolving typed config via `TomProperty` subclasses and `.withDefault`, and both construction-time failures — an unconfigured obligatory key and a value of the wrong type |
 | [`example/configuration/`](example/configuration/configuration_example.dart) | Declaring a client settings holder, loading overrides, observing, and persisting only what changed |
 | [`example/preferences/`](example/preferences/preferences_example.dart) | Registering a device store once, typed reads/writes, persistence across a restart, reading and writing the account store over a real socket, and the device-over-server precedence |
 | [`example/runtime/`](example/runtime/runtime_example.dart) | Obtaining the platform-appropriate `TomPlatformUtils` and querying its predicates |

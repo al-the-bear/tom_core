@@ -1,8 +1,15 @@
 /// Executable example for the resources module of `tom_core_flutter`.
 ///
 /// Demonstrates resolving typed config values via `TomProperty` subclasses and
-/// the `.withDefault` fallback. A deterministic in-memory config provider is
+/// the `.withDefault` fallback, and **both ways resolution can fail** — an
+/// obligatory key that is not configured, and a configured value that cannot be
+/// cast to the property's type. A deterministic in-memory config provider is
 /// installed so the example is self-contained.
+///
+/// Every one of those five outcomes is decided in the *constructor*: a property
+/// reads its key once, when it is declared. That is why the two failures below
+/// are shown wrapped around a declaration and not around a read — there is no
+/// read that can fail, and a property that constructs never throws again.
 ///
 /// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so this
 /// runs under the Flutter toolchain, not bare `dart run`. Run it with
@@ -42,13 +49,45 @@ void run() {
   final ratioOrDefault = TomDoubleProperty.withDefault('app.ratio', 9.9);
   print('ratio (present wins over default)=${~ratioOrDefault}');
 
-  // Assertions
+  // Assertions for the three resolutions above. The two examples that follow
+  // assert inside their `catch`, because what they check is the exception.
   assert(~title == 'Tom Demo');
   assert(retries.get() == 3);
   assert(~ratio == 1.5);
   assert(~flag == true);
   assert(~timeout == 30);
   assert(~ratioOrDefault == 1.5);
+
+  // Example 4: an obligatory key that is not configured. The throw happens
+  // during construction, not on a first read — the property never comes into
+  // existence, so there is nothing to guard a later `get()` against.
+  try {
+    TomStringProperty('app.region');
+    throw StateError('an absent obligatory key must not construct');
+  } on TomPropertyException catch (error) {
+    print('absent key rejected: ${error.key} — ${error.defaultUserMessage}');
+    assert(error.key == 'resources.property.not_configured');
+    // The message names the key, which is what makes it actionable: it says
+    // which line of configuration is missing, not merely that one is.
+    assert(error.defaultUserMessage.contains('app.region'));
+  }
+
+  // Example 5: a configured value that cannot be cast to the property's type.
+  // This throw is at construction too, and `.withDefault` does not soften it —
+  // a default covers an *absent* key, not an unusable one, so a mistyped entry
+  // fails at start-up whether or not a fallback was supplied.
+  try {
+    TomIntProperty.withDefault('app.title', 7);
+    throw StateError('a mistyped config value must not construct');
+  } on TomPropertyException catch (error) {
+    print('type mismatch rejected: ${error.key} — ${error.defaultUserMessage}');
+    assert(error.key == 'resources.property.type_mismatch');
+    assert(error.defaultUserMessage.contains('app.title'));
+    // The message names the type that was *wanted* and the value, but never
+    // the value's actual runtime type. The `TypeError` the cast raised is the
+    // only record of that, which is why it is carried rather than discarded.
+    assert(error.rootException is TypeError);
+  }
 }
 
 void main() => run();

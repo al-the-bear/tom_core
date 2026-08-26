@@ -2,6 +2,20 @@
 
 ### Added
 
+- **resources: the example demonstrates both construction-time failures
+  (tcinc675).** It showed three ways resolution succeeds and no way it fails,
+  though failing is half of this module's contract and the harder half to
+  discover — both failures happen while the property is being *declared*, not
+  when it is read, so a reader who has only seen the success path has no reason
+  to expect a `try` around a field initialiser. Two sections were added: an
+  obligatory key that is not configured, and a value that cannot be cast to the
+  property's type. Each catches `TomPropertyException`, prints it, and asserts
+  the matchable `key` plus that the message names the failing config key; the
+  type-mismatch one also asserts that `rootException` carries the `TypeError`,
+  which is the only record of the value's actual runtime type. The mismatch is
+  shown through `.withDefault` on purpose — a default covers an absent key, not
+  an unusable one, so it does not soften a mistyped entry.
+
 - **resources: the suite pins dot-notation resolution, the null-value collapse
   on both branches, and `~` across all four subclasses (tcinc674).** Three
   documented behaviours had no test. Every config in the file was written as a
