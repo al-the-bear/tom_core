@@ -267,13 +267,11 @@ class AclBuilder {
       // overflow instead of a component that simply fits.
       c.preferredWidthIsDefault = true;
     }
-    // Apply default minimum size if none was explicitly set.
+    // Apply default minimum size if none was explicitly set. Unlike the
+    // preferred size above, 0 needs no special case here: a minimum of 0 *is*
+    // "no minimum on that axis", which is what passing 0 asks for.
     if (c.minimumSize == null && _defaultUnknownMinimumSize != null) {
-      final dm = _defaultUnknownMinimumSize!;
-      c.minimumSize = Size(
-        dm.width == 0 ? 0 : dm.width,
-        dm.height == 0 ? 0 : dm.height,
-      );
+      c.minimumSize = _defaultUnknownMinimumSize;
     }
   }
 
@@ -780,6 +778,11 @@ class AclBuilder {
 
   // ── Container-level decoration ─────────────────────────────────────────────
 
+  /// Replaces the default [AclFlags] register applied to every subsequent
+  /// [append]. The built-in default is 0 — no flags.
+  ///
+  /// Prefer [setAclExpandXDefault] for the common single-flag case; it adds
+  /// or removes one flag rather than replacing the whole register.
   AclBuilder setAclDefaultFlags(int flags) {
     _defaultFlags = flags;
     return this;
@@ -853,7 +856,7 @@ class AclBuilder {
   /// content row started with [newRow].
   ///
   /// Only applies when the individual [newRow] call does not specify a
-  /// non-zero `dist`. Pass 0 to disable (the default).
+  /// non-zero `dist`. Pass 0 to disable (the built-in default is 8).
   AclBuilder setAclDefaultRowGap(int pixels) {
     _defaultRowGap = pixels.toDouble();
     return this;
@@ -918,6 +921,8 @@ class AclBuilder {
   /// Builder-wide default for the **horizontal** main-axis placement of
   /// every row. Individual rows override via [setRowHorizontalAlignment]
   /// or the Left/Center/Right shortcuts.
+  ///
+  /// The factory default is [RowAlignment.left].
   AclBuilder setAclDefaultRowHorizontalAlignment(RowAlignment alignment) {
     _defaultRowHorizontalAlignment = alignment;
     // Retroactively apply to every row that hasn't set its own alignment —
@@ -934,8 +939,10 @@ class AclBuilder {
   /// Sets a default minimum size for components that do not have an explicit
   /// minimum size ([setMSize] / [setMWidthInChars]).
   ///
-  /// Pass 0 for [width] or [height] to leave that dimension untouched
-  /// (i.e. no default minimum is applied on that axis).
+  /// There is no built-in default: unless this is called, a component without
+  /// an explicit minimum keeps a null minimum size. Pass 0 for [width] or
+  /// [height] to leave that dimension untouched (i.e. no default minimum is
+  /// applied on that axis).
   ///
   /// **Note:** setting a minimum that is smaller than the preferred size has no
   /// visible effect — the preferred size already acts as the floor. Setting a

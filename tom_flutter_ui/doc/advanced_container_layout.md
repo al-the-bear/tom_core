@@ -73,6 +73,11 @@ final Acl layout = AclBuilder(title: 'Address')
 
 - `append(child, {dist})` adds a component; `gap({weight})` inserts an elastic
   spacer; `newRow(...)` / `gapRow(...)` start the next row.
+- **Gaps are on by default.** Every appended component gets an 8 px leading gap
+  and every `newRow()` an 8 px gap above it, so a layout that never mentions
+  spacing is already spaced. Change them with `setAclDefaultAppendGap` /
+  `setAclDefaultRowGap`, or pass 0 to either to switch that gap off; an
+  explicit `dist` on the individual call always wins.
 - Size methods (`setPSize` / `setMSize` / `setXSize` and their char-width
   variants) set preferred/minimum/maximum sizes; `setAttr` / `clearAttr` toggle
   [`AclFlags`].

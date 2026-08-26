@@ -132,11 +132,11 @@ Adds or removes `AclFlags.expandX` in the default flags register. When `true`, e
 
 ### `setAclDefaultAppendGap(int pixels)`
 
-Sets a fixed horizontal gap (in pixels) inserted before each appended component. This is a convenience for the common pattern of calling `.append(widget, dist: 16)` on every field. The default applies to **all** components in the row, including the first. The default only takes effect when the individual `append()` call specifies `dist: 0` (the default). An explicit `dist` always wins.
+Sets a fixed horizontal gap (in pixels) inserted before each appended component. This is a convenience for the common pattern of calling `.append(widget, dist: 16)` on every field. The default applies to **all** components in the row, including the first. The default only takes effect when the individual `append()` call specifies `dist: 0` (the default). An explicit `dist` always wins. The built-in gap is **8**; pass 0 to disable it.
 
 ### `setAclDefaultRowGap(int pixels)`
 
-Sets a fixed vertical gap (in pixels) inserted before each new content row started with `newRow()`. Only applies when the individual `newRow()` call specifies `dist: 0` (the default). An explicit `dist` always wins.
+Sets a fixed vertical gap (in pixels) inserted before each new content row started with `newRow()`. Only applies when the individual `newRow()` call specifies `dist: 0` (the default). An explicit `dist` always wins. The built-in gap is **8**; pass 0 to disable it.
 
 ### `setAclDefaultUnknownMinimumSize(double width, [double height = 0])`
 
@@ -152,7 +152,9 @@ Replaces the built-in 150 × 0 default preferred size for components without an 
 
 ### Zero-means-untouched convention
 
-All five methods (and the per-component size methods) follow the convention that **width = 0** or **height = 0** means "don't touch this dimension — use whatever default or previous value applies."
+The two **size** setters above (and the per-component size methods) follow the convention that **width = 0** or **height = 0** means "don't touch this dimension — use whatever default or previous value applies."
+
+The two **gap** setters do not, and the difference is deliberate: a gap of 0 is a meaningful value, so `setAclDefaultAppendGap(0)` and `setAclDefaultRowGap(0)` take it literally and switch the gap off rather than falling back to the built-in 8. `test/advanced_container_layout/acl_builder_defaults_test.dart` pins both conventions against each other.
 
 ### Example
 
