@@ -2,6 +2,30 @@
 
 ### Documentation
 
+- **The cluster demo readme headed a five-row table "The three programs"
+  (tcinc638).** `example/scheduling/cluster/readme.md` listed
+  `cluster_provision.dart`, `cluster_node.dart`, `cluster_verify.dart`,
+  `cluster_support.dart` and `cluster_reflection.dart` under a heading that
+  named three. The count had been true of the *invoked* programs — the three
+  `run_cluster_demo.sh` starts — but the table drew no such line, so the
+  heading contradicted what the reader could see.
+
+  The heading now names five, and a `Kind` column marks each row *invoked* or
+  *imported*, with a note under the table saying which the runner starts. Both
+  facts are now stated where the reader is rather than left to be inferred.
+  Splitting the table into two sections would have made the same distinction,
+  but at the cost of pushing `cluster_reflection.dart` into a "supporting
+  files" section that is easy to skim past — and that row is the one that
+  records why a demo run without a regenerated reflection root throws at its
+  first query.
+
+  The defect survived because nothing read the file: `_handWrittenDocuments()`
+  in `test/api_reference_coverage_test.dart` covered `README.md`, `doc/`,
+  `doc/api_reference/` and the lib module readmes, but no example readme. It
+  now walks `example/` too, which subjects those readmes to the whole
+  "shipped text stands on its own" family of guards as well as the new
+  counting check below.
+
 - **`doc/scheduling.md` attributed the provisioned schema comparison to the one
   file that cannot make it (tcinc637).** The guide described
   `test/framework_schema_test.dart` and then added that "its `db`-tagged half"
@@ -69,6 +93,28 @@
   gained the extension row its arbitration table was missing.
 
 ### Testing
+
+- **A heading that counts is now checked against the table it heads
+  (tcinc638).** `_miscountedTableHeadings` reads the number word out of every
+  heading in every hand-written document and compares it to the rows of the
+  table directly beneath. Immediacy is the rule that makes this precise rather
+  than noisy: a heading with nothing between it and a table is that table's
+  caption, so the number is a claim about those rows. Once prose intervenes the
+  claim changes — `doc/export.md` heads "The Two Delivery Channels" over three
+  rows whose third is `*(neither)*`, and `doc/resources.md` heads "Two Ways to
+  Read a Principal's Locale" over a matrix counting two *columns*. Both are
+  correct, and both explain themselves in a paragraph first.
+
+  A number word flanked by a hyphen is a name, not a count — the *two-node*
+  cluster demonstration, *Two-Factor* Authentication — and is skipped.
+
+  A companion group ties the cluster readme's table to the directory it
+  describes and its `invoked` rows to the `dart run` lines in
+  `run_cluster_demo.sh`, so a sixth file or a fourth invocation fails rather
+  than silently falsifying the heading. The counting guard's own reach is
+  asserted too, because the first draft of the fix put a lead-in paragraph
+  between the heading and the table and thereby exempted the one document the
+  guard was written for — silently, and only caught by mutating the live file.
 
 - **Nothing checked whether an `**Extends:**` line named the clause the source
   wrote (tcinc634).** The API summaries carry 143 relationship lines across the

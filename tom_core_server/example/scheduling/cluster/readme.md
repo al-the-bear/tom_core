@@ -34,15 +34,20 @@ scheduler migrations, runs the four scenarios as pairs of real processes, asks
 the verifier for a judgement, and tears everything down. It exits non-zero if
 any claim fails, and prints every node's testimony when it does.
 
-## The three programs
+## The five Dart files
 
-| File | Role |
-| ---- | ---- |
-| `cluster_provision.dart` | Drops and re-migrates the schema from `example/scheduling/migrations/`, then seeds the one extra table the fencing scenario contends for. |
-| `cluster_node.dart` | One node. Started twice per scenario with a different `--node` and `--scenario`; reports what it observed as JSON lines on stdout. |
-| `cluster_verify.dart` | The judge. Reads every node's log *and* the database, and turns the pair into the four assertions. |
-| `cluster_support.dart` | Connection coordinates, the fenced-resource table, and the event record the halves communicate through. |
-| `cluster_reflection.dart` | The demo's own reflected row type — `executeQuery<T>` resolves `T` through the reflector, so a demo without generated reflection throws at its first query. Captured by the example suite's shared root, `example/example_reflection.dart`; regenerate with `./reflection_generation.sh`. |
+| File | Kind | Role |
+| ---- | ---- | ---- |
+| `cluster_provision.dart` | invoked | Drops and re-migrates the schema from `example/scheduling/migrations/`, then seeds the one extra table the fencing scenario contends for. |
+| `cluster_node.dart` | invoked | One node. Started twice per scenario with a different `--node` and `--scenario`; reports what it observed as JSON lines on stdout. |
+| `cluster_verify.dart` | invoked | The judge. Reads every node's log *and* the database, and turns the pair into the four assertions. |
+| `cluster_support.dart` | imported | Connection coordinates, the fenced-resource table, and the event record the halves communicate through. |
+| `cluster_reflection.dart` | imported | The demo's own reflected row type — `executeQuery<T>` resolves `T` through the reflector, so a demo without generated reflection throws at its first query. Captured by the example suite's shared root, `example/example_reflection.dart`; regenerate with `./reflection_generation.sh`. |
+
+**`run_cluster_demo.sh` invokes the three marked *invoked*.** The other two are
+imported by them, and imported is not optional — a stale
+`cluster_reflection.dart` fails the demo at its first query rather than at its
+build.
 
 **A node never asserts anything about the cluster.** It cannot: each one sees
 only its own half. Keeping the judgement in a third process is what makes this a

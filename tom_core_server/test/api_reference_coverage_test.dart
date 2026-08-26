@@ -2441,6 +2441,85 @@ List<String> _untaggedTagClaims(String guide, List<String> lines) {
   return found;
 }
 
+/// The number words a heading is allowed to count in.
+///
+/// A closed set rather than a parser, for the same reason the suite-count guard
+/// uses one: the check should fail loudly on "a handful" instead of quietly
+/// reading it as zero.
+const _countWords = {
+  'two': 2,
+  'three': 3,
+  'four': 4,
+  'five': 5,
+  'six': 6,
+  'seven': 7,
+  'eight': 8,
+  'nine': 9,
+  'ten': 10,
+  'eleven': 11,
+  'twelve': 12,
+};
+
+/// The counts [heading] states, ignoring number words that name rather than
+/// count.
+///
+/// A hyphen on either side means the word is part of a compound — the
+/// *two-node* cluster demonstration, *Two-Factor* Authentication — which
+/// describes a thing instead of counting the rows under it.
+Set<int> _statedCounts(String heading) => {
+  for (final entry in _countWords.entries)
+    if (RegExp(
+      '(?<![A-Za-z-])${entry.key}(?![A-Za-z-])',
+      caseSensitive: false,
+    ).hasMatch(heading))
+      entry.value,
+};
+
+/// Headings in [document] that state a count and sit directly on a table whose
+/// row count disagrees.
+///
+/// Only a table *immediately* beneath the heading is checked, and that
+/// restriction is the rule rather than a simplification of it. A heading with
+/// nothing between it and a table is a caption for that table, and a caption
+/// that contradicts what it captions is read as a fact about it —
+/// `## The three programs` sitting on five rows told a reader there were three
+/// things here, and the row most easily skipped as a result was the one warning
+/// that a stale reflection root fails the demo at its first query.
+///
+/// Prose in between changes the claim: `doc/export.md` heads "The Two Delivery
+/// Channels" over a three-row table whose third row is `*(neither)*`, and
+/// `doc/resources.md` heads "Two Ways to Read a Principal's Locale" over a
+/// comparison matrix counting two *columns*. Both are correct, and both are
+/// separated from their heading by a paragraph that says so.
+List<String> _miscountedTableHeadings(String document, List<String> lines) {
+  final found = <String>[];
+  var fenced = false;
+  for (var i = 0; i < lines.length; i++) {
+    if (lines[i].trimLeft().startsWith('```')) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    final heading = RegExp(r'^#{1,6} (.*)$').firstMatch(lines[i]);
+    if (heading == null) continue;
+    final claimed = _statedCounts(heading.group(1)!);
+    if (claimed.isEmpty) continue;
+    var start = i + 1;
+    while (start < lines.length && lines[start].trim().isEmpty) {
+      start++;
+    }
+    if (start >= lines.length || !lines[start].startsWith('|')) continue;
+    // The header row and its `| --- |` separator are not data.
+    var rows = 0;
+    for (var k = start + 2; k < lines.length && lines[k].startsWith('|'); k++) {
+      rows++;
+    }
+    if (claimed.contains(rows)) continue;
+    found.add('$document:${i + 1} states ${claimed.join('/')} over $rows rows');
+  }
+  return found;
+}
+
 /// Every module guide, as (name, lines).
 List<(String, List<String>)> _guides() =>
     Directory('doc')
@@ -4864,6 +4943,183 @@ One: `TomKind`, documented beside the type that carries it.
     });
   });
 
+  group('a heading that counts agrees with the table under it', () {
+    test('no shipped document heads a table with the wrong number', () {
+      final miscounted = [
+        for (final document in _handWrittenDocuments())
+          ..._miscountedTableHeadings(
+            document,
+            File(document).readAsLinesSync(),
+          ),
+      ];
+      expect(
+        miscounted,
+        isEmpty,
+        reason:
+            'A heading with nothing between it and a table is that table\'s '
+            'caption, and a reader takes the count as a fact about the rows. '
+            '`example/scheduling/cluster/readme.md` headed five rows "The '
+            'three programs", and the two rows the heading wrote off were the '
+            'shared library and the reflection root — the second of which is '
+            'the one whose absence fails the demo at its first query rather '
+            'than at its build. A count that undersells a table is an '
+            'invitation to stop reading at the number.',
+      );
+    });
+
+    test('the shape that went wrong is what the sweep reports', () {
+      // The cluster readme as it read before this guard.
+      expect(
+        _miscountedTableHeadings('synthetic.md', [
+          '## The three programs',
+          '',
+          '| File | Role |',
+          '| ---- | ---- |',
+          '| `a.dart` | one |',
+          '| `b.dart` | two |',
+          '| `c.dart` | three |',
+          '| `d.dart` | four |',
+          '| `e.dart` | five |',
+        ]),
+        ['synthetic.md:1 states 3 over 5 rows'],
+      );
+      // Correcting the number settles it — the table did not have to change.
+      expect(
+        _miscountedTableHeadings('synthetic.md', [
+          '## The five Dart files',
+          '',
+          '| File | Role |',
+          '| ---- | ---- |',
+          '| `a.dart` | one |',
+          '| `b.dart` | two |',
+          '| `c.dart` | three |',
+          '| `d.dart` | four |',
+          '| `e.dart` | five |',
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('a number word that names rather than counts is left alone', () {
+      // `# The two-node cluster demonstration` and `## Two-Factor
+      // Authentication` are names. Reading them as counts would either force a
+      // rewrite of correct prose or, worse, train whoever hit the failure to
+      // treat this guard as noise.
+      expect(_statedCounts('The two-node cluster demonstration'), isEmpty);
+      expect(_statedCounts('Two-Factor Authentication'), isEmpty);
+      expect(_statedCounts('The three programs'), {3});
+      expect(_statedCounts('Two caps, deliberately'), {2});
+    });
+
+    test('the sweep reads documents, and reads past fences', () {
+      // Emptiness is also what a sweep that visits nothing produces.
+      final documents = _handWrittenDocuments();
+      expect(documents, contains('example/scheduling/cluster/readme.md'));
+      expect(documents.length, greaterThan(20));
+      // A `# comment` inside a fenced Dart block is not a heading, and
+      // `doc/authentication.md` has one that counts: `# The four templates`.
+      // Reading it as a heading would attribute it to whatever table came next.
+      expect(
+        _miscountedTableHeadings('synthetic.md', [
+          '```dart',
+          '# The three templates',
+          '```',
+          '',
+          '| File | Role |',
+          '| ---- | ---- |',
+          '| `a.dart` | one |',
+        ]),
+        isEmpty,
+      );
+    });
+  });
+
+  group('the cluster readme lists the files the demo has', () {
+    const readme = 'example/scheduling/cluster/readme.md';
+    const runner = 'example/scheduling/cluster/run_cluster_demo.sh';
+
+    /// The `File` and `Kind` columns of the readme's file table.
+    Map<String, String> tabledFiles() => {
+      for (final line in File(readme).readAsLinesSync())
+        if (RegExp(r'^\| `(\w+\.dart)` \| (\w+) \|').firstMatch(line)
+            case final row?)
+          row.group(1)!: row.group(2)!,
+    };
+
+    test('every Dart file in the directory has a row', () {
+      final present =
+          Directory('example/scheduling/cluster')
+              .listSync()
+              .whereType<File>()
+              .map((entry) => entry.uri.pathSegments.last)
+              .where((name) => name.endsWith('.dart'))
+              .toList()
+            ..sort();
+      expect(
+        tabledFiles().keys.toList()..sort(),
+        present,
+        reason:
+            'The heading counts these rows, so a file added without one makes '
+            'the count wrong and the reader short of a file at the same time. '
+            'Tying the table to the directory is what keeps the number a fact '
+            'rather than something to remember.',
+      );
+    });
+
+    test('the rows marked invoked are the ones the runner runs', () {
+      final script = File(runner).readAsStringSync();
+      final run = RegExp(
+        r'dart run \S*/(\w+\.dart)',
+      ).allMatches(script).map((match) => match.group(1)!).toSet();
+      final invoked = {
+        for (final entry in tabledFiles().entries)
+          if (entry.value == 'invoked') entry.key,
+      };
+      expect(
+        invoked,
+        run,
+        reason:
+            'The split between invoked and imported is what makes "three '
+            'programs" true of a five-row table, so it has to be read off the '
+            'runner rather than remembered. Marking a fourth row invoked would '
+            'otherwise leave the count correct and the sentence false.',
+      );
+      // Everything else is imported — no third kind quietly appearing.
+      final imported = {
+        for (final entry in tabledFiles().entries)
+          if (entry.value == 'imported') entry.key,
+      };
+      expect(invoked.union(imported), tabledFiles().keys.toSet());
+    });
+
+    test('the count guard actually reaches this readme', () {
+      // Immediacy means a paragraph slipped between the heading and the table
+      // exempts the document *silently* — which is exactly what the first
+      // draft of this fix did, moving the one readme the guard was written for
+      // into the exempt set without anything saying so. Swapping the number
+      // has to produce a report, or the guard above is decorative here.
+      final swapped = [
+        for (final line in File(readme).readAsLinesSync())
+          if (line == '## The five Dart files')
+            '## The three Dart files'
+          else
+            line,
+      ];
+      expect(_miscountedTableHeadings(readme, swapped), [
+        contains('states 3 over 5 rows'),
+      ]);
+    });
+
+    test('both sides of the comparison are actually read', () {
+      // Two empty sets compare equal, so pin that neither is empty and that
+      // the runner is being parsed rather than merely opened.
+      expect(tabledFiles(), hasLength(5));
+      expect(File(runner).readAsStringSync(), contains('dart run'));
+      expect(tabledFiles()['cluster_reflection.dart'], 'imported');
+      expect(tabledFiles()['cluster_verify.dart'], 'invoked');
+    });
+  });
+
   group('a guide that counts what a suite asks agrees with the suite', () {
     /// The number words a doc or a suite header is allowed to count in.
     ///
@@ -5663,6 +5919,15 @@ List<String> _handWrittenDocuments() => [
       .whereType<Directory>()
       .map((entry) => '${entry.path}/readme.md')
       .where((path) => File(path).existsSync()),
+  // An example's readme is shipped hand-written text like any other, and
+  // leaving it out is not a neutral omission: `example/scheduling/cluster`
+  // headed a five-row table "The three programs" for as long as nothing read
+  // it. A document nobody checks is a document that drifts.
+  ...Directory('example')
+      .listSync(recursive: true)
+      .whereType<File>()
+      .map((entry) => entry.path)
+      .where((path) => path.endsWith('.md')),
 ]..sort();
 
 /// The `@TomEntityId` declarations inside [lines], reported under [file].
