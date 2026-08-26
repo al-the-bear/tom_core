@@ -2,6 +2,27 @@
 
 ### Testing
 
+- **`null` is now pinned as an answer of the analyzer's lookups, not a failure
+  of them (tcinc607).** `annotation_analyzer_null_memo_test.dart` covers the four
+  lookups that may answer `null` — `findMirror`, `findTable`, `findDataScope`,
+  `getPersistentColumns` — from two directions. At runtime it asks each one
+  twice for a type it cannot resolve and requires the second answer to be `null`
+  as well: the memo stores the miss, so `containsKey` is true with a `null`
+  value, and a cache read written as `cache[t]!` would pass the first call and
+  crash on the second.
+
+  The five sites that had done exactly that were not reachable from a
+  connection-free test, so the file also scans `lib/` for the shape itself and
+  fails naming file and line. Two self-tests pin the scanner: that it finds a
+  planted assertion, and that it ignores comment lines — these method names
+  appear throughout their own dartdoc, including in the sentences warning
+  against asserting them.
+
+  `queries_test.dart` gained the assertion that a `TomDelete` renders the table
+  of the entity it was constructed over; the existing paging tests only matched
+  the tail of the statement, leaving the table name — the thing the fix
+  re-sourced — unpinned.
+
 - **The mirror lookup swallowed every reflection failure (tcinc605).**
   `TomAnnotationAnalyzer.findMirror` wrapped `tomReflector.reflectType` in an
   empty `catch` and answered `null`. `null` has a meaning there — the type is
@@ -415,6 +436,33 @@
   and dropping the denial audit each fail exactly the tests that claim them.
 
 ### Fixed
+
+- **A schema-convergence guard tested a nullable table for the wrong thing, then
+  null-asserted it (tcinc607).** `TomSchemaConvergence.verify` skipped entities
+  with `if (TomAnnotationAnalyzer.findTable(type)?.schema != null) continue;` and
+  read the same lookup back as `findTable(type)!` on the next line. The guard
+  reads as though it established a table, but `?.schema != null` is equally false
+  for a *missing* table and for an unschemed one — so a type that maps to no
+  table falls through the `continue` and reaches the assertion. The lookup is now
+  made once and tested for what the branch actually needs
+  (`if (table == null || table.schema != null) continue;`).
+
+  Not reachable today: `verify` selects through `selectFor`, whose `_belongsTo`
+  filter drops types with no table. But that invariant lives some 440 lines from
+  the assertion that depends on it, which is precisely why it was written as a
+  guard in the first place.
+
+  Four further sites asserted the same nullable lookups rather than reading the
+  value they already had, or re-reading it through the non-nullable route.
+  `TomSqlDatasourceRepository.save` re-derived `getPersistentColumns(T)!` for
+  columns its constructor had already resolved; `TomDelete.generateQuery`
+  re-looked-up the table it holds in `persistenceInfo`; and
+  `MariadbDatasource._processResult` did both halves of the anti-pattern — one
+  branch asserted after a sibling branch had established the table, the other
+  tested `getPersistentColumns(rType) != null` and then re-read it with `!`
+  seventeen lines later. Each now uses the value in hand, or
+  `analysePersistentType`, which cannot answer `null` and names the type it
+  could not resolve.
 
 - **`delete(entity)` cast the primary key with `as K`, so deleting an unsaved
   entity threw a raw `TypeError` — or silently deleted nothing (tcinc595).**

@@ -782,7 +782,12 @@ class MariaDbDatasource implements TomDataSource {
             parameters: {"type": classMirror.reflectedType},
           );
         }
-        for (var col in TomAnnotationAnalyzer.getPersistentColumns(rType)!) {
+        // Reached only when the branch above found a @TomDbTable, so this is a
+        // mapped entity: analysePersistentType resolves it from the same memos
+        // and reports a type that is not, rather than asserting it away.
+        for (var col in TomAnnotationAnalyzer.analysePersistentType(
+          rType,
+        ).columnInfo) {
           if (qResult.cols.any((c) => c.name == col.field)) {
             // Annotated: the column name comes from `@TomDbColumn`, so it may
             // differ from the member's declared name.
@@ -865,7 +870,8 @@ class MariaDbDatasource implements TomDataSource {
         }
         result.add(rowResult as T);
       }
-    } else if (TomAnnotationAnalyzer.getPersistentColumns(rType) != null) {
+    } else if (TomAnnotationAnalyzer.getPersistentColumns(rType)
+        case final persistentColumns?) {
       for (var row in qResult.rows) {
         // Per row: the stack is drained at the end of this iteration, so a
         // stack that outlived it would re-resolve every earlier row's
@@ -882,7 +888,7 @@ class MariaDbDatasource implements TomDataSource {
           );
         }
         InstanceMirror im = tomReflector.reflect(rowResult);
-        for (var col in TomAnnotationAnalyzer.getPersistentColumns(rType)!) {
+        for (var col in persistentColumns) {
           VariableMirror dm =
               classMirror.declarations[col.declaredName] as VariableMirror;
           if (col.reference != null) {

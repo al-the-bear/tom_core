@@ -70,5 +70,27 @@ void main() {
       expect(select.getFields(dialect), {'fixture_task.priority'});
       expect(select.getParameters(dialect), ['minPriority']);
     });
+
+    test('a delete names the entity table it was constructed over', () {
+      // The table comes from the persistence metadata the statement resolved
+      // at construction — the same source as its columns — rather than from a
+      // second lookup made while rendering. Both must name one table; a delete
+      // that rendered a different one from the rest of the statement would be
+      // a statement against the wrong table, which no later check can catch.
+      final delete = TomDelete(
+        [FixtureTaskRecord],
+        query: b.gte(
+          b.intF('priority', compiler.determineColumn('priority')),
+          b.p<TomDbInt>('minPriority'),
+        ),
+      );
+      expect(
+        delete.generateQuery(dialect),
+        startsWith(
+          'DELETE FROM '
+          'fixture_task WHERE ',
+        ),
+      );
+    });
   });
 }

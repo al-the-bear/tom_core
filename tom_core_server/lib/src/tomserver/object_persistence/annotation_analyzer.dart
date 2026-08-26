@@ -51,6 +51,28 @@ class TomAnnotationAnalyzerSyntaxException extends TomServerException {
 /// resolutions of the same entity therefore cannot be made to disagree, which
 /// is the property the whole compile path assumes when it looks a column up
 /// once and trusts it everywhere.
+///
+/// ## `null` is an answer here, not a failure
+///
+/// [findMirror], [findTable], [findDataScope] and [getPersistentColumns] each
+/// return `null` for an ordinary reason — the type is not registered, carries
+/// no `@TomDbTable`, declares no row scope, has no columns — and each memoises
+/// that `null` alongside the answers. `containsKey` true with a `null` value is
+/// therefore a *designed* state of every one of those maps, so a cache-hit path
+/// must read the entry back as nullable.
+///
+/// Callers must not null-assert the result. `findTable(type)!` is a null check
+/// written as an expression: where the caller has in fact established that the
+/// type is mapped, it says so in a form that stops being true the moment the
+/// branch above it moves, and where it has not, it reports `Null check operator
+/// used on a null value` out of a static memo, naming neither the type nor the
+/// annotation that was missing. A caller that knows the type is an entity
+/// should ask [analysePersistentType], which returns a non-nullable
+/// [TomTypePersistenceInfo] or names what is absent; one that is asking
+/// *whether* it is should read the lookup into a local and test it.
+/// `test/annotation_analyzer_null_memo_test.dart` pins both halves — the memoised
+/// `null` reading back as `null`, and the absence of an assertion anywhere in
+/// `lib/`.
 mixin TomAnnotationAnalyzer {
   /// Cache of resolved class mirrors per entity type (`null` = not reflectable).
   static final _mirrorCache = <Type, ClassMirror?>{};

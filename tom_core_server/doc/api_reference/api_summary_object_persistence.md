@@ -1497,6 +1497,26 @@ Neither is memoised: a thrown lookup leaves no entry behind, so the second call
 reports the fault again rather than reading a `null` back.
 `test/annotation_analyzer_mirror_lookup_test.dart` pins all three outcomes.
 
+##### A memoised `null`
+
+`findMirror`, `findTable`, `findDataScope` and `getPersistentColumns` all store
+their `null` answer, so `containsKey` true with a null value is a designed state
+of each of their maps. Two rules follow.
+
+A cache-hit path reads the entry back **as nullable**. Casting it to the
+lookup's non-nullable element type gives the worst shape of bug available: the
+first call answers correctly and the second, served from the memo, throws.
+
+Callers **do not null-assert** these lookups. `findTable(type)!` is a null check
+written as an expression — where the caller has established that the type is
+mapped it records that in a form that stops being true when the branch above it
+moves, and where it has not it reports `Null check operator used on a null value`
+from inside a static cache, naming neither the type nor the missing annotation.
+A caller holding an entity uses `analysePersistentType`, which is non-nullable
+and names what is absent; a caller asking *whether* it holds one reads the lookup
+into a local and tests it. `test/annotation_analyzer_null_memo_test.dart` pins
+the read-back at runtime and the absence of assertions by scanning `lib/`.
+
 ### Exceptions
 
 All extend the server `TomServerException`.

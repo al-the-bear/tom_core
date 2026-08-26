@@ -483,7 +483,10 @@ void main() {
           TomPrincipalDelegation,
           TomResourceGrant,
         ])
-          TomAnnotationAnalyzer.findTable(type)!.table,
+          // Not `findTable(type)!`: were one of these to lose its annotation,
+          // the assertion would fail with a bare null check that does not say
+          // which. analysePersistentType names the type.
+          TomAnnotationAnalyzer.analysePersistentType(type).table.table,
       };
       expect(
         TomAnnotationAnalyzer.resourceScopeInputTables,

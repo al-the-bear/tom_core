@@ -532,11 +532,16 @@ class TomSchemaConvergenceCheck {
 
     if (reportUnschemedEntitiesAsAmbiguous) {
       for (final type in selected) {
-        if (TomAnnotationAnalyzer.findTable(type)?.schema != null) continue;
+        // One lookup, two uses. Written as two, the guard reads as though it
+        // established a table — `?.schema != null` is false for a *missing*
+        // table as much as for an unschemed one — and the second lookup would
+        // then have to assert what the first did not check.
+        final table = TomAnnotationAnalyzer.findTable(type);
+        if (table == null || table.schema != null) continue;
         divergences.add(
           TomSchemaDivergence(
             kind: TomSchemaDivergenceKind.ambiguousEntitySchema,
-            table: TomAnnotationAnalyzer.findTable(type)!.table,
+            table: table.table,
             origin: '$type',
             message:
                 'datasource "$datasource" has more than one schema directory '

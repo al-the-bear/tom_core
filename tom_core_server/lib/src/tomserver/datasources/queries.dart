@@ -424,7 +424,9 @@ class TomDelete extends TomGeneratedQuery {
       persistenceInfo,
       qualified: false,
     );
-    return "DELETE FROM ${TomAnnotationAnalyzer.findTable(types[0])!.table}"
+    // Resolved at construction, like the sort columns above: a type that maps
+    // to no table never becomes a query, so by here there is a table to name.
+    return "DELETE FROM ${persistenceInfo[0].table.table}"
         " WHERE ${query.generate(t)}"
         "${TomGeneratedQuery.orderByClause(dbSort)}"
         "${TomGeneratedQuery.limitClause(top)}";

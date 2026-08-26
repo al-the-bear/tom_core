@@ -1328,7 +1328,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   TomPreparedStatement<T>? _saveUpdateQuery;
   @override
   Future<T> save(T toSave) async {
-    final persistentColumns = TomAnnotationAnalyzer.getPersistentColumns(T)!;
+    // The repository resolved this in its constructor, where a type that is
+    // not a mapped entity is reported as one. Asking the analyzer again would
+    // hit the same memo, so the only thing a second lookup could add is the
+    // chance to null-assert it.
+    final persistentColumns = persistenceInfo.columnInfo;
     final primaryKey = readPrimaryKey<K>(
       primaryKeyColumnInfo.getVariableValue(toSave),
     );

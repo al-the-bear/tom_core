@@ -1062,6 +1062,28 @@ than accusing the reflection setup of a gap it does not have. A thrown lookup
 memoises nothing, so the second call reports the fault again instead of reading
 back a `null` the first call refused to give.
 
+A `null` that *is* memoised, though, has to be read back as one. `findMirror`,
+`findTable`, `findDataScope` and `getPersistentColumns` each answer `null` for an
+ordinary reason, and each stores that `null` beside the real answers — so
+`containsKey` true with a null value is a designed state of all four maps, and a
+cache-hit path that read the entry as non-nullable would answer the first call
+correctly and throw on the second, out of the memo.
+
+For the same reason no caller null-asserts one of these lookups.
+`findTable(type)!` is a null check written as an expression: where the caller has
+established that the type is mapped, it records that fact in a form that stops
+being true as soon as the branch above it moves; where it has not, it reports
+`Null check operator used on a null value` from inside a static cache, in code
+that runs for every entity, naming neither the type nor the annotation that was
+missing. A caller that knows it holds an entity asks `analysePersistentType`,
+which returns a non-nullable `TomTypePersistenceInfo` or names precisely what is
+absent; a caller that is asking *whether* it does reads the lookup into a local
+and tests it. Both halves are pinned by
+`test/annotation_analyzer_null_memo_test.dart`, the second by reading `lib/`:
+the assertions worth guarding against are the ones no runtime test can reach,
+because the branch that makes them correct today is exactly what a later change
+moves.
+
 `familyOf` reduces one column to the `TomSqlTypeFamily` it is **stored** in — a
 JSON column is text whatever its Dart type, an explicit `TomDbType` box decides
 next, and only failing both does the Dart type stand in; anything unrecognised is
