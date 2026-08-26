@@ -134,7 +134,7 @@ void run() {
   final composite = TomCompositeAction(
     actionId: 'maybeIncrement',
     controller: controller,
-    stopOnGuardFailure: false,
+    stopOnBlockedStep: false,
     steps: [
       TomCompositeStep<CounterContext>(
         action: controller.increment,

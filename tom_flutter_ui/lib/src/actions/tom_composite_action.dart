@@ -4,9 +4,11 @@ import 'tom_action_transaction.dart';
 
 /// Adapter action that executes multiple actions sequentially.
 ///
-/// Each sub-action can have an optional guard that determines whether
-/// it should actually execute. If a guard returns false, that sub-action
-/// is skipped.
+/// A step runs unless it is *blocked*. A step is blocked by either of two
+/// independent conditions: its optional [TomCompositeStep.guard] returns
+/// false, or the step's own action refuses via [TomAction.canExecute]. The
+/// two are treated identically, and [stopOnBlockedStep] decides what a
+/// blocked step does to the rest of the run.
 ///
 /// ```dart
 /// final saveAndClose = TomCompositeAction(
@@ -29,14 +31,20 @@ class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
   /// The steps to execute in order.
   final List<TomCompositeStep> steps;
 
-  /// Whether to stop at the first failed guard (true) or skip and continue (false).
-  final bool stopOnGuardFailure;
+  /// What a blocked step does to the rest of the run: abandon the remaining
+  /// steps (true, the default) or skip only that step and carry on (false).
+  ///
+  /// This governs *both* conditions that block a step — a
+  /// [TomCompositeStep.guard] returning false and the step's own action
+  /// returning false from [TomAction.canExecute]. A composite with no guards
+  /// at all still stops at the first action that refuses.
+  final bool stopOnBlockedStep;
 
   TomCompositeAction({
     required super.actionId,
     required super.controller,
     required this.steps,
-    this.stopOnGuardFailure = true,
+    this.stopOnBlockedStep = true,
     super.scope,
     super.tomGroup,
   });
@@ -50,15 +58,17 @@ class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
   @override
   TomActionUndo? execute(TomActionContext context, TomActionTransaction tx) {
     for (final step in steps) {
-      // Check guard
+      // Blocked by the step's guard.
       if (step.guard != null && !step.guard!()) {
-        if (stopOnGuardFailure) break;
+        if (stopOnBlockedStep) break;
         continue;
       }
 
+      // Blocked by the action itself. Same handling as a failed guard —
+      // hence the flag's name is about blocked steps, not about guards.
       final stepContext = step.contextBuilder();
       if (!step.action.canExecute(stepContext)) {
-        if (stopOnGuardFailure) break;
+        if (stopOnBlockedStep) break;
         continue;
       }
 

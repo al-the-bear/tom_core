@@ -376,7 +376,7 @@ void main() {
 
   group('TomCompositeAction', () {
     TomCompositeStep<CounterContext> step(
-      IncrementAction action,
+      TomAction<CounterContext, TomActionUndo> action,
       Counter counter, {
       bool Function()? guard,
     }) =>
@@ -401,7 +401,7 @@ void main() {
       expect(tx.entryCount, 2);
     });
 
-    test('stopOnGuardFailure stops at the first blocked step', () {
+    test('a guard that fails stops the run', () {
       final controller = TomActionController(controllerId: 'c');
       final inc = IncrementAction(controller: controller);
       final counter = Counter();
@@ -418,14 +418,14 @@ void main() {
       expect(counter.value, 0);
     });
 
-    test('without stopOnGuardFailure it skips blocked and runs the rest', () {
+    test('without the flag, a failed guard skips only its own step', () {
       final controller = TomActionController(controllerId: 'c');
       final inc = IncrementAction(controller: controller);
       final counter = Counter();
       final composite = TomCompositeAction(
         actionId: 'skip',
         controller: controller,
-        stopOnGuardFailure: false,
+        stopOnBlockedStep: false,
         steps: [
           step(inc, counter, guard: () => false),
           step(inc, counter),
@@ -434,6 +434,40 @@ void main() {
       composite.execute(
           CounterContext(counter), TomActionTransaction(label: 'x'));
       expect(counter.value, 1);
+    });
+
+    test('a step whose action refuses canExecute stops the run, with no guard',
+        () {
+      final controller = TomActionController(controllerId: 'c');
+      final reset = ResetAction(controller: controller);
+      final inc = IncrementAction(controller: controller);
+      final counter = Counter(); // 0, so reset.canExecute is false
+      final composite = TomCompositeAction(
+        actionId: 'refused',
+        controller: controller,
+        // Note: no guard on either step. The stop is caused by the
+        // sub-action's own canExecute, not by a guard.
+        steps: [step(reset, counter), step(inc, counter)],
+      );
+      composite.execute(
+          CounterContext(counter), TomActionTransaction(label: 'x'));
+      expect(counter.value, 0, reason: 'step two never ran');
+    });
+
+    test('without the flag, a canExecute refusal skips only its own step', () {
+      final controller = TomActionController(controllerId: 'c');
+      final reset = ResetAction(controller: controller);
+      final inc = IncrementAction(controller: controller);
+      final counter = Counter(); // 0, so reset.canExecute is false
+      final composite = TomCompositeAction(
+        actionId: 'refusedSkip',
+        controller: controller,
+        stopOnBlockedStep: false,
+        steps: [step(reset, counter), step(inc, counter)],
+      );
+      composite.execute(
+          CounterContext(counter), TomActionTransaction(label: 'x'));
+      expect(counter.value, 1, reason: 'step two still ran');
     });
 
     test('canExecute is true when at least one guard passes', () {
