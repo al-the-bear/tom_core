@@ -2,6 +2,38 @@
 
 ### Testing
 
+- **Resolved persistence metadata was shared by everyone and writable by anyone
+  (tcinc603).** `TomAnnotationAnalyzer` resolves an entity's columns once and
+  hands the same `TomColumnInformation` objects to every repository, query
+  compiler and datasource for the life of the isolate. All ten of their fields
+  were public and assignable, the memoised list was a plain growable `List`, and
+  the six memo maps were public statics. Any holder could therefore change a
+  column's mapped name — or add, drop or reorder the columns, or replace an
+  entity's whole answer — and every query compiled afterwards would follow the
+  edit, with nothing failing at the point of the mistake.
+
+  Nothing needed the mutability: the analyzer knows all ten values before it
+  constructs the instance and never writes one afterwards. The fields are now
+  `final`, `getPersistentColumns` / `findAuthColumns` / `findFileColumns` hand
+  out unmodifiable lists, and the six memos are private — closing the third
+  route, by which a caller could substitute a different answer for a type
+  outright.
+
+  `persistence_metadata_sharing_test.dart` pins both halves: the runtime shape
+  of what callers receive (same list, same objects, every mutation refused) and
+  the structural property that guarantees it — a reader over the declaration
+  asserting no field of `TomColumnInformation` is writable. That second test
+  exists because the first cannot reach it: assigning to a `final` field is a
+  compile error, so a test that tried would not build, and a field added later
+  would inherit the sharing without inheriting the discipline. The reader's own
+  cases pin what nearly made it cry wolf — a `return x;` in a method body and
+  the `});` closing a wrapped constructor both end in a semicolon at the class's
+  left margin, and are excluded by brace depth rather than by punctuation.
+
+  The constructor signature is unchanged, so the generated `*.reflection.dart`
+  registrations across the samples and `tom_uam_server` continue to build; all
+  five analyze clean.
+
 - **The rule that shipped text must stand on its own was enforced in one module
   and broken in four (tcinc602).** `configuration_test.dart` guarded exactly two
   files — the configuration dartdoc and `doc/configuration.md` — against
@@ -3064,6 +3096,17 @@
   `.env` parser agree on where the key ends.
 
 ### Documentation
+
+- **The metadata caches were documented as storage rather than as a contract
+  (tcinc603).** `object_persistence.md` and the API summary listed the six memo
+  maps by name and type and said they hold resolved results — true, and beside
+  the point. What a reader needs is the consequence: the answers are shared, so
+  the metadata is free after the first use *and* nothing about it may be edited.
+  Both documents now state that, and say what enforces it — `final` fields,
+  unmodifiable lists, private memos — instead of enumerating six maps a caller
+  can no longer reach. `TomColumnInformation`'s summary gains the same reason on
+  its properties, and its constructor note explains why `fileReference` is the
+  one named parameter in terms of what it is, not of when it arrived.
 
 - **Shipped text pointed at things only this workspace can open (tcinc602).**
   Eight places in `lib/` and `doc/` sent the reader after something that does

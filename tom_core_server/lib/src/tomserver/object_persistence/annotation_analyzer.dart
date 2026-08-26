@@ -39,29 +39,39 @@ class TomAnnotationAnalyzerSyntaxException extends TomServerException {
 ///
 /// Mixed into the typed-persistence base, its static methods read the
 /// `tomReflector` [ClassMirror] of an entity and translate its annotations into
-/// a [TomTypePersistenceInfo] / [TomColumnInformation]. Results are memoised in
-/// the per-type [mirrorCache], [tableCache], and [columnInfoCache].
+/// a [TomTypePersistenceInfo] / [TomColumnInformation]. Every result is memoised
+/// per entity type and shared: a second call for the same type hands back the
+/// very objects the first call returned.
+///
+/// That sharing is what makes the memos private and their column lists
+/// unmodifiable. A resolved [TomColumnInformation] is immutable, so no holder
+/// can edit one; the lists are handed out as unmodifiable views, so no holder
+/// can add to or reorder one; and the memo maps are reachable from nowhere
+/// else, so no caller can substitute a different answer for a type. Two
+/// resolutions of the same entity therefore cannot be made to disagree, which
+/// is the property the whole compile path assumes when it looks a column up
+/// once and trusts it everywhere.
 mixin TomAnnotationAnalyzer {
   /// Cache of resolved class mirrors per entity type (`null` = not reflectable).
-  static final mirrorCache = <Type, ClassMirror?>{};
+  static final _mirrorCache = <Type, ClassMirror?>{};
 
   /// Cache of resolved `@TomDbTable` annotations per entity type.
-  static final tableCache = <Type, TomDbTable?>{};
+  static final _tableCache = <Type, TomDbTable?>{};
 
   /// Cache of resolved column metadata lists per entity type.
-  static final columnInfoCache = <Type, List<TomColumnInformation>?>{};
+  static final _columnInfoCache = <Type, List<TomColumnInformation>?>{};
 
   /// Cache of resolved `@TomDbScope` annotations per entity type
   /// (`null` = the entity declares no row scope).
-  static final dataScopeCache = <Type, TomDbScope?>{};
+  static final _dataScopeCache = <Type, TomDbScope?>{};
 
   /// Cache of the column-authorized (`@TomDbColumn(authKey: …)`) columns per
   /// entity type (an empty list = the entity declares no column access rights).
-  static final authColumnCache = <Type, List<TomColumnInformation>>{};
+  static final _authColumnCache = <Type, List<TomColumnInformation>>{};
 
   /// Cache of the file-reference (`@TomFileReference`) columns per entity type
   /// (an empty list = the entity references no stored files).
-  static final fileColumnCache = <Type, List<TomColumnInformation>>{};
+  static final _fileColumnCache = <Type, List<TomColumnInformation>>{};
 
   /// Resolves the full persistence metadata (table + columns) for entity [T].
   ///
@@ -99,31 +109,31 @@ mixin TomAnnotationAnalyzer {
   /// Returns the cached/looked-up [ClassMirror] for [dbType], or `null` when it
   /// is not registered with `tomReflector`.
   static ClassMirror? findMirror(Type dbType) {
-    if (mirrorCache.containsKey(dbType)) return mirrorCache[dbType];
+    if (_mirrorCache.containsKey(dbType)) return _mirrorCache[dbType];
     try {
       var classMirror = tomReflector.reflectType(dbType) as ClassMirror;
-      mirrorCache[dbType] = classMirror;
+      _mirrorCache[dbType] = classMirror;
       return classMirror;
     } catch (error) {
       // do nothing
     }
-    mirrorCache[dbType] = null;
+    _mirrorCache[dbType] = null;
     return null;
   }
 
   /// Returns the `@TomDbTable` annotation on [dbType], or `null` if absent.
   static TomDbTable? findTable(Type dbType) {
-    if (tableCache.containsKey(dbType)) return tableCache[dbType];
+    if (_tableCache.containsKey(dbType)) return _tableCache[dbType];
     ClassMirror? mirror = findMirror(dbType);
     if (mirror != null) {
       for (var md in mirror.metadata) {
         if (md is TomDbTable) {
-          tableCache[dbType] = md;
+          _tableCache[dbType] = md;
           return md;
         }
       }
     }
-    tableCache[dbType] = null;
+    _tableCache[dbType] = null;
     return null;
   }
 
@@ -176,19 +186,19 @@ mixin TomAnnotationAnalyzer {
   /// remembering to annotate it, and forgetting the annotation can no longer
   /// silently publish every row.
   static TomDbScope? findDataScope(Type dbType) {
-    if (dataScopeCache.containsKey(dbType)) return dataScopeCache[dbType];
+    if (_dataScopeCache.containsKey(dbType)) return _dataScopeCache[dbType];
     ClassMirror? mirror = findMirror(dbType);
     if (mirror != null) {
       for (var md in mirror.metadata) {
         if (md is TomDbScope) {
           final declared = md.isOptOut ? null : md;
-          dataScopeCache[dbType] = declared;
+          _dataScopeCache[dbType] = declared;
           return declared;
         }
       }
     }
     final auto = autoScopeFor(getPersistentColumns(dbType) ?? const []);
-    dataScopeCache[dbType] = auto;
+    _dataScopeCache[dbType] = auto;
     return auto;
   }
 
@@ -225,14 +235,14 @@ mixin TomAnnotationAnalyzer {
   /// Cached per type. An empty result lets a repository skip all C-4 work for
   /// entities that declare no column access rights (zero overhead by default).
   static List<TomColumnInformation> findAuthColumns(Type dbType) {
-    final cached = authColumnCache[dbType];
+    final cached = _authColumnCache[dbType];
     if (cached != null) return cached;
     final columns = getPersistentColumns(dbType) ?? const [];
-    final result = [
+    final result = List<TomColumnInformation>.unmodifiable([
       for (final column in columns)
         if (column.column?.authKey != null) column,
-    ];
-    authColumnCache[dbType] = result;
+    ]);
+    _authColumnCache[dbType] = result;
     return result;
   }
 
@@ -244,14 +254,14 @@ mixin TomAnnotationAnalyzer {
   /// entity that stores no files never pays for the feature: no extra read on
   /// update, no select-before-delete, no store resolution.
   static List<TomColumnInformation> findFileColumns(Type dbType) {
-    final cached = fileColumnCache[dbType];
+    final cached = _fileColumnCache[dbType];
     if (cached != null) return cached;
     final columns = getPersistentColumns(dbType) ?? const [];
-    final result = [
+    final result = List<TomColumnInformation>.unmodifiable([
       for (final column in columns)
         if (column.fileReference != null) column,
-    ];
-    fileColumnCache[dbType] = result;
+    ]);
+    _fileColumnCache[dbType] = result;
     return result;
   }
 
@@ -317,9 +327,14 @@ mixin TomAnnotationAnalyzer {
   /// (each `@TomDbColumn` / `@TomReference`), or `null` if [dbType] is not
   /// reflectable. Throws [TomAnnotationAnalyzerSyntaxException] for an
   /// annotation on a non-variable declaration.
+  ///
+  /// Resolved once per type and then shared: every caller for the same entity
+  /// receives the same unmodifiable list of the same immutable
+  /// [TomColumnInformation] objects. Callers that need a list of their own — to
+  /// filter, sort or extend — must copy it.
   static List<TomColumnInformation>? getPersistentColumns(Type dbType) {
-    if (columnInfoCache.containsKey(dbType)) {
-      return columnInfoCache[dbType];
+    if (_columnInfoCache.containsKey(dbType)) {
+      return _columnInfoCache[dbType];
     }
     ClassMirror? mirror = findMirror(dbType);
     if (mirror != null) {
@@ -368,10 +383,11 @@ mixin TomAnnotationAnalyzer {
           }
         }
       }
-      columnInfoCache[dbType] = result;
-      return result;
+      final columns = List<TomColumnInformation>.unmodifiable(result);
+      _columnInfoCache[dbType] = columns;
+      return columns;
     } else {
-      columnInfoCache[dbType] = null;
+      _columnInfoCache[dbType] = null;
       return null;
     }
   }

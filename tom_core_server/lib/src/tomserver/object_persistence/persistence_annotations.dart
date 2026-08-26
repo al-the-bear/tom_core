@@ -391,45 +391,55 @@ class TomPersistenceEventHandler<DBTYPE> {
 /// [eventHandler] annotations, the [declaredType] and [declaredName], and the
 /// mapped column [field]. It also provides reflection-backed accessors to read
 /// and write the field on a concrete entity instance.
+///
+/// Every field is `final`, because an instance is not private to the caller who
+/// obtained it: the analyzer resolves an entity's columns once and hands the
+/// same objects to every repository, query compiler and datasource for the life
+/// of the isolate. A single assignment to [field] or [column] would therefore
+/// change what every subsequent query on that entity compiles to, at no point
+/// raising an error — the mistake would surface as wrong SQL somewhere else
+/// entirely. Nothing needs the mutability: the analyzer knows all ten values
+/// before it constructs the instance, and re-resolving an entity means clearing
+/// the analyzer's memo, not editing the metadata in place.
 class TomColumnInformation {
   /// The entity type that owns this field.
-  Type tableType;
+  final Type tableType;
 
   /// The table the owning entity maps to.
-  TomDbTable table;
+  final TomDbTable table;
 
   /// The field's column mapping, if annotated.
-  TomDbColumn? column;
+  final TomDbColumn? column;
 
   /// The entity-id annotation, if this field is the primary key.
-  TomEntityId? entityId;
+  final TomEntityId? entityId;
 
   /// The reference annotation, if this field is an association.
-  TomReference? reference;
+  final TomReference? reference;
 
   /// The lifecycle-callback annotation, if any.
   ///
   /// Populated by the analyzer but read by nothing — see
   /// [TomPersistenceEventHandler] for why the callbacks never fire.
-  TomPersistenceEventHandler? eventHandler;
+  final TomPersistenceEventHandler? eventHandler;
 
   /// The file-reference annotation, if this column holds a blob storage key.
-  TomFileReference? fileReference;
+  final TomFileReference? fileReference;
 
   /// The declared Dart type of the field.
-  Type declaredType;
+  final Type declaredType;
 
   /// The field's name on the entity.
-  String declaredName;
+  final String declaredName;
 
   /// The mapped column name.
-  String field;
+  final String field;
 
   /// Bundles the resolved metadata for one entity field.
   ///
-  /// [fileReference] is named and optional because it arrived after the
-  /// positional list was in use across the module; every existing construction
-  /// keeps working and only a file-reference column passes it.
+  /// [fileReference] is the one named parameter: only a `@TomFileReference`
+  /// column carries it, so the great majority of constructions would otherwise
+  /// pass a tenth positional `null` that says nothing.
   TomColumnInformation(
     this.table,
     this.tableType,

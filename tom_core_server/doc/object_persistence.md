@@ -1017,12 +1017,22 @@ for a raw `as int`.
 
 `TomAnnotationAnalyzer` reads the `tomReflector` `ClassMirror` of an entity and
 translates its annotations into a `TomTypePersistenceInfo` and a list of
-`TomColumnInformation` (one per annotated field). Results are memoised per type
-in `mirrorCache` / `tableCache` / `columnInfoCache`. A `TomColumnInformation`
-also provides reflection-backed `getVariableValue` / `setVariableValue`
-accessors that the repository uses to read and write entity fields. A type that
-is not registered with `tomReflector`, or lacks a `@TomDbTable`, raises
+`TomColumnInformation` (one per annotated field). A `TomColumnInformation` also
+provides reflection-backed `getVariableValue` / `setVariableValue` accessors
+that the repository uses to read and write entity fields. A type that is not
+registered with `tomReflector`, or lacks a `@TomDbTable`, raises
 `TomAnnotationAnalyzerException`.
+
+Every resolution is memoised per entity type, and the memo is *shared*: two
+callers asking for the same entity receive the same list of the same objects,
+for the life of the isolate. Sharing is what makes the metadata free after the
+first use, and it is also what makes any writable path into it dangerous — an
+assignment to a column's mapped name would change what every later query on that
+entity compiles to, silently, and nowhere near the code that made the mistake.
+So there is no such path: `TomColumnInformation`'s fields are `final`, the
+column lists are handed out unmodifiable, and the memo maps themselves are
+private. Re-resolving an entity is not something a caller does; the declaration
+is fixed for the run.
 
 `familyOf` reduces one column to the `TomSqlTypeFamily` it is **stored** in — a
 JSON column is text whatever its Dart type, an explicit `TomDbType` box decides

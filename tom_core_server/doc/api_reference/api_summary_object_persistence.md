@@ -428,9 +428,16 @@ TomColumnInformation(
 })
 ```
 
-`fileReference` is named and optional because it arrived after the positional
-list was already in use across the module; only a file-reference column passes
-it.
+`fileReference` is the one named parameter: only a `@TomFileReference` column
+carries it, so the great majority of constructions would otherwise pass a tenth
+positional `null` that says nothing.
+
+Every property is `final`. An instance is not private to whoever obtained it —
+the analyzer resolves an entity's columns once and hands the same objects to
+every repository, query compiler and datasource — so a write to one of them
+would change what every later query on that entity compiles to, at no point
+raising an error. Re-resolving an entity means re-running the analyzer, not
+editing its metadata in place.
 
 ##### Properties
 
@@ -1403,7 +1410,7 @@ scoping the default rather than an annotation anyone has to remember — see
 | `findFileColumns` | `static List<TomColumnInformation> findFileColumns(Type dbType)` | The columns of `dbType` annotated `@TomFileReference`, or empty. Consulted before *any* file work, so an entity that stores no files pays nothing for the feature. |
 | `familyOf` | `static TomSqlTypeFamily familyOf(TomColumnInformation column)` | The type family `column` is **stored** in: JSON is text whatever the Dart type, otherwise the declared `TomDbType` box decides and the Dart type only stands in when there is none. An unrecognised type yields `unknown`, which is compatible with everything. |
 | `describeDeclaredType` | `static String describeDeclaredType(TomColumnInformation column)` | How `column`'s type is spelled on the entity side, for reporting only — `'JSON'`, else the box, else the Dart type. |
-| `getPersistentColumns` | `static List<TomColumnInformation>? getPersistentColumns(Type dbType)` | The persistence metadata for every annotated field, or `null` if not reflectable. Throws `TomAnnotationAnalyzerSyntaxException`. |
+| `getPersistentColumns` | `static List<TomColumnInformation>? getPersistentColumns(Type dbType)` | The persistence metadata for every annotated field, or `null` if not reflectable. Throws `TomAnnotationAnalyzerSyntaxException`. The list is unmodifiable and shared with every other caller for the same entity; a caller wanting one of its own copies it. |
 | `determineColumn` | `static TomColumnInformation determineColumn(String name, List<TomTypePersistenceInfo> persistenceInfo)` | Finds the `TomColumnInformation` matching `name`. Throws `TomAnnotationAnalyzerSyntaxException` when nothing matches. |
 | `referenceQuery` | `static ({String sentence, Map<String, Object?> parameters}) referenceQuery(TomReference reference, Type owningType, Object? Function(String field) readOwningField)` | The `FIND BY` sentence resolving a `@TomReference` for one mapped row, and the parameters it binds. Throws `TomAnnotationAnalyzerSyntaxException` for a malformed expression, `TomAnnotationAnalyzerException` for a context value the zone cannot supply. |
 
@@ -1430,18 +1437,20 @@ generation before it upgrades. The names are duplicated from the entities'
 on `object_persistence` and not the other way round;
 `test/resource_data_scope_test.dart` asserts the two agree.
 
-##### Properties
+##### Memoisation
 
-All six are per-type memoisation caches, and all are `static final`.
+Each of the six resolutions above — mirror, table, columns, row scope,
+column-authorized columns, file columns — is computed once per entity type and
+kept in a private `static final` map. The memos are not part of the API: there
+is no way to read, seed, replace or clear one.
 
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `mirrorCache` | `static final Map<Type, ClassMirror?>` | Resolved class mirrors (`null` = not reflectable). |
-| `tableCache` | `static final Map<Type, TomDbTable?>` | Resolved `@TomDbTable` annotations. |
-| `columnInfoCache` | `static final Map<Type, List<TomColumnInformation>?>` | Resolved column metadata lists. |
-| `dataScopeCache` | `static final Map<Type, TomDbScope?>` | Resolved row scopes (`null` = the entity declares none). Holds the result of `findDataScope`, so a scope synthesized by `autoScopeFor` is cached alongside a declared one. |
-| `authColumnCache` | `static final Map<Type, List<TomColumnInformation>>` | The column-authorized (`@TomDbColumn(authKey: …)`) columns; empty = no column access rights. |
-| `fileColumnCache` | `static final Map<Type, List<TomColumnInformation>>` | The file-reference (`@TomFileReference`) columns; empty = the entity references no stored files. |
+That is deliberate, because the memoised answers are *shared*. Every caller
+asking for the same entity receives the same objects, so anything writable
+reachable from them would let one holder change what every later query
+compiles to — silently, and far from the code that made the mistake. Closing
+the memos completes what `TomColumnInformation`'s `final` fields and the
+unmodifiable column lists start: two resolutions of one entity cannot be made
+to disagree. `test/persistence_metadata_sharing_test.dart` pins it.
 
 ### Exceptions
 
