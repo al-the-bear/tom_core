@@ -5,12 +5,22 @@ import 'package:path/path.dart' as p;
 
 /// Guards the markdown links this package ships.
 ///
-/// A link can fail in two ways, and only the first is obvious. It can point at
-/// nothing — a path that does not resolve — or it can resolve cleanly onto the
-/// *wrong* document. The second kind survives every path check ever written,
-/// so it is checked separately here: when a link's label is a single code-span
-/// identifier, the reader is being told "follow this to read about `X`", and
-/// the guard holds the target to that promise by requiring it to mention `X`.
+/// A link can fail in three ways, and only the first is obvious. It can point
+/// at nothing — a path that does not resolve — or it can resolve cleanly onto
+/// the *wrong* document. The second kind survives every path check ever
+/// written, so it is checked separately here: when a link's label is a single
+/// code-span identifier, the reader is being told "follow this to read about
+/// `X`", and the guard holds the target to that promise by requiring it to
+/// mention `X`.
+///
+/// The third is a link into the *same* document — an anchor. Path checks skip
+/// it by construction, because there is no path, and a stale anchor renders as
+/// an ordinary link that simply goes nowhere. That matters most for a table of
+/// contents, whose entries are all anchors and which is the one part of a
+/// document that is expected to stay in step with the rest of it: a section
+/// added without its entry leaves the document advertising a shorter shape
+/// than it has, and every reader who navigates by the contents never reaches
+/// it. Both are guarded under `document structure` below.
 void main() {
   /// Roots that hold documentation this package publishes or maintains.
   const roots = <String>[
@@ -86,6 +96,46 @@ void main() {
       return null;
     }
     return p.normalize(p.join(p.dirname(file), target.split('#').first));
+  }
+
+  /// The fragment a renderer derives from [heading] text.
+  ///
+  /// Lower-cased, punctuation dropped, whitespace runs joined with hyphens.
+  /// HTML entities are decoded first, because a heading that has to show a
+  /// generic — `TomSetting&lt;T&gt;` — is anchored as the `<` and `>` it
+  /// renders as, not as the letters of the escape. Skipping that step reports
+  /// five live links in this package as dead.
+  String anchorOf(String heading) {
+    var text = heading.toLowerCase();
+    for (final entity in const {'&lt;': '<', '&gt;': '>', '&amp;': '&'}.entries) {
+      text = text.replaceAll(entity.key, entity.value);
+    }
+    text = text.replaceAll(RegExp(r'[^\w\s-]'), '');
+    return text.trim().replaceAll(RegExp(r'\s+'), '-');
+  }
+
+  /// [file]'s text with fenced code removed — headings and links only.
+  String proseOf(String file) =>
+      File(file).readAsStringSync().replaceAll(fencedCode, '');
+
+  /// Every heading in [file], as `(level, text)`.
+  List<(int, String)> headingsIn(String file) =>
+      RegExp(r'^(#{1,6}) (.+)$', multiLine: true)
+          .allMatches(proseOf(file))
+          .map((m) => (m.group(1)!.length, m.group(2)!.trim()))
+          .toList();
+
+  /// The text under [file]'s `## Table of Contents`, up to the next `##`.
+  ///
+  /// Empty when the document has no contents block.
+  String contentsBlockOf(String file) {
+    final prose = proseOf(file);
+    final start = RegExp(r'^## Table of Contents$', multiLine: true)
+        .firstMatch(prose);
+    if (start == null) return '';
+    final rest = prose.substring(start.end);
+    final next = RegExp(r'^## ', multiLine: true).firstMatch(rest);
+    return next == null ? rest : rest.substring(0, next.start);
   }
 
   group('documentation links', () {
@@ -172,6 +222,102 @@ void main() {
       for (final target in links) {
         expect(target, endsWith('/little_things/little_things.md'));
       }
+    });
+  });
+
+  group('document structure', () {
+    /// The anchor pattern, matched on prose so a quoted example does not count.
+    final anchorLink = RegExp(r'\[([^\]\n]*)\]\(#([^)\s]+)\)');
+
+    test('every same-document anchor points at a heading that exists', () {
+      final dead = <String>[];
+      for (final file in markdownFiles()) {
+        final targets = {for (final h in headingsIn(file)) anchorOf(h.$2)};
+        for (final link in anchorLink.allMatches(proseOf(file))) {
+          if (!targets.contains(link.group(2))) {
+            dead.add('$file: [${link.group(1)}](#${link.group(2)})');
+          }
+        }
+      }
+      expect(
+        dead,
+        isEmpty,
+        reason: 'These anchors name no heading in their own document, so they '
+            'render as links that go nowhere:\n${dead.join('\n')}',
+      );
+    });
+
+    test("every module document's table of contents lists every one of its "
+        'sections, in order', () {
+      // The contents block is the one part of a document that has to be
+      // maintained in step with the rest of it, and nothing about editing a
+      // document makes that happen. A section added without its entry is
+      // invisible to a reader who navigates by the contents — which is how
+      // `doc/preferences.md` could have gained its Scope section and still not
+      // offered it (tcinc666).
+      //
+      // Only top-level (`##`) sections are *required* to be listed. The API
+      // summaries additionally nest their `###` classes under them, which is
+      // more detail than this asks for, not a disagreement — so extra entries
+      // are allowed and only omissions and misorderings are reported.
+      //
+      // Documents without a contents block are not required to grow one; this
+      // checks agreement where the block exists, not its existence.
+      final mismatched = <String>[];
+      var checked = 0;
+      for (final file in markdownFiles()) {
+        final headings = headingsIn(file);
+        if (!headings.any((h) => h.$1 == 2 && h.$2 == 'Table of Contents')) {
+          continue;
+        }
+        checked++;
+
+        final sections = [
+          for (final h in headings)
+            if (h.$1 == 2 && h.$2 != 'Table of Contents') h.$2,
+        ];
+        final wanted = [for (final s in sections) anchorOf(s)];
+
+        // Entries are read from the contents block alone. A document also
+        // links to its own sections from its prose — this file's own subject
+        // document does, from the `getFor` paragraph — and counting those as
+        // entries would make the block look like it listed a section twice.
+        final block = contentsBlockOf(file);
+        final listed = [
+          for (final m in anchorLink.allMatches(block)) m.group(2)!,
+        ];
+
+        final missing = [
+          for (var i = 0; i < sections.length; i++)
+            if (!listed.contains(wanted[i])) sections[i],
+        ];
+        if (missing.isNotEmpty) {
+          mismatched.add('$file: not listed in the contents: $missing');
+          continue;
+        }
+        // Order is checked over the listed sections only, so nested class
+        // entries in between do not count as a reordering.
+        final listedSections = [
+          for (final anchor in listed)
+            if (wanted.contains(anchor)) anchor,
+        ];
+        if (listedSections.join('\n') != wanted.join('\n')) {
+          mismatched.add(
+            '$file: the contents lists the sections in a different order than '
+            'the document presents them\n  contents: $listedSections\n'
+            '  document: $wanted',
+          );
+        }
+      }
+      expect(
+        mismatched,
+        isEmpty,
+        reason: 'These contents blocks disagree with the sections they '
+            'describe:\n${mismatched.join('\n')}',
+      );
+      // Pins that the walk still finds the documents — the check above is
+      // vacuous if `checked` is zero.
+      expect(checked, greaterThanOrEqualTo(7));
     });
   });
 }

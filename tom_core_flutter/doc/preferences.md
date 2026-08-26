@@ -11,6 +11,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [Why the Framework Owns This](#why-the-framework-owns-this)
 - [The Same Shape as the Server Store](#the-same-shape-as-the-server-store)
 - [Choosing a Backend](#choosing-a-backend)
+- [Scope: A Store Belongs to Its Location](#scope-a-store-belongs-to-its-location)
 - [Reaching the Account Store](#reaching-the-account-store)
 - [Precedence Against the Server Store](#precedence-against-the-server-store)
 - [The Stored Document](#the-stored-document)
@@ -74,9 +75,14 @@ the two stores — a value that turns out to belong to the user rather than the
 device — without a single call site changing.
 
 There is no `getFor`: a device store has one user by definition, so a principal
-parameter would have nothing to select. And `clear()` is its own method rather
-than a loop over `all()` because a backend can do it atomically and a loop
-cannot: a loop that fails half way leaves a device in a state no user asked for.
+parameter would have nothing to select. What *makes* that definition true is the
+store's location, not anything the framework tracks — see
+[Scope: A Store Belongs to Its Location](#scope-a-store-belongs-to-its-location)
+for what an application must do to keep it true.
+
+`clear()` is its own method rather than a loop over `all()` because a backend
+can do it atomically and a loop cannot: a loop that fails half way leaves a
+device in a state no user asked for.
 
 `getOr` answers its fallback only for a preference that has **never been
 written**. A type *mismatch* still throws `TomUserPreferenceCodecException`: an
@@ -140,6 +146,53 @@ what this module refuses.
 `TomUserPreferences.resolve`: a preference is optional by nature, and an
 application that has not wired a device store should fall back to its defaults
 rather than fail to start.
+
+## Scope: A Store Belongs to Its Location
+
+Nothing in this module knows who is signed in. One store is one flat key space,
+and its `location` is the only thing that separates one key space from another.
+That is what the absent `getFor` means in practice: a device store has one user
+because its *location* has one user — not because the framework tracks one.
+
+So **an application on which more than one account can sign in separates them by
+construction.** It gives the store a `location` naming the signed-in account,
+and installs a new store when the account changes:
+
+```dart
+TomBean.withType(
+  TomDevicePreferences,
+  TomStoredDevicePreferences(
+    TomPlatformDevicePreferenceStore(
+      '$supportDirectory/preferences/$accountId.json',
+    ),
+  ),
+);
+```
+
+The account part must be a **single** segment of the path (or of the
+`localStorage` entry name) and it must be **stable** — a surrogate id, or an
+address hashed or percent-encoded, never a display name. A segment holding a
+separator silently reshapes the path into something the application did not
+choose; one that changes when a user edits their profile strands every
+preference written under the old spelling.
+
+An install that gives every account the same location gives them the same
+preferences. The second sign-in reads the first user's last-used account,
+biometric flag and layout — and **nothing here detects it.** There is no
+warning, no log line and no assertion, because a store is never told that a user
+changed. This is the one thing about this module that an application can get
+wrong without noticing, which is why it is stated here rather than left to be
+inferred from the backend's shape.
+
+Switching accounts costs nothing beyond the new bean:
+`TomStoredDevicePreferences` holds no cache, so the next read already answers
+from the new document.
+
+The same choice decides which configuration scope the store occupies
+(`codespecs_mapping.md` §11). At a fixed location it is `(client app, machine)`
+— CE-CC's scope; at a per-account location it is `(user, device)`, CE-DS. Same
+class, different address. The API stays principal-free under both, which is what
+keeps it swappable with the server-side `TomUserPreferences`.
 
 ## Reaching the Account Store
 

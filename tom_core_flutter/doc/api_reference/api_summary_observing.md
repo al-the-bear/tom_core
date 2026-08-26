@@ -11,6 +11,7 @@ Flutter's rebuild and `ValueListenable` contracts.
   - [TomObservingWidget&lt;T&gt;](#tomobservingwidgett)
   - [TomObservingWidgetState&lt;T&gt;](#tomobservingwidgetstatet)
   - [ValueListenableObserver&lt;T&gt;](#valuelistenableobservert)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 

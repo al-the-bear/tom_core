@@ -13,6 +13,7 @@ resource providers.
   - [TomIntProperty](#tomintproperty)
   - [TomDoubleProperty](#tomdoubleproperty)
   - [TomBoolProperty](#tomboolproperty)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 

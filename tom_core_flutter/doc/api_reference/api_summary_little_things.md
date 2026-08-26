@@ -10,6 +10,7 @@ the client from those surfaced by lower layers.
 - [Classes](#classes)
   - [TomClientException](#tomclientexception)
   - [TomClientUIException](#tomclientuiexception)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 

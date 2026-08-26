@@ -433,6 +433,79 @@ void main() {
     });
   });
 
+  group('the scope rule reaches the documents a reader starts from', () {
+    // The behaviour above is settled and correct; what failed was telling
+    // anyone about it. The rule lived only in the module `readme.md`, beside
+    // the source, while `doc/preferences.md` had no Scope section at all and
+    // the API summary described `location` as a path and nothing more. A
+    // reader who follows the published documentation rather than the source
+    // tree therefore built a multi-account application on a single store and
+    // heard about it from a user (tcinc666).
+    //
+    // Documentation is prose and must stay free to be rewritten, so these
+    // check for the two load-bearing *facts* rather than any sentence: that
+    // the per-account pattern is shown, and that the constraint making it work
+    // is stated. Anything that still says both has kept the rule; anything
+    // that has dropped either has lost it.
+    const documents = <String>[
+      'lib/src/tomclient/preferences/readme.md',
+      'doc/preferences.md',
+      'doc/api_reference/api_summary_preferences.md',
+    ];
+
+    test('every document that explains location shows the per-account '
+        'pattern', () {
+      final silent = [
+        for (final document in documents)
+          if (!File(document).readAsStringSync().contains(r'$accountId'))
+            document,
+      ];
+      expect(
+        silent,
+        isEmpty,
+        reason: 'These documents explain `location` without showing that it is '
+            'what separates two accounts, which is the one thing an '
+            'application can get wrong here without noticing: $silent',
+      );
+    });
+
+    test('every document showing the pattern states what the account segment '
+        'must be', () {
+      // A per-account location built from a display name looks right and
+      // breaks on the first profile edit, stranding every preference written
+      // under the old spelling. Showing the pattern without this constraint is
+      // worse than not showing it.
+      final unqualified = [
+        for (final document in documents)
+          if (!File(document).readAsStringSync().contains('display name'))
+            document,
+      ];
+      expect(
+        unqualified,
+        isEmpty,
+        reason: 'These documents show a per-account location without saying '
+            'that the segment must be single and stable: $unqualified',
+      );
+    });
+
+    test('doc/preferences.md carries the rule as a section of its own', () {
+      // Not merely a sentence somewhere: a reader navigating by the table of
+      // contents has to be able to find it. That the section is *listed* is
+      // guarded generally, for every module document, in
+      // `documentation_links_test.dart`.
+      final headings = RegExp(r'^## (.+)$', multiLine: true)
+          .allMatches(File('doc/preferences.md').readAsStringSync())
+          .map((m) => m.group(1)!)
+          .toList();
+      expect(
+        headings.where((h) => h.startsWith('Scope')),
+        hasLength(1),
+        reason: 'doc/preferences.md must state the scope rule under a heading '
+            'of its own; its headings are $headings',
+      );
+    });
+  });
+
   group('TomDevicePreferenceJson', () {
     test('round-trips a document', () {
       final written = DateTime.utc(2026, 3, 14, 9, 26, 53);

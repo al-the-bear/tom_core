@@ -209,6 +209,23 @@ The parameter is `location` on every variant because it is the *same* parameter
 everywhere — one name is what lets an application construct the store in one
 place without knowing which variant it got.
 
+`location` is also what **scopes** the store. Nothing in this module knows who
+is signed in, so one store is one flat key space and two locations are two
+independent key spaces — a store belongs to its location, not to a user. An
+application on which more than one account can sign in therefore gives the store
+a per-account location and installs a new store when the account changes:
+
+```dart
+TomPlatformDevicePreferenceStore('$supportDirectory/preferences/$accountId.json')
+```
+
+The account part must be a single path (or entry-name) segment and stable — a
+surrogate id, or an address hashed or percent-encoded, never a display name.
+Giving every account the same location gives them the same preferences: the
+second sign-in reads the first user's settings, and nothing here detects it,
+because a store is never told that a user changed. See the Scope section of
+`doc/preferences.md`.
+
 The constructor is **not** `const` on any variant, including the two that could
 be. The neutral variant throws from its constructor body, so it cannot be; and a
 signature that is `const` on some targets and not others is exactly the branch
@@ -221,7 +238,7 @@ behaviour is a run-time failure. Same reasoning, and same resolution, as
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `location` | `String` | The file path or `localStorage` entry name. On the neutral variant, retained only so the failure can name it. |
+| `location` | `String` | The file path or `localStorage` entry name — and the store's scope: two locations are two independent key spaces, so a multi-account install gives each account its own. On the neutral variant, retained only so the failure can name it. |
 
 ### TomDevicePreferenceJson
 

@@ -7,6 +7,7 @@ Client-side security annotations for the Flutter tier.
 - [Overview](#overview)
 - [Classes](#classes)
   - [TomClient2FAAdaptor](#tomclient2faadaptor)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 

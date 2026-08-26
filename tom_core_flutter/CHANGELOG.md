@@ -54,6 +54,33 @@
 
 ### Documentation
 
+- **preferences: the scope rule reaches the documents a reader actually starts
+  from (tcinc666).** A device store has one user because its *location* has one
+  user — not because anything here tracks one. That rule, the per-account
+  `location` pattern and the shared-install failure mode were stated in the
+  library dartdoc and the module `readme.md`, and in neither of the two
+  consumer documents. Following the package documentation rather than the
+  source tree therefore led to a multi-account application built on a single
+  store, whose second sign-in reads the first user's last-used account,
+  biometric flag and layout — with no warning, no log line and no assertion,
+  because a store is never told a user changed. `doc/preferences.md` now
+  carries a *Scope* section stating all three, and
+  `api_summary_preferences.md` names the consequence on the `location` entry
+  itself. The forward reference is placed on the `getFor` paragraph
+  specifically: "a device store has one user by definition" is where the
+  misreading forms, because it does not say what makes the definition true.
+  The section also maps the choice onto the configuration scopes — fixed
+  location is CE-CC `(client app, machine)`, per-account is CE-DS
+  `(user, device)`, same class at a different address.
+
+- **Four API summaries list their last section in their tables of contents
+  (tcinc666).** `api_summary_little_things.md`, `api_summary_observing.md`,
+  `api_summary_resources.md` and `api_summary_security.md` each ended with a
+  `## Global Functions and Constants` section that their contents block did not
+  mention, so the one place a reader looks to find out whether a module has
+  top-level API said nothing either way. Found by the new structural guard
+  rather than by reading, which is the point of having it.
+
 - **preferences / configuration: the exception constructor blocks show
   `autoLog`'s inherited default, and say where their types come from
   (tcinc664).** Both preferences blocks documented `bool autoLog` with the
@@ -193,6 +220,22 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **every document's anchors and table of contents are checked, and the
+  preferences scope rule is pinned in all three places it must appear
+  (tcinc666).** `documentation_links_test.dart` gained a `document structure`
+  group with two package-wide guards: every same-document anchor link resolves
+  to a heading that exists, and every module document's contents block lists
+  every one of its `##` sections, in order. Both had to derive GitHub's anchors,
+  which means decoding HTML entities *before* stripping punctuation — skipping
+  that step reports five live links in this package as dead, so the helper does
+  it and says why. The contents guard found four genuine omissions on its first
+  run (above). Three further guards in `preferences_test.dart` check that the
+  module readme and both consumer documents each show the per-account
+  `location` pattern and each state what the account segment must be, and that
+  `doc/preferences.md` carries the rule as a section of its own. They assert the
+  two load-bearing *facts* rather than any sentence, so the prose stays free to
+  be rewritten. 247 → 252.
 
 - **the conditional-export variants of a store are checked as a set, and the
   checks read declarations rather than the prose about them (tcinc665).** The
