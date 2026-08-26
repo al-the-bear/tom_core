@@ -138,7 +138,7 @@ await repo.save(user);                 // INSERT (null key) or UPDATE (key set)
 final u   = await repo.findById(42);   // by primary key
 final all = await repo.findAll();
 final n   = await repo.count();
-await repo.deleteById(42);
+final gone = await repo.deleteById(42);   // rows deleted: 1, or 0 if absent
 ```
 
 Beyond id-based CRUD it exposes three query styles, each in find / delete / count
@@ -147,6 +147,34 @@ flavours: a parsed query sentence (`findByQuerySentence`), a built `TomQuery`
 `findGroupedByQuery`, runs a grouped query — its result is not `T`, so it does
 not fit the find/delete/count pattern (see
 [Grouping and Aggregation](#grouping-and-aggregation)).
+
+### What a delete returns
+
+Every delete that addresses an *unknown* number of rows returns how many it
+deleted, as the database reported it:
+
+| Method | Returns |
+| ------ | ------- |
+| `deleteById(id)` | `1`, or `0` when no row matched |
+| `deleteAllById(ids)` | The rows deleted — can be lower than `ids.length` |
+| `deleteByQuerySentence(sentence, params)` | The rows deleted |
+| `deleteByQuery(query, params)` | The rows deleted |
+| `delete(entity)` | Nothing |
+
+`delete(entity)` is the deliberate exception: it addresses one row the caller
+already holds, so the count could only ever be `1` or `0`, and `0` — the row
+having gone since it was read — is not a distinction any caller has asked to
+act on.
+
+The count is always the count *after* the principal's data scope has been ANDed
+into the predicate (see [Row Scopes](#row-scopes)), so a delete never reports
+rows the principal may not see, and `deleteAllById` can legitimately answer
+lower than the number of ids it was given.
+
+The number comes from the statement's own result
+(`TomPreparedStatement.lastAffectedRows`), read while the statement is still
+allocated. It is not derived from a follow-up `SELECT`, so it is exactly what
+the server did — including `0` for a predicate that matched nothing.
 
 ### How a repository fails
 

@@ -983,6 +983,16 @@ holds that line, failing if `assert(` reappears in the file.
   follow-up `SELECT LAST_INSERT_ID()`, which reads the *session's* last value
   and answers 0 on any other connection. A new driver overrides
   `lastGeneratedId` and returns the id the insert itself reported.
+- **`lastAffectedRows` is not optional, and it is per-execution.** Unlike
+  `lastGeneratedId`, `TomPreparedStatement.lastAffectedRows` is abstract and
+  non-nullable — a driver that ran a write knows how many rows it touched, and
+  callers (the CRUD repository's delete methods) return the number as *the*
+  answer to "how many rows went". A default would let a driver stay silent and
+  have the silence read as a real count. It is state on the handle, replaced by
+  the next `execute` and meaningless after `deallocate`, so read it immediately
+  after the execute that produced it. Both this and `lastGeneratedId` are
+  captured in one place in the MariaDB statement, so that its
+  reconnect-and-retry branch cannot pick up one and drop the other.
 - **XA has no recovery.** `MariaDbXADatasource` derives its branch id from a
   timestamp and keeps it only in memory, and nothing ever issues `XA RECOVER`,
   so a process that dies between `XA PREPARE` and `XA COMMIT` leaves a prepared

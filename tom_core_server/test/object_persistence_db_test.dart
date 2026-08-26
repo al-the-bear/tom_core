@@ -139,6 +139,54 @@ void main() async {
       expect(matches.first.title, 'high');
     });
 
+    test('deleteByQuerySentence reports how many rows it deleted', () async {
+      // The count is the point: a query delete addresses an unknown number of
+      // rows, so the number it reports is the only way a caller learns what
+      // happened. `deleteByQuerySentence` used to answer `0` unconditionally.
+      //
+      // This is the half a scripted data source cannot cover
+      // (`crud_repository_delete_counts_test.dart` covers the other): that a
+      // real MariaDB prepared `DELETE` really does carry an affected-row count
+      // on its own result set, and that the value reaching the caller is that
+      // count and not a coincidence.
+      await repo.save(_task('purge', 1));
+      await repo.save(_task('purge', 2));
+      await repo.save(_task('purge', 3));
+      await repo.save(_task('keep', 4));
+      expect(
+        await repo.deleteByQuerySentence('DELETE BY title = :title', {
+          'title': 'purge',
+        }),
+        3,
+      );
+      expect((await repo.count()).get(), 1);
+    });
+
+    test('deleteByQuerySentence reports zero when nothing matched', () async {
+      await repo.save(_task('keep', 1));
+      expect(
+        await repo.deleteByQuerySentence('DELETE BY title = :title', {
+          'title': 'absent',
+        }),
+        0,
+      );
+      expect((await repo.count()).get(), 1);
+    });
+
+    test('deleteById reports one row, and zero for an absent id', () async {
+      final saved = await repo.save(_task('doomed', 1));
+      expect(await repo.deleteById(saved.id!), 1);
+      // The constant `1` this replaced was wrong precisely here: the row is
+      // already gone, and the caller was told it had deleted one.
+      expect(await repo.deleteById(saved.id!), 0);
+    });
+
+    test('deleteAllById reports the rows that existed', () async {
+      final a = await repo.save(_task('a', 1));
+      final b = await repo.save(_task('b', 2));
+      expect(await repo.deleteAllById([a.id!, b.id!, 9999]), 2);
+    });
+
     test('executeQueryString runs raw SQL with bound placeholders', () async {
       await repo.save(_task('needle', 5));
       await repo.save(_task('hay', 5));

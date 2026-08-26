@@ -122,6 +122,13 @@ class _FakeConnection implements MySQLConnection {
   /// Thrown by [close] when set; `null` closes cleanly.
   final Object? closeFailure;
 
+  /// What a statement compiled by [prepare] reports as its affected-row count.
+  ///
+  /// Distinct from [affectedRows], which belongs to the unprepared [execute]
+  /// path: a reconnect-and-retry re-prepares on *this* link, so this is the
+  /// count the retry branch has to pick up.
+  BigInt preparedAffectedRows = BigInt.zero;
+
   _FakeConnection({
     required this.connected,
     BigInt? affectedRows,
@@ -147,7 +154,7 @@ class _FakeConnection implements MySQLConnection {
   @override
   Future<PreparedStmt> prepare(String query, [bool iterable = false]) async {
     prepared.add(query);
-    return _FakePreparedStmt();
+    return _FakePreparedStmt(affectedRows: preparedAffectedRows);
   }
 
   @override
@@ -160,10 +167,14 @@ class _FakePreparedStmt implements PreparedStmt {
   /// Thrown by [execute] when set; `null` makes the statement succeed.
   final Object? failure;
 
+  /// What the result set this handle produces reports as its row count.
+  final BigInt affectedRows;
+
   /// How many times this handle was executed.
   int executions = 0;
 
-  _FakePreparedStmt({this.failure});
+  _FakePreparedStmt({this.failure, BigInt? affectedRows})
+    : affectedRows = affectedRows ?? BigInt.zero;
 
   @override
   int get numOfParams => 0;
@@ -172,7 +183,7 @@ class _FakePreparedStmt implements PreparedStmt {
   Future<IResultSet> execute(List<dynamic> params) async {
     executions++;
     if (failure != null) throw failure!;
-    return _FakeResultSet(BigInt.zero);
+    return _FakeResultSet(affectedRows);
   }
 
   @override
@@ -1270,6 +1281,76 @@ void main() {
         throwsA(isA<MariadbDatasourceException>()),
       );
       expect(ds.connectCalls, 0);
+    });
+  });
+
+  // A `DELETE` returns no rows, so the only thing an execute of one hands back
+  // is metadata on the result set. `lastGeneratedId` was already read from
+  // there; the row count was not read at all, and the CRUD repository's delete
+  // methods returned constants in its place. Both are per-execution state on
+  // the handle, and the two are captured together precisely so that the retry
+  // branch below cannot pick up one and forget the other.
+  group('MariadbPreparedStatement.lastAffectedRows', () {
+    /// A statement over [stmt], on a data source whose link is live.
+    MariadbPreparedStatement<TomGroupedRow> statementOver(
+      _FakePreparedStmt stmt,
+      MariaDbDatasource ds,
+    ) => MariadbPreparedStatement<TomGroupedRow>(
+      stmt,
+      const [],
+      ds,
+      null,
+      'DELETE FROM t',
+      groupedProjection: const {},
+    );
+
+    test('is zero before the statement has run', () {
+      final statement = statementOver(
+        _FakePreparedStmt(affectedRows: BigInt.from(9)),
+        _DroppedLinkDatasource(),
+      );
+      expect(statement.lastAffectedRows, 0);
+    });
+
+    test('reports the row count the execute returned', () async {
+      final ds = _DroppedLinkDatasource()
+        ..connection = _FakeConnection(connected: true);
+      final statement = statementOver(
+        _FakePreparedStmt(affectedRows: BigInt.from(3)),
+        ds,
+      );
+      await statement.execute();
+      expect(statement.lastAffectedRows, 3);
+    });
+
+    test('a delete that matched nothing reports zero', () async {
+      // Distinguishable from "never ran" only by the caller's own sequencing,
+      // which is why the count is documented as read-immediately-after-execute
+      // rather than as durable state.
+      final ds = _DroppedLinkDatasource()
+        ..connection = _FakeConnection(connected: true);
+      final statement = statementOver(_FakePreparedStmt(), ds);
+      await statement.execute();
+      expect(statement.lastAffectedRows, 0);
+    });
+
+    test('the reconnect-and-retry captures the count too', () async {
+      // The branch that is easy to miss: a retry runs a *different* handle, on
+      // a link re-opened after the first attempt found the connection gone. A
+      // capture written only into the happy path leaves every retried delete
+      // reporting zero rows — silently, since zero is a legal answer.
+      final ds = _DroppedLinkDatasource();
+      ds.reopened.preparedAffectedRows = BigInt.from(5);
+      final stale = _FakePreparedStmt(
+        failure: MySQLClientException(
+          'Can not execute prepared stmt: connection closed',
+        ),
+      );
+      final statement = statementOver(stale, ds);
+
+      await statement.execute();
+      expect(ds.connectCalls, 1);
+      expect(statement.lastAffectedRows, 5);
     });
   });
 

@@ -80,11 +80,18 @@ class MariadbPreparedStatement<T extends Object>
 
   int? _lastGeneratedId;
 
+  int _lastAffectedRows = 0;
+
   /// The auto-increment key the most recent [execute] generated, taken from the
   /// insert's own result set (`0` from the driver means "no generated key" and
   /// surfaces here as `null`, since a real AUTO_INCREMENT value is never 0).
   @override
   int? get lastGeneratedId => _lastGeneratedId;
+
+  /// The row count the most recent [execute] reported, taken from that
+  /// execute's own result set. `0` until the statement has run.
+  @override
+  int get lastAffectedRows => _lastAffectedRows;
 
   /// Wraps the prepared [preparedStmt] with its [parameterList], owning
   /// [datasource], [resultType] and original [command].
@@ -97,9 +104,14 @@ class MariadbPreparedStatement<T extends Object>
     this.groupedProjection,
   });
 
-  /// Records the generated key from an execute's [result].
-  void _captureGeneratedId(IResultSet result) {
+  /// Records the per-execution metadata carried by an execute's [result]: the
+  /// generated key and the affected-row count.
+  ///
+  /// Both are captured in one place so that the retry branch of [execute]
+  /// cannot pick up one and forget the other.
+  void _captureExecuteResult(IResultSet result) {
     _lastGeneratedId = normalizeGeneratedId(result.lastInsertID);
+    _lastAffectedRows = result.affectedRows.toInt();
   }
 
   /// Normalises a driver-reported last-insert id into a generated key: the
@@ -145,7 +157,7 @@ class MariadbPreparedStatement<T extends Object>
     );
     try {
       IResultSet result = await _execute(parameters, params);
-      _captureGeneratedId(result);
+      _captureExecuteResult(result);
       return datasource._processResult<T>(
         result,
         resultType,
@@ -159,7 +171,7 @@ class MariadbPreparedStatement<T extends Object>
       final link = await datasource._openConnection("prepared-statement retry");
       preparedStmt = await link.prepare(command);
       IResultSet result = await _execute(parameters, params);
-      _captureGeneratedId(result);
+      _captureExecuteResult(result);
       return datasource._processResult<T>(
         result,
         resultType,

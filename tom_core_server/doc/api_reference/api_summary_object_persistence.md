@@ -454,9 +454,9 @@ Data's `CrudRepository`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `delete` | `Future<void> delete(T entity)` | Deletes `entity` by its primary key. |
-| `deleteAllById` | `Future<void> deleteAllById(Iterable<K> ids)` | Deletes every entity whose id is in `ids`. |
-| `deleteById` | `Future<void> deleteById(K id)` | Deletes the entity with the given `id`. |
+| `delete` | `Future<void> delete(T entity)` | Deletes `entity` by its primary key. The one delete that returns nothing: it addresses a row the caller already holds, so the count could only be `1` or `0`. |
+| `deleteAllById` | `Future<int> deleteAllById(Iterable<K> ids)` | Deletes every entity whose id is in `ids` and returns how many rows were deleted — which can be lower than `ids.length` when an id names no row, or one outside the principal's data scope. |
+| `deleteById` | `Future<int> deleteById(K id)` | Deletes the entity with the given `id` and returns how many rows were deleted: `1`, or `0` when no row matched. |
 | `existsById` | `Future<bool> existsById(Iterable<K> ids)` | Whether every id in `ids` exists. |
 | `findAll` | `Future<List<T>> findAll([TomPageRequest? page])` | Loads all entities, or the window `page` asks for. |
 | `findAllById` | `Future<List<T>> findAllById(Iterable<K> ids, [TomPageRequest? page])` | Loads every entity whose id is in `ids`, optionally windowed. |
@@ -465,10 +465,10 @@ Data's `CrudRepository`.
 | `save` | `Future<T> save(T toSave)` | Inserts (no primary key) or updates (primary key set) and returns the stored entity. |
 | `saveAll` | `Future<Iterable<T>> saveAll(Iterable<T> entities)` | Saves every entity and returns the stored entities. |
 | `findByQuerySentence` | `Future<Iterable<T>> findByQuerySentence(String querySentence, Map<String, Object?> params, [Type? resultType, TomPageRequest? page])` | Runs a parsed query sentence as a `SELECT`, binding `params`, optionally windowed. |
-| `deleteByQuerySentence` | `Future<void> deleteByQuerySentence(String querySentence, Map<String, Object?> params)` | Runs a parsed query sentence as a `DELETE`. |
+| `deleteByQuerySentence` | `Future<int> deleteByQuerySentence(String querySentence, Map<String, Object?> params)` | Runs a parsed query sentence as a `DELETE` and returns how many rows were deleted — counted *after* the principal's data scope is ANDed in, so it never reports rows the principal may not see. |
 | `countByQuerySentence` | `Future<TomDbInt> countByQuerySentence(String querySentence, Map<String, Object?> params)` | Runs a parsed query sentence as a `COUNT`. |
 | `findByQuery` | `Future<Iterable<T>> findByQuery(TomSelect query, Map<String, Object?> params, [TomPageRequest? page])` | Runs a built `TomSelect`, binding `params`, optionally windowed. |
-| `deleteByQuery` | `Future<void> deleteByQuery(TomDelete query, Map<String, Object?> params)` | Runs a built `TomDelete`, binding `params`. |
+| `deleteByQuery` | `Future<int> deleteByQuery(TomDelete query, Map<String, Object?> params)` | Runs a built `TomDelete`, binding `params`, and returns how many rows were deleted — scoped like `deleteByQuerySentence`. |
 | `countByQuery` | `Future<TomDbInt> countByQuery(TomCount query, Map<String, Object?> params)` | Runs a built `TomCount`, binding `params`. |
 | `findGroupedByQuery` | `Future<List<TomGroupedRow>> findGroupedByQuery(TomGroupedSelect query, Map<String, Object?> params)` | Runs a built `TomGroupedSelect`, binding `params`, and returns one `TomGroupedRow` per group. Deliberately not `T`: a grouped row's shape is the query's, not the entity's. |
 | `executeQueryString` | `Future<Iterable<T>> executeQueryString(String dbQuery, Map<String, Object?> params)` | Runs a raw SQL string, binding `params`, and maps the rows to `T`. |

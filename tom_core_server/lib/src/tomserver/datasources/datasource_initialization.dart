@@ -50,6 +50,20 @@ abstract class TomPreparedStatement<T extends Object> {
   /// `SELECT LAST_INSERT_ID()`, which is session-scoped and returns `0` if it
   /// happens to run on a different connection than the insert.
   int? get lastGeneratedId => null;
+
+  /// The number of rows the most recent [execute] changed — the count a
+  /// `DELETE` or `UPDATE` reports, and `0` for a statement that changed
+  /// nothing or has not run yet.
+  ///
+  /// Deliberately non-nullable and without a default, unlike [lastGeneratedId]:
+  /// a driver that ran a write knows how many rows it touched, and callers
+  /// return this number as *the* answer to "how many rows were deleted". A
+  /// default would let a driver stay silent and have the silence read as a
+  /// real count — which is exactly the defect this member exists to remove.
+  ///
+  /// It is per-execution state on the handle, so read it immediately after
+  /// [execute] and before [deallocate].
+  int get lastAffectedRows;
 }
 
 /// A connection to one data source — the abstract contract a driver implements.

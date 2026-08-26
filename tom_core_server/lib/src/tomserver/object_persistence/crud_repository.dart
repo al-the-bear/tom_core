@@ -84,13 +84,23 @@ class TomCountResult {
 /// exactly the behaviour it had before.
 abstract class TomRepository<T extends Object, K> {
   /// Deletes [entity] by its primary key.
+  ///
+  /// Alone among the delete methods this returns nothing: it addresses one row
+  /// the caller already holds, so a count could only ever be `1` or `0`, and
+  /// `0` — the row having gone since it was read — is not a distinction any
+  /// caller has asked to act on.
   Future<void> delete(T entity);
 
-  /// Deletes every entity whose id is in [ids].
-  Future<void> deleteAllById(Iterable<K> ids);
+  /// Deletes every entity whose id is in [ids] and returns how many rows were
+  /// deleted.
+  ///
+  /// The count can be lower than `ids.length`: an id may name no row, or a row
+  /// outside the principal's data scope.
+  Future<int> deleteAllById(Iterable<K> ids);
 
-  /// Deletes the entity with the given [id].
-  Future<void> deleteById(K id);
+  /// Deletes the entity with the given [id] and returns how many rows were
+  /// deleted — `1`, or `0` when no row matched.
+  Future<int> deleteById(K id);
 
   /// Whether every id in [ids] exists.
   Future<bool> existsById(Iterable<K> ids);
@@ -127,8 +137,13 @@ abstract class TomRepository<T extends Object, K> {
     TomPageRequest? page,
   ]);
 
-  /// Runs a parsed query sentence as a `DELETE`, binding [params].
-  Future<void> deleteByQuerySentence(
+  /// Runs a parsed query sentence as a `DELETE`, binding [params], and returns
+  /// how many rows were deleted.
+  ///
+  /// The count is the deleted row count *after* the principal's data scope has
+  /// been ANDed into the predicate, so it never reports rows the principal may
+  /// not see.
+  Future<int> deleteByQuerySentence(
     String querySentence,
     Map<String, Object?> params,
   );
@@ -147,8 +162,9 @@ abstract class TomRepository<T extends Object, K> {
     TomPageRequest? page,
   ]);
 
-  /// Runs a built [TomDelete], binding [params].
-  Future<void> deleteByQuery(TomDelete query, Map<String, Object?> params);
+  /// Runs a built [TomDelete], binding [params], and returns how many rows were
+  /// deleted — scoped like [deleteByQuerySentence].
+  Future<int> deleteByQuery(TomDelete query, Map<String, Object?> params);
 
   /// Runs a built [TomCount], binding [params].
   Future<TomDbInt> countByQuery(TomCount query, Map<String, Object?> params);
@@ -972,20 +988,24 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   }
 
   @override
-  Future<void> deleteAllById(Iterable<K> ids) async {
+  Future<int> deleteAllById(Iterable<K> ids) async {
     // C-3: every named row must be within the principal's data scope.
     await _assertIdsWritable(ids);
     final (where, params) = await _idListPredicate(ids);
     // Collected before the delete (the rows are about to be unreadable) but
     // discarded after it — see [_rowsAboutToBeDeleted].
     final doomed = await _rowsAboutToBeDeleted(where, params);
-    await _runPrepared<T>(TomDelete(queryTypes, query: where), params);
+    final affected = await _runPreparedAffecting(
+      TomDelete(queryTypes, query: where),
+      params,
+    );
     await _deleteReferencedFiles(doomed);
     // One record per row, not per call: an auditor asks what happened to a
     // record, and an entry naming a batch cannot answer that.
     for (final id in ids) {
       await _audit(TomAuditAction.delete, key: id);
     }
+    return affected;
   }
 
   TomPreparedStatement<T>? _deleteByIdQuery;
@@ -1006,6 +1026,9 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     );
     Map<String, Object?> params = {"id": id};
     await _deleteByIdQuery!.execute(params);
+    // Read before anything else runs: the count is per-execution state on the
+    // handle, and the file cascade below executes further statements.
+    final affected = _deleteByIdQuery!.lastAffectedRows;
     await _deleteReferencedFiles(doomed);
     // Key only, no before-image. Reading the row first would put an extra
     // SELECT on every delete in every deployment, to recover data the trail is
@@ -1014,7 +1037,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     // needs the row's final state recorded has it in hand and calls
     // [delete] with the entity.
     await _audit(TomAuditAction.delete, key: id);
-    return 1;
+    return affected;
   }
 
   @override
@@ -1490,6 +1513,27 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     }
   }
 
+  /// Prepares [query], runs it once with [params], releases the server-side
+  /// statement, and returns the number of rows it changed.
+  ///
+  /// The write counterpart of [_runPrepared], which returns rows and therefore
+  /// cannot answer "how many did that touch": a `DELETE` returns no rows, and
+  /// its count is per-execution state on the statement handle. Reading it here
+  /// — inside the `try`, before the `finally` deallocates — is the only place
+  /// it is still available.
+  Future<int> _runPreparedAffecting(
+    TomQuery query,
+    Map<String, Object?> params,
+  ) async {
+    final stmt = await datasourceInfo.datasource.prepareStatement<T>(query);
+    try {
+      await stmt.execute(params);
+      return stmt.lastAffectedRows;
+    } finally {
+      await stmt.deallocate();
+    }
+  }
+
   /// Extracts `:name` placeholder names from [sql] in textual order (repeats
   /// included), so a raw statement can be prepared and its values bound
   /// positionally in the order the `?` slots appear.
@@ -1567,9 +1611,9 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     final scoped = _scopedDelete(select, scope);
     final doomed = await _rowsAboutToBeDeleted(scoped.query, effective);
-    await _runPrepared<T>(scoped, effective);
+    final affected = await _runPreparedAffecting(scoped, effective);
     await _deleteReferencedFiles(doomed);
-    return 0;
+    return affected;
   }
 
   @override
@@ -1622,9 +1666,9 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     final scoped = _scopedDelete(query, scope);
     final doomed = await _rowsAboutToBeDeleted(scoped.query, effective);
-    await _runPrepared<T>(scoped, effective);
+    final affected = await _runPreparedAffecting(scoped, effective);
     await _deleteReferencedFiles(doomed);
-    return 0;
+    return affected;
   }
 
   @override

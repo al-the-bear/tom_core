@@ -281,6 +281,41 @@
 
 ### Fixed
 
+- **The repository's delete methods returned a hardcoded count and contradicted
+  their own contract (tcinc594).** `TomRepository` declared `deleteById`,
+  `deleteByQuerySentence` and `deleteByQuery` as `Future<void>`, while
+  `TomSqlDatasourceRepository` implemented all three as `Future<int>` — a return
+  value no caller holding the interface could reach. The numbers were literals:
+  `deleteById` answered `1` whether or not a row had been there, and both query
+  deletes answered `0` however many rows they removed. A caller reading them was
+  reading a constant.
+
+  The four deletes that address an *unknown* number of rows — `deleteById`,
+  `deleteAllById`, `deleteByQuerySentence`, `deleteByQuery` — now declare and
+  return `Future<int>`, carrying the count the database reported.
+  `deleteAllById` is included although it was never `Future<int>` in the
+  implementation either: it deletes an arbitrary number of rows and reported
+  nothing at all, and leaving it `void` beside three siblings that count would
+  restore the inconsistency this removes. `delete(entity)` stays `Future<void>`:
+  it addresses one row the caller already holds.
+
+  The count had no route out of the driver. `TomPreparedStatement` declared no
+  row-count member — only `MariaDbDatasource.executeCommand`, a different and
+  non-prepared path, ever read `IResultSet.affectedRows` — so the contract gains
+  `lastAffectedRows`. It is abstract and non-nullable, unlike `lastGeneratedId`,
+  because a driver that ran a write knows how many rows it touched and a default
+  would let silence read as a real count. `MariadbPreparedStatement` captures it
+  alongside the generated key in one place, so the reconnect-and-retry branch of
+  `execute` cannot pick up one and drop the other. The repository reads it while
+  the statement is still allocated — for the query deletes through a new
+  `_runPreparedAffecting`, the write counterpart of `_runPrepared`, which
+  returns rows and so cannot answer "how many did that touch".
+
+  Because the scope predicate is ANDed in before the statement runs, the number
+  is the *scoped* count: a delete never reports rows the principal may not see,
+  and `deleteAllById` can legitimately answer lower than the number of ids it
+  was given.
+
 - **The CRUD repository threw ten errors a caller could not identify
   (tcinc593).** Seven were bare `throw Exception(...)`: the constructor's
   datasource lookup, `findById`'s duplicate-primary-key guard, the read-back

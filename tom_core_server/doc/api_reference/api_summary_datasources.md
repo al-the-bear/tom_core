@@ -804,6 +804,7 @@ times and then deallocated.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `lastGeneratedId` | `int?` | The auto-increment / identity key from the most recent `execute` that inserted a row, or `null` (default `null`). |
+| `lastAffectedRows` | `int` | The number of rows the most recent `execute` changed — the count a `DELETE` or `UPDATE` reports, `0` for a statement that changed nothing or has not run. Abstract and non-nullable, unlike `lastGeneratedId`: a driver that ran a write knows how many rows it touched, and a default would let silence read as a real count. Per-execution state, so read it before `deallocate`. |
 
 ##### Methods
 
@@ -1034,6 +1035,7 @@ MariadbPreparedStatement(
 | `command` | `String` | The compiled SQL command (kept so the statement can be re-prepared). |
 | `groupedProjection` | `Map<String, Type>?` | For a grouped query, the Dart type of each projected result column keyed by its alias; `null` for every other statement. The types travel with the statement because a grouped row is not an entity. |
 | `lastGeneratedId` | `int?` | *(override)* The auto-increment key the most recent `execute` generated. |
+| `lastAffectedRows` | `int` | *(override)* The row count the most recent `execute` reported, taken from that execute's own result set (`IResultSet.affectedRows`). `0` until the statement has run. |
 
 ##### Methods
 

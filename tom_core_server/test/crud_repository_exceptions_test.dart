@@ -27,15 +27,15 @@
 /// type cast", which names two internal classes the caller never wrote and does
 /// not say which of its own words was wrong.
 ///
-/// **Connection-free.** The repository is driven against a scripted data source
-/// rather than a database. Every failure under test is a decision the repository
+/// **Connection-free.** The repository is driven against the scripted data
+/// source in `fixtures/scripted_datasource.dart` rather than against a
+/// database. Every failure under test is a decision the repository
 /// makes *about an answer it was given*, so a real server would contribute
 /// nothing but the ability to produce the answer — and two of these answers
 /// (two rows for one primary key; a `COUNT(*)` returning no row at all) are
 /// states a correct server will not produce on request.
 library;
 
-import 'dart:collection';
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -44,121 +44,22 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'fixtures/reflection_fixture.dart'
     show FixtureTaskRecord, FixtureTaskRepository;
 import 'fixtures/reflection_fixture.reflection.dart';
-
-/// The data source name [FixtureTaskRecord] declares on its `@TomDbTable`.
-const _fixtureDatasource = 'tom_core_server_test';
-
-/// A prepared statement that answers from [_ScriptedDataSource.answers].
-class _ScriptedStatement<T extends Object> implements TomPreparedStatement<T> {
-  _ScriptedStatement(this.source);
-
-  final _ScriptedDataSource source;
-
-  @override
-  Future<List<T>> execute([Map<String, Object?>? params]) async =>
-      source.nextAnswer<T>();
-
-  @override
-  Future<void> deallocate() async {}
-
-  @override
-  int? get lastGeneratedId => source.generatedId;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
-    'The scripted statement was asked for ${invocation.memberName}, which no '
-    'test needs. Implement it here if that changes.',
-  );
-}
-
-/// A [TomDataSource] that answers from a script instead of from a server.
-///
-/// Each execution takes the next entry from [answers] — a `List` of rows to
-/// return, or any other object to throw — and an exhausted script answers with
-/// no rows. That default is deliberate: "the query found nothing" is the input
-/// four of these guards are about, so most tests need to script nothing at all.
-///
-/// Only the execution surface is implemented; [noSuchMethod] turns anything
-/// else into a loud test bug rather than a silent `null`.
-class _ScriptedDataSource implements TomDataSource {
-  /// What each successive execution does, in order.
-  final Queue<Object> answers = Queue();
-
-  /// What [TomPreparedStatement.lastGeneratedId] reports after an insert.
-  int? generatedId;
-
-  /// The next scripted answer as a `List<T>`, or no rows once the script runs
-  /// out.
-  List<T> nextAnswer<T extends Object>() {
-    if (answers.isEmpty) return <T>[];
-    final answer = answers.removeFirst();
-    // `cast` rather than an `is List<T>` test: a `[FixtureTaskRecord()]`
-    // literal is a `List<FixtureTaskRecord>`, which is not a `List<TomCountResult>`
-    // even when that is what the call wants back.
-    if (answer is List) return answer.cast<T>();
-    throw answer;
-  }
-
-  @override
-  TomStandardSqlDialect get sqlDialect => MariadbSqlDialect();
-
-  @override
-  Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(
-    TomQuery query, [
-    Type? resultType,
-  ]) async => _ScriptedStatement<T>(this);
-
-  @override
-  Future<List<T>> executeQuery<T extends Object>(
-    String command, [
-    Map<String, dynamic>? params,
-    Type? resultType,
-  ]) async => nextAnswer<T>();
-
-  @override
-  Future<BigInt> executeCommand(
-    String command, [
-    Map<String, dynamic>? params,
-  ]) async => BigInt.one;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
-    'The scripted data source was asked for ${invocation.memberName}, which no '
-    'test needs. Implement it here if that changes.',
-  );
-}
-
-/// A registry entry whose [datasource] is the scripted one.
-///
-/// [TomDataSourceInfo.initialize] is the only way to populate the real field and
-/// it demands a registered driver, so the getter is overridden instead — the
-/// repository reads the data source through exactly this getter.
-class _ScriptedDataSourceInfo extends TomDataSourceInfo {
-  _ScriptedDataSourceInfo(this.scripted) : super(_fixtureDatasource, const {});
-
-  final _ScriptedDataSource scripted;
-
-  @override
-  TomDataSource get datasource => scripted;
-}
+import 'fixtures/scripted_datasource.dart';
 
 void main() {
   setUpAll(initializeReflection);
 
-  late _ScriptedDataSource scripted;
+  late ScriptedDataSource scripted;
 
   /// Registers the scripted data source under the name the fixture entity
   /// declares, so `FixtureTaskRepository()` can be constructed.
   void registerDatasource() {
-    scripted = _ScriptedDataSource();
-    TomDataSourceInfo.datasources[_fixtureDatasource] = _ScriptedDataSourceInfo(
-      scripted,
-    );
+    scripted = registerScriptedDatasource();
   }
 
   // The registry is process-wide static state, so it is cleared after every
   // test rather than left for the next file to trip over.
-  tearDown(() => TomDataSourceInfo.datasources.remove(_fixtureDatasource));
+  tearDown(unregisterScriptedDatasource);
 
   /// Matches a [TomRepositoryException] carrying exactly [key].
   Matcher repositoryError(String key) => isA<TomRepositoryException>()
@@ -179,7 +80,7 @@ void main() {
       // only `test_database.dart` registers, so the lookup in the constructor
       // finds nothing. This is the one site of the seven that needs no scripted
       // answer — it fails before the repository can ask anything.
-      TomDataSourceInfo.datasources.remove(_fixtureDatasource);
+      unregisterScriptedDatasource();
       expect(
         FixtureTaskRepository.new,
         throwsA(
@@ -193,7 +94,7 @@ void main() {
     test('the message names the datasource and the entity', () {
       // Both halves are needed to act on it: the name to look for in the
       // configuration, and the class that asked for it.
-      TomDataSourceInfo.datasources.remove(_fixtureDatasource);
+      unregisterScriptedDatasource();
       expect(
         FixtureTaskRepository.new,
         throwsA(
@@ -201,7 +102,7 @@ void main() {
               .having(
                 (e) => e.defaultUserMessage,
                 'message',
-                contains(_fixtureDatasource),
+                contains(fixtureDatasourceName),
               )
               .having(
                 (e) => e.defaultUserMessage,
