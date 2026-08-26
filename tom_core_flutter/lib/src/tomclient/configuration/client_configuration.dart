@@ -123,8 +123,15 @@ T coerceSettingValue<T>(String key, Object? raw) {
 /// the holder into a junk drawer and quietly breaks the guarantee that reading
 /// a client setting never needs a session.
 ///
-/// Per-field *validation* is likewise not this class's job — constraints ride
-/// on the field declaration (the `Cs*` annotations), not on the holder.
+/// Per-field *validation* is likewise not this class's job, and nothing else in
+/// the module does it either. The **type** is checked — [coerceSettingValue]
+/// throws `client_configuration.value.type_mismatch` on a raw value that cannot
+/// be read as the declared type — but the **value** never is: a
+/// `TomSetting<int>` stores and serves a refresh interval of `-1`. There is no
+/// hook to add a check either, because [TomSetting]'s constructor is private and
+/// settings are created only by the `*Setting` methods below. Range, format and
+/// enum constraints are therefore the **caller's**, applied after [load] or at
+/// the point of use.
 ///
 /// ## Resolution order
 ///

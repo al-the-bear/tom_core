@@ -36,6 +36,24 @@
 
 ### Documentation
 
+- **configuration: validation is described instead of deflected (tcinc651).**
+  Both the `TomBaseClientConfiguration` dartdoc and `doc/configuration.md` said
+  per-field validation was "not the holder's job" because "constraints ride on
+  the field declaration (the `Cs*` annotations)". `CsClientConfig` — the marker
+  for this exact scope — carries `key`, `envAlias`, `overridableBy` and `note`,
+  and no constraint of any kind; no `Cs*` annotation anywhere carries a range, a
+  pattern or an enum. `tom_code_specs` is also not a dependency of this package,
+  so nothing here could reference them even if they did, and neither artefact
+  said where `Cs*` lived. The sentence sent the reader somewhere that does not
+  have what it promised. Both now state what is true: the **type** is checked
+  (`client_configuration.value.type_mismatch`) and the **value** never is, a
+  `TomSetting<int>` stores and serves `-1` as a refresh interval, there is no
+  hook to add a check because `TomSetting`'s constructor is private, and range,
+  format and enum constraints are the **caller's**. `doc/configuration.md` also
+  gained the matching **Limitations** bullet — the section is the document's own
+  inventory of gaps, and a reader who scans it was previously left to conclude
+  that validation was covered. No API change.
+
 - **configuration API summary completed and guarded (tcinc650).** The mirror at
   `doc/api_reference/api_summary_configuration.md` was accurate in everything it
   listed but silently omitted six public members the sources declare:
@@ -49,6 +67,25 @@
   source's non-`const` constructor, so the two mirrors agree.
 
 ### Tests / Examples
+
+- **configuration (tcinc651).** Four tests in a new `the module documents
+  validation truthfully` group. Two are documentation guards: no artefact defers
+  validation to `Cs*` while `tom_code_specs` is absent from the pubspec
+  (conditioned on the pubspec, so adding the dependency would make the pointer
+  legitimate and the guard stops objecting), and the paragraph that discusses
+  validation must name the caller — a guard that only forbade the old wording
+  would be satisfied by deleting the paragraph. The check is paragraph-scoped
+  rather than file-scoped because both artefacts use "caller" in unrelated
+  passages, so a whole-file `contains` passed however the paragraph read. A
+  meta-test pins that the splitter returns something non-empty, short and
+  on-topic, since one that returned the whole file would pass forever — and it
+  earned its keep immediately, catching that a markdown bullet list has no blank
+  lines and so came back as one 21-line block; a top-level `- ` now starts a
+  paragraph, because in a list the unit a reader takes as one statement is the
+  bullet. The
+  fourth asserts the behaviour the prose now claims: a setting accepts `-1` as a
+  refresh interval and `''` as a URL, while a non-numeric raw value still throws
+  `client_configuration.value.type_mismatch`.
 
 - **configuration (tcinc650).** Six guard tests, in two groups. `the two
   file-store variants present one signature` asserts that the io and neutral

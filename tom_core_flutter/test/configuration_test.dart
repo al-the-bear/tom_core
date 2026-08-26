@@ -694,4 +694,139 @@ void main() {
       );
     });
   });
+
+  group('the module documents validation truthfully', () {
+    // Documentation that points somewhere is a promise that the somewhere
+    // exists. These artefacts pointed per-field validation at the `Cs*`
+    // code-spec annotations, which carry no constraint of any kind and live in
+    // a package this one does not depend on — so a reader following the
+    // pointer found neither the constraints nor a way to reach them.
+    const artefacts = [
+      'lib/src/tomclient/configuration/client_configuration.dart',
+      'doc/configuration.md',
+    ];
+
+    test('no artefact defers validation to an unreachable annotation set', () {
+      // Conditioned on the pubspec rather than hard-coding the answer: if
+      // `tom_code_specs` ever becomes a dependency, pointing at its
+      // annotations stops being a dead end and this guard stops objecting.
+      final dependsOnCodeSpecs =
+          File('pubspec.yaml').readAsStringSync().contains('tom_code_specs');
+      if (dependsOnCodeSpecs) return;
+
+      final offenders = <String>[
+        for (final path in artefacts)
+          if (File(path).readAsStringSync().contains('Cs*')) path,
+      ];
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'these artefacts point the reader at the `Cs*` annotations for '
+            'per-field constraints, but tom_code_specs is not a dependency of '
+            'this package, so nothing here can reference them',
+      );
+    });
+
+    /// Every blank-line-delimited paragraph of [path] that discusses validation.
+    ///
+    /// A whole-file search would be worthless here: both artefacts use the word
+    /// "caller" in unrelated passages, so `contains` over the file passes
+    /// however the validation paragraph reads. Paragraph boundaries are blank
+    /// lines, and — because a dartdoc block has no blank lines — a bare `///`.
+    ///
+    /// All matches are returned rather than the first, so the guards below do
+    /// not depend on where in the file the paragraphs happen to sit.
+    ///
+    /// A markdown bullet list has no blank lines inside it, so a top-level `- `
+    /// also starts a new paragraph: in a list the unit a reader takes as one
+    /// statement is the bullet, not the whole list.
+    List<String> validationParagraphsOf(String path) => File(path)
+        .readAsStringSync()
+        .split('\n')
+        .fold<List<List<String>>>([[]], (acc, line) {
+          final trimmed = line.trim();
+          if (trimmed.isEmpty || trimmed == '///') {
+            acc.add([]);
+          } else if (line.startsWith('- ')) {
+            acc.add([line]);
+          } else {
+            acc.last.add(line);
+          }
+          return acc;
+        })
+        .map((lines) => lines.join('\n'))
+        .where((p) => p.toLowerCase().contains('validation'))
+        .toList();
+
+    test('both artefacts say the caller owns per-field constraints', () {
+      // The replacement for the deflection has to actually say something. A
+      // guard that only forbade the old text would be satisfied by deleting
+      // the paragraph, which loses a true and useful statement.
+      final offenders = <String>[
+        for (final path in artefacts)
+          if (!validationParagraphsOf(path).any((p) => p.contains('caller')))
+            path,
+      ];
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'the module performs no per-field validation, so the passage '
+            'that says so must name who does',
+      );
+    });
+
+    test('the paragraphs this guard reads are the ones about validation', () {
+      // A splitter that silently stopped finding anything would make the guard
+      // above fail loudly, but one that returned the *whole file* would pass
+      // forever. Pin that what it returns is non-empty, short and on-topic.
+      for (final path in artefacts) {
+        final paragraphs = validationParagraphsOf(path);
+        expect(paragraphs, isNotEmpty, reason: path);
+        for (final paragraph in paragraphs) {
+          expect(paragraph.toLowerCase(), contains('validation'), reason: path);
+          expect(paragraph.split('\n').length, lessThan(12), reason: path);
+        }
+      }
+    });
+
+    test('a setting really does accept any value of its type', () {
+      // The claim the documentation now makes, asserted rather than promised.
+      TomConfigResourceProvider.setAppConfigProvider(
+        TomConfigResourceProvider.from({}),
+      );
+      final config = _ValidationProbeConfiguration();
+
+      config.refreshSeconds | -1;
+      expect(~config.refreshSeconds, -1, reason: 'no range check exists');
+
+      config.serverUrl | '';
+      expect(~config.serverUrl, '', reason: 'no non-empty check exists');
+
+      // Type, by contrast, *is* enforced — that is the one check the module
+      // performs, and it is why the documentation says "type, not value".
+      expect(
+        () => config.refreshSeconds.applyRaw('not a number'),
+        throwsA(
+          isA<TomClientConfigurationException>().having(
+            (e) => e.key,
+            'key',
+            'client_configuration.value.type_mismatch',
+          ),
+        ),
+      );
+    });
+  });
+}
+
+/// A holder for the validation probe: two settings whose values have obvious
+/// real-world constraints, neither of which this module enforces.
+class _ValidationProbeConfiguration extends TomBaseClientConfiguration {
+  late final TomSetting<String> serverUrl;
+  late final TomSetting<int> refreshSeconds;
+
+  @override
+  void declareSettings() {
+    serverUrl = stringSetting('probe.server.url', 'https://api.example.com');
+    refreshSeconds = intSetting('probe.refresh.seconds', 60);
+  }
 }

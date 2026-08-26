@@ -55,8 +55,15 @@ Mixing those scopes into one holder is what turns a settings class into a junk
 drawer, and it breaks the guarantee that reading a client setting never
 requires a login.
 
-Per-field **validation** is likewise not the holder's job — constraints ride on
-the field declaration (the `Cs*` annotations), not on holder behaviour.
+Per-field **validation** is likewise not the holder's job, and nothing else in
+the module does it either. The *type* is checked — a raw value that cannot be
+read as the declared type raises `client_configuration.value.type_mismatch` —
+but the *value* never is: a `TomSetting<int>` stores and serves a refresh
+interval of `-1`, a `TomSetting<String>` an empty server URL. There is no hook
+to add a check, because `TomSetting`'s constructor is private and settings are
+created only by the holder's `*Setting` methods. Range, format and enum
+constraints are the **caller's** — applied after `load()`, or at the point of
+use.
 
 ## Quick Start
 
@@ -229,6 +236,11 @@ text:
   when you asked.
 - **No web file store.** See `client_configuration.store.unsupported_platform`
   above; supply a browser-appropriate store explicitly.
+- **No per-field validation, and no hook to add one.** The type is enforced, the
+  value is not: `-1` is an acceptable refresh interval and `''` an acceptable
+  server URL. `TomSetting`'s constructor is private, so a validating subclass
+  cannot be substituted — range, format and enum checks are the caller's, after
+  `load()` or at the point of use.
 - **Concurrent saves are not atomic, and a collision is not detected.** `save()`
   re-reads the store before writing it, so a holder preserves keys another
   writer has added — but read-then-write is not a single operation. Two holders
