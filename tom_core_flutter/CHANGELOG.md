@@ -1,5 +1,29 @@
 ## 1.2.1
 
+### Added
+
+- **runtime: the per-read allocation of `clientPlatformUtils` is pinned by test
+  (tcinc683).** The getter constructs a new instance on every read, both
+  documents say so, and until now nothing observed it — the suite read the
+  getter fourteen times and never once looked at what came back. Three tests
+  now state the contract: two reads are distinct objects; a read taken after
+  `setCurrentPlatform` is *not* the registered instance, so comparing
+  platform-utils identities is wrong today; and a second read re-imports the
+  process environment, which is the work the repeated construction actually
+  costs.
+
+  The environment merge is idempotent against an untouched map, so the only way
+  to watch it happen is to overwrite one key and see a construction repair it.
+  That test carries a control assertion for the same reason: `getTomEnvVars()`
+  returns the shared static map rather than a copy, and if it ever stopped
+  doing so the overwrite would land nowhere and the check would pass having
+  observed nothing.
+
+  These tests take no position on whether the getter *should* allocate per read
+  — that question is open, and it is about exactly this cost. They record what
+  the code does now, so that changing it has to be a decision rather than a
+  side effect, and so the answer arrives with a test saying which way it went.
+
 ### Changed
 
 - **runtime: the neutral fallback's `httpClient()` throws `UnsupportedError`

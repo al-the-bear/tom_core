@@ -773,6 +773,98 @@ void main() {
     });
   });
 
+  group('the getter allocates on every read', () {
+    // `clientPlatformUtils` is a getter that constructs, and both documents say
+    // so — "each read constructs a fresh `TomPlatformUtils`". Nothing observed
+    // it. The suite read the getter fourteen times and never once looked at
+    // what it handed back, so the contract was free to move in either
+    // direction without a single test noticing.
+    //
+    // Whether it *should* move is genuinely open: every construction on this
+    // variant re-copies the whole process environment into the kernel's static
+    // env-var map, work a cached instance would do once. These tests take no
+    // position on that. They record what the code does now, so that changing
+    // it has to be a decision rather than a side effect — and so that whichever
+    // way the question is answered, the answer arrives with a test that says
+    // what was chosen.
+
+    test('two reads return distinct instances', () {
+      final first = clientPlatformUtils;
+      final second = clientPlatformUtils;
+      expect(
+        identical(first, second),
+        isFalse,
+        reason: 'the getter returned the same object twice; it has started '
+            'caching, and both documents still describe a fresh instance '
+            'per read',
+      );
+    });
+
+    test('a read after registration is not the registered instance', () {
+      // The consequence of the line above, and the one that can bite a caller.
+      // The documented start-up pattern registers one instance and reaches it
+      // through `TomPlatformUtils.current` afterwards; anyone who instead reads
+      // the getter again — the natural move, since it reads like a property —
+      // holds a different object. Comparing the two for identity is therefore
+      // wrong today and would become right under a cached getter, which is
+      // exactly why which of the two it is belongs in a test rather than in a
+      // reader's assumption.
+      final alreadyRegistered = TomPlatformUtils.current;
+      addTearDown(
+        () => TomPlatformUtils.setCurrentPlatform(alreadyRegistered),
+      );
+
+      final atStartup = clientPlatformUtils;
+      TomPlatformUtils.setCurrentPlatform(atStartup);
+      expect(TomPlatformUtils.current, same(atStartup));
+      expect(
+        clientPlatformUtils,
+        isNot(same(atStartup)),
+        reason: 'a later read now yields the registered instance; code that '
+            'compares platform-utils identities changes meaning',
+      );
+    });
+
+    test('each read re-imports the process environment', () {
+      // What the repeated construction actually costs, made observable. The
+      // merge is idempotent against an untouched map, so the only way to watch
+      // it happen is to break the map first and see a construction repair it.
+      expect(
+        Platform.environment,
+        isNotEmpty,
+        reason: 'test host is expected to expose some environment variables',
+      );
+      final key = Platform.environment.keys.first;
+      final real = Platform.environment[key]!;
+
+      const sentinel = 'overwritten to make the re-import visible';
+      final utils = clientPlatformUtils;
+      addTearDown(() => utils.getTomEnvVars()[key] = real);
+      utils.getTomEnvVars()[key] = sentinel;
+
+      // The control, and it is load-bearing. `getTomEnvVars` hands back the
+      // static map itself rather than a copy, which is the only reason writing
+      // to it is visible to anyone else. Were it ever to return a copy, the
+      // overwrite would land nowhere, the key would still hold its real value,
+      // and the assertion below would pass having observed nothing at all.
+      expect(
+        utils.getTomEnvVars()[key],
+        sentinel,
+        reason: 'getTomEnvVars no longer exposes the shared map, so the '
+            'overwrite says nothing about what a second construction does',
+      );
+
+      final reconstructed = clientPlatformUtils;
+      expect(
+        reconstructed.getTomEnvVars()[key],
+        real,
+        reason: 'constructing the utils a second time did not re-import the '
+            'process environment; the getter is no longer doing the work '
+            'per read',
+      );
+    });
+  });
+
   group('the shipped example runs', () {
     test('runtime_example.run() completes its assertions', () {
       // The example is quoted as documentation, so it has to be executable
