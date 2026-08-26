@@ -2,6 +2,27 @@
 
 ### Documentation
 
+- **`doc/server.md` listed three non-goals as pending work, and left the
+  module's real limitations where no user could read them (tcinc643).** Its
+  "Not Yet Implemented" section named diagnostics, monitoring and server-side
+  forms — capabilities this module has no surface for and never had; the four
+  files that once suggested otherwise contained a `TODO` comment each and were
+  deleted. The two readings recommend opposite actions, which is what made the
+  drift expensive rather than untidy: on the guide's, an application needing
+  introspection endpoints waits for the framework to ship them; in fact it
+  writes them today as ordinary endpoints, because that is where they belong
+  and nothing is coming. They now sit under "What this module does not do at
+  all", each pointing at the endpoints module, alongside WebSocket — which had
+  already been argued exactly that way in the same section, and the argument
+  applies unchanged to the other three.
+  What the section had *not* recorded is the module's four genuine limitations,
+  every one of them observable by a caller: the default `errorHandler` answers
+  `500` for everything, anything answered above `loggingMiddleware` leaves no
+  access-log line, `extractAuthentication` cannot report a bad token, and
+  `start()` can neither be awaited nor hand back the bound `HttpServer`. A
+  limitation a user cannot read is one they meet in production instead, so the
+  section now carries all four with the consequence spelled out — the shape
+  `doc/cache.md` and `doc/endpoints.md` already use.
 - **`TomServer.securityContext` was documented as holding the TLS context and
   was never assigned (tcinc642, tcopen183).** `start()` declared a *local* of
   the same name and built the context into that, so the public field read
@@ -173,6 +194,23 @@
 
 ### Testing
 
+- **The server guide's limitations section is now checked against the module
+  (tcinc643).** "Non-goal, not gap" is a judgement no test can make, so the new
+  group pins the two facts it rests on. A capability the guide disowns must
+  leave no trace in `lib/src/tomserver/server/` — deleting the four placeholder
+  files did not stop one coming back, and this is the direction that was left
+  open. And each of the four limitations must still be the module's behaviour,
+  read from the one construct that decides it: the status the default handler
+  builds, the order the two middlewares are added to the pipeline, the return
+  type `start()` declares, and the pair of empty catches in
+  `extractAuthentication`. Closing one now turns the suite red instead of
+  leaving the guide advertising a defect somebody already fixed.
+  The disowned capabilities are read *from the guide*, not listed in the test,
+  so the guide stays the input and the test the judge. Bridging a prose bullet
+  to a file name is a judgement, though, so the map is written down and a bullet
+  it has no entry for fails loudly — renaming "WebSocket" during a live mutation
+  duly reported both the roster and the mutation case, which is exactly the
+  silent narrowing that would otherwise have gone unnoticed.
 - **A documented field is now checked against the class rather than against its
   own dartdoc (tcinc642).** The `securityContext` defect survived because the
   API summary had been checked against the dartdoc, and the dartdoc was what

@@ -188,20 +188,61 @@ to guess from and an intermediary free to sniff it as anything it likes.
 
 ## Not Yet Implemented
 
-The module ships nothing for the capabilities below — no type, no export, no
-placeholder file. Each is named here so that a reader who goes looking finds out
-it is absent, rather than concluding they have missed where it lives:
+Every limitation below has a consequence a caller can observe — a status that
+does not distinguish, a request that leaves no trace, a failure that arrives
+somewhere other than the call site.
 
-- **Diagnostics** — server diagnostics/introspection endpoints.
-- **Monitoring** — runtime metrics / monitoring hooks.
-- **Server-side forms** — server-rendered form support. *Receiving* a form is
-  shipped — see
-  [Multipart Forms](endpoints.md#multipart-forms) — what is missing is rendering
-  one server-side, which is a templating concern rather than a transport one.
+- **The default `errorHandler` answers `500` for everything.** It renders the
+  error envelope faithfully, but the status is fixed, so a not-found, a
+  forbidden and a validation failure are indistinguishable to a client that
+  reads the status line rather than decoding the body. Nothing in the package
+  maps an exception kind to a status on its own: `TomDefaultErrorHandler`, the
+  endpoint pipeline's fallback, answers `500` too. Choosing the status is a
+  handler's job, and `TomUserPreferencesErrorHandler` is the worked example — an
+  `errorKey`-to-status map, the same `tomErrorEnvelope` body, and only the
+  *status* contributed. See [Error Mapping](#error-mapping).
+- **A request answered above the logging middleware leaves no access-log line.**
+  `loggingMiddleware` sits below the authentication layer (see
+  [The Pipeline](#the-pipeline)), so whatever is decided above it — the outer
+  error handler, or a substitute `authenticationMiddleware` that rejects —
+  returns without ever reaching it. `tomDefaultAuthenticationMiddleware` never
+  rejects, so under the default the way in is a throw from principal
+  resolution; a deployment that supplies a rejecting middleware loses the line
+  for every rejection, which is the class of request most worth having one.
+- **`extractAuthentication` cannot report a bad token.** An absent header, a
+  non-bearer scheme and a bearer token that will not parse all answer
+  `(null, null)`, so a malformed credential is indistinguishable from no
+  credential — to the handler, and to a log line that records neither.
+- **`start()` cannot be awaited and hands back no handle.** It is
+  `void … async`, so a failure after the self-login — a port already in use, an
+  unreadable certificate — arrives as an unhandled asynchronous error rather
+  than at the call site, and the caller never receives the bound `HttpServer`
+  to close. That the socket is bound at all is observable only through the log
+  line `start()` emits.
 
-WebSocket support is not among them: it is served by the endpoint
-pipeline as a kind of endpoint — see
-[WebSocket Endpoints](endpoints.md#websocket-endpoints).
+All four are pinned by tests in `test/api_reference_coverage_test.dart`, in the
+group "the server guide's Not Yet Implemented section matches the module", so
+closing one turns a test red rather than leaving this section quietly wrong.
+
+### What this module does not do at all
+
+Three capabilities a reader may come here looking for are not gaps waiting to be
+filled. They are not this module's surface, nothing here is planned for them,
+and an application that needs one builds it today rather than waiting:
+
+- **Diagnostics and monitoring.** The module has no introspection or metrics
+  facility and none is intended. What a deployment can observe is the access-log
+  line `tomLoggingMiddleware` emits, the health endpoint from the `healthcheck`
+  module, and whatever its own `preExecutionHandler` records. An introspection
+  or metrics route is an ordinary endpoint — declare it like any other, see
+  [endpoints.md](endpoints.md).
+- **Server-rendered forms.** *Receiving* a form is shipped, and belongs to the
+  endpoints module — see [Multipart Forms](endpoints.md#multipart-forms).
+  Rendering one is a templating concern rather than a transport one, so it sits
+  outside this package rather than pending inside it.
+- **WebSocket.** Also the endpoint pipeline's: a socket is served as a kind of
+  endpoint, declared like any other — see
+  [WebSocket Endpoints](endpoints.md#websocket-endpoints).
 
 ## Dependencies
 

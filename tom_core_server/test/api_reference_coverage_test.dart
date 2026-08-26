@@ -5925,6 +5925,155 @@ One: `TomKind`, documented beside the type that carries it.
     });
   });
 
+  // `doc/server.md`'s "Not Yet Implemented" section named diagnostics,
+  // monitoring and server-rendered forms as capabilities the module had not got
+  // to yet, while the module's own record said the opposite — that there is no
+  // diagnostics or monitoring surface here and forms are the endpoints
+  // module's. That disagreement is not cosmetic, because the two readings
+  // recommend opposite actions: wait for the framework to ship introspection,
+  // or write it as an ordinary endpoint today.
+  //
+  // "Non-goal, not gap" is a judgement and no test can make it. So this group
+  // pins the two facts the judgement rests on. A capability the guide disowns
+  // has to leave no trace in the module — four placeholder files once suggested
+  // otherwise, they were deleted, and nothing stops one coming back. And a
+  // limitation the guide records has to still be the module's behaviour, so
+  // that closing one turns this red instead of leaving the section advertising
+  // a defect somebody already fixed.
+  group("the server guide's Not Yet Implemented section matches the module", () {
+    const guide = 'doc/server.md';
+    const source = 'lib/src/tomserver/server/server.dart';
+    const moduleDirectory = 'lib/src/tomserver/server';
+
+    List<String> disowned() =>
+        _disownedCapabilities(_sectionBody(guide, 'Not Yet Implemented'));
+
+    _ServerLimitations shipped() =>
+        _serverLimitationsOf(File(source).readAsLinesSync());
+
+    List<String> moduleFiles() => [
+      for (final entity in Directory(moduleDirectory).listSync())
+        entity.path.split('/').last,
+    ];
+
+    test(
+      'the guide disowns the capabilities this check knows how to look for',
+      () {
+        // Both findings below are emptiness assertions, so a parser that read
+        // no bullet would pronounce the module clean. Pin the roster, and pin
+        // that every bullet has a mapping — a fourth bullet with no entry in
+        // `_capabilityFiles` is a bullet nothing checks, which is the failure
+        // this group exists to prevent one level up.
+        expect(disowned(), [
+          'Diagnostics and monitoring',
+          'Server-rendered forms',
+          'WebSocket',
+        ]);
+        expect(_unmappedCapabilityComplaints(disowned()), isEmpty);
+      },
+    );
+
+    test(
+      'no file in the module is named for a capability the guide disowns',
+      () {
+        expect(_disownedFileComplaints(disowned(), moduleFiles()), isEmpty);
+      },
+    );
+
+    test('every limitation the guide records is still the behaviour', () {
+      final limitations = shipped();
+      expect(
+        limitations.defaultErrorHandlerAlwaysFails,
+        isTrue,
+        reason:
+            'the guide says the default `errorHandler` answers 500 for '
+            'everything; if it now chooses a status, say so there instead',
+      );
+      expect(
+        limitations.logsBelowAuthentication,
+        isTrue,
+        reason:
+            'the guide explains the missing access-log line by the logging '
+            'middleware sitting below the authentication layer — move it above '
+            'and the explanation is wrong as well as the limitation gone',
+      );
+      expect(
+        limitations.bearerFailuresAreSilent,
+        isTrue,
+        reason:
+            'the guide says `extractAuthentication` cannot report a bad token; '
+            'it swallows both decode failures, and stops doing so here first',
+      );
+      expect(
+        limitations.startIsFireAndForget,
+        isTrue,
+        reason:
+            'the guide says `start()` cannot be awaited and hands back no '
+            'handle; a signature that returns one makes that paragraph stale',
+      );
+    });
+
+    test('a module file matching a disowned capability is reported', () {
+      // The mutation is the baseline verbatim: the placeholder file back, the
+      // guide still disowning what it declares. It is worth checking because
+      // this is the one direction the deletion did not make impossible.
+      expect(
+        _disownedFileComplaints(disowned(), const [
+          'server.dart',
+          'diagnostics.dart',
+          'readme.md',
+        ]),
+        [contains('diagnostics.dart')],
+      );
+      // A file whose name merely contains a disowned word does not escape by
+      // being longer, and one that shares no word does not get caught by being
+      // near: `formatting.dart` is not `forms`.
+      expect(
+        _disownedFileComplaints(disowned(), const ['formatting.dart']),
+        isEmpty,
+      );
+      expect(
+        _disownedFileComplaints(disowned(), const ['websocket_upgrade.dart']),
+        [contains('websocket_upgrade.dart')],
+      );
+    });
+
+    test('a bullet the vocabulary does not know is reported', () {
+      expect(_unmappedCapabilityComplaints(const ['Templating']), [
+        contains('Templating'),
+      ]);
+    });
+
+    test('a limitation the source has closed is reported', () {
+      // Each of the four read independently, so a parser that answered `false`
+      // to everything would pass the group above by accident. Feed it a source
+      // in which all four are fixed and check it says so.
+      final fixed = _serverLimitationsOf(const [
+        'Response? Function(Request, Object, StackTrace) errorHandler =',
+        '    (request, error, stacktrace) {',
+        '      return Response(statusFor(error), body: body);',
+        '    };',
+        '',
+        'Future<HttpServer> start() async {',
+        '  final handler = Pipeline()',
+        '      .addMiddleware(loggingMiddleware)',
+        '      .addMiddleware(tomDefaultAuthenticationMiddleware())',
+        '      .addHandler(routerHandler);',
+        '  return await serve(handler, ip, port);',
+        '}',
+        '',
+        '(TomPrincipal?, TomClientJwtToken?) '
+            'extractAuthentication(Request r) {',
+        '  return (principalOf(r), tokenOf(r));',
+        '}',
+      ]);
+      expect(fixed.defaultErrorHandlerAlwaysFails, isFalse);
+      expect(fixed.logsBelowAuthentication, isFalse);
+      expect(fixed.startIsFireAndForget, isFalse);
+      expect(fixed.bearerFailuresAreSilent, isFalse);
+    });
+  });
+
   // The authentication middleware is where a request acquires everything the
   // code beneath it reads from the ambient zone rather than from an argument.
   // Three documents mirror that list, and a mirror that drifts from it is worse
@@ -6343,6 +6492,137 @@ String _withoutAnnotations(String text) {
     rest = rest.substring(i + 1).trimLeft();
   }
   return rest;
+}
+
+/// The sub-heading under which `doc/server.md` lists what is not its surface.
+///
+/// A `###` inside the limitations section rather than a `##` of its own,
+/// deliberately: the package keeps exactly one `##` per guide for claims about
+/// unfinished work, and a second one would be a second place such claims
+/// collect — the arrangement `a claim of unfinished work lives where it gets
+/// swept` exists to prevent.
+const String _disownedHeading = '### What this module does not do at all';
+
+/// The capabilities `doc/server.md` says are not this module's, in order.
+///
+/// Each is the bold lead-in of a bullet in [_disownedHeading]'s list, which is
+/// the sentence a reader actually scans — so taking the name from there rather
+/// than from a list in this file keeps the guide the input and the test the
+/// judge, instead of the two agreeing with each other about a third thing.
+List<String> _disownedCapabilities(List<String> sectionBody) {
+  final leadIn = RegExp(r'^-\s+\*\*(.+?)\.?\*\*');
+  final found = <String>[];
+  var inSubsection = false;
+  for (final line in sectionBody) {
+    if (line.startsWith('### ')) {
+      inSubsection = line.trim() == _disownedHeading;
+      continue;
+    }
+    if (!inSubsection) continue;
+    final match = leadIn.firstMatch(line);
+    if (match != null) found.add(match.group(1)!);
+  }
+  return found;
+}
+
+/// The file basenames a capability would occupy if the module implemented it.
+///
+/// The guide's bullets are prose — "Diagnostics and monitoring" — and a file is
+/// `diagnostics.dart`. Bridging the two is a judgement, so it is written down
+/// rather than inferred from the words: inferring would make `Server-rendered
+/// forms` look for `server.dart`, which is the module itself. The cost of
+/// writing it down is that the map goes stale, which is what
+/// [_unmappedCapabilityComplaints] is for.
+const Map<String, List<String>> _capabilityFiles = {
+  'Diagnostics and monitoring': ['diagnostics', 'monitoring'],
+  'Server-rendered forms': ['forms'],
+  'WebSocket': ['websocket'],
+};
+
+/// The capabilities in [capabilities] that [_capabilityFiles] cannot look up.
+///
+/// A bullet with no entry is not a harmless omission: it is a capability the
+/// guide disowns and nothing checks, and the check would still report the
+/// module clean. Failing on the unknown name is what makes adding a fourth
+/// bullet cost one line here rather than silently narrowing the sweep.
+List<String> _unmappedCapabilityComplaints(List<String> capabilities) => [
+  for (final capability in capabilities)
+    if (!_capabilityFiles.containsKey(capability))
+      '`$capability` is disowned by the guide but absent from '
+          '`_capabilityFiles`, so no file name is checked for it',
+];
+
+/// The files in [fileNames] named for a capability the guide disowns.
+///
+/// Substring rather than equality, because a capability that came back would
+/// not necessarily come back under the placeholder's exact name — a
+/// `websocket_upgrade.dart` contradicts the guide every bit as much as a
+/// `websocket.dart` does.
+List<String> _disownedFileComplaints(
+  List<String> capabilities,
+  List<String> fileNames,
+) => [
+  for (final capability in capabilities)
+    for (final stem in _capabilityFiles[capability] ?? const <String>[])
+      for (final name in fileNames)
+        if (name.contains(stem))
+          '`$name` implements `$capability`, which `doc/server.md` says is not '
+              'this module\'s surface — either the file belongs elsewhere or '
+              'the guide is disowning something the module ships',
+];
+
+/// The four limitations `doc/server.md` records, as the source still shows
+/// them.
+typedef _ServerLimitations = ({
+  bool defaultErrorHandlerAlwaysFails,
+  bool logsBelowAuthentication,
+  bool startIsFireAndForget,
+  bool bearerFailuresAreSilent,
+});
+
+/// Reads the four limitations out of [lines].
+///
+/// Each is read from the one construct that decides it, so that fixing a
+/// limitation flips exactly the one flag: the status the default handler
+/// builds, the order the two middlewares are added to the pipeline, the return
+/// type `start()` declares, and whether `extractAuthentication` still has
+/// nothing but empty catches.
+_ServerLimitations _serverLimitationsOf(List<String> lines) {
+  final joined = lines.join('\n');
+
+  final logging = joined.indexOf('.addMiddleware(loggingMiddleware)');
+  final authentication = joined.indexOf('authenticationMiddleware ??');
+
+  // The extractor's body, so an empty catch elsewhere in the file does not
+  // stand in for the two that make a bad token unreportable.
+  final extractor = <String>[];
+  var inExtractor = false;
+  for (final line in lines) {
+    if (!inExtractor) {
+      if (line.contains('extractAuthentication(Request')) inExtractor = true;
+      continue;
+    }
+    if (line == '}') break;
+    extractor.add(line);
+  }
+
+  return (
+    // The default handler is a field initialiser, and `internalServerError` is
+    // the constructor that fixes the status at 500. A handler that chose one
+    // would call `Response(status, ...)` instead.
+    defaultErrorHandlerAlwaysFails: joined.contains(
+      'return Response.internalServerError(',
+    ),
+    // Both present and the logging one added later: shelf applies middleware in
+    // the order it is added, so "later" is "further from the client" — which is
+    // exactly why a response decided by the authentication layer never reaches
+    // it.
+    logsBelowAuthentication:
+        logging >= 0 && authentication >= 0 && logging > authentication,
+    startIsFireAndForget: joined.contains('void start() async'),
+    bearerFailuresAreSilent:
+        extractor.where((line) => line.contains('catch (e)')).length == 2,
+  );
 }
 
 /// `TomServer`'s instance fields, and the class body they were read from.
