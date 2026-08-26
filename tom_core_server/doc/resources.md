@@ -271,13 +271,20 @@ it the same way rather than writing a second `replaceAll` loop.
 final texts = TomLocalizedTextResources(
   defaultLocale: TomTextLocale('en'),
   bundles: {
-    'en': loadYamlMap('resources/text_en.yaml'),
-    'de': loadYamlMap('resources/text_de.yaml'),
+    'en': TomYaml.loadYamlFile('resources/text_en.yaml'),
+    'de': TomYaml.loadYamlFile('resources/text_de.yaml'),
   },
 );
 
 TomBean.withType(TomLocalizedTextResources, texts);
 ```
+
+`TomYaml.loadYamlFile` comes from the configuration module and is the usual
+source on this tier; it throws `PathNotFoundException` when the file is absent,
+which is the right failure for a bundle the deployment declared. For a message
+naming the path, check `existsSync` first — `advanced_ops_server`'s
+`ops_texts.dart` does, because a bundle missing from a container image is
+otherwise reported as a bare filesystem error at startup.
 
 `TomLocalizedTextResources.ofProviders` takes providers that are already
 constructed, for a deployment whose bundles come from somewhere with its own
@@ -320,6 +327,15 @@ translation gap into a red suite rather than a blank line in somebody's mail.
   layers over), `TomPrincipal`, `TomBean`.
 - `little_things` — `TomServerException`, the base of
   `TomResourceLocaleException`.
+
+Not a dependency of the module, but of anyone installing one: the
+**configuration** module supplies `TomYaml.loadYamlFile`, which is how a bundle
+gets from a YAML file into the `bundles` map (see `doc/configuration.md`). This
+module takes maps and does not read files, so the loader is the caller's choice
+— but it is the same loader the rest of the tier uses, and that buys one thing
+worth having: `loadYamlFile` expands `${VAR}` and `${VAR:default}` from the
+environment, so a bundle can carry a deployment-specific support address or base
+URL without a second mechanism for getting it there.
 
 Consumers: the messaging module's `TomEmailService` (see `doc/messaging.md`).
 Any server-side text rendered *for a user* rather than *for the process* belongs

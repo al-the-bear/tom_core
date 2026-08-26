@@ -3561,6 +3561,38 @@
 
 ### Documentation
 
+- **The resources guide installed bundles with `loadYamlMap`, a function that
+  exists nowhere in the workspace (tcinc630).** `doc/resources.md`'s "Installing
+  a Bundle Set" example read `'en': loadYamlMap('resources/text_en.yaml')`. The
+  real function is `TomYaml.loadYamlFile`, which is what the only real
+  deployment uses (`advanced_ops_server`'s `ops_texts.dart`). The example is the
+  one place a reader copies verbatim, so an invented name there fails at compile
+  time on the first thing anyone tries.
+
+  It could not be corrected from the page either: the guide's own Dependencies
+  section listed four modules and did not name **configuration**, the module the
+  loader comes from, so a reader had nothing to look it up against. Both are
+  fixed — the fence calls `TomYaml.loadYamlFile`, and Dependencies names the
+  configuration module as the source, with the reason the tier's usual loader is
+  worth preferring over any other: it expands `${VAR}` and `${VAR:default}` from
+  the environment, so a bundle can carry a deployment-specific support address
+  without a second mechanism. That expansion requires the `$` sigil, so the
+  module's own bare `{name}` parameters pass through it untouched. The paragraph
+  also points at `ops_texts.dart`'s `existsSync` check, because `loadYamlFile`
+  throws a bare `PathNotFoundException` and a bundle missing from a container
+  image deserves a message naming the path.
+
+  An invented name rarely travels alone, so every `dart` fence in the package's
+  twenty module guides and README was swept — 98 distinct bare calls resolved
+  against the workspace. Seven did not resolve and six of those are legitimate:
+  three are defined inside their own fence (`salesCsv`, `mergeYamlIfPresent`,
+  `listReports`) and three are plainly the reader's application code
+  (`buildSalesResult`, `gradeForTask`, `promptForCode`). `loadYamlMap` was the
+  only name in the position where the framework supplies the value. No standing
+  guard was added for this: one defect in 98 is too thin to carry an allowlist,
+  and the discriminator that matters — framework API versus the reader's own
+  code — is a judgement no filename-matching test can make.
+
 - **`resources` was the only one of the twenty server modules with no mention at
   all in the package README (tcinc627).** The platform-services heading named
   thirteen of the fourteen modules that belong to it and the table beneath it
