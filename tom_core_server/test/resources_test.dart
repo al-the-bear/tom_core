@@ -75,15 +75,15 @@ void main() {
       // not enforced, which is how a four-letter script reached it.
       expect(
         () => TomTextLocale('de', 'AUT'),
-        throwsA(isA<TomServerException>()),
+        throwsA(isA<TomResourceLocaleException>()),
       );
       expect(
         () => TomTextLocale('zh', 'Hans'),
-        throwsA(isA<TomServerException>()),
+        throwsA(isA<TomResourceLocaleException>()),
       );
       expect(
         () => TomTextLocale('es', '419'),
-        throwsA(isA<TomServerException>()),
+        throwsA(isA<TomResourceLocaleException>()),
       );
     });
 
@@ -100,7 +100,7 @@ void main() {
       for (final reserved in ['XX', 'ZZ', 'AA', 'QM', 'QZ', 'XA', 'XZ']) {
         expect(
           () => TomTextLocale('en', reserved),
-          throwsA(isA<TomServerException>()),
+          throwsA(isA<TomResourceLocaleException>()),
           reason: '$reserved is user-assigned and can never name a country',
         );
       }
@@ -140,7 +140,10 @@ void main() {
     });
 
     test('rejects an empty language rather than inventing one', () {
-      expect(() => TomTextLocale('  '), throwsA(isA<TomServerException>()));
+      expect(
+        () => TomTextLocale('  '),
+        throwsA(isA<TomResourceLocaleException>()),
+      );
     });
 
     test('falls back from the country variant to the bare language', () {
@@ -177,6 +180,77 @@ void main() {
 
     test('a principal with no locale at all yields null, not a guess', () {
       expect(TomTextLocale.fromPrincipal(fixturePrincipal()), isNull);
+    });
+  });
+
+  // ===========================================================================
+  // LOCALE EXCEPTION
+  // ===========================================================================
+
+  group('TomResourceLocaleException', () {
+    test('is never client-visible', () {
+      // This is the whole reason the type is declared. It adds no field, no
+      // behaviour and no message of its own; it exists to make `clientThrow`
+      // false, because the value it is complaining about came from a config
+      // file, a file name or a user record, and echoing it to a browser tells
+      // an attacker about the deployment while telling the user nothing.
+      //
+      // So the property has to be an invariant and not a default. `clientThrow`
+      // is not a constructor parameter — the signature pins that at compile
+      // time, and there being exactly one constructor is what makes the two
+      // halves add up: every instance that exists went through it.
+      expect(TomResourceLocaleException('k', 'm').clientThrow, isFalse);
+      for (final raise in <void Function()>[
+        () => TomTextLocale('  '),
+        () => TomTextLocale('en', 'AUT'),
+      ]) {
+        expect(
+          raise,
+          throwsA(
+            isA<TomResourceLocaleException>().having(
+              (e) => e.clientThrow,
+              'clientThrow',
+              isFalse,
+            ),
+          ),
+        );
+      }
+    });
+
+    test('the key says which of the two rules was broken', () {
+      // A handler logs the key, not the prose, and the two failures want
+      // different responses: an empty language means whatever derived the tag
+      // is broken — a mis-globbed `text_.yaml`, a null database column — while
+      // a refused country is routine, since clients send `XX` for "no region"
+      // in ordinary traffic. One key for both would flatten a bootstrap fault
+      // into background noise.
+      expect(
+        () => TomTextLocale('  '),
+        throwsA(
+          isA<TomResourceLocaleException>().having(
+            (e) => e.key,
+            'key',
+            'resources.locale.empty_language',
+          ),
+        ),
+      );
+      expect(
+        () => TomTextLocale('en', 'AUT'),
+        throwsA(
+          isA<TomResourceLocaleException>()
+              .having((e) => e.key, 'key', 'resources.locale.invalid_country')
+              .having((e) => e.parameters, 'parameters', {'country': 'AUT'}),
+        ),
+      );
+    });
+
+    test('is caught by a clause written for the base type', () {
+      // The pattern the api summary advertises: one `on TomServerException`
+      // clause reaches every exception in the package. Tightening the
+      // assertions above to the specific type is not a claim that a caller
+      // must name it — only that the tests must, since the base class would
+      // hold just as well for anything else the constructor could throw.
+      expect(() => TomTextLocale('  '), throwsA(isA<TomServerException>()));
     });
   });
 

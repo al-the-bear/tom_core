@@ -45,7 +45,11 @@ void main() {
     expect(
       () => compiler.compileQuerySentence(sentence),
       throwsA(
-        isA<TomServerException>().having((e) => e.key, 'key', endsWith(key)),
+        isA<TomQuerySyntaxException>().having(
+          (e) => e.key,
+          'key',
+          endsWith(key),
+        ),
       ),
       reason: 'expected [$sentence] to be refused with .$key',
     );

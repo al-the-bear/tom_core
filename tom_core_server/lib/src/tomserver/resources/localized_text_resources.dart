@@ -60,17 +60,23 @@ import '../little_things/server_exception.dart';
 class TomResourceLocaleException extends TomServerException {
   /// Creates a locale exception.
   ///
-  /// Not client-visible: the malformed value came from configuration or a user
+  /// Never client-visible: the malformed value came from configuration or a user
   /// record, and quoting it back to a browser tells an attacker about the
   /// deployment rather than telling anyone useful about the fault.
+  ///
+  /// `clientThrow` is not a parameter, so that is an invariant of the type and
+  /// not merely the value it is born with — which is the whole reason the type
+  /// is declared at all, since it adds no field and no behaviour otherwise. It
+  /// would be a weaker claim as a re-defaulted parameter: the two throw sites
+  /// below would still be hidden, but nothing would stop a third from asking to
+  /// be shown.
   TomResourceLocaleException(
     super.key,
     super.defaultUserMessage, {
     super.parameters,
     super.rootException,
     super.stack,
-    super.clientThrow = false,
-  });
+  }) : super(clientThrow: false);
 }
 
 /// A language, optionally narrowed by a country.

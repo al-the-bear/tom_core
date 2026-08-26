@@ -142,7 +142,7 @@ void main() {
       expect(
         () => compiler.compileQuerySentence("find by title = 1.5"),
         throwsA(
-          isA<TomServerException>().having(
+          isA<TomQuerySyntaxException>().having(
             (e) => e.key,
             'key',
             'query_sentence_compiler.build_expression.'
@@ -156,7 +156,7 @@ void main() {
       expect(
         () => compiler.compileQuerySentence('find by id = 2026-07-05'),
         throwsA(
-          isA<TomServerException>().having(
+          isA<TomQuerySyntaxException>().having(
             (e) => e.key,
             'key',
             'query_sentence_compiler.build_expression.'
@@ -174,7 +174,7 @@ void main() {
             'find by tag_day = 2026-07-05T10:00:00Z',
           ),
           throwsA(
-            isA<TomServerException>().having(
+            isA<TomQuerySyntaxException>().having(
               (e) => e.key,
               'key',
               'query_sentence_compiler.build_expression.'
@@ -189,7 +189,7 @@ void main() {
       expect(
         () => compiler.compileQuerySentence('find by title = 5'),
         throwsA(
-          isA<TomServerException>().having(
+          isA<TomQuerySyntaxException>().having(
             (e) => e.key,
             'key',
             'query_sentence_compiler.build_expression.'

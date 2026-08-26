@@ -357,6 +357,15 @@ The bundle keys are pinned on both sides: the language-less ones that throw
 reaches only `ofProviders`), the ones that merely normalise, and the pair that
 collapses onto a single tag.
 
+`TomResourceLocaleException` is pinned as itself and not as a member of the
+exception family. That distinction is the whole of the type: it carries no field
+and no behaviour, so an assertion naming the base `TomServerException` would hold
+just as well for anything else the constructor might raise, and the one property
+justifying the type's existence — that it is never client-visible — would go
+unasserted. The suite pins that property, the two keys apart from each other, the
+refused country carried as a parameter, and that a caller catching the base type
+still reaches it.
+
 It renders against `test/fixtures/localized_texts.dart`, a deliberately
 half-translated set that `test/email_service_test.dart` shares. That
 incompleteness is the point of the fixture: against a fully translated set, an

@@ -49,10 +49,13 @@ TomLocalizedTextResources
 
 ### TomResourceLocaleException
 
-Raised when a locale cannot be formed from what a caller supplied. Not
-client-visible (`clientThrow` defaults to `false`): the malformed value came from
-configuration or a user record, and quoting it back to a browser describes the
-deployment rather than the fault.
+Raised when a locale cannot be formed from what a caller supplied. Never
+client-visible: the malformed value came from configuration or a user record, and
+quoting it back to a browser describes the deployment rather than the fault.
+`clientThrow` is not a constructor parameter — the type adds no field and no
+behaviour otherwise, so fixing that flag is the whole of what it is for, and a
+parameter a caller could override would make it a default rather than a
+guarantee.
 
 - **Extends:** `TomServerException`
 
@@ -65,7 +68,6 @@ TomResourceLocaleException(
   Map<String, Object?>? parameters,
   Object? rootException,
   StackTrace? stack,
-  bool clientThrow = false,
 })
 ```
 

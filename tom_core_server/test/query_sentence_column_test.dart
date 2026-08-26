@@ -106,9 +106,14 @@ void main() {
     test('an unknown column is still rejected', () {
       // The throw the fix must not remove: falling through remains an error,
       // it just no longer catches a type the switch was written to handle.
+      //
+      // The refusal comes from the annotation analyzer rather than the
+      // compiler: naming a column is the one thing in a sentence the compiler
+      // cannot decide alone, so it asks the entity's annotations and reports
+      // what they answer.
       expect(
         () => compiler.compileQuerySentence('find by nosuch = :x'),
-        throwsA(isA<TomServerException>()),
+        throwsA(isA<TomAnnotationAnalyzerSyntaxException>()),
       );
     });
   });

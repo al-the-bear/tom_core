@@ -121,7 +121,7 @@ void main() {
       expect(
         () => compiler.compileQuerySentence('find by not not done = TRUE'),
         throwsA(
-          isA<TomServerException>().having(
+          isA<TomQuerySyntaxException>().having(
             (e) => e.key,
             'key',
             contains('double_not_usage'),
@@ -137,18 +137,35 @@ void main() {
     // declining it read past the end and threw `RangeError` — outside the
     // `TomServerException` family every caller of this library catches on, and
     // carrying no indication of which sentence was at fault.
+    //
+    // The two lists below both satisfy that, and they are split because they
+    // satisfy it by different routes — which only became visible once these
+    // assertions named a type instead of the base class. The parser refuses the
+    // first three itself. It does not refuse the other two at all: it takes the
+    // dangling keyword for a column name and hands it to the annotation
+    // analyzer, which fails to find a field called `is`. The sentence is
+    // rejected either way, so the RangeError guarantee holds — but the second
+    // list is rejected by a component that does not know it is parsing.
     for (final sentence in const [
       'find by title not',
       'find by not',
-      'find by title is',
-      'find by title is not',
       'find by title not like',
     ]) {
       test('[$sentence]', () {
         expect(
           () => compiler.compileQuerySentence(sentence),
-          throwsA(isA<TomServerException>()),
+          throwsA(isA<TomQuerySyntaxException>()),
           reason: 'a truncated sentence must not escape as a RangeError',
+        );
+      });
+    }
+
+    for (final sentence in const ['find by title is', 'find by title is not']) {
+      test('[$sentence] — via column lookup, not the parser', () {
+        expect(
+          () => compiler.compileQuerySentence(sentence),
+          throwsA(isA<TomAnnotationAnalyzerSyntaxException>()),
+          reason: 'the trailing IS is read as a column name and not found',
         );
       });
     }
@@ -159,9 +176,13 @@ void main() {
       // `NOT` declines to negate when `NULL` follows it, because `NOT NULL` is
       // the tail of `IS NOT NULL` and never a negation of a column called
       // `null`. Without `IS` in front the sentence is simply malformed.
+      //
+      // Refused, but by the same indirect route as the two truncations above:
+      // having declined to negate, the parser reads `not` as the column being
+      // compared, and the annotation analyzer reports no field of that name.
       expect(
         () => compiler.compileQuerySentence('find by title not null'),
-        throwsA(isA<TomServerException>()),
+        throwsA(isA<TomAnnotationAnalyzerSyntaxException>()),
       );
     });
   });

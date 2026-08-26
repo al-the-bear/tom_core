@@ -2,6 +2,45 @@
 
 ### Testing
 
+- **`TomResourceLocaleException` was asserted nowhere, and `clientThrow` was a
+  default rather than a guarantee (tcinc632).** The type adds no field and no
+  behaviour; it is declared solely to make `clientThrow` false, because the value
+  it complains about came from a config file, a file name or a user record, and
+  echoing it to a browser describes the deployment. That single property was
+  pinned by no test, and five assertions in `resources_test.dart` named the base
+  `TomServerException` — which every exception in the package satisfies, so they
+  would have passed unchanged had the constructor thrown something else entirely.
+
+  The flag was also written `super.clientThrow = false`: a re-default a caller
+  could override, not an invariant, while both the api summary and
+  `doc/resources.md` claimed the stronger property. The constructor now drops the
+  parameter and passes `super(clientThrow: false)`, matching the hard-wire idiom
+  `Tom2FAException` and `TomServerSelfLoginException` already use, so the
+  documented claim is true of the type rather than of the instances this package
+  happens to raise. A new `TomResourceLocaleException` group pins that, both keys
+  (`resources.locale.empty_language`, `resources.locale.invalid_country`), the
+  `country` parameter, and that a clause written for the base type still catches
+  it.
+
+- **Nine query-sentence assertions named the base class, and four of them were
+  hiding which component does the refusing (tcinc632).** The sweep behind the
+  item above found twenty-six `isA<TomServerException>()` sites across `test/`.
+  Fourteen are deliberate — they assert subtype membership, which is the point of
+  the test. Three cannot be more specific because the code throws the bare base
+  class, now tracked as tcincb155. The other nine were simply loose, and
+  tightening them to `TomQuerySyntaxException` turned four red.
+
+  Those four do not raise a syntax exception at all. `find by title is`,
+  `find by title is not`, `find by title not null` and `find by nosuch = :x` are
+  refused by `TomAnnotationAnalyzer.determineColumn`, because the compiler reads
+  the dangling keyword as a column name and asks the entity's annotations about
+  it. The tests now assert that type and say so; the group covering truncated
+  sentences is split, since three of its five sentences are refused by the parser
+  and two are not. For `find by nosuch` the delegation is the right answer; for
+  the other three the developer is told to add a `@TomDbColumn` to a field they
+  never wrote, which is tracked as tcincb156 together with that exception's
+  `clientThrow: true`.
+
 - **The resources module's twenty-nine tests lived inside the messaging
   module's suite, so every inventory reported it as untested (tcinc628).**
   `group('TomTextLocale')` and `group('TomLocalizedTextResources')` sat in
