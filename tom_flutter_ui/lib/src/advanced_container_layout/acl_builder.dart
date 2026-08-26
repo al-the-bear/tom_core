@@ -86,7 +86,13 @@ class _RowData {
   /// (as opposed to inherited from the builder-wide default at row creation).
   /// Mirrors the vertical axis' `rowCrossAlignment == null` "not set yet"
   /// signal so a later default change can apply retroactively without
-  /// clobbering explicit per-row overrides. See bug §74.
+  /// clobbering explicit per-row overrides.
+  ///
+  /// [alignment] cannot carry that signal itself: it is non-nullable and every
+  /// row starts at the builder default, so "still at the default" and "was
+  /// explicitly set to the same value as the default" are indistinguishable
+  /// without this flag. `setAclDefaultRowHorizontalAlignment` reads it to
+  /// decide which already-created rows it may rewrite.
   bool alignmentSet = false;
   double gapBefore = 0;
   bool isGapRow = false;
@@ -174,19 +180,19 @@ class AclBuilder {
   // Used for O(1) row-constraint validation in alignX*/alignY*.
   final Map<Object, _RowData> _rowByObject = Map<Object, _RowData>.identity();
 
-  // §24 IDs
+  // IDs
   String? _aclId;
   String? _parentIdPath;
   bool _idScope = false;
 
-  // §25 Groups
+  // Groups
   String? _aclGroup;
   String? _activeGroupName;
 
-  // §26 Visibility
+  // Visibility
   final Map<String, AclGroupVisibilityController> _groupVisibilityControllers = {};
 
-  // §27 Variants
+  // Variants
   final List<AclVariant> _variants = [];
 
   /// Default hide-when-unauthorized behaviour applied to every component
@@ -194,11 +200,11 @@ class AclBuilder {
   /// [setAclDefaultHideUnauthorized].
   bool _defaultHideUnauthorized = false;
 
-  // §29 Inline Component Variants
+  // Inline Component Variants
   bool _inVariantBlock = false;
   AclVariantDetector? _currentVariantDetector;
 
-  // §30 Layout Direction
+  // Layout Direction
   AclDirection? _direction;
 
   AclBuilder({
@@ -948,7 +954,8 @@ class AclBuilder {
   /// visible effect — the preferred size already acts as the floor. Setting a
   /// minimum that is *larger* than the preferred size in combination with
   /// [expandX] components creates a "grow up to preferred, then distribute
-  /// remainder to expandX" behaviour (see §6).
+  /// remainder to expandX" behaviour — see "Row Sizing — Three Phases" (§6)
+  /// in `doc/acl_design_specification.md`.
   AclBuilder setAclDefaultUnknownMinimumSize(double width, [double height = 0]) {
     _defaultUnknownMinimumSize = Size(width, height);
     return this;
@@ -1049,7 +1056,7 @@ class AclBuilder {
     return this;
   }
 
-  // ── IDs (§24) ──────────────────────────────────────────────────────────────
+  // ── IDs ────────────────────────────────────────────────────────────────────
 
   AclBuilder setAclId(String id) {
     _aclId = id;
@@ -1086,7 +1093,7 @@ class AclBuilder {
     return this;
   }
 
-  // ── Groups (§25) ───────────────────────────────────────────────────────────
+  // ── Groups ─────────────────────────────────────────────────────────────────
 
   AclBuilder startGroup(String name) {
     if (_activeGroupName != null) {
@@ -1126,7 +1133,7 @@ class AclBuilder {
     return this;
   }
 
-  // ── Visibility (§26) ───────────────────────────────────────────────────────
+  // ── Visibility ─────────────────────────────────────────────────────────────
 
   AclBuilder setGroupVisibilityController(
     String groupName,
@@ -1136,7 +1143,7 @@ class AclBuilder {
     return this;
   }
 
-  // ── Responsive Variants (§27) ──────────────────────────────────────────────
+  // ── Responsive Variants ────────────────────────────────────────────────────
 
   /// Registers a replacement row tree used when the container's available
   /// width drops below [atWidth]. Variants are matched narrowest-first, so the
@@ -1204,7 +1211,7 @@ class AclBuilder {
     return this;
   }
 
-  // ── Row Breakpoints (§28) ──────────────────────────────────────────────────
+  // ── Row Breakpoints ────────────────────────────────────────────────────────
 
   /// Adds a row breakpoint at the current position in the builder chain.
   ///
@@ -1223,7 +1230,7 @@ class AclBuilder {
     return this;
   }
 
-  // ── Inline Component Variants (§29) ────────────────────────────────────────
+  // ── Inline Component Variants ──────────────────────────────────────────────
 
   AclBuilder startVariant({
     double? width,
@@ -1275,7 +1282,17 @@ class AclBuilder {
 
   // ── Build ──────────────────────────────────────────────────────────────────
 
-  /// Sets the layout direction for this container (see §30).
+  /// Sets the layout direction for this container, deciding whether components
+  /// within a row flow left-to-right or right-to-left.
+  ///
+  /// Leaving it unset is not the same as passing [AclDirection.ltr]: an unset
+  /// direction defers to the nearest [AclDirectionScope] ancestor and only
+  /// falls back to [AclDirection.ltr] when there is none, whereas an explicit
+  /// value overrides any enclosing scope. Set it when this container must
+  /// oppose its surroundings; otherwise prefer a scope near the app root.
+  ///
+  /// See "Layout Direction (RTL/LTR)" (§30) in
+  /// `doc/acl_design_specification.md`.
   AclBuilder setAclDirection(AclDirection direction) {
     _direction = direction;
     return this;

@@ -39,7 +39,11 @@ enum AclAxisPointY { top, center, bottom }
 /// Per-component vertical placement within its row when [AclComponent.alignYToKey] is null.
 enum AclRowCrossAlignment { top, center, bottom }
 
-/// Layout direction for ACL containers (see §30).
+/// Layout direction for ACL containers: the order in which a row places its
+/// components along the horizontal axis.
+///
+/// See "Layout Direction (RTL/LTR)" (§30) in
+/// `doc/acl_design_specification.md`.
 enum AclDirection { ltr, rtl }
 
 /// Provides an [AclDirection] to descendant [AclContainer] widgets.
@@ -185,17 +189,32 @@ class AclComponent {
   final AclRowCrossAlignment rowCrossAlignment;
   final Key? componentKey;
 
-  /// Optional identifier for this component (see §24).
+  /// Optional identifier for this component. Joined with the ids of enclosing
+  /// identity rows and containers to form the path used for resource lookup
+  /// and authorization.
+  ///
+  /// See "Container IDs" (§24) in `doc/acl_design_specification.md`.
   final String? id;
 
-  /// Optional group name this component belongs to (see §25).
+  /// Optional group name this component belongs to. Membership is what a
+  /// [AclGroupVisibilityController] acts on when it shows, hides or disables
+  /// a group.
+  ///
+  /// See "Groups" (§25) in `doc/acl_design_specification.md`.
   final String? group;
 
-  /// Whether this component is inside an inline variant block (see §29).
+  /// Whether this component is inside an inline variant block, and so is
+  /// subject to [variantDetector] rather than being unconditionally kept.
+  ///
+  /// See "Inline Component Variants" (§29) in
+  /// `doc/acl_design_specification.md`.
   final bool inlineVariant;
 
-  /// Detector function that determines whether this variant is active (see §29).
+  /// Detector function that determines whether this variant is active.
   /// Null for the default variant (shown when no other detector matches).
+  ///
+  /// See "Inline Component Variants" (§29) in
+  /// `doc/acl_design_specification.md`.
   final AclVariantDetector? variantDetector;
 
   /// Per-component override for the container's default hide-when-
@@ -350,10 +369,16 @@ class AclRow {
   /// [separator] gapRow always gets at least 9 px regardless of this value).
   final double gapRowMinSize;
 
-  /// Optional identifier for this row (see §24).
+  /// Optional identifier for this row. Whether it reaches descendant paths
+  /// depends on [idScope].
+  ///
+  /// See "Container IDs" (§24) in `doc/acl_design_specification.md`.
   final String? id;
 
-  /// Optional group name this row belongs to (see §25).
+  /// Optional group name this row belongs to, letting a
+  /// [AclGroupVisibilityController] act on the row as a unit.
+  ///
+  /// See "Groups" (§25) in `doc/acl_design_specification.md`.
   final String? group;
 
   /// Whether this row contributes its ID to descendant paths.
@@ -362,7 +387,11 @@ class AclRow {
   /// - `false` — layout row (default): ID is for own resources/auth only.
   final bool idScope;
 
-  /// Row breakpoints for responsive splitting (see §28).
+  /// Row breakpoints for responsive splitting: below a given width this row
+  /// is broken into several, each fragment keeping the original row's own
+  /// settings because it is still the same logical row.
+  ///
+  /// See "Row Breakpoints" (§28) in `doc/acl_design_specification.md`.
   final List<AclRowBreakpoint> breakpoints;
 
   /// Fixed pixel height for this content row (null = intrinsic). Resolved at
@@ -559,7 +588,10 @@ class AclContainer extends StatefulWidget {
   /// Optional maximum container size.
   final Size? maximumContainerSize;
 
-  /// Optional identifier for this container (see §24).
+  /// Optional identifier for this container. Whether it reaches descendant
+  /// paths depends on [idScope].
+  ///
+  /// See "Container IDs" (§24) in `doc/acl_design_specification.md`.
   final String? aclId;
 
   /// Whether this container contributes its ID to descendant paths.
@@ -568,20 +600,38 @@ class AclContainer extends StatefulWidget {
   /// - `false` — layout container (default): ID is for own resources only.
   final bool idScope;
 
-  /// Optional group name for the entire container (see §25).
+  /// Optional group name for the entire container, letting a
+  /// [AclGroupVisibilityController] act on everything it holds at once.
+  ///
+  /// See "Groups" (§25) in `doc/acl_design_specification.md`.
   final String? aclGroup;
 
-  /// Parent container ID for building the full ID path (see §24).
+  /// Parent container ID for building the full ID path — the prefix this
+  /// container's own [aclId] is appended to when it is nested.
+  ///
+  /// See "Container IDs" (§24) in `doc/acl_design_specification.md`.
   final String? parentIdPath;
 
-  /// Group visibility controllers keyed by group name (see §26).
+  /// Group visibility controllers keyed by group name. Only groups with an
+  /// entry here can be shown, hidden or disabled; membership alone does
+  /// nothing.
+  ///
+  /// See "Group Visibility Control" (§26) in
+  /// `doc/acl_design_specification.md`.
   final Map<String, AclGroupVisibilityController> groupVisibilityControllers;
 
-  /// Responsive variants sorted by atWidth descending (see §27).
+  /// Responsive variants sorted by atWidth descending. A variant supplies
+  /// replacement [rows] and nothing else — the container's chrome does not
+  /// change with the active variant.
+  ///
+  /// See "Responsive Variants" (§27) in `doc/acl_design_specification.md`.
   final List<AclVariant> variants;
 
-  /// Layout direction: LTR (default) or RTL (see §30).
+  /// Layout direction: LTR (default) or RTL.
   /// If null, falls back to the nearest [AclDirectionScope], then [AclDirection.ltr].
+  ///
+  /// See "Layout Direction (RTL/LTR)" (§30) in
+  /// `doc/acl_design_specification.md`.
   final AclDirection? direction;
 
   /// Default for per-component `hideUnauthorized`. When `true`, any
@@ -900,9 +950,12 @@ class _AclContainerState extends State<AclContainer> {
     return result;
   }
 
-  /// Filters components within each row based on inline variant detectors
-  /// (§29). Components not in any variant block are always kept. Components
-  /// in a variant block are kept only when their detector is the active one.
+  /// Filters components within each row based on inline variant detectors.
+  /// Components not in any variant block are always kept. Components in a
+  /// variant block are kept only when their detector is the active one.
+  ///
+  /// See "Inline Component Variants" (§29) in
+  /// `doc/acl_design_specification.md`.
   List<AclRow> _applyInlineVariants(
     List<AclRow> rows,
     AclDeviceContext? deviceContext,
@@ -1567,7 +1620,9 @@ class _AclContainerState extends State<AclContainer> {
   /// ([AclContainer.defaultHideUnauthorized]) or the per-component
   /// [AclComponent.hideUnauthorized] override says so.
   ///
-  /// Elision rules (matching §26 of the ACL spec):
+  /// Elision rules — see "Hide on Authorization" (§26b) in
+  /// `doc/acl_design_specification.md`, which is a different mechanism from
+  /// the group visibility of §26 despite the adjacent numbering:
   ///
   ///   * A hidden component's own `gapBefore` (the gap between it and the
   ///     previous visible component) is **preserved** and handed to the
@@ -2910,7 +2965,9 @@ class _AclContainerState extends State<AclContainer> {
       rowWidget = ClipRect(child: rowWidget);
     }
 
-    // §30: wrap with explicit Directionality to control component flow.
+    // Wrap with an explicit Directionality rather than inheriting the
+    // ambient one, so the resolved AclDirection controls component flow even
+    // when it opposes the surrounding app.
     rowWidget = Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
       child: rowWidget,
