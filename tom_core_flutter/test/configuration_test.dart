@@ -1,8 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
+
+// The neutral file store is selected by conditional *export*, so on this target
+// the barrel name resolves to the io variant. Importing the neutral source
+// directly is what makes its documented web behaviour testable here at all;
+// the prefix keeps the two same-named classes apart.
+import 'package:tom_core_flutter/src/tomclient/configuration/file_configuration_store_neutral.dart'
+    as neutral;
+
+import '../example/configuration/configuration_example.dart' as example;
 
 /// A holder with one setting of each supported type.
 class _TestConfiguration extends TomBaseClientConfiguration {
@@ -814,6 +824,119 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('a setting drives a widget directly', () {
+    // The practical payoff of settings being observables rather than map
+    // entries: a TomSetting is a legal `subState` with nothing adapting it.
+    // Asserted here rather than only shown in prose, because "no adapter
+    // needed" is a claim about the type bound, and a type bound can drift.
+    testWidgets('TomObservingWidget rebuilds on a setting change', (
+      tester,
+    ) async {
+      TomConfigResourceProvider.setAppConfigProvider(
+        TomConfigResourceProvider.from({}),
+      );
+      final config = _TestConfiguration();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TomObservingWidget<TomSetting<bool>>(
+              subState: config.darkMode,
+              child: (setting) => Switch(
+                value: ~setting,
+                onChanged: (next) => setting | next,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+
+      await tester.tap(find.byType(Switch));
+      await tester.pump();
+
+      expect(
+        tester.widget<Switch>(find.byType(Switch)).value,
+        isTrue,
+        reason: 'the widget observes the setting itself, so writing through '
+            'the setting must repaint it',
+      );
+      expect(~config.darkMode, isTrue);
+      expect(config.isOverridden('client.darkMode'), isTrue);
+    });
+
+    testWidgets('the widget follows a later change made elsewhere', (
+      tester,
+    ) async {
+      // Tapping the Switch proves the round trip through the widget's own
+      // callback. This proves the direction that matters for a settings
+      // screen: something else changes the setting and the screen follows.
+      TomConfigResourceProvider.setAppConfigProvider(
+        TomConfigResourceProvider.from({}),
+      );
+      final config = _TestConfiguration();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TomObservingWidget<TomSetting<bool>>(
+              subState: config.darkMode,
+              child: (setting) => Switch(value: ~setting, onChanged: (_) {}),
+            ),
+          ),
+        ),
+      );
+
+      config.darkMode | true;
+      await tester.pump();
+
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    });
+  });
+
+  group('the neutral file store fails loudly', () {
+    // The neutral variant is only conditionally *exported*, not conditionally
+    // compiled — so it can be imported by path and asserted on any target,
+    // including this one. Without that, the documented web behaviour would be
+    // a promise no test ever checks, on the one code path whose whole purpose
+    // is to fail rather than degrade quietly.
+    test('construction throws unsupported_platform', () {
+      expect(
+        () => neutral.TomFileClientConfigurationStore(
+          '/wherever/client_config.json',
+        ),
+        throwsConfigException(
+          'client_configuration.store.unsupported_platform',
+        ),
+      );
+    });
+
+    test('the failure names the path that was asked for', () {
+      // A settings screen that fails at startup has to be able to say what it
+      // was trying to open, or the report is unactionable.
+      try {
+        neutral.TomFileClientConfigurationStore('/wherever/client_config.json');
+        fail('expected the neutral store to throw');
+      } on TomClientConfigurationException catch (error) {
+        expect(
+          error.parameters?['path'],
+          '/wherever/client_config.json',
+        );
+      }
+    });
+  });
+
+  group('the shipped example runs', () {
+    test('configuration_example.run() completes its assertions', () async {
+      // The example is quoted as documentation, so it has to be executable
+      // documentation. Running it here is what stops a snippet that no longer
+      // compiles — or an assert that no longer holds — from being shown to a
+      // reader as the way to use the module.
+      await example.run();
     });
   });
 }

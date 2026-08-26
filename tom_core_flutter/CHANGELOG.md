@@ -66,7 +66,41 @@
   listed. The completion document's class sketch was corrected to match the
   source's non-`const` constructor, so the two mirrors agree.
 
+- **configuration: the completion document's provenance claim is true again
+  (tcinc652).** Its "Using it" part opened by saying everything below came from
+  `example/configuration/configuration_example.dart` and
+  `test/configuration_test.dart`; three of its twelve subsections were in
+  neither. Rather than narrowing the sentence, two were made real — the
+  `TomObservingWidget` snippet and the `unsupported_platform` failure are now
+  executed by the suite (see below) — and the third, the
+  `getApplicationSupportDirectory()` path expression, is marked in place as the
+  document's single unexecuted line, because quoting it truthfully would mean
+  taking a `path_provider` dependency the package does not otherwise need and a
+  doc snippet is not a reason to acquire one. The provenance sentence now also
+  records that the suite runs the example, so these are executed snippets rather
+  than transcribed ones. No API change.
+
 ### Tests / Examples
+
+- **configuration (tcinc652).** Five tests closing three coverage gaps that a
+  documentation claim had been standing in for. Two `testWidgets` cases bind a
+  `TomSetting<bool>` straight to a `TomObservingWidget` — one taps the `Switch`,
+  the other changes the setting from outside and pumps — which turns "a
+  `TomSetting` is a legal `subState` with nothing adapting it" from a claim
+  about a type bound into an assertion. Two cover the neutral file store: it is
+  selected by conditional *export*, not conditional compilation, so its source
+  can be imported directly under a prefix and its constructor exercised on any
+  target; the module's one deliberate fail-fast path was previously a promise no
+  test checked. The fifth runs the example itself, so its snippets are executed
+  documentation rather than transcribed documentation.
+
+  The example gained an eighth step: a real `TomFileClientConfigurationStore`
+  round trip over a temporary directory, reopening the same path with a second
+  holder to assert it adopts the first's override while still re-resolving the
+  untouched setting from the shipped config resources — the cross-holder round
+  trip an in-memory store cannot demonstrate. Two "a real client would use
+  `TomFileClientConfigurationStore` instead" comments are gone, replaced by the
+  thing they described.
 
 - **configuration (tcinc651).** Four tests in a new `the module documents
   validation truthfully` group. Two are documentation guards: no artefact defers
