@@ -103,7 +103,36 @@
   it now says so explicitly so the two artefacts are not read as contradicting
   each other again. No API change.
 
+- **little_things: the prose document's one outbound link goes where it says
+  (tcinc656).** `doc/little_things.md` rendered the base type as
+  `[TomException](../../tom_core_kernel/doc/security/security.md)`. The path
+  resolved, so nothing flagged it — but the target contains the string
+  `TomException` zero times, and the link sits on the sentence enumerating the
+  payload the client types inherit (`key`, `defaultUserMessage`, `parameters`,
+  `stack`, `rootException`, `autoLog`), so a reader who followed it to learn
+  what those mean arrived in the authorization documentation. It now points at
+  `../../tom_core_kernel/doc/little_things/little_things.md`, which has a
+  `### TomException` section and covers every one of the six terms. A sweep of
+  all 48 repository-relative links in the package found this to be the only
+  wrong target and, in `_copilot_guidelines/index.md`, two dead ones — the
+  sibling-package links `../tom_core_kernel/` and `../tom_core_server/` were
+  one level short of the sibling directory and are now `../../`.
+
 ### Tests / Examples
+
+- **documentation links (tcinc656).** A new `test/documentation_links_test.dart`
+  checks every markdown link the package ships. Two properties, because a link
+  fails in two ways and only one of them is a path problem: every
+  repository-relative target resolves on disk, and every link whose label is a
+  single code-span identifier lands on a document that actually mentions that
+  identifier. The second is what catches a link that resolves cleanly onto the
+  wrong document — the defect above passed a path check and would have gone on
+  passing one. Targets rooted at `/` are skipped and documented as such: they
+  are workspace-root-relative by convention, and the workspace root sits above
+  this repository. A third test pins that the scan still sees the corpus it was
+  written against (files, relative links, identifier-labelled links), because
+  both guards report success on an empty scan; a fourth pins the specific link
+  the suite was written for, including that it has not simply been deleted.
 
 - **little_things (tcinc655).** Two tests pinning the module readme's framing:
   that it still describes `little_things` by the **role** the directory plays

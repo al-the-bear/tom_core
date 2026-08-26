@@ -37,5 +37,5 @@
 
 ## Related Packages
 
-- [tom_core_kernel](../tom_core_kernel/) — Core kernel functionality
-- [tom_core_server](../tom_core_server/) — Server-side core functionality
+- [tom_core_kernel](../../tom_core_kernel/) — Core kernel functionality
+- [tom_core_server](../../tom_core_server/) — Server-side core functionality

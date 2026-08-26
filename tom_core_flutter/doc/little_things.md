@@ -21,7 +21,7 @@ provides two **exception types** layered on the kernel's exception model.
 | `TomClientUIException` | `TomClientException` | A client failure whose message is safe to show the user |
 
 Both are thin subtypes — they carry the same payload as the kernel
-[`TomException`](../../tom_core_kernel/doc/security/security.md) (`key`,
+[`TomException`](../../tom_core_kernel/doc/little_things/little_things.md) (`key`,
 `defaultUserMessage`, `parameters`, `stack`, `rootException`, `autoLog`) and add
 only a **semantic type** that client code can branch on.
 
