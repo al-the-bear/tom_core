@@ -18,7 +18,7 @@ bool allowsBadCertificateForHost(String host) =>
 
 /// Native (`dart:io`) [TomPlatformUtils] for desktop and mobile targets.
 ///
-/// Imports the process environment into the kernel's env vars at construction,
+/// Imports the process environment into [getTomEnvVars] at construction,
 /// reports platform predicates from Flutter's [defaultTargetPlatform]/[kIsWeb],
 /// and provides an [IOClient] (permissive certificate handling for localhost
 /// only). Selected by the conditional import in

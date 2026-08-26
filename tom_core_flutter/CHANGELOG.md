@@ -2,6 +2,31 @@
 
 ### Fixed
 
+- **runtime: the platform contract is documented as a `tom_basics` type, not a
+  kernel one (tcinc678).** `TomPlatformUtils` and `TomFallbackPlatformUtils` are
+  declared in `tom_basics`; this module can reach them only because
+  `tom_core_kernel.dart` re-exports the whole of that package. Every import line
+  here therefore names the kernel, and the documents had followed the import
+  rather than the declaration — the API summary went as far as annotating the
+  base class "(kernel)" in its hierarchy diagram. A reader who went to
+  `tom_core_kernel` for the contract's dartdoc, or to see what a new predicate
+  would have to override, found nothing there.
+
+  Corrected in nine places across three documents and one library dartdoc — the
+  claim had spread well beyond the two lines it was first noticed on. The
+  Dependencies section now distinguishes the two edges instead of swapping one
+  package name for the other: `tom_core_kernel` direct and re-exporting,
+  `tom_basics` transitive and declaring. The README's architecture diagram grew
+  a `tom_basics` layer beneath the kernel, which is also where the layering it
+  draws actually stops. The same fix covers the env-var map, documented as the
+  kernel's for the same reason and declared in the same `tom_basics` file.
+
+  Two tests hold it: one reads the package config to assert the contract really
+  is declared in `tom_basics` and nowhere under `tom_core_kernel/lib`, and one
+  scans the module's documents for a line that names the type and calls it the
+  kernel's without saying the kernel is only the re-exporting barrel. Prose
+  review had not caught nine restatements of one wrong fact; a scan does.
+
 - **runtime: the API summary no longer splits `out` and `outError` (tcinc677).**
   The summary described `out` as printing to standard output and `outError` as
   printing "as an error", a routing distinction that exists nowhere in the

@@ -36,9 +36,17 @@ TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
 ## Class Hierarchy
 
 ```
-TomFallbackPlatformUtils  (kernel)
-    └── TomFlutterPlatformUtils   (one per compile-time variant: io / web / neutral)
+TomPlatformUtils                     (tom_basics — the abstract contract)
+    └── TomFallbackPlatformUtils     (tom_basics — neutral defaults)
+            └── TomFlutterPlatformUtils   (one per compile-time variant: io / web / neutral)
 ```
+
+Both base types are declared in `tom_basics`
+(`lib/src/runtime/platform_neutral.dart`). They reach this module through the
+`tom_core_kernel` barrel, which re-exports the whole of `tom_basics` — that is
+why each variant's import line names the kernel even though the kernel declares
+neither type. The contract's dartdoc, and the list of members an added
+predicate has to override, are in `tom_basics`.
 
 ## Global Functions and Constants
 
@@ -76,7 +84,7 @@ they provide an HTTP `Client` and read the browser location.
 
 | Variant | `httpClient()` | `getBrowserLocation()` | Notes |
 | ------- | -------------- | ---------------------- | ----- |
-| `flutter_io` (native) | `IOClient` (bad-cert allowed for loopback only) | `null` | Imports the process environment into the kernel env vars at construction. |
+| `flutter_io` (native) | `IOClient` (bad-cert allowed for loopback only) | `null` | Imports the process environment into the `tom_basics` env-var map (`getTomEnvVars()`) at construction. |
 | `web` | `FetchClient(mode: RequestMode.cors)` | `window.location.href` | — |
 | `neutral` | throws `UnimplementedError` | `null` | Fallback when neither `dart:io` nor `dart:js` is available. |
 

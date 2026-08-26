@@ -36,8 +36,8 @@ What it adds on top of the kernel is deliberately small:
   platform-independent API, with the storage backend chosen by DI rather than by
   an `if (kIsWeb)` at the call site, plus the typed client for the account-level
   preferences the server holds.
-- **Client platform detection** — the Flutter/web/IO variant selector for the
-  kernel's `TomPlatformUtils`.
+- **Client platform detection** — the Flutter/web/IO variant selector for
+  `TomPlatformUtils`.
 - **Client security** — the `TomClient2FAAdaptor` annotation for two-factor
   adaptors.
 
@@ -140,7 +140,7 @@ and the server are two readings of one contract. See
 
 | Type | What it is |
 | ---- | ---------- |
-| `clientPlatformUtils` | Returns the platform-appropriate kernel `TomPlatformUtils` (Flutter/web/IO/neutral), selected at compile time |
+| `clientPlatformUtils` | Returns the platform-appropriate `TomPlatformUtils` (Flutter/web/IO/neutral), selected at compile time |
 
 ### Security (`security`)
 
@@ -281,8 +281,10 @@ TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
  (rebuild) (TomProperty) (platform) (2FA marker) (install       (device-local
                                                   settings)      values)
              │
-       tom_core_kernel  (TomObservable, TomObject, TomPlatformUtils,
+       tom_core_kernel  (TomObservable, TomObject,
                          TomUserPreferenceDto / Keys / Codec, …)
+             │  (re-exports the whole of tom_basics)
+         tom_basics     (TomPlatformUtils, TomFallbackPlatformUtils, …)
 ```
 
 | Type | Responsibility |

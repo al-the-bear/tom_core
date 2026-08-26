@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -200,6 +201,113 @@ void main() {
     ).firstMatch(summary)!.group(1)!;
     expect(descriptionOf('out'), contains('standard output'));
     expect(descriptionOf('outError'), contains('standard output'));
+  });
+
+  group('the documented home of the platform contract', () {
+    // `TomPlatformUtils` and `TomFallbackPlatformUtils` are tom_basics types.
+    // This module can only reach them because the kernel barrel re-exports the
+    // whole of tom_basics, so every import line here reads
+    // `package:tom_core_kernel/tom_core_kernel.dart` — which is exactly how the
+    // documents drifted into calling them kernel types. A reader who follows
+    // that to tom_core_kernel looking for the contract's dartdoc, or for what a
+    // new predicate would have to override, finds nothing there.
+
+    test('the contract is declared in tom_basics, not in the kernel', () {
+      // Resolved through the package config, which is the same resolution the
+      // compiler performs, so the test names the *package* a type belongs to
+      // rather than a position in the directory tree. That matters here beyond
+      // tidiness: tom_basics is consumed from pub.dev while tom_core_kernel is
+      // a path dependency, so the two do not even live in comparable places,
+      // and a relative path would pin the wrong thing for one of them.
+      final config =
+          jsonDecode(
+                File('.dart_tool/package_config.json').readAsStringSync(),
+              )
+              as Map<String, dynamic>;
+      final packages = (config['packages'] as List)
+          .cast<Map<String, dynamic>>();
+
+      Uri libOf(String package) {
+        final entry = packages.firstWhere(
+          (p) => p['name'] == package,
+          orElse: () => throw StateError('$package is not in the package config'),
+        );
+        // A trailing slash, or `resolve` treats the package directory as a
+        // file name and replaces it with `lib/` instead of descending into it.
+        final rootText = entry['rootUri'] as String;
+        final root = Uri.parse(
+          rootText.endsWith('/') ? rootText : '$rootText/',
+        );
+        final absolute = root.hasScheme
+            ? root
+            : File('.dart_tool/package_config.json').absolute.uri.resolveUri(
+                root,
+              );
+        return absolute.resolve('${entry['packageUri']}');
+      }
+
+      const types = ['TomPlatformUtils', 'TomFallbackPlatformUtils'];
+
+      final basics = File.fromUri(
+        libOf('tom_basics').resolve('src/runtime/platform_neutral.dart'),
+      ).readAsStringSync();
+      for (final type in types) {
+        expect(
+          basics,
+          contains('class $type'),
+          reason: 'tom_basics no longer declares $type',
+        );
+      }
+
+      final kernelSources = Directory.fromUri(libOf('tom_core_kernel'))
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'));
+      for (final source in kernelSources) {
+        final text = source.readAsStringSync();
+        for (final type in types) {
+          expect(
+            text,
+            isNot(contains('class $type')),
+            reason:
+                '$type is now declared in the kernel (${source.path}); the '
+                'documents say tom_basics and need revisiting',
+          );
+        }
+      }
+    });
+
+    test('no document names the kernel as the home of the contract', () {
+      // The misattribution is a co-occurrence: a line names one of the types
+      // and calls it the kernel's. Naming the kernel beside the type is only
+      // legitimate when the line says what the kernel actually is here — the
+      // barrel that re-exports the type — so those two words are what the rule
+      // permits. Anything else on such a line is the claim this todo removed,
+      // and it had reappeared in six places across three documents, which is
+      // why prose review alone was never going to hold it.
+      final documents = [
+        'doc/runtime.md',
+        'doc/api_reference/api_summary_runtime.md',
+        'README.md',
+      ];
+      final type = RegExp(r'\bTom(Fallback)?PlatformUtils\b');
+      final route = RegExp(r're-export|barrel', caseSensitive: false);
+
+      for (final path in documents) {
+        final lines = File(path).readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i];
+          if (!type.hasMatch(line) || !line.contains('kernel')) continue;
+          expect(
+            route.hasMatch(line),
+            isTrue,
+            reason:
+                '$path:${i + 1} names the kernel beside the contract without '
+                'saying it is only the re-exporting barrel:\n  $line',
+          );
+        }
+      }
+    });
   });
 
   group('the shipped example runs', () {

@@ -1,7 +1,7 @@
 # Runtime Module
 
 Flutter platform detection. Exposes a single entry point —
-`clientPlatformUtils` — that yields a kernel `TomPlatformUtils` whose concrete
+`clientPlatformUtils` — that yields a `TomPlatformUtils` whose concrete
 implementation is chosen **at compile time** for the current target (native IO,
 web, or a neutral fallback).
 
@@ -54,7 +54,9 @@ final client = p.httpClient(); // IOClient natively, FetchClient on web
 | neither | neutral fallback | throws — must pick a concrete variant |
 
 The native variant additionally imports the process environment into the
-kernel's env vars at construction; the web variant exposes the browser location.
+`tom_basics` env-var map (`getTomEnvVars()`, inherited from
+`TomFallbackPlatformUtils`) at construction; the web variant exposes the browser
+location.
 
 ## Core Components
 
@@ -86,7 +88,15 @@ current target. Platform predicates read Flutter's `defaultTargetPlatform` /
 
 ## Dependencies
 
-- **`tom_core_kernel`**: `TomPlatformUtils` / `TomFallbackPlatformUtils`, the
-  contract these variants implement.
+- **`tom_core_kernel`** (direct): the barrel each variant imports. It is the
+  route to the contract, not its home — `tom_core_kernel.dart` re-exports the
+  whole of `tom_basics`, which is where `TomPlatformUtils` and
+  `TomFallbackPlatformUtils` are actually declared
+  (`lib/src/runtime/platform_neutral.dart`). Read the contract's dartdoc there,
+  and look there for what a new predicate has to override; `tom_core_kernel`
+  declares neither type.
+- **`tom_basics`** (transitive): the contract these variants implement. Not a
+  direct dependency of this package — it arrives through the kernel's
+  re-export, which is why the import line in every variant names the kernel.
 - **`flutter`**: `defaultTargetPlatform` / `kIsWeb` for platform predicates.
 - **`http`** (+ `fetch_client` / `web` on web): the HTTP `Client` per target.
