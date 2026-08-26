@@ -11,6 +11,7 @@ concurrently. This module makes the locale an argument.
 - [Overview](#overview)
 - [Why the Kernel Provider Is Not Enough](#why-the-kernel-provider-is-not-enough)
 - [Naming a Locale](#naming-a-locale)
+  - [Two ways to read a principal's locale](#two-ways-to-read-a-principals-locale)
 - [The Fallback Chain](#the-fallback-chain)
   - [Asking the other question](#asking-the-other-question)
 - [A Miss Is Null, Never the Key](#a-miss-is-null-never-the-key)
@@ -89,6 +90,30 @@ client sending `AUT` should cost the country, not the delivery — so those path
 drop an unusable country rather than refuse it. A bundle for the bare language
 exists; the refused key never did.
 
+Shape is necessary and not sufficient, though, and the insufficiency is the
+common case rather than an edge one. ISO 3166-1 permanently withholds `AA`,
+`QM`–`QZ`, `XA`–`XZ` and `ZZ` from assignment so that applications can use them
+privately, and applications do: this stack writes `XX` for "no country", CLDR
+writes `ZZ`. They are two letters, so a shape check admits precisely the class
+of value guaranteed never to name a bundle.
+
+```dart
+TomTextLocale('en', 'XX');              // throws — XX is not a country
+TomTextLocale.lenient('en', 'XX').tag;  // 'en'
+```
+
+`XX` is not a value somebody has to go out of their way to produce.
+`TomLoginMessage.clientCountry` **defaults** to it, so any client whose device
+names no region sends it verbatim and it lands on `TomPrincipal.clientCountry`
+through an ordinary sign-in. Before the range was refused, `fromPrincipal` built
+`en_XX` from exactly that principal — a key nothing carries, resolved through
+bare `en`, reported nowhere. The text came out right and the deployment could
+not learn that its regional bundles were unreachable.
+
+The kernel's `TomContextProviders.getCountry` answers the same sentinel, which
+is where the other half of this belongs — see [Two Ways to Read a Principal's
+Locale](#two-ways-to-read-a-principals-locale).
+
 For a user, `TomTextLocale.fromPrincipal` reads the locale off the principal
 (leniently, for exactly that reason):
 
@@ -103,6 +128,39 @@ device locale is a fact about one sign-in and serves only when there is no
 preference to honour. A principal that names neither yields `null` rather than a
 guess, so the deployment's default locale is applied in one place instead of
 each caller inventing `'en'`.
+
+### Two Ways to Read a Principal's Locale
+
+`fromPrincipal` is not the only thing that reads those fields. The kernel's
+`TomContextProviders` exposes all four as context entries —
+`getLanguage`, `getCountry`, `getClientLanguage`, `getClientCountry`. The two
+are not rivals, because they answer different questions:
+
+| | `TomContextProviders` | `TomTextLocale.fromPrincipal` |
+| --- | --- | --- |
+| Reads | one named field | the stored pair, else the device pair |
+| When absent | a sentinel (`'en'`, `'XX'`) | `null` |
+| Answers | *what the principal says* | *what to render in* |
+
+The kernel's accessors deliberately do not choose between the pairs: a caller
+that needs one specific claim — an audit entry recording what the device said, a
+diagnostic naming what the user chose — must be able to ask for that one and not
+be handed a blend. **`fromPrincipal` is authoritative for rendering text for a
+recipient**, and it is the only one of the two that makes the precedence
+decision.
+
+What makes this worth stating is that the accessors *compose*, and composing
+them looks like the obvious route to a locale:
+
+```dart
+TomTextLocale(TomExecutionContext.getLanguage(), TomExecutionContext.getCountry());
+```
+
+For a principal that names no locale, that reads `'en'` and `'XX'` — and `en_XX`
+is a bundle key nothing carries. Because the country invariant refuses the
+user-assigned range, this now throws rather than falling through to `en` in
+silence. Reach for `fromPrincipal` instead, and let the `null` fall through to
+the deployment's default.
 
 ## The Fallback Chain
 
@@ -242,8 +300,9 @@ raised.
 
 `test/resources_test.dart` covers the module: naming a locale — case folding,
 both separator conventions, the region found by shape rather than by position,
-the countries that are refused and the boundary variant that drops one instead —
-and resolving through a bundle set, where the per-key fall-through, the
+the countries that are refused (the malformed ones, and the user-assigned codes
+that are well-formed but can never name one) and the boundary variant that drops
+one instead — and resolving through a bundle set, where the per-key fall-through, the
 configured default, the `null` for a miss, parameter substitution and the
 `exists`/`isTranslated`/`resolveLocale` distinctions are each pinned.
 

@@ -185,6 +185,11 @@ const TomContextEntry<T>(T? Function() contextFunction)
 Static providers for common context values drawn from the current zone's
 `TomPrincipal`, each returning a sensible default when no principal is present.
 
+Each reads **one** field; none chooses between the stored pair and the device's.
+The locale to render text in for a recipient is derived by
+`TomTextLocale.fromPrincipal` (`tom_core_server`, resources module), which
+applies that precedence and answers `null` rather than a sentinel.
+
 #### Static Methods
 
 | Method | Signature | Description |
@@ -192,11 +197,11 @@ Static providers for common context values drawn from the current zone's
 | `getOrganization` | `static String getOrganization()` | Organization from the current principal, or `"default"`. |
 | `getApplication` | `static String getApplication()` | Application from the current principal, or `"default"`. |
 | `getProcess` | `static String getProcess()` | Process from the current principal, or `"default"`. |
-| `getLanguage` | `static String getLanguage()` | Server language from the current principal, or `"en"`. |
-| `getCountry` | `static String getCountry()` | Server country from the current principal, or `"XX"`. |
+| `getLanguage` | `static String getLanguage()` | Stored language from the current principal, or `"en"` — meaning none was named, not that the user reads English. |
+| `getCountry` | `static String getCountry()` | Stored country from the current principal, or `"XX"` — a deliberate non-locale sentinel from the ISO 3166-1 user-assigned range, not a country. |
 | `getTimezone` | `static String getTimezone()` | Server timezone from the current principal, or `"utc"`. |
 | `getClientLanguage` | `static String getClientLanguage()` | Client language from the current principal, or `"en"`. |
-| `getClientCountry` | `static String getClientCountry()` | Client country from the current principal, or `"XX"`. |
+| `getClientCountry` | `static String getClientCountry()` | Client country from the current principal, or `"XX"`; often the stored value, since `TomLoginMessage.clientCountry` defaults to it. |
 | `getClientTimezone` | `static String getClientTimezone()` | Client timezone from the current principal, or `"utc"`. |
 
 ## Global Functions and Constants

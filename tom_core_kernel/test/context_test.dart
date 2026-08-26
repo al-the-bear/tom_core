@@ -995,6 +995,25 @@ void main() {
       test('should return "utc" for client timezone', () {
         expect(TomContextProviders.getClientTimezone(), equals('utc'));
       });
+
+      test('the country sentinel is a code no country can ever bear', () {
+        // The two country providers answer a value that *looks* like a country
+        // and is not one, which is the whole reason it is safe: a consumer that
+        // builds a locale key can refuse it by name, and `TomTextLocale` does.
+        //
+        // That only holds while the sentinel stays inside the range ISO 3166-1
+        // permanently withholds from assignment — `AA`, `QM`-`QZ`, `XA`-`XZ`,
+        // `ZZ`. Replacing it with a plausible-looking default such as `US` or
+        // `DE` would read as a tidy-up and would silently turn "this principal
+        // named no country" into a claim about where the user is, one that
+        // downstream locale resolution would then act on.
+        final userAssigned = RegExp(r'^(AA|Q[M-Z]|X[A-Z]|ZZ)$');
+        expect(userAssigned.hasMatch(TomContextProviders.getCountry()), isTrue);
+        expect(
+          userAssigned.hasMatch(TomContextProviders.getClientCountry()),
+          isTrue,
+        );
+      });
     });
 
     group('with principal in zone', () {

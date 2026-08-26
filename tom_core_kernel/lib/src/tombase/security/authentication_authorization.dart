@@ -128,8 +128,15 @@ class TomAuthenticationMessage {
   /// The client's preferred language (ISO 639-1 code).
   String clientLanguage = "en";
 
-  /// The client's country (ISO 3166-1 alpha-2 code).
-  String clientCountry = "XX"; // none
+  /// The client's country (ISO 3166-1 alpha-2 code), or `XX` for none.
+  ///
+  /// `XX` is a deliberate non-locale sentinel — see
+  /// [TomContextProviders.getCountry]. A client whose device names no region
+  /// sends it verbatim, so it is an ordinary value on this wire rather than a
+  /// rare one, and it reaches [TomPrincipal.clientCountry] unchanged. Anything
+  /// deriving a bundle key from it must drop it rather than treat it as a
+  /// region; `TomTextLocale` does.
+  String clientCountry = "XX";
 
   /// The client's timezone identifier — what the *device* is set to.
   ///

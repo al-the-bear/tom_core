@@ -93,7 +93,10 @@ class TomTextLocale {
 
   /// Names a locale, normalising case and treating a blank country as none.
   ///
-  /// Refuses a [country] that is not two letters. Strict because the value ends
+  /// Refuses a [country] that ISO 3166-1 could not assign to one — anything
+  /// that is not two letters, and the user-assigned codes that are two letters
+  /// but reserved from ever naming a country (`XX` among them; see
+  /// [TomTextLocale.lenient] and `_isCountry`). Strict because the value ends
   /// up in a bundle key: a country that cannot be one produces a key that names
   /// no locale, and since the chain still reaches the bare language the
   /// deployment sees plausible text and never learns its regional bundle was
@@ -114,7 +117,7 @@ class TomTextLocale {
     if (named != null && !_isCountry(named)) {
       throw TomResourceLocaleException(
         'resources.locale.invalid_country',
-        'A country must be an ISO 3166-1 alpha-2 code.',
+        'A country must be an assigned ISO 3166-1 alpha-2 code.',
         parameters: {'country': named},
       );
     }
@@ -147,10 +150,26 @@ class TomTextLocale {
   /// the strict constructor must not be reachable with them — a client sending
   /// `XYZ` would otherwise throw inside message delivery. Dropping the country
   /// leaves a bundle that exists; the refused key never was one.
+  ///
+  /// The commonest such value is not malformed at all: it is the `XX` this
+  /// stack uses to mean *no country*, which arrives by default rather than by
+  /// mistake. Dropping it is the whole point — `en` is the bundle that user
+  /// should get.
   factory TomTextLocale.lenient(String language, [String? country]) =>
       TomTextLocale(language, _countryOrNull(country));
 
   /// The locale to render for [principal], or `null` when it names none.
+  ///
+  /// **This is the derivation for rendering text for a recipient.** The
+  /// kernel's `TomContextProviders` also exposes the principal's locale fields,
+  /// but as four independent accessors — `getLanguage`, `getCountry`,
+  /// `getClientLanguage`, `getClientCountry` — each reading one field and
+  /// substituting a sentinel when it is absent. Those report *what the
+  /// principal says*; they deliberately do not choose between the stored pair
+  /// and the device's, because a caller wanting one specific field must be able
+  /// to ask for it. Choosing is this method's job, and composing the accessors
+  /// instead — `TomTextLocale(getLanguage(), getCountry())` — reintroduces the
+  /// sentinels the country invariant now refuses.
   ///
   /// The *stored* language wins over the client device's. A mail is read later,
   /// often elsewhere, so the user's recorded preference is the durable answer;
@@ -172,10 +191,29 @@ class TomTextLocale {
     return null;
   }
 
-  /// Whether [subtag] has the shape of an ISO 3166-1 alpha-2 region.
-  static bool _isCountry(String subtag) => _countryPattern.hasMatch(subtag);
+  /// Whether [subtag] is an ISO 3166-1 alpha-2 code that can name a country.
+  ///
+  /// Shape is necessary and not sufficient. ISO 3166-1 permanently withholds
+  /// `AA`, `QM`-`QZ`, `XA`-`XZ` and `ZZ` from assignment so applications can
+  /// use them privately, so no country will ever bear one and no bundle will
+  /// ever be keyed with one.
+  ///
+  /// They matter more than their rarity suggests, because they are exactly
+  /// what a caller supplies when it has *no* country. `TomLoginMessage`
+  /// defaults `clientCountry` to `XX`, clients send it verbatim when the
+  /// device names no region, and it reaches [TomPrincipal.clientCountry]
+  /// through an ordinary sign-in; the kernel's `TomContextProviders.getCountry`
+  /// answers the same sentinel, and CLDR spells the idea `ZZ`. Admitting one
+  /// produced the tag `en_XX`, which matches no bundle, resolves through bare
+  /// `en`, and reports nowhere that it did — the silent miss this invariant
+  /// exists to prevent rather than an exception to it.
+  static bool _isCountry(String subtag) =>
+      _countryPattern.hasMatch(subtag) &&
+      !_userAssignedPattern.hasMatch(subtag.toUpperCase());
 
   static final RegExp _countryPattern = RegExp(r'^[A-Za-z]{2}$');
+
+  static final RegExp _userAssignedPattern = RegExp(r'^(AA|Q[M-Z]|X[A-Z]|ZZ)$');
 
   /// The first subtag shaped like a region, or `null` when there is none.
   ///

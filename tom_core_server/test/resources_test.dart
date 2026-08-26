@@ -59,6 +59,11 @@ void main() {
         'es',
         reason: 'a UN M.49 region is not alpha-2, so it is not a country here',
       );
+      expect(
+        TomTextLocale.parse('en-XX').tag,
+        'en',
+        reason: 'a user-assigned code is not a region, so the scan passes it',
+      );
     });
 
     test('an empty country is the same as no country', () {
@@ -80,6 +85,46 @@ void main() {
         () => TomTextLocale('es', '419'),
         throwsA(isA<TomServerException>()),
       );
+    });
+
+    test('the codes reserved for meaning "not a country" are refused', () {
+      // ISO 3166-1 permanently withholds `AA`, `QM`-`QZ`, `XA`-`XZ` and `ZZ`
+      // from assignment so that applications can use them for their own
+      // purposes. They are alpha-2, so a shape check passes them, and they are
+      // exactly the values a deployment reaches for when it has no country —
+      // this stack writes `XX`, CLDR writes `ZZ`.
+      //
+      // A shape check therefore admits the one class of value guaranteed never
+      // to name a bundle. That is the silent miss the country invariant exists
+      // to prevent, not an exception to it.
+      for (final reserved in ['XX', 'ZZ', 'AA', 'QM', 'QZ', 'XA', 'XZ']) {
+        expect(
+          () => TomTextLocale('en', reserved),
+          throwsA(isA<TomServerException>()),
+          reason: '$reserved is user-assigned and can never name a country',
+        );
+      }
+      // The neighbours of the reserved ranges are ordinary countries.
+      expect(TomTextLocale('en', 'ZW').tag, 'en_ZW');
+      expect(TomTextLocale('fr', 'QA').tag, 'fr_QA');
+      expect(TomTextLocale('de', 'AT').tag, 'de_AT');
+    });
+
+    test('the "no country" sentinel arrives as data and costs the country', () {
+      // Not a hypothetical composition. `TomLoginMessage.clientCountry`
+      // defaults to `XX` and clients send it verbatim when the device names no
+      // region, so it reaches `TomPrincipal.clientCountry` in ordinary
+      // traffic — and this is the path a signed-in user with no stored
+      // preference actually takes.
+      //
+      // Admitting it produced the tag `en_XX`: a key no bundle carries, which
+      // the chain then resolved through bare `en` while reporting nothing. The
+      // text was right and the deployment could not learn that its regional
+      // bundles were unreachable.
+      final locale = TomTextLocale.fromPrincipal(
+        fixturePrincipal(clientLanguage: 'en', clientCountry: 'XX'),
+      );
+      expect(locale!.tag, 'en');
     });
 
     test('a principal\'s unusable country costs the country, not the mail', () {

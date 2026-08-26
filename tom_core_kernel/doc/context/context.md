@@ -356,6 +356,30 @@ TomContextProviders.getClientCountry()
 TomContextProviders.getClientTimezone()
 ```
 
+#### Field readers, not a locale derivation
+
+Each provider reads **one** field and answers a sentinel when it is absent. The
+stored pair and the device pair are reported separately on purpose: a caller
+that needs a specific claim — an audit entry recording what the device said, a
+diagnostic naming what the user chose — must be able to ask for that one rather
+than be handed a blend.
+
+Choosing *between* them is a different question, and these providers do not
+answer it. To pick the locale to render text in **for a recipient**, use
+`TomTextLocale.fromPrincipal` in `tom_core_server`'s resources module: it
+applies the precedence rule (stored preference over device) and answers `null`
+— not a guess — when the principal names no locale at all.
+
+`'XX'` is a **deliberate non-locale sentinel**, not a country. It sits in the
+range ISO 3166-1 permanently withholds from assignment (`AA`, `QM`–`QZ`,
+`XA`–`XZ`, `ZZ`) precisely so applications can use it to mean "none", which is
+what it means here and in `TomLoginMessage.clientCountry`. Because it is two
+letters, anything checking only the *shape* of a country accepts it: composing
+`TomTextLocale(getLanguage(), getCountry())` would name the bundle `en_XX`,
+which nothing carries. `TomTextLocale`'s country invariant refuses the
+user-assigned codes for that reason, so the mistake fails rather than resolving
+quietly through some other bundle.
+
 ## Context Propagation
 
 Context values automatically propagate through async boundaries:

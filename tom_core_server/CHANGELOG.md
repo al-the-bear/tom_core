@@ -636,6 +636,29 @@
 
 ### Fixed
 
+- **`TomTextLocale` accepted `XX` as a country, so every user who signed in
+  from a device naming no region got the unreachable bundle key `en_XX`
+  (tcinc629).** The country invariant checked *shape* — two letters — which
+  admits exactly the codes ISO 3166-1 permanently withholds from assignment so
+  that applications can use them to mean "none": `AA`, `QM`-`QZ`, `XA`-`XZ`,
+  `ZZ`. This stack uses `XX`, and not occasionally: `TomLoginMessage`
+  **defaults** `clientCountry` to it, so clients send it verbatim and it reaches
+  `TomPrincipal.clientCountry` through an ordinary sign-in. `fromPrincipal`,
+  which reads that field, was therefore building `en_XX` on the commonest path
+  of all — a key no bundle carries, which the chain then resolved through bare
+  `en` while reporting nothing. The text came out right, which is why this could
+  sit unnoticed: a deployment could not learn that its regional bundles were
+  unreachable. `_isCountry` now rejects the user-assigned range, so the strict
+  constructor throws and `lenient` — the path `fromPrincipal` uses — drops the
+  sentinel and lands on the bundle that exists.
+
+  This also closes the composition the kernel's accessors invite. Reaching for
+  the context providers a caller already knows and writing
+  `TomTextLocale(getLanguage(), getCountry())` yields `en_XX` for a principal
+  that names nothing, because the kernel substitutes sentinels where
+  `fromPrincipal` deliberately answers `null`. That now fails loudly instead of
+  resolving quietly through the default locale.
+
 - **`TomLocalizedTextResources.substitute` rendered a null parameter value as
   the literal word `null`, so a subject line read "Hi null!" (tcinc626).** Every
   parameter was interpolated with `'${entry.value}'`, and `parameters` is

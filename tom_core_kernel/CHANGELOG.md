@@ -1431,6 +1431,36 @@ anyone who was writing them.
 
 ### Documentation
 
+- **`TomContextProviders`' locale accessors read as a locale derivation and are
+  not one, and their `"XX"` was undocumented as a sentinel (tcinc629).** The
+  nine providers are single-field readers: each answers *what the principal
+  says* about one field, substituting a value when it says nothing. That is
+  deliberate — a caller needing one specific claim, such as an audit entry
+  recording what the device reported, must be able to ask for that one and not
+  be handed a blend of the stored and device pairs. But nothing said so, and the
+  names `getLanguage`/`getCountry` invite `TomTextLocale(getLanguage(),
+  getCountry())`, which is a *different* derivation from
+  `TomTextLocale.fromPrincipal` on all three points that matter: it ignores the
+  `clientLanguage`/`clientCountry` fallback, and it substitutes `"en"` and
+  `"XX"` where `fromPrincipal` answers `null` precisely so the deployment's
+  default is applied in one place.
+
+  `"XX"` was the sharp end. It is in the range ISO 3166-1 permanently withholds
+  from assignment (`AA`, `QM`-`QZ`, `XA`-`XZ`, `ZZ`) so applications can mean
+  "none" with it, so it is not a country — but it *is* two letters, so anything
+  checking only shape accepts it. `TomLoginMessage.clientCountry` defaults to
+  it, which is how it reached `TomPrincipal` in ordinary traffic and how
+  `tom_core_server` came to build the unreachable bundle key `en_XX`.
+
+  No behaviour changed here. The class, the four locale accessors and
+  `TomLoginMessage.clientCountry` now state the role split and name `"XX"` as a
+  deliberate non-locale sentinel, `doc/context/context.md` and
+  `doc/api_reference/api_summary_context.md` carry the same, and a test pins
+  the sentinel inside the user-assigned range — so replacing it with a
+  plausible-looking `"US"` fails rather than quietly turning "named no country"
+  into a claim about where the user is. The composition itself is refused
+  downstream by `TomTextLocale`'s country invariant.
+
 - **Twelve documented constructors typed `autoLog` as `bool?` with no default,
   where it is `bool` and defaults to `false` (tcinc618).** Every one of the
   twelve is an exception that forwards with `super.autoLog`, so each inherits

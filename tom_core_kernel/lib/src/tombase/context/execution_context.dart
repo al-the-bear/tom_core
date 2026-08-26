@@ -428,6 +428,28 @@ class TomContextEntry<T> {
 /// - **Organization/Application/Process**: Tenant identification
 /// - **Language/Country/Timezone**: Server locale settings
 /// - **ClientLanguage/ClientCountry/ClientTimezone**: Client locale settings
+///
+/// ## Field readers, not a locale derivation
+///
+/// Each provider reads **one** field and answers a sentinel when it is absent.
+/// The stored pair and the device pair are reported separately and on purpose:
+/// a caller that needs a specific claim — an audit entry recording what the
+/// device said, a diagnostic naming what the user chose — must be able to ask
+/// for that one and not be handed a blend.
+///
+/// Choosing *between* them is a different question with a different answer, and
+/// these providers deliberately do not answer it. To pick the locale to render
+/// text in for a recipient, use `TomTextLocale.fromPrincipal` in
+/// `tom_core_server`'s resources module, which applies the precedence rule
+/// (stored preference over device) and answers `null` — not a guess — when the
+/// principal names no locale at all.
+///
+/// Composing these providers into a locale instead does not merely duplicate
+/// that rule, it gets a different one: `TomTextLocale(getLanguage(),
+/// getCountry())` yields `en_XX` for a principal that names nothing, and `XX`
+/// is a sentinel rather than a country (see [getCountry]). That combination is
+/// refused by `TomTextLocale`'s country invariant, so the mistake fails rather
+/// than silently rendering through a bundle nobody asked for.
 class TomContextProviders {
   /// Reads a single field from the current zone's [TomPrincipal], falling back
   /// to [fallback] when no principal is installed (or the field is null).
@@ -453,10 +475,23 @@ class TomContextProviders {
   /// Returns the process from the current principal, or "default".
   static String getProcess() => _fromPrincipal((p) => p.process, "default");
 
-  /// Returns the server language from the current principal, or "en".
+  /// Returns the stored language from the current principal, or "en".
+  ///
+  /// The fallback is a value, not a derived answer: it says the principal named
+  /// no language, not that this user reads English. A caller deciding what
+  /// language to *write to somebody in* wants `TomTextLocale.fromPrincipal`,
+  /// which distinguishes the two by answering `null`.
   static String getLanguage() => _fromPrincipal((p) => p.language, "en");
 
-  /// Returns the server country from the current principal, or "XX".
+  /// Returns the stored country from the current principal, or "XX".
+  ///
+  /// `XX` is a **deliberate non-locale sentinel**, not a country. It is in the
+  /// range ISO 3166-1 permanently withholds from assignment (`AA`, `QM`-`QZ`,
+  /// `XA`-`XZ`, `ZZ`) precisely so applications can use it for "none", which is
+  /// what it means here and in [TomLoginMessage.clientCountry]. It is two
+  /// letters, so anything checking only the shape will accept it as a country;
+  /// consumers that build a locale key must reject it, and
+  /// `TomTextLocale` does.
   static String getCountry() => _fromPrincipal((p) => p.country, "XX");
 
   /// Returns the server timezone from the current principal, or "utc".
@@ -467,6 +502,11 @@ class TomContextProviders {
       _fromPrincipal((p) => p.clientLanguage, "en");
 
   /// Returns the client country from the current principal, or "XX".
+  ///
+  /// The same non-locale sentinel as [getCountry], and here it is often the
+  /// *stored* value rather than the fallback: [TomLoginMessage.clientCountry]
+  /// defaults to `XX`, so a device that names no region sends it and it reaches
+  /// the principal through an ordinary sign-in.
   static String getClientCountry() =>
       _fromPrincipal((p) => p.clientCountry, "XX");
 
