@@ -68,6 +68,23 @@ current target. Platform predicates read Flutter's `defaultTargetPlatform` /
 
 ## Notes
 
+- **The predicates answer about the Flutter *target*, not the host machine.**
+  All nine read `defaultTargetPlatform` (or `kIsWeb`), so what they report is
+  what the build is targeting. On a device the two coincide. Under
+  `flutter test` they do not: `defaultTargetPlatform` is
+  `TargetPlatform.android` whatever machine the harness runs on, so a developer
+  on macOS sees `isDesktop=false isMobile=true`. That is the module working,
+  not failing.
+
+  Two consequences worth keeping in mind. A test that asserts a predicate
+  without pinning the target is really asserting the harness default — set
+  `debugDefaultTargetPlatformOverride` per case, as this module's own suite
+  does. And a diagnostic that prints a predicate should print the target beside
+  it, as [the runtime example](../example/runtime/runtime_example.dart) does,
+  or the answer arrives without its cause.
+
+  There is also no target for which `isDesktop() || isMobile()` is guaranteed:
+  Fuchsia belongs to neither family.
 - **`clientPlatformUtils` is the only symbol the barrel exports.** The package
   barrel exports `platform_detection_client.dart`, and that file pulls in the
   selected variant with a conditional *import*, so neither

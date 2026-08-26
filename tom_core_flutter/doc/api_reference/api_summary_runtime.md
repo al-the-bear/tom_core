@@ -136,6 +136,12 @@ TomFlutterPlatformUtils()
 
 #### Methods
 
+Every "True on …" below means the *Flutter target* is that platform, read from
+`defaultTargetPlatform` at call time — not the machine the process is running
+on. The two coincide on a device and part company under `flutter test`, whose
+target is `TargetPlatform.android` regardless of host. See
+[`runtime.md`](../runtime.md) for what that implies for tests and diagnostics.
+
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `isDesktop` | `bool isDesktop()` | *(override)* True on Windows/Linux/macOS. |

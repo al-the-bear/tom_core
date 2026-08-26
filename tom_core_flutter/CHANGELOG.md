@@ -90,6 +90,43 @@
 
 ### Fixed
 
+- **runtime: the example prints the Flutter target beside the predicates it
+  explains (tcinc684).** Run as its header prescribes, the example printed
+  `isDesktop=false isMobile=true` on a macOS host and accounted for it nowhere
+  — a module whose one job is platform detection appearing to get the platform
+  wrong. It was not wrong: every predicate reads `defaultTargetPlatform`, which
+  under `flutter test` is `TargetPlatform.android` whatever the host, so the
+  output was correct about the *target* and silent about the difference between
+  that and the machine. The example now prints `flutterTarget=…` immediately
+  above the predicate line, so the answer arrives with its cause and stays true
+  under any harness rather than carrying a frozen remark about android.
+
+  The assertions were re-framed for the same reason. Their comment introduced
+  the whole block as following from "running under the VM", which is true of
+  `isWeb()` and the browser location but not of the desktop/mobile split — that
+  follows from the target. One assertion also could not hold in general:
+  `isDesktop() || isMobile()` is false on Fuchsia, which is in neither family.
+  It is replaced by one that ties the mobile answer to the target explicitly,
+  which is the claim the example is actually making.
+
+  `httpClient()` is now demonstrated too. It is one of the few members that
+  genuinely differ per variant and the one `doc/runtime.md` opens with, yet the
+  one executable artifact that would break if it stopped working never called
+  it. The example takes a client, prints its runtime type and closes it.
+
+  Three tests read what the example *printed* rather than what its source says,
+  since the output is the part a reader sees and the only part that survives
+  into a bug report: that it names the effective target, that the family it
+  reports agrees with that target, and that it exercises the HTTP client. The
+  target is recomputed in the test from `defaultTargetPlatform`, so the guard
+  keeps working wherever the suite runs.
+
+  Both documents gained the caveat: `doc/runtime.md` as a note on what the
+  predicates measure and what that means for tests (pin the target with
+  `debugDefaultTargetPlatformOverride`) and for diagnostics, and the API
+  summary as a line above the methods table, where every "True on …" needed
+  saying that it means the target.
+
 - **runtime: the inventory of what the three variants share is counted from
   the sources (tcinc680).** Three documents described one set of files and no
   two agreed. `doc/runtime.md` said the variants "differ only in construction,

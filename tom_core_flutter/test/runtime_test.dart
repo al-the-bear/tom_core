@@ -866,6 +866,23 @@ void main() {
   });
 
   group('the shipped example runs', () {
+    /// Every line [example.run] prints, joined.
+    ///
+    /// The example's output *is* its documentation — it is what a reader sees
+    /// when they run the command in its header, and the only part of an
+    /// example that survives being pasted into a bug report. So the checks
+    /// below read what it printed rather than what its source says.
+    String exampleOutput() {
+      final printed = <String>[];
+      runZoned(
+        example.run,
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) => printed.add(line),
+        ),
+      );
+      return printed.join('\n');
+    }
+
     test('runtime_example.run() completes its assertions', () {
       // The example is quoted as documentation, so it has to be executable
       // documentation. Running it here is what stops a snippet that no longer
@@ -873,6 +890,68 @@ void main() {
       // reader as the way to use the module. It is also what makes the command
       // the example's header names a real one: that command is this suite.
       example.run();
+    });
+
+    test('the printed platform answer names what decided it', () {
+      // Under `flutter test`, `defaultTargetPlatform` is android whatever
+      // machine the harness is running on, and every predicate in every
+      // variant reads it. So a developer on a Mac sees `isMobile=true` from a
+      // module whose one job is platform detection, and for a long time the
+      // example offered nothing to explain it — the number was there and the
+      // cause was not.
+      //
+      // Printing the target beside the answer is what fixes that, and it has
+      // to be the *effective* target rather than a sentence about defaults:
+      // recomputed here from `defaultTargetPlatform` so that running the
+      // example under a different harness, or on a device, keeps the printed
+      // explanation true instead of leaving a frozen claim about android.
+      final printed = exampleOutput();
+      expect(
+        printed,
+        contains('$defaultTargetPlatform'),
+        reason: 'the example prints platform predicates without naming the '
+            'Flutter target that decided them; on a desktop host the answer '
+            'reads as a bug in the module',
+      );
+    });
+
+    test('the printed answer agrees with the target it blames', () {
+      // Naming a cause is worth nothing if it is the wrong cause. This checks
+      // that the family the example reports really does follow from the target
+      // it prints — so if the predicates were ever rewired to read the host
+      // instead, the example's explanation would turn false here rather than
+      // going on reassuring a reader who has no way to check it.
+      final printed = exampleOutput();
+      final reported = RegExp(r'isMobile=(true|false)').firstMatch(printed);
+      expect(
+        reported,
+        isNotNull,
+        reason: 'the example no longer reports the mobile predicate',
+      );
+      final targetIsMobile =
+          defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS;
+      expect(
+        reported!.group(1),
+        '$targetIsMobile',
+        reason: 'the example reports isMobile=${reported.group(1)} while the '
+            'target it prints, $defaultTargetPlatform, says otherwise',
+      );
+    });
+
+    test('the example demonstrates the per-variant HTTP client', () {
+      // `httpClient()` is one of the few members that genuinely differ between
+      // the variants, and the Quick Start in `doc/runtime.md` leads with it —
+      // yet the executable example, the one artifact that would break if the
+      // call stopped working, never made it.
+      final client = clientPlatformUtils.httpClient();
+      addTearDown(client.close);
+      expect(
+        exampleOutput(),
+        contains('${client.runtimeType}'),
+        reason: 'the example never obtains an HTTP client, so the member the '
+            'module document opens with is demonstrated nowhere executable',
+      );
     });
   });
 }
