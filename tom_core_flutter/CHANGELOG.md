@@ -2,6 +2,26 @@
 
 ### Added
 
+- **security: the two panel-context fields nobody was watching are now pinned
+  (tcinc691).** `Tom2FAEnrolmentPanelContext.accountLabel` *is* read — the TOTP
+  enrolment panel captions the QR code with it — but `_FakeController` never
+  overrode it, so it was `''` in every test and the `isNotEmpty` branch never
+  ran. The documented behaviour (caption when named, omitted rather than blank
+  when not) was asserted nowhere. Two tests now take both branches; a mutation
+  forcing the guard either way kills exactly one of them.
+
+  `Tom2FAChallengePanelContext.hint` was worse: a search found the declaration,
+  the default and the flow's one assignment, and no read at all. That is not a
+  defect — TOTP is the only shipped mechanism and it has nothing to hint, since
+  the user reads the code off the device in their hand. But it left the field's
+  contract unverified, and the first mechanism to need a hint would have been
+  the one to discover it never arrived. The framework's half of the contract is
+  *delivery*, not display, and delivery is testable without a shipped reader:
+  the test-only `_SmsMechanism` now renders the hint, and two tests assert it
+  arrives — populated when the server sent one, empty rather than null when it
+  did not. The dartdoc, `doc/security.md` and the API summary all now say
+  outright that no shipped mechanism renders it, and why.
+
 - **security: the example demonstrates the flow instead of the annotation
   (tcinc690).** `example/security/security_example.dart` scoped itself to the
   `TomClient2FAAdaptor` marker — 41 lines about the one type in the module that

@@ -106,6 +106,20 @@ class Tom2FAChallengePanelContext {
 
   /// A short, displayable hint the mechanism supplied (a masked phone number,
   /// say). Empty when the mechanism has nothing useful to show.
+  ///
+  /// **No shipped mechanism renders this.** TOTP is the only one in the box and
+  /// it has nothing to hint: the user reads the code off the device already in
+  /// their hand, so naming where it came from tells them nothing. The field
+  /// earns its place with the mechanisms that are not shipped — SMS and email
+  /// deliver the code *somewhere*, and "we sent it to ••••4417" is the
+  /// difference between waiting and giving up on the wrong phone.
+  ///
+  /// So the framework's half of the contract is delivery, not display: the flow
+  /// hands on whatever the server sent, and it arrives as an empty string
+  /// rather than null so a panel can render it without a null check. That half
+  /// is held by `test/two_factor_client_test.dart`, whose test-only SMS
+  /// mechanism reads it — otherwise the first mechanism that needed the hint
+  /// would be the one to discover it never arrived.
   final String hint;
 
   /// How many verification attempts remain before the challenge is burned.

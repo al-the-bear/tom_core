@@ -196,6 +196,29 @@ break every mechanism that ever shipped.
 | `hint` | — | ✓ | A short displayable hint, e.g. a masked phone number |
 | `attemptsRemaining` | — | ✓ | The budget the user is spending |
 
+Two of those rows are worth a second look, because they are where the split
+between what the *framework* guarantees and what a *mechanism* chooses is
+sharpest.
+
+`accountLabel` travels from the controller, through the flow, into the enrolment
+context, and the shipped TOTP panel captions the QR code with it. A user with
+three work accounts in one authenticator scans three visually identical codes;
+without the caption they cannot tell which one they are adding until it is
+already in the list. Supply nothing and the caption is **omitted rather than
+blanked** — an empty caption is a gap that reads as a missing value instead of
+an absent one.
+
+`hint` takes the same path and **no shipped mechanism renders it**. TOTP has
+nothing to hint: the user reads the code off the device already in their hand.
+The field earns its place with the mechanisms that are not in the box — SMS and
+email deliver the code *somewhere*, and "we sent it to ••••4417" is the
+difference between waiting and giving up on the wrong phone. So the framework's
+half of the contract here is **delivery, not display**: the flow hands on
+whatever the server sent, as an empty string rather than null so a panel can
+render it without a null check. `test/two_factor_client_test.dart` holds it to
+that with a test-only SMS mechanism that reads the hint — otherwise the first
+mechanism that needed it would be the one to discover it never arrived.
+
 **A mechanism receives the decoded `clientData` and nothing else about the
 login** — no principal, no tokens, no backend handle. It renders, validates
 locally if it can, and hands a string back through `onSubmit`. Whether that

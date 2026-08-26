@@ -200,7 +200,7 @@ const Tom2FAEnrolmentPanelContext({
 | -------- | ---- | ----------- |
 | `type` | `String` | The mechanism key this panel belongs to, so one class can serve several closely-related mechanisms. |
 | `clientData` | `Map<String, Object?>` | The mechanism's enrolment payload, decoded from the interim token's public claims. |
-| `accountLabel` | `String` | The account label to show alongside the factor. May be empty. |
+| `accountLabel` | `String` | The account label to show alongside the factor. May be empty, in which case the shipped TOTP panel omits the caption rather than rendering a blank one. |
 | `onSubmit` | `ValueChanged<String>` | Called with whatever the user typed. The panel does not decide what happens next. |
 | `busy` | `bool` | Whether the flow is mid-call. Panels disable their controls on this rather than tracking a flag of their own. |
 
@@ -229,7 +229,7 @@ const Tom2FAChallengePanelContext({
 | -------- | ---- | ----------- |
 | `type` | `String` | The mechanism key this panel belongs to. |
 | `clientData` | `Map<String, Object?>` | The mechanism's opaque challenge payload. For TOTP: `digits`. |
-| `hint` | `String` | A short displayable hint the mechanism supplied (a masked phone number, say). Empty when there is nothing useful to show. |
+| `hint` | `String` | A short displayable hint the mechanism supplied (a masked phone number, say). Empty when there is nothing useful to show. No shipped mechanism renders it — TOTP has nothing to hint — so the framework's guarantee is delivery, not display. |
 | `attemptsRemaining` | `int` | How many verification attempts remain before the challenge is burned. |
 | `onSubmit` | `ValueChanged<String>` | Called with the code the user entered. |
 | `busy` | `bool` | Whether the flow is mid-call. |

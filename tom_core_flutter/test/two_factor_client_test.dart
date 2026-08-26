@@ -338,6 +338,37 @@ void main() {
       expect(find.text('JBSW Y3DP EHPK 3PXP'), findsOneWidget);
     });
 
+    // Which account a QR code belongs to is invisible in the code itself, so
+    // the caption beside it is the only thing distinguishing three work
+    // accounts in one authenticator. The pair below pins both halves: it
+    // appears when the application named the account, and it is *omitted*
+    // rather than blank when it did not — the caption travels from the
+    // controller through the flow into the mechanism's context, and a break
+    // anywhere on that path shows up as a missing widget here.
+
+    testWidgets('captions the code with the account the application named',
+        (tester) async {
+      await pump(
+        tester,
+        _FakeController(enrolment: offer(), label: 'ada@example.com'),
+      );
+
+      expect(find.byKey(const Key('tom-2fa-totp-account')), findsOneWidget);
+      expect(find.text('ada@example.com'), findsOneWidget);
+    });
+
+    testWidgets('omits the caption entirely when no account was named',
+        (tester) async {
+      // Not "renders an empty caption": an empty one is a gap in the layout
+      // that reads as a missing value rather than as an absent one.
+      await pump(tester, _FakeController(enrolment: offer()));
+
+      expect(find.byKey(const Key('tom-2fa-totp-account')), findsNothing);
+      // The rest of the panel is untouched by the absence.
+      expect(find.byKey(const Key('tom-2fa-totp-qr')), findsOneWidget);
+      expect(find.text('JBSW Y3DP EHPK 3PXP'), findsOneWidget);
+    });
+
     testWidgets('hands the typed code to the controller unmodified',
         (tester) async {
       final controller = _FakeController(enrolment: offer());
@@ -518,6 +549,46 @@ void main() {
 
       expect(find.byKey(const Key('tom-2fa-challenge')), findsOneWidget);
       expect(find.byKey(const Key('tom-2fa-chooser')), findsNothing);
+    });
+  });
+
+  group('the challenge hint', () {
+    // No shipped mechanism renders the hint — TOTP has nothing to hint, since
+    // the user reads the code off the device in their hand. Delivering it is
+    // still the flow's promise, and an undelivered field would only be noticed
+    // by the first mechanism that needed it, long after the break. These two
+    // hold the flow to the promise using a mechanism that does read it.
+
+    Tom2FAChallenge smsChallenge({String hint = ''}) => Tom2FAChallenge(
+          type: 'sms',
+          hint: hint,
+          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+        );
+
+    String hintShown(WidgetTester tester) =>
+        tester.widget<Text>(find.byKey(const Key('sms-challenge-hint'))).data ??
+        '';
+
+    testWidgets('reaches the mechanism that renders it', (tester) async {
+      Tom2FAClientRegistry.register(const _SmsMechanism());
+      await pump(
+        tester,
+        _FakeController(challenge: smsChallenge(hint: '•••• •••• 4417')),
+      );
+
+      expect(find.byKey(const Key('sms-challenge')), findsOneWidget);
+      expect(hintShown(tester), '•••• •••• 4417');
+    });
+
+    testWidgets('arrives empty, not null, when the server sent none',
+        (tester) async {
+      // The mechanism gets a `String` either way, so a panel can render it
+      // unconditionally without a null check of its own — which is the reason
+      // the field is non-nullable with an empty default rather than `String?`.
+      Tom2FAClientRegistry.register(const _SmsMechanism());
+      await pump(tester, _FakeController(challenge: smsChallenge()));
+
+      expect(hintShown(tester), '');
     });
   });
 
@@ -723,12 +794,21 @@ class _FakeController extends Tom2FAFlowController {
     this.challenge,
     this.methods = const [],
     this.failure,
+    this.label = '',
   });
 
   final Tom2FAPendingEnrolment? enrolment;
   final Tom2FAChallenge? challenge;
   final List<Tom2FAMethodDescriptor> methods;
   final Object? failure;
+
+  /// The account name the application would supply. Defaults to the empty
+  /// string the base class defaults to, so every test that does not care about
+  /// the caption keeps exercising the no-label path.
+  final String label;
+
+  @override
+  String get accountLabel => label;
 
   final List<String> chosen = [];
   final List<String> confirmed = [];
@@ -779,6 +859,13 @@ class _FakeController extends Tom2FAFlowController {
 /// A second mechanism, so the chooser is exercised with more than one entry and
 /// the "an application may replace a built-in" rule has something to replace
 /// TOTP with.
+///
+/// Its challenge panel renders [Tom2FAChallengePanelContext.hint], which the
+/// shipped TOTP panel has no use for — a code the user reads off their own
+/// phone needs no hint about where it came from. That makes this the only place
+/// the hint's delivery is observable, and delivery is the half of the contract
+/// the framework owns: the flow promises to hand a mechanism whatever the
+/// server said, whether or not any mechanism shipped today reads it.
 class _SmsMechanism extends Tom2FAClientMechanism {
   const _SmsMechanism({String type = 'sms'}) : super(type);
 
@@ -794,5 +881,11 @@ class _SmsMechanism extends Tom2FAClientMechanism {
     BuildContext context,
     Tom2FAChallengePanelContext data,
   ) =>
-      const SizedBox(key: Key('sms-challenge'));
+      Column(
+        key: const Key('sms-challenge'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(data.hint, key: const Key('sms-challenge-hint')),
+        ],
+      );
 }
