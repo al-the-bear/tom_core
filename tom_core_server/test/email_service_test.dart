@@ -201,6 +201,45 @@ void main() {
       );
     });
 
+    test('the default the chain ends at is the configured one, not English', () {
+      // Every other test in this group runs against a fixture whose default is
+      // `en`, so all of them assert English strings — and would go on passing
+      // against an implementation that had English built into it. That is the
+      // whole point of the module: the locale stopped being ambient, and a
+      // privileged language would put it straight back.
+      //
+      // A second set with a French default, and no English bundle at all, is
+      // the only arrangement in which "the configured default" and "English"
+      // give different answers.
+      final french = TomLocalizedTextResources(
+        defaultLocale: TomTextLocale('fr'),
+        bundles: {
+          'fr': {
+            'email': {
+              'welcome': {'subject': 'Bienvenue'},
+            },
+          },
+          'de': {
+            'email': {
+              'password_reset': {'subject': 'Passwort zurücksetzen'},
+            },
+          },
+        },
+      );
+
+      expect(
+        french.textOrNull('email.welcome.subject', locale: TomTextLocale('de')),
+        'Bienvenue',
+        reason:
+            'an untranslated key falls through to the deployment\'s default',
+      );
+      expect(
+        french.resolveLocale(TomTextLocale('ja'))?.tag,
+        'fr',
+        reason: 'and so does a locale the set carries nothing for',
+      );
+    });
+
     test('a missing key answers null rather than echoing the key', () {
       // The client-side provider answers a miss with the key itself, which is
       // right on a screen and catastrophic in a subject line.

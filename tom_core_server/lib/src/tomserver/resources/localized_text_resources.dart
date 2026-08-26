@@ -31,10 +31,16 @@
 /// 3. the default locale's tag, then its bare language.
 ///
 /// Per **key**, not per bundle. A half-translated `de` bundle therefore serves
-/// the strings it has and falls through to English for the rest, which is what
-/// a translation in progress looks like; the alternative — a bundle being
-/// all-or-nothing — means the first untranslated key silently reverts a whole
-/// message to another language.
+/// the strings it has and falls through to the default locale for the rest,
+/// which is what a translation in progress looks like; the alternative — a
+/// bundle being all-or-nothing — means the first untranslated key silently
+/// reverts a whole message to another language.
+///
+/// *Which* locale that is belongs to the deployment. [defaultLocale] is a
+/// required constructor argument with no framework-supplied value, so a set
+/// built with `TomTextLocale('fr')` falls through to French. There is no
+/// privileged language here, and that is deliberate: a built-in English would
+/// be precisely the ambient assumption this library exists to remove.
 ///
 /// ## A miss is `null`, never the key
 ///

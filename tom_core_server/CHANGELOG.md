@@ -3452,6 +3452,26 @@
 
 ### Documentation
 
+- **The localized-resources fallback chain was documented as ending in English,
+  which is a language the class has no notion of (tcinc623).** The library
+  dartdoc and `doc/resources.md` both said a half-translated bundle "falls
+  through to English for the rest"; `defaultLocale` is a required constructor
+  argument with no framework-supplied value, and `_chain` appends whatever the
+  deployment named — so a server whose default is `fr` falls through to French.
+  Each of the two passages contradicted itself two lines away, the dartdoc in
+  its own numbered step 3 ("the default locale's tag") and the module document
+  in its own code comment ("else the default locale"). The same paragraph exists
+  in four artefacts and two of them were already right, so this was a doc-vs-doc
+  split rather than a shared misunderstanding. Both now name the default locale,
+  and each gains a paragraph stating that the destination is a required argument
+  — a bare word swap would leave the stated harm untouched, which is that a
+  reader takes the sentence at face value and never passes a `defaultLocale`
+  they actually want. The executable half of the same defect is also closed: all
+  eleven `TomLocalizedTextResources` tests ran against an `en`-defaulted fixture
+  and asserted English strings, so an implementation with English built into it
+  would have passed every one of them. A twelfth test builds a French-defaulted
+  set carrying no English bundle at all, which is the only arrangement in which
+  "the configured default" and "English" give different answers.
 - **The `preferences` module readme's quick start printed a value it could not
   reach (tcinc620).** The snippet was a complete `main()` ending
   `print(timezone); // Europe/Berlin`, but three preconditions were missing and
