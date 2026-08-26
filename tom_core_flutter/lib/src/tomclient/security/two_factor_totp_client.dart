@@ -32,6 +32,14 @@
 /// The three that are read are read defensively — the map crossed the wire, and
 /// a panel that threw on a missing key would turn a server-side omission into a
 /// crashed login screen rather than a field with a sensible default.
+///
+/// The defence covers *unusable values*, not only absent ones. An `otpauthUri`
+/// too long for any QR code to hold is the case that is easiest to reach
+/// without anyone doing anything wrong — the URI grows with the issuer and
+/// account label a deployment configures — and it renders as a blank square,
+/// exactly as a missing URI does. That degradation is safe here specifically
+/// because the enrolment panel shows the secret twice over: whatever happens to
+/// the code, the base32 string beneath it is a complete enrolment path.
 library;
 
 import 'package:flutter/services.dart';

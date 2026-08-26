@@ -26,7 +26,7 @@ whose auth client already handles refresh.
 | `Tom2FAChallengePanelContext` | What a challenge panel is given: the same, plus `hint` and `attemptsRemaining`. |
 | `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'`. Also the public `digitsOf` / `groupSecret` helpers. |
 | `Tom2FATexts` | Every resource key this feature resolves, and the `text` / `textWith` helpers that resolve them. No literal user-facing text exists anywhere in the feature. |
-| `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, so it themes like any other widget. |
+| `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, so it themes like any other widget. Never throws on its payload: empty, or too long to encode, renders an empty square. |
 | `TomClient2FAAdaptor` | Reflection-discoverable annotation (`@tomReflector`-registered) marking a class as a client 2FA adaptor. Not the flow's dispatch route — see below. |
 
 ## Quick start

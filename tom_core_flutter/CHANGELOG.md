@@ -90,6 +90,35 @@
 
 ### Fixed
 
+- **security: an `otpauthUri` too long to encode blanks the QR code instead of
+  throwing out of the enrolment panel (tcinc687).** `TomQrCodeView.build`
+  guarded an empty payload and then encoded an unguarded one. A QR code has a
+  hard capacity ceiling — 2331 bytes at the medium correction level the widget
+  uses — and past it the `qr` encoder throws `InputTooLongException` from
+  `QrImage`'s construction, which is inside `build`. The result was a crashed
+  enrolment screen.
+
+  Reachable from wire data along the ordinary path, not only by driving the
+  widget directly: an `otpauth://` URI grows with the issuer and account label a
+  deployment configures, and nothing between that configuration and the widget
+  bounds their length. A `Tom2FAFlowPanel` pumped over an enrolment whose
+  `otpauthUri` was oversized threw `Input too long. 48396 > 18672` out of build.
+
+  This is the exact failure the module's own defensive-reading contract says it
+  prevents — but that contract only ever covered *missing* keys, not values that
+  arrive and cannot be used. An unencodable payload now renders the same empty
+  square an empty one does, which is safe here specifically because the
+  enrolment panel shows the base32 secret beside the code: the user keeps a
+  complete enrolment path. The encoder exposes no capacity predicate, so the
+  case is caught rather than pre-checked, naming the one exception type that
+  means "too long" so a genuine encoder fault still surfaces as a crash.
+
+  `TomQrCodeView` now also holds its requested size when it renders nothing, so
+  a payload that crosses the ceiling between two enrolments does not shift the
+  layout around it. Four tests were added: the panel-level case beside the
+  existing missing-URI one, and three driving the widget directly, since it is
+  exported and this is now a promise to every caller.
+
 - **security: the TOTP `clientData` key list names `periodSeconds`, the fourth
   key the server sends (tcinc686).** `TomTotp2FAClientMechanism`'s dartdoc said
   it read "exactly the keys the server's `TomTotp2FAService` writes, and nothing

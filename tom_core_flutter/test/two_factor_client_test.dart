@@ -31,6 +31,18 @@ List<String> _renderedText(WidgetTester tester) => tester
     .map((widget) => widget.data ?? widget.textSpan?.toPlainText() ?? '')
     .toList();
 
+/// An `otpauth://` URI larger than any QR code can hold.
+///
+/// Shaped like the real thing rather than like arbitrary padding, because the
+/// realistic way to exceed the ceiling is not a hostile server but an ordinary
+/// one whose issuer and account label are long — and the label is exactly the
+/// part a deployment fills in and can get wrong. The widest code at the
+/// correction level the panel uses holds 2331 bytes; this is roughly triple.
+String _oversizedUri() {
+  final label = 'a' * 3000;
+  return 'otpauth://totp/$label?secret=JBSWY3DPEHPK3PXP&issuer=$label';
+}
+
 void main() {
   // A bundle covering every key the flow and the TOTP panels resolve, with
   // values distinct enough that a test asserting one cannot accidentally match
@@ -318,6 +330,34 @@ void main() {
       expect(find.text('JBSW Y3DP'), findsOneWidget);
     });
 
+    testWidgets('renders nothing to scan when the URI will not fit a code',
+        (tester) async {
+      // A QR code has a hard capacity ceiling and a server can cross it
+      // without doing anything wrong — a long issuer or account label is
+      // enough. Arriving over the wire, that has to degrade the way a missing
+      // URI already does rather than throw out of build: the manual-entry
+      // string beside the code is a complete enrolment path on its own, so
+      // there is a usable panel to fall back to and no reason to lose it.
+      await pump(
+        tester,
+        _FakeController(
+          enrolment: Tom2FAPendingEnrolment(
+            type: 'totp',
+            offeredTypes: const ['totp'],
+            expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+            clientData: {
+              'otpauthUri': _oversizedUri(),
+              'secret': 'JBSWY3DP',
+            },
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('tom-2fa-totp-qr')), findsOneWidget);
+      expect(find.text('JBSW Y3DP'), findsOneWidget);
+    });
+
     testWidgets('ignores the periodSeconds the server sends', (tester) async {
       // The server writes four keys and this panel reads three. Rendering the
       // real four-key payload beside the three-key one pins the fourth as
@@ -489,6 +529,52 @@ void main() {
           TomTotp.defaultDigits);
       expect(TomTotp2FAClientMechanism.digitsOf({'digits': 'six'}),
           TomTotp.defaultDigits);
+    });
+  });
+
+  group('the QR view', () {
+    // Driven directly rather than through the enrolment panel: the widget is
+    // exported, so its behaviour on an unencodable payload is a promise to
+    // every caller and not only to the one panel that happens to use it today.
+    Future<void> pumpCode(WidgetTester tester, String data) =>
+        tester.pumpWidget(
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(child: TomQrCodeView(data: data, size: 120)),
+          ),
+        );
+
+    // The painter is the difference between the two outcomes: present means a
+    // code was encoded, absent means the space was reserved and left blank.
+    Finder painter() => find.descendant(
+          of: find.byType(TomQrCodeView),
+          matching: find.byType(CustomPaint),
+        );
+
+    testWidgets('paints a code for a payload that fits', (tester) async {
+      await pumpCode(tester, 'otpauth://totp/Tom:alice?secret=JBSWY3DPEHPK3');
+
+      expect(tester.takeException(), isNull);
+      expect(painter(), findsOneWidget);
+    });
+
+    testWidgets('holds its size and paints nothing when the payload will not '
+        'fit', (tester) async {
+      await pumpCode(tester, _oversizedUri());
+
+      expect(tester.takeException(), isNull);
+      expect(painter(), findsNothing);
+      // Same box either way, so a payload that grew past the ceiling between
+      // two enrolments does not also shift the layout around it.
+      expect(tester.getSize(find.byType(TomQrCodeView)), const Size.square(120));
+    });
+
+    testWidgets('holds its size and paints nothing when there is no payload',
+        (tester) async {
+      await pumpCode(tester, '');
+
+      expect(painter(), findsNothing);
+      expect(tester.getSize(find.byType(TomQrCodeView)), const Size.square(120));
     });
   });
 }

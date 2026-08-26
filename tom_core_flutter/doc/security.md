@@ -323,9 +323,25 @@ pure-Dart `qr` encoder plus a small `CustomPainter` brings none of it.
 
 It is sized by the caller rather than by intrinsic content: a QR code has no
 natural size, only a natural aspect, and the panel is the party that knows how
-much room it can spare. An empty payload renders an empty square — the honest
-rendering of "there is nothing to scan yet" — rather than a valid-but-
-meaningless code.
+much room it can spare.
+
+The widget never throws on its payload. Two values render an empty square of the
+requested size instead of a code:
+
+| `data` | Why it renders blank |
+| ------ | -------------------- |
+| empty | The honest rendering of "there is nothing to scan yet", rather than a valid-but-meaningless code |
+| longer than 2331 bytes | Past the capacity of the largest code at the correction level used here |
+
+Neither is treated as an error, because neither is the widget's to prevent. For
+TOTP the payload arrives from the server, and an `otpauth://` URI grows with the
+issuer and account label a deployment configures — nothing between that config
+and this widget bounds their length. Throwing would trade a panel the user can
+still complete by typing the secret for a crashed screen they cannot. The
+capacity case is caught from the encoder rather than pre-checked, because the
+encoder publishes no capacity predicate and reimplementing its block arithmetic
+here would mean re-deriving it on every upgrade; the catch names the one
+exception type that means "too long", so a genuine encoder fault still surfaces.
 
 `semanticsLabel` takes resolved text, not a resource key: the widget is a
 generic renderer with no opinion about where strings come from, and the caller

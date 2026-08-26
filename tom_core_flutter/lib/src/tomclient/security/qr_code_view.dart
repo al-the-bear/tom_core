@@ -17,6 +17,10 @@ import 'package:qr/qr.dart';
 /// Sized by the caller rather than by intrinsic content: a QR code has no
 /// natural size, only a natural *aspect*, and the enrolment panel is the party
 /// that knows how much room it can spare.
+///
+/// **Never throws on its payload.** A [data] that cannot be shown — empty, or
+/// past the capacity of the largest code — renders as an empty square of the
+/// requested [size] instead. See [data] for why that is the contract.
 class TomQrCodeView extends StatelessWidget {
   /// Creates a QR view over [data].
   const TomQrCodeView({
@@ -30,6 +34,15 @@ class TomQrCodeView extends StatelessWidget {
   });
 
   /// The payload to encode — for TOTP enrolment, the `otpauth://` URI.
+  ///
+  /// Two values render as an empty square rather than as a code: the empty
+  /// string, and anything past the capacity of the largest code at the
+  /// correction level used here (2331 bytes). Neither is an error, because
+  /// neither is this widget's to prevent — for TOTP the payload arrives from
+  /// the server, and it grows with the issuer and account label a deployment
+  /// configures, which nothing on the way here bounds. Throwing would trade a
+  /// panel the user can still complete by typing the secret for a crashed
+  /// screen they cannot.
   final String data;
 
   /// The edge length of the rendered code, in logical pixels.
@@ -60,23 +73,49 @@ class TomQrCodeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Reserved rather than collapsed, so that whether the payload happened to
+    // encode does not also move the layout around the code.
+    final nothingToScan = SizedBox.square(dimension: size);
+
     // An empty payload would encode to a valid-but-meaningless code; showing
     // nothing is the honest rendering of "there is nothing to scan yet".
-    if (data.isEmpty) return SizedBox.square(dimension: size);
+    if (data.isEmpty) return nothingToScan;
 
-    final code = QrCode.fromData(
-      data: data,
-      // Medium correction: the standard authenticator level. Higher levels buy
-      // damage tolerance a screen-displayed code has no use for, at the cost of
-      // a denser grid that scans worse on small displays.
-      errorCorrectLevel: QrErrorCorrectLevel.M,
-    );
+    final QrImage image;
+    try {
+      image = QrImage(
+        QrCode.fromData(
+          data: data,
+          // Medium correction: the standard authenticator level. Higher levels
+          // buy damage tolerance a screen-displayed code has no use for, at the
+          // cost of a denser grid that scans worse on small displays.
+          errorCorrectLevel: QrErrorCorrectLevel.M,
+        ),
+      );
+    } on InputTooLongException {
+      // A QR code has a hard capacity ceiling and [data] arrives from outside —
+      // for TOTP enrolment, straight off the wire — so a payload that will not
+      // fit is input this widget has to have an answer for, not a bug upstream
+      // of it. An enrolment URI grows with the issuer and account label a
+      // deployment configures, and nothing on the way here bounds their length.
+      //
+      // Caught rather than pre-checked because the encoder exposes no capacity
+      // predicate; the alternative is to reimplement its block arithmetic here
+      // and re-derive it on every upgrade. Caught *narrowly* — this one type,
+      // which means exactly "too long" — so a genuine encoder fault still
+      // surfaces as a crash instead of being hidden behind a blank square.
+      //
+      // Degrades to the same rendering as an empty payload because the
+      // enrolment panel shows the base32 secret beside the code: the user keeps
+      // a complete path through enrolment, which is not true of a thrown build.
+      return nothingToScan;
+    }
 
     return SizedBox.square(
       dimension: size,
       child: CustomPaint(
         painter: _QrPainter(
-          image: QrImage(code),
+          image: image,
           padding: padding,
           foreground: foreground ?? const Color(0xFF000000),
           background: background ?? const Color(0xFFFFFFFF),

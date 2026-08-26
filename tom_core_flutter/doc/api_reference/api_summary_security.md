@@ -358,8 +358,15 @@ Renders `data` as a scannable QR code, `size` logical pixels square, painted
 from the pure-Dart `qr` encoder rather than pulled in as an image asset.
 
 Sized by the caller rather than by intrinsic content: a QR code has no natural
-size, only a natural aspect. An empty payload renders an empty square — the
-honest rendering of "there is nothing to scan yet".
+size, only a natural aspect.
+
+Never throws on its payload. An empty `data` renders an empty square — the
+honest rendering of "there is nothing to scan yet" — and so does a `data` past
+the capacity of the largest code, 2331 bytes at the correction level used here.
+Neither is the widget's to prevent: for TOTP the payload comes from the server
+and grows with the deployment's issuer and account label, and the enrolment
+panel shows the base32 secret beside the code, so a blank square leaves a
+complete enrolment path where a thrown build would leave none.
 
 - **Extends:** `StatelessWidget`
 
@@ -381,7 +388,7 @@ const TomQrCodeView({
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `data` | `String` | The payload to encode — for TOTP enrolment, the `otpauth://` URI. |
+| `data` | `String` | The payload to encode — for TOTP enrolment, the `otpauth://` URI. Empty, or longer than a code can hold, renders an empty square rather than throwing. |
 | `size` | `double` | The edge length of the rendered code, in logical pixels. Default `200`. |
 | `padding` | `double` | The quiet zone around the modules. Default `8` — a scanning requirement rather than a styling preference, hence a default rather than something every caller must remember. |
 | `foreground` | `Color?` | The module colour. Defaults to black, which is what scanners expect; overridable because a dark-themed panel may need to invert the pair. |
