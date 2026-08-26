@@ -36,6 +36,25 @@
 
 ### Documentation
 
+- **observing: the weak-reference contract is stated the right way round
+  (tcinc661).** `doc/observing.md` closed its lifecycle section by claiming that
+  because the `State` deregisters in `dispose`, "a long-lived observable that
+  outlives the widget is therefore not retained" — an inversion in both
+  directions it could be read. `TomObservable` holds its observers by
+  `WeakReference` and prunes dead ones on notification, so the registration
+  never kept the `State` alive and removing it is not what releases it; and the
+  strong reference runs the other way, through `TomObservingWidget.subState`, so
+  the widget keeps the *observable* alive and `dispose` does nothing about that
+  either. The claim had been copied into the widget's dartdoc and
+  `doc/api_reference/api_summary_observing.md`, and its inverse was even written
+  into the comment on the test that pins the correct half, so all four are
+  corrected together: the section now names which side holds which, links to the
+  kernel's own memory-management rule, and says what deregistration actually
+  buys — a known moment for notifications to stop, rather than leak prevention.
+  The corollary is the part worth carrying away: an observer that is still
+  reachable but no longer wanted keeps firing for as long as something else
+  holds it, so collection is not a substitute for removing it.
+
 - **configuration: validation is described instead of deflected (tcinc651).**
   Both the `TomBaseClientConfiguration` dartdoc and `doc/configuration.md` said
   per-field validation was "not the holder's job" because "constraints ride on
@@ -119,6 +138,18 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **observing: the reference directions are pinned, without depending on the
+  collector (tcinc661).** `test/observing_test.dart` gains two behavioural
+  tests and a documentation guard. The behavioural pair states the two
+  directions the prose now distinguishes: an observer held by a local keeps
+  receiving notifications until `removeObserver` is called — removal, not
+  collection, is what ends them — and a mounted `TomObservingWidget` still holds
+  the very observable instance it was given. Neither waits on a garbage
+  collection, so neither is flaky. The guard checks every file in the module
+  that tells a reader what `dispose` does: each must exist, must still describe
+  the deregistration, must say which side holds which, and must not carry the
+  retired claim again.
 
 - **little_things: the catch-clause order is executed rather than only stated
   (tcinc660).** The module exists so that `on X catch` clauses can separate a

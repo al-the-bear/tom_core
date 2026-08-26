@@ -72,7 +72,11 @@ TomObservingWidget({
 The `State` for `TomObservingWidget`; observes the current `subState` and
 rebuilds on every notification. Registration follows the `State` lifecycle
 (`initState` registers, `didUpdateWidget` migrates, `dispose` deregisters), so
-the bridge neither leaks nor calls `setState` on a disposed element.
+the bridge never calls `setState` on a disposed element. The deregistration is
+about *when*, not about leaks: `TomObservable` holds observers weakly, so the
+registration never kept this `State` alive — while `subState` is a strong field,
+so the widget keeps the observable alive. See
+[Lifecycle and Limitations](../observing.md#lifecycle-and-limitations).
 
 - **Extends:** `State<TomObservingWidget<T>>`
 - **Implements:** `TomObserver`

@@ -34,14 +34,23 @@ class TomObservingWidget<T extends TomObservable> extends StatefulWidget {
 /// The [State] for [TomObservingWidget]; observes the current
 /// [TomObservingWidget.subState] and rebuilds on every notification.
 ///
-/// The observation lifecycle follows the standard Flutter `State` contract so
-/// the bridge neither leaks nor outlives the element:
+/// The observation lifecycle follows the standard Flutter `State` contract, so
+/// the bridge does not outlive the element:
 ///   * [initState] registers as an observer on the initial `subState`.
 ///   * [didUpdateWidget] migrates the registration when the parent rebuilds
 ///     with a different `subState`, so the widget always observes the current
 ///     observable and drops the previous one.
 ///   * [dispose] deregisters before the element is destroyed, so a later
 ///     mutation never calls [setState] on a disposed `State`.
+///
+/// **What the deregistration is and is not for.** [TomObservable] holds its
+/// observers by `WeakReference`, so the registration never kept this `State`
+/// alive and removing it is not what releases it. The reference that does exist
+/// runs the other way: [TomObservingWidget.subState] is a plain strong field,
+/// so while the element is mounted it is the *observable* that the widget keeps
+/// alive. What [dispose] buys is a known moment — notifications stop when the
+/// widget leaves the tree instead of whenever the collector next runs, which is
+/// what prevents `setState() called after dispose()`.
 class TomObservingWidgetState<T extends TomObservable>
     extends State<TomObservingWidget<T>>
     implements TomObserver {
