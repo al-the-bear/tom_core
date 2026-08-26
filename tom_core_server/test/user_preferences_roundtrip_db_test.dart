@@ -266,6 +266,14 @@ void main() async {
     late HttpServer server;
     late Uri baseUri;
 
+    /// Whatever was registered as the [TomUserPreferencesServer] bean at the
+    /// moment before the router was built — captured so a later assertion can
+    /// say the pipeline *constructed* the handler rather than merely finding
+    /// one. `null` is the answer the file is written to produce, and it is read
+    /// rather than assumed because a registration added back in `setUp` would
+    /// otherwise silently return this suite to asserting nothing.
+    Object? handlerBeanBeforeRouting;
+
     setUpAll(() async {
       initializeReflection();
       dsi = await TestDatabase.register();
@@ -286,19 +294,29 @@ void main() async {
         TomUserPreferences,
         TomUserPreferences(TomUserPreferenceRepository()),
       );
-      TomBean.withType(
+      // The *store* is installed and the *handler* is not, which is exactly the
+      // split `doc/preferences.md` describes: a deployment registers
+      // `TomUserPreferences` at bootstrap, and the handler "needs no bean:
+      // like every component with a no-argument constructor, the pipeline
+      // instantiates it". Registering one here too would make the claim
+      // untestable in the one suite that mounts the real router — the
+      // `??=` chain in `initializeRouter` reaches `instantiateComponent` only
+      // when the bean lookup came back empty, so a pre-registration does not
+      // merely duplicate the construction, it replaces it.
+      handlerBeanBeforeRouting = TomBean.getBeanByType(
         TomUserPreferencesServer,
-        const TomUserPreferencesServer(),
       );
-      registerTomUserPreferencesApi();
       // The router mounts every endpoint reflection can see, not only the ones
       // a test is interested in, so the fixture surface has to be satisfied too
       // — an unregistered API is a routing failure, not a route that is left
-      // out.
+      // out. These stand in for an *application's* own components, which
+      // nothing claims are auto-built: the framework constructs what it ships,
+      // and anything else stays the application's to register. Registering them
+      // is therefore the accurate half of the picture, not the same omission as
+      // the handler above.
       registerFixtureAccessApi();
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
-      TomBean.withType(TomHealthServer, TomHealthServer());
 
       final router = TomEndpointRouting().initializeRouter();
       final handler = const Pipeline()
@@ -338,6 +356,46 @@ void main() async {
       addTearDown(other.close);
       return (first, second, other);
     }
+
+    test('the pipeline built the handler every other test here used', () {
+      // `doc/preferences.md` promises a deployment two things it need not do:
+      // register the API ("the pipeline registers it itself, so a deployment
+      // gets these endpoints without adding a line") and register the handler
+      // ("needs no bean ... the pipeline instantiates it"). Both are real —
+      // `initializeRouter` opens with `registerFrameworkApis()`, and its `??=`
+      // chain ends in `instantiateComponent` — but this suite used to do both
+      // by hand before building the router, so it exercised neither.
+      //
+      // Removing those two lines is most of the repair, and it is not this
+      // test that collects the benefit: with nothing registered, a handler the
+      // pipeline fails to build is a handler no route is mounted on, and the
+      // *whole group* dies in `setUp`. Every test here now depends on the
+      // construction happening.
+      //
+      // What this test adds is the half that failure cannot reach.
+      // `instantiateComponent` both builds the instance and registers it, and
+      // its dartdoc explains why the second part matters: "the router and any
+      // later `TomBean.getBeanByType` see the same object". Drop only the
+      // registration and the router still mounts the returned instance — every
+      // other test in this file passes, and the promise is broken in a way
+      // nothing observes. So the two assertions are one statement each: the
+      // bean was absent going in (or this suite is back to never reaching
+      // `instantiateComponent` at all), and present coming out.
+      expect(
+        handlerBeanBeforeRouting,
+        isNull,
+        reason:
+            'something registered a TomUserPreferencesServer before the router '
+            'was built, which puts this suite back to never reaching '
+            'instantiateComponent',
+      );
+      expect(
+        TomBean.getBeanByType(TomUserPreferencesServer),
+        isA<TomUserPreferencesServer>(),
+        reason:
+            'the pipeline did not construct and register the shipped handler',
+      );
+    });
 
     test('the second client reads what the first wrote', () async {
       final (first, second, _) = callers();

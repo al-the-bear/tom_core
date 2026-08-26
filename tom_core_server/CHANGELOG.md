@@ -2,6 +2,28 @@
 
 ### Testing
 
+- **The preferences round trip lets the pipeline build the handler, as the
+  module document says a deployment can (tcinc616).** `doc/preferences.md`
+  promises two things a deployment need not do — register the API ("the pipeline
+  registers it itself, so a deployment gets these endpoints without adding a
+  line") and register the handler ("needs no bean ... the pipeline instantiates
+  it") — and the one suite that mounts the real router did both by hand in
+  `setUp`, so it exercised neither. The bean registration was the load-bearing
+  one: `initializeRouter`'s `??=` chain reaches `instantiateComponent` only when
+  the lookup came back empty, so pre-registering did not duplicate the
+  construction, it replaced it. `instantiateComponent` could have regressed to
+  returning `null` — the very path whose dartdoc names `TomUserPreferencesServer`
+  as the case it was written for — and this suite would have stayed green while
+  every deployment that followed the document lost its preference endpoints.
+  Both registrations are gone, plus a third for `TomHealthServer`, which is
+  framework-shipped for the same reason. The fixture services stay: they stand
+  in for an *application's* components, which nothing claims are auto-built.
+  A new test then covers the half that removal cannot reach — dropping only the
+  `TomBean.withType` inside `instantiateComponent` leaves the router mounting
+  the returned instance, so every other test passes while the dartdoc's promise
+  that "the router and any later `TomBean.getBeanByType` see the same object" is
+  silently broken. It asserts the bean was absent before routing and present
+  after. Verified by mutation in both directions.
 - **The preferences round trip asserts *which* refusal an anonymous caller gets,
   and serves it through the framework's error layer to have one (tcinc615).**
   The anonymous-caller test asserted `isNot(200)`, which the state it exists to
