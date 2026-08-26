@@ -604,6 +604,28 @@
 
 ### Fixed
 
+- **`TomLocalizedTextResources.substitute` rendered a null parameter value as
+  the literal word `null`, so a subject line read "Hi null!" (tcinc626).** Every
+  parameter was interpolated with `'${entry.value}'`, and `parameters` is
+  `Map<String, Object?>` — so a null is admitted by the signature, and the
+  documented way to call it hands one over: `TomEmailRequest`'s own example
+  passes `principal.user.firstname`, which is `String?` on `TomUser`. A caller
+  writing the obvious thing got `Reset your password, null`.
+
+  What makes that the wrong output rather than merely an ugly one is the
+  module's stated reasoning. An unmatched placeholder is deliberately left as
+  written because "a visible `{firstname}` in a proof-read mail is caught by the
+  person proof-reading it, which an empty gap is not" — an argument that turns
+  entirely on the result being conspicuous. `Hi null!` reads as finished text, so
+  it was the one outcome that reasoning was there to rule out.
+
+  A null value is now skipped, which makes it behave exactly like a parameter
+  that was never passed: the placeholder stays visible and lands in the case the
+  documentation already reasons about. Of the three defensible answers — empty
+  string, leave the placeholder, reject the value — this is the one consistent
+  with the existing prose, and it means a caller needs no `?? ''` at the call
+  site to stay safe.
+
 - **`TomTextLocale.parse` read a BCP 47 script subtag as a country, so
   `zh-Hans-CN` became the bundle key `zh_HANS` (tcinc625).** The parse took the
   second segment as the country unconditionally, but BCP 47 only puts the region

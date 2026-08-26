@@ -324,6 +324,43 @@ void main() {
       );
     });
 
+    test(
+      'a null parameter leaves the placeholder rather than writing null',
+      () {
+        // `parameters` is `Map<String, Object?>` and callers fill it from
+        // nullable model fields — `TomUser.firstname` among them — so a null
+        // value arrives through the front door. Interpolating it produced
+        // `Reset your password, null`, which reads as finished text and so
+        // defeats the very argument the unmatched-placeholder rule rests on: a
+        // visible `{firstname}` is caught by whoever proof-reads the mail.
+        expect(
+          texts.textOrNull(
+            'email.password_reset.subject',
+            parameters: {'firstname': null},
+          ),
+          'Reset your password, {firstname}',
+        );
+      },
+    );
+
+    test('a null parameter is indistinguishable from an absent one', () {
+      // The behaviours are equal by construction, not by coincidence: the
+      // point of the rule is that a caller need not decide which of "I have no
+      // value" and "I am not passing this key" it means.
+      expect(
+        TomLocalizedTextResources.substitute('Hi {n}!', {'n': null}),
+        TomLocalizedTextResources.substitute('Hi {n}!', const {}),
+      );
+      expect(
+        TomLocalizedTextResources.substitute('{a} and {b}', {
+          'a': 'one',
+          'b': null,
+        }),
+        'one and {b}',
+        reason: 'a null value does not disturb its neighbours',
+      );
+    });
+
     test('reports which locales it carries', () {
       expect(texts.locales, containsAll(['en', 'de', 'de_AT']));
     });

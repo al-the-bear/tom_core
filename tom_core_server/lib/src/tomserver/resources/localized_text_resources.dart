@@ -309,7 +309,8 @@ class TomLocalizedTextResources {
   /// blanked or reported. Bodies legitimately contain braces — inline CSS above
   /// all — so "an unmatched brace is a fault" would fail on correct templates;
   /// and a *visible* `{firstname}` in a proof-read mail is caught by the person
-  /// proof-reading it, which an empty gap is not.
+  /// proof-reading it, which an empty gap is not. A parameter whose value is
+  /// `null` counts as absent for exactly this reason — see [substitute].
   String? textOrNull(
     String key, {
     TomTextLocale? locale,
@@ -342,11 +343,22 @@ class TomLocalizedTextResources {
   /// Exposed as a static so a caller holding text from elsewhere — a database
   /// column, a message already resolved — substitutes it the same way rather
   /// than writing a second `replaceAll` loop with subtly different escaping.
+  ///
+  /// A `null` value is skipped, so it behaves exactly like a parameter that was
+  /// never passed and its placeholder is left as written. [parameters] takes
+  /// `Object?` and callers fill it from nullable model fields — a user's
+  /// `firstname` among them — so `null` arrives through the front door.
+  /// Interpolating it wrote the word `null` into the text, which reads as
+  /// finished prose and would slip past the proof-reader the
+  /// unmatched-placeholder rule relies on. Leaving the placeholder puts the
+  /// case where that rule can already see it.
   static String substitute(String template, Map<String, Object?> parameters) {
     if (parameters.isEmpty) return template;
     var result = template;
     for (final entry in parameters.entries) {
-      result = result.replaceAll('{${entry.key}}', '${entry.value}');
+      final value = entry.value;
+      if (value == null) continue;
+      result = result.replaceAll('{${entry.key}}', '$value');
     }
     return result;
   }

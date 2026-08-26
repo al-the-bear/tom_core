@@ -194,6 +194,14 @@ treating an unmatched brace as a fault would fail on correct templates; and a
 *visible* `{firstname}` in a proof-read mail is caught by the person proof-reading
 it, which an empty gap is not.
 
+A parameter whose value is `null` counts as absent, so it lands in exactly that
+case. `parameters` is `Map<String, Object?>` and the example above shows why:
+`TomUser.firstname` is nullable, so a caller writing the obvious thing hands over
+a null without meaning anything by it. Interpolating it would produce `Reset your
+password, null` — text that reads as finished and so slips past the proof-reader
+the rule above depends on. Leaving `{firstname}` standing puts the missing value
+where somebody will see it.
+
 `TomLocalizedTextResources.substitute` is exposed as a static so a caller holding
 text from elsewhere — a database column, a message already resolved — substitutes
 it the same way rather than writing a second `replaceAll` loop.
