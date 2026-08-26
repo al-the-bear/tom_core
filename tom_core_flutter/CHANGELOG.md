@@ -2,6 +2,42 @@
 
 ### Fixed
 
+- **resources: property resolution reads the configuration once, reports
+  failures as `TomPropertyException`, and no longer claims failures it did not
+  diagnose (tcinc671).** `TomProperty._getValue` had three defects in six
+  lines. It asked the store the same question twice — `exists`, then `getText`
+  — and then a *third* time inside the catch block, to interpolate the value it
+  had just been handed, on the one path whose premise is that the store had
+  already answered. It bound the caught error and never referenced it, so
+  whatever the runtime actually objected to was destroyed and the replacement
+  carried no root cause. And its catch was unqualified while its message
+  asserted a cast failure, so any other failure in the lookup path would have
+  been reported as "could not set property of type T from value …", sending the
+  reader to audit type declarations for a fault in the config source.
+
+  Resolution now uses the kernel's `getObjectOrNull`, which answers presence
+  and value in one lookup — and which the kernel's own dartdoc already
+  recommended over the `exists`-plus-`getText` pair for exactly this reason.
+  The read sits outside the `try`, which holds nothing but the cast; the catch
+  is `on TypeError`; and the message interpolates the local. `null` from that
+  single lookup means absent, which preserves the existing behaviour that a key
+  configured with no value does not satisfy an obligatory property.
+
+  Both failures now raise `TomPropertyException`, a `TomClientException`
+  declared in the module, with matchable codes
+  `resources.property.not_configured` and `resources.property.type_mismatch`,
+  `parameters` carrying the key (plus `expectedType` and `value` on the
+  mismatch path), and `rootException` carrying the `TypeError` — the only
+  record of the value's *actual* type, since the message names only the type
+  that was wanted. One type with two codes rather than two types, following the
+  kernel's own resources module. `doc/resources.md`,
+  `doc/api_reference/api_summary_resources.md` and the module readme previously
+  described these as a bare `Exception` with no code; all three now describe
+  what is thrown, and the API summary's Exceptions section — added in tcinc670
+  when the failures were still untyped — gains the class, the codes, the
+  payload and the rule that a read failure is never rewritten into a cast
+  failure.
+
 - **preferences: `TomStoredDevicePreferences` no longer modifies the list its
   store handed back (tcinc667).** `set` assigned into or appended to the list
   returned by `TomDevicePreferenceStore.read()`, and `remove` called `removeAt`
@@ -304,6 +340,37 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **property resolution's read count and failure identity are now asserted
+  (tcinc671).** Seven tests in `resources_test.dart`, over three fake config
+  providers. A counting provider pins that resolving one key performs exactly
+  one lookup on all three branches — value present, default used, cast failed
+  — which is what makes "reads the store once" a contract rather than a claim
+  about the current implementation. A provider that answers its first lookup
+  and fails every one after turns the redundant re-read from a structural
+  hazard into an observable defect: before the fix it lost the type-mismatch
+  diagnosis entirely, because the second read threw while building the message
+  that was about to describe the first failure. A provider whose every lookup
+  fails pins that a read failure surfaces as itself and is never dressed as a
+  cast failure — the only witness the narrow `on TypeError` has, since after
+  the fix nothing else inside the `try` can throw. Two more assert the codes
+  and that the `TypeError` arrives as `rootException`.
+
+  Each was confirmed load-bearing by mutation: restoring the `exists`/`getText`
+  pair fails the two read-count tests, re-introducing the re-read in the
+  message fails the re-read pair, widening the catch and pulling the read back
+  inside the `try` fails the unreadable-provider test and only that one, and
+  dropping `rootException` or changing either code fails exactly the tests
+  naming them.
+
+  The tcinc670 guard below needed its extractor updated for the new throw
+  shape, and correctly refused to pass in the meantime: a comment sitting
+  between the `key` and the message literal made one throw site invisible to
+  it, and the vacuity pin caught that rather than letting the guard check half
+  the contract. The comment moved; the extractor now also requires each message
+  to be a single literal, because a message split across adjacent literals is
+  one string in the log and several in the source, so the search that finds it
+  in one does not find it in the other. 276 → 283.
 
 - **the documented failures are held to the ones the module throws
   (tcinc670).** Two guards in `resources_test.dart`. The first extracts the

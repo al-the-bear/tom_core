@@ -14,6 +14,7 @@ resource providers.
   - [TomDoubleProperty](#tomdoubleproperty)
   - [TomBoolProperty](#tomboolproperty)
 - [Exceptions](#exceptions)
+  - [TomPropertyException](#tompropertyexception)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -22,9 +23,11 @@ Source: `lib/src/tomclient/resources/tom_properties.dart`.
 
 A `TomProperty<T>` reads its value for `key` from the application
 `TomConfigResourceProvider` **once, at construction**, and caches it. The value
-is read with `get()` or the `~` operator. Resolution rules (at construction): an
-existing key is cast to `T`; an absent key uses the `withDefault` default; an
-absent key with no default throws. The value is eager and immutable — later
+is read with `get()` or the `~` operator. Resolution rules (at construction):
+one configuration lookup answers both whether the key is present and what it
+holds; an existing key is cast to `T`; an absent key uses the `withDefault`
+default; an absent key with no default throws. The value is eager and
+immutable — later
 config changes are not reflected, so construct the property after the config
 providers are populated. Use the typed subclasses for the four non-nullable
 value types they name rather than the generic over those types; when `T` is
@@ -43,6 +46,10 @@ TomProperty<T>
     ├── TomIntProperty      (T = int)
     ├── TomDoubleProperty   (T = double)
     └── TomBoolProperty     (T = bool)
+
+TomException (kernel)
+    └── TomClientException
+            └── TomPropertyException
 ```
 
 ## Classes
@@ -130,28 +137,48 @@ TomBoolProperty.withDefault(String key, bool value)
 
 ## Exceptions
 
-This module declares no exception type. Both failures are raised as a bare
-`Exception` with an interpolated message, so they are catchable only as
-`Exception` and distinguishable only by inspecting `toString()`. Neither
-carries a stable code, and neither is auto-logged.
+Both failures raise `TomPropertyException`, declared in this module. One type
+covers both conditions and `key` tells them apart, which is what callers match
+on — the same shape the kernel's own resources module uses. Neither is
+auto-logged: both propagate out of a constructor, so the failure is visible
+without a log line.
 
 Both are thrown from the resolution that both constructors run, so a property
 that constructs successfully never raises afterwards — `get()` and `~` only
 return the cached value.
 
-| Condition | Message |
-| --------- | ------- |
-| The key is absent and no default was supplied | `Obligatory resource <key> not found in configuration resources` |
-| The key is present but its value cannot be cast to `T` | `Could not set property of type <T> from value of property <key> with value <value>` |
+### TomPropertyException
 
-**Absent** means `TomConfigResourceProvider.exists` reports nothing at the key,
-which includes a key whose configured value is `null` — in a YAML config,
+- **Extends:** `TomClientException` (and so the kernel `TomException`)
+
+| `key` | Condition | Message |
+| ----- | --------- | ------- |
+| `resources.property.not_configured` | The key is absent and no default was supplied | `Obligatory resource <key> not found in configuration resources` |
+| `resources.property.type_mismatch` | The key is present but its value cannot be cast to `T` | `Could not set property of type <T> from value of property <key> with value <value>` |
+
+`parameters` carries `key` for both, and additionally `expectedType` and
+`value` for a type mismatch, so a log formatter can render the failure without
+parsing the message.
+
+`rootException` carries the `TypeError` the cast raised, on the type-mismatch
+path only. It is worth reading: the message names the type that was *wanted*
+and the value, but never the value's actual runtime type — the `TypeError` is
+the only record of it.
+
+**Absent** means the configuration resolves to nothing at the key, which
+includes a key whose configured value is `null` — in a YAML config,
 `app.region:` with no value does not satisfy an obligatory property.
 
 The cast failure is raised for both constructors. A default is consulted only
 on the absent branch, so `TomProperty.withDefault` does not soften a mistyped
 value: a config entry of the wrong type fails at start-up whether or not a
 fallback was supplied.
+
+A failure to *read* the configuration at all — an unreadable source, or a
+lookup before `TomConfigResourceProvider.setAppConfigProvider` has run —
+propagates as itself and is never rewritten into a `TomPropertyException`. The
+type-mismatch report is raised only for a genuine cast failure, so seeing one
+is evidence about the configured value, not about the config source.
 
 ## Global Functions and Constants
 

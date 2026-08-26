@@ -1,5 +1,37 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/client_exceptions.dart';
+
+/// Thrown when a [TomProperty] cannot resolve its configuration key.
+///
+/// One type, two conditions, told apart by `key` — the same shape the kernel's
+/// own resources module uses for its providers. The two call for different
+/// repairs, so the distinction is worth matching on:
+///
+/// | `key` | Condition |
+/// | ----- | --------- |
+/// | `resources.property.not_configured` | The key is absent and the property declared no default. |
+/// | `resources.property.type_mismatch` | The key holds a value that cannot be cast to the property's `T`. |
+///
+/// Both are raised during construction, so catching them means wrapping the
+/// declaration, not the read. `parameters` carries the key — and, for a type
+/// mismatch, the value and the type it was wanted as — for a log formatter to
+/// render; `rootException` carries the `TypeError` the cast raised, which is
+/// the only record of the value's *actual* type, since the message names only
+/// the type that was expected.
+class TomPropertyException extends TomClientException {
+  /// Creates a property-resolution failure. See `TomException` for the meaning
+  /// of each argument.
+  TomPropertyException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+  });
+}
+
 /// A typed, eagerly-resolved value read from the kernel configuration
 /// resources.
 ///
@@ -24,21 +56,23 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// final region = TomProperty<String?>.withDefault('app.region', null);
 /// ```
 ///
-/// **Resolution rules (at construction):** if the config key exists its value
-/// is cast to [T]; otherwise the [TomProperty.withDefault] default is used; a
-/// key that is both absent and has no default throws.
+/// **Resolution rules (at construction):** a single config lookup answers both
+/// whether the key is present and what it holds. A resolved value is cast to
+/// [T]; otherwise the [TomProperty.withDefault] default is used; a key that is
+/// both absent and has no default throws. Both failures raise
+/// [TomPropertyException] — see it for the two `key` codes.
 ///
 /// **Eager and immutable:** the value is captured at construction and never
 /// re-read, so later config changes are not reflected. Construct the property
 /// after the config providers are populated.
 class TomProperty<T> {
-  /// Config-value lookup from the application config resources.
-  Object Function(String) get _c =>
-      TomConfigResourceProvider.getAppConfig().getText;
-
-  /// Whether a config value exists for the given key.
-  bool Function(String) get _configExists =>
-      TomConfigResourceProvider.getAppConfig().exists;
+  /// The application config resources.
+  ///
+  /// Resolved on use rather than held, so a property declared in a library
+  /// that loads before the provider is installed still sees it — the read
+  /// happens in the constructor body, not at field-initialiser time.
+  TomConfigResourceProvider get _config =>
+      TomConfigResourceProvider.getAppConfig();
 
   late final T _value;
   final String _propertyKey;
@@ -73,19 +107,49 @@ class TomProperty<T> {
   }
 
   void _getValue() {
-    if (_configExists(_propertyKey)) {
+    // One lookup, not two. `getObjectOrNull` answers "is it there" and "what
+    // is it" together, where the older `exists`-then-`getText` pair asked the
+    // store the same question twice and the failure report asked a third time
+    // — on the path whose premise is that the store has already answered.
+    // Anything more expensive than a map behind the provider makes that
+    // wasteful; anything less reliable makes it dangerous, because a read that
+    // throws while describing a failure replaces the diagnosis with its own
+    // exception.
+    //
+    // A `null` here means *absent*: `getObjectOrNull` returns null both for a
+    // key that was never written and for one configured with no value, and the
+    // module treats them the same — `app.region:` in a YAML file does not
+    // satisfy an obligatory property.
+    final configured = _config.getObjectOrNull(_propertyKey);
+
+    if (configured != null) {
       try {
-        _value = _c(_propertyKey) as T;
-      } catch (exception) {
-        throw Exception(
-          "Could not set property of type $T from value of property $_propertyKey with value ${_c(_propertyKey)}",
+        _value = configured as T;
+      } on TypeError catch (error, stack) {
+        // Narrow on purpose. The message below asserts that a cast failed, and
+        // only a `TypeError` from this one expression is evidence of that; a
+        // wider catch would put that assertion in front of failures it never
+        // diagnosed, sending the reader to look at their type declarations for
+        // a fault that is somewhere else entirely.
+        throw TomPropertyException(
+          'resources.property.type_mismatch',
+          "Could not set property of type $T from value of property $_propertyKey with value $configured",
+          parameters: {
+            'key': _propertyKey,
+            'expectedType': '$T',
+            'value': configured,
+          },
+          rootException: error,
+          stack: stack,
         );
       }
     } else if (_hasDefault) {
       _value = _defaultValue;
     } else {
-      throw Exception(
+      throw TomPropertyException(
+        'resources.property.not_configured',
         "Obligatory resource $_propertyKey not found in configuration resources",
+        parameters: {'key': _propertyKey},
       );
     }
   }

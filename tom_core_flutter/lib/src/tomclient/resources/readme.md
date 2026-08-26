@@ -16,6 +16,7 @@ it; read it back with `get()` or the `~` operator.
 | `TomIntProperty` | `TomProperty<int>`. |
 | `TomDoubleProperty` | `TomProperty<double>`. |
 | `TomBoolProperty` | `TomProperty<bool>`. |
+| `TomPropertyException` | Raised from the constructor when resolution fails. One type, two `key` codes: `resources.property.not_configured` (absent, no default) and `resources.property.type_mismatch` (present, uncastable — `rootException` holds the `TypeError`). |
 
 ## Quick start
 

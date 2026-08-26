@@ -134,6 +134,27 @@ void main() {
         ),
       );
     });
+
+    test('the report carries a matchable code and the cast that failed', () {
+      // What a caller can act on. The message is for a human reading a log;
+      // `key` is what code matches on, and `rootException` is the only record
+      // of what the runtime actually objected to — the module's own message
+      // says a cast failed but not which types were involved, because `$T` is
+      // the target and the source type appears nowhere.
+      installConfig({'app.retries': 'not-an-int'});
+      expect(
+        () => TomIntProperty('app.retries'),
+        throwsA(
+          isA<TomPropertyException>()
+              .having((e) => e.key, 'key', 'resources.property.type_mismatch')
+              .having(
+                (e) => e.rootException,
+                'rootException',
+                isA<TypeError>(),
+              ),
+        ),
+      );
+    });
   });
 
   group('missing obligatory key', () {
@@ -170,6 +191,25 @@ void main() {
             (e) => e.toString(),
             'message',
             allOf(contains('Obligatory'), contains('app.region')),
+          ),
+        ),
+      );
+    });
+
+    test('the report carries a matchable code distinct from the cast one', () {
+      // Two conditions, one exception type, two codes — the kernel's own
+      // resources module is shaped the same way. The distinction matters
+      // because the two call for different repairs: an absent key is a
+      // configuration file that is missing a line, a mistyped one is a
+      // configuration file whose line is wrong.
+      installConfig({});
+      expect(
+        () => TomStringProperty('app.missing'),
+        throwsA(
+          isA<TomPropertyException>().having(
+            (e) => e.key,
+            'key',
+            'resources.property.not_configured',
           ),
         ),
       );
@@ -284,9 +324,15 @@ void main() {
     const source = 'lib/src/tomclient/resources/tom_properties.dart';
     const summary = 'doc/api_reference/api_summary_resources.md';
 
-    /// The message literal of every `throw Exception("...")` in [source].
+    /// The message of every `TomPropertyException` thrown in [source] — the
+    /// second constructor argument, the first being the matchable `key`.
+    ///
+    /// Requires each message to be a single literal on one line, which is the
+    /// point: a message split across adjacent literals is one string in the
+    /// log and several in the source, so the search that finds it in one does
+    /// not find it in the other.
     List<String> thrownMessagesOf(String file) =>
-        RegExp(r'throw Exception\(\s*"([^"]*)"')
+        RegExp('''throw TomPropertyException\\(\\s*'[^']*',\\s*"([^"]*)"''')
             .allMatches(File(file).readAsStringSync())
             .map((m) => m[1]!)
             .toList();
@@ -349,6 +395,90 @@ void main() {
     });
   });
 
+  group('resolution reads the provider once', () {
+    // How many times a property resolves its key is a contract, not an
+    // implementation detail: a provider may be backed by something more
+    // expensive and less reliable than a map, and every extra read is another
+    // chance to be slow or to fail. `getObjectOrNull` answers "present, and
+    // this is the value" in one lookup, so presence and value never need two.
+
+    test('a successful resolution performs one read', () {
+      final provider = _CountingConfigProvider({'app.title': 'My App'});
+      TomConfigResourceProvider.setAppConfigProvider(provider);
+      expect(TomStringProperty('app.title').get(), 'My App');
+      expect(
+        provider.reads,
+        1,
+        reason: 'resolving one key looked the store up more than once',
+      );
+    });
+
+    test('an absent key falling back to its default performs one read', () {
+      final provider = _CountingConfigProvider({});
+      TomConfigResourceProvider.setAppConfigProvider(provider);
+      expect(TomIntProperty.withDefault('app.retries', 5).get(), 5);
+      expect(provider.reads, 1);
+    });
+
+    test('a failed cast does not read the value again to describe itself', () {
+      // The failure path is where a redundant read is least affordable: the
+      // premise of being there is that the store already answered.
+      final provider = _CountingConfigProvider({'app.retries': 'not-an-int'});
+      TomConfigResourceProvider.setAppConfigProvider(provider);
+      expect(
+        () => TomIntProperty('app.retries'),
+        throwsA(isA<TomPropertyException>()),
+      );
+      expect(
+        provider.reads,
+        1,
+        reason: 'the type-mismatch report read the store again to quote the '
+            'value it had already been given',
+      );
+    });
+  });
+
+  group('the failure report survives a config source that can fail', () {
+    test('a lookup that fails is not reported as a type mismatch', () {
+      // The report says a value could not be cast. Only a failed cast is
+      // evidence of that, so only a failed cast may produce it — a lookup that
+      // never returned a value diagnosed nothing, and dressing it as a type
+      // error sends the reader to audit type declarations for a fault that is
+      // in the config source. Keeping the read outside the `try`, and the
+      // `try` down to the single cast, is what makes that true structurally
+      // rather than by care.
+      TomConfigResourceProvider.setAppConfigProvider(_UnreadableProvider());
+      expect(
+        () => TomStringProperty('app.title'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('a second read failing does not replace the type-mismatch report',
+        () {
+      // A map-backed provider always answers, so a description built by
+      // reading the value a second time looks harmless. A provider over a
+      // file, a remote store or a lazily-decrypted bundle does not have that
+      // property — and the read that fails is on the failure path, where its
+      // exception replaces the diagnosis the caller was about to receive. The
+      // fix is not to retry more carefully but to not read again at all: the
+      // value is already in hand.
+      TomConfigResourceProvider.setAppConfigProvider(
+        _FailsAfterFirstReadProvider(),
+      );
+      expect(
+        () => TomIntProperty('app.retries'),
+        throwsA(
+          isA<TomPropertyException>().having(
+            (e) => e.key,
+            'key',
+            'resources.property.type_mismatch',
+          ),
+        ),
+      );
+    });
+  });
+
   group('the shipped example runs', () {
     test('resources_example.run() completes its assertions', () {
       // The example is quoted as documentation, so it has to be executable
@@ -365,4 +495,77 @@ void main() {
       example.run();
     });
   });
+}
+
+/// A config provider that counts every lookup made through it.
+///
+/// Counts all three accessors together, because they are three ways of asking
+/// the same store the same question: a resolution that calls two of them has
+/// resolved the key twice regardless of which two.
+class _CountingConfigProvider extends TomConfigResourceProvider {
+  _CountingConfigProvider(Map<String, dynamic> values) : super.from(values);
+
+  /// Lookups performed since construction.
+  int reads = 0;
+
+  @override
+  bool exists(String s) {
+    reads++;
+    return super.exists(s);
+  }
+
+  @override
+  Object getText(String s) {
+    reads++;
+    return super.getText(s);
+  }
+
+  @override
+  Object? getObjectOrNull(String s) {
+    reads++;
+    return super.getObjectOrNull(s);
+  }
+}
+
+/// A config provider whose every lookup fails.
+///
+/// Stands in for a configuration source that is unreachable rather than empty
+/// — the case in which "the value could not be cast" is not merely unhelpful
+/// but untrue.
+class _UnreadableProvider extends TomConfigResourceProvider {
+  _UnreadableProvider() : super.from({});
+
+  @override
+  bool exists(String s) => throw StateError('configuration is unreadable');
+
+  @override
+  Object getText(String s) => throw StateError('configuration is unreadable');
+
+  @override
+  Object? getObjectOrNull(String s) =>
+      throw StateError('configuration is unreadable');
+}
+
+/// A config provider that answers its first lookup and fails every one after.
+///
+/// Stands in for a configuration source that is not a map in memory — one
+/// backed by a file handle, a remote store or a cache with a lifetime. Such a
+/// source can succeed once and fail immediately afterwards, which is exactly
+/// what makes a second read on the failure path dangerous rather than merely
+/// wasteful.
+class _FailsAfterFirstReadProvider extends TomConfigResourceProvider {
+  _FailsAfterFirstReadProvider() : super.from({'app.retries': 'not-an-int'});
+
+  int _reads = 0;
+
+  Object? _read(String s) {
+    if (_reads++ > 0) throw StateError('configuration source is gone');
+    return super.getObjectOrNull(s);
+  }
+
+  @override
+  Object getText(String s) => _read(s) ?? s;
+
+  @override
+  Object? getObjectOrNull(String s) => _read(s);
 }

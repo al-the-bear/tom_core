@@ -25,6 +25,7 @@ a service or view-model.
 | `TomIntProperty` | `int` | |
 | `TomDoubleProperty` | `double` | |
 | `TomBoolProperty` | `bool` | |
+| `TomPropertyException` | — | Raised when resolution fails; one type, two `key` codes |
 
 Each reads from the application
 [`TomConfigResourceProvider`](../../tom_core_kernel/doc/resources/resources.md)
@@ -46,12 +47,20 @@ final retries = TomIntProperty.withDefault('app.retries', 5);
 
 ## Resolution Rules
 
-Evaluated **once, in the constructor**:
+Evaluated **once, in the constructor**, from a **single** config lookup — one
+read answers both whether the key is present and what it holds, on the failure
+path as much as the success path:
 
-1. If the config key exists, its value is cast to `T` (a failed cast throws a
-   descriptive `Exception` naming the key and value).
+1. If the config key resolves to a value, it is cast to `T` (a failed cast
+   throws `TomPropertyException` with the key
+   `resources.property.type_mismatch`, naming the key and value, and carrying
+   the `TypeError` as its `rootException`).
 2. Otherwise, if a default was supplied via `.withDefault`, the default is used.
-3. Otherwise (absent key, no default) construction throws.
+3. Otherwise (absent key, no default) construction throws
+   `TomPropertyException` with the key `resources.property.not_configured`.
+
+A failure to read the configuration at all is not one of these: it propagates
+as whatever the provider raised, and is never re-reported as a cast failure.
 
 Because resolution is eager, construct the property **after** the config
 providers are populated, and re-read is not supported — a later config change is
@@ -82,9 +91,25 @@ if (~region == null) useDefaultRegion();
 `TomBoolProperty` fix `T` and offer the same two constructors — the plain
 `(key)` form (throws if absent) and `.withDefault(key, value)`.
 
+### `TomPropertyException`
+
+A `TomClientException` — and so a kernel `TomException` — raised by both
+failure paths. Catch it around the *declaration*, not the read: resolution
+happens in the constructor, so a property that constructs successfully never
+raises afterwards.
+
+| `key` | Raised when |
+| ----- | ----------- |
+| `resources.property.not_configured` | The key is absent and no default was supplied. |
+| `resources.property.type_mismatch` | The key holds a value that cannot be cast to `T`. |
+
+`parameters` carries the key, plus `expectedType` and `value` on the mismatch
+path; `rootException` carries the `TypeError`, which is the only record of the
+value's actual runtime type — the message names only the type that was wanted.
+
 ## Limitations
 
-- **Absent key without default throws a descriptive `Exception`** naming the
+- **Absent key without default throws `TomPropertyException`** naming the
   obligatory key (`Obligatory resource <key> not found in configuration
   resources`). Default *presence* is tracked separately from the default value,
   so a `.withDefault(key, null)` over a nullable `T` honours the explicit `null`
