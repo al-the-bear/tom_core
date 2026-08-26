@@ -28,25 +28,71 @@ principal: there is nothing to address but your own.
 
 ## Quick start
 
+Three things have to be in place before the store will answer, and all three
+fail at the *bootstrap* line rather than at the call you were trying to make —
+so they are shown here rather than left to the reader to rediscover.
+
 ```dart
+import 'dart:async';
+
 import 'package:tom_core_server/tom_core_server.dart';
 
+// Your own package's generated registration — the one whose build covers
+// `TomUserPreference`.
+import 'main.reflection.dart';
+
 Future<void> main() async {
+  // 1. Reflection first. TomUserPreferenceRepository reads the entity's
+  //    annotations through its class mirror *in its constructor*, so without
+  //    this the bean line below throws
+  //    `annotation_analyzer.analyse_persistent_type.mirror_not_found`.
+  initializeReflection();
+
+  // 2. A datasource under the name the entity declares, `main`. The repository
+  //    resolves it in its constructor too — not on first query — so an
+  //    unregistered name throws
+  //    `crud_repository.constructor.datasource_not_registered` at construction,
+  //    long before any preference is read.
+  await TomDataSourceInfo.initializeDatasourceInfo(<String, dynamic>{
+    'main': <String, dynamic>{
+      'type': 'mariadb',
+      'host': 'localhost',
+      'port': 3306,
+      'username': 'todo',
+      'password': 'secret',
+      'databaseName': 'todo',
+    },
+  });
+
   // Install the store once, at bootstrap.
-  TomBean.withType(TomUserPreferences, TomUserPreferences(TomUserPreferenceRepository()));
+  TomBean.withType(
+    TomUserPreferences,
+    TomUserPreferences(TomUserPreferenceRepository()),
+  );
 
-  // Inside a request, the caller is the zone's principal — never an argument.
-  final preferences = TomUserPreferences.resolve()!;
-  await preferences.set(TomUserPreferenceKeys.timezone, 'Europe/Berlin');
+  // 3. A principal. The caller is the zone's principal — never an argument —
+  //    and outside a zone that carries one, `set` and `getOr` both throw
+  //    `preferences.no_principal`. A server establishes this zone per request
+  //    from the authenticated principal; `principal` here is that same
+  //    TomPrincipal, which a script has to supply itself.
+  await runZoned(() async {
+    final preferences = TomUserPreferences.resolve()!;
+    await preferences.set(TomUserPreferenceKeys.timezone, 'Europe/Berlin');
 
-  final timezone = await preferences.getOr(TomUserPreferenceKeys.timezone, 'UTC');
-  print(timezone); // Europe/Berlin
+    final timezone = await preferences.getOr(
+      TomUserPreferenceKeys.timezone,
+      'UTC',
+    );
+    print(timezone); // Europe/Berlin
+  }, zoneValues: <Object, Object?>{TomPrincipal: principal});
 }
 ```
 
-The table is created by the framework migration
+The table the second step connects to is created by the framework migration
 `[1]-create_tom_user_preference.sql`, which is untagged so it applies in every
-environment.
+environment. `test/user_preferences_db_test.dart` runs this same sequence
+against a live MariaDB — its `asSession` helper is the `runZoned` above, and
+its `setUpAll` is steps 1 and 2.
 
 ---
 

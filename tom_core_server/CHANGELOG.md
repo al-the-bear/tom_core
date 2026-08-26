@@ -3430,6 +3430,27 @@
 
 ### Documentation
 
+- **The `preferences` module readme's quick start printed a value it could not
+  reach (tcinc620).** The snippet was a complete `main()` ending
+  `print(timezone); // Europe/Berlin`, but three preconditions were missing and
+  every one of them failed at the *bootstrap* line rather than at the call the
+  reader was reading it for: without `initializeReflection()` the repository
+  constructor throws `annotation_analyzer.analyse_persistent_type.mirror_not_found`,
+  because it reads the entity's annotations through its class mirror; without a
+  datasource registered under the name the entity declares (`main`) it throws
+  `crud_repository.constructor.datasource_not_registered`, since
+  `TomSqlDatasourceRepository` resolves the datasource in its constructor and
+  not on first query; and outside a zone carrying a `TomPrincipal` both `set`
+  and `getOr` throw `preferences.no_principal`. The last was the sharpest,
+  because the snippet's own comment said "the caller is the zone's principal"
+  while establishing no zone. The quick start now shows all three as numbered
+  steps and wraps the calls in `runZoned`, so the printed value is truthful for
+  a reader who has the database this module inherently needs — the standard the
+  `datasources` quick start already sets. Requiring a database was never the
+  defect; claiming output without saying what the output depends on was.
+  Verified by analyzing the snippet as written (clean) and formatted with
+  `dart format`, so it does not drift from house style.
+
 - **`doc/preferences.md` named the module's public types twice and both lists
   were short (tcinc619).** The Overview table carried five of six, omitting
   `TomUserPreferencesErrorHandler`; Core Components carried four, omitting that
