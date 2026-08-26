@@ -2,6 +2,19 @@
 
 ### Testing
 
+- **The invariant behind the auto-scope guard is now pinned, not assumed
+  (tcinc608).** `persistence_metadata_sharing_test.dart` asserts that every
+  column of a resolved entity names one table — the property that lets
+  `autoScopeFor` decide the grant-table exclusion for a column list as a whole.
+  It is a one-line change in `_getColumnInfo` (resolving the table per
+  declaration rather than per type) that would break it, and the consequence
+  would surface not there but in the authorization layer.
+
+  `resource_data_scope_test.dart` asserts the guard reaches a grant table's
+  column wherever it sits in the list, and `data_scope_test.dart` pins the empty
+  list, which `findDataScope` really does pass for a type whose columns cannot
+  be resolved.
+
 - **`null` is now pinned as an answer of the analyzer's lookups, not a failure
   of them (tcinc607).** `annotation_analyzer_null_memo_test.dart` covers the four
   lookups that may answer `null` — `findMirror`, `findTable`, `findDataScope`,
@@ -436,6 +449,27 @@
   and dropping the denial audit each fail exactly the tests that claim them.
 
 ### Fixed
+
+- **`autoScopeFor` decided the grant-table exclusion per column, so which
+  answer it gave depended on column order (tcinc608).** The guard that keeps the
+  framework's own authorization tables out of automatic scoping was evaluated
+  inside the loop over the entity's columns, before each column's resource-key
+  test. It is a fact about the entity — every column the analyzer resolves
+  carries the one `@TomDbTable` of its type — so for a real entity the position
+  made no difference, and the code read as though it might.
+
+  Where it *would* have differed is the case that matters: a list holding
+  another table's resource key ahead of a grant table's column returned a scope,
+  because the loop reached the key first and never got to the guard. Auto-scoping
+  one of those three tables closes the authorization layer against itself — a
+  principal reaches its own grant rows only by already holding a grant on them,
+  which no row can satisfy — so the guard cannot be one whose reach depends on
+  where in a list a column sits.
+
+  The exclusion is now settled for the whole column list before any column is
+  examined: a list naming one of the three tables anywhere synthesises nothing.
+  The loop body tests only the resource key, which is the thing that varies per
+  column.
 
 - **A schema-convergence guard tested a nullable table for the wrong thing, then
   null-asserted it (tcinc607).** `TomSchemaConvergence.verify` skipped entities

@@ -307,9 +307,22 @@ mixin TomAnnotationAnalyzer {
   /// The framework's own [resourceScopeInputTables] are excluded: they carry a
   /// resource key but *are* the scope's input, so scoping them would close the
   /// authorization layer against itself.
+  ///
+  /// The exclusion is settled once, before any column is examined, because it
+  /// is a fact about the entity and not about a column: every element of a
+  /// resolved column list carries the one `@TomDbTable` of the type it was
+  /// resolved from — see `test/persistence_metadata_sharing_test.dart`. Asking
+  /// per column would give the same answer while reading as though it might
+  /// not, which for this guard is the expensive kind of ambiguity: whether a
+  /// grant table gets scoped would appear to depend on where its resource key
+  /// sits in the list.
   static TomDbScope? autoScopeFor(List<TomColumnInformation> columns) {
+    if (columns.any(
+      (column) => resourceScopeInputTables.contains(column.table.table),
+    )) {
+      return null;
+    }
     for (final column in columns) {
-      if (resourceScopeInputTables.contains(column.table.table)) return null;
       final name = column.getQueryFieldName();
       if (name.toLowerCase() == resourceKeyColumn ||
           column.declaredName == resourceKeyField) {

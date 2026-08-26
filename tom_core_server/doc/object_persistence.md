@@ -517,6 +517,14 @@ annotation, and a safety invariant must not depend on a deployment having re-run
 code generation before it upgrades. A test asserts the constant names exactly
 the tables those entities declare, so a table rename cannot silently disarm it.
 
+Because the exclusion is a fact about the entity rather than about one of its
+columns, `autoScopeFor` decides it for the whole column list up front: a list
+naming one of the three tables anywhere yields no scope, and only then is the
+resource key looked for. Every column the analyzer resolves carries the one
+`@TomDbTable` of its type, so for a real entity the answer is the same either
+way — but tested per column, whether a grant table gets scoped would read as
+though it depended on where the resource key sits.
+
 ### How a scope renders
 
 `TomDataScope.build` (sync) and `buildAsync` (async) turn the resolver's answer

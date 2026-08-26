@@ -514,6 +514,27 @@ void main() {
       expect(scope, isNotNull);
       expect(scope!.scope, TomDbScope.resourceScope);
     });
+
+    test('no column of an input table is scoped, wherever it sits', () {
+      // The guard names tables, not positions. A list that reaches an input
+      // table's column only after some other table's resource key must still
+      // synthesise nothing: scoping one of these three closes the
+      // authorization layer against itself, and that consequence does not
+      // depend on which column the reader happened to look at first.
+      //
+      // No entity produces such a list — every column the analyzer resolves
+      // carries the one `@TomDbTable` of the type it resolved, which
+      // `persistence_metadata_sharing_test.dart` pins. This is the assertion
+      // that the guard does not *rely* on that, so a caller assembling columns
+      // by hand cannot talk it into scoping a grant table.
+      expect(
+        TomAnnotationAnalyzer.autoScopeFor([
+          _resourceKeyColumn('app_document'),
+          _resourceKeyColumn('tom_resource_grant'),
+        ]),
+        isNull,
+      );
+    });
   });
 }
 

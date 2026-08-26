@@ -695,6 +695,13 @@ void main() {
       );
     });
 
+    test('an entity with no annotated columns is not auto-scoped', () {
+      // `findDataScope` reaches here with `const []` for a type whose columns
+      // the analyzer could not resolve, so the empty list is a real argument
+      // and not a degenerate one. Nothing implies a scope, so there is none.
+      expect(TomAnnotationAnalyzer.autoScopeFor(const []), isNull);
+    });
+
     test('TomDbScope.unscoped is the explicit opt-out marker', () {
       const optOut = TomDbScope.unscoped();
       expect(optOut.scope, TomDbScope.noScope);

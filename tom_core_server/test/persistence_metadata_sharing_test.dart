@@ -59,6 +59,36 @@ void main() {
         expect(identical(first[i], second[i]), isTrue);
       }
     });
+
+    test('every column of an entity names the one table of that entity', () {
+      // One entity, one `@TomDbTable`: the analyzer resolves the table once per
+      // type and hands the same annotation to every column it builds, so a
+      // column list is homogeneous in its table and a caller may read the
+      // entity's table off any element.
+      //
+      // Pinned because callers act on it. `autoScopeFor` decides the
+      // resource-scope guard from the tables its columns name, and it is a
+      // one-line change here — resolving the table per declaration rather than
+      // per type — that would make the same list describe two tables and the
+      // guard answer for whichever one it met. The consequence is not local:
+      // auto-scoping one of the framework's grant tables closes the
+      // authorization layer against itself.
+      for (final type in [
+        FixtureTaskRecord,
+        FixtureDocumentRecord,
+        FixtureResourceRecord,
+      ]) {
+        final columns = TomAnnotationAnalyzer.analysePersistentType(
+          type,
+        ).columnInfo;
+        expect(columns, isNotEmpty);
+        expect(
+          columns.map((column) => column.table.table).toSet(),
+          hasLength(1),
+          reason: '$type must resolve all its columns against one table',
+        );
+      }
+    });
   });
 
   group('shared metadata is not writable', () {

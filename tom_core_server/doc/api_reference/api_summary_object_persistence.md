@@ -1412,7 +1412,7 @@ scoping the default rather than an annotation anyone has to remember — see
 | `findMirror` | `static ClassMirror? findMirror(Type dbType)` | The cached/looked-up `ClassMirror` for `dbType`, or `null` when — and only when — `dbType` is not registered with `tomReflector`. Every other reflection failure is thrown as `TomAnnotationAnalyzerException`; see *Reflection failures*. |
 | `findTable` | `static TomDbTable? findTable(Type dbType)` | The `@TomDbTable` annotation on `dbType`, or `null` if absent. |
 | `findDataScope` | `static TomDbScope? findDataScope(Type dbType)` | The row scope of `dbType`, or `null` when unscoped. An explicit `@TomDbScope` wins — including `@TomDbScope.unscoped()`, for which this returns `null`; failing that, `autoScopeFor` decides. |
-| `autoScopeFor` | `static TomDbScope? autoScopeFor(List<TomColumnInformation> columns)` | The scope an entity with these `columns` carries *implicitly* — a `TomDbScope(field: …, scope: resourceScope)` when one column is a resource key, `null` otherwise. Excludes `resourceScopeInputTables`. |
+| `autoScopeFor` | `static TomDbScope? autoScopeFor(List<TomColumnInformation> columns)` | The scope an entity with these `columns` carries *implicitly* — a `TomDbScope(field: …, scope: resourceScope)` when one column is a resource key, `null` otherwise. `null` whenever any column names a `resourceScopeInputTables` table, which is decided for the whole list before the resource key is looked for. |
 | `findAuthColumns` | `static List<TomColumnInformation> findAuthColumns(Type dbType)` | The columns of `dbType` that opt into column-level access rights (C-4), or empty. |
 | `findFileColumns` | `static List<TomColumnInformation> findFileColumns(Type dbType)` | The columns of `dbType` annotated `@TomFileReference`, or empty. Consulted before *any* file work, so an entity that stores no files pays nothing for the feature. |
 | `familyOf` | `static TomSqlTypeFamily familyOf(TomColumnInformation column)` | The type family `column` is **stored** in: JSON is text whatever the Dart type, otherwise the declared `TomDbType` box decides and the Dart type only stands in when there is none. An unrecognised type yields `unknown`, which is compatible with everything. |
@@ -1444,6 +1444,14 @@ generation before it upgrades. The names are duplicated from the entities'
 `@TomDbTable` annotations rather than imported, because `authorization` depends
 on `object_persistence` and not the other way round;
 `test/resource_data_scope_test.dart` asserts the two agree.
+
+The exclusion is a property of the entity, so `autoScopeFor` settles it for the
+whole column list before looking at any column: a list naming one of the three
+tables anywhere yields no scope. Every column the analyzer resolves carries the
+one `@TomDbTable` of its type, so for the entities this method actually sees the
+two readings coincide — but only one of them says what the invariant is. Decided
+per column, whether a grant table ends up scoped would read as though it turned
+on where the resource key sits in the list.
 
 ##### Memoisation
 
