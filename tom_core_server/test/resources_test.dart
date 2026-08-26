@@ -419,5 +419,83 @@ void main() {
         isFalse,
       );
     });
+
+    test('a bundle key with no language is refused at construction', () {
+      // Both constructors normalise their keys through `TomTextLocale.parse`,
+      // which reaches the constructor's empty-language check. So a bundle map
+      // is not merely data here: constructing the set validates its keys, and
+      // the failure is a throw at bootstrap rather than a bundle that quietly
+      // never resolves.
+      //
+      // The realistic source is a *file name*. The documented loading pattern
+      // derives keys from `text_<tag>.yaml`, so a stray `text_.yaml` or a
+      // mis-globbed `text__AT.yaml` becomes one of these.
+      for (final key in ['', '   ', '_AT', '-AT', '_', '-']) {
+        expect(
+          () => TomLocalizedTextResources(
+            defaultLocale: TomTextLocale('en'),
+            bundles: {
+              key: {'k': 'v'},
+            },
+          ),
+          throwsA(isA<TomResourceLocaleException>()),
+          reason: '"$key" names no language, so it cannot key a bundle',
+        );
+      }
+    });
+
+    test(
+      'the provider constructor refuses the same keys, not just the map one',
+      () {
+        // The factory delegates to `ofProviders`, so the check lives there. Worth
+        // asserting directly: a deployment loading from a database or an asset
+        // archive uses `ofProviders` and never touches the factory, and would
+        // otherwise be relying on an untested path.
+        expect(
+          () => TomLocalizedTextResources.ofProviders(
+            defaultLocale: TomTextLocale('en'),
+            bundles: {
+              '': TomTextResourceProvider.from({'k': 'v'}),
+            },
+          ),
+          throwsA(isA<TomResourceLocaleException>()),
+        );
+      },
+    );
+
+    test('a key that parses is normalised, never refused', () {
+      // The complement of the case above, and the more common one. `parse`
+      // finds the region by shape and drops any subtag that cannot be one, so
+      // almost everything parses — only a missing *language* throws. Nothing
+      // here is an error; each is a key spelled differently from its tag.
+      final set = TomLocalizedTextResources(
+        defaultLocale: TomTextLocale('en'),
+        bundles: {
+          'DE-at': {'k': 'v'},
+          'en_XX': {'k': 'v'},
+          'zh-Hans-CN': {'k': 'v'},
+          'es-419': {'k': 'v'},
+        },
+      );
+      expect(set.locales, ['de_AT', 'en', 'zh_CN', 'es']);
+    });
+
+    test('two keys naming one locale collapse, and the last one wins', () {
+      // A consequence of normalising into a map rather than a defect, but an
+      // invisible one: `en_XX` is not a locale — `XX` is the reserved code this
+      // stack uses for "no country" — so it normalises to `en` and lands on the
+      // key `en` already holds. No throw, no warning, and `locales` reports a
+      // single `en`, so the set looks exactly like one that was written that
+      // way on purpose.
+      final set = TomLocalizedTextResources(
+        defaultLocale: TomTextLocale('en'),
+        bundles: {
+          'en': {'k': 'first'},
+          'en_XX': {'k': 'second'},
+        },
+      );
+      expect(set.locales, ['en'], reason: 'two keys, one bundle');
+      expect(set.textOrNull('k', locale: TomTextLocale('en')), 'second');
+    });
   });
 }

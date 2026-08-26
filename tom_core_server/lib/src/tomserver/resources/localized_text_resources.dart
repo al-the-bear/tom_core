@@ -257,8 +257,8 @@ class TomTextLocale {
 /// final texts = TomLocalizedTextResources(
 ///   defaultLocale: TomTextLocale('en'),
 ///   bundles: {
-///     'en': loadYaml('resources/text_en.yaml'),
-///     'de': loadYaml('resources/text_de.yaml'),
+///     'en': TomYaml.loadYamlFile('resources/text_en.yaml'),
+///     'de': TomYaml.loadYamlFile('resources/text_de.yaml'),
 ///   },
 /// );
 ///
@@ -279,6 +279,26 @@ class TomLocalizedTextResources {
   /// The tags are normalised through [TomTextLocale.parse], so a deployment may
   /// name its files `text_de-AT.yaml` or `text_de_AT.yaml` and get the same
   /// bundle either way.
+  ///
+  /// **Throws [TomResourceLocaleException] for a key that names no language** —
+  /// an empty or blank key, or one whose first subtag is empty (`_AT`). Every
+  /// other key parses: [TomTextLocale.parse] finds the region by shape and
+  /// drops any subtag that cannot be one, so `es-419` and `en_XX` normalise to
+  /// `es` and `en` rather than being refused. A missing language is the one
+  /// thing it cannot recover from.
+  ///
+  /// That throw is worth expecting because of where keys come from. The
+  /// documented pattern derives them from *file names* (`text_de-AT.yaml` →
+  /// `de-AT`), so a stray `text_.yaml` or a mis-globbed directory entry becomes
+  /// a bootstrap failure whose message names a locale and not the file that
+  /// caused it — catch it at the loader if the path is worth reporting, as
+  /// `advanced_ops_server`'s `ops_texts.dart` does.
+  ///
+  /// Normalisation also means two keys can name one locale, and the last of
+  /// them wins with no warning: `{'en': …, 'en_XX': …}` yields a single `en`
+  /// bundle. Mostly that is the point (`de-AT` and `de_AT` *should* be one
+  /// bundle); it stops being the point when the second key is one the deployment
+  /// believed was a separate regional variant.
   factory TomLocalizedTextResources({
     required Map<String, Map<String, dynamic>> bundles,
     required TomTextLocale defaultLocale,
@@ -294,6 +314,14 @@ class TomLocalizedTextResources {
   /// For a deployment whose bundles come from somewhere with its own loading
   /// rules — a database, an asset archive, [TomTextResourceProvider.load] —
   /// rather than from a map it happens to be holding.
+  ///
+  /// Keys are normalised and validated exactly as in the unnamed constructor,
+  /// which delegates here: **a key naming no language throws
+  /// [TomResourceLocaleException]**, everything else parses, and two keys
+  /// reaching one tag collapse silently. The rule belongs to this constructor
+  /// rather than to the factory, so a deployment that only ever calls
+  /// `ofProviders` gets it too — and a locale tag read from a database column
+  /// is at least as likely to be blank as one read from a file name.
   TomLocalizedTextResources.ofProviders({
     required Map<String, TomTextResourceProvider> bundles,
     required this.defaultLocale,

@@ -3561,6 +3561,50 @@
 
 ### Documentation
 
+- **Constructing a bundle set validates its keys, and nothing said so
+  (tcinc631).** Both `TomLocalizedTextResources` constructors normalise keys
+  through `TomTextLocale.parse`, which reaches the empty-language check — so a
+  bundle map with a blank key throws `TomResourceLocaleException` at
+  construction. The dartdoc for both, the API summary and the guide all
+  described the normalisation and stopped there, leaving the throw to be met
+  rather than expected.
+
+  Documented on both constructors, in `api_summary_resources.md` and in
+  `doc/resources.md`, and stated precisely rather than loosely: the *only*
+  unparseable key is one naming no language — `''`, `'   '`, or a leading empty
+  subtag such as `_AT`. Everything else parses, because `parse` finds the region
+  by shape and drops what cannot be one; `es-419` and `en_XX` normalise to `es`
+  and `en` rather than being refused. Saying "an invalid tag throws" would have
+  been wrong in the commoner direction and sent a reader looking for validation
+  that is not there.
+
+  It matters because of where keys come from: the documented pattern derives
+  them from file names, so a stray `text_.yaml` is a **bootstrap** failure whose
+  message names a locale and not the file. The exception table now attributes
+  the throw to the bundle-set constructors as well as to `TomTextLocale`, since
+  a deployment can meet `resources.locale.empty_language` having never mentioned
+  `TomTextLocale`.
+
+  Normalising into a map has a second, quieter consequence now documented
+  alongside: two keys can name one locale and the last wins silently
+  (`{'en': …, 'en_XX': …}` is a single `en` bundle). Left as behaviour rather
+  than made an error — `de-AT` and `de_AT` collapsing *is* the intent — but it
+  is invisible when the second key was believed to be a separate variant.
+
+  Four tests pin all of it, including `ofProviders` directly: the factory
+  delegates to it, so a deployment loading bundles from a database reaches only
+  that path and was relying on an untested one.
+
+  The class dartdoc's own example built bundles with `loadYaml(...)`, the same
+  fault tcinc630 fixed in `doc/resources.md` and in the same example — that
+  sweep covered `doc/*.md` and the README, not dartdoc fences in `lib/`. Now
+  corrected to `TomYaml.loadYamlFile`, and the sweep extended: 35 `dart` fences
+  in library dartdoc, 34 distinct bare names, 2 unresolved and both legitimate
+  (Shelf's real `logRequests()`, and `MyDirectory()`, plainly the reader's own
+  class). Worth recording that this sweep would *not* have caught `loadYaml`:
+  it is a real function in `package:yaml`, merely the wrong one for the argument.
+  Name resolution finds invented names, not misused real ones.
+
 - **The resources guide installed bundles with `loadYamlMap`, a function that
   exists nowhere in the workspace (tcinc630).** `doc/resources.md`'s "Installing
   a Bundle Set" example read `'en': loadYamlMap('resources/text_en.yaml')`. The

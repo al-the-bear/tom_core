@@ -145,6 +145,18 @@ tag; tags are normalised through `TomTextLocale.parse`, so `text_de-AT.yaml` and
 `text_de_AT.yaml` name the same bundle. `ofProviders` takes providers that are
 already constructed, for bundles loaded from a database or an asset archive.
 
+Both **throw `TomResourceLocaleException` for a key that names no language** —
+an empty or blank key, or one whose first subtag is empty (`_AT`). The check
+lives in `ofProviders`, which the factory delegates to, so both paths carry it.
+Every other key parses: `parse` finds the region by shape and drops what cannot
+be one, so `es-419` and `en_XX` normalise to `es` and `en` rather than being
+refused. A missing language is the one thing it cannot recover from — and since
+keys usually come from file names, a stray `text_.yaml` becomes a bootstrap
+failure whose message names a locale rather than the file that caused it.
+
+Because keys are normalised into a map, two of them can name one locale and the
+last silently wins: `{'en': …, 'en_XX': …}` yields a single `en` bundle.
+
 #### Properties
 
 | Property | Type | Description |

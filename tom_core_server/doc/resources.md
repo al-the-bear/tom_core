@@ -17,6 +17,7 @@ concurrently. This module makes the locale an argument.
 - [A Miss Is Null, Never the Key](#a-miss-is-null-never-the-key)
 - [Parameters](#parameters)
 - [Installing a Bundle Set](#installing-a-bundle-set)
+  - [The keys are validated, not just normalised](#the-keys-are-validated-not-just-normalised)
 - [Core Components](#core-components)
 - [Verification](#verification)
 - [Dependencies](#dependencies)
@@ -295,13 +296,51 @@ is nullable with **no** fallback: an empty default would render every message
 blank, and a blank message that was *sent* is worse than a wiring error that was
 raised.
 
+### The Keys Are Validated, Not Just Normalised
+
+Constructing a bundle set parses every key, so the map is not merely data: a key
+that names **no language** raises `TomResourceLocaleException` at construction.
+
+```dart
+TomLocalizedTextResources(
+  defaultLocale: TomTextLocale('en'),
+  bundles: {'': {'greeting': 'Hello'}},  // throws resources.locale.empty_language
+);
+```
+
+That is an empty key, a blank one, or one whose first subtag is empty (`_AT`).
+Everything else parses — `parse` finds the region by shape and drops what cannot
+be one, so `es-419` and `en_XX` become `es` and `en` rather than being refused.
+A missing language is the one thing it cannot recover from. The check lives in
+`ofProviders`, which the factory delegates to, so both constructors carry it.
+
+Worth expecting because of where keys come from. Deriving them from file names
+(`text_de-AT.yaml` → `de-AT`) is the documented pattern, so a stray `text_.yaml`
+or a mis-globbed directory entry is a **bootstrap failure** — and the message
+names a locale rather than the file that produced it. Where the path is worth
+reporting, check it at the loader; `advanced_ops_server`'s `ops_texts.dart` does
+exactly that for a missing file.
+
+The other consequence of normalising into a map is quieter: two keys can name
+one locale, and the last of them wins with nothing said.
+
+```dart
+bundles: {'en': {...}, 'en_XX': {...}}  // one bundle; the second wins
+```
+
+Usually that is the intent — `de-AT` and `de_AT` *should* be one bundle. It
+stops being the intent when the second key is one the deployment believed was a
+separate regional variant: `en_XX` looks like a country and is not one, so
+`locales` reports a single `en` and the set is indistinguishable from one
+written that way on purpose.
+
 ## Core Components
 
 | Component | File | Responsibility |
 | --------- | ---- | -------------- |
 | `TomTextLocale` | `localized_text_resources.dart` | Normalised language/country pair; parsing, the fallback tags, derivation from a principal |
 | `TomLocalizedTextResources` | `localized_text_resources.dart` | Bundle-per-locale storage, chain resolution, parameter substitution, bean lookup |
-| `TomResourceLocaleException` | `localized_text_resources.dart` | A locale that cannot be formed; not client-visible |
+| `TomResourceLocaleException` | `localized_text_resources.dart` | A locale that cannot be formed; not client-visible. Raised by `TomTextLocale`'s constructor — and so by the bundle-set constructors, which parse their keys |
 
 ## Verification
 
@@ -312,6 +351,11 @@ that are well-formed but can never name one) and the boundary variant that drops
 one instead — and resolving through a bundle set, where the per-key fall-through, the
 configured default, the `null` for a miss, parameter substitution and the
 `exists`/`isTranslated`/`resolveLocale` distinctions are each pinned.
+
+The bundle keys are pinned on both sides: the language-less ones that throw
+(through each constructor separately, since a deployment loading from a database
+reaches only `ofProviders`), the ones that merely normalise, and the pair that
+collapses onto a single tag.
 
 It renders against `test/fixtures/localized_texts.dart`, a deliberately
 half-translated set that `test/email_service_test.dart` shares. That
