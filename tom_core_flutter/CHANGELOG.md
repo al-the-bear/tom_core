@@ -2,6 +2,28 @@
 
 ### Added
 
+- **security: the example demonstrates the flow instead of the annotation
+  (tcinc690).** `example/security/security_example.dart` scoped itself to the
+  `TomClient2FAAdaptor` marker — 41 lines about the one type in the module that
+  the flow does *not* dispatch on — while the nine types the module exists for
+  appeared in no example at all. A reader looking for "how do I use this" was
+  answered with a question about an annotation.
+
+  The example now implements a `Tom2FAFlowController` and walks it through
+  every stop of a second-factor login: the chooser, the enrolment, a refusal
+  and its `describeError` rendering, the confirmation, and a challenge on the
+  next sign-in with its attempt budget counting down. It also shows the
+  registry rule that decides what the chooser may list, and the deliberately
+  conspicuous missing-key behaviour of `Tom2FATexts`. The annotation is still
+  covered, as the last of ten numbered examples rather than as the whole file.
+
+  A controller is what the *tests* cannot show: the one in
+  `two_factor_client_test.dart` is a stub whose moves record their argument and
+  never advance the login, because a widget test wants each stop pinned rather
+  than reached. Conversely the panels are widgets and need a pump loop no
+  example can open, so the header points at that suite for them. `run()` is now
+  `Future<void>`, and `test/security_test.dart` awaits it.
+
 - **security: the chooser renders the mechanism's icon (tcinc689).**
   `Tom2FAClientMechanism.descriptor` was documented as carrying "its label,
   description and icon, all as resource keys", but `_methodTile` built its

@@ -49,6 +49,11 @@ the first build:
 Tom2FAClientRegistry.register(SmsClientMechanism());
 ```
 
+`MyFlowController` is the one piece an application writes.
+[`example/security/security_example.dart`](../../../../example/security/security_example.dart)
+implements one and walks it through all three stops; the panels themselves are
+widgets, so they are shown in `test/two_factor_client_test.dart` instead.
+
 ## A note on the annotation
 
 `TomClient2FAAdaptor` is **not** what the flow dispatches on. `Tom2FAFlowPanel`

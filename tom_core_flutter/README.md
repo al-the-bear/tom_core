@@ -195,7 +195,7 @@ Flutter toolchain (`flutter test` / a Flutter entry point).
 | [`example/configuration/`](example/configuration/configuration_example.dart) | Declaring a client settings holder, loading overrides, observing, and persisting only what changed |
 | [`example/preferences/`](example/preferences/preferences_example.dart) | Registering a device store once, typed reads/writes, persistence across a restart, reading and writing the account store over a real socket, and the device-over-server precedence |
 | [`example/runtime/`](example/runtime/runtime_example.dart) | Obtaining the platform-appropriate `TomPlatformUtils`, querying its predicates beside the Flutter target that decides them, and taking an HTTP client from it |
-| [`example/security/`](example/security/security_example.dart) | Applying the `TomClient2FAAdaptor` marker annotation and reading back its `type` |
+| [`example/security/`](example/security/security_example.dart) | Walking a `Tom2FAFlowController` through all three stops of a second-factor login — chooser, enrolment and challenge — plus the registry rule that decides what the chooser may list, resource resolution and its missing-key behaviour, and the `TomClient2FAAdaptor` marker annotation |
 | [`example/little_things/`](example/little_things/little_things_example.dart) | The two client exception types and the type-based discrimination pattern |
 
 > **Cross-package sample.** The

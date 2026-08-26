@@ -149,6 +149,14 @@ message, wrong for anything else, hence the override point.
 `skipEnrolment` is reachable only when the server marked the offer skippable,
 so an implementation may treat an unexpected call as a programming error.
 
+A worked implementation is in
+[`example/security/security_example.dart`](../example/security/security_example.dart),
+which walks one controller through all three stops — choosing a mechanism,
+being refused, confirming, and answering a challenge on the next sign-in. It
+also shows where the attempt budget lives: the *server* spends it and re-issues
+the interim result, which is why `Tom2FAPendingEnrolment` exposes no method for
+advancing its own counter while `Tom2FAChallenge` does.
+
 ## Mechanisms and the Registry
 
 The server's 2FA design is deliberately open: an adaptor owns generating a
