@@ -2,6 +2,35 @@
 
 ### Documentation
 
+- **No shipped document mentioned the server self-login, the first thing
+  `start()` does and the only thing that can stop it (tcinc641).** `start()`
+  opens with `TomServerSelfLogin.loginAndInstall`, and a deployment that
+  configured a service credential and cannot log in has the error rethrown with
+  **no socket bound**. All three server documents described `start()` as though
+  binding were all it did — the guide enumerated every configuration field
+  `start()` reads without reaching the credential, the summary listed the steps
+  from "initialises the router" onward, and the module readme's two-line quick
+  start ended "The server is now listening". The reader who hit a refused
+  credential saw an unhandled asynchronous error at boot and had nothing in the
+  package to search for; the reader who trusted the summary concluded the
+  deployment had no identity of its own and reimplemented the grant capping in
+  application code. The guide now has a "The Deployment Logs Itself In First"
+  section stating the three outcomes and why the ordering is load-bearing (the
+  server principal caps every user's grants at `min(user, server)`, so binding
+  first would serve requests uncapped), and the summary, the module readme and
+  `start()`'s own dartdoc each say that the login precedes the bind and that a
+  failed one binds nothing.
+
+  Documenting it exposed three shipped claims that `start()` had falsified:
+  `server_self_login.dart`, `doc/authentication.md` and
+  `api_summary_authentication.md` each told the reader to call
+  `loginAndInstall` "during application startup, before `TomServer.start()`" —
+  advice that now installs the principal twice. All three say instead that
+  `start()` does it, and that a direct call is for a process with no
+  `TomServer`. The authentication module readme's key-types table, which the
+  new links point at, gained the four rows it never had:
+  `TomServerSelfLogin`, `TomServiceCredential`, `TomServiceLoginTransport` and
+  `TomServerSelfLoginException`.
 - **No shipped document mentioned the per-request transaction scope
   (tcinc640).** `tomDefaultAuthenticationMiddleware` wraps every request in
   `TomTransactionManager.runInTransactionScope`, so the transaction repository
@@ -126,6 +155,21 @@
 
 ### Testing
 
+- **The order of `start()`'s two steps is now a checked property, not a
+  convention (tcinc641).** A new group in `api_reference_coverage_test.dart`
+  parses `start()`'s own body — cut at its closing brace, because
+  `_installServerPrincipal` sits further down the same class and a full-file
+  scan would find *its* `loginAndInstall` call and pronounce any rewritten
+  `start()` correct — and requires the self-login to precede the bind. Two
+  separate complaint functions then check the three server mirrors, because the
+  two facts rot separately: naming the self-login is the easy half, and saying
+  that a failed one leaves the socket unbound is the half a reader hitting it at
+  boot actually needs. Both match against the flattened document rather than
+  line by line, so a reflow that breaks a phrase across lines cannot make a
+  correct document look silent — a marker prose wrapping can defeat teaches
+  the next author to reword around the guard. Mutation-tested from both ends:
+  removing the login call from `start()`, swapping the two steps, and renaming
+  the type and the abort phrase in a mirror are each reported.
 - **The documented request scope is now checked against the middleware that
   opens it (tcinc640).** A new group in `api_reference_coverage_test.dart` reads
   the `TomZoneValues` literal and the transaction wrapper out of

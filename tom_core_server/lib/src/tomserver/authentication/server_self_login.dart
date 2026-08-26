@@ -333,7 +333,11 @@ class TomServerSelfLogin {
   /// operator must see, not a state to degrade into, because degrading would
   /// silently *widen* access.
   ///
-  /// Call this during application startup, before `TomServer.start()`.
+  /// `TomServer.start()` calls this itself, before it binds the socket, so a
+  /// deployment that starts its server the ordinary way needs no call here.
+  /// Call it directly only when the principal must be installed without a
+  /// `TomServer` — a worker isolate or a scheduled job that talks to the same
+  /// capped services but serves no HTTP.
   static Future<bool> loginAndInstall(
     TomBaseServerConfiguration config, {
     TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(),

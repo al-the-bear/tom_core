@@ -198,6 +198,10 @@ a test suite keep the in-memory store and need no database at all.
 | `TomOAuthTokenGrant` | One provider grant: access token, refresh token, scopes, lifetime. Never prints either token. |
 | `TomOAuthTokenStore` · `TomMemoryOAuthTokenStore` | Where a grant lives, keyed `(issuer, subject)`. Unregistered means nothing is ever stored. |
 | `TomPersistentOAuthTokenStore` · `TomExternalIdentityToken` | The grant over `tom_external_identity_token`, encrypted at rest. |
+| `TomServerSelfLogin` | Logs the *deployment* in as itself and installs the `TomServerPrincipal` that caps user grants. `TomServer.start()` calls it before binding the socket. |
+| `TomServiceCredential` | The deployment's own credential and where to present it, read from the configuration; `null` when none was configured, which is what makes the whole feature opt-in. |
+| `TomServiceLoginTransport` | The one JSON POST the self-login makes — the seam a test replaces instead of running an auth server. |
+| `TomServerSelfLoginException` | Raised when a *configured* self-login cannot complete; it aborts `TomServer.start()` rather than degrading to uncapped. |
 
 ## Quick start
 

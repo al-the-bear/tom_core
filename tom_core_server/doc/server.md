@@ -43,12 +43,44 @@ final server = TomServer(configuration); // a TomBaseServerConfiguration
 server.start(); // fire-and-forget: binds the socket and starts listening
 ```
 
-`TomServer` reads everything it needs from the configuration: TLS material
-(`certificateChain` / `privateKey`, unless `noSsl`), the listen address (`host`,
-or any-IPv4 when empty or `listenToAnyIP`), the `port`, `isolateCount` (sockets
-are `shared` when more than one), `autoCompress`, and the `serverHeader` /
-`poweredByHeader`. `start()` is fire-and-forget — it begins listening and logs
-the bound address; it does not return the `HttpServer`.
+`TomServer` reads everything it needs from the configuration: the service
+credential (below), TLS material (`certificateChain` / `privateKey`, unless
+`noSsl`), the listen address (`host`, or any-IPv4 when empty or
+`listenToAnyIP`), the `port`, `isolateCount` (sockets are `shared` when more
+than one), `autoCompress`, and the `serverHeader` / `poweredByHeader`.
+`start()` is fire-and-forget — it begins listening and logs the bound address;
+it does not return the `HttpServer`.
+
+### The Deployment Logs Itself In First
+
+Before any of that, `start()` calls `TomServerSelfLogin.loginAndInstall` against
+the configuration, so the deployment holds its own `TomServerPrincipal` by the
+time it accepts a request.
+
+The ordering is load-bearing rather than tidy: the server principal caps every
+user's grants at `min(user, server)`, so binding the socket first would open a
+window in which requests were served *uncapped* — the one direction in which
+getting this wrong grants access rather than denying it.
+
+There are three outcomes, and only the middle one is new to a deployment:
+
+- **No service credential configured** — the default. The login is skipped, an
+  info line records the skip, no server principal is installed, and access
+  evaluation is the user's grant alone. Nothing about such a server changes.
+- **Configured and the login fails** — the error is logged and **rethrown, and
+  the socket is never bound**. Because `start()` is fire-and-forget this arrives
+  as an unhandled asynchronous error at boot with the log line
+  `Server self-login failed — refusing to bind the socket`. Starting anyway
+  would mean running uncapped after explicitly asking to be capped, so this
+  aborts rather than degrades.
+- **Configured and the login succeeds** — the principal is installed and user
+  grants are capped from the first request onward.
+
+The credential is configuration surface owned by the authentication module —
+`authServerLoginUri`, `serviceAccountName`, `serviceAccountCredential` and the
+tenant coordinates; all three of the first are required, and a blank one means
+"not configured". See [authentication.md](authentication.md) for the credential
+and the login flow itself.
 
 ## The Pipeline
 

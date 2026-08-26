@@ -1187,12 +1187,13 @@ day the kernel moved one.
 ### Lifecycle
 
 ```dart
-// During application startup, before TomServer.start() binds the socket:
+// Only for a process with no TomServer — a worker isolate or a scheduled job
+// that talks to the same capped services but serves no HTTP:
 final installed = await TomServerSelfLogin.loginAndInstall(configuration);
 ```
 
-`TomServer` already does this for you in `_installServerPrincipal`, and the
-**ordering is load-bearing**: the login runs *before* the socket is bound.
+`TomServer.start()` already does this for you, and the **ordering is
+load-bearing**: the login runs *before* the socket is bound.
 Binding first would open a window in which requests are served uncapped — the
 one direction in which getting it wrong grants access rather than denying it.
 

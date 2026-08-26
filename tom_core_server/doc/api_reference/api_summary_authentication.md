@@ -1434,7 +1434,7 @@ Statics only — the constructor is private.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `logIn` | `static Future<TomPrincipal> logIn(TomServiceCredential credential, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in with `credential` and returns the deployment's principal. Throws `TomServerSelfLoginException` when the auth server is unreachable, refuses, answers in an unexpected shape, or returns a token that carries no payload. |
-| `loginAndInstall` | `static Future<bool> loginAndInstall(TomBaseServerConfiguration config, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in from `config` and installs the principal into `TomServerPrincipal`; returns whether one was installed. Returns `false` silently when self-login is not configured, so a deployment predating server-as-principal behaves exactly as before. Call during startup, before `TomServer.start()`. |
+| `loginAndInstall` | `static Future<bool> loginAndInstall(TomBaseServerConfiguration config, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in from `config` and installs the principal into `TomServerPrincipal`; returns whether one was installed. Returns `false` silently when self-login is not configured, so a deployment predating server-as-principal behaves exactly as before. `TomServer.start()` calls this itself before binding the socket; call it directly only from a process that has no `TomServer`. |
 
 ### TomOAuthException
 

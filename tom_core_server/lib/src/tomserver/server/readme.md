@@ -37,6 +37,16 @@ void main() {
 }
 ```
 
+`start()` does one thing before it binds anything: when the configuration
+carries a service credential, the deployment logs *itself* in
+([`TomServerSelfLogin`](../authentication/readme.md)) and installs the
+`TomServerPrincipal` that caps every user's grants at `min(user, server)`.
+Binding first would serve requests uncapped for as long as the login took, so a
+configured deployment that cannot log in has the error rethrown and **never
+binds the socket** — visible as an unhandled asynchronous error at boot, since
+`start()` is fire-and-forget. A deployment that configures no credential skips
+the login and is unaffected.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

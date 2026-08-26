@@ -19,11 +19,14 @@ helpers, and per-request state that make up that pipeline.
 Source: `lib/src/tomserver/server/server.dart`.
 
 `TomServer` is built from a `TomBaseServerConfiguration`. Its `start` method
-initialises the endpoint `Router` (via `TomEndpointRouting`), composes a shelf
-`Pipeline` — `contextSetupMiddleware` (seeds a `TomRequestLogInfo`), an outer
-error layer, `tomDefaultAuthenticationMiddleware`, an inner error layer, and
-`tomLoggingMiddleware` — optionally wraps the router in a `Cascade` with pre/post
-handlers, and binds the socket (with TLS unless `noSsl`).
+first logs the deployment in as itself — `TomServerSelfLogin.loginAndInstall`,
+which installs the `TomServerPrincipal` that caps every user's grants, and which
+aborts the start with no socket bound when a configured credential is refused —
+then initialises the endpoint `Router` (via `TomEndpointRouting`), composes a
+shelf `Pipeline` — `contextSetupMiddleware` (seeds a `TomRequestLogInfo`), an
+outer error layer, `tomDefaultAuthenticationMiddleware`, an inner error layer,
+and `tomLoggingMiddleware` — optionally wraps the router in a `Cascade` with
+pre/post handlers, and binds the socket (with TLS unless `noSsl`).
 
 The module exposes the composable middleware as top-level functions
 (`contextSetupMiddleware`, `tomDefaultAuthenticationMiddleware`,
@@ -103,7 +106,7 @@ TomServer(TomBaseServerConfiguration configuration)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `start` | `void start()` | *(async)* Initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. Fire-and-forget; does not return the `HttpServer`. |
+| `start` | `void start()` | *(async)* Logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`) before anything else, then initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Fire-and-forget; does not return the `HttpServer`. |
 
 ## Global Functions and Constants
 

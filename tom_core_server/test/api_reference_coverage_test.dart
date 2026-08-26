@@ -5719,6 +5719,110 @@ One: `TomKind`, documented beside the type that carries it.
     });
   });
 
+  // `start()` logs the deployment in before it binds anything, and that order
+  // is a security property rather than a preference: the server principal caps
+  // every user's grant at `min(user, server)`, so a socket bound first would
+  // serve requests uncapped for as long as the login took — the one direction
+  // in which getting it wrong grants access rather than denying it. Two things
+  // can rot. The order can be lost in an edit to `start()`, silently, because
+  // nothing fails; and the documents can go on describing `start()` as though
+  // binding were all it did, which is what left a reader who hit a failed login
+  // with an unhandled asynchronous error at boot and nothing to search for.
+  group('start() logs the deployment in before it binds', () {
+    const source = 'lib/src/tomserver/server/server.dart';
+
+    _StartSteps shipped() => _startStepsOf(File(source).readAsLinesSync());
+
+    test('the self-login precedes the bind in source', () {
+      final steps = shipped();
+      expect(
+        steps.loginLine,
+        isNotNull,
+        reason: '`start()` no longer performs the server self-login',
+      );
+      expect(
+        steps.bindLine,
+        isNotNull,
+        reason: '`start()` no longer binds a socket',
+      );
+      expect(
+        steps.loginLine!,
+        lessThan(steps.bindLine!),
+        reason:
+            '`start()` binds the socket before installing the server principal, '
+            'so requests arriving during the login are served with user grants '
+            'uncapped',
+      );
+    });
+
+    test('every server mirror says start() logs the deployment in', () {
+      expect(_selfLoginComplaints(_shippedMirrorLines()), isEmpty);
+    });
+
+    test('every server mirror says a failed login binds nothing', () {
+      // The capability alone is not the caller-visible part. What a reader
+      // needs is that this is the one thing that can stop `start()`, and that
+      // it stops it *silently* as far as the call site is concerned, because
+      // `start()` returns nothing to hold a rejected future.
+      expect(_failedLoginComplaints(_shippedMirrorLines()), isEmpty);
+    });
+
+    test('the parser found the steps it claims to order', () {
+      // Both mirror findings are emptiness assertions and the ordering check
+      // reads two line numbers: a parser that lost `start()` would report no
+      // login, no bind, and nothing out of order.
+      final steps = shipped();
+      expect(steps.loginLine, isNotNull);
+      expect(steps.bindLine, isNotNull);
+      expect(steps.body, isNotEmpty);
+      expect(_requestScopeMirrors, hasLength(3));
+      // The body ends at `start()`'s closing brace: the same file declares
+      // `_installServerPrincipal` further down, and a scan that ran to the end
+      // of the class would find its `loginAndInstall` call and call the order
+      // correct however `start()` had been rewritten.
+      expect(
+        steps.body.any((line) => line.contains('_installServerPrincipal()')),
+        isTrue,
+      );
+      expect(
+        steps.body.any((line) => line.contains('Future<void>')),
+        isFalse,
+        reason:
+            'the body ran past the end of `start()` into the private methods '
+            'below it',
+      );
+    });
+
+    test('a start() that binds before logging in is reported', () {
+      // The mutation the ordering exists to catch: both calls still present,
+      // both still in `start()`, only their order swapped. Nothing about such a
+      // server fails to compile or fails a functional test.
+      final swapped = _startStepsOf(const [
+        '  void start() async {',
+        '    HttpServer server = await serve(handler, ip, port);',
+        '    await _installServerPrincipal();',
+        '  }',
+      ]);
+      expect(swapped.loginLine, greaterThan(swapped.bindLine!));
+    });
+
+    test('a mirror silent about the login or the abort is reported', () {
+      const silent = {
+        'silent.md': ['`start()` binds the socket and begins listening.'],
+      };
+      expect(_selfLoginComplaints(silent), [contains('silent.md')]);
+      expect(_failedLoginComplaints(silent), [contains('silent.md')]);
+      // Naming the login without naming what a failure costs is the halfway
+      // state a partial edit lands in, and it is the half that leaves the
+      // boot-time error unexplained — so it must still be reported.
+      const halfway = {
+        'halfway.md': ['`start()` calls TomServerSelfLogin, then binds.'],
+      };
+      expect(_selfLoginComplaints(halfway), isEmpty);
+      expect(_failedLoginComplaints(halfway), [contains('halfway.md')]);
+    });
+  });
+
   // The authentication middleware is where a request acquires everything the
   // code beneath it reads from the ambient zone rather than from an argument.
   // Three documents mirror that list, and a mirror that drifts from it is worse
@@ -6138,6 +6242,86 @@ String _withoutAnnotations(String text) {
   }
   return rest;
 }
+
+/// Where `start()` logs in and where it binds, as offsets into its own body.
+typedef _StartSteps = ({List<String> body, int? loginLine, int? bindLine});
+
+/// The two ordered steps of `start()`, read from [lines].
+///
+/// The body is cut at `start()`'s closing brace. The same file declares
+/// `_installServerPrincipal` further down, and a scan that ran to the end of the
+/// class would find *its* `loginAndInstall` call and pronounce the order correct
+/// however `start()` itself had been rewritten.
+_StartSteps _startStepsOf(List<String> lines) {
+  final body = <String>[];
+  var inStart = false;
+  for (final line in lines) {
+    if (!inStart) {
+      if (line.contains('void start()')) inStart = true;
+      continue;
+    }
+    // `start()` is a method, so its closing brace is the first at method
+    // indentation — two spaces inside the class.
+    if (line == '  }') break;
+    body.add(line);
+  }
+  int? firstWith(String needle) {
+    final index = body.indexWhere((line) => line.contains(needle));
+    return index < 0 ? null : index;
+  }
+
+  return (
+    body: body,
+    loginLine: firstWith('_installServerPrincipal()'),
+    bindLine: firstWith('await serve('),
+  );
+}
+
+/// The shipped text of the three documents that describe `TomServer.start()`.
+Map<String, List<String>> _shippedMirrorLines() => {
+  for (final mirror in _requestScopeMirrors)
+    mirror: File(mirror).readAsLinesSync(),
+};
+
+/// [lines] as one whitespace-normalised string.
+///
+/// Every phrase below is a sentence fragment, and prose wraps: the module
+/// readme writes "and **never binds the socket**" across a line break, which a
+/// line-by-line `contains` misses while the sentence reads perfectly. A marker a
+/// reflow can defeat reports a document that says the right thing, which teaches
+/// the next author to reword around the guard instead of fixing the document.
+String _flattened(List<String> lines) =>
+    lines.join(' ').replaceAll(RegExp(r'\s+'), ' ');
+
+/// The [mirrors] that never mention the deployment's own login.
+List<String> _selfLoginComplaints(Map<String, List<String>> mirrors) => [
+  for (final entry in mirrors.entries)
+    if (!const [
+      'TomServerSelfLogin',
+      'self-login',
+    ].any(_flattened(entry.value).contains))
+      '${entry.key} never mentions the server self-login, though `start()` '
+          'performs it before binding anything',
+];
+
+/// The [mirrors] that mention the login without saying what a failure costs.
+///
+/// Separate from [_selfLoginComplaints] because the two rot separately: naming
+/// the capability is the easy half, and the half a reader can do without. The
+/// half they cannot is that a refused credential is the one thing that stops
+/// `start()`, and that it stops it without a future to catch.
+List<String> _failedLoginComplaints(Map<String, List<String>> mirrors) => [
+  for (final entry in mirrors.entries)
+    if (!const [
+      'never bind',
+      'no socket is bound',
+      'refusing to bind',
+      'binds nothing',
+      'socket is never bound',
+    ].any(_flattened(entry.value).contains))
+      '${entry.key} does not say that a failed self-login leaves the socket '
+          'unbound, which is the only way `start()` can fail outright',
+];
 
 /// What the authentication middleware gives a request, read from its source.
 typedef _RequestScope = ({

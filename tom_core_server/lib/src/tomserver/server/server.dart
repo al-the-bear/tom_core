@@ -297,17 +297,25 @@ class TomServer {
     loggingMiddleware = configuration.loggingMiddleware;
   }
 
-  /// Initialises the router, composes the pipeline, and binds the socket.
+  /// Logs the deployment in, initialises the router, composes the pipeline, and
+  /// binds the socket.
   ///
-  /// Builds the TLS [SecurityContext] (unless `noSsl`), resolves the listen
-  /// address (`host`, or any-IPv4 when empty or `listenToAnyIP`), optionally
-  /// wraps the router in a [Cascade] with the configuration's pre/post handlers,
-  /// then serves the assembled pipeline on the configured port (with `shared`
-  /// sockets when running multiple isolates). Fire-and-forget: it starts
-  /// listening and logs the bound address; it does not return the [HttpServer].
+  /// The login comes first: when the configuration carries a service
+  /// credential, [TomServerSelfLogin.loginAndInstall] installs the deployment's
+  /// own principal before anything is bound, so no request is ever served with
+  /// user grants uncapped. A configured deployment that cannot log in has the
+  /// error logged and rethrown and **no socket is bound**; one that configured
+  /// no credential skips the login and is unaffected.
   ///
-  /// When the configuration carries a service credential, the deployment first
-  /// logs *itself* in and installs its own principal — see [_installServerPrincipal].
+  /// The rest builds the TLS [SecurityContext] (unless `noSsl`), resolves the
+  /// listen address (`host`, or any-IPv4 when empty or `listenToAnyIP`),
+  /// optionally wraps the router in a [Cascade] with the configuration's
+  /// pre/post handlers, then serves the assembled pipeline on the configured
+  /// port (with `shared` sockets when running multiple isolates).
+  /// Fire-and-forget: it starts listening and logs the bound address; it does
+  /// not return the [HttpServer] — and a failed self-login therefore surfaces
+  /// as an unhandled asynchronous error rather than a rejected future the
+  /// caller holds.
   void start() async {
     await _installServerPrincipal();
 
