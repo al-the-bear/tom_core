@@ -88,6 +88,70 @@ void main() {
     });
   });
 
+  group('the module readme describes a role, not just its contents', () {
+    // `little_things` is the same directory in all three tom_core packages:
+    // where a small cross-cutting thing lands once more than one module needs
+    // it. The kernel's holds zone accessors, trace helpers and atomic writes;
+    // the server's held two exception classes and nothing else until it
+    // acquired a request-id type and a wire-envelope helper within a fortnight.
+    //
+    // The client's holds exceptions only, so far — and the risk is that a
+    // future helper gets parked somewhere more specific because this directory
+    // reads as "the exceptions folder". The readme is what prevents that, by
+    // presenting the exception family as the current contents of a general
+    // module rather than as the module's definition. That is a promise about
+    // wording, so it is worth a test: prose has no compiler.
+    const readmePath = 'lib/src/tomclient/little_things/readme.md';
+
+    /// The readme's paragraphs, each with its hard wrapping flowed back into a
+    /// single line so a phrase that straddles a line break still matches.
+    List<String> paragraphs() => File(readmePath)
+        .readAsStringSync()
+        .split(RegExp(r'\n\s*\n'))
+        .map((p) => p.replaceAll(RegExp(r'\s+'), ' ').trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+
+    test('it still names the general role the directory plays', () {
+      // Checked separately from the paragraph below: a readme that dropped the
+      // general framing but kept the word "Today" would pass that test while
+      // having lost the point of it.
+      expect(
+        paragraphs().join(' '),
+        contains('cross-cutting'),
+        reason: 'the readme must describe the module by the role it plays, '
+            'not only by the two classes currently in it',
+      );
+    });
+
+    test('it presents the exception family as the current contents', () {
+      final describing = paragraphs()
+          .where((p) => p.contains('exception family'))
+          .toList();
+      expect(
+        describing,
+        isNotEmpty,
+        reason: 'no paragraph of $readmePath describes the exception family; '
+            'this guard has lost the text it was written to watch',
+      );
+
+      // A qualifier, not one specific sentence. Forbidding a phrasing would be
+      // satisfied by deleting the sentence; requiring one would freeze it.
+      final qualified = RegExp(
+        r'\b(today|currently|at present|for now|so far|at the moment)\b',
+        caseSensitive: false,
+      );
+      expect(
+        describing.where(qualified.hasMatch),
+        isNotEmpty,
+        reason: 'the paragraph introducing the exception family must mark it '
+            'as the module\'s present contents — otherwise the readme reads '
+            'as though `little_things` means "exceptions" on the client, and '
+            'the next cross-cutting helper goes somewhere else',
+      );
+    });
+  });
+
   group('the API summary mirrors the little_things sources', () {
     // `completion/README.md` §6 says the doc/ mirror is to be verified, not
     // trusted. It had drifted to `bool? autoLog`, which no call site can pass.

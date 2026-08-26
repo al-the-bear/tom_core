@@ -105,6 +105,20 @@
 
 ### Tests / Examples
 
+- **little_things (tcinc655).** Two tests pinning the module readme's framing:
+  that it still describes `little_things` by the **role** the directory plays
+  (a landing place for small cross-cutting helpers), and that the paragraph
+  introducing the exception family marks it as the module's *present* contents
+  rather than its definition. The second accepts any temporal qualifier rather
+  than one sentence — forbidding a phrasing is satisfied by deleting it, and
+  requiring one freezes it — and is paired with a check that the paragraph it
+  watches still exists. The wording is load-bearing: this directory is the same
+  one in all three tom_core packages, and the server's went from two exception
+  classes to also holding a request-id type and a wire-envelope helper inside a
+  fortnight. A readme that reads as "the exceptions folder" is how the next
+  client-side helper ends up parked somewhere more specific. All three failure
+  modes were mutation-checked.
+
 - **little_things (tcinc654).** Four tests in a new `the API summary mirrors
   the little_things sources` group. These classes declare no types of their own
   — every parameter arrives by `super.x` — so the summary's types are only
