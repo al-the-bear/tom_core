@@ -194,6 +194,21 @@
 
 ### Testing
 
+- **The transaction suite now asserts what happens to the participants *behind*
+  a failing one (tcinc645).** Twenty-eight tests covered the conclusion paths
+  and none of them caught the `&&` short-circuit, because every failure case
+  used a single participant — with one, "the loop stopped early" and "the loop
+  ran to the end" are the same observation. The two new tests register three,
+  fail only the *first* one's `endTransaction()`, and assert that all three
+  recorded `end` and that the overall result is still `false`, once per
+  conclusion path.
+  That shape is chosen to fail two different wrong implementations, not one. On
+  the unfixed code participants two and three are never ended, so the call-order
+  assertions fail. Against the obvious careless repair — `ok = ended;` — every
+  participant *is* ended but the last success overwrites the first failure, so
+  the result assertion fails instead. Failing only the first participant is what
+  separates them; failing the last would have let both pass.
+
 - **The server guide's limitations section is now checked against the module
   (tcinc643).** "Non-goal, not gap" is a judgement no test can make, so the new
   group pins the two facts it rests on. A capability the guide disowns must
@@ -989,6 +1004,32 @@
   and dropping the denial audit each fail exactly the tests that claim them.
 
 ### Fixed
+
+- **One participant reporting a failed `endTransaction()` stopped every
+  participant behind it from being ended at all (tcinc645).** Both
+  `commitTransaction()` and `rollbackTransaction()` concluded with
+  `ok = ok && await p.endTransaction();`. Dart's `&&` short-circuits, so the
+  first `false` made the right operand dead for the rest of the loop: the
+  remaining participants were committed or rolled back and then abandoned
+  mid-lifecycle. `endTransaction()` is the call documented as releasing
+  per-transaction resources, and for the module's only production participant —
+  a data source — that means returning its connection to the pool. Nothing
+  comes back later to release it; the transaction is over. So the cost of one
+  participant failing was a leaked connection for each participant registered
+  after it, on the rollback path most of all, which is the path a failure
+  arrives on.
+  Both loops now evaluate the call before combining its result
+  (`final ended = await p.endTransaction(); ok = ok && ended;`), so every
+  participant is ended regardless of what an earlier one returned and the
+  boolean stays the conjunction of all of them. The code was contradicting its
+  own contract rather than the contract being wrong: the source dartdoc, the
+  prose guide, the API summary and the completion document all already said
+  "every participant", and `MariaDbDatasource.endTransaction()`'s own dartdoc
+  argues from the same premise — "the coordinator ands every participant's
+  result into the outcome". The documents did not move; the code moved to meet
+  them. Throw-safety was deliberately *not* added alongside: both production
+  `endTransaction()` implementations catch internally and return `false`, so a
+  guard there would be handling a case that cannot arise.
 
 - **`TomTextLocale` accepted `XX` as a country, so every user who signed in
   from a device naming no region got the unreachable bundle key `en_XX`

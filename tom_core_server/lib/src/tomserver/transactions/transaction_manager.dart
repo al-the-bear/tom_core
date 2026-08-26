@@ -116,7 +116,11 @@ class TomTransaction {
       }
     }
     for (var p in _participants.values) {
-      ok = ok && await p.endTransaction();
+      // Evaluated before it is combined: `ok && await p.endTransaction()` would
+      // short-circuit, so one participant reporting failure would stop every
+      // participant behind it from being ended at all. See [rollbackTransaction].
+      final ended = await p.endTransaction();
+      ok = ok && ended;
     }
     _scope._clear(this);
     return ok;
@@ -134,7 +138,12 @@ class TomTransaction {
     }
     bool ok = true;
     for (var p in _participants.values) {
-      ok = ok && await p.endTransaction();
+      // `ok && await p.endTransaction()` would short-circuit once a participant
+      // reported failure, leaving every participant behind it un-ended and its
+      // per-transaction resources — a pooled connection, typically — leaked.
+      // Nothing calls back later to release them: the transaction is over.
+      final ended = await p.endTransaction();
+      ok = ok && ended;
     }
     _scope._clear(this);
     return ok;

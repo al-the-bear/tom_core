@@ -203,6 +203,32 @@ void main() {
         expect(TomTransactionManager.getCurrentTransaction(), isNull);
       },
     );
+
+    test(
+      'an end failure does not stop the participants after it being ended',
+      () async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        // Only the *first* fails, so the two behind it are the ones at risk and
+        // the overall result still has to come out false.
+        final failing = _RecordingParticipant('a', endResult: false);
+        final second = _RecordingParticipant('b');
+        final third = _RecordingParticipant('c');
+        await txn.registerParticipant(failing);
+        await txn.registerParticipant(second);
+        await txn.registerParticipant(third);
+        final ok = await txn.commitTransaction();
+        // `endTransaction()` releases per-transaction resources — for a data
+        // source, returning its connection to the pool. Skipping it because
+        // somebody *else* reported failure leaks that resource, and the work is
+        // already committed, so nothing later comes back to release it.
+        expect(failing.calls, ['start', 'commit', 'end']);
+        expect(second.calls, ['start', 'commit', 'end']);
+        expect(third.calls, ['start', 'commit', 'end']);
+        // And the two successes behind it must not erase the failure: the
+        // result is the conjunction of every end call, not the last one.
+        expect(ok, isFalse);
+      },
+    );
   });
 
   group('rollbackTransaction', () {
@@ -252,6 +278,27 @@ void main() {
       expect(ok, isFalse);
       expect(p.calls, ['start', 'rollback', 'end']);
     });
+
+    test(
+      'an end failure does not stop the participants after it being ended',
+      () async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final failing = _RecordingParticipant('a', endResult: false);
+        final second = _RecordingParticipant('b');
+        final third = _RecordingParticipant('c');
+        await txn.registerParticipant(failing);
+        await txn.registerParticipant(second);
+        await txn.registerParticipant(third);
+        final ok = await txn.rollbackTransaction();
+        // The rollback path leaks the same way the commit path does, and it is
+        // the path a failure arrives on — so a participant whose release is
+        // skipped here is being skipped exactly when things are already wrong.
+        expect(failing.calls, ['start', 'rollback', 'end']);
+        expect(second.calls, ['start', 'rollback', 'end']);
+        expect(third.calls, ['start', 'rollback', 'end']);
+        expect(ok, isFalse);
+      },
+    );
   });
 
   group('registerParticipant', () {

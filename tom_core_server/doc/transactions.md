@@ -64,6 +64,15 @@ The work is concluded one of two ways:
 - **`rollbackTransaction()`** — marks not-running, calls `rollback()` then
   `endTransaction()` on every participant, and clears the current transaction.
 
+"Every participant" is unconditional on both paths: a participant whose
+`endTransaction()` returns `false` does not stop the participants behind it from
+being ended, so when implementing one you can count on your release running even
+when a peer's has already failed. Nothing calls back afterwards to release what a
+skipped participant still holds — the transaction is over — which for a data
+source would mean a connection that never returns to the pool. The boolean each
+method returns is the conjunction of *all* the end calls, so one failure among
+them is reported however many succeed after it.
+
 A transaction runs once: after it concludes, `isRunning` is `false`.
 
 ## Ambient Access

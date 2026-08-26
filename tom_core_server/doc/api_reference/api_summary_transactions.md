@@ -119,6 +119,13 @@ None — the constructor is private; obtain instances via
 | `commitTransaction` | `Future<bool> commitTransaction()` | Commits every participant then ends them; if any vetoes, rolls back instead. Clears the transaction from its scope and returns whether it succeeded. |
 | `rollbackTransaction` | `Future<bool> rollbackTransaction()` | Rolls back every participant then ends them; clears the transaction from its scope and returns whether all end calls succeeded. |
 
+"Ends them" is unconditional on both paths: a participant whose
+`endTransaction()` returns `false` does not stop the ones behind it from being
+ended, and the returned boolean is the conjunction of all the end calls rather
+than the last one. An implementer can therefore rely on their release running
+even after a peer's has failed — which matters because nothing runs afterwards
+to release what a skipped participant would still hold.
+
 A transaction remembers the scope it is current in, because it may conclude in a
 different zone from the one that opened it (after an `await`, or from a callback
 scheduled elsewhere). Clearing is identity-guarded, so a concluded transaction
