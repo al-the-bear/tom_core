@@ -1413,6 +1413,7 @@ scoping the default rather than an annotation anyone has to remember — see
 | `getPersistentColumns` | `static List<TomColumnInformation>? getPersistentColumns(Type dbType)` | The persistence metadata for every annotated field, or `null` if not reflectable. Throws `TomAnnotationAnalyzerSyntaxException`. The list is unmodifiable and shared with every other caller for the same entity; a caller wanting one of its own copies it. |
 | `determineColumn` | `static TomColumnInformation determineColumn(String name, List<TomTypePersistenceInfo> persistenceInfo)` | Finds the `TomColumnInformation` matching `name`. Throws `TomAnnotationAnalyzerSyntaxException` when nothing matches. |
 | `referenceQuery` | `static ({String sentence, Map<String, Object?> parameters}) referenceQuery(TomReference reference, Type owningType, Object? Function(String field) readOwningField)` | The `FIND BY` sentence resolving a `@TomReference` for one mapped row, and the parameters it binds. Throws `TomAnnotationAnalyzerSyntaxException` for a malformed expression, `TomAnnotationAnalyzerException` for a context value the zone cannot supply. |
+| `reset` | `static void reset()` | Discards every memoised resolution, so the next lookup of any entity re-reads its reflection metadata. All six memos together — see *Memoisation*. |
 
 ##### Static Constants
 
@@ -1442,7 +1443,8 @@ on `object_persistence` and not the other way round;
 Each of the six resolutions above — mirror, table, columns, row scope,
 column-authorized columns, file columns — is computed once per entity type and
 kept in a private `static final` map. The memos are not part of the API: there
-is no way to read, seed, replace or clear one.
+is no way to read, seed or replace one, and `reset()` is the only way to clear
+them.
 
 That is deliberate, because the memoised answers are *shared*. Every caller
 asking for the same entity receives the same objects, so anything writable
@@ -1451,6 +1453,15 @@ compiles to — silently, and far from the code that made the mistake. Closing
 the memos completes what `TomColumnInformation`'s `final` fields and the
 unmodifiable column lists start: two resolutions of one entity cannot be made
 to disagree. `test/persistence_metadata_sharing_test.dart` pins it.
+
+`reset()` clears all six or none. They are derived from one another — the
+columns come from the mirror, the row scope and the two column subsets come
+from the columns — so emptying a subset would leave the rest describing an
+entity that no longer exists. A server never calls it: an entity's annotations
+are fixed for the run. A test does, when it re-registers a fixture type it has
+already analysed under a different mapping and would otherwise read the first
+answer back. The same test file asserts `reset()` reaches every memo the mixin
+declares, so a seventh added later cannot quietly survive the reset.
 
 ### Exceptions
 

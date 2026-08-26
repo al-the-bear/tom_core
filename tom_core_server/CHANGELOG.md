@@ -2,6 +2,28 @@
 
 ### Testing
 
+- **The analyzer's six memos could not be discarded (tcinc604).**
+  `TomAnnotationAnalyzer` memoises six derived resolutions per entity type —
+  mirror, table, columns, row scope, column-authorized columns, file columns —
+  and, once they were made private, nothing could clear them. A test that
+  re-registers a fixture type it has already analysed, under a different
+  mapping, would read the first answer back and fail as though the mapping were
+  wrong; nothing about that failure points at a cache.
+
+  `reset()` now empties all six, and only all six. They are derived from one
+  another, so a caller emptying the ones it happened to know about would leave
+  the rest describing an entity that no longer exists. It sits beside the
+  declarations rather than at the end of the class, because the failure worth
+  designing against is a seventh memo added later and not added to `reset()`.
+
+  `persistence_metadata_sharing_test.dart` asserts the rebuild by identity and
+  then asserts the same thing structurally: it reads the mixin's own source,
+  counts the declared caches and checks each is cleared inside `reset()`'s body.
+  Identity checks cannot cover the seventh-memo case — a memo nobody thought to
+  test is a memo nobody thought to clear — so the declaration is compared with
+  the body directly. The guard was verified by deleting one `clear()` call and
+  confirming it fails.
+
 - **Resolved persistence metadata was shared by everyone and writable by anyone
   (tcinc603).** `TomAnnotationAnalyzer` resolves an entity's columns once and
   hands the same `TomColumnInformation` objects to every repository, query
@@ -3096,6 +3118,16 @@
   `.env` parser agree on where the key ends.
 
 ### Documentation
+
+- **The documented way to discard a resolution was to reach into the memos
+  (tcinc604).** `object_persistence.md` and the API summary said the memos are
+  private and cannot be cleared at all; with `reset()` that second half stopped
+  being true. Both now describe `reset()` as the single, all-or-nothing route,
+  and say why it is all-or-nothing: the six memos are
+  derived from one another, so clearing a subset leaves the rest describing an
+  entity that no longer exists. Both also name the caller it exists for — a test
+  re-registering an already-analysed fixture type — so nobody reads it as
+  something a server should do between requests.
 
 - **The metadata caches were documented as storage rather than as a contract
   (tcinc603).** `object_persistence.md` and the API summary listed the six memo

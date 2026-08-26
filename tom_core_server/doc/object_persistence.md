@@ -1031,8 +1031,16 @@ assignment to a column's mapped name would change what every later query on that
 entity compiles to, silently, and nowhere near the code that made the mistake.
 So there is no such path: `TomColumnInformation`'s fields are `final`, the
 column lists are handed out unmodifiable, and the memo maps themselves are
-private. Re-resolving an entity is not something a caller does; the declaration
-is fixed for the run.
+private.
+
+Discarding a resolution is therefore all-or-nothing: `TomAnnotationAnalyzer
+.reset()` empties all six memos, and nothing else can empty any of them. The
+memos are derived from one another — the columns come from the mirror, the row
+scope and the two column subsets come from the columns — so clearing a subset
+would leave the rest describing an entity that no longer exists. A server never
+calls it, because an entity's declaration is fixed for the run; a test that
+re-registers a fixture type it has already analysed, under a different mapping,
+is the case that does.
 
 `familyOf` reduces one column to the `TomSqlTypeFamily` it is **stored** in — a
 JSON column is text whatever its Dart type, an explicit `TomDbType` box decides

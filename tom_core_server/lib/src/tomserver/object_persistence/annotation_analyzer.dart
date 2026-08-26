@@ -73,6 +73,30 @@ mixin TomAnnotationAnalyzer {
   /// (an empty list = the entity references no stored files).
   static final _fileColumnCache = <Type, List<TomColumnInformation>>{};
 
+  /// Discards every memoised answer, so the next resolution of any entity
+  /// re-reads its reflection metadata. Intended for tests and for a re-boot.
+  ///
+  /// A server never needs this: an entity's annotations are fixed for the run.
+  /// A test is the case that does — one that re-registers a fixture type it has
+  /// already analysed, under a different mapping, otherwise reads the first
+  /// answer back and fails as though the mapping were wrong. That failure is
+  /// expensive to diagnose, because nothing about it points at a cache.
+  ///
+  /// Clearing all six together is the whole point: they are derived from one
+  /// another — the columns come from the mirror, the row scope and the two
+  /// column subsets come from the columns — so a caller emptying the ones it
+  /// happens to know about would leave the rest describing an entity that no
+  /// longer exists. `test/persistence_metadata_sharing_test.dart` asserts this
+  /// method reaches every cache the mixin declares, including any added later.
+  static void reset() {
+    _mirrorCache.clear();
+    _tableCache.clear();
+    _columnInfoCache.clear();
+    _dataScopeCache.clear();
+    _authColumnCache.clear();
+    _fileColumnCache.clear();
+  }
+
   /// Resolves the full persistence metadata (table + columns) for entity [T].
   ///
   /// Throws [TomAnnotationAnalyzerException] if the type is not reflectable,

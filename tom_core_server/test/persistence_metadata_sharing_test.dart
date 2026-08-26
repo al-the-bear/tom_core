@@ -18,12 +18,16 @@ import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import 'fixtures/reflection_fixture.dart'
-    show FixtureDocumentRecord, FixtureTaskRecord;
+    show FixtureDocumentRecord, FixtureResourceRecord, FixtureTaskRecord;
 import 'fixtures/reflection_fixture.reflection.dart';
 
 /// The declaration of `TomColumnInformation`, which owns the shared metadata.
 const String annotationsSource =
     'lib/src/tomserver/object_persistence/persistence_annotations.dart';
+
+/// The analyzer that resolves the metadata and holds the memos.
+const String analyzerSource =
+    'lib/src/tomserver/object_persistence/annotation_analyzer.dart';
 
 void main() {
   setUpAll(initializeReflection);
@@ -117,6 +121,94 @@ void main() {
     });
   });
 
+  group('reset is the one way to discard a resolution', () {
+    tearDown(TomAnnotationAnalyzer.reset);
+
+    test(
+      'the next resolution rebuilds rather than answering from the memo',
+      () {
+        final before = TomAnnotationAnalyzer.getPersistentColumns(
+          FixtureTaskRecord,
+        )!;
+        TomAnnotationAnalyzer.reset();
+        final after = TomAnnotationAnalyzer.getPersistentColumns(
+          FixtureTaskRecord,
+        )!;
+        expect(identical(before, after), isFalse);
+        // Rebuilt from the same declaration, so it says the same thing — the
+        // point is that it was read again, not that it changed.
+        expect(
+          after.map((column) => column.getQueryFieldName()),
+          before.map((column) => column.getQueryFieldName()),
+        );
+      },
+    );
+
+    test('every derived resolution is discarded with it', () {
+      // The six memos are derived from one another, so clearing some and not
+      // others would leave the rest describing an entity that no longer exists.
+      // These three are the ones whose rebuild is observable by identity: each
+      // returns a freshly built object rather than one held in the annotation.
+      final columns = TomAnnotationAnalyzer.findAuthColumns(
+        FixtureDocumentRecord,
+      );
+      final files = TomAnnotationAnalyzer.findFileColumns(
+        FixtureDocumentRecord,
+      );
+      final scope = TomAnnotationAnalyzer.findDataScope(FixtureResourceRecord);
+      expect(scope, isNotNull);
+
+      TomAnnotationAnalyzer.reset();
+
+      expect(
+        identical(
+          columns,
+          TomAnnotationAnalyzer.findAuthColumns(FixtureDocumentRecord),
+        ),
+        isFalse,
+      );
+      expect(
+        identical(
+          files,
+          TomAnnotationAnalyzer.findFileColumns(FixtureDocumentRecord),
+        ),
+        isFalse,
+      );
+      expect(
+        identical(
+          scope,
+          TomAnnotationAnalyzer.findDataScope(FixtureResourceRecord),
+        ),
+        isFalse,
+      );
+    });
+
+    test('reset reaches every cache the analyzer declares', () {
+      // The failure this guards is a *seventh* cache added beside the six and
+      // not added to reset(): the analyzer would then half-forget an entity,
+      // and the stale half would be read as current. Identity checks cannot
+      // see that — a memo nobody thought to test is a memo nobody thought to
+      // clear — so the declaration is compared with the body directly.
+      final source = File(analyzerSource).readAsStringSync();
+      final declared = RegExp(
+        r'static final (_\w*Cache)\b',
+      ).allMatches(source).map((match) => match.group(1)!).toSet();
+      expect(declared, hasLength(6));
+      final cleared = RegExp(r'(_\w*Cache)\.clear\(\)')
+          .allMatches(_bodyOfReset(source))
+          .map((match) => match.group(1)!)
+          .toSet();
+      expect(
+        declared.difference(cleared),
+        isEmpty,
+        reason:
+            'TomAnnotationAnalyzer.reset() does not clear every cache the '
+            'mixin declares. A memo left behind survives the reset and is '
+            'then read as current, against metadata that was discarded.',
+      );
+    });
+  });
+
   group('the declaration reader', () {
     test('sees a writable field beside a final one', () {
       final fields = _fieldDeclarations(
@@ -185,6 +277,18 @@ class Sample {
       expect(fields.map((field) => field.text), ['final int settled;']);
     });
   });
+}
+
+/// The body of `static void reset()` in [source].
+///
+/// Bounded by the closing brace at the method's own indentation, so the search
+/// for `clear()` calls cannot wander into whatever follows and report a cache
+/// as cleared that is only mentioned elsewhere.
+String _bodyOfReset(String source) {
+  final start = source.indexOf('static void reset() {');
+  if (start < 0) return '';
+  final end = source.indexOf('\n  }', start);
+  return end < 0 ? source.substring(start) : source.substring(start, end);
 }
 
 /// One field declaration read out of a source file.
