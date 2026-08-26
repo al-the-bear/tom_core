@@ -2,6 +2,42 @@
 
 ### Fixed
 
+- **runtime: the documents agree on what the barrel actually exports
+  (tcinc679).** `doc/runtime.md` said `allowsBadCertificateForHost` was "not
+  part of the barrel's public API"; the API summary listed it under **Global
+  Functions and Constants**, beside `clientPlatformUtils`, with nothing to tell
+  the two apart. A reader following the summary would import the barrel and get
+  an undefined-function error.
+
+  The summary was the document in the wrong. The barrel exports one file,
+  `platform_detection_client.dart`, and that file reaches the per-target
+  variants with a conditional **`import`** rather than an `export` — so nothing
+  from a variant escapes `src/`. Verified by compiling a probe against the
+  barrel alone, which also showed the gap was wider than the two-document
+  disagreement suggested: **`TomFlutterPlatformUtils` is unreachable too**, and
+  a third document not implicated in the discrepancy —
+  `api_summary_index.md` — tabulated both withheld symbols alongside the
+  exported one.
+
+  Neither symbol can be fixed by exporting it. A conditional export must name a
+  symbol present on *every* target, and only the native variant has a TLS
+  callback to configure; `TomFlutterPlatformUtils` is three unrelated classes
+  sharing a name, so it denotes no single exportable type. Both are therefore
+  documented as internal, under an **Internal Symbols (not exported)** heading,
+  with the `src/` import a test needs — and a new **Exported Surface** section
+  states the one-symbol rule and why it is not an oversight.
+
+  Three tests hold it: one asserts the entry point contains no `export`
+  directive and the barrel never names a variant file, which is the structural
+  fact the whole claim rests on; one asserts the summary quotes the import path
+  this suite itself compiles against, read out of the suite rather than
+  hard-coded, so a file move cannot leave a stale path documented; and one
+  scans the enumerating lines of both API documents — headings, list items,
+  table rows — for a withheld symbol presented as exported. Scoping that last
+  scan to enumerations rather than to whole paragraphs is deliberate: prose
+  legitimately names the variant class while explaining how one gets selected,
+  and it was the enumerations, not the prose, that misled.
+
 - **runtime: the platform contract is documented as a `tom_basics` type, not a
   kernel one (tcinc678).** `TomPlatformUtils` and `TomFallbackPlatformUtils` are
   declared in `tom_basics`; this module can reach them only because

@@ -310,6 +310,157 @@ void main() {
     });
   });
 
+  group('the documented reach of the module surface', () {
+    // Every symbol in this module lives behind one exported file, and that file
+    // pulls the variants in with a conditional `import` rather than an
+    // `export`. So the barrel publishes exactly one name and keeps both
+    // `allowsBadCertificateForHost` and `TomFlutterPlatformUtils` inside `src/`
+    // — a distinction invisible from the source of any variant, which is how a
+    // summary came to list an unreachable function under "Global Functions".
+
+    test('the barrel publishes only clientPlatformUtils from this module', () {
+      final barrel = File('lib/tom_core_flutter.dart').readAsStringSync();
+      expect(
+        barrel,
+        contains(
+          "export 'src/tomclient/runtime/platform_detection_client.dart';",
+        ),
+        reason: 'the runtime module is no longer exported through its entry '
+            'point; the documented surface has to be re-derived',
+      );
+      for (final variant in ['flutter_io', 'neutral', 'web']) {
+        expect(
+          barrel,
+          isNot(contains('platform_detection_$variant.dart')),
+          reason: 'the barrel now reaches past the entry point into the '
+              '$variant variant; its symbols became public',
+        );
+      }
+
+      // The load-bearing line: `import`, not `export`. A conditional export
+      // could not work here anyway — only the IO variant declares a TLS
+      // predicate, so exporting the selected variant would demand the same
+      // symbol on all three targets — but the guarantee a reader needs is that
+      // nothing escapes, and that is what the absence of `export` states.
+      final entry = File(
+        'lib/src/tomclient/runtime/platform_detection_client.dart',
+      ).readAsStringSync();
+      expect(
+        RegExp(r'^\s*export\s', multiLine: true).hasMatch(entry),
+        isFalse,
+        reason: 'the entry point now re-exports the selected variant; the '
+            'documents call its symbols internal and need revisiting',
+      );
+    });
+
+    test('the API summary marks the unreachable symbols and gives their path', () {
+      // The import path is read out of this file rather than written into the
+      // assertion, so the summary is held to the line a test actually compiles
+      // against. Documenting an import path is only useful if it is the working
+      // one, and the way that stops being true is a file move — which changes
+      // this test's own import and would leave a hand-copied literal behind.
+      final testSource = File('test/runtime_test.dart').readAsStringSync();
+      final importPath = RegExp(
+        r"^import '(package:tom_core_flutter/src/[^']+)';",
+        multiLine: true,
+      ).firstMatch(testSource)?.group(1);
+      expect(
+        importPath,
+        isNotNull,
+        reason: 'this suite no longer imports the variant directly; the '
+            'documented path has nothing left to match',
+      );
+
+      final summary = File(
+        'doc/api_reference/api_summary_runtime.md',
+      ).readAsStringSync();
+      expect(
+        summary,
+        contains(importPath!),
+        reason: 'the API summary does not give the import path a test needs '
+            'for the symbols the barrel withholds',
+      );
+      for (final symbol in [
+        'allowsBadCertificateForHost',
+        'TomFlutterPlatformUtils',
+      ]) {
+        expect(
+          summary,
+          contains(symbol),
+          reason: '$symbol is no longer documented at all',
+        );
+      }
+    });
+
+    test('no enumeration of the surface lists a withheld symbol unmarked', () {
+      // Scoped to the lines that *enumerate* — headings, table rows, list items
+      // — and not to explanatory prose, which legitimately names the variant
+      // class while describing how one gets selected. The enumerations are
+      // where the contradiction lived: the summary carried
+      // `allowsBadCertificateForHost` under a "Global Functions" heading while
+      // the prose two files away called it not part of the public API, and the
+      // index tabulated both withheld symbols beside the exported one with
+      // nothing to distinguish them.
+      final documents = [
+        'doc/api_reference/api_summary_runtime.md',
+        'doc/api_reference/api_summary_index.md',
+      ];
+      final withheld = RegExp(
+        r'\b(allowsBadCertificateForHost|TomFlutterPlatformUtils)\b',
+      );
+      final enumerating = RegExp(r'^\s*(#{1,6} |[-*] |\|)');
+      final qualified = RegExp(
+        r'not exported|internal|src/',
+        caseSensitive: false,
+      );
+
+      for (final path in documents) {
+        final lines = File(path).readAsLinesSync();
+        expect(
+          lines.any(withheld.hasMatch),
+          isTrue,
+          reason: '$path no longer mentions the withheld symbols',
+        );
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i];
+          if (!withheld.hasMatch(line) || !enumerating.hasMatch(line)) continue;
+          expect(
+            qualified.hasMatch(line),
+            isTrue,
+            reason: '$path:${i + 1} lists a symbol the barrel withholds as '
+                'though it were part of the exported surface:\n  $line',
+          );
+        }
+      }
+    });
+
+    test('the module document keeps its statement that the hook is internal', () {
+      // The summary's new section and this sentence are the two halves of the
+      // agreement this pins; without the sentence the summary would be the only
+      // place the reachability is stated, and the document a reader reaches
+      // first would go quiet on it.
+      // Whitespace-collapsed: the sentence is wrapped, so the phrase this looks
+      // for is split across lines in the file and would never match as written.
+      final runtimeDoc = File(
+        'doc/runtime.md',
+      ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+      expect(
+        runtimeDoc,
+        contains('allowsBadCertificateForHost'),
+        reason: 'doc/runtime.md dropped the certificate hook entirely',
+      );
+      expect(
+        RegExp(
+          r"allowsBadCertificateForHost.{0,400}?not part of the barrel's "
+          r'public API',
+        ).hasMatch(runtimeDoc),
+        isTrue,
+        reason: 'doc/runtime.md no longer says the hook is outside the '
+            'exported surface; it and the API summary would disagree',
+      );
+    });
+  });
+
   group('the shipped example runs', () {
     test('runtime_example.run() completes its assertions', () {
       // The example is quoted as documentation, so it has to be executable

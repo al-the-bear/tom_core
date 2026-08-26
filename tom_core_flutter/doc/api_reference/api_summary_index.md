@@ -16,7 +16,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | Observing | [api_summary_observing.md](api_summary_observing.md) | Kernel-observable → Flutter bridges (`TomObservingWidget`, `ValueListenableObserver`). |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Device-stored preferences (`TomDevicePreferences`, per-platform stores) and the account store's client (`TomUserPreferencesClient`). |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Typed config properties (`TomProperty` and typed subclasses). |
-| Runtime | [api_summary_runtime.md](api_summary_runtime.md) | Compile-time platform selection (`clientPlatformUtils`, `TomFlutterPlatformUtils`). |
+| Runtime | [api_summary_runtime.md](api_summary_runtime.md) | Compile-time platform selection (`clientPlatformUtils`). |
 | Security | [api_summary_security.md](api_summary_security.md) | Client 2FA annotation (`TomClient2FAAdaptor`). |
 
 ## Modules
@@ -76,9 +76,9 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `clientPlatformUtils` | getter | Fresh `TomPlatformUtils` for the current Flutter target. |
-| `allowsBadCertificateForHost` | function | *(native variant)* Loopback-only bad-cert TLS predicate. |
-| `TomFlutterPlatformUtils` | class | Flutter platform utils (io / web / neutral compile-time variants). |
+| `clientPlatformUtils` | getter | Fresh `TomPlatformUtils` for the current Flutter target. The module's only exported symbol. |
+| `allowsBadCertificateForHost` | function | *(native variant, **not exported** — import from `src/`)* Loopback-only bad-cert TLS predicate. |
+| `TomFlutterPlatformUtils` | class | *(**not exported** — import from `src/`)* Flutter platform utils (io / web / neutral compile-time variants). |
 
 ### Security (`lib/src/tomclient/security/`)
 
@@ -90,7 +90,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Type | Module |
 | ---- | ------ |
-| `allowsBadCertificateForHost` | Runtime |
+| `allowsBadCertificateForHost` | Runtime (internal — not exported) |
 | `clientPlatformUtils` | Runtime |
 | `coerceSettingValue` | Configuration |
 | `TomBaseClientConfiguration` | Configuration |
@@ -106,7 +106,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomDevicePreferenceStore` | Preferences |
 | `TomDoubleProperty` | Resources |
 | `TomFileClientConfigurationStore` | Configuration |
-| `TomFlutterPlatformUtils` | Runtime |
+| `TomFlutterPlatformUtils` | Runtime (internal — not exported) |
 | `TomIntProperty` | Resources |
 | `TomMemoryClientConfigurationStore` | Configuration |
 | `TomMemoryDevicePreferenceStore` | Preferences |

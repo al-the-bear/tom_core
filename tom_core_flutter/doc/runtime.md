@@ -68,6 +68,20 @@ current target. Platform predicates read Flutter's `defaultTargetPlatform` /
 
 ## Notes
 
+- **`clientPlatformUtils` is the only symbol the barrel exports.** The package
+  barrel exports `platform_detection_client.dart`, and that file pulls in the
+  selected variant with a conditional *import*, so neither
+  `TomFlutterPlatformUtils` nor `allowsBadCertificateForHost` escapes `src/`.
+  Both are documented — in
+  [`api_summary_runtime.md`](api_reference/api_summary_runtime.md) — but a test
+  that wants them has to import the variant file directly:
+
+  ```dart
+  import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutter_io.dart';
+  ```
+
+  Consumers never need the concrete type: `clientPlatformUtils` hands back a
+  `TomPlatformUtils`, and the variant class is a different class on each target.
 - The three `TomFlutterPlatformUtils` implementations share identical platform
   predicate logic; they differ only in construction, `httpClient()`,
   `getBrowserLocation()`, and `getIsolateName()`. The duplication is a known
