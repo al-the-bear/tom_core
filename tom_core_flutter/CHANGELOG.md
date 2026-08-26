@@ -154,6 +154,24 @@
 
 ### Tests / Examples
 
+- **observing: two lifecycle test comments describe the contract instead of the
+  TDD phase they were written in (tcinc663).** Both comments in
+  `test/observing_test.dart` ended by declaring the test red against an
+  implementation that lacked `dispose` and lacked `didUpdateWidget` migration —
+  the strongest possible claim about a module whose entire contract is those two
+  hooks, made directly above two passing tests, while
+  `tom_observing_widget.dart` defined both. They were accurate red-first markers
+  that the change turning them green did not remove. Each now names the hook it
+  pins and explains why both assertions are needed: adding the new registration
+  without dropping the old renders correctly and is visible only as a rebuild
+  the old observable should no longer be able to cause. Both comments also
+  opened by citing a numbered section of a document that is nowhere in the
+  workspace; the citations are dropped rather than resolved, matching the
+  direction tcinc672 takes for the same defect in the resources tests. A
+  three-test guard keeps the file free of phase markers and section citations
+  while requiring the comments to keep naming their hook, so it cannot be
+  satisfied by deleting the prose it checks.
+
 - **observing: the example demonstrates the deviation it used to rely on
   (tcinc662).** `example/observing/observing_example.dart` called
   `adaptor.removeListener(() {})` with a closure it had never registered and

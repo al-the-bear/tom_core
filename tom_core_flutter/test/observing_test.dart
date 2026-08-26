@@ -57,17 +57,18 @@ void main() {
       expect(find.text('OFF'), findsNothing);
     });
 
-    // tests §8(a) — disposal: once the widget leaves the tree it must
-    // deregister, so a later mutation does not call setState on a dead State
-    // ("setState() called after dispose()"). That is the whole benefit, and it
-    // is a benefit about *timing*: TomObservable holds observers weakly, so a
-    // surviving registration would not have kept the State alive either way —
-    // it would just have gone on notifying a disposed element until the
-    // collector happened to run. There is no public observer-count getter on
-    // TomObservable, so the still-registered dead observer surfaces only as the
-    // framework throw on the post-unmount notification — asserting no exception
-    // is the deregistration check. RED against the current (no-dispose)
-    // implementation.
+    // Disposal: once the widget leaves the tree it must deregister, so a later
+    // mutation does not call setState on a dead State ("setState() called after
+    // dispose()"). `TomObservingWidgetState.dispose` is what this pins.
+    //
+    // The benefit is about *timing*, not lifetime: TomObservable holds its
+    // observers weakly, so a surviving registration would not have kept the
+    // State alive either way — it would just have gone on notifying a disposed
+    // element until the collector happened to run. There is no public
+    // observer-count getter on TomObservable, so a still-registered dead
+    // observer surfaces only as the framework throw on the post-unmount
+    // notification; asserting that nothing was thrown is the deregistration
+    // check.
     testWidgets('deregisters on unmount — no setState after dispose',
         (tester) async {
       final flag = TomBool(false);
@@ -94,11 +95,17 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    // tests §8(b) — observable swap: a parent rebuild with a different
-    // subState must make the widget observe and render from the NEW observable
-    // and ignore the OLD one. RED against the current implementation, which
-    // seeds its observer/`subState` once in the constructor and never migrates
-    // on didUpdateWidget.
+    // Observable swap: a parent rebuild with a different subState must make the
+    // widget observe and render from the NEW observable and ignore the OLD one.
+    // `TomObservingWidgetState.didUpdateWidget` is what this pins — it compares
+    // the two by identity and moves the registration across.
+    //
+    // Both halves are asserted because only one of them is visible in the
+    // rendering. Adding the new registration without dropping the old one
+    // renders correctly from the new observable and still looks right; the
+    // stale registration shows up only as a rebuild that the old observable
+    // should no longer be able to cause, which is what the build counter at the
+    // end of the test measures.
     testWidgets('swaps to a new subState — observes/renders new, ignores old',
         (tester) async {
       final first = TomBool(false);
@@ -418,6 +425,72 @@ void main() {
           .firstMatch(summary);
       expect(row, isNotNull, reason: 'no removeListener row in the method table');
       expect(row!.group(0)!.toLowerCase(), contains('ignor'));
+    });
+  });
+
+  group('test comments state the contract, not the TDD history', () {
+    // tcinc663 — the two TomObservingWidget lifecycle comments used to close
+    // with a leftover marker recording that the test failed against the
+    // implementation as it then stood, and to open with a citation of a
+    // numbered section in a document that does not exist. Both were accurate
+    // while the tests were being written red-first; the change that turned them
+    // green did not remove them.
+    //
+    // A stale comment costs more than stale prose, because it sits directly
+    // above the test and outranks it: a maintainer was told the production code
+    // lacks `dispose` and lacks `didUpdateWidget` migration — the strongest
+    // possible claim about a module whose entire contract is those two hooks —
+    // while `tom_observing_widget.dart` defined both and the tests underneath
+    // were passing.
+    //
+    // tcinc672 applies the same rule to `test/resources_test.dart`, whose
+    // comments cite a `status_bug.md` that is nowhere in the workspace. Add
+    // that file to the list below when it lands.
+    const commentedFiles = <String>['test/observing_test.dart'];
+
+    // Every needle below is assembled from two fragments rather than written
+    // out, because the list this guard scans includes the file the guard lives
+    // in. Spelled literally, the forbidden patterns would match the guard's own
+    // source and the required ones would be satisfied by it. That is not
+    // hypothetical: the positive check below passed against its own `expect`
+    // argument until a mutation deleting the comment it guards failed to turn
+    // it red.
+    final tddPhaseMarker = RegExp('RED ' r'(against|before)');
+    final sectionCitation = RegExp('§' r'\s*\d');
+    const disposeNaming =
+        '`TomObservingWidgetState.dispose`' ' is what this pins';
+    const migrationNaming =
+        '`TomObservingWidgetState.didUpdateWidget`' ' is what this pins';
+
+    test('the lifecycle comments still name the hook their test pins', () {
+      // Without this the two checks below are satisfiable by deleting the
+      // comments outright: a test that explains nothing narrates no stale
+      // history either.
+      final text = File('test/observing_test.dart').readAsStringSync();
+      expect(text, contains(disposeNaming),
+          reason: 'the disposal test no longer names the hook it pins');
+      expect(text, contains(migrationNaming),
+          reason: 'the swap test no longer names the hook it pins');
+    });
+
+    test('no comment narrates a red-first phase', () {
+      final offenders = <String>[
+        for (final path in commentedFiles)
+          if (tddPhaseMarker.hasMatch(File(path).readAsStringSync()))
+            '$path describes the implementation as it was before the test '
+                'passed rather than what the test pins',
+      ];
+      expect(offenders, isEmpty);
+    });
+
+    test('no comment cites a numbered section of another document', () {
+      final offenders = <String>[
+        for (final path in commentedFiles)
+          if (sectionCitation.hasMatch(File(path).readAsStringSync()))
+            '$path cites a numbered section; the observing documents carry '
+                'named headings and no numbering for it to refer to',
+      ];
+      expect(offenders, isEmpty);
     });
   });
 
