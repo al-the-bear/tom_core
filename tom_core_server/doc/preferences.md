@@ -236,6 +236,15 @@ client read an outage as absence and paper it over with a default. Answering
 `500` for a malformed key makes the
 opposite mistake: it tells a client its own bad request is worth retrying.
 
+Both translated statuses answer with the framework's error envelope
+(`errorType`, `errorKey`, `uuid`, `autoLog`, `requestUuid`), the
+`x-tom-error: true` header and `Content-Type: application/json;charset=UTF-8`.
+The media type is what makes the envelope usable: the argument for the `404` is
+that a client branches on `errorKey` rather than on the status, and a client
+stack that decides whether to parse by media type has nothing to decide on if
+the response declares none. The opaque `500` keeps `text/plain`, because it has
+no envelope to parse.
+
 **Read, write and delete all carry the handler**; the list endpoint carries none
 and needs none. The key sits in the path of all three, so a `400` only the read
 could produce would leave two thirds of the surface answering `500` for the same

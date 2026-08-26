@@ -389,5 +389,18 @@ void main() {
       final result = await map(TomServerException('db.fail', 'query failed'));
       expect(result.body['clientThrow'], isTrue);
     });
+
+    test('the envelope declares the media type of the body it sends', () async {
+      // This handler is the framework's error shape — the one every other
+      // JSON-envelope handler in the package is written to match. A body a
+      // client is expected to decode by `errorKey` has to say it is JSON, or
+      // the client has only the `x-tom-error` header to guess from and an
+      // intermediary has nothing at all.
+      final result = await map(TomException('db.fail', 'query failed'));
+      expect(
+        TomMimeType.parse(result.headers[TomHeader.contentType]!),
+        TomMimeType.json,
+      );
+    });
   });
 }

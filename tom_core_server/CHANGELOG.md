@@ -519,6 +519,27 @@
 
 ### Fixed
 
+- **Both JSON error envelopes went out with no `content-type` at all
+  (tcinc611).** The preferences miss (`TomUserPreferencesErrorHandler`, a `404`
+  or a `400`) and the framework's own `TomServer.errorHandler` (a `500`) each
+  set exactly one header, `x-tom-error: true`, and shelf adds no default media
+  type — so the body a client is told to decode arrived undeclared. Both now
+  send `application/json;charset=UTF-8`, written the way
+  `file_endpoint.dart` already writes it:
+  `{TomHeader.contentType: TomMimeType.json.toHeaderValue()}`.
+
+  The whole design argument for the preferences `404` is that a client branches
+  on the body's `errorKey` rather than on the status alone. A client stack that
+  decides whether to parse by media type had nothing to decide on, and an
+  intermediary was free to sniff the body as anything it liked. The framework
+  envelope is fixed with it because it is the shape the preferences handler is
+  documented as following — leaving the reference wrong would have made the two
+  disagree in the one respect this changed.
+
+  The opaque fallback keeps `text/plain`: it carries no envelope, so declaring
+  JSON there would promise a body that is not one. That is now pinned too, so
+  the two are not quietly unified later.
+
 - **`autoScopeFor` decided the grant-table exclusion per column, so which
   answer it gave depended on column order (tcinc608).** The guard that keeps the
   framework's own authorization tables out of automatic scoping was evaluated

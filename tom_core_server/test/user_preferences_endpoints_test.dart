@@ -82,6 +82,46 @@ void main() {
       );
     });
 
+    test('the miss declares the media type of the body it sends', () async {
+      // The whole design argument for the 404 is that a client reads the body
+      // rather than the status alone. A client stack that decides whether to
+      // parse by media type has nothing to decide on if the response declares
+      // none, and an intermediary that sniffs an undeclared body is free to
+      // call it whatever it likes.
+      final response = handler.handleInvocationError(
+        TomEndpointHandlerException(
+          'preferences.not_found',
+          "No preference is stored under 'tom.theme'.",
+        ),
+        StackTrace.current,
+        _request(),
+      );
+
+      // Compared as a parsed media type, not as a string: the charset is part
+      // of what is sent, and pinning the literal would make this test a
+      // spelling check on `toHeaderValue`.
+      expect(
+        TomMimeType.parse(response.headers[TomHeader.contentType]!),
+        TomMimeType.json,
+      );
+    });
+
+    test('the rejected key declares it too, from the same arm', () async {
+      // The 400 and the 404 are one branch of `handleInvocationError`, so this
+      // would only fail separately if that branch were ever split — which is
+      // exactly when it would be worth knowing.
+      final response = handler.handleInvocationError(
+        _keyRefusal('a/b'),
+        StackTrace.current,
+        _request(),
+      );
+
+      expect(
+        TomMimeType.parse(response.headers[TomHeader.contentType]!),
+        TomMimeType.json,
+      );
+    });
+
     test('answers 400 for a key that is not a usable key at all', () async {
       // The key is a URL path segment the server reads back off the request,
       // so a bad one is a bad *request* — and the client is owed an answer
@@ -124,6 +164,12 @@ void main() {
       );
 
       expect(response.statusCode, 500);
+      // And it stays plain text: the opaque fallback has no envelope to parse,
+      // so declaring JSON there would promise a body that is not one.
+      expect(
+        TomMimeType.parse(response.headers[TomHeader.contentType]!),
+        TomMimeType.plainText,
+      );
     });
 
     test('leaves a plain error opaque', () async {

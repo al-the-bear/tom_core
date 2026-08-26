@@ -250,7 +250,7 @@ const TomUserPreferencesErrorHandler()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the two translated ones, carrying the framework's error envelope and the `x-tom-error` header so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
+| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the two translated ones, carrying the framework's error envelope, the `x-tom-error` header and `Content-Type: application/json` so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
 | `handleErrorDefault` | `Response handleErrorDefault(Object error, Object stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not one of the two translated keys is answered exactly as it would have been without this handler. |
 
 Why only those two keys: a client must be able to tell **"you have no such
@@ -263,8 +263,11 @@ was a server fault worth retrying. Everything else stays opaque: mapping
 client read it as absence and paper the outage over with a default.
 
 The `404` body carries the usual error envelope (`errorType`, `errorKey`, `uuid`,
-`autoLog`, `requestUuid`) and the `x-tom-error: true` header, so a client
-branches on the key rather than on message text.
+`autoLog`, `requestUuid`), the `x-tom-error: true` header and
+`Content-Type: application/json;charset=UTF-8`, so a client branches on the key
+rather than on message text — and is told there is a body to decode before it
+decides whether to decode one. The opaque `500` from `handleErrorDefault` keeps
+`text/plain`, because it carries no envelope.
 
 ## Global Functions and Constants
 

@@ -70,6 +70,9 @@ class TomUserPreferencesErrorHandler extends TomErrorHandler {
     if (error is TomException && status != null) {
       // The body follows the framework's error shape (`TomServer.errorHandler`)
       // so a client branches on `errorKey`, not on a message or a status alone.
+      // Which is also why the media type is declared: a client that is expected
+      // to decode the body needs to be told there is one to decode, and an
+      // undeclared body is one an intermediary may sniff as anything it likes.
       return Response(
         status,
         body: jsonEncode({
@@ -79,7 +82,10 @@ class TomUserPreferencesErrorHandler extends TomErrorHandler {
           'autoLog': error.autoLog,
           'requestUuid': error.requestUuid,
         }),
-        headers: const {'x-tom-error': 'true'},
+        headers: {
+          'x-tom-error': 'true',
+          TomHeader.contentType: TomMimeType.json.toHeaderValue(),
+        },
       );
     }
     return handleErrorDefault(error, stacktrace, r, null);

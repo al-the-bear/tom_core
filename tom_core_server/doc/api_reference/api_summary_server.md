@@ -93,7 +93,7 @@ TomServer(TomBaseServerConfiguration configuration)
 | `configuration` | `TomBaseServerConfiguration` | The configuration that drives binding, TLS, and pipeline composition. |
 | `securityContext` | `SecurityContext?` | The TLS security context, built from the configuration when SSL is on. |
 | `router` | `Router?` | The endpoint router, initialised during `start`. |
-| `errorHandler` | `Response? Function(Request, Object, StackTrace)` | Maps a thrown error to a JSON error response (HTTP 500); overridable via the configuration. |
+| `errorHandler` | `Response? Function(Request, Object, StackTrace)` | Maps a thrown error to a JSON error response (HTTP 500), declared `Content-Type: application/json` and marked `x-tom-error: true`; overridable via the configuration. |
 | `authenticationErrorHandler` | `Response? Function(Request, Object, StackTrace)?` | Error handler applied by the outer pipeline layer; defaults to the configuration's handler, falling back to `errorHandler`. |
 | `loggingMiddleware` | `Middleware` | The middleware that emits the per-request access log (`late`; from the configuration). |
 

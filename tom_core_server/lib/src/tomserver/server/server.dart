@@ -277,7 +277,14 @@ class TomServer {
         if (error is TomServerException) {
           body["clientThrow"] = error.clientThrow;
         }
-        Map<String, String> headers = {"x-tom-error": "true"};
+        // The media type is part of the contract, not decoration: the body is
+        // an envelope a client is expected to decode and branch on, so it has
+        // to be declared as one. Shelf adds no default here, and an undeclared
+        // body leaves a client with only `x-tom-error` to guess from.
+        Map<String, String> headers = {
+          "x-tom-error": "true",
+          TomHeader.contentType: TomMimeType.json.toHeaderValue(),
+        };
         return Response.internalServerError(
           body: jsonEncode(body),
           headers: headers,
