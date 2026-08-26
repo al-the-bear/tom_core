@@ -440,7 +440,7 @@ TomEndpointException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
   String? uuid,
   bool? serverCallError,
 })
@@ -627,7 +627,7 @@ TomMimeTypeException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
 })
 ```
 
@@ -705,7 +705,7 @@ TomClientRemoteContextException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
   String? uuid,
   bool? serverCallError,
 })
@@ -1053,7 +1053,7 @@ TomServerConnectionException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
   String? requestUuid,
   String? uuid,
   bool? serverCallError,
@@ -1076,7 +1076,7 @@ TomRequestAbortedException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
   String? requestUuid,
 })
 ```
@@ -1106,7 +1106,7 @@ TomRequestTimeoutException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
   String? requestUuid,
 })
 ```
@@ -1399,7 +1399,7 @@ TomFileTransferException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
   String? requestUuid,
   String? uuid,
 })

@@ -1431,6 +1431,19 @@ anyone who was writing them.
 
 ### Documentation
 
+- **Twelve documented constructors typed `autoLog` as `bool?` with no default,
+  where it is `bool` and defaults to `false` (tcinc618).** Every one of the
+  twelve is an exception that forwards with `super.autoLog`, so each inherits
+  both the type and the default of `TomException`'s `this.autoLog = false`. As
+  written, the summaries said two untrue things at once: that `null` is an
+  accepted argument — it is not, the analyzer rejects it — and that a caller who
+  omits the parameter gets no defined behaviour, when omitting it is the normal
+  case and means "do not log automatically". The affected summaries are
+  `http_connection` (seven), `isolate_pooling` (two), and `beanlocator`,
+  `reflection` and `timezoned` (one each). Same root cause as the `stack`
+  correction below: a super-parameter's type and default come from the
+  constructor it forwards to, not from the field it eventually writes.
+
 - **`TomReflectorException`'s `stack` parameter was typed `Object?` where it is
   `StackTrace?` (tcinc617).** The class extends `TomException`, and forwards
   with `super.stack`; `TomException`'s constructor narrows the parameter to

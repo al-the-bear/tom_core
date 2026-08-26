@@ -65,7 +65,7 @@ TomReflectorException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
 })
 ```
 

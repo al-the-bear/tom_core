@@ -93,7 +93,7 @@ TomWorkerException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
   String? uuid,
   bool? serverCallError,
 })
@@ -134,7 +134,7 @@ TomWorkerDiedException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
   String? uuid,
   bool? serverCallError,
 })
