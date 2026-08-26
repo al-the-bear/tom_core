@@ -1796,7 +1796,7 @@ The element provider declares all widgets for a screen as typed fields. Annotate
 
 ```dart
 @tomReflect
-class LoginScreenElements extends TomScreenElementsProvider {
+class LoginScreenElements extends TomScreenElementsProviderBase {
   TomText greeting = TomText(id: 'login_greeting');
   TomForm loginForm = LoginForm(binding: appState.loginForm);
   TomElevatedButton loginButton = TomElevatedButton(
@@ -1933,7 +1933,7 @@ Data source views integrate into screens using the same `AclProviderBuilder<T>` 
 
 ```dart
 @tomReflect
-class OrderManagementElements extends TomScreenElementsProvider {
+class OrderManagementElements extends TomScreenElementsProviderBase {
   TomListView<Order> orderList = TomListView<Order>(
     id: 'order_list',
     dataSource: orderDataSource,

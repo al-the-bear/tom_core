@@ -48,11 +48,13 @@ void run(CounterController controller, CounterContext ctx) {
 }
 ```
 
-(`IncrementAction` / `CounterContext` / `IncrementUndo` are the app's own
-subclasses of `TomAction` / `TomActionContext` / `TomActionUndo` — see
-`example/actions/`. The action extends `TomAction`, not `TomSimpleAction`,
-because the `history.undo()` above needs it to return undo state;
-`TomSimpleAction` always returns `null`, so nothing would reach the history.)
+(All three are the app's own types — see `example/actions/`. `IncrementAction`
+and `CounterContext` *extend* `TomAction` and `TomActionContext`;
+`IncrementUndo` *implements* `TomActionUndo`, which is an
+`abstract interface class` and so cannot be extended outside its own library.
+The action extends `TomAction`, not `TomSimpleAction`, because the
+`history.undo()` above needs it to return undo state; `TomSimpleAction` always
+returns `null`, so nothing would reach the history.)
 
 ---
 
