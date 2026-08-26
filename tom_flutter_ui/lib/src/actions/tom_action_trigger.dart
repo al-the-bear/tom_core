@@ -65,12 +65,7 @@ class TomActionTrigger<TContext extends TomActionContext,
     }
 
     final tx = TomActionTransaction(label: action.label);
-    final undoState = action.execute(context, tx);
-
-    if (undoState != null && action.isUndoable) {
-      tx.record(action, undoState);
-    }
-
+    tx.run(action, context);
     tx.commit();
 
     if (tx.hasEntries && undoHistory != null) {

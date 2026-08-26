@@ -89,10 +89,7 @@ class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
         continue;
       }
 
-      final undoState = step.action.execute(stepContext, tx);
-      if (undoState != null && step.action.isUndoable) {
-        tx.record(step.action, undoState);
-      }
+      tx.run(step.action, stepContext);
     }
     return null;
   }
@@ -124,10 +121,26 @@ class TomCompositeStep<TContext extends TomActionContext> {
   });
 }
 
-/// Adapter action that executes two actions sequentially with individual guards.
+/// Runs two actions in sequence, each with its own context and guard — the
+/// everyday *save-and-close* / *validate-and-submit* shape.
 ///
-/// Convenience specialization of [TomCompositeAction] for the common
-/// two-action case (e.g., save-and-close, validate-and-submit).
+/// Both halves run **forward**: [first] then [second]. Neither reverses the
+/// other; reversal is [TomActionTransaction]'s job, and both halves record
+/// into the same one.
+///
+/// A **sibling** of [TomCompositeAction], not a specialisation of it. The two
+/// classes both extend [TomAction] directly, neither derives from the other,
+/// and the only code they share is [TomActionTransaction.run]. What this one
+/// adds over a two-step composite is naming — [first] / [second] and their
+/// builders are separate constructor arguments instead of positions in a list
+/// — and independence: the halves never block one another, which a composite
+/// expresses only as `stopOnBlockedStep: false`.
+///
+/// It is **not** needed to give the two sides different context types. A
+/// `List<TomCompositeStep>` holds a `TomCompositeStep<CtxA>` and a
+/// `TomCompositeStep<CtxB>` side by side — the type parameter is covariant,
+/// and each step pairs its own action with its own builder — so a composite
+/// covers that case too.
 class TomDualAction<TCtx1 extends TomActionContext,
     TCtx2 extends TomActionContext> extends TomAction<TomActionContext, TomActionUndo> {
   final TomAction<TCtx1, TomActionUndo> first;
@@ -187,20 +200,10 @@ class TomDualAction<TCtx1 extends TomActionContext,
   @override
   TomActionUndo? execute(TomActionContext context, TomActionTransaction tx) {
     final ctx1 = _firstContextIfRunnable();
-    if (ctx1 != null) {
-      final undo1 = first.execute(ctx1, tx);
-      if (undo1 != null && first.isUndoable) {
-        tx.record(first, undo1);
-      }
-    }
+    if (ctx1 != null) tx.run(first, ctx1);
 
     final ctx2 = _secondContextIfRunnable();
-    if (ctx2 != null) {
-      final undo2 = second.execute(ctx2, tx);
-      if (undo2 != null && second.isUndoable) {
-        tx.record(second, undo2);
-      }
-    }
+    if (ctx2 != null) tx.run(second, ctx2);
 
     return null;
   }

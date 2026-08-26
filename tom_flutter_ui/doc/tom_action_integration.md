@@ -48,7 +48,7 @@ Actions in the Tom UI framework are the **behavioral counterpart to widgets**. W
 | `TomActionUndo` | Tag interface for undo state objects | `tom_flutter_ui` |
 | `TomUndoHistory` | Undo/redo stack management | `tom_flutter_ui` |
 | `TomCompositeAction` | Multi-step action with guards | `tom_flutter_ui` |
-| `TomDualAction` | Execute/reverse pair | `tom_flutter_ui` |
+| `TomDualAction` | Two independent actions, run forward in sequence | `tom_flutter_ui` |
 | `TomAuthState` | Four-state authorization enum (none/disabled/read/full) | `tom_core_kernel` |
 | `TomAuthorizer` | Per-widget/action auth modifier | `tom_core_kernel` |
 | `TomAuthorizerStrategy` | How authorizer interacts with resource auth | `tom_core_kernel` |

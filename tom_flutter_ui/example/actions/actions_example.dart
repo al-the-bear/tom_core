@@ -92,10 +92,11 @@ void run() {
   print('increment path: ${controller.increment.canonicalPath}');
   print('found by id: ${controller.findAction('reset') == controller.reset}');
 
-  // Example 2: direct execution inside a transaction returns undo state.
+  // Example 2: run an action inside a transaction. `run` executes it and
+  // records its undo state — but only when it returned one *and* the action
+  // declares itself undoable. Every dispatch path shares this pairing.
   final tx = TomActionTransaction(label: 'manual increment');
-  final undo = controller.increment.execute(ctx(), tx);
-  tx.record(controller.increment, undo);
+  tx.run(controller.increment, ctx());
   tx.commit();
   print('after manual increment: ${counter.value} (entries: ${tx.entryCount})');
 

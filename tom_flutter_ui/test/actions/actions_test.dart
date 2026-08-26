@@ -53,6 +53,43 @@ class ResetAction extends TomSimpleAction<CounterContext> {
       context.counter.value = 0;
 }
 
+/// Returns an undo state but leaves [TomAction.isUndoable] at its default
+/// `false` — the one shape that distinguishes the two halves of the recording
+/// rule in [TomActionTransaction.run].
+class UnrecordedIncrementAction
+    extends TomAction<CounterContext, IncrementUndo> {
+  UnrecordedIncrementAction({required super.controller})
+      : super(actionId: 'unrecordedIncrement');
+
+  @override
+  IncrementUndo execute(CounterContext context, TomActionTransaction tx) {
+    final previous = context.counter.value;
+    context.counter.value += 1;
+    return IncrementUndo(context.counter, previous);
+  }
+}
+
+/// A second context type, unrelated to [CounterContext].
+///
+/// Exists so a composite can be built whose steps take *different* context
+/// types — the case `TomDualAction` was once documented as being needed for.
+class LabelContext extends TomActionContext {
+  final List<String> log;
+  LabelContext(this.log);
+}
+
+class AppendLabelAction extends TomSimpleAction<LabelContext> {
+  AppendLabelAction({required super.controller, required this.text})
+      : super(actionId: 'append');
+
+  /// Not named `label` — [TomAction.label] is the resource-resolved caption.
+  final String text;
+
+  @override
+  void executeSimple(LabelContext context, TomActionTransaction tx) =>
+      context.log.add(text);
+}
+
 /// Increment action attached to an authorization group, used to exercise the
 /// `effectiveAuthState` group-mode branch (§58b).
 class _GroupedIncrement extends TomAction<CounterContext, IncrementUndo> {
@@ -180,6 +217,49 @@ void main() {
       expect(counter.value, 1);
       tx.rollback();
       expect(counter.value, 0);
+    });
+
+    test('run executes an action and records its undo state', () {
+      final controller = TomActionController(controllerId: 'c');
+      final inc = IncrementAction(controller: controller);
+      final counter = Counter();
+      final tx = freshTx();
+      tx.run(inc, CounterContext(counter));
+      expect(counter.value, 1, reason: 'the action ran');
+      expect(tx.entryCount, 1, reason: 'its undo state was recorded');
+    });
+
+    test('run records nothing for an action that is not undoable', () {
+      // ResetAction is a TomSimpleAction: it returns no undo state, so there
+      // is nothing to reverse and the transaction stays empty.
+      final controller = TomActionController(controllerId: 'c');
+      final counter = Counter()..value = 5;
+      final tx = freshTx();
+      tx.run(ResetAction(controller: controller), CounterContext(counter));
+      expect(counter.value, 0, reason: 'the action still ran');
+      expect(tx.hasEntries, isFalse);
+    });
+
+    test('run ignores an undo state from an action that is not undoable', () {
+      // Both halves of the rule matter: an action may hand back a state and
+      // still decline to be reversed. Recording it would make undo call
+      // TomAction.undo on an action whose default undo is a no-op, so the
+      // transaction would claim an entry that reverses nothing.
+      final controller = TomActionController(controllerId: 'c');
+      final action = UnrecordedIncrementAction(controller: controller);
+      final counter = Counter();
+      final tx = freshTx();
+      tx.run(action, CounterContext(counter));
+      expect(counter.value, 1, reason: 'the action ran');
+      expect(tx.hasEntries, isFalse,
+          reason: 'isUndoable is false, so nothing is recorded');
+    });
+
+    test('run after commit throws', () {
+      final controller = TomActionController(controllerId: 'c');
+      final inc = IncrementAction(controller: controller);
+      final tx = freshTx()..commit();
+      expect(() => tx.run(inc, CounterContext(Counter())), throwsStateError);
     });
 
     test('undoAll reverses entries in reverse order', () {
@@ -603,6 +683,33 @@ void main() {
   // execute-and-record, and each guard-skip branch. `first` uses step 1,
   // `second` uses step 10, so the counter value uniquely identifies which ran.
   group('TomDualAction', () {
+    // Pins the claim in TomDualAction's dartdoc that it is *not* needed to give
+    // two sides different context types. TomCompositeStep's type parameter is
+    // covariant, so a heterogeneous list is well typed, and each step still
+    // pairs its own action with its own builder.
+    test('a composite holds steps whose contexts are different types', () {
+      final controller = TomActionController(controllerId: 'mixed');
+      final counter = Counter();
+      final log = <String>[];
+      TomCompositeAction(
+        actionId: 'mixed',
+        controller: controller,
+        steps: [
+          TomCompositeStep<CounterContext>(
+            action: IncrementAction(controller: controller, id: 'inc'),
+            contextBuilder: () => CounterContext(counter),
+          ),
+          TomCompositeStep<LabelContext>(
+            action: AppendLabelAction(controller: controller, text: 'done'),
+            contextBuilder: () => LabelContext(log),
+          ),
+        ],
+      ).execute(CounterContext(counter), TomActionTransaction(label: 'x'));
+
+      expect(counter.value, 1, reason: 'the CounterContext step ran');
+      expect(log, ['done'], reason: 'the LabelContext step ran');
+    });
+
     TomDualAction<CounterContext, CounterContext> dual(
       Counter counter, {
       bool Function()? firstGuard,
@@ -671,6 +778,50 @@ void main() {
       expect(action.canExecute(CounterContext(counter)), isFalse);
       action.execute(CounterContext(counter), TomActionTransaction(label: 'x'));
       expect(counter.value, 0);
+    });
+
+    test('matches a two-step composite that skips blocked steps', () {
+      // The class is a sibling of TomCompositeAction, not a specialisation,
+      // and what it adds is naming rather than reach: for every guard
+      // combination the equivalent composite moves the counter the same way
+      // and records the same number of undo entries.
+      for (final firstOpen in [true, false]) {
+        for (final secondOpen in [true, false]) {
+          final why = 'firstOpen=$firstOpen secondOpen=$secondOpen';
+
+          final dualCounter = Counter();
+          final dualTx = TomActionTransaction(label: 'dual');
+          dual(dualCounter,
+                  firstGuard: () => firstOpen, secondGuard: () => secondOpen)
+              .execute(CounterContext(dualCounter), dualTx);
+
+          final compCounter = Counter();
+          final compTx = TomActionTransaction(label: 'composite');
+          final controller = TomActionController(controllerId: 'equiv');
+          TomCompositeAction(
+            actionId: 'firstThenSecond',
+            controller: controller,
+            stopOnBlockedStep: false,
+            steps: [
+              TomCompositeStep<CounterContext>(
+                action: IncrementAction(
+                    controller: controller, step: 1, id: 'first'),
+                contextBuilder: () => CounterContext(compCounter),
+                guard: () => firstOpen,
+              ),
+              TomCompositeStep<CounterContext>(
+                action: IncrementAction(
+                    controller: controller, step: 10, id: 'second'),
+                contextBuilder: () => CounterContext(compCounter),
+                guard: () => secondOpen,
+              ),
+            ],
+          ).execute(CounterContext(compCounter), compTx);
+
+          expect(compCounter.value, dualCounter.value, reason: why);
+          expect(compTx.entryCount, dualTx.entryCount, reason: why);
+        }
+      }
     });
 
     test('canExecute is true when only one guard passes (OR semantics)', () {

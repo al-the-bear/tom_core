@@ -37,7 +37,7 @@ keeps widgets dumb and reusable, and keeps logic testable without a widget tree.
 | `TomUndoHistory` | class | Application-level undo/redo stack of transactions. |
 | `TomActionTrigger<TContext, TUndo>` | class | Adapts an action to a `VoidCallback` for a widget, recording undo state. |
 | `TomCompositeAction` | action | Runs a list of guarded steps as one action. |
-| `TomDualAction` | action | The common two-step specialisation of a composite. |
+| `TomDualAction` | action | Sibling of the composite: two independent actions, each with its own context and guard. |
 | `TomUndoAction` / `TomRedoAction` | actions | Coordinator actions that drive a `TomUndoHistory`. |
 
 ## `TomAction` — the unit of behaviour
@@ -122,12 +122,18 @@ reverses the whole gesture in reverse order:
 ```dart
 final tx = TomActionTransaction(label: 'Move items');
 for (final item in selected) {
-  final undo = moveAction.execute(MoveContext(item: item, to: folder), tx);
-  if (undo != null && moveAction.isUndoable) tx.record(moveAction, undo);
+  tx.run(moveAction, MoveContext(item: item, to: folder));
 }
 tx.commit();
 undoHistory.push(tx);
 ```
+
+`run` is the one place that pairs *executing* an action with *recording* it: an
+action contributes an undo entry only when it returned a state **and** declares
+itself `isUndoable`. `TomActionTrigger`, `TomCompositeAction` and
+`TomDualAction` all dispatch through it, so the rule cannot drift between them.
+`record` remains available for the rare case where you hold an undo state that
+did not come from a call you just made.
 
 `TomUndoHistory` enforces the invariants: it refuses to `push` an uncommitted or
 empty transaction, clears the redo stack on every new push, trims to `maxSize`,
@@ -185,10 +191,21 @@ reachability: under `stopOnBlockedStep` only the first step can run, so a
 runnable step behind a blocked one does not make the composite executable.
 
 Sub-step undo states are recorded into the surrounding transaction, so a
-composite is still one atomic undo entry. `TomDualAction` is the two-step
-specialisation for the everyday *save-and-close* / *validate-and-submit*
-pattern; its two halves are independent, so its `canExecute` is true when
-either half is runnable.
+composite is still one atomic undo entry.
+
+`TomDualAction` covers the everyday *save-and-close* / *validate-and-submit*
+pattern. It is a **sibling** of `TomCompositeAction`, not a specialisation:
+both extend `TomAction` directly, neither derives from the other, and the only
+code they share is `TomActionTransaction.run`. Both of its halves run forward —
+`first` then `second`, with no reversal between them — and they are
+independent, so its `canExecute` is true when either half is runnable.
+
+What it offers over a two-step composite is naming: `first` / `second` and
+their builders are separate constructor arguments rather than positions in a
+list. It is *not* required in order to give the two sides different context
+types — a `List<TomCompositeStep>` holds a `TomCompositeStep<CtxA>` and a
+`TomCompositeStep<CtxB>` side by side, because the step's type parameter is
+covariant and each step pairs its own action with its own builder.
 
 ## Authorization
 
