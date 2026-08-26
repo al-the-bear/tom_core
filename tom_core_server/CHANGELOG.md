@@ -3011,6 +3011,30 @@
 
 ### Documentation
 
+- **`TomPersistenceEventHandler`'s dartdoc said the annotation was undetected
+  when it is detected (tcinc596).** It read "declared for future use — the
+  persistence layer does not yet detect or invoke these callbacks", but
+  `TomAnnotationAnalyzer` does resolve the annotation, onto
+  `TomColumnInformation.eventHandler`. That is the wrong direction to be wrong
+  in: a reader concludes the annotation is inert metadata when it is in fact
+  live and reachable, and stops looking for the property that already carries
+  it. The dartdoc now states the true position — resolved, stored, and then
+  read by nothing, so none of `prePersist`, `postPersist`, `preLoad` or
+  `postLoad` ever fires — and adds a fact neither the old text nor
+  `doc/object_persistence.md` mentioned: resolution is *field-level*. The
+  analyzer reads metadata off a `VariableMirror`, so although the callbacks
+  take the whole entity, an annotation placed on a class declaration is not
+  seen at all. `TomColumnInformation.eventHandler` and the API summary say the
+  same.
+
+  Prose cannot be kept true by remembering to update it — this pair drifted
+  apart exactly once already, when the analyzer began resolving the annotation
+  and the dartdoc did not follow. Three source guards in
+  `object_persistence_test.dart` now pin both halves against `lib/`: that the
+  analyzer still resolves it, that no library file invokes a callback, and that
+  nothing reads the resolved handler back. Implementing the callbacks fails
+  these tests, and the failure names the prose that then has to change.
+
 - **The messaging example demonstrated none of the layer applications actually
   use (tcinc583).** `example/messaging/messaging_example.dart` composes a
   `TomMessage` by hand throughout — that is the substrate, and it is the part

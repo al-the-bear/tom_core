@@ -816,7 +816,9 @@ Tracked in the quest completion steps:
 - `@TomJoinTable` is declared but never read — neither detected nor acted on.
 - `@TomPersistenceEventHandler` is *detected* (`TomAnnotationAnalyzer` resolves
   it onto `TomColumnInformation.eventHandler`) but never invoked, so declaring
-  one currently has no effect.
+  one currently has no effect. Detection is field-level — the analyzer reads a
+  field's metadata — so although the callbacks take the whole entity, one placed
+  on a class declaration is not seen at all.
 - Additional query-sentence keywords (`After`, `Before`, `Containing`,
   `EndsWith`, `StartsWith`, `Exists`, `isEmpty`/`isNotEmpty`, `Within`, …). The
   sentence grammar covers comparison, `LIKE` / `NOT LIKE`, `REGEXP`,

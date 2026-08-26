@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -168,6 +170,91 @@ void main() {
       expect(
         TomAnnotationAnalyzerException('k', 'm'),
         isA<TomServerException>(),
+      );
+    });
+  });
+
+  // `TomPersistenceEventHandler` is resolved and then ignored, and two places
+  // say so in prose: the annotation's own dartdoc and the "Not Yet Implemented"
+  // section of `doc/object_persistence.md`. That pair drifted apart once
+  // already — the analyzer began resolving the annotation while the dartdoc went
+  // on telling readers it was not detected at all, which is the wrong direction
+  // to be wrong in: a reader concludes the annotation is inert metadata when it
+  // is in fact live and reachable.
+  //
+  // Prose cannot be kept true by remembering to update it, so the two halves of
+  // the claim are pinned here against the source. Implementing the callbacks
+  // should fail these tests, and the failure names the prose that then has to
+  // change.
+  group('TomPersistenceEventHandler is resolved but never invoked', () {
+    /// Every library source file, as (path, contents) pairs.
+    final library = [
+      for (final f in Directory('lib').listSync(recursive: true))
+        if (f is File && f.path.endsWith('.dart'))
+          (f.path, f.readAsStringSync()),
+    ];
+
+    /// Where the annotation and its four callbacks are *declared*, and so the
+    /// one file expected to name them without invoking anything.
+    const declarationSite =
+        'lib/src/tomserver/object_persistence/persistence_annotations.dart';
+
+    test('the analyzer resolves it onto TomColumnInformation.eventHandler', () {
+      final analyzer = File(
+        'lib/src/tomserver/object_persistence/annotation_analyzer.dart',
+      ).readAsStringSync();
+      expect(
+        analyzer,
+        allOf(
+          contains('md is TomPersistenceEventHandler'),
+          contains('eventHandler = md'),
+        ),
+        reason:
+            'the annotation must stay detected, or the dartdoc on '
+            'TomPersistenceEventHandler and the "Not Yet Implemented" section '
+            'of doc/object_persistence.md both become wrong',
+      );
+    });
+
+    test('no library file invokes a lifecycle callback', () {
+      // The declaration names all four; anywhere else naming one means the
+      // callbacks have been wired up and "never invoked" has stopped being
+      // true.
+      final callbacks = ['prePersist', 'postPersist', 'preLoad', 'postLoad'];
+      final users = [
+        for (final (path, source) in library)
+          if (!path.endsWith(declarationSite.split('/').last) &&
+              callbacks.any(source.contains))
+            path,
+      ];
+      expect(
+        users,
+        isEmpty,
+        reason:
+            'a lifecycle callback is now referenced outside its declaration; '
+            'if it is invoked, drop "never invoked" from the dartdoc on '
+            'TomPersistenceEventHandler and from the "Not Yet Implemented" '
+            'section of doc/object_persistence.md',
+      );
+    });
+
+    test('nothing reads the resolved handler back', () {
+      // The other half of "no effect": the analyzer writes `eventHandler`, and
+      // no code path ever reads it. A read is the first thing an implementation
+      // would add, and it would appear here before any callback was called.
+      final readers = [
+        for (final (path, source) in library)
+          if (!path.endsWith(declarationSite.split('/').last) &&
+              source.contains('.eventHandler'))
+            path,
+      ];
+      expect(
+        readers,
+        isEmpty,
+        reason:
+            'TomColumnInformation.eventHandler is now read somewhere; the '
+            'annotation may no longer be inert, so the prose that says it has '
+            'no effect must be revisited',
       );
     });
   });

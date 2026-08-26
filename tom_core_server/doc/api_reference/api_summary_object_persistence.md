@@ -331,8 +331,12 @@ const TomReference({
 
 #### TomPersistenceEventHandler&lt;DBTYPE&gt;
 
-Annotation registering lifecycle callbacks for an entity `DBTYPE`. (Declared
-for future use — not yet detected or invoked by the persistence layer.)
+Annotation registering lifecycle callbacks that receive the entity `DBTYPE`.
+**Resolved, but never invoked:** `TomAnnotationAnalyzer` reads it off a field's
+metadata onto [`TomColumnInformation.eventHandler`](#tomcolumninformation), but
+nothing reads that property back and none of the four callbacks is ever called,
+so declaring one currently has no effect. Resolution is *field-level* — an
+annotation placed on a class declaration is not seen at all.
 
 - **Type Parameters:** `DBTYPE` — the entity type the callbacks receive.
 
@@ -351,10 +355,10 @@ TomPersistenceEventHandler({
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `postPersist` | `void Function(DBTYPE)?` | Called after the entity is persisted. |
-| `postLoad` | `void Function(DBTYPE)?` | Called after the entity is loaded. |
-| `prePersist` | `void Function(DBTYPE)?` | Called before the entity is persisted. |
-| `preLoad` | `void Function(DBTYPE)?` | Called before the entity is loaded. |
+| `postPersist` | `void Function(DBTYPE)?` | Intended to run after the entity is persisted; never invoked. |
+| `postLoad` | `void Function(DBTYPE)?` | Intended to run after the entity is loaded; never invoked. |
+| `prePersist` | `void Function(DBTYPE)?` | Intended to run before the entity is persisted; never invoked. |
+| `preLoad` | `void Function(DBTYPE)?` | Intended to run before the entity is loaded; never invoked. |
 
 #### TomColumnInformation
 
@@ -392,7 +396,7 @@ it.
 | `column` | `TomDbColumn?` | The field's column mapping, if annotated. |
 | `entityId` | `TomEntityId?` | The entity-id annotation, if this field is the primary key. |
 | `reference` | `TomReference?` | The reference annotation, if this field is an association. |
-| `eventHandler` | `TomPersistenceEventHandler?` | The lifecycle-callback annotation, if any. |
+| `eventHandler` | `TomPersistenceEventHandler?` | The lifecycle-callback annotation, if any. Populated by the analyzer but read by nothing. |
 | `fileReference` | `TomFileReference?` | The file-reference annotation, if this column holds a blob storage key. |
 | `declaredType` | `Type` | The declared Dart type of the field. |
 | `declaredName` | `String` | The field's name on the entity. |

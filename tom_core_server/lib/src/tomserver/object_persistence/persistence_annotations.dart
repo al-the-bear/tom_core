@@ -346,10 +346,19 @@ class TomReference<
       "TomReference Target: ${getReferencedType()}, Key: ${getKeyType()}, Repo: ${getRepositoryType()}, 1:1: $isOneToOne joinEntity: $joinEntity leftSide: $leftSideColumns, rightSide: $rightSideColumns, context: $contextColumns";
 }
 
-/// Annotation registering lifecycle callbacks for an entity ([DBTYPE]).
+/// Annotation registering lifecycle callbacks that receive the entity
+/// ([DBTYPE]).
 ///
-/// Note: declared for future use — the persistence layer does not yet detect or
-/// invoke these callbacks (see the quest completion steps).
+/// **Resolved, but never invoked.** [TomAnnotationAnalyzer] reads it off a
+/// field's metadata and stores it on that field's
+/// [TomColumnInformation.eventHandler], so an annotation written here is
+/// detected and reachable — but nothing in the persistence layer reads that
+/// property back, and none of [prePersist], [postPersist], [preLoad] or
+/// [postLoad] is ever called. Declaring one currently has no effect.
+///
+/// The resolution is *field-level*: the analyzer looks for this annotation only
+/// in a field's metadata, so although the callbacks take the whole entity, one
+/// placed on a class declaration is not seen at all.
 class TomPersistenceEventHandler<DBTYPE> {
   /// Called after the entity is persisted.
   final void Function(DBTYPE)? postPersist;
@@ -396,6 +405,9 @@ class TomColumnInformation {
   TomReference? reference;
 
   /// The lifecycle-callback annotation, if any.
+  ///
+  /// Populated by the analyzer but read by nothing — see
+  /// [TomPersistenceEventHandler] for why the callbacks never fire.
   TomPersistenceEventHandler? eventHandler;
 
   /// The file-reference annotation, if this column holds a blob storage key.
