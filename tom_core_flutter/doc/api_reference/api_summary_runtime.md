@@ -100,7 +100,7 @@ TomFlutterPlatformUtils()
 | `isAndroid` | `bool isAndroid()` | *(override)* True on Android. |
 | `isIos` | `bool isIos()` | *(override)* True on iOS. |
 | `out` | `void out(String s)` | *(override)* Prints `s` to standard output. |
-| `outError` | `void outError(String s)` | *(override)* Prints `s` as an error. |
+| `outError` | `void outError(String s)` | *(override)* Prints `s` to standard output, the same destination as `out` — the two are named apart but not routed apart. |
 | `httpClient` | `Client httpClient()` | *(override)* A platform-appropriate HTTP client (see the variant table). |
 | `getBrowserLocation` | `String? getBrowserLocation()` | *(override)* The browser location URL, or `null` off the web. |
 | `getIsolateName` | `String getIsolateName()` | *(override)* A short name for the current isolate. |

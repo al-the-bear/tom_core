@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -150,12 +151,55 @@ void main() {
     }
   });
 
-  test('out and outError write without throwing', () {
-    // Both delegate to print on the native branch; assert they are callable and
-    // side-effect-only (no return, no throw).
+  test('out and outError both write to standard output', () {
+    // The pair is this module's only console surface, and the names invite the
+    // assumption that the second one is routed elsewhere. It is not: both
+    // resolve to `print`, so both land on stdout. Capturing the print zone
+    // says so directly. Asserting only `returnsNormally`, which is what this
+    // test did before, cannot see a destination at all — and a summary
+    // claiming the two were routed differently lived beside it undetected.
+    final captured = <String>[];
     final utils = clientPlatformUtils;
-    expect(() => utils.out('hello'), returnsNormally);
-    expect(() => utils.outError('oops'), returnsNormally);
+    runZoned(
+      () {
+        utils.out('hello');
+        utils.outError('oops');
+      },
+      zoneSpecification: ZoneSpecification(
+        print: (self, parent, zone, line) => captured.add(line),
+      ),
+    );
+    expect(captured, ['hello', 'oops']);
+  });
+
+  test('the API summary describes out and outError as the code routes them', () {
+    // Read the source first, because it is the identical bodies that make
+    // identical descriptions correct. Stating that dependency in the test is
+    // what turns a frozen sentence into a checked one: if the two methods are
+    // ever given different destinations, this fails on the source expectation
+    // and asks for the summary to be revised rather than quietly leaving a
+    // description that has stopped being true.
+    final source = File(
+      'lib/src/tomclient/runtime/platform_detection_flutter_io.dart',
+    ).readAsStringSync();
+    String bodyOf(String method) => RegExp(
+      'void $method\\(String s\\) => ([^;]+);',
+    ).firstMatch(source)!.group(1)!;
+    expect(
+      bodyOf('outError'),
+      bodyOf('out'),
+      reason: 'the two no longer share a destination; revise the summary',
+    );
+
+    final summary = File(
+      'doc/api_reference/api_summary_runtime.md',
+    ).readAsStringSync();
+    String descriptionOf(String method) => RegExp(
+      '^\\| `$method` \\|[^|]*\\|(.*)\\|\\s*\$',
+      multiLine: true,
+    ).firstMatch(summary)!.group(1)!;
+    expect(descriptionOf('out'), contains('standard output'));
+    expect(descriptionOf('outError'), contains('standard output'));
   });
 
   group('the shipped example runs', () {

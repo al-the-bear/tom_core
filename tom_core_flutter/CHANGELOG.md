@@ -2,6 +2,24 @@
 
 ### Fixed
 
+- **runtime: the API summary no longer splits `out` and `outError` (tcinc677).**
+  The summary described `out` as printing to standard output and `outError` as
+  printing "as an error", a routing distinction that exists nowhere in the
+  hierarchy: both methods are `print(s)` in all three variants and in the
+  `TomFallbackPlatformUtils` base they inherit from. A reader who trusted the
+  summary would send diagnostics to `outError` expecting stderr and find them
+  interleaved with normal output on stdout. The row now says what the code does
+  — same destination as `out`, named apart but not routed apart. Whether the two
+  *ought* to be separated is a `tom_basics` design question, untouched here.
+
+  The test that let this stand asserted only `returnsNormally`, which cannot see
+  a destination. It is replaced by a print-zone capture that asserts what each
+  method writes, and by a test that reads the two method bodies out of the IO
+  variant and holds the summary to describing them the same way — so if the two
+  are ever routed apart, the source expectation fails and asks for the summary
+  to be revised rather than leaving a sentence that has quietly stopped
+  being true.
+
 - **runtime: `toString()` spells the class it names (tcinc676).** All three
   compile-time variants rendered `TomFlutterPlatformUtis`, dropping the `l`,
   while the class is `TomFlutterPlatformUtils` in each. `toString()` is this
