@@ -87,6 +87,7 @@ statement whose affected-row count *is* the answer:
 | ---------- | --------- | ------ |
 | claim a due run | `UPDATE … WHERE id = :id AND state = 'pending'` | the one update that changes a row |
 | first acquisition of a free resource | `INSERT IGNORE` | the insert that creates the row |
+| extension by the live holder | `UPDATE … WHERE resource = :r AND token = :t AND owner = :o AND released = 0` | the holder, while its token is still current |
 | takeover of a lapsed lease | `UPDATE … WHERE resource = :r AND token = :t AND version = :v` | the compare-and-set that matches |
 | renewal | `UPDATE … WHERE owner = :o AND token = :t AND released = 0 AND expires_at > :now` | the holder, while it still holds |
 

@@ -19,10 +19,16 @@
 ///    created the resource and holds token 1; zero means the row already exists
 ///    and the acquire falls through to the contended path.
 ///  * **Extension by the live holder** is an `UPDATE` guarded on
-///    `token = :token AND owner = :owner AND released = 0 AND expires_at > :now`.
-///    It keeps the token — re-acquisition by the holder is an extension, and
-///    issuing a new token would invalidate the lease that very owner is already
-///    working under.
+///    `resource = :resource AND token = :token AND owner = :owner AND
+///    released = 0`. It keeps the token — re-acquisition by the holder is an
+///    extension, and issuing a new token would invalidate the lease that very
+///    owner is already working under. The preceding read only chooses this
+///    branch over takeover; it does not decide the outcome, because a lease
+///    that lapsed and was taken over in between now carries a higher token, so
+///    the statement matches nothing and the acquire fails rather than reviving
+///    a dead lease. That is why the guard needs no `expires_at > :now` — the
+///    clause belongs to [renew], which has no preceding read to stand in for
+///    it.
 ///  * **Takeover** of a released or lapsed lease is an `UPDATE` guarded on the
 ///    `(token, version)` pair the node read, writing `token + 1`. Two nodes
 ///    racing a lapsed lease both attempt it; exactly one sees an affected row.
@@ -168,8 +174,13 @@ class TomSqlLeaseLock extends TomLeaseLock {
 
     final record = await _read(resource);
     // The row vanished between the insert and the read — a concurrent forget().
-    // Retrying once is honest; looping would be a spin against a caller who is
-    // actively deleting the resource.
+    // The acquisition is reported as not taken and the method stops there: it
+    // makes no second attempt. Retrying belongs to the caller, which already
+    // has the loop for it — `TomScheduler` hands the claim back with
+    // `TomJobStore.release`, which deliberately does not charge an attempt, so
+    // the run is offered again on the next tick at no cost to its retry budget.
+    // A second attempt from inside here would only spin against a caller that
+    // is actively deleting the resource.
     if (record == null) return null;
 
     if (record.isHeldAt(now)) {

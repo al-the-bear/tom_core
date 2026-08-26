@@ -1,7 +1,7 @@
 /// Connection-free tests for the cluster hardening of the relational scheduler
 /// (CSEXC2).
 ///
-/// Five questions, none of which a live database can be made to ask reliably:
+/// Six questions, none of which a live database can be made to ask reliably:
 ///
 ///  * **the ambiguous commit** — what a node does when the answer to its claim
 ///    is lost rather than negative. Reproducing it against a real server means
@@ -19,7 +19,12 @@
 ///    be asked to fail one of the four roll-call calls and answer the other
 ///    three; a throwing collaborator can;
 ///  * **the wiring guards** — the named-data-source lookups and the payload
-///    encoder, all of which refuse before any statement is issued.
+///    encoder, all of which refuse before any statement is issued;
+///  * **the contended branches of a lease acquire** — including the one a live
+///    server cannot be asked for at all: a `forget()` landing between the
+///    insert and the read. Scripting the two answers takes two lines, where
+///    arranging the interleaving against a real connection is not something a
+///    test can arrange at all.
 ///
 /// The round trips these decisions ride on — that `started_at` survives the
 /// column, that the roll-call table really is one row per node — are asserted
@@ -120,6 +125,28 @@ TomJobRunRow _row({
   ..claimedBy = claimedBy
   ..claimedAt = claimedAt == null ? null : sqlInstant(claimedAt)
   ..startedAt = startedAt == null ? null : sqlInstant(startedAt);
+
+/// A lease row in whatever state a test needs it in.
+///
+/// [acquiredAt] and [expiresAt] are both required because the pair *is* the
+/// state under test: whether the row reads as live or lapsed is what decides
+/// which of `acquire`'s two contended branches runs.
+TomLeaseRow _leaseRow({
+  String resource = 'resource-1',
+  String owner = 'node-a',
+  int token = 7,
+  required DateTime acquiredAt,
+  required DateTime expiresAt,
+  bool released = false,
+  int version = 3,
+}) => TomLeaseRow()
+  ..resource = resource
+  ..owner = owner
+  ..token = token
+  ..acquiredAt = sqlInstant(acquiredAt)
+  ..expiresAt = sqlInstant(expiresAt)
+  ..released = released ? 1 : 0
+  ..version = version;
 
 /// A transport-level failure, wrapped the way the MariaDB driver wraps one.
 Object _transportFailure([String message = 'socket closed']) => TomException(
@@ -769,5 +796,97 @@ void main() {
         expect(datasource.commands, isEmpty);
       },
     );
+  });
+
+  // =========================================================================
+  // GAP 6 — the two contended branches of a lease acquire
+  // =========================================================================
+
+  group('an acquire that loses the insert', () {
+    late _ScriptedDataSource datasource;
+    late TomSqlLeaseLock lock;
+    const ttl = Duration(minutes: 5);
+
+    setUp(() {
+      datasource = _ScriptedDataSource();
+      lock = TomSqlLeaseLock(datasource, createSchema: false, clock: () => at);
+      // `INSERT IGNORE` reporting no new row is the entry condition for both
+      // branches below: the resource row already existed.
+      datasource.commandAnswers.add(BigInt.zero);
+    });
+
+    test('a resource forgotten before the read is answered as not taken', () {
+      // The insert says the row existed and the read says it does not. Only a
+      // concurrent forget() produces that pair.
+      datasource.queryAnswers.add(<Object>[]);
+
+      expect(lock.acquire('resource-1', 'node-a', ttl), completion(isNull));
+    });
+
+    test('the vanished-row answer is given without a second attempt', () async {
+      datasource.queryAnswers.add(<Object>[]);
+
+      await lock.acquire('resource-1', 'node-a', ttl);
+
+      // One insert and one read, and nothing after them. Retrying is the
+      // caller's job — `TomScheduler` hands the claim back without charging an
+      // attempt and the run is offered again on the next tick — so a second
+      // pass from in here would spin against a caller that is deleting the
+      // resource. Pinned by count, because the comment beside that `return`
+      // once described a retry the method has never performed.
+      expect(datasource.commands, hasLength(1));
+      expect(datasource.queries, hasLength(1));
+    });
+
+    test('extension by the live holder is guarded on the token, not the '
+        'expiry', () async {
+      datasource.queryAnswers.add([
+        _leaseRow(
+          acquiredAt: at,
+          expiresAt: at.add(const Duration(minutes: 1)),
+        ),
+      ]);
+
+      final lease = await lock.acquire('resource-1', 'node-a', ttl);
+
+      // The token is kept, not bumped: the holder is already working under it.
+      expect(lease?.token, 7);
+      final extension = datasource.commands.last;
+      expect(extension, contains('token = :token'));
+      expect(extension, contains('owner = :owner'));
+      expect(extension, contains('released = 0'));
+      // Liveness was settled by the read that chose this branch, so the guard
+      // carries no expiry predicate. It does not need one: a lease taken over
+      // in between carries a higher token and this statement matches nothing.
+      expect(extension, isNot(contains('expires_at > :now')));
+    });
+  });
+
+  group('a renewal', () {
+    test('is guarded on the expiry, having no read to lean on', () async {
+      final datasource = _ScriptedDataSource();
+      final lock = TomSqlLeaseLock(
+        datasource,
+        createSchema: false,
+        clock: () => at,
+      );
+
+      await lock.renew(
+        TomLease(
+          resource: 'resource-1',
+          owner: 'node-a',
+          token: 7,
+          acquiredAt: at,
+          expiresAt: at.add(const Duration(minutes: 1)),
+        ),
+        const Duration(minutes: 5),
+      );
+
+      // The counterpart of the extension test above: `expires_at > :now` lives
+      // here, where nothing has read the row, and that is what makes a lapsed
+      // lease unrenewable without a separate round trip.
+      expect(datasource.commands.single, contains('expires_at > :now'));
+      expect(datasource.queries, isEmpty);
+    });
   });
 }

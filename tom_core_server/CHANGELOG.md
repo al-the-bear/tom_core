@@ -1,5 +1,30 @@
 ## 1.3.0
 
+### Documentation
+
+- **Two comments in `TomSqlLeaseLock` described behaviour the code does not
+  perform (tcinc635).** The comment beside `acquire`'s vanished-row `return`
+  said "retrying once is honest" in the same breath as ruling out looping, so a
+  reader took the retry for the implemented policy and the loop for the
+  discarded one — and a caller who believed `acquire` had already retried would
+  not add a retry of its own. There is no second attempt. The behaviour is
+  right, so the prose changed: the acquisition is reported as not taken, and
+  retrying belongs to `TomScheduler`, which hands the claim back through
+  `TomJobStore.release` — deliberately without charging an attempt — so the run
+  is offered again on the next tick at no cost to its retry budget.
+
+  Sweeping the rest of the module for the same defect class found a second
+  instance: the library doc quoted the live-holder extension `UPDATE` as guarded
+  on `... AND expires_at > :now`, a clause that statement has never carried.
+  It belongs to `renew`. That one claimed a guarantee the code does not enforce,
+  which is the more dangerous of the two — the guard is the token, and it is
+  sufficient precisely because a lease taken over in between carries a higher
+  one. Both are now pinned by tests rather than by prose:
+  `scheduling_cluster_test.dart` counts the statements the vanished-row path
+  issues (one insert, one read, nothing after) and asserts the expiry predicate
+  is absent from the extension guard and present in `renew`'s. `doc/scheduling.md`
+  gained the extension row its arbitration table was missing.
+
 ### Testing
 
 - **Nothing checked whether an `**Extends:**` line named the clause the source
