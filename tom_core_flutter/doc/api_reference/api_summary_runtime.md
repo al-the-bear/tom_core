@@ -108,9 +108,12 @@ test. It is **not exported**; it is declared only in
 
 The Flutter `TomPlatformUtils` implementation. **Three source variants share
 this name**, one per compile-time target; the conditional import in
-`platform_detection_client.dart` picks exactly one. All three report platform
-predicates from Flutter's `defaultTargetPlatform` / `kIsWeb`; they differ in how
-they provide an HTTP `Client` and read the browser location.
+`platform_detection_client.dart` picks exactly one. Each overrides fifteen
+members, of which **eleven members are identical in all three** — the nine
+platform predicates read from Flutter's `defaultTargetPlatform` / `kIsWeb`,
+plus `out` and `outError`. They differ in four: `httpClient()`,
+`getBrowserLocation()`, `getIsolateName()` and `toString()`. Only the native
+variant declares a constructor.
 
 The name is **not exported**, and could not usefully be: it denotes a different
 class on each target. Consumers hold the instance as its supertype

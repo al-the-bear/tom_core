@@ -2,6 +2,38 @@
 
 ### Fixed
 
+- **runtime: the inventory of what the three variants share is counted from
+  the sources (tcinc680).** Three documents described one set of files and no
+  two agreed. `doc/runtime.md` said the variants "differ only in construction,
+  `httpClient()`, `getBrowserLocation()`, and `getIsolateName()`" — omitting
+  `toString()`, which differs in all three and is the module's diagnostic
+  surface, so precisely the wrong omission. The API summary undercounted
+  further, naming only the HTTP client and the browser location. The quest
+  completion note counted "nine predicates" copied across "the web and neutral
+  variants", missing `out` and `outError` and describing two files where the
+  duplication spans three.
+
+  Counted mechanically instead: each variant overrides **fifteen** members,
+  **eleven** are identical in all three — the nine predicates plus `out` and
+  `outError` — and **four** differ. All three documents now say that, and note
+  that `getBrowserLocation()` is the weakest of the four differences, since
+  native and neutral both return `null`.
+
+  None of this changes behaviour, but all of it feeds one decision — whether to
+  extract a shared base — and an inventory that undercounts the duplication
+  understates the case for it. `out` and `outError` turn out not to need that
+  extraction at all: both reproduce the inherited `TomFallbackPlatformUtils`
+  bodies exactly, so all six overrides are redundant and removable on their own.
+
+  Three tests hold it, and they recompute the partition from the three sources
+  rather than restating a number: one asserts each document's list of
+  differences is exactly the differing set (word-bounded, so a short name like
+  `out` cannot match inside another word); one asserts each document spells the
+  computed count of duplicated members; one pins `out`/`outError` to the
+  inherited body, so the redundancy claim fails loudly if either stops being
+  `print(s)`. A hand-maintained census of a set the compiler can enumerate is
+  going to drift — this one drifted three ways at once.
+
 - **runtime: the documents agree on what the barrel actually exports
   (tcinc679).** `doc/runtime.md` said `allowsBadCertificateForHost` was "not
   part of the barrel's public API"; the API summary listed it under **Global

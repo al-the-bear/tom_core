@@ -461,6 +461,158 @@ void main() {
     });
   });
 
+  group('the documented inventory of variant duplication', () {
+    // The module document inventories what the three variants share and what
+    // they differ in, and that inventory is the input to the standing decision
+    // about extracting a shared base. It was written by hand and drifted twice
+    // in the same breath: the list of differences omitted `toString()`, and the
+    // count of duplicated members counted only the nine predicates, missing
+    // `out` and `outError`. A hand-maintained census of a set the compiler can
+    // enumerate is going to drift; these tests recompute it from the sources so
+    // the document has to keep up.
+
+    /// The `@override` members of each variant, by name, with whitespace
+    /// collapsed so formatting differences do not read as behaviour ones.
+    Map<String, Map<String, String>> variantMembers() {
+      const variants = ['flutter_io', 'neutral', 'web'];
+      final member = RegExp(
+        r'@override\s+[\w<>?, ]+?\s(\w+)\(([^)]*)\)\s*(=>\s*[^;]+;|\{.*?\n  \})',
+        dotAll: true,
+      );
+      final byName = <String, Map<String, String>>{};
+      for (final variant in variants) {
+        final source = File(
+          'lib/src/tomclient/runtime/platform_detection_$variant.dart',
+        ).readAsStringSync();
+        // From the class declaration on, so a top-level function with an
+        // identical shape cannot be counted as a member.
+        final body = source.substring(
+          source.indexOf('class TomFlutterPlatformUtils'),
+        );
+        for (final match in member.allMatches(body)) {
+          byName.putIfAbsent(match.group(1)!, () => {})[variant] = match
+              .group(3)!
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+        }
+      }
+      expect(
+        byName.values.every((byVariant) => byVariant.length == variants.length),
+        isTrue,
+        reason: 'a member is not overridden in all three variants; the '
+            'document describes a set where every member is',
+      );
+      return byName;
+    }
+
+    // Both documents state the inventory, and both had undercounted it. Holding
+    // only one of them would leave the other free to drift — which is how the
+    // module ended up with three descriptions of one set of files, no two of
+    // them agreeing.
+    const documents = [
+      'doc/runtime.md',
+      'doc/api_reference/api_summary_runtime.md',
+    ];
+
+    /// The sentence in [path] that enumerates the per-variant differences.
+    String differenceSentence(String path) {
+      final text = File(path).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+      final sentence = RegExp(r'differ in [^.]*\.').firstMatch(text)?.group(0);
+      expect(
+        sentence,
+        isNotNull,
+        reason: '$path no longer enumerates how the variants differ',
+      );
+      return sentence!;
+    }
+
+    test('both documents list exactly the members that differ', () {
+      final members = variantMembers();
+      final differing = members.entries
+          .where((e) => e.value.values.toSet().length > 1)
+          .map((e) => e.key)
+          .toSet();
+      final shared = members.keys.toSet().difference(differing);
+
+      for (final path in documents) {
+        // Scoped to the sentence that enumerates the differences, not the whole
+        // document, which legitimately names the shared members when saying
+        // what the duplication consists of. Only this sentence claims a member
+        // differs, so only this sentence can claim it wrongly.
+        final sentence = differenceSentence(path);
+        for (final name in differing) {
+          expect(
+            sentence,
+            // Word-bounded: `out` would otherwise match inside any word that
+            // happens to contain it, and silently pass a document that never
+            // mentions the member.
+            matches(RegExp(r'\b' + name + r'\b')),
+            reason: '$path: `$name` differs between the variants but is not '
+                'listed among the differences',
+          );
+        }
+        for (final name in shared) {
+          expect(
+            sentence,
+            isNot(matches(RegExp(r'\b' + name + r'\b'))),
+            reason: '$path: `$name` is identical in all three variants but is '
+                'listed as a per-variant difference',
+          );
+        }
+      }
+    });
+
+    test('both documents count the duplicated members correctly', () {
+      final members = variantMembers();
+      final shared = members.values
+          .where((byVariant) => byVariant.values.toSet().length == 1)
+          .length;
+
+      // Spelled out, because that is how the documents write it, and the point
+      // of the check is that the sentence a reader sees agrees with the source.
+      const words = [
+        'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
+        'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
+        'fifteen',
+      ];
+      expect(
+        shared,
+        lessThan(words.length),
+        reason: 'more duplicated members than this test can spell',
+      );
+
+      for (final path in documents) {
+        expect(
+          File(path).readAsStringSync().replaceAll(RegExp(r'\s+'), ' '),
+          contains('${words[shared]} members'),
+          reason: '$path: the sources duplicate $shared members verbatim '
+              'across the three variants; the document states another number',
+        );
+      }
+    });
+
+    test('out and outError duplicate the inherited bodies, not just each other', () {
+      // The distinction the inventory turns on. These two are not merely copied
+      // between variants — they restate what `TomFallbackPlatformUtils` already
+      // does, so they are removable without any shared base being extracted,
+      // which is a stronger claim than the rest of the duplication supports.
+      final members = variantMembers();
+      for (final name in ['out', 'outError']) {
+        expect(
+          members[name]!.values.toSet(),
+          hasLength(1),
+          reason: '$name is no longer identical across the variants',
+        );
+        expect(
+          members[name]!.values.first.replaceAll(' ', ''),
+          anyOf(equals('=>print(s);'), equals('{print(s);}')),
+          reason: '$name no longer just calls print; the document says it '
+              'reproduces the inherited body and would need revisiting',
+        );
+      }
+    });
+  });
+
   group('the shipped example runs', () {
     test('runtime_example.run() completes its assertions', () {
       // The example is quoted as documentation, so it has to be executable
