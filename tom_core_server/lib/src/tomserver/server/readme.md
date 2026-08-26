@@ -5,9 +5,13 @@
 
 The HTTP server entry point. `TomServer` is constructed from a
 `TomBaseServerConfiguration`, builds its endpoint router during `start`, and
-binds the listener. Each request gets a `TomRequestLogInfo` record and a
+binds the listener. Each request gets a `TomRequestLogInfo` record, a
 `TomRequestId` — a UUID this module's authentication middleware places in the
-request's zone so logs and exceptions correlate. The id type is declared in
+request's zone so logs and exceptions correlate — and its own current
+transaction, because that same middleware runs the request inside a
+[`TomTransactionManager`](../transactions/readme.md) scope; without it, requests
+interleaving in one isolate would share whichever transaction the manager last
+made current. The id type is declared in
 [`little_things`](../little_things/readme.md), beside the exception base that
 consumes it.
 

@@ -80,7 +80,7 @@ order:
 
 ## Request Context and Zone Values
 
-Two channels carry per-request state:
+Three channels carry per-request state:
 
 - **The shelf request context** holds `TomRequestLogInfo` (keyed by
   `TomRequestLogInfo.contextName`). Set its `shouldBeLogged` to `false` to
@@ -93,6 +93,13 @@ Two channels carry per-request state:
   code recovers any of them with
   `getFromCurrentZone<T>()` — this is how the endpoints pipeline and
   `TomServerException` obtain the request id and principal.
+- **The current transaction.** The same middleware wraps that whole zone in
+  `TomTransactionManager.runInTransactionScope`, so the transaction every
+  repository call finds as "current" belongs to the one request rather than to
+  the isolate. Without the scope, two requests interleaving in one isolate share
+  whatever the manager considers current — either can see, commit or roll back
+  the other's work — and `isolateCount > 1` does not help, because the sharing
+  is *within* an isolate. See `doc/transactions.md` for the manager itself.
 
 `extractAuthentication` is the credential reader: it parses a `Bearer <jwt>`
 `Authorization` header into a `(TomPrincipal?, TomClientJwtToken?)` record,
@@ -127,7 +134,15 @@ to guess from and an intermediary free to sniff it as anything it likes.
 ## Extending the Pipeline
 
 - **Authentication** — set `authenticationMiddleware` on the configuration to
-  replace `tomDefaultAuthenticationMiddleware`.
+  replace `tomDefaultAuthenticationMiddleware`. A substitute is responsible for
+  everything the default established: the zone values — at minimum
+  `TomPrincipal` and `TomRequestId` — and the
+  `TomTransactionManager.runInTransactionScope` around them. Everything below
+  the middleware reads those from the ambient zone rather than being passed
+  them, so omitting one is not a compile error. Drop the transaction scope and
+  repository code silently falls back to the per-isolate current transaction
+  described above; drop `TomRequestId` and `TomServerException` loses its
+  correlation.
 - **Logging** — set `loggingMiddleware` (defaults to `tomLoggingMiddleware`).
   Shelf's own `logRequests()` drops in unchanged and adds request timing, which
   the default does not report. It reads nothing from the request context,

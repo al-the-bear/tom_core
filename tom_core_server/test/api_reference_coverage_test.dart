@@ -5719,6 +5719,114 @@ One: `TomKind`, documented beside the type that carries it.
     });
   });
 
+  // The authentication middleware is where a request acquires everything the
+  // code beneath it reads from the ambient zone rather than from an argument.
+  // Three documents mirror that list, and a mirror that drifts from it is worse
+  // than silence: a reader who replaces the middleware on the strength of an
+  // incomplete list gets no compile error, only repository code quietly sharing
+  // one isolate's transaction between concurrent requests.
+  group('the request scope the middleware opens is the one documented', () {
+    const source = 'lib/src/tomserver/server/server.dart';
+    const guide = 'doc/server.md';
+    const section = 'Request Context and Zone Values';
+
+    _RequestScope shipped() => _requestScopeOf(File(source).readAsLinesSync());
+
+    Map<String, List<String>> shippedMirrors() => {
+      for (final mirror in _requestScopeMirrors)
+        mirror: File(mirror).readAsLinesSync(),
+    };
+
+    test('every zone value the middleware publishes is named in the guide', () {
+      final body = _sectionBody(guide, section).join('\n');
+      final missing = [
+        for (final type in shipped().zoneValueTypes)
+          if (!RegExp('\\b$type\\b').hasMatch(body)) type,
+      ];
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'the "$section" section of `$guide` enumerates what a request '
+            'carries, and these are established by `$source` without appearing '
+            'in it: ${missing.join(', ')}',
+      );
+    });
+
+    test('all three mirrors agree with source about the transaction scope', () {
+      expect(_transactionScopeComplaints(shipped(), shippedMirrors()), isEmpty);
+    });
+
+    test('the parser found what it claims to read', () {
+      // Both findings above pass vacuously on a parser that recovered nothing:
+      // an empty type list has no missing member, and a scope that looks
+      // wrapper-less agrees with three documents that never mention one.
+      final scope = shipped();
+      expect(
+        scope.opensTransactionScope,
+        isTrue,
+        reason:
+            'the middleware must keep wrapping the request in '
+            '`TomTransactionManager.runInTransactionScope` — without it two '
+            'requests interleaving in one isolate share a current transaction',
+      );
+      expect(
+        scope.zoneValueTypes,
+        containsAll(<String>['Request', 'TomPrincipal', 'TomRequestId']),
+        reason: 'the `TomZoneValues` literal in `$source` was not read',
+      );
+      expect(
+        _sectionBody(guide, section),
+        isNotEmpty,
+        reason: '`$guide` has no "$section" section to check against',
+      );
+      expect(_requestScopeMirrors, hasLength(3));
+    });
+
+    test('a mirror claiming a scope the middleware dropped is reported', () {
+      final withoutWrapper = [
+        for (final line in File(source).readAsLinesSync())
+          if (!line.contains('TomTransactionManager.runInTransactionScope'))
+            line,
+      ];
+      final scope = _requestScopeOf(withoutWrapper);
+      expect(scope.opensTransactionScope, isFalse);
+      // All three, because all three now say so — the point of the guard is
+      // that removing the wrapper cannot leave the documents quietly wrong.
+      expect(
+        _transactionScopeComplaints(scope, shippedMirrors()),
+        hasLength(3),
+      );
+    });
+
+    test('a mirror omitting a scope the middleware opens is reported', () {
+      expect(
+        _transactionScopeComplaints(shipped(), {
+          'silent.md': const ['Each request runs in its own zone.'],
+        }),
+        [contains('silent.md')],
+      );
+    });
+
+    test('the zone value parser reads the literal the source writes', () {
+      // The literal's keys are types, its values arbitrary expressions, and the
+      // line after it assigns the bundle into itself — a parser that took every
+      // `X:` in sight would report `TomZoneValues` as a published value and a
+      // map argument as a zone value.
+      final scope = _requestScopeOf(const [
+        '      TomZoneValues zoneValues = TomZoneValues({',
+        '        Request: request,',
+        '        TomPrincipal: principal,',
+        '        TomRequestId: TomRequestId(),',
+        '      });',
+        '      zoneValues[TomZoneValues] = zoneValues;',
+        '      return runZoned(zoneValues: zoneValues.zoneValues, body);',
+      ]);
+      expect(scope.zoneValueTypes, ['Request', 'TomPrincipal', 'TomRequestId']);
+      expect(scope.opensTransactionScope, isFalse);
+    });
+  });
+
   // Shipped text is read by people with no access to the workspace that
   // produced it. A dartdoc reaches the IDE and the generated API pages; `doc/`
   // is the package's published documentation. Neither reader can resolve a todo
@@ -6029,4 +6137,85 @@ String _withoutAnnotations(String text) {
     rest = rest.substring(i + 1).trimLeft();
   }
   return rest;
+}
+
+/// What the authentication middleware gives a request, read from its source.
+typedef _RequestScope = ({
+  List<String> zoneValueTypes,
+  bool opensTransactionScope,
+});
+
+/// The documents that restate what a request carries.
+///
+/// The module guide is the prose a deployment reads, the API summary is what a
+/// caller consults about the middleware, and the module readme is the shortest
+/// of the three and therefore the one most often read alone. All three describe
+/// the same middleware, so all three have to describe the same request.
+const List<String> _requestScopeMirrors = [
+  'doc/server.md',
+  'doc/api_reference/api_summary_server.md',
+  'lib/src/tomserver/server/readme.md',
+];
+
+/// The zone values and transaction scope established in [lines].
+///
+/// Takes lines rather than a path so the parsing can be exercised on a literal
+/// written for the purpose, and so a mutation can be applied to the shipped
+/// source without touching the file.
+_RequestScope _requestScopeOf(List<String> lines) {
+  final types = <String>[];
+  var inLiteral = false;
+  for (final line in lines) {
+    if (line.contains('TomZoneValues({')) {
+      inLiteral = true;
+      continue;
+    }
+    if (!inLiteral) continue;
+    if (line.contains('});')) break;
+    // A key is a bare type name before the colon; anything else in the literal
+    // — a comment, a continuation of a long value — is not an entry.
+    final match = RegExp(r'^\s*(\w+)\s*:').firstMatch(line);
+    if (match != null) types.add(match.group(1)!);
+  }
+  return (
+    zoneValueTypes: types,
+    opensTransactionScope: lines.any(
+      (line) => line.contains('TomTransactionManager.runInTransactionScope'),
+    ),
+  );
+}
+
+/// Where [mirrors] and [scope] disagree about the per-request transaction.
+///
+/// Reported in both directions. A document that omits the scope walks a reader
+/// into replacing the middleware without one; a document that keeps claiming a
+/// scope the middleware no longer opens is the same defect arriving from the
+/// other side, and is the likelier of the two — source moves, prose does not.
+List<String> _transactionScopeComplaints(
+  _RequestScope scope,
+  Map<String, List<String>> mirrors,
+) => [
+  for (final entry in mirrors.entries)
+    if (entry.value.any((line) => line.contains('TomTransactionManager')) !=
+        scope.opensTransactionScope)
+      scope.opensTransactionScope
+          ? '${entry.key} never mentions `TomTransactionManager`, but the '
+                'middleware opens a transaction scope for every request'
+          : '${entry.key} mentions `TomTransactionManager`, but the middleware '
+                'no longer opens a transaction scope',
+];
+
+/// The body of [path]'s `## [heading]` section, up to the next `##` heading.
+List<String> _sectionBody(String path, String heading) {
+  final body = <String>[];
+  var inSection = false;
+  for (final line in File(path).readAsLinesSync()) {
+    if (line.startsWith('## ')) {
+      if (inSection) break;
+      inSection = line.substring(3).trim() == heading;
+      continue;
+    }
+    if (inSection) body.add(line);
+  }
+  return body;
 }

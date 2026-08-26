@@ -29,7 +29,9 @@ The module exposes the composable middleware as top-level functions
 (`contextSetupMiddleware`, `tomDefaultAuthenticationMiddleware`,
 `tomLoggingMiddleware`), a credential helper (`extractAuthentication`), and a
 `noopHandler`. Per-request state travels in the request context
-(`TomRequestLogInfo`) and the request zone. The zone-carried correlation id
+(`TomRequestLogInfo`), the request zone, and — because the authentication
+middleware also opens a `TomTransactionManager.runInTransactionScope` — the
+current transaction. The zone-carried correlation id
 `TomRequestId` is *produced* here — `tomDefaultAuthenticationMiddleware` puts a
 fresh one into `zoneValues` for every request — but declared in `little_things`,
 beside the exception base that consumes it, so that the most depended-upon
@@ -109,6 +111,6 @@ TomServer(TomBaseServerConfiguration configuration)
 | ---- | --------- | ----------- |
 | `contextSetupMiddleware` | `Middleware contextSetupMiddleware(String id, [Map<String, Object>? context])` | A pass-through shelf `Middleware` that merges `context` into a copy of the request context before the inner handler runs (`id` labels it for tracing). |
 | `extractAuthentication` | `(TomPrincipal?, TomClientJwtToken?) extractAuthentication(Request req)` | Extracts bearer credentials from the `Authorization` header, returning `(principal, token)`; either element is `null` when absent or unparseable (errors are swallowed). |
-| `tomDefaultAuthenticationMiddleware` | `Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])` | The default authentication middleware: resolves the effective `TomPrincipal` and runs the inner handler in a zone exposing the request, execution context, principal, token, and a fresh `TomRequestId`. |
+| `tomDefaultAuthenticationMiddleware` | `Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])` | The default authentication middleware: resolves the effective `TomPrincipal` and runs the inner handler in a zone exposing the request, execution context, principal, token, and a fresh `TomRequestId` — and inside a `TomTransactionManager.runInTransactionScope`, so the current transaction is per-request rather than per-isolate. A replacement must establish both. |
 | `tomLoggingMiddleware` | `Middleware tomLoggingMiddleware()` | The default request-logging middleware: emits one access-log line per request, guarded by the request's `TomRequestLogInfo`. Both guards are the reason shelf's `logRequests()` is not the default — it reads no request context, so it can honour neither. |
 | `noopHandler` | `Handler noopHandler(String id, int statusCode)` | A `Handler` that ignores the request and always replies with `statusCode` (`id` labels it for tracing). |

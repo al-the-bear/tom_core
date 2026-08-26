@@ -2,6 +2,21 @@
 
 ### Documentation
 
+- **No shipped document mentioned the per-request transaction scope
+  (tcinc640).** `tomDefaultAuthenticationMiddleware` wraps every request in
+  `TomTransactionManager.runInTransactionScope`, so the transaction repository
+  code finds as "current" belongs to the one request. A grep for "transaction"
+  returned zero hits in `doc/server.md`, in
+  `doc/api_reference/api_summary_server.md` and in
+  `lib/src/tomserver/server/readme.md`. The omission carried a concrete hazard:
+  the guide told a reader to replace the middleware without qualification, and a
+  substitute that omits the wrapper produces no compile error — only
+  repository code falling back to the per-isolate current transaction, which
+  is the cross-request leakage the wrapper exists to remove. The guide's "Request
+  Context and Zone Values" section now describes three channels of per-request
+  state rather than two, its "Extending the Pipeline" entry states what a
+  substitute is responsible for, the summary's middleware row and module
+  overview name the scope, and the module readme says what each request gets.
 - **Three shipped dartdoc comments pointed at workspace-internal material
   (tcinc639).** `example/scheduling/cluster/cluster_verify.dart` described its
   job as making "the four claims csexd15 asks for" — naming a todo instead of
@@ -111,6 +126,15 @@
 
 ### Testing
 
+- **The documented request scope is now checked against the middleware that
+  opens it (tcinc640).** A new group in `api_reference_coverage_test.dart` reads
+  the `TomZoneValues` literal and the transaction wrapper out of
+  `server.dart` and requires the guide's "Request Context and Zone Values"
+  section to name every zone value the middleware publishes, and all three
+  mirrors to agree with source about the scope — in both directions, since a
+  document that keeps claiming a scope the middleware no longer opens is the
+  likelier drift. Mutation-tested: renaming a zone value in the guide, and
+  removing the wrapper from source, are each reported.
 - **`example/` is now a swept surface for the shipped-text markers
   (tcinc639).** The `shipped text stands on its own` group ran its five markers
   over the library sources and the hand-written documents; an example's dartdoc
