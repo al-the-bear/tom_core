@@ -101,8 +101,66 @@ void main() {
       expect(TomTextLocale.parse('de').tag, 'de');
     });
 
+    test('a script subtag is not a country', () {
+      // BCP 47 puts the script before the region for the languages that have
+      // more than one, so the second segment is not reliably a country.
+      // Reading it as one produced `zh_HANS` — a key naming no locale, which
+      // no deployment's `zh_CN` bundle could ever match. The chain still
+      // reached bare `zh`, so the deployment saw Chinese and never learnt its
+      // regional bundle was unreachable.
+      expect(TomTextLocale.parse('zh-Hans-CN').tag, 'zh_CN');
+      expect(TomTextLocale.parse('zh-Hans').tag, 'zh');
+      expect(TomTextLocale.parse('zh-Hans-CN').country, 'CN');
+    });
+
+    test('the region is found by shape, not by position', () {
+      // Whatever sits between the language and the region — script, extlang,
+      // variant — is skipped rather than counted.
+      expect(TomTextLocale.parse('sr-Latn-RS').tag, 'sr_RS');
+      expect(TomTextLocale.parse('de-DE-1996').tag, 'de_DE');
+      expect(
+        TomTextLocale.parse('en-US-x-private').tag,
+        'en_US',
+        reason: 'a singleton opens private use; the region precedes it',
+      );
+      expect(
+        TomTextLocale.parse('es-419').tag,
+        'es',
+        reason: 'a UN M.49 region is not alpha-2, so it is not a country here',
+      );
+    });
+
     test('an empty country is the same as no country', () {
       expect(TomTextLocale('de', '  ').tag, 'de');
+    });
+
+    test('refuses a country that cannot be a country', () {
+      // The field is documented as ISO 3166-1 alpha-2. It was documented and
+      // not enforced, which is how a four-letter script reached it.
+      expect(
+        () => TomTextLocale('de', 'AUT'),
+        throwsA(isA<TomServerException>()),
+      );
+      expect(
+        () => TomTextLocale('zh', 'Hans'),
+        throwsA(isA<TomServerException>()),
+      );
+      expect(
+        () => TomTextLocale('es', '419'),
+        throwsA(isA<TomServerException>()),
+      );
+    });
+
+    test('a principal\'s unusable country costs the country, not the mail', () {
+      // `TomPrincipal.country` and the 2FA context's are free-form strings
+      // filled from a client request, so the strict constructor must not be
+      // reachable with them: a client sending `country: "XYZ"` would otherwise
+      // throw inside message delivery. Degrading to the bare language reaches a
+      // bundle that exists, which the refused key never could.
+      final locale = TomTextLocale.fromPrincipal(
+        _principal(language: 'de', country: 'AUT'),
+      );
+      expect(locale!.tag, 'de');
     });
 
     test('rejects an empty language rather than inventing one', () {

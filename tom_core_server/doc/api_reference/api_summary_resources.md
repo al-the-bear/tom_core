@@ -83,18 +83,33 @@ bundle — they are).
 ```dart
 TomTextLocale(String language, [String? country])
 factory TomTextLocale.parse(String tag)
+factory TomTextLocale.lenient(String language, [String? country])
 ```
 
 `TomTextLocale` lowercases the language, uppercases the country, and treats a
-blank country as none. An empty language raises `TomResourceLocaleException`.
-`parse` accepts both `_` and `-` as the separator.
+blank country as none. An empty language raises `TomResourceLocaleException`, and
+so does a country that is not two letters — the alpha-2 shape is enforced, not
+merely described, because the value becomes a bundle key and a key that names no
+locale still falls through to the bare language, so the deployment sees plausible
+text and never learns its regional bundle was unreachable.
+
+`parse` accepts both `_` and `-` as the separator and finds the region by
+**shape, not position**: BCP 47 puts an optional script before the region, so
+`zh-Hans-CN` is `zh_CN` and `zh-Hans` is `zh`. Script, extlang and variant
+subtags are skipped, a singleton (`en-US-x-private`) ends the search, and a
+subtag that cannot be an alpha-2 region — `es-419`'s UN M.49 number among them —
+leaves a bare language rather than becoming a country it is not.
+
+`TomTextLocale.lenient` is the boundary variant: it **drops** a country it cannot
+use instead of refusing it, for values that arrive from a user record or a client
+request where a throw would be wrong.
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `language` | `String` | ISO 639-1, lowercase. |
-| `country` | `String?` | ISO 3166-1 alpha-2, uppercase; `null` when the locale names only a language. |
+| `country` | `String?` | ISO 3166-1 alpha-2, uppercase; `null` when the locale names only a language. Enforced by the constructor. |
 | `tag` | `String` | The bundle key: `de` or `de_AT`. |
 | `fallbackTags` | `List<String>` | This locale's tags from most to least specific. |
 
@@ -102,7 +117,7 @@ blank country as none. An empty language raises `TomResourceLocaleException`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `fromPrincipal` | `static TomTextLocale? fromPrincipal(TomPrincipal principal)` | The locale to render for a principal, or `null` when it names none. The stored `language`/`country` wins over the device's `clientLanguage`/`clientCountry`. |
+| `fromPrincipal` | `static TomTextLocale? fromPrincipal(TomPrincipal principal)` | The locale to render for a principal, or `null` when it names none. The stored `language`/`country` wins over the device's `clientLanguage`/`clientCountry`. Read leniently — the record's country is client-supplied. |
 | `operator ==` / `hashCode` | — | Equality is by `tag`, so a locale can key a bundle map. |
 
 ### TomLocalizedTextResources

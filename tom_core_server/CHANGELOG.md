@@ -604,6 +604,38 @@
 
 ### Fixed
 
+- **`TomTextLocale.parse` read a BCP 47 script subtag as a country, so
+  `zh-Hans-CN` became the bundle key `zh_HANS` (tcinc625).** The parse took the
+  second segment as the country unconditionally, but BCP 47 only puts the region
+  second for the languages that have one script; where there are several, the
+  script comes first and the region is third. `HANS` is not a country, so the key
+  named a locale that does not exist and no deployment's `zh_CN` bundle could
+  ever match it. Worse, the failure was silent: the chain still reached the bare
+  `zh` bundle, so a deployment saw Chinese text and never learnt that its
+  regional bundle was unreachable — the exact class of miss the type exists to
+  prevent.
+
+  `parse` now finds the region by **shape rather than position**: the first
+  subtag that could be an ISO 3166-1 alpha-2 code, skipping scripts, extlangs and
+  variants, and stopping at a singleton because a one-character subtag opens an
+  extension sequence whose contents are not subtags of the language. So
+  `zh-Hans-CN` is `zh_CN`, `zh-Hans` is `zh`, `sr-Latn-RS` is `sr_RS` and
+  `en-US-x-private` is `en_US`. A subtag that cannot be alpha-2 — `es-419`'s UN
+  M.49 number among them — leaves a bare language rather than becoming a country
+  it is not; accepting numeric regions would widen the documented `country`
+  invariant rather than enforce it, which is a separate decision.
+
+  The invariant is now enforced rather than described. `country` was documented
+  as "ISO 3166-1 alpha-2" in the dartdoc and the API summary while the
+  constructor validated nothing, which is how a four-letter value came to sit
+  there; it raises `resources.locale.invalid_country` instead. Because that
+  strictness must not be reachable from client data — `TomPrincipal.country` and
+  `Tom2FAContext.country` are free-form strings filled from a request, and a
+  client sending `XYZ` would otherwise throw inside message delivery — a new
+  `TomTextLocale.lenient` factory **drops** an unusable country, and both
+  `fromPrincipal` and `Tom2FADeliveredCode.localeFor` read through it. Degrading
+  to the bare language reaches a bundle that exists; the refused key never could.
+
 - **`TomUserPreferences.all()` promised an order its query did not ask for
   (tcinc613).** The sentence was `FIND BY principal_id = :principalId` with no
   `order by`, while the method's dartdoc, `api_summary_preferences.md` and the

@@ -52,9 +52,10 @@ would leave every call site to decide whether `de-AT`, `de_AT` and `DE_at` name
 the same bundle. They do:
 
 ```dart
-TomTextLocale('DE', 'at').tag;      // 'de_AT'
-TomTextLocale.parse('de-at').tag;   // 'de_AT'
-TomTextLocale.parse('de').tag;      // 'de'
+TomTextLocale('DE', 'at').tag;         // 'de_AT'
+TomTextLocale.parse('de-at').tag;      // 'de_AT'
+TomTextLocale.parse('de').tag;         // 'de'
+TomTextLocale.parse('zh-Hans-CN').tag; // 'zh_CN'
 ```
 
 Both separators are accepted because both are in the wild: POSIX and Java write
@@ -62,7 +63,33 @@ Both separators are accepted because both are in the wild: POSIX and Java write
 the other way is a silent miss, not an error, which is why normalisation is the
 constructor's job rather than each caller's.
 
-For a user, `TomTextLocale.fromPrincipal` reads the locale off the principal:
+The last line is the same argument one step further. A BCP 47 tag does not put
+the region in a fixed position: for the languages that have more than one script,
+the script comes first, so China is the *third* subtag of `zh-Hans-CN`. The
+region is therefore found by shape — the first subtag that could be an ISO 3166-1
+alpha-2 code — with scripts, extlangs and variants skipped and a singleton
+(`en-US-x-private`) ending the search. Reading the second subtag positionally
+gave `zh_HANS`, a key naming no locale, and because the chain still reached bare
+`zh` the deployment saw Chinese text and never learnt that its `zh_CN` bundle was
+unreachable.
+
+That shape is enforced rather than assumed. A country that is not two letters
+raises `TomResourceLocaleException` instead of becoming an unmatchable bundle
+key:
+
+```dart
+TomTextLocale('de', 'AUT');            // throws
+TomTextLocale.lenient('de', 'AUT').tag; // 'de'
+```
+
+Use `TomTextLocale.lenient` for a value this process does not control. A
+principal's country and a 2FA context's arrive from a client request, and a
+client sending `AUT` should cost the country, not the delivery — so those paths
+drop an unusable country rather than refuse it. A bundle for the bare language
+exists; the refused key never did.
+
+For a user, `TomTextLocale.fromPrincipal` reads the locale off the principal
+(leniently, for exactly that reason):
 
 ```dart
 final locale = TomTextLocale.fromPrincipal(principal); // may be null

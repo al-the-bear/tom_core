@@ -458,11 +458,15 @@ abstract class TomDeliveredCode2FAService<S extends Object>
   /// prefers the stored language over the device's), then the login attempt's
   /// client locale, then `null` — which lets the bundle set apply its default in
   /// one place instead of every adaptor inventing `'en'`.
+  ///
+  /// The context's locale comes from the login request, so it is read
+  /// leniently: a country a client cannot have sent legitimately costs the
+  /// country, not the delivery.
   TomTextLocale? localeFor(Tom2FAContext context) {
     final fromPrincipal = TomTextLocale.fromPrincipal(context.principal);
     if (fromPrincipal != null) return fromPrincipal;
     if (context.language.trim().isEmpty) return null;
-    return TomTextLocale(context.language, context.country);
+    return TomTextLocale.lenient(context.language, context.country);
   }
 
   /// The template parameters every delivered code message may use.

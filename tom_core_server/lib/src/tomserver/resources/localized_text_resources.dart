@@ -85,9 +85,20 @@ class TomTextLocale {
 
   /// ISO 3166-1 alpha-2, uppercase; `null` when the locale names only a
   /// language.
+  ///
+  /// Enforced, not merely described: the constructor refuses anything else.
+  /// It used to be a comment, which is how a four-letter script subtag came to
+  /// sit here and produce the key `zh_HANS`.
   final String? country;
 
   /// Names a locale, normalising case and treating a blank country as none.
+  ///
+  /// Refuses a [country] that is not two letters. Strict because the value ends
+  /// up in a bundle key: a country that cannot be one produces a key that names
+  /// no locale, and since the chain still reaches the bare language the
+  /// deployment sees plausible text and never learns its regional bundle was
+  /// unreachable. For values from a user record or a client request, where a
+  /// throw would be wrong, use [TomTextLocale.lenient].
   TomTextLocale(String language, [String? country])
     : language = language.trim().toLowerCase(),
       country = (country == null || country.trim().isEmpty)
@@ -99,17 +110,45 @@ class TomTextLocale {
         'A locale needs a language.',
       );
     }
+    final named = this.country;
+    if (named != null && !_isCountry(named)) {
+      throw TomResourceLocaleException(
+        'resources.locale.invalid_country',
+        'A country must be an ISO 3166-1 alpha-2 code.',
+        parameters: {'country': named},
+      );
+    }
   }
 
-  /// Parses `de`, `de_AT` or `de-AT`.
+  /// Parses `de`, `de_AT`, `de-AT`, or a fuller BCP 47 tag like `zh-Hans-CN`.
   ///
   /// Both separators are accepted because both are in the wild — POSIX and
   /// Java write `_`, BCP 47 and HTTP write `-` — and a bundle keyed one way
   /// that a user record spells the other way is a silent miss, not an error.
+  ///
+  /// The region is found by **shape, not position**. BCP 47 places an optional
+  /// script before the region for the languages that have more than one, so
+  /// `zh-Hans-CN` names China in its *third* segment; taking the second
+  /// unconditionally yielded `zh_HANS`, a key no `zh_CN` bundle could match,
+  /// and the chain's fall through to bare `zh` hid it. Script, extlang and
+  /// variant subtags are skipped, and a subtag that cannot be an alpha-2
+  /// region — `es-419`'s UN M.49 number among them — leaves a bare language
+  /// rather than becoming a country it is not.
   factory TomTextLocale.parse(String tag) {
     final parts = tag.trim().split(RegExp('[_-]'));
-    return TomTextLocale(parts.first, parts.length > 1 ? parts[1] : null);
+    return TomTextLocale(parts.first, _regionIn(parts.skip(1)));
   }
+
+  /// A locale from data this process does not control.
+  ///
+  /// Lenient exactly where the default constructor is strict: a [country] that
+  /// cannot be one is dropped rather than refused. `TomPrincipal.country` and
+  /// the 2FA context's are free-form strings filled from a client request, so
+  /// the strict constructor must not be reachable with them — a client sending
+  /// `XYZ` would otherwise throw inside message delivery. Dropping the country
+  /// leaves a bundle that exists; the refused key never was one.
+  factory TomTextLocale.lenient(String language, [String? country]) =>
+      TomTextLocale(language, _countryOrNull(country));
 
   /// The locale to render for [principal], or `null` when it names none.
   ///
@@ -119,16 +158,42 @@ class TomTextLocale {
   /// is no preference to honour. `null` rather than a guess, so the caller
   /// falls back to the deployment's default locale in one place instead of
   /// each caller inventing `'en'`.
+  ///
+  /// Reads the record leniently — see [TomTextLocale.lenient].
   static TomTextLocale? fromPrincipal(TomPrincipal principal) {
     final stored = principal.language;
     if (stored != null && stored.trim().isNotEmpty) {
-      return TomTextLocale(stored, principal.country);
+      return TomTextLocale.lenient(stored, principal.country);
     }
     final client = principal.clientLanguage;
     if (client != null && client.trim().isNotEmpty) {
-      return TomTextLocale(client, principal.clientCountry);
+      return TomTextLocale.lenient(client, principal.clientCountry);
     }
     return null;
+  }
+
+  /// Whether [subtag] has the shape of an ISO 3166-1 alpha-2 region.
+  static bool _isCountry(String subtag) => _countryPattern.hasMatch(subtag);
+
+  static final RegExp _countryPattern = RegExp(r'^[A-Za-z]{2}$');
+
+  /// The first subtag shaped like a region, or `null` when there is none.
+  ///
+  /// Stops at a singleton: in BCP 47 a one-character subtag opens an extension
+  /// or private-use sequence, whose contents are not subtags of the language.
+  static String? _regionIn(Iterable<String> subtags) {
+    for (final subtag in subtags) {
+      if (subtag.length == 1) return null;
+      if (_isCountry(subtag)) return subtag;
+    }
+    return null;
+  }
+
+  /// [country] when it can be one, `null` otherwise.
+  static String? _countryOrNull(String? country) {
+    if (country == null) return null;
+    final trimmed = country.trim();
+    return _isCountry(trimmed) ? trimmed : null;
   }
 
   /// The bundle key: `de` or `de_AT`.
