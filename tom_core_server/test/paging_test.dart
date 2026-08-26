@@ -61,6 +61,36 @@ void main() {
       expect(const TomSortField.asc('a'), const TomSortField('a'));
       expect(const TomSortField.asc('a'), isNot(const TomSortField.desc('a')));
     });
+
+    test('equal terms hash equally', () {
+      // Sort terms are compared as sets when the repository decides whether a
+      // caller's ordering already settles the key (`needsStableSort`), so the
+      // hash has to agree with `==` or a duplicate term survives the check.
+      expect(
+        const TomSortField.asc('a').hashCode,
+        const TomSortField('a').hashCode,
+      );
+      // Which is what makes a set collapse the two spellings of ascending
+      // while keeping the descending term that is genuinely a different sort.
+      final terms = <TomSortField>[
+        const TomSortField.asc('a'),
+        const TomSortField('a'),
+        const TomSortField.desc('a'),
+      ].toSet();
+      expect(terms, hasLength(2));
+    });
+
+    test('withDirection re-orders the same field', () {
+      final flipped = const TomSortField(
+        'title',
+      ).withDirection(TomSortDirection.descending);
+      expect(flipped, const TomSortField.desc('title'));
+    });
+
+    test('toString reads as the SQL fragment it becomes', () {
+      expect(const TomSortField.desc('t.title').toString(), 't.title DESC');
+      expect(const TomSortField('t.title').toString(), 't.title ASC');
+    });
   });
 
   group('TomPageRequest', () {
@@ -117,6 +147,19 @@ void main() {
       expect(page.offset, 10);
       expect(page.limit, 5);
       expect(page.sort, const [TomSortField.desc('a')]);
+    });
+
+    test('toString shows the whole window', () {
+      // A page request is what appears in a diagnostic when a query returns
+      // the wrong rows, so all three parts have to be in it.
+      final text = TomPageRequest(
+        offset: 10,
+        limit: 5,
+        sort: const [TomSortField.desc('a')],
+      ).toString();
+      expect(text, contains('offset: 10'));
+      expect(text, contains('limit: 5'));
+      expect(text, contains('a DESC'));
     });
   });
 

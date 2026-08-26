@@ -2,6 +2,42 @@
 
 ### Testing
 
+- **The six least-covered files of `object_persistence` now have their
+  rejections and success paths asserted (tcinc609).** Measured as line
+  coverage, the module moved: `column_authorization` 67.5 % → 95.0 %,
+  `data_scope` 90.9 % → 98.3 %, `grouped_query` 84.9 % → 99.4 %, `paging`
+  85.7 % → 100 %, `query_sentence_compiler` 78.1 % → 86.5 %. What is left in
+  the first four is private constructors, which no test can reach.
+
+  The gaps were behavioural, not cosmetic. `column_authorization_test.dart`
+  now covers `applyReadMask` — the entry point the repository actually calls,
+  which nulls a withheld column *in place* through the reflected column mirror
+  — including the rule that a column with a per-row resolver is exempt from
+  column-wide masking, because the value that would be blanked out is the blob
+  key the per-row gate needs in order to decide. The same file pins the
+  default resolver, i.e. what an unconfigured deployment does with a graded
+  column: it grants, so a server that has not wired up authorization does not
+  silently blank out its own data.
+
+  `data_scope_test.dart` covers `columnEqualsParam`, the second of the two
+  renderers that must agree on a key column's SQL type when a scope predicate
+  is ANDed onto a primary-key lookup. `grouped_query_test.dart` covers the
+  driver-representation coercions (a textual boolean read by content rather
+  than truthiness, an exact-numeric truncated to `int`, a non-numeric refused
+  as both `int` and `double`), the aggregate/row/select `toString` and
+  introspection surface, three grouped-sentence rejections, and the temporal
+  arms of the min/max dispatch — which needed a second fixture, as
+  `FixtureTaskRecord` has no date column.
+
+  `query_sentence_rejection_test.dart` is new: the compiler is the one place
+  in the module that reads a string a developer wrote by hand, so its
+  complaints are an API that callers discriminate by `TomServerException.key`.
+  It pins ~26 of them — `LIKE` and `REGEXP` (rendering, plus the missing-column
+  and wrong-column-type refusals), the operators that need a column in front
+  of them, the structural refusals of the parser (an empty bracket, a leading
+  `AND`/`OR`, an order clause naming no field), and the literal/column type
+  agreement checks together with the success boundary each one bounds.
+
 - **The invariant behind the auto-scope guard is now pinned, not assumed
   (tcinc608).** `persistence_metadata_sharing_test.dart` asserts that every
   column of a resolved entity names one table — the property that lets

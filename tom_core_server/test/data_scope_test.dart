@@ -219,6 +219,58 @@ void main() {
     });
   });
 
+  group('TomDataScope.columnEqualsParam (typed key equality)', () {
+    // The repository ANDs a scope predicate onto a primary-key lookup. Both
+    // sides must bind the key the same way, or the two halves of one WHERE
+    // clause disagree about the column's SQL type — hence a second renderer
+    // that dispatches on `declaredType` exactly as `inColumn` does.
+    test('an int column binds an integer placeholder', () {
+      final op = TomDataScope.columnEqualsParam(
+        b,
+        _column('tasks', 'id', int),
+        '__tomscope_0',
+      );
+      expect(op.generate(dialect), 'tasks.id = :__tomscope_0');
+      expect(op.getParameters(dialect), ['__tomscope_0']);
+    });
+
+    test('a non-int column binds a string placeholder', () {
+      final op = TomDataScope.columnEqualsParam(
+        b,
+        _column('projects', 'code', String),
+        '__tomscope_0',
+      );
+      expect(op.generate(dialect), 'projects.code = :__tomscope_0');
+      expect(op.getParameters(dialect), ['__tomscope_0']);
+    });
+
+    test('the equality names the mapped column, not the Dart field', () {
+      // `getQueryFieldName()` is what makes the two renderers agree with the
+      // rest of the statement: a field whose column name differs must render
+      // as the column, or the predicate references a name the table has not.
+      final col = TomColumnInformation(
+        tableType: Object,
+        table: TomDbTable(
+          datasource: 'main',
+          table: 'tasks',
+          primaryKeyField: 'id',
+        ),
+        declaredType: int,
+        declaredName: 'ownerId',
+        field: 'ownerId',
+        column: TomDbColumn(columnName: 'owner_id'),
+      );
+      expect(
+        TomDataScope.columnEqualsParam(
+          b,
+          col,
+          '__tomscope_0',
+        ).generate(dialect),
+        'tasks.owner_id = :__tomscope_0',
+      );
+    });
+  });
+
   group('TomDbScope annotation defaults', () {
     test('scope defaults to owner', () {
       const scope = TomDbScope(field: 'owner_id');

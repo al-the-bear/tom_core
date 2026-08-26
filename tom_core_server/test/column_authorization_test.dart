@@ -1,16 +1,25 @@
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
-/// C-4 (G-AUTHZ-4) column-level access-rights tests, verified reflection-free.
+import 'fixtures/reflection_fixture.dart' show FixtureDocumentRecord;
+import 'fixtures/reflection_fixture.reflection.dart';
+
+/// C-4 (G-AUTHZ-4) column-level access-rights tests.
 ///
 /// The done-bar is "a read masks unauthorized columns; a write to a read-only
 /// column is rejected server-side; both tested". The repository's read-mask and
 /// write-enforcement both delegate to the *pure* decision core in
 /// [TomColumnAuthorization] ([maskedColumns], [decideWrites], [stateForKey]),
 /// which takes value/key accessors as callbacks so it runs without a database
-/// or the reflection runtime. These tests exercise that core directly over
-/// plain string column tokens with a stub [TomColumnAuthResolver], asserting the
-/// same masking and write outcomes the repository's reflection path relies on.
+/// or the reflection runtime. Most of what follows exercises that core directly
+/// over plain string column tokens with a stub [TomColumnAuthResolver],
+/// asserting the same masking and write outcomes the repository relies on.
+///
+/// Two things cannot be said that way and are tested against the reflected
+/// fixture instead: [TomColumnAuthorization.applyReadMask], which is the entry
+/// point the repository actually calls and which writes through a column mirror
+/// onto a live instance, and the default resolver — the behaviour of a
+/// deployment that passes no resolver at all.
 
 /// A stub resolver mapping resource keys to grades; any unmapped key denies
 /// (state [TomAuthState.none]) so a test must opt a column into a grade.
@@ -20,6 +29,20 @@ TomColumnAuthResolver _resolver(Map<String, TomAuthState> grades) =>
 /// A partition sentinel: rejection means [onForbidden] fired.
 Never _reject(String column, String authKey, TomAuthState grade) =>
     throw StateError('forbidden:$column:$authKey:${grade.name}');
+
+/// The resource key [FixtureDocumentRecord.secretAttachment] is graded under.
+const String _secretKey = 'fixture.document.secret_attachment';
+
+/// An adapter that grades every key it is asked about the same way, so the
+/// process-wide singleton can be observed being consulted at all.
+class _FixedAdapter implements TomAuthorizationAdapter {
+  final TomAuthState state;
+
+  _FixedAdapter(this.state);
+
+  @override
+  TomAuthState resolveAuth(String resourceKeyPath) => state;
+}
 
 void main() {
   group('stateForKey', () {
@@ -38,6 +61,31 @@ void main() {
         TomColumnAuthorization.stateForKey('other', resolver: resolver),
         TomAuthState.none,
       );
+    });
+  });
+
+  group('stateForKey without a resolver (the default path)', () {
+    // Every other test here hands in a resolver, which is what the repository
+    // does when a call site has one. A caller that does not is the *deployment*
+    // case, and it resolves through the process-wide singleton — so what an
+    // unconfigured server does with a graded column is decided here and
+    // nowhere else.
+    tearDown(TomAuthorization.reset);
+
+    test('an unconfigured process leaves a graded column unrestricted', () {
+      // No adapter installed: development mode. A server that has not wired up
+      // authorization must not silently blank out its own data, so the absence
+      // of a policy grants rather than denies.
+      TomAuthorization.reset();
+      expect(TomColumnAuthorization.stateForKey(_secretKey), TomAuthState.full);
+    });
+
+    test('an installed adapter decides the grade', () {
+      TomAuthorization.adapter = _FixedAdapter(TomAuthState.none);
+      expect(TomColumnAuthorization.stateForKey(_secretKey), TomAuthState.none);
+      // A null key is unrestricted *before* the resolver is reached, so the
+      // adapter is never asked about a column that carries no key.
+      expect(TomColumnAuthorization.stateForKey(null), TomAuthState.full);
     });
   });
 
@@ -139,6 +187,102 @@ void main() {
     test('a changed full column is written without objection', () {
       final decision = decide({'title'});
       expect(decision.writable, contains('title'));
+    });
+  });
+
+  group('applyReadMask (the reflected row projection)', () {
+    // `maskedColumns` decides *which* columns are withheld; `applyReadMask` is
+    // what the repository calls, and it does two further things the pure core
+    // cannot be asked about: it writes `null` through the column mirror onto a
+    // live entity, and it exempts columns whose grade is per-row.
+    setUpAll(initializeReflection);
+    tearDown(TomRowColumnAuthorization.reset);
+
+    late List<TomColumnInformation> columns;
+
+    setUp(() {
+      columns = TomAnnotationAnalyzer.analysePersistentType(
+        FixtureDocumentRecord,
+      ).columnInfo;
+    });
+
+    FixtureDocumentRecord record() => FixtureDocumentRecord()
+      ..id = 7
+      ..title = 'quarterly report'
+      ..attachment = 'fixture/attachment/2026/08/plain.pdf'
+      ..secretAttachment = 'fixture/secret/2026/08/secret.pdf';
+
+    test('a masked column is nulled in place on the same instance', () {
+      final instance = record();
+      final returned = TomColumnAuthorization.applyReadMask(
+        instance,
+        columns,
+        resolver: _resolver({_secretKey: TomAuthState.none}),
+      );
+      // Returned for chaining, but the masking is a mutation: a caller holding
+      // the original reference must not still see the withheld value.
+      expect(identical(returned, instance), isTrue);
+      expect(instance.secretAttachment, isNull);
+    });
+
+    test('unrestricted columns are left alone', () {
+      final instance = record();
+      TomColumnAuthorization.applyReadMask(
+        instance,
+        columns,
+        resolver: _resolver({_secretKey: TomAuthState.none}),
+      );
+      expect(instance.id, 7);
+      expect(instance.title, 'quarterly report');
+      expect(instance.attachment, 'fixture/attachment/2026/08/plain.pdf');
+    });
+
+    test('a visible (read) grade withholds nothing', () {
+      // `read` shows content; only the grades that fail `showsContent` mask.
+      final instance = record();
+      TomColumnAuthorization.applyReadMask(
+        instance,
+        columns,
+        resolver: _resolver({_secretKey: TomAuthState.read}),
+      );
+      expect(instance.secretAttachment, isNotNull);
+    });
+
+    test('a column with a per-row resolver is not masked here', () {
+      // The row projection has one synchronous answer for a whole result set,
+      // so it has no authority over a grade that depends on which row is
+      // addressed. Masking it would also be self-defeating: the value it would
+      // blank out is the blob key the per-row gate needs in order to decide.
+      TomRowColumnAuthorization.register(
+        _secretKey,
+        (principal, rowId) async => TomAuthState.none,
+      );
+      final instance = record();
+      TomColumnAuthorization.applyReadMask(
+        instance,
+        columns,
+        // The column-wide resolver denies outright — and is still not what
+        // decides, because the key is registered.
+        resolver: _resolver({_secretKey: TomAuthState.none}),
+      );
+      expect(instance.secretAttachment, isNotNull);
+    });
+
+    test('deregistering restores column-wide masking for the same key', () {
+      // The exemption tracks the registry, not the column: the same entity and
+      // the same resolver mask once the per-row gate is gone.
+      TomRowColumnAuthorization.register(
+        _secretKey,
+        (principal, rowId) async => TomAuthState.full,
+      );
+      TomRowColumnAuthorization.reset();
+      final instance = record();
+      TomColumnAuthorization.applyReadMask(
+        instance,
+        columns,
+        resolver: _resolver({_secretKey: TomAuthState.none}),
+      );
+      expect(instance.secretAttachment, isNull);
     });
   });
 

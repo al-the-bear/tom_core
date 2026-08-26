@@ -12,7 +12,8 @@ library;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
-import 'fixtures/reflection_fixture.dart' show FixtureTaskRecord;
+import 'fixtures/reflection_fixture.dart'
+    show FixtureExportRecord, FixtureTaskRecord;
 import 'fixtures/reflection_fixture.reflection.dart';
 
 /// A trivial host for the [TomQueryBuilder] DSL.
@@ -178,6 +179,36 @@ void main() {
         ),
       );
     });
+
+    test('the operand is a child, so tree walks descend into it', () {
+      // `TomGroupedSelect.columnsOf` — the C-4 exposure check — finds columns
+      // by recursing through `children`. An aggregate that reported none would
+      // hide the column it aggregates from that check.
+      final operand = b.intF('priority', col);
+      expect(b.sum(operand, 's').children, [operand]);
+    });
+
+    test('COUNT(*) has no children to descend into', () {
+      expect(b.countAll('total').children, isEmpty);
+    });
+
+    test('analyze renders the aggregate and its operand', () {
+      final tree = b
+          .countOf(b.intF('priority', col), 'n', distinct: true)
+          .analyze(0);
+      expect(tree, contains('COUNT'));
+      expect(tree, contains('DISTINCT'));
+      expect(tree, contains('AS n'));
+      expect(tree, contains('priority'));
+    });
+
+    test('analyze marks the argument-less form with a star', () {
+      expect(b.countAll('total').analyze(0), contains('*'));
+    });
+
+    test('toString names the function and the alias', () {
+      expect(b.countAll('total').toString(), 'TomAggregate COUNT AS total');
+    });
   });
 
   group('TomGroupedRow', () {
@@ -246,6 +277,22 @@ void main() {
       );
     });
 
+    test('a non-numeric value cannot be read as a double either', () {
+      // The int and double readers parse independently, so the same driver
+      // value has to be refused twice over — a fractional column that came
+      // back as prose must not silently become null on the way to the caller.
+      expect(
+        () => row.doubleValue('status'),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'grouped_query.row.value_conversion_failed',
+          ),
+        ),
+      );
+    });
+
     test('typed dispatches on the requested Dart type', () {
       expect(row.typed<int>('total'), 7);
       expect(row.typed<String>('status'), 'open');
@@ -266,6 +313,53 @@ void main() {
 
     test('an aggregate reads its own value out of the row', () {
       expect(_Builder().countAll('total').read(row), 7);
+    });
+
+    test('typed dispatches every type the mapper supports', () {
+      // `typed<V>` is the seam the typed nodes read through, so each supported
+      // V must reach the accessor that coerces it — a missing case would fall
+      // to the "unsupported type" throw at runtime for a node that declared a
+      // perfectly ordinary value type.
+      expect(row.typed<double>('revenue'), 12.5);
+      expect(row.typed<bool>('done'), isTrue);
+      expect(
+        row.typed<DateTime>('created'),
+        DateTime.parse('2026-07-28 10:00'),
+      );
+    });
+
+    test('an exact-numeric read as int truncates rather than failing', () {
+      // MariaDB returns SUM/AVG as DECIMAL, which a driver may hand over as
+      // text. A caller that declared the aggregate `int` gets the integer part
+      // — the alternative would be an exception on a value the database
+      // considers perfectly numeric.
+      expect(row.intValue('revenue'), 12);
+    });
+
+    test('exposes the whole row, unmodifiable', () {
+      expect(row.values, containsPair('status', 'open'));
+      expect(() => row.values['injected'] = 1, throwsUnsupportedError);
+    });
+
+    test('a textual boolean is coerced by content, not by truthiness', () {
+      // Drivers differ on how they hand back a TINYINT(1): a number on the
+      // binary protocol, its text form on the text protocol. Both must read
+      // the same way, and a value that is neither must read as false rather
+      // than as "non-empty string, so true".
+      final textual = TomGroupedRow({
+        'one': '1',
+        'zero': '0',
+        'word': 'TRUE',
+        'other': 'yes',
+      });
+      expect(textual.boolValue('one'), isTrue);
+      expect(textual.boolValue('zero'), isFalse);
+      expect(textual.boolValue('word'), isTrue);
+      expect(textual.boolValue('other'), isFalse);
+    });
+
+    test('toString shows the row contents', () {
+      expect(TomGroupedRow({'total': 7}).toString(), contains('total: 7'));
     });
   });
 
@@ -482,6 +576,40 @@ void main() {
       );
       expect(query.generateQuery(dialect), contains('HAVING'));
     });
+
+    test('reports every field of all four clauses', () {
+      // `getFields` is what a caller inspecting a compiled sentence sees, and
+      // unlike `referencedColumns` it does not stop at an aggregate: a column
+      // hidden inside SUM() is still a column the statement reads.
+      final query = grouped(
+        groupBy: [priority],
+        aggregates: [b.countOf(title, 'titles')],
+        having: b.gt(b.countAll('total'), b.intOp(3)),
+      );
+      expect(query.getFields(dialect), {
+        'fixture_task.priority',
+        'fixture_task.title',
+        'fixture_task.done',
+      });
+    });
+
+    test('a group key is read out of a row by its declared name', () {
+      // The projection aliases a group key as its *declared* name, so `keyOf`
+      // is the accessor that spares a caller from restating the alias — and
+      // from getting it wrong when the column name and field name differ.
+      final row = TomGroupedRow({'priority': 2, 'total': 9});
+      expect(row.keyOf(priority), 2);
+    });
+
+    test('toString names the grouping and the HAVING', () {
+      final query = grouped(
+        groupBy: [priority],
+        aggregates: [b.countAll('total')],
+        having: b.gt(b.countAll('total'), b.intOp(3)),
+      );
+      expect(query.toString(), contains('priority'));
+      expect(query.toString(), contains('having'));
+    });
   });
 
   group('group query sentence', () {
@@ -646,6 +774,53 @@ void main() {
       );
     });
 
+    test('an aggregate that stops after the bracket is rejected', () {
+      // The projection is parsed on its own, up to `over`/`by`, so a sentence
+      // that trails off mid-aggregate leaves the parser at the end of *its*
+      // tokens rather than at a token it can complain about. It has to say so
+      // instead of reading past them.
+      expect(
+        () => compile('group count ( by priority > 0'),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.parse_aggregates.missing_argument',
+          ),
+        ),
+      );
+    });
+
+    test('an aggregate that stops after AS is rejected', () {
+      expect(
+        () => compile('group count ( * ) as by priority > 0'),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.parse_aggregates.missing_alias',
+          ),
+        ),
+      );
+    });
+
+    test('an over clause naming no field is rejected', () {
+      // Distinct from omitting `over` altogether, which is legal and groups the
+      // whole result set. Writing the keyword and then nothing is a truncated
+      // sentence, and reading it as "group over everything" would silently
+      // return one row where the author asked for many.
+      expect(
+        () => compile('group count ( * ) as total over , by priority > 0'),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.compile_grouped.empty_over_clause',
+          ),
+        ),
+      );
+    });
+
     test('distinct is meaningless for min/max and is rejected', () {
       expect(
         () => compile(
@@ -685,6 +860,49 @@ void main() {
         compiler.compileQuerySentence('count by priority > 0'),
         isA<TomCount>(),
       );
+    });
+  });
+
+  group('min/max over the temporal column types', () {
+    // `FixtureTaskRecord` has no date column, so the two temporal arms of the
+    // min/max dispatch cannot be reached through the group above. They are the
+    // arms that matter most for an extremum: "the newest row in each group" is
+    // the ordinary reason to write MAX at all, and an unmapped arm would refuse
+    // the sentence as an unsupported column type rather than compile it.
+    late TomQuerySentenceCompiler exports;
+
+    setUpAll(() {
+      initializeReflection();
+      exports = TomQuerySentenceCompiler([FixtureExportRecord]);
+    });
+
+    TomGroupedSelect compile(String sentence) =>
+        exports.compileQuerySentence(sentence) as TomGroupedSelect;
+
+    test('max over a timestamp keeps the DateTime value type', () {
+      final query = compile(
+        'group max ( createdAt ) as newest over done by id > 0',
+      );
+      expect(query.aggregates.single, isA<Max<TomDbDateTime, DateTime>>());
+      expect(query.aggregates.single.valueType, DateTime);
+    });
+
+    test('min over a timestamp keeps the DateTime value type', () {
+      final query = compile(
+        'group min ( createdAt ) as oldest over done by id > 0',
+      );
+      expect(query.aggregates.single, isA<Min<TomDbDateTime, DateTime>>());
+    });
+
+    test('a date-only column is its own SQL type, still read as DateTime', () {
+      // `TomZonedDate` renders as a DATE, so the node carries `TomDbDate` — but
+      // the value the mapper materialises is a `DateTime` all the same, which
+      // is what spares a caller from a second date class.
+      final query = compile(
+        'group max ( tagDay ) as latest over done by id > 0',
+      );
+      expect(query.aggregates.single, isA<Max<TomDbDate, DateTime>>());
+      expect(query.aggregates.single.valueType, DateTime);
     });
   });
 }
