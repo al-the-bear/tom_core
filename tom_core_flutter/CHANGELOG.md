@@ -1,5 +1,23 @@
 ## 1.2.1
 
+### Fixed
+
+- **runtime: `toString()` spells the class it names (tcinc676).** All three
+  compile-time variants rendered `TomFlutterPlatformUtis`, dropping the `l`,
+  while the class is `TomFlutterPlatformUtils` in each. `toString()` is this
+  module's diagnostic surface — it is what an application logs to record which
+  variant it selected, and what the module's own example prints twice — so
+  anyone grepping logs for the class matched the source and missed every
+  runtime record of it. The IO variant now reads `TomFlutterPlatformUtils: io`,
+  and web and neutral likewise.
+
+  Two tests replace the substring assertion that let this stand for so long:
+  the reachable variant is pinned to its whole string, and a source-level test
+  requires each of the three variants to open its rendering with the class it
+  declares. Only the IO variant can be constructed on any one host — the other
+  two are selected by conditional import — so without reading their source
+  nothing pins them at all.
+
 ### Added
 
 - **resources: the example demonstrates both construction-time failures

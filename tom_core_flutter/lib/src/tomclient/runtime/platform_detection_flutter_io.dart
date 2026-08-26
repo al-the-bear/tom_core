@@ -82,5 +82,5 @@ class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   String getIsolateName() => Isolate.current.debugName ?? "main";
 
   @override
-  String toString() => "TomFlutterPlatformUtis: io";
+  String toString() => "TomFlutterPlatformUtils: io";
 }

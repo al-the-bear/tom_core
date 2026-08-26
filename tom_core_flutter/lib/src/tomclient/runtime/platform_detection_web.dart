@@ -54,5 +54,5 @@ class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   String getIsolateName() => "web";
 
   @override
-  String toString() => "TomFlutterPlatformUtis: web";
+  String toString() => "TomFlutterPlatformUtils: web";
 }

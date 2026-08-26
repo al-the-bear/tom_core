@@ -114,7 +114,40 @@ void main() {
   });
 
   test('toString identifies the native IO variant', () {
-    expect(clientPlatformUtils.toString(), contains('io'));
+    // The whole string, not `contains('io')`. `toString()` is this module's
+    // diagnostic surface — it is what an application logs to record which
+    // variant it selected — so what matters is that the record is greppable
+    // for the class it names. A substring match cannot see that half of the
+    // string, and for a long time did not: the class name in it was
+    // misspelled and every test still passed.
+    expect(clientPlatformUtils.toString(), 'TomFlutterPlatformUtils: io');
+  });
+
+  test('every variant names its own class', () {
+    // Only the IO variant is reachable from this host; the other two are
+    // chosen by conditional import and cannot be constructed here at all. So
+    // the string they would return is read out of their source, which is the
+    // only place a test on this host can see it. Without this the two
+    // unreachable variants are pinned by nothing, and a name that drifts from
+    // its class — the exact defect the test above now guards for `io` — could
+    // reappear in either of them unnoticed.
+    for (final variant in ['flutter_io', 'neutral', 'web']) {
+      final path = 'lib/src/tomclient/runtime/platform_detection_$variant.dart';
+      final source = File(path).readAsStringSync();
+      final declared = RegExp(r'^class (\w+)', multiLine: true)
+          .firstMatch(source)
+          ?.group(1);
+      final rendered = RegExp(r'String toString\(\) => "([^"]*)"')
+          .firstMatch(source)
+          ?.group(1);
+      expect(declared, isNotNull, reason: '$path declares no class');
+      expect(rendered, isNotNull, reason: '$path has no single-literal toString');
+      expect(
+        rendered,
+        startsWith('$declared: '),
+        reason: '$variant declares $declared but calls itself "$rendered"',
+      );
+    }
   });
 
   test('out and outError write without throwing', () {

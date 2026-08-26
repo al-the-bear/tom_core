@@ -57,5 +57,5 @@ class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   String getIsolateName() => "ntrl";
 
   @override
-  String toString() => "TomFlutterPlatformUtis: neutral";
+  String toString() => "TomFlutterPlatformUtils: neutral";
 }
