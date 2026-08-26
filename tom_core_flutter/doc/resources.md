@@ -62,6 +62,33 @@ path as much as the success path:
 A failure to read the configuration at all is not one of these: it propagates
 as whatever the provider raised, and is never re-reported as a cast failure.
 
+### How a key resolves
+
+The key is passed to the provider unchanged, so a property inherits the
+provider's **dot notation over nested maps**. `'app.db.host'` finds either a
+`host` entry inside a `db` map inside an `app` map, or a flat entry literally
+named `'app.db.host'`.
+
+The two are not equal alternatives. The nested walk runs **first** and the flat
+lookup is its fallback, so a config holding both spellings answers with the
+nested one:
+
+```dart
+// { 'app': {'title': 'nested'}, 'app.title': 'flat' }
+~TomStringProperty('app.title');   // 'nested'
+```
+
+Descent stops at the last segment, which makes an interior node a value in its
+own right. No typed subclass can hold one, so fetching a subtree is a second
+place the generic is the intended form:
+
+```dart
+final db = TomProperty<Map<String, dynamic>>('app.db');
+```
+
+A path that reaches a real subtree but finds nothing in it is an ordinary miss
+— rule 2 or 3 above, not an error of its own.
+
 Because resolution is eager, construct the property **after** the config
 providers are populated, and re-read is not supported — a later config change is
 not reflected.
@@ -116,13 +143,22 @@ value's actual runtime type — the message names only the type that was wanted.
   rather than treating it as "no default".
 - **Eager and immutable** — the value is captured at construction and never
   re-read.
+- **A key configured with no value counts as absent.** The lookup reports a key
+  that was never written and one written as `null` identically, and a property
+  reads both as "not there": `app.region:` in a config file fails an obligatory
+  property and loses to a default. A configured `null` can therefore never
+  override a non-null default. A caller who must tell "explicitly unset" from
+  "never configured" has to ask the provider's own map — `resources` is public,
+  so `containsKey` settles a flat key and `getObjectFromTree` a dotted one —
+  because a property offers no way to express the difference.
 
 ---
 
 ## Dependencies
 
 - **`tom_core_kernel`**: `TomConfigResourceProvider`, the resource provider
-  every property reads from — both hooks resolve through its `getAppConfig()`.
+  every property reads from — resolution is a single `getObjectOrNull` call on
+  the provider returned by its `getAppConfig()`.
   It is populated by `setAppConfigProvider`, which is the call an application
   must make before constructing any property. The *text* provider family
   (`setAppResourceProvider`) is a separate installation with its own backing

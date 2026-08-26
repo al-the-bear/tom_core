@@ -47,6 +47,22 @@ void main() {
 > **Eager and immutable:** the value is captured at construction and never
 > re-read, so later config changes are not reflected.
 
+## Key resolution
+
+The key goes to the provider unchanged, so a property inherits **dot notation
+over nested maps**: `'app.db.host'` finds a `host` inside a `db` inside an
+`app`, or a flat entry literally named `'app.db.host'`. The nested walk runs
+first and the flat lookup is its fallback, so a config carrying both spellings
+answers with the nested one. Descent stops at the last segment, which makes an
+interior node a value in its own right — `TomProperty<Map<String, dynamic>>`
+holds a subtree, and no typed subclass can.
+
+A key configured with **no value** counts as absent: the lookup cannot tell
+`app.region:` from a key that was never written, so an obligatory property
+fails and a default wins. A configured `null` therefore never overrides a
+non-null default. Where that distinction matters, ask the provider's public
+`resources` map directly — a property cannot express it.
+
 ---
 
 Part of [`tom_core_flutter`](../../../../README.md) — see the package README for

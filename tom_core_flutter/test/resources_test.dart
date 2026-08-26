@@ -56,6 +56,88 @@ void main() {
     });
   });
 
+  group('dot notation resolves through nested maps', () {
+    // Every other test in this file writes its config as a flat map under a
+    // literal dotted key (`{'app.title': …}`), which the provider answers by
+    // plain map lookup. That is not the shape a configuration file arrives in:
+    // YAML nests, so `app.db.host` reaches the provider as three levels of map
+    // and is resolved by a tree walk. The walk and the flat lookup are separate
+    // legs of the kernel's resolver — the walk first, the flat lookup only as
+    // its fallback — so a suite that exercises one of them says nothing about
+    // the other.
+
+    test('all four typed subclasses read a nested leaf', () {
+      installConfig({
+        'app': <String, dynamic>{
+          'db': <String, dynamic>{
+            'host': 'localhost',
+            'port': 3306,
+            'ratio': 1.5,
+            'ssl': true,
+          },
+        },
+      });
+      expect(TomStringProperty('app.db.host').get(), 'localhost');
+      expect(TomIntProperty('app.db.port').get(), 3306);
+      expect(TomDoubleProperty('app.db.ratio').get(), 1.5);
+      expect(TomBoolProperty('app.db.ssl').get(), isTrue);
+    });
+
+    test('a nested value outranks a literal dotted key of the same name', () {
+      // Both spellings can be present at once — a nested block from a file,
+      // merged with a flat entry written key-by-key — and only one can win.
+      // The walk runs first and the flat lookup is its fallback, so the nested
+      // value is the answer. Worth pinning because the opposite order is just
+      // as plausible a reading of "either a flat entry or a nested one", and
+      // nothing else in the suite can tell the two apart.
+      installConfig({
+        'app': <String, dynamic>{'title': 'from the nested block'},
+        'app.title': 'from the flat key',
+      });
+      expect(TomStringProperty('app.title').get(), 'from the nested block');
+    });
+
+    test('a path that stops at an interior node yields the subtree', () {
+      // Descent stops at the last segment, so an interior node is a value like
+      // any other rather than something only traversed. Holding one needs the
+      // generic — no typed subclass closes over `Map` — which is a second
+      // reason the four subclasses are a recommendation and not the whole API.
+      installConfig({
+        'app': <String, dynamic>{
+          'db': <String, dynamic>{'host': 'localhost'},
+        },
+      });
+      expect(
+        TomProperty<Map<String, dynamic>>('app.db').get(),
+        {'host': 'localhost'},
+      );
+    });
+
+    test('a nested path whose leaf is missing is absent, not an error', () {
+      // The walk reaching a real subtree and finding nothing in it is an
+      // ordinary miss, and this module cannot tell it from a key that was never
+      // written: obligatory fails, `withDefault` falls back. A half-written
+      // path is therefore reported the same way as no path at all.
+      installConfig({
+        'app': <String, dynamic>{'db': <String, dynamic>{}},
+      });
+      expect(
+        () => TomStringProperty('app.db.host'),
+        throwsA(
+          isA<TomPropertyException>().having(
+            (e) => e.key,
+            'key',
+            'resources.property.not_configured',
+          ),
+        ),
+      );
+      expect(
+        TomStringProperty.withDefault('app.db.host', 'fallback').get(),
+        'fallback',
+      );
+    });
+  });
+
   group('withDefault', () {
     test('uses the config value when the key exists', () {
       installConfig({'app.retries': 7});
@@ -72,6 +154,12 @@ void main() {
     // Full-surface: every typed subclass exposes a `withDefault` named
     // constructor. Exercise all four across both branches (present key wins /
     // absent key falls back) so no subclass constructor is left uncovered.
+    //
+    // Both branches are read twice, once through `get()` and once through `~`.
+    // The operator is declared once on the generic, so what the sweep pins is
+    // not four implementations but that all four subclasses still *inherit* the
+    // one — and that it answers with the resolved value on the fallback branch
+    // as well, where there is no configured value for it to return.
     test('all four typed subclasses honour a present config value', () {
       installConfig({
         'app.title': 'Present',
@@ -83,6 +171,11 @@ void main() {
       expect(TomIntProperty.withDefault('app.retries', 0).get(), 9);
       expect(TomDoubleProperty.withDefault('app.ratio', 0.0).get(), 2.5);
       expect(TomBoolProperty.withDefault('app.flag', false).get(), isTrue);
+
+      expect(~TomStringProperty.withDefault('app.title', 'x'), 'Present');
+      expect(~TomIntProperty.withDefault('app.retries', 0), 9);
+      expect(~TomDoubleProperty.withDefault('app.ratio', 0.0), 2.5);
+      expect(~TomBoolProperty.withDefault('app.flag', false), isTrue);
     });
 
     test('all four typed subclasses fall back when the key is absent', () {
@@ -92,6 +185,12 @@ void main() {
       expect(TomIntProperty.withDefault('app.retries', 5).get(), 5);
       expect(TomDoubleProperty.withDefault('app.ratio', 1.25).get(), 1.25);
       expect(TomBoolProperty.withDefault('app.flag', true).get(), isTrue);
+
+      expect(~TomStringProperty.withDefault('app.title', 'Fallback'),
+          'Fallback');
+      expect(~TomIntProperty.withDefault('app.retries', 5), 5);
+      expect(~TomDoubleProperty.withDefault('app.ratio', 1.25), 1.25);
+      expect(~TomBoolProperty.withDefault('app.flag', true), isTrue);
     });
   });
 
@@ -185,6 +284,14 @@ void main() {
       // alike. Worth pinning because they look different in a YAML file and
       // identical here: `app.region:` with no value does not satisfy an
       // obligatory property.
+      //
+      // This is the settled contract, not a defect awaiting a fix. There is no
+      // third state for a lookup to report — `exists` returns a `bool` and
+      // `getObjectOrNull` an `Object?` — and the state the two collapse to is
+      // the one an unconfigured key should get anyway. Every accessor on both
+      // providers behaves this way, for flat and for dotted paths alike. What a
+      // caller who genuinely needs the distinction reaches for is the provider's
+      // own map, pinned two tests below.
       installConfig({'app.region': null});
       expect(
         () => TomStringProperty('app.region'),
@@ -195,6 +302,60 @@ void main() {
             allOf(contains('Obligatory'), contains('app.region')),
           ),
         ),
+      );
+    });
+
+    test('a key configured as null takes the default rather than staying null',
+        () {
+      // The other half of the collapse, and the more surprising half: over a
+      // nullable `T` a caller can write `null` as a deliberate default, but
+      // they cannot write it as a deliberate *value* — a configured `null` is
+      // read as no value at all and the fallback wins. So an explicit `null` in
+      // the config file can never override a non-null default, whatever the
+      // author of that file intended by writing it.
+      installConfig({'app.region': null});
+      expect(
+        TomStringProperty.withDefault('app.region', 'fallback').get(),
+        'fallback',
+      );
+      expect(
+        TomProperty<String?>.withDefault('app.region', 'fallback').get(),
+        'fallback',
+      );
+
+      // Nested spelling, same answer — the collapse is in the resolver, not in
+      // the flat-key leg.
+      installConfig({
+        'app': <String, dynamic>{'region': null},
+      });
+      expect(
+        TomStringProperty.withDefault('app.region', 'fallback').get(),
+        'fallback',
+      );
+    });
+
+    test('the provider map is the recourse when the distinction matters', () {
+      // The escape hatch the module itself does not offer. `resources` is
+      // public, so a caller who has to tell "explicitly unset" from "never
+      // configured" can ask the map directly — which is the whole reason the
+      // collapse above is documented rather than worked around here. Pinned
+      // because the documents now promise this recourse: if `resources` were
+      // made private or lazily materialised, the promise would break silently
+      // while every other test in this file still passed.
+      installConfig({'app.region': null});
+      expect(
+        TomConfigResourceProvider.getAppConfig().resources
+            .containsKey('app.region'),
+        isTrue,
+        reason: 'a key present with a null value is not visible in the map, so '
+            'nothing can distinguish it from one that was never written',
+      );
+
+      installConfig({});
+      expect(
+        TomConfigResourceProvider.getAppConfig().resources
+            .containsKey('app.region'),
+        isFalse,
       );
     });
 

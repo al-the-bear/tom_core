@@ -62,6 +62,18 @@ class TomPropertyException extends TomClientException {
 /// both absent and has no default throws. Both failures raise
 /// [TomPropertyException] — see it for the two `key` codes.
 ///
+/// **Key resolution:** [key] reaches the provider unchanged, so a property
+/// inherits its dot notation over nested maps. `'app.db.host'` resolves either
+/// through nested `app` / `db` maps or as a flat entry of that literal name;
+/// the nested walk runs first and the flat lookup is its fallback, so a config
+/// carrying both spellings answers with the nested one. Descent stops at the
+/// last segment, which makes an interior node a value in its own right — a
+/// `TomProperty<Map<String, dynamic>>` holds a subtree, and is the second place
+/// the generic is the intended form. A key configured with no value counts as
+/// absent, so a configured `null` never overrides a non-null default; where
+/// that distinction matters, read the provider's public `resources` map
+/// directly.
+///
 /// **Eager and immutable:** the value is captured at construction and never
 /// re-read, so later config changes are not reflected. Construct the property
 /// after the config providers are populated.

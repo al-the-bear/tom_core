@@ -38,6 +38,14 @@ a non-nullable type and so cannot express an optional value:
 final region = TomProperty<String?>.withDefault('app.region', null);
 ```
 
+`key` is passed to the provider unchanged, so a property inherits **dot
+notation over nested maps**: `'app.db.host'` resolves either through nested
+`app` / `db` maps or as a flat entry of that literal name. The nested walk runs
+first and the flat lookup is its fallback, so a config carrying both spellings
+answers with the nested one. Descent stops at the last segment, so an interior
+node is itself a resolvable value — `TomProperty<Map<String, dynamic>>` holds a
+subtree, which no typed subclass can.
+
 ## Class Hierarchy
 
 ```

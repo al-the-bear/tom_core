@@ -1,5 +1,41 @@
 ## 1.2.1
 
+### Added
+
+- **resources: the suite pins dot-notation resolution, the null-value collapse
+  on both branches, and `~` across all four subclasses (tcinc674).** Three
+  documented behaviours had no test. Every config in the file was written as a
+  flat map under a literal dotted key, which the provider answers by plain map
+  lookup — so nothing exercised the nested tree walk that a real configuration
+  file actually takes, even though dot notation over nested maps is the
+  module's advertised resolution rule. Four tests now cover it: all four typed
+  subclasses reading a nested leaf, an interior node yielding its subtree
+  whole, a half-written path reported as an ordinary miss, and — new to the
+  documents as well as to the suite — the precedence between the two spellings.
+  The walk runs first and the flat lookup is its fallback, so a config holding
+  both `{'app': {'title': …}}` and `{'app.title': …}` answers with the nested
+  one. The opposite order is an equally plausible reading of "either a flat
+  entry or a nested one", which is why it needed pinning rather than assuming.
+
+  The second gap was half-covered: a written `null` reporting as absent was
+  asserted for the obligatory branch only. It is now asserted for the default
+  branch too, flat and nested, which is where the consequence is sharpest — a
+  caller can write `null` as a deliberate *default* but never as a deliberate
+  *value*, so an explicit `null` in a config file can never override a non-null
+  default whatever its author meant by writing it. A third test pins the
+  recourse the documents now promise for callers who must tell "explicitly
+  unset" from "never configured": the provider's `resources` map is public and
+  `containsKey` does distinguish them. Making that map private or lazy would
+  break the promise silently while every other test still passed.
+
+  The `~` operator was asserted on `TomStringProperty` alone, while the
+  deliberate all-four-subclasses sweeps stopped at `get()` — an omission that
+  read as an oversight rather than a judgement. Both sweeps now read each value
+  twice. The operator is declared once on the generic, so what this pins is not
+  four implementations but that all four subclasses still inherit the one, and
+  that it answers on the fallback branch where there is no configured value for
+  it to return.
+
 ### Fixed
 
 - **resources: the test comments state the module's contract instead of citing
