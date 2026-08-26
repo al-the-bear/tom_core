@@ -2585,7 +2585,6 @@ const Set<String> _examplesAssertingExpectations = {
   'example/object_persistence/object_persistence_example.dart',
   'example/scheduling/scheduling_example.dart',
   'example/server/server_example.dart',
-  'example/transactions/transactions_example.dart',
 };
 
 /// Matches a suite path, however a guide writes one.

@@ -2,13 +2,14 @@
 ///
 /// Shows the transaction lifecycle with a fake in-memory participant: opening a
 /// transaction through [TomTransactionManager], enlisting participants, and
-/// concluding with a commit or a rollback (including the commit-veto path), and
-/// finally isolating two concurrent flows from each other with
-/// [TomTransactionManager.runInTransactionScope]. In production the participants
-/// are data sources (`TomDataSource` implements [TomTransactionParticipant]) and
-/// the endpoint pipeline opens/closes the transaction around a
-/// `@TomTransactional` endpoint — inside a scope the server establishes per
-/// request.
+/// concluding with a commit or a rollback (including the commit-veto path),
+/// isolating two concurrent flows from each other with
+/// [TomTransactionManager.runInTransactionScope], testing for a scope with
+/// [TomTransactionManager.hasTransactionScope], and finally opening a read-only
+/// transaction. In production the participants are data sources
+/// (`TomDataSource` implements [TomTransactionParticipant]) and the endpoint
+/// pipeline opens/closes the transaction around a `@TomTransactional`
+/// endpoint — inside a scope the server establishes per request.
 ///
 /// Run with `dart run example/transactions/transactions_example.dart`. The same
 /// behaviour is covered by `test/transactions_test.dart`.
@@ -52,6 +53,19 @@ class _RecordingParticipant extends TomTransactionParticipant {
   }
 }
 
+/// Throws unless [ok] holds, naming the expectation that failed.
+///
+/// Deliberately not `assert`: `dart run` leaves assertions **disabled** — that
+/// is what its `--enable-asserts` flag is for — so an `assert` here compiles
+/// out under the very command this file's header gives. An example whose
+/// checks vanish under its own documented invocation is worse than one with no
+/// checks at all, because it still prints a plausible transcript and still
+/// exits 0 while every expectation in it is violated. A plain `if`/`throw`
+/// holds however the file is run.
+void check(bool ok, String expectation) {
+  if (!ok) throw StateError('transactions example failed: $expectation');
+}
+
 Future<void> run() async {
   // 1. Opening a transaction reports it as new; opening again reuses it.
   final (txn, isNew) = TomTransactionManager.startTransaction();
@@ -60,8 +74,10 @@ Future<void> run() async {
     '1. first=$isNew second=$isNew2 same=${identical(txn, sameTxn)} '
     'transactional=${TomTransactionManager.transactional}',
   );
-  assert(isNew == true && isNew2 == false && identical(txn, sameTxn));
-  assert(TomTransactionManager.transactional == true);
+  check(isNew, 'the first startTransaction reports that it created one');
+  check(!isNew2, 'the second reports that it found one, not created it');
+  check(identical(txn, sameTxn), 'both callers hold the same transaction');
+  check(TomTransactionManager.transactional, 'a transaction is now active');
 
   // 2. Enlist a participant and commit; it is committed then ended.
   final a = _RecordingParticipant('a');
@@ -71,9 +87,15 @@ Future<void> run() async {
     '2. commit ok=$ok calls=${a.calls} '
     'cleared=${TomTransactionManager.getCurrentTransaction() == null}',
   );
-  assert(ok == true);
-  assert(a.calls.contains('commit') && a.calls.contains('end'));
-  assert(TomTransactionManager.getCurrentTransaction() == null);
+  check(ok, 'the commit succeeded');
+  check(
+    a.calls.join(',') == 'start,commit,end',
+    'the participant was started, committed and then ended, in that order',
+  );
+  check(
+    TomTransactionManager.getCurrentTransaction() == null,
+    'a concluded transaction clears itself from its scope',
+  );
 
   // 3. A participant that vetoes the commit turns it into a rollback.
   final (txn3, _) = TomTransactionManager.startTransaction();
@@ -81,13 +103,20 @@ Future<void> run() async {
   await txn3.registerParticipant(b);
   final ok3 = await txn3.commitTransaction();
   print('3. veto -> ok=$ok3 calls=${b.calls}');
-  assert(b.calls.contains('rollback'));
-  assert(TomTransactionManager.getCurrentTransaction() == null);
+  check(
+    b.calls.join(',') == 'start,commit,rollback,end',
+    'the veto turned the commit into a rollback, and the participant that '
+    'had already been asked to commit was rolled back too',
+  );
+  check(
+    TomTransactionManager.getCurrentTransaction() == null,
+    'the vetoed transaction cleared itself as well',
+  );
 
   // 4. Registering after the transaction concluded is rejected. enlistment is
   //    awaitable, so the guard's exception surfaces directly to the caller and
   //    is caught with a plain try/catch.
-  assert(txn3.isRunning == false);
+  check(!txn3.isRunning, 'the vetoed transaction is no longer running');
   Object? captured;
   try {
     await txn3.registerParticipant(_RecordingParticipant('late'));
@@ -98,7 +127,11 @@ Future<void> run() async {
     '4. enlist-after-conclude threw '
     '${captured is TomTransactionException ? captured.key : captured}',
   );
-  assert(captured is TomTransactionException);
+  check(
+    captured is TomTransactionException,
+    'enlisting in a concluded transaction throws rather than silently '
+    'joining work that will never be committed',
+  );
 
   // 5. Two concurrent flows, each in its own scope, hold independent current
   //    transactions. Steps 1-4 above ran outside every scope and so shared the
@@ -112,9 +145,13 @@ Future<void> run() async {
       TomTransactionManager.runInTransactionScope(() async {
         final (txn, isNew) = TomTransactionManager.startTransaction();
         opened[name] = txn;
-        assert(isNew == true, 'each flow opens its own transaction');
+        check(isNew, 'flow $name opened its own transaction');
         await Future<void>.delayed(Duration.zero);
-        assert(identical(TomTransactionManager.getCurrentTransaction(), txn));
+        check(
+          identical(TomTransactionManager.getCurrentTransaction(), txn),
+          'flow $name still sees its own transaction after yielding to the '
+          'other flow',
+        );
         await txn.commitTransaction();
       });
   await Future.wait([flow('left'), flow('right')]);
@@ -124,8 +161,55 @@ Future<void> run() async {
     'outside any scope current='
     '${TomTransactionManager.getCurrentTransaction()}',
   );
-  assert(!identical(opened['left'], opened['right']));
-  assert(TomTransactionManager.getCurrentTransaction() == null);
+  check(
+    !identical(opened['left'], opened['right']),
+    'the two flows held independent transactions, so neither could commit '
+    "the other's work",
+  );
+  check(
+    TomTransactionManager.getCurrentTransaction() == null,
+    'nothing is current outside every scope',
+  );
+
+  // 6. `hasTransactionScope` distinguishes a flow that carries a scope of its
+  //    own from one falling back to the process-wide scope. It is the test a
+  //    caller makes before establishing a scope, so that it opens one only when
+  //    the code in front of it did not — what the endpoint pipeline does for a
+  //    `@TomTransactional` endpoint whose request arrived without one.
+  final atTopLevel = TomTransactionManager.hasTransactionScope;
+  final insideScope = await TomTransactionManager.runInTransactionScope(
+    () async => TomTransactionManager.hasTransactionScope,
+  );
+  print('6. hasTransactionScope top-level=$atTopLevel inside=$insideScope');
+  check(!atTopLevel, 'no scope at top level, so the fallback one is in use');
+  check(insideScope, 'a scope established by runInTransactionScope is seen');
+
+  // 7. A transaction can be opened read-only. The flag is advisory — it tells
+  //    participants and callers what kind of work the transaction was opened
+  //    for, and does not by itself prevent writes.
+  final (readOnly, _) = TomTransactionManager.startTransaction(true);
+  print('7. isReadOnly=${readOnly.isReadOnly}');
+  check(readOnly.isReadOnly, 'the flag is honoured on a created transaction');
+  await readOnly.commitTransaction();
+
+  //    It is honoured only when a transaction is *created*. Below, a read-write
+  //    transaction is open and a nested caller asks for a read-only one: it
+  //    receives the existing transaction unchanged. A nested request therefore
+  //    cannot downgrade a transaction somebody opened for writing — which would
+  //    otherwise retroactively mislabel the writes already made in it.
+  final (readWrite, _) = TomTransactionManager.startTransaction();
+  final (joined, isNewJoined) = TomTransactionManager.startTransaction(true);
+  print(
+    '   nested read-only request: reused=${!isNewJoined} '
+    'still read-write=${!joined.isReadOnly}',
+  );
+  check(!isNewJoined, 'the nested caller found the open transaction');
+  check(identical(joined, readWrite), 'and got that very transaction back');
+  check(
+    !joined.isReadOnly,
+    'asking read-only did not downgrade a transaction opened for writing',
+  );
+  await readWrite.commitTransaction();
 
   print('\nTransactions example completed.');
 }

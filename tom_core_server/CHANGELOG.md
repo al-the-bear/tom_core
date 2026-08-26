@@ -194,6 +194,24 @@
 
 ### Testing
 
+- **Nothing ran the transactions example, and the read-only flag's nesting rule
+  was documented but uncovered (tcinc646).** The example was the module's
+  worked demonstration and the source of its documented snippets, and no test
+  executed it — so it could drift from the module without anything going red,
+  which is how it came to be missing two of the behaviours its document
+  credited it with. `transactions_test.dart` now runs it under plain
+  `dart run`, requires exit 0, and requires each of the seven numbered steps to
+  have reported, so a step that crashes into a swallowed exit cannot pass as a
+  clean run. A companion guard rejects a reintroduced `assert(` and requires
+  the `check` helper, because the run test cannot tell an example that checks
+  nothing from one that passes.
+  Separately, "a get-or-create that finds an existing transaction ignores the
+  argument" was stated in the module's document and covered nowhere: the two
+  existing `isReadOnly` tests both created a transaction, which is the only
+  case where the flag *is* consulted. A nested read-only request that silently
+  downgraded an open read-write transaction would have relabelled writes
+  already made in it, and no test would have moved.
+
 - **The transaction suite now asserts what happens to the participants *behind*
   a failing one (tcinc645).** Twenty-eight tests covered the conclusion paths
   and none of them caught the `&&` short-circuit, because every failure case
@@ -1004,6 +1022,27 @@
   and dropping the denial audit each fail exactly the tests that claim them.
 
 ### Fixed
+
+- **The transactions example demonstrated five of the module's seven documented
+  behaviours, and checked none of them under its own command (tcinc646).** Two
+  capabilities had no step at all — `hasTransactionScope`, and opening a
+  read-only transaction — so a reader who went to the example for either found
+  nothing, and the completion document's snippets for them quoted a file they
+  were not in. Both are now numbered steps 6 and 7, in the style the file
+  already used.
+  The file also stated every expectation as `assert`, which `dart run` compiles
+  out — so under the one command its own header documents, the example printed
+  a plausible transcript, exited 0, and evaluated nothing. It now uses the
+  throwing `check(bool, String)` helper this package settled on for exactly
+  this reason, which holds however the file is run — including the case that
+  matters most for an example, a reader lifting a line into a server where an
+  `assert` vanishes in release mode. That drops the last quarantine entry
+  standing between `example/transactions/` and the package-wide rule.
+  Converting turned two checks from weaker to stronger on the way: steps 2 and
+  3 asserted that the recorded calls *contained* `commit` and `rollback`, which
+  a participant ended out of order or not at all would still satisfy. They now
+  pin the whole sequence — `start,commit,end` and `start,commit,rollback,end` —
+  which is the property the surrounding prose actually claims.
 
 - **One participant reporting a failed `endTransaction()` stopped every
   participant behind it from being ended at all (tcinc645).** Both
