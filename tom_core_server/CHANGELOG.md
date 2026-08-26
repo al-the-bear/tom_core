@@ -2,6 +2,28 @@
 
 ### Testing
 
+- **The preferences "endpoint wiring" test asks the router which handler an
+  endpoint is served under, instead of asking an annotation (tcinc614).** It
+  read `@TomApiEndpointImplementation.errorHandler` off the method's own
+  metadata, which is one step short of the binding that matters: the pipeline
+  reads `metadata.endpoint.errorHandler`, a *merged* value that
+  `convertToTomEndpoint` produces from the endpoint's own handler, the
+  class-level `@TomApiImplementation`'s API-wide one, and the framework default.
+  A declared handler the merge dropped would have left the annotation intact and
+  the test green while every preference miss answered `500`. The group now
+  builds its metadata with `TomEndpointRouting().getClassMethodMetadata` — the
+  same call `initializeRouter` makes — and reads the handler from there, which
+  subsumes the annotation check, since the merge cannot yield the preferences
+  handler unless the annotation declared it. Verified by removing `errorHandler:`
+  from `readPreference` and regenerating reflection: the test fails, naming the
+  method and reporting the `TomDefaultErrorHandler` it fell back to. Two
+  consequences: `registerTomUserPreferencesApi()` in the group's `setUpAll` is
+  now load-bearing rather than decorative, because the metadata build resolves
+  each endpoint against `tomRemoteApis` and throws without it; and the list
+  endpoint is asserted to route to `TomDefaultErrorHandler` rather than to have
+  no handler at all — declaring no override is not the same as being served by
+  nothing, and the old wording described a pipeline that does not exist.
+
 - **`object_persistence_example.dart` demonstrates the module instead of the
   query-builder DSL alone (tcinc610).** It was nine steps, all of them
   `TomQueryBuilder` calls, with a header that deferred everything else to

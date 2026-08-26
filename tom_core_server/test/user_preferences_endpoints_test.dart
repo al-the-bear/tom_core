@@ -20,8 +20,9 @@ import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
-// The reflection bootstrap, so the shipped endpoint class's own annotations can
-// be read rather than restated here.
+// The reflection bootstrap. The router reads the shipped endpoint class through
+// mirrors, so the wiring group cannot build its routing metadata — and so cannot
+// ask which handler an endpoint is served under — until this has run.
 import 'fixtures/reflection_fixture.reflection.dart';
 
 Request _request() =>
@@ -53,19 +54,35 @@ TomException _keyRefusal(String key) {
   throw StateError("'$key' was expected to be refused, and was not");
 }
 
-/// The error handler each [TomUserPreferencesServer] endpoint really declares,
-/// keyed by endpoint id — absent where the method declares none.
-Map<String, TomErrorHandler?> _declaredEndpointHandlers() {
+/// The error handler the pipeline will use for each [TomUserPreferencesServer]
+/// endpoint, keyed by endpoint id.
+///
+/// Read from the routing metadata the router builds — the same
+/// [TomEndpointRouting.getClassMethodMetadata] call `initializeRouter` makes —
+/// because that is where the binding is actually consumed:
+/// `metadata.endpoint.errorHandler` is what `endpoint_pipeline.dart` reaches for
+/// when a handler throws. Reading the *annotation* instead would answer a
+/// narrower question. The annotation is only an input to
+/// [TomApiEndpointImplementation.convertToTomEndpoint], which resolves the
+/// registry entry and merges three sources — the endpoint's own handler, the
+/// class-level `@TomApiImplementation`'s API-wide one, and the framework
+/// default. A declared handler that the merge dropped, or a registry lookup that
+/// resolved elsewhere, would leave the annotation intact and the served
+/// behaviour wrong; taking the merged value closes that gap and subsumes the
+/// narrower check, since the merge cannot produce the preferences handler unless
+/// the annotation declared it.
+///
+/// Never null: the merge ends in the framework default, so an endpoint that
+/// declares nothing still routes to a handler. That is why the list endpoint is
+/// asserted below by *which* handler it gets rather than by absence.
+Map<String, TomErrorHandler?> _routedEndpointHandlers() {
   final mirror =
       tomReflector.reflectType(TomUserPreferencesServer) as ClassMirror;
   final handlers = <String, TomErrorHandler?>{};
-  for (final declaration in mirror.declarations.values) {
-    if (declaration is! MethodMirror) continue;
-    for (final annotation in declaration.metadata) {
-      if (annotation is TomApiEndpointImplementation) {
-        handlers[annotation.endpointId] = annotation.errorHandler;
-      }
-    }
+  for (final metadata in TomEndpointRouting().getClassMethodMetadata(mirror)) {
+    final endpointId = metadata.apiEndpointImplementation?.endpointId;
+    if (endpointId == null) continue;
+    handlers[endpointId] = metadata.endpoint.errorHandler;
   }
   return handlers;
 }
@@ -269,18 +286,19 @@ void main() {
   group('endpoint wiring', () {
     setUpAll(() {
       initializeReflection();
+      // Load-bearing, not decorative: `getClassMethodMetadata` resolves each
+      // `@TomApiEndpointImplementation` against `tomRemoteApis[apiId]`, so
+      // without the registration below the metadata build throws rather than
+      // returning handlers to assert.
       registerTomUserPreferencesApi();
     });
 
-    test('every key-taking endpoint is served under the aware handler', () {
-      // Read from the shipped class's own annotations, not from a copy built
-      // here: the handler only matters if it is the one the pipeline finds, and
-      // an annotation restated in the test would pass while the source had
-      // none. All three key-taking endpoints need it — the read and the delete
-      // take their key from the path and the write takes its own from the
-      // body, but all three take one from the caller, so a 400 only the read
-      // could produce would leave two thirds of the surface answering 500.
-      final declared = _declaredEndpointHandlers();
+    test('every key-taking endpoint is routed under the aware handler', () {
+      // All three key-taking endpoints need it — the read and the delete take
+      // their key from the path and the write takes its own from the body, but
+      // all three take one from the caller, so a 400 only the read could
+      // produce would leave two thirds of the surface answering 500.
+      final routed = _routedEndpointHandlers();
 
       for (final endpointId in <String>[
         tomUserPreferencesReadEndpointId,
@@ -288,19 +306,22 @@ void main() {
         tomUserPreferencesDeleteEndpointId,
       ]) {
         expect(
-          declared[endpointId],
+          routed[endpointId],
           isA<TomUserPreferencesErrorHandler>(),
           reason: endpointId,
         );
       }
     });
 
-    test('the list endpoint has no handler of its own, and needs none', () {
-      // It takes no key and cannot miss — an empty list is an answer. A handler
-      // there could only translate faults that are genuinely faults.
+    test('the list endpoint routes to the framework default', () {
+      // It takes no key and cannot miss — an empty list is an answer — so it
+      // declares no handler of its own and needs none. What it gets instead is
+      // the default the merge ends in, which is the accurate statement: the
+      // absence of an override is not the absence of a handler, and asserting
+      // "none" here would describe a pipeline that does not exist.
       expect(
-        _declaredEndpointHandlers()[tomUserPreferencesListEndpointId],
-        isNull,
+        _routedEndpointHandlers()[tomUserPreferencesListEndpointId],
+        isA<TomDefaultErrorHandler>(),
       );
     });
   });
