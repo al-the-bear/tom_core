@@ -83,7 +83,14 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
       updatedAt: DateTime.now().toUtc(),
     );
 
-    final values = await store.read();
+    // Copy before modifying: the list belongs to the store, not to this method
+    // (see [TomDevicePreferenceStore.read]). Every shipped backend happens to
+    // hand out a list nobody else holds, but that is their choice and not the
+    // contract — a cache-backed store returning its own list, or an
+    // unmodifiable view of one, is a correct implementation, and mutating it
+    // here would either corrupt the cache or throw an `UnsupportedError` no
+    // caller could map to a preference failure.
+    final values = [...await store.read()];
     final existing = values.indexWhere((stored) => stored.key == key);
     if (existing >= 0) {
       values[existing] = written;
@@ -97,10 +104,13 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
   @override
   Future<bool> remove(String key) async {
     TomUserPreferenceKeys.validate(key);
-    final values = await store.read();
-    final existing = values.indexWhere((stored) => stored.key == key);
+    final persisted = await store.read();
+    final existing = persisted.indexWhere((stored) => stored.key == key);
     if (existing < 0) return false;
-    values.removeAt(existing);
+    // Copied for the same reason as in [set], but only on the path that
+    // actually modifies it: removing a key that is not there writes nothing, so
+    // it should not copy anything either.
+    final values = [...persisted]..removeAt(existing);
     await store.write(values);
     return true;
   }

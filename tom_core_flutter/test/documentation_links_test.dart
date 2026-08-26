@@ -100,18 +100,27 @@ void main() {
 
   /// The fragment a renderer derives from [heading] text.
   ///
-  /// Lower-cased, punctuation dropped, whitespace runs joined with hyphens.
-  /// HTML entities are decoded first, because a heading that has to show a
-  /// generic — `TomSetting&lt;T&gt;` — is anchored as the `<` and `>` it
-  /// renders as, not as the letters of the escape. Skipping that step reports
-  /// five live links in this package as dead.
+  /// Follows `github-slugger`, which is the algorithm the rendered documents are
+  /// read through, in three steps: lower-case, drop punctuation, then replace
+  /// **each** remaining space with a hyphen.
+  ///
+  /// Both details that look like rounding errors are load-bearing. HTML entities
+  /// are decoded before punctuation is dropped, because a heading that has to
+  /// show a generic — `TomSetting&lt;T&gt;` — is anchored as the `<` and `>` it
+  /// renders as, not as the letters of the escape; skipping that reports five
+  /// live links in this package as dead. And spaces are replaced one at a time
+  /// rather than by run, because dropping the punctuation *between* two spaces
+  /// leaves both of them: `Memory Management — you must retain the observer`
+  /// anchors as `memory-management--you-must-retain-the-observer`, with two
+  /// hyphens. Collapsing the run instead reports that link dead too — which is
+  /// how this was found.
   String anchorOf(String heading) {
     var text = heading.toLowerCase();
     for (final entity in const {'&lt;': '<', '&gt;': '>', '&amp;': '&'}.entries) {
       text = text.replaceAll(entity.key, entity.value);
     }
     text = text.replaceAll(RegExp(r'[^\w\s-]'), '');
-    return text.trim().replaceAll(RegExp(r'\s+'), '-');
+    return text.trim().replaceAll(' ', '-');
   }
 
   /// [file]'s text with fenced code removed — headings and links only.
@@ -244,6 +253,35 @@ void main() {
         isEmpty,
         reason: 'These anchors name no heading in their own document, so they '
             'render as links that go nowhere:\n${dead.join('\n')}',
+      );
+    });
+
+    test('every cross-document anchor points at a heading in the document it '
+        'names', () {
+      // 'every repository-relative link resolves on disk' checks the path and
+      // drops the fragment, so a link into another document was checked only as
+      // far as the file. That is the half that rarely breaks: a renamed heading
+      // leaves the path valid and the link silently landing at the top of the
+      // right document, which reads as if the reference were simply vague.
+      final dead = <String>[];
+      for (final file in markdownFiles()) {
+        for (final link in linksIn(file)) {
+          final target = link.group(2)!;
+          if (!target.contains('#') || target.startsWith('#')) continue;
+          final path = resolve(file, target);
+          if (path == null || !File(path).existsSync()) continue;
+          final fragment = target.split('#').last;
+          final targets = {for (final h in headingsIn(path)) anchorOf(h.$2)};
+          if (!targets.contains(fragment)) {
+            dead.add('$file: [${link.group(1)}]($target)');
+          }
+        }
+      }
+      expect(
+        dead,
+        isEmpty,
+        reason: 'These links name a heading their target document does not '
+            'have, so they land at the top of it instead:\n${dead.join('\n')}',
       );
     });
 

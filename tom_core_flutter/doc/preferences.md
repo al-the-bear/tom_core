@@ -11,6 +11,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [Why the Framework Owns This](#why-the-framework-owns-this)
 - [The Same Shape as the Server Store](#the-same-shape-as-the-server-store)
 - [Choosing a Backend](#choosing-a-backend)
+- [Writing a Backend](#writing-a-backend)
 - [Scope: A Store Belongs to Its Location](#scope-a-store-belongs-to-its-location)
 - [Reaching the Account Store](#reaching-the-account-store)
 - [Precedence Against the Server Store](#precedence-against-the-server-store)
@@ -146,6 +147,46 @@ what this module refuses.
 `TomUserPreferences.resolve`: a preference is optional by nature, and an
 application that has not wired a device store should fall back to its defaults
 rather than fail to start.
+
+## Writing a Backend
+
+`TomDevicePreferenceStore` is the module's only platform seam, and it is two
+methods wide:
+
+```dart
+Future<List<TomUserPreferenceDto>> read();
+Future<void> write(List<TomUserPreferenceDto> values);
+```
+
+Everything typed — the codec, the key rules, the precedence — sits above it, so
+adapting a new backend is a question about storage and never about preferences.
+Three obligations come with those two methods:
+
+**Absence is not an error.** `read()` answers an empty list when nothing has
+been persisted. Content that *is* there but cannot be read is a different case
+and throws `device_preferences.store.invalid_content` — a corrupt store that
+reported itself empty would be overwritten by the next `write` and take
+everything the device had chosen with it.
+
+**A write is all-or-nothing.** A failure part-way through must leave the
+previously readable content intact rather than a truncated set. The file backend
+gets this from write-then-rename; a backend without an atomic primitive has to
+build one.
+
+**Each list belongs to one side, and it is not the same side.** The list
+`read()` returns belongs to the **store**: callers must not modify it, so an
+implementation may return its own list, an unmodifiable view, or the same
+instance every time — a cache over `shared_preferences` or a keychain needs no
+defensive copy per read. The list handed to `write()` belongs to the **caller**:
+an implementation must not modify it and must not retain it without copying,
+because the caller may still hold it and may pass one that cannot be modified at
+all — `clear()` passes `const []`.
+
+The two halves are what let both sides be written naturally at once, and they
+are checked rather than merely stated: the shared test suite runs against a
+store that returns its own unmodifiable list from `read()`, so an operation here
+that treated that list as scratch space would fail the suite rather than fail in
+somebody's keychain-backed store.
 
 ## Scope: A Store Belongs to Its Location
 

@@ -2,6 +2,22 @@
 
 ### Fixed
 
+- **preferences: `TomStoredDevicePreferences` no longer modifies the list its
+  store handed back (tcinc667).** `set` assigned into or appended to the list
+  returned by `TomDevicePreferenceStore.read()`, and `remove` called `removeAt`
+  on it. The three shipped backends survived that only incidentally — the memory
+  one copies defensively, the file and web ones decode a fresh list per call —
+  and nothing required either property, so the module worked by luck of its own
+  implementations rather than by its contract. A conforming backend that returns
+  its own list, or an unmodifiable view of one (the natural shape for a cache
+  over `shared_preferences` or a keychain), failed instead: every `set` threw a
+  raw `UnsupportedError` that no caller could map to a preference failure, and
+  `remove` answered `false` for a key that was present. Both now copy before
+  mutating — `remove` only on the path that actually writes, so a miss still
+  allocates nothing. The asymmetry that made this visible is gone too: `all()`
+  already returned `List.unmodifiable(...)`, so the module demanded of its
+  backends exactly what it refused to promise its callers.
+
 - **preferences: `TomPlatformDevicePreferenceStore`'s constructor is no longer
   `const` on any variant (tcinc665).** The same defect as `tcopen198` below, in
   the module with three variants instead of two: the `dart:io` and web
@@ -53,6 +69,22 @@
   round-trip rather than the whole session.
 
 ### Documentation
+
+- **preferences: the store contract says who owns each list (tcinc667).**
+  `TomDevicePreferenceStore` is the whole backend contract — two methods — and
+  its dartdoc said what `read()` returns without saying whether the caller may
+  modify it, or what `write()` may do with what it is given. Both halves are now
+  stated, on the methods themselves and in `doc/preferences.md`, which gains a
+  **Writing a Backend** section for the reader the contract is actually
+  addressed to: the list `read()` returns belongs to the store, so an
+  implementation may hand out its own list, an unmodifiable view, or the same
+  instance every time and needs no defensive copy per read; the list given to
+  `write()` belongs to the caller, so an implementation must neither modify it
+  nor retain it without copying — `clear()` passes `const []`, which no store
+  could keep. The rule is repeated in the API summary's method table and as a
+  clause in the module readme's type table, and a test now pins it in all four
+  artefacts, so the sentences stay rewritable but the fact cannot quietly
+  disappear from any of them.
 
 - **preferences: the scope rule reaches the documents a reader actually starts
   from (tcinc666).** A device store has one user because its *location* has one
@@ -220,6 +252,26 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **the shared store suite runs against a backend that keeps its promises and
+  nothing more, and cross-document anchors are checked (tcinc667).**
+  `preferences_test.dart` gained a third instantiation of the shared suite,
+  behind a store whose `read()` returns its own unmodifiable list — everything
+  the contract permits and nothing it does not. Running the existing 13 contract
+  tests against it, rather than adding two bespoke assertions, is what did the
+  work: with the `remove` defect reintroduced the two original backends still
+  reported *all tests passed*, so the suite had been blind to it by
+  construction. Two further guards pin the ownership rule in the four artefacts
+  that state it. Separately, `documentation_links_test.dart` now checks that a
+  link naming a heading in *another* document finds it — the existing link guard
+  drops the fragment and checks only the path, which is the half that rarely
+  breaks, so a renamed heading left the link silently landing at the top of the
+  right file. Its first run exposed a bug in the anchor helper written under
+  `tcinc666`: `github-slugger` replaces each space individually, not each run of
+  whitespace, so stripping an em dash out of `A — B` leaves both surrounding
+  spaces and therefore two hyphens. No link had ever been wrong; the helper was.
+  It could not have been caught by the table-of-contents guard, which applies
+  the same function to both sides of its comparison. 252 → 268.
 
 - **every document's anchors and table of contents are checked, and the
   preferences scope rule is pinned in all three places it must appear

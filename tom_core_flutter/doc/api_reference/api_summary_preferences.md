@@ -163,8 +163,17 @@ const TomDevicePreferenceStore()
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `read()` | `Future<List<TomUserPreferenceDto>>` | Every persisted preference; empty when nothing has been written. Unreadable content throws `device_preferences.store.invalid_content` rather than reading as empty. |
-| `write(List<TomUserPreferenceDto> values)` | `Future<void>` | Replaces the persisted set, all-or-nothing. An empty `values` clears the store. |
+| `read()` | `Future<List<TomUserPreferenceDto>>` | Every persisted preference; empty when nothing has been written. Unreadable content throws `device_preferences.store.invalid_content` rather than reading as empty. The returned list belongs to the store — callers must not modify it. |
+| `write(List<TomUserPreferenceDto> values)` | `Future<void>` | Replaces the persisted set, all-or-nothing. An empty `values` clears the store. `values` belongs to the caller — an implementation must not modify it, nor retain it without copying. |
+
+Those two ownership rules are the halves of one rule, and each buys the other
+side its freedom. Because `read()`'s result is the store's, an implementation
+may return its own list, an unmodifiable view of one, or the same instance every
+time — a cache over `shared_preferences` or a keychain needs no defensive copy
+per read. Because `write`'s argument is the caller's, a caller may keep and
+reuse the list it passed, or pass one that cannot be modified at all:
+`TomStoredDevicePreferences.clear()` passes `const []`. See
+[Writing a Backend](../preferences.md#writing-a-backend).
 
 The unit is the kernel's `TomUserPreferenceDto` rather than a device-local
 record type: a device preference and a server preference are the same thing

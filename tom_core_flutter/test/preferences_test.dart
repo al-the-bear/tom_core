@@ -49,6 +49,38 @@ class WebDevicePreferences extends TomStoredDevicePreferences {
   WebDevicePreferences() : super(TomMemoryDevicePreferenceStore());
 }
 
+/// A backend that conforms to [TomDevicePreferenceStore] as documented, and
+/// offers nothing beyond it.
+///
+/// All three shipped backends happen to hand out a list nobody else holds —
+/// [TomMemoryDevicePreferenceStore] copies on every `read()`, and the file and
+/// web stores decode a fresh one. That tolerance is not part of the contract,
+/// and the natural way to write a cache-backed store — wrapping
+/// `shared_preferences`, a keychain, an encrypted blob kept in memory — does
+/// not offer it. This store is the strictest conforming implementation: `read()`
+/// returns the store's own list, unmodifiable and the same instance every time,
+/// and `write` keeps a copy rather than the caller's list.
+///
+/// Running the shared suite against it is what turns "the caller must not
+/// modify what `read()` returns" from a sentence in a dartdoc into something
+/// the package cannot quietly break.
+class UnmodifiableDevicePreferenceStore extends TomDevicePreferenceStore {
+  List<TomUserPreferenceDto> _values = List.unmodifiable(
+    const <TomUserPreferenceDto>[],
+  );
+
+  @override
+  Future<List<TomUserPreferenceDto>> read() async => _values;
+
+  @override
+  Future<void> write(List<TomUserPreferenceDto> values) async {
+    // Copies, so the store never depends on a list the caller may still hold —
+    // the write half of the same ownership rule. `clear()` relies on this: it
+    // passes `const []`, which no store could retain and later replace.
+    _values = List.unmodifiable(values);
+  }
+}
+
 /// The behaviour every backend must show, run against whichever one [build]
 /// returns.
 ///
@@ -274,9 +306,10 @@ void main() {
     TomRuntime.reset();
   });
 
-  // The same suite, twice: once against the store that persists nothing and
-  // once against the store that writes a file. Neither the assertions nor the
-  // calls differ, which is the module's contract.
+  // The same suite, three times: against the store that persists nothing, the
+  // store that writes a file, and the strictest implementation the contract
+  // permits. Neither the assertions nor the calls differ, which is the module's
+  // contract.
   runSharedStoreTests(
     'memory',
     () => TomStoredDevicePreferences(TomMemoryDevicePreferenceStore()),
@@ -291,6 +324,14 @@ void main() {
         '${temporaryDirectory.path}/preferences_${++storeIndex}.json',
       ),
     ),
+  );
+  runSharedStoreTests(
+    // The two above both hand out a list nobody else holds, so between them
+    // they cannot tell whether this package needs that. This one hands out its
+    // own unmodifiable list, which is all the contract promises — so it fails
+    // every operation that treats `read()`'s result as scratch space.
+    'unmodifiable-read',
+    () => TomStoredDevicePreferences(UnmodifiableDevicePreferenceStore()),
   );
 
   group('persistence across a restart', () {
@@ -503,6 +544,52 @@ void main() {
         reason: 'doc/preferences.md must state the scope rule under a heading '
             'of its own; its headings are $headings',
       );
+    });
+  });
+
+  group('the store contract states who owns each list', () {
+    // The rule is only useful to the person writing a backend, and that person
+    // may arrive at any of these four. The behaviour is pinned by the
+    // 'unmodifiable-read' backend above; this pins that it is *stated*, because
+    // an implementer who is not told may reasonably write a store that returns
+    // its own list and then be surprised by a package that mutates it.
+    const artefacts = <String>[
+      'lib/src/tomclient/preferences/device_preference_store.dart',
+      'lib/src/tomclient/preferences/readme.md',
+      'doc/preferences.md',
+      'doc/api_reference/api_summary_preferences.md',
+    ];
+
+    /// [file]'s text with emphasis and code markers removed, so a document is
+    /// free to bold or quote any part of the rule without breaking the check.
+    String plainTextOf(String file) =>
+        File(file).readAsStringSync().replaceAll(RegExp(r'[*`\[\]]'), '');
+
+    test('every artefact says the list read() returns belongs to the store', () {
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          contains('belongs to the store'),
+          reason: '$artefact does not say who owns the list read() returns, '
+              'which is what tells a backend author they need no defensive copy '
+              'and tells a caller they may not modify it',
+        );
+      }
+    });
+
+    test('every artefact says the list given to write() belongs to the caller', () {
+      // The half that is easy to leave out, because every shipped backend
+      // copies anyway. `clear()` is what makes it real: it passes `const []`,
+      // so a store that modified or retained its argument would fail on the
+      // module's own call.
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          contains('belongs to the caller'),
+          reason: '$artefact states only half of the ownership rule; a half '
+              'rule implies the other side behaves conventionally',
+        );
+      }
     });
   });
 

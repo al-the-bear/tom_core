@@ -30,6 +30,15 @@ abstract class TomDevicePreferenceStore {
   /// `device_preferences.store.invalid_content` rather than silently returning
   /// empty, because a corrupt store that looks empty would be overwritten by
   /// the next [write] and lose everything the device had chosen.
+  ///
+  /// **The returned list belongs to the store.** A caller must not modify it,
+  /// and an implementation is free to return its own list, an unmodifiable view
+  /// of one, or the same instance on every call. So a store may be written as a
+  /// cache over `shared_preferences` or a keychain without a defensive copy per
+  /// read; the three backends shipped here copy or decode a fresh list only
+  /// because that is what their storage makes cheapest, and nothing may depend
+  /// on it. A caller that needs to change the set reads it, copies, and hands
+  /// the copy to [write].
   Future<List<TomUserPreferenceDto>> read();
 
   /// Replaces the persisted preferences with [values].
@@ -37,6 +46,12 @@ abstract class TomDevicePreferenceStore {
   /// A write must be **all-or-nothing**: a failure part-way through must leave
   /// the previously readable content intact rather than a truncated set. An
   /// empty [values] clears the store.
+  ///
+  /// **[values] belongs to the caller** — the other half of the same rule. An
+  /// implementation must not modify it, and must not retain it beyond the call
+  /// without copying, because the caller may still hold it and may pass a list
+  /// that cannot be modified at all: `TomStoredDevicePreferences.clear()`
+  /// passes `const []`.
   Future<void> write(List<TomUserPreferenceDto> values);
 }
 
