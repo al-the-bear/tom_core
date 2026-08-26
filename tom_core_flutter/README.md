@@ -38,8 +38,10 @@ What it adds on top of the kernel is deliberately small:
   preferences the server holds.
 - **Client platform detection** — the Flutter/web/IO variant selector for
   `TomPlatformUtils`.
-- **Client security** — the `TomClient2FAAdaptor` annotation for two-factor
-  adaptors.
+- **Client security** — the framework-owned second-factor flow: a
+  ready-made enrol-and-challenge panel over a seam onto the application's own
+  auth client, pluggable per-mechanism rendering resolved through a registry,
+  and the shipped TOTP mechanism.
 
 ### Relationship to `tom_flutter_ui`
 
@@ -146,6 +148,14 @@ and the server are two readings of one contract. See
 
 | Type | What it is |
 | ---- | ---------- |
+| `Tom2FAFlowPanel` | Renders whichever stop of a second-factor login the controller reports — chooser, enrolment or challenge |
+| `Tom2FAFlowController` | The seam an application implements over its own auth client: five moves, two pieces of read-only state |
+| `Tom2FAClientMechanism` | One mechanism's client-side rendering, paired with its server adaptor by mechanism key alone |
+| `Tom2FAClientRegistry` | The process-wide mechanism catalog the flow dispatches through |
+| `Tom2FAEnrolmentPanelContext` / `Tom2FAChallengePanelContext` | What a mechanism's two panels are given to render themselves |
+| `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'` |
+| `Tom2FATexts` | Every resource key the second-factor UI resolves, and the helpers that resolve them |
+| `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, themed like any other widget |
 | `TomClient2FAAdaptor` | Annotation marking a class as a client-side two-factor (2FA) adaptor for a given type |
 
 ### Little things (`little_things`)

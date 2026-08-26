@@ -90,6 +90,33 @@
 
 ### Fixed
 
+- **security: the module's documents describe the second-factor feature rather
+  than only its annotation (tcinc685).** All three consumer-facing documents —
+  `doc/security.md`, `doc/api_reference/api_summary_security.md` and the module
+  readme — stated that the module contains one marker annotation. It contains
+  six files and ten public types, every one exported from the barrel, and the
+  nine they omitted are the feature: the flow panel and its three stops, the
+  controller seam, the mechanism contract and its registry, the two panel
+  contexts, the shipped TOTP mechanism, the sixteen resource keys and the QR
+  view. The API summary additionally named one of the six source files as *the*
+  source, and `doc/security.md` listed only `tom_core_kernel` as a dependency
+  where the module also reaches for `flutter`, `tom_flutter_ui` and `qr`.
+
+  The cost was not cosmetic. A developer opening `doc/security.md` to find out
+  whether the framework offers a second-factor UI was told, in three places,
+  that it does not — so the feature was reachable only by reading the source or
+  already knowing it existed. All three are rewritten from the source, and the
+  package README's two descriptions of the module with them.
+
+  One relationship the documents had never stated, now stated in all four:
+  `TomClient2FAAdaptor` is **not** what the flow dispatches on. `Tom2FAFlowPanel`
+  resolves a mechanism through `Tom2FAClientRegistry`, keyed by the same
+  mechanism string, and nothing in the package reads the annotation. Annotating
+  a class therefore does not make it renderable — a reader who inferred
+  otherwise from documents that described the annotation *as* the module's
+  dispatch mechanism would have had no way to discover the difference except by
+  it not working.
+
 - **runtime: the example prints the Flutter target beside the predicates it
   explains (tcinc684).** Run as its header prescribes, the example printed
   `isDesktop=false isMobile=true` on a macOS host and accounted for it nowhere
