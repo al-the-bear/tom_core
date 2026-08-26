@@ -48,9 +48,14 @@ import 'package:tom_core_server/tom_core_server.dart';
 @tomReflector
 @TomDbTable(datasource: 'todo', table: 'todo_item', primaryKeyField: 'id')
 class TodoItem {
+  // Nullable, and null until first persisted: `save` inserts when the key is
+  // null or negative and updates otherwise. `0` is a legitimate key value, not
+  // a sentinel, so an `int id = 0` would take the update arm on its very first
+  // save and quietly write nothing. Declare `int? id;`, or `int id = -1;` if
+  // the key must be non-nullable.
   @TomEntityId()
   @TomDbColumn(columnName: 'id')
-  int id = 0;
+  int? id;
 
   @TomDbColumn(columnName: 'title')
   String title = '';

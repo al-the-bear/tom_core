@@ -2,6 +2,28 @@
 
 ### Testing
 
+- **Nothing stopped a document from teaching an unsavable primary key
+  (tcinc601).** The shape that prompted this — `int id = 0` under
+  `@TomEntityId` — is legal Dart the analyzer is silent about, and the failure
+  it causes is a save that writes nothing rather than one that raises, so
+  neither of the gates this package runs could ever have caught it. Only a
+  document can teach it, and only a document sweep can find it. The new group in
+  `api_reference_coverage_test.dart` parses every `@TomEntityId` field declared
+  inside a Dart fence of a hand-written document — the module readmes, the
+  guides, the API summaries and the package README — and fails on a
+  non-nullable numeric key initialised to zero, naming the file, the line and
+  the two acceptable shapes. Nullable keys and constructor-assigned keys are
+  recorded as "nothing to judge" rather than filtered away, so the sweep's own
+  reach stays measurable; non-numeric keys are skipped because `isUnsavedKey`
+  never calls a natural key unsaved, so the zero-versus-negative question does
+  not arise for one. Two meta-tests keep it honest — one that the sweep found
+  declarations at all and reached the module readme in particular, since an
+  emptiness assertion over an empty sweep passes in silence; one that pins the
+  parser against the layouts the documents actually use (annotations on their
+  own lines and inline with the field, type arguments carrying a comma,
+  argument lists carrying a nested paren, and the same text outside a fence,
+  where it is prose about the annotation rather than a declaration).
+
 - **The only `Date:` header test used the one offset that cannot show a padding
   bug (tcinc580).** `formatRfc5322Date` was asserted against
   `DateTime.utc(...)`, whose offset is `+0000` — where the hour is `0`, the
@@ -3010,6 +3032,29 @@
   `.env` parser agree on where the key ends.
 
 ### Documentation
+
+- **The object-persistence quick start taught a primary key that can never be
+  inserted (tcinc601).** The entity in
+  `lib/src/tomserver/object_persistence/readme.md` declared `int id = 0;` under
+  `@TomEntityId`. `save` picks `INSERT` over `UPDATE` by asking `isUnsavedKey`,
+  which accepts a `null` key or a negative one and nothing else — `0` is
+  deliberately not a sentinel, because it is a legitimate key in a table that
+  assigns its own ids and treating it as "unsaved" would make the row with id
+  `0` unsavable. So an entity copied from this readme took the *update* arm on
+  its very first save, issued an `UPDATE` matching no row, and persisted
+  nothing. It raised nothing and the analyzer said nothing. A module readme is
+  the shortest thing a newcomer reads and the thing they paste, so this was the
+  worst place in the package for the shape to be.
+
+  The entity now declares `int? id;`, with the reasoning inline where the field
+  is — a reader who copies the block copies the explanation with it. The guide
+  gained the matching paragraph in **Mapping an Entity**, immediately after its
+  own entity example, stating the `isUnsavedKey` rule and the `int id = -1;`
+  alternative for a key that must be non-nullable. Both say plainly that the
+  failure is silent, because that is what makes the shape worth a paragraph
+  rather than a footnote. A sweep of every `*.md` and `*.dart` in the workspace
+  found no second occurrence: the documented entities already declare `int?
+  id;`, and the framework's own non-nullable keys default to `-1`.
 
 - **The object-persistence guide described one of the module's two authorization
   controls and neither of its file columns (tcinc600).**

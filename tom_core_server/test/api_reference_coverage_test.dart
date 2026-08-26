@@ -4738,4 +4738,225 @@ One: `TomKind`, documented beside the type that carries it.
       expect(listing.parameters, {'name', 'onFailure', 'seeds'});
     });
   });
+
+  group('no documented entity declares an unsavable surrogate key', () {
+    test('every `@TomEntityId` field in the documents is insertable', () {
+      final broken = _documentedEntityKeys()
+          .where((key) => key.initialiser == '0' || key.initialiser == '0.0')
+          .toList();
+      expect(
+        broken,
+        isEmpty,
+        reason:
+            'these documented entities declare a non-nullable numeric primary '
+            'key initialised to zero, which `isUnsavedKey` does not treat as '
+            'unsaved — the first save() issues an UPDATE that matches no row '
+            'and persists nothing:\n'
+            '${broken.map((k) => '  ${k.file}:${k.line}  ${k.declaration}').join('\n')}\n'
+            'Declare `int? id;`, or `int id = -1;` for a non-nullable key.',
+      );
+    });
+
+    test('the sweep found the entity declarations it claims to check', () {
+      // The finding above is an emptiness assertion, so a sweep whose parser
+      // stopped recovering declarations would pass by reading nothing. The
+      // documents that map an entity are few and named, so this pins the count
+      // being non-zero rather than the exact figure — a new guide that maps an
+      // entity should not have to edit a number here.
+      final keys = _documentedEntityKeys();
+      expect(keys, isNotEmpty, reason: 'no `@TomEntityId` fields were found');
+      expect(
+        keys.map((k) => k.file).toSet(),
+        contains('lib/src/tomserver/object_persistence/readme.md'),
+        reason:
+            'the module readme quick start is the shortest thing a newcomer '
+            'reads and the one they copy — it is the declaration this guard '
+            'exists for, and the sweep must be reaching it',
+      );
+    });
+
+    test('the parser reads the shapes the documents actually write', () {
+      // Each rule below decides whether a declaration is reported, so getting
+      // one wrong either hides a real defect or fails a correct document.
+      List<String?> initialisersOf(List<String> lines) => _entityKeysOf(
+        'synthetic.md',
+        lines,
+      ).map((k) => k.initialiser).toList();
+
+      expect(
+        initialisersOf([
+          '```dart',
+          '  @TomEntityId()',
+          "  @TomDbColumn(columnName: 'id')",
+          '  int id = 0;',
+          '```',
+        ]),
+        ['0'],
+      );
+      // A nullable key is never reported, whatever it is initialised to.
+      expect(
+        initialisersOf(['```dart', '  @TomEntityId()', '  int? id;', '```']),
+        [null],
+      );
+      // Annotations and declaration on one line — `doc/object_persistence.md`
+      // writes its scope example that way.
+      expect(
+        initialisersOf([
+          '```dart',
+          "  @TomEntityId() @TomDbColumn(columnName: 'id') int? id;",
+          '```',
+        ]),
+        [null],
+      );
+      // Type arguments carry a comma and the argument list a nested paren;
+      // neither may end the annotation early.
+      expect(
+        initialisersOf([
+          '```dart',
+          '  @TomEntityId()',
+          '  @TomDbColumn<int, TomDbInt>(columnName: \'id\', isReadOnly: true)',
+          '  int id = -1;',
+          '```',
+        ]),
+        ['-1'],
+      );
+      // A key the constructor assigns has no initialiser to judge.
+      expect(
+        initialisersOf(['```dart', '  @TomEntityId()', '  int id;', '```']),
+        [null],
+      );
+      // Outside a Dart fence the same text is prose about the annotation.
+      expect(
+        initialisersOf(['`@TomEntityId()` marks it.', '  int id = 0;']),
+        isEmpty,
+      );
+      // A non-numeric key is a natural key, not a surrogate: `isUnsavedKey`
+      // never calls one unsaved, so zero-versus-negative does not arise and a
+      // string default is not evidence of this defect.
+      expect(
+        initialisersOf([
+          '```dart',
+          '  @TomEntityId()',
+          "  String code = '';",
+          '```',
+        ]),
+        isEmpty,
+      );
+    });
+  });
+}
+
+/// One `@TomEntityId` field found in a documented entity.
+///
+/// [initialiser] is the field's default expression, or `null` when the key is
+/// nullable or left to a constructor — the two shapes that cannot carry the
+/// defect, so they are recorded as "nothing to judge" rather than filtered out,
+/// which keeps the sweep's own reach measurable.
+typedef _EntityKey = ({
+  String file,
+  int line,
+  String declaration,
+  String? initialiser,
+});
+
+/// The primary-key declaration of every entity mapped inside a Dart fence of a
+/// hand-written document in this package.
+///
+/// Covers the module readmes, the guides and the API summaries, because the
+/// defect this guards against is one a reader *copies*: the shape is legal
+/// Dart, the analyzer is silent about it, and the first save fails by writing
+/// nothing rather than by raising. Only a document can teach it.
+List<_EntityKey> _documentedEntityKeys() => [
+  for (final file in _handWrittenDocuments())
+    ..._entityKeysOf(file, File(file).readAsLinesSync()),
+];
+
+/// The markdown this package maintains by hand, as paths from the package root.
+List<String> _handWrittenDocuments() => [
+  'README.md',
+  for (final directory in ['doc', 'doc/api_reference'])
+    ...Directory(directory)
+        .listSync()
+        .whereType<File>()
+        .map((entry) => entry.path)
+        .where((path) => path.endsWith('.md')),
+  ...Directory('lib/src/tomserver')
+      .listSync()
+      .whereType<Directory>()
+      .map((entry) => '${entry.path}/readme.md')
+      .where((path) => File(path).existsSync()),
+]..sort();
+
+/// The `@TomEntityId` declarations inside [lines], reported under [file].
+///
+/// Split from [_documentedEntityKeys] so the parsing can be exercised on
+/// declarations written for the purpose.
+List<_EntityKey> _entityKeysOf(String file, List<String> lines) {
+  final found = <_EntityKey>[];
+  var inDart = false;
+
+  for (var i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('```')) {
+      inDart = lines[i].startsWith('```dart');
+      continue;
+    }
+    if (!inDart) continue;
+
+    final start = lines[i].indexOf('@TomEntityId');
+    if (start < 0) continue;
+
+    // The declaration may sit on the annotation's line or several below it, so
+    // read forward to the first `;` rather than assuming a layout.
+    final buffer = StringBuffer(lines[i].substring(start));
+    var end = i;
+    while (!buffer.toString().contains(';') && end + 1 < lines.length) {
+      end++;
+      if (lines[end].startsWith('```')) break;
+      buffer.write(' ${lines[end].trim()}');
+    }
+
+    final declaration = _withoutAnnotations(buffer.toString()).trim();
+    final match = _keyDeclaration.firstMatch(declaration);
+    if (match == null) continue;
+    // A natural key is out of scope — see the parser test.
+    if (!const {'int', 'num', 'double'}.contains(match.group(1))) continue;
+
+    found.add((
+      file: file,
+      line: i + 1,
+      declaration: declaration,
+      // A nullable key is always insertable, so it has nothing to judge even
+      // when it carries a default.
+      initialiser: match.group(2) == '?' ? null : match.group(3)?.trim(),
+    ));
+  }
+  return found;
+}
+
+/// A field declaration: type, optional `?`, name, optional initialiser.
+final RegExp _keyDeclaration = RegExp(
+  r'^(\w+)(\?)?\s+\w+\s*(?:=\s*(.+?))?\s*;',
+);
+
+/// [text] with every leading `@Annotation(...)` removed.
+///
+/// Written as a paren scan rather than a regular expression because an
+/// annotation's arguments nest — `@TomDbColumn<int, TomDbInt>(columnName: 'id',
+/// isReadOnly: true)` — and a non-greedy `\)` stops at the first one, leaving
+/// the rest of the argument list to be read as the field's type.
+String _withoutAnnotations(String text) {
+  var rest = text.trimLeft();
+  while (rest.startsWith('@')) {
+    final open = rest.indexOf('(');
+    if (open < 0) break;
+    var depth = 0;
+    var i = open;
+    for (; i < rest.length; i++) {
+      if (rest[i] == '(') depth++;
+      if (rest[i] == ')' && --depth == 0) break;
+    }
+    if (depth != 0) break;
+    rest = rest.substring(i + 1).trimLeft();
+  }
+  return rest;
 }

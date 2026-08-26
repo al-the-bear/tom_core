@@ -76,6 +76,15 @@ class User {
 }
 ```
 
+**Declare a surrogate key `int? id;`** — or `int id = -1;` when it must be
+non-nullable. `save` chooses `INSERT` over `UPDATE` by asking
+`isUnsavedKey`, which accepts a `null` key or a *negative* one and nothing else.
+`0` is deliberately not a sentinel: it is a legitimate key in a table that
+assigns its own ids, and treating it as "unsaved" would make the row with id `0`
+unsavable. The consequence is worth stating plainly, because it fails silently —
+an entity declared `int id = 0` takes the *update* arm on its very first save,
+issuing an `UPDATE` that matches no row and persisting nothing.
+
 `@TomDbColumn` can mark a column `isReadOnly` (skipped on insert/update),
 `noLoad` (skipped on select), or `isJson`, and can carry `fromDbConverter` /
 `toDbConverter` functions to translate between the Dart value and the boxed
