@@ -1,6 +1,6 @@
 /// The example suite's single reflection root.
 ///
-/// Three of the examples need a live reflector and none can borrow the test
+/// Four of the examples need a live reflector and none can borrow the test
 /// fixture's, because an example is not a test and cannot import from `test/`:
 ///
 ///  * the two-node cluster demonstration, whose SQL scheduler stores read every
@@ -11,7 +11,9 @@
 ///    lets `TomFileSlots` derive the route from the entity's annotations;
 ///  * the export example, whose derived-column step reads `@TomDbColumn` off an
 ///    entity to build a section that has no hand-written projection to drift
-///    from.
+///    from;
+///  * the object-persistence example, whose query sentences, grouped select and
+///    column grades are all resolved from one entity's annotations.
 ///
 /// **One root, not one per example.** The generator follows this file's import
 /// graph and emits `example_reflection.reflection.dart` beside it, and because
@@ -26,6 +28,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 import 'endpoints/endpoints_entities.dart';
 import 'export/export_entities.dart';
+import 'object_persistence/object_persistence_entities.dart';
 import 'scheduling/cluster/cluster_reflection.dart';
 
 /// Entry point the reflection generator requires of a root. Never run.
@@ -39,6 +42,7 @@ void main() {}
 const List<Type> exampleReflectedTypes = <Type>[
   // Declared by the demos themselves.
   ClusterFenceRow,
+  ExampleClaimRecord,
   ExampleDocumentRecord,
   ExampleSaleRecord,
   // A framework row holder, named to keep the package barrel in the graph. The

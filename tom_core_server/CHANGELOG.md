@@ -2,6 +2,39 @@
 
 ### Testing
 
+- **`object_persistence_example.dart` demonstrates the module instead of the
+  query-builder DSL alone (tcinc610).** It was nine steps, all of them
+  `TomQueryBuilder` calls, with a header that deferred everything else to
+  `doc/object_persistence.md`. It is now sixteen, and covers the surface that
+  appeared in *no* example anywhere in the package: mapping through
+  `TomAnnotationAnalyzer`, the four sentence kinds compiled by
+  `TomQuerySentenceCompiler`, `TomGroupedSelect`, `TomPageRequest` and
+  `TomColumnAuthorization` — each with the refusal that bounds it, since a
+  query the module accepts is one you would have written anyway and what is
+  worth showing is where it stops you.
+
+  Two of those steps say *when* as well as *what*. A `HAVING` on an ungrouped
+  column is refused by `generateQuery`, not by the compiler, because whether a
+  column is grouped is a question about the rendered statement; the example
+  therefore compiles the sentence successfully and then renders it to be
+  refused. And `decideWrites` is driven off `@TomDbColumn(authKey:)` rather
+  than off hand-written tokens, so the step shows how the feature is actually
+  reached.
+
+  That needed a reflected entity, `ExampleClaimRecord`, added to the existing
+  `example/example_reflection.dart` root rather than to a second one — a
+  further root costs ~1.7 MB of generated source capturing the same framework
+  surface. Its two graded columns carry *different* grades on purpose:
+  `reimbursement_account` resolves as `read`, so editing it is a named
+  violation, while `fraud_score` resolves as `none`, so it is masked out and
+  silently overlaid on the way back in. One graded column would show that
+  grading happens but not that the two failure modes differ.
+
+  The header now defers only what genuinely needs a live data source — the
+  repository round trip — and points row scopes and file-reference keys at
+  `resource_data_scope_example.dart` and `file_storage_example.dart`, which
+  already cover them, rather than repeating them.
+
 - **The six least-covered files of `object_persistence` now have their
   rejections and success paths asserted (tcinc609).** Measured as line
   coverage, the module moved: `column_authorization` 67.5 % → 95.0 %,
