@@ -16,7 +16,7 @@
 /// sees an unclassified error. The seven were the only places in the module
 /// where a failure arrived at a caller with nothing to match on.
 ///
-/// Three further sites had the same shape without being `throw` statements at
+/// Four further sites had the same shape without being `throw` statements at
 /// all. [TomSqlDatasourceRepository.findByQuerySentence],
 /// [TomSqlDatasourceRepository.deleteByQuerySentence] and
 /// [TomSqlDatasourceRepository.countByQuerySentence] each cast the compiled
@@ -26,6 +26,15 @@
 /// raw `_TypeError`, "type 'TomSelect' is not a subtype of type 'TomCount' in
 /// type cast", which names two internal classes the caller never wrote and does
 /// not say which of its own words was wrong.
+///
+/// The fourth is [TomSqlDatasourceRepository.delete], which read the entity's
+/// primary key with a bare `as K`. `save` reads the same value through
+/// [TomSqlDatasourceRepository.readPrimaryKey], which is null-tolerant precisely
+/// because an entity that was never persisted carries a null or negative key —
+/// so deleting an unsaved entity, an ordinary caller mistake, failed the cast
+/// and surfaced `type 'Null' is not a subtype of type 'int'`. That names two
+/// types the caller never wrote and does not say that the entity was never
+/// saved.
 ///
 /// **Connection-free.** The repository is driven against the scripted data
 /// source in `fixtures/scripted_datasource.dart` rather than against a
@@ -69,6 +78,18 @@ void main() {
       // None of them is the client's to act on, and each message names server
       // internals.
       .having((e) => e.clientThrow, 'clientThrow', isFalse);
+
+  /// Matches a [TomRepositoryException] carrying exactly [key] whose message is
+  /// meant for the caller.
+  ///
+  /// The counterpart of [repositoryError]: the same type, the opposite
+  /// disposition. This one is raised for something the caller did and can undo,
+  /// and its message names nothing but that — so it travels, where the type's
+  /// `false` default would leave a client facing a masked internal error for a
+  /// mistake it could have corrected.
+  Matcher callerError(String key) => isA<TomRepositoryException>()
+      .having((e) => e.key, 'key', key)
+      .having((e) => e.clientThrow, 'clientThrow', isTrue);
 
   /// Matches a [TomQuerySyntaxException] carrying exactly [key].
   Matcher sentenceError(String key) =>
@@ -219,6 +240,69 @@ void main() {
         'crud_repository.save.insert_not_readable',
         isNot('crud_repository.save.update_not_readable'),
       );
+    });
+  });
+
+  group('deleting an entity that was never saved is a keyed caller error', () {
+    setUp(registerDatasource);
+
+    // `isUnsavedKey` accepts two conventions, and `delete` has to refuse both.
+    // The null arrives from a nullable surrogate key before its first persist;
+    // the negative sentinel from the `id >= 0` convention. They failed
+    // *differently* before this change — null threw a `TypeError` from the
+    // cast, while `-1` passed the cast and ran a `DELETE` that matched no row,
+    // reporting success for a deletion that never happened. The second is the
+    // worse of the two, and the one no stack trace would have revealed.
+    final unsaved = <String, FixtureTaskRecord>{
+      'a null surrogate key': FixtureTaskRecord()..title = 'never saved',
+      'a negative sentinel key': FixtureTaskRecord()
+        ..id = -1
+        ..title = 'never saved',
+    };
+
+    for (final entry in unsaved.entries) {
+      test('[${entry.key}]', () async {
+        await expectLater(
+          FixtureTaskRepository().delete(entry.value),
+          throwsA(callerError('crud_repository.delete.unsaved_entity')),
+        );
+      });
+    }
+
+    test('it is not a TypeError', () async {
+      // The point of the change. A `TypeError` is not in the server exception
+      // family, so it is not auto-logged, carries no key to match on, and
+      // reaches the endpoints pipeline unclassified.
+      await expectLater(
+        FixtureTaskRepository().delete(FixtureTaskRecord()),
+        throwsA(isA<TomServerException>()),
+      );
+    });
+
+    test('the message names the entity, not the cast', () async {
+      await expectLater(
+        FixtureTaskRepository().delete(FixtureTaskRecord()),
+        throwsA(
+          isA<TomRepositoryException>()
+              .having(
+                (e) => e.parameters,
+                'parameters',
+                containsPair('entity', 'FixtureTaskRecord'),
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                isNot(anyOf(contains('Null'), contains('subtype'))),
+              ),
+        ),
+      );
+    });
+
+    test('a saved entity is still deleted', () async {
+      // The guard's other side: it must refuse only the unsaved key. A record
+      // carrying a real id goes through untouched, which is what stops the
+      // check from being written one branch too high.
+      await FixtureTaskRepository().delete(FixtureTaskRecord()..id = 5);
     });
   });
 

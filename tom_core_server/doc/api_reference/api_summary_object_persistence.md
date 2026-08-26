@@ -454,7 +454,7 @@ Data's `CrudRepository`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `delete` | `Future<void> delete(T entity)` | Deletes `entity` by its primary key. The one delete that returns nothing: it addresses a row the caller already holds, so the count could only be `1` or `0`. |
+| `delete` | `Future<void> delete(T entity)` | Deletes `entity` by its primary key. The one delete that returns nothing: it addresses a row the caller already holds, so the count could only be `1` or `0`. An entity that was never persisted addresses no row and raises `crud_repository.delete.unsaved_entity`. |
 | `deleteAllById` | `Future<int> deleteAllById(Iterable<K> ids)` | Deletes every entity whose id is in `ids` and returns how many rows were deleted — which can be lower than `ids.length` when an id names no row, or one outside the principal's data scope. |
 | `deleteById` | `Future<int> deleteById(K id)` | Deletes the entity with the given `id` and returns how many rows were deleted: `1`, or `0` when no row matched. |
 | `existsById` | `Future<bool> existsById(Iterable<K> ids)` | Whether every id in `ids` exists. |
@@ -1218,7 +1218,7 @@ All extend the server `TomServerException`.
 | `TomDataScopeException` | `data_scope.dart` | A `@TomDbScope` names a scope kind no resolver is registered for. |
 | `TomDataScopeAuthorizationException` | `data_scope.dart` | A write targets a row outside the current principal's `@TomDbScope` (C-3). |
 | `TomQuerySyntaxException` | `operators_expressions.dart` | A query expression is malformed (e.g. `BETWEEN` without exactly two bounds; also raised by the query-sentence compiler, and by the repository when a sentence's verb does not match the method it was handed to). |
-| `TomRepositoryException` | `crud_repository.dart` | A repository precondition fails: the entity's datasource is not registered, a primary-key lookup matched more than one row, a `COUNT(*)` returned other than one row, or a row `save` wrote could not be read back. |
+| `TomRepositoryException` | `crud_repository.dart` | A repository precondition fails: the entity's datasource is not registered, a primary-key lookup matched more than one row, a `COUNT(*)` returned other than one row, a row `save` wrote could not be read back, or `delete` was handed an entity that was never persisted. |
 
 Each exception constructor forwards the standard `TomServerException` positional
 `key` and `defaultUserMessage` plus the optional named `parameters`, `stack`,
@@ -1226,10 +1226,16 @@ Each exception constructor forwards the standard `TomServerException` positional
 `TomDataScopeAuthorizationException` / `TomRepositoryException`, `clientThrow`).
 
 `TomRepositoryException` is the one whose `clientThrow` defaults to **`false`**.
-Each of its causes is a server fault — a broken deployment, a table that
-contradicts its own key, a driver that reported a write it then could not read —
-and each message names internals, so the key travels to the caller and the
-message does not.
+Almost every one of its causes is a server fault — a broken deployment, a table
+that contradicts its own key, a driver that reported a write it then could not
+read — and each message names internals, so the key travels to the caller and
+the message does not.
+
+The single cause that is *not* a server fault overrides that default:
+`crud_repository.delete.unsaved_entity`, raised when `delete(entity)` is handed
+an entity whose primary key is still `null` or negative, sets
+`clientThrow: true`. Its message describes the argument the caller passed and
+nothing else, so it is the caller's to read.
 
 Its keys follow `crud_repository.<method>.<condition>`, for example
 `crud_repository.save.insert_not_readable` or

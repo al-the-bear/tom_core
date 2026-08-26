@@ -281,6 +281,37 @@
 
 ### Fixed
 
+- **`delete(entity)` cast the primary key with `as K`, so deleting an unsaved
+  entity threw a raw `TypeError` — or silently deleted nothing (tcinc595).**
+  `TomSqlDatasourceRepository.delete` read the entity's key with a bare
+  `as K` cast. `save` reads the same value through `readPrimaryKey<K>`, which is
+  null-tolerant precisely because an entity that has never been persisted
+  carries a null or negative key, and `isUnsavedKey` is the check that gates
+  INSERT against UPDATE on exactly those two conventions.
+
+  The two conventions failed differently in `delete`, and neither failed
+  usefully. A nullable surrogate key still `null` failed the cast with
+  `type 'Null' is not a subtype of type 'int' in type cast` — a `TypeError`,
+  which is outside the server exception family, so it carries no key to match
+  on, is not auto-logged, and reaches the endpoints pipeline unclassified. It
+  names `Null` and `int`, two types the caller never wrote, and does not say
+  that the entity was never saved. A negative sentinel key was worse: it passed
+  the cast, ran a `DELETE` that matched no row, wrote an audit record for the
+  deletion, and returned normally — reporting success for a deletion that never
+  happened.
+
+  `delete` now reads the key through `readPrimaryKey<K>` like `save` does, and
+  refuses a key `isUnsavedKey` accepts with a keyed
+  `crud_repository.delete.unsaved_entity`. It is the one `TomRepositoryException`
+  raised for something the caller did rather than something the deployment did,
+  so it sets `clientThrow: true` against the type's `false` default: its message
+  describes the caller's own argument and names nothing about the server, and
+  masking it would leave a caller facing a generic internal error for the one
+  repository failure it is the only party able to fix. The three further raw
+  reads of the key inside the method — the file-cascade `_selectById`, the bind
+  parameter and the audit key — now use the one guarded value, so the method
+  reads the key once rather than four times.
+
 - **The repository's delete methods returned a hardcoded count and contradicted
   their own contract (tcinc594).** `TomRepository` declared `deleteById`,
   `deleteByQuerySentence` and `deleteByQuery` as `Future<void>`, while

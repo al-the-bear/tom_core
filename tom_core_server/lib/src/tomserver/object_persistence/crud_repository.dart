@@ -21,22 +21,29 @@ import 'annotation_analyzer.dart';
 import 'column_authorization.dart';
 import 'data_scope.dart';
 
-/// Raised when a repository operation cannot complete for a reason that is not
-/// the caller's fault: the entity's data source was never registered, a
-/// primary-key lookup matched more than one row, a `COUNT(*)` returned other
-/// than one row, or a row written by [TomCrudRepository.save] could not be read
-/// back.
+/// Raised when a repository operation cannot complete: the entity's data source
+/// was never registered, a primary-key lookup matched more than one row, a
+/// `COUNT(*)` returned other than one row, a row written by
+/// [TomCrudRepository.save] could not be read back, or
+/// [TomCrudRepository.delete] was handed an entity that was never persisted.
 ///
-/// These are all *server* faults — a broken registration or a database that
-/// contradicts its own schema — so [TomServerException.clientThrow] defaults to
-/// `false` and the message is kept off the wire; the `key` is what a caller
-/// matches on and what the endpoints pipeline logs.
+/// All but the last are *server* faults — a broken registration or a database
+/// that contradicts its own schema — so [TomServerException.clientThrow]
+/// defaults to `false` and the message is kept off the wire; the `key` is what a
+/// caller matches on and what the endpoints pipeline logs.
+///
+/// The delete of an unsaved entity is the exception, and sets `clientThrow`
+/// explicitly. It is raised for something the caller did rather than something
+/// the deployment did, and its message describes only the argument it was
+/// handed — so masking it would tell a caller nothing about a mistake it is the
+/// only party able to fix.
 ///
 /// It sits beside the repository rather than in the module's other exception
 /// files because those describe *inputs* the repository rejects
 /// ([TomQuerySyntaxException], [TomColumnAuthorizationException],
 /// [TomDataScopeException]); this one describes the repository's own
-/// preconditions failing.
+/// preconditions failing — including, in the delete case, the precondition that
+/// there is a persisted row to address at all.
 class TomRepositoryException extends TomServerException {
   /// Creates a repository failure with a `crud_repository.<method>.<condition>`
   /// [key] and a default user message.
@@ -89,6 +96,10 @@ abstract class TomRepository<T extends Object, K> {
   /// the caller already holds, so a count could only ever be `1` or `0`, and
   /// `0` — the row having gone since it was read — is not a distinction any
   /// caller has asked to act on.
+  ///
+  /// An [entity] that was never persisted has no row to address, and is refused
+  /// with `crud_repository.delete.unsaved_entity` rather than deleting nothing
+  /// and reporting success.
   Future<void> delete(T entity);
 
   /// Deletes every entity whose id is in [ids] and returns how many rows were
@@ -912,10 +923,28 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
 
   @override
   Future<void> delete(T entity) async {
-    // C-3: a principal may only delete a row within its data scope.
-    await _assertRowWritable(
-      primaryKeyColumnInfo.getVariableValue(entity) as K,
+    // Read through `readPrimaryKey` for the same reason [save] does: an entity
+    // that was never persisted carries a null or negative key, and a direct
+    // `as K` turns that ordinary caller mistake into a `TypeError` naming
+    // `Null` and `int` — two types the caller never wrote.
+    final primaryKey = readPrimaryKey<K>(
+      primaryKeyColumnInfo.getVariableValue(entity),
     );
+    if (isUnsavedKey(primaryKey)) {
+      throw TomRepositoryException(
+        'crud_repository.delete.unsaved_entity',
+        'That record has never been saved, so there is nothing to delete.',
+        parameters: {'entity': T.toString(), 'id': '$primaryKey'},
+        // The one repository error the caller caused, so unlike its siblings
+        // its message is the caller's to see: it describes the caller's own
+        // argument and names nothing about the server.
+        clientThrow: true,
+      );
+    }
+    // Non-null: `isUnsavedKey` is false, exactly as at the [save] call sites.
+    final K id = primaryKey as K;
+    // C-3: a principal may only delete a row within its data scope.
+    await _assertRowWritable(id);
     // The caller handed us the row, so the before-image costs no extra read.
     final before = _audits(TomAuditAction.delete)
         ? _auditValues(entity)
@@ -926,9 +955,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     // cascade. Only entities that declare file columns pay for this read.
     final doomed = <T>[];
     if (_fileColumns.isNotEmpty) {
-      final stored = await _selectById(
-        primaryKeyColumnInfo.getVariableValue(entity) as K,
-      );
+      final stored = await _selectById(id);
       if (stored != null) doomed.add(stored);
     }
     _deleteQuery ??= await datasourceInfo.datasource.prepareStatement(
@@ -937,16 +964,10 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
       ''')
           as TomDelete,
     );
-    Map<String, Object?> params = {
-      "id": primaryKeyColumnInfo.getVariableValue(entity),
-    };
+    Map<String, Object?> params = {"id": id};
     await _deleteQuery!.execute(params);
     await _deleteReferencedFiles(doomed);
-    await _audit(
-      TomAuditAction.delete,
-      key: primaryKeyColumnInfo.getVariableValue(entity),
-      before: before,
-    );
+    await _audit(TomAuditAction.delete, key: id, before: before);
     return;
   }
 

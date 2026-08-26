@@ -193,11 +193,25 @@ Every repository rejection is a keyed `TomServerException`, never a bare
 | `crud_repository.count_by_query_sentence.illegal_count_result` | Ditto for `countByQuerySentence`. |
 | `crud_repository.save.insert_not_readable` | An `INSERT` reported success but the new row could not be read back. |
 | `crud_repository.save.update_not_readable` | An `UPDATE` ran but the row could not be re-read. |
+| `crud_repository.delete.unsaved_entity` | `delete(entity)` was handed an entity that was never persisted. |
 
-All seven are *server* faults — a broken deployment, a table contradicting its
-own key, a driver that reported a write it then could not read — so
+The first seven are *server* faults — a broken deployment, a table contradicting
+its own key, a driver that reported a write it then could not read — so
 `clientThrow` defaults to `false`: the key travels to the caller, the message
 (which names internals) does not.
+
+`crud_repository.delete.unsaved_entity` is the exception, and sets
+`clientThrow: true`. An entity whose primary key is still `null` (a nullable
+surrogate key before its first save) or negative (the `id >= 0` sentinel
+convention) addresses no row, so there is nothing to delete. Refusing it is a
+statement about the caller's own argument, and the message says exactly that —
+where masking it would leave the caller with a generic error for the one
+repository failure it is the only party able to fix.
+
+Before this check existed the two unsaved conventions failed differently and
+neither failed usefully: a `null` key threw a raw `TypeError` naming `Null` and
+`int`, and a negative key passed the cast, ran a `DELETE` that matched no row,
+and reported success for a deletion that never happened.
 
 The `*ByQuerySentence` methods add three keys of their own,
 `crud_repository.<method>.sentence_verb_mismatch`, raised as
