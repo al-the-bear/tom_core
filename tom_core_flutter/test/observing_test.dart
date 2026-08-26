@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
+import '../example/observing/observing_example.dart' as example;
+
 /// Tests for the observing module (`TomObservingWidget`,
 /// `ValueListenableObserver`).
 ///
@@ -197,5 +199,16 @@ void main() {
     source | true;
     await tester.pump();
     expect(find.text('ON'), findsOneWidget);
+  });
+
+  group('the shipped example runs', () {
+    test('observing_example.run() completes its assertions', () {
+      // The example is quoted as documentation, so it has to be executable
+      // documentation. Running it here is what stops a snippet that no longer
+      // compiles — or an assert that no longer holds — from being shown to a
+      // reader as the way to use the module. It is also what makes the command
+      // the example's header names a real one: that command is this suite.
+      example.run();
+    });
   });
 }

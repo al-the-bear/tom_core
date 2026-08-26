@@ -120,6 +120,32 @@
 
 ### Tests / Examples
 
+- **every example now names a command that succeeds (tcinc659).** All seven
+  examples told the reader to run `flutter test example/<m>/<m>_example.dart`.
+  That command does run the example — `main()` executes at load time, every
+  print appears, every assert is evaluated — and then exits 79, "No tests were
+  found", because an example declares no `test()`. So the documented invocation
+  was a failing command: anything reading the exit code saw a broken example
+  that had in fact done exactly what it should. And it exited 79 whether the
+  assertions held or not, so the code said nothing about the example either
+  way. Each header now names `flutter test test/<m>_test.dart` instead — the
+  suite that calls the example's `run()` — which exits 0 on success and
+  non-zero when an assertion fails. The premise the old text gave is kept,
+  because it is true and explains why: the barrel import pulls in
+  `flutter/material`, so bare `dart run` genuinely cannot work.
+- **the remaining five examples are executed by their suites.** `configuration`
+  and `little_things` already were; `observing`, `security`, `resources`,
+  `runtime` and `preferences` claimed only that their behaviour was "covered
+  by" a test file, which is not the same as being run by it. Each module suite
+  now ends with a `the shipped example runs` group calling `run()`, so the
+  command the header names is a real one. `resources` restores the app config
+  provider its example installs process-wide, rather than leaving it to the
+  next `setUp`.
+- **`test/example_instructions_test.dart` guards the instruction.** Four checks:
+  every shipped example is discovered, every example names a suite that exists,
+  that suite imports and calls the example, and no example names the exit-79
+  form. The first exists because the last three are otherwise satisfiable by
+  deleting the example.
 - **the little_things example demonstrates `autoLog` (tcinc657).** The example
   introduced the forwarded kernel payload as "`parameters`, `stack`, and
   `autoLog`" and then passed only the first two — `autoLog` appeared exactly

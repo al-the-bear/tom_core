@@ -6,6 +6,7 @@ import 'package:http/http.dart';
 import 'package:http/testing.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
+import '../example/preferences/preferences_example.dart' as example;
 import 'preferences_test.reflection.dart';
 
 /// A reflected preference value, so the object round-trip is exercised through
@@ -989,6 +990,21 @@ void main() {
       );
       TomBean.withType(TomDevicePreferences, installed);
       expect(identical(TomDevicePreferences.resolve(), installed), isTrue);
+    });
+  });
+
+  group('the shipped example runs', () {
+    test('preferences_example.run() completes its assertions', () async {
+      // The example is quoted as documentation, so it has to be executable
+      // documentation. Running it here is what stops a snippet that no longer
+      // compiles — or an assert that no longer holds — from being shown to a
+      // reader as the way to use the module. It is also what makes the command
+      // the example's header names a real one: that command is this suite.
+      //
+      // run() binds a loopback server and a temporary directory, and closes
+      // both in its own `finally`; the suite's tearDown resets the bean context
+      // it leaves behind.
+      await example.run();
     });
   });
 }

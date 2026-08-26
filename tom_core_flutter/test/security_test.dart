@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
+import '../example/security/security_example.dart' as example;
 import 'security_test.reflection.dart';
 
 /// Tests for the security module (`TomClient2FAAdaptor`).
@@ -48,6 +49,17 @@ void main() {
       final adaptors = mirror.metadata.whereType<TomClient2FAAdaptor>();
       expect(adaptors, isNotEmpty);
       expect(adaptors.first.type, 'totp');
+    });
+  });
+
+  group('the shipped example runs', () {
+    test('security_example.run() completes its assertions', () {
+      // The example is quoted as documentation, so it has to be executable
+      // documentation. Running it here is what stops a snippet that no longer
+      // compiles — or an assert that no longer holds — from being shown to a
+      // reader as the way to use the module. It is also what makes the command
+      // the example's header names a real one: that command is this suite.
+      example.run();
     });
   });
 }

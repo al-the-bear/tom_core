@@ -6,6 +6,8 @@ import 'package:http/http.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutter_io.dart';
 
+import '../example/runtime/runtime_example.dart' as example;
+
 /// Tests for the runtime module (`clientPlatformUtils`).
 ///
 /// Run from the Dart VM (native IO branch), so `kIsWeb` is false and
@@ -121,5 +123,16 @@ void main() {
     final utils = clientPlatformUtils;
     expect(() => utils.out('hello'), returnsNormally);
     expect(() => utils.outError('oops'), returnsNormally);
+  });
+
+  group('the shipped example runs', () {
+    test('runtime_example.run() completes its assertions', () {
+      // The example is quoted as documentation, so it has to be executable
+      // documentation. Running it here is what stops a snippet that no longer
+      // compiles — or an assert that no longer holds — from being shown to a
+      // reader as the way to use the module. It is also what makes the command
+      // the example's header names a real one: that command is this suite.
+      example.run();
+    });
   });
 }

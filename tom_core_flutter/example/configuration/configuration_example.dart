@@ -12,11 +12,13 @@
 /// the *path* — it takes one from `path_provider`
 /// (`getApplicationSupportDirectory()`), which this package does not depend on.
 ///
-/// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so run
-/// this under the Flutter toolchain, e.g.
-/// `flutter test example/configuration/configuration_example.dart`, not bare
-/// `dart run`. `test/configuration_test.dart` covers the same behaviour and
-/// also runs [run], so the code below is checked rather than merely shown.
+/// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so this
+/// runs under the Flutter toolchain, not bare `dart run`. Run it with
+/// `flutter test test/configuration_test.dart`: that suite calls [run], so the
+/// command executes everything below and its exit code says whether the
+/// assertions held. Pointing `flutter test` at *this* file also runs it, but
+/// then exits 79 ("No tests were found") whether it succeeded or not — an
+/// example declares no `test()` of its own.
 library;
 
 import 'dart:io';

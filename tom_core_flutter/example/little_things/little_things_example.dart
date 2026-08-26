@@ -4,13 +4,14 @@
 /// pattern UI layers rely on, and the forwarded kernel payload — including
 /// `autoLog`, whose records are captured and printed rather than described.
 ///
-/// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so run
-/// this under the Flutter toolchain, e.g.
-/// `flutter test example/little_things/little_things_example.dart`, not bare
-/// `dart run`. The assertions below only run with asserts enabled, which
-/// `flutter test` does by default. `test/little_things_test.dart` covers the
-/// same behaviour and also calls [run], so a snippet that stops compiling or
-/// an assertion that stops holding fails the suite rather than the reader.
+/// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so this
+/// runs under the Flutter toolchain, not bare `dart run`. Run it with
+/// `flutter test test/little_things_test.dart`: that suite calls [run], so the
+/// command executes everything below and its exit code says whether the
+/// assertions held. Pointing `flutter test` at *this* file also runs it, but
+/// then exits 79 ("No tests were found") whether it succeeded or not — an
+/// example declares no `test()` of its own. The assertions below need asserts
+/// enabled, which `flutter test` does by default.
 library;
 
 import 'package:tom_core_flutter/tom_core_flutter.dart';

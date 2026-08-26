@@ -4,10 +4,13 @@
 /// the `.withDefault` fallback. A deterministic in-memory config provider is
 /// installed so the example is self-contained.
 ///
-/// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so run
-/// this under the Flutter toolchain, e.g.
-/// `flutter test example/resources/resources_example.dart`, not bare
-/// `dart run`. The same behaviour is covered by `test/resources_test.dart`.
+/// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so this
+/// runs under the Flutter toolchain, not bare `dart run`. Run it with
+/// `flutter test test/resources_test.dart`: that suite calls [run], so the
+/// command executes everything below and its exit code says whether the
+/// assertions held. Pointing `flutter test` at *this* file also runs it, but
+/// then exits 79 ("No tests were found") whether it succeeded or not — an
+/// example declares no `test()` of its own.
 library;
 
 import 'package:tom_core_flutter/tom_core_flutter.dart';

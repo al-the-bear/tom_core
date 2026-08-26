@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
+import '../example/resources/resources_example.dart' as example;
+
 /// Tests for the resources module (`TomProperty` and its typed subclasses).
 ///
 /// Each test installs a deterministic config provider, then constructs a
@@ -129,6 +131,23 @@ void main() {
       installConfig({});
       final p = TomProperty<String?>.withDefault('app.missing', null);
       expect(p.get(), isNull);
+    });
+  });
+
+  group('the shipped example runs', () {
+    test('resources_example.run() completes its assertions', () {
+      // The example is quoted as documentation, so it has to be executable
+      // documentation. Running it here is what stops a snippet that no longer
+      // compiles — or an assert that no longer holds — from being shown to a
+      // reader as the way to use the module. It is also what makes the command
+      // the example's header names a real one: that command is this suite.
+      //
+      // run() installs its own app config provider process-wide and does not
+      // restore it — correct for an example, which owns the process, but this
+      // suite does not, so the empty default is put back explicitly rather than
+      // left to the next setUp to overwrite.
+      addTearDown(() => installConfig({}));
+      example.run();
     });
   });
 }
