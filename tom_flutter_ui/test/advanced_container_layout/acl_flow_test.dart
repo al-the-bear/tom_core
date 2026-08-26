@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// Covers the two CE-LO container kinds that flow a flat child list into rows
-// (csexb2): `wrap` breaks when the next child no longer fits, `grid` breaks
-// every N children. Both generate ordinary AclRows, so the assertions come in
-// two layers — the pure row assignment (no BuildContext needed) and a real
-// render proving the generated rows reach the AclContainer engine.
+// Covers the two container kinds that flow a flat child list into rows:
+// `wrap` breaks when the next child no longer fits, `grid` breaks every N
+// children. Both generate ordinary AclRows, so the assertions come in two
+// layers — the pure row assignment (no BuildContext needed) and a real render
+// proving the generated rows reach the AclContainer engine.
 
 Widget _host(Widget child, {double width = 400, double height = 400}) {
   return MaterialApp(

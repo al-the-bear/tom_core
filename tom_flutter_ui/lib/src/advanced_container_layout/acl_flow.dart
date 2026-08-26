@@ -3,8 +3,8 @@ import 'package:flutter/widgets.dart';
 import 'acl_container.dart';
 import 'row_alignment.dart';
 
-/// The CE-LO container kinds that flow a **flat** ordered child list into
-/// rows, rather than having the rows authored directly.
+/// The container kinds that flow a **flat** ordered child list into rows,
+/// rather than having the rows authored directly.
 ///
 /// The ACL row list is already a *column* of *rows*, so `row` and `column`
 /// need no widget of their own — an [AclRow] is a row and an
@@ -55,9 +55,12 @@ double aclFlowItemWidth(AclComponent comp, double defaultItemWidth) {
 ///
 /// [gutterWidth] separates components within a row and [runSpacing] separates
 /// the generated rows. Generated rows are addressable as `r<n>`, or as
-/// `<prefix>.r<n>` when [rowIdPrefix] is given — which is what the CE-LO
-/// override-delta grammar needs to target a row the author never wrote by
-/// hand. Pass no prefix when the rows go to an [AclContainer]: the container
+/// `<prefix>.r<n>` when [rowIdPrefix] is given.
+///
+/// A flowed row has no author-written id to carry, so its position in the
+/// generated sequence is the only handle anything outside this function — a
+/// stored layout override, a test, a resource lookup — can use to name one.
+/// Pass no prefix when the rows go to an [AclContainer]: the container
 /// composes the path from its own `aclId` (see `idScope`), so a prefix here
 /// would duplicate that segment.
 List<AclRow> aclWrapRows(
@@ -109,8 +112,9 @@ List<AclRow> aclWrapRows(
 ///
 /// Unlike [aclWrapRows] the break positions do not depend on measurement —
 /// every row holds exactly [columns] components (the last may hold fewer).
-/// This is the shape a D09 XDS breakpoint authors when it states a column
-/// count.
+/// The row assignment is therefore reproducible from the declaration alone,
+/// which is what a design that states a column count per breakpoint needs and
+/// a measurement-driven wrap cannot promise.
 ///
 /// When [availableWidth] is known each component is given a cell width of
 /// `(availableWidth - gutterWidth * (columns - 1)) / columns`; its height
@@ -186,7 +190,7 @@ AclRow _flowRow(
 /// A widget whose rows are **generated** from a flat child list by an
 /// [AclFlowKind] rule, then rendered through a composed [AclContainer].
 ///
-/// This is the substrate for the CE-LO `wrap` and `grid` container kinds. It
+/// This is the substrate for both `wrap` and `grid` container kinds. It
 /// measures the available width with a [LayoutBuilder], asks [aclWrapRows] /
 /// [aclGridRows] for the row assignment, and renders the result through the
 /// ordinary [AclContainer] — so everything the engine applies per row and per
@@ -208,7 +212,7 @@ class AclFlowContainer extends StatelessWidget {
   final int columns;
 
   /// `(minWidth, columns)` overrides raising [columns] above certain widths —
-  /// the D09 XDS per-breakpoint column count.
+  /// a per-breakpoint column count.
   final List<(double, int)> columnsBpOverrides;
 
   /// Horizontal space between components in a generated row.
