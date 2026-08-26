@@ -2,6 +2,27 @@
 
 ### Documentation
 
+- **The transactions module advertised two-phase commit, which it does not
+  implement (tcinc648).** "Two-phase" names a specific protocol, and its whole
+  point is a prepare step: a participant may veto while nothing has been
+  committed yet, so aborting costs nothing. `TomTransactionParticipant` declares
+  `getParticipantId`, `startTransaction`, `endTransaction`, `commit` and
+  `rollback` — no prepare, and no method that could carry one. Here `commit()`
+  *is* the commit and participants are committed in registration order, so a
+  veto from the third arrives after the first two have committed for real and
+  the coordinator's only answer is to roll all of them back. A reader who took
+  the phrase at face value would have built a participant on exactly the
+  guarantee the module does not offer. Three documents asserted it flatly — the
+  API summary's opening line, the module readme's first sentence, and
+  `doc/transactions.md`'s "the two-phase hooks" — while the source and the API
+  summary hedged it as "(two-phase style)" and the completion document's open
+  list said outright that it was not true. All four texts now state the absence
+  and, more usefully, its consequence, which none of them had previously drawn:
+  `rollback()` is reachable *after* your own `commit()` has returned `true`, so
+  a participant whose commit cannot be undone must do the work that can fail
+  inside `commit()` itself. The four XA-related mentions under `datasources` are
+  untouched — XA genuinely is a two-phase protocol, and whether the coordinator
+  should grow a prepare phase to match remains an open decision.
 - **Seven class-hierarchy diagrams sent readers to a module that does not
   document the type they were looking up (tcinc647).** A diagram shows a
   borrowed type without describing it, and the parenthetical after the name is
@@ -212,6 +233,20 @@
 
 ### Testing
 
+- **Nothing held the transactions documents to the participant contract
+  (tcinc648).** Four texts describe the module's commit protocol and all four
+  had drifted from a contract that never had a prepare step. `transactions_test.dart`
+  now reads `TomTransactionParticipant` from the source, and asks two things of
+  every text: that none claims two-phase commit while the contract has no
+  prepare (the claim is matched across normalised whitespace, so a line break
+  between a denial and the phrase cannot hide it), and that each states the
+  absence rather than merely omitting the phrase — deleting the word would have
+  satisfied the first check while leaving a reader to discover the module's most
+  consequential property from the source. Both tests are *conditioned* on the
+  contract rather than hard-coding today's answer, so if a prepare phase is ever
+  added they stop policing the denial and a third test fails instead, pointing
+  at the four texts that would then need rewriting. The documents follow the
+  code in either direction.
 - **Nothing compared a hierarchy diagram's module pointer against the summary
   it names (tcinc647).** Twelve diagrams named a module for
   `TomServerException` and five disagreed with the other seven; the majority

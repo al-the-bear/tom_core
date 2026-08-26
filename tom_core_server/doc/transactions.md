@@ -31,7 +31,7 @@ handle around.
 
 ## The Participant Contract
 
-A participant is keyed by a stable id and exposes the two-phase hooks:
+A participant is keyed by a stable id and exposes five lifecycle hooks:
 
 ```dart
 abstract class TomTransactionParticipant {
@@ -45,6 +45,21 @@ abstract class TomTransactionParticipant {
 
 `TomDataSource` implements this contract, so any data source touched during a
 transaction enlists in it.
+
+There is no `prepare()` among them, and that absence is the module's single most
+important limitation: **this is not two-phase commit.** Under a prepare phase a
+veto arrives while nothing has been committed yet, so aborting is free. Here
+`commit()` *is* the commit, and participants are committed in registration
+order — so a veto from the third participant arrives after the first two have
+already committed for real. The coordinator's answer is to roll all of them
+back, which repairs the transaction only if their `rollback()` can undo
+committed work.
+
+Two things follow for anyone implementing a participant. `rollback()` must be
+treated as reachable *after* your own `commit()` has succeeded and returned
+`true` — it is not only the failure path. And if your commit cannot be undone,
+do the work that can fail inside `commit()` itself, so that your veto is raised
+before you have made anything durable rather than after.
 
 ## The Transaction Lifecycle
 

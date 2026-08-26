@@ -3,11 +3,15 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-Two-phase transaction coordination across participants (datasources and other
+Commit/rollback coordination across participants (datasources and other
 resources). A `TomTransaction` collects `TomTransactionParticipant`s; on commit
 it calls `commit()` on each — if any returns `false` the whole transaction rolls
 back. The `TomTransactionManager` binds a transaction to a `@TomTransactional`
 endpoint call and commits or rolls it back when the call returns.
+
+There is no prepare phase, so this is not two-phase commit: a veto from a later
+participant arrives after earlier ones have already committed, and the rollback
+that follows has to undo committed work.
 
 ## Key types
 

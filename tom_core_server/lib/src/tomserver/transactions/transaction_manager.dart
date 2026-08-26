@@ -17,7 +17,7 @@ class TomTransactionException extends TomServerException {
   });
 }
 
-/// A resource that can enlist in a [TomTransaction] (two-phase style).
+/// A resource that can enlist in a [TomTransaction].
 ///
 /// Implemented by `TomDataSource`, so any data source used during a transaction
 /// joins it. Participants are keyed by [getParticipantId] — registering the same
@@ -27,6 +27,19 @@ class TomTransactionException extends TomServerException {
 /// failure. [commit] returns `false` to veto the commit (which turns the whole
 /// transaction into a rollback); [endTransaction] releases any per-transaction
 /// resources (e.g. returning a connection to the pool).
+///
+/// **This is not two-phase commit: there is no prepare step.** The distinction
+/// decides what a participant has to be able to do. Under a prepare phase a
+/// veto arrives while nothing has been committed yet, so aborting costs
+/// nothing; here [commit] *is* the commit, participants are committed in
+/// registration order, and a veto from the third one arrives after the first
+/// two have already committed for real. The coordinator's answer is to call
+/// [rollback] on all of them — so an implementer must treat [rollback] as
+/// reachable after their own [commit] has succeeded and returned `true`, and
+/// the transaction is only repaired if that rollback can genuinely undo
+/// committed work. A participant that cannot undo its commit should do the work
+/// that can fail inside [commit] itself, so that its veto is raised before it
+/// has made anything durable rather than after.
 abstract class TomTransactionParticipant {
   /// A stable id used to deduplicate this participant within a transaction.
   String getParticipantId();

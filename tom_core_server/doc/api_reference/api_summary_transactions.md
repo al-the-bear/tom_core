@@ -1,10 +1,13 @@
 # Tom Core Server API Reference: Transactions Module
 
-A lightweight two-phase transaction coordinator: enlistable participants, a unit
-of work that commits or rolls them back as a group, and an ambient manager that
-holds the current transaction of the running flow — zone-scoped, so concurrent
-flows in one isolate do not share it — allowing the endpoint pipeline and data
-sources to join it without threading a handle through every call.
+A lightweight transaction coordinator: enlistable participants, a unit of work
+that commits or rolls them back as a group, and an ambient manager that holds
+the current transaction of the running flow — zone-scoped, so concurrent flows
+in one isolate do not share it — allowing the endpoint pipeline and data sources
+to join it without threading a handle through every call. There is no prepare
+phase, so this is not two-phase commit; see
+[TomTransactionParticipant](#tomtransactionparticipant) for what that costs an
+implementer.
 
 ## Table of Contents
 
@@ -75,10 +78,20 @@ TomTransactionException(
 
 ### TomTransactionParticipant
 
-A resource that can enlist in a `TomTransaction` (two-phase style). Implemented
-by `TomDataSource`, so any data source used during a transaction joins it. The
+A resource that can enlist in a `TomTransaction`. Implemented by
+`TomDataSource`, so any data source used during a transaction joins it. The
 coordinator drives the lifecycle: `startTransaction` on enlistment, then
 `commit`/`endTransaction` on success or `rollback`/`endTransaction` on failure.
+
+**This is not two-phase commit: there is no prepare step.** Under a prepare
+phase a veto arrives while nothing has been committed yet; here `commit` *is*
+the commit, participants are committed in registration order, and a veto from
+the third arrives after the first two have already committed. The coordinator
+answers by calling `rollback` on all of them, so an implementer must treat
+`rollback` as reachable after their own `commit` has returned `true`, and the
+transaction is repaired only if that rollback can undo committed work. A
+participant that cannot undo its commit should do the work that can fail inside
+`commit` itself, so its veto is raised before anything is made durable.
 
 - **Extends:** none (abstract)
 

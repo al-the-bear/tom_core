@@ -588,4 +588,89 @@ void main() {
       expect(source, contains('void check(bool ok, String expectation)'));
     });
   });
+
+  group('the documents agree with the contract about a prepare phase', () {
+    // Every text a reader could reach for the module's guarantees. The source
+    // is first because it is also the contract these tests read.
+    const texts = [
+      'lib/src/tomserver/transactions/transaction_manager.dart',
+      'lib/src/tomserver/transactions/readme.md',
+      'doc/transactions.md',
+      'doc/api_reference/api_summary_transactions.md',
+    ];
+
+    /// Whether `TomTransactionParticipant` declares a prepare step.
+    ///
+    /// Read from the source rather than hard-coded, so that adding a prepare
+    /// phase flips these tests instead of leaving them asserting yesterday's
+    /// answer: the documents are forced to follow the code either way.
+    bool contractHasPrepare() =>
+        RegExp(r'abstract class TomTransactionParticipant \{[\s\S]*?\n\}')
+            .firstMatch(File(texts.first).readAsStringSync())!
+            .group(0)!
+            .contains('prepare(');
+
+    test('the contract is the one the documents describe', () {
+      // Pins today's answer in one place. When a prepare phase is added this
+      // is the test that fails first, and its failure is the instruction to
+      // rewrite the four texts rather than to edit this line.
+      expect(
+        contractHasPrepare(),
+        isFalse,
+        reason:
+            'TomTransactionParticipant gained a prepare step — the four texts '
+            'listed here now say the opposite of the code',
+      );
+    });
+
+    test('no text claims two-phase commit while the contract lacks one', () {
+      if (contractHasPrepare()) return;
+      final offenders = <String>[];
+      for (final path in texts) {
+        // Line breaks fall anywhere in prose, so a claim and its denial can be
+        // split across two lines; normalise before looking at either.
+        final prose = File(
+          path,
+        ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+        for (final match in RegExp(
+          r'[\w-]*two[- ]phase[\w-]*',
+          caseSensitive: false,
+        ).allMatches(prose)) {
+          final before = prose.substring(
+            match.start < 40 ? 0 : match.start - 40,
+            match.start,
+          );
+          if (RegExp(r'\bnot\b', caseSensitive: false).hasMatch(before)) {
+            continue;
+          }
+          offenders.add('$path: ...$before${match.group(0)}...');
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'the coordinator has no prepare step, so an unqualified "two-phase" '
+            'promises a veto that can abort before anything is committed',
+      );
+    });
+
+    test('every text says so, rather than merely not saying otherwise', () {
+      if (contractHasPrepare()) return;
+      // Deleting the word would satisfy the test above while leaving a reader
+      // to discover the limitation from the source. The absent prepare phase is
+      // the module's single most consequential property — a rollback runs after
+      // a peer has already committed — so each text has to state it.
+      for (final path in texts) {
+        final prose = File(
+          path,
+        ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+        expect(
+          prose,
+          contains('not two-phase commit'),
+          reason: '$path does not tell the reader this is not two-phase commit',
+        );
+      }
+    });
+  });
 }
