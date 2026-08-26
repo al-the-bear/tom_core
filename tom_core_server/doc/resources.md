@@ -17,6 +17,7 @@ concurrently. This module makes the locale an argument.
 - [Parameters](#parameters)
 - [Installing a Bundle Set](#installing-a-bundle-set)
 - [Core Components](#core-components)
+- [Verification](#verification)
 - [Dependencies](#dependencies)
 
 ---
@@ -236,6 +237,23 @@ raised.
 | `TomTextLocale` | `localized_text_resources.dart` | Normalised language/country pair; parsing, the fallback tags, derivation from a principal |
 | `TomLocalizedTextResources` | `localized_text_resources.dart` | Bundle-per-locale storage, chain resolution, parameter substitution, bean lookup |
 | `TomResourceLocaleException` | `localized_text_resources.dart` | A locale that cannot be formed; not client-visible |
+
+## Verification
+
+`test/resources_test.dart` covers the module: naming a locale — case folding,
+both separator conventions, the region found by shape rather than by position,
+the countries that are refused and the boundary variant that drops one instead —
+and resolving through a bundle set, where the per-key fall-through, the
+configured default, the `null` for a miss, parameter substitution and the
+`exists`/`isTranslated`/`resolveLocale` distinctions are each pinned.
+
+It renders against `test/fixtures/localized_texts.dart`, a deliberately
+half-translated set that `test/email_service_test.dart` shares. That
+incompleteness is the point of the fixture: against a fully translated set, an
+implementation ignoring the locale altogether passes every assertion.
+
+`advanced_ops_server`'s `ops_digest_test.dart` shows the other use — turning a
+translation gap into a red suite rather than a blank line in somebody's mail.
 
 ## Dependencies
 

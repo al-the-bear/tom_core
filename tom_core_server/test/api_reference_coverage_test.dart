@@ -2378,6 +2378,16 @@ List<String> _moduleSuites(String module) =>
         .toList()
       ..sort();
 
+/// The modules for which no `<module>*_test.dart` exists — quest todo
+/// `tcincb154_ahzj`.
+///
+/// `preferences` is covered, and covered well, by six `user_preferences*`
+/// suites named after the types rather than the directory. Whether that is a
+/// naming fault to fix or an inventory rule to widen is a judgement, so the
+/// entry sits here until it is made rather than being settled by whichever
+/// answer was cheaper to write.
+const Set<String> _suiteNamingPending = {'preferences'};
+
 /// The modules whose guide does not yet name every suite and the example that
 /// verify it — quest todo `tcincb125_ahxt`.
 const Set<String> _verificationPendingAttribution = {
@@ -4476,6 +4486,60 @@ One: `TomKind`, documented beside the type that carries it.
         'db_migration_db_test.dart',
         'db_migration_test.dart',
       ]);
+    });
+  });
+
+  group('every module has a suite that carries its name', () {
+    // A filename is the only thing an inventory can read without running
+    // anything, so it is what every coverage sweep over this package reads —
+    // `_moduleSuites` above among them. A module with no name-matched file is
+    // therefore reported as untested no matter how well tested it is, and the
+    // report is not obviously wrong to anyone reading it.
+    //
+    // `resources` was in exactly that state: twenty-nine passing tests, all of
+    // them filed inside `email_service_test.dart` under a header describing the
+    // messaging module. The scan said "no tests found" and was believed.
+    //
+    // The quieter cost is what makes this worth a standing check rather than a
+    // one-off move. Tests that live under another module's name are carried off
+    // by any change to *that* module — a rewrite, a split, a deletion — and
+    // nothing about the two modules' relationship makes that visibly wrong to
+    // whoever is doing it. The loss would be silent in both directions: the
+    // suite that vanished was never counted, so no total drops.
+
+    for (final module in _modules()) {
+      test(
+        module,
+        () {
+          expect(
+            _moduleSuites(module),
+            isNotEmpty,
+            reason:
+                'No `$module*_test.dart` exists, so every inventory that '
+                'matches on the name reports this module as untested — and '
+                'whatever does cover it is filed under some other module\'s '
+                'name, where an edit to that module can carry it off '
+                'unnoticed. Name a suite after the module.',
+          );
+        },
+        skip: _suiteNamingPending.contains(module)
+            ? 'no name-matched suite yet — quest todo tcincb154_ahzj.'
+            : null,
+      );
+    }
+
+    test('every quarantined module is still unnamed', () {
+      final settled = [
+        for (final module in _suiteNamingPending)
+          if (_moduleSuites(module).isNotEmpty) module,
+      ];
+      expect(
+        settled,
+        isEmpty,
+        reason:
+            'a quarantine entry with nothing left to suppress turns a passing '
+            'module back into an unchecked one; drop it from the set',
+      );
     });
   });
 

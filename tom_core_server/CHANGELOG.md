@@ -2,6 +2,38 @@
 
 ### Testing
 
+- **The resources module's twenty-nine tests lived inside the messaging
+  module's suite, so every inventory reported it as untested (tcinc628).**
+  `group('TomTextLocale')` and `group('TomLocalizedTextResources')` sat in
+  `test/email_service_test.dart`, under a header describing "the templating
+  layer above the message transport". A coverage sweep matches on the filename —
+  it is the only signal available without running anything — and there was no
+  filename to match, so the sweep said "no tests found" and was believed.
+
+  Both groups now live in `test/resources_test.dart`, unchanged. The bundle set
+  and principal they share with the email suite moved to
+  `test/fixtures/localized_texts.dart` rather than being copied: the fixture's
+  value is that it is *half* translated, no assertion in either suite states
+  that, and against a fully translated set an implementation ignoring the locale
+  entirely would pass everything. Two copies would have been two things to keep
+  true, and the day they drifted both suites would still be green while testing
+  different chains.
+
+  The quieter cost is what made this worth a standing check rather than a move.
+  Tests filed under another module's name are carried off by any change to
+  *that* module — a rewrite, a split, a deletion — and the loss is silent in
+  both directions, because a suite nobody counted cannot make a total drop.
+  `api_reference_coverage_test.dart` now asserts that every directory under
+  `lib/src/tomserver/` has at least one `<module>*_test.dart`. Nineteen modules
+  satisfy it; `preferences` is quarantined behind tcincb154, its six
+  `user_preferences*` suites being named after the types rather than the
+  directory — a judgement to make rather than a gap to close.
+
+  `doc/resources.md` gains the Verification section it previously had no suite
+  to name, and `doc/messaging.md` no longer claims the email suite covers locale
+  *fallback*, which is the resources module's rule and is pinned where it
+  belongs.
+
 - **Three documented preferences behaviours that need no database were behind
   the `db` tag by proximity, and one of them was untestable where it sat
   (tcinc622).** `TomUserPreferences.resolve()`'s deliberate `null` for an

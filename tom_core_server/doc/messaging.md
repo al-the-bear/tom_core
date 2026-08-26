@@ -890,8 +890,10 @@ and the outbox's queueing and retry. `test/sms_transport_test.dart` covers the
 gateway: the field mapping, the two layers of classification, and each branch a
 real gateway would need a bad number or a rate limit to produce.
 `test/email_service_test.dart` and `test/sms_service_test.dart` cover the
-templated services — sub-key resolution, locale selection and fallback, the
-failure that fires before anything is queued, and the segment budget.
+templated services — sub-key resolution, the locale a request selects, the
+failure that fires before anything is queued, and the segment budget. What that
+locale then *resolves* against is the resources module's rule, pinned in
+`test/resources_test.dart`; both suites render against the same fixture.
 
 Two examples run the module end to end, one per layer.
 
