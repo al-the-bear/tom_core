@@ -3011,6 +3011,38 @@
 
 ### Documentation
 
+- **The `object_persistence` API summary documented ten of its twelve source
+  files, and with them omitted the whole file-slot feature (tcinc597).**
+  `file_reference.dart` and `paging.dart` were missing from the `Source:` list,
+  and the first omission was not cosmetic: `TomFileReferenceKeys`,
+  `TomFileRepository` and `TomResourceScopeSource` had no section anywhere, and
+  `TomFileReference` appeared only incidentally as a field's type inside another
+  class's table, which is a mention rather than documentation. A reader looking
+  for how to attach a blob to an entity found nothing, and the `Paging &
+  Sorting` types were absent from the table of contents besides. The summary now
+  carries a `File References` section covering all four types — including why
+  the split is three (a declaration, a key scheme, a repository mixin) and the
+  four-part key shape `TomFileReferenceKeys.generate` produces — plus a
+  `TomResourceScopeSource` section stating the dependency inversion that lets
+  persistence offer a grant-driven row scope without depending on the
+  authorization layer.
+
+  Reconciling the list closed the last debt in one of the coverage suite's
+  quarantines, so `_apiNamesPendingReconciliation` and the `skip:` consulting it
+  are **deleted** rather than left empty: an empty quarantine keeps a `skip:`
+  that can never fire and a staleness meta-test that can never fail, which is a
+  dead rule the next reader cannot recognise as dead. `no summary omits a name
+  its module exports` now runs unquarantined across every module.
+
+  `api_summary_authorization.md` attributed `TomResourceScopeSource` to
+  `tom_core_kernel` in three places; the kernel has no type of that name — it is
+  declared in this package, in `object_persistence/data_scope.dart`. Adjacent
+  errors fixed while there: `TomDataScopeRegistry`'s prose named two of its three
+  built-in resolvers, its static table omitted `writeResolverFor` and
+  `asyncWriteResolverFor`, its `register`/`registerAsync` signatures dropped the
+  `write:` parameter, and the static `resourceScopeSource` property was
+  undocumented.
+
 - **`TomPersistenceEventHandler`'s dartdoc said the annotation was undetected
   when it is detected (tcinc596).** It read "declared for future use — the
   persistence layer does not yet detect or invoke these callbacks", but

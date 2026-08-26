@@ -2398,28 +2398,12 @@ const Set<String> _tablesPendingReconciliation = {
 
 /// The modules whose summary `Source:` list has not been reconciled against the
 /// barrel yet — quest todo `tcincb121_ahxs`.
-const Set<String> _sourceListsPendingReconciliation = {
-  'authorization',
-  'object_persistence',
-};
-
-/// The modules whose summaries do not yet name every type the barrel exports —
-/// quest todo `tcincb135_ahyc`.
 ///
-/// One omission, split across two modules: the file-slot upload API was absent
-/// from the API reference in its entirety — no row, no section and no mention.
-/// Not many oversights but one, a feature area shipped without its
-/// documentation, which is the failure mode this whole file exists to make
-/// visible.
-///
-/// The `endpoints` half is settled (tcinc511): `file_endpoint.dart` is on the
-/// summary's `Source:` list and its seven exported names — `TomFileService`,
-/// `TomFileServer`, `TomFileEndpoint`, `TomFileSlot`, `TomFileSlots`,
-/// `TomFileSlotException` and the `TomFormFileStorage` extension — each have a
-/// section. What remains is the persistence half: `TomFileRepository` and
-/// `TomFileReference`, the row-side contract that binds a column to a stored
-/// key.
-const Set<String> _apiNamesPendingReconciliation = {'object_persistence'};
+/// `object_persistence` left this set with tcinc597: its list named ten of the
+/// twelve files the barrel exports, omitting `file_reference.dart` and
+/// `paging.dart`. The first was the source of a feature area the summary
+/// documented nowhere, so the two gaps had one cause.
+const Set<String> _sourceListsPendingReconciliation = {'authorization'};
 
 /// The modules whose class sections do not yet name every member their classes
 /// declare — quest todos `tcincb123_ahxt` (authentication) and
@@ -3295,43 +3279,28 @@ None — this module exposes no top-level functions or constants.
     // somewhere, in any shape — because the strong version is already carried
     // by the shape-specific groups, and a second strict rule laid over them
     // would start rejecting documentation they accept.
+    //
+    // Unlike its neighbours this group has no quarantine set. It had one, and
+    // tcinc597 emptied it: `object_persistence` was the last module holding
+    // debt here. An empty quarantine is worse than none — it keeps a `skip:`
+    // that can never fire and a staleness meta-test that can never fail, which
+    // is the dead rule the next reader cannot recognise as dead. Should a
+    // module need parking again, five siblings above show the shape.
     for (final module in _modules()) {
-      test(
-        module,
-        () {
-          final unnamed = _unnamedApi(module);
-          expect(
-            unnamed,
-            isEmpty,
-            reason:
-                'api_summary_$module.md never names these, which the barrel '
-                'exports from $module: ${unnamed.join(', ')}. Not "documents '
-                'thinly" — never names, so a reader who has the type in hand '
-                'and comes here to look it up finds nothing and concludes it '
-                'is internal.',
-          );
-        },
-        skip: _apiNamesPendingReconciliation.contains(module)
-            ? 'exported names not all in the summary yet — quest todo '
-                  'tcincb135_ahyc.'
-            : null,
-      );
+      test(module, () {
+        final unnamed = _unnamedApi(module);
+        expect(
+          unnamed,
+          isEmpty,
+          reason:
+              'api_summary_$module.md never names these, which the barrel '
+              'exports from $module: ${unnamed.join(', ')}. Not "documents '
+              'thinly" — never names, so a reader who has the type in hand '
+              'and comes here to look it up finds nothing and concludes it '
+              'is internal.',
+        );
+      });
     }
-
-    test('every quarantined module still has a name missing', () {
-      final clean = _apiNamesPendingReconciliation
-          .where((module) => _unnamedApi(module).isEmpty)
-          .toList();
-      expect(
-        clean,
-        isEmpty,
-        reason:
-            'These modules are quarantined but their summaries already name '
-            'every exported type: ${clean.join(', ')}. A quarantine entry that '
-            'suppresses nothing reads as outstanding debt that is not, and it '
-            'disarms the check if the summary drifts again.',
-      );
-    });
 
     test('the name reader sees both shapes the summaries use', () {
       // The finding above is an emptiness assertion over a set difference, so

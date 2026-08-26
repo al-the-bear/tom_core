@@ -59,7 +59,9 @@ roles from one principal to another via `TomPrincipalDelegation` rows resolved b
 `TomDelegationResolver`, in `share`/`absence`/`intentional` modes.
 
 `resource_data_scope.dart` is where those two models stop being advisory:
-`TomResourceDataScope` implements the kernel's `TomResourceScopeSource`, so an
+`TomResourceDataScope` implements `TomResourceScopeSource` — declared by this
+package's `object_persistence` module, which is the inversion that lets
+persistence offer a grant-driven row scope without depending on this layer — so an
 entity column annotated `@TomDbScope(scope: TomDbScope.resourceScope)` is
 filtered by the keys the caller holds a grant on — readable at
 `TomAuthState.read` or wider, writable only at `TomAuthState.full`. While no
@@ -82,7 +84,7 @@ PrincipalResourceGrantStore  (abstract)
     ├── RepositoryPrincipalResourceGrantStore  (implements)
     └── InMemoryPrincipalResourceGrantStore    (implements)
 
-TomResourceScopeSource  (kernel, abstract)
+TomResourceScopeSource  (object_persistence, abstract)
     └── TomResourceDataScope                   (implements)
 
 Standalone: TomAuthorizationCacheEntry, TomAuthorizationCache,
@@ -628,7 +630,8 @@ Delegations are folded in *through* `TomDelegationResolver`, so every rule that
 model already enforces (validity window, revocation, mode semantics,
 non-transitivity) governs the row scope without being restated.
 
-- **Implements:** `TomResourceScopeSource` (kernel)
+- **Implements:** `TomResourceScopeSource` (this package's `object_persistence`
+  module — see `api_summary_object_persistence.md`)
 
 #### Constructors
 

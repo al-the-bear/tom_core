@@ -28,9 +28,17 @@ column-level access rights (C-4).
     - [TomRepository&lt;T, K&gt;](#tomrepositoryt-k)
     - [TomSqlDatasourceRepository&lt;T, K&gt;](#tomsqldatasourcerepositoryt-k)
     - [MariadbRepository&lt;T, K&gt;](#mariadbrepositoryt-k)
+  - [File References](#file-references)
+    - [TomFileReference](#tomfilereference)
+    - [TomFileReferenceKeys](#tomfilereferencekeys)
+    - [TomFileRepository&lt;T, K&gt;](#tomfilerepositoryt-k)
   - [Query Building](#query-building)
     - [TomQueryBuilder](#tomquerybuilder)
     - [TomQuerySentenceCompiler](#tomquerysentencecompiler)
+  - [Paging & Sorting](#paging--sorting)
+    - [TomSortDirection](#tomsortdirection)
+    - [TomSortField](#tomsortfield)
+    - [TomPageRequest](#tompagerequest)
   - [Operators & Expressions](#operators--expressions)
     - [TomUnaryOperator&lt;T, R&gt;](#tomunaryoperatort-r)
     - [TomBinaryOperator&lt;T1, T2, R&gt;](#tombinaryoperatort1-t2-r)
@@ -47,6 +55,7 @@ column-level access rights (C-4).
     - [TomColumnWriteDecision&lt;C&gt;](#tomcolumnwritedecisionc)
     - [TomColumnAuthorization](#tomcolumnauthorization)
     - [TomRowColumnAuthorization](#tomrowcolumnauthorization)
+    - [TomResourceScopeSource](#tomresourcescopesource)
     - [TomDataScopeRegistry](#tomdatascoperegistry)
     - [TomDataScopePredicate](#tomdatascopepredicate)
     - [TomDataScopeBypass](#tomdatascopebypass)
@@ -64,9 +73,11 @@ Source:
 `lib/src/tomserver/object_persistence/column_authorization.dart`,
 `lib/src/tomserver/object_persistence/crud_repository.dart`,
 `lib/src/tomserver/object_persistence/data_scope.dart`,
+`lib/src/tomserver/object_persistence/file_reference.dart`,
 `lib/src/tomserver/object_persistence/grouped_query.dart`,
 `lib/src/tomserver/object_persistence/mariadb_repository.dart`,
 `lib/src/tomserver/object_persistence/operators_expressions.dart`,
+`lib/src/tomserver/object_persistence/paging.dart`,
 `lib/src/tomserver/object_persistence/persistence_annotations.dart`,
 `lib/src/tomserver/object_persistence/query_builder.dart`,
 `lib/src/tomserver/object_persistence/query_sentence_compiler.dart`.
@@ -85,7 +96,9 @@ expression tree rendered through a `TomStandardSqlDialect`. `@TomDbScope`
 (row-level, C-3) and `@TomDbColumn(authKey: …)` (column-level, C-4) add
 server-authoritative access control enforced by `TomDataScope` /
 `TomColumnAuthorization`, all binding values as prepared-statement parameters
-(C-7).
+(C-7). A column annotated `@TomFileReference` holds a blob *key* rather than the
+file's bytes, so the row stays small enough to read, diff, audit and mask like
+any other while the payload moves as a stream through `TomFileRepository`.
 
 ## Class Hierarchy
 
@@ -100,8 +113,15 @@ TomServerException  (server)
     └── TomRepositoryException
 
 TomRepository<T, K>
-    └── TomSqlDatasourceRepository<T, K>  (with TomQueryBuilder)
-            └── MariadbRepository<T, K>
+    └── TomSqlDatasourceRepository<T, K>  (with TomQueryBuilder,
+        │                                  implements TomFileRepository<T, K>)
+        └── MariadbRepository<T, K>
+
+TomFileRepository<T, K>  (contract — the five methods the HTTP file
+                          endpoint needs, no persistence stack)
+
+TomResourceScopeSource  (hook — implemented in authorization by
+                         TomResourceDataScope)
 
 TomTypedPersistenceBase  (queries)
     └── TomQuerySentenceCompiler  (with TomQueryBuilder)
@@ -486,6 +506,7 @@ column rights, and bind all values as prepared-statement parameters (C-7).
 
 - **Extends:** `TomRepository<T, K>`
 - **Mixes in:** `TomQueryBuilder`
+- **Implements:** `TomFileRepository<T, K>`
 - **Type Parameters:** `T extends Object` — the entity type; `K` — its key type.
 
 ##### Constructors
@@ -540,6 +561,103 @@ MariadbRepository([List<Type>? queryTypes, Type? resultType])
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `sqlDialect` | `TomStandardSqlDialect` | *(getter, override)* The MariaDB SQL dialect used to render queries. |
+
+### File References
+
+A file column is an ordinary short `VARCHAR` that holds a **blob key** instead of
+the file's bytes. Every other persistence feature keeps working on it unchanged —
+it is row-scoped by `@TomDbScope`, can carry an `authKey` and be masked or
+write-protected like any column, and appears in the audit trail as the key it
+holds. What the annotation adds is the bytes: they move as a stream through the
+`TomFileRepository` methods, so a payload that may be gigabytes never passes
+through a `SELECT`.
+
+The split across three types is deliberate. `TomFileReference` is declarative and
+lives with the other annotations; `TomFileReferenceKeys` is the behaviour it
+implies, as pure functions over the annotation, so the key scheme can be
+unit-tested without a database, a store, or the reflection runtime;
+`TomFileRepository` is the narrow contract the HTTP file endpoint depends on.
+
+#### TomFileReference
+
+Annotation marking a `String` column as holding a blob storage key rather than
+the file's bytes. Declarative only — the runtime half is `TomFileReferenceKeys`
+and the repository's file methods.
+
+##### Constructors
+
+```dart
+const TomFileReference({
+  String? store,
+  String keyPrefix = '',
+  bool cascadeDelete = true,
+  String mediaType = 'application/octet-stream',
+  bool exposed = false,
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `store` | `String?` | The named blob store to use, or `null` for the default store — so a deployment with one place to put files configures nothing per column. |
+| `keyPrefix` | `String` | The prefix generated keys are placed under, e.g. `invoices`. Must satisfy `TomBlobStore.isValidKeyPrefix`; because a `const` constructor cannot refuse a value, the check happens where the key is minted. |
+| `cascadeDelete` | `bool` | Whether deleting (or clearing) the owning row deletes the blob. Set `false` for a key the application shares between rows or manages itself. |
+| `mediaType` | `String` | The media type assumed when an upload does not name one. Mirrors `TomStoredBlob.defaultMediaType`, spelled literally so the annotation library does not depend on the storage module. |
+| `exposed` | `bool` | Whether the column is reachable over the framework's HTTP file endpoint (`TomFileService`), addressable as the slot `<table>/<id>/<column>`. **Default-closed** — reflection must never publish a column by accident. It does not decide *whether* a caller may have the file, which stays with the row scope (C-3) and column grade (C-4). |
+
+#### TomFileReferenceKeys
+
+Resolves the store and mints the keys for a `@TomFileReference` column. All
+members are static; the class is not constructible.
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `storeFor` | `static TomBlobStore storeFor(TomFileReference reference)` | The blob store `reference` names, or the default store when it names none. Resolved per call rather than cached on the column metadata: the registry is populated at start-up and replaced wholesale by a test, and a column that captured a store at first use would keep serving the previous test's. |
+| `generate` | `static String generate(TomFileReference reference, {String? fileName, DateTime? now})` | Mints a fresh key, shaped `<keyPrefix>/<yyyy>/<mm>/<uuid><.ext>`. `now` is injectable so a test can assert the exact partition. |
+| `extensionOf` | `static String extensionOf(String? fileName)` | The lower-cased extension of `fileName` including the dot (`.pdf`), or the empty string when there is none worth carrying. |
+
+The key shape earns each of its four parts: the **prefix** separates one column's
+blobs from another's, so a store shared by several entities stays navigable and a
+lifecycle rule can be written against a path; the **date partition** bounds how
+many objects land in one directory, and makes "everything from July" expressible
+as a prefix on an object store; the **UUID** makes the key collision-free without
+a round trip (a fresh upload never silently overwrites a live one) and
+unguessable, so holding one key does not let a caller enumerate its neighbours;
+the **extension** is decoration carried over because it costs nothing and makes a
+key readable to whoever is looking at the bucket — the media type of record lives
+in the descriptor, not in the key.
+
+`extensionOf` is deliberately conservative: only a short (≤ 12 character), purely
+alphanumeric suffix is carried, because the extension is appended to a key whose
+grammar is narrow (`TomBlobStore.isValidKey`) and a "file name" arriving from a
+browser is caller-supplied text, not a vetted identifier.
+
+#### TomFileRepository&lt;T, K&gt;
+
+The subset of a repository the file surfaces need: load a row, and move the bytes
+of one of its `@TomFileReference` columns.
+
+Split out of `TomRepository` rather than folded into it because it is what the
+HTTP file endpoint depends on, and an endpoint that depended on the full SQL
+repository could only ever be exercised against a database. Every method is
+already implemented by `TomSqlDatasourceRepository`; naming them as a contract
+costs nothing and makes the endpoint's requirement explicit — five methods, not a
+persistence stack.
+
+- **Type Parameters:** `T extends Object` — the entity type; `K` — its key type.
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `findById` | `Future<T?> findById(K id)` | Loads the entity with the given `id`, or `null` if absent (or not visible to the current principal under the entity's row scope). |
+| `saveFile` | `Future<T> saveFile(T entity, String fieldName, Stream<List<int>> bytes, {String? mediaType, String? fileName})` | Uploads `bytes` into the file column `fieldName` of `entity` and saves the row, returning the stored entity. |
+| `openFile` | `Stream<List<int>> openFile(K id, String fieldName)` | Streams the file held by the file column `fieldName` of row `id`. |
+| `describeFile` | `Future<TomStoredBlob?> describeFile(K id, String fieldName)` | The descriptor of the file held by `fieldName` on row `id`, or `null` when the row (or its column) holds nothing. |
+| `clearFile` | `Future<T> clearFile(T entity, String fieldName)` | Clears the file column `fieldName` on `entity`, deleting the blob. |
 
 ### Query Building
 
@@ -1107,21 +1225,61 @@ exactly one row and are already asynchronous. All members are static.
 | `resolve` | `static Future<TomAuthState?> resolve(String? authKey, Object? rowId)` | The per-row grade, or `null` when the column is unrestricted or has no resolver. |
 | `reset` | `static void reset()` | Clears every registration (tests, re-boot). |
 
+#### TomResourceScopeSource
+
+The grant-driven source behind the built-in `resource` scope kind
+(`TomDbScope.resourceScope`), which filters rows by the resource keys a principal
+holds a grant for — direct ownership grants folded with the share/absence
+delegations active right now.
+
+Resolving that needs the authorization layer (grant store, delegation resolver,
+role registry), which sits *above* persistence. This interface is the inversion
+that keeps the dependency pointing the right way: `object_persistence` declares
+the hook, `authorization` implements and installs it
+(`TomResourceDataScope.install`). While no source is installed the built-in
+resolver denies every row — an unwired scope must be a closed door, not an open
+one.
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `readableResourceKeys` | `Future<List<Object?>> readableResourceKeys(TomPrincipal? principal)` | The resource keys `principal` may **read** — grade `read` or `full`. |
+| `writableResourceKeys` | `Future<List<Object?>> writableResourceKeys(TomPrincipal? principal)` | The resource keys `principal` may **write** — grade `full` only, so a `read` grant admits a row to queries but rejects every write to it. |
+
 #### TomDataScopeRegistry
 
-Registry of the named row-scope resolvers a `@TomDbScope` can reference. Ships
-with `'owner'` and `'group'` resolvers. All members are static.
+Registry of the named row-scope resolvers a `@TomDbScope` can reference. Three
+resolvers ship out of the box: `'owner'` (the principal's own id), `'group'` (the
+principal's groups) — both synchronous, and both showing a `null` principal
+nothing — and `'resource'` (`TomDbScope.resourceScope`), which resolves
+asynchronously through the installed `resourceScopeSource` and denies every row
+while no source is installed. All members are static.
+
+A scope kind is either a synchronous single-`IN` scope or an asynchronous
+union/OR scope over several id-sets, never both; `isAsync` is the one seam that
+tells the repository which path to take. Each kind may additionally register a
+**write** resolver, answering the narrower question "which values may this
+principal *modify*" — a kind with no write resolver writes exactly what it reads.
 
 ##### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `register` | `static void register(String scope, TomDataScopeResolver resolver)` | Registers (or replaces) the synchronous resolver for scope kind `scope`. |
-| `registerAsync` | `static void registerAsync(String scope, TomAsyncDataScopeResolver resolver)` | Registers (or replaces) the asynchronous (union/OR) resolver for `scope`. |
+| `register` | `static void register(String scope, TomDataScopeResolver resolver, {TomDataScopeResolver? write})` | Registers (or replaces) the synchronous resolver for scope kind `scope`, optionally with a narrower `write` resolver naming the values the principal may modify. |
+| `registerAsync` | `static void registerAsync(String scope, TomAsyncDataScopeResolver resolver, {TomAsyncDataScopeResolver? write})` | Registers (or replaces) the asynchronous (union/OR) resolver for `scope`, optionally with a narrower `write` resolver. |
 | `resolverFor` | `static TomDataScopeResolver? resolverFor(String scope)` | The synchronous resolver for `scope`, or `null`. |
+| `writeResolverFor` | `static TomDataScopeResolver? writeResolverFor(String scope)` | The synchronous **write** resolver for `scope`, or `null` when the kind writes exactly what it reads. |
 | `asyncResolverFor` | `static TomAsyncDataScopeResolver? asyncResolverFor(String scope)` | The asynchronous resolver for `scope`, or `null`. |
+| `asyncWriteResolverFor` | `static TomAsyncDataScopeResolver? asyncWriteResolverFor(String scope)` | The asynchronous **write** resolver for `scope`, or `null` when the kind writes exactly what it reads. |
 | `isAsync` | `static bool isAsync(String scope)` | Whether `scope` resolves asynchronously (registered via `registerAsync`). |
-| `reset` | `static void reset()` | Restores the built-in resolvers, discarding custom registrations. |
+| `reset` | `static void reset()` | Restores the built-in resolvers, discarding custom registrations (synchronous *and* asynchronous, read *and* write). Deliberately does **not** clear `resourceScopeSource`, which is deployment wiring rather than a scope-kind registration. |
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `resourceScopeSource` | `TomResourceScopeSource?` | *(static)* The installed grant source backing the built-in `resource` scope kind, or `null` while none is installed — in which case the scope denies every row. Installed by `TomResourceDataScope.install` from the authorization layer. |
 
 #### TomDataScopePredicate
 
