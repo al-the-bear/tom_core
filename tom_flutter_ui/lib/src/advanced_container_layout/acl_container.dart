@@ -241,7 +241,13 @@ class AclComponent {
   /// Because every argument uses `?? this.x`, a nullable field cannot be
   /// *cleared* through this method — passing `null` means "leave it alone".
   /// No caller needs clearing, and the alternative (a sentinel per nullable
-  /// field) would cost more than it buys on a 24-field class.
+  /// field) would cost more than it buys on a 25-field class.
+  ///
+  /// Every declared field is covered, and
+  /// `test/advanced_container_layout/acl_component_copy_with_test.dart` checks
+  /// that against the constructor rather than taking it on trust — a field
+  /// left out of the list below would not fail to compile, it would silently
+  /// revert to its default on every copy.
   AclComponent copyWith({
     Widget? child,
     int? flags,
