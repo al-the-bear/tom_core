@@ -2,6 +2,28 @@
 
 ### Fixed
 
+- **resources: the test comments state the module's contract instead of citing
+  a document that was never committed (tcinc672).** Four comments in
+  `test/resources_test.dart` documented the module's history rather than its
+  behaviour, and the history was unreachable. Three opened with a citation —
+  `tests §9(a)`, `§9(b)`, `status_bug.md §17` — naming result documents from a
+  code-review plan (`§8` of that plan lists `status_bug.md` among the files a
+  review was to produce). They were never produced: nothing in the workspace
+  carries that name, so every one of those references led nowhere. Two closed
+  with "RED before the fix", a marker true only for as long as it took to make
+  the test pass.
+
+  The narration had also gone stale in a second way. One comment described
+  falling through a `_defaultValue != null` guard that the module no longer
+  has — default *presence* is tracked separately precisely so that branch
+  cannot occur — and a fourth named `TomConfigResourceProvider.exists` as the
+  reason a written null reads as absent, which stopped being the mechanism
+  when resolution moved to `getObjectOrNull`. All four now state what the test
+  pins: what the type-mismatch report has to name, why an absent key without a
+  default is a failure rather than a null, which lookup makes a written null
+  and an unwritten key indistinguishable, and why an explicit null default is
+  honoured.
+
 - **resources: property resolution reads the configuration once, reports
   failures as `TomPropertyException`, and no longer claims failures it did not
   diagnose (tcinc671).** `TomProperty._getValue` had three defects in six
@@ -340,6 +362,30 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **the test-comment guard is now a package-wide suite rather than a group
+  inside the file it policed (tcinc672).** `test/test_comment_hygiene_test.dart`
+  reads `observing_test.dart`, `resources_test.dart` and its own source, and
+  fails on a comment that records the phase of its own authorship or cites a
+  numbered section of another document. It is deliberately scoped to that list
+  rather than banning the section sign package-wide: `codespecs_mapping.md` and
+  `completion/README.md` are cited by number elsewhere and both exist.
+
+  The relocation is what makes the positive half of the guard work. Both
+  negative checks pass against a file whose comments have simply been deleted,
+  so each guarded file must also keep making the claims its comments exist to
+  make. While the guard lived inside `observing_test.dart`, a needle written
+  there was also a needle *present* in the file being read, and the check
+  passed against its own argument — it stayed green with the comment it
+  guarded removed. Reading a file other than the one the needles live in fixes
+  that structurally. Two vacuity pins keep the three searches honest, since
+  each of them passes by finding nothing: one requires every scanned path to
+  exist and be non-empty, the other that no required claim is registered
+  against a file outside the scanned list. Seven mutations, each firing its
+  intended test and no other: deleting a guarded comment, reintroducing a
+  phase marker, reintroducing a numbered citation, emptying the file list,
+  registering a claim against an unscanned file, deleting the observing
+  needle, and planting a phase marker in the guard's own source. 283 → 285.
 
 - **property resolution's read count and failure identity are now asserted
   (tcinc671).** Seven tests in `resources_test.dart`, over three fake config

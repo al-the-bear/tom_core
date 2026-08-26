@@ -96,9 +96,10 @@ void main() {
   });
 
   group('type mismatch', () {
-    // tests §9(a): a present value that cannot be cast to T throws a
-    // descriptive Exception naming the key — the type-mismatch branch of
-    // `_getValue` had no coverage.
+    // A key that is present but holds a value of the wrong type fails at
+    // construction rather than resolving to anything. The report names both
+    // the key and the value that could not be cast, which are the two facts a
+    // reader needs to find the offending line in a configuration file.
     test('a present value of the wrong type throws a descriptive Exception',
         () {
       installConfig({'app.title': 'not-an-int'});
@@ -158,10 +159,11 @@ void main() {
   });
 
   group('missing obligatory key', () {
-    // tests §9(b): the no-default constructor must surface the intended
-    // "Obligatory resource not found" Exception — not the opaque
-    // LateInitializationError the unassigned `late` default field used to
-    // throw (status_bug.md §17). RED before the fix.
+    // A property declared without a default is obligatory: an absent key is a
+    // failure, not a null. What this pins is that the failure is the module's
+    // own descriptive one and that it names the key — a report that says only
+    // "not configured" leaves the reader to work out which of a config file's
+    // properties is the missing one.
     test('no-default constructor throws the descriptive obligatory-key error',
         () {
       installConfig({});
@@ -178,11 +180,11 @@ void main() {
     });
 
     test('a key configured as null counts as absent', () {
-      // `TomConfigResourceProvider.exists` is "resolves to a non-null object",
-      // so a key present in the config with a null value is indistinguishable
-      // from one that was never written. Worth pinning because the two look
-      // different in a YAML file and identical here: `app.region:` with no
-      // value does not satisfy an obligatory property.
+      // `getObjectOrNull` returns null both for a key that was never written
+      // and for one configured with no value, and the module treats the two
+      // alike. Worth pinning because they look different in a YAML file and
+      // identical here: `app.region:` with no value does not satisfy an
+      // obligatory property.
       installConfig({'app.region': null});
       expect(
         () => TomStringProperty('app.region'),
@@ -217,9 +219,11 @@ void main() {
   });
 
   group('explicit null default (nullable T)', () {
-    // tests §9 / status_bug.md §17 second defect: a `withDefault(key, null)`
-    // over a nullable T must use the explicitly-supplied null, not fall
-    // through the `_defaultValue != null` guard and throw. RED before the fix.
+    // Over a nullable `T`, `null` is a legitimate default rather than the
+    // absence of one. The module tracks whether a default was supplied
+    // separately from what it is, so `withDefault(key, null)` resolves to null
+    // instead of failing as an unconfigured obligatory key — which is what
+    // makes the generic the only form that can express an optional property.
     test('withDefault(key, null) returns null when the key is absent', () {
       installConfig({});
       final p = TomProperty<String?>.withDefault('app.missing', null);
