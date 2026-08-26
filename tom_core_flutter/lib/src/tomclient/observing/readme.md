@@ -14,7 +14,7 @@ kernel `TomObservable` drive a Flutter rebuild — either directly as a widget
 | ---- | -------------- |
 | `TomObservingWidget<T extends TomObservable>` | A `StatefulWidget` that registers as a `TomObserver` on its `subState` and rebuilds (`setState`) its `child` builder on every notification. |
 | `TomObservingWidgetState<T>` | The backing `State` that holds the observer registration. |
-| `ValueListenableObserver<T extends TomObservable>` | Adapts a `TomObservable` to `ValueListenable<T>` so it can feed a `ValueListenableBuilder`/`AnimatedBuilder`. Single-listener: `addListener` replaces rather than appends. |
+| `ValueListenableObserver<T extends TomObservable>` | Adapts a `TomObservable` to `ValueListenable<T>` so it can feed a `ValueListenableBuilder`/`AnimatedBuilder`. Single-listener, deviating from the contract at both ends: `addListener` replaces rather than appends, and `removeListener` ignores its argument and clears the slot regardless. |
 
 ## Quick start
 

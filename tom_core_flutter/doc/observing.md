@@ -77,8 +77,11 @@ value with `~state` inside the closure.
 
 Adapts a `TomObservable` to `ValueListenable<T>`. `value` returns the observed
 observable; `addListener` registers a single callback fired on each
-notification. Use it to plug kernel state into `ValueListenableBuilder`,
-`AnimatedBuilder`, or anything else accepting a `ValueListenable`.
+notification, and `removeListener` clears it. Use it to plug kernel state into
+`ValueListenableBuilder`, `AnimatedBuilder`, or anything else accepting a
+`ValueListenable` — but read
+[Lifecycle and Limitations](#lifecycle-and-limitations) first: there is one
+listener slot, and both accessors behave differently from the contract's name.
 
 ## Lifecycle and Limitations
 
@@ -109,10 +112,22 @@ notification. Use it to plug kernel state into `ValueListenableBuilder`,
   that is still reachable but no longer wanted **keeps receiving notifications
   for as long as something else holds it**. Collection is not a substitute for
   removing it.
-- **`ValueListenableObserver` holds a single listener.** `addListener` replaces
-  any prior callback rather than appending; it is not a multicast
-  `ValueListenable`. This matches its intended use with a single
-  `ValueListenableBuilder`.
+- **`ValueListenableObserver` holds a single listener, and deviates from the
+  `ValueListenable` contract at both ends of it.** There is one slot rather than
+  a list, and each accessor departs from the contract in its own way:
+  - `addListener` **replaces** any prior callback rather than appending. Handing
+    one adaptor to two `ValueListenableBuilder`s leaves only the last one
+    receiving notifications; the first is dropped without a word.
+  - `removeListener` **ignores its argument.** It clears the single slot
+    unconditionally, so calling it with a listener that was never registered
+    still silences the adaptor. There is one slot, so there is nothing to match
+    against — which is why the shipped example's `adaptor.removeListener(() {})`
+    works while passing a closure that was never added.
+
+  Both suit the intended use, one adaptor per `ValueListenableBuilder`, and both
+  are why this is not a general-purpose multicast `ValueListenable`. If two
+  parts of a screen need the same observable, give each its own adaptor rather
+  than adding two listeners to one.
 
 ---
 

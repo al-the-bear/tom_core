@@ -99,8 +99,12 @@ Adapts a kernel `TomObservable` to Flutter's `ValueListenable` contract.
 - **Implements:** `TomObserver<T>`, `ValueListenable<T>`
 - **Type Parameters:** `T extends TomObservable`
 
-> **Single-listener limitation:** holds at most one listener. `addListener`
-> replaces any previously registered callback rather than appending; it is not a
+> **Single-listener limitation:** holds at most one listener, and deviates from
+> the `ValueListenable` contract at both ends of it. `addListener` **replaces**
+> any previously registered callback rather than appending. `removeListener`
+> **ignores its argument** — it clears the single slot unconditionally, so
+> calling it with a listener that was never registered still silences the
+> adaptor. There is one slot, so there is nothing to match against. It is not a
 > general-purpose multicast `ValueListenable`.
 
 #### Constructors
@@ -125,7 +129,7 @@ Registers this adaptor as an observer of `observable`.
 | ------ | --------- | ----------- |
 | `onNotify` | `void onNotify(T observable)` | *(override)* Forwards the notification to the registered listener. |
 | `addListener` | `void addListener(VoidCallback listener)` | *(override)* Registers `listener`, replacing any previous one. |
-| `removeListener` | `void removeListener(VoidCallback listener)` | *(override)* Clears the registered listener. |
+| `removeListener` | `void removeListener(VoidCallback listener)` | *(override)* Clears the single listener slot. `listener` is ignored — any argument clears it. |
 
 ## Global Functions and Constants
 

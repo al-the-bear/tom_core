@@ -180,6 +180,30 @@ void main() {
       expect(calls, 1); // unchanged
     });
 
+    // The other half of the same single-slot design, and the half that used to
+    // be demonstrated but not documented. The test above hands `removeListener`
+    // the listener it registered, so it passes whether or not the argument is
+    // consulted — which is why it cannot stand in for this one. The example
+    // depends on the behaviour pinned here: it clears the adaptor by passing a
+    // closure it never added.
+    test('removeListener ignores its argument — any closure clears the slot',
+        () {
+      final source = TomBool(false);
+      final adaptor = ValueListenableObserver<TomBool>(source);
+
+      var calls = 0;
+      adaptor.addListener(() => calls++);
+      source | true;
+      expect(calls, 1);
+
+      adaptor.removeListener(() {}); // never registered
+
+      source | false;
+      expect(calls, 1,
+          reason: 'there is one slot rather than a list, so there is nothing '
+              'to match the argument against and any argument clears it');
+    });
+
     test('addListener replaces the previous listener (single-listener)', () {
       final source = TomBool(false);
       final adaptor = ValueListenableObserver<TomBool>(source);
@@ -327,6 +351,73 @@ void main() {
             '$path claims again that deregistration prevents retention',
       ];
       expect(offenders, isEmpty);
+    });
+  });
+
+  group('the single-listener deviation is documented at both ends', () {
+    // tcinc662 — `ValueListenableObserver` departs from the `ValueListenable`
+    // contract in two independent ways: `addListener` replaces instead of
+    // appending, and `removeListener` ignores its argument and clears the slot
+    // regardless. Every consumer-facing document stated the first and none
+    // stated the second, which left the module's own example unexplainable —
+    // it clears the adaptor by passing a closure it never registered. A
+    // half-stated deviation is worse than an undocumented one, because the
+    // half that is written implies the other half behaves normally.
+
+    /// Every file in this module that carries the single-listener callout.
+    const calloutFiles = <String>[
+      'doc/observing.md',
+      'doc/api_reference/api_summary_observing.md',
+      'lib/src/tomclient/observing/value_listenable_observer.dart',
+      'lib/src/tomclient/observing/readme.md',
+    ];
+
+    test('every file that carries the callout still carries it', () {
+      // Without this the test below is satisfiable by deleting the callout:
+      // a file that says nothing about the single slot states nothing
+      // incomplete about it either.
+      for (final path in calloutFiles) {
+        final file = File(path);
+        expect(file.existsSync(), isTrue, reason: '$path is missing');
+        expect(file.readAsStringSync(), contains('addListener'),
+            reason: '$path no longer describes the listener slot');
+      }
+    });
+
+    test('each one states both halves, not just the addListener half', () {
+      final offenders = <String>[
+        for (final path in calloutFiles)
+          ...() {
+            final text = File(path).readAsStringSync();
+            final lower = text.toLowerCase();
+            return <String>[
+              if (!lower.contains('replac'))
+                '$path does not say that addListener replaces rather than '
+                    'appends',
+              if (!text.contains('removeListener'))
+                '$path describes addListener without mentioning removeListener '
+                    'at all',
+              if (!lower.contains('ignor'))
+                '$path does not say that removeListener ignores its argument',
+            ];
+          }(),
+      ];
+      expect(offenders, isEmpty);
+    });
+
+    test('the API summary\'s removeListener row says the argument is ignored',
+        () {
+      // The row is checked on its own because the file-wide check above passes
+      // as soon as the callout paragraph says "ignores". The table is what a
+      // reader scanning for the signature actually reads, and it used to say
+      // "Clears the registered listener" — wording that means *that* listener,
+      // which is the assumption the implementation breaks.
+      final summary =
+          File('doc/api_reference/api_summary_observing.md').readAsStringSync();
+      final row = RegExp(r'^\| `removeListener` \|.*$', multiLine: true)
+          .firstMatch(summary);
+      expect(row, isNotNull, reason: 'no removeListener row in the method table');
+      expect(row!.group(0)!.toLowerCase(), contains('ignor'));
     });
   });
 

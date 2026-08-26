@@ -36,6 +36,21 @@
 
 ### Documentation
 
+- **observing: `ValueListenableObserver`'s contract deviation is documented at
+  both ends, not one (tcinc662).** The adaptor departs from the
+  `ValueListenable` contract in two independent ways — `addListener` replaces
+  the single slot instead of appending, and `removeListener` ignores its
+  argument and clears the slot regardless. Every consumer-facing artefact stated
+  the first and none stated the second: `doc/observing.md`, the API summary's
+  callout and its `removeListener` row ("Clears the registered listener" —
+  wording a reader takes to mean *that* listener), the class dartdoc and the
+  module readme. The asymmetry left the module's own example unexplainable, in
+  that it clears the adaptor by passing a closure it never registered, and a
+  half-stated deviation is worse than an unstated one because the half that is
+  written implies the other half behaves normally. All five now state both
+  halves and say why — there is one slot rather than a list, so there is nothing
+  to match the argument against.
+
 - **observing: the weak-reference contract is stated the right way round
   (tcinc661).** `doc/observing.md` closed its lifecycle section by claiming that
   because the `State` deregisters in `dispose`, "a long-lived observable that
@@ -138,6 +153,20 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **observing: the example demonstrates the deviation it used to rely on
+  (tcinc662).** `example/observing/observing_example.dart` called
+  `adaptor.removeListener(() {})` with a closure it had never registered and
+  said only "removeListener stops further notifications", so the one line that
+  proved the undocumented half read as an oversight. It now says why that works
+  and adds the mirror case, two `addListener` calls where the first is replaced
+  before it ever fires. `test/observing_test.dart` gains the matching pin — the
+  existing removal test hands back the listener it registered, so it passes
+  whether or not the argument is consulted and cannot stand in for it — plus a
+  three-test guard requiring every file that carries the single-listener callout
+  to state both halves. The API summary's `removeListener` row is checked
+  separately, because the file-wide check passes as soon as the callout
+  paragraph mentions the argument while the table still says otherwise.
 
 - **observing: the reference directions are pinned, without depending on the
   collector (tcinc661).** `test/observing_test.dart` gains two behavioural

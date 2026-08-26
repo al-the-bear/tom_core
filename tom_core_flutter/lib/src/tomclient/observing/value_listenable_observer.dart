@@ -22,11 +22,20 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// error | 'Boom'; // the builder rebuilds with "Boom"
 /// ```
 ///
-/// **Single-listener limitation:** this adaptor holds at most one listener.
-/// [addListener] replaces any previously registered callback rather than
-/// appending, which matches its sole intended consumer (a single
-/// [ValueListenableBuilder]). It is not a general-purpose multicast
-/// [ValueListenable].
+/// **Single-listener limitation.** This adaptor holds at most one listener, and
+/// deviates from the [ValueListenable] contract at both ends of it:
+///   * [addListener] **replaces** any previously registered callback rather
+///     than appending. Handing one adaptor to two [ValueListenableBuilder]s
+///     leaves only the last one receiving notifications.
+///   * [removeListener] **ignores its argument**. It clears the single slot
+///     unconditionally, so calling it with a listener that was never registered
+///     still silences the adaptor. There is one slot, so there is nothing to
+///     match against.
+///
+/// Both suit its sole intended consumer — a single [ValueListenableBuilder] —
+/// and both are why this is not a general-purpose multicast [ValueListenable].
+/// If two parts of a screen need the same observable, give each its own adaptor
+/// rather than adding two listeners to one.
 class ValueListenableObserver<T extends TomObservable>
     implements TomObserver<T>, ValueListenable<T> {
   /// Registers this adaptor as an observer of [observable].
@@ -60,7 +69,11 @@ class ValueListenableObserver<T extends TomObservable>
     voidCallback = listener;
   }
 
-  /// Clears the registered listener so notifications are no longer forwarded.
+  /// Clears the single listener slot so notifications are no longer forwarded.
+  ///
+  /// [listener] is **ignored**. There is one slot rather than a list, so there
+  /// is nothing to match the argument against and any argument clears it —
+  /// including a closure that was never registered. It is traced, not compared.
   @override
   void removeListener(VoidCallback listener) {
     tomLog.trace("ValueListenableObserver: Listener removed $listener");
