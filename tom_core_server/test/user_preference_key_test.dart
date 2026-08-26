@@ -24,25 +24,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 // A repository resolves its entity through reflection at construction, so the
 // bootstrap is needed even though no statement is ever issued here.
 import 'fixtures/reflection_fixture.reflection.dart';
-
-/// A repository that fails the test if anything reaches it.
-///
-/// Not a stub standing in for a database, but the assertion itself: every call
-/// below is expected to be refused *before* a statement is built, and a
-/// repository that answered plausibly would let a check that ran too late pass
-/// unnoticed.
-class _UnreachableRepository
-    implements TomSqlDatasourceRepository<TomUserPreference, int> {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => fail(
-    'the repository was reached via '
-    '${invocation.memberName}: an illegal key must be refused before any '
-    'statement is built',
-  );
-}
-
-/// The store over a repository nothing may reach.
-TomUserPreferences _store() => TomUserPreferences(_UnreachableRepository());
+import 'fixtures/unreachable_repository.dart';
 
 /// The `preference_key` width [TomUserPreference.createTableSql] declares.
 int _declaredKeyColumnWidth() {
@@ -96,20 +78,20 @@ void main() {
     // merely about the key being rejected somewhere along the way.
 
     test('read refuses a key carrying a separator', () {
-      expect(() => _store().read('a/b'), throwsKeyRefusal);
+      expect(() => preferenceStore().read('a/b'), throwsKeyRefusal);
     });
 
     test('read refuses the empty key', () {
-      expect(() => _store().read(''), throwsKeyRefusal);
+      expect(() => preferenceStore().read(''), throwsKeyRefusal);
     });
 
     test('set refuses an illegal key even with an encodable value', () {
-      expect(() => _store().set('a/b', 'dark'), throwsKeyRefusal);
+      expect(() => preferenceStore().set('a/b', 'dark'), throwsKeyRefusal);
     });
 
     test('setEncoded refuses an illegal key even with a valid pair', () {
       expect(
-        () => _store().setEncoded(
+        () => preferenceStore().setEncoded(
           'has space',
           valueType: 'String',
           valueJson: '"dark"',
@@ -119,21 +101,15 @@ void main() {
     });
 
     test('remove refuses an illegal key', () {
-      expect(() => _store().remove('..'), throwsKeyRefusal);
+      expect(() => preferenceStore().remove('..'), throwsKeyRefusal);
     });
 
     test('a legal key gets past the check and fails for the real reason', () {
       // The complement of the group: without it, a check that refused every
       // key would satisfy every test above.
       expect(
-        () => _store().read(TomUserPreferenceKeys.theme),
-        throwsA(
-          isA<TomException>().having(
-            (error) => error.key,
-            'key',
-            'preferences.no_principal',
-          ),
-        ),
+        () => preferenceStore().read(TomUserPreferenceKeys.theme),
+        throwsNoPrincipal,
       );
     });
   });

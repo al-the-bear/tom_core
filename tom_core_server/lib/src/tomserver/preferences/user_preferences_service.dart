@@ -132,7 +132,7 @@ class TomUserPreferences {
   /// has never been written.
   Future<TomUserPreferenceDto?> read(String key) async {
     TomUserPreferenceKeys.validate(key);
-    final row = await _rowFor(key);
+    final row = await _rowFor(_requirePrincipal(), key);
     return row?.toDto();
   }
 
@@ -201,7 +201,7 @@ class TomUserPreferences {
     String valueJson,
   ) async {
     final principal = _requirePrincipal();
-    final existing = await _rowFor(key);
+    final existing = await _rowFor(principal, key);
 
     // Reuse the found row rather than inserting a second: the repository takes
     // its UPDATE path exactly when the surrogate key is set, so carrying the id
@@ -226,7 +226,7 @@ class TomUserPreferences {
   /// "was never there" without a second read.
   Future<bool> remove(String key) async {
     TomUserPreferenceKeys.validate(key);
-    final row = await _rowFor(key);
+    final row = await _rowFor(_requirePrincipal(), key);
     if (row == null) return false;
     await repository.deleteById(row.id);
     return true;
@@ -246,14 +246,18 @@ class TomUserPreferences {
     );
   }
 
-  /// The calling principal's row under [key], or `null`.
+  /// [principal]'s row under [key], or `null`.
   ///
-  /// Takes [key] already validated — every caller is a public method that
-  /// checked it on entry.
-  Future<TomUserPreference?> _rowFor(String key) async {
+  /// Takes both already settled — every caller is a public method that
+  /// validated the key and resolved the principal on entry. The principal is a
+  /// parameter rather than a second read of the zone so that each operation
+  /// reads it exactly once: [_write] needs it for itself (a row being inserted
+  /// has no id to copy one from), and a helper that resolved it again would
+  /// leave the write path with two lookups whose second could no longer fail.
+  Future<TomUserPreference?> _rowFor(TomPrincipal principal, String key) async {
     final matches = await repository.findByQuerySentence(
       'FIND BY principal_id = :principalId AND preference_key = :key',
-      {'principalId': _requirePrincipal().id, 'key': key},
+      {'principalId': principal.id, 'key': key},
     );
     return matches.isEmpty ? null : matches.first;
   }

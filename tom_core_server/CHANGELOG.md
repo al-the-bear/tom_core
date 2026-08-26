@@ -4781,6 +4781,32 @@
 
 ### Internal
 
+- **`TomUserPreferences` read the zone twice for every write (tcinc621).**
+  `_write` resolved the principal for itself — it needs one, because the row it
+  may be *inserting* has no id to copy one from — and then called `_rowFor`,
+  which resolved it again. The second lookup could no longer fail once the first
+  had succeeded, so it was a guard against a state the method had already
+  excluded, and it made the invariant implicit: nothing in `_rowFor` said
+  whether its own lookup was load-bearing or a leftover, so any change to either
+  method had to re-derive that.
+
+  `_rowFor` now takes the principal as a parameter, which leaves exactly one
+  `_requirePrincipal()` per entry point — `all`, `read`, `remove`, and `_write`
+  on behalf of `set` and `setEncoded`. The two options are not symmetric: having
+  `_write` take its principal from the row `_rowFor` returned cannot work,
+  because on the insert path there is no such row.
+
+  Behaviour is unchanged, and is now pinned rather than argued. The new
+  `test/user_preferences_service_test.dart` asserts that all seven public
+  operations refuse with `preferences.no_principal` outside a zone *and* refuse
+  before reaching the repository — the ordering half coming from a repository
+  fixture that fails the test when touched. Only `read` was covered before, so
+  the placement of the lookup could have moved off any of the other six
+  unnoticed. Those assertions were written and shown green against the old shape
+  first, so they characterise the behaviour rather than describe the new code.
+  The fixture moved to `test/fixtures/unreachable_repository.dart`, now shared
+  with the key-ordering suite that first needed it.
+
 - **`TomColumnInformation`'s nine positional parameters included two
   interchangeable pairs (tcinc606).** `declaredName` and `field` are both
   `String` and adjacent; passing them the wrong way round type-checks, maps the
