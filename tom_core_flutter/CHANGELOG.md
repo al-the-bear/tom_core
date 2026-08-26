@@ -120,6 +120,31 @@
 
 ### Tests / Examples
 
+- **the little_things example demonstrates `autoLog` (tcinc657).** The example
+  introduced the forwarded kernel payload as "`parameters`, `stack`, and
+  `autoLog`" and then passed only the first two — `autoLog` appeared exactly
+  once in the file, in that sentence. It is now shown rather than described,
+  which is the branch the guidelines require (`_copilot_guidelines/dart/`
+  `examples.md` uses narrate-instead-of-demonstrate as its BAD specimen), and
+  the only one of the three that *can* be shown: the other two are inert data,
+  while `autoLog` has an observable side effect. A recording log output stands
+  in for the configured one, an exception is built without the flag and one
+  with it, and the two records the constructor wrote are printed.
+- **the little_things example is wired into the suite.** `run()` is now called
+  from `test/little_things_test.dart`, so the example's own assertions — the
+  ones that make its `autoLog` demonstration mean anything — actually execute.
+  Two guards accompany it: the example may not name a forwarded argument it
+  never passes (the forwarded set is read out of `client_exceptions.dart`, so a
+  seventh parameter added tomorrow is covered without anyone extending the
+  test), and, because that guard is satisfiable by deleting the mention rather
+  than fixing it, a second pins that `autoLog: true` still appears in the code.
+- **`autoLog` is tested for its effect, not just its field.** The two existing
+  tests asserted `ex.autoLog == true` and stopped there; both would have kept
+  passing if the kernel stopped logging altogether, and both dumped a pair of
+  multi-line stack traces into every green run. They now capture the log, and a
+  new test pins the effect directly: silent by default, two records with the
+  flag, `EXCEPTION:` then `EXCEPTION_STACKTRACE:`, both carrying the
+  exception's uuid so a trace can be joined back to the failure it came from.
 - **documentation links (tcinc656).** A new `test/documentation_links_test.dart`
   checks every markdown link the package ships. Two properties, because a link
   fails in two ways and only one of them is a path problem: every

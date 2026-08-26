@@ -3,6 +3,46 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
+import '../example/little_things/little_things_example.dart' as example;
+
+/// A log output that keeps what it is given, so a test can assert on the
+/// records `autoLog` writes instead of only on the flag that causes them.
+class _RecordingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    if (logLevel.matches(loggerLevel)) {
+      messages.add(convertToString(message));
+    }
+  }
+}
+
+/// Runs [body] with the log captured, and returns what was written.
+///
+/// The output is restored in a `finally`: a failing expectation inside [body]
+/// would otherwise leave the recorder installed and silence every later test
+/// in the process.
+List<String> recordedLogs(void Function() body) {
+  final recorder = _RecordingLogOutput();
+  final previousOutput = tomLog.logOutput;
+  tomLog.logOutput = recorder;
+  try {
+    body();
+  } finally {
+    tomLog.logOutput = previousOutput;
+  }
+  return recorder.messages;
+}
+
 /// Tests for the little_things module (`TomClientException`,
 /// `TomClientUIException`).
 void main() {
@@ -41,10 +81,34 @@ void main() {
 
     test('forwards the autoLog flag (default false, honours true)', () {
       expect(TomClientException('client.error', 'msg').autoLog, isFalse);
-      expect(
-        TomClientException('client.error', 'msg', autoLog: true).autoLog,
-        isTrue,
-      );
+      // Captured only to keep the log this construction writes out of the test
+      // output; what it emits is the next test's subject.
+      late final TomClientException ex;
+      recordedLogs(() {
+        ex = TomClientException('client.error', 'msg', autoLog: true);
+      });
+      expect(ex.autoLog, isTrue);
+    });
+
+    test('autoLog writes the exception and its trace on construction', () {
+      // The flag above is the cause; these are the effect, and the effect is
+      // what callers are choosing when they pass it. Asserting only the field
+      // would keep passing if the kernel stopped logging altogether.
+      late final TomClientException logged;
+      final quiet = recordedLogs(() {
+        TomClientException('client.error', 'msg');
+      });
+      final noisy = recordedLogs(() {
+        logged = TomClientException('client.error', 'msg', autoLog: true);
+      });
+
+      expect(quiet, isEmpty, reason: 'construction must be silent by default');
+      expect(noisy, hasLength(2));
+      expect(noisy.first, startsWith('EXCEPTION: '));
+      expect(noisy.last, startsWith('EXCEPTION_STACKTRACE: '));
+      // Both records name the same exception, so a trace can be joined back to
+      // the failure it came from.
+      expect(noisy.every((m) => m.contains(logged.uuid)), isTrue);
     });
   });
 
@@ -59,16 +123,24 @@ void main() {
 
     test('forwards stack, parameters and autoLog through both super calls', () {
       final trace = StackTrace.current;
-      final ex = TomClientUIException(
-        'ui.error',
-        'Please try again',
-        parameters: {'retryable': true},
-        stack: trace,
-        autoLog: true,
-      );
+      late final TomClientUIException ex;
+      // Captured rather than left to the console: these arguments travel two
+      // super calls rather than one, so the records are the evidence that the
+      // flag survived the extra hop instead of merely being stored.
+      final logs = recordedLogs(() {
+        ex = TomClientUIException(
+          'ui.error',
+          'Please try again',
+          parameters: {'retryable': true},
+          stack: trace,
+          autoLog: true,
+        );
+      });
       expect(ex.parameters, {'retryable': true});
       expect(identical(ex.stack, trace), isTrue);
       expect(ex.autoLog, isTrue);
+      expect(logs, hasLength(2));
+      expect(logs.every((m) => m.contains(ex.uuid)), isTrue);
     });
 
     test('type discriminates user-facing from internal client errors', () {
@@ -333,6 +405,83 @@ void main() {
               'missing from the hierarchy diagram',
         );
       }
+    });
+  });
+
+  group('the shipped example runs', () {
+    const examplePath = 'example/little_things/little_things_example.dart';
+    const sourcePath = 'lib/src/tomclient/little_things/client_exceptions.dart';
+
+    /// The example's source split into its comment lines and its code lines.
+    ({String comments, String code}) exampleText() {
+      final comments = StringBuffer();
+      final code = StringBuffer();
+      for (final line in File(examplePath).readAsLinesSync()) {
+        (line.trimLeft().startsWith('//') ? comments : code).writeln(line);
+      }
+      return (comments: comments.toString(), code: code.toString());
+    }
+
+    /// The named arguments `TomClientException` forwards to the kernel, read
+    /// from the source rather than listed here — a seventh added tomorrow is
+    /// then covered without anyone remembering to extend this test.
+    Set<String> forwardedNamedArguments() {
+      final source = File(sourcePath).readAsStringSync();
+      final start = source.indexOf('TomClientException(');
+      expect(start, isNot(-1), reason: 'no TomClientException constructor');
+      final open = source.indexOf('{', start);
+      final close = source.indexOf('}', open);
+      expect(open, isNot(-1), reason: 'the constructor takes no named arguments');
+      return RegExp(r'super\.(\w+)')
+          .allMatches(source.substring(open, close))
+          .map((m) => m.group(1)!)
+          .toSet();
+    }
+
+    test('little_things_example.run() completes its assertions', () {
+      // The example is quoted as documentation, so it has to be executable
+      // documentation. Running it here is what stops a snippet that no longer
+      // compiles — or an assertion that no longer holds — from being shown to
+      // a reader as the way to use the module. It is also what makes the
+      // `autoLog` demonstration below mean anything: the example asserts on
+      // the records the constructor wrote, and those assertions only run when
+      // something runs the example.
+      example.run();
+    });
+
+    test('it names no forwarded argument that it never passes', () {
+      final text = exampleText();
+      final advertised = forwardedNamedArguments()
+          .where((name) => text.comments.contains('`$name`'))
+          .toList();
+      expect(
+        advertised,
+        isNotEmpty,
+        reason: 'the example no longer describes the forwarded payload at all, '
+            'so this guard has lost the text it was written to watch',
+      );
+      final unpassed = advertised
+          .where((name) => !text.code.contains('$name:'))
+          .toList();
+      expect(
+        unpassed,
+        isEmpty,
+        reason: 'the example introduces ${unpassed.join(', ')} in a comment '
+            'and never passes it — an example that narrates instead of '
+            'demonstrating compiles, runs, and proves nothing',
+      );
+    });
+
+    test('it demonstrates autoLog rather than describing it', () {
+      // The general guard above is satisfied by deleting the mention, which
+      // would be the wrong repair: of the forwarded arguments this is the only
+      // one with an observable side effect, so it is the only one an example
+      // can show rather than tell.
+      expect(
+        exampleText().code,
+        contains('autoLog: true'),
+        reason: 'autoLog is only demonstrated by passing it',
+      );
     });
   });
 }
