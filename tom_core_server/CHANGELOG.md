@@ -2,6 +2,26 @@
 
 ### Documentation
 
+- **`doc/scheduling.md` advertised three cluster questions for a suite that
+  asks six (tcinc636).** The paragraph enumerated the ambiguous commit, the
+  failure formula and opt-in recovery, and stopped — omitting the broken roll
+  call, the wiring guards, and the lease-acquire branches added the day before.
+  The omission was not cosmetic: the broken-roll-call group is what
+  substantiates the module's central safety claim, that the roll call is a
+  strict accelerator over lease expiry and never the only thing standing
+  between two nodes and the same run. A reader auditing "what happens when the
+  accelerator breaks" was told the question was uncovered when it was the
+  best-covered claim in the unit.
+
+  The paragraph now enumerates all six as a numbered list matching the suite's
+  own sections. The count is no longer a number anyone has to remember to
+  update: `api_reference_coverage_test.dart` ties the guide's count word, the
+  suite header's count word, the number of `GAP` sections and the number of
+  list items together, so adding a section without touching the prose fails.
+  A count is a fact about source, and prose is where facts go to rot — the same
+  reasoning that pinned the relationship lines (tcinc634) and the lease-lock
+  guards (tcinc635).
+
 - **Two comments in `TomSqlLeaseLock` described behaviour the code does not
   perform (tcinc635).** The comment beside `acquire`'s vanished-row `return`
   said "retrying once is honest" in the same breath as ruling out looping, so a

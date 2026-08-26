@@ -531,12 +531,30 @@ tables are declared once — descriptors against the shipped migrations, against
 the reflected row types, and against every statement the stores issue (see
 [Schema Convergence](db_migration.md#schema-convergence)); its `db`-tagged half
 adds the same comparison against a provisioned `information_schema`.
-`test/scheduling_cluster_test.dart` covers the three cluster questions that a
-real server cannot be asked to demonstrate on request: it drives the store
-through a scripted `TomDataSource` that can fail a claim *after* the write, which
-is how the ambiguous commit is reproduced; it asserts the failure formula
-directly, including the stalled-accuser guard; and it asserts recovery in both
-opt-in states.
+
+`test/scheduling_cluster_test.dart` covers the six cluster questions that a real
+server cannot be asked to demonstrate on request:
+
+1. **The ambiguous commit.** The store is driven through a scripted
+   `TomDataSource` that can fail a claim *after* the write — the one thing a
+   live server will not do when asked. What is under test is the
+   classification, not the network.
+2. **The failure formula.** Asserted directly, as arithmetic over three
+   instants, including the case easiest to omit: the stalled-accuser guard that
+   stops a node which was itself descheduled from convicting its peers.
+3. **Recovery in both opt-in states.** Which of two `UPDATE`s an interrupted run
+   gets. The behaviour is in the choice, and the choice is visible in the
+   statement rather than in the outcome.
+4. **A roll call that is itself broken.** That a failing roll call cannot break
+   recovery — each of its calls is made to fail on its own, and recovery still
+   happens. This is the group that substantiates the module's central safety
+   claim, that the roll call is a strict accelerator over lease expiry and never
+   the only thing standing between two nodes and the same run.
+5. **The wiring guards.** The named-data-source lookups and the payload encoder,
+   all of which refuse before any statement is issued.
+6. **The contended branches of a lease acquire.** Including one no live server
+   can be asked for at all: a `forget()` landing between the insert and the
+   read, an interleaving a test cannot arrange against a real connection.
 
 One thing no test suite can substantiate, because a suite is one process:
 whether two *separately running* nodes actually arbitrate correctly through the

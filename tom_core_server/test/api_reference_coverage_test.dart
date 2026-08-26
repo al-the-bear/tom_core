@@ -4717,6 +4717,107 @@ One: `TomKind`, documented beside the type that carries it.
     });
   });
 
+  group('a guide that counts what a suite asks agrees with the suite', () {
+    /// The number words a doc or a suite header is allowed to count in.
+    ///
+    /// Words rather than digits because that is how both sides write it, and a
+    /// closed set rather than a parser because the check should fail loudly on
+    /// "a dozen" instead of quietly reading it as zero.
+    const numbers = {
+      'two': 2,
+      'three': 3,
+      'four': 4,
+      'five': 5,
+      'six': 6,
+      'seven': 7,
+      'eight': 8,
+      'nine': 9,
+      'ten': 10,
+      'eleven': 11,
+      'twelve': 12,
+    };
+
+    /// The count the guide claims, the count the suite header claims, and the
+    /// number of sections the suite is actually divided into.
+    ///
+    /// Three separately-written numbers for one fact, which is exactly why they
+    /// drift: the guide said "three" for a suite that had grown to five, and
+    /// nothing connected the two sentences.
+    ({int guide, int header, int sections, int enumerated}) counts() {
+      final guide = File('doc/scheduling.md').readAsStringSync();
+      final suite = File('test/scheduling_cluster_test.dart').readAsLinesSync();
+      final claimed = RegExp(
+        r'covers the (\w+) cluster questions',
+      ).firstMatch(guide);
+      final declared = RegExp(
+        r'^/// (\w+) questions, none of which',
+        multiLine: true,
+      ).firstMatch(suite.join('\n'));
+      return (
+        guide: numbers[claimed?.group(1)?.toLowerCase()] ?? -1,
+        header: numbers[declared?.group(1)?.toLowerCase()] ?? -1,
+        sections: suite
+            .where((line) => RegExp(r'^\s*// GAP \d+ —').hasMatch(line))
+            .length,
+        // The guide's list items, which is what a reader counts. A count that
+        // agrees with the suite while the list beneath it is short is the same
+        // defect wearing a correct number.
+        enumerated: RegExp(
+          r'^\d+\. \*\*',
+          multiLine: true,
+        ).allMatches(guide).length,
+      );
+    }
+
+    test('the guide, the suite header and the suite agree on the number', () {
+      final found = counts();
+      expect(
+        [found.guide, found.header, found.enumerated],
+        everyElement(found.sections),
+        reason:
+            'doc/scheduling.md enumerates what '
+            'test/scheduling_cluster_test.dart asks, and the suite header '
+            'counts the same thing a third time. Adding a GAP section without '
+            'touching the other two is how the guide came to advertise three '
+            'questions for a suite that asked five — and the two it dropped '
+            'included the group substantiating the module\'s central safety '
+            'claim, so a reader auditing "what happens when the roll call '
+            'breaks" was told it was uncovered when it was the best-covered '
+            'claim in the unit.',
+      );
+    });
+
+    test('the sections are numbered as the guide numbers them', () {
+      // Contiguous from one, because the guide's list is, and because a
+      // duplicated or skipped GAP number would keep the totals agreeing while
+      // making the two enumerations impossible to read side by side.
+      final suite = File('test/scheduling_cluster_test.dart').readAsLinesSync();
+      final numbered = [
+        for (final line in suite)
+          if (RegExp(r'^\s*// GAP (\d+) —').firstMatch(line) case final m?)
+            int.parse(m.group(1)!),
+      ];
+      expect(numbered, List.generate(numbered.length, (index) => index + 1));
+    });
+
+    test('each side is read, not merely found to be absent', () {
+      // Every assertion above is an equality, and `-1 == -1` would satisfy one
+      // of them: a regex that stopped matching on both sides would report
+      // agreement between two numbers neither of which was read. Pin the
+      // values, so the check fails when the shapes change rather than passing
+      // vacuously.
+      final found = counts();
+      expect(found.sections, greaterThan(1));
+      expect(found.guide, isNot(-1), reason: 'the guide still counts in words');
+      expect(
+        found.header,
+        isNot(-1),
+        reason: 'the suite header still opens with its count',
+      );
+      expect(found.enumerated, found.sections);
+    });
+  });
+
   group('every module has a suite that carries its name', () {
     // A filename is the only thing an inventory can read without running
     // anything, so it is what every coverage sweep over this package reads —
