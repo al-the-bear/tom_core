@@ -3506,6 +3506,34 @@
 
 ### Documentation
 
+- **`resources` was the only one of the twenty server modules with no mention at
+  all in the package README (tcinc627).** The platform-services heading named
+  thirteen of the fourteen modules that belong to it and the table beneath it
+  carried a row for each of those thirteen, so a reader counting modules got
+  nineteen where there are twenty — and got no signal that they had. The module
+  is exported from the barrel, has a guide, has an API summary, and has four
+  in-library consumers; only the front door did not know it existed. It now has
+  a place in the heading and a row naming `TomTextLocale`,
+  `TomLocalizedTextResources` and `TomResourceLocaleException`, and the Overview
+  mentions per-recipient localized text beside the messaging it serves.
+
+  The recount is now a test rather than a chore.
+  `api_reference_coverage_test.dart` checks both directions — every module
+  directory is named in the README's Features section, and every row in the
+  module table names a directory that exists — following the same reasoning as
+  the summary checks it sits beside: a stale row is worse than a missing one,
+  because a reader cannot tell it from a current one. The check is scoped to the
+  Features section deliberately. Module names are ordinary English words and the
+  rest of the README uses them as such: `resources` occurs four times elsewhere
+  in the file, every one of them "YAML resources" or the kernel's, so a check
+  counting occurrences file-wide would have reported the one genuinely missing
+  module as present.
+
+  The `## Status` block's version, test count, suite count and `db`-tagged count
+  had all drifted (1.1.4/1726/56/243 against an actual 1.3.0/3491/91/421) and
+  were corrected in passing. Whether an unchecked precise number belongs there
+  at all is tracked separately as tcincb153.
+
 - **`resolveLocale` answering `null` was documented as "the set carries nothing
   at all", which is false for every non-empty set whose chain misses
   (tcinc624).** `null` means no bundle in the *chain* exists. A set built with

@@ -335,6 +335,22 @@ List<String> _docs(String directory, {String stripPrefix = ''}) =>
         .toList()
       ..sort();
 
+/// The README's `## Features` section — its per-module tour — as raw text.
+///
+/// Scoped to that section rather than read from the whole file, because the
+/// module names are ordinary English words and the rest of the README uses
+/// them as such: `resources` occurs four times outside Features, every one of
+/// them "YAML resources" or the kernel's, while the module itself went
+/// unmentioned. A check counting occurrences file-wide would have reported the
+/// one genuinely missing module as present.
+String _readmeFeatures() {
+  final text = File('README.md').readAsStringSync();
+  final start = text.indexOf('\n## Features\n');
+  if (start < 0) throw StateError('README.md has no ## Features section.');
+  final end = text.indexOf('\n## ', start + 1);
+  return end < 0 ? text.substring(start) : text.substring(start, end);
+}
+
 /// Matches a top-level type declaration, anchored at column zero.
 ///
 /// Dart has no nested types, so a declaration that is indented is inside
@@ -2539,6 +2555,43 @@ void main() {
             '${unlisted.join(', ')}. An index that omits part of the package '
             'reads as complete, so an unlisted summary is an invisible one.',
       );
+    });
+  });
+
+  group('the README\'s feature tour names every module', () {
+    test('no module is missing from the Features section', () {
+      final features = _readmeFeatures();
+      final unnamed = _modules()
+          .where((module) => !features.contains('`$module`'))
+          .toList();
+
+      expect(
+        unnamed,
+        isEmpty,
+        reason:
+            'The README\'s Features section never names these modules: '
+            '${unnamed.join(', ')}. Every section heading there lists the '
+            'modules it covers, and the platform-services table gives one row '
+            'per module, so the tour reads as an enumeration — a reader '
+            'counting modules gets the wrong number rather than a hint that '
+            'something is missing. Add the module to the appropriate heading '
+            'and give it a row.',
+      );
+    });
+
+    test('the tour names nothing that is not a module', () {
+      // The other direction, for the same reason the summary checks run both
+      // ways: a row for a module that was renamed or removed is worse than a
+      // missing one, because a reader cannot tell a stale row from a current
+      // one and will go looking for source that is not there.
+      final modules = _modules();
+      final named = RegExp(r'^\| `([a-z_]+)` \|', multiLine: true)
+          .allMatches(_readmeFeatures())
+          .map((match) => match.group(1)!)
+          .where((name) => !modules.contains(name))
+          .toList();
+
+      expect(named, isEmpty, reason: 'Not modules: ${named.join(', ')}.');
     });
   });
 

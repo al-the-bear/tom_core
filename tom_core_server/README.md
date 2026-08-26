@@ -29,7 +29,8 @@ observable state, security, resources) and adds everything a service needs:
   the migration chain and the live database still agree — and **local/XA
   transaction** coordination;
 - an **audit trail** that is attributable and tamper-evident, **outbound
-  messaging** with a durable outbox, **tabular export** to CSV/XLSX/PDF,
+  messaging** with a durable outbox and **per-recipient localized text**,
+  **tabular export** to CSV/XLSX/PDF,
   **streaming blob storage** behind one contract, and relational **job
   scheduling** for a cluster that shares no filesystem;
 - server **configuration** (typed config + YAML resources), an isolate-backed
@@ -101,7 +102,7 @@ abstract, so other backends can be added.
 | `TomSchemaConvergenceCheck` / `TomSchemaModel` / `TomEntitySchemaReader` / `TomSchemaDivergence` | Checks that the entities, the migrations and the live database still describe the same schema, and names each divergence |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local/XA transaction coordination |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
@@ -111,6 +112,7 @@ abstract, so other backends can be added.
 | `authorization` | `TomAuthorizationCache`, `TomResourceGrant`, `TomGradedAccessControlInformation`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomDelegationResolver`, `TomResourceDataScope` | Isolate-backed authorization cache; graded per-key grants that add the middle states the kernel's granted/denied list cannot express; per-principal-per-resource roles; delegation of those roles by explicit share, out-of-office window, or revocable hand-over; and the row scope that filters an entity's rows by those grants — `read` to list, `full` to write — with no application-side resolver |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
+| `resources` | `TomTextLocale`, `TomLocalizedTextResources`, `TomResourceLocaleException` | Per-recipient text for a server that renders many languages at once: the locale is an argument rather than ambient state, bundles resolve along a fallback chain *per key* so a half-translated language serves what it has, and a missing key answers `null` instead of the key — right on a screen, unacceptable in a subject line |
 | `export` | `TomTabularResult`, `TomTabularRenderer`, `TomCsvRenderer`, `TomXlsxRenderer`, `TomPdfRenderer`, `TomExportService`, `TomExportStore` | CSV/XLSX/PDF rendering from one streaming tabular shape, streamed back to a caller or into storage |
 | `file_storage` | `TomBlobStore`, `TomDatabaseBlobStore`, `TomDirectoryBlobStore`, `TomS3BlobStore`, `TomMemoryBlobStore`, `TomBlobStoreInfo`, `TomFileReference` | Streaming blob storage behind one four-method contract, backends chosen in configuration, and entity columns that hold a storage key instead of the bytes |
 | `scheduling` | `TomSqlJobStore`, `TomSqlLeaseLock` | The kernel's job-store and lease-lock contracts over a shared database, so a cluster whose nodes share no filesystem still runs each window exactly once |
@@ -332,8 +334,8 @@ apps get the full kernel API through one dependency. See the
 
 ## Status
 
-- **Version:** 1.1.4
-- **Tests:** 1726 test cases across 56 module suites (run with `testkit :test`
-  or `dart test`). 243 are tagged `db` and skip unless a live MySQL is
+- **Version:** 1.3.0
+- **Tests:** 3491 test cases across 91 module suites (run with `testkit :test`
+  or `dart test`). 421 are tagged `db` and skip unless a live MySQL is
   reachable — bring one up with `tool/run_db_tests.sh`.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
