@@ -3011,6 +3011,23 @@
 
 ### Documentation
 
+- **`TomSortDirection` was named in three places and its values written down in
+  none (tcinc599).** The summary's Enums section had already stopped claiming
+  the module declares none, but what replaced the claim was a pointer, and what
+  it pointed at was two sentences of prose. An enum is the one kind of type
+  whose values *are* its whole contract, so a reader arriving at either place
+  still could not learn what `ascending` and `descending` render as without
+  opening `paging.dart`. It now has the table every other documented enum in
+  this package has, giving each value its `sqlKeyword`, plus a Properties row
+  stating that the getter is the only rendering — a dialect never spells
+  `ASC`/`DESC` itself.
+
+  It stays filed beside the `TomSortField` that carries it rather than moving
+  under `## Enums`, because a direction is only ever met as one term's
+  direction; the Enums section carries a one-row index instead. The distinction
+  is deliberate and stated in the document: the row is an index, the linked
+  section is the documentation, and the values are written once.
+
 - **The `object_persistence` summary documented row scoping as something you
   annotate, having omitted every member that makes it automatic (tcinc598).**
   Three class sections were short, and the gaps were one omission seen three

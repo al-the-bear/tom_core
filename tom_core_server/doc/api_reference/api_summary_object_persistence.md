@@ -64,6 +64,7 @@ column-level access rights (C-4).
     - [TomAnnotationAnalyzer](#tomannotationanalyzer)
   - [Exceptions](#exceptions)
 - [Enums](#enums)
+  - [TomSortDirection](#tomsortdirection)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -791,8 +792,22 @@ mixes them, and an undirected field sorts ascending.
 
 #### TomSortDirection
 
-The direction one sort term orders in: `ascending` or `descending`. `sqlKeyword`
-renders it as `ASC` / `DESC`.
+The direction one sort term orders in. This is the module's only enum; it is
+written up here, beside the `TomSortField` that carries it, because a direction
+is only ever met as one term's direction.
+
+##### Enum Values
+
+| Value | `sqlKeyword` | Meaning |
+| ----- | ------------ | ------- |
+| `ascending` | `ASC` | Smallest value first. |
+| `descending` | `DESC` | Largest value first. |
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `sqlKeyword` | `String` | *(getter)* The SQL keyword for this direction — the column above. It is the only rendering of the enum, so a dialect never spells `ASC`/`DESC` itself. |
 
 #### TomSortField
 
@@ -1468,9 +1483,16 @@ mistake in the *sentence*, which is the caller's to correct.
 
 ## Enums
 
-One: `TomSortDirection`, documented under
-[Paging & Sorting](#tomsortdirection) beside the `TomSortField` that carries it,
-because a direction is only ever met as one term's direction.
+One.
+
+| Enum | Values | Members | Written up |
+| ---- | ------ | ------- | ---------- |
+| `TomSortDirection` | `ascending`, `descending` | `sqlKeyword` → `ASC` / `DESC` | [Paging & Sorting](#tomsortdirection) |
+
+It is filed beside the `TomSortField` that carries it, because a direction is
+only ever met as one term's direction. This section accounts for it rather than
+repeating it: the row above is an index, the section linked from it is the
+documentation.
 
 ## Global Functions and Constants
 
