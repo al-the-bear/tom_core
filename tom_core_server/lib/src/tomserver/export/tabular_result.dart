@@ -30,8 +30,8 @@
 /// ## Why this type and not the CE-RP envelope
 ///
 /// The CodeSpecs report-result envelope (`codespecs_mapping.md` §5.28) is a
-/// `tom_core_codespecs` gap class owned by the specification quest, and it is
-/// not written. This type is deliberately the *minimal* tabular shape those
+/// `tom_core_codespecs` gap class: named by the mapping, not written. This type
+/// is deliberately the *minimal* tabular shape those
 /// renderers actually need, so the rendering capability is useful now — any
 /// endpoint returning rows can export — and so that when the envelope lands it
 /// is adapted to this shape rather than the renderers being rewritten.

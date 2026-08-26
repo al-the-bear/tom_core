@@ -300,8 +300,9 @@ resolver would deny itself its own input.
 
 #### TomJoinTable
 
-Annotation describing a many-to-many join table between two entities. (Declared
-for future use — not yet detected or applied by the persistence layer.)
+Annotation describing a many-to-many join table between two entities. Nothing
+outside its own declaration reads the type, so the persistence layer neither
+detects nor applies it, and placing it on an entity has no effect at all.
 
 ##### Constructors
 

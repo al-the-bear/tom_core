@@ -249,8 +249,11 @@ class TomFileReference {
 
 /// Annotation describing a many-to-many join table between two entities.
 ///
-/// Note: declared for future use — the persistence layer does not yet detect or
-/// apply this annotation (see the quest completion steps).
+/// Note: the persistence layer neither detects nor applies this annotation.
+/// Nothing outside this declaration reads the type, so placing it on an entity
+/// has no effect whatsoever — not a partial one, and not a failure either. A
+/// many-to-many association has to be traversed by querying the join table
+/// directly.
 class TomJoinTable {
   /// The entity on the far side of the join.
   final Type targetEntity;

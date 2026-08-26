@@ -4844,6 +4844,166 @@ One: `TomKind`, documented beside the type that carries it.
       );
     });
   });
+
+  // Shipped text is read by people with no access to the workspace that
+  // produced it. A dartdoc reaches the IDE and the generated API pages; `doc/`
+  // is the package's published documentation. Neither reader can resolve a todo
+  // id, an internal bug number, or "the quest completion steps" — so a sentence
+  // built on one does not merely fail to inform, it costs a lookup and then
+  // leaves the reader unable to tell whether the thing is planned, abandoned,
+  // or already done elsewhere. Saying nothing would have been better. An open
+  // end is stated outright or not at all.
+  group('shipped text stands on its own', () {
+    final markers = <String, RegExp>{
+      'quest references': RegExp(r'\bquests?\b', caseSensitive: false),
+      'completion-steps pointers': RegExp(
+        r'completion (steps|document)',
+        caseSensitive: false,
+      ),
+      'todo ids': RegExp(r'\btc(inc|open)b?\d+', caseSensitive: false),
+      'internal bug numbers': RegExp(r'\bbug\s+§|\bRCK\d+'),
+      // The indefinite article is the tell: an unnamed follow-up cannot be
+      // followed, and naming it would breach the rule above anyway. Both roads
+      // lead to stating the current state instead.
+      'unnamed follow-ups': RegExp(r'tracked follow-up'),
+    };
+
+    final surfaces = <String, List<String> Function()>{
+      'the library sources': _libSources,
+      'the hand-written documents': _handWrittenDocuments,
+    };
+
+    surfaces.forEach((what, files) {
+      markers.forEach((kind, marker) {
+        test('$what carry no $kind', () {
+          final offenders = <String>[
+            for (final path in files())
+              for (final hit in _flattenedLines(
+                path,
+              ).where((line) => marker.hasMatch(line.text)))
+                '  $path:${hit.line}  ${hit.text.trim()}',
+          ];
+          expect(
+            offenders,
+            isEmpty,
+            reason:
+                'these lines carry $kind, which resolve only inside the '
+                'workspace that wrote them:\n'
+                '${offenders.join('\n')}\n'
+                'State the current behaviour and its reason instead.',
+          );
+        });
+      });
+    });
+
+    test('the sweep reaches both surfaces', () {
+      // Every assertion above is an emptiness check, so a lister that stopped
+      // finding files would report the package clean. Pinned by shape rather
+      // than by count: a module added later must not have to edit a number.
+      expect(_libSources(), isNotEmpty);
+      expect(_handWrittenDocuments(), isNotEmpty);
+      expect(
+        _libSources(),
+        contains(
+          'lib/src/tomserver/object_persistence/persistence_annotations.dart',
+        ),
+      );
+      expect(_handWrittenDocuments(), contains('doc/object_persistence.md'));
+    });
+
+    test('a marker is found however the source happens to wrap it', () {
+      // A defect merely reflowed across two lines would otherwise read as
+      // fixed, and that is the failure mode that matters most here: these
+      // phrases sit in prose, and prose gets rewrapped.
+      final wrapped = _flattenLines([
+        '/// The layer does not yet apply this annotation (see the',
+        '/// quest completion steps).',
+        '',
+        '/// An unrelated sentence.',
+      ]);
+      expect(wrapped, hasLength(2));
+      expect(
+        wrapped.first.text,
+        contains('see the quest completion steps'),
+        reason: 'a continuation line must join the paragraph it belongs to',
+      );
+      expect(wrapped.first.line, 1, reason: 'reported at the paragraph start');
+      // A dartdoc block is not separated from the declaration it documents by a
+      // blank line, so the marker change is what ends it. Without that the
+      // report would quote a whole class body and name nothing in particular.
+      final documented = _flattenLines([
+        '/// A note about the type.',
+        'class Thing {',
+        '  final int field = 0;',
+      ]);
+      expect(documented.map((p) => p.text), [
+        'A note about the type.',
+        'class Thing { final int field = 0;',
+      ]);
+      // `request` and `question` both contain "quest"; the word boundary is
+      // what keeps this package's several hundred uses of them out of the
+      // report.
+      expect(
+        markers['quest references']!.hasMatch('the request in question'),
+        isFalse,
+      );
+    });
+  });
+}
+
+/// Every Dart source under `lib/`, as paths from the package root.
+List<String> _libSources() => [
+  for (final entry in Directory('lib').listSync(recursive: true))
+    if (entry is File && entry.path.endsWith('.dart')) entry.path,
+]..sort();
+
+/// One paragraph of comment or prose, with the line it starts on.
+typedef _FlatLine = ({int line, String text});
+
+/// The comment and prose of [path] as paragraphs, with the markers stripped.
+List<_FlatLine> _flattenedLines(String path) =>
+    _flattenLines(File(path).readAsLinesSync());
+
+/// Joins [lines] into paragraphs after removing dartdoc, comment and blockquote
+/// markers, so a phrase is found however it happens to be wrapped.
+///
+/// A paragraph ends at a blank line *or* where the marker changes, which is
+/// what keeps a dartdoc block from running on into the declaration below it. A
+/// paragraph carrying the whole class body would still find the phrase, but the
+/// failure message has to name one identifiable place, and "the comment" is
+/// that place.
+///
+/// Split from [_flattenedLines] so the joining can be exercised on input
+/// written for the purpose.
+List<_FlatLine> _flattenLines(List<String> lines) {
+  final marker = RegExp(r'^[ \t]*(///|//|>)[ \t]?');
+  final paragraphs = <_FlatLine>[];
+  var buffer = <String>[];
+  var kind = '';
+  var start = 0;
+
+  void flush() {
+    if (buffer.isEmpty) return;
+    paragraphs.add((line: start, text: buffer.join(' ')));
+    buffer = <String>[];
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    final match = marker.firstMatch(lines[i]);
+    final text = (match == null ? lines[i] : lines[i].substring(match.end))
+        .trim();
+    if (text.isEmpty) {
+      flush();
+      continue;
+    }
+    final lineKind = match?.group(1) ?? '';
+    if (lineKind != kind) flush();
+    if (buffer.isEmpty) start = i + 1;
+    kind = lineKind;
+    buffer.add(text);
+  }
+  flush();
+  return paragraphs;
 }
 
 /// One `@TomEntityId` field found in a documented entity.

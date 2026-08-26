@@ -1081,7 +1081,9 @@ source's type.
 
 ## Not Yet Implemented
 
-Tracked in the quest completion steps:
+The first two are *declared*, so they can look available from the outside — an
+annotation you can write and the analyzer accepts. The third is simply absent
+from the grammar, and a sentence using it is refused.
 
 - `@TomJoinTable` is declared but never read — neither detected nor acted on.
 - `@TomPersistenceEventHandler` is *detected* (`TomAnnotationAnalyzer` resolves

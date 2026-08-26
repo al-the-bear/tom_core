@@ -125,10 +125,9 @@ Provide `TomBaseServerConfiguration.errorHandler` /
 
 ## Not Yet Implemented
 
-The module previously carried four empty placeholder files
-(`diagnostics.dart`, `forms.dart`, `monitoring.dart`, `websocket.dart`) holding
-only `// TODO:` markers. They had no contract, export, or consumer and were
-removed; the intended capabilities are tracked in the quest completion steps:
+The module ships nothing for the capabilities below — no type, no export, no
+placeholder file. Each is named here so that a reader who goes looking finds out
+it is absent, rather than concluding they have missed where it lives:
 
 - **Diagnostics** — server diagnostics/introspection endpoints.
 - **Monitoring** — runtime metrics / monitoring hooks.
@@ -137,7 +136,7 @@ removed; the intended capabilities are tracked in the quest completion steps:
   [Multipart Forms](endpoints.md#multipart-forms) — what is missing is rendering
   one server-side, which is a templating concern rather than a transport one.
 
-WebSocket support is no longer among them: it is served by the endpoint
+WebSocket support is not among them: it is served by the endpoint
 pipeline as a kind of endpoint — see
 [WebSocket Endpoints](endpoints.md#websocket-endpoints).
 

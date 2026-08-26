@@ -578,8 +578,8 @@ what is served, and it is keyed by method already.
 Every limitation below has a consequence a caller can observe — a value that
 never arrives, a request that is not rejected, an audit trail thinner than it
 looks. It is not a survey of everything unfinished inside the module: edges with
-no outward effect are tracked with the quest rather than here, so a limitation's
-absence from this list means "nothing a caller can see", not "nothing at all".
+no outward effect are out of scope for this list, so a limitation's absence from
+it means "nothing a caller can see", not "nothing at all".
 
 - **An unmapped query parameter is dropped in silence.** A path capture binds
   under its own name whether or not `urlParameterMapping` names it; a query

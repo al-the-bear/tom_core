@@ -2,6 +2,38 @@
 
 ### Testing
 
+- **The rule that shipped text must stand on its own was enforced in one module
+  and broken in four (tcinc602).** `configuration_test.dart` guarded exactly two
+  files — the configuration dartdoc and `doc/configuration.md` — against
+  gesturing at "the quest completion steps". The rule was never specific to
+  configuration; it was only *discovered* there, and meanwhile eight other
+  places across object_persistence, export, server and endpoints carried a quest
+  reference, a todo id or an internal bug number.
+
+  So the guard was generalised instead of copied. `api_reference_coverage_test`
+  gains **'shipped text stands on its own'**, which sweeps every source under
+  `lib/` and every hand-written document in the package — the README, `doc/`,
+  `doc/api_reference/` and the module readmes — for five markers: a `quest`
+  word, a completion-steps pointer, a todo id (`tcinc…` / `tcopen…`), an
+  internal bug number (`bug §…`, `RCK…`), and the unnamed "a tracked follow-up".
+  The per-module group in `configuration_test.dart` is strictly subsumed and was
+  removed rather than left to be maintained twice.
+
+  Text is flattened into paragraphs before matching, so a phrase merely
+  rewrapped across two lines does not read as fixed. A paragraph ends at a blank
+  line *or* where the comment marker changes — a dartdoc block is not separated
+  from its declaration by a blank line, and without that break the failure
+  message quoted a whole class body and named nothing in particular. The word
+  boundary on `quest` is what keeps the package's several hundred uses of
+  `request` and `question` out of the report; both that and the paragraph break
+  are pinned by cases in a parser test rather than left to be rediscovered.
+
+  What is deliberately *not* guarded is history narration — "used to be",
+  "previously", "before the refactoring". It breaks the same rule, but no
+  pattern separates it from legitimate present-tense prose ("the key is no
+  longer referenced") without crying wolf, and a guard that cries wolf gets
+  turned off. Those sites were fixed by reading.
+
 - **Nothing stopped a document from teaching an unsavable primary key
   (tcinc601).** The shape that prompted this — `int id = 0` under
   `@TomEntityId` — is legal Dart the analyzer is silent about, and the failure
@@ -3032,6 +3064,45 @@
   `.env` parser agree on where the key ends.
 
 ### Documentation
+
+- **Shipped text pointed at things only this workspace can open (tcinc602).**
+  Eight places in `lib/` and `doc/` sent the reader after something that does
+  not exist outside the repository that produced it: a todo id (`RCK13` in the
+  `TomCountResult` dartdoc), a quest reference (`TomJoinTable`, the
+  `TomTabularResult` rationale, three `## Not Yet Implemented` sections), or an
+  unnamed follow-up (`TomQuerySentenceCompiler`). A dartdoc reaches the IDE and
+  the generated API pages; `doc/` is published documentation. Such a pointer is
+  worse than silence — it costs a lookup and then leaves the reader unable to
+  tell whether the thing is planned, abandoned, or already done elsewhere.
+
+  Each site now states the current behaviour and why, which in every case turned
+  out to be the more useful sentence:
+
+  - `TomCountResult` says that the field *name* is the entire binding and is
+    checked nowhere, so renaming it makes every count report an empty table
+    instead of failing.
+  - `TomJoinTable` says that nothing outside its own declaration reads the type,
+    so annotating an entity has no effect at all — not a partial one, and not a
+    failure either — and a many-to-many association has to be traversed by
+    querying the join table. The API summary was brought into line.
+  - `TomQuerySentenceCompiler` says which options each kind actually accepts (a
+    find and a group take cap, skip and sort; a delete takes cap and sort but no
+    skip, because `DELETE` has no `OFFSET`; a count takes none, because it
+    returns one row regardless) and that an unaccepted combination is refused
+    with a reason rather than accepted and ignored.
+  - `TomTabularResult` says the CE-RP envelope is a `tom_core_codespecs` gap
+    class named by the mapping and not written, dropping who owns the writing.
+  - The `## Not Yet Implemented` sections of `object_persistence.md`,
+    `server.md` and `endpoints.md` say what the reader can observe: which
+    entries are declared and therefore *look* available, and that the server
+    module ships no type, export or placeholder for the capabilities it lists.
+
+  Two long comments in `query_sentence_compiler.dart` narrated a former defect
+  in the past tense. Both now argue the current design forward — why a boolean
+  operand is parsed at operand level rather than statement level, and why the
+  early-end sentence is refused explicitly rather than left to raise a
+  `TypeError` outside this library's exception family. The counterfactual says
+  everything the history did, and stays true as the file changes.
 
 - **The object-persistence quick start taught a primary key that can never be
   inserted (tcinc601).** The entity in

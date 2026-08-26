@@ -66,8 +66,10 @@ class TomRepositoryException extends TomServerException {
 ///
 /// It is a plain reflected holder (no `@TomDbTable`), so the row mapper fills it
 /// by *field name*: the `COUNT(*) AS count` projection names its column `count`,
-/// which matches this field. (Before RCK13 the mapper had no field-name path for
-/// table-less holders and silently left `count` at its default `0`.)
+/// which matches this field. That name is the entire binding, and it is checked
+/// nowhere — rename [count], or project the count under a different alias, and
+/// the mapper finds no column for the field, leaves it at its default `0`, and
+/// every count reports an empty table instead of failing.
 @tomReflector
 class TomCountResult {
   /// The row count returned by the query, mapped from the `count` result column.

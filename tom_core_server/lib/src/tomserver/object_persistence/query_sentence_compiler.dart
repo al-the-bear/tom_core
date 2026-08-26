@@ -158,8 +158,12 @@ _ScalarLiteral? _scalarLiteralFor(String token) {
 /// both `top` and `first`, both `skip` and `offset`, a skip without a cap,
 /// etc.).
 ///
-/// (The select/count/delete branches currently build their option fields
-/// independently; unifying them is a tracked follow-up.)
+/// The options are parsed once and then forwarded selectively, because the
+/// kinds do not all accept the same ones: a find or a group takes the cap, the
+/// skip and the sort; a delete takes the cap and the sort but no skip, because
+/// `DELETE` has no `OFFSET`; a count takes none of the three, because it
+/// returns one row whatever they say. A combination a kind cannot express is
+/// refused with a message naming the reason — never accepted and then ignored.
 class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     with TomQueryBuilder {
   /// Creates a compiler for the given entity [types] (the first is primary).
@@ -695,18 +699,19 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
   /// produces, so the six callers stay distinguishable in an error message.
   ///
   /// Every arm parses the right-hand side with [_buildExpression], the
-  /// operand-level entry point, including the boolean one. `=` and `<>` used to
-  /// route a *boolean* operand through [_buildQuery] instead — the
-  /// statement-level entry point, which reads `and`, `or` and `)` as its own.
-  /// A boolean right-hand side therefore did not stop at the comparison:
-  /// `done = TRUE and id > 2` pulled the conjunction into the operand and was
-  /// refused, and `not ( done = TRUE ) and id > 2` had its closing bracket
-  /// consumed by the `=`, compiling to `NOT ( done = true AND id > 2 )` — a
-  /// different predicate from the one written. The comment on the flag
-  /// justified it by `done = ( a > 1 or b > 2 )`, a comparison against a whole
-  /// predicate; that form has never compiled, because [_buildQuery] threads the
-  /// boolean column into the bracket and the first column inside is then read
-  /// as a second operand of *its* type.
+  /// operand-level entry point — including the boolean arm, which is the one
+  /// where the choice is not obvious. Routing a boolean operand through
+  /// [_buildQuery] instead, the *statement*-level entry point, would let the
+  /// operand claim `and`, `or` and `)` as its own, so a boolean right-hand side
+  /// would not stop at the comparison: `done = TRUE and id > 2` would pull the
+  /// conjunction into the operand and be refused, and `not ( done = TRUE ) and
+  /// id > 2` would have its closing bracket consumed by the `=` and compile to
+  /// `NOT ( done = true AND id > 2 )` — a different predicate from the one
+  /// written. Nor does the statement-level entry point buy the form it looks
+  /// like it would, a comparison against a whole predicate
+  /// (`done = ( a > 1 or b > 2 )`): [_buildQuery] threads the boolean column
+  /// into the bracket, and the first column inside is then read as a second
+  /// operand of *its* type.
   (TomOperator<TomDbBool>, int) _createComparison(
     List<String> qp,
     String qs,
@@ -1527,11 +1532,11 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       }
     }
     // The loop ran out of tokens. Both of the ways that can leave nothing built
-    // are sentences that simply stop early — `… title not`, `… title not like`
-    // — and both used to leave the failure to a cast: the negation below on a
-    // null operand, or the `!` on the return. Those arrive as `TypeError`,
-    // which is outside the exception family this library promises and says
-    // nothing about the sentence that caused it.
+    // are sentences that simply stop early — `… title not`, `… title not like`.
+    // Refused here rather than left to the code below, where the negation on a
+    // null operand or the `!` on the return would raise a `TypeError`: that is
+    // outside the exception family this library promises, and it names neither
+    // the sentence nor what was missing from it.
     if (currentOperation == null) {
       throw TomQuerySyntaxException(
         "query_sentence_compiler.build_expression.sentence_ended_early",
