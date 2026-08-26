@@ -261,11 +261,33 @@ const TomEntityId()
 Annotation declaring the row-level data scope of an entity (C-3): it restricts
 which rows the repository returns to those the current principal may see.
 
+Writing it is often unnecessary. An entity carrying a resource-key column is
+scoped under `resourceScope` automatically —
+`TomAnnotationAnalyzer.autoScopeFor` synthesizes exactly the annotation a
+developer would have written — so the declaration mechanism stays single rather
+than gaining a parallel one, and forgetting the annotation can no longer
+silently publish every row. Where automatic scoping would apply but must not,
+`TomDbScope.unscoped()` is the deliberate opt-out.
+
 ##### Constructors
 
 ```dart
 const TomDbScope({required String field, String scope = 'owner'})
+const TomDbScope.unscoped()
 ```
+
+`unscoped()` declares that the entity's rows are visible to every principal. It
+is needed only where automatic scoping would otherwise apply. The authorization
+metadata tables are the framework's own instance of that: the rows that *say*
+who may see what cannot themselves be filtered by who may see what, or the
+resolver would deny itself its own input.
+
+##### Static Constants
+
+| Constant | Type | Value | Description |
+| -------- | ---- | ----- | ----------- |
+| `resourceScope` | `String` | `'resource'` | The scope kind resolving a principal's granted resource keys — direct ownership grants folded with the delegations active right now (C-5 ∪ C-6). |
+| `noScope` | `String` | `''` | The sentinel `scope` of `TomDbScope.unscoped()`. |
 
 ##### Properties
 
@@ -273,6 +295,7 @@ const TomDbScope({required String field, String scope = 'owner'})
 | -------- | ---- | ----------- |
 | `field` | `String` | The entity field whose value is matched against the principal's allowed scope values. |
 | `scope` | `String` | The scope kind — a key into `TomDataScopeRegistry` selecting the resolver (default `'owner'`). |
+| `isOptOut` | `bool` | *(getter)* Whether this is the explicit opt-out (`scope == noScope`) rather than a scope declaration. `findDataScope` returns `null` for such an annotation. |
 
 #### TomJoinTable
 
@@ -1325,7 +1348,8 @@ static.
 | `buildAsync` | `static Future<TomDataScopePredicate?> buildAsync(TomQueryBuilder builder, TomDbScope scope, TomColumnInformation col, TomPrincipal? principal)` | Builds the union scope predicate for an async scope (RCB8). |
 | `anyOf` | `static TomDataScopePredicate anyOf(TomQueryBuilder builder, TomColumnInformation col, List<List<Object?>> groups)` | The union predicate over id-set groups: an OR of one `IN` list per group. |
 | `inList` | `static TomDataScopePredicate inList(TomQueryBuilder builder, TomColumnInformation col, Iterable<Object?> values, {String prefix = parameterPrefix})` | Builds `<col> IN (…)` binding one parameter per value. |
-| `allowedValues` | `static List<Object?>? allowedValues(TomDbScope scope, TomPrincipal? principal)` | Resolves the scope-field values `principal` is allowed for `scope`. |
+| `allowedValues` | `static List<Object?>? allowedValues(TomDbScope scope, TomPrincipal? principal)` | Resolves the scope-field values `principal` is allowed for a **synchronous** `scope`. |
+| `allowedValuesAsync` | `static Future<List<Object?>?> allowedValuesAsync(TomDbScope scope, TomPrincipal? principal, {bool forWrite = false})` | The same for an **async** scope, flattening the resolver's OR-groups into one membership set. The read path keeps the groups apart because each renders its own `IN` list; a membership check only asks whether the value is in *any* group. `null` (the resolver opted out) passes through, so the result feeds `permits` exactly as `allowedValues` does. |
 | `permits` | `static bool permits(List<Object?>? allowed, Object? value)` | Whether `value` falls within the `allowed` scope values (C-3 write membership). |
 | `inColumn` | `static TomOperator<TomDbBool> inColumn(TomQueryBuilder builder, TomColumnInformation col, List<String> parameterNames)` | Builds `<col> IN (:name0, …)` against one bound parameter per name. |
 | `columnEqualsParam` | `static TomOperator<TomDbBool> columnEqualsParam(TomQueryBuilder builder, TomColumnInformation col, String parameterName)` | Builds `<col> = :parameterName`, typed on the column's declared Dart type. |
@@ -1342,8 +1366,13 @@ static.
 #### TomAnnotationAnalyzer
 
 Resolves the persistence metadata of an entity type from its reflection
-annotations. A mixin whose members are all static; results are memoised in the
-per-type caches.
+annotations. A mixin whose members are all static; every lookup is memoised in
+one of the six per-type caches below.
+
+Three of its members are not lookups but *policy*: `resourceKeyColumn`,
+`resourceKeyField` and `resourceScopeInputTables` are what make grant-driven
+scoping the default rather than an annotation anyone has to remember — see
+`autoScopeFor`.
 
 ##### Static Methods
 
@@ -1352,21 +1381,51 @@ per-type caches.
 | `analysePersistentType` | `static TomTypePersistenceInfo analysePersistentType(Type T)` | Resolves the full persistence metadata (table + columns) for entity `T`. Throws `TomAnnotationAnalyzerException`. |
 | `findMirror` | `static ClassMirror? findMirror(Type dbType)` | The cached/looked-up `ClassMirror` for `dbType`, or `null` when unregistered. |
 | `findTable` | `static TomDbTable? findTable(Type dbType)` | The `@TomDbTable` annotation on `dbType`, or `null` if absent. |
-| `findDataScope` | `static TomDbScope? findDataScope(Type dbType)` | The `@TomDbScope` annotation on `dbType`, or `null` when unscoped. |
+| `findDataScope` | `static TomDbScope? findDataScope(Type dbType)` | The row scope of `dbType`, or `null` when unscoped. An explicit `@TomDbScope` wins — including `@TomDbScope.unscoped()`, for which this returns `null`; failing that, `autoScopeFor` decides. |
+| `autoScopeFor` | `static TomDbScope? autoScopeFor(List<TomColumnInformation> columns)` | The scope an entity with these `columns` carries *implicitly* — a `TomDbScope(field: …, scope: resourceScope)` when one column is a resource key, `null` otherwise. Excludes `resourceScopeInputTables`. |
 | `findAuthColumns` | `static List<TomColumnInformation> findAuthColumns(Type dbType)` | The columns of `dbType` that opt into column-level access rights (C-4), or empty. |
+| `findFileColumns` | `static List<TomColumnInformation> findFileColumns(Type dbType)` | The columns of `dbType` annotated `@TomFileReference`, or empty. Consulted before *any* file work, so an entity that stores no files pays nothing for the feature. |
+| `familyOf` | `static TomSqlTypeFamily familyOf(TomColumnInformation column)` | The type family `column` is **stored** in: JSON is text whatever the Dart type, otherwise the declared `TomDbType` box decides and the Dart type only stands in when there is none. An unrecognised type yields `unknown`, which is compatible with everything. |
+| `describeDeclaredType` | `static String describeDeclaredType(TomColumnInformation column)` | How `column`'s type is spelled on the entity side, for reporting only — `'JSON'`, else the box, else the Dart type. |
 | `getPersistentColumns` | `static List<TomColumnInformation>? getPersistentColumns(Type dbType)` | The persistence metadata for every annotated field, or `null` if not reflectable. Throws `TomAnnotationAnalyzerSyntaxException`. |
 | `determineColumn` | `static TomColumnInformation determineColumn(String name, List<TomTypePersistenceInfo> persistenceInfo)` | Finds the `TomColumnInformation` matching `name`. Throws `TomAnnotationAnalyzerSyntaxException` when nothing matches. |
 | `referenceQuery` | `static ({String sentence, Map<String, Object?> parameters}) referenceQuery(TomReference reference, Type owningType, Object? Function(String field) readOwningField)` | The `FIND BY` sentence resolving a `@TomReference` for one mapped row, and the parameters it binds. Throws `TomAnnotationAnalyzerSyntaxException` for a malformed expression, `TomAnnotationAnalyzerException` for a context value the zone cannot supply. |
 
+##### Static Constants
+
+| Constant | Type | Value | Description |
+| -------- | ---- | ----- | ----------- |
+| `resourceKeyColumn` | `String` | `'resource_key'` | The column name that marks an entity as carrying a resource key, and so as automatically grant-scoped. |
+| `resourceKeyField` | `String` | `'resourceKey'` | The camelCase entity-field spelling of `resourceKeyColumn`. |
+| `resourceScopeInputTables` | `Set<String>` | `{'tom_principal_resource_grant', 'tom_principal_delegation', 'tom_resource_grant'}` | The framework's own authorization tables — never auto-scoped. See below. |
+
+`resourceScopeInputTables` is a safety invariant, not a convenience. Those three
+tables carry a resource key, so without the exclusion each would match
+`autoScopeFor` and filter *itself*: a principal could reach its own grant rows
+only by already holding a grant on them, which no row can satisfy, and the
+authorization layer would resolve to nothing at all.
+
+The entities also declare `@TomDbScope.unscoped()`, which is the readable
+statement of the same fact. This set is the half that survives a **stale
+generated `*.reflection.dart`**, whose class metadata predates the annotation —
+an invariant of this kind must not depend on a deployment having re-run code
+generation before it upgrades. The names are duplicated from the entities'
+`@TomDbTable` annotations rather than imported, because `authorization` depends
+on `object_persistence` and not the other way round;
+`test/resource_data_scope_test.dart` asserts the two agree.
+
 ##### Properties
+
+All six are per-type memoisation caches, and all are `static final`.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `mirrorCache` | `static final Map<Type, ClassMirror?>` | Cache of resolved class mirrors per entity type. |
-| `tableCache` | `static final Map<Type, TomDbTable?>` | Cache of resolved `@TomDbTable` annotations per entity type. |
-| `columnInfoCache` | `static final Map<Type, List<TomColumnInformation>?>` | Cache of resolved column metadata lists per entity type. |
-| `dataScopeCache` | `static final Map<Type, TomDbScope?>` | Cache of resolved `@TomDbScope` annotations per entity type. |
-| `authColumnCache` | `static final Map<Type, List<TomColumnInformation>>` | Cache of the column-authorized columns per entity type. |
+| `mirrorCache` | `static final Map<Type, ClassMirror?>` | Resolved class mirrors (`null` = not reflectable). |
+| `tableCache` | `static final Map<Type, TomDbTable?>` | Resolved `@TomDbTable` annotations. |
+| `columnInfoCache` | `static final Map<Type, List<TomColumnInformation>?>` | Resolved column metadata lists. |
+| `dataScopeCache` | `static final Map<Type, TomDbScope?>` | Resolved row scopes (`null` = the entity declares none). Holds the result of `findDataScope`, so a scope synthesized by `autoScopeFor` is cached alongside a declared one. |
+| `authColumnCache` | `static final Map<Type, List<TomColumnInformation>>` | The column-authorized (`@TomDbColumn(authKey: …)`) columns; empty = no column access rights. |
+| `fileColumnCache` | `static final Map<Type, List<TomColumnInformation>>` | The file-reference (`@TomFileReference`) columns; empty = the entity references no stored files. |
 
 ### Exceptions
 

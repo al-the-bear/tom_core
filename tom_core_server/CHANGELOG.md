@@ -3011,6 +3011,34 @@
 
 ### Documentation
 
+- **The `object_persistence` summary documented row scoping as something you
+  annotate, having omitted every member that makes it automatic (tcinc598).**
+  Three class sections were short, and the gaps were one omission seen three
+  times. `TomAnnotationAnalyzer` was missing `autoScopeFor` — the method that
+  synthesizes a `@TomDbScope` for any entity carrying a resource key — along
+  with the three constants it decides by (`resourceKeyColumn`,
+  `resourceKeyField`, `resourceScopeInputTables`); `TomDbScope` was missing
+  `resourceScope`, `noScope`, the `unscoped()` constructor and `isOptOut`, which
+  is the entire opt-out half of the mechanism; and `TomDataScope` was missing
+  `allowedValuesAsync`, the async resolver path the grant scope actually runs
+  on. A reader could follow all three sections and conclude that an entity
+  without `@TomDbScope` is unscoped — the opposite of what the analyzer does,
+  and the wrong direction to be wrong in for a rule about who sees which rows.
+
+  `resourceScopeInputTables` now carries its reason rather than just its value:
+  the three authorization tables it excludes each hold a resource key, so
+  without the guard each would scope itself, and a principal could reach its own
+  grant rows only by already holding a grant on them. The summary also states
+  why the set duplicates names the entities already declare — it is the half
+  that survives a stale generated `*.reflection.dart`, and an invariant of this
+  kind must not depend on a deployment having re-run code generation first.
+
+  The analyzer's Properties table listed five caches while the prose implied
+  six; `fileColumnCache` is now there, and `TomAnnotationAnalyzer` gained the
+  `findFileColumns`, `familyOf` and `describeDeclaredType` methods it also
+  lacked. With that, `object_persistence` leaves
+  `_memberListsPendingReconciliation` and its class sections are checked.
+
 - **The `object_persistence` API summary documented ten of its twelve source
   files, and with them omitted the whole file-slot feature (tcinc597).**
   `file_reference.dart` and `paging.dart` were missing from the `Source:` list,

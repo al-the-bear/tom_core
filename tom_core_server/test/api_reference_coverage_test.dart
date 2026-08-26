@@ -2406,12 +2406,17 @@ const Set<String> _tablesPendingReconciliation = {
 const Set<String> _sourceListsPendingReconciliation = {'authorization'};
 
 /// The modules whose class sections do not yet name every member their classes
-/// declare — quest todos `tcincb123_ahxt` (authentication) and
-/// `tcincb124_ahxt` (object_persistence).
-const Set<String> _memberListsPendingReconciliation = {
-  'authentication',
-  'object_persistence',
-};
+/// declare — quest todo `tcincb123_ahxt`.
+///
+/// `object_persistence` left this set with tcinc598. Its debt was three classes,
+/// and they were one omission seen three times: the members that make
+/// grant-driven scoping the *default* rather than an annotation someone must
+/// remember. `TomAnnotationAnalyzer` was missing `autoScopeFor` and the three
+/// resource-key constants it decides by, `TomDbScope` was missing
+/// `resourceScope`, `noScope`, `unscoped()` and `isOptOut` — the whole opt-out
+/// half of the mechanism — and `TomDataScope` was missing `allowedValuesAsync`,
+/// the async resolver path the grant scope actually runs on.
+const Set<String> _memberListsPendingReconciliation = {'authentication'};
 
 /// The modules the index does not yet describe fully — quest todo
 /// `tcincb122_ahxs`.
@@ -4539,8 +4544,7 @@ One: `TomKind`, documented beside the type that carries it.
           );
         },
         skip: _memberListsPendingReconciliation.contains(module)
-            ? 'member lists not reconciled yet — quest todos tcincb123_ahxt '
-                  '(authentication) and tcincb124_ahxt (object_persistence).'
+            ? 'member lists not reconciled yet — quest todo tcincb123_ahxt.'
             : null,
       );
     }
