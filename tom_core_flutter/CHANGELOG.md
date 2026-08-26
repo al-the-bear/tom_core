@@ -1,5 +1,41 @@
 ## 1.2.1
 
+### Changed
+
+- **runtime: the neutral fallback's `httpClient()` throws `UnsupportedError`
+  rather than `UnimplementedError` (tcinc682).** The two types say opposite
+  things about the same situation. `UnimplementedError` means "planned, not yet
+  written", and reads as an invitation to finish something — but the neutral
+  variant is the deliberate fallback for a target that exposes neither
+  `dart:io` nor `dart:js`, and on such a target there is no `Client`
+  implementation to construct, ever. The condition is permanent, which is what
+  `UnsupportedError` exists to express.
+
+  The message was also rewritten. It was ungrammatical ("You need initialize"),
+  and it instructed the reader rather than naming the fault — so a caller
+  reading it out of a crash log learned what to do but never what had happened.
+  It now says the neutral fallback has no HTTP client, that the target exposes
+  neither `dart:io` nor `dart:js`, and only then what to do about it.
+
+  `doc/api_reference/api_summary_runtime.md` had faithfully mirrored the wrong
+  type; `doc/runtime.md` said only "throws", which was never false but gave a
+  caller nothing to catch on. Both now name `UnsupportedError`, and a test
+  recomputes the name from the throw rather than restating it.
+
+  The test asserting the type has to exclude the subtype explicitly, because
+  `dart:core` declares `UnimplementedError implements UnsupportedError`: a test
+  checking only `isA<UnsupportedError>()` would have passed on the old code and
+  proved nothing. That trap is recorded in `doc/runtime.md` beside the
+  behaviour it guards.
+
+  The tests run against a real instance, not against the source text. The
+  neutral variant imports only Flutter, `http` and the kernel, so it is
+  constructible on the VM host — as is `flutter_io`. Two of the three variants
+  are directly exercisable from one host; only `web` is not, because
+  `package:web` needs JS interop. `doc/runtime.md` had said the variants
+  "cannot all be exercised from one host", which is true only of all three at
+  once and had been read as though none could be; it now says which.
+
 ### Removed
 
 - **runtime: the six `out`/`outError` overrides that restated their inherited

@@ -7,6 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutter_io.dart';
+// The neutral fallback is *selected* only where neither `dart:io` nor
+// `dart:js` exists, but the file itself imports nothing target-specific, so it
+// compiles and runs on this host like any other library. Prefixed because it
+// declares the same class name as the IO variant imported above — the shared
+// name is what makes one conditional import resolve to all three.
+import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_neutral.dart'
+    as neutral;
 
 import '../example/runtime/runtime_example.dart' as example;
 
@@ -674,6 +681,94 @@ void main() {
                 'inherits from TomFallbackPlatformUtils; delete the override',
           );
         });
+      }
+    });
+  });
+
+  group('the neutral fallback refuses networking', () {
+    // Run against a real instance rather than against the source text. The
+    // neutral variant is the one target-independent variant — it imports only
+    // Flutter, `http` and the kernel — so it is constructible here, which the
+    // web variant is not (`package:web` needs JS interop the VM cannot give
+    // it). Two of the three variants are therefore directly exercisable from
+    // this host, and this is the second one.
+
+    Object neutralHttpClientError() {
+      try {
+        neutral.TomFlutterPlatformUtils().httpClient();
+      } catch (error) {
+        return error;
+      }
+      fail('the neutral fallback returned an HTTP client instead of throwing');
+    }
+
+    test('the refusal is permanent, not pending', () {
+      // `isNot(isA<UnimplementedError>())` is the load-bearing half, and it is
+      // not redundant with the line above it: in `dart:core`,
+      // `UnimplementedError implements UnsupportedError`. A test asserting only
+      // `isA<UnsupportedError>()` passes just as happily on the
+      // `UnimplementedError` this replaced — it would have been green before
+      // the change and proved nothing.
+      //
+      // The distinction is the whole point of the change. `UnimplementedError`
+      // means "planned, not yet written", and reads as an invitation to finish
+      // an implementation that is in fact complete: on a target with neither
+      // `dart:io` nor `dart:js` there is no client to construct, ever.
+      final error = neutralHttpClientError();
+      expect(error, isA<UnsupportedError>());
+      expect(
+        error,
+        isNot(isA<UnimplementedError>()),
+        reason: 'UnimplementedError says the operation is still to be written; '
+            'this one is permanently unavailable on such a target',
+      );
+    });
+
+    test('the message describes the condition rather than instructing', () {
+      // What a caller gets is the message, and this one has to survive being
+      // read out of a crash log by someone who does not know the module. So it
+      // has to say what was unavailable and why — the two libraries whose
+      // absence selects this variant are the why — rather than telling the
+      // reader what to do about it in a sentence that was, for the whole life
+      // of the previous message, missing a word ("You need initialize").
+      final message = neutralHttpClientError().toString();
+      expect(message, contains('dart:io'));
+      expect(message, contains('dart:js'));
+      expect(
+        message,
+        isNot(contains('You need')),
+        reason: 'the message instructs the reader instead of naming the fault',
+      );
+    });
+
+    test('both documents name the type the code actually throws', () {
+      // Recomputed from the throw, not restated: the API summary named
+      // `UnimplementedError` because it faithfully mirrored the code, and would
+      // have gone on mirroring it into being wrong. `doc/runtime.md` said only
+      // "throws", which was never false but told a reader nothing they could
+      // catch on.
+      final thrown = neutralHttpClientError().runtimeType.toString();
+      for (final path in [
+        'doc/api_reference/api_summary_runtime.md',
+        'doc/runtime.md',
+      ]) {
+        final row = File(path)
+            .readAsLinesSync()
+            .where((l) => l.startsWith('|') && l.contains('throws'))
+            .where((l) => l.contains('neutral'))
+            .toList();
+        expect(
+          row,
+          hasLength(1),
+          reason: '$path has no single variant-table row saying the neutral '
+              'fallback throws',
+        );
+        final named = RegExp(r'throws `(\w+)`').firstMatch(row.single)?.group(1);
+        expect(
+          named,
+          thrown,
+          reason: '$path names $named; the code throws $thrown',
+        );
       }
     });
   });

@@ -51,7 +51,7 @@ final client = p.httpClient(); // IOClient natively, FetchClient on web
 | ----------------- | -------------- | ----------- |
 | `dart:io` | native (desktop / mobile) | `IOClient` (localhost-permissive certs) |
 | `dart:js` | web (browser) | `FetchClient` (CORS) |
-| neither | neutral fallback | throws — must pick a concrete variant |
+| neither | neutral fallback | throws `UnsupportedError` — must pick a concrete variant |
 
 The native variant additionally imports the process environment into the
 `tom_basics` env-var map (`getTomEnvVars()`, inherited from
@@ -93,17 +93,28 @@ current target. Platform predicates read Flutter's `defaultTargetPlatform` /
   neutral both return `null`, so only the web variant actually diverges.
 
   The duplication is a known candidate for extracting a shared base, deferred
-  because the variants are compile-time-selected and cannot all be exercised
-  from one host.
+  because the variants are compile-time-selected and cannot *all* be exercised
+  from one host. Two of the three can: `flutter_io` and `neutral` both import
+  only Flutter, `http` and the kernel, so a test on the VM can import either
+  directly — with a prefix, since they share a class name — and call it. Only
+  `web` is out of reach, because `package:web` needs JS interop the VM cannot
+  provide.
 
   Console output is not part of it. `out` and `outError` are declared in no
   variant: they come from `TomFallbackPlatformUtils`, which already prints to
   standard output, so there is nothing per-target to say about them. A variant
   that wants to route them elsewhere overrides them; one that does not, does
   not.
-- The neutral fallback cannot create an HTTP client — `httpClient()` throws.
-  Register a concrete variant (which `clientPlatformUtils` does automatically on
-  IO/web targets) before performing network calls.
+- The neutral fallback cannot create an HTTP client — `httpClient()` throws
+  `UnsupportedError`. Register a concrete variant (which `clientPlatformUtils`
+  does automatically on IO/web targets) before performing network calls.
+
+  `UnsupportedError` and not `UnimplementedError`: nothing is waiting to be
+  written here. A target that exposes neither `dart:io` nor `dart:js` has no
+  client implementation to construct, so the refusal is permanent rather than
+  pending. The distinction is easy to lose in a test, because `dart:core`
+  declares `UnimplementedError implements UnsupportedError` — an assertion that
+  only checks for the supertype accepts either.
 - The native `IOClient`'s `badCertificateCallback` tolerates a bad TLS
   certificate **only** for loopback hosts (`0.0.0.0`, `localhost`,
   `127.0.0.1`) and rejects every other host. The decision is the top-level

@@ -126,7 +126,7 @@ behaviour below has something to hang on.
 | ------- | -------------- | ---------------------- | ----- |
 | `flutter_io` (native) | `IOClient` (bad-cert allowed for loopback only) | `null` | Imports the process environment into the `tom_basics` env-var map (`getTomEnvVars()`) at construction. |
 | `web` | `FetchClient(mode: RequestMode.cors)` | `window.location.href` | — |
-| `neutral` | throws `UnimplementedError` | `null` | Fallback when neither `dart:io` nor `dart:js` is available. |
+| `neutral` | throws `UnsupportedError` | `null` | Fallback when neither `dart:io` nor `dart:js` is available. The refusal is permanent — such a target has no client implementation to construct. |
 
 #### Constructors
 
