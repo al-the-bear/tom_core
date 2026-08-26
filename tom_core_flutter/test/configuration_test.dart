@@ -514,4 +514,184 @@ void main() {
       expect(~reloaded.retries, 3, reason: 'defaults are not persisted');
     });
   });
+
+  group('the two file-store variants present one signature', () {
+    // The point of a conditional export is that one name means one thing on
+    // every target. When the variants' constructors differ, code that compiles
+    // on the platform you are building for fails on the one you are not — and
+    // the compiler only says so once someone builds for the second platform,
+    // which is the worst moment to find out.
+    const io =
+        'lib/src/tomclient/configuration/file_configuration_store_io.dart';
+    const neutral =
+        'lib/src/tomclient/configuration/file_configuration_store_neutral.dart';
+
+    /// Whether [file] declares the store's constructor as `const`.
+    bool declaresConstConstructor(String file) => RegExp(
+          r'\bconst\s+TomFileClientConfigurationStore\s*\(',
+        ).hasMatch(File(file).readAsStringSync());
+
+    test('both variants agree about const', () {
+      expect(
+        declaresConstConstructor(io),
+        declaresConstConstructor(neutral),
+        reason: 'a const construction must compile on every target or on none; '
+            'the neutral variant cannot be const because it throws from its '
+            'body, so the io variant must not be const either',
+      );
+    });
+
+    test('both variants declare the same public members', () {
+      Set<String> publicMembersOf(String file) {
+        final source = File(file).readAsStringSync();
+        // `(?! )` pins the match to exactly one indent level — a class member.
+        // Without it the character class swallows the deeper indentation of a
+        // method body and every local variable reads as a member.
+        return RegExp(r'^  (?! )(?:final |const )?[\w<>?, ]*\b(\w+)\s*[(;=]',
+                multiLine: true)
+            .allMatches(source)
+            .map((m) => m.group(1)!)
+            .where((name) => !name.startsWith('_'))
+            .toSet();
+      }
+
+      expect(
+        publicMembersOf(io),
+        publicMembersOf(neutral),
+        reason: 'the variants are interchangeable by name, so a member present '
+            'on one and absent on the other is a compile error waiting for a '
+            'platform switch',
+      );
+    });
+  });
+
+  group('the API summary mirrors the configuration sources', () {
+    // `completion/README.md` §6 says the doc/ mirror is to be verified, not
+    // trusted. This performs that verification on every run instead of leaving
+    // it to whoever remembers: the summary had drifted to omit six public
+    // members that the source declares.
+    const summaryPath = 'doc/api_reference/api_summary_configuration.md';
+    const sources = [
+      'lib/src/tomclient/configuration/client_configuration.dart',
+      'lib/src/tomclient/configuration/client_configuration_store.dart',
+      'lib/src/tomclient/configuration/file_configuration_store_io.dart',
+    ];
+
+    /// Every public member name the configuration sources declare.
+    ///
+    /// Deliberately conservative: it reads members indented exactly one level
+    /// inside a class, skips `_private` names, and skips the declaration
+    /// keywords, so a name it reports is one a caller can type.
+    Set<String> declaredPublicMembers() {
+      final names = <String>{};
+      for (final path in sources) {
+        final source = File(path).readAsStringSync();
+        // `(?! )` pins the match to one indent level — a class member. Without
+        // it the character class swallows a method body's deeper indentation
+        // and every local variable is reported as public API.
+        for (final match in RegExp(
+          r'^  (?! )(?:@override\s+)?(?:const |final |static |late )*'
+          r'[\w<>?, ]*?\b(\w+)\s*(?:\(|=>|;|=[^=])',
+          multiLine: true,
+        ).allMatches(source)) {
+          final name = match.group(1)!;
+          if (name.startsWith('_')) continue;
+          // A top-level function's body sits at the same indent as a class
+          // member, so statement keywords reach here and must be dropped by
+          // name. The meta-test below pins that real members still survive.
+          if (const {
+            'get', 'set', 'operator', //
+            'if', 'for', 'while', 'do', 'else', 'switch', 'try', 'catch',
+            'return', 'throw', 'assert', 'await', 'yield', 'final', 'var',
+          }.contains(name)) {
+            continue;
+          }
+          names.add(name);
+        }
+      }
+      return names;
+    }
+
+    test('every public member the sources declare appears in the summary', () {
+      final summary = File(summaryPath).readAsStringSync();
+      final offenders = <String>[
+        for (final name in declaredPublicMembers())
+          if (!summary.contains('`$name`') && !summary.contains('$name(')) name,
+      ]..sort();
+
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'these public members are declared in the configuration '
+            'sources but named nowhere in $summaryPath',
+      );
+    });
+
+    test('the summary reproduces the file store constructor exactly', () {
+      // The one signature the summary previously disagreed with the source
+      // about. Pinning it here means the const decision cannot be made in the
+      // source and forgotten in the mirror.
+      final io = File(
+        'lib/src/tomclient/configuration/file_configuration_store_io.dart',
+      ).readAsStringSync();
+      final declaresConst =
+          RegExp(r'\bconst\s+TomFileClientConfigurationStore\s*\(')
+              .hasMatch(io);
+      final summary = File(summaryPath).readAsStringSync();
+
+      expect(
+        summary.contains('const TomFileClientConfigurationStore('),
+        declaresConst,
+        reason: 'the summary must show `const` exactly when the source does',
+      );
+    });
+
+    test('every class with a public constructor shows it', () {
+      // The name check above cannot see this one. A class whose constructor is
+      // undocumented still has its *name* all over the page as a type, so the
+      // omission reads as covered. Constructors are therefore checked by
+      // signature: the summary must show a call shape for each.
+      final summary = File(summaryPath).readAsStringSync();
+      final offenders = <String>[
+        for (final className in const [
+          'TomClientConfigurationStore',
+          'TomMemoryClientConfigurationStore',
+          'TomFileClientConfigurationStore',
+          'TomClientConfigurationException',
+          'TomBaseClientConfiguration',
+        ])
+          // The paren must abut the name. Allowing whitespace between them
+          // matches the alignment spaces in the class-hierarchy diagram
+          // (`TomClientConfigurationStore          (abstract)`), so the guard
+          // would pass on a page that shows no constructor at all.
+          if (!summary.contains('$className(')) className,
+      ];
+
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'these classes declare a public constructor that $summaryPath '
+            'never shows the call shape of',
+      );
+    });
+
+    test('the members this guard was written for are among those it reads', () {
+      // A coverage test that silently stopped parsing would pass forever. Pin
+      // the six members whose omission prompted the guard, so a regex that
+      // stops matching fails here rather than going quiet.
+      expect(
+        declaredPublicMembers(),
+        containsAll(<String>[
+          'toString',
+          'path',
+          'read',
+          'write',
+          'load',
+          'save',
+          'TomClientConfigurationStore',
+          'TomClientConfigurationException',
+        ]),
+      );
+    });
+  });
 }

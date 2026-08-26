@@ -76,6 +76,7 @@ Abstract base for a client app's machine-scoped settings holder.
 | `reset` | `void reset(String key)` | Drops the override for `key` (in memory). |
 | `resetAll` | `void resetAll()` | Drops every override; one notification. |
 | `onNotify` | `void onNotify(TomObservable observable)` | Re-emits a member setting's change as a holder change. |
+| `toString` | `String toString()` | `'$runtimeType(...)'` over every declared setting, comma-separated. |
 
 #### Properties
 
@@ -108,10 +109,23 @@ One observable, addressable setting.
 | ------ | --------- | ----------- |
 | `reset` | `void reset()` | Restores `baseline`. |
 | `applyRaw` | `void applyRaw(Object? raw)` | Coerces a store/config-shaped value to `T` and sets it. |
+| `toString` | `String toString()` | `'key=value'`, with ` (overridden)` appended when it is. |
 
 ### TomClientConfigurationStore
 
 Abstract, two-method interface for where overrides are persisted.
+
+#### Constructors
+
+```dart
+const TomClientConfigurationStore()
+```
+
+Allows `const` implementations. (The two shipped implementations are not
+`const` — see `TomFileClientConfigurationStore` for why the file store cannot
+be.)
+
+#### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
@@ -138,6 +152,16 @@ JSON file on the local filesystem, selected by conditional export.
 TomFileClientConfigurationStore(String path)
 ```
 
+Not `const`, although the io variant alone could be: the neutral variant throws
+from its constructor body and so cannot be, and one name behind a conditional
+export must mean one signature on every target.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `path` | `String` | Absolute path of the JSON file holding the override map. |
+
 Writes via write-then-rename; deletes the file on an empty write. On a target
 without `dart:io` the same name resolves to a variant that **throws on
 construction** with `client_configuration.store.unsupported_platform`.
@@ -147,6 +171,21 @@ construction** with `client_configuration.store.unsupported_platform`.
 Failures of this module.
 
 - **Extends:** `TomClientException`
+
+#### Constructors
+
+```dart
+TomClientConfigurationException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool? autoLog,
+})
+```
+
+See `TomException` (kernel) for the meaning of each argument.
 
 | Key | Raised when |
 | --- | ----------- |

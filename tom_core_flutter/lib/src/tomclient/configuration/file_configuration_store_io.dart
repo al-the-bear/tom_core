@@ -21,7 +21,15 @@ class TomFileClientConfigurationStore extends TomClientConfigurationStore {
   /// machine-local state belongs (`path_provider`'s application-support
   /// directory on a Flutter client, a temp directory in a test). Missing
   /// parent directories are created on the first [write].
-  const TomFileClientConfigurationStore(this.path);
+  ///
+  /// Deliberately **not** `const`, even though this variant could be. The
+  /// neutral variant cannot be — it throws from its constructor body — and a
+  /// conditional export is only worth using if one name means one signature on
+  /// every target. A `const` here would make `const
+  /// TomFileClientConfigurationStore(path)` compile on desktop and mobile and
+  /// fail on web, reported by the compiler only once someone builds for the
+  /// platform they were not working on.
+  TomFileClientConfigurationStore(this.path);
 
   /// Absolute path of the JSON file holding the override map.
   final String path;

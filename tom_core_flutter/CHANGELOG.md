@@ -2,6 +2,19 @@
 
 ### Fixed
 
+- **configuration: `TomFileClientConfigurationStore`'s constructor is no longer
+  `const` (tcopen198).** The store is chosen by conditional export, and the two
+  variants disagreed: the `dart:io` variant declared a `const` constructor while
+  the neutral one cannot — its whole purpose is to throw from its body. So
+  `const TomFileClientConfigurationStore(path)` was legal Dart on desktop and
+  mobile and a compile error on web, and the compiler only said so once someone
+  built for the platform they were not working on. A conditional export is worth
+  using only if one name means one signature on every target, so the `const` is
+  dropped from the io variant; the constructor now carries a dartdoc paragraph
+  recording why, so it is not "restored" later. The base class keeps
+  `const TomClientConfigurationStore()` — it permits `const` implementations, it
+  does not require them.
+
 - **configuration: `save()` carries forward from the live store, not from a
   stale snapshot (tcinc649).** `TomBaseClientConfiguration.save()` seeded its
   carry-forward — the keys the running build does not declare, which must
@@ -21,7 +34,34 @@
   lose one another's last write undetected — the exposure is one store
   round-trip rather than the whole session.
 
+### Documentation
+
+- **configuration API summary completed and guarded (tcinc650).** The mirror at
+  `doc/api_reference/api_summary_configuration.md` was accurate in everything it
+  listed but silently omitted six public members the sources declare:
+  `TomSetting.toString()`, `TomBaseClientConfiguration.toString()`,
+  `TomClientConfigurationStore`'s `const` constructor (with its "allows `const`
+  implementations" note), `TomFileClientConfigurationStore.path`, that store's
+  non-`const` constructor rationale, and — found while verifying rather than
+  trusting the mirror — `TomClientConfigurationException`'s constructor, which
+  the sibling summaries document under `#### Constructors`. All six are now
+  listed. The completion document's class sketch was corrected to match the
+  source's non-`const` constructor, so the two mirrors agree.
+
 ### Tests / Examples
+
+- **configuration (tcinc650).** Six guard tests, in two groups. `the two
+  file-store variants present one signature` asserts that the io and neutral
+  variants agree about `const` and declare the same public member names — both
+  conditioned on the sources rather than hard-coding an answer, so they stay
+  true whichever way a future decision goes. `the API summary mirrors the
+  configuration sources` parses the three module sources for public members and
+  fails on any the summary omits, checks the file-store constructor line
+  reproduces the source's `const`-ness exactly, and checks every class with a
+  public constructor actually shows one (a name-level check cannot see a missing
+  constructor when the class name is already a heading). A companion meta-test
+  pins that the parser still finds real members, because a coverage test that
+  silently stopped parsing would pass forever.
 
 - **configuration (tcinc649).** Six tests: carry-forward of a key written by
   another writer after `load()`, and a new `swapping the store` group covering
