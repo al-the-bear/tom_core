@@ -368,7 +368,15 @@ and grows with the deployment's issuer and account label, and the enrolment
 panel shows the base32 secret beside the code, so a blank square leaves a
 complete enrolment path where a thrown build would leave none.
 
-- **Extends:** `StatelessWidget`
+- **Extends:** `StatefulWidget`
+
+Stateful only to hold the encoded code. Encoding costs on the order of 2.6 ms
+for a typical enrolment URI — some 16 % of a 60 fps frame — and depends on
+`data` alone, so it happens when `data` changes rather than on every build. A
+parent that rebuilds for its own reasons, which the enrolment panel does on
+every busy flag and every controller notification, costs nothing here; neither
+does a resize or a recolour, since `size`, `padding` and the colours are applied
+at paint time.
 
 #### Constructors
 

@@ -536,11 +536,21 @@ void main() {
     // Driven directly rather than through the enrolment panel: the widget is
     // exported, so its behaviour on an unencodable payload is a promise to
     // every caller and not only to the one panel that happens to use it today.
-    Future<void> pumpCode(WidgetTester tester, String data) =>
+    Future<void> pumpCode(
+      WidgetTester tester,
+      String data, {
+      Color? foreground,
+    }) =>
         tester.pumpWidget(
           Directionality(
             textDirection: TextDirection.ltr,
-            child: Center(child: TomQrCodeView(data: data, size: 120)),
+            child: Center(
+              child: TomQrCodeView(
+                data: data,
+                size: 120,
+                foreground: foreground,
+              ),
+            ),
           ),
         );
 
@@ -575,6 +585,64 @@ void main() {
 
       expect(painter(), findsNothing);
       expect(tester.getSize(find.byType(TomQrCodeView)), const Size.square(120));
+    });
+
+    // Encoding a QR code is the expensive part of this widget by a wide margin
+    // — milliseconds, a double-digit percentage of a frame — and it depends on
+    // nothing but the payload. These three pin the two halves of not paying it
+    // twice: the encode is not repeated, and the paint is not repeated either.
+
+    CustomPainter painterOf(WidgetTester tester) =>
+        tester.widget<CustomPaint>(painter()).painter!;
+
+    // Reaches a public field on a private class, which needs `dynamic`. The
+    // alternative is to leave the cache untested and let a future edit quietly
+    // move the encode back into `build`, where nothing would notice.
+    Object? encodedImageOf(WidgetTester tester) =>
+        (painterOf(tester) as dynamic).image as Object?;
+
+    const uri = 'otpauth://totp/Tom:alice?secret=JBSWY3DPEHPK3';
+
+    testWidgets('re-encodes only when the payload changes', (tester) async {
+      await pumpCode(tester, uri);
+      final first = encodedImageOf(tester);
+
+      await pumpCode(tester, uri);
+      expect(identical(encodedImageOf(tester), first), isTrue,
+          reason: 'an unchanged payload must reuse the encoded code');
+
+      await pumpCode(tester, '$uri&issuer=Tom');
+      expect(identical(encodedImageOf(tester), first), isFalse,
+          reason: 'a changed payload must be re-encoded');
+    });
+
+    testWidgets('does not repaint when nothing that shows has changed',
+        (tester) async {
+      await pumpCode(tester, uri);
+      final first = painterOf(tester);
+
+      await pumpCode(tester, uri);
+
+      // A fresh painter instance every build is expected; what must not happen
+      // is that instance claiming a repaint is due when the pixels are settled.
+      expect(painterOf(tester).shouldRepaint(first), isFalse);
+    });
+
+    testWidgets('repaints when the payload or the styling changes',
+        (tester) async {
+      await pumpCode(tester, uri);
+      final first = painterOf(tester);
+
+      await pumpCode(tester, '$uri&issuer=Tom');
+      expect(painterOf(tester).shouldRepaint(first), isTrue);
+
+      // The style clauses were unreachable while the first comparison was
+      // always true, so this pins that they now decide something.
+      await pumpCode(tester, '$uri&issuer=Tom');
+      final settled = painterOf(tester);
+      await pumpCode(tester, '$uri&issuer=Tom',
+          foreground: const Color(0xFF00FF00));
+      expect(painterOf(tester).shouldRepaint(settled), isTrue);
     });
   });
 }

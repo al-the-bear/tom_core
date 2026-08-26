@@ -32,7 +32,7 @@ reflection annotation that tags client 2FA adaptors.
 | `Tom2FAChallengePanelContext` | value class | What a challenge panel is given to render itself |
 | `TomTotp2FAClientMechanism` | `Tom2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'` |
 | `Tom2FATexts` | static keys + lookup | Every resource key this feature resolves, and the one helper that resolves them |
-| `TomQrCodeView` | `StatelessWidget` | A QR code painted from the pure-Dart `qr` encoder |
+| `TomQrCodeView` | `StatefulWidget` | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes |
 | `TomClient2FAAdaptor` | `const` annotation (`@tomReflector`) | Tags a class as a client 2FA adaptor for a given `type` |
 
 The division of labour is the point of the module. Everything about a
@@ -324,6 +324,23 @@ pure-Dart `qr` encoder plus a small `CustomPainter` brings none of it.
 It is sized by the caller rather than by intrinsic content: a QR code has no
 natural size, only a natural aspect, and the panel is the party that knows how
 much room it can spare.
+
+Encoding is the expensive part of this widget by a wide margin — a typical
+enrolment URI costs on the order of 2.6 ms, some 16 % of a 60 fps frame budget,
+because the encoder trials all eight mask patterns and scores each one. It
+depends on `data` alone, so the widget is stateful and encodes when `data`
+changes rather than on every build. That matters because the enrolment panel
+rebuilds for reasons of its own — every busy flag, every controller
+notification — and none of those change the code. A resize or a recolour does
+not re-encode either: `size`, `padding` and the two colours are applied at paint
+time.
+
+The painter's `shouldRepaint` compares the *payload*, not the encoded image.
+`QrImage` declares no `operator ==`, so comparing two of them is an identity
+test — which for a guard whose whole purpose is to notice that nothing changed
+would be the same as having no guard at all. The payload determines the modules
+(the correction level is fixed), so comparing it compares the rendering, and it
+stays correct regardless of how the encoded value happens to be cached.
 
 The widget never throws on its payload. Two values render an empty square of the
 requested size instead of a code:

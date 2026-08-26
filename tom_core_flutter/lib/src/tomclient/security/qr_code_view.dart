@@ -21,7 +21,14 @@ import 'package:qr/qr.dart';
 /// **Never throws on its payload.** A [data] that cannot be shown — empty, or
 /// past the capacity of the largest code — renders as an empty square of the
 /// requested [size] instead. See [data] for why that is the contract.
-class TomQrCodeView extends StatelessWidget {
+///
+/// Stateful only to hold the encoded code. Encoding is by far the expensive
+/// part of this widget — milliseconds, a double-digit percentage of a frame
+/// budget for a typical enrolment URI — and it depends on [data] alone, so it
+/// happens when [data] changes rather than on every build. A parent that
+/// rebuilds for its own reasons, which the enrolment panel does on every busy
+/// flag and every controller notification, costs nothing here.
+class TomQrCodeView extends StatefulWidget {
   /// Creates a QR view over [data].
   const TomQrCodeView({
     super.key,
@@ -72,18 +79,40 @@ class TomQrCodeView extends StatelessWidget {
   final String? semanticsLabel;
 
   @override
-  Widget build(BuildContext context) {
-    // Reserved rather than collapsed, so that whether the payload happened to
-    // encode does not also move the layout around the code.
-    final nothingToScan = SizedBox.square(dimension: size);
+  State<TomQrCodeView> createState() => _TomQrCodeViewState();
+}
 
+class _TomQrCodeViewState extends State<TomQrCodeView> {
+  /// The encoded payload, or null when there is nothing to paint.
+  ///
+  /// Null carries both reasons there can be nothing to paint — an empty
+  /// payload and one too large to encode — because they render identically and
+  /// nothing downstream needs to tell them apart.
+  QrImage? _code;
+
+  @override
+  void initState() {
+    super.initState();
+    _code = _encode(widget.data);
+  }
+
+  @override
+  void didUpdateWidget(TomQrCodeView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The payload is the only input the encoder sees; size, padding and the
+    // two colours are applied at paint time. So a theme change or a resize
+    // must not pay for a re-encode, and this deliberately does not check them.
+    if (widget.data != oldWidget.data) _code = _encode(widget.data);
+  }
+
+  /// Encodes [data], or returns null if it cannot be shown as a code.
+  static QrImage? _encode(String data) {
     // An empty payload would encode to a valid-but-meaningless code; showing
     // nothing is the honest rendering of "there is nothing to scan yet".
-    if (data.isEmpty) return nothingToScan;
+    if (data.isEmpty) return null;
 
-    final QrImage image;
     try {
-      image = QrImage(
+      return QrImage(
         QrCode.fromData(
           data: data,
           // Medium correction: the standard authenticator level. Higher levels
@@ -108,26 +137,35 @@ class TomQrCodeView extends StatelessWidget {
       // Degrades to the same rendering as an empty payload because the
       // enrolment panel shows the base32 secret beside the code: the user keeps
       // a complete path through enrolment, which is not true of a thrown build.
-      return nothingToScan;
+      return null;
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final code = _code;
+    // Reserved rather than collapsed, so that whether the payload happened to
+    // encode does not also move the layout around the code.
+    if (code == null) return SizedBox.square(dimension: widget.size);
 
     return SizedBox.square(
-      dimension: size,
+      dimension: widget.size,
       child: CustomPaint(
         painter: _QrPainter(
-          image: image,
-          padding: padding,
-          foreground: foreground ?? const Color(0xFF000000),
-          background: background ?? const Color(0xFFFFFFFF),
+          data: widget.data,
+          image: code,
+          padding: widget.padding,
+          foreground: widget.foreground ?? const Color(0xFF000000),
+          background: widget.background ?? const Color(0xFFFFFFFF),
         ),
         // The payload is not readable text, so announce the widget's *purpose*
         // instead — a screen-reader user needs the base32 fallback string the
         // enrolment panel shows beside this, not a transcription of the code.
-        child: semanticsLabel == null
+        child: widget.semanticsLabel == null
             ? null
             : Semantics(
                 image: true,
-                label: semanticsLabel,
+                label: widget.semanticsLabel,
                 child: const SizedBox.expand(),
               ),
       ),
@@ -138,11 +176,22 @@ class TomQrCodeView extends StatelessWidget {
 /// Paints a [QrImage]'s modules into the available square.
 class _QrPainter extends CustomPainter {
   _QrPainter({
+    required this.data,
     required this.image,
     required this.padding,
     required this.foreground,
     required this.background,
   });
+
+  /// The payload [image] was encoded from.
+  ///
+  /// Held only so [shouldRepaint] has something meaningful to compare. [QrImage]
+  /// declares no `operator ==`, so comparing two of them is an identity test and
+  /// would report every distinct instance as a change — which, for a guard whose
+  /// whole purpose is to notice that nothing changed, is the same as having no
+  /// guard at all. The payload is what determines the modules (the correction
+  /// level is fixed), so comparing it compares the rendering.
+  final String data;
 
   final QrImage image;
   final double padding;
@@ -185,7 +234,7 @@ class _QrPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_QrPainter old) =>
-      old.image != image ||
+      old.data != data ||
       old.padding != padding ||
       old.foreground != foreground ||
       old.background != background;

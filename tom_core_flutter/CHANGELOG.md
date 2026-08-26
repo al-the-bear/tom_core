@@ -90,6 +90,26 @@
 
 ### Fixed
 
+- **security: the QR view no longer re-encodes and repaints on every parent
+  rebuild (tcinc688).** `_QrPainter.shouldRepaint` opened with
+  `old.image != image`. `QrImage` declares no `operator ==`, so that was an
+  identity test — and `TomQrCodeView.build` allocated a fresh `QrImage` every
+  time it ran, so the clause was true on every rebuild and the guard could never
+  return `false`. The remaining clauses were unreachable.
+
+  The cost was not theoretical: a 114-byte enrolment URI encodes in **2.6 ms**
+  on a warm JIT on an M-series Mac — about **16 % of a 60 fps frame budget** —
+  because `QrImage` trials all eight mask patterns and scores each. The
+  enrolment panel rebuilds on every busy flag and every controller
+  notification, and paid that on each one, plus a full module repaint.
+
+  `TomQrCodeView` is now a `StatefulWidget` that encodes in `initState` and
+  re-encodes in `didUpdateWidget` only when `data` changed; `size`, `padding`
+  and the two colours are paint-time inputs and deliberately do not trigger a
+  re-encode. The painter holds the payload and compares *that* rather than the
+  image, so the guard stays correct independently of how the encoded value is
+  cached.
+
 - **security: an `otpauthUri` too long to encode blanks the QR code instead of
   throwing out of the enrolment panel (tcinc687).** `TomQrCodeView.build`
   guarded an empty payload and then encoded an unguarded one. A QR code has a
