@@ -17,6 +17,11 @@ import 'tom_action_transaction.dart';
 /// if (undoHistory.canUndo) undoHistory.undo();
 /// if (undoHistory.canRedo) undoHistory.redo();
 /// ```
+///
+/// The two directions are not symmetric: [undo] reverses the transaction's
+/// effects, while [redo] only moves it back onto the undo stack and re-applies
+/// nothing. See [redo] for why, and for what an action must do to support a
+/// real redo.
 class TomUndoHistory {
   /// Maximum number of transactions to keep.
   final int maxSize;
@@ -64,15 +69,29 @@ class TomUndoHistory {
     onChanged?.call();
   }
 
-  /// Redoes the most recently undone transaction.
+  /// Moves the most recently undone transaction back onto the undo stack.
   ///
-  /// Note: Redo re-executes by undoing the undo — the transaction's
-  /// entries are replayed. For complex redo scenarios, actions should
-  /// implement their own redo logic.
+  /// **Nothing is re-applied.** This restores the *stack position* only:
+  /// [canUndo], [undoCount] and [undoLabel] account for the transaction again
+  /// and [onChanged] fires, but no application state changes. Redoing an
+  /// increment does not increment anything.
+  ///
+  /// That follows from what a transaction records, rather than being an
+  /// omission here. [TomActionTransaction] stores `(action, undoState)` pairs,
+  /// which is exactly what `TomAction.undo(TUndo undoState)` takes — so [undo]
+  /// can call `undoAll()`. Going forward again means `TomAction.execute`, whose
+  /// signature also takes a `TContext`, and the context an action ran with is
+  /// never recorded. The history therefore does not hold the argument a real
+  /// redo would need, which is why there is no `redoAll()` for this to call.
+  ///
+  /// An action that needs true redo implements it itself, executing forward
+  /// with a context the application still has, rather than expecting the
+  /// history to reconstruct one.
   void redo() {
     if (!canRedo) return;
     final tx = _redoStack.removeLast();
-    // Re-push to undo stack (redo = "do it again")
+    // Re-push to the undo stack. Note this is the whole operation — the
+    // transaction is not touched, so nothing is re-executed.
     _undoStack.add(tx);
     onChanged?.call();
   }
@@ -119,7 +138,9 @@ class TomUndoAction extends TomSimpleAction<TomUndoRedoContext> {
   }
 }
 
-/// Action that redoes the most recently undone transaction.
+/// Action that drives [TomUndoHistory.redo] — which restores the stack
+/// position and re-applies nothing. See that method before binding this to a
+/// toolbar button labelled "Redo".
 class TomRedoAction extends TomSimpleAction<TomUndoRedoContext> {
   final TomUndoHistory history;
 

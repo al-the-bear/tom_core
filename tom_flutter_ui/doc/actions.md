@@ -135,6 +135,17 @@ and exposes `canUndo` / `canRedo` / `undoLabel` / `redoLabel` for driving UI.
 `TomUndoAction` and `TomRedoAction` are ready-made coordinator actions that wrap
 a history so undo/redo themselves become first-class, authorizable actions.
 
+**The two directions are not symmetric, and this is the one thing to know about
+the class.** `undo()` runs the transaction's `undoAll()` and genuinely reverses
+its effects. `redo()` only moves the transaction back onto the undo stack — it
+re-applies nothing, and application state does not change. The reason is what a
+transaction records: `(action, undoState)` pairs, which is precisely what
+`TomAction.undo(TUndo undoState)` needs. Running forward again would mean
+`TomAction.execute`, which also takes a `TContext`, and the context an action
+ran with is never recorded — so the history has no argument to re-execute with.
+An action that needs true redo implements it itself, executing forward with a
+context the application still holds.
+
 ## `TomActionTrigger` — wiring into widgets
 
 `TomActionTrigger` is the bridge from an action to a widget callback. Its

@@ -239,6 +239,34 @@ void main() {
       expect(history.undoCount, 2);
     });
 
+    test('redo restores the stack position and notifies, replaying nothing',
+        () {
+      var changes = 0;
+      final controller = TomActionController(controllerId: 'c');
+      final inc = IncrementAction(controller: controller);
+      final counter = Counter();
+      final history = TomUndoHistory(onChanged: () => changes++);
+
+      history.push(committedTx(inc, counter)); // value 1
+      history.undo();
+      expect(counter.value, 0, reason: 'undo reverses the increment');
+
+      final changesBeforeRedo = changes;
+      history.redo();
+
+      // The stack position is restored in full...
+      expect(history.canUndo, isTrue);
+      expect(history.undoCount, 1);
+      expect(history.undoLabel, 'inc');
+      expect(history.canRedo, isFalse);
+      // ...listeners are told...
+      expect(changes, changesBeforeRedo + 1);
+      // ...but the action is not run forward again. The transaction holds the
+      // undo state, never the context execute would need, so there is nothing
+      // to replay. See TomUndoHistory.redo.
+      expect(counter.value, 0);
+    });
+
     test('push clears the redo stack', () {
       final controller = TomActionController(controllerId: 'c');
       final inc = IncrementAction(controller: controller);

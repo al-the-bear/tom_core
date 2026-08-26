@@ -1185,6 +1185,17 @@ class TomUndoHistory {
 }
 ```
 
+> **The `redo()` body above is proposed, not shipped, and cannot be written as
+> given.** The shipped `TomUndoHistory.redo` moves the transaction back onto the
+> undo stack and re-applies nothing. A replaying redo needs `TomAction.execute`,
+> whose real signature is `execute(TContext context, TomActionTransaction tx)` —
+> and a transaction records `(action, undoState)` pairs, never the context an
+> action ran with, so there is no argument to call it with. Making redo replay
+> means recording contexts too, or letting each action implement its own redo.
+> The shipped constructor also takes `maxSize`, not `maxDepth`, and its `canUndo`
+> is not gated on `isUndoable`. See `TomUndoHistory.redo` and
+> [`actions.md`](actions.md) for the shipped contract.
+
 ### Conditional/chained actions within a transaction
 
 When an action triggers another action based on conditions, both belong to the same transaction:

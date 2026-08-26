@@ -112,8 +112,10 @@ void run() {
 
   // Example 4: undo reverses the most recent transaction. redo restores the
   // stack position only — TomUndoHistory.redo does NOT re-apply the action's
-  // value change (it has no recorded redo closure), so the counter is unchanged
-  // by redo. See decisions §51.
+  // value change, so the counter is unchanged by redo. The transaction records
+  // the undo state an action needs to reverse itself, never the context it
+  // would need to run forward again; see TomUndoHistory.redo for the full
+  // reasoning.
   history.undo();
   final afterUndo = counter.value; // 2 — second trigger reversed
   print('after undo: $afterUndo (canRedo: ${history.canRedo})');
