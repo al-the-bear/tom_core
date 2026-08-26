@@ -121,6 +121,7 @@ request where a throw would be wrong.
 | ------ | --------- | ----------- |
 | `fromPrincipal` | `static TomTextLocale? fromPrincipal(TomPrincipal principal)` | The locale to render for a principal, or `null` when it names none. The stored `language`/`country` wins over the device's `clientLanguage`/`clientCountry`. Read leniently — the record's country is client-supplied. |
 | `operator ==` / `hashCode` | — | Equality is by `tag`, so a locale can key a bundle map. |
+| `toString` | `String toString()` | The `tag`, not a debug rendering — so `'$locale'` in a log line or an exception message names the exact bundle key that was looked up. Listed where other summaries omit `toString`, because here the *value* is API: a reader who assumes `Instance of 'TomTextLocale'` either writes `.tag` at every interpolation or stops interpolating and loses the diagnostic. |
 
 ### TomLocalizedTextResources
 

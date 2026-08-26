@@ -3600,6 +3600,25 @@
 
 ### Documentation
 
+- **`TomTextLocale.toString` returns the bundle key, and the summary did not say
+  so (tcinc633).** The methods table listed `fromPrincipal` and the
+  `operator ==` / `hashCode` pair but not `toString`, which returns the tag. A
+  reader who assumes the default `Instance of 'TomTextLocale'` either writes
+  `.tag` at every interpolation or stops interpolating and loses the diagnostic —
+  and `'$locale'` in a log line or an exception message names the exact bundle
+  key that was looked up.
+
+  The omission turned out to be **policy, not oversight**: `_universalMembers` in
+  `api_reference_coverage_test.dart` exempts `toString`, `hashCode`,
+  `noSuchMethod` and `runtimeType` from being demanded of a class section, on the
+  argument that an override of one adds nothing a caller could not already assume
+  — thirty-five classes in this package override `toString` with no row. That
+  argument holds where the override is a debug rendering and fails here, because
+  the *value* is the API rather than the member. The row is added, the exemption's
+  dartdoc now records that it exempts rather than forbids and says which class is
+  the exception, and a test pins the row so that a later consistency pass against
+  `_universalMembers` does not delete it in good faith.
+
 - **Constructing a bundle set validates its keys, and nothing said so
   (tcinc631).** Both `TomLocalizedTextResources` constructors normalise keys
   through `TomTextLocale.parse`, which reaches the empty-language check — so a

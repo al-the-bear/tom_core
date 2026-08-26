@@ -1856,6 +1856,14 @@ final Map<String, Set<String>> _mentionsByType = () {
 /// and a caller who wants it does not go looking in a summary. Demanding them
 /// would have added a `toString` row to thirty-odd sections and taught the
 /// reader nothing.
+///
+/// Exempt from being *demanded*, not forbidden. The question the rule asks is
+/// about the member; for a class whose `toString` returns something a caller
+/// relies on, the answer changes, because then the *value* is the API and not
+/// the member. `TomTextLocale` is the one such class in the package — its tag is
+/// the bundle key, so `'$locale'` in a log names the key that was looked up —
+/// and `api_summary_resources.md` lists it for that reason. See the test below
+/// that pins the row, which exists because this comment reads as an absolute.
 const Set<String> _universalMembers = {
   'toString',
   'hashCode',
@@ -4678,6 +4686,31 @@ One: `TomKind`, documented beside the type that carries it.
             'complete: ${stale.join(', ')}. Drop the entry and let the module '
             'be checked, or the quarantine grows into a list of modules '
             'nobody checks for a reason nobody remembers.',
+      );
+    });
+
+    test('the one documented toString survives a consistency pass', () {
+      // `_universalMembers` exempts `toString` from being demanded, and thirty-
+      // five classes in this package override it without a row. `TomTextLocale`
+      // carries one anyway: its `toString` returns the tag, the tag is the
+      // bundle key, and so `'$locale'` in a log line or an exception message
+      // names the exact key that was looked up. That is a fact about the value
+      // rather than about the member, and there is no way to have it without
+      // reading the source — which is precisely what a summary is for.
+      //
+      // Pinned rather than left to the prose, because the exemption reads as an
+      // absolute and the row reads as an inconsistency. Somebody reconciling the
+      // summaries against `_universalMembers` would delete it in good faith, and
+      // the argument for keeping it would not be in the diff they were reading.
+      expect(
+        _summary('resources'),
+        contains('| `toString` | `String toString()` |'),
+        reason:
+            'api_summary_resources.md must keep the `toString` row on '
+            '`TomTextLocale`. It is not an oversight left over from a sweep: '
+            'the value is the bundle key, so a reader who assumes the default '
+            "rendering either spells `.tag` at every interpolation or stops "
+            'interpolating and loses the diagnostic.',
       );
     });
 
