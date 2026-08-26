@@ -1733,7 +1733,7 @@ if (auth == TomAuthState.read) {
 So a `TomAclBuilder`:
 
 - **`none`** on its path → the whole container (rows, fields, title) disappears without a layout slot.
-- **`read`** → the children render, but the theme's `TomReadOnlyStyle` dims / blocks interaction at the container boundary.
+- **`read`** → the children render, but the theme's `TomReadonlyStyle` (reached via `TomThemeScope.readonlyStyleOf`; default `AbsorbPointer` + `Opacity(0.6)`) dims / blocks interaction at the container boundary.
 - **`full` / `disabled`** → delegated to each child. `TomField`'s own `resolveEffectiveAuth` does the per-field narrowing via resource path + group + form + authorizer + UI-state controller (see [tom_ui_widgets_forms.md §19](tom_ui_widgets_forms.md)).
 
 Because the container check uses `<scopePath>.<id>`, you drive it by setting a rule in whatever `TomAuthorizationAdapter` the app installs — e.g. Demo B's `_DemoBAdapter` flips the form-level `demoB.customer` entry to narrow every descendant at once.

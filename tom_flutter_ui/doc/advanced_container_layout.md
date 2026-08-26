@@ -356,8 +356,8 @@ container acts on only two:
 | ----- | ----------------------- |
 | `none` | Elided — the component (or row) is replaced by a zero-size box, or removed outright under `hideUnauthorized`. |
 | `disabled` | **Nothing. It renders exactly as `full`** — full opacity, input live. |
-| `read` | Wrapped in `TomThemeScope.readonlyStyleOf(context).apply(...)`. |
-| `full` | Rendered as authored. |
+| `read` | Wrapped in `TomThemeScope.readonlyStyleOf(context).apply(child)` — by default `AbsorbPointer` + `Opacity(0.6)`: the value stays readable, dimmed, and inert. Applies at both levels — a `read` row styles all its components, a `read` component styles itself. |
+| `full` | Rendered as authored — no wrapper. |
 
 `TomAuthState.disabled` is intended to render a component visible but inert,
 and the container does not implement it — there is no `disabled` branch in the
@@ -367,6 +367,31 @@ dim and block input, but that wrapper keys on the group mode alone and never on
 the resolved authorization state. Until the container consults
 `TomAuthState.isInteractive`, express a "visible but not usable" grant as
 `none`, or through the component's group.
+
+The `read` treatment is the only authorization visual you can customise, and it
+belongs to the theme rather than to the container. `TomTheme.readonlyStyle`
+holds a [`TomReadonlyStyle`] — note the lowercase `o` — which the container
+reaches through `TomThemeScope.readonlyStyleOf(context)`. Put a `TomThemeScope`
+anywhere above the container to change it:
+
+```dart
+TomThemeScope(
+  theme: const TomTheme(
+    readonlyStyle: TomReadonlyStyle(
+      opacity: 1.0,                      // 1.0 disables dimming
+      colorOverlay: Color(0x33888888),   // tint via ColorFiltered instead
+    ),
+  ),
+  child: acl,
+)
+```
+
+`apply` wraps `ColorFiltered` → `Opacity` → `AbsorbPointer` outwards, omitting
+the opacity wrapper at `opacity: 1.0` and the `AbsorbPointer` at
+`absorbPointers: false`. Supplying a `builder` replaces the treatment
+altogether — useful when a widget family renders its own read-only form (a text
+field that swaps to a non-editable display, say) and should not be dimmed on
+top of it.
 
 ## Dependencies
 
