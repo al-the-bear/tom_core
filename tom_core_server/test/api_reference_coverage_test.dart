@@ -2379,6 +2379,68 @@ List<_NamedArtifact> _missingArtifacts(String file, List<String> lines) {
   return missing;
 }
 
+/// How a guide says a check needs a provisioned server.
+///
+/// Three spellings because all three are in use — `db`-tagged, tagged `db`, and
+/// the `db` tag — and normalising the prose to one of them would be tidying the
+/// symptom. What matters is catching the claim wherever it is made.
+final RegExp _serverTagClaim = RegExp(
+  r'`db`[- ]tagged|tagged `db`|the `db` tag',
+);
+
+/// The suite [path] names as a file in this package, or null if it is not one.
+///
+/// Null covers both halves of "not ours": a `.sh` script, and a path belonging
+/// to a sibling sample package. Neither is evidence about this package's tags,
+/// so neither should be read as an absent one.
+File? _resolveSuite(String path) {
+  if (!path.endsWith('_test.dart')) return null;
+  // `test/x_test.dart` as written, or the bare `x_test.dart` the prose uses
+  // once the surrounding sentence has already said where it lives.
+  for (final candidate in [File(path), File('test/${path.split('/').last}')]) {
+    if (candidate.existsSync()) return candidate;
+  }
+  return null;
+}
+
+/// Paragraphs of [guide] that claim a `db` tag while naming only suites that
+/// do not carry one.
+///
+/// The split between a connection-free suite and its `_db_test.dart` sibling is
+/// this package's convention, not an accident: it is why `testkit :test` runs
+/// green on a machine with no MariaDB. Prose that folds the pair back into one
+/// file — `framework_schema_test.dart` and "its `db`-tagged half" — costs a
+/// reader who wants to run the provisioned check the worst kind of time. They
+/// open the named file, look for a tag to enable, find none, and conclude the
+/// check is unimplemented. It is; it is under a filename they were told not to
+/// expect.
+///
+/// Checked per paragraph rather than per sentence because the claim and the
+/// filename routinely sit in different sentences, and a paragraph is the unit a
+/// reader takes the attribution from.
+List<String> _untaggedTagClaims(String guide, List<String> lines) {
+  final found = <String>[];
+  for (final paragraph in _paragraphsOf(lines, includeFenced: false)) {
+    final text = paragraph.map((i) => lines[i]).join(' ');
+    if (!_serverTagClaim.hasMatch(text)) continue;
+    final named = <String>[];
+    var tagged = false;
+    for (final match in _artifactReference.allMatches(text)) {
+      final suite = _resolveSuite(match.group(0)!);
+      if (suite == null) continue;
+      named.add(match.group(0)!);
+      if (suite.readAsStringSync().contains("@Tags(['db'])")) tagged = true;
+    }
+    // A paragraph naming nothing makes its claim about whatever the sentence
+    // before it named — a back-reference this cannot resolve, and
+    // `doc/scheduling.md` has one. Only an attribution that names something can
+    // be held against it.
+    if (named.isEmpty || tagged) continue;
+    found.add('$guide:${paragraph.first + 1} ${named.join(', ')}');
+  }
+  return found;
+}
+
 /// Every module guide, as (name, lines).
 List<(String, List<String>)> _guides() =>
     Directory('doc')
@@ -4714,6 +4776,91 @@ One: `TomKind`, documented beside the type that carries it.
         'db_migration_db_test.dart',
         'db_migration_test.dart',
       ]);
+    });
+  });
+
+  group('a guide that says a check needs a server names the tagged suite', () {
+    test('no guide hangs a `db`-tagged check off an untagged suite', () {
+      final misattributed = [
+        for (final (name, lines) in _guides())
+          ..._untaggedTagClaims(name, lines),
+      ];
+      expect(
+        misattributed,
+        isEmpty,
+        reason:
+            'Every suite here that needs a provisioned server is a '
+            '`_db_test.dart` sibling of a connection-free one — that split is '
+            'what lets `testkit :test` run green without MariaDB. A guide that '
+            'describes the provisioned check as a "half" of the file beside it '
+            'sends a reader looking for a tag inside a file that has none, and '
+            'the conclusion they reach is that the check does not exist. '
+            '`doc/scheduling.md` said exactly that about '
+            '`framework_schema_test.dart` for as long as the sentence stood, '
+            'while the file\'s own header said the opposite three lines from '
+            'the top.',
+      );
+    });
+
+    test('the shape that went wrong is what the sweep reports', () {
+      // `doc/scheduling.md` as it read before this guard. Checked in rather
+      // than mutated by hand, because a guard nobody has watched fail is a
+      // guard nobody knows works.
+      expect(
+        _untaggedTagClaims('synthetic.md', [
+          '`test/framework_schema_test.dart` covers the wider guarantee that',
+          'the three tables are declared once; its `db`-tagged half adds the',
+          'same comparison against a provisioned `information_schema`.',
+        ]),
+        ['synthetic.md:1 test/framework_schema_test.dart'],
+      );
+      // Naming the sibling that carries the tag is what settles it — and it is
+      // the *only* thing that does, so the fix cannot be a rewording.
+      expect(
+        _untaggedTagClaims('synthetic.md', [
+          '`test/framework_schema_test.dart` needs no connection. The',
+          '`db`-tagged `test/framework_schema_db_test.dart` is its sibling.',
+        ]),
+        isEmpty,
+      );
+      // A paragraph that names nothing is a back-reference, not a claim this
+      // can resolve; `doc/scheduling.md` has one and it must stay legal.
+      expect(
+        _untaggedTagClaims('synthetic.md', [
+          'It is tagged `db` and skips when no server is reachable.',
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('both sides of the sweep are read, not merely found absent', () {
+      // The assertion above is an emptiness, which is also what a regex that
+      // stopped matching produces. Pin the two facts it stands on: that the
+      // claim is still made in the guides, and that a tag is still legible in
+      // a suite.
+      final claiming = [
+        for (final (name, lines) in _guides())
+          for (final paragraph in _paragraphsOf(lines, includeFenced: false))
+            if (_serverTagClaim.hasMatch(
+              paragraph.map((i) => lines[i]).join(' '),
+            ))
+              name,
+      ];
+      expect(
+        claiming.length,
+        greaterThan(3),
+        reason:
+            'the guides do say which checks need a server; if this drops, the '
+            'sweep above is asserting that nothing matches nothing',
+      );
+      final tagged = _resolveSuite('test/framework_schema_db_test.dart');
+      expect(tagged, isNotNull);
+      expect(tagged!.readAsStringSync(), contains("@Tags(['db'])"));
+      // The other half of the pair, which is what makes the check a check.
+      expect(
+        _resolveSuite('test/framework_schema_test.dart')!.readAsStringSync(),
+        isNot(contains("@Tags(['db'])")),
+      );
     });
   });
 

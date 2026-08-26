@@ -529,8 +529,16 @@ schema invariants and instant encoding.
 `test/framework_schema_test.dart` covers the wider guarantee that the three
 tables are declared once — descriptors against the shipped migrations, against
 the reflected row types, and against every statement the stores issue (see
-[Schema Convergence](db_migration.md#schema-convergence)); its `db`-tagged half
-adds the same comparison against a provisioned `information_schema`.
+[Schema Convergence](db_migration.md#schema-convergence)). Those are all
+readings of the source tree, so that file needs no connection at all. The
+remaining comparison — a descriptor against a provisioned `information_schema`,
+the only one that can see a schema hand-edited after provisioning — needs a
+server, and so lives in a separate file, `test/framework_schema_db_test.dart`,
+which is what carries the `db` tag and the skip. The two are a pair, not two
+halves of one file: every suite here that needs a provisioned server is a `_db`
+sibling of a connection-free one, which is precisely why `testkit :test` runs
+green on a machine with no MariaDB. This unit is built the same way, as
+`test/scheduling_schema_test.dart` and `test/scheduling_db_test.dart`.
 
 `test/scheduling_cluster_test.dart` covers the six cluster questions that a real
 server cannot be asked to demonstrate on request:

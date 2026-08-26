@@ -2,6 +2,29 @@
 
 ### Documentation
 
+- **`doc/scheduling.md` attributed the provisioned schema comparison to the one
+  file that cannot make it (tcinc637).** The guide described
+  `test/framework_schema_test.dart` and then added that "its `db`-tagged half"
+  compares a descriptor against a live `information_schema`. That file has no
+  `db`-tagged half — no `@Tags`, no skip, and its own header says so three lines
+  from the top. The comparison lives in `test/framework_schema_db_test.dart`,
+  which is where the tag and the skip are.
+
+  The split is the package's convention rather than an accident: every suite
+  needing a provisioned server is a `_db_test.dart` sibling of a connection-free
+  one, which is exactly why `testkit :test` runs green on a machine with no
+  MariaDB. So the sentence described a structure the package deliberately does
+  not use, and the cost fell on the reader who wanted to *run* the provisioned
+  half — they opened the named file, looked for a tag to enable, found nothing
+  and concluded the check was unimplemented. Both guides that made the claim now
+  name the sibling: `doc/scheduling.md` describes the two as the connection-free
+  / provisioned pair, and `doc/file_storage.md` names the file it had only
+  called "the `db`-tagged variant".
+
+  `api_reference_coverage_test.dart` now requires any guide paragraph claiming a
+  `db` tag to name a suite that actually carries one, so the attribution cannot
+  drift back into prose nobody re-reads.
+
 - **`doc/scheduling.md` advertised three cluster questions for a suite that
   asks six (tcinc636).** The paragraph enumerated the ambiguous commit, the
   failure formula and opt-in recovery, and stopped — omitting the broken roll

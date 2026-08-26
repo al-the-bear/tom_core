@@ -345,8 +345,9 @@ are for.
 `test/framework_schema_test.dart` compares the shipped chain against the
 descriptors, along with the reflected row types and every statement the store
 issues — see [Schema Convergence](db_migration.md#schema-convergence) for what
-each of those comparisons rules out, and for the `db`-tagged variant that makes
-the same comparison against a provisioned `information_schema`. That check is
+each of those comparisons rules out, and `test/framework_schema_db_test.dart`
+for the `db`-tagged sibling that makes the same comparison against a provisioned
+`information_schema`. That check is
 about the schema a chain *arrives at*, so it is deliberately blind to how a
 statement is spelled; `test/file_storage_schema_test.dart` compares the spelling,
 which is what a deployment actually copies.
