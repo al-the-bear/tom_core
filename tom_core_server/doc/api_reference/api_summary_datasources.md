@@ -143,7 +143,7 @@ TomTypePersistenceInfo
 TomPreparedStatement<T>
     └── MariadbPreparedStatement<T>
 
-TomTransactionParticipant  (server)
+TomTransactionParticipant  (transactions)
     └── TomDataSource
             └── MariaDbDatasource
                     └── MariaDbXADatasource
@@ -156,7 +156,8 @@ TomFrameworkKey
 
 TomException  (kernel)
     └── TomDatasourceInitException
-TomServerException  (server)
+
+TomServerException  (little_things)
     ├── MariadbDatasourceException
     └── MariadbPreparedStatementException
 ```

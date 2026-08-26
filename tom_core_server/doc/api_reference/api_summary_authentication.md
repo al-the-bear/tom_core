@@ -182,7 +182,7 @@ deployment skips this silently; a configured one that fails raises
 ## Class Hierarchy
 
 ```
-TomServerException  (tom_core_server)
+TomServerException  (little_things)
     ├── TomLoginException
     ├── Tom2FAException
     ├── TomServerSelfLoginException

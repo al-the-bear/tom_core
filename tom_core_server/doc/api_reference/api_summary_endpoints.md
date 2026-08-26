@@ -114,7 +114,7 @@ TomEndpointBase<requestType, resultType>  (abstract)
 TomComponentReference
 TomTransactional
 
-TomServerException  (server module)
+TomServerException  (little_things)
     ├── TomEndpointHandlerException
     ├── TomEndpointPipelineException
     ├── TomFormBindingException

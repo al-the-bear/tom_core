@@ -42,7 +42,7 @@ completion.
 ## Class Hierarchy
 
 ```
-TomServerException  (server module)
+TomServerException  (little_things)
     └── TomTransactionException
 
 TomTransactionParticipant  (abstract)

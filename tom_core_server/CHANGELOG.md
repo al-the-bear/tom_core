@@ -2,6 +2,24 @@
 
 ### Documentation
 
+- **Seven class-hierarchy diagrams sent readers to a module that does not
+  document the type they were looking up (tcinc647).** A diagram shows a
+  borrowed type without describing it, and the parenthetical after the name is
+  the whole of its promise about where the description lives. Six diagrams
+  pointed at `little_things`, where `TomServerException` is declared
+  (`lib/src/tomserver/little_things/server_exception.dart`) and documented;
+  five pointed at `server`, which documents it nowhere, and one at
+  `tom_core_server`, which names no summary at all. A seventh sent a reader to
+  `server` for `TomTransactionParticipant`, which lives in `transactions`. The
+  cost is worse than an absent pointer: a reader who opens the named summary
+  and does not find the type cannot tell whether they misread the diagram or
+  the type is undocumented, and the true answer — documented, one module over —
+  is the one their evidence rules out. All seven now name the module whose
+  summary carries the entry, agreeing with the imports, the prose guides and
+  `api_summary_little_things.md`'s own "root of the server's exception
+  hierarchy" heading. `api_summary_datasources.md` also regained the blank line
+  between two root trees that had run together.
+
 - **`doc/server.md` listed three non-goals as pending work, and left the
   module's real limitations where no user could read them (tcinc643).** Its
   "Not Yet Implemented" section named diagnostics, monitoring and server-side
@@ -193,6 +211,21 @@
   gained the extension row its arbitration table was missing.
 
 ### Testing
+
+- **Nothing compared a hierarchy diagram's module pointer against the summary
+  it names (tcinc647).** Twelve diagrams named a module for
+  `TomServerException` and five disagreed with the other seven; the majority
+  were right by coincidence, because no check existed and a line that is
+  correct only until someone edits it is not an invariant.
+  `api_reference_coverage_test.dart` now sweeps every `Type  (module)` line in
+  the summaries' fenced diagrams and requires the named module's summary to
+  document that type. A parenthetical is read as a module claim exactly when
+  the word names a directory under `lib/src/tomserver`, so the rule is anchored
+  to the code: `(abstract)`, `(enum)` and `(kernel)` are excluded without a
+  list of kind-words anyone has to remember to extend, and a new module is
+  policed the day it is created. A second test pins what the sweep reaches —
+  it caught its own first draft skipping the deepest branch of every tree,
+  whose lines carry a `│` continuation bar the pattern had not allowed.
 
 - **Nothing ran the transactions example, and the read-only flag's nesting rule
   was documented but uncovered (tcinc646).** The example was the module's

@@ -2758,6 +2758,69 @@ const Set<String> _modulesWithoutReadme = {
   'resources',
 };
 
+/// A `Type  (module)` line in a summary's class-hierarchy diagram — a pointer
+/// telling a reader which module to open for a type the diagram shows but does
+/// not document.
+typedef _ModulePointer = ({String file, int line, String type, String module});
+
+/// Every hierarchy line whose parenthetical names a module of this package.
+///
+/// The parenthetical is overloaded, and deliberately so: it carries the kind
+/// (`(abstract)`, `(enum)`, `(mixin)`), the relationship (`(implements)`), the
+/// owning package for a foreign type (`(kernel)`), and — the case swept here —
+/// the module that documents a type borrowed from elsewhere in this package.
+/// They are told apart by the only test that cannot drift: whether the word
+/// names a directory under `lib/src/tomserver`. That anchors the rule to the
+/// code rather than to a list of kind-words someone has to remember to extend,
+/// so a new module is policed the day it is created and a new kind-word needs
+/// no change here at all.
+///
+/// A trailing `module` is stripped because `(server module)` and `(server)` are
+/// the same claim written two ways, and the diagrams use both.
+List<_ModulePointer> _modulePointers() {
+  final modules = _modules().toSet();
+  final pointers = <_ModulePointer>[];
+  for (final file
+      in Directory('doc/api_reference').listSync().whereType<File>()
+      // The index carries no hierarchy diagrams; every other summary may.
+      .where(
+        (entry) => entry.uri.pathSegments.last.startsWith('api_summary_'),
+      )) {
+    final name = file.uri.pathSegments.last;
+    final lines = file.readAsLinesSync();
+    var fenced = false;
+    for (var index = 0; index < lines.length; index++) {
+      final line = lines[index];
+      if (line.trimLeft().startsWith('```')) {
+        fenced = !fenced;
+        continue;
+      }
+      // Only inside a fence: the same shape in prose is an ordinary sentence.
+      if (!fenced) continue;
+      // The leading run allows the continuation bars a deep branch carries: a
+      // third-level entry is indented past a `│` before its own `└──` begins.
+      // Without them the sweep skips the most nested lines, which are the ones
+      // a reader is least able to place unaided.
+      final match = RegExp(
+        r'^[\s│]*(?:[├└]──\s*)?([A-Z]\w*)\s\s+\(([^)]+)\)\s*$',
+      ).firstMatch(line);
+      if (match == null) continue;
+      final module = match
+          .group(2)!
+          .trim()
+          .replaceFirst(RegExp(r'\s+module$'), '');
+      if (!modules.contains(module)) continue;
+      pointers.add((
+        file: name,
+        line: index + 1,
+        type: match.group(1)!,
+        module: module,
+      ));
+    }
+  }
+  return pointers;
+}
+
 void main() {
   group('doc/api_reference mirrors lib/src/tomserver', () {
     test('every module has an API summary', () {
@@ -4325,6 +4388,80 @@ One: `TomKind`, documented beside the type that carries it.
         claims.singleWhere((c) => c.type == 'TomSqlLeaseLock').extending,
         isTrue,
         reason: '`TomSqlLeaseLock` really does extend `TomLeaseLock`',
+      );
+    });
+  });
+
+  group('every hierarchy pointer names the module that documents the type', () {
+    test('the module a diagram sends a reader to has the type in it', () {
+      // A hierarchy diagram shows a borrowed type without describing it — that
+      // is the point of the parenthetical, which says where the description
+      // lives. So the pointer is the whole of the diagram's promise about that
+      // type, and a wrong one costs more than no pointer at all: a reader who
+      // opens the named summary and does not find the type cannot tell whether
+      // they misread the diagram or the type is undocumented, and the honest
+      // answer — it is documented, one module over — is the one conclusion the
+      // evidence rules out.
+      //
+      // `TomServerException` was the case in point. Six diagrams sent readers
+      // to `little_things`, where it is declared and documented; five sent them
+      // to `server`, which does not document it, and one to the package name,
+      // which names no summary at all. The majority being right is not a
+      // defence — nothing was comparing them, so the six were right by
+      // coincidence and the five stayed wrong for as long as nobody checked.
+      final offenders = <String>[];
+      for (final pointer in _modulePointers()) {
+        if (_summaryNames(pointer.module).contains(pointer.type)) continue;
+        offenders.add(
+          '${pointer.file}:${pointer.line} sends a reader to '
+          '${pointer.module} for ${pointer.type}, which '
+          'api_summary_${pointer.module}.md does not document',
+        );
+      }
+      expect(offenders, isEmpty);
+    });
+
+    test('the sweep reaches the pointers it is meant to police', () {
+      // The check above passes just as quietly on a regex that matches nothing,
+      // and the shape it reads is punctuation — two spaces, a bracket, a
+      // box-drawing character — every part of which a later reformat could
+      // change without anyone thinking of this test. So pin what it found: the
+      // cross-module pointers the diagrams actually carry today.
+      // Floors rather than equalities, because a new module documenting a
+      // borrowed type adds a pointer and that is not a regression. They sit at
+      // today's true counts so that losing even one — the way the continuation
+      // bar was lost, silently and only on the deepest branch — trips here.
+      final pointers = _modulePointers();
+      expect(pointers.length, greaterThanOrEqualTo(14));
+      expect(
+        pointers.where((p) => p.type == 'TomServerException').length,
+        greaterThanOrEqualTo(12),
+        reason: 'every module that subtypes it names where it is documented',
+      );
+      expect(
+        pointers.every((p) => p.module != 'server'),
+        isTrue,
+        reason:
+            '`TomServerException` lives in little_things; the server module '
+            'documents neither it nor `TomTransactionParticipant`',
+      );
+
+      // A parenthetical that names a kind rather than a module must stay out,
+      // or the check above starts demanding that `api_summary_abstract.md`
+      // exist. These are the two shapes that share the line's punctuation.
+      expect(pointers.any((p) => p.module == 'abstract'), isFalse);
+      expect(pointers.any((p) => p.module == 'enum'), isFalse);
+
+      // And a genuine cross-module pointer that was already right, so the sweep
+      // is shown accepting one rather than only rejecting.
+      expect(
+        pointers.any(
+          (p) =>
+              p.file == 'api_summary_datasources.md' &&
+              p.type == 'TomGroupedSelect' &&
+              p.module == 'object_persistence',
+        ),
+        isTrue,
       );
     });
   });

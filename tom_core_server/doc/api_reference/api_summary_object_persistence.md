@@ -104,7 +104,7 @@ any other while the payload moves as a stream through `TomFileRepository`.
 ## Class Hierarchy
 
 ```
-TomServerException  (server)
+TomServerException  (little_things)
     ├── TomAnnotationAnalyzerException
     ├── TomAnnotationAnalyzerSyntaxException
     ├── TomColumnAuthorizationException

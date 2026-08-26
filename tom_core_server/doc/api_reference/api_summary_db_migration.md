@@ -130,7 +130,7 @@ comparison
         └── TomSchemaDivergence
             └── TomSchemaDivergenceKind  (enum)
 
-TomServerException  (server)
+TomServerException  (little_things)
     ├── TomDbMigrationException
     └── MariadbMigrationException
 ```
