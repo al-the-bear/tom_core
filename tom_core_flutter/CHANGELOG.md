@@ -80,7 +80,46 @@
   records that the suite runs the example, so these are executed snippets rather
   than transcribed ones. No API change.
 
+- **little_things: the API summary types `autoLog` correctly, and the hierarchy
+  goes as deep as the classes do (tcinc654).** Both constructor blocks in
+  `doc/api_reference/api_summary_little_things.md` declared `bool? autoLog`,
+  which no call site can satisfy — the kernel's `TomException` declares
+  `this.autoLog = false`, so passing `null` is a compile error and the default
+  is inherited through the super-parameter chain. Both now read
+  `bool autoLog = false`. The `stack` parameter, filed alongside it as an
+  identical error, turned out to be **right as it stood**: a `super.x`
+  parameter takes its type from the *immediate* superclass constructor, and
+  although `TomBaseException` declares the field `Object?`, `TomException`'s
+  constructor already narrows it to `StackTrace?` — so `StackTrace?` is what a
+  client call site may pass, and changing it to `Object?` would have introduced
+  the error the report set out to remove. The summary now states that rule
+  where the two types meet, rather than leaving the next reader to re-derive
+  it. The class hierarchy, which stopped at `TomException (kernel)`, names
+  `TomBaseException (tom_basics)` above it — most of the inherited payload is
+  declared there — and the Overview records the three kernel arguments
+  (`requestUuid`, `uuid`, `serverCallError`) the client constructors do not
+  surface. The completion document's payload table types `stack` as `Object?`
+  and stays that way: it tabulates *fields*, and the field really is `Object?`;
+  it now says so explicitly so the two artefacts are not read as contradicting
+  each other again. No API change.
+
 ### Tests / Examples
+
+- **little_things (tcinc654).** Four tests in a new `the API summary mirrors
+  the little_things sources` group. These classes declare no types of their own
+  — every parameter arrives by `super.x` — so the summary's types are only
+  checkable against the kernel constructor they resolve to, and reading the
+  field declaration instead gives a wrong answer that looks right. The tests
+  therefore parse `TomException`'s constructor out of the kernel source
+  (resolving `this.x` forms to the field's type and default) and compare it
+  with the summary's blocks: one checks the parameter names and their order
+  against what `client_exceptions.dart` forwards, one checks every type and
+  default, one is a meta-test pinning that the kernel parser still reports
+  `StackTrace?`, `bool = false` and `Map<String, Object?>?` — without it the
+  first two pass just as happily on an empty parse — and one walks the
+  `extends` chain out of the sources and requires every base it finds to appear
+  in the hierarchy diagram. Each was mutation-checked by reintroducing the
+  defect it guards.
 
 - **configuration (tcinc653).** One test pinning the order `save()` writes:
   carried-forward undeclared keys first, then the overridden settings in
