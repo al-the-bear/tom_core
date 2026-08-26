@@ -70,6 +70,21 @@
 
 ### Documentation
 
+- **resources: the documented dependency is the provider the module actually
+  reads from (tcinc668).** `doc/resources.md` listed
+  `TomConfigResourceProvider` / `TomTextResourceProvider` as "the resource
+  providers the property reads from". Only the first is true: both of
+  `TomProperty`'s hooks resolve through `TomConfigResourceProvider
+  .getAppConfig()`, and the text provider is not referenced anywhere in the
+  module. The line was left behind when the module's general-purpose `t()`
+  translation lookup was removed, and it was not harmless — the two are
+  separate provider families with separate installation calls
+  (`setAppConfigProvider` vs `setAppResourceProvider`) over separate backing
+  maps, so a reader who followed it installed the text provider and found that
+  no property resolved at all. The section now names the config provider alone
+  and says which call populates it, and states explicitly that installing the
+  text family instead leaves every property unresolved.
+
 - **preferences: the store contract says who owns each list (tcinc667).**
   `TomDevicePreferenceStore` is the whole backend contract — two methods — and
   its dartdoc said what `read()` returns without saying whether the caller may
@@ -252,6 +267,29 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **a module document cannot name a dependency the module has no relationship
+  with (tcinc668).** A `## Dependencies` section is the one part of a module
+  document that describes the *code* rather than the behaviour, so it goes
+  stale in a way prose does not: delete the code that used a type and the line
+  naming it survives, still telling the reader to install it. A guard in
+  `documentation_links_test.dart` now walks all seven module documents and
+  requires every framework symbol named in the dependency *bullets* to appear
+  somewhere in that module.
+  Two boundaries are deliberate, and each was verified by breaking it. The
+  check reads the bullet list only, because the prose that follows describes
+  what an *application* must do and legitimately names types the module never
+  touches — widening it to the whole section reports `doc/preferences.md`'s
+  correct instruction to register a platform with `TomPlatformUtils` as a
+  defect. And it matches against the module's full text, dartdoc included,
+  rather than code alone, because a dependency is legitimately indirect:
+  `configuration` names `TomException` as the base its exceptions inherit,
+  `preferences` names `TomBearerAuthentication` for a token its channel
+  attaches and `TomRuntime` for the platform its bean locator selects on, and
+  none appears in an expression. The weaker claim — *referred to somewhere* —
+  is the one with no false positives, and it still catches the failure it
+  exists for, since a line left behind by deleted code is mentioned nowhere at
+  all. 268 → 269.
 
 - **the shared store suite runs against a backend that keeps its promises and
   nothing more, and cross-document anchors are checked (tcinc667).**

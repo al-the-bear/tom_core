@@ -337,9 +337,9 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 ## Status
 
 - **Version:** 1.2.1
-- **Tests:** 268 tests — 8 module suites, each of which also runs the example
+- **Tests:** 269 tests — 8 module suites, each of which also runs the example
   it documents, plus two guards over what the package says about itself: one
-  over the markdown — its links, its anchors and its tables of contents — and
-  one over the command each example tells a reader to run (all with
-  `flutter test`).
+  over the markdown — its links, its anchors, its tables of contents and the
+  dependencies each module document claims — and one over the command each
+  example tells a reader to run (all with `flutter test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

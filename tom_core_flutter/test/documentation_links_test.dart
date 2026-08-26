@@ -21,6 +21,12 @@ import 'package:path/path.dart' as p;
 /// added without its entry leaves the document advertising a shorter shape
 /// than it has, and every reader who navigates by the contents never reaches
 /// it. Both are guarded under `document structure` below.
+///
+/// The last group guards something that is not a link at all but fails the same
+/// way — a claim in a document that the code stopped supporting. A module
+/// document's `## Dependencies` section names types, and deleting the code that
+/// used one leaves the line naming it in place; `documented dependencies`
+/// requires every symbol listed there to be one the module actually refers to.
 void main() {
   /// Roots that hold documentation this package publishes or maintains.
   const roots = <String>[
@@ -355,6 +361,105 @@ void main() {
       );
       // Pins that the walk still finds the documents — the check above is
       // vacuous if `checked` is zero.
+      expect(checked, greaterThanOrEqualTo(7));
+    });
+  });
+
+  group('documented dependencies', () {
+    /// A framework symbol: a `TomFoo` type, or a `tomFoo` top-level marker or
+    /// instance. Package names (`tom_core_kernel`) are excluded by requiring a
+    /// capital after the prefix, and a member access matches only its type, so
+    /// `TomApiEndpoint.resolveUri` is checked as `TomApiEndpoint`.
+    final frameworkSymbol = RegExp(r'@?\b[Tt]om[A-Z][A-Za-z0-9]*\b');
+
+    /// The bullet list under [file]'s `## Dependencies`, or `''` if it has none.
+    ///
+    /// The list only — not the whole section. Prose after it describes what an
+    /// *application* must do, which legitimately names types the module itself
+    /// never touches: `doc/preferences.md` closes by telling the reader to
+    /// register a platform with `TomPlatformUtils`, which is true, load-bearing,
+    /// and reached three collaborators away.
+    String dependencyBulletsOf(String file) {
+      final prose = proseOf(file);
+      final start = RegExp(r'^## Dependencies$', multiLine: true)
+          .firstMatch(prose);
+      if (start == null) return '';
+      var rest = prose.substring(start.end);
+      final next = RegExp(r'^## ', multiLine: true).firstMatch(rest);
+      if (next != null) rest = rest.substring(0, next.start);
+
+      final bullets = <String>[];
+      var started = false;
+      for (final line in rest.split('\n')) {
+        if (line.startsWith('- ')) {
+          started = true;
+        } else if (started && !line.startsWith('  ') && line.trim().isNotEmpty) {
+          break; // the list ended and prose began
+        }
+        if (started) bullets.add(line);
+      }
+      return bullets.join('\n');
+    }
+
+    test('every type a module names as a dependency is one it actually refers '
+        'to', () {
+      // A Dependencies section is the one part of a module document that
+      // describes the *code* rather than the behaviour, so it goes stale in a
+      // way prose does not: delete the code that used a type and the line
+      // naming it survives, still telling the reader to go and install it. That
+      // is what happened here (tcinc668) — `doc/resources.md` kept listing
+      // `TomTextResourceProvider` after the translation lookup that used it was
+      // removed, and because the text and config providers are separate
+      // families with separate installation calls, a reader who followed it
+      // installed the wrong one and found that no property resolved.
+      //
+      // The check is deliberately weak: *referred to somewhere in the module*,
+      // dartdoc included, not "used in code". A dependency is legitimately
+      // indirect — `configuration` names `TomException` as the base its
+      // exceptions inherit, `preferences` names `TomBearerAuthentication` for a
+      // token its channel attaches and `TomRuntime` for the platform its bean
+      // locator selects on. None appears in an expression; all three are real,
+      // and a stricter check would report correct documentation as broken. What
+      // no genuine dependency does is go entirely unmentioned, in code and in
+      // prose alike — which is exactly what a line left behind by deleted code
+      // looks like.
+      final unrelated = <String>[];
+      var checked = 0;
+      for (final file in markdownFiles()) {
+        if (p.dirname(file) != 'doc') continue;
+        final module = p.join(
+          'lib', 'src', 'tomclient', p.basenameWithoutExtension(file),
+        );
+        if (!Directory(module).existsSync()) continue;
+        final bullets = dependencyBulletsOf(file);
+        if (bullets.isEmpty) continue;
+        checked++;
+
+        final source = Directory(module)
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart'))
+            .map((f) => f.readAsStringSync())
+            .join('\n');
+
+        final named = <String>{};
+        for (final span in inlineCode.allMatches(bullets)) {
+          named.addAll(frameworkSymbol.allMatches(span[0]!).map((m) => m[0]!));
+        }
+        for (final symbol in named) {
+          if (!source.contains(symbol.replaceFirst('@', ''))) {
+            unrelated.add('$file: names `$symbol`, absent from $module/');
+          }
+        }
+      }
+      expect(
+        unrelated,
+        isEmpty,
+        reason: 'These documents list a dependency the module has no '
+            'relationship with, so a reader who acts on the line acts on '
+            'nothing:\n${unrelated.join('\n')}',
+      );
+      // Vacuous if the walk stops finding module documents or their sections.
       expect(checked, greaterThanOrEqualTo(7));
     });
   });

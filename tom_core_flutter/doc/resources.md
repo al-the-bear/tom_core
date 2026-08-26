@@ -86,5 +86,10 @@ surface.
 
 ## Dependencies
 
-- **`tom_core_kernel`**: `TomConfigResourceProvider` /
-  `TomTextResourceProvider`, the resource providers the property reads from.
+- **`tom_core_kernel`**: `TomConfigResourceProvider`, the resource provider
+  every property reads from — both hooks resolve through its `getAppConfig()`.
+  It is populated by `setAppConfigProvider`, which is the call an application
+  must make before constructing any property. The *text* provider family
+  (`setAppResourceProvider`) is a separate installation with its own backing
+  map and is not consulted here, so installing it instead leaves every property
+  unresolved.
