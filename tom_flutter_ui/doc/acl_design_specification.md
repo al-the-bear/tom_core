@@ -4,7 +4,21 @@
 
 **Package:** `tom_flutter_ui`  
 **Class:** `Acl` (widget) / `AclBuilder` (fluent builder)  
-**Last updated:** 2026-03-14
+**Last updated:** 2026-08-27
+
+## What this document is, and what to read instead
+
+ACL is documented at two levels, and this is the deeper one.
+
+- **[advanced_container_layout.md](advanced_container_layout.md) — the module reference.** The public API of `lib/src/advanced_container_layout/` in isolation: what each type is, what each entry point does, and how to call it. Start there if you want to *use* ACL.
+- **This document — the design specification.** *Why* the engine behaves as it does: the coordinate conventions, the three-phase row-sizing algorithm, the convergence loop, the precedence rules between defaults, rows and components, and the reasoning behind each. Read it when the module reference tells you *what* happens and you need to know why, or when you are changing the engine rather than calling it.
+
+The split is the package-wide convention — see [README.md](README.md), which registers every subsystem under both headings.
+
+Two consequences worth stating up front, because both look like mistakes:
+
+- **The section numbering has gaps at 19 and 22.** Those sections recorded superseded design and were deleted. They were not renumbered away, because nineteen `§NN` citations in `lib/` resolve by number, and renumbering would silently redirect every one of them. `test/advanced_container_layout/acl_shipped_text_test.dart` pins those citations, and pins this document's internal cross-references against its own headings.
+- **§31 documents `TomAclBuilder`, which is not part of this module.** It lives in `widget_base/`, `forms/` and `widgets/containers/acl/`, and wraps ACL with element providers, authorization and resources. It is specified here rather than in the module reference precisely because it spans modules — which is what a design specification is for.
 
 ---
 
@@ -130,9 +144,11 @@ The builder provides five `setAcl*` methods that establish defaults applied to e
 
 Adds or removes `AclFlags.expandX` in the default flags register. When `true`, every subsequent `append()` call automatically receives `expandX` — equivalent to calling `.expandX()` after each append. Individual components can still opt out via `clearAttr(AclFlags.expandX)`.
 
-### `setAclDefaultAppendGap(int pixels)`
+### `setAclDefaultAppendGap(double gap, [List<(double, double)> gapBpOverrides = const []])`
 
-Sets a fixed horizontal gap (in pixels) inserted before each appended component. This is a convenience for the common pattern of calling `.append(widget, dist: 16)` on every field. The default applies to **all** components in the row, including the first. The default only takes effect when the individual `append()` call specifies `dist: 0` (the default). An explicit `dist` always wins. The built-in gap is **8**; pass 0 to disable it.
+Sets a horizontal gap (in pixels) inserted before each appended component. This is a convenience for the common pattern of calling `.append(widget, dist: 16)` on every field. The default applies to **all** components in the row, including the first. The default only takes effect when the individual `append()` call specifies `dist: 0` (the default). An explicit `dist` always wins. The built-in gap is **8**; pass 0 to disable it.
+
+`gapBpOverrides` makes that gap responsive: it is a list of `(minWidth, gap)` pairs, and at render time the pair with the highest `minWidth` that is still `<= availableWidth` wins. Spacing and row height are the two things that usually have to give when a form is squeezed, so both carry this override list — `setAclDefaultRowHeight`, `setRowHeight` and `newRow` take the same shape with `(minWidth, height?)` pairs — and both can therefore be made responsive without declaring a whole layout variant (§27).
 
 ### `setAclDefaultRowGap(int pixels)`
 
@@ -158,18 +174,22 @@ The two **gap** setters do not, and the difference is deliberate: a gap of 0 is 
 
 ### Example
 
+Note the chained `.` rather than a cascade `..`: every builder method returns the
+builder, so a cascade works too — but a cascade evaluates to the *builder*, and
+`build()` is the one call whose return value you actually want. `final acl = AclBuilder()..build();` types `acl` as `AclBuilder`, not `Acl`.
+
 ```dart
-final acl = AclBuilder()
-  ..setAclExpandXDefault(true)              // all fields expand
-  ..setAclDefaultAppendGap(16)              // 16 px before each field
-  ..setAclDefaultRowGap(12)                 // 12 px between rows
-  ..setAclDefaultUnknownPreferredSize(200)  // wider default than 150
-  ..append(nameField)                       // expandX, 16 px gap (auto)
-  ..append(industryField)                   // expandX, 16 px gap (auto)
-  ..newRow()                                // 12 px gap (auto)
-  ..append(emailField)
-  ..append(phoneField, dist: 24)            // explicit 24 px overrides default 16
-  ..build();
+final Acl acl = AclBuilder()
+    .setAclExpandXDefault(true)              // all fields expand
+    .setAclDefaultAppendGap(16)              // 16 px before each field
+    .setAclDefaultRowGap(12)                 // 12 px between rows
+    .setAclDefaultUnknownPreferredSize(200)  // wider default than 150
+    .append(nameField)                       // expandX, 16 px gap (auto)
+    .append(industryField)                   // expandX, 16 px gap (auto)
+    .newRow()                                // 12 px gap (auto)
+    .append(emailField)
+    .append(phoneField, dist: 24)            // explicit 24 px overrides default 16
+    .build();
 ```
 
 ---
@@ -442,15 +462,32 @@ All accept `gap: double` (default 0).
 
 ## 11. Row Cross-Alignment (per-component vertical baseline)
 
-When `alignYToKey` is **not** set, a component's vertical position within the row is controlled by its `rowCrossAlignment`:
+When `alignYToKey` is **not** set, a component's vertical position within the row is controlled by its `rowCrossAlignment`. This is the standard Flutter Row cross-axis alignment applied per component, and it is settable at three scopes:
 
-| Method | Alignment |
-|---|---|
-| `alignTopInRow()` | top edge of row |
-| `alignMiddleInRow()` | vertically centred (default) |
-| `alignBottomInRow()` | bottom edge of row |
+| Scope | Method | Applies to |
+|---|---|---|
+| Component | `setVerticalAlignment(AclRowCrossAlignment align)` | the component currently being configured |
+| Row | `setRowVerticalAlignment(AclRowCrossAlignment align)` | the current row, and every component in it that has not set its own |
+| Container | `setAclDefaultRowVerticalAlignment(AclRowCrossAlignment alignment)` | every row that has not set its own |
 
-This is the standard Flutter Row cross-axis alignment applied per component.
+The row-level setter has three no-argument spellings for the common cases —
+`setRowAlignTop()`, `setRowAlignMiddle()` and `setRowAlignBottom()`, which
+forward to `AclRowCrossAlignment.top`, `.center` and `.bottom` respectively.
+(`AclRowCrossAlignment` names the middle value `center`; the convenience
+methods spell it `Middle`. §18 lists the enum.)
+
+**The default is `top`, not centre.** A row of form fields of unequal height
+reads as a row when their captions line up at the top; centring makes a tall
+field appear to float. Rows and components inherit downwards — a component with
+no alignment of its own takes the row's, and a row with none takes the
+container default — and both the row-level and container-level setters apply
+**retroactively** to rows and components already appended, so call order does
+not matter.
+
+`setVerticalAlignment` cannot be combined with an `alignY*` method on the same
+component: `alignY*` (§10) positions a component against another component's
+edge, which overrides row cross-alignment entirely. Attempting both throws
+`UnsupportedError` rather than silently letting one win.
 
 ---
 
@@ -608,17 +645,26 @@ Convenience constructors:
 
 ## 17. Complete `AclBuilder` Public API
 
+Every public method of `AclBuilder` and of the `AclBuilderExtensions`
+extension, with the signature it actually has.
+`test/advanced_container_layout/acl_spec_api_test.dart` pins this section
+against `lib/src/advanced_container_layout/acl_builder.dart`: a signature that
+drifts, or a method added to the builder and not listed here, fails that test.
+
 ### Constructor
 
 ```dart
 AclBuilder({
   String? title,
+  Widget? titleWidget,
   AclBorderStyle borderStyle = const AclBorderStyle.none(),
   AclBorderStyle? focusedBorderStyle,
   EdgeInsetsGeometry padding = EdgeInsets.zero,
   Color? backgroundColor,
   TextStyle? titleStyle,
   AclTitlePosition titlePosition = AclTitlePosition.topLeft,
+  AclTitleBorderAlign titleBorderAlign = AclTitleBorderAlign.bottom,
+  double titleVerticalOffset = 0.0,
 })
 ```
 
@@ -634,12 +680,23 @@ AclBuilder gap({double weight = 1})
 
 ### Row management
 
+`height` fixes the row height (null = intrinsic); `heightBpOverrides` is the
+usual list of `(minWidth, value)` pairs, widest match wins.
+
 ```dart
 // Start a new content row
-AclBuilder newRow({double dist = 0})
+AclBuilder newRow({
+  double dist = 0,
+  double? height,
+  List<(double, double?)> heightBpOverrides = const [],
+})
 
 // Insert an elastic vertical gap row; implicitly starts a new content row
-AclBuilder gapRow({double weight = 1})
+AclBuilder gapRow({double weight = 1, AclSeparator? separator, double minSize = 0})
+
+// Height of the current row / of every row that sets none of its own
+AclBuilder setRowHeight(double? height, [List<(double, double?)> heightBpOverrides = const []])
+AclBuilder setAclDefaultRowHeight(double? height, [List<(double, double?)> heightBpOverrides = const []])
 ```
 
 ### Container-level sizing
@@ -659,10 +716,13 @@ AclBuilder setAclScrollableY()   // switch vertical axis to scroll mode
 
 ### Per-component sizing
 
+Height is optional on all three size setters: omit it to leave the vertical
+dimension untouched, per the zero-means-untouched convention of §5b.
+
 ```dart
-AclBuilder setPSize(double width, double height)          // preferred
-AclBuilder setMSize(double width, double height)          // minimum
-AclBuilder setXSize(double width, double height)          // maximum
+AclBuilder setPSize(double width, [double height = 0])    // preferred
+AclBuilder setMSize(double width, [double height = 0])    // minimum
+AclBuilder setXSize(double width, [double height = 0])    // maximum
 AclBuilder setPWidthInChars(int chars, {double charWidth = 8, double height = 40})
 AclBuilder setMWidthInChars(int chars, {double charWidth = 8})
 AclBuilder setXWidthInChars(int chars, {double charWidth = 8})
@@ -681,18 +741,35 @@ AclBuilder expand()
 
 ### Per-component size references (dynamic, back-reference only)
 
+`setComp` is the general form the three shortcuts are written in terms of; it
+takes a raw `AclFlags.otherDimX` / `otherDimY` / `otherDim` mask.
+
 ```dart
 AclBuilder sameWidthAs(Object reference)
 AclBuilder sameHeightAs(Object reference)
 AclBuilder sameSize(Object reference)
+AclBuilder setComp(Object reference, int otherAttr)
 ```
 
-### Per-component row cross-alignment (mutually exclusive with alignYxx)
+### Vertical alignment within a row
+
+One axis, three scopes — component, row, builder — resolved innermost-first.
+Mutually exclusive with the `alignYxx` methods on the same component: setting
+both throws. See §11.
 
 ```dart
-AclBuilder alignTopInRow()
-AclBuilder alignMiddleInRow()
-AclBuilder alignBottomInRow()
+// This component only
+AclBuilder setVerticalAlignment(AclRowCrossAlignment align)
+
+// The current row
+AclBuilder setRowVerticalAlignment(AclRowCrossAlignment align)
+// via AclBuilderExtensions:
+AclBuilder setRowAlignTop()
+AclBuilder setRowAlignMiddle()
+AclBuilder setRowAlignBottom()
+
+// Every row that sets none of its own
+AclBuilder setAclDefaultRowVerticalAlignment(AclRowCrossAlignment alignment)
 ```
 
 ### Cross-row horizontal alignment (reference must be in a different row)
@@ -709,7 +786,7 @@ AclBuilder alignRightToCenter(Object reference, {double gap = 0})
 AclBuilder alignRightToRight(Object reference,  {double gap = 0})
 ```
 
-### Same-row vertical alignment (reference must be in same row; mutually exclusive with alignTopInRow etc.)
+### Same-row vertical alignment (reference must be in same row; mutually exclusive with setVerticalAlignment)
 
 ```dart
 AclBuilder alignTopToTop(Object reference,      {double gap = 0})
@@ -723,17 +800,22 @@ AclBuilder alignBottomToMiddle(Object reference,{double gap = 0})
 AclBuilder alignBottomToBottom(Object reference,{double gap = 0})
 ```
 
-### Row-level
+### Horizontal alignment of a whole row
+
+Horizontal placement is a row-level concern — there is no per-component form.
+*(Ignored for a row that contains any `gap()` slots: an elastic slot already
+decides where the slack goes.)*
 
 ```dart
-AclBuilder setRowAlignment(RowAlignment align)  // left | center | right
+AclBuilder setRowHorizontalAlignment(RowAlignment align)  // left | center | right
 // via AclBuilderExtensions:
 AclBuilder setRowAlignLeft()
 AclBuilder setRowAlignCenter()
 AclBuilder setRowAlignRight()
-```
 
-*(Ignored for a row that contains any `gap()` slots.)*
+// Every row that sets none of its own
+AclBuilder setAclDefaultRowHorizontalAlignment(RowAlignment alignment)
+```
 
 ### Container-level decoration
 
@@ -750,18 +832,25 @@ AclBuilder setAclPaddingLeft(double value)
 AclBuilder setAclPaddingRight(double value)
 AclBuilder setAclBackgroundColor(Color color)
 AclBuilder setAclTitle(String? title)
+AclBuilder setAclTitleWidget(Widget? widget)
 AclBuilder setAclTitleStyle(TextStyle style)
 AclBuilder setAclTitlePosition(AclTitlePosition position)
+AclBuilder setAclTitleBorderAlign(AclTitleBorderAlign align)
+AclBuilder setAclTitleVerticalOffset(double offset)
 ```
 
 ### Container-level component defaults
+
+See §5b for the semantics, including why the two gap setters read `0` as
+"off" while the two size setters read it as "leave untouched".
 
 ```dart
 // Enable/disable expandX for all subsequently appended components
 AclBuilder setAclExpandXDefault(bool enabled)
 
-// Default horizontal gap (pixels) before each appended component
-AclBuilder setAclDefaultAppendGap(int pixels)
+// Default horizontal gap before each appended component, with optional
+// (minWidth, gap) breakpoint overrides
+AclBuilder setAclDefaultAppendGap(double gap, [List<(double, double)> gapBpOverrides = const []])
 
 // Default vertical gap (pixels) before each new content row
 AclBuilder setAclDefaultRowGap(int pixels)
@@ -773,6 +862,65 @@ AclBuilder setAclDefaultUnknownMinimumSize(double width, [double height = 0])
 // Default preferred size for components without explicit setPSize/setPWidthInChars
 // Width = 0 keeps the built-in default (150); height = 0 leaves height unconstrained
 AclBuilder setAclDefaultUnknownPreferredSize(double width, [double height = 0])
+```
+
+### Identity, groups and visibility
+
+Covered in depth by §24 (ids), §25 (groups) and §26 (visibility control);
+listed here so this section stays a complete index of the builder surface.
+
+```dart
+// IDs — §24
+AclBuilder setAclId(String id)
+AclBuilder setRowId(String id)
+AclBuilder setId(String id)
+AclBuilder setAclIdScope(bool idScope)
+AclBuilder setRowIdScope(bool idScope)
+
+// Groups — §25
+AclBuilder setAclGroup(String name)
+AclBuilder setRowGroup(String name)
+AclBuilder startGroup(String name)
+AclBuilder endGroup()
+AclBuilder group(String name)
+
+// Visibility — §26
+AclBuilder setGroupVisibilityController(String groupName, AclGroupVisibilityController controller)
+```
+
+### Authorization-driven hiding
+
+Drops a component whose child evaluates to `TomAuthState.none` from the row at
+build time, rather than rendering it disabled. See §26b.
+
+```dart
+AclBuilder setAclDefaultHideUnauthorized(bool value)
+AclBuilder setHideUnauthorized(bool? value)   // null = fall back to the default
+```
+
+### Responsive layout
+
+Covered in depth by §27 (variants), §28 (row breakpoints), §29 (inline
+component variants) and §30 (layout direction).
+
+```dart
+AclBuilder addVariant(String name, {required double atWidth, required void Function(AclBuilder) builder})
+AclBuilder addRowBreakpoint({required double atWidth, double splitRowDist = 0})
+AclBuilder startVariant({
+  double? width,
+  double? height,
+  AclInputMode? input,
+  AclFormFactor? formFactor,
+  Orientation? orientation,
+  Set<TargetPlatform>? platforms,
+  bool? isWeb,
+  AclDensity? density,
+  TextDirection? textDirection,
+  double? minAccessibilityScale,
+  AclVariantDetector? detector,
+})
+AclBuilder endVariant()
+AclBuilder setAclDirection(AclDirection direction)
 ```
 
 ### Build
@@ -817,26 +965,6 @@ class AclSeparator {
 
 ---
 
-## 19. Removed API (this redesign)
-
-| Removed | Was |
-|---|---|
-| `addBelow(child, {vGap, hOffset})` | Place child overlaid below anchor via Transform |
-| `addAbove(child, {vGap, hOffset})` | Place child overlaid above anchor via Transform |
-| `addLeft(child, {hGap, vOffset})` | Place child overlaid left of anchor via Transform |
-| `addRight(child, {hGap, vOffset})` | Place child overlaid right of anchor via Transform |
-| `AclBuild(builder)` top-level function | Shorthand wrapper — use `AclBuilder().build()` directly |
-| `AclColumn(rowDefs)` top-level function | Quick-column helper — superseded by the fluent builder |
-| `AclRowDef` class | Data class used only by removed `AclColumn` |
-| `with3dEffect` on `AclBorderStyle` | Inset bevel painting |
-| `withShadow` on `AclBorderStyle` | Drop shadow |
-| `secondaryColor` on `AclBorderStyle` | Accent colour for removed effects |
-| `shadowColor` on `AclBorderStyle` | Shadow colour |
-
-The `addXxx` methods caused the "Sub leftward drift" class of bugs and are superseded by explicit cross-row `alignXxx` methods. The top-level `AclBuild`/`AclColumn` functions are unnecessary because `AclBuilder(...).build()` already returns the `Acl` widget directly.
-
----
-
 ## 20. Layout Architecture Diagram
 
 ```
@@ -871,9 +999,6 @@ AclBuilder.build()  →  Acl (StatefulWidget)
 
 ---
 
-
----
-
 ## 21. Nested Acl Usage
 
 An `Acl` can be nested inside another `Acl` (or any Flutter widget) like any other widget. When embedded via `append()`, the outer container treats it as an ordinary component using its `setAclPSize`/`setAclMSize`/`setAclXSize` values for fitting. The inner `Acl` layout runs independently.
@@ -882,73 +1007,6 @@ An `Acl` can be nested inside another `Acl` (or any Flutter widget) like any oth
 Outer Acl
   Row 0: [ Sidebar Acl (setAclPSize(200, double.infinity)) ]
          [ Content Acl (expandX) ]
-```
-
----
-
-## 22. AclWidget — Built-in Form Components (superseded — see Tom Forms Framework)
-
-> **Status (2026-04-18):** The form system described below is **superseded** by the **Tom Forms Framework** in `tom_flutter_ui/lib/src/forms/`. Actual form widgets are `TomField<T>` subclasses (`TomFormStringInput`, `TomFormStringDropdown`, …) that ship from that framework — see [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md) for the complete specification. `TomAclBuilder` (§31) is the ACL integration point: it hosts those widgets, drives container-level authorization and resource resolution, and is what every Phase 1 demo uses. The `AclWidget`/`AclTextField`/`AclDatePicker` catalogue below is **not implemented** and is retained only as historical design context for the ACL + form-widget split.
-
-### Overview
-
-`AclWidget` is the base class for a set of pre-built form components that ship as a separate layer on top of `AclBuilder`. They have built-in `PSize`/`MSize`/`XSize` defaults tuned for typical form use, removing the need for manual sizing calls, and they support all standard sizing and alignment methods.
-
-### TomClass Binding and Reactive State
-
-Each `AclWidget` subtype binds to a **TomClass subtype** field, connecting the component directly to the application's domain model. State changes propagate via the Tom reactive state system (observable fields). A shared **form buffer** sits between the component and the model: raw user input is held in the buffer until validation passes, after which it is committed to the model field. This ensures:
-
-- **No partial writes** to the model while the user is mid-edit
-- **Per-field validation** with immediate feedback (error text, border highlight)
-- **Cross-field validation** triggered on buffer commit
-- **Rollback** to the last committed value on cancel
-
-```dart
-// Conceptual binding
-AclTextField(
-  binding: vm.user.email,        // TomClass field (String)
-  validator: Validators.email,
-)
-AclDatePicker(
-  binding: vm.booking.startDate, // TomClass field (DateTime)
-  firstDate: DateTime.now(),
-)
-```
-
-### Component Catalogue
-
-| Component | TomClass type | Default PSize | Notes |
-|---|---|---|---|
-| `AclLabel(text)` | `String` (read-only) | intrinsic × 28 | Static or bound label |
-| `AclTextField(hint)` | `String` | 200 × 40, min w=80 | Single-line text input |
-| `AclButton(label)` | — (action) | 100 × 36, min w=60 | Triggers callback or command |
-| `AclCheckbox(label)` | `bool` | 28 × 28 | Toggle binding |
-| `AclDropdown(items)` | `T extends Enum\|Object` | 180 × 40, min w=80 | Typed selection list |
-| `AclDatePicker` | `DateTime` | 180 × 40 | Date-only picker |
-| `AclTimePicker` | `TimeOfDay` | 140 × 40 | Time-only picker |
-| `AclDateTimePicker` | `DateTime` | 220 × 40 | Combined date + time picker |
-| `AclDateRangePicker` | `DateTimeRange` | 280 × 40 | From-date / to-date pair |
-| `AclTimeRangePicker` | `TimeOfDayRange` | 220 × 40 | From-time / to-time pair |
-| `AclDateTimeRangePicker` | `DateTimeRange` | 320 × 40 | From-datetime / to-datetime pair |
-
-`TimeOfDayRange` and `DateTimeRange` are value types carrying `start` and `end` fields.
-
-### Usage Pattern
-
-```dart
-AclBuilder()
-  .append(AclLabel('Email'))
-  .append(AclTextField(hint: 'you@example.com', binding: vm.email))
-  .newRow()
-  .append(AclLabel('Start date'))
-  .append(AclDatePicker(binding: vm.startDate, firstDate: DateTime.now()))
-  .newRow()
-  .append(AclLabel('Window'))
-  .append(AclDateTimeRangePicker(binding: vm.window))
-  .newRow()
-  .gap()
-  .append(AclButton('Save', onTap: vm.save))
-  .build()
 ```
 
 ---
@@ -1826,132 +1884,5 @@ return TomAclBuilder<LoginScreenElements>(
       "dist": 16
     }
   ]
-}
-```
-
----
-
-## 25–31 Updated API Summary
-
-### New on `AclBuilder`
-
-```dart
-// IDs (§24)
-AclBuilder setAclId(String id)
-AclBuilder setRowId(String id)
-AclBuilder setId(String id)
-
-// Groups (§25)
-AclBuilder startGroup(String name)
-AclBuilder endGroup()
-AclBuilder group(String name)
-AclBuilder setAclGroup(String name)
-AclBuilder setRowGroup(String name)
-
-// Visibility (§26)
-AclBuilder setGroupVisibilityController(String groupName, AclGroupVisibilityController controller)
-
-// Responsive Variants (§27)
-AclBuilder addVariant(String name, {required double atWidth, required void Function(AclBuilder) builder})
-
-// Row Breakpoints (§28)
-AclBuilder addRowBreakpoint({required double atWidth, double splitRowDist = 0})
-
-// Inline Component Variants (§29)
-AclBuilder startVariant({
-  double? width,
-  double? height,
-  AclInputMode? input,
-  AclFormFactor? formFactor,
-  Orientation? orientation,
-  Set<TargetPlatform>? platforms,
-  bool? isWeb,
-  AclDensity? density,
-  TextDirection? textDirection,
-  double? minAccessibilityScale,
-  AclVariantDetector? detector,
-})
-AclBuilder endVariant()
-
-// Layout Direction (§30)
-AclBuilder setAclDirection(AclDirection direction)
-```
-
-### New Data Types
-
-```dart
-// §24 — Scope access
-class AclScope extends InheritedWidget {
-  final String? containerId;
-  final String? componentId;
-  final String? rowId;
-  final String? groupName;
-  final String? fullIdPath;
-  static AclScope? of(BuildContext context);
-}
-
-// §25 — Group membership
-// (stored as String? fields on AclComponent, AclRow, AclContainer)
-
-// §26 — Visibility
-enum AclGroupVisibilityMode { visible, hidden, disabled }
-abstract class AclGroupVisibilityController { ... }
-class AclBinaryVisibilityController extends AclGroupVisibilityController { ... }
-class AclCallbackVisibilityController<T> extends AclGroupVisibilityController { ... }
-
-// §27 — Variants
-class AclVariant {
-  final String name;
-  final double atWidth;
-  final List<AclRow> rows;
-}
-
-// §28 — Row Breakpoints
-class AclRowBreakpoint {
-  final double atWidth;
-  final int splitAfter;    // computed by builder from append position
-  final double splitRowDist;
-}
-
-// §29 — Device Context and Variant Detection
-enum AclInputMode { touch, pointer }
-enum AclFormFactor { phone, tablet, desktop }
-enum AclDensity { compact, comfortable, standard }
-
-typedef AclVariantDetector = bool Function(AclDeviceContext deviceContext, Acl? acl, BuildContext context);
-
-class AclDeviceContext {
-  final double width;
-  final double? height;
-  final AclInputMode inputMode;
-  final AclFormFactor formFactor;
-  final Orientation orientation;
-  final TargetPlatform platform;
-  final bool isWeb;
-  final AclDensity density;
-  final TextDirection textDirection;
-  final double accessibilityScale;
-  factory AclDeviceContext.of(BuildContext context, {required double width, double? height});
-}
-
-// §30 — Layout Direction
-enum AclDirection { ltr, rtl }
-
-// §31 — TomAclBuilder and Screen Element Provider
-abstract interface class TomScreenElementsProvider {}
-
-class TomAclBuilder<T extends TomScreenElementsProvider> {
-  final String id;
-  final T elementProvider;
-  TomAclBuilder({required this.id, required this.elementProvider, ...});
-  TomAclBuilder<T> append(Widget Function(T) selector, {double dist});
-  TomAclBuilder<T> appendForm(Widget Function(T) selector, {double dist});
-  TomAclBuilder<T> appendMasterDetail({required Widget Function(T) master, required Widget Function(T) detail});
-  TomAclBuilder<T> newRow({double dist});
-  TomAclBuilder<T> gap({double weight});
-  TomAclBuilder<T> gapRow({double weight});
-  // ... all AclBuilder methods delegated
-  Widget build();
-  Widget buildFromJson(Map<String, Object?> layoutJson);
 }
 ```

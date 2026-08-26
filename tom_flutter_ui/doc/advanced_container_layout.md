@@ -18,6 +18,15 @@ list and *generates* the rows for it under one of two rules — `wrap` or `grid`
 — then hands them to the same engine, so a flowed layout keeps ids, anchors,
 sizing and authorization hiding intact.
 
+> **Looking for *why*?** This document is the module reference: the public API
+> of `advanced_container_layout/` in isolation. The reasoning behind the engine
+> — coordinate conventions, the three-phase row-sizing algorithm, the
+> convergence loop, and the precedence rules between container defaults, rows
+> and components — is in
+> [acl_design_specification.md](acl_design_specification.md), whose §17 is the
+> complete `AclBuilder` surface. Both are registered in
+> [README.md](README.md), which explains the split.
+
 ## Table of Contents
 
 - [Overview](#overview)

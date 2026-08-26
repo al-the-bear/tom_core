@@ -1,18 +1,27 @@
-/// Pins that every `§NN` the unit ships names the document it points into and
-/// resolves to a heading that actually exists there.
+/// Pins that the text this unit ships stands on its own — that a reader who
+/// has only this package can resolve everything its comments point at.
 ///
-/// The unit used to carry these references bare — `(see §24)`, `See bug §74`.
-/// A bare section number is unfollowable from the rendered API docs, where the
-/// reader has neither the specification open nor any way to guess which of the
-/// workspace's several numbered documents was meant. `§74` was the proof: its
-/// only referent was a numbering internal to a workspace-only planning
-/// document, describing a bug that had since been fixed.
+/// Two ways of breaking that rule have already happened here, so both are
+/// checked rather than left to review; neither breaks a build, and neither is
+/// visible from inside the file that commits it.
 ///
-/// Nothing about a reference going stale breaks a build, so this is checked
-/// here rather than left to review. The three failure modes it catches are a
-/// reference that names no document, one that names a section the document
-/// does not have, and one that has drifted out of dartdoc into a plain
-/// comment where the qualification rule was never applied.
+/// **Section references.** The unit used to cite the specification bare —
+/// `(see §24)`, `See bug §74`. A bare section number is unfollowable from the
+/// rendered API docs, where the reader has neither the specification open nor
+/// any way to guess which of the workspace's several numbered documents was
+/// meant. `§74` was the proof: its only referent was a numbering internal to a
+/// workspace-only planning document, describing a bug since fixed. Caught
+/// here: a reference that names no document, one that names a section the
+/// document does not have, and one that has drifted out of dartdoc into a
+/// plain comment where the qualification rule was never applied.
+///
+/// **Cross-project vocabulary.** The unit also used to name parts of *other*
+/// projects' specifications — `CE-LO`, `D09 XDS`, `csexb2`. Those are ids in
+/// documents this package does not ship and does not depend on, so to a reader
+/// they are noise that looks like it should mean something. Every one of them
+/// stood next to a sentence that survived its removal, or stood for a fact
+/// that could simply be stated. Caught here: any of those tokens returning,
+/// anywhere in the unit or its tests.
 library;
 
 import 'dart:io';
@@ -28,6 +37,30 @@ const _sourcePaths = <String>[
 
 /// The one document this unit's section numbers may refer to.
 const _specPath = 'doc/acl_design_specification.md';
+
+/// The directories swept for cross-project vocabulary — the whole unit and its
+/// whole test suite, not just the two files that carry section references.
+/// Jargon spreads by copy-paste, and a test header is as public as a dartdoc
+/// once someone reads the suite to learn the feature.
+const _jargonRoots = <String>[
+  'lib/src/advanced_container_layout',
+  'test/advanced_container_layout',
+];
+
+/// Tokens that belong to another project's specification and cannot be
+/// resolved from this package.
+///
+/// Each entry pairs the pattern with what it actually denoted, because the
+/// point of the failure message is to tell whoever hits it what to write
+/// *instead* — the fix is always to state the fact the id stood for.
+const _jargon = <(String, String)>[
+  (r'\bCE-[A-Z]{2}\b', 'a CodeSpecs part id (CE-LO = Layout, CE-EL = Element)'),
+  // Deliberately the bare token and not `D\d\d XDS`: the document number is
+  // how it was written here, but the acronym alone is equally unresolvable and
+  // matching both would report one site twice.
+  (r'\bXDS\b', "tom_specs' Experience Design Specification, cited as `D09 XDS`"),
+  (r'\b[Cc][Ss][Ee][Xx][a-z]?\d+\b', 'a tom_specs quest todo id (csexb2)'),
+];
 
 /// A single `§NN` occurrence, together with the doc comment enclosing it.
 class _Reference {
@@ -108,6 +141,57 @@ Set<String> _specSections() {
   return headings.allMatches(source).map((m) => m.group(1)!).toSet();
 }
 
+/// The section list as a reader expects to see it — `5, 5b, 6, … 17, 18, 20`
+/// rather than the lexical `1, 10, 11, … 2, 20`, which is unreadable in a
+/// failure message precisely when someone is scanning it for a number.
+String _sectionList(Set<String> sections) {
+  final ordered = sections.toList()
+    ..sort((a, b) {
+      final na = int.parse(RegExp(r'\d+').firstMatch(a)!.group(0)!);
+      final nb = int.parse(RegExp(r'\d+').firstMatch(b)!.group(0)!);
+      return na != nb ? na.compareTo(nb) : a.compareTo(b);
+    });
+  return ordered.join(', ');
+}
+
+/// This guard, excluded from its own sweep — it necessarily quotes every
+/// token it forbids.
+const _selfName = 'acl_shipped_text_test.dart';
+
+/// Every `§NN` the specification uses to point at *itself*, with the line it
+/// sits on.
+///
+/// A reference qualified with another document's filename on the same line —
+/// `[tom_ui_widgets_forms.md §19](…)` — points outward and is excluded: this
+/// package cannot check another document's numbering, and the link already
+/// tells the reader where to look.
+List<({int line, String section, String text})> _internalSpecReferences() {
+  final lines = File(_specPath).readAsLinesSync();
+  final other = RegExp(r'\b([\w]+\.md)\b');
+  final found = <({int line, String section, String text})>[];
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    final pointsOutward = other
+        .allMatches(line)
+        .any((m) => !_specPath.endsWith(m.group(1)!));
+    if (pointsOutward) continue;
+    for (final m in RegExp(r'§(\d+[a-z]?)').allMatches(line)) {
+      found.add((line: i + 1, section: m.group(1)!, text: line.trim()));
+    }
+  }
+  return found;
+}
+
+/// Every `.dart` and `.md` file under [_jargonRoots], except this one.
+List<File> _guardedFiles() {
+  return _jargonRoots
+      .expand((root) => Directory(root).listSync(recursive: true))
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.dart') || f.path.endsWith('.md'))
+      .where((f) => !f.path.endsWith(_selfName))
+      .toList();
+}
+
 void main() {
   late List<_Reference> references;
   late Set<String> sections;
@@ -155,8 +239,35 @@ void main() {
           references.where((r) => !sections.contains(r.section)).toList();
       expect(dangling, isEmpty,
           reason: 'section references with no matching heading in $_specPath '
-              '(it defines ${(sections.toList()..sort()).join(', ')}):\n'
+              '(it defines ${_sectionList(sections)}):\n'
               '${dangling.map((r) => '  ${r.where}: §${r.section}').join('\n')}');
+    });
+  });
+
+  group('the specification\'s own cross-references resolve', () {
+    // Sections are deleted from this document as the design they recorded
+    // stops being current — §19 and §22 went that way, and the numbering
+    // gaps they left are deliberate (renumbering would invalidate every
+    // `§NN` the source cites by number). What deletion *can* break is a
+    // reference elsewhere in the document to the section that just left.
+    late List<({int line, String section, String text})> internal;
+
+    setUpAll(() => internal = _internalSpecReferences());
+
+    test('the document cross-references itself at all', () {
+      expect(internal.length, greaterThan(10),
+          reason: 'only ${internal.length} internal §NN references found in '
+              '$_specPath — the scan is probably broken');
+    });
+
+    test('every internal reference names a section that still exists', () {
+      final dangling =
+          internal.where((r) => !sections.contains(r.section)).toList();
+      expect(dangling, isEmpty,
+          reason: 'these point at sections $_specPath no longer defines — it '
+              'has ${_sectionList(sections)}:\n'
+              '${dangling.map((r) => '  line ${r.line}: §${r.section} — '
+                  '${r.text}').join('\n')}');
     });
   });
 
@@ -180,5 +291,40 @@ void main() {
       );
       expect(elision.section, '26b');
     });
+  });
+
+  group('no shipped text names another project\'s specification', () {
+    late List<File> guarded;
+
+    setUpAll(() => guarded = _guardedFiles());
+
+    // Same non-vacuity guard as above: a sweep that silently stopped finding
+    // files would report "no violations" forever.
+    test('the sweep actually reaches the unit and its tests', () {
+      final names = guarded.map((f) => f.uri.pathSegments.last).toSet();
+      expect(names, contains('acl_flow.dart'));
+      expect(names, contains('acl_flow_test.dart'));
+      expect(names, contains('acl_container.dart'));
+      expect(names, isNot(contains(_selfName)));
+    });
+
+    for (final (pattern, meaning) in _jargon) {
+      test('no occurrence of /$pattern/', () {
+        final regexp = RegExp(pattern);
+        final hits = <String>[];
+        for (final file in guarded) {
+          final lines = file.readAsLinesSync();
+          for (var i = 0; i < lines.length; i++) {
+            if (regexp.hasMatch(lines[i])) {
+              hits.add('  ${file.path}:${i + 1}: ${lines[i].trim()}');
+            }
+          }
+        }
+        expect(hits, isEmpty,
+            reason: 'this names $meaning, which a reader of this package '
+                'cannot resolve — state the fact it stood for instead:\n'
+                '${hits.join('\n')}');
+      });
+    }
   });
 }
