@@ -5734,7 +5734,13 @@ One: `TomKind`, documented beside the type that carries it.
         r'completion (steps|document)',
         caseSensitive: false,
       ),
-      'todo ids': RegExp(r'\btc(inc|open)b?\d+', caseSensitive: false),
+      // Every prefix the quest that wrote this package has issued todos under.
+      // `csexd` is here because it was missing: `cluster_verify.dart` carried
+      // "the four claims csexd15 asks for" through every green run of this
+      // group, since the pattern only knew the two prefixes in use when it was
+      // written. A marker that names its own vocabulary has to be widened when
+      // the vocabulary grows.
+      'todo ids': RegExp(r'\b(tc(inc|open)b?|csexd)\d+', caseSensitive: false),
       'internal bug numbers': RegExp(r'\bbug\s+§|\bRCK\d+'),
       // The indefinite article is the tell: an unnamed follow-up cannot be
       // followed, and naming it would breach the rule above anyway. Both roads
@@ -5744,6 +5750,7 @@ One: `TomKind`, documented beside the type that carries it.
 
     final surfaces = <String, List<String> Function()>{
       'the library sources': _libSources,
+      'the example sources': _exampleSources,
       'the hand-written documents': _handWrittenDocuments,
     };
 
@@ -5770,17 +5777,24 @@ One: `TomKind`, documented beside the type that carries it.
       });
     });
 
-    test('the sweep reaches both surfaces', () {
+    test('the sweep reaches every surface', () {
       // Every assertion above is an emptiness check, so a lister that stopped
       // finding files would report the package clean. Pinned by shape rather
       // than by count: a module added later must not have to edit a number.
       expect(_libSources(), isNotEmpty);
+      expect(_exampleSources(), isNotEmpty);
       expect(_handWrittenDocuments(), isNotEmpty);
       expect(
         _libSources(),
         contains(
           'lib/src/tomserver/object_persistence/persistence_annotations.dart',
         ),
+      );
+      // Nested, because `example/` is a tree and a non-recursive listing would
+      // find the top-level examples and quietly miss every module directory.
+      expect(
+        _exampleSources(),
+        contains('example/scheduling/cluster/cluster_verify.dart'),
       );
       expect(_handWrittenDocuments(), contains('doc/object_persistence.md'));
     });
@@ -5828,6 +5842,19 @@ One: `TomKind`, documented beside the type that carries it.
 /// Every Dart source under `lib/`, as paths from the package root.
 List<String> _libSources() => [
   for (final entry in Directory('lib').listSync(recursive: true))
+    if (entry is File && entry.path.endsWith('.dart')) entry.path,
+]..sort();
+
+/// Every Dart file under `example/`.
+///
+/// An example's dartdoc is read by exactly the reader the markers protect —
+/// someone outside the workspace, looking for the shortest complete thing that
+/// runs — and it is the surface most likely to have been written while the
+/// quest material was open on the other screen. `test/` is deliberately not
+/// here: its allowlists cite todo ids on purpose, because a skip that cannot
+/// name what would lift it is a skip nobody removes.
+List<String> _exampleSources() => [
+  for (final entry in Directory('example').listSync(recursive: true))
     if (entry is File && entry.path.endsWith('.dart')) entry.path,
 ]..sort();
 

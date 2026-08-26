@@ -590,7 +590,8 @@ class MariaDbDatasource implements TomDataSource {
   /// That matters far beyond aggregates. `DECIMAL` is the correct SQL type for
   /// money — exact where `DOUBLE` is approximate — so an ordinary business
   /// entity hits this on its first select. `SUM`/`AVG` over an integer column
-  /// return `NEWDECIMAL` too, which is how the gap was first found (CSEXD1).
+  /// return `NEWDECIMAL` too, so an aggregate reaches it even where no column
+  /// is declared `DECIMAL` at all.
   ///
   /// Reading the raw text and parsing it here loses nothing: the driver's own
   /// conversion starts from exactly this text (the whitelist is a gate, not a

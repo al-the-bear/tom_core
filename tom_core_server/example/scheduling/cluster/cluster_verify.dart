@@ -7,8 +7,8 @@
 /// ```
 ///
 /// Reads the nodes' JSON-line testimony from `<dir>/*.jsonl` and the database's
-/// final state, then makes the four claims csexd15 asks for. Prints one line per
-/// check and exits non-zero if any failed.
+/// final state, then makes the four claims this directory's `readme.md` sets
+/// out. Prints one line per check and exits non-zero if any failed.
 ///
 /// ## Why the judge is a third process
 ///

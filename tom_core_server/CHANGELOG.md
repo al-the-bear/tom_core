@@ -2,6 +2,23 @@
 
 ### Documentation
 
+- **Three shipped dartdoc comments pointed at workspace-internal material
+  (tcinc639).** `example/scheduling/cluster/cluster_verify.dart` described its
+  job as making "the four claims csexd15 asks for" — naming a todo instead of
+  naming the claims, to a reader who has no way to look it up;
+  `example/cache/cache_example.dart` said its nine steps corresponded to a
+  *completion document*, which is quest material and not shipped;
+  `lib/src/tomserver/datasources/mariadb_datasource.dart` closed its
+  `NEWDECIMAL` explanation with "which is how the gap was first found
+  (CSEXD1)". All three now state the thing itself.
+
+  The last two are the interesting ones. The example was never checked at all
+  (see below), but the `mariadb_datasource.dart` line sat on a surface the
+  guard *did* sweep, and passed every run: the marker's pattern knew only the
+  `tcinc`/`tcopen` prefixes, so an id from another prefix read as ordinary
+  prose. A guard that names its own vocabulary is only as wide as that
+  vocabulary.
+
 - **The cluster demo readme headed a five-row table "The three programs"
   (tcinc638).** `example/scheduling/cluster/readme.md` listed
   `cluster_provision.dart`, `cluster_node.dart`, `cluster_verify.dart`,
@@ -93,6 +110,19 @@
   gained the extension row its arbitration table was missing.
 
 ### Testing
+
+- **`example/` is now a swept surface for the shipped-text markers
+  (tcinc639).** The `shipped text stands on its own` group ran its five markers
+  over the library sources and the hand-written documents; an example's dartdoc
+  is read by exactly the reader those markers protect — someone outside the
+  workspace looking for the shortest complete thing that runs — and is the text
+  most likely to have been written with the quest material open alongside. It
+  found two defects on its first run. `test/` is deliberately excluded: its
+  allowlists cite todo ids on purpose, because a skip that cannot name what
+  would lift it is a skip nobody removes.
+
+  The `todo ids` marker also learned the `csexd` prefix, which is what turned
+  up the third defect — on the library surface it had been sweeping all along.
 
 - **A heading that counts is now checked against the table it heads
   (tcinc638).** `_miscountedTableHeadings` reads the number word out of every

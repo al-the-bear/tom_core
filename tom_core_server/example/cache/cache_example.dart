@@ -7,8 +7,7 @@
 /// verbatim to carry its own lifetime, stopping a cache's periodic timers, and
 /// replacing the current [TomCacheManager].
 ///
-/// Its nine steps correspond one-for-one, and in order, with the nine snippets
-/// in the "Using it" section of the module's completion document.
+/// Its nine steps run in that order, one per item.
 ///
 /// Run with `dart run example/cache/cache_example.dart`. Every step checks its
 /// own result and the run fails when one does not hold, so a green run is a
