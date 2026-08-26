@@ -94,6 +94,34 @@ Future<void> run() async {
   assert(!(await store.read()).containsKey('client.ui.darkMode'));
   assert(~config.darkMode == false); // back to the baseline
 
+  // Example 6: keys the running build does not declare are carried forward, so
+  // a build that has dropped a setting cannot destroy an install's value for it.
+  // The carry-forward is seeded by re-reading the store at save time, not from
+  // what load() saw — so a key another writer added in between survives too.
+  await store.write({
+    ...await store.read(),
+    'client.legacy.key': 'written-by-someone-else',
+  });
+  config.refreshSeconds | 15;
+  await config.save();
+  final carried = await store.read();
+  print('carried=$carried');
+  assert(carried['client.legacy.key'] == 'written-by-someone-else');
+  assert(carried['client.refresh.seconds'] == 15);
+
+  // Example 7: pointing the holder at a different store discards the snapshot
+  // of the old one but keeps the settings — a swap is not a load. So the first
+  // store's foreign keys are not deposited into the second, and the second's
+  // own are left alone. Call load() to adopt the new store's overrides.
+  final otherStore = TomMemoryClientConfigurationStore({'client.other': 'kept'});
+  config.store = otherStore;
+  await config.save();
+  final swapped = await otherStore.read();
+  print('other store=$swapped');
+  assert(!swapped.containsKey('client.legacy.key')); // not carried across
+  assert(swapped['client.other'] == 'kept'); // its own key survives
+  assert(swapped['client.refresh.seconds'] == 15); // this holder's override
+
   print('field notifications=$darkModeChanges holder notifications=$anyChanges');
 
   config.darkMode.removeObserver(fieldObserver);

@@ -222,9 +222,113 @@ void main() {
           {'client.fromNewerBuild': 'keep', 'client.retries': 9});
     });
 
+    test('carries forward a key written after this holder loaded', () async {
+      // Carry-forward seeds from the store it is about to write, not from the
+      // snapshot taken at load(). Otherwise the promise above holds only for
+      // keys that were already there when this holder started: a key another
+      // writer added in between is not "carried forward", it is deleted.
+      final store =
+          TomMemoryClientConfigurationStore({'client.fromNewerBuild': 'keep'});
+      final config = _TestConfiguration(store: store);
+      await config.load();
+      await store.write({
+        'client.fromNewerBuild': 'keep',
+        'client.writtenLater': 'also-keep',
+      });
+      config.retries | 9;
+      await config.save();
+      expect(await store.read(), {
+        'client.fromNewerBuild': 'keep',
+        'client.writtenLater': 'also-keep',
+        'client.retries': 9,
+      });
+    });
+
     test('throws when no store is wired', () {
       expect(_TestConfiguration().save,
           throwsConfigException('client_configuration.store.not_configured'));
+    });
+  });
+
+  group('swapping the store', () {
+    test('does not carry the previous store\'s keys into the new one',
+        () async {
+      // Carry-forward protects the keys of *a* store. A holder moved to a
+      // different store must not deposit the first store's keys in the second:
+      // they describe an install location this holder has been moved away from.
+      final oldStore =
+          TomMemoryClientConfigurationStore({'client.legacy': 'FROM-OLD-STORE'});
+      final config = _TestConfiguration(store: oldStore);
+      await config.load();
+
+      final newStore = TomMemoryClientConfigurationStore();
+      config.store = newStore;
+      config.retries | 9;
+      await config.save();
+
+      expect(await newStore.read(), {'client.retries': 9});
+    });
+
+    test('preserves the new store\'s own undeclared keys', () async {
+      // The distinction that decides the fix. Merely discarding the stale
+      // snapshot on swap would satisfy the test above while destroying the new
+      // store's foreign keys — trading a leak for a wipe, and breaking the
+      // carry-forward promise for the store actually being written. Only
+      // reading the store that is about to be written gets both right.
+      final oldStore =
+          TomMemoryClientConfigurationStore({'client.legacy': 'FROM-OLD-STORE'});
+      final config = _TestConfiguration(store: oldStore);
+      await config.load();
+
+      final newStore =
+          TomMemoryClientConfigurationStore({'client.ownKey': 'KEEP-ME'});
+      config.store = newStore;
+      config.retries | 9;
+      await config.save();
+
+      expect(await newStore.read(),
+          {'client.ownKey': 'KEEP-ME', 'client.retries': 9});
+    });
+
+    test('leaves the previous store untouched', () async {
+      final oldStore =
+          TomMemoryClientConfigurationStore({'client.legacy': 'FROM-OLD-STORE'});
+      final config = _TestConfiguration(store: oldStore);
+      await config.load();
+
+      config.store = TomMemoryClientConfigurationStore();
+      config.retries | 9;
+      await config.save();
+
+      expect(await oldStore.read(), {'client.legacy': 'FROM-OLD-STORE'},
+          reason: 'saving to the new store must not write to the old one');
+    });
+
+    test('a setting declared after the swap does not see the old override',
+        () async {
+      // The same stale snapshot reaches a second consumer: a setting declared
+      // late is initialised from it. After a swap that snapshot describes a
+      // store this holder no longer writes to, so the override it carries
+      // belongs to somebody else's install location.
+      final config = _LateConfiguration(
+          store: TomMemoryClientConfigurationStore({'client.retries': 9}));
+      await config.load();
+
+      config.store = TomMemoryClientConfigurationStore();
+      expect(~config.declareRetries(), 3,
+          reason: 'the new store has no override, so the baseline stands');
+    });
+
+    test('re-assigning the same store keeps the loaded snapshot', () async {
+      // Only a *change* of store invalidates the snapshot. Assigning the same
+      // instance again is a no-op, so a late declaration still finds its
+      // override.
+      final store = TomMemoryClientConfigurationStore({'client.retries': 9});
+      final config = _LateConfiguration(store: store);
+      await config.load();
+
+      config.store = store;
+      expect(~config.declareRetries(), 9);
     });
   });
 

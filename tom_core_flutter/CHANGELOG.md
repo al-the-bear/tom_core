@@ -1,6 +1,37 @@
 ## 1.2.1
 
+### Fixed
+
+- **configuration: `save()` carries forward from the live store, not from a
+  stale snapshot (tcinc649).** `TomBaseClientConfiguration.save()` seeded its
+  carry-forward — the keys the running build does not declare, which must
+  survive a write — from the in-memory `_persisted` snapshot taken at `load()`.
+  That snapshot describes one store at one moment, and the two ways it diverges
+  from reality both broke the promise it was meant to keep. A holder that loaded
+  from store A and was then pointed at store B deposited **A's** foreign keys
+  into B; and a key written by anyone else since `load()` was absent from the
+  snapshot, so it was deleted rather than carried forward — precisely the loss
+  the mechanism exists to prevent. `save()` now re-reads the store it is about
+  to write. The `store` setter additionally discards the snapshot on a real
+  change (re-assigning the same store is a no-op), so a setting declared after a
+  swap no longer picks up the old store's override; the settings themselves keep
+  their values, because a swap is not a load. This is the fix recommended under
+  `tcopen200`; the residual, now documented under Limitations, is that
+  read-then-write is not atomic, so two genuinely simultaneous saves can still
+  lose one another's last write undetected — the exposure is one store
+  round-trip rather than the whole session.
+
 ### Tests / Examples
+
+- **configuration (tcinc649).** Six tests: carry-forward of a key written by
+  another writer after `load()`, and a new `swapping the store` group covering
+  that the previous store's keys are not deposited into the new one, that the
+  new store's own undeclared keys survive (the case that rules out the narrow
+  "just clear the snapshot in the setter" fix), that the previous store is left
+  untouched, that a setting declared after the swap resolves to its baseline
+  rather than the old override, and that re-assigning the same store keeps the
+  loaded snapshot. The executable example gained the carry-forward and
+  store-swap steps.
 
 - **Full-surface scaling (RCF3).** Closed the remaining public-surface gaps in
   the per-module test and example coverage (no public API change; 39 → 47 test

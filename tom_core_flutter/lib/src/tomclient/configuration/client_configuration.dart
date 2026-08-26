@@ -205,11 +205,16 @@ abstract class TomBaseClientConfiguration extends TomObservable
 
   final Map<String, TomSetting> _settings = {};
 
-  /// The override map as last read from — or last written to — the store.
+  /// The override map as last read from — or last written to — [_store].
   ///
-  /// Kept so that (a) a setting declared *after* [load] still picks up its
-  /// persisted override, and (b) [save] can carry forward persisted keys this
-  /// build does not declare.
+  /// Kept so that a setting declared *after* [load] still picks up its
+  /// persisted override. It is a snapshot of **[_store] specifically**, so the
+  /// [store] setter discards it: a snapshot taken from one store says nothing
+  /// about another, and applying it to a setting would hand this install a
+  /// value belonging to a location it has been moved away from.
+  ///
+  /// [save] deliberately does *not* seed its carry-forward from here — see the
+  /// note on [save] for why it re-reads instead.
   Map<String, Object?> _persisted = {};
 
   /// Declares every setting of this holder.
@@ -221,7 +226,20 @@ abstract class TomBaseClientConfiguration extends TomObservable
   /// Where overrides are persisted. `null` until one is wired.
   TomClientConfigurationStore? get store => _store;
 
-  set store(TomClientConfigurationStore? value) => _store = value;
+  /// Points the holder at [value], discarding any snapshot of the old store.
+  ///
+  /// [_persisted] describes the store it was read from, so it does not survive
+  /// a change of store. Re-assigning the *same* store is a no-op, leaving a
+  /// snapshot taken by an earlier [load] intact.
+  ///
+  /// The settings themselves keep their current values: a swap is not a load,
+  /// and silently resetting an install's in-flight edits would be a surprise.
+  /// Call [load] to adopt the new store's overrides.
+  set store(TomClientConfigurationStore? value) {
+    if (identical(_store, value)) return;
+    _store = value;
+    _persisted = {};
+  }
 
   /// Every declared setting, keyed by its dotted configuration key.
   Map<String, TomSetting> get settings => Map.unmodifiable(_settings);
@@ -320,17 +338,33 @@ abstract class TomBaseClientConfiguration extends TomObservable
   /// the store if it was there before; see the class documentation for why
   /// storing the full value set would be wrong.
   ///
-  /// Persisted keys that this build does not declare are carried forward
+  /// Keys in the store that this build does not declare are carried forward
   /// untouched. A build that has dropped a setting — or an older build during
   /// a staged rollout — must not destroy an install's value for a key it
   /// simply does not know about.
+  ///
+  /// Carry-forward is seeded by **re-reading the store**, not from the snapshot
+  /// [load] took. The snapshot answers a different question — what this store
+  /// held when this holder started — and the two diverge in two ways that both
+  /// break the promise above. A holder pointed at a second store would deposit
+  /// the *first* store's keys into it while destroying the second's own. And a
+  /// key written by anyone else since this holder loaded — a second holder over
+  /// the same location, an external edit — is not in the snapshot, so it would
+  /// be deleted rather than carried forward, which is precisely the loss this
+  /// mechanism exists to prevent.
+  ///
+  /// Re-reading costs one store round-trip per save and narrows, but does not
+  /// close, the concurrent-write window: read-then-write is not atomic, so two
+  /// holders saving at genuinely the same moment can still lose one another's
+  /// last write. Nothing detects that; see the module documentation.
   ///
   /// Throws `client_configuration.store.not_configured` when no [store] is
   /// wired.
   Future<void> save() async {
     final store = _requireStore('save');
+    final live = await store.read();
     final overrides = <String, Object?>{
-      for (final entry in _persisted.entries)
+      for (final entry in live.entries)
         if (!_settings.containsKey(entry.key)) entry.key: entry.value,
     };
     for (final setting in _settings.values) {

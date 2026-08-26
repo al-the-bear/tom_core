@@ -125,7 +125,7 @@ behind behaviour that merely looks correct.
 | `stringSetting` / `intSetting` / `doubleSetting` / `boolSetting` | Declare a setting under a dotted key with a default |
 | `load()` | Adopt the persisted overrides (idempotent) |
 | `save()` | Persist the overrides, and only those |
-| `store` | The override store; may be wired after construction |
+| `store` | The override store; may be wired after construction. Changing it discards the loaded snapshot, keeps the settings — call `load()` to adopt the new store |
 | `settings` / `settingFor(key)` | The declared settings, addressable as a set |
 | `isOverridden(key)` / `hasOverrides` | Whether the install has changed something |
 | `reset(key)` / `resetAll()` | Drop overrides in memory (call `save()` to make it stick) |
@@ -181,9 +181,23 @@ so shipping a new default in an app update actually reaches installs that never
 touched that key. Persisting everything would freeze the shipped defaults at the
 moment of the first save.
 
-Persisted keys that the running build does not declare are **carried forward**
-untouched — a build that has dropped a setting, or an older build during a
-staged rollout, must not destroy an install's value for a key it does not know.
+Keys in the store that the running build does not declare are **carried
+forward** untouched — a build that has dropped a setting, or an older build
+during a staged rollout, must not destroy an install's value for a key it does
+not know.
+
+Carry-forward reads the store at `save()` rather than reusing what `load()`
+found, so it protects the keys of *the store being written* at the moment it is
+written. That matters in two cases the snapshot would get wrong: a holder that
+has been pointed at a **different store** must not deposit the first store's
+keys into the second (nor destroy the second's own), and a key written by
+**someone else since this holder loaded** must be carried forward rather than
+deleted — which is exactly the loss the mechanism exists to prevent.
+
+**Changing the store discards the loaded snapshot but not the settings.** A
+snapshot describes the store it came from, so assigning a different store drops
+it; the settings keep their current values, because a swap is not a load. Call
+`load()` to adopt the new store's overrides.
 
 **Saving is explicit.** There is no autosave: persisting is asynchronous, and a
 setter that silently starts an unawaited write gives the caller no way to know
@@ -215,6 +229,14 @@ text:
   when you asked.
 - **No web file store.** See `client_configuration.store.unsupported_platform`
   above; supply a browser-appropriate store explicitly.
+- **Concurrent saves are not atomic, and a collision is not detected.** `save()`
+  re-reads the store before writing it, so a holder preserves keys another
+  writer has added — but read-then-write is not a single operation. Two holders
+  saving at genuinely the same moment can still lose one another's last write,
+  and nothing notices: there is no version stamp in the persisted document and
+  `save()` cannot fail on a conflict. The exposure is one store round-trip
+  rather than the whole session, which makes sharing a location workable but not
+  safe against true simultaneity.
 
 ---
 
