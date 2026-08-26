@@ -90,6 +90,29 @@
 
 ### Fixed
 
+- **security: the TOTP `clientData` key list names `periodSeconds`, the fourth
+  key the server sends (tcinc686).** `TomTotp2FAClientMechanism`'s dartdoc said
+  it read "exactly the keys the server's `TomTotp2FAService` writes, and nothing
+  more", and then listed three. The server writes four: `secret`, `otpauthUri`,
+  `digits` and `periodSeconds` on an enrolment offer, `digits` and
+  `periodSeconds` on a challenge. The claim was false in both directions at once
+  — the server writes a key the table omitted, and the mechanism reads nothing
+  of it.
+
+  The same omission stood in `Tom2FAChallengePanelContext.clientData`'s dartdoc
+  ("For TOTP: `digits`"), which disagreed with its own sibling
+  `Tom2FAEnrolmentPanelContext`, whose dartdoc named all four for the same wire
+  payload. `doc/security.md` and `doc/api_reference/api_summary_security.md`
+  carried the three-key list too.
+
+  This was not cosmetic. `periodSeconds` is the value a validity countdown would
+  be driven from, and its absence from every documented key list is what made
+  the missing countdown look like a change that needs new wire data. The data is
+  already arriving on every challenge. All four documents now list the key,
+  distinguish written-by-the-server from read-by-the-panels, and say plainly
+  that the shipped panels discard it. No constant was added for it, because
+  nothing reads it yet.
+
 - **security: the module's documents describe the second-factor feature rather
   than only its annotation (tcinc685).** All three consumer-facing documents —
   `doc/security.md`, `doc/api_reference/api_summary_security.md` and the module

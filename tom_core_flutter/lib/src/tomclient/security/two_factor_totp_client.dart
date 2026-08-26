@@ -10,19 +10,28 @@
 /// payload at all). A framework that tried to own one enrolment UI for all
 /// three would own three special cases.
 ///
-/// ## What it reads from `clientData`
+/// ## What arrives in `clientData`, and what the panels read
 ///
-/// Exactly the keys the server's `TomTotp2FAService` writes, and nothing more:
+/// The server's `TomTotp2FAService` writes four keys — `secret`, `otpauthUri`,
+/// `digits` and `periodSeconds` on an enrolment offer, `digits` and
+/// `periodSeconds` on a challenge. The shipped panels read three of them:
 ///
-/// | key | used by | meaning |
-/// | --- | --- | --- |
-/// | `otpauthUri` | enrolment | the `otpauth://` URI, rendered as the QR code |
-/// | `secret` | enrolment | the base32 secret, shown grouped for manual entry |
-/// | `digits` | both | the code width the field is sized and validated to |
+/// | key | written on | read here | meaning |
+/// | --- | --- | --- | --- |
+/// | `otpauthUri` | enrolment | yes ([uriKey]) | the `otpauth://` URI, rendered as the QR code |
+/// | `secret` | enrolment | yes ([secretKey]) | the base32 secret, shown grouped for manual entry |
+/// | `digits` | both | yes ([digitsKey]) | the code width the field is sized and validated to |
+/// | `periodSeconds` | both | **no** | the length of one time step, in seconds |
 ///
-/// Every one is read defensively: the map crossed the wire, and a panel that
-/// threw on a missing key would turn a server-side omission into a crashed
-/// login screen rather than a field with a sensible default.
+/// `periodSeconds` arrives on every enrolment and every challenge and is
+/// currently dropped, because the one thing a client needs the period for is a
+/// countdown to the next rollover and these panels show none. It is named here
+/// rather than omitted so that nobody concludes from a three-key list that the
+/// value would have to be added to the wire first: it is already there.
+///
+/// The three that are read are read defensively — the map crossed the wire, and
+/// a panel that threw on a missing key would turn a server-side omission into a
+/// crashed login screen rather than a field with a sensible default.
 library;
 
 import 'package:flutter/services.dart';

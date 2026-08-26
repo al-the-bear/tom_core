@@ -263,9 +263,12 @@ The shipped authenticator-app mechanism, registered under `'totp'`. Ships
 registered rather than as a sample to copy, because TOTP is the mechanism every
 deployment has.
 
-Reads exactly the keys the server's TOTP service writes, every one defensively:
-the map crossed the wire, and a panel that threw on a missing key would turn a
-server-side omission into a crashed login screen.
+Reads three of the four `clientData` keys the server's TOTP service writes —
+`otpauthUri`, `secret` and `digits` — each defensively, because the map crossed
+the wire and a panel that threw on a missing key would turn a server-side
+omission into a crashed login screen. The fourth, `periodSeconds`, arrives on
+every enrolment and every challenge and is ignored; it has no constant below
+because nothing reads it.
 
 - **Extends:** `Tom2FAClientMechanism`
 

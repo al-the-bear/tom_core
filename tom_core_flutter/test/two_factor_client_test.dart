@@ -20,6 +20,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
+/// Every string the panel currently renders, in tree order.
+///
+/// Used to compare two renderings of one panel that differ only in a
+/// `clientData` key. Text is what a key the panel *started* reading would
+/// surface — a countdown adds no widget key of its own — so equality here is
+/// the assertion that the extra key changed nothing.
+List<String> _renderedText(WidgetTester tester) => tester
+    .widgetList<Text>(find.byType(Text))
+    .map((widget) => widget.data ?? widget.textSpan?.toPlainText() ?? '')
+    .toList();
+
 void main() {
   // A bundle covering every key the flow and the TOTP panels resolve, with
   // values distinct enough that a test asserting one cannot accidentally match
@@ -221,7 +232,8 @@ void main() {
   });
 
   group('the TOTP enrolment panel', () {
-    Tom2FAPendingEnrolment offer({int? digits}) => Tom2FAPendingEnrolment(
+    Tom2FAPendingEnrolment offer({int? digits, int? periodSeconds}) =>
+        Tom2FAPendingEnrolment(
           type: 'totp',
           offeredTypes: const ['totp'],
           expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
@@ -230,6 +242,7 @@ void main() {
             'otpauthUri': 'otpauth://totp/Tom:alice?secret=JBSWY3DPEHPK3PXP',
             'secret': 'JBSWY3DPEHPK3PXP',
             if (digits != null) 'digits': digits,
+            if (periodSeconds != null) 'periodSeconds': periodSeconds,
           },
         );
 
@@ -304,6 +317,22 @@ void main() {
       expect(find.byKey(const Key('tom-2fa-totp-qr')), findsOneWidget);
       expect(find.text('JBSW Y3DP'), findsOneWidget);
     });
+
+    testWidgets('ignores the periodSeconds the server sends', (tester) async {
+      // The server writes four keys and this panel reads three. Rendering the
+      // real four-key payload beside the three-key one pins the fourth as
+      // inert, so teaching the panel about the period has to fail here and
+      // take the documented key list with it.
+      await pump(tester, _FakeController(enrolment: offer(digits: 6)));
+      final withoutPeriod = _renderedText(tester);
+
+      await pump(
+        tester,
+        _FakeController(enrolment: offer(digits: 6, periodSeconds: 30)),
+      );
+
+      expect(_renderedText(tester), withoutPeriod);
+    });
   });
 
   group('the TOTP challenge panel', () {
@@ -330,6 +359,38 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(controller.answered, ['654321']);
+    });
+
+    testWidgets('sizes from digits and ignores periodSeconds', (tester) async {
+      // The challenge payload the server actually sends is exactly these two
+      // keys. The panel reads the first; the second is what a countdown would
+      // be driven from, and there is no countdown.
+      Tom2FAChallenge challenge({required bool withPeriod}) => Tom2FAChallenge(
+            type: 'totp',
+            expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+            clientData: {
+              'digits': 8,
+              if (withPeriod) 'periodSeconds': 30,
+            },
+          );
+
+      await pump(tester, _FakeController(challenge: challenge(
+        withPeriod: false,
+      )));
+      final withoutPeriod = _renderedText(tester);
+
+      await pump(tester, _FakeController(challenge: challenge(
+        withPeriod: true,
+      )));
+
+      final field = tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('tom-2fa-totp-challenge-code')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field.maxLength, 8);
+      expect(_renderedText(tester), withoutPeriod);
     });
 
     testWidgets('outranks an enrolment owed at the same time', (tester) async {

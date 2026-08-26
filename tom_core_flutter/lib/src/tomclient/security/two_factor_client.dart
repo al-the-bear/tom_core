@@ -61,7 +61,9 @@ class Tom2FAEnrolmentPanelContext {
   final String type;
 
   /// The mechanism's own enrolment payload, decoded from the interim token's
-  /// public claims. For TOTP: `secret`, `otpauthUri`, `digits`, `periodSeconds`.
+  /// public claims. For TOTP: `secret`, `otpauthUri`, `digits` and
+  /// `periodSeconds` — the shipped panel reads the first three and ignores the
+  /// last.
   final Map<String, Object?> clientData;
 
   /// The account label to show alongside the factor being set up — typically
@@ -97,7 +99,9 @@ class Tom2FAChallengePanelContext {
   /// The mechanism key this panel belongs to.
   final String type;
 
-  /// The mechanism's opaque challenge payload. For TOTP: `digits`.
+  /// The mechanism's opaque challenge payload. For TOTP: `digits` and
+  /// `periodSeconds` — the shipped panel reads the first and ignores the
+  /// second.
   final Map<String, Object?> clientData;
 
   /// A short, displayable hint the mechanism supplied (a masked phone number,

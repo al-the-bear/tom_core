@@ -218,18 +218,26 @@ panels are pluggable at all: enrolling one means *showing the user a secret* —
 as a QR code to scan and as a string to type when the camera is not an option —
 which looks nothing like enrolling an SMS factor or a WebAuthn one.
 
-`TomTotp2FAClientMechanism` reads exactly the keys the server's TOTP service
-writes, and nothing more:
+The server's TOTP service writes four `clientData` keys. `TomTotp2FAClientMechanism`
+reads three of them:
 
-| `clientData` key | Constant | Used by | Meaning |
-| ---------------- | -------- | ------- | ------- |
-| `otpauthUri` | `uriKey` | enrolment | The `otpauth://` URI, rendered as the QR code |
-| `secret` | `secretKey` | enrolment | The base32 secret, shown grouped for manual entry |
-| `digits` | `digitsKey` | both | The code width the field is sized and validated to |
+| `clientData` key | Constant | Written on | Read | Meaning |
+| ---------------- | -------- | ---------- | ---- | ------- |
+| `otpauthUri` | `uriKey` | enrolment | yes | The `otpauth://` URI, rendered as the QR code |
+| `secret` | `secretKey` | enrolment | yes | The base32 secret, shown grouped for manual entry |
+| `digits` | `digitsKey` | both | yes | The code width the field is sized and validated to |
+| `periodSeconds` | — | both | **no** | The length of one time step, in seconds |
 
-Every one is read defensively: the map crossed the wire, and a panel that threw
-on a missing key would turn a server-side omission into a crashed login screen
-rather than a field with a sensible default.
+`periodSeconds` arrives on every enrolment and every challenge and is currently
+dropped: the one thing a client needs the period for is a countdown to the next
+rollover, and the shipped panels show none. It is listed here rather than
+omitted so that nobody reads a three-key table and concludes the value would
+have to be added to the wire before a countdown could be built — it is already
+there. There is no constant for it because nothing reads it yet.
+
+The three that are read are read defensively: the map crossed the wire, and a
+panel that threw on a missing key would turn a server-side omission into a
+crashed login screen rather than a field with a sensible default.
 
 Two helpers are public and static:
 
