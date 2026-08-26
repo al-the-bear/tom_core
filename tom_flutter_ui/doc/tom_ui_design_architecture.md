@@ -1538,7 +1538,7 @@ Actions are the behavioral counterpart to widgets. An action is a named, authori
 | ID | Plain string (no prefix). Used for authorization, resources, and debug. |
 | Resources | Label, tooltip, icon, confirmation text — same adapter/fallback as widgets. |
 | Group | Optional — shared with widgets for collective visibility. |
-| Authorization | 3-state: `full` (triggerable), `disabled` (visible but greyed out), `none` (hidden). No `read` state — actions treat `read` as `disabled`. See [tom_action_integration.md](tom_action_integration.md) §3 for details. |
+| Authorization | 3-state: `full` (triggerable), `disabled` (visible but greyed out), `none` (hidden). No `read` state — actions treat `read` as `disabled`. See [actions.md](actions.md#authorization) for details. |
 
 ### Stateless requirement
 
@@ -2398,6 +2398,6 @@ graph TB
 
 - [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md) — Flutter SDK widget inventory with wrapping recommendations and type constraints
 - [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md) — Authoritative forms specification (field types, widgets, validation)
-- [tom_action_integration.md](tom_action_integration.md) — Action system integration (typed triggers, authorization, transactions)
+- [actions.md](actions.md) — Action system integration (typed triggers, authorization, transactions, undo)
 - [tom_observable_state_management.md](tom_observable_state_management.md) — Observable state system
 - [container_widget_resources_authorization.md](container_widget_resources_authorization.md) — Resource and authorization system

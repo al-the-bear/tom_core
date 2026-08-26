@@ -30,8 +30,7 @@ Located in `lib/src/` (keep in sync with the folder):
 | `widgets/` | The widget catalogue (fields, containers, etc.) |
 
 Existing design notes live in `doc/` (e.g. `form_authorizers.md`,
-`formstyle_migration.md`, `tom_action_integration.md`) — reuse them as module
-documentation sources.
+`formstyle_migration.md`) — reuse them as module documentation sources.
 
 ---
 

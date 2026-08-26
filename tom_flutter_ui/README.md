@@ -338,7 +338,7 @@ harnesses ([`tom_flutter_form_test`](../tom_flutter_form_test/README.md),
 
 Per-module guides live in [`doc/`](doc):
 [`widget_base.md`](doc/widget_base.md), [`theme.md`](doc/theme.md),
-[`actions.md`](doc/actions.md) (+ [`tom_action_integration.md`](doc/tom_action_integration.md)),
+[`actions.md`](doc/actions.md),
 [`resource_auth.md`](doc/resource_auth.md), [`forms.md`](doc/forms.md)
 (+ [`form_authorizers.md`](doc/form_authorizers.md),
 [`forms_file_fields.md`](doc/forms_file_fields.md),

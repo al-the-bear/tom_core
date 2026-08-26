@@ -588,4 +588,4 @@ Custom widgets that don't wrap Flutter SDK classes. Form-related custom widgets 
 
 - [tom_ui_design_architecture.md](tom_ui_design_architecture.md) — Full UI architecture (wrapping patterns, families, scope system)
 - [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md) — Form widgets specification (custom, not wrapped)
-- [tom_action_integration.md](tom_action_integration.md) — Action system and button authorization
+- [actions.md](actions.md) — Action system and button authorization

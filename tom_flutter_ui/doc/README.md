@@ -40,7 +40,6 @@ overview is in the [package README](../README.md).
 | [tom_ui_list_forms.md](tom_ui_list_forms.md) | The list-form layer (`TomListForm` and its three renderers) — the *list* dimension of the forms model. | Active. |
 | [acl_design_specification.md](acl_design_specification.md) | The Advanced Container Layout engine — the declarative row-based layout container (`Acl` / `AclBuilder`). | Design specification. |
 | [container_widget_resources_authorization.md](container_widget_resources_authorization.md) | IDs, resources, and groups across the widget tree — how identity and resource paths drive authorization. | Design specification — partially implemented; read the §0 reconciliation tables first. |
-| [tom_action_integration.md](tom_action_integration.md) | The action system — `TomAction`, controllers, triggers, transactions, undo, and widget-action authorization. | Specification. |
 | [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md) | Inventory of Flutter SDK widgets relevant to Tom, with per-widget wrap decisions (composition vs. extension). | Reference (scanned from Flutter SDK). |
 
 ## Module references
