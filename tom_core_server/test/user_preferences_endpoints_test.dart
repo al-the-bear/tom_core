@@ -1,8 +1,11 @@
-/// The HTTP *status* half of the preferences endpoints (TCCB5).
+/// The preferences endpoints as seen from the outside (TCCB5) — which status a
+/// client gets, and what happens with nothing wired behind them.
 ///
 /// The store's behaviour is covered by `user_preferences_db_test.dart`, which
-/// needs a database. What this file covers needs none: which status a client
-/// sees for the two failures that are not server faults.
+/// needs a database. What this file covers needs none.
+///
+/// Two of the three failures a caller can meet are not server faults, and each
+/// gets a status of its own:
 ///
 ///  * A preference that was never written is a **miss**, not a break. That is
 ///    the difference between "you have no such preference" and "the server is
@@ -12,6 +15,14 @@
 ///    The key arrives in the request URL, so on this side it is untrusted
 ///    input; answering `500` would tell a client its own malformed request was
 ///    a server fault worth retrying.
+///
+/// The third is a **deployment** fault: [TomUserPreferencesServer] resolves its
+/// store from the bean context on every call, and an application that shipped
+/// the endpoints without installing one has nothing behind them. That is the
+/// case with no client-visible distinction to make — it stays an opaque `500` —
+/// but it does have to be *named* on the server side rather than surfacing as a
+/// null dereference, and it is reachable here because the handler holds no
+/// state: no database, no router, no request.
 library;
 
 import 'dart:convert';
@@ -52,6 +63,27 @@ TomException _keyRefusal(String key) {
     return error;
   }
   throw StateError("'$key' was expected to be refused, and was not");
+}
+
+/// The failure [call] actually raises against a [TomUserPreferencesServer] with
+/// no store installed.
+///
+/// The handler needs nothing else to be reachable: it holds no state, the store
+/// is the bean and the caller is the zone, so the absent-bean path is the first
+/// thing every endpoint hits and no database, router or request is involved.
+///
+/// Caught rather than constructed, for the same reason as [_keyRefusal]: an
+/// exception hand-written with the expected key proves only that the test can
+/// spell it.
+Future<TomException> _missingStoreFailure(
+  Future<void> Function(TomUserPreferencesServer server) call,
+) async {
+  try {
+    await call(const TomUserPreferencesServer());
+  } on TomException catch (error) {
+    return error;
+  }
+  throw StateError('the call was expected to be refused, and was not');
 }
 
 /// The error handler the pipeline will use for each [TomUserPreferencesServer]
@@ -254,11 +286,14 @@ void main() {
       // A missing store is a deployment fault, not a client's business: it must
       // not become a 404 that a client reads as "no such preference" and papers
       // over with a default.
+      //
+      // The error is taken from an endpoint that really is missing its store,
+      // not written out here, so the handler's silence about it stays tied to
+      // the key the endpoints actually raise. A hand-built copy would keep
+      // answering 500 after a rename that made the real key one of the two the
+      // handler translates.
       final response = handler.handleInvocationError(
-        TomEndpointHandlerException(
-          'preferences.not_configured',
-          'No TomUserPreferences bean is installed.',
-        ),
+        await _missingStoreFailure((server) => server.listPreferences()),
         StackTrace.current,
         _request(),
       );
@@ -280,6 +315,74 @@ void main() {
       );
 
       expect(response.statusCode, 500);
+    });
+  });
+
+  group('with no store installed, every endpoint names the missing wiring', () {
+    // The bean context is process-global, so the absence these tests are about
+    // is established rather than assumed — a test of "nothing is installed"
+    // that inherited a registration from elsewhere would pass for the wrong
+    // reason, or fail for one.
+    setUp(TomBean.resetBeanContext);
+
+    // All four endpoints, not a representative one. `_store()` is a private
+    // helper each of them calls separately, so any single endpoint can stop
+    // going through it — by holding the store in a field, by resolving the bean
+    // inline — without the other three noticing. An unwired deployment would
+    // then answer three named faults and one `NoSuchMethodError` on null.
+
+    test('list', () async {
+      final error = await _missingStoreFailure(
+        (server) => server.listPreferences(),
+      );
+
+      expect(error.key, 'preferences.not_configured');
+    });
+
+    test('read', () async {
+      final error = await _missingStoreFailure(
+        (server) => server.readPreference(
+          TomUserPreferenceKeyRequest(key: 'tom.theme'),
+        ),
+      );
+
+      expect(error.key, 'preferences.not_configured');
+    });
+
+    test('write', () async {
+      final error = await _missingStoreFailure(
+        (server) => server.writePreference(
+          TomUserPreferenceWriteRequest(
+            key: 'tom.theme',
+            valueType: 'String',
+            value: '"dark"',
+          ),
+        ),
+      );
+
+      expect(error.key, 'preferences.not_configured');
+    });
+
+    test('delete', () async {
+      final error = await _missingStoreFailure(
+        (server) => server.deletePreference(
+          TomUserPreferenceKeyRequest(key: 'tom.theme'),
+        ),
+      );
+
+      expect(error.key, 'preferences.not_configured');
+    });
+
+    test('and does so as a handler failure, so the pipeline reports it', () {
+      // The type is what decides how the failure leaves the server: the
+      // pipeline routes a TomEndpointHandlerException through the endpoint's
+      // error handler, which is what turns this one into the opaque 500 the
+      // group above asserts. Raised as some other exception it would still be a
+      // failure, but no longer one whose status this module has decided.
+      expect(
+        _missingStoreFailure((server) => server.listPreferences()),
+        completion(isA<TomEndpointHandlerException>()),
+      );
     });
   });
 

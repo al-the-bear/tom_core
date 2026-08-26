@@ -2,6 +2,28 @@
 
 ### Testing
 
+- **Three documented preferences behaviours that need no database were behind
+  the `db` tag by proximity, and one of them was untestable where it sat
+  (tcinc622).** `TomUserPreferences.resolve()`'s deliberate `null` for an
+  unwired deployment had no test at all; `preferences.not_configured` appeared
+  in the endpoint suite only as a hand-written string, so nothing tied the
+  handler's silence about it to the key the endpoints actually raise; and
+  `toDto()`'s UTC normalisation was covered solely by
+  `user_preferences_db_test.dart`. That last one is the sharp case: the entity's
+  own comment says the conversion is a *no-op* for a value read from the column,
+  because the datasource has already UTC-flagged it — so asserting `isUtc` on a
+  round-tripped value passes whether the normalisation happens or not. It is the
+  one path that cannot observe the behaviour, and it was the only path testing
+  it. Thirteen tests now run in the default pass. `user_preference_dto_test.dart`
+  is new and reaches the normalisation the only way anything can, from an
+  in-memory local-flagged instant, asserting both halves separately — that the
+  flag changed and that the moment did not, since re-labelling the wall clock as
+  UTC would satisfy the first and shift every timestamp by the server's offset.
+  The endpoint suite gains a `_missingStoreFailure` helper mirroring its existing
+  `_keyRefusal`, and its opaque-500 test now takes the real error instead of a
+  copy. All four endpoints are asserted, not one: `_store()` is a private helper
+  each calls separately, so an unwired deployment could answer three named faults
+  and one null dereference.
 - **The preferences round trip lets the pipeline build the handler, as the
   module document says a deployment can (tcinc616).** `doc/preferences.md`
   promises two things a deployment need not do — register the API ("the pipeline
