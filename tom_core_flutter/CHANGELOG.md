@@ -70,6 +70,24 @@
 
 ### Documentation
 
+- **resources: the recommendation to prefer a typed subclass now states the one
+  case where it does not apply (tcinc669).** The class dartdoc, the module
+  readme's key-types table, `doc/resources.md`'s overview table and the API
+  summary's Overview each told the reader to use the typed subclasses rather
+  than the generic, and none of the four admitted an exception. One exists, and
+  it is not marginal: `TomStringProperty`, `TomIntProperty`,
+  `TomDoubleProperty` and `TomBoolProperty` close over non-nullable `String`,
+  `int`, `double` and `bool`, so an optional value — the
+  `withDefault(key, null)` shape — cannot be written with any of them. The only
+  form that expresses it is `TomProperty<String?>.withDefault('app.region',
+  null)`, the very construction all four documents forbade, and the one the
+  module's own suite has exercised since the explicit-`null` fix. A reader who
+  needed an optional property was therefore told their sole correct option was
+  against the module's contract, and either reached for it uneasily or wrote a
+  sentinel default and a test for it. All four now scope the recommendation to
+  the four non-nullable value types and name the nullable-`T` exception, and
+  the three consumer-facing documents print the construction beside it.
+
 - **resources: the documented dependency is the provider the module actually
   reads from (tcinc668).** `doc/resources.md` listed
   `TomConfigResourceProvider` / `TomTextResourceProvider` as "the resource
@@ -267,6 +285,26 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **a recommendation stated in four places cannot lose its exception in one of
+  them (tcinc669).** The subclass advice had drifted out of step with the code
+  in every artefact at once, which is what a rule repeated four times does when
+  nothing checks it. A guard in `resources_test.dart` now holds all four — the
+  source, the module readme, `doc/resources.md` and the API summary — to both
+  halves: each must still recommend the subclasses, and each must name the
+  nullable-`T` exception. A third test requires the three consumer-facing
+  documents to *show* the construction, then runs it against the key those
+  documents print, so the link is the snippet executing rather than a text
+  match between documents. That third test was rewritten during verification:
+  as first written it also searched this suite's own source for the
+  construction, which the guard's own string literal satisfied — an assertion
+  that could never fail. Deleting the behaviour group exposed it, and the
+  executable form replaced it. One boundary is deliberate and was verified by
+  breaking it: only the three consumer documents must print the construction,
+  not the source, so the dartdoc example stays free to change. Removing the
+  qualification, removing the recommendation, removing the construction and
+  breaking the `_hasDefault` gate each fail exactly the intended test.
+  269 → 272.
 
 - **a module document cannot name a dependency the module has no relationship
   with (tcinc668).** A `## Dependencies` section is the one part of a module

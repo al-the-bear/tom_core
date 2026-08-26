@@ -25,8 +25,14 @@ is read with `get()` or the `~` operator. Resolution rules (at construction): an
 existing key is cast to `T`; an absent key uses the `withDefault` default; an
 absent key with no default throws. The value is eager and immutable — later
 config changes are not reflected, so construct the property after the config
-providers are populated. Use the typed subclasses rather than the generic
-directly.
+providers are populated. Use the typed subclasses for the four non-nullable
+value types they name rather than the generic over those types; when `T` is
+nullable the generic is the intended form, because every subclass closes over
+a non-nullable type and so cannot express an optional value:
+
+```dart
+final region = TomProperty<String?>.withDefault('app.region', null);
+```
 
 ## Class Hierarchy
 

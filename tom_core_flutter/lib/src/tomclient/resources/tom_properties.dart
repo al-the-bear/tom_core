@@ -7,7 +7,10 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// [TomConfigResourceProvider] **once, at construction**, and caches it. Read
 /// the cached value with [get] or the `~` operator. Use the typed subclasses
 /// ([TomStringProperty], [TomIntProperty], [TomDoubleProperty],
-/// [TomBoolProperty]) rather than instantiating the generic directly.
+/// [TomBoolProperty]) for the four non-nullable value types they name, rather
+/// than instantiating the generic over those types. **When [T] is nullable the
+/// generic is the intended form** — each subclass closes over a non-nullable
+/// type, so none of them can express an optional value.
 ///
 /// ```dart
 /// // resolves "app.title" from config at construction:
@@ -16,6 +19,9 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 ///
 /// // fall back to a default when the key is absent:
 /// final retries = TomIntProperty.withDefault('app.retries', 3);
+///
+/// // an optional value: no subclass has a nullable T, so use the generic:
+/// final region = TomProperty<String?>.withDefault('app.region', null);
 /// ```
 ///
 /// **Resolution rules (at construction):** if the config key exists its value

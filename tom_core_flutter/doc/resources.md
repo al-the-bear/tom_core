@@ -20,7 +20,7 @@ a service or view-model.
 
 | Type | Holds | Notes |
 | ---- | ----- | ----- |
-| `TomProperty<T>` | `T` | Generic base; prefer a typed subclass |
+| `TomProperty<T>` | `T` | Generic base; prefer a typed subclass, except when `T` is nullable |
 | `TomStringProperty` | `String` | |
 | `TomIntProperty` | `int` | |
 | `TomDoubleProperty` | `double` | |
@@ -65,6 +65,16 @@ The generic base. Reads `key` from config at construction and caches the typed
 result. Read it back with `get()` or the `~` operator. The config-provider
 lookups it uses are private implementation detail, not part of the public
 surface.
+
+Prefer a typed subclass over the generic for the four non-nullable value types
+below. **When `T` is nullable the generic is the intended form** — the
+subclasses close over non-nullable `String`, `int`, `double` and `bool`, so
+none of them can hold an optional value:
+
+```dart
+final region = TomProperty<String?>.withDefault('app.region', null);
+if (~region == null) useDefaultRegion();
+```
 
 ### Typed subclasses
 

@@ -11,7 +11,7 @@ it; read it back with `get()` or the `~` operator.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomProperty<T>` | Generic config-value holder; resolves `key` from the app config at construction (or a `withDefault` fallback), caches it, exposes `get()` / `~`. Use a typed subclass rather than the generic directly. |
+| `TomProperty<T>` | Generic config-value holder; resolves `key` from the app config at construction (or a `withDefault` fallback), caches it, exposes `get()` / `~`. Use a typed subclass for the four non-nullable value types below; the generic is the intended form when `T` is nullable. |
 | `TomStringProperty` | `TomProperty<String>`. |
 | `TomIntProperty` | `TomProperty<int>`. |
 | `TomDoubleProperty` | `TomProperty<double>`. |
@@ -35,6 +35,11 @@ void main() {
   // Absent key + default → uses the default:
   final retries = TomIntProperty.withDefault('app.retries', 3);
   print(retries.get()); // prints: 3
+
+  // An optional value: `TomStringProperty` is `TomProperty<String>`, and a
+  // non-nullable `String` cannot express "absent" — so use the generic:
+  final region = TomProperty<String?>.withDefault('app.region', null);
+  print(region.get()); // prints: null
 }
 ```
 

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
@@ -7,6 +9,11 @@ import '../example/resources/resources_example.dart' as example;
 ///
 /// Each test installs a deterministic config provider, then constructs a
 /// property and asserts the value resolved at construction.
+///
+/// The final group is not about behaviour but about what the module's four
+/// documents say: the recommendation to prefer a typed subclass holds only for
+/// the non-nullable value types, and an unqualified statement of it forbids the
+/// one construction an optional property requires.
 void main() {
   void installConfig(Map<String, Object> values) {
     TomConfigResourceProvider.setAppConfigProvider(
@@ -131,6 +138,92 @@ void main() {
       installConfig({});
       final p = TomProperty<String?>.withDefault('app.missing', null);
       expect(p.get(), isNull);
+    });
+  });
+
+  group('the documents qualify the subclass recommendation', () {
+    // Every artefact tells the reader to prefer a typed subclass, and that
+    // advice is right four times out of five. The fifth is the group above:
+    // the subclasses close over non-nullable String/int/double/bool, so an
+    // optional value can only be written as the generic. A reader who is told
+    // the rule but not its exception writes a sentinel default and tests for
+    // it, or uses the generic believing they are breaking the contract.
+    const artefacts = <String>[
+      'lib/src/tomclient/resources/tom_properties.dart',
+      'lib/src/tomclient/resources/readme.md',
+      'doc/resources.md',
+      'doc/api_reference/api_summary_resources.md',
+    ];
+
+    /// The three consumer-facing documents — the artefacts a reader who is not
+    /// reading the source arrives at.
+    const consumerDocs = <String>[
+      'lib/src/tomclient/resources/readme.md',
+      'doc/resources.md',
+      'doc/api_reference/api_summary_resources.md',
+    ];
+
+    /// [file]'s text with emphasis and code markers removed, so a document is
+    /// free to bold or quote any part of the rule without breaking the check.
+    String plainTextOf(String file) =>
+        File(file).readAsStringSync().replaceAll(RegExp(r'[*`\[\]]'), '');
+
+    test('every artefact recommends the typed subclasses', () {
+      // The recommendation itself is worth pinning: it is the reason the four
+      // subclasses exist, and dropping it would make the exception below
+      // read as blanket permission to use the generic everywhere.
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          contains('subclass'),
+          reason: '$artefact no longer points the reader at the typed '
+              'subclasses, which are the intended form for the four '
+              'non-nullable value types',
+        );
+      }
+    });
+
+    test('every artefact states the nullable-T exception to it', () {
+      // The half that is easy to leave out, because the four subclasses cover
+      // every case their author had in mind. Unqualified, the recommendation
+      // forbids the only construction that expresses an optional value.
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          contains('nullable'),
+          reason: '$artefact states the subclass recommendation without its '
+              'exception, so a reader who needs an optional property is told '
+              'their only correct option is the one to avoid',
+        );
+      }
+    });
+
+    test('the construction no subclass can express is shown, and runs as '
+        'shown', () {
+      // A qualification without the construction beside it leaves the reader
+      // knowing an exception exists but not how to write it, so each document
+      // has to show it — and then the snippet it shows is run here, against
+      // the key the documents themselves use. That is the link to behaviour:
+      // not a text match between documents, but the printed line executing.
+      const construction = 'TomProperty<String?>.withDefault(';
+      for (final doc in consumerDocs) {
+        expect(
+          plainTextOf(doc),
+          contains(construction),
+          reason: '$doc names the nullable-T exception but does not show it; '
+              'the qualification is only actionable with the construction '
+              'beside it',
+        );
+      }
+
+      installConfig({});
+      final region = TomProperty<String?>.withDefault('app.region', null);
+      expect(
+        region.get(),
+        isNull,
+        reason: 'the documents print this construction as the way to hold an '
+            'optional value; it no longer yields the absent value',
+      );
     });
   });
 
