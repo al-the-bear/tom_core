@@ -10,6 +10,76 @@ import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutte
 
 import '../example/runtime/runtime_example.dart' as example;
 
+/// The `lib/` directory of [package], as the compiler resolves it.
+///
+/// Resolved through the package config, which is the same resolution the
+/// compiler performs, so a test names the *package* a symbol belongs to rather
+/// than a position in the directory tree. That matters here beyond tidiness:
+/// `tom_basics` is consumed from pub.dev while `tom_core_kernel` is a path
+/// dependency, so the two do not even live in comparable places, and a relative
+/// path would pin the wrong thing for one of them.
+///
+/// `Isolate.resolvePackageUri` would say the same thing in one line, but it is
+/// unsupported under the Flutter test runner, so the config is read directly.
+Uri packageLibUri(String package) {
+  final configFile = File('.dart_tool/package_config.json');
+  final config =
+      jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>;
+  final entry = (config['packages'] as List)
+      .cast<Map<String, dynamic>>()
+      .firstWhere(
+        (p) => p['name'] == package,
+        orElse: () => throw StateError('$package is not in the package config'),
+      );
+  // A trailing slash, or `resolve` treats the package directory as a file name
+  // and replaces it with `lib/` instead of descending into it.
+  final rootText = entry['rootUri'] as String;
+  final root = Uri.parse(rootText.endsWith('/') ? rootText : '$rootText/');
+  // `rootUri` is relative to the config file for path dependencies inside the
+  // workspace and absolute for hosted ones, so both shapes have to be handled.
+  final absolute = root.hasScheme
+      ? root
+      : configFile.absolute.uri.resolveUri(root);
+  return absolute.resolve('${entry['packageUri']}');
+}
+
+/// The `@override` members [className] declares in [source], by name, each
+/// reduced to the expression it evaluates.
+///
+/// `=> x;` and `{ return x; }` and `{ x; }` all reduce to `x`, because the same
+/// behaviour is written in different forms on either side of every comparison
+/// here: the tom_basics base uses block bodies throughout, the variants use
+/// expression bodies. Comparing the text as written would report every pair as
+/// different and see none of the duplication these tests exist to find.
+/// Multi-statement bodies are left as they are, collapsed to single spaces —
+/// they reduce to nothing simpler, and nothing compared here has one.
+Map<String, String> overrideBodies(String source, String className) {
+  final member = RegExp(
+    r'@override\s+[\w<>?, ]+?\s(\w+)\(([^)]*)\)\s*(=>\s*[^;]+;|\{.*?\n  \})',
+    dotAll: true,
+  );
+  // From the class declaration on, so a top-level function with an identical
+  // shape — or a member of an earlier class in the same file — is not counted.
+  final body = source.substring(source.indexOf('class $className'));
+  return {
+    for (final match in member.allMatches(body))
+      match.group(1)!: _expressionOf(match.group(3)!),
+  };
+}
+
+String _expressionOf(String body) {
+  var text = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (text.startsWith('=>')) {
+    text = text.substring(2);
+  } else if (text.startsWith('{') && text.endsWith('}')) {
+    text = text.substring(1, text.length - 1);
+  }
+  text = text.trim();
+  if (text.startsWith('return ')) text = text.substring('return '.length);
+  if (text.endsWith(';')) text = text.substring(0, text.length - 1);
+  return text.trim();
+}
+
 /// Tests for the runtime module (`clientPlatformUtils`).
 ///
 /// Run from the Dart VM (native IO branch), so `kIsWeb` is false and
@@ -180,15 +250,26 @@ void main() {
     // ever given different destinations, this fails on the source expectation
     // and asks for the summary to be revised rather than quietly leaving a
     // description that has stopped being true.
-    final source = File(
-      'lib/src/tomclient/runtime/platform_detection_flutter_io.dart',
+    //
+    // Read from the base, not from a variant: no variant declares the pair any
+    // more, because each merely restated what it inherits. The source of the
+    // behaviour the summary describes is `TomFallbackPlatformUtils`, so that is
+    // where a change of destination would have to appear.
+    final base = File.fromUri(
+      packageLibUri('tom_basics').resolve('src/runtime/platform_neutral.dart'),
     ).readAsStringSync();
-    String bodyOf(String method) => RegExp(
-      'void $method\\(String s\\) => ([^;]+);',
-    ).firstMatch(source)!.group(1)!;
+    final inherited = overrideBodies(base, 'TomFallbackPlatformUtils');
+    for (final method in ['out', 'outError']) {
+      expect(
+        inherited[method],
+        isNotNull,
+        reason: 'TomFallbackPlatformUtils no longer declares $method; the '
+            'variants inherit it and the summary describes it',
+      );
+    }
     expect(
-      bodyOf('outError'),
-      bodyOf('out'),
+      inherited['outError'],
+      inherited['out'],
       reason: 'the two no longer share a destination; revise the summary',
     );
 
@@ -213,43 +294,12 @@ void main() {
     // new predicate would have to override, finds nothing there.
 
     test('the contract is declared in tom_basics, not in the kernel', () {
-      // Resolved through the package config, which is the same resolution the
-      // compiler performs, so the test names the *package* a type belongs to
-      // rather than a position in the directory tree. That matters here beyond
-      // tidiness: tom_basics is consumed from pub.dev while tom_core_kernel is
-      // a path dependency, so the two do not even live in comparable places,
-      // and a relative path would pin the wrong thing for one of them.
-      final config =
-          jsonDecode(
-                File('.dart_tool/package_config.json').readAsStringSync(),
-              )
-              as Map<String, dynamic>;
-      final packages = (config['packages'] as List)
-          .cast<Map<String, dynamic>>();
-
-      Uri libOf(String package) {
-        final entry = packages.firstWhere(
-          (p) => p['name'] == package,
-          orElse: () => throw StateError('$package is not in the package config'),
-        );
-        // A trailing slash, or `resolve` treats the package directory as a
-        // file name and replaces it with `lib/` instead of descending into it.
-        final rootText = entry['rootUri'] as String;
-        final root = Uri.parse(
-          rootText.endsWith('/') ? rootText : '$rootText/',
-        );
-        final absolute = root.hasScheme
-            ? root
-            : File('.dart_tool/package_config.json').absolute.uri.resolveUri(
-                root,
-              );
-        return absolute.resolve('${entry['packageUri']}');
-      }
-
       const types = ['TomPlatformUtils', 'TomFallbackPlatformUtils'];
 
       final basics = File.fromUri(
-        libOf('tom_basics').resolve('src/runtime/platform_neutral.dart'),
+        packageLibUri(
+          'tom_basics',
+        ).resolve('src/runtime/platform_neutral.dart'),
       ).readAsStringSync();
       for (final type in types) {
         expect(
@@ -259,7 +309,7 @@ void main() {
         );
       }
 
-      final kernelSources = Directory.fromUri(libOf('tom_core_kernel'))
+      final kernelSources = Directory.fromUri(packageLibUri('tom_core_kernel'))
           .listSync(recursive: true)
           .whereType<File>()
           .where((f) => f.path.endsWith('.dart'));
@@ -471,30 +521,18 @@ void main() {
     // enumerate is going to drift; these tests recompute it from the sources so
     // the document has to keep up.
 
-    /// The `@override` members of each variant, by name, with whitespace
-    /// collapsed so formatting differences do not read as behaviour ones.
+    const variants = ['flutter_io', 'neutral', 'web'];
+
+    /// The `@override` members of each variant, by member name then variant.
     Map<String, Map<String, String>> variantMembers() {
-      const variants = ['flutter_io', 'neutral', 'web'];
-      final member = RegExp(
-        r'@override\s+[\w<>?, ]+?\s(\w+)\(([^)]*)\)\s*(=>\s*[^;]+;|\{.*?\n  \})',
-        dotAll: true,
-      );
       final byName = <String, Map<String, String>>{};
       for (final variant in variants) {
         final source = File(
           'lib/src/tomclient/runtime/platform_detection_$variant.dart',
         ).readAsStringSync();
-        // From the class declaration on, so a top-level function with an
-        // identical shape cannot be counted as a member.
-        final body = source.substring(
-          source.indexOf('class TomFlutterPlatformUtils'),
-        );
-        for (final match in member.allMatches(body)) {
-          byName.putIfAbsent(match.group(1)!, () => {})[variant] = match
-              .group(3)!
-              .replaceAll(RegExp(r'\s+'), ' ')
-              .trim();
-        }
+        overrideBodies(source, 'TomFlutterPlatformUtils').forEach((name, body) {
+          byName.putIfAbsent(name, () => {})[variant] = body;
+        });
       }
       expect(
         byName.values.every((byVariant) => byVariant.length == variants.length),
@@ -562,7 +600,7 @@ void main() {
       }
     });
 
-    test('both documents count the duplicated members correctly', () {
+    test('both documents count the members and the duplicates correctly', () {
       final members = variantMembers();
       final shared = members.values
           .where((byVariant) => byVariant.values.toSet().length == 1)
@@ -573,17 +611,29 @@ void main() {
       const words = [
         'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
         'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
-        'fifteen',
+        'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
       ];
       expect(
-        shared,
+        members.length,
         lessThan(words.length),
-        reason: 'more duplicated members than this test can spell',
+        reason: 'more members than this test can spell',
       );
 
+      // Both numbers, because deleting a member moves both and a check on one
+      // of them alone leaves the other free to keep the figure it had. That is
+      // not hypothetical: removing the two console overrides took the total
+      // from fifteen to thirteen at the same moment as it took the duplicate
+      // count from eleven to nine.
       for (final path in documents) {
+        final text = File(path).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
         expect(
-          File(path).readAsStringSync().replaceAll(RegExp(r'\s+'), ' '),
+          text,
+          contains('${words[members.length]} members'),
+          reason: '$path: each variant overrides ${members.length} members; '
+              'the document states another number',
+        );
+        expect(
+          text,
           contains('${words[shared]} members'),
           reason: '$path: the sources duplicate $shared members verbatim '
               'across the three variants; the document states another number',
@@ -591,24 +641,39 @@ void main() {
       }
     });
 
-    test('out and outError duplicate the inherited bodies, not just each other', () {
-      // The distinction the inventory turns on. These two are not merely copied
-      // between variants — they restate what `TomFallbackPlatformUtils` already
-      // does, so they are removable without any shared base being extracted,
-      // which is a stronger claim than the rest of the duplication supports.
-      final members = variantMembers();
-      for (final name in ['out', 'outError']) {
-        expect(
-          members[name]!.values.toSet(),
-          hasLength(1),
-          reason: '$name is no longer identical across the variants',
-        );
-        expect(
-          members[name]!.values.first.replaceAll(' ', ''),
-          anyOf(equals('=>print(s);'), equals('{print(s);}')),
-          reason: '$name no longer just calls print; the document says it '
-              'reproduces the inherited body and would need revisiting',
-        );
+    test('no variant override restates the body it inherits', () {
+      // The duplication between the variants is forced — they are selected by
+      // conditional import, so shared behaviour has nowhere to live but the
+      // base, and the base is in another package. Duplication *against* the
+      // base is not forced: an override that evaluates exactly what
+      // `TomFallbackPlatformUtils` already evaluates changes nothing and can
+      // simply be deleted. Six of them were, and no reading of the variants
+      // alone could have found them — the two sides write the same body in
+      // different forms, `=> print(s);` here against `{ print(s); }` there, so
+      // only a comparison that reduces both to their expression sees it.
+      final base = File.fromUri(
+        packageLibUri('tom_basics').resolve('src/runtime/platform_neutral.dart'),
+      ).readAsStringSync();
+      final inherited = overrideBodies(base, 'TomFallbackPlatformUtils');
+      expect(
+        inherited,
+        isNotEmpty,
+        reason: 'no members were read out of TomFallbackPlatformUtils; the '
+            'comparison below would pass by finding nothing to compare',
+      );
+
+      for (final variant in variants) {
+        final source = File(
+          'lib/src/tomclient/runtime/platform_detection_$variant.dart',
+        ).readAsStringSync();
+        overrideBodies(source, 'TomFlutterPlatformUtils').forEach((name, body) {
+          expect(
+            body,
+            isNot(equals(inherited[name])),
+            reason: '$variant overrides `$name` with the body it already '
+                'inherits from TomFallbackPlatformUtils; delete the override',
+          );
+        });
       }
     });
   });

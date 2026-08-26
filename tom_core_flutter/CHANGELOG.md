@@ -1,5 +1,33 @@
 ## 1.2.1
 
+### Removed
+
+- **runtime: the six `out`/`outError` overrides that restated their inherited
+  bodies (tcinc681).** Each of `platform_detection_flutter_io.dart`,
+  `platform_detection_neutral.dart` and `platform_detection_web.dart` declared
+  `void out(String s) => print(s);` and `void outError(String s) => print(s);`,
+  which is exactly what `TomFallbackPlatformUtils` — the base all three extend
+  — already does. Deleting them changes nothing at runtime and removes the
+  standing risk that a future change to the base's console routing is silently
+  overridden back to `print` on every Flutter target. Each variant now
+  overrides **thirteen** members, **nine** of them identical in all three; the
+  API summary marks the pair as inherited rather than as overrides.
+
+  The duplication *between* the variants is forced — they are compile-time
+  selected, so a shared body has nowhere to live but a base class in another
+  package — and it is what the standing "extract a shared base" question is
+  about. Duplication *against* the base is a separate thing and needed no such
+  extraction; the previous entry recorded that and this removes it.
+
+  A guard now compares every variant override against the body it inherits,
+  reading the base out of `tom_basics` through the package config. It reduces
+  both sides to the expression they evaluate first, because the two are written
+  in different forms — `=> print(s);` in the variants against `{ print(s); }`
+  in the base — and a comparison of the text as written would have reported all
+  six as different and found nothing. The member-count check was widened to pin
+  the total as well as the duplicate count, since deleting a member moves both
+  and checking one leaves the other free to keep a stale figure.
+
 ### Fixed
 
 - **runtime: the inventory of what the three variants share is counted from

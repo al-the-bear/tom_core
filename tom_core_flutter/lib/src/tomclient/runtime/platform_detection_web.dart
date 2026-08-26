@@ -39,10 +39,6 @@ class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   bool isIos() => defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
-  void out(String s) => print(s);
-  @override
-  void outError(String s) => print(s);
-  @override
   Client httpClient() => FetchClient(mode: RequestMode.cors);
 
   @override

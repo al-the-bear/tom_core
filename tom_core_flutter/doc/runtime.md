@@ -82,22 +82,25 @@ current target. Platform predicates read Flutter's `defaultTargetPlatform` /
 
   Consumers never need the concrete type: `clientPlatformUtils` hands back a
   `TomPlatformUtils`, and the variant class is a different class on each target.
-- The three `TomFlutterPlatformUtils` implementations override fifteen members
-  each and **duplicate eleven members verbatim** — the nine platform predicates
+- The three `TomFlutterPlatformUtils` implementations override thirteen members
+  each and **duplicate nine members verbatim** — the platform predicates
   (`isDesktop`, `isMobile`, `isWeb`, `isFuchsia`, `isWindows`, `isLinux`,
-  `isMacOs`, `isAndroid`, `isIos`) plus `out` and `outError`. They differ in
-  four: `httpClient()`, `getBrowserLocation()`, `getIsolateName()` and
-  `toString()`. Only the native variant declares a constructor.
+  `isMacOs`, `isAndroid`, `isIos`). They differ in four: `httpClient()`,
+  `getBrowserLocation()`, `getIsolateName()` and `toString()`. Only the native
+  variant declares a constructor.
 
   `getBrowserLocation()` is the weakest of the four differences — native and
   neutral both return `null`, so only the web variant actually diverges.
 
   The duplication is a known candidate for extracting a shared base, deferred
   because the variants are compile-time-selected and cannot all be exercised
-  from one host. `out` and `outError` are the sharpest case and do not need
-  that extraction: both reproduce the inherited `TomFallbackPlatformUtils`
-  bodies exactly (each is `print(s)`), so all six overrides are redundant and
-  could simply be deleted.
+  from one host.
+
+  Console output is not part of it. `out` and `outError` are declared in no
+  variant: they come from `TomFallbackPlatformUtils`, which already prints to
+  standard output, so there is nothing per-target to say about them. A variant
+  that wants to route them elsewhere overrides them; one that does not, does
+  not.
 - The neutral fallback cannot create an HTTP client — `httpClient()` throws.
   Register a concrete variant (which `clientPlatformUtils` does automatically on
   IO/web targets) before performing network calls.

@@ -55,11 +55,6 @@ class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   @override
   bool isIos() => defaultTargetPlatform == TargetPlatform.iOS;
 
-  @override
-  void out(String s) => print(s);
-  @override
-  void outError(String s) => print(s);
-
   // Note: iOS/macOS could use a native CupertinoClient (cupertino_http) for
   // better platform integration; for now all native targets share this
   // IOClient.

@@ -38,10 +38,6 @@ class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   bool isIos() => defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
-  void out(String s) => print(s);
-  @override
-  void outError(String s) => print(s);
-  @override
   Client httpClient() {
     throw UnimplementedError(
       "You need initialize a platform specific TomPlatformUtils instance to create HttpClients",

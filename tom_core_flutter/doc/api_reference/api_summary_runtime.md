@@ -108,12 +108,11 @@ test. It is **not exported**; it is declared only in
 
 The Flutter `TomPlatformUtils` implementation. **Three source variants share
 this name**, one per compile-time target; the conditional import in
-`platform_detection_client.dart` picks exactly one. Each overrides fifteen
-members, of which **eleven members are identical in all three** — the nine
-platform predicates read from Flutter's `defaultTargetPlatform` / `kIsWeb`,
-plus `out` and `outError`. They differ in four: `httpClient()`,
-`getBrowserLocation()`, `getIsolateName()` and `toString()`. Only the native
-variant declares a constructor.
+`platform_detection_client.dart` picks exactly one. Each overrides thirteen
+members, of which **nine members are identical in all three** — the platform
+predicates read from Flutter's `defaultTargetPlatform` / `kIsWeb`. They differ
+in four: `httpClient()`, `getBrowserLocation()`, `getIsolateName()` and
+`toString()`. Only the native variant declares a constructor.
 
 The name is **not exported**, and could not usefully be: it denotes a different
 class on each target. Consumers hold the instance as its supertype
@@ -148,8 +147,8 @@ TomFlutterPlatformUtils()
 | `isMacOs` | `bool isMacOs()` | *(override)* True on macOS. |
 | `isAndroid` | `bool isAndroid()` | *(override)* True on Android. |
 | `isIos` | `bool isIos()` | *(override)* True on iOS. |
-| `out` | `void out(String s)` | *(override)* Prints `s` to standard output. |
-| `outError` | `void outError(String s)` | *(override)* Prints `s` to standard output, the same destination as `out` — the two are named apart but not routed apart. |
+| `out` | `void out(String s)` | *(inherited from `TomFallbackPlatformUtils`)* Prints `s` to standard output. |
+| `outError` | `void outError(String s)` | *(inherited from `TomFallbackPlatformUtils`)* Prints `s` to standard output, the same destination as `out` — the two are named apart but not routed apart. |
 | `httpClient` | `Client httpClient()` | *(override)* A platform-appropriate HTTP client (see the variant table). |
 | `getBrowserLocation` | `String? getBrowserLocation()` | *(override)* The browser location URL, or `null` off the web. |
 | `getIsolateName` | `String getIsolateName()` | *(override)* A short name for the current isolate. |
