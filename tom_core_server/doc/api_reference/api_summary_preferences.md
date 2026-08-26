@@ -184,7 +184,24 @@ TomUserPreferenceException(
 })
 ```
 
-Parameters mirror `TomServerException`.
+Parameters mirror `TomServerException`; every one of them is a `super.`
+forward, so this class adds no state of its own.
+
+`stack` is `StackTrace?` and not `Object?`. The distinction is easy to get
+backwards, because the *field* the value ends up in is `Object?` — declared
+that way on `TomBaseException`, two classes further up. `TomException`
+narrows it on the way in, and since every constructor between here and there
+forwards with `super.stack`, that narrowing is what this parameter's type is.
+Reading the field's declaration instead of the constructor's is what makes it
+look wider than it is; a caller has nothing to widen to, and needs no cast for
+the `s` of a `catch (e, s)`, which is already a `StackTrace`.
+
+Leaving `stack` out never leaves the exception without a trace. `TomException`
+substitutes `StackTrace.current` for a missing *or* explicitly null argument,
+and it does so in its own constructor so that the captured trace still reaches
+the `throw` site — late capture would report whatever formatted the exception
+instead. Passing a trace is therefore only worth it when the failure happened
+somewhere other than the `throw`, which is exactly the `catch (e, s)` case.
 
 ### TomUserPreferencesServer
 

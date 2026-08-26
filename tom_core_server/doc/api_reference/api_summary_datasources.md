@@ -1206,7 +1206,7 @@ TomDatasourceInitException(
   String key,
   String defaultUserMessage, {
   Map<String, Object?>? parameters,
-  Object? stack,
+  StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
   String? uuid,
@@ -1227,7 +1227,7 @@ MariadbDatasourceException(
   String key,
   String defaultUserMessage, {
   Map<String, Object?>? parameters,
-  Object? stack,
+  StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
 })
@@ -1250,7 +1250,7 @@ MariadbPreparedStatementException(
   String key,
   String defaultUserMessage, {
   Map<String, Object?>? parameters,
-  Object? stack,
+  StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
 })

@@ -189,7 +189,7 @@ TomMessagingException(
   String defaultUserMessage, {
   Map<String, Object?>? parameters,
   Object? rootException,
-  Object? stack,
+  StackTrace? stack,
   bool clientThrow = false,
 })
 ```
@@ -537,7 +537,7 @@ TomDeliveryException(
   int? statusCode,
   Map<String, Object?>? parameters,
   Object? rootException,
-  Object? stack,
+  StackTrace? stack,
 })
 ```
 
@@ -582,7 +582,7 @@ TomPermanentDeliveryException(
   int? statusCode,
   Map<String, Object?>? parameters,
   Object? rootException,
-  Object? stack,
+  StackTrace? stack,
 })
 ```
 
@@ -610,7 +610,7 @@ TomTransientDeliveryException(
   int? statusCode,
   Map<String, Object?>? parameters,
   Object? rootException,
-  Object? stack,
+  StackTrace? stack,
 })
 ```
 

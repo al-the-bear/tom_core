@@ -3430,6 +3430,35 @@
 
 ### Documentation
 
+- **Twenty-two documented constructors typed an exception's `stack` parameter
+  as `Object?` where it is `StackTrace?` (tcinc617).** The mistake is a natural
+  one, and the summaries were split roughly evenly between the two spellings,
+  so neither side looked obviously wrong. `TomBaseException` — in `tom_basics`,
+  two classes above anything documented here — declares the *field* as
+  `Object?`, and every exception in this package reaches it by forwarding
+  `super.stack`. What the forwarding chain passes through, though, is
+  `TomException`, whose own constructor narrows the parameter to `StackTrace?`;
+  a `super.stack` therefore inherits `StackTrace?`, not the field's type.
+  Reading the field's declaration rather than the constructor's is what
+  produced the wider spelling.
+
+  It was not a harmless imprecision. `Object?` invites a reader to believe the
+  API takes any error payload an isolate or a bridged frame might hand it, and
+  the code that would follow from that belief does not compile — the analyzer
+  rejects a non-`StackTrace` argument at every one of these constructors. It
+  also points the reader at `TomBaseException._getStackTrace`, which casts with
+  a bare `s as StackTrace?` and would throw on precisely the value the wider
+  type appeared to permit.
+
+  Corrected across `endpoints`, `messaging`, `datasources`, `authentication`,
+  `db_migration`, `transactions`, `cache`, `audit`, `export`, `file_storage`,
+  `authorization`, `resources` and `little_things` (and, in `tom_core_kernel`,
+  `reflection`). `preferences` already had it right and now says why, together
+  with the related point that omitting `stack` does not leave the exception
+  without a trace: `TomException` substitutes `StackTrace.current` for a
+  missing or null argument, in its own constructor, so the trace still reaches
+  the `throw` site.
+
 - **`findMirror`'s `null` was documented as "unregistered" without saying it
   meant only that (tcinc605).** `object_persistence.md` and the API summary
   described the answer but not the boundary, so a reader had no way to know

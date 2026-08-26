@@ -314,7 +314,7 @@ TomAuditException(
   String defaultUserMessage, {
   Map<String, Object?>? parameters,
   Object? rootException,
-  Object? stack,
+  StackTrace? stack,
   bool clientThrow = false,
 })
 ```

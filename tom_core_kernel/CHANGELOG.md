@@ -1431,6 +1431,16 @@ anyone who was writing them.
 
 ### Documentation
 
+- **`TomReflectorException`'s `stack` parameter was typed `Object?` where it is
+  `StackTrace?` (tcinc617).** The class extends `TomException`, and forwards
+  with `super.stack`; `TomException`'s constructor narrows the parameter to
+  `StackTrace?` even though the field it ultimately writes — declared on
+  `TomBaseException`, in `tom_basics` — is `Object?`. The summary had described
+  the field rather than the parameter, which is a difference a caller finds out
+  about from the analyzer: a non-`StackTrace` argument does not compile. Part
+  of a sweep that corrected the same mistake in twenty-one further constructors
+  across thirteen `tom_core_server` summaries.
+
 - **The timezoned readme credited one exception with two failures it does not
   have (tcinc339).** Its Key types row read "`TomTimezoneException` — thrown on
   unknown zones / parse failures". Parse failures raise `FormatException`, from

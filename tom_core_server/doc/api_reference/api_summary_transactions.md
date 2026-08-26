@@ -67,7 +67,7 @@ TomTransactionException(
   String key,
   String defaultUserMessage, {
   Map<String, Object?>? parameters,
-  Object? stack,
+  StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
 })
