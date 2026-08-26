@@ -348,6 +348,26 @@ hidden component (or a fully hidden row) is elided, the engine forwards the
 appropriate gap so the surviving neighbours keep their spacing — the behaviour
 covered in detail by `test/advanced_container_layout/acl_hide_unauthorized_test.dart`.
 
+Rows and components carrying an `id` are additionally resolved by path through
+`TomAuthorization.resolveAuth(...)`. Of the four `TomAuthState` values the
+container acts on only two:
+
+| State | What the container does |
+| ----- | ----------------------- |
+| `none` | Elided — the component (or row) is replaced by a zero-size box, or removed outright under `hideUnauthorized`. |
+| `disabled` | **Nothing. It renders exactly as `full`** — full opacity, input live. |
+| `read` | Wrapped in `TomThemeScope.readonlyStyleOf(context).apply(...)`. |
+| `full` | Rendered as authored. |
+
+`TomAuthState.disabled` is intended to render a component visible but inert,
+and the container does not implement it — there is no `disabled` branch in the
+component pipeline, so a `disabled` grant is not enforced. Do not confuse this
+with the group-visibility axis above: `AclGroupVisibilityMode.disabled` *does*
+dim and block input, but that wrapper keys on the group mode alone and never on
+the resolved authorization state. Until the container consults
+`TomAuthState.isInteractive`, express a "visible but not usable" grant as
+`none`, or through the component's group.
+
 ## Dependencies
 
 - `package:flutter/material.dart` — `Widget`, `BuildContext`, `InheritedWidget`,
