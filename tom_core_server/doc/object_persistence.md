@@ -19,6 +19,9 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
     - [Inside a text literal](#inside-a-text-literal)
 - [The Query Builder DSL](#the-query-builder-dsl)
 - [Row Scopes](#row-scopes)
+- [Column Authorization](#column-authorization)
+  - [Grades that depend on the row](#grades-that-depend-on-the-row)
+- [File-Reference Columns](#file-reference-columns)
 - [Grouping and Aggregation](#grouping-and-aggregation)
 - [How Metadata Is Resolved](#how-metadata-is-resolved)
 - [SQL Dialects](#sql-dialects)
@@ -46,6 +49,11 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomDbScope` | annotation | Declares (or explicitly opts out of) an entity's row scope |
 | `TomDataScopeRegistry` | class (statics) | The named scope-kind resolvers, read and write |
 | `TomDataScope` | class (statics) | Renders a resolver's answer into a bound `IN` / union predicate |
+| `TomColumnAuthorization` | class (statics) | Applies a column's `authKey` grade — read masking and the write partition |
+| `TomRowColumnAuthorization` | class (statics) | Per-row column grades, for grades derived from the row's owning aggregate |
+| `TomFileReference` | annotation | Declares that a column holds a blob-storage key |
+| `TomFileReferenceKeys` | class (statics) | Resolves a file column's store and mints its keys |
+| `TomFileRepository<T, K>` | abstract class | The five-method file surface the HTTP file endpoint depends on |
 
 ## Mapping an Entity
 
@@ -579,6 +587,250 @@ inversion that keeps the dependency arrow pointing from authorization down to
 persistence rather than the reverse. See
 [`authorization.md`](authorization.md#the-grant-driven-row-scope).
 
+## Column Authorization
+
+A row scope decides *which rows*. **Column authorization** (C-4) decides *which
+columns of a row the principal may see and change*, and — like the row scope —
+it is a property of the mapping, applied by the repository on every path, not a
+filter a caller opts into.
+
+### Grading a column
+
+A column opts in by naming a resource key:
+
+```dart
+@TomDbColumn(columnName: 'salary', authKey: 'employee.salary')
+int? salary;
+```
+
+The key is resolved to a kernel `TomAuthState`, the four-state grade
+`none < disabled < read < full`. A column with **no** `authKey` is unrestricted:
+`TomColumnAuthorization.stateForKey(null)` is `full`, so an entity that grades
+nothing pays nothing. The resolver is the process-wide `TomAuthorization`
+singleton unless one is passed explicitly — which is what a test does, and it is
+worth knowing that the singleton answers `full` for everything in development
+mode.
+
+The grade is honoured *here*, at the persistence boundary, rather than being left
+to whatever renders the entity. A field the caller may not see never leaves the
+repository.
+
+### Reads mask
+
+`TomColumnAuthorization.maskedColumns` selects the columns whose grade lacks
+`showsContent` — `none` and `disabled` — and `applyReadMask` nulls those fields
+on each returned row, in place. Every read path runs it, so masking is not a
+thing a query can be written to avoid.
+
+The consequence for the entity class: **a graded field must be nullable**. There
+is no other value that means "withheld", and a non-nullable field cannot be
+given one.
+
+### Writes reject, or silently preserve
+
+`decideWrites` partitions the graded columns of a pending save by comparing the
+incoming entity against the stored row:
+
+| Grade | Outcome |
+| ----- | ------- |
+| `full` | **Written** — the incoming value is persisted. |
+| `read`, and the value changed | **Refused** — `TomColumnAuthorizationException` with key `column_authorization.write.field_forbidden`. |
+| `read`, unchanged | **Preserved** — nothing to refuse. |
+| `disabled` / `none` | **Preserved** unconditionally. |
+
+The asymmetry between the last two rows is the point, and it follows from
+masking. A masked column reads back as `null`; a client that loads an entity,
+edits one field and saves it back therefore returns `null` for every masked
+column, having never seen — let alone touched — the stored value. Rejecting that
+would make every ordinary round trip fail on a column the caller cannot even
+know exists, so the repository quietly overlays the stored value instead. A
+change to a column the caller *can* see, on the other hand, is a real attempt to
+write something it may not write, and it is named rather than swallowed.
+
+The stored row this compares against is read **once** per save and shared with
+the audit before-image and the file cascade below, which want the same row for
+different reasons.
+
+Grouped queries are the exception: a masked column there is refused outright
+rather than masked, because aggregation has already consumed the hidden values —
+see [Authorization](#authorization) under Grouping and Aggregation.
+
+### Grades that depend on the row
+
+Some grades are *relational*: "may edit the attachments of items in a project you
+own, may only read the ones in a project shared with you". A `key → state`
+lookup cannot express that, and it cannot be computed synchronously — it is a
+question about the row's owning aggregate, which means a read.
+
+`TomRowColumnAuthorization` is the async counterpart, and the column-level mirror
+of `TomDataScopeRegistry.registerAsync`:
+
+```dart
+TomRowColumnAuthorization.register('task.attachment', (principal, rowId) async {
+  if (rowId == null) return TomAuthState.full;   // an insert: no row yet
+  return await gradeForTask(principal, rowId);
+});
+```
+
+`resolve` reads the principal from the current zone and returns `null` when the
+column is unrestricted or carries no per-row resolver, leaving the caller on its
+column-wide answer; `isRegistered` asks whether a key has one, and `reset()`
+clears the registrations (for tests).
+
+**Only the file operations consult it.** Each addresses exactly one row and is
+already asynchronous, so a per-row grade costs one extra `await`. The
+row-projection paths are synchronous and operate on whole result sets, where the
+same feature would mean a cross-table read per row per column. `applyReadMask`
+therefore *skips* a column that has a per-row resolver rather than guessing:
+a single synchronous answer applied to a whole result set has no authority to
+decide it, and masking it would be self-defeating anyway — for a file column the
+masked value *is* the storage key the file gate then needs in order to resolve
+the grade at all.
+
+## File-Reference Columns
+
+A `@TomFileReference` column holds a **storage key**; the bytes live in a blob
+store (see [`file_storage.md`](file_storage.md)). The row therefore stays small
+enough to select, diff, audit and mask like any other, while a payload that may
+be gigabytes never passes through SQL.
+
+### Declaring one
+
+```dart
+@TomDbColumn(columnName: 'contract_key', authKey: 'deal.contract')
+@TomFileReference(
+  store: 'documents',
+  keyPrefix: 'contracts',
+  mediaType: 'application/pdf',
+  exposed: true,
+)
+String? contractKey;
+```
+
+| Field | Default | Meaning |
+| ----- | ------- | ------- |
+| `store` | `null` | The named blob store to use; `null` means the default store. |
+| `keyPrefix` | `''` | The prefix generated keys are placed under. It is joined into the key, so it obeys the same grammar (`TomBlobStore.isValidKeyPrefix`) and carries no trailing slash. |
+| `cascadeDelete` | `true` | Whether deleting the row — or replacing/clearing the column's value — also deletes the blob. |
+| `mediaType` | `'application/octet-stream'` | The media type assumed when an upload names none. |
+| `exposed` | `false` | Whether the column is reachable over the framework's HTTP file endpoint, as the slot `<table>/<id>/<column>`. |
+
+Two of those defaults are deliberate. `exposed` is **default-closed**, and it
+decides only *addressability*, never entitlement: whether a given caller may have
+the file stays with the row scope (C-3) and the column grade (C-4) the repository
+already enforces. And `keyPrefix` is validated when the key is minted rather than
+when the annotation is written, because a `const` constructor cannot refuse a
+value.
+
+### The key
+
+`TomFileReferenceKeys.generate` mints `<keyPrefix>/<yyyy>/<mm>/<uuid><.ext>`:
+
+- the **prefix** separates one column's blobs from another's, so a store shared
+  by several entities stays navigable and a lifecycle rule can be written against
+  a path;
+- the **date partition** bounds how many objects land in one directory — which
+  matters to a filesystem backend, and makes "everything from July" expressible
+  as a prefix on an object store;
+- the **UUID** makes the key collision-free without a round trip, so a fresh
+  upload never silently overwrites a live one, and unguessable, so holding one
+  key does not let a caller enumerate its neighbours;
+- the **extension** is carried over from the uploaded file name because it costs
+  nothing and makes a key readable to whoever is looking at the bucket. It is
+  decoration — the media type of record lives in the blob descriptor, not in the
+  key.
+
+`extensionOf` is correspondingly conservative: it takes the lower-cased suffix
+after the last dot, and only when it is at most twelve characters and purely
+alphanumeric. Anything else yields the empty string. A "file name" arriving from
+a browser is caller-supplied text, not a vetted identifier, and it is being
+appended to a key whose grammar is narrow.
+
+`storeFor` resolves the annotation's store on **every call** rather than caching
+it on the column metadata: the registry is populated at start-up and replaced
+wholesale by a test, and a column that captured a store at first use would keep
+serving the previous test's.
+
+### Moving the bytes
+
+Four repository methods surround the store. They are also named on their own
+contract, `TomFileRepository<T, K>` — that is what the HTTP file endpoint depends
+on, so the endpoint's requirement is five methods rather than a whole persistence
+stack, and it can be exercised without a database:
+
+```dart
+Future<T?> findById(K id);
+Future<T> saveFile(T entity, String fieldName, Stream<List<int>> bytes,
+    {String? mediaType, String? fileName});
+Stream<List<int>> openFile(K id, String fieldName);
+Future<TomStoredBlob?> describeFile(K id, String fieldName);
+Future<T> clearFile(T entity, String fieldName);
+```
+
+`saveFile` **uploads first and saves the row second**, and the order is the one
+whose failure mode is survivable. Saving first would leave a row pointing at a
+key that reads back `not_found` — a dangling reference, visible to users and
+repairable only by hand. Uploading first can at worst leave an orphaned blob,
+which nothing references and a sweep can collect; and even that is cleaned up
+when the save throws.
+
+`describeFile` is the metadata read that precedes a download — a caller needs the
+`Content-Type` and `Content-Length` before it starts streaming. `clearFile` is
+expressed as a save of a nulled column rather than as its own delete path, so the
+orphan collection, the audit record and both authorization gates are the ones
+every other write goes through.
+
+A field name that is not a file column of the entity raises
+`storage.file_reference.unknown_column`. On the read side, a row that does not
+exist (or is not visible) raises `storage.file_reference.row_not_found`, and a
+row whose column holds no key raises `storage.file_reference.no_file` — asking
+for a file that is not there is a different answer from an empty one.
+
+### Authorization, by construction
+
+The key is an ordinary column, so both existing controls already govern it. The
+file methods therefore reach the bytes *through* the existing read paths rather
+than beside them: `openFile` and `describeFile` take an **id** and load the row
+with `findById`, so a principal who cannot see the row cannot see its file —
+because the row scope filtered it, not because a second copy of the rule said so.
+
+What is added on top is only what the masked case needs. A C-4 masked key reads
+back as `null`, which is indistinguishable from "no file attached", so the grade
+is checked explicitly and the refusal is named
+(`column_authorization.read.field_forbidden`). The three write-side operations
+share one check for the same reason they share a question — uploading a file,
+replacing one and clearing one are all writes of the same column, and a grade
+that refuses one must refuse all three. `clearFile` needs it in particular
+because `save` resolves the grade *column-wide*, which is not the answer for a
+column with a per-row resolver: without the explicit check a principal graded
+`read`, allowed to download the file and nothing else, could delete it.
+
+Grades here are resolved **per row** where a resolver is registered — see
+[Grades that depend on the row](#grades-that-depend-on-the-row).
+
+### Blobs that nothing references
+
+`cascadeDelete` governs the tidy-up, and three details make it safe:
+
+- **A replaced file** is collected on update, decided from the values about to be
+  written and measured against the *baseline row* — never against the row read
+  back. A masked column reads back `null`, which would otherwise look like the
+  file having been removed and would delete a live blob. A column absent from the
+  write set (a read-only one) was not changed by this save and orphans nothing.
+  The old key is discarded only once the row no longer points at it.
+- **A deleted row's** files are collected **after** the rows are gone: a delete
+  that fails must not have destroyed the files of rows that are still there. The
+  rows about to be deleted are read unmasked, so their keys are visible to the
+  cascade, and that extra read is skipped entirely for an entity with no file
+  columns.
+- **A store that will not delete** is logged, not raised. Every caller has
+  already completed the operation the user asked for; leaving bytes behind is a
+  housekeeping problem, whereas reporting a completed operation as failed is a
+  correctness one. The key is logged so a sweep can find what was left.
+
+An entity with no `@TomFileReference` column short-circuits every path above, so
+the feature costs nothing to the entities that do not use it.
+
 ## Grouping and Aggregation
 
 Everything above describes *rows*. A grouped query describes *groups*: rows
@@ -719,7 +971,8 @@ here than on the row-returning paths:
   `WHERE`, never into `HAVING`: it decides which rows the principal may see, so
   it must apply before aggregation. Filtering groups afterwards would still have
   counted the hidden rows.
-- **Column rights (C-4)** cause the query to be **refused outright** rather than
+- **Column rights (C-4)** — see [Column Authorization](#column-authorization) —
+  cause the query to be **refused outright** rather than
   masked. The row paths null a forbidden column out of each returned entity; a
   grouped query cannot, because by the time rows exist the column has already
   been collapsed into a key or folded into an aggregate. Nulling the result would
@@ -808,6 +1061,14 @@ source's type.
   authorization module installs behind the `resource` kind;
   `TomDataScopeException` signals an unregistered kind and
   `TomDataScopeAuthorizationException` a refused write.
+- **`TomColumnAuthorization` + `TomRowColumnAuthorization`** — the column-grade
+  control: read masking, the write partition (`TomColumnWriteDecision`) and its
+  refusal `TomColumnAuthorizationException`, plus the per-row resolvers
+  (`TomRowColumnAuthResolver`) the file operations consult.
+- **`TomFileReference` + `TomFileReferenceKeys` + `TomFileRepository`** — the
+  file-column declaration, the store resolution and key scheme it implies, and
+  the five-method surface (`findById`, `saveFile`, `openFile`, `describeFile`,
+  `clearFile`) that moves the bytes.
 
 ## Not Yet Implemented
 

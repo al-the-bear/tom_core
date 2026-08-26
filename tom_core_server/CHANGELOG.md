@@ -3011,6 +3011,34 @@
 
 ### Documentation
 
+- **The object-persistence guide described one of the module's two authorization
+  controls and neither of its file columns (tcinc600).**
+  `doc/object_persistence.md` had a full treatment of row scopes (C-3) and, of
+  column grades (C-4), one incidental clause inside the Grouping section — where
+  the *exception* is documented (a grouped query is refused rather than masked)
+  without the rule it is an exception to. `@TomFileReference` appeared nowhere at
+  all: not the annotation, not `cascadeDelete`, not `exposed`, not the key
+  scheme, not the four repository methods. A reader following this guide would
+  map an entity, scope its rows, and have no way to learn that a column can be
+  graded or that a column can hold a file.
+
+  Two new sections close it. **Column Authorization** covers the four-state
+  grade (`none < disabled < read < full`), read masking and the nullability it
+  forces on graded fields, and the write partition — including why a refused
+  change to a *visible* column is named while a refused change to a *masked* one
+  is silently overlaid from the stored value: a masked column reads back `null`,
+  so rejecting it would fail every ordinary round trip on a column the caller
+  cannot know exists. It ends on `TomRowColumnAuthorization`, why only the file
+  operations consult it, and why `applyReadMask` skips a per-row column rather
+  than guessing. **File-Reference Columns** covers the five annotation fields
+  with their defaults, the `<keyPrefix>/<yyyy>/<mm>/<uuid><.ext>` key scheme and
+  the reason for each part, the `TomFileRepository` contract, the
+  upload-then-save ordering (an orphaned blob is collectable; a dangling
+  reference is repairable only by hand), the by-construction authorization story,
+  and the three details that keep `cascadeDelete` from deleting a live blob. Both
+  are in the table of contents, the Overview table and Core Components, and the
+  Grouping section's column-rights clause now links back to the rule.
+
 - **`TomSortDirection` was named in three places and its values written down in
   none (tcinc599).** The summary's Enums section had already stopped claiming
   the module declares none, but what replaced the claim was a pointer, and what
