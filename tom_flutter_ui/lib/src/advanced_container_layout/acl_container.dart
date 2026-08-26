@@ -855,7 +855,14 @@ class _AclContainerState extends State<AclContainer> {
             components: row.components.sublist(start, end),
             alignment: row.alignment,
             gapBefore: i == 0 ? row.gapBefore : dist,
-            id: i == 0 ? row.id : null,
+            // Every fragment keeps the id: a split is a visual wrap of one
+            // logical row, so all fragments must resolve the same row policy
+            // and contribute the same path segment. Dropping it on the
+            // continuation fragments would make a hidden row leak its
+            // overflow components, and would move descendant policy paths
+            // as the window narrows.
+            id: row.id,
+            idScope: row.idScope,
             group: row.group,
             breakpoints: const [],
             height: row.height,
@@ -872,6 +879,8 @@ class _AclContainerState extends State<AclContainer> {
             components: row.components.sublist(start),
             alignment: row.alignment,
             gapBefore: active.last.splitRowDist,
+            id: row.id,
+            idScope: row.idScope,
             group: row.group,
             breakpoints: const [],
             height: row.height,
@@ -951,6 +960,7 @@ class _AclContainerState extends State<AclContainer> {
           separator: row.separator,
           gapRowMinSize: row.gapRowMinSize,
           id: row.id,
+          idScope: row.idScope,
           group: row.group,
           breakpoints: row.breakpoints,
           height: row.height,
@@ -975,18 +985,25 @@ class _AclContainerState extends State<AclContainer> {
   ///
   /// Uses [TomScope.current.getScopePath()] as the identity base, then appends
   /// group/row/widget segments.
+  ///
+  /// The container's [AclContainer.aclId] and the row's [AclRow.id] are
+  /// *descendant* segments, so each appears only when the corresponding
+  /// `idScope` opts in: a layout container / layout row keeps its id for its
+  /// own resources without namespacing everything beneath it.
   String _buildComponentPolicyPath({
     required String componentId,
+    required AclRow row,
     String? groupName,
-    String? rowId,
   }) {
     final scopePath = TomScope.current.getScopePath();
     final segments = <String>[];
 
     if (scopePath.isNotEmpty) segments.add(scopePath);
 
-    // Add container self-segment if this ACL has its own ID
-    if (widget.aclId != null && widget.aclId!.isNotEmpty) {
+    // Add container self-segment if this ACL is an identity container.
+    if (widget.idScope &&
+        widget.aclId != null &&
+        widget.aclId!.isNotEmpty) {
       segments.add(widget.aclId!);
     }
 
@@ -994,8 +1011,8 @@ class _AclContainerState extends State<AclContainer> {
       segments.add(groupName);
     }
 
-    if (rowId != null && rowId.isNotEmpty) {
-      segments.add(rowId);
+    if (row.idScope && row.id != null && row.id!.isNotEmpty) {
+      segments.add(row.id!);
     }
 
     segments.add(componentId);
@@ -1005,13 +1022,19 @@ class _AclContainerState extends State<AclContainer> {
   /// Builds the canonical policy path for an ACL row ID.
   ///
   /// Uses [TomScope.current.getScopePath()] as the identity base.
+  ///
+  /// The row's own id is always the terminal segment — that is what "the id is
+  /// for the row's own resources" means — but the container id above it is a
+  /// descendant segment and so honours [AclContainer.idScope].
   String _buildRowPolicyPath({required String rowId, String? groupName}) {
     final scopePath = TomScope.current.getScopePath();
     final segments = <String>[];
 
     if (scopePath.isNotEmpty) segments.add(scopePath);
 
-    if (widget.aclId != null && widget.aclId!.isNotEmpty) {
+    if (widget.idScope &&
+        widget.aclId != null &&
+        widget.aclId!.isNotEmpty) {
       segments.add(widget.aclId!);
     }
 
@@ -1039,7 +1062,7 @@ class _AclContainerState extends State<AclContainer> {
             ? _buildComponentPolicyPath(
                 componentId: comp.id!,
                 groupName: resolvedGroup,
-                rowId: row.id,
+                row: row,
               )
             : null);
 
@@ -2512,7 +2535,7 @@ class _AclContainerState extends State<AclContainer> {
         componentPolicyPath = _buildComponentPolicyPath(
           componentId: component.id!,
           groupName: compGroup,
-          rowId: row.id,
+          row: row,
         );
         authState = TomAuthorization.resolveAuth(componentPolicyPath);
         if (!authState.isVisible) {

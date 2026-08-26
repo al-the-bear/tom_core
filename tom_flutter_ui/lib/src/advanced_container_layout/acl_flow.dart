@@ -54,9 +54,12 @@ double aclFlowItemWidth(AclComponent comp, double defaultItemWidth) {
 /// than being dropped — a row always receives at least one component.
 ///
 /// [gutterWidth] separates components within a row and [runSpacing] separates
-/// the generated rows. When [rowIdPrefix] is given, generated rows are
-/// addressable as `<prefix>.r<n>`, which is what the CE-LO override-delta
-/// grammar needs to target a row the author never wrote by hand.
+/// the generated rows. Generated rows are addressable as `r<n>`, or as
+/// `<prefix>.r<n>` when [rowIdPrefix] is given — which is what the CE-LO
+/// override-delta grammar needs to target a row the author never wrote by
+/// hand. Pass no prefix when the rows go to an [AclContainer]: the container
+/// composes the path from its own `aclId` (see `idScope`), so a prefix here
+/// would duplicate that segment.
 List<AclRow> aclWrapRows(
   List<AclComponent> components, {
   required double availableWidth,
@@ -173,7 +176,10 @@ AclRow _flowRow(
     components: List.unmodifiable(components),
     alignment: alignment,
     gapBefore: index == 0 ? 0.0 : runSpacing,
-    id: rowIdPrefix == null ? null : '$rowIdPrefix.r$index',
+    // An unqualified `r<n>`: an AclRow.id is relative everywhere else in ACL,
+    // and the container composes the path. A caller using these functions
+    // standalone can pass a prefix to get fully-qualified ids instead.
+    id: rowIdPrefix == null ? 'r$index' : '$rowIdPrefix.r$index',
   );
 }
 
@@ -262,7 +268,6 @@ class AclFlowContainer extends StatelessWidget {
           runSpacing: runSpacing,
           defaultItemWidth: defaultItemWidth,
           alignment: alignment,
-          rowIdPrefix: aclId,
         );
       case AclFlowKind.grid:
         return aclGridRows(
@@ -276,7 +281,6 @@ class AclFlowContainer extends StatelessWidget {
           gutterWidth: gutterWidth,
           runSpacing: runSpacing,
           alignment: alignment,
-          rowIdPrefix: aclId,
         );
     }
   }
