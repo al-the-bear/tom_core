@@ -103,10 +103,26 @@ class TomUserPreferences {
     return installed is TomUserPreferences ? installed : null;
   }
 
-  /// Every preference of the calling principal, in storage order.
+  /// Every preference of the calling principal, ordered by key.
+  ///
+  /// The `order by` is not decoration. Without it the answer is whatever order
+  /// the storage engine finds convenient, and that changes as the table is
+  /// rewritten, as rows are deleted and reinserted, or as the planner picks a
+  /// different index — so a caller that renders the list, or diffs two of them,
+  /// would see the sequence shift under it for reasons that have nothing to do
+  /// with the data. The clause is what lets this method's answer be described at
+  /// all: "whatever order storage happens to use" is not an order a caller can
+  /// rely on, however stable it looks in practice.
+  ///
+  /// The key is the ordering column rather than, say, `updated_at`, because it
+  /// is the one column that is unique per caller and never changes while the
+  /// preference exists: rewriting a value must not move it in the list. It is
+  /// also free — `uq_tom_user_preference (principal_id, preference_key)` already
+  /// covers `WHERE principal_id = ? ORDER BY preference_key`, so the rows come
+  /// back in order off the index rather than through a sort.
   Future<List<TomUserPreferenceDto>> all() async {
     final rows = await repository.findByQuerySentence(
-      'FIND BY principal_id = :principalId',
+      'FIND BY principal_id = :principalId ORDER BY preference_key',
       {'principalId': _requirePrincipal().id},
     );
     return List.unmodifiable(rows.map((row) => row.toDto()));

@@ -183,6 +183,48 @@ void main() async {
       );
     });
 
+    test('all() lists preferences by key, not by insertion order', () async {
+      // Written in an order that is neither alphabetical nor its reverse, so a
+      // list that merely echoes the write sequence — or the row ids, which
+      // follow it — fails rather than passing by coincidence.
+      await asSession(7, (p) async {
+        await p.set('theme', 'dark');
+        await p.set('account.language', 'de');
+        await p.set('zoom', 1.25);
+        await p.set('account.pageSize', 25);
+      });
+
+      final all = await asSession(7, (p) => p.all());
+      // An exact sequence, not a set: the order is the contract the three
+      // documents state, so an unordered matcher would leave it unasserted.
+      expect(all.map((dto) => dto.key).toList(), <String>[
+        'account.language',
+        'account.pageSize',
+        'theme',
+        'zoom',
+      ]);
+    });
+
+    test('all() lists in the same order across sessions', () async {
+      await asSession(7, (p) async {
+        await p.set('theme', 'dark');
+        await p.set('account.language', 'de');
+        await p.set('zoom', 1.25);
+      });
+      final first = await asSession(7, (p) => p.all());
+
+      // Rewriting a value touches the row without changing the key, so a list
+      // that followed storage rather than the key would reorder here — which is
+      // exactly the drift the documented order exists to rule out.
+      await asSession(7, (p) => p.set('theme', 'light'));
+      final second = await asSession(7, (p) => p.all());
+
+      expect(
+        second.map((dto) => dto.key).toList(),
+        first.map((dto) => dto.key).toList(),
+      );
+    });
+
     test(
       'remove deletes the preference and reports whether it existed',
       () async {

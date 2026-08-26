@@ -374,17 +374,28 @@ void main() async {
       expect(await first.read<String>(TomUserPreferenceKeys.theme), isNull);
     });
 
-    test('both clients list the same set of keys', () async {
+    test('both clients list the same keys in the same order', () async {
       final (first, second, _) = callers();
 
-      await first.write('account.language', 'de');
+      // Written across both clients and in neither alphabetical order nor its
+      // reverse, so a list that echoed the write sequence would differ from the
+      // one asserted rather than coincide with it.
+      await first.write('theme', 'dark');
       await second.write('account.pageSize', 50);
+      await first.write('account.language', 'de');
 
-      expect(
-        await second.keys(),
-        containsAll(<String>['account.language', 'account.pageSize']),
-      );
-      expect(await first.keys(), unorderedEquals(await second.keys()));
+      // The same *list*, not the same set. The server orders by key, so two
+      // clients of one user see the same sequence — which is what makes a list
+      // safe to render side by side or diff between devices. An unordered
+      // matcher here would pass just as well against a server that answered in
+      // a different order each time.
+      const expected = <String>[
+        'account.language',
+        'account.pageSize',
+        'theme',
+      ];
+      expect(await first.keys(), expected);
+      expect(await second.keys(), expected);
     });
 
     test('a client of another user sees none of it', () async {

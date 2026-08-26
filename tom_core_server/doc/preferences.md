@@ -70,7 +70,7 @@ scope would reject on the next read anyway, having already been stored.
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the caller |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the caller, ordered by key |
 | `read(key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` |
 | `get<T>(key)` | `Future<T?>` | Decoded as a `T`; `null` when never written |
 | `getOr<T>(key, fallback)` | `Future<T>` | `get`, with a default for the unwritten case |
@@ -83,6 +83,18 @@ scope would reject on the next read anyway, having already been stored.
 written**. A type *mismatch* still throws: an unwritten preference is an ordinary
 state that a default answers, while a preference stored as the wrong type is a
 bug, and silently answering the fallback would hide it.
+
+`all()` orders by key, and the query says so. An unordered `SELECT` returns rows
+in whatever order the engine finds convenient, which shifts as the table is
+rewritten, as rows are deleted and reinserted, or as the planner picks a
+different index — so a list a caller renders would reshuffle for reasons that
+have nothing to do with the data, and two devices could show the same
+preferences in two orders. The key is the ordering column because it is the one
+column unique per caller that never changes while the preference exists:
+rewriting a value must not move it in the list. It also costs nothing —
+`uq_tom_user_preference (principal_id, preference_key)` already covers
+`WHERE principal_id = ? ORDER BY preference_key`, so the rows arrive in order
+off the index rather than through a sort.
 
 ### Every key is checked on the way in
 

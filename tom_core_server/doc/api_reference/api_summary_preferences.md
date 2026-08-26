@@ -143,7 +143,7 @@ All of the following read the caller from the request zone, except `getFor`.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the caller, in storage order (unmodifiable). |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the caller, ordered by key (unmodifiable). |
 | `read(String key)` | `Future<TomUserPreferenceDto?>` | The caller's preference under `key`, or `null` when never written. |
 | `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` when the preference exists but was written as a different type. |
 | `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |
@@ -156,6 +156,13 @@ All of the following read the caller from the request zone, except `getFor`.
 other failure of this service arrives as a rejected future, and one method that
 threw synchronously instead would be caught by a `try` the caller wrote around
 the `await` and missed by everything else.
+
+`all()`'s order is a contract, carried by the query's own `order by
+preference_key`. Ordering by key rather than by insertion or by `updated_at`
+means rewriting a value does not move the preference in the list, and two
+devices of one user see the same sequence. `uq_tom_user_preference
+(principal_id, preference_key)` already covers the ordered scan, so the
+guarantee costs no sort.
 
 ### TomUserPreferenceException
 

@@ -519,6 +519,27 @@
 
 ### Fixed
 
+- **`TomUserPreferences.all()` promised an order its query did not ask for
+  (tcinc613).** The sentence was `FIND BY principal_id = :principalId` with no
+  `order by`, while the method's dartdoc, `api_summary_preferences.md` and the
+  completion document all described the answer as being "in storage order" —
+  which is not an order SQL offers. What a caller actually got was whatever the
+  engine found convenient, and that changes as the table is rewritten, as rows
+  are deleted and reinserted, or as the planner picks a different index. The
+  round-trip test had already worked around the gap, asserting `containsAll` and
+  `unorderedEquals` where it meant to assert a list.
+
+  The query now carries `ORDER BY preference_key` and the four documents name
+  that order instead. The key is the ordering column because it is the one
+  column unique per caller that never changes while the preference exists, so
+  rewriting a value does not move it in the list — and because
+  `uq_tom_user_preference (principal_id, preference_key)` already covers
+  `WHERE principal_id = ? ORDER BY preference_key`, the guarantee costs no sort.
+  Two DB-backed tests pin it: one writes four keys in an order that is neither
+  alphabetical nor its reverse and asserts the listed sequence exactly, the
+  other rewrites a value and asserts the sequence is unchanged. The round-trip
+  test's unordered matchers were replaced with the list both clients now see.
+
 - **The framework error envelope was hand-built in two places, and the two had
   already drifted (tcinc612).** `TomServer.errorHandler` and
   `TomUserPreferencesErrorHandler` each assembled the wire error body from
