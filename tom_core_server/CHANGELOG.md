@@ -3430,6 +3430,20 @@
 
 ### Documentation
 
+- **`doc/preferences.md` named the module's public types twice and both lists
+  were short (tcinc619).** The Overview table carried five of six, omitting
+  `TomUserPreferencesErrorHandler`; Core Components carried four, omitting that
+  and `TomUserPreferenceException`. The error handler is the odd one to lose,
+  because the document spends its longest section on it — the argument that
+  `preferences.not_found` is a `404`, `preferences.key.invalid` a `400`, and
+  nothing else is either — so a reader scanning for "what is in this module"
+  did not find the type its most-discussed behaviour lives in. The module
+  readme, `api_summary_preferences.md` and the completion document all listed
+  six; `doc/preferences.md` was the only one of the four that did not. Both
+  lists now name all six, in the order the siblings use, and the two new Core
+  Components entries give the reason each type exists rather than restating its
+  name.
+
 - **Twenty-two documented constructors typed an exception's `stack` parameter
   as `Object?` where it is `StackTrace?` (tcinc617).** The mistake is a natural
   one, and the summaries were split roughly evenly between the two spellings,

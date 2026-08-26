@@ -26,6 +26,7 @@ through.
 | `TomUserPreferences` | bean-installed service | Typed reads and writes of the caller's preferences |
 | `TomUserPreferenceException` | exception | Raised when an operation cannot identify the caller |
 | `TomUserPreferencesServer` | reflected API implementation | The `/preferences/*` handlers |
+| `TomUserPreferencesErrorHandler` | endpoint error handler | Maps `preferences.not_found` to a `404` and `preferences.key.invalid` to a `400`, and no other key to anything |
 
 The *contract* is not here. The keys (`TomUserPreferenceKeys`), the wire DTOs
 (`TomUserPreferenceDto` and friends), the value codec
@@ -330,7 +331,18 @@ block every login.
 - **`TomUserPreferences`** — the typed service; installed as a bean so an
   application can substitute a caching or read-only implementation without any
   consumer changing.
+- **`TomUserPreferenceException`** — raised when an operation cannot identify
+  the caller. It throws rather than returning `null` because there is no useful
+  answer to give: with no principal there is no row to read and no owner to
+  write, and an unowned row would be stored and then rejected by the scope on
+  the next read.
 - **`TomUserPreferencesServer`** — the `/preferences/*` implementation.
+- **`TomUserPreferencesErrorHandler`** — the endpoint error handler that makes
+  a miss and a bad key distinguishable: `preferences.not_found` becomes a `404`,
+  `preferences.key.invalid` a `400`, and every other key stays an opaque `500`.
+  The narrowness is the design, not an omission — mapping a deployment fault
+  such as `preferences.not_configured` the same way would let a client read an
+  outage as absence.
 
 ## Dependencies
 
