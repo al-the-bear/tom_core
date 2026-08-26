@@ -160,6 +160,129 @@ void main() {
     });
   });
 
+  group('discriminating with catch clauses', () {
+    // The `is` check above and these `on` clauses answer the same question, but
+    // they are not equally easy to get wrong. An `is` check has no order: each
+    // branch names its own type and the compiler cannot mistake one for
+    // another. A chain of `on` clauses is ordered, the first match wins, and
+    // `TomClientUIException` is a subtype of `TomClientException` — so a general
+    // clause placed ahead of the specific one takes every failure and the
+    // presentable message is never shown.
+    //
+    // That order rule is stated in the class dartdoc and in the module readme,
+    // and it is the one thing a consumer can actually get wrong. Stating it
+    // three times and testing it nowhere is what these cases fix.
+
+    /// The correct shape: specific clause first, general clause second.
+    ///
+    /// The parameter is the *kernel* type so that the handler's reach is
+    /// testable — it handles client failures and nothing else, and what it
+    /// leaves alone matters as much as what it takes.
+    String route(TomException failure) {
+      try {
+        throw failure;
+      } on TomClientUIException catch (e) {
+        return 'banner: ${e.defaultUserMessage}';
+      } on TomClientException catch (e) {
+        return 'logged: ${e.key}';
+      }
+    }
+
+    /// The mistake, in the only spelling that compiles.
+    ///
+    /// A literally reversed pair — `on TomClientException` before
+    /// `on TomClientUIException` — is rejected by the analyzer as
+    /// `dead_code_on_catch_subtype`, so no consumer can ship it. What a
+    /// consumer *can* ship is a handler that only ever grew the general clause,
+    /// and its effect is identical: the subtype is swallowed.
+    String routeGeneralOnly(TomException failure) {
+      try {
+        throw failure;
+      } on TomClientException catch (e) {
+        return 'logged: ${e.key}';
+      }
+    }
+
+    test('the specific clause takes a presentable failure', () {
+      expect(
+        route(TomClientUIException('login.failed', 'Could not sign you in.')),
+        'banner: Could not sign you in.',
+      );
+    });
+
+    test('the general clause takes a failure that is not presentable', () {
+      expect(
+        route(TomClientException('cache.miss', 'No cached profile')),
+        'logged: cache.miss',
+      );
+    });
+
+    test('a general clause alone swallows the presentable subtype', () {
+      // The point of the pair: identical input, and the message the user was
+      // supposed to see does not appear in the result at all.
+      final presentable =
+          TomClientUIException('login.failed', 'Could not sign you in.');
+      expect(route(presentable), 'banner: Could not sign you in.');
+      expect(routeGeneralOnly(presentable), 'logged: login.failed');
+    });
+
+    test('neither client clause catches a kernel failure', () {
+      // Why the boundary wrap below catches `TomException` and not
+      // `TomClientException`: a failure raised below the client layer walks
+      // straight past both clauses.
+      expect(
+        () => route(TomException('server.down', 'Service unavailable')),
+        throwsA(
+          allOf(
+            isA<TomException>().having((e) => e.key, 'key', 'server.down'),
+            isNot(isA<TomClientException>()),
+          ),
+        ),
+      );
+    });
+
+    test('a kernel failure is wrapped at a layer boundary', () {
+      // `on TomException` rather than `on TomClientException` is the deliberate
+      // choice: what is being wrapped came from a lower layer, which is exactly
+      // the distinction the client type exists to draw.
+      TomClientUIException loadTasks(void Function() call) {
+        try {
+          call();
+          fail('the call under test was expected to throw');
+        } on TomException catch (e) {
+          return TomClientUIException(
+            'tasks.unavailable',
+            'Tasks are not available right now.',
+            rootException: e,
+          );
+        }
+      }
+
+      final serverFailure = TomException('server.down', 'Service unavailable');
+      final wrapped = loadTasks(() => throw serverFailure);
+
+      expect(wrapped.key, 'tasks.unavailable');
+      expect(wrapped.defaultUserMessage, 'Tasks are not available right now.');
+      expect(identical(wrapped.rootException, serverFailure), isTrue);
+    });
+
+    test('the wrap is what makes a lower-layer failure presentable', () {
+      // Without it the failure reaching the UI is a `TomException` whose
+      // message is written for an operator, not for a user — which is the
+      // reason the boundary exists.
+      final serverFailure = TomException('server.down', 'Service unavailable');
+      expect(serverFailure, isNot(isA<TomClientUIException>()));
+      expect(
+        TomClientUIException(
+          'tasks.unavailable',
+          'Tasks are not available right now.',
+          rootException: serverFailure,
+        ),
+        isA<TomClientUIException>(),
+      );
+    });
+  });
+
   group('the module readme describes a role, not just its contents', () {
     // `little_things` is the same directory in all three tom_core packages:
     // where a small cross-cutting thing lands once more than one module needs
@@ -481,6 +604,30 @@ void main() {
         exampleText().code,
         contains('autoLog: true'),
         reason: 'autoLog is only demonstrated by passing it',
+      );
+    });
+
+    test('it discriminates with catch clauses, not only with `is`', () {
+      // The module's stated reason for existing is that `on X catch` clauses
+      // separate a presentable client failure from a non-presentable one, and
+      // the single rule a consumer can get wrong is the order of those clauses.
+      // An `is` check has no order, so an example built only on `is` cannot
+      // show the mistake — which is how the rule came to be asserted in the
+      // dartdoc, the readme and the completion document, and executed nowhere.
+      final code = exampleText().code;
+      expect(code, contains('on TomClientUIException catch'));
+      expect(code, contains('on TomClientException catch'));
+      expect(
+        code,
+        contains('on TomException catch'),
+        reason: 'the boundary wrap catches the kernel type rather than the '
+            'client one, and that choice is the whole point of it',
+      );
+      expect(
+        code.indexOf('on TomClientUIException catch'),
+        lessThan(code.indexOf('on TomClientException catch')),
+        reason: 'the specific clause has to come first — a reader copying this '
+            'takes the order from the code, not from the prose beside it',
       );
     });
   });

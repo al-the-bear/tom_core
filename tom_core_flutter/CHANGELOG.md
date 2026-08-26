@@ -120,6 +120,27 @@
 
 ### Tests / Examples
 
+- **little_things: the catch-clause order is executed rather than only stated
+  (tcinc660).** The module exists so that `on X catch` clauses can separate a
+  presentable client failure from one that must not be shown, and the single
+  rule a consumer can get wrong is that `TomClientUIException`'s clause has to
+  come before `TomClientException`'s. That rule was written in the class
+  dartdoc, the module readme and the completion document, and demonstrated
+  nowhere: neither the example nor the suite contained a single `on` or
+  `catch`, both expressing the discrimination with an `is` check instead — a
+  mechanism that has no order and so cannot show the mistake. The example now
+  runs the correct handler and the swallowing one side by side and prints what
+  each returns for the same failure, and the suite asserts which clause ran in
+  each, that a kernel failure walks past both client clauses, and that the
+  boundary wrap catches `TomException` while keeping the cause in
+  `rootException`. The mistake is spelled as a *missing* specific clause rather
+  than a reversed pair, because a reversed pair is rejected by the analyzer as
+  `dead_code_on_catch_subtype` and therefore cannot ship; a handler that only
+  ever grew the general clause can, and has the same effect. A guard holds the
+  example to the shape — it fails if the `on` clauses disappear, if the
+  boundary wrap narrows to the client type, or if the general clause is shown
+  first.
+
 - **every example now names a command that succeeds (tcinc659).** All seven
   examples told the reader to run `flutter test example/<m>/<m>_example.dart`.
   That command does run the example — `main()` executes at load time, every

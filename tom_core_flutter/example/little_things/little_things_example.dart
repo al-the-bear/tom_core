@@ -1,7 +1,9 @@
 /// Executable example for the little_things module of `tom_core_flutter`.
 ///
-/// Demonstrates the two client exception types, the type-based discrimination
-/// pattern UI layers rely on, and the forwarded kernel payload — including
+/// Demonstrates the two client exception types, both ways UI layers
+/// discriminate between them — an `is` check and a pair of `on` clauses, where
+/// the order is load-bearing — the boundary wrap that gives a lower-layer
+/// failure a presentable face, and the forwarded kernel payload, including
 /// `autoLog`, whose records are captured and printed rather than described.
 ///
 /// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so this
@@ -109,6 +111,67 @@ void run() {
   print('both records carry ${logged.uuid}, so a trace can be joined back to '
       'the failure it came from');
 
+  // Example 6: discriminating with `on` clauses rather than an `is` check.
+  //
+  // Example 3 asks the type a question; this asks the language to route on it,
+  // and that is what most call sites actually write. The two are not
+  // interchangeable: an `is` check cannot be written in the wrong order, and
+  // order is the one thing a caller can get wrong here.
+  String route(TomClientException failure) {
+    try {
+      throw failure;
+    } on TomClientUIException catch (e) {
+      return 'banner: ${e.defaultUserMessage}';
+    } on TomClientException catch (e) {
+      return 'logged: ${e.key}';
+    }
+  }
+
+  print('route(ui)       -> ${route(uiError)}');
+  print('route(internal) -> ${route(internal)}');
+
+  // The same handler with only the general clause. `TomClientUIException` is a
+  // subtype, so it lands there too and its presentable message never reaches
+  // the banner — the failure is silent rather than loud, which is why it
+  // survives review.
+  //
+  // Spelling the mistake as a literally reversed *pair* would be clearer still,
+  // but the analyzer rejects that as `dead_code_on_catch_subtype`. This form is
+  // the one that compiles, and therefore the one that ships.
+  String routeGeneralOnly(TomClientException failure) {
+    try {
+      throw failure;
+    } on TomClientException catch (e) {
+      return 'logged: ${e.key}';
+    }
+  }
+
+  print('routeGeneralOnly(ui) -> ${routeGeneralOnly(uiError)} '
+      '(the presentable message was swallowed)');
+
+  // Example 7: wrapping a lower-layer failure at a boundary.
+  //
+  // The clause catches the *kernel* type, not the client one. That is the
+  // deliberate part: what is being wrapped did not come from the client layer
+  // at all, and the wrap is what gives it a presentable face without losing the
+  // cause, which stays reachable through `rootException`.
+  final serverFailure = TomException('server.down', 'Service unavailable');
+  TomClientUIException loadTasks() {
+    try {
+      throw serverFailure;
+    } on TomException catch (e) {
+      return TomClientUIException(
+        'tasks.unavailable',
+        'Tasks are not available right now.',
+        rootException: e,
+      );
+    }
+  }
+
+  final unavailable = loadTasks();
+  print('wrapped: ${unavailable.key} -> ${unavailable.defaultUserMessage}');
+  print('cause preserved: ${identical(unavailable.rootException, serverFailure)}');
+
   // Assertions
   assert(internal is! TomClientUIException);
   assert(identical(surfacedUi, uiError));
@@ -124,6 +187,20 @@ void run() {
     recorder.messages.every((m) => m.contains(logged.uuid)),
     'both autoLog records must carry the exception uuid',
   );
+  assert(
+    route(uiError) == 'banner: Could not sign you in.',
+    'the subtype clause must run first for a presentable failure',
+  );
+  assert(
+    route(internal) == 'logged: cache.miss',
+    'a plain client failure must fall through to the general clause',
+  );
+  assert(
+    routeGeneralOnly(uiError) == 'logged: login.failed',
+    'a general clause alone must swallow the presentable subtype',
+  );
+  assert(unavailable.key == 'tasks.unavailable');
+  assert(identical(unavailable.rootException, serverFailure));
 }
 
 void main() => run();
