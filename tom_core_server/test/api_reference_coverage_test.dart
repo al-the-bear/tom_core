@@ -1208,7 +1208,25 @@ class _Declaration {
   final Set<String> bodilessMembers = {};
 
   /// The names in the `extends` / `implements` / `with` clause.
+  ///
+  /// Flattened on purpose: every check that reads this one asks whether a name
+  /// is *reachable* from the class, and all three clauses answer that the same
+  /// way. [superclass] and [interfaces] are for the one question where they
+  /// differ.
   final Set<String> supertypes = {};
+
+  /// The name in the `extends` clause, or `null` when the class extends
+  /// nothing.
+  ///
+  /// Split out from [supertypes] because a summary's `**Extends:**` /
+  /// `**Implements:**` line is a claim about *which* clause, and a reader acts
+  /// on the difference: an interface hands over no behaviour, so a second
+  /// implementation owes every member, while a base class may already answer
+  /// some of them.
+  String? superclass;
+
+  /// The names in the `implements` clause. See [superclass].
+  final Set<String> interfaces = {};
 
   /// The parameter names of each constructor, keyed by constructor name — the
   /// empty string for the unnamed one.
@@ -1280,6 +1298,17 @@ final RegExp _supertypeClause = RegExp(
   r'\b(?:extends|implements|with)\s+([\w\s,]+)',
 );
 final RegExp _supertypeName = RegExp(r'\b([A-Z]\w+)');
+
+/// The `extends` clause on its own, and the `implements` clause on its own.
+///
+/// `implements` stops at a following `with` or at the body: the clause pattern
+/// above is deliberately indifferent to which keyword a name arrived under, and
+/// `[\w\s,]+` would run straight through `with` — which is harmless when every
+/// name is going into one set and wrong when they are going into two.
+final RegExp _extendsClause = RegExp(r'\bextends\s+([A-Z]\w*)');
+final RegExp _implementsClause = RegExp(
+  r'\bimplements\s+([\w\s,]+?)(?:\s+with\b|\s*[{;]|$)',
+);
 
 /// [source] with every type-argument list removed.
 ///
@@ -1539,11 +1568,21 @@ Map<String, _Declaration> _parseDeclarations() {
     final header = <String>[];
 
     void readSupertypes(String text) {
-      final clause = _supertypeClause.firstMatch(_withoutTypeArguments(text));
+      final flattened = _withoutTypeArguments(text);
+      final clause = _supertypeClause.firstMatch(flattened);
       if (clause == null) return;
       current!.supertypes.addAll(
         _supertypeName.allMatches(clause.group(1)!).map((m) => m.group(1)!),
       );
+      current.superclass = _extendsClause.firstMatch(flattened)?.group(1);
+      final implemented = _implementsClause.firstMatch(flattened);
+      if (implemented != null) {
+        current.interfaces.addAll(
+          _supertypeName
+              .allMatches(implemented.group(1)!)
+              .map((m) => m.group(1)!),
+        );
+      }
     }
 
     final lines = source.split('\n');
@@ -1935,6 +1974,85 @@ List<String> _incompleteSectionsOf(String module) => [
           when missing.isNotEmpty)
         '${section.type}: ${missing.join(', ')}',
 ];
+
+/// One `**Extends:**` / `**Implements:**` line as a summary presents it.
+///
+/// [denies] is the `none` form, which is a claim too — that the class extends
+/// nothing — and is checked as one.
+typedef _RelationshipClaim = ({
+  String file,
+  int line,
+  String type,
+  bool extending,
+  bool denies,
+  Set<String> named,
+});
+
+/// Every relationship line in `doc/api_reference/`, attributed to its class.
+List<_RelationshipClaim> _relationshipClaims() => Directory('doc/api_reference')
+    .listSync()
+    .whereType<File>()
+    .where((entry) => entry.path.endsWith('.md'))
+    .expand(
+      (file) => _relationshipClaimsOf(
+        file.uri.pathSegments.last,
+        file.readAsLinesSync(),
+      ),
+    )
+    .toList();
+
+/// The relationship lines of one summary, reported under [file].
+///
+/// Split from [_relationshipClaims] for the same reason [_listedMembersOf] is:
+/// getting the attribution wrong files a claim under the wrong class, which
+/// reads as a passing check rather than as an error.
+List<_RelationshipClaim> _relationshipClaimsOf(
+  String file,
+  List<String> lines,
+) {
+  // Both backtick styles, and both generic spellings: a summary writes
+  // `TomEndpointBase&lt;requestType, resultType&gt;` in a heading, and an
+  // anchored pattern that does not expect the escape silently attributes every
+  // one of that class's lines to nothing at all.
+  final heading = RegExp(r'^#{3,4}\s+`?([A-Za-z_]\w*)');
+  final claim = RegExp(r'^- \*\*(Extends|Implements):\*\*\s*(.+)$');
+  // Backticks on one of these lines are not all supertypes. A line may cite the
+  // module a type comes from or the summary that documents it — `**Implements:**
+  // `TomResourceScopeSource` (this package's `object_persistence` module …)` —
+  // so the names are filtered to those *shaped* like a type. Taking every
+  // backticked token would demand that the class implement its own
+  // documentation file.
+  final quoted = RegExp(r'`([A-Z]\w*(?:&lt;[^`]*&gt;|<[^`]*>)?)`');
+
+  final found = <_RelationshipClaim>[];
+  String? current;
+  for (var index = 0; index < lines.length; index++) {
+    final title = heading.firstMatch(lines[index])?.group(1);
+    if (title != null) {
+      current = _declarations.containsKey(title) ? title : null;
+      continue;
+    }
+    final match = claim.firstMatch(lines[index]);
+    final type = current;
+    if (match == null || type == null) continue;
+    final text = match.group(2)!;
+    found.add((
+      file: file,
+      line: index + 1,
+      type: type,
+      extending: match.group(1) == 'Extends',
+      // Read before the quoted names, not after: `none (abstract). Annotated
+      // `@tomReflector`.` carries a backticked token that names no supertype,
+      // and taking it for one would demand a class the package never declares.
+      denies: text.startsWith('none'),
+      named: {
+        for (final name in quoted.allMatches(text))
+          name.group(1)!.split(RegExp('<|&lt;')).first.trim(),
+      },
+    ));
+  }
+  return found;
+}
 
 /// One member as a module document's class listing presents it.
 typedef _ListedMember = ({
@@ -3965,6 +4083,108 @@ One: `TomKind`, documented beside the type that carries it.
         reason:
             'the bound in a type parameter must not be read as a supertype, '
             'which would make every lookup on the class undecidable',
+      );
+    });
+  });
+
+  group('every relationship line names the clause the source wrote', () {
+    test('no summary turns an interface into a base class', () {
+      // The two words are not synonyms to a reader deciding how to write a
+      // second implementation. `implements` says the contract hands over no
+      // behaviour, so the new class owes every member; `extends` says some of
+      // them may already be answered. Getting it backwards sends that reader
+      // looking for inherited helpers that do not exist — which is exactly what
+      // happened to `TomSqlJobStore`, in prose that called it an extension of
+      // `TomJobStore` while the source implemented it.
+      //
+      // The summaries were right in that instance and the narrative was wrong,
+      // which is the reverse of this doc-set's usual failure. It is not a
+      // reason to trust them: nothing was checking, and a line that is correct
+      // only because nobody has edited it yet is not an invariant.
+      final offenders = <String>[];
+      for (final claim in _relationshipClaims()) {
+        final declaration = _declarations[claim.type]!;
+        if (claim.denies) {
+          final actual = claim.extending
+              ? declaration.superclass
+              : (declaration.interfaces.isEmpty
+                    ? null
+                    : declaration.interfaces.join(', '));
+          if (actual != null) {
+            offenders.add(
+              '${claim.file}:${claim.line} ${claim.type} documented as '
+              '${claim.extending ? "extending" : "implementing"} nothing, '
+              'source names $actual',
+            );
+          }
+          continue;
+        }
+        // A line that names no type at all says nothing to disagree with. It is
+        // not an error here — the sections that carry one describe the
+        // relationship in prose — and the reach test below is what keeps that
+        // from becoming a way to go quiet.
+        if (claim.named.isEmpty) continue;
+        final actual = claim.extending
+            ? {if (declaration.superclass != null) declaration.superclass!}
+            : declaration.interfaces;
+        final missing = claim.named.where((n) => !actual.contains(n));
+        if (missing.isEmpty) continue;
+        offenders.add(
+          '${claim.file}:${claim.line} ${claim.type} documented as '
+          '${claim.extending ? "extending" : "implementing"} '
+          '${missing.join(", ")}; source '
+          '${claim.extending ? "extends" : "implements"} '
+          '${actual.isEmpty ? "nothing" : actual.join(", ")}',
+        );
+      }
+      expect(offenders, isEmpty);
+    });
+
+    test('the sweep reaches every line it is meant to police', () {
+      // Attribution is what this sweep can get silently wrong: a claim whose
+      // heading was not recognised is filed under no class and then checked
+      // against nothing. So the count is pinned exactly rather than floored —
+      // every relationship line in the directory must have found a class, and
+      // an unrecognised heading fails here instead of quietly shrinking the
+      // check above.
+      final written = Directory('doc/api_reference')
+          .listSync()
+          .whereType<File>()
+          .where((entry) => entry.path.endsWith('.md'))
+          .expand((file) => file.readAsLinesSync())
+          .where(
+            (line) =>
+                line.startsWith('- **Extends:**') ||
+                line.startsWith('- **Implements:**'),
+          )
+          .length;
+      final claims = _relationshipClaims();
+      expect(written, greaterThan(100));
+      expect(
+        claims.length,
+        written,
+        reason:
+            'every relationship line must be attributed to a class the '
+            'package declares; a shortfall is a heading the parser missed, '
+            'not a line that needed none',
+      );
+
+      // Both shapes present, or the comparison only ever exposes one of its two
+      // possible mistakes — and the pair that prompted the guard by name, since
+      // they are the package's clearest case of the distinction being real.
+      expect(claims.any((c) => c.extending), isTrue);
+      expect(claims.any((c) => !c.extending), isTrue);
+      expect(claims.any((c) => c.denies), isTrue);
+      expect(
+        claims.singleWhere((c) => c.type == 'TomSqlJobStore').extending,
+        isFalse,
+        reason:
+            '`TomSqlJobStore` implements `TomJobStore`; it inherits nothing',
+      );
+      expect(
+        claims.singleWhere((c) => c.type == 'TomSqlLeaseLock').extending,
+        isTrue,
+        reason: '`TomSqlLeaseLock` really does extend `TomLeaseLock`',
       );
     });
   });

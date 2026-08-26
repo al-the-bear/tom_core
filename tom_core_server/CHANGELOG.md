@@ -2,6 +2,35 @@
 
 ### Testing
 
+- **Nothing checked whether an `**Extends:**` line named the clause the source
+  wrote (tcinc634).** The API summaries carry 143 relationship lines across the
+  module set, and every one of them was prose: a class could be documented as
+  extending a contract it merely implements, and the doc guard would not notice.
+  The distinction is not stylistic — it tells a reader writing a second
+  implementation whether the contract hands over any behaviour or none — and it
+  had already drifted in narrative text describing `TomSqlJobStore`.
+
+  `_Declaration` flattened `extends`, `implements` and `with` into one
+  `supertypes` set, which is the right shape for every check that asks whether a
+  name is *reachable* from a class and the wrong one for the single check that
+  asks under which keyword. It now also records `superclass` and `interfaces`,
+  and `every relationship line names the clause the source wrote` compares each
+  documented claim against the matching half. `none` is checked as a claim too.
+
+  The reach test pins the claim count *exactly* against the lines on disk rather
+  than flooring it: a heading the parser fails to recognise files its class's
+  lines under nothing and is then checked against nothing, which is the one way
+  this sweep can go quiet while still reporting success. Two summary conventions
+  had to be accommodated to get there — headings escape their generics
+  (`&lt;…&gt;`), and a relationship line may backtick a module or a file name
+  beside the supertype, so names are filtered to those shaped like a type.
+
+  One line did not survive the first run: `api_summary_configuration.md` filled
+  `TomBaseServerConfiguration`'s `Extends:` slot with `annotated with
+  @tomReflector (abstract)` — an annotation fact in the slot reserved for a
+  supertype. It now reads `none (abstract). Annotated @tomReflector.`, matching
+  the twenty-four other classes that extend nothing.
+
 - **`TomResourceLocaleException` was asserted nowhere, and `clientThrow` was a
   default rather than a guarantee (tcinc632).** The type adds no field and no
   behaviour; it is declared solely to make `clientThrow` false, because the value

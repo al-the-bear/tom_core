@@ -105,7 +105,7 @@ Reflected base class for a server's configuration. Subclasses declare typed
 fields; the reflection layer fills them from the merged configuration sources in
 the constructor.
 
-- **Extends:** annotated with `@tomReflector` (abstract).
+- **Extends:** none (abstract). Annotated `@tomReflector`.
 
 #### Constructors
 
