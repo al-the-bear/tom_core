@@ -82,6 +82,15 @@
 
 ### Tests / Examples
 
+- **configuration (tcinc653).** One test pinning the order `save()` writes:
+  carried-forward undeclared keys first, then the overridden settings in
+  declaration order. Nothing depends on that order — a JSON object is unordered
+  either way — but the completion document quotes the printed map literally, and
+  a reader compares their own run against it, so an order that drifts silently
+  turns the quotation into a false report. The test overrides its two settings
+  in the reverse of declaration order, so passing cannot be an accident of the
+  order the test wrote them in.
+
 - **configuration (tcinc652).** Five tests closing three coverage gaps that a
   documentation claim had been standing in for. Two `testWidgets` cases bind a
   `TomSetting<bool>` straight to a `TomObservingWidget` — one taps the `Switch`,

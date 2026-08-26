@@ -254,6 +254,32 @@ void main() {
       });
     });
 
+    test('writes carried-forward keys first, then overrides in declaration '
+        'order', () async {
+      // Nothing *depends* on this order — a JSON object is unordered either
+      // way. It is pinned because the documentation quotes the printed map
+      // literally, and a reader compares their own run against it. An order
+      // that drifts silently turns that quotation into a false report, which
+      // is worse than not quoting the output at all.
+      final store = TomMemoryClientConfigurationStore({
+        'client.fromNewerBuild': 'keep',
+      });
+      final config = _TestConfiguration(store: store);
+      await config.load();
+
+      // Overridden out of declaration order, so passing cannot be an accident
+      // of the order the test happened to write them in.
+      config.darkMode | true;
+      config.serverUrl | 'https://eu.example.com';
+      await config.save();
+
+      expect((await store.read()).keys, [
+        'client.fromNewerBuild', // undeclared, carried forward
+        'client.server.url', // declared first
+        'client.darkMode', // declared last
+      ]);
+    });
+
     test('throws when no store is wired', () {
       expect(_TestConfiguration().save,
           throwsConfigException('client_configuration.store.not_configured'));
