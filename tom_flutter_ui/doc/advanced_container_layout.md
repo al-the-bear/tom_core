@@ -16,7 +16,7 @@ a layout can be *constructed* (and asserted on) with no widget tree; only
 Rows do not have to be written by hand. [`AclFlowContainer`] takes a flat child
 list and *generates* the rows for it under one of two rules — `wrap` or `grid`
 — then hands them to the same engine, so a flowed layout keeps ids, anchors,
-gap rows, variants, and authorization hiding intact.
+sizing and authorization hiding intact.
 
 ## Table of Contents
 
@@ -44,7 +44,7 @@ gap rows, variants, and authorization hiding intact.
 | `Acl` | widget | The built layout (`Acl extends AclLayout extends StatelessWidget`). |
 | `AclContainer` | widget | The stateful render engine that lays rows/components out. |
 | `AclComponent` / `AclRow` | class | The engine's data model — one placed child, and an ordered row of them. |
-| `AclFlowContainer` | widget | An `AclContainer` whose rows are **generated** from a flat child list. |
+| `AclFlowContainer` | widget | Generates rows from a flat child list and renders them through an `AclContainer` it composes — not a subclass of one. |
 | `AclFlowKind` | enum | `wrap` / `grid` — the two row-generation rules. |
 | `aclWrapRows` / `aclGridRows` | function | The pure row generators behind those rules. |
 | `aclResolveBreakpointed<T>` | function | The one `(minWidth, value)` "widest match wins" rule. |
@@ -170,9 +170,12 @@ explicit per-row override is never clobbered by a later default change.
 
 ## Flow containers — `wrap` and `grid`
 
-[`AclFlowContainer`] is an `AclContainer` whose rows are **generated** from a
-flat, ordered child list instead of being written one `newRow()` at a time.
-[`AclFlowKind`] names the two rules:
+[`AclFlowContainer`] is a widget that **generates** its rows from a flat,
+ordered child list instead of having them written one `newRow()` at a time. It
+does not extend `AclContainer` — it composes one: `build()` measures the
+available width with a `LayoutBuilder`, computes the row assignment, and renders
+the result through an ordinary `AclContainer`. [`AclFlowKind`] names the two
+rules:
 
 | Kind | Rule |
 | ---- | ---- |
@@ -180,8 +183,19 @@ flat, ordered child list instead of being written one `newRow()` at a time.
 | `grid` | Break every `columns` components, each cell the same width. |
 
 Because both rules produce ordinary `AclRow`s that go to the ordinary engine,
-everything downstream — id addressing, alignment anchors, gap rows, responsive
-variants, the hide-unauthorized pass — keeps working on a flowed layout.
+what the engine applies per row and per component — id addressing, alignment
+and anchoring, sizing, the hide-unauthorized pass and the `read`
+styling — keeps working on a flowed layout, and each generated row is
+addressable as `<aclId>.r<n>`.
+
+What does *not* carry over is the container's own responsive machinery.
+`AclFlowContainer` forwards only a subset of `AclContainer`'s arguments —
+`aclId`, `idScope`, `aclGroup`, `parentIdPath`, `padding`, `borderStyle`,
+`backgroundColor`, `scrollableY` — and `variants` is not among them, so an
+`AclVariant` can never replace a flow container's generated rows. Generated
+rows carry no `breakpoints` either. A flow container's responsiveness is
+`columnsBpOverrides` (below); to vary a flowed block any further, place it as a
+component inside an authored layout and put the variants on *that* container.
 
 ```dart
 Widget buildTagCloud(List<String> tags) {

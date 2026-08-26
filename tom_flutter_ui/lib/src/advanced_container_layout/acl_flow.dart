@@ -177,14 +177,20 @@ AclRow _flowRow(
   );
 }
 
-/// An [AclContainer] whose rows are **generated** from a flat child list by
-/// an [AclFlowKind] rule.
+/// A widget whose rows are **generated** from a flat child list by an
+/// [AclFlowKind] rule, then rendered through a composed [AclContainer].
 ///
 /// This is the substrate for the CE-LO `wrap` and `grid` container kinds. It
 /// measures the available width with a [LayoutBuilder], asks [aclWrapRows] /
 /// [aclGridRows] for the row assignment, and renders the result through the
-/// ordinary [AclContainer] — so a flow container is an ACL container in every
-/// respect that matters downstream.
+/// ordinary [AclContainer] — so everything the engine applies per row and per
+/// component keeps working on a flowed layout.
+///
+/// It does **not** extend [AclContainer], and forwards only the eight
+/// arguments declared below as passthroughs. In particular it forwards no
+/// `variants`, so no [AclVariant] can replace the generated rows: a flow
+/// container re-runs its rule at every width, and [columnsBpOverrides] is the
+/// responsive knob that replaces a variant per column count.
 class AclFlowContainer extends StatelessWidget {
   /// Which row-assignment rule applies.
   final AclFlowKind kind;

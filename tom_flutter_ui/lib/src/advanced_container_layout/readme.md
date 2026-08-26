@@ -74,9 +74,11 @@ AclFlowContainer(
 Both are **row-generating**, not a second layout engine: they compute an
 `AclRow` list (`aclWrapRows` / `aclGridRows` — pure functions you can call and
 assert on directly) and render it through the ordinary `AclContainer`, so ids,
-alignment anchors, gap rows, variants and the hide-unauthorized pass all behave
-exactly as they do for an authored layout. Give the container an `aclId` and
-each generated row becomes addressable as `<aclId>.r<n>`.
+alignment anchors, sizing and the hide-unauthorized pass all behave exactly as
+they do for an authored layout. Give the container an `aclId` and each generated
+row becomes addressable as `<aclId>.r<n>`. `AclVariant`s are the exception —
+`AclFlowContainer` forwards no `variants` to the container it composes, so use
+`columnsBpOverrides` for a flow container's own responsiveness.
 
 Because the flow decision happens *before* layout, `wrap` sizes a component by
 its declared preferred → minimum width, falling back to
