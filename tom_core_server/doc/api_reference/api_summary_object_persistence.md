@@ -414,23 +414,30 @@ reflection-backed accessors to read/write the field.
 ##### Constructors
 
 ```dart
-TomColumnInformation(
-  TomDbTable table,
-  Type tableType,
+TomColumnInformation({
+  required Type tableType,
+  required TomDbTable table,
+  required Type declaredType,
+  required String declaredName,
+  required String field,
   TomDbColumn? column,
   TomEntityId? entityId,
   TomReference? reference,
   TomPersistenceEventHandler? eventHandler,
-  Type declaredType,
-  String declaredName,
-  String field, {
   TomFileReference? fileReference,
 })
 ```
 
-`fileReference` is the one named parameter: only a `@TomFileReference` column
-carries it, so the great majority of constructions would otherwise pass a tenth
-positional `null` that says nothing.
+The five required parameters are the ones every mapped field has; the five
+optional ones each correspond to an annotation the field may or may not carry,
+and are `null` when it does not.
+
+All are named because two pairs are otherwise interchangeable by miscounting and
+type-check either way. `declaredName` and `field` are both `String`: passing them
+the wrong way round maps the entity's field name to itself as a column and the
+column name to itself as a field, so the mistake surfaces as wrong SQL somewhere
+else. `declaredType` and `tableType` are both `Type`, and confusing them reports
+every column of an entity as being of the entity's own type.
 
 Every property is `final`. An instance is not private to whoever obtained it —
 the analyzer resolves an entity's columns once and hands the same objects to

@@ -489,15 +489,15 @@ mixin TomAnnotationAnalyzer {
     TomDbTable? table = findTable(dbType);
     if (table != null) {
       return TomColumnInformation(
-        table,
-        dbType,
-        column,
-        entityId,
-        reference,
-        eventHandler,
-        decl.reflectedType,
-        declaredName,
-        field ?? declaredName,
+        tableType: dbType,
+        table: table,
+        declaredType: decl.reflectedType,
+        declaredName: declaredName,
+        field: field ?? declaredName,
+        column: column,
+        entityId: entityId,
+        reference: reference,
+        eventHandler: eventHandler,
         fileReference: fileReference,
       );
     } else {

@@ -16,15 +16,12 @@ class _Builder with TomQueryBuilder {}
 
 TomColumnInformation _column(String table, String column, Type declaredType) {
   return TomColumnInformation(
-    TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
-    Object,
-    TomDbColumn(columnName: column),
-    null,
-    null,
-    null,
-    declaredType,
-    column,
-    column,
+    tableType: Object,
+    table: TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
+    declaredType: declaredType,
+    declaredName: column,
+    field: column,
+    column: TomDbColumn(columnName: column),
   );
 }
 

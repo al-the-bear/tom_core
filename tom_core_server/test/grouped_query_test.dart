@@ -23,15 +23,12 @@ class _Builder with TomQueryBuilder {}
 /// rejection.
 TomColumnInformation _opaqueColumn(String table, String column) {
   return TomColumnInformation(
-    TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
-    Object,
-    TomDbColumn(columnName: column),
-    null,
-    null,
-    null,
-    Object,
-    column,
-    column,
+    tableType: Object,
+    table: TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
+    declaredType: Object,
+    declaredName: column,
+    field: column,
+    column: TomDbColumn(columnName: column),
   );
 }
 

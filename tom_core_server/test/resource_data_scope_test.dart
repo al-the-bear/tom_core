@@ -21,15 +21,12 @@ class _Builder with TomQueryBuilder {}
 
 TomColumnInformation _resourceKeyColumn(String table) {
   return TomColumnInformation(
-    TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
-    Object,
-    TomDbColumn(columnName: 'resource_key'),
-    null,
-    null,
-    null,
-    String,
-    'resourceKey',
-    'resource_key',
+    tableType: Object,
+    table: TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
+    declaredType: String,
+    declaredName: 'resourceKey',
+    field: 'resource_key',
+    column: TomDbColumn(columnName: 'resource_key'),
   );
 }
 

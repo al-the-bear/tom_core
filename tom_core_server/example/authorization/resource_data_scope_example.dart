@@ -24,15 +24,16 @@ class _Builder with TomQueryBuilder {}
 /// The `resource_key` column of a `document` table, as reflection would report
 /// it for an entity with a `String resourceKey` field.
 TomColumnInformation _resourceKeyColumn() => TomColumnInformation(
-  TomDbTable(datasource: 'main', table: 'document', primaryKeyField: 'id'),
-  Object,
-  TomDbColumn<String, TomDbString>(columnName: 'resource_key'),
-  null,
-  null,
-  null,
-  String,
-  'resourceKey',
-  'resourceKey',
+  tableType: Object,
+  table: TomDbTable(
+    datasource: 'main',
+    table: 'document',
+    primaryKeyField: 'id',
+  ),
+  declaredType: String,
+  declaredName: 'resourceKey',
+  field: 'resourceKey',
+  column: TomDbColumn<String, TomDbString>(columnName: 'resource_key'),
 );
 
 TomPrincipal _principal(int id) => TomPrincipal(

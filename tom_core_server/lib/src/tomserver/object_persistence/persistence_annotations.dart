@@ -437,19 +437,30 @@ class TomColumnInformation {
 
   /// Bundles the resolved metadata for one entity field.
   ///
-  /// [fileReference] is the one named parameter: only a `@TomFileReference`
-  /// column carries it, so the great majority of constructions would otherwise
-  /// pass a tenth positional `null` that says nothing.
-  TomColumnInformation(
-    this.table,
-    this.tableType,
+  /// The five required parameters are the ones every mapped field has: the
+  /// owning entity type ([tableType]) and its table ([table]), and the field's
+  /// own [declaredType], [declaredName] and mapped [field] name. The five
+  /// optional ones each correspond to an annotation the field may or may not
+  /// carry — [column], [entityId], [reference], [eventHandler],
+  /// [fileReference] — and are `null` when it does not.
+  ///
+  /// All are named. Two pairs are the reason: [declaredName] and [field] are
+  /// both `String`, and passing them the wrong way round type-checks — it maps
+  /// the entity's field name to itself as a column and the column name to
+  /// itself as a field, so the error surfaces as wrong SQL somewhere else. So
+  /// does confusing [declaredType] with [tableType], both `Type`, which
+  /// misreports every column of the entity as being of the entity's own type.
+  /// A named argument cannot be given to the wrong parameter by miscounting.
+  TomColumnInformation({
+    required this.tableType,
+    required this.table,
+    required this.declaredType,
+    required this.declaredName,
+    required this.field,
     this.column,
     this.entityId,
     this.reference,
     this.eventHandler,
-    this.declaredType,
-    this.declaredName,
-    this.field, {
     this.fileReference,
   });
 

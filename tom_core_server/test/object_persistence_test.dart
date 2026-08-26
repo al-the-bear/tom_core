@@ -18,15 +18,12 @@ class _Builder with TomQueryBuilder {}
 
 TomColumnInformation _column(String table, String column) {
   return TomColumnInformation(
-    TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
-    Object,
-    TomDbColumn(columnName: column),
-    null,
-    null,
-    null,
-    Object,
-    column,
-    column,
+    tableType: Object,
+    table: TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
+    declaredType: Object,
+    declaredName: column,
+    field: column,
+    column: TomDbColumn(columnName: column),
   );
 }
 
@@ -159,16 +156,17 @@ void main() {
     });
 
     test('TomColumnInformation.getQueryFieldName falls back to the field', () {
+      // No `column:` argument, so getQueryFieldName falls back to declaredName.
       final info = TomColumnInformation(
-        TomDbTable(datasource: 'main', table: 't', primaryKeyField: 'id'),
-        Object,
-        null, // no column annotation -> fall back to declaredName
-        null,
-        null,
-        null,
-        Object,
-        'fieldName',
-        'fieldName',
+        tableType: Object,
+        table: TomDbTable(
+          datasource: 'main',
+          table: 't',
+          primaryKeyField: 'id',
+        ),
+        declaredType: Object,
+        declaredName: 'fieldName',
+        field: 'fieldName',
       );
       expect(info.getQueryFieldName(), 'fieldName');
     });
@@ -316,15 +314,17 @@ void main() {
       bool isPk = false,
     }) {
       return TomColumnInformation(
-        TomDbTable(datasource: 'main', table: 'users', primaryKeyField: 'id'),
-        Object,
-        TomDbColumn(columnName: columnName, isReadOnly: readOnly),
-        isPk ? const TomEntityId() : null,
-        null,
-        null,
-        Object,
-        declaredName,
-        columnName,
+        tableType: Object,
+        table: TomDbTable(
+          datasource: 'main',
+          table: 'users',
+          primaryKeyField: 'id',
+        ),
+        declaredType: Object,
+        declaredName: declaredName,
+        field: columnName,
+        column: TomDbColumn(columnName: columnName, isReadOnly: readOnly),
+        entityId: isPk ? const TomEntityId() : null,
       );
     }
 

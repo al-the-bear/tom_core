@@ -4433,6 +4433,22 @@
 
 ### Internal
 
+- **`TomColumnInformation`'s nine positional parameters included two
+  interchangeable pairs (tcinc606).** `declaredName` and `field` are both
+  `String` and adjacent; passing them the wrong way round type-checks, maps the
+  entity's field name to itself as a column and the column name to itself as a
+  field, and surfaces as wrong SQL somewhere else entirely. `declaredType` and
+  `tableType` are both `Type` and fail the same way, reporting every column of
+  an entity as being of the entity's own type. The constructor is now all-named,
+  with the five parameters every mapped field has marked `required` and the five
+  annotation-shaped ones optional. Its dartdoc describes what the parameters mean
+  instead of why one of them used to be named.
+
+  All eleven construction sites are updated: the analyzer, two examples, four
+  test files, and the eight generated `*.reflection.dart` bridges across
+  `tom_core_server`, `tom_core_kernel`, the four sample servers and
+  `tom_uam_server`, each regenerated from the new signature.
+
 - **Six constructor initialisers read as no-op self-assignments (tcinc582).**
   `TomMessageBody.text` and `.html` each took a `String content` parameter and
   then wrote `content = content` in the initialiser list, and
