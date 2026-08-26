@@ -4,20 +4,26 @@
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The behavioural counterpart to widgets: typed, authorization-aware actions
-dispatched through a controller, with atomic transactions, undo/redo history,
-multi-step composites, and widget triggers. An action declares what it does; the
-controller dispatches it; a transaction makes the mutation atomic and reversible.
+grouped under a controller, with atomic transactions, undo/redo history,
+multi-step composites, and widget triggers. An action declares what it does; a
+controller owns and names it; a `TomActionTrigger` dispatches it; a transaction
+makes the mutation atomic and reversible.
+
+The controller is a **registry**, the trigger is the **protocol** — that split is
+the module's central separation. Nothing on `TomActionController` runs an action;
+`TomActionTrigger.trigger()` is the one place that sequences `canExecute` →
+`execute` → `commit` → `push`.
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomAction` / `TomSimpleAction` / `TomDualAction` | The action base & primitives |
-| `TomActionController` | Owns and dispatches a group of actions (`controllerId`) |
+| `TomActionController` | Owns and names a group of actions; supplies the `controllerId` canonical-path prefix |
 | `TomActionContext` | The per-invocation context an action operates on |
 | `TomActionTransaction` / `TomUndoHistory` / `TomUndoRedoContext` | Atomicity & undo/redo |
 | `TomCompositeAction` / `TomCompositeStep` | Composed multi-step actions |
-| `TomActionTrigger` | Binds an action + context builder (+ undo history) to a widget |
+| `TomActionTrigger` | **Dispatches** an action — binds it, a context builder and an optional undo history to a widget callback |
 
 ## Quick start
 
@@ -43,8 +49,10 @@ void run(CounterController controller, CounterContext ctx) {
 ```
 
 (`IncrementAction` / `CounterContext` / `IncrementUndo` are the app's own
-subclasses of `TomSimpleAction` / `TomActionContext` / the undo record — see
-`example/actions/`.)
+subclasses of `TomAction` / `TomActionContext` / `TomActionUndo` — see
+`example/actions/`. The action extends `TomAction`, not `TomSimpleAction`,
+because the `history.undo()` above needs it to return undo state;
+`TomSimpleAction` always returns `null`, so nothing would reach the history.)
 
 ---
 

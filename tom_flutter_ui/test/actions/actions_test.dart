@@ -339,6 +339,28 @@ void main() {
       expect(counter.value, 0);
     });
 
+    test('a TomSimpleAction runs but contributes nothing to the history', () {
+      final controller = TomActionController(controllerId: 'c');
+      final reset = ResetAction(controller: controller);
+      final counter = Counter()..value = 5; // > 0, so canExecute passes
+      final history = TomUndoHistory();
+      var executed = false;
+      TomActionTrigger<CounterContext, TomActionUndo>(
+        action: reset,
+        contextBuilder: () => CounterContext(counter),
+        undoHistory: history,
+        onExecuted: () => executed = true,
+      ).trigger();
+
+      // The action really ran...
+      expect(counter.value, 0);
+      expect(executed, isTrue);
+      // ...but TomSimpleAction returns null undo state, so the trigger records
+      // nothing, the transaction stays empty, and push() is never reached.
+      expect(history.canUndo, isFalse);
+      expect(history.undoCount, 0);
+    });
+
     test('callback getter is the trigger function', () {
       final controller = TomActionController(controllerId: 'c');
       final inc = IncrementAction(controller: controller);

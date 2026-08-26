@@ -151,10 +151,10 @@ atomic transactions, undo/redo history, composites, and widget triggers.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomAction`, `TomSimpleAction`, `TomDualAction` | The action base & primitives |
-| `TomActionController`, `TomActionContext` | Action dispatch & context |
+| `TomActionController`, `TomActionContext` | Action registry (canonical-path prefix) & per-invocation context |
 | `TomActionTransaction`, `TomUndoHistory`, `TomUndoRedoContext` | Atomicity & undo/redo |
 | `TomCompositeAction`, `TomCompositeStep` | Composed multi-step actions |
-| `TomActionTrigger` | Widget trigger binding |
+| `TomActionTrigger` | Widget trigger binding — the one type that dispatches an action |
 
 ### Foundation & groups (`widget_base/`, `groups/`, `custom/`)
 
@@ -273,9 +273,12 @@ layout responsive; `AclBorderStyle` + `AclTitlePosition` draw titled groups.
 
 ### Actions
 
-A `TomAction` is dispatched through a `TomActionController`; wrap mutations in a
-`TomActionTransaction` to make them atomic and undoable via the controller's
-`TomUndoHistory`, and bind an action to a widget with a `TomActionTrigger`.
+A `TomActionController` owns and names a group of `TomAction`s, supplying the
+`<controllerId>.<actionId>` canonical path used for authorization and resource
+lookup — it is a registry and never runs an action. `TomActionTrigger` is what
+dispatches one: bind it to a widget callback and it checks `canExecute`, opens a
+`TomActionTransaction` so the mutation is atomic, and pushes the committed
+transaction onto the application's `TomUndoHistory`.
 
 ## Architecture
 
