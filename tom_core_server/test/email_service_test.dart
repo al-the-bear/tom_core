@@ -270,6 +270,57 @@ void main() {
       expect(texts.locales, containsAll(['en', 'de', 'de_AT']));
     });
 
+    test('resolveLocale names the bundle the chain lands on first', () {
+      expect(texts.resolveLocale(TomTextLocale('de', 'AT'))?.tag, 'de_AT');
+      expect(
+        texts.resolveLocale(TomTextLocale('de', 'CH'))?.tag,
+        'de',
+        reason: 'a country variant nobody wrote resolves to its bare language',
+      );
+      expect(
+        texts.resolveLocale(null)?.tag,
+        'en',
+        reason: 'asking for no locale in particular reaches the default',
+      );
+    });
+
+    test('resolveLocale answers null for a chain miss, not an empty set', () {
+      // The distinction is the whole point. This set plainly carries
+      // something; what it carries nothing for is the chain for `de`, which is
+      // [de, en]. And because every chain ends with the default locale's own
+      // tags, that is the general rule: null means the *default* bundle is
+      // absent, which is a wiring fault rather than a routine miss.
+      //
+      // Worth pinning because the documented use is
+      // `resolveLocale(requested) ?? defaultLocale` for a Content-Language
+      // header. Read as "null means the set is empty", that `??` looks
+      // unreachable in a configured deployment — and it is exactly the branch
+      // that declares a language no bundle exists for.
+      final sparse = TomLocalizedTextResources(
+        defaultLocale: TomTextLocale('en'),
+        bundles: {
+          'fr': {
+            'email': {
+              'welcome': {'subject': 'Bienvenue'},
+            },
+          },
+        },
+      );
+
+      expect(sparse.locales, ['fr'], reason: 'the set is not empty');
+      expect(sparse.resolveLocale(TomTextLocale('de')), isNull);
+      expect(
+        sparse.resolveLocale(null),
+        isNull,
+        reason: 'the default locale is not carried either',
+      );
+      expect(
+        sparse.resolveLocale(TomTextLocale('fr'))?.tag,
+        'fr',
+        reason: 'the one bundle it does carry still resolves',
+      );
+    });
+
     test('isTranslated reports the bundle someone wrote, not the chain', () {
       final austrian = TomTextLocale('de', 'AT');
       // `de_AT` carries only the subject. A render is right to fall through for

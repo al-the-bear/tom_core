@@ -105,6 +105,15 @@ ambient assumption this module exists to remove.
 must state the language it rendered — a `Content-Language` header, a stored copy
 of a sent mail — can say so truthfully rather than echoing what was asked for.
 
+It answers `null` when the chain reaches no bundle, which is not the same as the
+set being empty. Every chain ends with the default locale's own tags, so `null`
+says precisely that the set carries no bundle for its **default** locale — a set
+holding only `fr` with a default of `en` answers `null` for `de` while carrying a
+perfectly usable `fr`. That distinction matters because the usual
+`resolveLocale(requested) ?? defaultLocale` reads as dead code to anyone who took
+`null` for "empty", when it is the branch that fires on exactly that wiring fault
+— and names a language nothing was rendered in.
+
 ### Asking the other question
 
 `exists` follows the chain, which is right for "will this render". A

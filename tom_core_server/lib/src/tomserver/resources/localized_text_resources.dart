@@ -210,13 +210,22 @@ class TomLocalizedTextResources {
   bool hasLocale(TomTextLocale locale) => _bundles.containsKey(locale.tag);
 
   /// The locale a lookup for [locale] would actually read from, following the
-  /// fallback chain; `null` when the set carries nothing at all.
+  /// fallback chain; `null` when the chain reaches no bundle.
   ///
   /// Reports the bundle that answers, not the key that resolves — a
   /// per-key fallthrough may still land elsewhere. It exists so a caller that
   /// must *state* the language it rendered (a `Content-Language` header, a
   /// stored copy of a sent mail) can say so truthfully rather than echoing what
   /// was asked for.
+  ///
+  /// `null` does **not** mean the set is empty. Every chain ends with
+  /// [defaultLocale]'s own tags, so `null` says precisely that the set carries
+  /// no bundle for its *default* locale: a set holding `fr` with a default of
+  /// `en` answers `null` for `de` while carrying a perfectly good `fr`. Reading
+  /// it as "the set is empty" makes the usual
+  /// `resolveLocale(requested) ?? defaultLocale` look unreachable in a
+  /// configured deployment, when it is the branch that fires on exactly that
+  /// wiring fault — and names a language nothing was rendered in.
   TomTextLocale? resolveLocale(TomTextLocale? locale) {
     for (final tag in _chain(locale)) {
       if (_bundles.containsKey(tag)) return TomTextLocale.parse(tag);

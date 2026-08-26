@@ -3452,6 +3452,25 @@
 
 ### Documentation
 
+- **`resolveLocale` answering `null` was documented as "the set carries nothing
+  at all", which is false for every non-empty set whose chain misses
+  (tcinc624).** `null` means no bundle in the *chain* exists. A set built with
+  `bundles: {'fr': ...}` and a default of `en` reports `locales == ['fr']` and
+  still answers `null` for `de`, because the chain for `de` is `[de, en]` and
+  neither is carried. The behaviour is right; three artefacts described it
+  wrongly and a fourth never described it at all — while `textOrNull`, two
+  methods below in the same class, had it correct ("`null` when no bundle in the
+  chain has the key"), so the class disagreed with itself. All four now state
+  the chain rule, and each goes one step further than the correction: because
+  every chain ends with `defaultLocale`'s own tags, `null` says *precisely* that
+  the set carries no bundle for its default locale. That is the sentence worth
+  having. The documented `resolveLocale(requested) ?? defaultLocale` for a
+  `Content-Language` header reads as dead code to anyone who took `null` for
+  "empty set", when it is the branch that fires on exactly that wiring fault and
+  declares a language nothing was rendered in. Two tests now pin the method,
+  which previously had none of its own: the chain's first landing (`de_AT`
+  exact, `de_CH` to bare `de`, no locale to the default) and the non-empty-set
+  miss.
 - **The localized-resources fallback chain was documented as ending in English,
   which is a language the class has no notion of (tcinc623).** The library
   dartdoc and `doc/resources.md` both said a half-translated bundle "falls
