@@ -1284,7 +1284,19 @@ More precisely: variants are checked from **largest `atWidth` to smallest**. The
 AclBuilder addVariant(String name, {required double atWidth, required void Function(AclBuilder) builder})
 ```
 
-The callback receives a **fresh** `AclBuilder` that inherits container-level settings (border, padding, background, title) from the parent but has its own row tree.
+The callback receives a **fresh** `AclBuilder`, and *fresh* is literal: it inherits nothing from the parent builder. Every `setAclDefault*` value — append gap, row gap, row height, both row alignments, flags, unknown preferred size, unknown minimum size — starts at its framework default inside the callback and must be restated if the variant needs it.
+
+Container-level settings (border, padding, background, title) are unaffected by which variant is active, but not because the variant builder inherits them: they belong to the container, and a variant supplies only rows. Setting them inside the callback therefore does nothing.
+
+```dart
+..addVariant('narrow', atWidth: 480, builder: (b) => b
+    ..setAclDefaultAppendGap(16)   // restate — not inherited
+    ..append(street)
+    ..newRow()
+    ..append(number))
+```
+
+`test/advanced_container_layout/acl_variant_inheritance_test.dart` pins what is inherited and what is dropped.
 
 ### Nesting
 

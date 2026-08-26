@@ -1138,21 +1138,44 @@ class AclBuilder {
 
   // ── Responsive Variants (§27) ──────────────────────────────────────────────
 
+  /// Registers a replacement row tree used when the container's available
+  /// width drops below [atWidth]. Variants are matched narrowest-first, so the
+  /// most specific one wins.
+  ///
+  /// **The variant builder does not inherit this builder's defaults.** It is a
+  /// fresh [AclBuilder], so every `setAclDefault*` value configured here —
+  /// append gap, row gap, row height, row alignments, flags, unknown preferred
+  /// and minimum sizes — is back at its framework default inside [builder].
+  /// Restate the ones the variant needs:
+  ///
+  /// ```dart
+  /// AclBuilder()
+  ///     .setAclDefaultAppendGap(16)
+  ///     .append(street).append(number)
+  ///     .addVariant('narrow', atWidth: 480, builder: (b) => b
+  ///         .setAclDefaultAppendGap(16)   // restate: not inherited
+  ///         .append(street)
+  ///         .newRow()
+  ///         .append(number));
+  /// ```
+  ///
+  /// The container's *chrome* — border, padding, background, title — is
+  /// unaffected by which variant is active, because it belongs to the
+  /// container rather than to any row tree. A variant supplies rows and
+  /// nothing else.
+  ///
+  /// `test/advanced_container_layout/acl_variant_inheritance_test.dart` pins
+  /// both halves of this.
   AclBuilder addVariant(
     String name, {
     required double atWidth,
     required void Function(AclBuilder) builder,
   }) {
-    final variantBuilder = AclBuilder(
-      borderStyle: _borderStyle,
-      focusedBorderStyle: _focusedBorderStyle,
-      padding: _padding,
-      backgroundColor: _backgroundColor,
-      titleStyle: _titleStyle,
-      titlePosition: _titlePosition,
-      titleBorderAlign: _titleBorderAlign,
-      titleVerticalOffset: _titleVerticalOffset,
-    );
+    // Constructed bare: this builder contributes only its rows, and the
+    // container-level arguments the constructor accepts are never read back
+    // out of it. Passing this builder's chrome here would suggest the variant
+    // inherits something it does not.
+    final variantBuilder = AclBuilder();
     builder(variantBuilder);
     // Why: the variant's rows are harvested straight out of the throwaway
     // builder, so nothing else ever calls the finalization `build()` performs.

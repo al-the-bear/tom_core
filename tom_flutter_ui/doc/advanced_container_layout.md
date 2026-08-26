@@ -276,9 +276,15 @@ Two complementary mechanisms adapt a layout to width:
 - **Variants** (`addVariant(name, atWidth:, builder:)`) describe an entirely
   separate row set that replaces the base layout below `atWidth`. Variants are
   sorted ascending by `atWidth` so the narrowest (most specific) match wins.
+  The variant builder is a **fresh** `AclBuilder` that inherits none of the
+  outer builder's `setAclDefault*` values — restate the ones the variant needs,
+  or the layout silently changes spacing and alignment below the breakpoint.
+  Container chrome is unaffected either way: it belongs to the container, and a
+  variant supplies only rows.
 - **Row breakpoints** (`addRowBreakpoint(atWidth:, splitRowDist:)`) split a
   single row into two when the container narrows past `atWidth`, recording the
-  split index from the components appended so far.
+  split index from the components appended so far. Unlike a variant, a split
+  fragment keeps the original row's settings — it is the same logical row.
 
 ## Breakpoint resolution
 
