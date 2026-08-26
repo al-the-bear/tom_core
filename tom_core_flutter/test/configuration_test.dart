@@ -13,6 +13,7 @@ import 'package:tom_core_flutter/src/tomclient/configuration/file_configuration_
     as neutral;
 
 import '../example/configuration/configuration_example.dart' as example;
+import 'support/conditional_export_variants.dart';
 import 'support/exception_constructor_mirror.dart';
 
 /// A holder with one setting of each supported type.
@@ -558,47 +559,30 @@ void main() {
     // on the platform you are building for fails on the one you are not — and
     // the compiler only says so once someone builds for the second platform,
     // which is the worst moment to find out.
+    //
+    // The checks live in `support/conditional_export_variants.dart`, shared
+    // with the preferences module's three-variant store (tcinc665). They read
+    // the sources with comments stripped, which this copy needed and did not
+    // do: the dartdoc recording why the io variant is not const has to quote
+    // the `const TomFileClientConfigurationStore(path)` expression it warns
+    // about, and this guard passed only because that quotation happened to wrap
+    // between the keyword and the class name. One reflow of that paragraph
+    // would have turned the guard green-on-anything.
     const io =
         'lib/src/tomclient/configuration/file_configuration_store_io.dart';
     const neutral =
         'lib/src/tomclient/configuration/file_configuration_store_neutral.dart';
-
-    /// Whether [file] declares the store's constructor as `const`.
-    bool declaresConstConstructor(String file) => RegExp(
-          r'\bconst\s+TomFileClientConfigurationStore\s*\(',
-        ).hasMatch(File(file).readAsStringSync());
+    const className = 'TomFileClientConfigurationStore';
 
     test('both variants agree about const', () {
-      expect(
-        declaresConstConstructor(io),
-        declaresConstConstructor(neutral),
-        reason: 'a const construction must compile on every target or on none; '
-            'the neutral variant cannot be const because it throws from its '
-            'body, so the io variant must not be const either',
+      expectVariantsAgreeOnConst(
+        variantPaths: const [io, neutral],
+        className: className,
       );
     });
 
     test('both variants declare the same public members', () {
-      Set<String> publicMembersOf(String file) {
-        final source = File(file).readAsStringSync();
-        // `(?! )` pins the match to exactly one indent level — a class member.
-        // Without it the character class swallows the deeper indentation of a
-        // method body and every local variable reads as a member.
-        return RegExp(r'^  (?! )(?:final |const )?[\w<>?, ]*\b(\w+)\s*[(;=]',
-                multiLine: true)
-            .allMatches(source)
-            .map((m) => m.group(1)!)
-            .where((name) => !name.startsWith('_'))
-            .toSet();
-      }
-
-      expect(
-        publicMembersOf(io),
-        publicMembersOf(neutral),
-        reason: 'the variants are interchangeable by name, so a member present '
-            'on one and absent on the other is a compile error waiting for a '
-            'platform switch',
-      );
+      expectVariantsDeclareSameMembers(const [io, neutral]);
     });
   });
 
@@ -668,17 +652,21 @@ void main() {
       // The one signature the summary previously disagreed with the source
       // about. Pinning it here means the const decision cannot be made in the
       // source and forgotten in the mirror.
-      final io = File(
-        'lib/src/tomclient/configuration/file_configuration_store_io.dart',
-      ).readAsStringSync();
-      final declaresConst =
-          RegExp(r'\bconst\s+TomFileClientConfigurationStore\s*\(')
-              .hasMatch(io);
-      final summary = File(summaryPath).readAsStringSync();
-
+      //
+      // Both sides are read through the shared helpers, which skip the dartdoc
+      // and the summary's prose. This check used to match raw text on both
+      // sides and so reported the *explanation* of why the constructor is not
+      // const as a const declaration — it stayed green only because the
+      // explaining sentence happened to wrap between the keyword and the class
+      // name, and it went red the moment that sentence was rewrapped to read
+      // better. See `support/conditional_export_variants.dart`.
+      const className = 'TomFileClientConfigurationStore';
       expect(
-        summary.contains('const TomFileClientConfigurationStore('),
-        declaresConst,
+        summaryDeclaresConstConstructor(summaryPath, className),
+        declaresConstConstructor(
+          'lib/src/tomclient/configuration/file_configuration_store_io.dart',
+          className,
+        ),
         reason: 'the summary must show `const` exactly when the source does',
       );
     });

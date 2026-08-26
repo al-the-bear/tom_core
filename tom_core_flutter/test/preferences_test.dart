@@ -6,8 +6,16 @@ import 'package:http/http.dart';
 import 'package:http/testing.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
+// The neutral platform store is selected by conditional *export*, so on this
+// target the barrel name resolves to the io variant. Importing the neutral
+// source directly is what makes its documented failure testable here at all;
+// the prefix keeps the two same-named classes apart.
+import 'package:tom_core_flutter/src/tomclient/preferences/platform_device_preference_store_neutral.dart'
+    as neutral_store;
+
 import '../example/preferences/preferences_example.dart' as example;
 import 'preferences_test.reflection.dart';
+import 'support/conditional_export_variants.dart';
 import 'support/exception_constructor_mirror.dart';
 
 /// A reflected preference value, so the object round-trip is exercised through
@@ -991,6 +999,103 @@ void main() {
       );
       TomBean.withType(TomDevicePreferences, installed);
       expect(identical(TomDevicePreferences.resolve(), installed), isTrue);
+    });
+  });
+
+  group('the three platform-store variants present one signature', () {
+    // The point of a conditional export is that one name means one thing on
+    // every target. When the variants' constructors differ, code that compiles
+    // on the platform you are building for fails on the one you are not — and
+    // the compiler only says so once someone builds for the second platform,
+    // which is the worst moment to find out.
+    //
+    // tcinc665: io and web declared `const` and neutral cannot, so
+    // `const TomPlatformDevicePreferenceStore(location)` compiled on device and
+    // web and failed to compile on the target whose entire purpose is to fail
+    // *at run time*. That trades a deliberate, locatable run-time diagnostic
+    // for a compile error at an unrelated call site. This is the same defect
+    // tcopen198 fixed for `TomFileClientConfigurationStore`, which is why the
+    // resolution is the same: none of the variants is const.
+    const io =
+        'lib/src/tomclient/preferences/platform_device_preference_store_io.dart';
+    const web =
+        'lib/src/tomclient/preferences/platform_device_preference_store_web.dart';
+    const neutral =
+        'lib/src/tomclient/preferences/platform_device_preference_store_neutral.dart';
+    const variants = [io, web, neutral];
+    const className = 'TomPlatformDevicePreferenceStore';
+    const summaryPath = 'doc/api_reference/api_summary_preferences.md';
+
+    test('every variant agrees about const', () {
+      expectVariantsAgreeOnConst(
+        variantPaths: variants,
+        className: className,
+      );
+    });
+
+    test('all three variants declare the same public members', () {
+      expectVariantsDeclareSameMembers(variants);
+    });
+
+    test('the summary shows const exactly when the sources do', () {
+      // Pinning this here means the decision cannot be made in the source and
+      // forgotten in the mirror — which is how the summary came to advertise a
+      // `const` that only two of the three implementations offered.
+      //
+      // Only the summary's code fences count. The page also *explains* why the
+      // constructor is not const, and that explanation has to quote the
+      // `const $className(location)` a reader might otherwise write — read
+      // whole, the page would look like it was advertising the very thing it
+      // warns against.
+      expect(
+        summaryDeclaresConstConstructor(summaryPath, className),
+        declaresConstConstructor(io, className),
+        reason: 'the summary must show `const` exactly when the sources do',
+      );
+    });
+  });
+
+  group('the neutral platform store fails loudly', () {
+    // The neutral variant is only conditionally *exported*, not conditionally
+    // compiled — so it can be imported by path and asserted on any target,
+    // including this one. Without that, its documented behaviour would be a
+    // promise no test ever checks, on the one code path whose whole purpose is
+    // to fail rather than degrade quietly.
+    //
+    // It is also what makes the const invariant above unsatisfiable in the
+    // wrong direction: "all three agree" could otherwise be reached by making
+    // the neutral variant const, which means deleting this throw and silently
+    // degrading to a store that forgets everything — the outcome the module
+    // exists to prevent.
+    test('construction throws unsupported_platform', () {
+      expect(
+        () => neutral_store.TomPlatformDevicePreferenceStore(
+          '/wherever/device_preferences.json',
+        ),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (e) => e.key,
+            'key',
+            'device_preferences.unsupported_platform',
+          ),
+        ),
+      );
+    });
+
+    test('the failure names the location that was asked for', () {
+      // A settings screen that fails at startup has to be able to say what it
+      // was trying to open, or the report is unactionable.
+      try {
+        neutral_store.TomPlatformDevicePreferenceStore(
+          '/wherever/device_preferences.json',
+        );
+        fail('expected the neutral store to throw');
+      } on TomDevicePreferenceException catch (error) {
+        expect(
+          error.parameters?['location'],
+          '/wherever/device_preferences.json',
+        );
+      }
     });
   });
 

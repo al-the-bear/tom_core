@@ -25,10 +25,10 @@ class TomFileClientConfigurationStore extends TomClientConfigurationStore {
   /// Deliberately **not** `const`, even though this variant could be. The
   /// neutral variant cannot be — it throws from its constructor body — and a
   /// conditional export is only worth using if one name means one signature on
-  /// every target. A `const` here would make `const
-  /// TomFileClientConfigurationStore(path)` compile on desktop and mobile and
-  /// fail on web, reported by the compiler only once someone builds for the
-  /// platform they were not working on.
+  /// every target. A `const` here would let a call site write
+  /// `const TomFileClientConfigurationStore(path)`, which would compile on
+  /// desktop and mobile and fail on web, reported by the compiler only once
+  /// someone builds for the platform they were not working on.
   TomFileClientConfigurationStore(this.path);
 
   /// Absolute path of the JSON file holding the override map.

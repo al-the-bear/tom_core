@@ -2,6 +2,24 @@
 
 ### Fixed
 
+- **preferences: `TomPlatformDevicePreferenceStore`'s constructor is no longer
+  `const` on any variant (tcinc665).** The same defect as `tcopen198` below, in
+  the module with three variants instead of two: the `dart:io` and web
+  implementations declared `const` constructors, and the neutral one cannot,
+  because throwing `device_preferences.unsupported_platform` from its body is
+  its entire purpose. So `const TomPlatformDevicePreferenceStore(location)`
+  compiled on device and in the browser and broke the build on the one target
+  whose intended behaviour was a *run-time* failure — converting a locatable
+  startup diagnostic into a compile error at an unrelated call site, on the
+  platform where the developer has the least context. That also contradicted the
+  module's own promise that the store "takes one `location` on every platform …
+  so the construction above is written once and never branches". The `const` is
+  dropped from both variants that had it, each keeping a dartdoc paragraph
+  recording why so it is not "restored" later, and
+  `doc/api_reference/api_summary_preferences.md` now states the signature that
+  is true everywhere. No call site anywhere in the package, its examples or its
+  documentation wrote `const`, so nothing downstream changes.
+
 - **configuration: `TomFileClientConfigurationStore`'s constructor is no longer
   `const` (tcopen198).** The store is chosen by conditional export, and the two
   variants disagreed: the `dart:io` variant declared a `const` constructor while
@@ -175,6 +193,27 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **the conditional-export variants of a store are checked as a set, and the
+  checks read declarations rather than the prose about them (tcinc665).** The
+  guard that `configuration` gained under `tcopen198` — its two file-store
+  variants must agree about `const` and declare the same public members — moved
+  to `test/support/conditional_export_variants.dart` and now serves
+  `preferences`' three platform-store variants as well. Two bugs surfaced in
+  the move, both the same mistake at different layers: the checks matched raw
+  text, so the dartdoc explaining *why* a constructor is not `const`, and the
+  API summary's paragraph explaining the same thing, each read as a `const`
+  declaration — a guard that fails on correct code precisely because the code
+  was documented. Sources are now read with comments stripped and summaries only
+  within their ` ```dart ` fences. The `configuration` copy had been carrying
+  this latently and passed only because its explaining sentence happened to wrap
+  between `const` and the class name; rewrapping that sentence to read better
+  turned it red, which is how it was found. Because "all variants agree about
+  `const`" could otherwise be satisfied by *deleting* the neutral variant's
+  throw, `preferences` also gained the two tests pinning that it still fails
+  loudly and still names the location — its neutral variant previously had no
+  test at all, on the one code path whose whole purpose is to be reached.
+  Five new tests in `preferences_test.dart`; 242 → 247.
 
 - **the API-summary constructor mirror is one shared check over three modules
   (tcinc664).** `little_things_test.dart` carried a parser that reads a

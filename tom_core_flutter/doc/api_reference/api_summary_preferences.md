@@ -196,7 +196,7 @@ export in `platform_device_preference_store.dart`.
 #### Constructors
 
 ```dart
-const TomPlatformDevicePreferenceStore(String location)
+TomPlatformDevicePreferenceStore(String location)
 ```
 
 | Variant | Selected by | `location` means | Behaviour |
@@ -208,6 +208,14 @@ const TomPlatformDevicePreferenceStore(String location)
 The parameter is `location` on every variant because it is the *same* parameter
 everywhere — one name is what lets an application construct the store in one
 place without knowing which variant it got.
+
+The constructor is **not** `const` on any variant, including the two that could
+be. The neutral variant throws from its constructor body, so it cannot be; and a
+signature that is `const` on some targets and not others is exactly the branch
+this type exists to remove — `const TomPlatformDevicePreferenceStore(location)`
+would compile on device and web and break the build on the target whose intended
+behaviour is a run-time failure. Same reasoning, and same resolution, as
+`TomFileClientConfigurationStore` in the configuration module.
 
 #### Properties
 

@@ -37,7 +37,16 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
   /// a filesystem path on desktop and mobile. One name is what lets an
   /// application construct the store in one place without knowing which variant
   /// it got.
-  const TomPlatformDevicePreferenceStore(this.location);
+  ///
+  /// Deliberately **not** `const`, even though this variant could be. The
+  /// neutral variant cannot be — it throws from its constructor body, which is
+  /// its entire purpose — and a conditional export is only worth using if one
+  /// name means one signature on every target. A `const` here would make
+  /// `const TomPlatformDevicePreferenceStore(location)` compile in the browser
+  /// and fail to compile on the target that was supposed to fail *at run time*,
+  /// turning a locatable startup diagnostic into a build break at an unrelated
+  /// call site.
+  TomPlatformDevicePreferenceStore(this.location);
 
   /// Name of the `localStorage` entry holding this device's preferences.
   final String location;
