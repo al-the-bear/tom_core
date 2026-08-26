@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/reflection_fixture.reflection.dart';
+
 /// Tests for the connection-free surface of the object-persistence module:
 /// the [TomQueryBuilder] DSL and the [TomOperator] tree rendering SQL through a
 /// dialect, plus the persistence annotations and `TomColumnInformation`.
@@ -29,6 +31,12 @@ TomColumnInformation _column(String table, String column) {
 }
 
 void main() {
+  // Reflection is per-isolate top-level state, and the analyzer group below
+  // asks about a type that is *not* registered. Without this call nothing is
+  // registered, so the answer would be right for the wrong reason — and the
+  // first entity this file ever reflects for real would fail obscurely.
+  setUpAll(initializeReflection);
+
   final b = _Builder();
   final dialect = MariadbSqlDialect();
 
@@ -398,8 +406,10 @@ void main() {
   // TypeError off the cache.
   group('TomAnnotationAnalyzer.getPersistentColumns', () {
     test('returns null on every call for a non-reflectable type', () {
-      // _NotAnEntity is not registered with tomReflector, so the analyzer caches
-      // null. A second call must read that cached null back as null, not throw.
+      // _NotAnEntity carries no @tomReflector, so the reflector raises
+      // NoSuchCapabilityError — the one cause findMirror tolerates — and the
+      // analyzer caches null. A second call must read that cached null back as
+      // null, not throw.
       expect(TomAnnotationAnalyzer.getPersistentColumns(_NotAnEntity), isNull);
       expect(TomAnnotationAnalyzer.getPersistentColumns(_NotAnEntity), isNull);
     });

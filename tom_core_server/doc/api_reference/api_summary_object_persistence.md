@@ -1401,8 +1401,8 @@ scoping the default rather than an annotation anyone has to remember — see
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `analysePersistentType` | `static TomTypePersistenceInfo analysePersistentType(Type T)` | Resolves the full persistence metadata (table + columns) for entity `T`. Throws `TomAnnotationAnalyzerException`. |
-| `findMirror` | `static ClassMirror? findMirror(Type dbType)` | The cached/looked-up `ClassMirror` for `dbType`, or `null` when unregistered. |
+| `analysePersistentType` | `static TomTypePersistenceInfo analysePersistentType(Type T)` | Resolves the full persistence metadata (table + columns) for entity `T`. Throws `TomAnnotationAnalyzerException` when the type is not reflectable or has no `@TomDbTable`, and lets its lookups' `TomAnnotationAnalyzerSyntaxException` through unchanged. |
+| `findMirror` | `static ClassMirror? findMirror(Type dbType)` | The cached/looked-up `ClassMirror` for `dbType`, or `null` when — and only when — `dbType` is not registered with `tomReflector`. Every other reflection failure is thrown as `TomAnnotationAnalyzerException`; see *Reflection failures*. |
 | `findTable` | `static TomDbTable? findTable(Type dbType)` | The `@TomDbTable` annotation on `dbType`, or `null` if absent. |
 | `findDataScope` | `static TomDbScope? findDataScope(Type dbType)` | The row scope of `dbType`, or `null` when unscoped. An explicit `@TomDbScope` wins — including `@TomDbScope.unscoped()`, for which this returns `null`; failing that, `autoScopeFor` decides. |
 | `autoScopeFor` | `static TomDbScope? autoScopeFor(List<TomColumnInformation> columns)` | The scope an entity with these `columns` carries *implicitly* — a `TomDbScope(field: …, scope: resourceScope)` when one column is a resource key, `null` otherwise. Excludes `resourceScopeInputTables`. |
@@ -1463,13 +1463,40 @@ already analysed under a different mapping and would otherwise read the first
 answer back. The same test file asserts `reset()` reaches every memo the mixin
 declares, so a seventh added later cannot quietly survive the reset.
 
+##### Reflection failures
+
+`findMirror` is the gate every entity's mapping passes through, and its `null`
+answer means exactly one thing: the reflector holds no mirror for the type. That
+is an ordinary result — `findTable` and `getPersistentColumns` are asked about
+types that may carry no persistence annotations at all — and it is recognised by
+the `NoSuchCapabilityError` the reflector raises to say so.
+
+Anything else the lookup raises is reported as `TomAnnotationAnalyzerException`
+with the original as `rootException`, because answering `null` for it would
+reappear one frame up as *"it is not in `tomReflector`"* — a diagnosis that is
+plausible, wrong, and sends the reader to the entity's annotations and its
+generated file, neither of which is at fault. Two causes reach here:
+
+- **Reflection was never initialized.** `initializeReflection()` was not called,
+  so *every* type looks unregistered. The reflection library's own `StateError`
+  names the missing call; that sentence is the fix, and is preserved verbatim in
+  the wrapped exception.
+- **The name is not a class.** `dynamic` and `void` are registered with every
+  reflector that can reflect types and have no `ClassMirror`; a generic
+  parameter that erased arrives here as `dynamic`. This is a caller-side
+  mistake, not a gap in the reflection setup, and the message says which.
+
+Neither is memoised: a thrown lookup leaves no entry behind, so the second call
+reports the fault again rather than reading a `null` back.
+`test/annotation_analyzer_mirror_lookup_test.dart` pins all three outcomes.
+
 ### Exceptions
 
 All extend the server `TomServerException`.
 
 | Class | Source | Thrown when |
 | ----- | ------ | ----------- |
-| `TomAnnotationAnalyzerException` | `annotation_analyzer.dart` | An entity's persistence metadata cannot be resolved (not registered / no `@TomDbTable`). |
+| `TomAnnotationAnalyzerException` | `annotation_analyzer.dart` | An entity's persistence metadata cannot be resolved (not registered / no `@TomDbTable`), or reflecting it failed for a reason that is not "unregistered" — see *Reflection failures*. |
 | `TomAnnotationAnalyzerSyntaxException` | `annotation_analyzer.dart` | Persistence annotations are present but malformed (e.g. `@TomDbColumn` on a non-variable). |
 | `TomColumnAuthorizationException` | `column_authorization.dart` | A write changes a column visible-but-not-editable to the principal (C-4 violation). |
 | `TomDataScopeException` | `data_scope.dart` | A `@TomDbScope` names a scope kind no resolver is registered for. |

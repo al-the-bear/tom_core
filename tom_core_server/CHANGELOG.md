@@ -2,6 +2,33 @@
 
 ### Testing
 
+- **The mirror lookup swallowed every reflection failure (tcinc605).**
+  `TomAnnotationAnalyzer.findMirror` wrapped `tomReflector.reflectType` in an
+  empty `catch` and answered `null`. `null` has a meaning there — the type is
+  not registered — so all three outcomes arrived as one, and two real faults
+  were reported as the third. The lookup now absorbs only the
+  `NoSuchCapabilityError` that actually means "unregistered" and throws
+  everything else as `TomAnnotationAnalyzerException` with the original as
+  `rootException`, memoising nothing for a thrown lookup. The two it used to
+  hide: reflection that was never initialized — which makes *every* type look
+  unregistered, and whose `StateError` names the missing
+  `initializeReflection()` call — and a name that is not a class (`dynamic`,
+  `void`, an erased generic parameter). `analysePersistentType` lost its two
+  catch-alls in the same pass; each of its three lookups now yields a message
+  naming the missing thing, and a `TomAnnotationAnalyzerSyntaxException` from
+  `getPersistentColumns` travels out unchanged instead of being flattened into
+  the registration error, which is what the mixin's other callers already did.
+  `test/annotation_analyzer_mirror_lookup_test.dart` pins all three outcomes,
+  reproducing the uninitialized case in a fresh `Isolate.run` because the
+  reflection state is per-isolate.
+
+- **`object_persistence_test.dart` ran with reflection uninitialized
+  (tcinc605).** It never called `initializeReflection()`, so its
+  "non-reflectable type resolves to `null`" assertion held because *nothing*
+  was reflectable — the exact misdiagnosis the change above removes, which is
+  how it surfaced. The file now has a `setUpAll(initializeReflection)` and the
+  assertion holds for its stated reason.
+
 - **The analyzer's six memos could not be discarded (tcinc604).**
   `TomAnnotationAnalyzer` memoises six derived resolutions per entity type —
   mirror, table, columns, row scope, column-authorized columns, file columns —
@@ -3118,6 +3145,17 @@
   `.env` parser agree on where the key ends.
 
 ### Documentation
+
+- **`findMirror`'s `null` was documented as "unregistered" without saying it
+  meant only that (tcinc605).** `object_persistence.md` and the API summary
+  described the answer but not the boundary, so a reader had no way to know
+  which failures were folded into it. Both now carry the three-outcome rule —
+  the one tolerated cause, and the two faults that are reported instead of
+  disguised as it — with the reason the distinction is worth the words: a
+  swallowed reflection error reappears as "it is not in `tomReflector`", which
+  sends the reader to the entity's annotations and its generated file, neither
+  of which is at fault. The exceptions table and the `analysePersistentType`
+  entry say which exception now travels out of which lookup.
 
 - **The documented way to discard a resolution was to reach into the memos
   (tcinc604).** `object_persistence.md` and the API summary said the memos are

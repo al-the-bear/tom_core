@@ -99,32 +99,39 @@ mixin TomAnnotationAnalyzer {
 
   /// Resolves the full persistence metadata (table + columns) for entity [T].
   ///
-  /// Throws [TomAnnotationAnalyzerException] if the type is not reflectable,
-  /// has no table annotation, or its columns cannot be resolved.
+  /// Throws [TomAnnotationAnalyzerException] if the type is not reflectable or
+  /// has no table annotation, and [TomAnnotationAnalyzerSyntaxException] if its
+  /// annotations are present but malformed — the two are separate because the
+  /// first is a registration mistake and the second a declaration mistake, and
+  /// they are fixed in different files.
+  ///
+  /// Each step names the missing thing rather than reporting the mechanism that
+  /// noticed it. The three lookups answer `null` for their own ordinary reason,
+  /// so a `null` here is a diagnosis, not an anomaly to be caught.
   static TomTypePersistenceInfo analysePersistentType(Type T) {
-    var mirror = findMirror(T);
+    final mirror = findMirror(T);
     if (mirror == null) {
       throw TomAnnotationAnalyzerException(
         "annotation_analyzer.analyse_persistent_type.mirror_not_found",
         "Failed to get ClassMirror for $T, it is not in tomReflector",
+        parameters: {"type": "$T"},
       );
     }
-    TomDbTable? table;
-    try {
-      table = findTable(T)!;
-    } catch (error) {
+    final table = findTable(T);
+    if (table == null) {
       throw TomAnnotationAnalyzerException(
         "annotation_analyzer.analyse_persistent_type.table_not_found",
-        "Failed to get table annotation for $T $error",
+        "$T carries no @TomDbTable annotation, so there is no table to map "
+            "it to",
+        parameters: {"type": "$T"},
       );
     }
-    List<TomColumnInformation>? columns;
-    try {
-      columns = getPersistentColumns(T)!;
-    } catch (error) {
+    final columns = getPersistentColumns(T);
+    if (columns == null) {
       throw TomAnnotationAnalyzerException(
         "annotation_analyzer.analyse_persistent_type.columns_not_found",
-        "Failed to get persistent columns for $T $error",
+        "Failed to resolve the persistent columns of $T",
+        parameters: {"type": "$T"},
       );
     }
     return TomTypePersistenceInfo(mirror, table, columns);
@@ -132,17 +139,55 @@ mixin TomAnnotationAnalyzer {
 
   /// Returns the cached/looked-up [ClassMirror] for [dbType], or `null` when it
   /// is not registered with `tomReflector`.
+  ///
+  /// `null` means one thing only: the reflector holds no mirror for [dbType].
+  /// That is a normal answer — [findTable] and [getPersistentColumns] ask about
+  /// types that may carry no persistence annotations at all — and it is the
+  /// single failure this method absorbs, recognised by the
+  /// [NoSuchCapabilityError] the reflector raises to say exactly that.
+  ///
+  /// Every other failure is reported as [TomAnnotationAnalyzerException] with
+  /// the original as `rootException`. Absorbing them too would be cheap and
+  /// actively harmful: this is the gate every entity's mapping passes through,
+  /// so a swallowed error reappears one frame up as "it is not in tomReflector"
+  /// — a diagnosis that is plausible, wrong, and sends the reader to the
+  /// entity's annotations and its generated file, neither of which is at fault.
+  /// The two it hides are the two worth hearing about. Reflection that was
+  /// never initialized makes *every* type look unregistered, and the reflector
+  /// raises a `StateError` naming the missing `initializeReflection()` call —
+  /// the one sentence that would have ended the search. A name that resolves to
+  /// something other than a class (`dynamic` and `void` are registered with
+  /// every reflector that can reflect types, and a generic parameter that
+  /// erased reaches here as `dynamic`) is likewise a caller-side mistake, not a
+  /// gap in the reflection setup.
   static ClassMirror? findMirror(Type dbType) {
     if (_mirrorCache.containsKey(dbType)) return _mirrorCache[dbType];
+    TypeMirror mirror;
     try {
-      var classMirror = tomReflector.reflectType(dbType) as ClassMirror;
-      _mirrorCache[dbType] = classMirror;
-      return classMirror;
-    } catch (error) {
-      // do nothing
+      mirror = tomReflector.reflectType(dbType);
+    } on NoSuchCapabilityError {
+      _mirrorCache[dbType] = null;
+      return null;
+    } catch (error, stack) {
+      throw TomAnnotationAnalyzerException(
+        "annotation_analyzer.find_mirror.reflection_failed",
+        "Failed to reflect $dbType: $error",
+        parameters: {"type": "$dbType"},
+        stack: stack,
+        rootException: error,
+      );
     }
-    _mirrorCache[dbType] = null;
-    return null;
+    if (mirror is! ClassMirror) {
+      throw TomAnnotationAnalyzerException(
+        "annotation_analyzer.find_mirror.not_a_class",
+        "$dbType is registered with tomReflector but is not a class "
+            "(${mirror.runtimeType}), so it cannot carry persistence "
+            "annotations",
+        parameters: {"type": "$dbType"},
+      );
+    }
+    _mirrorCache[dbType] = mirror;
+    return mirror;
   }
 
   /// Returns the `@TomDbTable` annotation on [dbType], or `null` if absent.

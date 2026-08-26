@@ -1042,6 +1042,26 @@ calls it, because an entity's declaration is fixed for the run; a test that
 re-registers a fixture type it has already analysed, under a different mapping,
 is the case that does.
 
+The mirror lookup at the front of that chain distinguishes *not registered* from
+*could not be reflected*, and the distinction is the difference between a
+one-line fix and an afternoon. `findMirror` answers `null` for one cause only —
+the reflector holds no mirror for the type, which it says by raising
+`NoSuchCapabilityError` — because callers legitimately ask about types that
+carry no persistence annotations at all. Every other failure is thrown as
+`TomAnnotationAnalyzerException` carrying the original as `rootException`.
+
+Two of them are worth naming, because both would otherwise arrive disguised as
+"it is not in `tomReflector`" and send the reader to the entity's annotations and
+its generated file, neither of which is at fault. If `initializeReflection()` was
+never called, *every* type looks unregistered; the reflection library's own error
+names the missing call, and that sentence — the actual fix — survives into the
+wrapped exception. If the name resolves to something that is not a class
+(`dynamic` and `void` are registered with every type-capable reflector, and an
+erased generic parameter arrives here as `dynamic`), the message says so rather
+than accusing the reflection setup of a gap it does not have. A thrown lookup
+memoises nothing, so the second call reports the fault again instead of reading
+back a `null` the first call refused to give.
+
 `familyOf` reduces one column to the `TomSqlTypeFamily` it is **stored** in — a
 JSON column is text whatever its Dart type, an explicit `TomDbType` box decides
 next, and only failing both does the Dart type stand in; anything unrecognised is
