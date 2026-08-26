@@ -470,7 +470,7 @@ void main() {
       expect(counter.value, 1, reason: 'step two still ran');
     });
 
-    test('canExecute is true when at least one guard passes', () {
+    test('canExecute is true when a reachable step is runnable', () {
       final controller = TomActionController(controllerId: 'c');
       final inc = IncrementAction(controller: controller);
       final counter = Counter();
@@ -478,11 +478,123 @@ void main() {
         actionId: 'maybe',
         controller: controller,
         steps: [
-          step(inc, counter, guard: () => false),
           step(inc, counter, guard: () => true),
+          step(inc, counter, guard: () => false),
         ],
       );
       expect(composite.canExecute(CounterContext(counter)), isTrue);
+    });
+
+    test('canExecute is false when the only step\'s action refuses', () {
+      final controller = TomActionController(controllerId: 'c');
+      final reset = ResetAction(controller: controller);
+      final counter = Counter(); // 0, so reset.canExecute is false
+      final composite = TomCompositeAction(
+        actionId: 'refusing',
+        controller: controller,
+        // No guard. The old check read guards only, so it said yes here
+        // and then executed nothing — an enabled button doing nothing.
+        steps: [step(reset, counter)],
+      );
+      expect(composite.canExecute(CounterContext(counter)), isFalse);
+    });
+
+    test('canExecute is false when a blocked first step would stop the run',
+        () {
+      final controller = TomActionController(controllerId: 'c');
+      final inc = IncrementAction(controller: controller);
+      final counter = Counter();
+      final composite = TomCompositeAction(
+        actionId: 'stops',
+        controller: controller,
+        // Default stopOnBlockedStep: true, so execute breaks at step one and
+        // step two is unreachable however runnable it looks in isolation.
+        steps: [
+          step(inc, counter, guard: () => false),
+          step(inc, counter),
+        ],
+      );
+      expect(composite.canExecute(CounterContext(counter)), isFalse);
+    });
+
+    test('canExecute sees past a blocked step when blocked steps are skipped',
+        () {
+      final controller = TomActionController(controllerId: 'c');
+      final inc = IncrementAction(controller: controller);
+      final counter = Counter();
+      final composite = TomCompositeAction(
+        actionId: 'skips',
+        controller: controller,
+        stopOnBlockedStep: false, // step two is now reachable
+        steps: [
+          step(inc, counter, guard: () => false),
+          step(inc, counter),
+        ],
+      );
+      expect(composite.canExecute(CounterContext(counter)), isTrue);
+    });
+
+    test('canExecute is false for an empty step list', () {
+      final controller = TomActionController(controllerId: 'c');
+      final composite = TomCompositeAction(
+        actionId: 'empty',
+        controller: controller,
+        steps: const [],
+      );
+      expect(composite.canExecute(CounterContext(Counter())), isFalse);
+    });
+
+    test('a refusing composite reports the refusal through its trigger', () {
+      // The user-visible payoff: a button bound to this composite is disabled
+      // and its press reports onCannotExecute, instead of being enabled and
+      // silently doing nothing.
+      final controller = TomActionController(controllerId: 'c');
+      final reset = ResetAction(controller: controller);
+      final counter = Counter(); // 0, so reset.canExecute is false
+      final composite = TomCompositeAction(
+        actionId: 'deadButton',
+        controller: controller,
+        steps: [step(reset, counter)],
+      );
+      var executed = false;
+      var refused = false;
+      TomActionTrigger<TomActionContext, TomActionUndo>(
+        action: composite,
+        contextBuilder: () => CounterContext(counter),
+        onExecuted: () => executed = true,
+        onCannotExecute: () => refused = true,
+      ).trigger();
+
+      expect(refused, isTrue, reason: 'the refusal is reported');
+      expect(executed, isFalse);
+    });
+
+    test('canExecute predicts whether execute will run anything', () {
+      // The contract in one assertion, over all four combinations of
+      // (first step blocked?) x (stopOnBlockedStep). canExecute must agree
+      // with what execute actually does — that agreement is the whole point.
+      for (final firstBlocked in [true, false]) {
+        for (final stopOnBlocked in [true, false]) {
+          final controller = TomActionController(controllerId: 'c');
+          final inc = IncrementAction(controller: controller);
+          final counter = Counter();
+          final composite = TomCompositeAction(
+            actionId: 'matrix',
+            controller: controller,
+            stopOnBlockedStep: stopOnBlocked,
+            steps: [
+              step(inc, counter, guard: () => !firstBlocked),
+              step(inc, counter),
+            ],
+          );
+          final predicted = composite.canExecute(CounterContext(counter));
+          composite.execute(
+              CounterContext(counter), TomActionTransaction(label: 'x'));
+          expect(predicted, counter.value > 0,
+              reason: 'firstBlocked=$firstBlocked '
+                  'stopOnBlockedStep=$stopOnBlocked');
+        }
+      }
     });
   });
 
@@ -495,15 +607,19 @@ void main() {
       Counter counter, {
       bool Function()? firstGuard,
       bool Function()? secondGuard,
+      TomAction<CounterContext, TomActionUndo>? first,
+      TomAction<CounterContext, TomActionUndo>? second,
     }) {
       final controller = TomActionController(controllerId: 'dual');
       return TomDualAction<CounterContext, CounterContext>(
         actionId: 'firstThenSecond',
         controller: controller,
-        first: IncrementAction(controller: controller, step: 1, id: 'first'),
+        first: first ??
+            IncrementAction(controller: controller, step: 1, id: 'first'),
         firstContextBuilder: () => CounterContext(counter),
         firstGuard: firstGuard,
-        second: IncrementAction(controller: controller, step: 10, id: 'second'),
+        second: second ??
+            IncrementAction(controller: controller, step: 10, id: 'second'),
         secondContextBuilder: () => CounterContext(counter),
         secondGuard: secondGuard,
       );
@@ -533,6 +649,20 @@ void main() {
           .execute(CounterContext(counter), tx);
       expect(counter.value, 1); // only first
       expect(tx.entryCount, 1);
+    });
+
+    test('canExecute is false when both guards pass but both actions refuse',
+        () {
+      final counter = Counter(); // 0, so both resets refuse
+      final controller = TomActionController(controllerId: 'refusing');
+      final action = dual(
+        counter,
+        first: ResetAction(controller: controller),
+        second: ResetAction(controller: controller),
+      );
+      expect(action.canExecute(CounterContext(counter)), isFalse);
+      action.execute(CounterContext(counter), TomActionTransaction(label: 'x'));
+      expect(counter.value, 0, reason: 'neither action ran');
     });
 
     test('runs neither and canExecute is false when both guards fail', () {

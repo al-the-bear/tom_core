@@ -176,10 +176,19 @@ own `contextBuilder` and optional `guard`. A step is *blocked* when its `guard`
 returns false **or** when the step's own action refuses via `canExecute` — a
 composite with no guards at all can still be blocked. `stopOnBlockedStep`
 chooses between *stop at the first blocked step* and *skip blocked steps and
-continue*. Sub-step
-undo states are recorded into the surrounding transaction, so a composite is
-still one atomic undo entry. `TomDualAction` is the two-step specialisation for
-the everyday *save-and-close* / *validate-and-submit* pattern.
+continue*.
+
+A composite's `canExecute` reports exactly whether `execute` would run at least
+one step, so gating a button on it cannot produce an enabled control that does
+nothing. It therefore checks both blocking conditions and respects
+reachability: under `stopOnBlockedStep` only the first step can run, so a
+runnable step behind a blocked one does not make the composite executable.
+
+Sub-step undo states are recorded into the surrounding transaction, so a
+composite is still one atomic undo entry. `TomDualAction` is the two-step
+specialisation for the everyday *save-and-close* / *validate-and-submit*
+pattern; its two halves are independent, so its `canExecute` is true when
+either half is runnable.
 
 ## Authorization
 
