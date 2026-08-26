@@ -2,6 +2,24 @@
 
 ### Documentation
 
+- **`TomServer.securityContext` was documented as holding the TLS context and
+  was never assigned (tcinc642, tcopen183).** `start()` declared a *local* of
+  the same name and built the context into that, so the public field read
+  `null` for the life of the server whether or not TLS was on — while its
+  dartdoc said "the TLS security context, built from the configuration when SSL
+  is on" and the API summary mirrored that sentence verbatim. The invited
+  misuse is `if (server.securityContext != null)` as a TLS test: it compiles,
+  reads naturally, and reports plaintext for a server serving over TLS.
+
+  Fixed by deleting the shadowing local, so `start()` assigns the field — which
+  makes the dartdoc true rather than weakening it to describe a dead field, and
+  leaves the class with the same post-`start()` handle shape it already has for
+  `router`. The dartdoc and the summary row now also say *when*: both name it a
+  post-`start()` handle that reads `null` on a server which has not been
+  started, and point a caller asking beforehand at `configuration.noSsl`.
+  Assigning the field without saying that would have moved the trap rather than
+  removed it, since `null` before `start()` is wrong in the same unsafe
+  direction.
 - **No shipped document mentioned the server self-login, the first thing
   `start()` does and the only thing that can stop it (tcinc641).** `start()`
   opens with `TomServerSelfLogin.loginAndInstall`, and a deployment that
@@ -155,6 +173,24 @@
 
 ### Testing
 
+- **A documented field is now checked against the class rather than against its
+  own dartdoc (tcinc642).** The `securityContext` defect survived because the
+  API summary had been checked against the dartdoc, and the dartdoc was what
+  lied — so the new group in `api_reference_coverage_test.dart` reads
+  `TomServer` itself: no local anywhere in the class re-declares a field name,
+  and every field is assigned somewhere. The two checks are ordered rather than
+  independent, and the group says so: an assignment check cannot tell a write to
+  the field from a write to a local wearing its name, so it is worth something
+  only while the shadowing check holds. The synthetic shadowed class asserts
+  exactly that asymmetry — it passes the assignment check and fails the
+  shadowing one. Mutation-tested live from both ends: reinstating the local in
+  `start()`, and removing the `router` assignment, are each reported by name.
+
+  Writing the parser's own synthetic cases caught two parser bugs before either
+  could produce a false clean: reading the name from the end of the line made
+  `bool ready = false;` a field called `false`, and treating every member-level
+  line as a declaration made fields called `log` and `address` out of two
+  dartdoc lines that happen to end a clause with a semicolon.
 - **The order of `start()`'s two steps is now a checked property, not a
   convention (tcinc641).** A new group in `api_reference_coverage_test.dart`
   parses `start()`'s own body — cut at its closing brace, because

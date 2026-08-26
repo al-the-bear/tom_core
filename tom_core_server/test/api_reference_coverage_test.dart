@@ -5823,6 +5823,108 @@ One: `TomKind`, documented beside the type that carries it.
     });
   });
 
+  // `TomServer.securityContext` was documented as holding the TLS context and
+  // was never assigned: `start()` declared a local of the same name and built
+  // the context into that. The field read `null` for the life of the server,
+  // and the API summary mirrored the dartdoc's claim faithfully — the summary
+  // had been checked against the dartdoc, and the dartdoc was what lied.
+  //
+  // Shadowing is what makes this class of defect invisible. A dead field with
+  // no same-named local is easy to notice, because nothing anywhere writes it;
+  // a shadowed one reads as thoroughly used, since the assignment is right
+  // there in the method the dartdoc points at. That is also why the two checks
+  // below are ordered rather than independent: `every field is assigned` cannot
+  // tell an assignment to the field from an assignment to a local wearing its
+  // name, so it is only worth anything while `no local shadows a field` holds.
+  group('a field TomServer documents is a field TomServer assigns', () {
+    const source = 'lib/src/tomserver/server/server.dart';
+
+    _ServerFields shipped() =>
+        _tomServerFieldsOf(File(source).readAsLinesSync());
+
+    test('no local shadows a TomServer field', () {
+      expect(_shadowedFieldComplaints(shipped()), isEmpty);
+    });
+
+    test('every TomServer field is assigned somewhere in the class', () {
+      expect(_unassignedFieldComplaints(shipped()), isEmpty);
+    });
+
+    test('the parser found the fields it claims to check', () {
+      // Both findings are emptiness assertions, so a parser that matched no
+      // field at all would report a clean class. Pin the roster: these are
+      // every instance field `TomServer` declares, and the set is small enough
+      // that naming it costs less than the vacuity it removes.
+      expect(shipped().names, [
+        'configuration',
+        'securityContext',
+        'router',
+        'errorHandler',
+        'authenticationErrorHandler',
+        'loggingMiddleware',
+      ]);
+      // Methods are declarations at the same indentation as fields; a parser
+      // that took them for fields would then look for assignments to `start`.
+      expect(shipped().names, isNot(contains('start')));
+    });
+
+    test('a local shadowing a field is reported', () {
+      // The mutation is the defect verbatim: the field still declared, still
+      // documented, and a local of the same name built inside the method the
+      // dartdoc credits with building it.
+      final shadowed = _tomServerFieldsOf(const [
+        'class TomServer {',
+        '  SecurityContext? securityContext;',
+        '',
+        '  void start() async {',
+        '    SecurityContext? securityContext;',
+        '    securityContext = SecurityContext();',
+        '  }',
+        '}',
+      ]);
+      expect(shadowed.names, ['securityContext']);
+      expect(_shadowedFieldComplaints(shadowed), [contains('securityContext')]);
+      // And the point of ordering the two checks: the shadowed class passes
+      // the assignment check, because the local's assignment is indis-
+      // tinguishable from the field's. Only the shadowing check sees it.
+      expect(_unassignedFieldComplaints(shadowed), isEmpty);
+    });
+
+    test('a field nothing assigns is reported', () {
+      final dead = _tomServerFieldsOf(const [
+        'class TomServer {',
+        '  Router? router;',
+        '',
+        '  void start() async {',
+        '    doSomethingElse();',
+        '  }',
+        '}',
+      ]);
+      expect(_unassignedFieldComplaints(dead), [contains('router')]);
+      // A field initialised where it is declared counts as assigned; several
+      // of the real ones are, and a check that called those dead would be
+      // reported around rather than fixed.
+      final initialised = _tomServerFieldsOf(const [
+        'class TomServer {',
+        '  bool ready = false;',
+        '}',
+      ]);
+      expect(_unassignedFieldComplaints(initialised), isEmpty);
+      // As does one the constructor takes as `this.x`, which is the only way
+      // `configuration` is ever written.
+      final promoted = _tomServerFieldsOf(const [
+        'class TomServer {',
+        '  TomBaseServerConfiguration configuration;',
+        '',
+        '  TomServer(this.configuration) {',
+        '    noop();',
+        '  }',
+        '}',
+      ]);
+      expect(_unassignedFieldComplaints(promoted), isEmpty);
+    });
+  });
+
   // The authentication middleware is where a request acquires everything the
   // code beneath it reads from the ambient zone rather than from an argument.
   // Three documents mirror that list, and a mirror that drifts from it is worse
@@ -6242,6 +6344,85 @@ String _withoutAnnotations(String text) {
   }
   return rest;
 }
+
+/// `TomServer`'s instance fields, and the class body they were read from.
+typedef _ServerFields = ({List<String> names, List<String> body});
+
+/// The fields `class TomServer` declares, read from [lines].
+///
+/// Fields and methods are both declared at one indentation level inside the
+/// class, so they are told apart by how the declaration ends: a method opens a
+/// brace, a field ends in `;` or continues into an initialiser after `=`. The
+/// field's name is the last identifier before that terminator, which is what
+/// makes the function-typed fields here (`Response? Function(...)
+/// errorHandler`) parse without special-casing their parentheses.
+_ServerFields _tomServerFieldsOf(List<String> lines) {
+  final body = <String>[];
+  var inClass = false;
+  for (final line in lines) {
+    if (!inClass) {
+      if (line.startsWith('class TomServer {')) inClass = true;
+      continue;
+    }
+    if (line == '}') break;
+    body.add(line);
+  }
+  // Member level is one indent in; anything deeper is inside a method body.
+  // Comments sit at member level too, and prose punctuates: two of this class's
+  // own dartdoc lines end a clause with a semicolon and would otherwise parse
+  // as fields called `log` and `address`.
+  final member = RegExp(r'^  (?!//|@)\S');
+  // Everything up to the terminator: a `;`, or the `=` of an initialiser. The
+  // `=` must not be an arrow, or an expression-bodied method would parse as a
+  // field named after the method. Taking the name from that *prefix* rather
+  // than from the end of the line is what stops `bool ready = false;` from
+  // parsing as a field called `false`.
+  final declaration = RegExp(r'^([^=;]*?)\s*(?:=(?!>)|;)');
+  final trailingName = RegExp(r'(\w+)$');
+  final names = [
+    for (final line in body)
+      if (member.hasMatch(line))
+        ?trailingName
+            .firstMatch(declaration.firstMatch(line)?.group(1) ?? '')
+            ?.group(1),
+  ];
+  return (names: names, body: body);
+}
+
+/// The fields of [fields] that a local somewhere in the class re-declares.
+///
+/// A declaration carries a type (or `final`/`var`) before the name; a plain
+/// assignment does not. That one difference is the whole check — and it is the
+/// difference the defect hid behind, because the shadowed field's method
+/// contained a line reading `securityContext = SecurityContext()` that looked
+/// exactly like the field being populated.
+List<String> _shadowedFieldComplaints(_ServerFields fields) => [
+  for (final name in fields.names)
+    if (fields.body.any(
+      (line) => RegExp('^\\s{4,}\\S+\\s+$name\\s*[;=]').hasMatch(line),
+    ))
+      '`$name` is declared as a local inside the class as well as a field, so '
+          'the field is never the thing being written and reads null however '
+          'its dartdoc describes it',
+];
+
+/// The fields of [fields] that nothing in the class ever writes.
+///
+/// Three ways count as written: an initialiser on the declaration itself, a
+/// constructor that takes it as `this.name`, and a bare assignment anywhere in
+/// the class. Only meaningful while [_shadowedFieldComplaints] is empty — the
+/// third form cannot distinguish the field from a local wearing its name.
+List<String> _unassignedFieldComplaints(_ServerFields fields) => [
+  for (final name in fields.names)
+    if (!fields.body.any(
+      (line) =>
+          RegExp('^\\s+$name\\s*=').hasMatch(line) ||
+          line.contains('this.$name') ||
+          RegExp('^  .*\\s$name\\s*=').hasMatch(line),
+    ))
+      '`$name` is a documented field that nothing in `TomServer` assigns, so '
+          'it holds its declared default for the life of the server',
+];
 
 /// Where `start()` logs in and where it binds, as offsets into its own body.
 typedef _StartSteps = ({List<String> body, int? loginLine, int? bindLine});

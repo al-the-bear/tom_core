@@ -96,7 +96,7 @@ TomServer(TomBaseServerConfiguration configuration)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `configuration` | `TomBaseServerConfiguration` | The configuration that drives binding, TLS, and pipeline composition. |
-| `securityContext` | `SecurityContext?` | The TLS security context, built from the configuration when SSL is on. |
+| `securityContext` | `SecurityContext?` | The TLS context the server is serving with, or `null` for plaintext. Built by `start()` from the configuration's certificate chain and private key, so — like `router` — it is a post-`start()` handle and reads `null` on a server that has not been started. `configuration.noSsl` is what answers "was TLS asked for?" beforehand. |
 | `router` | `Router?` | The endpoint router, initialised during `start`. |
 | `errorHandler` | `Response? Function(Request, Object, StackTrace)` | Maps a thrown error to a JSON error response (HTTP 500), declared `Content-Type: application/json` and marked `x-tom-error: true`; overridable via the configuration. The body is [`tomErrorEnvelope`](api_summary_little_things.md#tomerrorenvelope) — the package's single definition of the wire error shape, which this handler renders and does not define. |
 | `authenticationErrorHandler` | `Response? Function(Request, Object, StackTrace)?` | Error handler applied by the outer pipeline layer; defaults to the configuration's handler, falling back to `errorHandler`. |

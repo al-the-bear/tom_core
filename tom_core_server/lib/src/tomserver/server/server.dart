@@ -249,7 +249,15 @@ class TomServer {
   /// The configuration that drives binding, TLS, and pipeline composition.
   TomBaseServerConfiguration configuration;
 
-  /// The TLS security context, built from the configuration when SSL is on.
+  /// The TLS context this server is serving with, or `null` when it is serving
+  /// plaintext.
+  ///
+  /// Built by [start] from the configuration's certificate chain and private
+  /// key, and left `null` when `noSsl` is set — so, like [router], this is a
+  /// handle that only means anything *after* the server has been started, and
+  /// reads `null` on one that has not been. A caller asking beforehand whether
+  /// TLS was *requested* wants `configuration.noSsl`; this answers what the
+  /// bound socket actually ended up with.
   SecurityContext? securityContext;
 
   /// The endpoint router, initialised during [start].
@@ -318,8 +326,6 @@ class TomServer {
   /// caller holds.
   void start() async {
     await _installServerPrincipal();
-
-    SecurityContext? securityContext;
 
     if (!configuration.noSsl) {
       securityContext = SecurityContext()
