@@ -13,6 +13,7 @@ resource providers.
   - [TomIntProperty](#tomintproperty)
   - [TomDoubleProperty](#tomdoubleproperty)
   - [TomBoolProperty](#tomboolproperty)
+- [Exceptions](#exceptions)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -54,10 +55,14 @@ A typed configuration value resolved and cached at construction.
 
 #### Constructors
 
+Both constructors resolve `key` in their body, so **every failure below is a
+construction failure** — it surfaces wherever the property is built, which for
+the intended declaration-block usage is application start-up.
+
 | Constructor | Signature | Description |
 | ----------- | --------- | ----------- |
-| default | `TomProperty(String key)` | Resolves `key` from config at construction; throws if absent. |
-| `withDefault` | `TomProperty.withDefault(String key, T value)` | Resolves `key`, falling back to `value` when the key is absent. |
+| default | `TomProperty(String key)` | Resolves `key` from config at construction. Throws on an absent key, and on a present value that cannot be cast to `T`. |
+| `withDefault` | `TomProperty.withDefault(String key, T value)` | Resolves `key`, falling back to `value` when the key is absent. Still throws on a present value that cannot be cast to `T` — the default covers an absent key, not an unusable one. |
 
 #### Methods
 
@@ -122,6 +127,31 @@ A `TomProperty` holding a `bool` config value.
 TomBoolProperty(String key)
 TomBoolProperty.withDefault(String key, bool value)
 ```
+
+## Exceptions
+
+This module declares no exception type. Both failures are raised as a bare
+`Exception` with an interpolated message, so they are catchable only as
+`Exception` and distinguishable only by inspecting `toString()`. Neither
+carries a stable code, and neither is auto-logged.
+
+Both are thrown from the resolution that both constructors run, so a property
+that constructs successfully never raises afterwards — `get()` and `~` only
+return the cached value.
+
+| Condition | Message |
+| --------- | ------- |
+| The key is absent and no default was supplied | `Obligatory resource <key> not found in configuration resources` |
+| The key is present but its value cannot be cast to `T` | `Could not set property of type <T> from value of property <key> with value <value>` |
+
+**Absent** means `TomConfigResourceProvider.exists` reports nothing at the key,
+which includes a key whose configured value is `null` — in a YAML config,
+`app.region:` with no value does not satisfy an obligatory property.
+
+The cast failure is raised for both constructors. A default is consulted only
+on the absent branch, so `TomProperty.withDefault` does not soften a mistyped
+value: a config entry of the wrong type fails at start-up whether or not a
+fallback was supplied.
 
 ## Global Functions and Constants
 

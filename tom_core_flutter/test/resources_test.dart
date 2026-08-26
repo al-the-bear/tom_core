@@ -10,12 +10,18 @@ import '../example/resources/resources_example.dart' as example;
 /// Each test installs a deterministic config provider, then constructs a
 /// property and asserts the value resolved at construction.
 ///
-/// The final group is not about behaviour but about what the module's four
-/// documents say: the recommendation to prefer a typed subclass holds only for
-/// the non-nullable value types, and an unqualified statement of it forbids the
-/// one construction an optional property requires.
+/// Two groups are not about behaviour but about what the module's documents
+/// say. The first holds the four artefacts to the recommendation to prefer a
+/// typed subclass *and* its nullable-`T` exception, because unqualified it
+/// forbids the one construction an optional property requires. The second
+/// holds the API summary to the failures the module actually throws — their
+/// wording and their number — because throwing is this module's entire
+/// failure contract and both sites fire during construction.
 void main() {
-  void installConfig(Map<String, Object> values) {
+  // `Object?`, not `Object`: the config map is a `Map<String, dynamic>` and a
+  // null value is a case the module has to answer for (see 'a key configured
+  // as null counts as absent'), so the helper has to be able to express it.
+  void installConfig(Map<String, Object?> values) {
     TomConfigResourceProvider.setAppConfigProvider(
       TomConfigResourceProvider.from(values),
     );
@@ -107,6 +113,27 @@ void main() {
         ),
       );
     });
+
+    test('a default does not rescue a present value of the wrong type', () {
+      // The asymmetry a reader is most likely to get wrong: `withDefault`
+      // covers an *absent* key, not an unusable one. A wrong-typed value that
+      // is present takes the cast branch before the default is ever consulted,
+      // so supplying one does not turn a mistyped config entry into a working
+      // property — which is right, because a typo'd value and a deliberate
+      // omission are different mistakes and only one of them has an intended
+      // fallback.
+      installConfig({'app.retries': 'not-an-int'});
+      expect(
+        () => TomIntProperty.withDefault('app.retries', 5),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('app.retries'), contains('not-an-int')),
+          ),
+        ),
+      );
+    });
   });
 
   group('missing obligatory key', () {
@@ -124,6 +151,25 @@ void main() {
             (e) => e.toString(),
             'message',
             allOf(contains('Obligatory'), contains('app.missing')),
+          ),
+        ),
+      );
+    });
+
+    test('a key configured as null counts as absent', () {
+      // `TomConfigResourceProvider.exists` is "resolves to a non-null object",
+      // so a key present in the config with a null value is indistinguishable
+      // from one that was never written. Worth pinning because the two look
+      // different in a YAML file and identical here: `app.region:` with no
+      // value does not satisfy an obligatory property.
+      installConfig({'app.region': null});
+      expect(
+        () => TomStringProperty('app.region'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('Obligatory'), contains('app.region')),
           ),
         ),
       );
@@ -223,6 +269,82 @@ void main() {
         isNull,
         reason: 'the documents print this construction as the way to hold an '
             'optional value; it no longer yields the absent value',
+      );
+    });
+  });
+
+  group('the documented failures are the ones the module throws', () {
+    // Throwing is this module's whole failure contract: both constructors
+    // resolve in their body, so the two throw sites are not error paths
+    // reached after a successful construction — they are the two ways
+    // construction fails, at whatever point in start-up the property is built.
+    // A summary that omits them leaves the reader with neither the exception
+    // type, the message shape, nor the fact that a wrong-typed *present* value
+    // fails as hard as a missing one.
+    const source = 'lib/src/tomclient/resources/tom_properties.dart';
+    const summary = 'doc/api_reference/api_summary_resources.md';
+
+    /// The message literal of every `throw Exception("...")` in [source].
+    List<String> thrownMessagesOf(String file) =>
+        RegExp(r'throw Exception\(\s*"([^"]*)"')
+            .allMatches(File(file).readAsStringSync())
+            .map((m) => m[1]!)
+            .toList();
+
+    /// [text] with runs of whitespace collapsed, so a document may re-wrap a
+    /// long line without breaking a match. Code and emphasis markers go too,
+    /// leaving the words themselves.
+    String flattened(String text) =>
+        text.replaceAll(RegExp(r'[*`\[\]]'), '').replaceAll(RegExp(r'\s+'), ' ');
+
+    /// The body of [heading] in [file], up to the next `## `.
+    String sectionOf(String file, String heading) {
+      final text = File(file).readAsStringSync();
+      final start = text.indexOf('\n## $heading\n');
+      if (start < 0) return '';
+      var rest = text.substring(start + heading.length + 5);
+      final next = RegExp(r'^## ', multiLine: true).firstMatch(rest);
+      return next == null ? rest : rest.substring(0, next.start);
+    }
+
+    test('the summary quotes the message shape each throw site produces', () {
+      // Matches the fixed fragments *around* the interpolations rather than
+      // whole sentences, so the summary is free to write the holes however
+      // reads best (`<key>`, `<T>`) while the words a reader would grep a log
+      // for stay tied to the source. Reword the throw and this fails.
+      final summaryText = flattened(File(summary).readAsStringSync());
+      final messages = thrownMessagesOf(source);
+      var checked = 0;
+      for (final message in messages) {
+        for (final fragment in message.split(RegExp(r'\$\{[^}]*\}|\$\w+'))) {
+          if (fragment.trim().length < 4) continue; // a gap between two holes
+          checked++;
+          expect(
+            summaryText,
+            contains(flattened(fragment)),
+            reason: '$summary does not carry the wording of a message this '
+                'module throws, so a reader who greps their log for it finds '
+                'nothing:\n  $message',
+          );
+        }
+      }
+      // Vacuous if the throw sites stop being recognised as such.
+      expect(checked, greaterThanOrEqualTo(4));
+    });
+
+    test('every throw site has a row in the Exceptions section', () {
+      // The count, not the wording: a third failure added to `_getValue` is
+      // exactly the change that would otherwise leave this section quietly
+      // describing two of three.
+      final rows = sectionOf(summary, 'Exceptions')
+          .split('\n')
+          .where((l) => l.startsWith('| ') && !l.startsWith('| ---'))
+          .length;
+      expect(
+        rows - 1, // the header row
+        thrownMessagesOf(source).length,
+        reason: '$summary documents a different number of failures than '
+            '$source throws',
       );
     });
   });

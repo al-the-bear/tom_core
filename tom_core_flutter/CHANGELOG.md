@@ -70,6 +70,25 @@
 
 ### Documentation
 
+- **resources: the API summary documents what the module throws (tcinc670).**
+  The summary was symbol-accurate and silent on failure, which is an expensive
+  omission in this module specifically: both constructors resolve in their
+  body, so the two throw sites are not error paths reached after a successful
+  construction — they are the two ways construction fails, at whatever point in
+  start-up the property is built. The constructor table said "throws if absent"
+  and nothing about the type-mismatch path, so a reader got neither the
+  exception type, nor the message shape, nor the fact that a wrong-typed
+  *present* value fails as hard as a missing one. That also made `resources`
+  the exception to the package's own pattern: of the eight API summaries, the
+  three whose modules throw all document it. A new `## Exceptions` section now
+  gives both failures with the message each produces verbatim, states that they
+  are bare `Exception`s carrying no stable code and are therefore
+  distinguishable only by `toString()`, and records that "absent" includes a
+  key whose configured value is `null`. The constructor table now says
+  resolution happens during construction, and that `withDefault` still throws
+  on a wrong-typed present value — the default covers an absent key, not an
+  unusable one.
+
 - **resources: the recommendation to prefer a typed subclass now states the one
   case where it does not apply (tcinc669).** The class dartdoc, the module
   readme's key-types table, `doc/resources.md`'s overview table and the API
@@ -285,6 +304,29 @@
   one level short of the sibling directory and are now `../../`.
 
 ### Tests / Examples
+
+- **the documented failures are held to the ones the module throws
+  (tcinc670).** Two guards in `resources_test.dart`. The first extracts the
+  message literal of every `throw Exception(...)` in the source and requires
+  the API summary to carry the fixed fragments *around* each interpolation —
+  so the summary stays free to write the holes however reads best (`<key>`,
+  `<T>`) while the words a reader would grep a log for stay tied to the
+  source. The second compares the number of throw sites with the number of
+  rows in the `## Exceptions` table, which is what catches a third failure
+  being added to `_getValue` and left undocumented. Rewording a throw,
+  deleting a table row and adding a third throw site each fail them; a
+  vacuity pin on the fragment count fires if the throw sites ever stop being
+  recognised, verified by making them unrecognisable.
+
+  Documenting the failures also required asserting two behaviours that had
+  none. `withDefault` does **not** rescue a wrong-typed *present* value — the
+  cast branch runs before the default is consulted — which is the asymmetry a
+  reader is most likely to get wrong, and it was untested. And a key whose
+  configured value is `null` counts as absent, because
+  `TomConfigResourceProvider.exists` is "resolves to a non-null object"; in a
+  YAML config `app.region:` with no value does not satisfy an obligatory
+  property. The test helper's parameter widened to `Map<String, Object?>` so
+  the null case is expressible at all. 272 → 276.
 
 - **a recommendation stated in four places cannot lose its exception in one of
   them (tcinc669).** The subclass advice had drifted out of step with the code
