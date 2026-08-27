@@ -1,14 +1,14 @@
 # Widgets Module
 
-`widgets/` is the **general widget kit** of `tom_flutter_ui`: 301 Tom types,
-292 of them thin wrappers over the Flutter and Cupertino widget set. Each
+`widgets/` is the **general widget kit** of `tom_flutter_ui`: 299 Tom types,
+290 of them thin wrappers over the Flutter and Cupertino widget set. Each
 wrapper adds the Tom concerns — a `tomId`, scope-resolved `basePath`,
 authorization, group membership, and resource-driven display values — on top of
 the Flutter widget it delegates to, while keeping the familiar Flutter
 constructor shape.
 
 The kit spans **20 sub-folders**, one per widget family, behind the
-`widgets.dart` barrel. 275 of the 292 wrappers extend their family base class
+`widgets.dart` barrel. 273 of the 290 wrappers extend their family base class
 (`TomButtonBase`, `TomLabelBase`, …) from `widget_base/`; the other 17 mix in
 `TomWidgetMixin` because their Flutter original must stay a specific subtype
 (see [Family catalogue](#family-catalogue)). Both routes give the same `tomId`,
@@ -46,7 +46,7 @@ the family table.
 
 ## The shared family contract
 
-275 of the kit's 292 widgets are `TomFamilyBase` subclasses and therefore
+273 of the kit's 290 widgets are `TomFamilyBase` subclasses and therefore
 report the family they belong to:
 
 ```dart
@@ -130,7 +130,7 @@ widgets without being one. Four of the nine — `TomDataCell`, `TomDataColumn`,
 are gated through `TomAuthGate`, which wraps the slot they own; see
 [Authorization, groups, and scope](#authorization-groups-and-scope).
 
-275 + 17 + 9 = 301.
+273 + 17 + 9 = 299.
 
 ## Navigation and messaging
 

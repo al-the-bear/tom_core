@@ -3198,12 +3198,6 @@ const _demo25SectionResources = <String, String>{
       'CupertinoListSection, CupertinoListTile, ReorderableListView',
 };
 const _demo25CardResources = <String, String>{
-  'demo25.demo.buttonBar.icon': 'mSmartButton',
-  'demo25.demo.buttonBar.title.label': 'TomButtonBar (deprecated)',
-  'demo25.demo.buttonBar.subtitle.label': 'Legacy button bar — use TomOverflowBar instead',
-  'demo25.demo.materialButton.icon': 'mTouchApp',
-  'demo25.demo.materialButton.title.label': 'TomMaterialButton (deprecated)',
-  'demo25.demo.materialButton.subtitle.label': 'Legacy material button — use ElevatedButton etc.',
   'demo25.demo.dropdownMenuEntry.icon': 'mArrowDropDown',
   'demo25.demo.dropdownMenuEntry.title.label': 'TomDropdownMenuEntry',
   'demo25.demo.dropdownMenuEntry.subtitle.label': 'Entries inside TomDropdownMenu',

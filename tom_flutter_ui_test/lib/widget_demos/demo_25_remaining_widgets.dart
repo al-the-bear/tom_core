@@ -2,7 +2,7 @@
 ///
 /// Demonstrates remaining Tom widgets not covered in previous demos.
 ///
-/// Widgets covered: TomButtonBar, TomMaterialButton, TomSnackBarAction,
+/// Widgets covered: TomSnackBarAction,
 /// TomDropdownMenuEntry, TomCupertinoActionSheetAction,
 /// TomCupertinoDialogAction, TomCupertinoContextMenuAction,
 /// TomDialog, TomAboutDialog, TomSimpleDialogOption,
@@ -125,56 +125,6 @@ class _RemainingWidgetsDemoContentState
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // TomButtonBar (deprecated — use TomOverflowBar)
-        _DemoCard(
-          tomId: 'demo.buttonBar',
-          // ignore: deprecated_member_use
-          child: TomButtonBar(
-            tomId: 'buttonBar.demo',
-            children: [
-              TomTextButton(
-                onPressed: () {},
-                child: const Text('Cancel'),
-              ),
-              TomElevatedButton(
-                onPressed: () {},
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        ),
-        TomSizedBox(height: 16),
-
-        // TomMaterialButton (deprecated — use TomElevatedButton, TomTextButton, or TomOutlinedButton)
-        _DemoCard(
-          tomId: 'demo.materialButton',
-          child: TomWrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              // ignore: deprecated_member_use
-              TomMaterialButton(
-                tomId: 'materialBtn.basic',
-                onPressed: () {},
-                child: const Text('Material'),
-              ),
-              // ignore: deprecated_member_use
-              TomMaterialButton(
-                tomId: 'materialBtn.styled',
-                onPressed: () {},
-                color: Colors.deepPurple,
-                textColor: Colors.white,
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text('Styled'),
-              ),
-            ],
-          ),
-        ),
-        TomSizedBox(height: 16),
-
         // TomDropdownMenuEntry (inside TomDropdownMenu)
         _DemoCard(
           tomId: 'demo.dropdownMenuEntry',
