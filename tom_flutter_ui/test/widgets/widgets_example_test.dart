@@ -4,6 +4,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../../example/widgets/widgets_example.dart' as example;
+import 'widget_census.dart';
 
 class _PathAuthAdapter extends TomAuthorizationAdapter {
   final Map<String, TomAuthState> rules;
@@ -29,21 +30,42 @@ void main() {
     });
   });
 
-  group('family tagging', () {
-    test('each wrapper reports its TomWidgetFamily', () {
-      expect(
-        TomElevatedButton(onPressed: () {}, child: TomText(text: 'x')).family,
-        TomWidgetFamily.button,
-      );
-      expect(TomText(text: 'x').family, TomWidgetFamily.label);
-      expect(TomCheckbox(value: false, onChanged: (_) {}).family,
-          TomWidgetFamily.toggle);
-      expect(TomContainer(child: const SizedBox()).family,
-          TomWidgetFamily.container);
-      expect(
-        TomCircularProgressIndicator(semanticsLabel: 'busy').family,
-        TomWidgetFamily.progress,
-      );
+  // The example's dartdoc promises that no family is left out and that a
+  // twenty-first one fails this suite until the example demonstrates it too.
+  // These three tests are what make that a checked claim: the permitted set is
+  // read from `widget_base/` by `familyBases()`, so adding a branch base moves
+  // the expectation and the example has to follow.
+  group('family coverage', () {
+    test('the example names one widget from every declared family', () {
+      final declared = familyBases()
+          .map((b) => b.substring('Tom'.length, b.length - 'Base'.length))
+          .map((n) => n.toLowerCase())
+          .toSet();
+      final demonstrated =
+          example.oneWidgetPerFamily().keys.map((f) => f.name).toSet();
+      expect(demonstrated, declared);
+    });
+
+    test('every entry is keyed by the family its widget actually reports', () {
+      // The trap this catches is a representative picked by name rather than
+      // by base: `TomSliverList` and `TomOpacity` both read like one family
+      // and extend the base of another.
+      for (final MapEntry(key: family, value: widget)
+          in example.oneWidgetPerFamily().entries) {
+        expect(widget.family, family, reason: '${widget.runtimeType}');
+        expect(widget.isFamily(family), isTrue);
+        expect(widget.families, contains(family));
+      }
+    });
+
+    test('each representative is addressed by its family name', () {
+      // The example's output reads `settings.button` only because the ids and
+      // the family names are the same string; keep them so.
+      for (final MapEntry(key: family, value: widget)
+          in example.oneWidgetPerFamily().entries) {
+        expect(widget.tomId, family.name);
+        expect(widget.basePath, family.name);
+      }
     });
 
     test('isFamily / families reflect the primary family', () {

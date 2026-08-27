@@ -58,6 +58,19 @@
   its sub-folder implies. `PreferredSizeWidget` is an `implements` and so was
   never the obstacle. It now reports `TomWidgetFamily.container`, which is what
   `doc/widgets.md` had always claimed it did.
+- **`example/widgets/widgets_example.dart` now covers all twenty families**
+  instead of five widgets across four scenarios. It exports
+  `oneWidgetPerFamily()`, a representative per branch base, and demonstrates
+  each part of the Tom contract — family tag, `tomId` / `basePath`, scoped
+  path, authorization, group ceiling — once over all twenty at a time rather
+  than twenty times over. A reader arriving from the family catalogue finds
+  their family named; a reader after the contract is not asked to read the
+  same block twenty times to learn that it does not vary. A new section
+  exhibits `TomExpanded`, one of the seventeen wrappers that reach the surface
+  through `TomWidgetMixin`, which the old header asserted but never showed.
+  `test/widgets/widgets_example_test.dart` derives the permitted family set
+  from `widget_base/`, so a twenty-first branch base fails until the example
+  demonstrates it too.
 
 ### Fixed
 
