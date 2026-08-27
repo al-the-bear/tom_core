@@ -42,6 +42,26 @@
 
 ### Changed
 
+- **`TomRadio`, `TomRadioListTile` and `TomCupertinoRadio` read their selection
+  from a `RadioGroup<T>` ancestor.** Their `groupValue` and `onChanged`
+  parameters are gone — Flutter deprecated both in v3.32 and moved grouping
+  onto the ancestor, which is also where arrow-key navigation and the APG
+  radio-group semantics now live. Each wrapper gains a `bool? enabled`
+  forwarded to the Flutter widget; `null` defers to the ancestor. Withholding
+  `onChanged` is no longer how a radio is made inert, so a `TomAuthState` below
+  `full` forces `enabled: false`: the `AbsorbPointer` that `TomStateStyle`
+  applies stops the pointer, and `RadioGroup` makes the keyboard a second way
+  in that it does not stop.
+- **`TomRadioGroup` and the radio form fields supply that ancestor.**
+  `TomRadioGroup`, `TomFormEnumRadioGroup` and the string radio group each wrap
+  their option column in a single `RadioGroup<T>` carrying the group value and
+  the write-back, and pass only `value` and `enabled` to each row. In
+  `TomRadioGroup` the two withheld states now disable every radio *as well as*
+  wrapping the column in `IgnorePointer`, for the same keyboard reason.
+- **`TomCupertinoButton.minSize` forwards to `CupertinoButton.minimumSize`** as
+  `Size.square(minSize)`, which is the conversion `CupertinoButton` itself
+  performed on the `minSize` it deprecated. The Tom parameter stays a `double`
+  because the resource layer resolves scalars.
 - **`TomMessenger.showSnackBar` and `showSnackBarIfPresent` now return
   `null`** for a `TomSnackBar` whose authorization resolves to
   `TomAuthState.none`, instead of presenting an empty bar. Gating the content

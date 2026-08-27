@@ -73,7 +73,7 @@ follows from how many keys each widget has:
 | Widget | Blocked region | Opt-out |
 | ------ | -------------- | ------- |
 | `TomAuthGuard` | the whole `child` subtree — one key governs it | `blockPointerOnRead: false` leaves `read` interactive |
-| `TomRadioGroup` | the whole group — one key governs the selection | none |
+| `TomRadioGroup` | the whole group — one key governs the selection; each `Radio` is also `enabled: false` | none |
 | `TomAuthTreeView` | **each node's own row only** | none |
 
 The tree is the odd one because it is the only one of the three with a key
@@ -96,6 +96,13 @@ const TomAuthGuard(tomId: 'reports.export', child: ExportButton());
 **`TomRadioGroup`** applies **group-level** auth: one `tomId` controls the
 entire selection (the per-item `Radio` auth in the widgets kit is per-field).
 A `null` `tomId` means "no auth check — always full".
+
+It is the one widget here whose block takes two mechanisms rather than one.
+The column sits under a Flutter `RadioGroup<T>` — that ancestor is what carries
+the selection down to the radios, and it brings arrow-key navigation with it.
+An `IgnorePointer` stops the pointer but not the keyboard, so `disabled` and
+`read` additionally pass `enabled: false` to every `Radio`. Removing either
+half leaves a way in.
 
 **`TomAuthTreeView`** resolves auth **per node**. Each `TomAuthTreeNode`
 carries its own `tomId`, and a node's own auth is folded with what it inherits

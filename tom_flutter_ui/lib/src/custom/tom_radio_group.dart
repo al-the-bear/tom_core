@@ -7,7 +7,10 @@
 /// current [TomRadioGroup.selected] value, and the
 /// [TomRadioGroup.onChanged] handler. Internally each tile is rendered
 /// with [Radio<T>] + [InkWell] so the group composes cleanly inside
-/// Cards / Lists.
+/// Cards / Lists, and the whole column sits under a [RadioGroup] of the
+/// same type argument — that ancestor is what carries the selection down
+/// to the radios, and it brings arrow-key navigation and the APG
+/// radio-group semantics with it.
 ///
 /// Authorization is resolved once via [TomAuthorization.resolveAuth]
 /// against [TomRadioGroup.tomId] (qualified by the active [TomScope]).
@@ -20,6 +23,11 @@
 ///   suppressed, but the current [TomRadioGroup.selected] value is
 ///   still highlighted.
 /// * `full` — the group is fully interactive.
+///
+/// The two withheld states pass `enabled: false` to every radio as well as
+/// wrapping the column in [IgnorePointer]. Both are needed: [IgnorePointer]
+/// stops the pointer, and the [RadioGroup] ancestor makes the keyboard a
+/// second way in that it would not stop.
 library;
 
 import 'package:flutter/material.dart';
@@ -96,7 +104,7 @@ class TomRadioGroup<T> extends StatelessWidget {
     final theme = Theme.of(context);
     final isInteractive = auth == TomAuthState.full;
 
-    final group = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -114,15 +122,7 @@ class TomRadioGroup<T> extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Radio<T>(
-                    value: item.value,
-                    groupValue: selected, // ignore: deprecated_member_use
-                    onChanged: isInteractive // ignore: deprecated_member_use
-                        ? (T? value) {
-                            if (value != null) onChanged?.call(value);
-                          }
-                        : null,
-                  ),
+                  Radio<T>(value: item.value, enabled: isInteractive),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Column(
@@ -145,6 +145,14 @@ class TomRadioGroup<T> extends StatelessWidget {
             ),
           ),
       ],
+    );
+
+    final group = RadioGroup<T>(
+      groupValue: selected,
+      onChanged: (T? value) {
+        if (value != null) onChanged?.call(value);
+      },
+      child: column,
     );
 
     if (auth == TomAuthState.disabled) {

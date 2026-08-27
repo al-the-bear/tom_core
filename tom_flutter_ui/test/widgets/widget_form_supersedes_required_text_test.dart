@@ -63,12 +63,7 @@ void main() {
         'tccb2-05: TomRadioListTile renders a widget title without titleText',
         (tester) async {
       await tester.pumpWidget(_host(
-        TomRadioListTile<String>(
-          value: 'a',
-          groupValue: 'a',
-          onChanged: (_) {},
-          title: _marker,
-        ),
+        TomRadioListTile<String>(value: 'a', title: _marker),
       ));
       expect(_markerFinder, findsOneWidget);
     });

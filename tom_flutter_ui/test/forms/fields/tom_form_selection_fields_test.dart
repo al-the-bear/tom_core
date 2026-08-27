@@ -366,10 +366,15 @@ void main() {
           TomFormEnumRadioGroup<int>('grade', 2, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
-      // ignore: deprecated_member_use
+      // The bound value lives on the `RadioGroup` the field renders around
+      // the rows, not on each row: that is where a radio's selection comes
+      // from now, and asserting it here is what catches a field that stops
+      // supplying the ancestor.
+      final group =
+          tester.widget<RadioGroup<int>>(find.byType(RadioGroup<int>));
+      expect(group.groupValue, 2);
+
       final radios = tester.widgetList<Radio<int>>(find.byType(Radio<int>));
-      // ignore: deprecated_member_use
-      expect(radios.map((r) => r.groupValue), everyElement(2));
       expect(radios.map((r) => r.value), [1, 2, 3]);
     });
 
@@ -392,14 +397,13 @@ void main() {
       );
       await _pumpLoaded(tester, field.widget);
 
-      // ignore: deprecated_member_use
+      // A single row opts out through `enabled`. Withholding `onChanged` no
+      // longer expresses it — the shared ancestor supplies one callback for
+      // every row, so the per-row lever is the only one left.
       final radios =
-          // ignore: deprecated_member_use
           tester.widgetList<Radio<int>>(find.byType(Radio<int>)).toList();
-      // ignore: deprecated_member_use
-      expect(radios[1].onChanged, isNull);
-      // ignore: deprecated_member_use
-      expect(radios[0].onChanged, isNotNull);
+      expect(radios[1].enabled, isFalse);
+      expect(radios[0].enabled, isTrue);
     });
 
     testWidgets('disables every row when read-only', (tester) async {
@@ -411,10 +415,8 @@ void main() {
       );
       await _pumpLoaded(tester, field.widget);
 
-      // ignore: deprecated_member_use
       final radios = tester.widgetList<Radio<int>>(find.byType(Radio<int>));
-      // ignore: deprecated_member_use
-      expect(radios.map((r) => r.onChanged), everyElement(isNull));
+      expect(radios.map((r) => r.enabled), everyElement(isFalse));
     });
   });
 

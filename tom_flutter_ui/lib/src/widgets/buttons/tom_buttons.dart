@@ -1543,7 +1543,13 @@ class TomCupertinoButton extends TomButtonBase {
   final EdgeInsetsGeometry? padding;
   final Color? color;
   final Color disabledColor;
-  // ignore: deprecated_member_use - minSize is deprecated but minimumSize requires Size? not double?
+  /// The button's minimum edge length, forwarded to
+  /// [CupertinoButton.minimumSize] as a square.
+  ///
+  /// Flutter takes a [Size] here; Tom keeps a single `double` because the
+  /// resource layer resolves scalars ([TomCtr.doubleVal] against the
+  /// `minSize` key) and because a square is what [CupertinoButton] itself
+  /// built from the `minSize` it deprecated.
   final double? minSize;
   final double? pressedOpacity;
   final BorderRadius? borderRadius;
@@ -1554,7 +1560,7 @@ class TomCupertinoButton extends TomButtonBase {
   late final String _resolvedLabel;
   late final EdgeInsetsGeometry? _resolvedPadding;
   late final Color? _resolvedColor;
-  late final double? _resolvedMinSize;
+  late final Size? _resolvedMinimumSize;
   late final double? _resolvedPressedOpacity;
 
   TomCupertinoButton({
@@ -1579,7 +1585,8 @@ class TomCupertinoButton extends TomButtonBase {
     _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
-    _resolvedMinSize = minSize ?? TomCtr.doubleVal(basePath, 'minSize');
+    final edge = minSize ?? TomCtr.doubleVal(basePath, 'minSize');
+    _resolvedMinimumSize = edge == null ? null : Size.square(edge);
     _resolvedPressedOpacity = pressedOpacity ?? TomCtr.doubleVal(basePath, 'pressedOpacity');
   }
 
@@ -1592,8 +1599,7 @@ class TomCupertinoButton extends TomButtonBase {
         onPressed: onPressed,
         padding: _resolvedPadding,
         disabledColor: disabledColor,
-        // ignore: deprecated_member_use
-        minSize: _resolvedMinSize,
+        minimumSize: _resolvedMinimumSize,
         pressedOpacity: _resolvedPressedOpacity,
         borderRadius: borderRadius,
         alignment: alignment,
@@ -1606,8 +1612,7 @@ class TomCupertinoButton extends TomButtonBase {
       padding: _resolvedPadding,
       color: _resolvedColor,
       disabledColor: disabledColor,
-      // ignore: deprecated_member_use
-      minSize: _resolvedMinSize,
+      minimumSize: _resolvedMinimumSize,
       pressedOpacity: _resolvedPressedOpacity,
       borderRadius: borderRadius,
       alignment: alignment,

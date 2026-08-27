@@ -270,17 +270,9 @@ class _TomFormStringRadioGroupWidgetState
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: Row(
               children: [
-                // ignore: deprecated_member_use
                 Radio<String>(
                   value: item.value,
-                  // ignore: deprecated_member_use
-                  groupValue: f.get(),
-                  // ignore: deprecated_member_use
-                  onChanged: f.isEditable && item.enabled
-                      ? (v) {
-                          if (v != null) f.setValue(v);
-                        }
-                      : null,
+                  enabled: f.isEditable && item.enabled,
                   fillColor: selectedColor,
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -294,7 +286,19 @@ class _TomFormStringRadioGroupWidgetState
       }).toList(),
     );
 
-    return f.decorateField(context, column);
+    // The group value and the setter belong to the whole option list, so they
+    // live on the ancestor; each radio carries only its own value and whether
+    // it is selectable. The per-item `enabled` still has to be passed — the
+    // ancestor makes every radio beneath it interactive by default.
+    final group = RadioGroup<String>(
+      groupValue: f.get(),
+      onChanged: (String? v) {
+        if (v != null) f.setValue(v);
+      },
+      child: column,
+    );
+
+    return f.decorateField(context, group);
   }
 }
 

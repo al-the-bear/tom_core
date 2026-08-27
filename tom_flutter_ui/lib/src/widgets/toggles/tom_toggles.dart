@@ -205,13 +205,40 @@ class TomCheckbox extends TomToggleBase {
   }
 }
 
+/// The `enabled` flag to forward to a Flutter radio.
+///
+/// Grouping lives on a [RadioGroup] ancestor, so a radio's interactivity can
+/// no longer be withheld by passing a null `onChanged` — the ancestor supplies
+/// the callback for every radio beneath it. `enabled: false` is the only lever
+/// the widget itself still holds, which is why a withheld [TomAuthState] has
+/// to pull it: [TomStateStyle] wraps the readonly and disabled treatments in
+/// an `AbsorbPointer`, and that stops the pointer but not the keyboard, which
+/// [RadioGroup] makes an active input path.
+///
+/// `null` defers to the ancestor, which is what [Radio.enabled] documents as
+/// its own default.
+bool? _radioEnabled(bool? explicit, TomAuthState auth) =>
+    explicit ?? (auth == TomAuthState.full ? null : false);
+
 /// Tom wrapper for [Radio].
 ///
 /// Adds ID, group, authorization, and resource resolution for label.
+///
+/// Selection is read from the enclosing [RadioGroup] of the same type
+/// argument: the radio is selected when its [value] equals the group's
+/// `groupValue`, and picking it calls the group's `onChanged`. Without such an
+/// ancestor the radio renders unselected and inert — that is [Radio]'s own
+/// behaviour, not a Tom restriction. [TomRadioGroup] supplies the ancestor for
+/// the common list-of-options case.
 class TomRadio<T> extends TomToggleBase {
   final T value;
-  final T? groupValue;
-  final ValueChanged<T?>? onChanged;
+
+  /// Whether the radio accepts input, forwarded to [Radio.enabled].
+  ///
+  /// Leave it null to follow the enclosing [RadioGroup]; see [_radioEnabled]
+  /// for why a withheld [TomAuthState] overrides that default.
+  final bool? enabled;
+
   final Color? activeColor;
   final WidgetStateProperty<Color?>? fillColor;
   final Color? focusColor;
@@ -240,8 +267,7 @@ class TomRadio<T> extends TomToggleBase {
     super.authorizer,
     super.uiStateController,
     required this.value,
-    this.groupValue,
-    ValueChanged<T?>? onChanged,
+    this.enabled,
     this.activeColor,
     this.fillColor,
     this.focusColor,
@@ -252,7 +278,7 @@ class TomRadio<T> extends TomToggleBase {
     this.toggleable = false,
     this.focusNode,
     this.autofocus = false,
-  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
     _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
@@ -266,8 +292,7 @@ class TomRadio<T> extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     return Radio<T>(
       value: value,
-      groupValue: groupValue, // ignore: deprecated_member_use
-      onChanged: onChanged, // ignore: deprecated_member_use
+      enabled: _radioEnabled(enabled, effectiveAuthState),
       activeColor: _resolvedActiveColor,
       fillColor: fillColor,
       focusColor: _resolvedFocusColor,
@@ -557,10 +582,18 @@ class TomCheckboxListTile extends TomToggleBase {
 /// Tom wrapper for [RadioListTile].
 ///
 /// Adds ID, group, authorization, and resource resolution for title.
+///
+/// Like [TomRadio], selection comes from the enclosing [RadioGroup] of the
+/// same type argument rather than from a `groupValue` of its own.
 class TomRadioListTile<T> extends TomToggleBase {
   final T value;
-  final T? groupValue;
-  final ValueChanged<T?>? onChanged;
+
+  /// Whether the tile accepts input, forwarded to [RadioListTile.enabled].
+  ///
+  /// Leave it null to follow the enclosing [RadioGroup]; see [_radioEnabled]
+  /// for why a withheld [TomAuthState] overrides that default.
+  final bool? enabled;
+
   final Widget? title;
   final String? titleText;
   final Widget? subtitle;
@@ -602,8 +635,7 @@ class TomRadioListTile<T> extends TomToggleBase {
     super.authorizer,
     super.uiStateController,
     required this.value,
-    this.groupValue,
-    ValueChanged<T?>? onChanged,
+    this.enabled,
     this.title,
     this.titleText,
     this.subtitle,
@@ -622,7 +654,7 @@ class TomRadioListTile<T> extends TomToggleBase {
     this.focusNode,
     this.shape,
     this.fillColor,
-  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) {
     _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedTileColor = tileColor ?? TomCtr.color(basePath, 'tileColor');
@@ -643,8 +675,7 @@ class TomRadioListTile<T> extends TomToggleBase {
 
     return RadioListTile<T>(
       value: value,
-      groupValue: groupValue, // ignore: deprecated_member_use
-      onChanged: onChanged, // ignore: deprecated_member_use
+      enabled: _radioEnabled(enabled, effectiveAuthState),
       title: effectiveTitle,
       subtitle: subtitle,
       secondary: secondary,
@@ -954,10 +985,18 @@ class TomCupertinoCheckbox extends TomToggleBase {
 /// Tom wrapper for [CupertinoRadio].
 ///
 /// Cupertino-styled radio button. Auth for readonly/hidden.
+///
+/// Like [TomRadio], selection comes from the enclosing [RadioGroup] of the
+/// same type argument rather than from a `groupValue` of its own.
 class TomCupertinoRadio<T> extends TomToggleBase {
   final T value;
-  final T? groupValue;
-  final ValueChanged<T?>? onChanged;
+
+  /// Whether the radio accepts input, forwarded to [CupertinoRadio.enabled].
+  ///
+  /// Leave it null to follow the enclosing [RadioGroup]; see [_radioEnabled]
+  /// for why a withheld [TomAuthState] overrides that default.
+  final bool? enabled;
+
   final MouseCursor? mouseCursor;
   final bool toggleable;
   final Color? activeColor;
@@ -982,8 +1021,7 @@ class TomCupertinoRadio<T> extends TomToggleBase {
     super.authorizer,
     super.uiStateController,
     required this.value,
-    required this.groupValue,
-    ValueChanged<T?>? onChanged,
+    this.enabled,
     this.mouseCursor,
     this.toggleable = false,
     this.activeColor,
@@ -993,7 +1031,7 @@ class TomCupertinoRadio<T> extends TomToggleBase {
     this.focusNode,
     this.autofocus = false,
     this.useCheckmarkStyle = false,
-  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedInactiveColor = inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
     _resolvedFillColor = fillColor ?? TomCtr.color(basePath, 'fillColor');
@@ -1004,8 +1042,7 @@ class TomCupertinoRadio<T> extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     return CupertinoRadio<T>(
       value: value,
-      groupValue: groupValue, // ignore: deprecated_member_use
-      onChanged: onChanged, // ignore: deprecated_member_use
+      enabled: _radioEnabled(enabled, effectiveAuthState),
       mouseCursor: mouseCursor,
       toggleable: toggleable,
       activeColor: _resolvedActiveColor,

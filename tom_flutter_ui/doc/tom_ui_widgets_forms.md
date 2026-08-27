@@ -1321,18 +1321,25 @@ merely trade a horizontal overflow for a vertical one.
 four dropdown fields into a box narrower than their longest label and fails if
 any of them overflows again.
 
-#### RadioListTile\<T\> (group)
+#### RadioGroup\<T\> + Radio\<T\> (group)
 
 Used by: `TomForm{Type}RadioGroup`
 
-Renders one `RadioListTile<T>` per `TomSelectableSource<T>` item:
+Renders one `Radio<T>` per `TomSelectableSource<T>` item, each in an `InkWell`
+row beside its label, and wraps the whole column in a single `RadioGroup<T>`.
+The group value and the write-back belong to the option list as a whole, so
+they sit on that ancestor; a radio carries only its own value and whether it
+accepts input:
 
-| Flutter Parameter | Category | Tom Binding | Notes |
-|-------------------|----------|-------------|-------|
-| `value` (per tile) | Data source | `item.value` from `SelectableItem<T>` | One tile per option |
-| `groupValue` | Value binding | `TomObject<T>.value` | Shared across all tiles |
-| `onChanged` | Write-back | `(v) => field.setValue(v)` | null when not editable |
-| `title` | Data source | `Text(item.label)` from `SelectableItem<T>` | |
+| Flutter Parameter | On | Category | Tom Binding | Notes |
+|-------------------|-----|----------|-------------|-------|
+| `groupValue` | `RadioGroup<T>` | Value binding | `TomObject<T>.value` | One per field, shared by every row |
+| `onChanged` | `RadioGroup<T>` | Write-back | `(v) => field.setValue(v)` | Always supplied; rows opt out through `enabled` |
+| `value` | `Radio<T>` | Data source | `item.value` from `SelectableItem<T>` | One radio per option |
+| `enabled` | `Radio<T>` | Availability | `field.isEditable && item.enabled` | The per-row lever; a null `onChanged` no longer expresses this |
+
+The label is a sibling `Text`, not a `title` on the radio — the row is
+assembled from `Radio` + `Text` rather than from `RadioListTile`.
 
 #### FilterChip (group)
 

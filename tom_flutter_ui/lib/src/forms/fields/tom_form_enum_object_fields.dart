@@ -544,17 +544,9 @@ class _EnumRadioGroupWidgetState<T> extends State<_EnumRadioGroupWidget<T>>
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: Row(
               children: [
-                // ignore: deprecated_member_use
                 Radio<T>(
                   value: item.value,
-                  // ignore: deprecated_member_use
-                  groupValue: v,
-                  // ignore: deprecated_member_use
-                  onChanged: f.isEditable && item.enabled
-                      ? (nv) {
-                          if (nv != null) f.setValue(nv);
-                        }
-                      : null,
+                  enabled: f.isEditable && item.enabled,
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -567,7 +559,19 @@ class _EnumRadioGroupWidgetState<T> extends State<_EnumRadioGroupWidget<T>>
       }).toList(),
     );
 
-    return f.decorateField(context, column);
+    // The group value and the setter belong to the whole option list, so they
+    // live on the ancestor; each radio carries only its own value and whether
+    // it is selectable. The per-item `enabled` still has to be passed — the
+    // ancestor makes every radio beneath it interactive by default.
+    final group = RadioGroup<T>(
+      groupValue: v,
+      onChanged: (T? nv) {
+        if (nv != null) f.setValue(nv);
+      },
+      child: column,
+    );
+
+    return f.decorateField(context, group);
   }
 }
 

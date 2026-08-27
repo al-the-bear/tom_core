@@ -230,7 +230,7 @@ final Map<String, TomWidgetFactory> widgetConformanceRegistry = {
         children: const <Widget>[],
       ),
   'TomCupertinoRadio': (id, s) =>
-      TomCupertinoRadio<int>(tomId: id, scope: s, value: 0, groupValue: 0),
+      TomCupertinoRadio<int>(tomId: id, scope: s, value: 0),
   'TomCupertinoScrollbar': (id, s) =>
       TomCupertinoScrollbar(tomId: id, scope: s, child: const SizedBox()),
   'TomCupertinoSearchTextField': (id, s) =>
