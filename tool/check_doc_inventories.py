@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the file inventories in the tom_core completion documents.
+"""Audit the hand-written measurements in the tom_core completion documents.
 
 Run from anywhere::
 
@@ -7,15 +7,21 @@ Run from anywhere::
     python3 tool/check_doc_inventories.py tom_core_kernel # one project's documents
     python3 tool/check_doc_inventories.py --fix           # re-measure and rewrite
 
-Exits non-zero when any inventory disagrees with the tree.
+Exits non-zero when any measurement disagrees with the tree.
 
-Each completion document opens by naming the module's directory and how much
-is in it -- ``N source files, M lines`` -- and then tabulates the directory a
-file at a time::
+Two shapes are audited. Most documents open by naming the module's directory
+and how much is in it -- ``N source files, M lines`` -- and then tabulate the
+directory a file at a time::
 
     | File | Lines | Carries |
     | ---- | ----- | ------- |
     | `date_timestamp.dart` | 1184 | `TomTimezoned` and its three subclasses. |
+
+A module with sub-folders maps them instead, counting the types in each::
+
+    | Sub-folder | File | Family | Types |
+    | --- | --- | --- | --- |
+    | `animated/` | [`tom_animated.dart`](...) | `animated` | 20 |
 
 Those numbers are measurements, and a measurement written by hand is correct
 only until the next commit. They are worth keeping because they tell a reader
@@ -24,7 +30,13 @@ nine-file, 4000-line one are read differently -- but nobody re-measures them
 when a module changes, so without a check they decay silently into confident
 misinformation, which is worse than having omitted them.
 
-Four faults are reported:
+That is not hypothetical for the ``Types`` column: deleting two deprecated
+button wrappers left the widgets map claiming 23 buttons where the sub-folder
+had 21, and the claim survived a sweep that corrected the same census in six
+other documents -- because a bare number in a table cell is invisible to a
+scan that looks for a count beside a noun.
+
+Five faults are reported:
 
 ``LINES``
     A tabulated file whose line count is not the file's line count. The common
@@ -37,12 +49,22 @@ Four faults are reported:
 ``HEADER``
     The opening ``N source files, M lines`` claim, or the ``readme.md (K
     lines)`` aside beside it, disagreeing with the directory.
+``COUNT``
+    A sub-folder map row whose ``Types`` count is not the number of ``Tom``
+    classes declared under that sub-folder, or a sub-folder present in the
+    module and missing from the map.
 
-``--fix`` repairs ``LINES`` and ``HEADER`` by writing the measurement back, so
-keeping the numbers true costs one command rather than a manual pass. It never
-touches ``UNKNOWN`` or ``ABSENT``: adding or retiring a row means writing the
-sentence that says what the file carries, and only a reader of the file can do
-that.
+``--fix`` repairs ``LINES``, ``HEADER`` and ``COUNT`` by writing the
+measurement back, so keeping the numbers true costs one command rather than a
+manual pass. It never touches ``UNKNOWN`` or ``ABSENT``, nor a missing map
+row: adding or retiring a row means writing the sentence that says what the
+file or folder carries, and only a reader of it can do that.
+
+The type count mirrors ``declarationPattern`` in
+``tom_flutter_ui/test/widgets/widget_census.dart``, which answers the same
+question on the Dart side for the package's own suites. A gate written in
+Python cannot call it, so the pattern is stated twice; changing either one
+means changing both, and the totals they produce should always agree.
 
 The documents live in the ``_ai`` layer, beside the quest that produced them,
 while the tree they describe lives here -- hence the reach across the two
@@ -62,10 +84,37 @@ DOCS_ROOT = REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completio
 # The module directory, as the documents name it: a backticked path that starts
 # at a project and reaches into its source tree. Taken from the first mention,
 # which is the "On disk at ..." opening; later mentions point at neighbours.
-MODULE_PATH = re.compile(r"`(tom_core_\w+/lib/src/[\w/]+?)/?`")
+MODULE_PATH = re.compile(r"`(tom_\w+/lib/src/[\w/]+?)/?`")
 
 TABLE_HEADER = re.compile(r"^\|\s*File\s*\|\s*Lines\s*\|")
 TABLE_ROW = re.compile(r"^\|\s*`([^`]+)`\s*\|\s*(\d+)\s*\|", re.M)
+
+# A sub-folder map row: a backticked folder, then any cells, then the count as
+# the last one. The folder is required to end in `/` so that a `| Type | Wraps |`
+# row -- the other four-column table in these documents -- cannot match.
+MAP_HEADER = re.compile(r"^\|\s*Sub-folder\s*\|.*\|\s*Types\s*\|")
+MAP_ROW = re.compile(r"^\|\s*`([\w/]+)/`\s*\|.*\|\s*(\d+)\s*\|\s*$", re.M)
+
+# A public `Tom` class declaration. Mirrors `declarationPattern` in
+# tom_flutter_ui/test/widgets/widget_census.dart -- see the module docstring.
+DECLARATION = re.compile(
+    r"^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+|mixin\s+)*"
+    r"class\s+(Tom\w+)(?:<[^>]*>)?\s*[^{]*\{",
+    re.M,
+)
+
+
+def declared_types(folder: Path) -> set[str]:
+    """Every `Tom` class declared under `folder`, recursively.
+
+    Recursive because a sub-folder may nest one -- `containers/` holds `acl/`,
+    and the map counts the pair as one entry.
+    """
+    names: set[str] = set()
+    for source in sorted(folder.rglob("*.dart")):
+        text = source.read_text(encoding="utf-8", errors="replace")
+        names |= {m.group(1) for m in DECLARATION.finditer(text)}
+    return names
 
 # Both claims allow `\s+` between their words rather than a single space: the
 # documents are hard-wrapped, so either one routinely straddles a line break.
@@ -116,7 +165,11 @@ class Report:
 
 
 def audit(path: Path) -> Report | None:
-    """Return a Report, or None if the document carries no file inventory."""
+    """Return a Report, or None if the document measures nothing.
+
+    Two independent audits, either of which may find nothing to say: a
+    document carries a file inventory, or a sub-folder map, or neither.
+    """
     text = path.read_text(encoding="utf-8", errors="replace")
 
     module_match = MODULE_PATH.search(text)
@@ -126,6 +179,59 @@ def audit(path: Path) -> Report | None:
     if not module.is_dir():
         return None
 
+    report = Report(path)
+    measured = audit_file_inventory(text, module, report)
+    measured |= audit_subfolder_map(text, module, report)
+    return report if measured else None
+
+
+def audit_subfolder_map(text: str, module: Path, report: Report) -> bool:
+    """Check each map row's type count against the sub-folder it names.
+
+    Returns whether the document has a map at all.
+    """
+    rows: dict[str, re.Match[str]] = {}
+    in_table = False
+    position = 0
+    for line in text.splitlines(keepends=True):
+        if MAP_HEADER.match(line):
+            in_table = True
+        elif in_table and not line.startswith("|"):
+            in_table = False
+        elif in_table:
+            row = MAP_ROW.match(text, position)
+            if row:
+                rows[row.group(1)] = row
+        position += len(line)
+    if not rows:
+        return False
+
+    for name, match in sorted(rows.items()):
+        folder = module / name
+        if not folder.is_dir():
+            report.faults.append(f"COUNT    `{name}/` is not in {module.name}/")
+            continue
+        actual = len(declared_types(folder))
+        claimed = int(match.group(2))
+        if actual != claimed:
+            report.faults.append(
+                f"COUNT    `{name}/` says {claimed} types, has {actual}"
+            )
+            report.edits.append(rewrite_groups(match, {2: str(actual)}))
+
+    for folder in sorted(p for p in module.iterdir() if p.is_dir()):
+        if folder.name not in rows:
+            report.faults.append(
+                f"COUNT    `{folder.name}/` is on disk, not in the map"
+            )
+    return True
+
+
+def audit_file_inventory(text: str, module: Path, report: Report) -> bool:
+    """Check the `| File | Lines |` table and the header claims beside it.
+
+    Returns whether the document has such a table at all.
+    """
     # Rows are recognised only between a `| File | Lines |` header and the end
     # of its table, so a backticked filename in some unrelated table elsewhere
     # in the document is not mistaken for part of the inventory.
@@ -145,9 +251,8 @@ def audit(path: Path) -> Report | None:
                 rows[row.group(1)] = row
         position += len(line)
     if not rows:
-        return None
+        return False
 
-    report = Report(path)
     on_disk = {p.name: p for p in sorted(module.iterdir()) if p.is_file()}
 
     for name, match in sorted(rows.items()):
@@ -188,7 +293,7 @@ def audit(path: Path) -> Report | None:
             )
             report.edits.append(rewrite_groups(readme, {1: str(measured)}))
 
-    return report
+    return True
 
 
 def main(argv: list[str]) -> int:
@@ -204,10 +309,10 @@ def main(argv: list[str]) -> int:
     documents = sorted(p for p in DOCS_ROOT.glob("*.md") if p.name.startswith(prefix))
     reports = [r for r in (audit(p) for p in documents) if r is not None]
 
-    # A checker that quietly stops finding inventories reports a clean tree,
+    # A checker that quietly stops finding measurements reports a clean tree,
     # which is the one way this kind of audit fails without anyone noticing.
     if not reports:
-        print(f"no file inventories found under {DOCS_ROOT}", file=sys.stderr)
+        print(f"no measurements found under {DOCS_ROOT}", file=sys.stderr)
         return 2
 
     defective = [r for r in reports if not r.clean]
@@ -219,7 +324,7 @@ def main(argv: list[str]) -> int:
     total = sum(len(r.faults) for r in defective)
     remaining = sum(len(r.faults) - len(r.edits) for r in defective)
     print(
-        f"\n{len(reports)} inventories audited, "
+        f"\n{len(reports)} documents audited, "
         f"{len(defective)} defective, {total} faults"
     )
     if fix:
