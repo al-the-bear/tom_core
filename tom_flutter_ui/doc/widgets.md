@@ -152,9 +152,9 @@ TomText(tomId: 'app.greeting'); // resolves the label from resources by basePath
 ```
 
 Nullable resolvers (`TomCtr.intVal`, `TomCtr.textStyle`, …) return `null` when
-the key is absent; the `*OrFail` resolvers **throw** so a missing required
-value fails loudly at construction rather than rendering blank. What counts as
-missing differs by type, and the split matters when picking one:
+the key is absent. The `*OrFail` resolvers are for values a widget structurally
+requires — but what counts as missing differs by type, and only three of the
+four throw for an absent resource:
 
 ```dart
 TomText();                      // throws — no text and no tomId, nothing to look up
@@ -168,6 +168,24 @@ deliberately, so a missing translation is visible on screen — while
 `colorOrFail`, `doubleOrFail` and `intOrFail` throw for an absent resource as
 well as an absent `tomId`. The full matrix is in
 [widget_base.md](widget_base.md#resource-resolution-tomctr).
+
+What a *widget* does with a missing text resource is not read off that matrix,
+though, because each call site composes the resolver, and the wrappers use
+three compositions. Which one a property gets follows from whether the
+underlying Flutter widget can do without it:
+
+| Composition | Used for | No `tomId` | `tomId`, no resource |
+| --- | --- | --- | --- |
+| `x ?? textOrFail(basePath, k)` | a value the widget cannot render without — `TomText.text`, a `TextField` label, `TomTooltip.message` | throws | renders `'<basePath>.<k>'` |
+| `x ?? (tomId != null ? textOrFail(basePath, k) : null)` | a value Flutter itself treats as optional — every hint/placeholder, semantic labels, dialog titles | `null`, no lookup | renders `'<basePath>.<k>'` |
+| `x ?? textOrFail(basePath, k, supersededBy: w)` | a string paired with a widget slot that renders instead of it — `TomElevatedButton.child` beside `label`, `TomListTile.title` beside `titleText` | `''` when `w` is non-null, else throws | `''` when `w` is non-null, else the key |
+
+So the visible failure for a missing text resource is the key painted where the
+text belongs — never a blank, and never a crash once a `tomId` is present.
+`nope.label` renders at the right size in the right place and reads like a
+label, so it is easy to miss in review; treat a key on screen as the signal
+that a resource was never registered.
+`test/widgets/missing_text_resource_test.dart` pins all three compositions.
 
 Construction needs a resource provider installed
 (`TomTextResourceProvider.setAppResourceProvider`) but **no** `BuildContext`.

@@ -25,10 +25,16 @@ import '../../widget_base/tom_style_resolvers.dart';
 /// Everything else in the decoration is still merged property-by-property,
 /// explicit over resource.
 ///
-/// With no source at all the label lookup fails loudly ([StateError] from
-/// [TomCtr.textOrFail]) rather than rendering a blank label. The hint has no
-/// such requirement: it is optional in Flutter, so it is only looked up when
-/// the widget has a `tomId` to look under.
+/// The label is required, so the chain ends in [TomCtr.textOrFail] — but read
+/// that name carefully, because it fails on only one of the two ways a label
+/// can be absent. With no label, no decoration and *no `tomId`* there is
+/// nothing to look up and it throws [StateError]. With a `tomId` whose
+/// `<basePath>.label` resource is missing it returns the dotted key, and the
+/// field renders `name.label` as its label. A widget that must not ship with a
+/// key showing has to check `exists` itself; this function will not.
+///
+/// The hint has no requirement at all: it is optional in Flutter, so it is
+/// only looked up when the widget has a `tomId` to look under.
 InputDecoration _resolveInputDecoration({
   required InputDecoration? decoration,
   required String? basePath,
@@ -1186,7 +1192,7 @@ class TomCupertinoSearchTextField extends TomInputBase {
   final SmartDashesType? smartDashesType;
 
   // Pre-resolved resource values
-  late final String _resolvedPlaceholder;
+  late final String? _resolvedPlaceholder;
   late final TextStyle? _resolvedStyle;
   late final TextStyle? _resolvedPlaceholderStyle;
   late final Color? _resolvedBackgroundColor;
@@ -1228,7 +1234,12 @@ class TomCupertinoSearchTextField extends TomInputBase {
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onSubmitted = InScopeBuilder(scope: scope).wrap1n(onSubmitted),
         onSuffixTap = InScopeBuilder(scope: scope).wrap0n(onSuffixTap) {
-    _resolvedPlaceholder = placeholder ?? TomCtr.textOrFail(basePath, 'hint');
+    // Guarded exactly like the other two Cupertino text inputs: a placeholder
+    // is optional in Flutter — CupertinoSearchTextField substitutes the
+    // localized "Search" for a null one — so a widget with no tomId has
+    // nothing to look up and wants no placeholder, not a StateError.
+    _resolvedPlaceholder = placeholder ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
     _resolvedStyle = style ?? _resolveTextStyle('style');
     _resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
     _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');

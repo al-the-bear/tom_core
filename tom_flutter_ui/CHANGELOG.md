@@ -2,6 +2,16 @@
 
 ### Fixed
 
+- **A plain `TomCupertinoSearchTextField()` can be constructed again.** Its
+  placeholder resolved through an unguarded `TomCtr.textOrFail` into a
+  non-nullable `String`, so a search box with no `placeholder` and no `tomId`
+  threw a `StateError` — for a property Flutter treats as optional, and which
+  `CupertinoSearchTextField` fills with the localized "Search" when handed
+  `null`. Resolving it unconditionally therefore replaced a working default
+  with either a resource requirement or an exception. It is now `String?` and
+  looked up only when the widget has a `tomId`, matching its two siblings
+  `TomCupertinoTextField` and `TomCupertinoTextFormFieldRow` and the sweep
+  that had already made every other optional slot behave this way.
 - **A `TomIconButton` with no icon now says so instead of rendering a warning
   glyph.** The icon *is* this widget, but it resolved through the nullable
   `TomCtr.icon` and fell back to `const Icon(Icons.error_outline)` — leaving a
@@ -156,7 +166,23 @@
 
 ### Documentation
 
-- **`family`, `families` and `isFamily` now say how they relate.** The dartdoc
+- **`doc/widgets.md` describes what a widget does with a missing text
+  resource, rather than what its resolver is named.** The section led with the
+  claim that the `*OrFail` resolvers "throw so a missing required value fails
+  loudly at construction rather than rendering blank". `textOrFail` — the text
+  resolver of the whole kit, at some seventy call sites — throws only when
+  there is no `tomId` to look under; given one and no resource it returns the
+  dotted key, so a `TomText(tomId: 'nope')` paints `nope.label`. The contrast
+  with "rendering blank" had it backwards: blank is the visibly wrong outcome
+  that gets caught in review, and a key that reads like words, at the right
+  size in the right place, is the one that ships.
+  The section now tabulates the **three compositions** the wrappers actually
+  use — required, `tomId`-guarded optional, and superseded-by-a-widget-slot —
+  because the resolver's contract does not determine the widget's behaviour
+  and the same missing resource gets three different answers depending on
+  which composition the property got. The same correction is applied to the
+  `_resolveInputDecoration` dartdoc, which had described only the throwing
+  half. `test/widgets/missing_text_resource_test.dart` pins all three.
   and `doc/widget_base.md` described `families` as letting a widget "report
   more than one" and stopped there, which leaves the reader to assume the
   obvious composition. It is not the one in force: `isFamily` reads `families`
