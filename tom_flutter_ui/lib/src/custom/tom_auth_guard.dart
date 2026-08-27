@@ -1,15 +1,16 @@
-/// Inline wrapper that hides or disables its [child] based on the
-/// authorization state resolved from a `tomId` (resource key path).
+/// Inline wrapper that hides or disables its [TomAuthGuard.child] based
+/// on the authorization state resolved from a `tomId` (resource key
+/// path).
 ///
 /// Reach for it wherever a subtree's visibility follows a resource key,
 /// in place of calling `TomAuthorization.resolveAuth(...)` at the call
 /// site and branching by hand.
 ///
 /// The guard supports four [TomAuthState] outcomes:
-/// * `none` — child is removed from the tree (replaced by [hiddenBuilder]
-///   or `SizedBox.shrink()`).
+/// * `none` — child is removed from the tree (replaced by
+///   [TomAuthGuard.hiddenBuilder] or `SizedBox.shrink()`).
 /// * `disabled` — child is rendered behind an [IgnorePointer] and faded
-///   to [disabledOpacity].
+///   to [TomAuthGuard.disabledOpacity].
 /// * `read` — child is rendered behind an [IgnorePointer] (interactive
 ///   elements are blocked but content is fully visible).
 /// * `full` — child is rendered as-is.

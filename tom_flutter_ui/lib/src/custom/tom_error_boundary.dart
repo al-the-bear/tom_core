@@ -14,8 +14,9 @@
 /// mattering, and a list of dozens of boundaries contains each row's failure
 /// to its own row.
 ///
-/// The fallback UI is configurable via [fallbackBuilder]; when omitted,
-/// a Material-themed error card is shown.
+/// The fallback UI is configurable via
+/// [TomErrorBoundary.fallbackBuilder]; when omitted, a Material-themed
+/// error card is shown.
 library;
 
 import 'package:flutter/material.dart';

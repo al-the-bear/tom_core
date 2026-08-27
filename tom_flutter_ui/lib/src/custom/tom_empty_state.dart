@@ -3,8 +3,9 @@
 ///
 /// Renders a vertically stacked icon + title + description + optional
 /// action button. All strings flow through the resource provider when
-/// the caller hands in a [tomId] (preferred) — fall-back literals are
-/// also supported for ad-hoc usage in tests / one-off screens.
+/// the caller hands in a [TomEmptyState.tomId] (preferred) — fall-back
+/// literals are also supported for ad-hoc usage in tests / one-off
+/// screens.
 library;
 
 import 'package:flutter/material.dart';

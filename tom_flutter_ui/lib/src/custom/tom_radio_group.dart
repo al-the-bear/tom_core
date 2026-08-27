@@ -3,20 +3,22 @@
 /// carrying its own. Use it when a grant covers the choice as a unit —
 /// a per-field radio is the right tool when the grant varies per option.
 ///
-/// The widget is value-semantic: callers pass [items], the current
-/// [selected] value, and an [onChanged] handler. Internally each tile
-/// is rendered with [Radio<T>] + [InkWell] so the group composes
-/// cleanly inside Cards / Lists.
+/// The widget is value-semantic: callers pass [TomRadioGroup.items], the
+/// current [TomRadioGroup.selected] value, and the
+/// [TomRadioGroup.onChanged] handler. Internally each tile is rendered
+/// with [Radio<T>] + [InkWell] so the group composes cleanly inside
+/// Cards / Lists.
 ///
 /// Authorization is resolved once via [TomAuthorization.resolveAuth]
-/// against [tomId] (qualified by the active [TomScope]). The four
-/// outcomes:
+/// against [TomRadioGroup.tomId] (qualified by the active [TomScope]).
+/// The four outcomes:
 ///
 /// * `none` — the entire group is hidden.
 /// * `disabled` — the group is rendered with [IgnorePointer] + faded
-///   opacity; the [onChanged] callback is never invoked.
-/// * `read` — the group is rendered, [onChanged] is suppressed, but
-///   the current [selected] value is still highlighted.
+///   opacity; the [TomRadioGroup.onChanged] callback is never invoked.
+/// * `read` — the group is rendered, [TomRadioGroup.onChanged] is
+///   suppressed, but the current [TomRadioGroup.selected] value is
+///   still highlighted.
 /// * `full` — the group is fully interactive.
 library;
 

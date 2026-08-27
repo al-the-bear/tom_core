@@ -7,18 +7,20 @@
 /// of shape `Future<List<T>> Function(int page, int pageSize)`. The
 /// inner [ListView.builder] calls the fetcher whenever the user
 /// approaches the end of the loaded list and appends the result. When
-/// a page returns fewer items than [pageSize], the wrapper considers
-/// the source exhausted and stops issuing further requests.
+/// a page returns fewer items than [TomInfiniteScroll.pageSize], the
+/// wrapper considers the source exhausted and stops issuing further
+/// requests.
 ///
 /// State transitions exposed through the slot builders:
 ///
 /// * `pending && items.isEmpty` — initial-load skeleton via
-///   [skeletonBuilder].
+///   [TomInfiniteScroll.skeletonBuilder].
 /// * `pending && items.isNotEmpty` — bottom-of-list "loading more"
 ///   indicator (a small `CircularProgressIndicator`).
-/// * `error != null` — [errorBuilder] (defaults to a Material-styled
-///   error tile with a Retry action).
-/// * `items.isEmpty && !pending && error == null` — [emptyBuilder].
+/// * `error != null` — [TomInfiniteScroll.errorBuilder] (defaults to a
+///   Material-styled error tile with a Retry action).
+/// * `items.isEmpty && !pending && error == null` —
+///   [TomInfiniteScroll.emptyBuilder].
 library;
 
 import 'package:flutter/material.dart';

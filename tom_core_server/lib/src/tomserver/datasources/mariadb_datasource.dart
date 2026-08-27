@@ -1033,7 +1033,7 @@ class MariaDbDatasource implements TomDataSource {
   /// Fills each pending association in [refStack] by running its reference
   /// query and writing the results into the row that owes it.
   ///
-  /// This is the whole implementation of `@TomReference`: [_processResultSet]
+  /// This is the whole implementation of `@TomReference`: [_processResult]
   /// cannot read an association while mapping a row — the query binds values
   /// from that same row — so it stacks the reference columns and calls this
   /// once the row's own columns are set.

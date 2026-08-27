@@ -6,10 +6,11 @@
 /// concrete picker is wired in without one). What it gained beyond name, size
 /// and bytes are the two things a *streaming* upload needs:
 ///
-///   * [source] — a re-openable byte stream, so a 400 MB file is uploaded
-///     straight from disk instead of being read into memory first;
-///   * [storageKey] — the server-generated key of an already-stored file, so a
-///     form can be re-opened and show its attachment without re-uploading it.
+///   * [FileRef.source] — a re-openable byte stream, so a 400 MB file is
+///     uploaded straight from disk instead of being read into memory first;
+///   * [FileRef.storageKey] — the server-generated key of an already-stored
+///     file, so a form can be re-opened and show its attachment without
+///     re-uploading it.
 ///
 /// All three content forms are optional and a reference may carry none of them
 /// — a stored file describes itself by name, size and key alone.

@@ -5,8 +5,9 @@
 ///
 /// The shimmer is driven by a [SingleTickerProviderStateMixin]-backed
 /// [AnimationController] that cycles a horizontal gradient from left to
-/// right at the configured [period]. When [child] is non-null the
-/// shimmer is masked to the child silhouette via [ShaderMask], which
+/// right at the configured [TomSkeletonLoader.period]. When
+/// [TomSkeletonLoader.child] is non-null the shimmer is masked to the
+/// child silhouette via [ShaderMask], which
 /// lets callers compose skeletons out of plain widgets (`Container`,
 /// `Row` of `SizedBox`, etc.).
 library;

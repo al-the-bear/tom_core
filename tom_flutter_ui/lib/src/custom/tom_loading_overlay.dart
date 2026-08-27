@@ -1,6 +1,7 @@
 /// Full-surface loading indicator with optional message. Layers a
 /// translucent scrim + centred [CircularProgressIndicator] (+ optional
-/// label) over the [child] subtree when [isLoading] is true.
+/// label) over the [TomLoadingOverlay.child] subtree when
+/// [TomLoadingOverlay.isLoading] is true.
 ///
 /// Suits any operation that suspends a whole surface rather than one
 /// control — a [SlowValidator] round-trip or a save action, for example.

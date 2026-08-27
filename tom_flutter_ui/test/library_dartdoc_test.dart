@@ -35,12 +35,21 @@
 /// resolve "Demo H-A" or place "Phase 5c" against anything they can see.
 /// The markers are enumerated in [_rolloutMarkers].
 ///
-/// **The final group polices a narrower claim: how the member is called.**
+/// **The fourth group polices a narrower claim: how the member is called.**
 /// Prose that calls `resolveAuthState()` "a getter" is not a style quibble —
 /// it tells the reader to write `guard.resolveAuthState`, which does not
 /// compile, and it hid a second error behind it (the comment justified the
 /// member by subclass-overriding, which no test does). Both checks re-derive
 /// the real declaration kind from source rather than trusting a list.
+///
+/// **The final group polices where a library dartdoc may point.** It resolves
+/// in *library* scope, so a bare `[fallbackBuilder]` — an instance field —
+/// links to nothing no matter what the file imports; only
+/// `[TomErrorBoundary.fallbackBuilder]` reaches it. The check deliberately
+/// asks only about members of the file it is reading, because that is the one
+/// version of the question no import can change the answer to. References to
+/// types are left alone: `[TomAction]` in a barrel is unresolvable and
+/// entirely correct, since a barrel exports rather than imports.
 library;
 
 import 'dart:io';
@@ -208,6 +217,88 @@ String _libraryDartdoc(String path) {
     return ''; // Hit a declaration before `library;` — no library dartdoc.
   }
   return '';
+}
+
+/// The library dartdoc of [path] as 1-based `(line, text)` pairs, so an
+/// offence can name a line the reader can jump to. Empty when the file has no
+/// library dartdoc — same `library;` anchor rule as [_libraryDartdoc].
+List<({int line, String text})> _libraryDartdocLines(String path) {
+  final lines = File(path).readAsLinesSync();
+  final doc = <({int line, String text})>[];
+  for (var i = 0; i < lines.length; i++) {
+    final trimmed = lines[i].trim();
+    if (trimmed.startsWith('///')) {
+      doc.add((line: i + 1, text: trimmed.substring(3).trim()));
+      continue;
+    }
+    if (trimmed == 'library;') return doc;
+    if (trimmed.isEmpty) continue;
+    return const [];
+  }
+  return const [];
+}
+
+/// The names [path] declares, split by what a *library* dartdoc is allowed to
+/// reach: [topLevel] is in scope there, [members] never is.
+///
+/// The split is the whole point. A library dartdoc is resolved in library
+/// scope, so `[fallbackBuilder]` — an instance field — resolves to nothing no
+/// matter what is imported, while `[TomErrorBoundary.fallbackBuilder]` resolves
+/// through the class. Column position is what separates the two: Dart's
+/// formatter puts top-level declarations at column 0 and members under an
+/// indent, so "is this a member" is decidable by reading one file.
+///
+/// Both sets are gathered leniently, and in opposite directions on purpose.
+/// [topLevel] over-collects, because every name in it is one the check stays
+/// silent about. [members] is built from the shapes that actually carry widget
+/// configuration — `this.x` constructor parameters above all — because a name
+/// missing from it is only a defect this check declines to report, never a
+/// false alarm.
+({Set<String> topLevel, Set<String> members}) _declaredNames(String path) {
+  final lines = File(path).readAsLinesSync();
+  var i = 0;
+  while (i < lines.length && lines[i].trim().startsWith('///')) {
+    i++;
+  }
+  final body = lines.skip(i).join('\n');
+
+  final topLevel = <String>{
+    for (final m in RegExp(
+            r'^(?:abstract |base |final |sealed |interface |mixin )*'
+            r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
+            multiLine: true)
+        .allMatches(body))
+      m.group(1)!,
+    for (final m
+        in RegExp(r'^(?:[\w<>,\s?]+\s+)?(\w+)\s*\(', multiLine: true)
+            .allMatches(body))
+      m.group(1)!,
+    for (final m in RegExp(r'^(?:const|final|var)\s+(?:[\w<>?]+\s+)?(\w+)\s*=',
+            multiLine: true)
+        .allMatches(body))
+      m.group(1)!,
+  };
+
+  final members = <String>{
+    // `this.foo` in a constructor — how nearly every widget field arrives.
+    for (final m in RegExp(r'\bthis\.(\w+)').allMatches(body)) m.group(1)!,
+    for (final m in RegExp(
+            r'^\s+(?:final|const|late|static|var)\s[\w<>?,\s]*?(\w+)\s*[;=]',
+            multiLine: true)
+        .allMatches(body))
+      m.group(1)!,
+    for (final m
+        in RegExp(r'^\s+[\w<>?,\s]+\bget\s+(\w+)', multiLine: true)
+            .allMatches(body))
+      m.group(1)!,
+    for (final m in RegExp(
+            r'^\s{2,}(?:[\w<>?,\s]+\s+)?(\w+)\s*\([^)]*\)\s*(?:\{|=>|async)',
+            multiLine: true)
+        .allMatches(body))
+      m.group(1)!,
+  };
+
+  return (topLevel: topLevel, members: members);
 }
 
 void main() {
@@ -502,6 +593,60 @@ void main() {
       }
       expect(offences, isEmpty,
           reason: 'these spans contradict the word beside them:\n\n'
+              '${offences.join('\n\n')}');
+    });
+  });
+
+  group('a library dartdoc only links what library scope can reach', () {
+    test('no library dartdoc references a member of its own file', () {
+      // `tom_error_boundary.dart` ended its library dartdoc with "configurable
+      // via [fallbackBuilder]". A library dartdoc resolves in *library* scope,
+      // where an instance field is not visible, so that link rendered as dead
+      // plain text — in the sentence telling the reader how to configure the
+      // widget. `[TomErrorBoundary.fallbackBuilder]` resolves; the bare name
+      // never can, whatever is imported.
+      //
+      // That "whatever is imported" is why this check is worth having and the
+      // `comment_references` lint is not. The lint flags 180 references in this
+      // package, and they are overwhelmingly *correct* pointers at real classes
+      // in sibling files — a barrel `export`s rather than `import`s, so
+      // `[TomAction]` in `actions.dart` is unresolvable and completely right.
+      // Silencing those would mean adding imports that exist only for prose,
+      // several of them cycles. This check asks a strictly narrower question
+      // with no import in it: is the name a *member of this very file*? Then no
+      // import could have helped, and the reference is wrong on its own terms.
+      //
+      // The same reasoning `tool/check_dartdoc_refs.py` applies to private
+      // names, which is where the phantom `[_TomErrorBoundaryMarker]` in this
+      // file's earlier dartdoc was caught. Both checks pick the question that
+      // one file can answer alone.
+      final offences = <String>[];
+      for (final path in _allLibrarySources()) {
+        final doc = _libraryDartdocLines(path);
+        if (doc.isEmpty) continue;
+        final declared = _declaredNames(path);
+
+        for (final entry in doc) {
+          for (final m
+              in RegExp(r'\[([A-Za-z_][\w.]*)\]').allMatches(entry.text)) {
+            final name = m.group(1)!;
+            // Already qualified — `[Foo.bar]` reaches `bar` through `Foo`.
+            if (name.contains('.')) continue;
+            // A capitalised name is a type. Whether it resolves depends on the
+            // imports, which is exactly the question this check refuses.
+            if (name[0].toUpperCase() == name[0]) continue;
+            if (declared.topLevel.contains(name)) continue;
+            if (!declared.members.contains(name)) continue;
+
+            offences.add('$path:${entry.line}\n'
+                '    [$name] is a member of this file, so it is out of scope '
+                'in a library dartdoc\n'
+                '    → qualify it: [<OwningClass>.$name]');
+          }
+        }
+      }
+      expect(offences, isEmpty,
+          reason: 'these library dartdocs link names that cannot resolve:\n\n'
               '${offences.join('\n\n')}');
     });
   });
