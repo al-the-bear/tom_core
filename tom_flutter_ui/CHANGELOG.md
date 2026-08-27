@@ -1,7 +1,43 @@
 ## Unreleased
 
+### Added
+
+- **`TomAuthGate`** (`groups/`) — a one-child widget that resolves a
+  `tomId` / `tomGroup` / `scope` through `TomWidgetMixin` and applies the
+  result to its child. It exists for the wrappers that cannot resolve their
+  own authorization, and it promotes a private helper that `tables/` had
+  already invented for that purpose into the shared, correct version.
+  `TomAuthGate.resolve(...)` answers the same question without building.
+
+### Changed
+
+- **`TomMessenger.showSnackBar` and `showSnackBarIfPresent` now return
+  `null`** for a `TomSnackBar` whose authorization resolves to
+  `TomAuthState.none`, instead of presenting an empty bar. Gating the content
+  alone is not enough for a snack bar: it does not build where it is written,
+  so presenting it is the last moment at which not-presenting is possible. The
+  return type is now nullable.
+- **`TomDataColumn` and `TomDataRow` expose `isVisible` / `isReadonly` as
+  getters**, dropping the `BuildContext` parameter neither ever read, and gain
+  an `authState` getter. This matches `TomForm`'s own `bool get isVisible`.
+- **`TomExpansionPanel.authorizationGroup` is renamed `tomGroup`**, and the
+  class gains a `scope`, matching the widget wrappers it sits among.
+
 ### Fixed
 
+- **Eight wrappers declared `tomId` / `tomGroup` / `scope` and never applied
+  them.** `TomAnimatedPositioned`, `TomAnimatedPositionedDirectional`,
+  `TomSnackBar`, `TomSnackBarAction` and `TomExpansionPanel` ignored their
+  authorization entirely; `TomDataCell` and `TomDataColumn` applied it through
+  a private helper that stored `tomGroup` without reading it, dropped `scope`,
+  and treated `disabled` as `full`; `TomDataRow` reported through a
+  `basePath`-only lookup with the same two omissions. All eight now route
+  through `TomAuthGate`, so a group ceiling, an explicit scope, a per-widget
+  authorizer and a UI-state controller count for them exactly as they do for
+  every other Tom widget. Two of them cannot hide by gating a slot and say so
+  instead: `TomDataRow` (a `DataTable` demands one cell per column from every
+  row) reports for the caller to filter on, and `TomSnackBar` is declined at
+  the point of presentation.
 - **A plain `TomCupertinoSearchTextField()` can be constructed again.** Its
   placeholder resolved through an unguarded `TomCtr.textOrFail` into a
   non-nullable `String`, so a search box with no `placeholder` and no `tomId`

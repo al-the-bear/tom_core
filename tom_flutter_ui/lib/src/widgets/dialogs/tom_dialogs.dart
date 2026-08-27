@@ -19,6 +19,8 @@ import 'package:flutter/material.dart' as material
         showSearch;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_auth_gate.dart';
+import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_node_base.dart';
@@ -460,7 +462,15 @@ class TomBottomSheet extends TomDialogBase {
 
 /// Tom wrapper for [SnackBar] with construction-time resource resolution.
 ///
-/// Extends [SnackBar] directly to pass `is SnackBar` checks.
+/// Extends [SnackBar] directly to pass `is SnackBar` checks. [SnackBar]'s
+/// `State` is private to the framework, so this wrapper cannot gate itself by
+/// wrapping `super.build`; [content] carries a [TomAuthGate] instead.
+///
+/// Gating the content alone would leave an empty bar sliding up, which answers
+/// neither "shown" nor "hidden". A snack bar is presented imperatively rather
+/// than composed, so the place its visibility can actually be enforced is the
+/// call that presents it: [TomMessenger] reads [effectiveAuthState] and
+/// declines to show a bar that resolves to [TomAuthState.none].
 ///
 /// Resources are resolved at construction time using [TomScope.current]
 /// (or an explicit [scope] if provided). The following parameters support
@@ -482,14 +492,17 @@ class TomBottomSheet extends TomDialogBase {
 ///   ),
 /// );
 /// ```
-class TomSnackBar extends SnackBar {
+class TomSnackBar extends SnackBar with TomWidgetMixin {
   /// Tom ID for resource resolution.
+  @override
   final String? tomId;
 
   /// Optional group membership.
+  @override
   final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource resolution.
+  @override
   final TomScope? scope;
 
   /// Creates a Tom SnackBar with optional resource resolution.
@@ -520,7 +533,14 @@ class TomSnackBar extends SnackBar {
     super.dismissDirection = DismissDirection.down,
     super.clipBehavior = Clip.hardEdge,
   }) : super(
-          content: content ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'content'), scope, tomGroup),
+          content: TomAuthGate(
+            tomId: tomId,
+            tomGroup: tomGroup,
+            scope: scope,
+            child: content ??
+                TomCtr.defaultTextOrEmpty(
+                    TomCtr.childTomId(tomId, 'content'), scope, tomGroup),
+          ),
           backgroundColor: backgroundColor ?? TomCtr.color(_p(tomId, scope, 'backgroundColor')),
           elevation: elevation ?? TomCtr.doubleVal(_p(tomId, scope, 'elevation')),
           margin: margin ?? TomCtr.edgeInsets(_p(tomId, scope, 'margin')),

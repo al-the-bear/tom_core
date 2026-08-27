@@ -20,6 +20,7 @@ resources) into widgets that extend Flutter widgets directly.
 - [Group modes](#group-modes)
 - [Introspecting a group](#introspecting-a-group)
 - [`TomWidgetMixin`](#tomwidgetmixin)
+- [`TomAuthGate`](#tomauthgate)
 - [Typed resource resolution](#typed-resource-resolution)
 - [Effective authorization](#effective-authorization)
 - [Scope-aware paths](#scope-aware-paths)
@@ -34,6 +35,7 @@ resources) into widgets that extend Flutter widgets directly.
 | `TomAuthorizationGroup` | class | A group of `TomAuthorizable` members with weak-reference tracking, a mode, and collective auth resolution. Defined in `tom_core_kernel`, re-exported here. |
 | `AuthGroupMode` | enum | `controlsAll` / `controlsWidest` / `controlsNarrowest` — how the group's state applies to members. Re-exported alongside the group. |
 | `TomWidgetMixin` | mixin | Gives a Flutter-widget subclass the Tom id/group/auth/resource API; implements `TomAuthorizable`. |
+| `TomAuthGate` | class | A one-slot widget that resolves an id/group through the mixin and applies the result to its `child`. For wrappers that cannot resolve their own. |
 
 ## `TomAuthorizationGroup`
 
@@ -115,6 +117,54 @@ that extends a Flutter original to gain:
   whichever of the two is absent. It matches `TomNodeBase.debugLabel`, so a
   widget reads the same way whether it mixes this in or extends the base
   class.
+
+## `TomAuthGate`
+
+`TomWidgetMixin` assumes the wrapper has a `build` of its own to resolve in.
+Eight wrappers do not, for two structural reasons:
+
+| Reason | Wrappers |
+| ------ | -------- |
+| The Flutter original is **not a widget** — it is a plain class that *holds* widgets, so `on Widget` cannot apply and there is no `build` | `TomDataCell`, `TomDataColumn`, `TomDataRow`, `TomExpansionPanel` |
+| The original's `State` is **private to the framework**, so `super.build(context)` is unreachable and there is nothing to wrap | `TomAnimatedPositioned`, `TomAnimatedPositionedDirectional`, `TomSnackBar`, `TomSnackBarAction` |
+
+Those wrappers put the decision in the slot they own instead. `TomAuthGate`
+mixes in `TomWidgetMixin`, so it is the *same* resolver — the four layers, the
+group ceiling, the scope and the visual treatments all behave identically to a
+widget that gates itself:
+
+```dart
+ExpansionPanel(
+  headerBuilder: (context, isExpanded) => TomAuthGate(
+    tomId: 'panel',
+    child: const Text('Basic info'),
+  ),
+  body: const TomAuthGate(tomId: 'panel', child: Text('...')),
+);
+```
+
+It is a widget rather than a helper function because the `read` and `disabled`
+treatments read the ambient `TomTheme`, which only exists once there is a
+`BuildContext` — so the decision has to be applied during build, not at
+construction.
+
+Two of the eight cannot be hidden by gating a slot alone, and each answers that
+differently:
+
+- **`TomDataRow`** has no slot: `DataTable` demands one cell per column from
+  every row, so a row that blanked itself would read as missing data rather
+  than as a withheld permission. It exposes `authState` / `isVisible` /
+  `isReadonly` and expects the caller to filter — `rows.where((r) => r
+  is! TomDataRow || r.isVisible)`.
+- **`TomSnackBar`** gates its `content`, but an empty bar would still slide up.
+  A snack bar is *presented* rather than composed, so the last moment at which
+  not-presenting is possible is the presenting call: `TomMessenger` reads
+  `effectiveAuthState` and returns `null` instead of showing a bar that
+  resolves to `TomAuthState.none`.
+
+`TomAuthGate.resolve(tomId: ..., tomGroup: ..., scope: ...)` answers the same
+question without building anything — it is what `TomDataRow.authState` and
+`TomDataColumn.authState` call.
 
 ## Typed resource resolution
 

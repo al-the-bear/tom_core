@@ -18,6 +18,10 @@
 ///   `kernel_types.dart`, so importing `tom_flutter_ui` is enough to name it
 ///   and its `AuthGroupMode`.
 /// - [TomWidgetMixin] — mixin for widgets that extend Flutter widgets
+/// - [TomAuthGate] — wraps a slot belonging to a wrapper that cannot resolve
+///   its own authorization, because the Flutter original is not a widget or
+///   keeps its `State` private
 library;
 
+export 'tom_auth_gate.dart';
 export 'tom_widget_mixin.dart';

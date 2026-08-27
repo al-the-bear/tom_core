@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../theme/tom_theme.dart';
+import '../../groups/tom_auth_gate.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -546,54 +546,14 @@ class TomReorderableListView extends TomTableBase {
 /// ```
 
 // =============================================================================
-// AUTHORIZATION-AWARE CONTENT WRAPPER
-// =============================================================================
-
-/// Internal widget that wraps content with authorization checking.
-///
-/// At render time, checks the tomId's authorization state and:
-/// - Hidden: renders SizedBox.shrink()
-/// - Readonly: applies readonly styling
-/// - Full access: renders the child normally
-class _TomAuthContent extends StatelessWidget {
-  _TomAuthContent({
-    required this.tomId,
-    this.tomGroup,
-    this.scope,
-    required this.child,
-  }) : basePath = TomCtr.resolvePath(tomId, scope);
-
-  final String? tomId;
-  final TomAuthorizationGroup? tomGroup;
-  final TomScope? scope;
-  final Widget child;
-  final String? basePath;
-
-  @override
-  Widget build(BuildContext context) {
-    if (basePath == null) return child;
-
-    final auth = TomAuthorization.resolveAuth(basePath!);
-
-    // Hidden: return empty
-    if (!auth.isVisible) {
-      return const SizedBox.shrink();
-    }
-
-    // Readonly: apply styling
-    if (auth == TomAuthState.read) {
-      final style = TomThemeScope.readonlyStyleOf(context);
-      return style.apply(child);
-    }
-
-    // Full access
-    return child;
-  }
-}
-
-// =============================================================================
 // TOM DATA TABLE CLASSES
 // =============================================================================
+//
+// `DataCell`, `DataColumn` and `DataRow` are not widgets — they are plain
+// classes that hold widgets — so the three types below cannot mix in
+// `TomWidgetMixin` (declared `on Widget`) and have no `build` of their own to
+// gate. The two that own a slot put a `TomAuthGate` in it; `TomDataRow`, whose
+// extent `DataTable` decides, reports instead and is filtered by the caller.
 
 /// Tom extension of [DataCell] with built-in authorization and resource resolution.
 ///
@@ -650,10 +610,13 @@ class TomDataCell extends DataCell {
     GestureTapDownCallback? onTapDown,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
        super(
-          _TomAuthContent(
+          TomAuthGate(
             tomId: tomId,
             tomGroup: tomGroup,
-            child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
+            scope: scope,
+            child: child ??
+                TomCtr.defaultTextOrEmpty(
+                    TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
           ),
           placeholder: placeholder,
           showEditIcon: showEditIcon,
@@ -691,7 +654,7 @@ class TomDataCell extends DataCell {
 /// final columns = [
 ///   TomDataColumn(tomId: 'name'),  // Resolves label/tooltip from resources
 ///   TomDataColumn(tomId: 'salary'),
-/// ].where((c) => c.isVisible(context)).toList();
+/// ].where((c) => c.isVisible).toList();
 /// ```
 class TomDataColumn extends DataColumn {
   /// Tom ID for resource resolution and authorization.
@@ -722,10 +685,13 @@ class TomDataColumn extends DataColumn {
     super.mouseCursor,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
        super(
-          label: _TomAuthContent(
+          label: TomAuthGate(
             tomId: tomId,
             tomGroup: tomGroup,
-            child: label ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'label'), scope, tomGroup),
+            scope: scope,
+            child: label ??
+                TomCtr.defaultTextOrEmpty(
+                    TomCtr.childTomId(tomId, 'label'), scope, tomGroup),
           ),
           tooltip: tooltip ?? TomCtr.textOrNull(_p(tomId, scope, 'tooltip')),
         );
@@ -736,22 +702,24 @@ class TomDataColumn extends DataColumn {
     return base != null ? '$base.$suffix' : null;
   }
 
+  /// The authorization state this column resolves to.
+  ///
+  /// Answered by [TomAuthGate.resolve], the same resolver the header slot
+  /// uses, so a group ceiling and an explicit [scope] count here exactly as
+  /// they do inside the gate.
+  TomAuthState get authState =>
+      TomAuthGate.resolve(tomId: tomId, tomGroup: tomGroup, scope: scope);
+
   /// Returns true if this column should be visible based on authorization.
   ///
   /// Use this to filter columns before passing to DataTable:
   /// ```dart
-  /// columns.where((c) => c is! TomDataColumn || c.isVisible(context)).toList()
+  /// columns.where((c) => c is! TomDataColumn || c.isVisible).toList()
   /// ```
-  bool isVisible(BuildContext context) {
-    if (basePath == null) return true;
-    return TomAuthorization.resolveAuth(basePath!).isVisible;
-  }
+  bool get isVisible => authState.isVisible;
 
   /// Returns true if this column should be readonly based on authorization.
-  bool isReadonly(BuildContext context) {
-    if (basePath == null) return false;
-    return TomAuthorization.resolveAuth(basePath!) == TomAuthState.read;
-  }
+  bool get isReadonly => authState == TomAuthState.read;
 }
 
 /// Tom extension of [DataRow] with built-in authorization.
@@ -772,7 +740,7 @@ class TomDataColumn extends DataColumn {
 ///     TomDataCell(tomId: 'name'),  // Resolves from resources
 ///     TomDataCell(tomId: 'salary'),
 ///   ],
-/// )).where((r) => r.isVisible(context)).toList();
+/// )).where((r) => r.isVisible).toList();
 /// ```
 class TomDataRow extends DataRow {
   /// Tom ID for resource resolution and authorization.
@@ -802,20 +770,24 @@ class TomDataRow extends DataRow {
   }) : basePath = TomCtr.resolvePath(tomId, scope),
        super();
 
+  /// The authorization state this row resolves to.
+  ///
+  /// Answered by [TomAuthGate.resolve], so a row reports from the same
+  /// resolver its cells gate with — a group ceiling and an explicit [scope]
+  /// included.
+  TomAuthState get authState =>
+      TomAuthGate.resolve(tomId: tomId, tomGroup: tomGroup, scope: scope);
+
   /// Returns true if this row should be visible based on authorization.
   ///
-  /// Use this to filter rows before passing to DataTable:
+  /// A row cannot hide itself: [DataTable] requires one cell per column from
+  /// every row, so a row that blanked its own content would read as missing
+  /// data rather than as a withheld permission. Filter with this instead:
   /// ```dart
-  /// rows.where((r) => r is! TomDataRow || r.isVisible(context)).toList()
+  /// rows.where((r) => r is! TomDataRow || r.isVisible).toList()
   /// ```
-  bool isVisible(BuildContext context) {
-    if (basePath == null) return true;
-    return TomAuthorization.resolveAuth(basePath!).isVisible;
-  }
+  bool get isVisible => authState.isVisible;
 
   /// Returns true if this row should be readonly based on authorization.
-  bool isReadonly(BuildContext context) {
-    if (basePath == null) return false;
-    return TomAuthorization.resolveAuth(basePath!) == TomAuthState.read;
-  }
+  bool get isReadonly => authState == TomAuthState.read;
 }

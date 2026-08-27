@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_auth_gate.dart';
+import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -593,19 +595,28 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
 /// Tom wrapper for [AnimatedPositioned] with construction-time resource resolution.
 ///
 /// Animates position in Stack.
-/// Uses extension pattern because Stack checks `is Positioned`.
+///
+/// Extends [AnimatedPositioned] rather than wrapping it, so that a `Stack`
+/// receives the type it expects. That closes off the usual way a Tom widget
+/// gates itself: [AnimatedPositioned]'s `State` is private to the framework,
+/// so `super.build(context)` cannot be reached and there is no build to wrap.
+/// The authorization therefore sits on [child], in a [TomAuthGate] — see
+/// [TomWidgetMixin] for the surface this and the mixin share.
 ///
 /// Resources are resolved at construction time:
 /// - [child] — if null, creates `TomText(tomId: '$tomId.child')`
 /// - [left], [top], [right], [bottom], [width], [height] — resolved from resources
-class TomAnimatedPositioned extends AnimatedPositioned {
+class TomAnimatedPositioned extends AnimatedPositioned with TomWidgetMixin {
   /// Tom ID for resource resolution.
+  @override
   final String? tomId;
 
   /// Optional group membership.
+  @override
   final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource resolution.
+  @override
   final TomScope? scope;
 
   TomAnimatedPositioned({
@@ -624,7 +635,14 @@ class TomAnimatedPositioned extends AnimatedPositioned {
     super.curve,
     super.onEnd,
   }) : super(
-          child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
+          child: TomAuthGate(
+            tomId: tomId,
+            tomGroup: tomGroup,
+            scope: scope,
+            child: child ??
+                TomCtr.defaultTextOrEmpty(
+                    TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
+          ),
           left: left ?? TomCtr.doubleVal(_p(tomId, scope, 'left')),
           top: top ?? TomCtr.doubleVal(_p(tomId, scope, 'top')),
           right: right ?? TomCtr.doubleVal(_p(tomId, scope, 'right')),
@@ -643,19 +661,26 @@ class TomAnimatedPositioned extends AnimatedPositioned {
 /// Tom wrapper for [AnimatedPositionedDirectional] with construction-time resource resolution.
 ///
 /// RTL-aware animated position.
-/// Uses extension pattern because Stack checks `is Positioned`.
+///
+/// Extends [AnimatedPositionedDirectional] for the same reason, and with the
+/// same consequence, as [TomAnimatedPositioned]: the framework `State` is
+/// private, so the gate sits on [child].
 ///
 /// Resources are resolved at construction time:
 /// - [child] — if null, creates `TomText(tomId: '$tomId.child')`
 /// - [start], [top], [end], [bottom], [width], [height] — resolved from resources
-class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional {
+class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional
+    with TomWidgetMixin {
   /// Tom ID for resource resolution.
+  @override
   final String? tomId;
 
   /// Optional group membership.
+  @override
   final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource resolution.
+  @override
   final TomScope? scope;
 
   TomAnimatedPositionedDirectional({
@@ -674,7 +699,14 @@ class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional {
     super.curve,
     super.onEnd,
   }) : super(
-          child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
+          child: TomAuthGate(
+            tomId: tomId,
+            tomGroup: tomGroup,
+            scope: scope,
+            child: child ??
+                TomCtr.defaultTextOrEmpty(
+                    TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
+          ),
           start: start ?? TomCtr.doubleVal(_p(tomId, scope, 'start')),
           top: top ?? TomCtr.doubleVal(_p(tomId, scope, 'top')),
           end: end ?? TomCtr.doubleVal(_p(tomId, scope, 'end')),

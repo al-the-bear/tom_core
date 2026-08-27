@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -2176,6 +2177,13 @@ class TomButtonBar extends TomButtonBase {
 ///
 /// Extends [SnackBarAction] directly to fit in `SnackBar(action:)`.
 ///
+/// This is the one Tom wrapper with no widget slot to gate: [label] is a
+/// `String`, not a child. [SnackBarAction]'s `State` is private, so
+/// `super.build` is out of reach too. It resolves the impasse by supplying its
+/// own `State`, which builds a plain [SnackBarAction] as a delegate and wraps
+/// *that* — which works because [SnackBar] reads this widget only for
+/// `label`'s width before mounting it as an ordinary child.
+///
 /// Resources are resolved at construction time:
 /// - [label] — if null, resolved from `$tomId.label`
 /// - [textColor] — resolved from `$tomId.textColor`
@@ -2190,14 +2198,17 @@ class TomButtonBar extends TomButtonBase {
 ///   ),
 /// )
 /// ```
-class TomSnackBarAction extends SnackBarAction {
+class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
   /// Tom ID for resource resolution.
+  @override
   final String? tomId;
 
   /// Optional group membership.
+  @override
   final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource resolution.
+  @override
   final TomScope? scope;
 
   /// Creates a Tom SnackBarAction with optional resource resolution.
@@ -2224,5 +2235,39 @@ class TomSnackBarAction extends SnackBarAction {
   static String? _p(String? tomId, TomScope? scope, String suffix) {
     final base = TomCtr.resolvePath(tomId, scope);
     return base != null ? '$base.$suffix' : null;
+  }
+
+  @override
+  State<SnackBarAction> createState() => _TomSnackBarActionState();
+}
+
+class _TomSnackBarActionState extends State<TomSnackBarAction> {
+  @override
+  void initState() {
+    super.initState();
+    widget.registerWithGroup();
+  }
+
+  @override
+  void dispose() {
+    widget.unregisterFromGroup();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hidden = widget.checkHidden();
+    if (hidden != null) return hidden;
+    return widget.applyAuthState(
+      context,
+      SnackBarAction(
+        label: widget.label,
+        onPressed: widget.onPressed,
+        textColor: widget.textColor,
+        disabledTextColor: widget.disabledTextColor,
+        backgroundColor: widget.backgroundColor,
+        disabledBackgroundColor: widget.disabledBackgroundColor,
+      ),
+    );
   }
 }

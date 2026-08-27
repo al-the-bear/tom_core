@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_auth_gate.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -1881,7 +1882,10 @@ class TomExpansionPanel {
   final String? tomId;
 
   /// Optional group membership.
-  final TomAuthorizationGroup? authorizationGroup;
+  final TomAuthorizationGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
 
   /// Callback that builds the header widget.
   final ExpansionPanelHeaderBuilder headerBuilder;
@@ -1906,7 +1910,8 @@ class TomExpansionPanel {
 
   TomExpansionPanel({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
+    this.scope,
     required this.headerBuilder,
     required this.body,
     this.isExpanded = false,
@@ -1917,10 +1922,26 @@ class TomExpansionPanel {
   });
 
   /// Converts this to a Flutter [ExpansionPanel].
+  ///
+  /// Both slots are wrapped in a [TomAuthGate]: an [ExpansionPanel] is not a
+  /// widget, so this class has no build of its own in which to resolve
+  /// [tomId]. The header is gated inside the builder rather than around it
+  /// because [ExpansionPanelList] calls the builder itself, with the
+  /// expansion state it owns.
   ExpansionPanel toPanel() {
     return ExpansionPanel(
-      headerBuilder: headerBuilder,
-      body: body,
+      headerBuilder: (context, isExpanded) => TomAuthGate(
+        tomId: tomId,
+        tomGroup: tomGroup,
+        scope: scope,
+        child: headerBuilder(context, isExpanded),
+      ),
+      body: TomAuthGate(
+        tomId: tomId,
+        tomGroup: tomGroup,
+        scope: scope,
+        child: body,
+      ),
       isExpanded: isExpanded,
       canTapOnHeader: canTapOnHeader,
       backgroundColor: backgroundColor,

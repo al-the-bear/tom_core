@@ -15,6 +15,14 @@ This module owns only the widget-side wiring. The group itself
 reaches consumers through `kernel_types.dart`, so importing `tom_flutter_ui` is
 enough to name both.
 
+Most Tom widgets resolve their own authorization, because they own a `build` to
+resolve it in. A handful cannot: `DataCell`, `DataColumn`, `DataRow` and
+`ExpansionPanel` are plain classes rather than widgets, and `SnackBar`,
+`SnackBarAction` and `AnimatedPositioned` keep their `State` private to the
+framework. Those wrappers put a `TomAuthGate` in the slot they own instead, so
+the decision still comes from this module's one resolver rather than from a
+second, weaker copy of it.
+
 ## Key types
 
 | Type | Responsibility |
@@ -22,6 +30,7 @@ enough to name both.
 | `TomAuthorizationGroup` | A named visibility/auth group — defined in `tom_core_kernel`, bridged by `kernel_types.dart` |
 | `AuthGroupMode` | How the group's state applies to a member: `controlsAll` replaces it, `controlsWidest` (the default) caps it at a ceiling, `controlsNarrowest` lifts it to a floor |
 | `TomWidgetMixin` | Mixed into a widget to give it a `tomId` + `tomGroup` and `registerWithGroup()` |
+| `TomAuthGate` | Wraps one slot of a wrapper that cannot gate itself — because the Flutter original is not a widget, or keeps its `State` private. `TomAuthGate.resolve` answers the same question without building anything |
 
 ## Quick start
 
