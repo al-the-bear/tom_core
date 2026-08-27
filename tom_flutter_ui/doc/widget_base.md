@@ -176,29 +176,43 @@ indicator) when nothing resolves.
 
 ## Style resolution: `TomStyleResolvers`
 
-`TomStyleResolvers` parses complex Material objects from JSON resource maps.
-Each type has a pure `parse…(map)` form (testable without installed resources)
-and a `resolve…(basePath, suffix)` form that first reads the map via
-`TomCtr.map`.
+`TomStyleResolvers` parses complex Material objects from JSON resources. Each
+type has a pure `parse…(value)` form (testable without installed resources) and
+a `resolve…(basePath, suffix)` form that reads the resource first.
 
 What separates it from `TomCtr` is that input, not the imports: both classes
 require the Material library (see [Dependencies](#dependencies)), so that could
 never have told them apart. The boundary is the resource provider — `TomCtr` is
 the one place that reads it, turning a key into a raw value, while
-`TomStyleResolvers` turns an already-decoded map into a composite Flutter
-object. The dependency runs one way, which is why every `resolve…` reads its map
-via `TomCtr.map` and then delegates to the matching `parse…` — four of them
-(`resolveBorderRadius`, `resolveAlignment`, `resolveVisualDensity`,
-`resolveScrollPhysics`) unwrap a nested key or accept a scalar form first, but
-none reaches the provider twice. A new helper belongs here when it assembles an
-object from a decoded map, and in `TomCtr` when it reaches the provider for a
-value.
+`TomStyleResolvers` turns an already-decoded value into a composite Flutter
+object. The dependency runs one way, and visibly so: every `resolve…` makes
+exactly one `TomCtr` call and hands the result to the matching `parse…`, so
+none of them reaches the provider twice or builds its object inline. A new
+helper belongs here when it assembles a Flutter object out of a decoded value,
+and in `TomCtr` when it reaches the provider for one.
+
+Which accessor a resolver reads through follows from its parser's own
+signature, and is not a free choice. Twelve parsers take a
+`Map<String, dynamic>?`, so their resolvers read `TomCtr.map`. The five that
+take a bare `dynamic` — `parseBorderRadius`, `parseAlignment`, `parseOffset`,
+`parseVisualDensity` and `parseScrollPhysics`, the rows below that advertise a
+scalar or list form — read `TomCtr.value` instead, because `TomCtr.map` yields
+`null` for anything that is not a map and those forms would otherwise be
+documented here and unreachable from a resource. Four of the five additionally
+unwrap a map carrying the value under the property's own name (`radius`,
+`alignment`, `visualDensity`, `physics`), so a resource can group it with
+siblings; `resolveOffset` has no such key, `{dx, dy}` being a value form rather
+than a wrapper.
 
 [`test/widget_base/style_resolvers_layering_test.dart`](../test/widget_base/style_resolvers_layering_test.dart)
-reads the source and holds it to both halves of that rule, so a resolver that
-opens a second route to the provider — or a parser that starts reading resources
-and can no longer be called with a plain map — fails rather than silently moving
-the boundary.
+reads the source and holds it to every part of that rule — including the
+derived one, so a parser widened to `dynamic` later drags its resolver along —
+and so a resolver that opens a second route to the provider, or a parser that
+starts reading resources and can no longer be called with a plain map, fails
+rather than silently moving the boundary.
+[`test/widget_base/style_resolvers_resource_route_test.dart`](../test/widget_base/style_resolvers_resource_route_test.dart)
+exercises the same five through a real resource tree, asserting that each
+scalar or list form yields exactly what the direct `parse…` call does.
 
 | Resolver | Parses |
 | -------- | ------ |
@@ -214,7 +228,7 @@ the boundary.
 | `parseAlignment` / `resolveAlignment` | `AlignmentGeometry` (named or `{x, y}`) |
 | `parseOffset` / `resolveOffset` | `Offset` (`{dx, dy}` / `{x, y}` / `[dx, dy]`) |
 | `parseTableBorder` / `resolveTableBorder` | `TableBorder` (per-side or `all`) |
-| `parseVisualDensity` / `resolveVisualDensity` | `VisualDensity` |
+| `parseVisualDensity` / `resolveVisualDensity` | `VisualDensity` (named or `{horizontal, vertical}`) |
 | `parseIconThemeData` / `resolveIconThemeData` | `IconThemeData` |
 | `parseStrutStyle` / `resolveStrutStyle` | `StrutStyle` |
 | `parseTextHeightBehavior` / `resolveTextHeightBehavior` | `TextHeightBehavior` |

@@ -17,15 +17,22 @@ import 'tom_construction_helpers.dart';
 ///
 /// The boundary is the resource provider. [TomCtr] is the one place that reads
 /// it, turning a `basePath` + `suffix` key into a raw value; this class turns
-/// an already-decoded map into a composite Flutter object. The dependency runs
-/// one way, and visibly so: every `resolve…` below reads its map via
-/// `TomCtr.map` and then hands it to the matching `parse…` — four of them
-/// (`resolveBorderRadius`, `resolveAlignment`, `resolveVisualDensity`,
-/// `resolveScrollPhysics`) unwrap a nested key or accept a scalar form first,
-/// but none of them reaches the provider a second time.
+/// an already-decoded value into a composite Flutter object. The dependency
+/// runs one way, and visibly so: every `resolve…` below makes exactly one
+/// `TomCtr` call and hands the result to the matching `parse…`, so none of them
+/// reaches the provider twice or builds its object inline.
+///
+/// Which accessor it reads through follows from the parser's own signature.
+/// Twelve parsers take a `Map<String, dynamic>?`, so their resolvers read
+/// `TomCtr.map`. Five — [parseBorderRadius], [parseAlignment], [parseOffset],
+/// [parseVisualDensity] and [parseScrollPhysics] — take a `dynamic`, because a
+/// radius may be a bare number and an alignment a name; their resolvers read
+/// `TomCtr.value`, or those forms would be documented and unreachable from a
+/// resource. Four of the five additionally unwrap a map that carries the value
+/// under the property's own name.
 ///
 /// A new helper therefore belongs here when it assembles a Flutter object out
-/// of a decoded map, and in [TomCtr] when it reaches the provider for a value.
+/// of a decoded value, and in [TomCtr] when it reaches the provider for one.
 /// Keeping the `parse…` half free of the provider is what lets it be tested
 /// with no resources installed.
 ///
@@ -531,14 +538,18 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [BorderRadius] from resources at [basePath].[suffix].
+  ///
+  /// The resource may hold any form [parseBorderRadius] accepts — including a
+  /// bare number — or a map carrying one of them under a `radius` key.
   static BorderRadius? resolveBorderRadius(String basePath, String suffix) {
-    final map = TomCtr.map(basePath, suffix);
-    if (map == null) return null;
-    // If the map has a simple 'radius' key, treat as uniform
-    if (map.containsKey('radius')) {
-      return parseBorderRadius(map['radius']);
+    final value = TomCtr.value(basePath, suffix);
+    // A map may carry the radius under its own name, so that a resource can
+    // group it with siblings; anything else goes to the parser as it stands,
+    // which is what makes the documented `radius: 8` form reachable.
+    if (value is Map<String, dynamic> && value.containsKey('radius')) {
+      return parseBorderRadius(value['radius']);
     }
-    return parseBorderRadius(map);
+    return parseBorderRadius(value);
   }
 
   // ===========================================================================
@@ -687,14 +698,16 @@ class TomStyleResolvers {
   }
 
   /// Resolves an [AlignmentGeometry] from resources at [basePath].[suffix].
+  ///
+  /// The resource may hold any form [parseAlignment] accepts — including a
+  /// name such as `topLeft` — or a map carrying one of them under an
+  /// `alignment` key.
   static AlignmentGeometry? resolveAlignment(String basePath, String suffix) {
-    final map = TomCtr.map(basePath, suffix);
-    if (map == null) return null;
-    // Support both direct value and nested 'alignment' key
-    if (map.containsKey('alignment')) {
-      return parseAlignment(map['alignment']);
+    final value = TomCtr.value(basePath, suffix);
+    if (value is Map<String, dynamic> && value.containsKey('alignment')) {
+      return parseAlignment(value['alignment']);
     }
-    return parseAlignment(map);
+    return parseAlignment(value);
   }
 
   // ===========================================================================
@@ -728,10 +741,13 @@ class TomStyleResolvers {
   }
 
   /// Resolves an [Offset] from resources at [basePath].[suffix].
+  ///
+  /// The resource may hold any form [parseOffset] accepts — including a
+  /// two-element list such as `[3, 4]`. Alone among the five raw-value
+  /// resolvers it unwraps no key, because `{dx, dy}` is already one of those
+  /// forms rather than a wrapper around one.
   static Offset? resolveOffset(String basePath, String suffix) {
-    final map = TomCtr.map(basePath, suffix);
-    if (map == null) return null;
-    return parseOffset(map);
+    return parseOffset(TomCtr.value(basePath, suffix));
   }
 
   // ===========================================================================
@@ -833,13 +849,16 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [VisualDensity] from resources at [basePath].[suffix].
+  ///
+  /// The resource may hold any form [parseVisualDensity] accepts — including a
+  /// name such as `compact` — or a map carrying one of them under a
+  /// `visualDensity` key.
   static VisualDensity? resolveVisualDensity(String basePath, String suffix) {
-    final map = TomCtr.map(basePath, suffix);
-    if (map == null) return null;
-    if (map.containsKey('visualDensity')) {
-      return parseVisualDensity(map['visualDensity']);
+    final value = TomCtr.value(basePath, suffix);
+    if (value is Map<String, dynamic> && value.containsKey('visualDensity')) {
+      return parseVisualDensity(value['visualDensity']);
     }
-    return parseVisualDensity(map);
+    return parseVisualDensity(value);
   }
 
   // ===========================================================================
@@ -1056,13 +1075,18 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [ScrollPhysics] from resources at [basePath].[suffix].
+  ///
+  /// The resource may hold any form [parseScrollPhysics] accepts — including a
+  /// name such as `bouncing` — or a map carrying one of them under a `physics`
+  /// key.
   static ScrollPhysics? resolveScrollPhysics(String basePath, String suffix) {
-    final map = TomCtr.map(basePath, suffix);
-    if (map == null) return null;
-    if (map.containsKey('physics')) {
-      return parseScrollPhysics(map['physics']);
+    final value = TomCtr.value(basePath, suffix);
+    if (value is Map<String, dynamic> && value.containsKey('physics')) {
+      return parseScrollPhysics(value['physics']);
     }
-    return parseScrollPhysics(map['type']);
+    // The `{type: …}` form needs no unwrapping here: [parseScrollPhysics]
+    // reads that key itself, so handing it the map covers both.
+    return parseScrollPhysics(value);
   }
 
   // ===========================================================================

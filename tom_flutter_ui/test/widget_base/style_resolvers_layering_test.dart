@@ -13,11 +13,15 @@ import 'package:flutter_test/flutter_test.dart';
 /// helper, which makes it worth holding the code to — a stated criterion that
 /// nothing checks is how the *previous* rationale survived being false.
 ///
-/// Two properties carry the rule, and each catches a different mistake:
+/// Three properties carry the rule, and each catches a different mistake:
 ///
-/// - every `resolve…` goes through `TomCtr.map` and delegates to its matching
-///   `parse…`, so no resolver invents a second route to the provider or
-///   quietly builds its object inline;
+/// - every `resolve…` reads the provider exactly once, through `TomCtr`, and
+///   delegates to its matching `parse…`, so no resolver invents a second route
+///   to the provider or quietly builds its object inline;
+/// - *which* `TomCtr` accessor it reads through is not a free choice: a parser
+///   that accepts a bare `dynamic` accepts scalars and lists too, so its
+///   resolver must read the raw value or those forms are documented and
+///   unreachable — which is exactly what had happened to five of them;
 /// - no `parse…` (nor any private helper they share) mentions `TomCtr`, which
 ///   is what keeps the `parse` half testable with no resources installed.
 ///
@@ -55,13 +59,65 @@ void main() {
       expect(parsers, hasLength(17));
     });
 
-    test('every resolve reads the provider through TomCtr.map only', () {
+    /// A single leading `dynamic` parameter, which is how a parser declares
+    /// that it takes scalars and lists as well as maps.
+    ///
+    /// Matched on the parameter rather than on `contains('dynamic')`, which
+    /// every `Map<String, dynamic>?` signature would satisfy.
+    final rawParameter = RegExp(r'\(\s*dynamic\s');
+
+    String signatureOf(String member) {
+      final body = bodies[member]!;
+      return body.substring(0, body.indexOf('{'));
+    }
+
+    final rawParsers =
+        parsers.where((p) => rawParameter.hasMatch(signatureOf(p))).toList();
+
+    test('the parsers accepting a raw value are the five that document one',
+        () {
+      // Guards the guard twice over: it pins the derived split so a signature
+      // change cannot silently move a resolver out from under the rule below,
+      // and it names the five so the failure is legible.
+      expect(
+        rawParsers..sort(),
+        <String>[
+          'parseAlignment',
+          'parseBorderRadius',
+          'parseOffset',
+          'parseScrollPhysics',
+          'parseVisualDensity',
+        ],
+      );
+    });
+
+    test('every resolve reads the provider exactly once, through TomCtr', () {
       for (final resolver in resolvers) {
         expect(
+          'TomCtr.'.allMatches(bodies[resolver]!).length,
+          1,
+          reason: '$resolver does not make exactly one TomCtr call, so it is '
+              'either reaching the provider from somewhere other than TomCtr '
+              'or reading it twice for one value',
+        );
+      }
+    });
+
+    test('a resolver reads the raw value exactly when its parser accepts one',
+        () {
+      for (final resolver in resolvers) {
+        final parser = 'parse${resolver.substring('resolve'.length)}';
+        final takesRaw = rawParsers.contains(parser);
+        expect(
           bodies[resolver],
-          contains('TomCtr.map('),
-          reason: '$resolver does not read its map through TomCtr.map, so the '
-              'provider is being reached from somewhere other than TomCtr',
+          contains(takesRaw ? 'TomCtr.value(' : 'TomCtr.map('),
+          reason: takesRaw
+              ? '$parser accepts a scalar or a list, but $resolver reads '
+                  'TomCtr.map, which yields null for anything that is not a '
+                  'map — so those documented forms are unreachable from a '
+                  'resource'
+              : '$parser only accepts a map, so $resolver must read TomCtr.map '
+                  'rather than hand it a raw value it has no signature for',
         );
       }
     });
