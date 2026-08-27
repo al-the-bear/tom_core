@@ -12,8 +12,16 @@
 ///
 /// The gap classes are authored by the CodeSpecs waves: csm4 surveys `tom_core`
 /// per part (reuse / extend / new-in-codespecs) and the genuine gaps land here.
-/// Dependencies on the relevant `tom_core_*` packages are added when the first
-/// gap class that needs them is authored.
+///
+/// **The package is dependency-free, and that is an invariant.**
+/// `pubspec.yaml` declares `dependencies: {}` and nothing under `lib/` imports
+/// anything beyond `dart:core`. The property is load-bearing rather than
+/// incidental: it is why [TomReportResult] does not extend `tom_core_server`'s
+/// `TomTabularResult` (below), and why a job's CE-RP targets ride
+/// `@CsJob(targetReports:)` in `tom_code_specs` instead of [TomJobDeclaration]
+/// itself. A candidate gap class that would need a `tom_core_*` type is
+/// therefore not a gap class — it belongs in the package whose type it needs,
+/// since taking the dependency here would retract both of those decisions.
 ///
 /// **csm2r7 — the four new parts (`codespecs_mapping.md` §1.1b).** CE-AU
 /// (Authentication) reuses `tom_core_server` `TomAuthenticationService`* and

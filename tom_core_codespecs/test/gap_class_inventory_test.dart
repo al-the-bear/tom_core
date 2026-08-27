@@ -103,4 +103,49 @@ void main() {
       expect(barrel, isNot(contains('TomUserSettingsStore')));
     });
   });
+
+  group('tcinc934: the package is dependency-free', () {
+    // **Why this is pinned.** Dependency-freedom here is an invariant, not a
+    // convenience of small size: it is the premise two shipped decisions rest
+    // on. TomReportResult does not extend tom_core_server's TomTabularResult
+    // (report_model.dart), and a job's CE-RP targets ride
+    // @CsJob(targetReports:) in tom_code_specs rather than TomJobDeclaration
+    // (job_declaration.dart) — both because taking a tom_core_* dependency
+    // here was not an option. A single added import would retract both without
+    // touching either file, so the rule is checked rather than restated. A
+    // candidate gap class needing a tom_core_* type is not a gap class; it
+    // belongs in the package whose type it needs.
+
+    test('pubspec.yaml declares no dependencies', () {
+      final pubspec = File('pubspec.yaml').readAsStringSync();
+
+      expect(
+        pubspec,
+        contains(RegExp(r'^dependencies:\s*\{\}\s*$', multiLine: true)),
+        reason: 'Adding a dependency retracts the TomReportResult and '
+            'TomJobDeclaration placement decisions. Move the class that '
+            'needs the type into the package that owns it instead.',
+      );
+    });
+
+    test('nothing under lib/ imports beyond dart:core', () {
+      final offenders = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        for (final line in entity.readAsLinesSync()) {
+          if (line.startsWith('import ')) {
+            offenders.add('${entity.path}: $line');
+          }
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'dart:core is implicit, so a dependency-free package has no '
+            'import directive at all. Each entry above is a retraction of '
+            'the placement decisions this invariant carries.',
+      );
+    });
+  });
 }

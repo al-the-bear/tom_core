@@ -8,6 +8,15 @@
   its vocabulary is delivered as an annotation argument elsewhere, which is
   still worth stating. What the rename removes is the part a reader had to be
   told: the symbol now names its own package.
+- No API change: the library dartdoc now states dependency-freedom as an
+  **invariant** rather than a step still to be taken. `dependencies: {}` and the
+  absence of any `import` under `lib/` are what let `TomReportResult` decline to
+  extend `TomTabularResult` and what put a job's CE-RP targets on
+  `@CsJob(targetReports:)`; five places already argued from that premise while
+  the barrel promised the opposite. A class needing a `tom_core_*` type is
+  therefore not a gap class — it belongs in the package owning that type.
+- Two tests pin the invariant, so a single added import can no longer retract
+  those two placement decisions without failing a check.
 
 ## 0.11.0
 
