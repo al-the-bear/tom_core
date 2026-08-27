@@ -266,7 +266,7 @@ class _CustomGallery extends StatelessWidget {
 
         Text('TomEmptyState (wrapped in TomErrorBoundary)', style: titleStyle),
         const SizedBox(height: 8),
-        const SizedBox(
+        SizedBox(
           height: 180,
           child: TomErrorBoundary(
             child: TomEmptyState(

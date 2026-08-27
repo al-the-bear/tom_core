@@ -128,7 +128,7 @@ void main() {
   group('TomEmptyState / TomLoadingOverlay / TomSkeletonLoader rendering', () {
     testWidgets('empty state shows title and description', (tester) async {
       await tester.pumpWidget(_host(
-        const TomEmptyState(title: 'Nothing here', description: 'Add one.'),
+        TomEmptyState(title: 'Nothing here', description: 'Add one.'),
       ));
       expect(find.text('Nothing here'), findsOneWidget);
       expect(find.text('Add one.'), findsOneWidget);

@@ -63,7 +63,13 @@ class _DemoDAuthAdapter extends TomAuthorizationAdapter {
 
 // ── Form section field paths ────────────────────────────────────────────────
 
-const _formScope = 'demoD.validationForm';
+/// The demo's own scope id — the outer segment of every path below.
+const _demoScope = 'demoD';
+
+/// Resource *path* of the form section. Never passed to `TomScope.withScope`:
+/// the two forms are constructed inside `_demoScope` and carry their own
+/// `validationForm` scope, so this is only ever the auth-key prefix.
+const _formScope = '$_demoScope.validationForm';
 const _formFieldIds = <String>[
   'username',
   'email',
@@ -89,7 +95,13 @@ class _GalleryEntry {
   });
 }
 
-const _galleryScope = 'demoD.widgets';
+/// Scope id of the gallery section — one segment, entered beneath
+/// [_demoScope]. Keeping the id and the path apart is what stops the dotted
+/// form from being handed to `TomScope.withScope`, which rejects it.
+const _galleryScopeId = 'widgets';
+
+/// Resource *path* of the gallery section, used to build its auth keys.
+const _galleryScope = '$_demoScope.$_galleryScopeId';
 
 class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
   late final _DemoDAuthAdapter _adapter;
@@ -112,9 +124,9 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
     super.initState();
     _adapter = _DemoDAuthAdapter();
     TomAuthorization.adapter = _adapter;
-    _formDefault = TomScope.withScope('demoD', () => ValidationForm());
+    _formDefault = TomScope.withScope(_demoScope, () => ValidationForm());
     _formDefault.bind(_seedValidationProfile());
-    _formNonDefault = TomScope.withScope('demoD', () => ValidationForm());
+    _formNonDefault = TomScope.withScope(_demoScope, () => ValidationForm());
     _formNonDefault.bind(_seedValidationProfile());
   }
 
@@ -473,24 +485,30 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
     const rowDists = <double>[0, 32, 56];
     final rowRanges = <(int, int)>[(0, 4), (4, 7), (7, 10)];
 
-    final layout = TomScope.withScope(_galleryScope, () {
-      final instances = entries.map((e) => e.build()).toList();
-      final b = AclBuilder()
-          .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
-          .setAclDefaultHideUnauthorized(true);
-      for (int rowIndex = 0; rowIndex < rowRanges.length; rowIndex++) {
-        if (rowIndex > 0) b.newRow(dist: rowDists[rowIndex]);
-        final (start, end) = rowRanges[rowIndex];
-        for (int i = start; i < end; i++) {
-          final gap = inRowGaps[rowIndex][i - start];
-          if (i == start) {
-            b.append(instances[i]);
-          } else {
-            b.append(instances[i], dist: gap);
+    // Entered as the two segments it is, not as the dotted path: `TomScope`
+    // rejects a "." inside a scope *id* precisely because "demoD.widgets"
+    // would otherwise be indistinguishable from this nesting. The resulting
+    // path is the same `_galleryScope` the auth keys below are built from.
+    final layout = TomScope.withScope(_demoScope, () {
+      return TomScope.withScope(_galleryScopeId, () {
+        final instances = entries.map((e) => e.build()).toList();
+        final b = AclBuilder()
+            .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
+            .setAclDefaultHideUnauthorized(true);
+        for (int rowIndex = 0; rowIndex < rowRanges.length; rowIndex++) {
+          if (rowIndex > 0) b.newRow(dist: rowDists[rowIndex]);
+          final (start, end) = rowRanges[rowIndex];
+          for (int i = start; i < end; i++) {
+            final gap = inRowGaps[rowIndex][i - start];
+            if (i == start) {
+              b.append(instances[i]);
+            } else {
+              b.append(instances[i], dist: gap);
+            }
           }
         }
-      }
-      return b.build();
+        return b.build();
+      });
     });
 
     return Card(

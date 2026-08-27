@@ -292,7 +292,7 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
               child: SizedBox(
                 height: 260,
                 child: items.length == 0
-                    ? const TomEmptyState(
+                    ? TomEmptyState(
                         title: 'No items',
                         description:
                             'Use Seed to insert sample rows, or +1 to '

@@ -204,10 +204,13 @@ class _TomFormIntInputWidgetState extends State<_TomFormIntInputWidget> {
 @tomReflector
 class TomFormIntSlider extends TomFormIntField
     with TomGenericFieldDecorationMixin<int> {
-  /// Required `min` for the slider (uses `minValue` if not set).
+  /// Lower end of the track. Required — a slider without bounds has no
+  /// geometry — and forwarded to the base field's `minValue`, so the range
+  /// and the validation bound cannot drift apart.
   final int min;
 
-  /// Required `max` for the slider (uses `maxValue` if not set).
+  /// Upper end of the track, forwarded to the base field's `maxValue`.
+  /// Required for the same reason as [min], and asserted to exceed it.
   final int max;
 
   /// Number of discrete divisions; defaults to `max - min`.

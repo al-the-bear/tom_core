@@ -114,7 +114,7 @@ void run() {
   const guard = TomAuthGuard(tomId: 'reports.export', child: SizedBox());
   const overlay =
       TomLoadingOverlay(isLoading: true, message: 'Saving…', child: SizedBox());
-  const empty = TomEmptyState(title: 'No items', description: 'Nothing yet.');
+  final empty = TomEmptyState(title: 'No items', description: 'Nothing yet.');
   const skeleton = TomSkeletonLoader(width: 120, height: 16, enabled: false);
   const group = TomRadioGroup<String>(
     tomId: 'reports.currency',

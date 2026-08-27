@@ -35,7 +35,19 @@ class TomEmptyState extends StatelessWidget {
   /// [Icons.inbox_outlined] glyph.
   final IconData icon;
 
-  /// Headline. Required when no [tomId] resolves a `title` resource.
+  /// Headline. Genuinely required: supply this, a [tomId], or both.
+  ///
+  /// A `<basePath>.title` resource wins over this value when both are
+  /// present. When a [tomId] is given but its resource is missing, the
+  /// resource *key* is rendered — the same development signal every other
+  /// Tom widget gives — so this parameter is the fallback for that case,
+  /// not a second-class alternative to it.
+  ///
+  /// With neither source the constructor throws a [StateError] rather than
+  /// leaving a wordless icon on screen. The throw is raised here, and not
+  /// during `build`, so that it lands on the caller's own line instead of
+  /// being caught by an enclosing `TomErrorBoundary` and rendered as a
+  /// runtime error card.
   final String? title;
 
   /// Optional supporting copy beneath the headline.
@@ -51,7 +63,19 @@ class TomEmptyState extends StatelessWidget {
   /// Diameter (logical pixels) of the icon. Defaults to 48.
   final double iconSize;
 
-  const TomEmptyState({
+  /// Headline actually rendered — never null, by construction.
+  late final String _resolvedTitle;
+
+  /// Supporting copy actually rendered, or `null` when there is none.
+  late final String? _resolvedDescription;
+
+  /// Action label actually rendered, or `null` when there is none.
+  late final String? _resolvedActionLabel;
+
+  /// Not `const`: the headline is resolved here rather than in `build` so a
+  /// missing headline reaches the caller instead of an error boundary. See
+  /// [title].
+  TomEmptyState({
     super.key,
     this.tomId,
     this.scope,
@@ -61,47 +85,28 @@ class TomEmptyState extends StatelessWidget {
     this.actionLabel,
     this.onActionPressed,
     this.iconSize = 48,
-  });
-
-  String? _resolvedTitle() {
-    if (tomId != null) {
-      final basePath = TomCtr.resolvePath(tomId, scope);
-      if (basePath != null) {
-        final t = TomCtr.textOrNull(basePath, 'title');
-        if (t != null) return t;
-      }
-    }
-    return title;
-  }
-
-  String? _resolvedDescription() {
-    if (tomId != null) {
-      final basePath = TomCtr.resolvePath(tomId, scope);
-      if (basePath != null) {
-        final t = TomCtr.textOrNull(basePath, 'description');
-        if (t != null) return t;
-      }
-    }
-    return description;
-  }
-
-  String? _resolvedActionLabel() {
-    if (tomId != null) {
-      final basePath = TomCtr.resolvePath(tomId, scope);
-      if (basePath != null) {
-        final t = TomCtr.textOrNull(basePath, 'actionLabel');
-        if (t != null) return t;
-      }
-    }
-    return actionLabel;
+  }) {
+    // `resolvePath` is documented as a call-once-per-widget operation, and
+    // all three strings share the base path.
+    final basePath = TomCtr.resolvePath(tomId, scope);
+    // Resources first, explicit second — the precedence this widget has
+    // always documented at [tomId], and the reverse of the button family's.
+    // `textOrFail` closes the chain: it renders the key when a tomId was
+    // given but its resource is absent, and throws when neither source was.
+    _resolvedTitle = TomCtr.textOrNull(basePath, 'title') ??
+        title ??
+        TomCtr.textOrFail(basePath, 'title');
+    _resolvedDescription =
+        TomCtr.textOrNull(basePath, 'description') ?? description;
+    _resolvedActionLabel =
+        TomCtr.textOrNull(basePath, 'actionLabel') ?? actionLabel;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final headline = _resolvedTitle();
-    final body = _resolvedDescription();
-    final actionText = _resolvedActionLabel();
+    final body = _resolvedDescription;
+    final actionText = _resolvedActionLabel;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -111,12 +116,10 @@ class TomEmptyState extends StatelessWidget {
             Icon(icon,
                 size: iconSize,
                 color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
-            if (headline != null) ...[
-              const SizedBox(height: 12),
-              Text(headline,
-                  style: theme.textTheme.titleMedium,
-                  textAlign: TextAlign.center),
-            ],
+            const SizedBox(height: 12),
+            Text(_resolvedTitle,
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center),
             if (body != null) ...[
               const SizedBox(height: 6),
               Text(body,

@@ -90,7 +90,14 @@ The remaining five are presentation idioms with no auth gate:
 - **`TomEmptyState`** — a centred icon + title + description + optional action
   button. Strings resolve from resources when a `tomId` is supplied
   (`<basePath>.title`, `.description`, `.actionLabel`), falling back to the
-  explicit parameters.
+  explicit parameters. The title is the one string that is genuinely
+  required: with neither a `title` nor a `tomId` the **constructor** throws
+  a `StateError`, rather than leaving a wordless icon on screen. It throws
+  from the constructor and not from `build` so that the failure reaches the
+  call site instead of being caught by an enclosing `TomErrorBoundary` and
+  shown as an error card — which is why this is the one custom widget
+  without a `const` constructor. A `tomId` whose resource is missing renders
+  the key, the usual Tom development signal, not silence.
 - **`TomLoadingOverlay`** — a `Stack` that lays a scrim + `CircularProgressIndicator`
   (+ optional message) over its `child` when `isLoading` is true; renders only
   the `child` otherwise.

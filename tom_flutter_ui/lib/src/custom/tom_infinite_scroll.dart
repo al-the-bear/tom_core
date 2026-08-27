@@ -228,7 +228,7 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
   }
 
   Widget _defaultEmpty(BuildContext context) {
-    return const TomEmptyState(
+    return TomEmptyState(
       title: 'No items',
       description: 'Nothing has been loaded yet.',
     );
