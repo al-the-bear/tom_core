@@ -53,6 +53,30 @@ class TomTheme {
       readonlyStyle: readonlyStyle ?? this.readonlyStyle,
     );
   }
+
+  /// Compares by value, including the nested [readonlyStyle].
+  ///
+  /// This is what makes [TomThemeScope.updateShouldNotify] meaningful. Both
+  /// documented ways of installing a theme build it *inside* `build` — the
+  /// example above, and `defaultTheme.copyWith(...)` — and `copyWith` always
+  /// allocates, so the scope is handed a fresh instance on every ancestor
+  /// rebuild. Under reference equality every one of those would count as a
+  /// change and rebuild every read-only widget in the subtree; by value, only
+  /// a theme whose fields actually moved does.
+  ///
+  /// [TomReadonlyStyle.builder] is the single exception, compared by
+  /// reference because closures cannot be compared any other way.
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is TomTheme &&
+        other.runtimeType == runtimeType &&
+        other.name == name &&
+        other.readonlyStyle == readonlyStyle;
+  }
+
+  @override
+  int get hashCode => Object.hash(name, readonlyStyle);
 }
 
 /// Provides a [TomTheme] to descendant widgets.

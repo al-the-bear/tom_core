@@ -20,6 +20,14 @@ class TomReadonlyStyle {
 
   /// Optional custom builder that replaces the default treatment entirely.
   /// When set, [opacity], [absorbPointers], and [colorOverlay] are ignored.
+  ///
+  /// **Hoist the function; do not write it inline in `build`.** This is the
+  /// one field [operator ==] compares by reference — Dart offers no way to
+  /// ask whether two closures behave alike — so a builder allocated during
+  /// `build` makes every style unequal to the last one, and
+  /// `TomThemeScope.updateShouldNotify` then rebuilds every read-only widget
+  /// on every ancestor rebuild. A top-level or static function, or a field
+  /// held on the state, compares equal to itself and avoids that entirely.
   final Widget Function(Widget content)? builder;
 
   const TomReadonlyStyle({
@@ -47,4 +55,22 @@ class TomReadonlyStyle {
     if (absorbPointers) result = AbsorbPointer(child: result);
     return result;
   }
+
+  /// Compares by value, so a style rebuilt with the same settings is the same
+  /// style. See `TomTheme` for why that matters, and [builder] for the one
+  /// field this cannot compare structurally.
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is TomReadonlyStyle &&
+        other.runtimeType == runtimeType &&
+        other.opacity == opacity &&
+        other.absorbPointers == absorbPointers &&
+        other.colorOverlay == colorOverlay &&
+        other.builder == builder;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(opacity, absorbPointers, colorOverlay, builder);
 }

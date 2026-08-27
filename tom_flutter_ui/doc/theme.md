@@ -49,6 +49,19 @@ When `TomPolicyNodeBase` resolves a widget to `TomAuthState.read`, it calls
 `absorbPointers: false` is for families that handle readonly at the widget
 level (e.g. a text field that switches to a non-editable display).
 
+**If you set `builder`, hoist the function — do not write it inline in
+`build`.** Styles compare by value, but a function can only be compared by
+reference, so a closure allocated during `build` makes every style unequal to
+the last one and defeats the rebuild check described below. A top-level or
+static function, or one kept in a `State` field, compares equal to itself:
+
+```dart
+Widget readOnlyBanner(Widget child) =>
+    Banner(message: 'read-only', location: BannerLocation.topEnd, child: child);
+
+const style = TomReadonlyStyle(builder: readOnlyBanner);
+```
+
 ## `TomTheme` & `TomThemeScope` — delivery
 
 `TomTheme` is intentionally tiny — it carries only what Flutter doesn't. Place a
@@ -69,6 +82,15 @@ Widgets read it via `TomThemeScope.of(context)` or the convenience
 the tree, so widgets work without any theme wiring. `updateShouldNotify`
 compares themes by value, so dependents rebuild only when the theme actually
 changes.
+
+That comparison is what makes the snippet above safe. It builds the theme
+inside `build`, as does the other common form, `TomTheme.defaultTheme.copyWith(
+readonlyStyle: ...)` — both allocate a fresh instance on every ancestor
+rebuild. Compared by identity each of those would count as a change and rebuild
+every readonly widget in the subtree; compared by value, only a theme whose
+fields moved does. `TomTheme` and `TomReadonlyStyle` both implement `==` and
+`hashCode` over all their fields, so there is nothing to opt into — with the
+single exception noted under `builder` above.
 
 ## `TomButtonVariants` — semantic button styles
 

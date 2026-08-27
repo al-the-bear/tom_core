@@ -55,6 +55,26 @@ void run() {
       variants.destructive.backgroundColor?.resolve(<WidgetState>{});
   print('primary bg=$primaryBg destructive bg=$destructiveBg');
 
+  // Example 6: themes and styles are values, which is what lets a
+  // TomThemeScope built inside `build` avoid rebuilding its dependents on
+  // every ancestor rebuild. copyWith always allocates, so without value
+  // equality every rebuild would look like a theme change.
+  final rebuiltDimmed = base.copyWith(
+    name: 'dimmed',
+    readonlyStyle: const TomReadonlyStyle(opacity: 0.5),
+  );
+  print('separately built themes equal -> ${rebuiltDimmed == dimmed}');
+
+  // The exception: `builder` holds a function, and functions compare by
+  // reference. A hoisted (named) builder is the same object every time; an
+  // inline closure is a new one on each build.
+  final hoistedA = TomReadonlyStyle(builder: readOnlyBanner);
+  final hoistedB = TomReadonlyStyle(builder: readOnlyBanner);
+  final inlineA = TomReadonlyStyle(builder: (child) => child);
+  final inlineB = TomReadonlyStyle(builder: (child) => child);
+  print('hoisted builders equal -> ${hoistedA == hoistedB}   '
+      'inline builders equal -> ${inlineA == inlineB}');
+
   // Assertions
   assert(base.name == 'default');
   assert(base.readonlyStyle.opacity == 0.6);
@@ -69,6 +89,29 @@ void run() {
 
   assert(primaryBg == scheme.primary);
   assert(destructiveBg == scheme.error);
+
+  // Value equality: separate instances with the same fields are the same
+  // theme, and a no-op copyWith changes nothing.
+  assert(rebuiltDimmed == dimmed);
+  assert(rebuiltDimmed.hashCode == dimmed.hashCode);
+  assert(base.copyWith() == base);
+  assert(dimmed != base);
+  // The nested style counts too.
+  assert(base.copyWith(readonlyStyle: const TomReadonlyStyle(opacity: 0.5)) !=
+      base);
+
+  // Hoisted builders compare equal; inline ones never do — which is why a
+  // custom builder belongs in a named function.
+  assert(hoistedA == hoistedB);
+  assert(inlineA != inlineB);
 }
+
+/// A hoisted read-only builder: naming the function is what lets two
+/// [TomReadonlyStyle]s that use it compare equal across rebuilds.
+Widget readOnlyBanner(Widget child) => Banner(
+      message: 'read-only',
+      location: BannerLocation.topEnd,
+      child: child,
+    );
 
 void main() => run();

@@ -36,6 +36,13 @@ Widget themedApp(Widget home) {
 }
 ```
 
+Building the theme in place like this is the intended usage even inside a
+`build` method: `TomTheme` and `TomReadonlyStyle` compare by value, so the
+scope notifies its dependents only when a field actually changes, not merely
+because `copyWith` allocated. The one field compared by reference is
+`TomReadonlyStyle.builder` — closures cannot be compared any other way — so
+hoist a custom builder into a named function rather than writing it inline.
+
 `TomButtonVariants.fromColorScheme(scheme).primary` yields a ready
 `ButtonStyle` for the primary action; `TomButtonVariants.of(context)` reads the
 ambient set.
