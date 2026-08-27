@@ -219,14 +219,20 @@ class TomCtr {
 
   /// Resolves an int from resources.
   ///
-  /// Accepts int, double (truncated), or parseable string values.
+  /// Accepts int, double (truncated), or any numeric string. A fractional
+  /// string truncates exactly as the equivalent number does — `'3.7'` and
+  /// `3.7` both read as `3` — so a bundle that quotes its numbers, as YAML
+  /// and env-derived bundles routinely do, resolves the same as one that does
+  /// not. Anything that is not a number at all resolves to `null`.
   static int? intVal(String? basePath, [String suffix = '']) {
     if (basePath == null) return null;
     final value = _provider.getObjectOrNull(_key(basePath, suffix));
     if (value == null) return null;
     if (value is int) return value;
     if (value is double) return value.toInt();
-    if (value is String) return int.tryParse(value);
+    if (value is String) {
+      return int.tryParse(value) ?? double.tryParse(value)?.toInt();
+    }
     return null;
   }
 
@@ -315,7 +321,11 @@ class TomCtr {
 
   /// Resolves a map from resources.
   ///
-  /// Returns `null` if no resource found or the resource is not a map.
+  /// Returns `null` if no resource is found, or if the resource is a value
+  /// this cannot hand back as a `Map<String, dynamic>` — including a `Map`
+  /// with non-String keys, which reads as absent rather than throwing. A
+  /// bundle decoded from JSON always satisfies the type; one built by hand
+  /// has to keep its keys Strings.
   static Map<String, dynamic>? map(String? basePath, [String suffix = '']) {
     final v = value(basePath, suffix);
     if (v is Map<String, dynamic>) return v;
