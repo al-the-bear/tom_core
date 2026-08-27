@@ -7,6 +7,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../actions/tom_action.dart';
 import '../actions/tom_action_controller.dart';
 import '../widget_base/tom_construction_helpers.dart';
+import '../widget_base/tom_scope_path.dart';
 import '../widget_base/tom_screen_elements_provider.dart';
 import 'events/tom_form_event.dart';
 import 'events/tom_form_event_listener.dart';
@@ -143,8 +144,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   @override
   void prepareForSelfObservation() {
     scope = TomScope.current;
-    final parentPath = scope.getScopePath();
-    basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
+    basePath = TomScopePath.qualify(formId, scope);
     TomScope.withScope(formId, () => createFormElements());
   }
 
@@ -616,7 +616,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     scope = form != null
         ? form!.basePath
         : TomScope.current.getScopePath();
-    basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId;
+    basePath = TomScopePath.join(scope, tomId);
     tomGroup?.register(this);
   }
 

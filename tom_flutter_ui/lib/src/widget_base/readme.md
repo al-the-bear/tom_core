@@ -16,6 +16,7 @@ the screen-elements provider, and the construction-time resolvers (`TomCtr`,
 | `TomWidgetFamily` | Material / Cupertino family selection |
 | `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | Construction-time base helpers |
 | `TomScreenElementsProviderBase` | The element-provider contract forms/ACL build against |
+| `TomScopePath` | The one place a scope path and a `tomId` are joined into a canonical resource path |
 | `TomCtr` | Resolver helpers — `text` / `color` / `doubleVal` / `textStyle` by resource path |
 | `TomStyleResolvers` | Parse style maps into `ButtonStyle` / `ShapeBorder` etc. |
 

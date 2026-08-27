@@ -140,7 +140,7 @@ Every widget, container, form, and action can have a unique ID. IDs serve three 
 
 Developers set plain IDs. In the current implementation:
 
-- **Widget and scope paths** use plain IDs joined by dots — `TomNodeBase._resolveBasePath()` builds `<scopePath>.<tomId>` without prefixes.
+- **Widget and scope paths** use plain IDs joined by dots — `TomScopePath` builds `<scopePath>.<tomId>` without prefixes.
 - **Action and controller paths** use plain IDs — `TomAction.canonicalPath` produces `<controllerId>.<actionId>`.
 
 | Scope | Set as | Resolved as |
@@ -955,20 +955,24 @@ abstract class TomScope {
 }
 ```
 
-**Path resolution** happens in `TomNodeBase` and `TomWidgetMixin` constructors:
+**Path resolution** happens in `TomNodeBase` and `TomWidgetMixin`, both of which
+delegate to `TomScopePath` — the single implementation of the composition rule
+(see [Widget Base Module](widget_base.md#path-composition-tomscopepath)):
 
 ```dart
 // In TomNodeBase constructor:
 constructionScope = scope ?? TomScope.current;
-basePath = _resolveBasePath(tomId, scope);
+basePath = TomScopePath.resolve(tomId, scope);
 
-static String? _resolveBasePath(String? tomId, TomScope? scope) {
-  if (tomId == null) return null;
-  final effectiveScope = scope ?? TomScope.current;
-  final scopePath = effectiveScope.getScopePath();
-  if (scopePath.isNotEmpty) return '$scopePath.$tomId';
-  return tomId;
-}
+// In TomScopePath — the one implementation of the rule:
+static String join(String parentPath, String tomId) =>
+    parentPath.isEmpty ? tomId : '$parentPath.$tomId';
+
+static String qualify(String tomId, [TomScope? scope]) =>
+    join((scope ?? TomScope.current).getScopePath(), tomId);
+
+static String? resolve(String? tomId, [TomScope? scope]) =>
+    tomId == null ? null : qualify(tomId, scope);
 ```
 
 **Example:** A widget with `tomId='submit'` constructed inside scope `'checkout.order'` gets `basePath = 'checkout.order.submit'`.

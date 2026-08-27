@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'tom_scope_path.dart';
+
 /// Base class for all Tom UI elements (widgets, actions, containers).
 ///
 /// Provides:
@@ -12,8 +14,10 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// - Resource path resolution via [basePath].
 /// - Debug identity via [debugLabel].
 ///
-/// Resource paths are constructed as: `<scopePath>.<tomId>` where scopePath
-/// comes from either the explicit [scope] or the current [TomScope].
+/// Resource paths are constructed by [TomScopePath.resolve] from either the
+/// explicit [scope] or the current [TomScope] — the same rule every other
+/// path in the library goes through, so a node and the resources, policies
+/// and groups that address it always agree on where it lives.
 ///
 /// Implements [TomAuthorizable] for type-safe group registration and
 /// authorization system participation.
@@ -56,16 +60,8 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
     this.authorizer,
     this.uiStateController,
   })  : constructionScope = scope ?? TomScope.current,
-        basePath = _resolveBasePath(tomId, scope) {
+        basePath = TomScopePath.resolve(tomId, scope) {
       tomGroup?.register(this);
-  }
-
-  static String? _resolveBasePath(String? tomId, TomScope? scope) {
-    if (tomId == null) return null;
-    final effectiveScope = scope ?? TomScope.current;
-    final scopePath = effectiveScope.getScopePath();
-    if (scopePath.isNotEmpty) return '$scopePath.$tomId';
-    return tomId;
   }
 
   /// Debug description for this node.

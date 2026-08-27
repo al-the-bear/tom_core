@@ -25,6 +25,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../widget_base/tom_scope_path.dart';
+
 /// One radio entry in a [TomRadioGroup].
 class TomRadioGroupItem<T> {
   /// Underlying value.
@@ -81,10 +83,8 @@ class TomRadioGroup<T> extends StatelessWidget {
   });
 
   TomAuthState _resolveAuth() {
-    if (tomId == null) return TomAuthState.full;
-    final effectiveScope = scope ?? TomScope.current;
-    final scopePath = effectiveScope.getScopePath();
-    final fullPath = scopePath.isEmpty ? tomId! : '$scopePath.$tomId';
+    final fullPath = TomScopePath.resolve(tomId, scope);
+    if (fullPath == null) return TomAuthState.full;
     return TomAuthorization.resolveAuth(fullPath);
   }
 

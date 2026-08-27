@@ -4,6 +4,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../resource_auth/tom_colors.dart';
 import '../resource_auth/tom_icons.dart';
 import '../widgets/labels/tom_labels.dart';
+import 'tom_node_base.dart';
+import 'tom_scope_path.dart';
 import 'tom_style_resolvers.dart';
 
 /// Single entry point for all resource resolution in Tom UI.
@@ -40,15 +42,14 @@ class TomCtr {
   /// Call this once in the constructor and store the result.
   /// Returns `<scopePath>.<tomId>` or just `tomId` if scope path is empty.
   /// Returns `null` if tomId is null.
-  static String? resolvePath(String? tomId, [TomScope? scope]) {
-    if (tomId == null) return null;
-    final effectiveScope = scope ?? TomScope.current;
-    final scopePath = effectiveScope.getScopePath();
-    if (scopePath.isNotEmpty) {
-      return '$scopePath.$tomId';
-    }
-    return tomId;
-  }
+  ///
+  /// This forwards to [TomScopePath.resolve], which is where the rule lives —
+  /// [TomNodeBase] needs the path in an initialiser list and cannot reach
+  /// `TomCtr` without inverting the module hierarchy. The forwarder stays
+  /// because this is where the widgets already look for path helpers, and
+  /// because a one-line delegation cannot drift from what it delegates to.
+  static String? resolvePath(String? tomId, [TomScope? scope]) =>
+      TomScopePath.resolve(tomId, scope);
 
   // ===========================================================================
   // Text Resolution

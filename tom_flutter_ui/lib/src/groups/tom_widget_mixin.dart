@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../widget_base/tom_construction_helpers.dart';
+import '../widget_base/tom_scope_path.dart';
 import '../theme/tom_theme.dart';
 
 /// Mixin for Tom widgets that extend Flutter widgets directly.
@@ -34,12 +35,7 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// belonging to some other member.
   TomScope get effectiveScope => scope ?? TomScope.current;
 
-  String? get basePath {
-    if (tomId == null) return null;
-    final scopePath = effectiveScope.getScopePath();
-    if (scopePath.isNotEmpty) return '$scopePath.$tomId';
-    return tomId;
-  }
+  String? get basePath => TomScopePath.resolve(tomId, effectiveScope);
 
   /// Gets the effective authorization state for this widget.
   ///

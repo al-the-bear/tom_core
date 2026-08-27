@@ -2934,8 +2934,7 @@ basePath when `form:` is passed:
 
 ```dart
 // TomForm
-final parentPath = scope.getScopePath();
-basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
+basePath = TomScopePath.qualify(formId, scope);
 
 // TomField — when form: is passed, anchor on form.basePath so the field
 // can be declared at its class-level `late final x = TomFormStringInput(
@@ -2944,10 +2943,13 @@ basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
 scope = form != null
     ? form!.basePath
     : TomScope.current.getScopePath();
-basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId;
+basePath = TomScopePath.join(scope, tomId);
 ```
 
-This is the same pattern used by `TomNodeBase._resolveBasePath()`. No `BuildContext` needed.
+Both go through `TomScopePath`, the same helper `TomNodeBase` uses — the form
+half via `qualify` (it holds a `TomScope`) and the field half via `join` (its
+parent is already a path string, either the form's `basePath` or the ambient
+scope path). No `BuildContext` needed.
 
 ### Path Structure Flexibility
 

@@ -9,6 +9,7 @@ import '../../../advanced_container_layout/acl_container.dart';
 import '../../../advanced_container_layout/acl_device_context.dart';
 import '../../../advanced_container_layout/acl_group_visibility.dart';
 import '../../../advanced_container_layout/row_alignment.dart';
+import '../../../widget_base/tom_scope_path.dart';
 import '../../../widget_base/tom_screen_elements_provider.dart';
 
 /// A delegating wrapper around [AclBuilder] that adds Tom UI concerns:
@@ -725,8 +726,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// [TomThemeScope] ancestor for readonly styling (falls back to default).
   Widget build(BuildContext context) {
     // Self-path: <scopePath>.<id>
-    final scopePath = TomScope.current.getScopePath();
-    final containerPath = scopePath.isNotEmpty ? '$scopePath.$id' : id;
+    final containerPath = TomScopePath.qualify(id);
 
     // Container-level authorization
     final auth = TomAuthorization.resolveAuth(containerPath);

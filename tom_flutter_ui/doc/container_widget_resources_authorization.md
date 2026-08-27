@@ -162,7 +162,7 @@ Each segment in the path uses a plain ID set by the developer:
 | Controller | `'orderMgmt'` | `orderMgmt` |
 | Group | `'shippingPanel'` | `shippingPanel` |
 
-Action and controller paths use plain IDs (implemented in `TomAction.canonicalPath` and `TomActionController.canonicalPrefix`). All path types use plain IDs — path resolution in `TomNodeBase._resolveBasePath()` joins `scopePath.tomId` without prefixes.
+Action and controller paths use plain IDs (implemented in `TomAction.canonicalPath` and `TomActionController.canonicalPrefix`). All path types use plain IDs — path resolution in `TomScopePath` joins `scopePath.tomId` without prefixes.
 
 ```
 # Authorization examples

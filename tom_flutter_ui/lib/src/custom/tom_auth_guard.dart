@@ -22,6 +22,8 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../widget_base/tom_scope_path.dart';
+
 /// Inline wrapper that hides or disables its [child] based on the
 /// resolved [TomAuthState] for the given [tomId] (resource key path).
 class TomAuthGuard extends StatelessWidget {
@@ -70,12 +72,8 @@ class TomAuthGuard extends StatelessWidget {
   /// the tell: were the point to let tests *replace* the resolution by
   /// subclassing, this would be `@visibleForOverriding`.
   @visibleForTesting
-  TomAuthState resolveAuthState() {
-    final effectiveScope = scope ?? TomScope.current;
-    final scopePath = effectiveScope.getScopePath();
-    final fullPath = scopePath.isEmpty ? tomId : '$scopePath.$tomId';
-    return TomAuthorization.resolveAuth(fullPath);
-  }
+  TomAuthState resolveAuthState() =>
+      TomAuthorization.resolveAuth(TomScopePath.qualify(tomId, scope));
 
   @override
   Widget build(BuildContext context) {

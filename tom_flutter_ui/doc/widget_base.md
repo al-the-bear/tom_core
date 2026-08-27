@@ -23,6 +23,7 @@ in this module:
 - [The widget-family taxonomy](#the-widget-family-taxonomy)
 - [Scope propagation](#scope-propagation)
 - [Screen-element providers](#screen-element-providers)
+- [Path composition: `TomScopePath`](#path-composition-tomscopepath)
 - [Resource resolution: `TomCtr`](#resource-resolution-tomctr)
 - [Style resolution: `TomStyleResolvers`](#style-resolution-tomstyleresolvers)
 - [Dependencies](#dependencies)
@@ -41,6 +42,7 @@ in this module:
 | `TomWidgetFamily` | enum | The 26-value family taxonomy (20 Flutter-derived + 6 Tom form families). |
 | `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | abstract | Scope-capturing base widgets for non-Tom wrappers that still need scope propagation. |
 | `TomScreenElementsProvider` / `TomScreenElementsProviderBase` | interface / class | Declarative, reflection-discoverable screen widget trees with chained scopes. |
+| `TomScopePath` | static helpers | The one place a scope path and a widget id are joined into a canonical resource path. Flutter-free, so the base classes can use it in an initialiser list. |
 | `TomCtr` | static helpers | The single entry point for resource resolution — text, colour, icon, numeric, `EdgeInsets`, `TextStyle`, `InputBorder`, `WidgetStateProperty<Color>`, breakpointed values. |
 | `TomStyleResolvers` | static helpers | Parsing of complex Material objects (`TextStyle`, `ButtonStyle`, `InputDecoration`, `ShapeBorder`, `Decoration`, …) from JSON resource maps. |
 
@@ -60,8 +62,9 @@ StatelessWidget
 
 A concrete widget (in `widgets/`, `forms/`, …) extends the branch base for its
 family and implements `buildContent(context)` — never `build`. Construction
-resolves `basePath` as `<scopePath>.<tomId>` and, if a `tomGroup` was supplied,
-registers the widget with that group.
+resolves `basePath` through
+[`TomScopePath.resolve`](#path-composition-tomscopepath) and, if a `tomGroup`
+was supplied, registers the widget with that group.
 
 ## Authorization enforcement
 
@@ -150,6 +153,46 @@ manual registration.
   where `order` and `details` are nested provider scope segments under the
   `demo23` zone scope.
 
+## Path composition: `TomScopePath`
+
+A canonical resource path is `<scopePath>.<tomId>`, with the separator dropped
+when the scope path is empty — a widget at the root addresses its resources by
+its bare id, not by `.id`. `TomScopePath` is the one place that rule is written
+down. Everything that addresses the resource tree goes through it: resource
+lookups, `TomAuthorization` policy lookups and group registration all name the
+same paths, so a widget that composed its path even slightly differently from
+its neighbours would read a bundle belonging to something else while rendering
+perfectly.
+
+| Method | Parent | Id | Returns |
+| ------ | ------ | -- | ------- |
+| `join(parentPath, tomId)` | `String` | `String` | `String` |
+| `qualify(tomId, [scope])` | `TomScope?` | `String` | `String` |
+| `resolve(tomId, [scope])` | `TomScope?` | `String?` | `String?` |
+
+`join` is the rule; `qualify` and `resolve` resolve a scope down to its path
+and hand it over, so a change to the composition lands in exactly one place.
+`resolve` is the widget-facing form — a node without a `tomId` has no path at
+all, and `null` is what makes the `TomCtr` accessors return their defaults
+rather than look up the empty string.
+
+The class holds **no Flutter dependency**, and that is what places it here
+rather than on `TomCtr`. `TomNodeBase` needs the path in its initialiser list,
+and `TomCtr` reaches into `widgets/` for its default-widget helpers — a base
+class that called `TomCtr` would depend on the layer built on top of it.
+`TomCtr.resolvePath` remains as a one-line forwarder, because that is where the
+widget layer already looks for path helpers and a delegation cannot drift from
+what it delegates to.
+
+Two callers legitimately need the raw scope path instead: `TomForm` derives a
+field's base path from either its form's `basePath` or the ambient scope path —
+a `String` either way, so it uses `join` — and `AclContainer` builds
+*multi-segment* policy paths whose middle segments are opt-in (`idScope`),
+which is a different rule rather than this one with extra steps. Both are named
+in the allowlist that `test/widget_base/scope_path_test.dart` holds the module
+to; every other file in `lib/` is forbidden from reading `getScopePath()` or
+interpolating a scope path into an id.
+
 ## Resource resolution: `TomCtr`
 
 `TomCtr` is the single entry point for reading values out of the kernel's
@@ -158,7 +201,7 @@ manual registration.
 
 | Group | Methods |
 | ----- | ------- |
-| Path | `resolvePath(tomId, [scope])`, `childTomId(tomId, suffix)` |
+| Path | `resolvePath(tomId, [scope])` (forwards to [`TomScopePath.resolve`](#path-composition-tomscopepath)), `childTomId(tomId, suffix)` |
 | Text | `text`, `textOrNull`, `textOrFail`, `exists` |
 | Colour | `color`, `colorOrFail` (resolved via `TomUIColors`) |
 | Icon | `icon` (resolved via `TomUIIcons`) |
@@ -280,7 +323,8 @@ own fix; the test pins the current behaviour so the note cannot outlive it.
 ## Dependencies
 
 - `package:flutter/material.dart` — `TomCtr` and `TomStyleResolvers` require the
-  Material library; the base classes use `package:flutter/widgets.dart`.
+  Material library; the base classes use `package:flutter/widgets.dart`, and
+  `TomScopePath` uses no Flutter library at all.
 - `tom_core_kernel` — `TomScope`, `TomAuthorization`, `TomAuthState`,
   `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorizer`,
   `TomTextResourceProvider`.

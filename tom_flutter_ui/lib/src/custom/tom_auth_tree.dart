@@ -31,6 +31,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../widget_base/tom_scope_path.dart';
+
 /// Data model for a node inside a [TomAuthTreeView]. Each node carries
 /// its own [tomId] resource key for per-node authorization lookup.
 class TomAuthTreeNode {
@@ -113,12 +115,14 @@ class TomAuthTreeView extends StatelessWidget {
     this.disabledOpacity = 0.4,
   });
 
+  /// Qualifies [tomId] under [parentPath] when the tree was given a non-empty
+  /// one, and under the ambient scope otherwise.
   String _qualifyPath(String tomId) {
-    if (parentPath != null && parentPath!.isNotEmpty) {
-      return '$parentPath.$tomId';
+    final parent = parentPath;
+    if (parent != null && parent.isNotEmpty) {
+      return TomScopePath.join(parent, tomId);
     }
-    final scopePath = TomScope.current.getScopePath();
-    return scopePath.isEmpty ? tomId : '$scopePath.$tomId';
+    return TomScopePath.qualify(tomId);
   }
 
   @override
