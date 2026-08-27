@@ -34,6 +34,13 @@
 /// over: a reader who arrives at the published API documentation cannot
 /// resolve "Demo H-A" or place "Phase 5c" against anything they can see.
 /// The markers are enumerated in [_rolloutMarkers].
+///
+/// **The final group polices a narrower claim: how the member is called.**
+/// Prose that calls `resolveAuthState()` "a getter" is not a style quibble —
+/// it tells the reader to write `guard.resolveAuthState`, which does not
+/// compile, and it hid a second error behind it (the comment justified the
+/// member by subclass-overriding, which no test does). Both checks re-derive
+/// the real declaration kind from source rather than trusting a list.
 library;
 
 import 'dart:io';
@@ -96,6 +103,51 @@ List<String> _allLibrarySources() => Directory('lib')
     .where((p) => p.endsWith('.dart'))
     .toList()
   ..sort();
+
+/// A member dartdoc paired with the declaration it is attached to.
+typedef _DocumentedMember = ({String path, int line, String doc, String decl});
+
+/// Every `///` block in [path] that documents a *member*, paired with the
+/// declaration line it precedes.
+///
+/// Annotations between the comment and the declaration are skipped, so
+/// `@visibleForTesting` / `@override` do not hide the thing being documented.
+///
+/// Type declarations (`class`, `mixin`, …) and `library;` are excluded on
+/// purpose. A class's dartdoc talks *about its members* — "every method
+/// forwards to…" is a true statement there, and checking it against the class
+/// itself would be nonsense.
+List<_DocumentedMember> _documentedMembers(String path) {
+  final lines = File(path).readAsLinesSync();
+  final out = <_DocumentedMember>[];
+  var i = 0;
+  while (i < lines.length) {
+    if (!lines[i].trimLeft().startsWith('///')) {
+      i++;
+      continue;
+    }
+    final start = i;
+    final doc = <String>[];
+    while (i < lines.length && lines[i].trimLeft().startsWith('///')) {
+      doc.add(lines[i].trimLeft().substring(3).trim());
+      i++;
+    }
+    var j = i;
+    while (j < lines.length && lines[j].trimLeft().startsWith('@')) {
+      j++;
+    }
+    if (j >= lines.length) continue;
+    final decl = lines[j].trim();
+    if (RegExp(r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+|'
+            r'mixin\s+)*(?:class|enum|mixin|extension|typedef)\b')
+        .hasMatch(decl)) {
+      continue;
+    }
+    if (decl.startsWith('library')) continue;
+    out.add((path: path, line: start + 1, doc: doc.join(' '), decl: decl));
+  }
+  return out;
+}
 
 /// Type names declared in [source] — `class`, `enum`, `mixin`, `extension`
 /// and `typedef`.
@@ -366,6 +418,90 @@ void main() {
       }
       expect(offences, isEmpty,
           reason: 'these file names carry a schedule position:\n\n'
+              '${offences.join('\n\n')}');
+    });
+  });
+
+  group('the documentation says how the member is actually called', () {
+    test('no member dartdoc calls its own declaration the wrong kind', () {
+      // `resolveAuthState()` was documented as "a getter", which tells the
+      // reader to write `guard.resolveAuthState` — that does not compile. The
+      // kind word is a call-shape claim, so it is checkable against the real
+      // declaration rather than a matter of taste.
+      //
+      // Two narrowings, both drawn from wording that exists in this package
+      // rather than invented defensively:
+      //
+      //   - Only the *singular* word is matched. "the gap setters read 0 as
+      //     off" is a statement about a group and cannot describe the one
+      //     declaration it is attached to.
+      //   - A kind word introduced by a `code span` or [reference] names
+      //     something else — "the `_NullableFieldLabels` getters" appears on a
+      //     field in `tom_form_nullable_inputs.dart`.
+      //
+      // `setX(...)` builder methods are exempt from the "setter" mismatch. The
+      // ACL builder calls them setters throughout, including a spec heading,
+      // and the name carries `set` in plain sight — so the prose describes the
+      // name and misleads nobody about the call shape. That is a consistent
+      // house vocabulary, and consistency wins over a global rule.
+      final offences = <String>[];
+      for (final path in _allLibrarySources()) {
+        for (final member in _documentedMembers(path)) {
+          final isGetter = RegExp(r'\bget\s+\w+').hasMatch(member.decl);
+          final isSetter = RegExp(r'\bset\s+\w+\s*\(').hasMatch(member.decl);
+          final name = RegExp(r'(\w+)\s*[({=]').firstMatch(member.decl);
+          final setPrefixed = name?.group(1)?.startsWith('set') ?? false;
+
+          for (final m
+              in RegExp(r'\b(getter|setter|method)\b').allMatches(member.doc)) {
+            final word = m.group(1)!;
+            final before = member.doc.substring(0, m.start).trimRight();
+            if (before.endsWith('`') || before.endsWith(']')) continue;
+            if (word == 'setter' && setPrefixed) continue;
+
+            final actual =
+                isGetter ? 'getter' : (isSetter ? 'setter' : 'method');
+            if (word == actual) continue;
+            offences.add('${member.path}:${member.line}\n'
+                '    says "$word", but the declaration is a $actual:\n'
+                '    ${member.decl}');
+          }
+        }
+      }
+      expect(offences, isEmpty,
+          reason: 'these doc comments misstate how their member is called:\n\n'
+              '${offences.join('\n\n')}');
+    });
+
+    test('no prose calls a code span with a call signature a getter', () {
+      // `doc/custom.md` read "`… resolveAuthState()` getter". This one needs no
+      // lookup at all: the span *shows* a parameter list, so it contradicts
+      // itself on the page. A getter and a setter are both read or written
+      // without one.
+      final pattern = RegExp(r'`([^`]*\([^`]*\))`\s+(getter|setter)\b');
+      final offences = <String>[];
+      final docs = [
+        File('README.md'),
+        ...Directory('doc')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.md')),
+      ]..sort((a, b) => a.path.compareTo(b.path));
+
+      for (final file in docs) {
+        // Soft wraps split these spans across lines, so match on the joined
+        // text and report the file rather than a line that may not exist.
+        final joined = File(file.path)
+            .readAsStringSync()
+            .replaceAll(RegExp(r'\s*\n\s*'), ' ');
+        for (final m in pattern.allMatches(joined)) {
+          offences.add('${file.path}\n'
+              '    `${m.group(1)}` ${m.group(2)}\n'
+              '    → the span shows a call signature, so it is a method');
+        }
+      }
+      expect(offences, isEmpty,
+          reason: 'these spans contradict the word beside them:\n\n'
               '${offences.join('\n\n')}');
     });
   });

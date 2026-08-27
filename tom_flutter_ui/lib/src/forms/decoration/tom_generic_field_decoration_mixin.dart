@@ -89,7 +89,7 @@ mixin TomGenericFieldDecorationMixin<T> on TomField<T> {
     );
   }
 
-  /// Convenience getter for the captured scope width, used when a
+  /// Reads the captured scope width for [context] — call it when a
   /// concrete widget wants to pick per-breakpoint visuals without
   /// duplicating `TomFormStyleScope.widthOf(context)`.
   double scopeWidth(BuildContext context) =>

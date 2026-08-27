@@ -53,8 +53,8 @@ follow the same four-outcome contract:
 | `full` | rendered as-is |
 
 **`TomAuthGuard`** wraps an arbitrary `child`. Its resolution is pulled into a
-`@visibleForTesting TomAuthState resolveAuthState()` getter so the decision can
-be unit-tested without a widget tree:
+`@visibleForTesting TomAuthState resolveAuthState()` method so the decision can
+be unit-tested without a widget tree — call it on a constructed guard:
 
 ```dart
 TomAuthorization.adapter = myAdapter;        // 'reports.export' → none

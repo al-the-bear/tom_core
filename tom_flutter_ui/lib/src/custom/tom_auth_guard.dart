@@ -61,8 +61,13 @@ class TomAuthGuard extends StatelessWidget {
     this.blockPointerOnRead = true,
   });
 
-  /// Resolves the guarded auth state through [TomAuthorization]. Pulled
-  /// out to a getter so tests can override behaviour by subclassing.
+  /// Resolves the guarded auth state through [TomAuthorization].
+  ///
+  /// Public and `@visibleForTesting` so the decision can be asserted on a
+  /// constructed guard without pumping a widget — which is what
+  /// `custom_example_test.dart` does, once per state. The annotation is
+  /// the tell: were the point to let tests *replace* the resolution by
+  /// subclassing, this would be `@visibleForOverriding`.
   @visibleForTesting
   TomAuthState resolveAuthState() {
     final effectiveScope = scope ?? TomScope.current;
