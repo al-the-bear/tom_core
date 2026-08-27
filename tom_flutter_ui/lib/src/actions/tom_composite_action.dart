@@ -18,7 +18,7 @@ import 'tom_action_transaction.dart';
 ///     TomCompositeStep(
 ///       action: saveAction,
 ///       contextBuilder: () => SaveContext(...),
-///       guard: () => form.isValid,
+///       guard: () => form.isDirty,
 ///     ),
 ///     TomCompositeStep(
 ///       action: closeAction,
@@ -27,6 +27,12 @@ import 'tom_action_transaction.dart';
 ///   ],
 /// );
 /// ```
+///
+/// The guard above asks `isDirty` rather than `isValid` because `isValid`
+/// means "validation has run and passed" — a form the user never touched is
+/// pristine, and pristine is not success, so an `isValid` guard would block
+/// the save step on a perfectly valid form. Guard on "is there anything to
+/// do" and let the step's own action reject bad data.
 class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
   /// The steps to execute in order.
   final List<TomCompositeStep> steps;

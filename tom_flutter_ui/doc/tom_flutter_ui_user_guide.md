@@ -299,9 +299,12 @@ form.bind(appState.address);
 
 // Query state as the user edits
 form.isDirty;  // true if any field changed from its bound value
-form.isValid;  // true if all validators pass
+form.isValid;  // true only once validation has RUN and passed — a freshly
+               // bound form is pristine, so this is false even when the data
+               // is fine. Gate a Save button on isDirty, not on this.
 
-// Validate and write the edited values back into the bound Address
+// Validate and write the edited values back into the bound Address.
+// save() validates first, so it is safe on a never-validated form.
 if (await form.save()) {
   // all fields valid; appState.address now holds the edited values
 }

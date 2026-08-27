@@ -304,7 +304,6 @@ TomElevatedButton(
     resolve: (currentAuth, _) {
       if (currentAuth == TomAuthState.none) return currentAuth; // stay hidden
       if (!form.isDirty)  return TomAuthState.disabled;         // nothing to save
-      if (!form.isValid)  return TomAuthState.disabled;         // can't save yet
       return currentAuth;                                       // pass through
     },
   ),
@@ -317,8 +316,18 @@ TomElevatedButton(
 Read top-to-bottom: resource says `full` → action authorizer confirms
 the user has save permission (still `full`) → controller checks the
 form and narrows to `disabled` because nothing has changed yet →
-button paints greyed. Flip a field, fix any errors, the same path
-returns `full` and the button lights up.
+button paints greyed. Flip a field and the same path returns `full`,
+so the button lights up.
+
+**Lane 2 gates on `isDirty`, not on `isValid`, and that is deliberate.**
+`isValid` means "validation has run and passed": every field starts
+`ValidationPristine`, pristine is not success, and editing a field clears
+only *that* field's state. A button also gated on `isValid` would therefore
+stay disabled until the user had touched every field in the form — and go
+dark again the moment they saved, because `commit()` returns the fields to
+pristine. Let `save()` reject bad data instead: it runs a full `validate()`
+before writing and returns `false`, so nothing is lost by letting the user
+press the button. See `doc/forms.md` § "Data model".
 
 Because `uiStateController` only narrows, the authorizer stays
 authoritative for the "hide the button entirely" direction — even if

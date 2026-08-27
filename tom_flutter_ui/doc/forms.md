@@ -52,6 +52,31 @@ its fields. `bind(T)` attaches a data object, edits flow through the fields,
 committing baselines so the fields are no longer dirty); `discard()` resets.
 `isDirty` and `isValid` aggregate the field states.
 
+**`isValid` means "validation has run and passed", not "the data is
+acceptable".** A field starts at `ValidationPristine`, and pristine is
+deliberately not success — so a form freshly bound to entirely valid data
+reports `isValid == false`. A field leaves pristine only when the user edits it
+(`setValue`), when `validate()` forces it, or when it was declared
+`autoValidate: true`. Editing one field clears that field alone, so a
+multi-field form stays `isValid == false` until every field has been touched.
+`commit()` returns fields to pristine, which means a successful `save()` also
+returns `isValid` to `false`.
+
+**So do not gate a Save button on `isValid`** — it would be disabled until the
+user has touched every field, and disabled again the moment they save. Gate on
+`isDirty` ("nothing to save") and let `save()` decide: it runs a full
+`validate()` of its own before committing anything and returns `false` if the
+data is bad, so it is safe to call on a form that has never been validated.
+
+```dart
+onPressed: form.isDirty ? () async {
+  if (!await form.save()) showErrors(form.fieldsWithErrors);
+} : null,
+```
+
+Reach for `isValid` when you genuinely mean "has this form been checked and
+passed" — reporting status after a validation pass, for instance.
+
 `TomField<T>` is the unit of state and is fully usable without rendering:
 
 ```dart

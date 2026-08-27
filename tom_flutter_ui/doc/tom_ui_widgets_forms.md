@@ -4446,7 +4446,7 @@ Extend the existing `TomForm<T>` per §5:
 |----------|-------------|
 | `implements TomActionController` | Action integration for save/discard/custom |
 | `bind(T target)` | Takes a `TomClass` instance. Calls `target.getValues()` → `setValues(values)` (inherited from `TomClass`) → `commit()` all fields → `onBound()` hook. Stores `_initialSnapshot`. |
-| `save()` → `bool` | Returns `false` if `!isValid`. Otherwise: `onSaving()` → `_binding.setValues(getValues())` → `commit()` all fields → `onSaved()` → returns `true` |
+| `save()` → `bool` | Runs `validate()` itself and returns `false` if it reports errors — it does not consult `isValid`, so it is safe on a never-validated form. Otherwise: `onSaving()` → `_binding.setValues(getValues())` → `commit()` all fields → `onSaved()` → returns `true` |
 | `discard()` | `onDiscarding()` → `reset()` all fields → `onDiscarded()` |
 | `validate()` → `Future<List<FormValidationError>>` | Validates all fields in parallel, then runs `validateForm()` cross-field validation only if all fields passed. Returns aggregated errors (empty list = success). |
 | `validateForm()` → `Future<List<FormValidationError>>` | Override hook for cross-field validation. Default: returns empty list. |
