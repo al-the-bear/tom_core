@@ -148,6 +148,23 @@ Three content forms, and a reference may carry more than one:
 `toSource()` produces the `TomFileSource` an upload needs from whichever form
 is present, and throws when there is nothing to send.
 
+### What `path` does
+
+`TomPickedFile` has a fourth field the adaptor above sets and `FileRef` has no
+counterpart for: `path`. It is not a content form but a way to *obtain* one.
+When a pick carries no `open` — which is the normal case, since most picker
+plugins return a path and nothing else — `toFileRef` opens that path lazily
+into a `source`, so a 400 MB choice is never read into memory here, and asks
+the filesystem for the size when the picker did not report one. An explicit
+`open` always wins; the path is only the fallback.
+
+On the web there are no paths, so both operations return `null` and the
+reference falls back to the picker's `bytes` — the one place in the module that
+needs a conditional import rather than a runtime check, because `dart:io`
+cannot be *compiled* for the web at all. A pick with a path that leads nowhere
+takes the same route, which is what makes a stale path harmless rather than an
+upload of zero bytes.
+
 ## Slots, not keys
 
 A field addresses an application-owned **slot** — `invoices/4711/scan` — and
