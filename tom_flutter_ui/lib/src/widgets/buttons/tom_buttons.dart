@@ -2211,6 +2211,14 @@ class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
   @override
   final TomScope? scope;
 
+  /// Optional per-widget authorizer, applied after the group's mode.
+  @override
+  final TomAuthorizer? authorizer;
+
+  /// Optional build-time UI-state controller, applied last.
+  @override
+  final TomUIStateController? uiStateController;
+
   /// Creates a Tom SnackBarAction with optional resource resolution.
   ///
   /// If [label] is null and [tomId] is provided, resolves the label from
@@ -2220,6 +2228,8 @@ class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.uiStateController,
     Color? textColor,
     Color? disabledTextColor,
     String? label,

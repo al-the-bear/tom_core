@@ -1887,6 +1887,12 @@ class TomExpansionPanel {
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;
 
+  /// Optional per-panel authorizer, applied after the group's mode.
+  final TomAuthorizer? authorizer;
+
+  /// Optional build-time UI-state controller, applied last.
+  final TomUIStateController? uiStateController;
+
   /// Callback that builds the header widget.
   final ExpansionPanelHeaderBuilder headerBuilder;
 
@@ -1912,6 +1918,8 @@ class TomExpansionPanel {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.uiStateController,
     required this.headerBuilder,
     required this.body,
     this.isExpanded = false,
@@ -1934,12 +1942,16 @@ class TomExpansionPanel {
         tomId: tomId,
         tomGroup: tomGroup,
         scope: scope,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
         child: headerBuilder(context, isExpanded),
       ),
       body: TomAuthGate(
         tomId: tomId,
         tomGroup: tomGroup,
         scope: scope,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
         child: body,
       ),
       isExpanded: isExpanded,

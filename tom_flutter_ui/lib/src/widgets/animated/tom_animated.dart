@@ -619,11 +619,21 @@ class TomAnimatedPositioned extends AnimatedPositioned with TomWidgetMixin {
   @override
   final TomScope? scope;
 
+  /// Optional per-widget authorizer, applied after the group's mode.
+  @override
+  final TomAuthorizer? authorizer;
+
+  /// Optional build-time UI-state controller, applied last.
+  @override
+  final TomUIStateController? uiStateController;
+
   TomAnimatedPositioned({
     super.key,
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.uiStateController,
     Widget? child,
     double? left,
     double? top,
@@ -639,6 +649,8 @@ class TomAnimatedPositioned extends AnimatedPositioned with TomWidgetMixin {
             tomId: tomId,
             tomGroup: tomGroup,
             scope: scope,
+            authorizer: authorizer,
+            uiStateController: uiStateController,
             child: child ??
                 TomCtr.defaultTextOrEmpty(
                     TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
@@ -683,11 +695,21 @@ class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional
   @override
   final TomScope? scope;
 
+  /// Optional per-widget authorizer, applied after the group's mode.
+  @override
+  final TomAuthorizer? authorizer;
+
+  /// Optional build-time UI-state controller, applied last.
+  @override
+  final TomUIStateController? uiStateController;
+
   TomAnimatedPositionedDirectional({
     super.key,
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.uiStateController,
     Widget? child,
     double? start,
     double? top,
@@ -703,6 +725,8 @@ class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional
             tomId: tomId,
             tomGroup: tomGroup,
             scope: scope,
+            authorizer: authorizer,
+            uiStateController: uiStateController,
             child: child ??
                 TomCtr.defaultTextOrEmpty(
                     TomCtr.childTomId(tomId, 'child'), scope, tomGroup),

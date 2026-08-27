@@ -162,9 +162,31 @@ differently:
   `effectiveAuthState` and returns `null` instead of showing a bar that
   resolves to `TomAuthState.none`.
 
-`TomAuthGate.resolve(tomId: ..., tomGroup: ..., scope: ...)` answers the same
-question without building anything — it is what `TomDataRow.authState` and
-`TomDataColumn.authState` call.
+All eight wrappers accept `authorizer` and `uiStateController` beside
+`tomId`/`tomGroup`/`scope` and hand all five to the gate, so the layer count
+does not depend on which kind of wrapper you happen to be holding:
+
+```dart
+TomDataCell(
+  tomId: 'salary',
+  authorizer: TomAuthorizer(resolve: (_) => TomAuthState.disabled),
+  child: Text(employee.salary),
+);
+```
+
+Both extra layers narrow only: an `authorizer` answering `full` under a `none`
+resource rule leaves the slot hidden, and a `uiStateController` can never
+widen what the layers before it decided.
+
+`TomAuthGate.resolve(...)` takes the same five inputs and answers the question
+without building anything — it is what `TomDataCell.authState`,
+`TomDataRow.authState` and `TomDataColumn.authState` call, including from
+`TomDataCell.empty`, which renders nothing but still reports.
+
+A gate with all four of `tomId`, `tomGroup`, `authorizer` and
+`uiStateController` unset returns its `child` untouched: nothing to look up
+and nobody to ask means nothing to narrow. Any one of them being present is
+enough to make the gate resolve.
 
 ## Typed resource resolution
 

@@ -505,6 +505,14 @@ class TomSnackBar extends SnackBar with TomWidgetMixin {
   @override
   final TomScope? scope;
 
+  /// Optional per-widget authorizer, applied after the group's mode.
+  @override
+  final TomAuthorizer? authorizer;
+
+  /// Optional build-time UI-state controller, applied last.
+  @override
+  final TomUIStateController? uiStateController;
+
   /// Creates a Tom SnackBar with optional resource resolution.
   ///
   /// If [content] is null and [tomId] is provided, creates a default
@@ -514,6 +522,8 @@ class TomSnackBar extends SnackBar with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.uiStateController,
     Widget? content,
     Color? backgroundColor,
     double? elevation,
@@ -537,6 +547,8 @@ class TomSnackBar extends SnackBar with TomWidgetMixin {
             tomId: tomId,
             tomGroup: tomGroup,
             scope: scope,
+            authorizer: authorizer,
+            uiStateController: uiStateController,
             child: content ??
                 TomCtr.defaultTextOrEmpty(
                     TomCtr.childTomId(tomId, 'content'), scope, tomGroup),

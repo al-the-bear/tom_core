@@ -3,11 +3,22 @@
 ### Added
 
 - **`TomAuthGate`** (`groups/`) — a one-child widget that resolves a
-  `tomId` / `tomGroup` / `scope` through `TomWidgetMixin` and applies the
-  result to its child. It exists for the wrappers that cannot resolve their
-  own authorization, and it promotes a private helper that `tables/` had
-  already invented for that purpose into the shared, correct version.
-  `TomAuthGate.resolve(...)` answers the same question without building.
+  `tomId` / `tomGroup` / `scope` / `authorizer` / `uiStateController` through
+  `TomWidgetMixin` and applies the result to its child. It exists for the
+  wrappers that cannot resolve their own authorization, and it promotes a
+  private helper that `tables/` had already invented for that purpose into the
+  shared, correct version. `TomAuthGate.resolve(...)` takes the same five
+  inputs and answers the same question without building.
+- **`authorizer` and `uiStateController` parameters on the eight wrappers that
+  gate a slot** — `TomDataCell` (both constructors), `TomDataColumn`,
+  `TomDataRow`, `TomExpansionPanel`, `TomSnackBar`, `TomSnackBarAction`,
+  `TomAnimatedPositioned` and `TomAnimatedPositionedDirectional`. They now
+  present the same authorization surface as every other Tom widget rather than
+  one layer of four.
+- **`TomDataCell.authState` / `isVisible` / `isReadonly`**, matching
+  `TomDataColumn` and `TomDataRow`. `TomDataCell.empty` renders nothing either
+  way, but now answers the same question from the same four layers instead of
+  feeding its inputs to `basePath` alone.
 
 ### Changed
 
@@ -38,6 +49,13 @@
   instead: `TomDataRow` (a `DataTable` demands one cell per column from every
   row) reports for the caller to filter on, and `TomSnackBar` is declined at
   the point of presentation.
+- **A `disabled` gated slot was rendered as if it were `full`.**
+  `TomAuthState.disabled.isVisible` is true, so the "hide if not visible, else
+  dim if read, else pass through" shape the replaced helper used let a disabled
+  cell render fully interactive. Routing through `TomAuthGate` applies the
+  theme's disabled treatment — dimmed and pointer-absorbing — for all four
+  states rather than three. `test/widgets/wrapper_auth_layers_test.dart` pins
+  it, along with both narrowing layers.
 - **A plain `TomCupertinoSearchTextField()` can be constructed again.** Its
   placeholder resolved through an unguarded `TomCtr.textOrFail` into a
   non-nullable `String`, so a search box with no `placeholder` and no `tomId`

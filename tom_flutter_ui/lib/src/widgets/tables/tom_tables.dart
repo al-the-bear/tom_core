@@ -561,6 +561,7 @@ class TomReorderableListView extends TomTableBase {
 /// Authorization is checked at render time via an internal wrapper widget.
 ///
 /// - **Hidden**: Cell content renders as empty
+/// - **Disabled**: Cell content is dimmed and absorbs pointer events
 /// - **Readonly**: Cell content has readonly styling, interactions disabled
 /// - **Full access**: Normal rendering and behavior
 ///
@@ -588,6 +589,12 @@ class TomDataCell extends DataCell {
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;
 
+  /// Optional per-cell authorizer, applied after the group's mode.
+  final TomAuthorizer? authorizer;
+
+  /// Optional build-time UI-state controller, applied last.
+  final TomUIStateController? uiStateController;
+
   /// The resolved canonical resource base path.
   final String? basePath;
 
@@ -600,6 +607,8 @@ class TomDataCell extends DataCell {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.uiStateController,
     Widget? child,
     bool placeholder = false,
     bool showEditIcon = false,
@@ -614,6 +623,8 @@ class TomDataCell extends DataCell {
             tomId: tomId,
             tomGroup: tomGroup,
             scope: scope,
+            authorizer: authorizer,
+            uiStateController: uiStateController,
             child: child ??
                 TomCtr.defaultTextOrEmpty(
                     TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
@@ -628,9 +639,37 @@ class TomDataCell extends DataCell {
         );
 
   /// Creates an empty/placeholder cell.
-  TomDataCell.empty({this.tomId, this.tomGroup, this.scope})
-      : basePath = TomCtr.resolvePath(tomId, scope),
+  ///
+  /// An empty cell renders nothing either way, so gating its slot would be
+  /// pointless — but it accepts the same authorization inputs as the full
+  /// constructor, and [authState] answers from all four of them, so a caller
+  /// can ask an empty cell the same question it asks any other.
+  TomDataCell.empty({
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    this.authorizer,
+    this.uiStateController,
+  })  : basePath = TomCtr.resolvePath(tomId, scope),
         super(const SizedBox.shrink(), placeholder: true);
+
+  /// The authorization state this cell resolves to.
+  ///
+  /// Answered by [TomAuthGate.resolve], the same resolver the content slot
+  /// uses, so every layer counts here exactly as it does inside the gate.
+  TomAuthState get authState => TomAuthGate.resolve(
+        tomId: tomId,
+        tomGroup: tomGroup,
+        scope: scope,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+
+  /// Returns true if this cell's content is rendered at all.
+  bool get isVisible => authState.isVisible;
+
+  /// Returns true if this cell should be readonly based on authorization.
+  bool get isReadonly => authState == TomAuthState.read;
 }
 
 /// Tom extension of [DataColumn] with built-in authorization and resource resolution.
@@ -639,6 +678,7 @@ class TomDataCell extends DataCell {
 /// Authorization is checked at render time via an internal wrapper widget.
 ///
 /// - **Hidden**: Column header renders as empty (column still takes space)
+/// - **Disabled**: Column header is dimmed and absorbs pointer events
 /// - **Readonly**: Column header has readonly styling
 /// - **Full access**: Normal rendering
 ///
@@ -666,6 +706,12 @@ class TomDataColumn extends DataColumn {
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;
 
+  /// Optional per-column authorizer, applied after the group's mode.
+  final TomAuthorizer? authorizer;
+
+  /// Optional build-time UI-state controller, applied last.
+  final TomUIStateController? uiStateController;
+
   /// The resolved canonical resource base path.
   final String? basePath;
 
@@ -678,6 +724,8 @@ class TomDataColumn extends DataColumn {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.uiStateController,
     Widget? label,
     String? tooltip,
     super.numeric = false,
@@ -689,6 +737,8 @@ class TomDataColumn extends DataColumn {
             tomId: tomId,
             tomGroup: tomGroup,
             scope: scope,
+            authorizer: authorizer,
+            uiStateController: uiStateController,
             child: label ??
                 TomCtr.defaultTextOrEmpty(
                     TomCtr.childTomId(tomId, 'label'), scope, tomGroup),
@@ -705,10 +755,14 @@ class TomDataColumn extends DataColumn {
   /// The authorization state this column resolves to.
   ///
   /// Answered by [TomAuthGate.resolve], the same resolver the header slot
-  /// uses, so a group ceiling and an explicit [scope] count here exactly as
-  /// they do inside the gate.
-  TomAuthState get authState =>
-      TomAuthGate.resolve(tomId: tomId, tomGroup: tomGroup, scope: scope);
+  /// uses, so every layer counts here exactly as it does inside the gate.
+  TomAuthState get authState => TomAuthGate.resolve(
+        tomId: tomId,
+        tomGroup: tomGroup,
+        scope: scope,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
 
   /// Returns true if this column should be visible based on authorization.
   ///
@@ -752,6 +806,12 @@ class TomDataRow extends DataRow {
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;
 
+  /// Optional per-row authorizer, applied after the group's mode.
+  final TomAuthorizer? authorizer;
+
+  /// Optional build-time UI-state controller, applied last.
+  final TomUIStateController? uiStateController;
+
   /// The resolved canonical resource base path.
   final String? basePath;
 
@@ -760,6 +820,8 @@ class TomDataRow extends DataRow {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.uiStateController,
     super.key,
     super.selected = false,
     super.onSelectChanged,
@@ -773,10 +835,14 @@ class TomDataRow extends DataRow {
   /// The authorization state this row resolves to.
   ///
   /// Answered by [TomAuthGate.resolve], so a row reports from the same
-  /// resolver its cells gate with — a group ceiling and an explicit [scope]
-  /// included.
-  TomAuthState get authState =>
-      TomAuthGate.resolve(tomId: tomId, tomGroup: tomGroup, scope: scope);
+  /// resolver its cells gate with — every layer included.
+  TomAuthState get authState => TomAuthGate.resolve(
+        tomId: tomId,
+        tomGroup: tomGroup,
+        scope: scope,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
 
   /// Returns true if this row should be visible based on authorization.
   ///

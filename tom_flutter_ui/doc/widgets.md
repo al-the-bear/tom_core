@@ -208,6 +208,22 @@ group mode, and constructing a widget inside `TomScope.withScope('settings', …
 prefixes its `basePath` (`settings.<tomId>`) — see [groups](groups.md) and
 [widget_base](widget_base.md) for the full resolution rules.
 
+A handful of wrappers cannot be policy nodes at all — `TomDataCell`,
+`TomDataColumn`, `TomDataRow` and `TomExpansionPanel` extend Flutter classes
+that are not widgets, and `TomSnackBar`, `TomSnackBarAction`,
+`TomAnimatedPositioned` and `TomAnimatedPositionedDirectional` extend widgets
+whose `State` is framework-private. They accept the same four inputs
+(`tomId`/`tomGroup`/`scope`, `authorizer`, `uiStateController`) and put a
+[`TomAuthGate`](groups.md#tomauthgate) in the slot they own, so they compose
+the same four layers and get the same four treatments — a `disabled` cell is
+dimmed and unclickable, not merely visible. The two whose extent Flutter fixes
+before they can hide report instead of rendering: filter `TomDataRow` and
+`TomDataColumn` on `isVisible`, and `TomMessenger` declines a `none`
+`TomSnackBar` at the moment of presentation. `TomDataCell.empty` renders
+nothing either way but answers `authState` from all four layers like the rest.
+`test/widgets/wrapper_auth_layers_test.dart` pins the treatments and both
+narrowing layers.
+
 ## Dependencies
 
 - `package:flutter/material.dart` + `package:flutter/cupertino.dart` — the

@@ -38,8 +38,10 @@ import 'tom_widget_mixin.dart';
 class TomAuthGate extends StatelessWidget with TomWidgetMixin {
   /// Wraps [child] in this widget's authorization.
   ///
-  /// [tomId] may be null, in which case there is no path to resolve and [child]
-  /// is returned untouched — a gate with nothing to look up must not narrow.
+  /// [tomId] may be null; a gate with no resource path still applies whatever
+  /// [tomGroup], [authorizer] and [uiStateController] say. Only a gate with
+  /// none of the four returns [child] untouched — nothing to look up and
+  /// nobody to ask means nothing to narrow.
   const TomAuthGate({
     super.key,
     required this.tomId,
@@ -68,6 +70,18 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
   /// The subtree this gate governs.
   final Widget child;
 
+  /// Whether any of the four layers has something to say about this slot.
+  ///
+  /// All four are checked, not just [tomId] and [tomGroup]: an [authorizer] or
+  /// a [uiStateController] narrows on its own, without a resource path to
+  /// start from, so a gate carrying either is configured even when it
+  /// addresses no resource.
+  bool get _isConfigured =>
+      tomId != null ||
+      tomGroup != null ||
+      authorizer != null ||
+      uiStateController != null;
+
   /// The state a gate with these inputs would apply, without building one.
   ///
   /// `DataRow` and `DataColumn` decide their own visibility *before* the table
@@ -79,22 +93,23 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
     required String? tomId,
     TomAuthorizationGroup? tomGroup,
     TomScope? scope,
-  }) {
-    if (tomId == null && tomGroup == null) return TomAuthState.full;
-    return TomAuthGate(
-      tomId: tomId,
-      tomGroup: tomGroup,
-      scope: scope,
-      child: const SizedBox.shrink(),
-    ).getAuth();
-  }
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) =>
+      TomAuthGate(
+        tomId: tomId,
+        tomGroup: tomGroup,
+        scope: scope,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+        child: const SizedBox.shrink(),
+      ).getAuth();
 
   @override
   Widget build(BuildContext context) {
-    // No id and no group means nothing was ever configured for this slot, so
-    // there is no rule to apply. Checked before getAuth() rather than relying
-    // on it returning full: a group with no tomId is still a real ceiling.
-    if (tomId == null && tomGroup == null) return child;
+    // Nothing configured means there is no rule to apply, so the child is
+    // returned as it came — untouched, not merely resolved to `full`.
+    if (!_isConfigured) return child;
     final hidden = checkHidden();
     if (hidden != null) return hidden;
     return applyAuthState(context, child);
