@@ -337,6 +337,88 @@ and `TomMasterDetailListForm`, with supporting widgets (toolbar, move/reorder
 controls). They fire the `ListItem*` events above so the surrounding UI can
 react to structural changes.
 
+A list-form is declared beside the parent's fields and bound to a `TomList`
+member of the parent's business object when that object arrives:
+
+```dart
+class OrderForm extends TomForm<Order> {
+  OrderForm() : super(formId: 'order');
+
+  late final orderNumber = TomFormStringInput('orderNumber', '', form: this);
+
+  late final items = TomListForm<OrderItem, OrderItemForm>(
+    listId: 'items',
+    formFactory: (index) => OrderItemForm(),
+    parentForm: this,
+  );
+
+  @override
+  void onBound() => items.bind(currentBinding!.items);
+}
+```
+
+Two things about that declaration are easy to get wrong:
+
+- **`parentForm` is what makes the list part of the parent's lifecycle.** A
+  `TomListForm` is not a `TomObject`, so the parent's reflective member scan
+  cannot find it the way it finds fields; passing `parentForm` registers it
+  explicitly, and only then do the parent's `validate` / `save` / `discard` /
+  `isDirty` / `unbind` fan out into the rows, and only then do the `ListItem*`
+  events bubble onto the parent's bus.
+- **Every row sub-form shares the list's `listId` as its `formId`**, by
+  convention rather than by accident: resource lookups resolve to
+  `order.items.quantity.label` for every row instead of one indexed key per
+  item, so a caption is written once and a hundred rows show it.
+
+### `createItem` is required as soon as the list is bound
+
+`add()` and `insert()` always create a sub-form, but against a *bound* list they
+must also create the business object that sub-form will wrap — and only the
+application knows how to make one. `TomListForm.createItem()` therefore throws
+`UnsupportedError` by default:
+
+```dart
+class OrderItemListForm extends TomListForm<OrderItem, OrderItemForm> {
+  OrderItemListForm({TomForm? parentForm})
+      : super(
+          listId: 'items',
+          formFactory: (index) => OrderItemForm(),
+          parentForm: parentForm,
+        );
+
+  @override
+  OrderItem createItem() => OrderItem();
+}
+```
+
+The override is only needed for that one path. A list-form that is never bound
+— or one whose rows are all pre-instantiated in the bound list before `bind()`
+— never reaches `createItem`, which is why the omission usually surfaces late,
+the first time a user presses **Add**.
+
+The matching list-level validation hook is `validateList()`, which returns
+resource keys rather than `FormValidationError`s and runs after every row has
+validated; it is where "at least one item" and cross-row duplicate checks go.
+
+### Authorization is per list, not per row
+
+`TomListFormToolbar` gates itself on a `TomPolicyNodeBase` at its base path —
+`none` hides the toolbar, `disabled` greys every button, `read` gives readonly
+treatment — and each button then consults its own sub-resource
+(`<basePath>.add`, `.remove`, `.moveUp`, `.moveDown`), where `none` hides it
+whatever `showAdd`/`showRemove`/… said and `disabled` or `read` renders it
+without an `onPressed`.
+
+That decision is taken once for the toolbar, so it applies to *every* row:
+per-row authorization is not supported by design. To vary access by row,
+authorize the individual fields of the row sub-form through the field widgets
+themselves.
+
+See [`tom_ui_list_forms.md`](tom_ui_list_forms.md) for the full treatment —
+lifecycle and dirty propagation, the three renderers side by side and how to
+choose between them, nested lists, and the patterns the layer deliberately does
+not solve.
+
 ## Dependencies
 
 - `package:flutter/material.dart` / `package:flutter/cupertino.dart` — the two

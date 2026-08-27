@@ -47,22 +47,30 @@ A `TomForm<T>` binds to a single `TomClass` instance. When the bound class has a
 **File:** `lib/src/forms/list/tom_list_form.dart`
 
 ```dart
-abstract class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
-    extends TomChildContainer
-    implements TomFormChild
+class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
+    extends TomObservable
+    implements TomFormEventSource, TomFormChildContainer,
+        TomListLifecycleListener
 ```
 
 A `TomListForm` is declared inside a parent `TomForm` and bound to a `TomList<TItem>` member of the parent's bound class:
 
 ```dart
 class OrderForm extends TomForm<Order> {
+  OrderForm() : super(formId: 'order');
+
   late final items = TomListForm<OrderItem, OrderItemForm>(
-    parent: this,
-    listFieldId: 'items',
-    formFactory: () => OrderItemForm(),
+    listId: 'items',
+    formFactory: (index) => OrderItemForm(),
+    parentForm: this,
   );
+
+  @override
+  void onBound() => items.bind(currentBinding!.items);
 }
 ```
+
+`parentForm` is not optional in practice. A `TomListForm` extends `TomObservable` rather than `TomObject`, so the parent's reflective member scan cannot discover it the way it discovers fields — passing `parentForm` registers it explicitly, and only then do the parent's `validate` / `save` / `discard` / `isDirty` / `unbind` fan out into the rows and the structural events bubble onto the parent's bus.
 
 ### Public API surface
 
@@ -71,18 +79,26 @@ class OrderForm extends TomForm<Order> {
 | `int get length` | Current row count. |
 | `TForm operator [](int index)` | Row sub-form at `index`. |
 | `List<TForm> get forms` | Read-only view of all row sub-forms. |
-| `TForm add()` | Append a new row (creates a new `TItem`, binds it). |
-| `TForm insert(int index)` | Insert at `index`. |
+| `bool get isEmpty` / `isNotEmpty` | Row-count predicates. |
+| `TForm add()` | Append a new row. Against a bound list, creates a new `TItem` via `createItem` and binds it. |
+| `TForm insert(int index)` | Insert at `index`; same binding semantics as `add`. |
 | `void removeAt(int index)` | Remove the row at `index`. |
+| `bool remove(TForm form)` | Remove a row by identity; `false` if it is not in the list. |
 | `void move(int from, int to)` | Reorder. |
 | `void reorder(int from, int to)` | Alias of `move`. |
+| `void bind(TomList<TItem> items)` | Bind to the parent object's list; builds one sub-form per element. |
+| `TItem createItem()` | **Override required** before `add`/`insert` against a bound list — the default throws `UnsupportedError`. |
 | `bool get hasStructuralChanges` | True if the list membership/order differs from the snapshot. |
 | `bool get isDirty` | True if any row is dirty OR `hasStructuralChanges`. |
-| `Future<List<FormValidationError>> validate()` | Validate every row, then run `validateList`. |
-| `Future<bool> save()` | Validate; on success, snapshot every row and `hasStructuralChanges → false`. |
+| `bool get isValid` | True if every row sub-form is currently valid. |
+| `Future<List<FormValidationError>> validate()` | Validate every row, then run `validateList`; fires `FormValidatedEvent`. |
+| `Future<List<String>> validateList()` | List-level validation hook. Override for row-count or cross-row rules; returns resource keys. Default empty. |
+| `Future<bool> save({bool? commitBaselines})` | Validate; on success, snapshot every row and `hasStructuralChanges → false`. `commitBaselines` mirrors `TomForm.save`'s policy; `null` auto-detects nesting. |
 | `void discard()` | Restore membership, order, and per-row contents to the last save/bind snapshot. |
 | `void unbind()` | Tear down all row sub-forms; reset state. |
+| `void addListener(TomFormEventListener)` / `removeListener(...)` | Subscribe to this list's own event bus. |
 | `void addObserver(TomObserver)` / `removeObserver(...)` | Receive notifications on any structural or per-row change. |
+| `void dispose()` | Release sub-forms and observers. |
 
 ### Events on the parent's bus
 
@@ -91,7 +107,7 @@ class OrderForm extends TomForm<Order> {
 - `ListItemAddedEvent { itemFormId, index }`
 - `ListItemRemovedEvent { itemFormId, index }`
 - `ListItemReorderedEvent { itemFormId, fromIndex, toIndex }`
-- `FormValidatedEvent { source, errors }` — one per row + one with `source == listFieldId` aggregating list-level errors.
+- `FormValidatedEvent { source, errors }` — one per row + one with `source == listId` aggregating list-level errors.
 
 ---
 

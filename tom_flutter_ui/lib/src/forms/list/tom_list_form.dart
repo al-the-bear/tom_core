@@ -38,14 +38,20 @@ import '../validation/form_validation_error.dart';
 ///   late final items = TomListForm<OrderItem, OrderItemForm>(
 ///     listId: 'items',
 ///     formFactory: (i) => OrderItemForm(),
+///     parentForm: this,
 ///   );
 ///
 ///   @override
 ///   void onBound() {
-///     items.bind((_binding! as Order).items);
+///     items.bind(currentBinding!.items);
 ///   }
 /// }
 /// ```
+///
+/// Passing [parentForm] is what enrols the list in the parent's lifecycle
+/// and event bus — see the constructor. Calling [add] or [insert] against a
+/// *bound* list additionally requires [createItem] to be overridden, since
+/// only the application can instantiate a [TItem].
 class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     extends TomObservable
     implements TomFormEventSource, TomFormChildContainer,
