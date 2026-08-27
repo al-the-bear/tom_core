@@ -146,6 +146,22 @@ TomElevatedButton(
 )
 ```
 
+No widget in this package consumes `TomButtonVariants` — the snippet above is
+application code, not an internal wiring. That is a decision, not a gap: the
+button family already takes a plain `ButtonStyle`, and this produces one, so a
+`variant:` parameter would only add a second spelling of what `style:` says.
+Read it as a convenience for callers, on the same footing as writing the
+`ElevatedButton.styleFrom` call yourself.
+
+The four variants are computed once per instance rather than per read. Each is
+a pure function of the `ColorScheme` the instance was built from, and that
+scheme never changes for a given instance — so the idiom above, which reads a
+variant inside `build`, no longer allocates a fresh `ButtonStyle` per button
+per frame for a value that could not have differed from the last one. Reading
+the same variant twice returns the identical object. The instance itself is
+still cheap and short-lived: `of(context)` builds a new one on each call, so
+hold it in a local if a `build` needs several variants.
+
 ## How it connects to `widget_base`
 
 `theme/` is consumed by Tom's two authorization enforcement points, which is

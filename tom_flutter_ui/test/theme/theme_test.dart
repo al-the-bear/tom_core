@@ -251,8 +251,8 @@ void main() {
     });
   });
 
-  group('TomButtonVariants.fromColorScheme', () {
-    test('derives variant colours from the scheme', () {
+  group('TomButtonVariants', () {
+    test('fromColorScheme derives variant colours from the scheme', () {
       const scheme = ColorScheme.light();
       final v = TomButtonVariants.fromColorScheme(scheme);
       expect(v.primary.backgroundColor?.resolve(<WidgetState>{}),
@@ -263,6 +263,47 @@ void main() {
           scheme.primary);
       expect(v.auxiliary.foregroundColor?.resolve(<WidgetState>{}),
           scheme.onSurfaceVariant);
+    });
+
+    // `of(context)` is the form every doc snippet uses and the only one that
+    // touches `Theme.of`, yet the case above reaches the same styles through
+    // the other factory — leaving the ambient lookup, the half that can
+    // actually resolve against the wrong scheme, with nothing behind it.
+    testWidgets('of resolves against the ambient Theme', (tester) async {
+      // Deliberately not `ColorScheme.light()`: sharing the default with the
+      // case above would let `of` read *any* scheme and still match.
+      final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF00695C));
+      late TomButtonVariants seen;
+
+      await tester.pumpWidget(MaterialApp(
+        theme: ThemeData(colorScheme: scheme),
+        home: Builder(builder: (context) {
+          seen = TomButtonVariants.of(context);
+          return const SizedBox();
+        }),
+      ));
+
+      expect(seen.primary.backgroundColor?.resolve(<WidgetState>{}),
+          scheme.primary);
+      expect(seen.primary.foregroundColor?.resolve(<WidgetState>{}),
+          scheme.onPrimary);
+      expect(seen.destructive.backgroundColor?.resolve(<WidgetState>{}),
+          scheme.error);
+      expect(seen.auxiliary.foregroundColor?.resolve(<WidgetState>{}),
+          scheme.onSurfaceVariant);
+    });
+
+    // The documented idiom puts `of(context).primary` inside `build`, so a
+    // getter that rebuilt its `ButtonStyle` on every read cost one allocation
+    // per button per frame. Each variant is a pure function of the scheme the
+    // instance was built from, so reading it twice must yield the very same
+    // object rather than merely an equal one.
+    test('each variant is computed once per instance', () {
+      final v = TomButtonVariants.fromColorScheme(const ColorScheme.light());
+      expect(identical(v.primary, v.primary), isTrue);
+      expect(identical(v.secondary, v.secondary), isTrue);
+      expect(identical(v.auxiliary, v.auxiliary), isTrue);
+      expect(identical(v.destructive, v.destructive), isTrue);
     });
   });
 

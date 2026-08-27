@@ -54,7 +54,10 @@ hoist a custom builder into a named function rather than writing it inline.
 
 `TomButtonVariants.fromColorScheme(scheme).primary` yields a ready
 `ButtonStyle` for the primary action; `TomButtonVariants.of(context)` reads the
-ambient set.
+ambient set. Each variant is built once per instance, so reading one inside a
+`build` method costs nothing after the first call. Nothing in this package
+consumes it — the buttons take a plain `ButtonStyle` and this only builds one,
+so it is a convenience for application code by design.
 
 ---
 
