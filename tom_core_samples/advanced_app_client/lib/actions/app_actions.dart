@@ -10,10 +10,11 @@
 ///   [TomAction.authorizer] resolves that path through the global
 ///   [TomAuthorization]. The screen hands the button that same authorizer, so
 ///   the control's enablement is driven by the action's grant, not by ad-hoc
-///   screen logic. No authorization adapter is installed, so these action paths
-///   resolve to the framework's permissive default (`full`) — field-level
-///   presence gating (which the item screen drives via per-field grades) owns
-///   visibility.
+///   screen logic. The adapter the session installs at login
+///   (`AppResourceRoleAdapter`) gates only `<type>:<id>` resource keys, and an
+///   action path is dotted — so these paths take its permissive branch
+///   (`full`), and field-level presence gating (which the item screen drives
+///   via per-field grades) owns visibility.
 /// - **A single async bridge.** [TomAction.execute] is synchronous, but the
 ///   backend seam is `Future`-based. Each action launches its guarded async op
 ///   inside the synchronous [TomSimpleAction.executeSimple] and completes the

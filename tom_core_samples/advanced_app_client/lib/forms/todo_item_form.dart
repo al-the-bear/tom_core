@@ -6,8 +6,10 @@
 /// declares its `tomId` directly as a plain `String` (G-RES-6 / G-UI-6 — there
 /// is no resource-key constants class), so every field's `basePath` equals its
 /// wire resource key (`todo.item.title`, …). The screen that builds this form
-/// ([ItemDetailScreen]) stamps each gradable field with its DB-resolved grade
-/// via a per-field fixed authorizer, keyed by that same `basePath`. So the
+/// ([ItemDetailScreen]) resolves the item's resource ceiling through the
+/// installed `AppResourceRoleAdapter`, narrows it by the field's row in the
+/// shared [projectRoleFieldGrades] matrix, and stamps the result on the field
+/// as a fixed authorizer keyed by that same `basePath`. So the
 /// *same* form renders four ways (owner edits everything; editor cannot change
 /// the assignee or estimate; commenter cannot see priority or estimate; viewer
 /// toggles nothing and the status control renders disabled) without the form
@@ -30,8 +32,9 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 @tomReflector
 class TodoItemForm extends TomForm<TodoItem> {
   /// Creates the form. It carries no grade matrix: each field self-addresses as
-  /// its resource key, and the screen stamps that field with its DB-resolved
-  /// grade via a per-field fixed authorizer keyed by `basePath`.
+  /// its resource key, and the screen stamps that field with a fixed authorizer
+  /// keyed by `basePath` — the registry-resolved resource ceiling narrowed by
+  /// the field's per-role grade.
   TodoItemForm() : super(formId: 'item');
 
   /// Title — required free text. Label resolves from `todo.item.title.label` in
