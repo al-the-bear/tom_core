@@ -2132,13 +2132,32 @@ void main() {
       });
     });
 
-    test('toString includes groupId and mode', () {
+    test('toString renders the groupId and the mode, and nothing else', () {
       final group = TomAuthorizationGroup(
         'shipping',
         mode: AuthGroupMode.controlsAll,
       );
-      expect(group.toString(), contains('shipping'));
-      expect(group.toString(), contains('controlsAll'));
+      // Pinned exactly rather than by `contains`, because this string is
+      // documented as the group's debugger/log rendering and a substring
+      // check would let the shape drift out from under that.
+      expect(
+        group.toString(),
+        'TomAuthorizationGroup(shipping, mode: AuthGroupMode.controlsAll)',
+      );
+    });
+
+    test('toString reports no membership, so it stays side-effect free', () {
+      // Deliberately absent: a member count would make `toString` call
+      // `members`, which prunes collected weak references and evaluates
+      // `effectiveAuthState` on every registration. `toString` is what a
+      // debugger and an error formatter call, so it must not resolve
+      // authorization — least of all while an error is already being built.
+      final member = _MutableAuthorizable('a', TomAuthState.full);
+      final group = TomAuthorizationGroup('shipping')..register(member);
+
+      expect(group.toString(),
+          'TomAuthorizationGroup(shipping, mode: AuthGroupMode.controlsWidest)');
+      expect(group.memberCount, 1);
     });
   });
 
