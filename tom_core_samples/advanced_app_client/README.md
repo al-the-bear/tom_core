@@ -117,7 +117,7 @@ the live server.
 `lib/screens/board_screen.dart` is the signed-in home. It cascades the reads in
 `initState` — workspaces → projects → lists → items — each hop guarded through
 `AppSession.guard`, and re-runs from the picker level when the
-workspace/project `DropdownButtonFormField` changes. Items group into one column
+workspace/project `TomDropdownButton` changes. Items group into one column
 per `TodoStatus` (keyed `status-column-<name>`, with a `(count)` header),
 rendered in a horizontally scrollable board. Tapping a card pushes the
 item-detail editor.

@@ -192,13 +192,13 @@ upload, progress, cancel, retry — is the real code path.
 ## Grant matrix
 
 The Grants destination (`lib/screens/grants_screen.dart`) is the four-state
-authorization editor: a `DataTable` of `projectRole` (rows) × field resource key
-(columns), each cell the resolved `TomAuthState` for that pair. Tapping a cell
-cycles it `none → disabled → read → full` (and wraps), building up an edited
-`GrantMatrixDto` locally via `withAccess`; **Save** writes the whole matrix back
-through `putGrants` (`PUT /admin/grants`) and then re-reads it, so the grid after
-a save shows exactly what the backend persisted. Save is offered only while the
-working copy differs from the loaded one.
+authorization editor: a `TomDataTable` of `projectRole` (rows) × field resource
+key (columns), each cell the resolved `TomAuthState` for that pair. Tapping a
+cell cycles it `none → disabled → read → full` (and wraps), building up an
+edited `GrantMatrixDto` locally via `withAccess`; **Save** writes the whole
+matrix back through `putGrants` (`PUT /admin/grants`) and then re-reads it, so
+the grid after a save shows exactly what the backend persisted. Save is offered
+only while the working copy differs from the loaded one.
 
 Like the rest of the console it stays domain-agnostic — it renders whatever role
 keys and resource keys the matrix reports (column headers show the trailing
