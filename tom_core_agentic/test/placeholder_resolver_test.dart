@@ -180,6 +180,84 @@ void main() {
       // Unbound body → the fake renders <body>.
       expect(await r.resolve(r'${{ other }}'), '<other>');
     });
+
+    // The docs used to call `${name}` "equivalent to `${{ name }}`". It is
+    // not: the forms agree on exactly one case and diverge on three axes.
+    // The three tests below pin each axis so the corrected wording in
+    // `doc/placeholders.md` and the resolver header cannot drift back.
+
+    test('the two forms agree only on a bound name via resolve + backing', () {
+      // The single case in which substituting one form for the other is
+      // behaviour-preserving.
+      final r = PlaceholderResolver(
+        environment: const {},
+        expressions: _FakeExpressions(),
+      );
+      r.stack.bind('name', 'Tom');
+      expect(
+        r.resolve(r'${name}'),
+        completion(equals('Tom')),
+      );
+      expect(
+        r.resolve(r'${{ name }}'),
+        completion(equals('Tom')),
+      );
+    });
+
+    test('axis 1+2: the simple form needs neither a backing nor resolve', () {
+      // Backing: without one, `${name}` resolves and `${{ name }}` throws.
+      final bare = PlaceholderResolver(environment: const {});
+      bare.stack.bind('name', 'Tom');
+      expect(bare.resolveSync(r'${name}'), 'Tom');
+      expect(
+        () => bare.resolve(r'${{ name }}'),
+        throwsA(isA<PlaceholderExpressionException>()),
+      );
+
+      // Entry point: even *with* a backing, the expression form is
+      // unavailable synchronously — so the config loaders, which only ever
+      // call resolveSync, can never reach an expression at all.
+      final backed = PlaceholderResolver(
+        environment: const {},
+        expressions: _FakeExpressions(),
+      );
+      backed.stack.bind('name', 'Tom');
+      expect(backed.resolveSync(r'${name}'), 'Tom');
+      expect(
+        () => backed.resolveSync(r'${{ name }}'),
+        throwsA(isA<PlaceholderExpressionException>()),
+      );
+    });
+
+    test('axis 3: an unbound expression body ignores strict AND lenient', () {
+      // The simple form routes an unbound name through the resolver's mode;
+      // the expression form hands it to the backing, which decides. So the
+      // mode is not merely bypassed under strict — it is never consulted,
+      // which is why the divergence survives switching to lenient.
+      for (final strict in [true, false]) {
+        final r = PlaceholderResolver(
+          strict: strict,
+          environment: const {},
+          expressions: _FakeExpressions(),
+        );
+        // Simple form: mode-dependent.
+        if (strict) {
+          expect(
+            () => r.resolveSync(r'${missing}'),
+            throwsA(isA<PlaceholderUnresolvedException>()),
+            reason: 'strict must reject an unbound simple name',
+          );
+        } else {
+          expect(r.resolveSync(r'${missing}'), '');
+        }
+        // Expression form: identical under both modes — the backing owns it.
+        expect(
+          r.resolve(r'${{ missing }}'),
+          completion(equals('<missing>')),
+          reason: 'the backing decides, regardless of strict=$strict',
+        );
+      }
+    });
   });
 
   group('PlaceholderResolver — reserved prefixes', () {

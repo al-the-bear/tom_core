@@ -2,6 +2,27 @@
 
 ### Fixed
 
+- **`${name}` was documented as "equivalent to `${{ name }}`". It is not.**
+  The resolver header and `doc/placeholders.md` both invited a reader to
+  substitute one form for the other, when the forms agree on exactly one case
+  — a **bound** name, resolved through **`resolve`**, against a configured
+  backing — and diverge on three axes everywhere else. `${{ name }}` requires
+  a `PlaceholderExpressions` backing and throws without one; it throws on
+  `resolveSync` even *with* a backing, so the config loaders can never reach
+  it at all; and on an unbound name it consults **neither** `strict` nor
+  lenient, because that case belongs to the backing. The third axis is the one
+  the docs hid most effectively: the divergence is not "strict is bypassed",
+  it survives switching to lenient.
+  Both texts now state the qualified relationship rather than an equivalence,
+  and three tests pin each axis (517 → 520). The alternative — short-circuiting
+  an identifier-shaped `${{ … }}` body to the simple lookup, making the
+  equivalence true — was rejected: `placeholder_expressions.dart` documents the
+  no-backing failure as deliberate ("a stray `${{ … }}` in a config value fails
+  fast rather than silently passing through"), so short-circuiting would let
+  `${{ name }}` pass in a config value while `${{ name + 1 }}` still failed,
+  and it contradicts an existing test asserting the backing receives an unbound
+  body.
+
 - **The package-wide `dart:io`-free claim was false, and the carve-out that
   qualified it was too.** Four documents stated that `PlaceholderResolver` held
   the package's *only* `dart:io` import. A grep returns fourteen importers, and

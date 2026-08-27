@@ -38,7 +38,7 @@ failures (`placeholder_errors`), the `${{ … }}` expression seam
 
 | Form | Meaning |
 | ---- | ------- |
-| `${name}` | Simple fast path — reads a binding from the current scope. Equivalent to `${{ name }}`. Never reaches the environment. |
+| `${name}` | Simple fast path — reads a binding from the current scope. Never reaches the environment. Not interchangeable with `${{ name }}` — see below. |
 | `${name?}` | **Optional** simple lookup — an unbound name renders as the empty string *regardless* of strict/lenient mode; a bound name renders its value exactly like `${name}`. Optionality is a property of the call site (the `?`), scoped to the simple form only. |
 | `${{ expr }}` | An arbitrary expression evaluated through the injected `PlaceholderExpressions` backing (d4rt in the engine). Brace-balanced, so an inner map literal does not close it early. |
 | `${env:NAME}` | A process-environment read — the one pure, non-expression form, and the *only* way to reach the environment. |
@@ -46,6 +46,22 @@ failures (`placeholder_errors`), the `${{ … }}` expression seam
 
 The optional marker is scoped deliberately: `${env:NAME?}` and `${{ … ?}}` do
 **not** take the marker — there the `?` is just part of the name or body.
+
+**`${{ name }}` does not subsume `${name}`.** The expression form is a superset
+in *expressive power*, not in behaviour: the two forms diverge on three axes.
+
+| Axis | `${name}` | `${{ name }}` |
+| ---- | --------- | ------------- |
+| **Backing** | Always resolves. | Requires a `PlaceholderExpressions` backing; without one it throws `PlaceholderExpressionException`. Config-layer resolvers deliberately have no backing. |
+| **Entry point** | Resolves on both `resolve` and `resolveSync`. | Throws on `resolveSync` even when a backing *is* configured. |
+| **Unbound name** | Consults `strict` — throws, or renders empty under lenient. | Consults *neither* mode; the unbound case belongs to the backing, so the resolver's strict/lenient setting never reaches it. |
+
+The forms agree on exactly one case: a **bound** name, resolved through
+**`resolve`**, against a backing that reads the flattened scope. Everywhere
+else, substituting one for the other changes behaviour. This is by design —
+the no-backing failure is what makes a stray `${{ … }}` in a config value fail
+fast instead of passing through silently (see
+[The Expression Seam](#the-expression-seam)).
 
 ## Two Entry Points: resolve vs resolveSync
 

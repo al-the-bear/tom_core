@@ -8,7 +8,8 @@
 //
 // Forms (§ 21.7):
 //   ${name}      simple-identifier fast path — reads a binding from the
-//                current scope; equivalent to `${{ name }}`.
+//                current scope. It is NOT interchangeable with
+//                `${{ name }}`; see "Simple vs expression form" below.
 //   ${name?}     OPTIONAL simple lookup (`prompt_configuration.md` §2 / §13):
 //                an unbound name renders as the empty string regardless of
 //                the resolver's strict/lenient mode — the injection slot
@@ -24,6 +25,22 @@
 //   ${file:…}    reserved prefixes: recognised but not yet resolving, so a
 //   ${state:…}   template author can use them without collision. They pass
 //                through verbatim and are not re-scanned.
+//
+// Simple vs expression form. The expression form does not subsume the
+// simple one — `${{ name }}` is a *superset in expressive power only*, and
+// the two diverge on three axes:
+//   1. Backing. `${name}` always resolves; `${{ name }}` requires a
+//      [PlaceholderExpressions] backing and throws without one. Config-layer
+//      resolvers are deliberately built with none (see
+//      `placeholder_expressions.dart`), so a stray `${{ … }}` in a config
+//      value fails fast rather than passing through silently.
+//   2. Entry point. `${name}` resolves on both entry points; `${{ name }}`
+//      throws on [resolveSync] even when a backing is configured.
+//   3. Unbound names. `${name}` consults [strict] — throw, or render empty
+//      under lenient. `${{ name }}` consults *neither*: the unbound case is
+//      the backing's to decide, so the resolver's mode does not reach it.
+// The two agree on exactly one case: a bound name, resolved through
+// [resolve], against a backing that reads the flattened scope.
 //
 // After each substitution pass the result is re-scanned; expansion repeats
 // up to [maxRecursion] levels (default 10) and then errors with
