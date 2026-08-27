@@ -77,7 +77,7 @@ When explicit size constraints are set at the container level (via `setAclPSize`
 
 - The container no longer expands beyond its natural content size on the scrollable axis.
 - Scrollbars appear when content exceeds available space.
-- On a **scrollable axis**, `gap()` slots (horizontal) and `gapRow()` slots (vertical) receive **zero size** — they collapse. Elastic distribution is meaningless when content can overflow.
+- On a **scrollable axis**, elastic distribution stops, because it is meaningless when content can overflow. `gap()` slots (horizontal) receive **zero size**. `gapRow()` slots (vertical) fall back to their *fixed* size — `minSize`, which collapses the row at the default of 0, or `max(9, minSize)` when the row carries a separator, so a separator still draws.
 - `expandX` components in a horizontally-scrollable row likewise receive no gap space; their size becomes their preferred/intrinsic size only.
 - The two axes are independent.
 
@@ -328,7 +328,7 @@ When no `gap()` slots are present, `setRowAlignment` / `setRowAlignLeft()` / `se
 
 ---
 
-## 8. Vertical Gap Rows — `gapRow({double weight = 1, AclSeparator? separator})`
+## 8. Vertical Gap Rows — `gapRow({double weight = 1, AclSeparator? separator, double minSize = 0})`
 
 `gapRow()` inserts an elastic vertical spacer between content rows. It cannot contain components. Calling it implicitly starts a new content row, so no `newRow()` call is needed afterwards.
 
@@ -337,7 +337,13 @@ Remaining vertical = containerHeight − Σ content_row_heights
 gapRow[i] height   = remaining × weight[i] / Σ weights
 ```
 
-In scrollable-Y mode, all gap rows collapse to 0.
+Elastic sizing needs a bounded height to divide up, and it is unavailable in
+three cases: scrollable-Y mode, an unbounded incoming height, and a layout that
+contains an `expandY` component (which claims the surplus, so gap rows must not
+compete for it). In all three the gap row takes a **fixed** height instead —
+`minSize`, which collapses the row to nothing at the default of 0, or
+`max(9, minSize)` when the row carries a separator. A separator therefore still
+draws in a scrolling container; only the elastic *spacing* disappears.
 
 ### Separator
 

@@ -30,7 +30,8 @@
 /// | Area | Types |
 /// | ---- | ----- |
 /// | Growth flags | [AclFlags] — `expandX` / `expandY` / `expand` |
-/// | Borders and titled groups | [AclBorderStyle], [AclBorderKind], [AclTitlePosition] |
+/// | Borders and titled groups | [AclBorderStyle], [AclBorderKind], [AclTitlePosition], [AclTitleBorderAlign] |
+/// | Separators in gap rows | [AclSeparator], [AclSeparatorStyle], [AclSeparatorAlignment] |
 /// | Row-*generating* containers | [AclFlowContainer], [AclFlowKind] — `wrap` and `grid`, for a flat child list whose row breaks the container decides |
 /// | Responsive variants | [AclVariant], [AclRowBreakpoint], [AclVariantDetector] |
 /// | Device inputs behind those variants | [AclDeviceContext], [AclFormFactor], [AclDensity], [AclInputMode] |

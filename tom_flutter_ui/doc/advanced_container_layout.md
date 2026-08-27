@@ -34,6 +34,11 @@ sizing and authorization hiding intact.
 - [Layout attribute flags](#layout-attribute-flags)
 - [Sizing and the default preferred width](#sizing-and-the-default-preferred-width)
 - [Row alignment](#row-alignment)
+- [Gap rows and separators](#gap-rows-and-separators)
+- [Container borders](#container-borders)
+- [Container titles](#container-titles)
+- [Scrolling](#scrolling)
+- [Layout direction — LTR and RTL](#layout-direction--ltr-and-rtl)
 - [Flow containers — `wrap` and `grid`](#flow-containers--wrap-and-grid)
 - [Responsive variants and breakpoints](#responsive-variants-and-breakpoints)
 - [Breakpoint resolution](#breakpoint-resolution)
@@ -47,24 +52,72 @@ sizing and authorization hiding intact.
 
 ## Overview
 
+Every type the module barrel exports, grouped by the job it does.
+`test/advanced_container_layout/acl_doc_coverage_test.dart` derives the
+left-hand column from the barrel and fails if the two ever disagree, in either
+direction — so this index is complete by construction rather than by review.
+
+### Building and rendering
+
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
 | `AclBuilder` | class | Fluent builder; `build()` returns an `Acl` widget. |
-| `Acl` | widget | The built layout (`Acl extends AclLayout extends StatelessWidget`). |
+| `AclBuilderExtensions` | extension | Shorthand over `setAttr` and the row-alignment setters — `expandX()`, `setRowAlignCenter()`, … |
+| `Acl` | widget | The built layout: an `AclLayout` that additionally draws a [container title](#container-titles). |
+| `AclLayout` | widget | The title-less layout widget `Acl` extends. An `Acl` with no title renders exactly this. |
 | `AclContainer` | widget | The stateful render engine that lays rows/components out. |
 | `AclComponent` / `AclRow` | class | The engine's data model — one placed child, and an ordered row of them. |
+
+### Sizing, flags and alignment
+
+| Symbol | Kind | Purpose |
+| ------ | ---- | ------- |
+| `AclFlags` | class | AWT-style attribute bit constants (`expandX`, `expandY`, …). |
+| `RowAlignment` | enum | Horizontal row packing (`left` / `center` / `right`). |
+| `AclRowCrossAlignment` | enum | Vertical placement of a component within its row (`top` / `center` / `bottom`). |
+| `AclAxisPointX` / `AclAxisPointY` | enum | The edge and centre anchors the `alignX*` / `alignY*` families record on `AclComponent`. Not passed directly — the named methods write them. |
+
+### Container chrome
+
+| Symbol | Kind | Purpose |
+| ------ | ---- | ------- |
+| `AclBorderStyle` | class | A [container border](#container-borders): kind, colour, line width, rounding, inner insets. |
+| `AclBorderKind` | enum | Which edges that border draws — `none`, `solid`, `solidDouble`, and the per-side and per-axis variants. |
+| `AclTitlePosition` | enum | Where the [title](#container-titles) label sits: `topLeft` / `topCenter` / `topRight`. |
+| `AclTitleBorderAlign` | enum | How that label straddles the border line: `top` / `middle` / `bottom`. |
+| `AclSeparator` | class | A horizontal rule drawn inside a [gap row](#gap-rows-and-separators). |
+| `AclSeparatorStyle` | enum | `single` / `doubleLine`. |
+| `AclSeparatorAlignment` | enum | Where in the gap row the rule is drawn: `top` / `middle` / `bottom`. |
+
+### Flow containers
+
+| Symbol | Kind | Purpose |
+| ------ | ---- | ------- |
 | `AclFlowContainer` | widget | Generates rows from a flat child list and renders them through an `AclContainer` it composes — not a subclass of one. |
 | `AclFlowKind` | enum | `wrap` / `grid` — the two row-generation rules. |
 | `aclWrapRows` / `aclGridRows` | function | The pure row generators behind those rules. |
 | `aclResolveBreakpointed<T>` | function | The one `(minWidth, value)` "widest match wins" rule. |
-| `AclFlags` | class | AWT-style attribute bit constants (`expandX`, `expandY`, …). |
-| `RowAlignment` | enum | Horizontal row alignment (`left` / `center` / `right`). |
+
+### Responsive behaviour
+
+| Symbol | Kind | Purpose |
+| ------ | ---- | ------- |
 | `AclVariant` / `AclRowBreakpoint` | class | Responsive layout overrides keyed by width. |
 | `AclDeviceContext` | class | Snapshot of device/layout environment + static resolvers. |
 | `AclVariantDetector` | typedef | `bool Function(AclDeviceContext, Acl?, BuildContext)`. |
 | `AclInputMode` / `AclFormFactor` / `AclDensity` | enum | Variant-detection facets. |
-| `AclGroupVisibilityController` | class | Drives a named group's `visible`/`hidden`/`disabled` state. |
+
+### Identity, groups and direction
+
+| Symbol | Kind | Purpose |
+| ------ | ---- | ------- |
 | `AclScope` | InheritedWidget | Propagates container/component/row/group id paths. |
+| `AclGroupVisibilityController` | class | Drives a named group's `visible`/`hidden`/`disabled` state. |
+| `AclGroupVisibilityMode` | enum | The three states that controller publishes. |
+| `AclBinaryVisibilityController` | class | Direct toggle — assign `controller.mode`. |
+| `AclCallbackVisibilityController<T>` | class | Derives the mode from an external `ValueListenable<T>`. |
+| `AclDirection` | enum | [Layout direction](#layout-direction--ltr-and-rtl) — `ltr` / `rtl`. |
+| `AclDirectionScope` | InheritedWidget | Supplies an `AclDirection` to every descendant container that sets none of its own. |
 
 ## `AclBuilder` and `Acl`
 
@@ -181,6 +234,236 @@ final Acl centred = AclBuilder()
 A row that called `setRowHorizontalAlignment` keeps its own value, so an
 explicit per-row override is never clobbered by a later default change.
 `setAclDefaultRowVerticalAlignment` is the cross-axis counterpart.
+
+## Gap rows and separators
+
+`gapRow({weight, separator, minSize})` inserts an elastic **vertical** spacer
+between content rows. It holds no components and **implicitly starts a new
+content row**, so no `newRow()` follows it:
+
+```dart
+AclBuilder()
+    .append(header)
+    .gapRow()                       // elastic spacer — no newRow() needed
+    .append(body)
+    .gapRow(weight: 2, separator: const AclSeparator())
+    .append(footer)
+    .build();
+```
+
+When the container has bounded height and no `expandY` component, gap rows
+share the leftover vertical space in proportion to their weights:
+
+```text
+gapRow[i] height = (containerHeight − Σ content row heights) × weight[i] / Σ weights
+```
+
+**Elasticity is lost in three situations, and the fallback is not "zero".**
+When the layout contains an `expandY` component, when the height is unbounded,
+or when the container is [scrollable on Y](#scrolling), a gap row stops
+competing for space and becomes fixed instead:
+
+| Gap row | Fixed height |
+| ------- | ------------ |
+| With a `separator` | `max(9, minSize)` — enough for the line plus 4 px above and below. |
+| Without one | `minSize`, and the row disappears entirely at the default `minSize: 0`. |
+
+So a separator drawn in a scrollable or shrink-wrapping container still
+renders; only the *spacing* collapses. Give a pure spacing gap row a `minSize`
+when it must survive those situations.
+
+### `AclSeparator`
+
+The optional `separator` draws a horizontal rule inside the gap row's area:
+
+```dart
+gapRow(separator: const AclSeparator(
+  style: AclSeparatorStyle.doubleLine,
+  color: Colors.grey,                       // null → Theme.of(context).dividerColor
+  lineWidth: 1.0,
+  alignment: AclSeparatorAlignment.middle,
+));
+```
+
+| Field | Type | Default | Meaning |
+| ----- | ---- | ------- | ------- |
+| `style` | `AclSeparatorStyle` | `single` | `single` draws one line; `doubleLine` draws two, separated by `lineWidth × 2`. |
+| `color` | `Color?` | `null` | Falls back to the ambient `Theme.dividerColor`, so a separator follows the theme unless told otherwise. |
+| `lineWidth` | `double` | `1.0` | Thickness of each line. |
+| `alignment` | `AclSeparatorAlignment` | `middle` | `top` / `middle` / `bottom` of the gap row's computed height. |
+
+The rule spans the full container width — it is not affected by
+[`RowAlignment`](#row-alignment), which packs components rather than chrome.
+
+## Container borders
+
+A border belongs to the container, not to a row, and is described by an
+[`AclBorderStyle`]. Pass it to the constructor or set it on the chain:
+
+```dart
+AclBuilder(borderStyle: const AclBorderStyle.solid(rounded: true))
+    .append(field)
+    .build();
+
+// or
+AclBuilder().setAclBorderStyle(const AclBorderStyle.solid()).append(field).build();
+```
+
+| Field | Type | Default | Meaning |
+| ----- | ---- | ------- | ------- |
+| `kind` | `AclBorderKind` | `none` | Which edges are drawn (below). |
+| `color` | `Color` | `0xFF9E9E9E` | Line colour. |
+| `lineWidth` | `double` | `1.0` | Line thickness. |
+| `rounded` | `bool` | `false` | Whether corners are rounded. |
+| `borderRadius` | `double` | `8.0` | Corner radius, used only when `rounded`. |
+| `borderInsets` | `EdgeInsetsGeometry` | `EdgeInsets.zero` | Inner padding between the border and the content. |
+
+`AclBorderKind` picks the edges: `none` (the default — no border is drawn at
+all), `solid` for all four sides, `solidDouble` for two concentric lines, the
+four single sides `top` / `bottom` / `left` / `right`, and the two pairs
+`horizontal` (top + bottom) and `vertical` (left + right). `AclBorderStyle`
+exposes an `enabled` getter, which is simply `kind != AclBorderKind.none`, and
+two convenience constructors — `AclBorderStyle.none()` and
+`AclBorderStyle.solid(...)`.
+
+**The default inner inset is conditional, and the condition is padding.** When
+a border is enabled and `borderInsets` is left at `EdgeInsets.zero`, the
+container inserts `EdgeInsets.all(4)` so content does not sit against the line.
+Setting container-level padding (`setAclPadding` and friends) *suppresses* that
+default — the padding replaces it. An explicit `borderInsets` always applies.
+
+Two further setters are worth knowing:
+
+- `setAclBorderInsets(insets)` **`copyWith`s the style that is currently set**,
+  so it must come *after* `setAclBorderStyle`. Called first, it edits the
+  `none` default and is then discarded by the later assignment.
+- `setAclFocusedBorderStyle(style)` supplies an alternative style used while
+  focus is anywhere inside the container — the ordinary way to highlight the
+  group a user is editing. It is only consulted when non-null; otherwise the
+  base style is drawn at all times.
+
+Shadows and 3D bevels are deliberately absent: they belong to the application
+theme, not to a layout container.
+
+## Container titles
+
+A title turns the container into a labelled group — the classic field-set look,
+where the label interrupts the border line. `Acl` is the widget that draws it;
+[`AclLayout`], which `Acl` extends, is the same layout without one, and an
+`Acl` whose `title` is null or empty and which has no `titleWidget` renders
+exactly as an `AclLayout`.
+
+```dart
+AclBuilder(
+  title: 'Address',
+  borderStyle: const AclBorderStyle.solid(rounded: true),
+).append(street).newRow().append(city).build();
+```
+
+Every constructor argument has a matching setter — `setAclTitle`,
+`setAclTitleWidget`, `setAclTitleStyle`, `setAclTitlePosition`,
+`setAclTitleBorderAlign` and `setAclTitleVerticalOffset`:
+
+| Setting | Type | Default | Meaning |
+| ------- | ---- | ------- | ------- |
+| `title` | `String?` | `null` | The label text. |
+| `titleWidget` | `Widget?` | `null` | An arbitrary label widget. When set it **wins over `title`** — a checkbox or an icon + text row, say. |
+| `titleStyle` | `TextStyle?` | `null` | Applied to `title`; defaults to `bodyMedium` at `w600`. Ignored when `titleWidget` is used. |
+| `titlePosition` | `AclTitlePosition` | `topLeft` | `topLeft` / `topCenter` / `topRight`. |
+| `titleBorderAlign` | `AclTitleBorderAlign` | `bottom` | Where the label sits relative to the border line. |
+| `titleVerticalOffset` | `double` | `0.0` | Nudges the label up or down from its computed position. |
+
+`AclTitleBorderAlign` decides how the label meets the line: `bottom` floats it
+just above the border (the field-set default), `middle` centres it on the line,
+and `top` hangs it below the line into the container interior. The label is
+drawn on a backing of the container's `backgroundColor` — or the ambient
+`Theme.scaffoldBackgroundColor` when none is set — which is what masks the
+border segment behind it. **Set `backgroundColor` when the container sits on a
+surface that is not the scaffold background**, or the mask paints the wrong
+colour over the line.
+
+Two consequences follow from the way the title is positioned:
+
+- The container reserves **14 px above itself** for the label, and the title is
+  drawn in an unclipped `Stack` over that reserve.
+- When a border is enabled and `borderInsets` was not set explicitly, a top
+  inner inset is injected so the first row does not collide with a label that
+  hangs below the line — 8 px at `bottom`, 10 px at `middle`, 18 px at `top`.
+
+A title needs no border: without one the label simply sits above the content.
+Under [RTL](#layout-direction--ltr-and-rtl) the position mirrors, `topLeft`
+becoming `topRight` and back.
+
+## Scrolling
+
+`setAclScrollableX()` and `setAclScrollableY()` switch the respective axis into
+scroll mode. **The two axes are independent** and either may be enabled alone.
+
+```dart
+AclBuilder()
+    .setAclScrollableY()
+    .append(const Text('row 1'))
+    .newRow()
+    .append(const Text('row 2'))
+    .build();
+```
+
+On a scrollable axis the container stops expanding to fill the space offered
+and takes its natural content size instead, wrapping the content in a
+`SingleChildScrollView` on that axis. Elastic distribution goes with it,
+because there is no longer a fixed extent to distribute:
+
+| Axis | What changes |
+| ---- | ------------ |
+| `setAclScrollableX()` | `gap()` slots receive **zero width**, and an `expandX` component takes its preferred or intrinsic width rather than a share of the row. |
+| `setAclScrollableY()` | Gap rows stop being elastic and take the fixed heights described under [gap rows](#gap-rows-and-separators) — a separator still draws, a pure spacing row survives only via `minSize`. |
+
+Because a scrollable-Y container reports an unbounded height to the layout
+pass, a variant gated on `height:` never activates inside one — see
+[device context and variant detection](#device-context-and-variant-detection).
+
+## Layout direction — LTR and RTL
+
+ACL lays rows out left-to-right by default. `AclDirection.rtl` mirrors the
+whole layout: components flow right-to-left, alignment semantics flip, and
+horizontal offsets are negated.
+
+There are two ways to set it, and they differ in reach:
+
+```dart
+// Per container — overrides any enclosing scope.
+AclBuilder().setAclDirection(AclDirection.rtl).append(field).build();
+
+// For a whole subtree — the usual choice, placed near the app root.
+AclDirectionScope(
+  direction: AclDirection.rtl,
+  child: someLayout,
+);
+```
+
+A container resolves its direction in this order: its own explicit
+`direction`, then the nearest [`AclDirectionScope`] ancestor, then
+`AclDirection.ltr`. Set the container's own value only when it must oppose its
+surroundings; otherwise put a scope above the tree so nested containers agree
+without each restating it.
+
+Under `rtl`:
+
+1. **Component order within a row** reverses — the first appended component
+   renders on the right.
+2. **Row alignment flips**: `RowAlignment.left` packs from the right edge and
+   `RowAlignment.right` from the left.
+3. **Horizontal offsets are negated**, so `alignX*` cross-row references keep
+   pointing at the correct visual position.
+4. **Padding** swaps its `left` and `right` sides.
+5. **The [title](#container-titles) position mirrors** — `topLeft` renders at
+   the right and vice versa; `topCenter` is unaffected.
+
+One thing deliberately does **not** flip: `AclBorderKind.left` and
+`AclBorderKind.right` are *physical* sides. A border asked for on the left
+stays on the left in both directions, because the author choosing a single-side
+border is choosing a visual edge. Use `horizontal` or `vertical` when the
+intent is symmetric.
 
 ## Flow containers — `wrap` and `grid`
 
