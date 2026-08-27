@@ -1121,8 +1121,21 @@ class TomStyleResolvers {
   /// `all` key, or any of `horizontal` / `vertical` / `left` / `top` / `right`
   /// / `bottom`, where a side falls back to its axis and then to zero.
   ///
-  /// Returns `null` if the value is absent or is a form out of which nothing
-  /// usable can be read — never a default-constructed object.
+  /// Returns `null` when the value is absent, or is of a shape this parser does
+  /// not read at all — a string, or a list of a length no form names.
+  ///
+  /// Within a shape it does read, a mistyped element or key contributes zero
+  /// rather than discarding the value, at every list length and for every map
+  /// key: `[1, 'x', 3, 4]` gives `EdgeInsets.only(left: 1, right: 3,
+  /// bottom: 4)` and `['x', 2]` gives `EdgeInsets.symmetric(vertical: 2)`.
+  ///
+  /// A recognised shape out of which *nothing* parsed — `['x']`,
+  /// `{'all': 'x'}`, `{'nonsense': 1}` — therefore yields `EdgeInsets.zero`
+  /// rather than `null`, so a caller writing `?? fallback` gets flush-to-the-
+  /// edge insets instead of its fallback. This parser is the one exception to
+  /// the null-for-nothing-recognised contract the other eighteen hold;
+  /// `widget_base_resolvers_test.dart` names it as such and pins it, and it is
+  /// tracked for correction as its own todo.
   ///
   /// [TomCtr.edgeInsets] is the resource route to this parser.
   static EdgeInsets? parseEdgeInsets(dynamic value) {
@@ -1131,15 +1144,24 @@ class TomStyleResolvers {
     // Single number = uniform
     if (value is num) return EdgeInsets.all(value.toDouble());
 
-    // Array format
+    // Array format.
+    //
+    // The length selects the shape and is not negotiable — a list of any other
+    // length names no form here and falls through to `null` below. Within a
+    // recognised length the elements are read one at a time: whatever parses as
+    // a number contributes, whatever does not contributes zero. That is what
+    // makes `['x', 2]` still a vertical inset of 2 rather than nothing at all,
+    // and it is deliberately the same rule at all three lengths — the branches
+    // used to disagree, the short ones discarding the whole value over one bad
+    // element while the four-element one skipped it.
     if (value is List) {
-      if (value.length == 1 && value[0] is num) {
-        return EdgeInsets.all((value[0] as num).toDouble());
+      if (value.length == 1) {
+        return EdgeInsets.all(_asNum(value[0])?.toDouble() ?? 0);
       }
-      if (value.length == 2 && value[0] is num && value[1] is num) {
+      if (value.length == 2) {
         return EdgeInsets.symmetric(
-          horizontal: (value[0] as num).toDouble(),
-          vertical: (value[1] as num).toDouble(),
+          horizontal: _asNum(value[0])?.toDouble() ?? 0,
+          vertical: _asNum(value[1])?.toDouble() ?? 0,
         );
       }
       if (value.length == 4) {

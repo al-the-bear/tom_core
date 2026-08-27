@@ -300,6 +300,14 @@ an error. They return `null` in the other case — when the input contributed
 *nothing*, whether it was `null`, empty, or held only keys and values no parser
 reads. Those are the only two outcomes; none of them has a failure mode.
 
+Skipping is per entry, and for the list forms that means per *element*: what a
+parser rejects is the individual value, never the container it arrived in.
+`parseEdgeInsets(['x', 2])` still names a vertical inset of 2 and yields one,
+and does so identically at every list length it reads. The shape itself is not
+negotiable in the same way — a list of a length no form names, such as
+`[1, 2, 3]`, is rejected outright, because there is no way to tell which three
+sides were meant.
+
 The distinction matters at the call site, where `parseX(map) ?? fallback` is the
 shape the API invites. It only reaches the fallback if a map that contributed
 nothing comes back `null`. A default-constructed object would render plausibly
@@ -316,7 +324,8 @@ a misspelled name as the default shape would turn a typo into a real shape.
 asserts the `null` return for 18 of the 19 parsers, and holds its own list of
 them to the class's member count so a parser added later cannot be exempt in
 silence. `parseEdgeInsets` is the one exception, and is named as such in the
-test rather than left off the list: an unrecognised map yields
+test rather than left off the list: a value of a shape it reads but out of which
+nothing parsed — `{'all': 'x'}`, `{'nonsense': 1}`, `['x']` — yields
 `EdgeInsets.zero`, a real object built out of nothing. That is tracked as its
 own fix; the test pins the current behaviour so the note cannot outlive it.
 
