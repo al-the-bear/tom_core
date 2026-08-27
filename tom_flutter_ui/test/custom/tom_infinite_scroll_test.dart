@@ -415,10 +415,17 @@ void main() {
           reason: 'the failed page is retried, not skipped');
     });
 
-    testWidgets('a mid-list failure keeps the loaded items reachable',
+    testWidgets('a mid-list failure hides the loaded items but keeps them',
         (tester) async {
       // The error slot replaces the whole list, so the retry has to bring the
       // already-loaded items back rather than start from nothing.
+      //
+      // "Only hidden" used to be asserted by the `loadedCount` check alone,
+      // which proves the items survive in state but says nothing about what
+      // is on screen. Both halves are checked below, because the unchecked
+      // half is the one the documentation got wrong: the dartdoc called this
+      // slot an "error tile", which would mean a row appended under items
+      // that were still visible.
       final source = _Source(total: 100, failFrom: 1);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
@@ -429,9 +436,15 @@ void main() {
         itemBuilder: _tile,
       )));
       await tester.pumpAndSettle();
+      expect(find.textContaining('item-'), findsWidgets,
+          reason: 'items must be on screen first, or the check below is '
+              'vacuous — a first-page failure cannot tell a panel from a tile');
+
       await _scrollToBottom(tester);
       expect(find.textContaining('Failed to load'), findsOneWidget);
 
+      expect(find.textContaining('item-'), findsNothing,
+          reason: 'the error slot took the surface; no row survives beside it');
       expect(key.currentState!.loadedCount, 10,
           reason: 'the first page is still held, only hidden');
     });
@@ -537,5 +550,119 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: 'no setState after dispose');
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // Which slot owns the surface
+  // -------------------------------------------------------------------------
+  //
+  // `build` picks one slot and returns it. Three of the four take the whole
+  // surface — skeleton, empty and error are returned *instead of* the
+  // `ListView` — and only the "loading more" spinner is a tile inside the
+  // list. That asymmetry is invisible from the call site, which is how the
+  // dartdoc came to call the error slot a "tile" and go unchallenged: the
+  // bullet describing it sits directly under the one describing the trailing
+  // spinner, which genuinely is a tile.
+  //
+  // A prose rule was considered instead and rejected on measurement. Banning
+  // list-membership nouns near slot prose would have to sort through the 360
+  // dartdoc lines in `lib/` that already say "tile" or "row", nearly all of
+  // them correctly. Comparing a documented noun against the root widget of
+  // the matching `_default*` helper would evaluate three sites, all in this
+  // one file. Neither is a rule; both are this bug spelled backwards. What
+  // generalises is the property the wrong noun denied, so that is what is
+  // asserted here.
+  //
+  // The counterexample that keeps this group from being vacuous already
+  // exists: 'a trailing spinner marks the load-more state' in the pagination
+  // group asserts the spinner is appended *below the last loaded item*, so
+  // items and indicator are on screen together — the exact co-existence
+  // forbidden below for the other three. If surface ownership were an
+  // artifact of how these tests pump rather than a real property, that test
+  // could not pass.
+  group('TomInfiniteScroll slot exclusivity', () {
+    /// Fails unless [slot] is the *only* one of the four markers on screen.
+    ///
+    /// Written as "every other marker is absent" rather than "the expected one
+    /// is present" on purpose: a check that only looks for what it expects
+    /// cannot see a second slot painted beside it, and a second slot painted
+    /// beside it is precisely what "tile" claimed.
+    void expectOnly(String slot) {
+      final markers = <String, Finder Function()>{
+        'skeleton': () => find.byType(TomSkeletonLoader),
+        'empty': () => find.byType(TomEmptyState),
+        'error': () => find.textContaining('Failed to load'),
+        'items': () => find.textContaining('item-'),
+      };
+      expect(markers.keys, contains(slot), reason: 'unknown slot name');
+      markers.forEach((name, finder) {
+        if (name == slot) return;
+        expect(finder(), findsNothing,
+            reason: 'in the $slot state, $name must not be painted too — '
+                'each of these slots owns the whole surface');
+      });
+      expect(markers[slot]!(), findsWidgets,
+          reason: 'the $slot slot must be painted');
+    }
+
+    testWidgets('the initial-load skeleton is alone on the surface',
+        (tester) async {
+      final source = _Source(total: 25)..gate = Completer<void>();
+
+      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
+        pageSize: 10,
+        fetcher: source.fetch,
+        itemBuilder: _tile,
+      )));
+      await tester.pump();
+
+      expectOnly('skeleton');
+      source.gate!.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('the empty state is alone on the surface', (tester) async {
+      final source = _Source(total: 0);
+
+      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
+        pageSize: 10,
+        fetcher: source.fetch,
+        itemBuilder: _tile,
+      )));
+      await tester.pumpAndSettle();
+
+      expectOnly('empty');
+    });
+
+    testWidgets('the error slot is alone on the surface, items and all',
+        (tester) async {
+      final source = _Source(total: 100, failFrom: 1);
+
+      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
+        pageSize: 10,
+        fetcher: source.fetch,
+        itemBuilder: _tile,
+      )));
+      await tester.pumpAndSettle();
+      await _scrollToBottom(tester);
+
+      expectOnly('error');
+      expect(find.byType(ListView), findsNothing,
+          reason: 'no list is mounted at all, so nothing can be a tile in it');
+    });
+
+    testWidgets('the loaded list is alone on the surface', (tester) async {
+      final source = _Source(total: 25);
+
+      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
+        pageSize: 10,
+        fetcher: source.fetch,
+        itemBuilder: _tile,
+      )));
+      await tester.pumpAndSettle();
+
+      expectOnly('items');
+    });
+
   });
 }

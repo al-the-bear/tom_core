@@ -19,14 +19,23 @@
 /// wrapper considers the source exhausted and stops issuing further
 /// requests.
 ///
-/// State transitions exposed through the slot builders:
+/// State transitions exposed through the slot builders. Only the
+/// "loading more" indicator is a tile *within* the list. The skeleton,
+/// empty and error slots are returned in place of the `ListView` and take
+/// the whole surface, so while any of them is showing, no loaded item is
+/// painted.
 ///
 /// * `pending && items.isEmpty` — initial-load skeleton via
 ///   [TomInfiniteScroll.skeletonBuilder].
 /// * `pending && items.isNotEmpty` — bottom-of-list "loading more"
-///   indicator (a small `CircularProgressIndicator`).
+///   indicator (a small `CircularProgressIndicator`), appended as the
+///   list's last tile.
 /// * `error != null` — [TomInfiniteScroll.errorBuilder] (defaults to a
-///   Material-styled error tile with a Retry action).
+///   centred Material panel carrying the message and a Retry action).
+///   This one replaces the entire list rather than reporting the failure
+///   beneath the rows already loaded: those items stay in state and are
+///   painted again on retry, but nothing shows above the panel while the
+///   error is latched.
 /// * `items.isEmpty && !pending && error == null` —
 ///   [TomInfiniteScroll.emptyBuilder].
 library;

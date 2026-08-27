@@ -107,7 +107,11 @@ The remaining five are presentation idioms with no auth gate:
   `PageFetcher<T>` (`Future<List<T>> Function(int page, int pageSize)`). It
   auto-fetches near the bottom, stops when a short page signals exhaustion, and
   delegates its empty / loading / error slots to `TomEmptyState`,
-  `TomSkeletonLoader`, and a built-in error tile. Its `TomInfiniteScrollState<T>`
+  `TomSkeletonLoader`, and a built-in error panel. Each of those three is
+  returned *instead of* the `ListView` and takes the whole surface — a failed
+  page hides the rows already loaded rather than reporting itself beneath them
+  (they are kept in state and repainted on retry). Only the "loading more"
+  spinner is a tile inside the list. Its `TomInfiniteScrollState<T>`
   is intentionally public so a `GlobalKey` can read `loadedCount` / `isPending`
   / `isExhausted` and call `refresh()`.
 
