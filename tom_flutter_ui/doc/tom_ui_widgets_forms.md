@@ -3229,28 +3229,45 @@ class TomAuthorizationGroup {
     }
   }
 
+  /// The members the user can actually see. Every query below is defined in
+  /// terms of this getter — it is the single place the `none` filter is
+  /// applied, which is what stops the queries disagreeing about membership.
+  Iterable<TomAuthorizable> get members => _members
+      .where((m) => m.effectiveAuthState != TomAuthState.none);
+
   /// Whether all visible members share the same effective state.
+  ///
+  /// Vacuously `true` when nothing is visible.
   bool get isUniform {
     TomAuthState? first;
-    for (final member in _members) {
+    for (final member in members) {
       final state = member.effectiveAuthState;
-      if (!state.isVisible) continue;
       first ??= state;
       if (state != first) return false;
     }
     return true;
   }
 
-  /// The most restrictive state across all visible members.
+  /// The most restrictive state across all visible members, or
+  /// [TomAuthState.none] when nothing is visible.
   TomAuthState get mostRestrictive {
+    final visible = members;
+    if (visible.isEmpty) return TomAuthState.none;
     var result = TomAuthState.full;
-    for (final member in _members) {
+    for (final member in visible) {
       result = result.narrow(member.effectiveAuthState);
     }
     return result;
   }
 }
 ```
+
+`mostRestrictive` answers `none` — not `full` — for a group with nothing
+visible. `full` is the identity element of the narrowing fold, so returning it
+would report the most permissive state possible for the one case where the
+group displays nothing at all: a section gated on `mostRestrictive == full`
+would treat a fully hidden group as fully editable. `isUniform` keeps the
+opposite convention on purpose, because "all of nothing" *is* uniform.
 
 ---
 

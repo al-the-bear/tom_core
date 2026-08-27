@@ -632,9 +632,24 @@ stops them from disagreeing about who is in the group.
 | ------ | ----------- |
 | `members` | Snapshot of the live, visible members (stale refs pruned) |
 | `memberCount` / `isEmpty` / `isNotEmpty` | Size of that snapshot — a group whose members are all hidden reports empty |
-| `isUniform` | `true` if all visible members share one `effectiveAuthState` |
-| `mostRestrictive` | The most restrictive `effectiveAuthState` among visible members (`full` if there are none) |
+| `isUniform` | `true` if all visible members share one `effectiveAuthState` — vacuously `true` when none are visible |
+| `mostRestrictive` | The most restrictive `effectiveAuthState` among visible members; `none` if there are none |
 | `findMember(tomId)` | The **visible** member with the given id, or `null` |
+
+The two aggregates answer the empty case in deliberately opposite ways.
+`isUniform` is `true` because "all of nothing shares one state" is vacuously
+true, the same convention `Iterable.every` uses. `mostRestrictive` is `none`
+because it is being asked for an actual state, and `none` is what "nothing to
+show" is called everywhere else in this API — an empty group and a fully
+hidden one are the same thing to the user, and both display nothing.
+
+`full` would be the wrong answer there even though it is where the narrowing
+fold starts: it is the fold's *identity element*, not a state anyone observed.
+Returning it would report the most permissive state possible for the one case
+where the group shows nothing, so a container gating on
+`mostRestrictive == full` would treat a fully hidden group as fully editable,
+and one gating on `mostRestrictive != none` would render an empty section
+header. Ask `isEmpty` when the question is really about membership.
 
 Registration is the deliberate exception: `register` / `unregister` work on the
 raw registrations, so a hidden member is still tracked and can still be

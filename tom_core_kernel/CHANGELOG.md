@@ -197,6 +197,29 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomAuthorizationGroup.mostRestrictive` answers `none` for a group with
+  nothing visible, not `full` (tcinc752).** The getter folds its visible members
+  with `narrow`, starting from `TomAuthState.full` — and when there are no
+  visible members the fold's starting value fell straight out as the answer. So
+  the one aggregate a caller reaches for to ask "does this group have anything
+  to show?" reported the *most permissive* state possible for precisely the two
+  cases where it shows nothing: an empty group, and one whose members are all
+  hidden. A container gating on `mostRestrictive == full` treated a fully hidden
+  group as fully editable; one gating on `mostRestrictive != none` rendered an
+  empty section header. `full` is the identity element of the fold, not a state
+  any member reported, and letting it escape as one made those two groups
+  indistinguishable from a fully open one.
+
+  It now returns `TomAuthState.none` when nothing is visible, which is what
+  "nothing to show" is already called throughout this API and matches what
+  `isEmpty`, `memberCount` and `findMember` had said about the same group all
+  along. `isUniform` deliberately keeps the opposite convention — vacuously
+  `true`, as `Iterable.every` is — because "all visible members share one state"
+  is a claim about members, not a state. `doc/security/security.md` and the
+  API summary state both rules and why they differ. **Behavioural change:** two
+  tests asserted the old `full`; a caller who used `mostRestrictive` as a
+  membership test should use `isEmpty`, which answers that question directly.
+
 - **`TomZonedDate.isDate` asks when the day began instead of assuming midnight
   (tcinc338).** A date is anchored to the first instant of its local day, and on
   a handful of zone-days that is not midnight: Chile, Cuba, Lebanon, Egypt,

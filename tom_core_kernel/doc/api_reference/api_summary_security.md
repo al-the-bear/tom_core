@@ -545,8 +545,8 @@ TomAuthorizationGroup(String groupId, {AuthGroupMode mode = AuthGroupMode.contro
 | `isEmpty` | `bool` | Whether the group has no visible members (true when every member is hidden). |
 | `isNotEmpty` | `bool` | Whether the group has at least one visible member. |
 | `authState` | `TomAuthState` | The authorization state resolved for this group's path. |
-| `isUniform` | `bool` | Whether all visible members share the same effective auth state. |
-| `mostRestrictive` | `TomAuthState` | The most restrictive effective auth state among all visible members. |
+| `isUniform` | `bool` | Whether all visible members share the same effective auth state; vacuously `true` when none are visible. |
+| `mostRestrictive` | `TomAuthState` | The most restrictive effective auth state among all visible members, or `none` when there are no visible members — an empty group and a fully hidden one both show nothing. |
 
 #### Methods
 

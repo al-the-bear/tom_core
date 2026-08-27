@@ -15,7 +15,8 @@
 /// 3. a `TomWidgetMixin` widget resolving its effective auth through the group,
 /// 4. the three `AuthGroupMode`s (`controlsAll` / `controlsWidest` /
 ///    `controlsNarrowest`) via `applyMode`,
-/// 5. group introspection (`mostRestrictive`, `isUniform`, `findMember`),
+/// 5. group introspection (`mostRestrictive`, `isUniform`, `findMember`) and
+///    what it answers when nothing in the group is visible,
 /// 6. scope-aware path resolution, in both the ambient and the explicit form.
 ///
 /// Because it imports `flutter/material` (→ `dart:ui`) through the package
@@ -69,6 +70,7 @@ void run() {
     'shipping': TomAuthState.read, // ceiling for controlsWidest
     'billing': TomAuthState.disabled, // replacement for controlsAll
     'contact': TomAuthState.read, // floor for controlsNarrowest
+    'ghost': TomAuthState.none, // a member the user may not see at all
   });
 
   // ---------------------------------------------------------------------------
@@ -116,6 +118,23 @@ void run() {
   print('shipping mostRestrictive: ${shipping.mostRestrictive}');
   print('shipping isUniform: ${shipping.isUniform}');
 
+  // Everything above reports on *visible* membership: a member resolving to
+  // `none` is not there as far as inspection is concerned. So a group whose
+  // members are all hidden looks exactly like an empty one — and both must be
+  // distinguishable from a group that is fully open, which is what
+  // `mostRestrictive == none` buys you. (`full` is where the narrowing fold
+  // starts, not an answer; returning it here would call a hidden group
+  // editable.) `isUniform` keeps the opposite, vacuous-truth convention.
+  // No rule for 'audit', so the *group* resolves to full — and its one member
+  // is still invisible. That is the pair the old `full` answer conflated.
+  final audit = TomAuthorizationGroup('audit');
+  final ghost = _GroupedField('ghost', tomGroup: audit)..registerWithGroup();
+  print('audit group authState: ${audit.authState}');
+  print('audit member auth: ${ghost.getAuth()}');
+  print('audit memberCount: ${audit.memberCount}');
+  print('audit mostRestrictive: ${audit.mostRestrictive}');
+  print('audit isUniform: ${audit.isUniform}');
+
   // ---------------------------------------------------------------------------
   // 6. Scope-aware paths: inside a scope the group/member paths are prefixed.
   // ---------------------------------------------------------------------------
@@ -155,6 +174,23 @@ void run() {
   // Both members resolve to read, so the group is uniform at read.
   assert(shipping.mostRestrictive == TomAuthState.read);
   assert(shipping.isUniform == true);
+
+  // The group is wide open and shows nothing: its only member is hidden, so
+  // inspection reports an empty group. `mostRestrictive` has to say `none`
+  // here — anything else would describe a group with nothing in it using the
+  // vocabulary of a group the user can edit.
+  assert(audit.authState == TomAuthState.full);
+  assert(ghost.getAuth() == TomAuthState.none);
+  assert(audit.memberCount == 0);
+  assert(audit.isEmpty == true);
+  assert(audit.mostRestrictive == TomAuthState.none);
+  assert(audit.mostRestrictive != shipping.mostRestrictive);
+  // isUniform keeps the vacuous-truth convention, so it cannot tell the two
+  // apart on its own — that is what isEmpty and mostRestrictive are for.
+  assert(audit.isUniform == true);
+
+  // An empty group answers exactly as the fully hidden one does.
+  assert(TomAuthorizationGroup('empty').mostRestrictive == TomAuthState.none);
 
   // Unregister prunes membership.
   street.unregisterFromGroup();

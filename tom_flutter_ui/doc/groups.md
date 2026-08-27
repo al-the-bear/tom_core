@@ -18,6 +18,7 @@ resources) into widgets that extend Flutter widgets directly.
 - [Overview](#overview)
 - [`TomAuthorizationGroup`](#tomauthorizationgroup)
 - [Group modes](#group-modes)
+- [Introspecting a group](#introspecting-a-group)
 - [`TomWidgetMixin`](#tomwidgetmixin)
 - [Effective authorization](#effective-authorization)
 - [Scope-aware paths](#scope-aware-paths)
@@ -64,9 +65,39 @@ A group resolves its own `authState` from its canonical path
 State ordering, most to least restrictive: `none` < `disabled` < `read` <
 `full`. `controlsWidest` uses `narrow`, `controlsNarrowest` uses `widen`.
 
-For introspection, `mostRestrictive` returns the tightest effective state among
-visible members, `isUniform` reports whether all visible members share one
-state, and both skip hidden (`none`) members.
+## Introspecting a group
+
+Every inspection helper reports on **visible** membership: a member whose
+`effectiveAuthState` is `none` does not exist from the user's perspective, so
+it does not exist for inspection either. `members` is the single place that
+filter is applied and every other helper is defined in terms of it, so they
+cannot disagree about who is in the group. Registration is the deliberate
+exception — `register` / `unregister` work on the raw registrations, so a
+hidden member is still tracked and can still be removed.
+
+| Helper | Answer for a group with nothing visible |
+| ------ | --------------------------------------- |
+| `members` | empty |
+| `memberCount` | `0` |
+| `isEmpty` / `isNotEmpty` | `true` / `false` |
+| `findMember(tomId)` | `null` |
+| `isUniform` | `true` |
+| `mostRestrictive` | `TomAuthState.none` |
+
+`mostRestrictive` returns the tightest effective state among visible members,
+and `none` when there are none. That covers both an empty group and one whose
+members are all hidden — to the user those are the same thing, and both show
+nothing. It does **not** return `full`, even though `full` is where the
+narrowing fold starts: that is the fold's identity element, not a state any
+member reported. Leaking it would give the most permissive possible answer for
+the one case where the group displays nothing, so a section gated on
+`mostRestrictive == full` would treat a fully hidden group as fully editable,
+and one gated on `mostRestrictive != none` would render an empty header.
+
+`isUniform` keeps the opposite convention on purpose: "all visible members
+share one state" is vacuously true of no members, the same rule
+`Iterable.every` follows. When the question is really "does this group have
+anything to show?", ask `isEmpty` — that is what it is for.
 
 ## `TomWidgetMixin`
 

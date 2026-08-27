@@ -291,12 +291,28 @@ class TomAuthorizationGroup {
 
   /// The most restrictive effective auth state among the visible members.
   ///
-  /// Returns [TomAuthState.full] when there are no visible members — see
-  /// [members]. State ordering from most to least restrictive:
+  /// Returns [TomAuthState.none] when there are no visible members — see
+  /// [members]. An empty group and a group whose members are all hidden are
+  /// the same thing from the user's perspective: both show nothing, and
+  /// `none` is what "nothing to show" is called everywhere else in this API.
+  ///
+  /// [TomAuthState.full] is the identity element of the narrowing fold below,
+  /// not an answer. Returning it for an empty group would report the most
+  /// permissive state possible for the one case where the group displays
+  /// nothing at all — so a container gating on `mostRestrictive == full`
+  /// would treat a fully hidden group as fully editable.
+  ///
+  /// Note the deliberate asymmetry with [isUniform], which stays `true` for a
+  /// group with no visible members: "all of nothing satisfies anything" is
+  /// vacuously true, whereas "the narrowest of nothing" has a truthful answer.
+  ///
+  /// State ordering from most to least restrictive:
   /// `none < disabled < read < full`.
   TomAuthState get mostRestrictive {
+    final visible = members;
+    if (visible.isEmpty) return TomAuthState.none;
     var result = TomAuthState.full;
-    for (final member in members) {
+    for (final member in visible) {
       result = result.narrow(member.effectiveAuthState);
     }
     return result;

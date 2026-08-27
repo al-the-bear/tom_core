@@ -2085,11 +2085,50 @@ void main() {
         expect(group.mostRestrictive, equals(TomAuthState.read));
       });
 
-      test('mostRestrictive returns full for an empty group', () {
+      // `full` is the identity element of the narrowing fold, not an answer.
+      // Returning it for a group with nothing visible told every caller the
+      // opposite of the truth: the one aggregate you would reach for to ask
+      // "does this group have anything to show?" reported the most permissive
+      // state possible for the two cases where it shows nothing at all.
+      test('mostRestrictive is none for an empty group', () {
         expect(
           TomAuthorizationGroup('g').mostRestrictive,
-          equals(TomAuthState.full),
+          equals(TomAuthState.none),
         );
+      });
+
+      test('mostRestrictive is none when every member is hidden', () {
+        final group = TomAuthorizationGroup('g')
+          ..register(_FakeAuthorizable('a', auth: TomAuthState.none))
+          ..register(_FakeAuthorizable('b', auth: TomAuthState.none));
+        expect(group.mostRestrictive, equals(TomAuthState.none));
+      });
+
+      // The defect in one assertion: these two groups are opposites, and the
+      // aggregate has to tell them apart.
+      test('a fully hidden group does not read as a fully open one', () {
+        final hidden = TomAuthorizationGroup('g')
+          ..register(_FakeAuthorizable('a', auth: TomAuthState.none))
+          ..register(_FakeAuthorizable('b', auth: TomAuthState.none));
+        final open = TomAuthorizationGroup('g')
+          ..register(_FakeAuthorizable('a', auth: TomAuthState.full))
+          ..register(_FakeAuthorizable('b', auth: TomAuthState.full));
+
+        expect(hidden.mostRestrictive, equals(TomAuthState.none));
+        expect(open.mostRestrictive, equals(TomAuthState.full));
+        expect(hidden.mostRestrictive, isNot(equals(open.mostRestrictive)));
+      });
+
+      // Nothing is cached: the aggregate is recomputed from live member
+      // state, so a member that becomes visible restores a real answer.
+      test('revealing a hidden member gives mostRestrictive a real answer', () {
+        final member = _MutableAuthorizable('a', TomAuthState.none);
+        final group = TomAuthorizationGroup('g')..register(member);
+        expect(group.mostRestrictive, equals(TomAuthState.none));
+
+        member.auth = TomAuthState.read;
+
+        expect(group.mostRestrictive, equals(TomAuthState.read));
       });
     });
 

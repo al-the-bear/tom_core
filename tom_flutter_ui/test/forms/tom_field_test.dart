@@ -588,9 +588,25 @@ void main() {
       expect(group.mostRestrictive, TomAuthState.disabled);
     });
 
-    test('mostRestrictive returns full for empty group', () {
+    test('mostRestrictive returns none for empty group', () {
+      // A group with nothing to show reports `none`, not `full` — `full` is
+      // the identity of the narrowing fold, and leaking it here made a fully
+      // hidden group read as a fully editable one.
       final group = TomAuthorizationGroup('empty');
-      expect(group.mostRestrictive, TomAuthState.full);
+      expect(group.mostRestrictive, TomAuthState.none);
+    });
+
+    test('mostRestrictive returns none when every field is hidden', () {
+      adapter.setRule('street', TomAuthState.none);
+      adapter.setRule('city', TomAuthState.none);
+      adapter.setRule('shipping', TomAuthState.full);
+
+      final group = TomAuthorizationGroup('shipping');
+      _TestField<String>('street', '', tomGroup: group);
+      _TestField<String>('city', '', tomGroup: group);
+
+      expect(group.isEmpty, isTrue);
+      expect(group.mostRestrictive, TomAuthState.none);
     });
   });
 
