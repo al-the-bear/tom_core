@@ -10,13 +10,22 @@
 /// Lookup rules per node:
 ///
 /// * `none` — node is hidden along with its subtree.
-/// * `disabled` — node is rendered, faded, and non-interactive; its
-///   children inherit the parent's effective auth (i.e. cannot be
-///   widened by their own keys).
-/// * `read` — node is rendered, non-interactive (taps suppressed) but
-///   children remain individually evaluated.
+/// * `disabled` — node is rendered behind an [IgnorePointer] and faded
+///   to [TomAuthTreeView.disabledOpacity]; its children inherit the
+///   parent's effective auth (i.e. cannot be widened by their own keys).
+/// * `read` — node is rendered behind an [IgnorePointer] (content
+///   visible, nothing in the row interactive) but children remain
+///   individually evaluated.
 /// * `full` — node is fully interactive and children are evaluated
 ///   normally.
+///
+/// The [IgnorePointer] wraps the node's **own row only**, never the
+/// subtree — that is what lets a `full` child under a `read` parent stay
+/// interactive. Contrast `TomAuthGuard` and `TomRadioGroup`, which have
+/// one key for one subtree and so block all of it; and note that
+/// `TomAuthGuard.blockPointerOnRead` has no counterpart here, because a
+/// tree row whose taps still fired would be indistinguishable from a
+/// `full` one.
 library;
 
 import 'package:flutter/material.dart';
@@ -219,9 +228,24 @@ class _AuthTreeNodeWidgetState extends State<_AuthTreeNodeWidget> {
       ),
     );
 
-    final wrappedRow = effective == TomAuthState.disabled
-        ? Opacity(opacity: widget.disabledOpacity, child: row)
-        : row;
+    // Nulling `InkWell.onTap` above suppresses only the row's *own* gesture.
+    // `leading` and `trailing` take arbitrary widgets — a per-row action button
+    // being the usual reason to use them — so making the node non-interactive
+    // means wrapping the row, exactly as [TomAuthGuard] wraps its child at
+    // these two states.
+    //
+    // It wraps the row and nothing else. The children are siblings of
+    // `wrappedRow` in the Column below, outside the barrier, so each is still
+    // judged on its own key; blocking the whole subtree here would re-impose
+    // through the pointer layer the `read`-parent cap that
+    // `inheritedForChildren` exists to avoid.
+    Widget wrappedRow = row;
+    if (effective == TomAuthState.disabled) {
+      wrappedRow = Opacity(opacity: widget.disabledOpacity, child: wrappedRow);
+    }
+    if (!isInteractive) {
+      wrappedRow = IgnorePointer(child: wrappedRow);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

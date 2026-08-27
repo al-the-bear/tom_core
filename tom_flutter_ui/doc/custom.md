@@ -65,6 +65,24 @@ follow the same four-outcome contract:
 | `read` | rendered, pointer-blocked (content visible, not interactive) |
 | `full` | rendered as-is |
 
+"Pointer-blocked" means an `IgnorePointer`, in all three — so a `trailing:`
+action button, a `Radio`, anything the guarded content contains, is inert and
+not merely un-styled. **What differs is the extent of the block**, which
+follows from how many keys each widget has:
+
+| Widget | Blocked region | Opt-out |
+| ------ | -------------- | ------- |
+| `TomAuthGuard` | the whole `child` subtree — one key governs it | `blockPointerOnRead: false` leaves `read` interactive |
+| `TomRadioGroup` | the whole group — one key governs the selection | none |
+| `TomAuthTreeView` | **each node's own row only** | none |
+
+The tree is the odd one because it is the only one of the three with a key
+*per* node. Blocking a node's subtree would re-impose through the pointer layer
+the very cap the propagation rules below exist to avoid: a `full` child under a
+`read` parent must keep its own row live. And since a tree row that still fired
+its taps would be indistinguishable from a `full` one, there is no
+`blockPointerOnRead` equivalent to opt out of.
+
 **`TomAuthGuard`** wraps an arbitrary `child`. Its resolution is pulled into a
 `@visibleForTesting TomAuthState resolveAuthState()` method so the decision can
 be unit-tested without a widget tree — call it on a constructed guard:
