@@ -3,18 +3,24 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-The Tom theme and its inherited scope. `TomTheme` carries the cross-cutting
-appearance concerns the widget and form layers honour — notably the read-only
-field styling — and `TomThemeScope` delivers it to a subtree. Semantic button
+The Tom theme and its inherited scope. `TomTheme` carries the one appearance
+concern Flutter has no equivalent for — how Tom's two *withheld* authorization
+states look — and `TomThemeScope` delivers it to a subtree. Semantic button
 styles are derived from the ambient `ColorScheme` via `TomButtonVariants`.
+
+Two of the four `TomAuthState`s render the widget but hold it back: `read`
+(visible, not editable) and `disabled` (visible, not available). Both are Tom
+authorization concepts — `disabled` here is *not* Material's
+`enabled: false` — and both are dimmed and made non-interactive, so one class
+describes them and the theme carries one instance per state.
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomTheme` | The Tom theme value; `TomTheme.defaultTheme` + `copyWith`. `TomTheme.readonlyStyleOf(context)` is the lookup the field layer actually calls — it falls back to `TomReadonlyStyle.defaultStyle`, so a subtree with no `TomThemeScope` above it still styles correctly |
-| `TomThemeScope` | Inherited widget delivering a `TomTheme` to its `child` |
-| `TomReadonlyStyle` | The read-only field styling (opacity, pointer absorption, overlay); `TomReadonlyStyle.defaultStyle` is the framework default — `AbsorbPointer` plus 0.6 opacity |
+| `TomTheme` | The Tom theme value; `TomTheme.defaultTheme` + `copyWith`, one `TomStateStyle` per withheld state. `TomTheme.applyAuthState(state, content)` is the single mapping from authorization state to appearance, which both enforcement points come through |
+| `TomThemeScope` | Inherited widget delivering a `TomTheme` to its `child`. `TomThemeScope.readonlyStyleOf(context)` / `disabledStyleOf(context)` are the lookups the widget layer actually calls — they fall back to the framework defaults, so a subtree with no scope above it still styles correctly; `TomThemeScope.applyAuthState(context, state, content)` combines the lookup and the mapping |
+| `TomStateStyle` | The treatment of one withheld state (opacity, pointer absorption, overlay, optional builder). `TomStateStyle.readonly` and `TomStateStyle.disabled` are the framework defaults — `AbsorbPointer` plus 0.6 and 0.38 opacity respectively |
 | `TomButtonVariants` | Semantic button `ButtonStyle` set from a `ColorScheme` |
 
 ## Quick start
@@ -24,11 +30,14 @@ import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 Widget themedApp(Widget home) {
-  // Derive a dimmer read-only treatment from the default theme.
+  // Derive dimmer treatments from the default theme. The two states are
+  // independent settings: how much a widget is dimmed is what tells a user
+  // *why* it is inert.
   const base = TomTheme.defaultTheme;
   final dimmed = base.copyWith(
     name: 'dimmed',
-    readonlyStyle: const TomReadonlyStyle(opacity: 0.5),
+    readonlyStyle: const TomStateStyle(opacity: 0.5),
+    disabledStyle: const TomStateStyle(opacity: 0.2),
   );
 
   // Deliver it to the subtree.
@@ -37,10 +46,10 @@ Widget themedApp(Widget home) {
 ```
 
 Building the theme in place like this is the intended usage even inside a
-`build` method: `TomTheme` and `TomReadonlyStyle` compare by value, so the
+`build` method: `TomTheme` and `TomStateStyle` compare by value, so the
 scope notifies its dependents only when a field actually changes, not merely
 because `copyWith` allocated. The one field compared by reference is
-`TomReadonlyStyle.builder` — closures cannot be compared any other way — so
+`TomStateStyle.builder` — closures cannot be compared any other way — so
 hoist a custom builder into a named function rather than writing it inline.
 
 `TomButtonVariants.fromColorScheme(scheme).primary` yields a ready

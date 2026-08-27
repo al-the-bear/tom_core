@@ -1,17 +1,24 @@
 import 'package:flutter/widgets.dart';
 
-/// Controls the visual treatment of authorization-readonly widgets.
+/// Controls the visual treatment of a non-interactive authorization state.
 ///
-/// Readonly is an authorization state — the widget is visible but not
-/// interactive. This class controls **how** that looks. The default is
-/// `AbsorbPointer` + 0.6 opacity, but apps can customize per-theme or
-/// per-family.
-class TomReadonlyStyle {
-  /// Opacity applied to readonly widgets. Set to 1.0 to disable dimming.
+/// Two of the four `TomAuthState`s render the widget but withhold it:
+/// `read` (visible, not editable) and `disabled` (visible, not available).
+/// Both are Tom authorization concepts that Flutter has no equivalent for —
+/// `disabled` here is not Material's `enabled: false` — and both are treated
+/// the same way: dim the content and stop it receiving pointers. So one class
+/// describes both, and a `TomTheme` carries one instance per state.
+///
+/// The two framework defaults are [readonly] and [disabled]. They differ only
+/// in opacity, which is the whole reason they are separate values rather than
+/// one constant: how much a widget is dimmed is what tells a user *why* it is
+/// inert.
+class TomStateStyle {
+  /// Opacity applied to the content. Set to 1.0 to disable dimming.
   final double opacity;
 
   /// Whether pointer events are absorbed (blocked). Almost always `true` —
-  /// set to `false` only if the family handles readonly at the widget level
+  /// set to `false` only if the family handles the state at the widget level
   /// (e.g., a TextField that switches to a non-editable display).
   final bool absorbPointers;
 
@@ -30,15 +37,23 @@ class TomReadonlyStyle {
   /// held on the state, compares equal to itself and avoids that entirely.
   final Widget Function(Widget content)? builder;
 
-  const TomReadonlyStyle({
+  const TomStateStyle({
     this.opacity = 0.6,
     this.absorbPointers = true,
     this.colorOverlay,
     this.builder,
   });
 
-  /// The framework default — AbsorbPointer + 0.6 opacity.
-  static const defaultStyle = TomReadonlyStyle();
+  /// The framework default for `read` — AbsorbPointer + 0.6 opacity.
+  static const readonly = TomStateStyle();
+
+  /// The framework default for `disabled` — AbsorbPointer + 0.38 opacity.
+  ///
+  /// 0.38 is Material's disabled opacity, borrowed so a Tom-disabled widget
+  /// sits beside a Material-disabled one without looking wrong. It is a
+  /// default, not a rule: this is a Tom authorization state, so an app that
+  /// wants to distinguish "you may not" from "not right now" changes it here.
+  static const disabled = TomStateStyle(opacity: 0.38);
 
   /// Applies this style to the given content widget.
   Widget apply(Widget content) {
@@ -62,7 +77,7 @@ class TomReadonlyStyle {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is TomReadonlyStyle &&
+    return other is TomStateStyle &&
         other.runtimeType == runtimeType &&
         other.opacity == opacity &&
         other.absorbPointers == absorbPointers &&

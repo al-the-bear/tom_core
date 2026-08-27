@@ -506,9 +506,9 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
   /// Subclasses implement their actual widget content.
   Widget buildContent(BuildContext context);
 
-  /// Disabled presentation (visible but greyed out, no content).
+  /// Disabled presentation (visible but not available), from the theme.
   Widget buildDisabled(BuildContext context) {
-    return AbsorbPointer(child: Opacity(opacity: 0.38, child: buildContent(context)));
+    return TomThemeScope.disabledStyleOf(context).apply(buildContent(context));
   }
 }
 ```
@@ -552,7 +552,7 @@ Examples of family branches (20 implemented):
 
 Authorization enforcement is built into `TomPolicyNodeBase.build()` directly (see §4.2). The four-state model (`none`/`disabled`/`read`/`full`) is handled via a switch statement — there is no separate wrapper widget.
 
-For the `read` (readonly) state, `TomPolicyNodeBase.buildReadonly()` resolves a `TomReadonlyStyle` from the nearest `TomThemeScope` inherited widget. When no theme scope exists, `TomReadonlyStyle.defaultStyle` is used (AbsorbPointer + 0.6 opacity):
+For the `read` (readonly) state, `TomPolicyNodeBase.buildReadonly()` resolves a `TomStateStyle` from the nearest `TomThemeScope` inherited widget. When no theme scope exists, `TomStateStyle.readonly` is used (AbsorbPointer + 0.6 opacity):
 
 ```dart
 Widget buildReadonly(BuildContext context) {
@@ -561,18 +561,21 @@ Widget buildReadonly(BuildContext context) {
 }
 ```
 
-The `disabled` state uses AbsorbPointer + 0.38 opacity:
+The `disabled` state resolves the same way, from the other half of the theme.
+`TomStateStyle.disabled` is the fallback (AbsorbPointer + 0.38 opacity):
 
 ```dart
 Widget buildDisabled(BuildContext context) {
-  return AbsorbPointer(
-    child: Opacity(
-      opacity: 0.38,
-      child: buildContent(context),
-    ),
-  );
+  final style = TomThemeScope.disabledStyleOf(context);
+  return style.apply(buildContent(context));
 }
 ```
+
+Both hooks remain overridable — a widget family that renders its own inert form
+overrides the hook rather than restyling the theme — but their defaults come
+from the one `TomStateStyle` pair the theme carries, which is also what
+`TomWidgetMixin.applyAuthState` resolves for widgets that extend a Flutter
+widget directly.
 
 The `TomUIStateController` allows business logic to further narrow auth state at build time — for example, disabling a reorder button when a list is empty. This narrowing cannot widen the auth-resolved state.
 
@@ -1474,7 +1477,7 @@ classes. The shipped model layers as:
 - `TomThemeSpec` — the global theme specification,
 - `TomFormStyle` / `TomFormStyleScope` — form- and scope-level style,
 - `TomThemeScope` — subtree theme override,
-- `TomReadonlyStyle` and `TomStyleResolvers` — read-only and resolved styling,
+- `TomStateStyle` and `TomStyleResolvers` — read-only and resolved styling,
 - widget override fields in concrete classes.
 
 This keeps style logic centralized while preserving precise control.
@@ -2437,7 +2440,7 @@ List views participate in the same authorization model:
 - `TomWidgetFamily` enum (26 values: 20 Flutter-derived + 6 custom form families)
 - Authorization: `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorization` singleton, `TomAuthorizer`, `TomAuthorizerStrategy`, `TomUIStateController`
 - Authorization enforcement in `TomPolicyNodeBase` (4-state switch, `resolveEffectiveAuth()`)
-- `TomReadonlyStyle` via `TomThemeScope` for readonly visual treatment
+- `TomStateStyle` via `TomThemeScope` for readonly visual treatment
 - Scope system: `TomScope`, `TomScopeMixin`, Zone-based path resolution
 - `TomScreenElementsProvider` interface and `TomScreenElementsProviderBase`
 - `TomStatelessWidget`, `TomStatefulWidget`, `TomState` — scope-preserving base classes
@@ -2564,7 +2567,7 @@ This gives a clear path to stable semantics with flexible implementation and lay
 | ----------------- | ---------------------------------------- |
 | `TomMultilineField` | Not a class; multiline ships via `TomFormStringInput(maxLines: …)` / `TomTextField`. |
 | `TomListEditorFamilyBase`, `TomMasterDetailFamilyBase` | Family-base *names* dropped; master-detail / list editing ships as `TomMasterDetailListForm` / `TomListForm` over observable `TomList`. (The paginated data layer these would have sat on is retained in A.1.) |
-| `TomThemeConfig`, `TomVariantThemeConfig`, `TomFamilyThemeConfig` | Theming ships via `TomThemeSpec` / `TomFormStyle` / `TomFormStyleScope` / `TomThemeScope` / `TomReadonlyStyle` / `TomStyleResolvers`. |
+| `TomThemeConfig`, `TomVariantThemeConfig`, `TomFamilyThemeConfig` | Theming ships via `TomThemeSpec` / `TomFormStyle` / `TomFormStyleScope` / `TomThemeScope` / `TomStateStyle` / `TomStyleResolvers`. |
 | `TomFieldImplementation` | Pluggable field-implementation layer dropped; fields ship as `TomField` + `TomTextFormFieldBase` subclasses. |
 | `requestUi()`, `TomConfirmation`, `TomInputField` / `TomChoiceList` / `TomFilePicker` (as UI-flow requests), `TomUiRequest`, `TomHelpButton` | Action UI-flow request layer dropped; actions drive UI via `TomActionController` / `TomActionContext` + `TomDialogBase`. Buttons ship as `TomIconButton` / `TomTextButton`; file entry as the `TomFormFileUpload` form field. |
 | `TomActionRegistryProvider` | Actions register via `TomActionController` / `TomActionContext` (global tier at app startup). |

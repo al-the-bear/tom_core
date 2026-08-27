@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/src/theme/theme.dart';
 
 import '../../example/theme/theme_example.dart' as example;
@@ -11,29 +12,29 @@ void main() {
     });
   });
 
-  group('TomReadonlyStyle.apply', () {
+  group('TomStateStyle.apply', () {
     test('default wraps in AbsorbPointer over Opacity', () {
-      final wrapped = TomReadonlyStyle.defaultStyle.apply(const Text('x'));
+      final wrapped = TomStateStyle.readonly.apply(const Text('x'));
       expect(wrapped, isA<AbsorbPointer>());
       expect((wrapped as AbsorbPointer).child, isA<Opacity>());
       expect((wrapped.child as Opacity).opacity, 0.6);
     });
 
     test('opacity 1.0 omits the Opacity wrapper', () {
-      const style = TomReadonlyStyle(opacity: 1.0);
+      const style = TomStateStyle(opacity: 1.0);
       final wrapped = style.apply(const Text('x'));
       expect(wrapped, isA<AbsorbPointer>());
       expect((wrapped as AbsorbPointer).child, isA<Text>());
     });
 
     test('absorbPointers false and opacity 1.0 returns content untouched', () {
-      const style = TomReadonlyStyle(opacity: 1.0, absorbPointers: false);
+      const style = TomStateStyle(opacity: 1.0, absorbPointers: false);
       const content = Text('x');
       expect(identical(style.apply(content), content), isTrue);
     });
 
     test('colorOverlay adds a ColorFiltered layer', () {
-      const style = TomReadonlyStyle(
+      const style = TomStateStyle(
         opacity: 1.0,
         absorbPointers: false,
         colorOverlay: Color(0x80FF0000),
@@ -42,10 +43,25 @@ void main() {
     });
 
     test('builder replaces the entire default treatment', () {
-      final style = TomReadonlyStyle(
+      final style = TomStateStyle(
         builder: (child) => Padding(padding: EdgeInsets.zero, child: child),
       );
       expect(style.apply(const Text('x')), isA<Padding>());
+    });
+
+    // The `disabled` default composes exactly like `readonly` — one class
+    // describes both states, so there is no second code path to get wrong.
+    // Only the opacity differs, and that difference is the whole reason the
+    // two are separate values.
+    test('the disabled default differs from readonly only in opacity', () {
+      final wrapped = TomStateStyle.disabled.apply(const Text('x'));
+      expect(wrapped, isA<AbsorbPointer>());
+      expect((wrapped as AbsorbPointer).child, isA<Opacity>());
+      expect((wrapped.child as Opacity).opacity, 0.38);
+      expect(TomStateStyle.disabled.absorbPointers,
+          TomStateStyle.readonly.absorbPointers);
+      expect(TomStateStyle.disabled.opacity,
+          isNot(TomStateStyle.readonly.opacity));
     });
   });
 
@@ -54,6 +70,7 @@ void main() {
       const theme = TomTheme.defaultTheme;
       expect(theme.name, 'default');
       expect(theme.readonlyStyle.opacity, 0.6);
+      expect(theme.disabledStyle.opacity, 0.38);
     });
 
     test('copyWith overrides only given fields', () {
@@ -61,7 +78,69 @@ void main() {
       final copy = theme.copyWith(name: 'b');
       expect(copy.name, 'b');
       expect(copy.readonlyStyle.opacity, theme.readonlyStyle.opacity);
+      expect(copy.disabledStyle.opacity, theme.disabledStyle.opacity);
       expect(theme.copyWith().name, 'a');
+    });
+
+    // The two styles are independent settings, not one setting read twice.
+    test('copyWith moves each style without disturbing the other', () {
+      const base = TomTheme.defaultTheme;
+
+      final dimmerDisabled =
+          base.copyWith(disabledStyle: const TomStateStyle(opacity: 0.2));
+      expect(dimmerDisabled.disabledStyle.opacity, 0.2);
+      expect(dimmerDisabled.readonlyStyle, base.readonlyStyle);
+
+      final dimmerReadonly =
+          base.copyWith(readonlyStyle: const TomStateStyle(opacity: 0.5));
+      expect(dimmerReadonly.readonlyStyle.opacity, 0.5);
+      expect(dimmerReadonly.disabledStyle, base.disabledStyle);
+    });
+  });
+
+  // The single mapping from authorization state to appearance. Both
+  // enforcement points come through here, which is what stops the `disabled`
+  // treatment being written out twice with the number inlined in each.
+  group('TomTheme.applyAuthState', () {
+    const theme = TomTheme(
+      readonlyStyle: TomStateStyle(opacity: 0.5),
+      disabledStyle: TomStateStyle(opacity: 0.2),
+    );
+    const content = Text('x');
+
+    test('full renders the content untouched', () {
+      expect(
+        identical(theme.applyAuthState(TomAuthState.full, () => content),
+            content),
+        isTrue,
+      );
+    });
+
+    test('none collapses to a zero-size box', () {
+      final result = theme.applyAuthState(TomAuthState.none, () => content);
+      expect(result, isA<SizedBox>());
+      expect((result as SizedBox).width, 0);
+      expect(result.height, 0);
+    });
+
+    // Why the parameter is a callback and not a widget: a hidden widget's
+    // content may be expensive, and under an authorization state that hides
+    // it, it may not be constructible at all.
+    test('none never builds the content', () {
+      var built = 0;
+      theme.applyAuthState(TomAuthState.none, () {
+        built++;
+        return content;
+      });
+      expect(built, 0);
+    });
+
+    test('read and disabled each use their own style', () {
+      final read = theme.applyAuthState(TomAuthState.read, () => content);
+      final disabled =
+          theme.applyAuthState(TomAuthState.disabled, () => content);
+      expect(((read as AbsorbPointer).child as Opacity).opacity, 0.5);
+      expect(((disabled as AbsorbPointer).child as Opacity).opacity, 0.2);
     });
   });
 
@@ -71,25 +150,25 @@ void main() {
   // the scope a freshly allocated instance. Under identity that is always a
   // change; under value equality it is one only when a field moved.
   group('theme value equality', () {
-    test('TomReadonlyStyle: separate instances with equal fields match', () {
+    test('TomStateStyle: separate instances with equal fields match', () {
       // Deliberately not const — const instances are canonicalised, so they
       // would compare equal even under identity and prove nothing.
-      final a = TomReadonlyStyle(opacity: 0.5, colorOverlay: Color(0xFF112233));
-      final b = TomReadonlyStyle(opacity: 0.5, colorOverlay: Color(0xFF112233));
+      final a = TomStateStyle(opacity: 0.5, colorOverlay: Color(0xFF112233));
+      final b = TomStateStyle(opacity: 0.5, colorOverlay: Color(0xFF112233));
       expect(a, equals(b));
       expect(a.hashCode, equals(b.hashCode));
     });
 
-    test('TomReadonlyStyle: each field is part of the comparison', () {
-      const base = TomReadonlyStyle();
-      expect(base, isNot(equals(const TomReadonlyStyle(opacity: 0.5))));
+    test('TomStateStyle: each field is part of the comparison', () {
+      const base = TomStateStyle();
+      expect(base, isNot(equals(const TomStateStyle(opacity: 0.5))));
       expect(base,
-          isNot(equals(const TomReadonlyStyle(absorbPointers: false))));
+          isNot(equals(const TomStateStyle(absorbPointers: false))));
       expect(
           base,
           isNot(equals(
-              const TomReadonlyStyle(colorOverlay: Color(0xFF112233)))));
-      expect(base, isNot(equals(TomReadonlyStyle(builder: _dim))));
+              const TomStateStyle(colorOverlay: Color(0xFF112233)))));
+      expect(base, isNot(equals(TomStateStyle(builder: _dim))));
     });
 
     // The one place equality is reference-based, and it is deliberate: Dart
@@ -98,11 +177,11 @@ void main() {
     // builder inside `build` gets a theme that never compares equal, which is
     // exactly the trap this group exists to close, so the dartdoc tells them
     // to hoist it.
-    test('TomReadonlyStyle: builders compare by reference, not behaviour', () {
-      expect(TomReadonlyStyle(builder: _dim),
-          equals(TomReadonlyStyle(builder: _dim)));
-      expect(TomReadonlyStyle(builder: (c) => c),
-          isNot(equals(TomReadonlyStyle(builder: (c) => c))));
+    test('TomStateStyle: builders compare by reference, not behaviour', () {
+      expect(TomStateStyle(builder: _dim),
+          equals(TomStateStyle(builder: _dim)));
+      expect(TomStateStyle(builder: (c) => c),
+          isNot(equals(TomStateStyle(builder: (c) => c))));
     });
 
     test('TomTheme: copyWith with no overrides equals the original', () {
@@ -111,17 +190,22 @@ void main() {
       expect(base.copyWith().hashCode, equals(base.hashCode));
     });
 
-    test('TomTheme: name and the nested style both count', () {
+    test('TomTheme: name and both nested styles count', () {
       const base = TomTheme(name: 'a');
       expect(base.copyWith(name: 'b'), isNot(equals(base)));
       expect(
-          base.copyWith(readonlyStyle: const TomReadonlyStyle(opacity: 0.5)),
+          base.copyWith(readonlyStyle: const TomStateStyle(opacity: 0.5)),
+          isNot(equals(base)));
+      // Omitting `disabledStyle` from `==` would make a theme that restyles
+      // only the disabled state fail to reach its dependents.
+      expect(
+          base.copyWith(disabledStyle: const TomStateStyle(opacity: 0.2)),
           isNot(equals(base)));
       // The nested style is compared by value too, not by identity.
       expect(
-          TomTheme(name: 'a', readonlyStyle: TomReadonlyStyle(opacity: 0.5)),
+          TomTheme(name: 'a', readonlyStyle: TomStateStyle(opacity: 0.5)),
           equals(
-              TomTheme(name: 'a', readonlyStyle: TomReadonlyStyle(opacity: 0.5))));
+              TomTheme(name: 'a', readonlyStyle: TomStateStyle(opacity: 0.5))));
     });
   });
 
@@ -141,12 +225,15 @@ void main() {
   });
 
   group('TomThemeScope', () {
-    testWidgets('of/readonlyStyleOf return the scoped theme', (tester) async {
+    testWidgets('of and the two styleOf accessors return the scoped theme',
+        (tester) async {
       late TomTheme seen;
-      late TomReadonlyStyle seenStyle;
+      late TomStateStyle seenReadonly;
+      late TomStateStyle seenDisabled;
       const theme = TomTheme(
         name: 'scoped',
-        readonlyStyle: TomReadonlyStyle(opacity: 0.4),
+        readonlyStyle: TomStateStyle(opacity: 0.4),
+        disabledStyle: TomStateStyle(opacity: 0.2),
       );
       await tester.pumpWidget(
         TomThemeScope(
@@ -154,27 +241,32 @@ void main() {
           child: Builder(
             builder: (context) {
               seen = TomThemeScope.of(context);
-              seenStyle = TomThemeScope.readonlyStyleOf(context);
+              seenReadonly = TomThemeScope.readonlyStyleOf(context);
+              seenDisabled = TomThemeScope.disabledStyleOf(context);
               return const SizedBox();
             },
           ),
         ),
       );
       expect(seen.name, 'scoped');
-      expect(seenStyle.opacity, 0.4);
+      expect(seenReadonly.opacity, 0.4);
+      expect(seenDisabled.opacity, 0.2);
     });
 
     testWidgets('falls back to defaults with no scope', (tester) async {
       late TomTheme seen;
+      late TomStateStyle seenDisabled;
       await tester.pumpWidget(
         Builder(
           builder: (context) {
             seen = TomThemeScope.of(context);
+            seenDisabled = TomThemeScope.disabledStyleOf(context);
             return const SizedBox();
           },
         ),
       );
       expect(seen.name, TomTheme.defaultTheme.name);
+      expect(seenDisabled, TomStateStyle.disabled);
     });
 
     // What the equality is *for*. `readonlyStyleOf` is reached from
@@ -201,7 +293,7 @@ void main() {
             return TomThemeScope(
               theme: TomTheme.defaultTheme.copyWith(
                 name: 'dimmed',
-                readonlyStyle: const TomReadonlyStyle(opacity: 0.5),
+                readonlyStyle: const TomStateStyle(opacity: 0.5),
               ),
               child: const _DependentProbe(),
             );
@@ -232,7 +324,7 @@ void main() {
             rebuildAncestor = setState;
             return TomThemeScope(
               theme: TomTheme.defaultTheme.copyWith(
-                readonlyStyle: TomReadonlyStyle(opacity: opacity),
+                readonlyStyle: TomStateStyle(opacity: opacity),
               ),
               child: const _DependentProbe(),
             );
@@ -264,7 +356,7 @@ class _DependentProbe extends StatelessWidget {
   const _DependentProbe();
 
   static int builds = 0;
-  static TomReadonlyStyle? lastStyle;
+  static TomStateStyle? lastStyle;
 
   @override
   Widget build(BuildContext context) {

@@ -226,6 +226,29 @@ void main() {
       expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
           closeTo(0.6, 0.001));
     });
+
+    // The counterpart of the same test in
+    // `test/widget_base/tom_policy_node_auth_gate_test.dart`, deliberately
+    // using the same 0.2: these are Tom's two enforcement points, and this
+    // pins that one theme reaches both. They used to switch over the four
+    // states independently, with the disabled opacity written out as a literal
+    // in each — restyling it moved neither.
+    testWidgets('the disabled treatment follows the scoped theme',
+        (tester) async {
+      TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.disabled});
+      await tester.pumpWidget(
+        _host(
+          TomThemeScope(
+            theme: const TomTheme(
+              disabledStyle: TomStateStyle(opacity: 0.2),
+            ),
+            child: _MixinWidget(tomId: 'w', child: const Text('x')),
+          ),
+        ),
+      );
+      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
+          closeTo(0.2, 0.001));
+    });
   });
 
   group('TomWidgetMixin.debugLabel', () {

@@ -78,6 +78,15 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
   @override
   TomAuthState get effectiveAuthState => resolveEffectiveAuth();
 
+  /// Dispatches to the per-state build hooks.
+  ///
+  /// This switch deliberately does *not* delegate to [TomTheme.applyAuthState]
+  /// the way `TomWidgetMixin.applyAuthState` does, because [buildReadonly] and
+  /// [buildDisabled] are documented override points — a family that swaps a
+  /// text field for a non-editable display overrides the hook rather than
+  /// restyling the theme. What the two share is one level down: the *default*
+  /// hooks resolve their treatment from the same [TomStateStyle] pair, so the
+  /// appearance has a single source even though the dispatch does not.
   Widget _buildWithAuth(BuildContext context) {
     final authState = resolveEffectiveAuth();
 
@@ -98,27 +107,26 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
   /// Subclasses implement this instead of [build].
   Widget buildContent(BuildContext context);
 
-  /// Builds the readonly visual treatment.
+  /// Builds the readonly visual treatment — visible, but not editable.
   ///
-  /// The default implementation resolves [TomReadonlyStyle] from the
-  /// nearest [TomThemeScope] and applies it. When no theme scope exists,
-  /// [TomReadonlyStyle.defaultStyle] is used (AbsorbPointer + 0.6 opacity).
+  /// The default implementation resolves the [TomStateStyle] for `read` from
+  /// the nearest [TomThemeScope] and applies it. When no theme scope exists,
+  /// [TomStateStyle.readonly] is used (AbsorbPointer + 0.6 opacity).
   Widget buildReadonly(BuildContext context) {
     final style = TomThemeScope.readonlyStyleOf(context);
     return style.apply(buildContent(context));
   }
 
-  /// Builds the disabled visual treatment.
+  /// Builds the disabled visual treatment — visible, but not available.
   ///
-  /// Disabled means the widget is visible but greyed out with no content.
-  /// The default applies opacity + absorbs pointers, similar to readonly
-  /// but with reduced opacity to indicate the element is not available.
+  /// Resolved the same way as [buildReadonly], from the `disabled` half of the
+  /// theme rather than the `read` half; the default is
+  /// [TomStateStyle.disabled] (AbsorbPointer + 0.38 opacity). The dimming used
+  /// to be written out here as a literal, and again in
+  /// `TomWidgetMixin.applyAuthState`, so an app could restyle one of Tom's two
+  /// withheld states and not the other.
   Widget buildDisabled(BuildContext context) {
-    return AbsorbPointer(
-      child: Opacity(
-        opacity: 0.38,
-        child: buildContent(context),
-      ),
-    );
+    final style = TomThemeScope.disabledStyleOf(context);
+    return style.apply(buildContent(context));
   }
 }

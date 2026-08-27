@@ -265,8 +265,8 @@ flowchart TD
     B --> C["UI state controller<br/>uiStateController.apply(state)"]
     C --> D{effective state?}
     D -->|none| E["HIDDEN<br/>(SizedBox.shrink)"]
-    D -->|disabled| F["DISABLED<br/>(greyed out, no content)<br/>AbsorbPointer + 0.38 opacity"]
-    D -->|read| G["READONLY<br/>(visible, not editable)"]
+    D -->|disabled| F["DISABLED<br/>(visible, not available)<br/>theme disabledStyle, default 0.38 opacity"]
+    D -->|read| G["READONLY<br/>(visible, not editable)<br/>theme readonlyStyle, default 0.6 opacity"]
     D -->|full| H["FULL ACCESS<br/>(fully interactive)"]
 
     style E fill:#d94a4a,color:#fff
@@ -765,19 +765,11 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   }
 
   /// Applies the appropriate visual treatment based on auth state.
+  ///
+  /// The mapping lives in `TomTheme.applyAuthState`, shared with
+  /// `TomPolicyNodeBase`'s default hooks, so the treatments cannot drift.
   Widget applyAuthState(BuildContext context, Widget child) {
-    final auth = getAuth();
-    switch (auth) {
-      case TomAuthState.none:
-        return const SizedBox.shrink();
-      case TomAuthState.disabled:
-        return AbsorbPointer(child: Opacity(opacity: 0.38, child: child));
-      case TomAuthState.read:
-        final style = TomThemeScope.readonlyStyleOf(context);
-        return style.apply(child);
-      case TomAuthState.full:
-        return child;
-    }
+    return TomThemeScope.applyAuthState(context, getAuth(), () => child);
   }
 }
 ```
@@ -1094,7 +1086,7 @@ class AclScope extends InheritedWidget {
 - **Enforcement:** `AbsorbPointer` blocks input events
 - **Styling:** Opacity reduction, color changes, background tinting
 
-`TomReadonlyStyle` from `TomThemeScope` provides the visual treatment. Family-specific widgets can override for custom readonly behavior (e.g., inputs show a non-editable text field with distinct background instead of opacity reduction).
+`TomStateStyle` from `TomThemeScope` provides the visual treatment. Family-specific widgets can override for custom readonly behavior (e.g., inputs show a non-editable text field with distinct background instead of opacity reduction).
 
 ### Widget families
 
@@ -2012,7 +2004,7 @@ Tom adds only what Flutter's theming does not cover:
 
 | Tom Concern | Why Flutter doesn't cover it |
 |-------------|------------------------------|
-| **Readonly style** | Authorization-driven visual treatment (§4) — not a Material concept |
+| **Withheld-state styles** | Authorization-driven visual treatment of `read` and `disabled` (§4) — not Material concepts |
 
 Everything else — colors, typography, shapes, elevation, disabled styling, dark/light mode, per-widget theme data — is handled by Flutter's `Theme` widget and `ThemeData`.
 
@@ -2044,7 +2036,7 @@ Because Tom widgets (e.g., `TomElevatedButton`) delegate to Flutter widgets (e.g
 
 - **Colors, shapes, elevation** → `ThemeData` / `ColorScheme`
 - **Per-widget defaults** → `ElevatedButtonThemeData`, `InputDecorationTheme`, `CardThemeData`, etc.
-- **Disabled styling** → handled natively by Material widgets (greyed out, non-interactive)
+- **Widget-level disabled styling** (`onPressed: null`, `enabled: false`) → handled natively by Material widgets. Tom's authorization `disabled` is a separate concept — see below.
 - **Dark/light mode** → `ThemeData` + `MediaQuery.platformBrightnessOf`
 - **User-customizable base colors** → `ColorScheme.fromSeed(seedColor: userColor)`
 
@@ -2052,16 +2044,17 @@ Because Tom widgets (e.g., `TomElevatedButton`) delegate to Flutter widgets (e.g
 
 Tom's `TomThemeScope` layers Tom-specific concerns over Flutter's `Theme`:
 
-1. **`TomReadonlyStyle`** — configurable visual treatment for authorization-readonly widgets.
+1. **`TomStateStyle`** — configurable visual treatment for Tom's two withheld authorization states, `read` and `disabled`. The theme carries one instance of it per state (`readonlyStyle`, `disabledStyle`); `disabled` here is Tom's authorization state, not Material's `enabled: false`, which is why it is themed rather than left to `ThemeData`.
 
-#### `TomThemeScope` — delivering the readonly layer
+#### `TomThemeScope` — delivering the withheld-state layer
 
 `TomThemeScope` is an `InheritedWidget` placed alongside (typically just inside) Flutter's `Theme`. It carries a `TomTheme` which holds only Tom-specific extensions — not a replacement for `ThemeData`.
 
 ```dart
 TomThemeScope(
   theme: TomTheme(
-    readonlyStyle: TomReadonlyStyle(opacity: 0.5),
+    readonlyStyle: TomStateStyle(opacity: 0.5),
+    disabledStyle: TomStateStyle(opacity: 0.2),
   ),
   child: MaterialApp(theme: themeData, home: MyApp()),
 )
@@ -2136,28 +2129,38 @@ class TomTheme {
   /// Human-readable name for this theme.
   final String name;
 
-  /// Global readonly style applied when no per-family override exists.
-  final TomReadonlyStyle readonlyStyle;
+  /// Treatment for `read` — visible, not editable.
+  final TomStateStyle readonlyStyle;
+
+  /// Treatment for `disabled` — visible, not available.
+  final TomStateStyle disabledStyle;
 
   const TomTheme({
     this.name = 'default',
-    this.readonlyStyle = const TomReadonlyStyle(),
+    this.readonlyStyle = TomStateStyle.readonly,
+    this.disabledStyle = TomStateStyle.disabled,
   });
+
+  /// The single mapping from authorization state to appearance.
+  Widget applyAuthState(TomAuthState state, ValueGetter<Widget> content) {
+    /* none → SizedBox.shrink, disabled → disabledStyle,
+       read → readonlyStyle, full → content() */
+  }
 }
 ```
 
-### Readonly style
+### Withheld-state styles
 
-Readonly is an authorization state (§4), but its visual treatment is a theming concern. The theme system owns how readonly widgets look:
+`read` and `disabled` are authorization states (§4), but their visual treatment is a theming concern. Both are withheld the same way — dimmed and non-interactive — so one class describes both and the theme carries one instance per state:
 
 ```dart
-class TomReadonlyStyle {
+class TomStateStyle {
   final double opacity;
   final bool absorbPointers;
   final Color? colorOverlay;
   final Widget Function(Widget content)? builder;
 
-  const TomReadonlyStyle({
+  const TomStateStyle({
     this.opacity = 0.6,
     this.absorbPointers = true,
     this.colorOverlay,
@@ -2168,20 +2171,22 @@ class TomReadonlyStyle {
 }
 ```
 
-`TomPolicyNodeBase.buildReadonly()` resolves the style from the nearest `TomThemeScope`. Family base classes can override `buildReadonly()` for family-specific readonly behavior (e.g., inputs switching to a non-editable text display).
+`TomPolicyNodeBase.buildReadonly()` and `buildDisabled()` resolve their style from the nearest `TomThemeScope`, as does `TomWidgetMixin.applyAuthState` for widgets that extend a Flutter widget directly. Family base classes can override either hook for family-specific behavior (e.g., inputs switching to a non-editable text display) — the hooks are override points, and only their defaults come from the theme.
+
+`TomStateStyle.readonly` (0.6 opacity) and `TomStateStyle.disabled` (0.38) are the framework defaults. They differ only in opacity, which is what tells a user *why* a widget is inert.
 
 **Examples:**
 
 ```dart
 // Minimal — just change opacity
-TomTheme(readonlyStyle: TomReadonlyStyle(opacity: 0.4))
+TomTheme(readonlyStyle: TomStateStyle(opacity: 0.4))
 
 // Grey tint instead of opacity
-TomTheme(readonlyStyle: TomReadonlyStyle(opacity: 1.0, colorOverlay: Color(0x33888888)))
+TomTheme(readonlyStyle: TomStateStyle(opacity: 1.0, colorOverlay: Color(0x33888888)))
 
 // Fully custom builder
 TomTheme(
-  readonlyStyle: TomReadonlyStyle(
+  readonlyStyle: TomStateStyle(
     builder: (content) => AbsorbPointer(
       child: DecoratedBox(
         decoration: BoxDecoration(color: Colors.grey.shade100),
@@ -2192,15 +2197,14 @@ TomTheme(
 )
 ```
 
-### Disabled styling — no Tom code needed
+### Two meanings of "disabled"
 
-Flutter's Material widgets handle disabled state natively. When `onPressed` is `null`, buttons grey out; when `enabled: false` is set, inputs grey out. Tom does **not** wrap or override this behavior.
+The word covers two unrelated things, and only one of them is Tom's:
 
-The distinction is:
-- **Disabled** = widget-level state (no callback, no enabled flag). Handled by Flutter.
-- **Readonly** = authorization-level state (user lacks write permission). Handled by Tom via `TomReadonlyStyle`.
+- **Widget-level disabled** — no callback (`onPressed: null`) or `enabled: false`. Flutter's Material widgets grey this out natively; Tom does **not** wrap or override it.
+- **Authorization `disabled`** — `TomAuthState.disabled`: the user may see the element but may not use it. Flutter has no concept of this, so Tom styles it, through `TomTheme.disabledStyle`, exactly as it styles `read`.
 
-Both result in a non-interactive widget, but readonly is enforced by authorization and styled by theme, while disabled is a standard Flutter widget state.
+Both end in a non-interactive widget, but they arrive there for different reasons and are configured in different places. Tom's default borrows Material's 0.38 opacity so the two sit beside each other without looking wrong — a default, not a rule.
 
 ### Complete app setup example
 
@@ -2223,7 +2227,7 @@ class MyApp extends StatelessWidget {
 
     return TomThemeScope(
       theme: TomTheme(
-        readonlyStyle: TomReadonlyStyle(opacity: 0.5),
+        readonlyStyle: TomStateStyle(opacity: 0.5),
       ),
       child: MaterialApp(
         theme: themeData,
@@ -2242,7 +2246,7 @@ class MyApp extends StatelessWidget {
 - **Style variant helper** (`TomButtonVariants`) is a convenience factory that derives `ButtonStyle` objects from `ColorScheme` — it doesn't introduce new theming concepts.
 - **Configuration** (§5) defines environment/platform behavior.
 
-They remain separate but compose in the same build path. A widget's label comes from resources, its visual appearance from Flutter's theme, its readonly treatment from `TomReadonlyStyle`, and its behavior adaptations from configuration.
+They remain separate but compose in the same build path. A widget's label comes from resources, its visual appearance from Flutter's theme, its readonly treatment from `TomStateStyle`, and its behavior adaptations from configuration.
 
 ---
 

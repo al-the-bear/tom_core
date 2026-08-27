@@ -131,7 +131,7 @@ and download with progress, cancel and retry over the kernel's
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomTheme`, `TomThemeScope` | The Tom theme and its inherited scope |
-| `TomReadonlyStyle` | The read-only field styling |
+| `TomStateStyle` | The treatment of a withheld authorization state; the theme carries one per state (`read`, `disabled`) |
 | `TomButtonVariants` | Button style-variant set |
 
 ### Resource & configuration inputs (`resource_auth/`)

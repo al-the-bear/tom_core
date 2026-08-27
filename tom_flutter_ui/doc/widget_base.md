@@ -90,12 +90,16 @@ The resolved state selects the render path:
 | `TomAuthState` | Rendered as |
 | -------------- | ----------- |
 | `none` | `SizedBox.shrink()` — removed from layout |
-| `disabled` | `buildDisabled` — `AbsorbPointer` + 0.38 opacity by default |
-| `read` | `buildReadonly` — `TomReadonlyStyle` from the nearest `TomThemeScope` (default: `AbsorbPointer` + 0.6 opacity) |
+| `disabled` | `buildDisabled` — the `disabledStyle` from the nearest `TomThemeScope` (default: `AbsorbPointer` + 0.38 opacity) |
+| `read` | `buildReadonly` — the `readonlyStyle` from the nearest `TomThemeScope` (default: `AbsorbPointer` + 0.6 opacity) |
 | `full` | `buildContent` — normal rendering |
 
 Subclasses may override `buildReadonly` / `buildDisabled` for a richer treatment
-but always provide `buildContent`.
+but always provide `buildContent`. That is why this switch does not delegate to
+`TomTheme.applyAuthState` the way `TomWidgetMixin.applyAuthState` does: the
+hooks are override points, and only their *default* bodies resolve from the
+theme. The two enforcement points share the styling one level down — the same
+`TomStateStyle` pair — rather than sharing the dispatch.
 
 ## The widget-family taxonomy
 
@@ -209,7 +213,7 @@ than an error.
   `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorizer`,
   `TomTextResourceProvider`.
 - Sibling modules: `resource_auth/` (`TomUIColors`, `TomUIIcons`), `theme/`
-  (`TomThemeScope`, `TomReadonlyStyle`), `widgets/` (`TomText` for the
+  (`TomThemeScope`, `TomStateStyle`), `widgets/` (`TomText` for the
   default-widget helpers).
 
 > Because the barrel pulls in `flutter/material` (→ `dart:ui`), code that

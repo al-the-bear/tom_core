@@ -842,16 +842,19 @@ the resolved authorization state. Until the container consults
 `TomAuthState.isInteractive`, express a "visible but not usable" grant as
 `none`, or through the component's group.
 
-The `read` treatment is the only authorization visual you can customise, and it
-belongs to the theme rather than to the container. `TomTheme.readonlyStyle`
-holds a [`TomReadonlyStyle`] — note the lowercase `o` — which the container
-reaches through `TomThemeScope.readonlyStyleOf(context)`. Put a `TomThemeScope`
-anywhere above the container to change it:
+`read` is therefore the only authorization visual the container gives you to
+customise, and it belongs to the theme rather than to the container.
+`TomTheme.readonlyStyle` holds a [`TomStateStyle`], which the container reaches
+through `TomThemeScope.readonlyStyleOf(context)`. The theme carries a
+`disabledStyle` of the same type for the `disabled` state — honoured by
+`TomPolicyNodeBase` and `TomWidgetMixin` — but the container never reaches for
+it, for the reason above. Put a `TomThemeScope` anywhere above the container to
+change the `read` treatment:
 
 ```dart
 TomThemeScope(
   theme: const TomTheme(
-    readonlyStyle: TomReadonlyStyle(
+    readonlyStyle: TomStateStyle(
       opacity: 1.0,                      // 1.0 disables dimming
       colorOverlay: Color(0x33888888),   // tint via ColorFiltered instead
     ),

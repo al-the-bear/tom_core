@@ -67,7 +67,7 @@ Scopes nest. A widget's `basePath` is built from the scope chain + its `tomId`.
 | State | Effect | Widget Behavior |
 |-------|--------|-----------------|
 | `full` | Fully interactive | Normal rendering |
-| `read` | Read-only | Visible, not editable (styled via `TomReadonlyStyle`) |
+| `read` | Read-only | Visible, not editable (styled via `TomStateStyle`) |
 | `disabled` | Visible but inaccessible | Greyed out, no content, pointer events absorbed |
 | `none` | Hidden | `SizedBox.shrink()` — as if the widget doesn't exist |
 
@@ -430,14 +430,14 @@ TomElevatedButton(
 
 ## 8. Theming
 
-Tom uses Flutter's native `ThemeData` for all styling. The only Tom-specific addition is `TomReadonlyStyle` for authorization-readonly widgets.
+Tom uses Flutter's native `ThemeData` for all styling. The only Tom-specific addition is `TomStateStyle` for authorization-readonly widgets.
 
 ### Setup
 
 ```dart
 TomThemeScope(
   theme: TomTheme(
-    readonlyStyle: TomReadonlyStyle(opacity: 0.5),
+    readonlyStyle: TomStateStyle(opacity: 0.5),
   ),
   child: MaterialApp(
     theme: ThemeData(
@@ -548,7 +548,7 @@ void main() {
   // 3. Run app with TomThemeScope
   runApp(
     TomThemeScope(
-      theme: TomTheme(readonlyStyle: TomReadonlyStyle(opacity: 0.5)),
+      theme: TomTheme(readonlyStyle: TomStateStyle(opacity: 0.5)),
       child: MaterialApp(
         theme: myThemeData,
         home: MyApp(),

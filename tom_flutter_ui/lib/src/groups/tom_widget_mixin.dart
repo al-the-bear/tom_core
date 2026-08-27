@@ -90,21 +90,16 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   }
 
   /// Applies the appropriate visual treatment based on auth state.
+  ///
+  /// The mapping itself lives in [TomTheme.applyAuthState], shared with
+  /// `TomPolicyNodeBase` — the two used to switch over the four states
+  /// separately, which is how the `disabled` treatment came to be written out
+  /// twice with the opacity hard-coded in both.
+  ///
+  /// [child] is already built by the caller, so the laziness the callback
+  /// affords is spent here; it still matters for the other enforcement point.
   Widget applyAuthState(BuildContext context, Widget child) {
-    final auth = getAuth();
-    switch (auth) {
-      case TomAuthState.none:
-        return const SizedBox.shrink();
-      case TomAuthState.disabled:
-        return AbsorbPointer(
-          child: Opacity(opacity: 0.38, child: child),
-        );
-      case TomAuthState.read:
-        final style = TomThemeScope.readonlyStyleOf(context);
-        return style.apply(child);
-      case TomAuthState.full:
-        return child;
-    }
+    return TomThemeScope.applyAuthState(context, getAuth(), () => child);
   }
 
   void registerWithGroup() {

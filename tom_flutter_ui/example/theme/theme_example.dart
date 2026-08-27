@@ -1,7 +1,8 @@
 /// Executable example for the `theme/` module of `tom_flutter_ui`.
 ///
 /// Demonstrates the two things Tom layers on top of Flutter's theming: the
-/// readonly visual treatment (`TomReadonlyStyle`) and the semantic button
+/// visual treatment of its two withheld authorization states — `read` and
+/// `disabled`, both described by `TomStateStyle` — and the semantic button
 /// variants (`TomButtonVariants`), plus the immutable `TomTheme` value class.
 /// Because it imports `flutter/material` (which pulls in `dart:ui`), run it
 /// under the Flutter toolchain, e.g. `flutter test example/theme/theme_example.dart`,
@@ -20,24 +21,53 @@ void run() {
   const base = TomTheme.defaultTheme;
   final dimmed = base.copyWith(
     name: 'dimmed',
-    readonlyStyle: const TomReadonlyStyle(opacity: 0.5),
+    readonlyStyle: const TomStateStyle(opacity: 0.5),
   );
   print('base="${base.name}" dimmed="${dimmed.name}" '
       'opacity=${dimmed.readonlyStyle.opacity}');
 
   // Example 2: the default readonly treatment wraps content in an
   // AbsorbPointer (over an Opacity). apply() needs no BuildContext.
-  final wrapped = TomReadonlyStyle.defaultStyle.apply(const Text('field'));
+  final wrapped = TomStateStyle.readonly.apply(const Text('field'));
   print('default readonly -> ${wrapped.runtimeType}');
 
-  // Example 3: a fully permissive style returns the content untouched.
-  const passthrough = TomReadonlyStyle(opacity: 1.0, absorbPointers: false);
+  // Example 3: `disabled` is the other withheld state, and it is themed
+  // exactly like `read` — same class, same composition, its own instance on
+  // the theme. Only the opacity differs, and that is what tells a user *why*
+  // the widget is inert. Both are settings, not constants: an app that wants
+  // to distinguish "you may not" from "not right now" changes them here.
+  final strictDisabled = base.copyWith(
+    disabledStyle: const TomStateStyle(opacity: 0.2),
+  );
+  print('disabled default=${base.disabledStyle.opacity} '
+      'restyled=${strictDisabled.disabledStyle.opacity} '
+      '(readonly untouched: ${strictDisabled.readonlyStyle.opacity})');
+
+  // Example 4: applyAuthState is the single mapping from authorization state
+  // to appearance. Both enforcement points — TomPolicyNodeBase's default
+  // hooks and TomWidgetMixin.applyAuthState — resolve through it, so the two
+  // cannot drift apart. Note that `content` is a callback: `none` must not
+  // build what it is about to discard.
+  var builds = 0;
+  Widget field() {
+    builds++;
+    return const Text('field');
+  }
+
+  final hidden = strictDisabled.applyAuthState(TomAuthState.none, field);
+  final inert = strictDisabled.applyAuthState(TomAuthState.disabled, field);
+  final editable = strictDisabled.applyAuthState(TomAuthState.full, field);
+  print('none -> ${hidden.runtimeType} (content built $builds times), '
+      'disabled -> ${inert.runtimeType}, full -> ${editable.runtimeType}');
+
+  // Example 5: a fully permissive style returns the content untouched.
+  const passthrough = TomStateStyle(opacity: 1.0, absorbPointers: false);
   const content = Text('editable');
   final unwrapped = passthrough.apply(content);
   print('passthrough identical -> ${identical(unwrapped, content)}');
 
-  // Example 4: a custom builder replaces the default treatment entirely.
-  final custom = TomReadonlyStyle(
+  // Example 6: a custom builder replaces the default treatment entirely.
+  final custom = TomStateStyle(
     builder: (child) => Banner(
       message: 'read-only',
       location: BannerLocation.topEnd,
@@ -46,7 +76,7 @@ void run() {
   ).apply(const Text('field'));
   print('custom readonly -> ${custom.runtimeType}');
 
-  // Example 5: semantic button variants derived from a ColorScheme.
+  // Example 7: semantic button variants derived from a ColorScheme.
   const scheme = ColorScheme.light();
   final variants = TomButtonVariants.fromColorScheme(scheme);
   final primaryBg =
@@ -55,23 +85,23 @@ void run() {
       variants.destructive.backgroundColor?.resolve(<WidgetState>{});
   print('primary bg=$primaryBg destructive bg=$destructiveBg');
 
-  // Example 6: themes and styles are values, which is what lets a
+  // Example 8: themes and styles are values, which is what lets a
   // TomThemeScope built inside `build` avoid rebuilding its dependents on
   // every ancestor rebuild. copyWith always allocates, so without value
   // equality every rebuild would look like a theme change.
   final rebuiltDimmed = base.copyWith(
     name: 'dimmed',
-    readonlyStyle: const TomReadonlyStyle(opacity: 0.5),
+    readonlyStyle: const TomStateStyle(opacity: 0.5),
   );
   print('separately built themes equal -> ${rebuiltDimmed == dimmed}');
 
   // The exception: `builder` holds a function, and functions compare by
   // reference. A hoisted (named) builder is the same object every time; an
   // inline closure is a new one on each build.
-  final hoistedA = TomReadonlyStyle(builder: readOnlyBanner);
-  final hoistedB = TomReadonlyStyle(builder: readOnlyBanner);
-  final inlineA = TomReadonlyStyle(builder: (child) => child);
-  final inlineB = TomReadonlyStyle(builder: (child) => child);
+  final hoistedA = TomStateStyle(builder: readOnlyBanner);
+  final hoistedB = TomStateStyle(builder: readOnlyBanner);
+  final inlineA = TomStateStyle(builder: (child) => child);
+  final inlineB = TomStateStyle(builder: (child) => child);
   print('hoisted builders equal -> ${hoistedA == hoistedB}   '
       'inline builders equal -> ${inlineA == inlineB}');
 
@@ -87,6 +117,23 @@ void run() {
   assert(identical(unwrapped, content));
   assert(custom is Banner);
 
+  // The disabled default is Material's disabled opacity, borrowed so a
+  // Tom-disabled widget sits beside a Material-disabled one without looking
+  // wrong — but it is a default, not a rule.
+  assert(base.disabledStyle.opacity == 0.38);
+  assert(strictDisabled.disabledStyle.opacity == 0.2);
+  // Restyling one state leaves the other alone: they are two settings.
+  assert(strictDisabled.readonlyStyle == base.readonlyStyle);
+
+  // The four states map to: nothing, the disabled style, the readonly style,
+  // the content itself.
+  assert(hidden is SizedBox);
+  assert(inert is AbsorbPointer);
+  assert(((inert as AbsorbPointer).child as Opacity).opacity == 0.2);
+  assert(editable is Text);
+  // `full` and `disabled` each built the content once; `none` built nothing.
+  assert(builds == 2);
+
   assert(primaryBg == scheme.primary);
   assert(destructiveBg == scheme.error);
 
@@ -96,9 +143,10 @@ void run() {
   assert(rebuiltDimmed.hashCode == dimmed.hashCode);
   assert(base.copyWith() == base);
   assert(dimmed != base);
-  // The nested style counts too.
-  assert(base.copyWith(readonlyStyle: const TomReadonlyStyle(opacity: 0.5)) !=
+  // Both nested styles count too.
+  assert(base.copyWith(readonlyStyle: const TomStateStyle(opacity: 0.5)) !=
       base);
+  assert(strictDisabled != base);
 
   // Hoisted builders compare equal; inline ones never do — which is why a
   // custom builder belongs in a named function.
@@ -107,7 +155,7 @@ void run() {
 }
 
 /// A hoisted read-only builder: naming the function is what lets two
-/// [TomReadonlyStyle]s that use it compare equal across rebuilds.
+/// [TomStateStyle]s that use it compare equal across rebuilds.
 Widget readOnlyBanner(Widget child) => Banner(
       message: 'read-only',
       location: BannerLocation.topEnd,
