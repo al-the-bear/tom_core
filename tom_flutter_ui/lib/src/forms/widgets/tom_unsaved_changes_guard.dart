@@ -14,7 +14,7 @@ enum UnsavedChangesChoice { save, discard, cancel }
 /// the dialog is skipped and [action] runs immediately, returning a
 /// synthetic `discard` (nothing to save).
 ///
-/// Used by [TomMasterDetailScaffold] for selection changes and by route
+/// Used by [TomMasterDetailListForm] for selection changes and by route
 /// pop guards. Keeps the spec's §15 master-detail Save/Discard/Cancel
 /// pattern in one place instead of being duplicated per demo.
 Future<UnsavedChangesChoice> guardUnsavedChanges({

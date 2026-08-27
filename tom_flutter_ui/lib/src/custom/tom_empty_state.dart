@@ -1,5 +1,10 @@
-/// Standard placeholder for empty data views. Used by `TomListForm`
-/// when its bound list is empty, and any other "no data yet" surface.
+/// Standard placeholder for a view that loaded successfully and has
+/// nothing to show — distinct from a loading state, which has not
+/// finished, and from an error state, which failed.
+///
+/// A leaf widget with no bindings of its own: it is composed in by
+/// whatever owns the list, wherever that owner decides "no rows" should
+/// read as a designed surface rather than blank space.
 ///
 /// Renders a vertically stacked icon + title + description + optional
 /// action button. All strings flow through the resource provider when

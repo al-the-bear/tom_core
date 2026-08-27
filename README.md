@@ -169,6 +169,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
+| [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
 
@@ -245,6 +246,29 @@ only for prose, several of them cycles. This check takes the part of the problem
 that has no such ambiguity — a private name can only ever resolve inside its own
 library, so whether it exists is answerable from that library alone. That is
 also exactly the shape a rename leaves behind.
+
+```bash
+python3 tool/check_consumer_claims.py                 # the whole repository
+python3 tool/check_consumer_claims.py tom_flutter_ui  # one subtree
+```
+
+"Used by `[TomFoo]`" is the most load-bearing sentence an opening paragraph can
+carry, because it is the one a reader uses to decide what the thing is *for* —
+and nothing about deleting a class visits the prose in the files that recommended
+it, so the sentence survives fluently and wrong. `TomEmptyState` opened with
+"Used by `TomListForm` when its bound list is empty" and `TomListForm` is a pure
+model with no Flutter import and no `build`; the unsaved-changes guard pointed at
+`TomMasterDetailScaffold`, deleted on purpose and documented as deleted two files
+away. This is not the previous check's question: `[TomListForm]` *resolves*
+perfectly. Link checking and fact checking are different questions, and only the
+first was being asked.
+
+A claim counts as backed when the named consumer's own code — its doc comments
+excluded, since a mention in prose is not a use — references anything the
+claiming library declares. A `Tom`-prefixed name declared nowhere in the
+repository is reported separately as deleted, which is why the index is always
+built repo-wide even when one subtree is checked: `[TomForm]` is not missing
+just because `tom_flutter_ui` does not declare it.
 
 ```bash
 python3 tool/check_doc_samples.py                  # the whole repository

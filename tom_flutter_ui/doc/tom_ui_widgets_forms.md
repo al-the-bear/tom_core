@@ -4798,7 +4798,7 @@ Every form-level authorization feature pushed into one page so the interactions 
 
 | Pattern | Deliverable |
 |---|---|
-| Master-Detail (list + editor panel) | `TomMasterDetailScaffold` — two-pane layout that owns the "selected index" observable, wires it to a re-bound detail form, and runs the unsaved-changes guard on selection change. |
+| Master-Detail (list + editor panel) | `TomMasterDetailListForm` — two-pane layout that owns the "selected index" observable, wires it to a re-bound detail form, and runs the unsaved-changes guard on selection change. (Planned as `TomMasterDetailScaffold`; shipped under the `…ListForm` name so it sits with the other `TomListForm` renderers — see `tom_ui_list_forms.md`.) |
 | Single-field inline edit | Example only. Uses `TomFormStringInput` + a read-mode `Text` swap; no new class. |
 | Expandable row form | Example only. `ExpansionTile` wrapping a sub-form, owned by a parent `TomListForm`. |
 | Editable table | Example only. `DataTable` / `TomAclBuilder` row-per-item pattern driven by a `TomListForm<OrderItem, OrderItemForm>`, with in-place field widgets per cell. |
@@ -5010,7 +5010,7 @@ Mirrors Phase 4 on the Cupertino side. Closes the complete spec.
 | 3 | `TomAuthGuard` | Inline wrapper that hides or disables its child based on an auth path. Cuts the boilerplate currently hand-rolled per callsite. |
 | 4 | `TomLoadingOverlay` | Full-surface loading indicator with optional message — used during `SlowValidator` / save action roundtrips in the demo app. |
 | 5 | `TomErrorBoundary` | Catches widget-build errors and renders a fallback; today every demo re-implements a version of this. |
-| 6 | `TomEmptyState` | Standard placeholder for empty data views — used by `TomListForm` when its bound list is empty. |
+| 6 | `TomEmptyState` | Standard placeholder for a view that loaded and has nothing to show. A leaf widget, composed in by whichever list owner wants "no rows" to read as a designed surface. |
 | 7 | `TomSkeletonLoader` | Shimmer / skeleton placeholder for async-loading surfaces. |
 | 8 | `TomInfiniteScroll` | List / grid wrapper with pagination, observable page fetcher, and empty / error / loading-state hooks that reuse the widgets above. |
 
@@ -5019,7 +5019,9 @@ Mirrors Phase 4 on the Cupertino side. Closes the complete spec.
 **Demo Q — Auth / Empty / Overlay**
 
 - `TomAuthGuard` toggling content visibility as an auth rule flips.
-- `TomEmptyState` bound to an empty `TomListForm` until an item is added.
+- `TomEmptyState` returned from a `TomInlineListForm`'s `emptyBuilder` while
+  its `TomListForm` has no rows. `TomEmptyState` has no bindings of its own —
+  the list renderer decides when to build it.
 - `TomLoadingOverlay` shown while an async `SlowValidator` is pending.
 
 **Demo R — Tree, Radio Group, Infinite Scroll**
