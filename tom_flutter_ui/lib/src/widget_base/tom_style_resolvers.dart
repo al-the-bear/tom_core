@@ -10,12 +10,29 @@ import 'tom_construction_helpers.dart';
 /// BoxConstraints, AlignmentGeometry, BorderSide, Offset, TableBorder)
 /// from JSON resource maps.
 ///
-/// These helpers are separate from [TomNodeBase] because they require
-/// Material library imports.
+/// Separate from [TomCtr] because of what it takes in, not what it imports.
+/// Both classes import the Material library — `tom_construction_helpers.dart`
+/// opens with that import too, and [TomCtr] returns `TextStyle`, `InputBorder`
+/// and `WidgetStateProperty` — so imports could never have told them apart.
+///
+/// The boundary is the resource provider. [TomCtr] is the one place that reads
+/// it, turning a `basePath` + `suffix` key into a raw value; this class turns
+/// an already-decoded map into a composite Flutter object. The dependency runs
+/// one way, and visibly so: every `resolve…` below reads its map via
+/// `TomCtr.map` and then hands it to the matching `parse…` — four of them
+/// (`resolveBorderRadius`, `resolveAlignment`, `resolveVisualDensity`,
+/// `resolveScrollPhysics`) unwrap a nested key or accept a scalar form first,
+/// but none of them reaches the provider a second time.
+///
+/// A new helper therefore belongs here when it assembles a Flutter object out
+/// of a decoded map, and in [TomCtr] when it reaches the provider for a value.
+/// Keeping the `parse…` half free of the provider is what lets it be tested
+/// with no resources installed.
 ///
 /// Usage in widgets:
 /// ```dart
-/// final style = this.style ?? resolveButtonStyleOrNull(context, 'style');
+/// final style =
+///     this.style ?? TomStyleResolvers.resolveButtonStyle(basePath, 'style');
 /// ```
 class TomStyleResolvers {
   TomStyleResolvers._();

@@ -176,10 +176,29 @@ indicator) when nothing resolves.
 
 ## Style resolution: `TomStyleResolvers`
 
-`TomStyleResolvers` parses complex Material objects from JSON resource maps. It
-is kept separate from `TomCtr` because it pulls in the Material library. Each
-type has a pure `parse…(map)` form (testable without installed resources) and a
-`resolve…(basePath, suffix)` form that first reads the map via `TomCtr.map`.
+`TomStyleResolvers` parses complex Material objects from JSON resource maps.
+Each type has a pure `parse…(map)` form (testable without installed resources)
+and a `resolve…(basePath, suffix)` form that first reads the map via
+`TomCtr.map`.
+
+What separates it from `TomCtr` is that input, not the imports: both classes
+require the Material library (see [Dependencies](#dependencies)), so that could
+never have told them apart. The boundary is the resource provider — `TomCtr` is
+the one place that reads it, turning a key into a raw value, while
+`TomStyleResolvers` turns an already-decoded map into a composite Flutter
+object. The dependency runs one way, which is why every `resolve…` reads its map
+via `TomCtr.map` and then delegates to the matching `parse…` — four of them
+(`resolveBorderRadius`, `resolveAlignment`, `resolveVisualDensity`,
+`resolveScrollPhysics`) unwrap a nested key or accept a scalar form first, but
+none reaches the provider twice. A new helper belongs here when it assembles an
+object from a decoded map, and in `TomCtr` when it reaches the provider for a
+value.
+
+[`test/widget_base/style_resolvers_layering_test.dart`](../test/widget_base/style_resolvers_layering_test.dart)
+reads the source and holds it to both halves of that rule, so a resolver that
+opens a second route to the provider — or a parser that starts reading resources
+and can no longer be called with a plain map — fails rather than silently moving
+the boundary.
 
 | Resolver | Parses |
 | -------- | ------ |
