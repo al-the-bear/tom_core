@@ -6,6 +6,7 @@
 // `tom_brain_memory/test/a81_message_protocol_test.dart`.
 
 import 'dart:async';
+import 'dart:isolate';
 
 import 'package:tom_core_agentic/tom_core_agentic.dart';
 import 'package:test/test.dart';
@@ -130,6 +131,46 @@ void main() {
       expect(a.next().id, equals(1));
       expect(a.next().id, equals(2));
       expect(a.peekNext, equals(3));
+    });
+  });
+
+  // Which members of the family may cross an isolate boundary is the load-
+  // bearing fact of this module's design: the token is an id precisely so the
+  // state can stay in the executor's isolate. It was asserted nowhere, and the
+  // module guide and example consequently described the opposite arrangement
+  // for some time — registry on the host, handle shipped to the worker — which
+  // reads plausibly and throws on the first send. These tests make the split a
+  // checked property rather than a claim in prose.
+  group('sendability across an isolate boundary', () {
+    late ReceivePort port;
+
+    setUp(() => port = ReceivePort());
+    tearDown(() => port.close());
+
+    test('a token crosses — it is a single-integer value type', () {
+      expect(
+        () => port.sendPort.send(const IsolateCancellationToken(1)),
+        returnsNormally,
+      );
+    });
+
+    test('a handle does not cross — it holds a Completer', () {
+      final handle = IsolateCancellationRegistry()
+          .register(const IsolateCancellationToken(1));
+      expect(() => port.sendPort.send(handle), throwsArgumentError);
+    });
+
+    test('a registry does not cross — its entries hold Completers', () {
+      final registry = IsolateCancellationRegistry()
+        ..register(const IsolateCancellationToken(1));
+      expect(() => port.sendPort.send(registry), throwsArgumentError);
+    });
+
+    test('a close signal does not cross — it holds a Completer', () {
+      expect(
+        () => port.sendPort.send(IsolateStreamCloseSignal()),
+        throwsArgumentError,
+      );
     });
   });
 

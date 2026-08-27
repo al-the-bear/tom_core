@@ -2,6 +2,25 @@
 
 ### Fixed
 
+- **`isolate_streaming/`**: `doc/isolate_streaming.md` and the example
+  described the cancellation split backwards — registry on the host, handle
+  shipped across to the worker — where the source puts the registry and the
+  handle inside the executor's isolate and sends only the token. The guide's
+  snippet was not merely differently-worded but unrunnable: the handle holds a
+  `Completer`, so the first `SendPort.send` raises `ArgumentError: object is
+  unsendable`, with nothing to suggest the document had caused it. The prose
+  also contradicted itself within four lines, calling the handle a
+  "worker-side view" and then having the host construct it. Both now describe
+  the split the source implements, and the cancellation demo spawns a real
+  isolate instead of faking the boundary with futures — faking it is what let
+  an inverted arrangement look as convincing as the correct one. Two adjacent
+  inaccuracies found in the same pass are fixed too: the registry does **not**
+  remember every late cancel (an id it has already seen is dropped, or the
+  pending set would grow forever), and `IsolateRequestGuard` is host-side.
+  Coverage: the new `sendability across an isolate boundary` group in
+  `test/isolate_streaming_test.dart` pins which members may cross — the fact
+  the whole design rests on, previously asserted nowhere, which is why the
+  documents could disagree with the code for so long.
 - **`agent/`**: a bound bridge that was up and answering could be reported as
   gone. Four defaults named the bridge host and one disagreed —
   `AgentSettings.bridgeHost` was `'localhost'` where `BridgeServer`,

@@ -25,14 +25,14 @@ transport; each primitive is a building block a host/worker pair assembles.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `IsolateCancellationToken` | class | Opaque, value-equal handle identifying one cancellable request |
-| `IsolateCancellationTokenAllocator` | class | Hands out monotonically increasing tokens |
-| `IsolateCancellationRegistry` | class | Host-side registry; cancels in-flight tokens and remembers late cancels |
+| `IsolateCancellationToken` | class | Opaque, value-equal id naming one cancellable request — the only member of this family that crosses the boundary |
+| `IsolateCancellationTokenAllocator` | class | Host-side counter handing out monotonically increasing tokens |
+| `IsolateCancellationRegistry` | class | Worker-side registry; cancels in-flight tokens and remembers late cancels |
 | `IsolateCancellationHandle` | class | Worker-side view of one token: `isCancelled`, a `cancelled` future, `throwIfCancelled` |
 | `IsolateCancellationException` | exception | Thrown by `throwIfCancelled` when the token is cancelled |
 | `IsolateStreamCloseSignal` | class | Per-stream close flag + future a producer reacts to without busy-waiting |
 | `BackpressureTracker` | class | FIFO credit ledger gating a producer to the consumer's drain rate |
-| `IsolateRequestGuard` | class | Per-request completion guard: fails in-flight requests on worker death or deadline |
+| `IsolateRequestGuard` | class | Host-side per-request completion guard: fails in-flight requests on worker death or deadline |
 | `IsolateRequestFailureReason` | enum | `workerDeath` or `timeout` |
 | `IsolateRequestFailure` | exception | The failure delivered to a guarded request |
 | `IsolateExceptionRegistry` | class | Maps type tags to factories that rebuild typed errors across the boundary |
@@ -40,33 +40,56 @@ transport; each primitive is a building block a host/worker pair assembles.
 
 ## Cancellation
 
-Cancellation is split across the boundary. The **host** allocates a token, runs
-the request, and may cancel it; the **worker** sees only a read-only handle.
+Cancellation is split across the boundary, and the split is asymmetric: **only
+the token crosses**. The host allocates a token and puts its id in its own
+request envelope; the executor inside the worker isolate owns the registry,
+registers the token when that envelope lands, and reads the handle at its
+checkpoints. Cancelling is a *message*, not a method call — the host sends a
+cancel envelope, and the executor turns it into `registry.cancel`.
+
+The registry and the handle stay in the worker isolate because they cannot do
+anything else: both hold a `Completer`, so sending one throws
+`ArgumentError: ... object is unsendable`. The token is a single-integer value
+type and crosses trivially.
 
 ```dart
+// --- host isolate: allocate, and send the id in your own envelope ---
 final allocator = IsolateCancellationTokenAllocator();
+
+final token = allocator.next();
+workerPort.send({'op': 'recall', 'cancellation': token.id});
+
+// To abort, later — another message, not a call into the worker's registry:
+workerPort.send({'op': 'cancel', 'cancellation': token.id});
+
+// --- worker isolate: the registry lives here and never leaves ---
 final registry = IsolateCancellationRegistry();
 
-// Host: allocate and register before dispatching to the worker.
-final token = allocator.next();
-final handle = registry.register(token);
-
-// Worker side (handle shipped across): cooperative checks.
-handle.throwIfCancelled();          // throws IsolateCancellationException once cancelled
+// When the request envelope arrives: register, then check at checkpoints.
+final handle = registry.register(IsolateCancellationToken(tokenId));
+handle.throwIfCancelled();          // throws IsolateCancellationException
 await handle.cancelled;             // or await the cancellation future
+handle.dispose();                   // once the response has been sent
 
-// Host: cancel an in-flight request.
-registry.cancel(token);
+// When the cancel envelope arrives: flip the flag for that token.
+registry.cancel(IsolateCancellationToken(tokenId));
 ```
 
 `register` returns an [`IsolateCancellationHandle`]; its `cancelled` future
-completes when the host cancels, and `throwIfCancelled` raises
-[`IsolateCancellationException`] for code that prefers a guard call to awaiting.
+completes when the executor applies the host's cancel, and `throwIfCancelled`
+raises [`IsolateCancellationException`] for code that prefers a guard call to
+awaiting.
 
-**Late-cancel race.** A cancel can arrive before the matching `register` (the
-host cancels a request whose registration message is still in flight). The
-registry remembers such cancels in a pending set, so a subsequent `register`
-for that token returns an already-cancelled handle. `inFlightCount` and
+**Late-cancel race.** A cancel can arrive before the matching `register` — the
+host sends it right after the request envelope, but the request envelope is
+still mid-dispatch. The registry remembers such a cancel in a pending set, so
+the subsequent `register` for that token returns an already-cancelled handle.
+
+An unknown-token cancel is ambiguous, though, and the registry does *not*
+remember them all: an id it has already seen belongs to a request that has
+since been disposed, so that cancel is dropped rather than pending forever
+(ids are never recycled, so nothing would ever consume it). The two cases are
+told apart by a high-water mark over registered ids. `inFlightCount` and
 `pendingCancelCount` expose the two sides of the ledger.
 
 ## Stream Close Signal
@@ -90,7 +113,9 @@ if (signal.closeRequested) return;
 [`BackpressureTracker`] is a FIFO credit ledger. The consumer `grant`s credits
 as it drains; the producer `awaitCredit`/`consume`s before emitting. Waiters are
 released in arrival order, so a slow consumer paces a fast producer without an
-unbounded buffer.
+unbounded buffer. Like the close signal, the ledger is held by the producer
+inside the worker isolate; a cross-boundary consumer's drain reaches it as a
+message that calls `grant`.
 
 ```dart
 final bp = BackpressureTracker(initialCredits: 0);
@@ -156,8 +181,12 @@ generic error); `isRegistered` and `registeredTypes` expose the taxonomy.
   `BackpressureTracker.close`, and registry cancellation are all safe to call
   more than once.
 - **Late signals are remembered.** The cancellation registry tolerates a cancel
-  that races ahead of its registration; pair allocation (`allocator.next()`)
-  with `registry.register` to keep token identity stable across the boundary.
+  that races ahead of its registration.
+- **Allocation and registration sit on opposite sides.** `allocator.next()` runs
+  on the host, `registry.register` inside the worker isolate, and the token id
+  is what travels between them — it is what keeps one request identifiable on
+  both sides. Only that id crosses; the registry, the handle and
+  `IsolateStreamCloseSignal` all hold a `Completer` and are unsendable.
 
 ## Core Components
 
