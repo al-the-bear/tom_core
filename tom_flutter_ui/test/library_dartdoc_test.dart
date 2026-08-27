@@ -42,14 +42,24 @@
 /// member by subclass-overriding, which no test does). Both checks re-derive
 /// the real declaration kind from source rather than trusting a list.
 ///
-/// **The final group polices where a library dartdoc may point.** It resolves
-/// in *library* scope, so a bare `[fallbackBuilder]` — an instance field —
-/// links to nothing no matter what the file imports; only
-/// `[TomErrorBoundary.fallbackBuilder]` reaches it. The check deliberately
-/// asks only about members of the file it is reading, because that is the one
-/// version of the question no import can change the answer to. References to
-/// types are left alone: `[TomAction]` in a barrel is unresolvable and
-/// entirely correct, since a barrel exports rather than imports.
+/// **The final group polices where a library dartdoc may point**, in two
+/// checks that between them take only the questions a single file — or a
+/// single folder — can answer.
+///
+/// A library dartdoc resolves in *library* scope, so a bare
+/// `[fallbackBuilder]` — an instance field — links to nothing no matter what
+/// the file imports; only `[TomErrorBoundary.fallbackBuilder]` reaches it.
+/// The first check asks only about members of the file it is reading, because
+/// that is the one version of the question no import can change the answer to.
+///
+/// The second takes the narrow slice of the *type* question that is still
+/// decidable: a type declared in a sibling file, in the same folder, that this
+/// file never imports. `tom_infinite_scroll.dart` claimed its default builders
+/// rendered `[TomErrorBoundary]` while importing two siblings and building its
+/// error slot from raw Material widgets — a dead link wrapped around a false
+/// claim. Types from further afield are left alone: `[TomAction]` in a barrel
+/// is unresolvable and entirely correct, since a barrel exports rather than
+/// imports.
 library;
 
 import 'dart:io';
@@ -254,6 +264,44 @@ List<({int line, String text})> _libraryDartdocLines(String path) {
 /// configuration — `this.x` constructor parameters above all — because a name
 /// missing from it is only a defect this check declines to report, never a
 /// false alarm.
+/// The type names declared by the files sitting beside [path], as
+/// `name -> file name`.
+///
+/// Restricted to one directory on purpose. That restriction is what makes the
+/// sibling check answerable without resolving a package graph: a relative
+/// `import` with no `/` in it names a file in this very folder, so "did this
+/// file import that one" reduces to comparing two strings.
+Map<String, String> _siblingTypes(String path) {
+  final directory = File(path).parent;
+  final types = <String, String>{};
+  for (final entity in directory.listSync().whereType<File>()) {
+    if (!entity.path.endsWith('.dart')) continue;
+    final name = entity.uri.pathSegments.last;
+    if (name == path.split(Platform.pathSeparator).last) continue;
+    for (final m in RegExp(
+            r'^(?:abstract |base |final |sealed |interface |mixin )*'
+            r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
+            multiLine: true)
+        .allMatches(entity.readAsStringSync())) {
+      types.putIfAbsent(m.group(1)!, () => name);
+    }
+  }
+  return types;
+}
+
+/// The file names [path] pulls in from its own directory.
+///
+/// `export` counts as well as `import`. A barrel that re-exports a sibling is
+/// entitled to name it in prose, and the point of this set is to stay silent
+/// wherever the reference is defensible.
+Set<String> _sameDirectoryLinks(String path) => RegExp(
+      r"^(?:import|export)\s+'([^'/:]+\.dart)'",
+      multiLine: true,
+    )
+        .allMatches(File(path).readAsStringSync())
+        .map((m) => m.group(1)!)
+        .toSet();
+
 ({Set<String> topLevel, Set<String> members}) _declaredNames(String path) {
   final lines = File(path).readAsLinesSync();
   var i = 0;
@@ -647,6 +695,58 @@ void main() {
       }
       expect(offences, isEmpty,
           reason: 'these library dartdocs link names that cannot resolve:\n\n'
+              '${offences.join('\n\n')}');
+    });
+
+    test('no library dartdoc links a same-directory sibling it never imports',
+        () {
+      // `tom_infinite_scroll.dart` opened with "The default slot builders
+      // render [TomEmptyState], [TomSkeletonLoader] and [TomErrorBoundary]".
+      // Two of the three were real. The file imports exactly two siblings and
+      // its error slot is raw Material widgets, so the link was dead *and* the
+      // sentence was false — which is the pairing worth catching: a claim about
+      // what this file is built from, contradicted by what it imports.
+      //
+      // The sibling case is the one slice of "does this type resolve" that a
+      // single directory can settle, and it earns its keep because the repair
+      // is free either way — add the missing import, or write the name in
+      // backticks because the file genuinely does not use it.
+      //
+      // Measured on this package before the rule was adopted: 55 sibling
+      // references across 40 library dartdocs, of which exactly one was wrong.
+      // Widening the identical rule to any type declared anywhere under `lib/`
+      // would flag 20 more, and nearly all of those are the package barrel
+      // naming what it exports — unresolvable and entirely correct, the same
+      // shape the check above refuses to touch. So the rule stops at the
+      // folder boundary, where the answer is unambiguous.
+      final offences = <String>[];
+      for (final path in _allLibrarySources()) {
+        final doc = _libraryDartdocLines(path);
+        if (doc.isEmpty) continue;
+        final siblings = _siblingTypes(path);
+        final linked = _sameDirectoryLinks(path);
+        final own = _declaredNames(path).topLevel;
+
+        for (final entry in doc) {
+          for (final m in RegExp(r'\[([A-Z][\w]*)\]').allMatches(entry.text)) {
+            final name = m.group(1)!;
+            if (own.contains(name)) continue;
+            final home = siblings[name];
+            // Not a neighbour, so whether it resolves is an import-graph
+            // question this check has no business answering.
+            if (home == null) continue;
+            if (linked.contains(home)) continue;
+
+            offences.add('$path:${entry.line}\n'
+                '    [$name] lives in $home, beside this file, but this file '
+                'never imports it\n'
+                '    → import $home, or write it as `$name` if the file does '
+                'not use it');
+          }
+        }
+      }
+      expect(offences, isEmpty,
+          reason: 'these library dartdocs link uses they do not have:\n\n'
               '${offences.join('\n\n')}');
     });
   });

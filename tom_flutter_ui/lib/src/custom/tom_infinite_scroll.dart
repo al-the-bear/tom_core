@@ -1,7 +1,15 @@
 /// List wrapper with pagination, an observable page fetcher, and
 /// empty / error / loading-state hooks. The default slot builders render
-/// [TomEmptyState], [TomSkeletonLoader] and [TomErrorBoundary], so an
-/// unconfigured list already matches the rest of the kit.
+/// [TomEmptyState] and [TomSkeletonLoader], so an unconfigured list already
+/// matches the rest of the kit; the error slot is plain Material widgets.
+///
+/// The error slot is deliberately not a `TomErrorBoundary`, and the two are
+/// not alternatives. A boundary catches a throw raised while a widget
+/// *builds*; this slot reports a [PageFetcher] future that rejected, which
+/// never reaches a boundary because the failure is already caught and held
+/// in state. They compose rather than overlap: wrapping each row in its own
+/// boundary contains a build-time throw to that row, while the fetch-error
+/// slot goes on handling failed pages.
 ///
 /// The widget is parameterised over a single [PageFetcher] callback
 /// of shape `Future<List<T>> Function(int page, int pageSize)`. The
