@@ -340,6 +340,7 @@ class TomFormStringDropdown extends TomFormStringField
     super.descriptionTextOverride,
     super.form,
     super.validators,
+    super.autoValidate,
     super.tomGroup,
     super.authorizer,
     super.uiStateController,

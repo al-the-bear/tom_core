@@ -25,14 +25,23 @@
 /// );
 /// ```
 ///
+/// A method exists here **exactly when a field kind has a concrete on both
+/// sides**. A one-sided kind cannot have one: the method would have to return
+/// the same class whichever family it was asked for, which defeats the point.
+/// The rule therefore reads in both directions — no method means the control
+/// is genuinely Material-only or Cupertino-only, not that the factory has a
+/// gap. Construct those from the catalogue directly.
+///
 /// Each factory method exposes a sensible subset of constructor parameters
-/// shared by both Material and Cupertino concretes. The returned type is
-/// the abstract base, so callers code against `TomFormStringField` etc.
+/// shared by both Material and Cupertino concretes; where the two sides take
+/// different extras, neither is offered here, because passing one would be
+/// choosing a rendering. The returned type is the abstract base, so callers
+/// code against `TomFormStringField` etc.
 library;
 
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart' show TimeOfDay;
+import 'package:flutter/material.dart' show DateTimeRange, TimeOfDay;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'fields/cupertino/tom_cupertino_form_bool_fields.dart';
@@ -43,9 +52,11 @@ import 'fields/cupertino/tom_cupertino_form_nullable_inputs.dart';
 import 'fields/cupertino/tom_cupertino_form_numeric_fields.dart';
 import 'fields/cupertino/tom_cupertino_form_search_lookup_fields.dart';
 import 'fields/cupertino/tom_cupertino_form_string_fields.dart';
+import 'fields/cupertino/tom_cupertino_form_string_list_field.dart';
 import 'fields/tom_form_bool_field.dart';
 import 'fields/tom_form_date_time_fields.dart';
 import 'fields/tom_form_double_field.dart';
+import 'fields/tom_form_duration_field.dart';
 import 'fields/tom_form_enum_object_fields.dart';
 import 'fields/tom_form_file_field.dart';
 import 'fields/tom_form_int_field.dart';
@@ -53,6 +64,8 @@ import 'fields/tom_form_nullable_bool_field.dart';
 import 'fields/tom_form_nullable_inputs.dart';
 import 'fields/tom_form_search_lookup_fields.dart';
 import 'fields/tom_form_string_field.dart';
+import 'fields/tom_form_string_list_field.dart';
+import 'fields/tom_form_string_selection.dart';
 import 'files/tom_file_picker_registry.dart';
 import 'selection/tom_enum_selectable_source.dart';
 import 'selection/tom_selectable_source.dart';
@@ -91,7 +104,7 @@ class FormFieldFamily {
   bool get isCupertino => kind == FormFieldFamilyKind.cupertino;
 
   // ---------------------------------------------------------------------
-  // String input — TomFormStringField
+  // String input & selection — TomFormStringField
   // ---------------------------------------------------------------------
 
   /// Plain text input. Returns the Material `TomFormStringInput` or the
@@ -138,6 +151,145 @@ class FormFieldFamily {
       maxLength: maxLength,
       form: form,
       obscureText: obscureText,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  /// Pick one string from a list of options — Material `DropdownButton`
+  /// vs Cupertino wheel sheet. The string analogue of [enumPicker].
+  TomFormStringField stringPicker(
+    String tomId,
+    String initialValue, {
+    required TomSelectableSource<String> source,
+    String? labelTextOverride,
+    String? hintTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormStringPicker(
+        tomId,
+        initialValue,
+        source: source,
+        labelTextOverride: labelTextOverride,
+        hintTextOverride: hintTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormStringDropdown(
+      tomId,
+      initialValue,
+      source: source,
+      labelTextOverride: labelTextOverride,
+      hintTextOverride: hintTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  /// Pick one string from a short option set laid out inline — Material
+  /// `SegmentedButton` vs `CupertinoSlidingSegmentedControl`. Suited to
+  /// two or three options; use [stringPicker] beyond that.
+  TomFormStringField stringSegmented(
+    String tomId,
+    String initialValue, {
+    required TomSelectableSource<String> source,
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormStringSegmented(
+        tomId,
+        initialValue,
+        source: source,
+        labelTextOverride: labelTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormStringSegmented(
+      tomId,
+      initialValue,
+      source: source,
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  /// Pick any number of strings — Material filter chips vs a Cupertino
+  /// modal sheet of checked rows. The value is the selected list.
+  TomFormStringListField stringMultiSelect(
+    String tomId,
+    List<String> initialValue, {
+    required TomSelectableSource<String> source,
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormStringListCheckedPicker(
+        tomId,
+        initialValue,
+        source: source,
+        labelTextOverride: labelTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormStringFilterChips(
+      tomId,
+      initialValue,
+      source: source,
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
       validators: validators ?? const [],
       autoValidate: autoValidate,
       tomGroup: tomGroup,
@@ -241,6 +393,64 @@ class FormFieldFamily {
     );
   }
 
+  /// Decimal input formatted as money. `locale` and `currencyCode` select
+  /// the formatting; both families parse and format identically and differ
+  /// only in the text field they wrap.
+  TomFormDoubleField currencyInput(
+    String tomId,
+    double initialValue, {
+    String? locale,
+    String? currencyCode,
+    String? labelTextOverride,
+    String? hintTextOverride,
+    String? descriptionTextOverride,
+    double? minValue,
+    double? maxValue,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormCurrencyDoubleInput(
+        tomId,
+        initialValue,
+        locale: locale,
+        currencyCode: currencyCode,
+        labelTextOverride: labelTextOverride,
+        hintTextOverride: hintTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        minValue: minValue,
+        maxValue: maxValue,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormCurrencyDoubleInput(
+      tomId,
+      initialValue,
+      locale: locale,
+      currencyCode: currencyCode,
+      labelTextOverride: labelTextOverride,
+      hintTextOverride: hintTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      minValue: minValue,
+      maxValue: maxValue,
+      form: form,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
   // ---------------------------------------------------------------------
   // Boolean — switch surface
   // ---------------------------------------------------------------------
@@ -275,6 +485,56 @@ class FormFieldFamily {
     return TomFormBoolSwitch(
       tomId,
       initialValue,
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  /// Boolean rendered as a two-segment Off / On control rather than a
+  /// switch — Material `SegmentedButton` vs
+  /// `CupertinoSlidingSegmentedControl`. Prefer it over [boolSwitch] where
+  /// both states deserve a written label.
+  TomFormBoolField boolToggle(
+    String tomId,
+    bool initialValue, {
+    String? onLabelOverride,
+    String? offLabelOverride,
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormBoolToggle(
+        tomId,
+        initialValue,
+        onLabelOverride: onLabelOverride,
+        offLabelOverride: offLabelOverride,
+        labelTextOverride: labelTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormBoolToggle(
+      tomId,
+      initialValue,
+      onLabelOverride: onLabelOverride,
+      offLabelOverride: offLabelOverride,
       labelTextOverride: labelTextOverride,
       descriptionTextOverride: descriptionTextOverride,
       form: form,
@@ -425,6 +685,148 @@ class FormFieldFamily {
     );
   }
 
+  /// Combined date-and-time picker. Material runs its date dialog then its
+  /// time dialog; Cupertino offers a single `dateAndTime` wheel. The value
+  /// is one `DateTime` either way.
+  TomFormDateTimeField dateTimePicker(
+    String tomId,
+    DateTime initialValue, {
+    required DateTime firstDate,
+    required DateTime lastDate,
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormDateTimePicker(
+        tomId,
+        initialValue,
+        firstDate: firstDate,
+        lastDate: lastDate,
+        labelTextOverride: labelTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormDateTimePicker(
+      tomId,
+      initialValue,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  /// Start/end date range — Material `showDateRangePicker` vs a Cupertino
+  /// sheet holding one wheel per endpoint.
+  TomFormDateRangeField dateRangePicker(
+    String tomId,
+    DateTimeRange initialValue, {
+    required DateTime firstDate,
+    required DateTime lastDate,
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormDateRangePicker(
+        tomId,
+        initialValue,
+        firstDate: firstDate,
+        lastDate: lastDate,
+        labelTextOverride: labelTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormDateRangePicker(
+      tomId,
+      initialValue,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  /// Duration entry. This is the pair whose two sides are least alike:
+  /// Material types hours and minutes into text fields, Cupertino spins a
+  /// `CupertinoTimerPicker`. Only the shared parameters are exposed here —
+  /// construct the concrete directly for `maxHours` (Material) or
+  /// `mode` / `minuteInterval` (Cupertino).
+  TomFormDurationField durationPicker(
+    String tomId,
+    Duration initialValue, {
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormDurationPicker(
+        tomId,
+        initialValue,
+        labelTextOverride: labelTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormDurationInput(
+      tomId,
+      initialValue,
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
   // ---------------------------------------------------------------------
   // Enum / object pickers
   // ---------------------------------------------------------------------
@@ -506,6 +908,56 @@ class FormFieldFamily {
       descriptionTextOverride: descriptionTextOverride,
       form: form,
       validators: validators,
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  /// Single-select enum laid out inline — Material `SegmentedButton` vs
+  /// `CupertinoSlidingSegmentedControl`. The inline form of [enumPicker],
+  /// for enums short enough that every option fits on one row.
+  ///
+  /// `T` is bound to `Object` here where [enumPicker] leaves it open:
+  /// `CupertinoSlidingSegmentedControl` requires a non-nullable type
+  /// argument, so the factory can only promise what both sides accept.
+  TomFormEnumField<T> enumSegmented<T extends Object>(
+    String tomId,
+    T initialValue, {
+    required TomSelectableSource<T> source,
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormEnumSegmented<T>(
+        tomId,
+        initialValue,
+        source: source,
+        labelTextOverride: labelTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormEnumSegmented<T>(
+      tomId,
+      initialValue,
+      source: source,
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
+      validators: validators ?? const [],
       autoValidate: autoValidate,
       tomGroup: tomGroup,
       authorizer: authorizer,

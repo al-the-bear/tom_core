@@ -214,7 +214,7 @@ Form rendering is themeable and responsive, kept separate from the model:
 
 ## The field catalogue and `FormFieldFamily`
 
-Every field type ships in two families that share an abstract base
+Fields come in two families that share an abstract base
 (`TomFormStringField`, `TomFormEnumField<T>`, `TomFormFileField`, …): the
 Material `TomForm…` concretes and the Cupertino `TomCupertinoForm…` concretes.
 `FormFieldFamily` is the factory that picks one at construction time while
@@ -229,10 +229,28 @@ final dob  = family.datePicker('user.dob', DateTime(2000),
     firstDate: DateTime(1900), lastDate: DateTime.now());
 ```
 
-Factory methods cover strings, numerics (int/double, nullable variants),
-boolean switches, date/time pickers, enum/object pickers, search/lookup, and
-file upload. `FormFieldFamily.material` / `.cupertino` are const singletons;
-`isCupertino` reports which side a family resolves to.
+**A factory method exists exactly when a kind has a concrete on both sides.**
+Twenty-seven methods cover strings (input, picker, segmented, multi-select),
+numerics including currency, boolean switches and toggles, the date, time,
+date-time, range and duration pickers, enum and object pickers, search and
+lookup, and file upload and thumbnails — each with the nullable variants where
+one exists.
+
+Not every kind is two-sided, and the rule holds in the negative direction as
+well: finding no method means the control genuinely exists on one side only,
+not that the factory has a gap. Material alone offers the sliders, steppers,
+radio groups, chips, the inline calendar, the date and time *text* inputs, the
+percent input, the range sliders, the dropzone and the multi-checkbox;
+Cupertino alone offers `TomCupertinoFormIntPicker` and
+`TomCupertinoFormStringSearchInput`. Construct those directly.
+
+Where the two concretes take different extras, the method exposes only what
+both honour — `durationPicker` omits Material's `maxHours` and Cupertino's
+`mode` / `minuteInterval`, because choosing either would be choosing a
+rendering. Pass them by constructing the concrete.
+
+`FormFieldFamily.material` / `.cupertino` are const singletons; `isCupertino`
+reports which side a family resolves to.
 
 ### Tristate booleans
 

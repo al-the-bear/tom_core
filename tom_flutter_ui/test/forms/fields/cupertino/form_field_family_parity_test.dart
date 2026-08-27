@@ -23,15 +23,19 @@ import 'package:tom_flutter_ui/src/forms/fields/cupertino/tom_cupertino_form_nul
 import 'package:tom_flutter_ui/src/forms/fields/cupertino/tom_cupertino_form_numeric_fields.dart';
 import 'package:tom_flutter_ui/src/forms/fields/cupertino/tom_cupertino_form_search_lookup_fields.dart';
 import 'package:tom_flutter_ui/src/forms/fields/cupertino/tom_cupertino_form_string_fields.dart';
+import 'package:tom_flutter_ui/src/forms/fields/cupertino/tom_cupertino_form_string_list_field.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_bool_field.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_date_time_fields.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_double_field.dart';
+import 'package:tom_flutter_ui/src/forms/fields/tom_form_duration_field.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_enum_object_fields.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_int_field.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_nullable_bool_field.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_nullable_inputs.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_search_lookup_fields.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_field.dart';
+import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_list_field.dart';
+import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_selection.dart';
 import 'package:tom_flutter_ui/src/forms/form_field_family.dart';
 import 'package:tom_flutter_ui/src/forms/selection/static_selectable_source.dart';
 import 'package:tom_flutter_ui/src/forms/selection/tom_selectable_source.dart';
@@ -254,6 +258,96 @@ List<_Case> _cases() => [
         material: TomFormNDateInput,
         cupertino: TomCupertinoFormNDateInput,
         sharedBase: (f) => expect(f, isA<TomField<DateTime?>>()),
+      ),
+      _case<String>(
+        'stringPicker',
+        build: (f) => f.stringPicker('city', 'oslo', source: _citySource()),
+        nextValue: (_) => 'lima',
+        material: TomFormStringDropdown,
+        cupertino: TomCupertinoFormStringPicker,
+        sharedBase: (f) => expect(f, isA<TomFormStringField>()),
+      ),
+      _case<String>(
+        'stringSegmented',
+        build: (f) => f.stringSegmented('city', 'oslo', source: _citySource()),
+        nextValue: (_) => 'lima',
+        material: TomFormStringSegmented,
+        cupertino: TomCupertinoFormStringSegmented,
+        sharedBase: (f) => expect(f, isA<TomFormStringField>()),
+      ),
+      _case<List<String>>(
+        'stringMultiSelect',
+        build: (f) =>
+            f.stringMultiSelect('cities', const ['oslo'], source: _citySource()),
+        nextValue: (_) => const ['lima'],
+        material: TomFormStringFilterChips,
+        cupertino: TomCupertinoFormStringListCheckedPicker,
+        sharedBase: (f) => expect(f, isA<TomFormStringListField>()),
+      ),
+      _case<double>(
+        'currencyInput',
+        build: (f) => f.currencyInput('price', 9.99, currencyCode: 'EUR'),
+        nextValue: (_) => 19.5,
+        material: TomFormCurrencyDoubleInput,
+        cupertino: TomCupertinoFormCurrencyDoubleInput,
+        sharedBase: (f) => expect(f, isA<TomFormDoubleField>()),
+      ),
+      _case<bool>(
+        'boolToggle',
+        build: (f) => f.boolToggle('active', false),
+        nextValue: (_) => true,
+        material: TomFormBoolToggle,
+        cupertino: TomCupertinoFormBoolToggle,
+        sharedBase: (f) => expect(f, isA<TomFormBoolField>()),
+      ),
+      _case<DateTime>(
+        'dateTimePicker',
+        build: (f) => f.dateTimePicker(
+          'startsAt',
+          DateTime(2024, 3, 4, 9, 30),
+          firstDate: _first,
+          lastDate: _last,
+        ),
+        nextValue: (_) => DateTime(2025, 6, 7, 17, 45),
+        material: TomFormDateTimePicker,
+        cupertino: TomCupertinoFormDateTimePicker,
+        sharedBase: (f) => expect(f, isA<TomFormDateTimeField>()),
+      ),
+      _case<DateTimeRange>(
+        'dateRangePicker',
+        build: (f) => f.dateRangePicker(
+          'span',
+          DateTimeRange(start: DateTime(2024, 3, 4), end: DateTime(2024, 3, 8)),
+          firstDate: _first,
+          lastDate: _last,
+        ),
+        nextValue: (_) => DateTimeRange(
+          start: DateTime(2025, 1, 1),
+          end: DateTime(2025, 1, 9),
+        ),
+        material: TomFormDateRangePicker,
+        cupertino: TomCupertinoFormDateRangePicker,
+        sharedBase: (f) => expect(f, isA<TomFormDateRangeField>()),
+      ),
+      _case<Duration>(
+        'durationPicker',
+        build: (f) => f.durationPicker('takes', const Duration(minutes: 30)),
+        nextValue: (_) => const Duration(hours: 2, minutes: 15),
+        material: TomFormDurationInput,
+        cupertino: TomCupertinoFormDurationPicker,
+        sharedBase: (f) => expect(f, isA<TomFormDurationField>()),
+      ),
+      _case<Priority>(
+        'enumSegmented',
+        build: (f) => f.enumSegmented<Priority>(
+          'prio',
+          Priority.low,
+          source: _prioritySource(),
+        ),
+        nextValue: (_) => Priority.high,
+        material: TomFormEnumSegmented<Priority>,
+        cupertino: TomCupertinoFormEnumSegmented<Priority>,
+        sharedBase: (f) => expect(f, isA<TomFormEnumField<Priority>>()),
       ),
     ];
 
