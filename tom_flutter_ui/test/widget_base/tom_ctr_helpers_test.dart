@@ -3,9 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/resource_auth/tom_colors.dart';
-import 'package:tom_flutter_ui/src/resource_auth/tom_icons.dart';
-import 'package:tom_flutter_ui/src/widget_base/tom_construction_helpers.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void _installResources(Map<String, dynamic> tree) {
   TomTextResourceProvider.setAppResourceProvider(

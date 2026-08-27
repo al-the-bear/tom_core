@@ -13,15 +13,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/fields/cupertino/tom_cupertino_form_search_lookup_fields.dart';
-import 'package:tom_flutter_ui/src/forms/fields/cupertino/tom_cupertino_form_string_fields.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_enum_object_fields.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_nullable_inputs.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_search_lookup_fields.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_field.dart';
-import 'package:tom_flutter_ui/src/forms/selection/static_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/selection/tom_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/tom_form.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 TomSelectableSource<String> _cities() =>
     StaticSelectableSource<String>(const [

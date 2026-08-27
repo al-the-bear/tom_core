@@ -32,8 +32,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_builder.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// This file, for the enum-coverage guard at the bottom. Package-relative;
 /// `flutter test` runs with the package root as its working directory.

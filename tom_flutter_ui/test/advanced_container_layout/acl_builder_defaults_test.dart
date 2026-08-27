@@ -23,10 +23,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_builder.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_container.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_flags.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/row_alignment.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// The builder whose setters must all be exercised, and this file, which must
 /// exercise them. Paths are package-relative; `flutter test` runs with the

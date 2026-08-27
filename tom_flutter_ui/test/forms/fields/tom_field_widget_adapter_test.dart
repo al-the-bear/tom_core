@@ -28,10 +28,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_builder.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_field_widget_adapter.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_field.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
 // Harness

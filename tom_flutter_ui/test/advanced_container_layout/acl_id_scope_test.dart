@@ -19,10 +19,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_builder.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_container.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_flow.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Records every path the container asks about and grants everything, so the
 /// layout renders in full and each path is observed exactly as composed.

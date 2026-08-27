@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/events/tom_form_event.dart';
-import 'package:tom_flutter_ui/src/forms/events/tom_form_event_listener.dart';
-import 'package:tom_flutter_ui/src/forms/events/tom_form_event_source.dart';
-import 'package:tom_flutter_ui/src/forms/tom_form.dart';
-import 'package:tom_flutter_ui/src/forms/validation/form_validation_error.dart';
-import 'package:tom_flutter_ui/src/forms/widgets/tom_error_view.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // Starter coverage for the placement-flexible TomErrorView. Mirrors the
 // established TomFormErrorBanner harness — a lightweight event source plus

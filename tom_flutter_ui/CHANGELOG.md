@@ -121,6 +121,23 @@
 
 ### Changed
 
+- **The test suite reaches the package through the barrel, so the exports are
+  load-bearing.** 60 of the 114 test files reached into `lib/src` by path —
+  230 imports in all — which meant a symbol dropped from a module
+  barrel, or a module dropped from the package barrel, left the whole suite
+  green and surfaced in a consumer instead. Every export line was load-bearing
+  for consumers and inert for the tests that covered it. All 60 now import
+  `package:tom_flutter_ui/tom_flutter_ui.dart`; no test body needed an edit,
+  which is the evidence that the barrel already carried everything. Two files
+  keep their `src/` imports for reasons the barrel cannot express and are
+  exempted by name and reason: `file_opener_test.dart`, which asserts the two
+  halves of a conditional import against the resolved one, and the generated
+  `*.reflection.dart` fixture. `package_barrel_test.dart` now checks the
+  property directly rather than relying on it as a side effect of imports
+  somebody could rewrite, and holds the exemption list to being non-stale.
+  Ten `tom_core_kernel` imports became redundant in the process and are gone —
+  those files now name kernel types through the bridge, exactly as a consumer
+  does.
 - **The single-family icon adapters are renamed `MaterialOnlyIconAdapter` and
   `CupertinoOnlyIconAdapter`.** With colour siblings beside them, the old
   `MaterialOnlyAdapter` / `CupertinoOnlyAdapter` no longer said which family

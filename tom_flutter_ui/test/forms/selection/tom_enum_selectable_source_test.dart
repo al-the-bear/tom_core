@@ -5,9 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_field.dart';
-import 'package:tom_flutter_ui/src/forms/form_field_family.dart';
-import 'package:tom_flutter_ui/src/forms/selection/tom_enum_selectable_source.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Enum under test. Its resource segment is its lower-cased type name,
 /// `todostatus`.

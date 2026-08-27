@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/events/tom_form_event.dart';
-import 'package:tom_flutter_ui/src/forms/events/tom_form_inspector.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
   late TomFormInspector inspector;

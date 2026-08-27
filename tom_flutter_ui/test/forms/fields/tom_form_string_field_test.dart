@@ -2,15 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_field.dart';
-import 'package:tom_flutter_ui/src/forms/selection/static_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/selection/tom_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
-import 'package:tom_flutter_ui/src/forms/tom_form.dart';
-import 'package:tom_flutter_ui/src/forms/validation/validation_result.dart';
-import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

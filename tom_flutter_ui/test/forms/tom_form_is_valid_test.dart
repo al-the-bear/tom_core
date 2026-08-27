@@ -16,7 +16,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/validation/validation_result.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../support/list_form_fixtures.dart';
 

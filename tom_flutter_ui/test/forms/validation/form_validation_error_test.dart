@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/tom_form.dart';
-import 'package:tom_flutter_ui/src/forms/validation/form_validation_error.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // Minimal TomField subclass for testing
 class _TestField<T> extends TomField<T> {

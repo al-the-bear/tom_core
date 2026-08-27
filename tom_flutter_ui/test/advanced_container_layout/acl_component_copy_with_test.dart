@@ -26,8 +26,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_container.dart';
-import 'package:tom_flutter_ui/src/advanced_container_layout/acl_flags.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Path of the source under inspection, relative to the package root — the
 /// directory `flutter test` runs from.

@@ -4,9 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/forms/files/file_ref.dart';
-import 'package:tom_flutter_ui/src/forms/files/tom_file_transfer_controller.dart';
-import 'package:tom_flutter_ui/src/forms/files/tom_file_transfer_indicator.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
 // A client a test can hold open, so the running phase can be rendered.

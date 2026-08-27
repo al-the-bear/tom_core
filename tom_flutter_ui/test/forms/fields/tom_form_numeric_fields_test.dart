@@ -23,14 +23,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_double_field.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_duration_field.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_int_field.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_int_list_field.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_range_fields.dart';
-import 'package:tom_flutter_ui/src/forms/selection/static_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/selection/tom_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/validation/validation_result.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/decoration/tom_dropdown_decoration_mixin.dart';
-import 'package:tom_flutter_ui/src/forms/style/form_style_enums.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
-import 'package:tom_flutter_ui/src/forms/tom_form.dart';
-import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Dropdown mixin shares its anatomy with the string-input mixin, so this
 /// file only asserts the two behaviours that are dropdown-specific:

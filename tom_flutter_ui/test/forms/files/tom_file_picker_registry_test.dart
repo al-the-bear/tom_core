@@ -2,8 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/files/file_ref.dart';
-import 'package:tom_flutter_ui/src/forms/files/tom_file_picker_registry.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
   tearDown(TomFilePickerRegistry.clear);

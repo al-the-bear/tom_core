@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_bool_field.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_list_field.dart';
-import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_selection.dart';
-import 'package:tom_flutter_ui/src/forms/selection/static_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/selection/tom_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 Widget _wrap(Widget child, {TomFormStyle? style}) {
   return MaterialApp(

@@ -1,8 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/theme/theme.dart';
-import 'package:tom_flutter_ui/src/widget_base/tom_policy_node_base.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // tests §61(a): TomPolicyNodeBase is the authorization-enforcement layer every
 // Tom widget passes through, yet the four-state `_buildWithAuth` switch had zero

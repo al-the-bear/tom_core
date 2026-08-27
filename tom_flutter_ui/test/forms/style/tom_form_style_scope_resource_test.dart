@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/forms/style/form_style_enums.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_breakpoint.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_color_tokens.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_theme_spec.dart';
-import 'package:tom_flutter_ui/src/resource_auth/tom_colors.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Pump a [TomFormStyleScope] at a given physical width and return the
 /// resolved style observed via [TomFormStyleScope.of] from a descendant

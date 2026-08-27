@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/validation/validation_result.dart';
-import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
   group('Validators', () {

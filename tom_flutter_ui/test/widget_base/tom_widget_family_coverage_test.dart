@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/widget_base/tom_family_base.dart';
-import 'package:tom_flutter_ui/src/widget_base/tom_widget_family.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // `TomWidgetFamily` has 26 values, but they are not equal citizens: 20 are
 // fixed by a branch base in `tom_family_base.dart` and reported by concrete

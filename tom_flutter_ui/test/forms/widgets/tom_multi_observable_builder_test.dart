@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/forms/widgets/tom_multi_observable_builder.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // Starter coverage for TomMultiObservableBuilder — verifies it rebuilds
 // when any watched observable changes and that it cleanly (de)registers

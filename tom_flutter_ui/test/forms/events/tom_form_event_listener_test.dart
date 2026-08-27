@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_flutter_ui/src/forms/events/tom_form_event.dart';
-import 'package:tom_flutter_ui/src/forms/events/tom_form_event_listener.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Test listener that records which typed handler was called.
 class _RecordingListener with TomFormEventListener {
