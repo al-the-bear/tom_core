@@ -156,7 +156,9 @@ Sets a fixed vertical gap (in pixels) inserted before each new content row start
 
 ### `setAclDefaultUnknownMinimumSize(double width, [double height = 0])`
 
-Sets a default minimum size for components that lack an explicit `setMSize` / `setMWidthInChars` call. Pass `0` for width or height to leave that dimension untouched (no default minimum on that axis).
+Sets a default minimum size for components that lack an explicit `setMSize` / `setMWidthInChars` call. There is no built-in default — without this call a component keeps a null minimum size.
+
+Both arguments are stored verbatim, zeros included, and a later call replaces both dimensions. A `0` is therefore a minimum of 0 on that axis, which the layout cannot distinguish from no minimum; that is what makes storing it harmless rather than a case the setter skips.
 
 **Minimum ≤ preferred invariant:** The minimum size can never exceed the preferred size. If a minimum is set that is larger than the current preferred size, the preferred size is automatically raised to match the minimum.
 
@@ -164,13 +166,24 @@ Sets a default minimum size for components that lack an explicit `setMSize` / `s
 
 ### `setAclDefaultUnknownPreferredSize(double width, [double height = 0])`
 
-Replaces the built-in 150 × 0 default preferred size for components without an explicit `setPSize` / `setPWidthInChars`. Pass `0` for width to keep the built-in 150 px default; pass `0` for height to keep height unconstrained.
+Replaces the built-in 150 × 0 default preferred size for components without an explicit `setPSize` / `setPWidthInChars`. A `0` width falls back to the **factory** 150 — not to whatever an earlier call to this setter passed. Height has no fallback: it is stored verbatim, and 0 leaves the height unconstrained because 0 already is the built-in height.
 
-### Zero-means-untouched convention
+### What `0` means, setter by setter
 
-The two **size** setters above (and the per-component size methods) follow the convention that **width = 0** or **height = 0** means "don't touch this dimension — use whatever default or previous value applies."
+`0` does not mean one thing across the builder. It means three, and which one applies depends on whether the setter has anything to fall back *to*:
 
-The two **gap** setters do not, and the difference is deliberate: a gap of 0 is a meaningful value, so `setAclDefaultAppendGap(0)` and `setAclDefaultRowGap(0)` take it literally and switch the gap off rather than falling back to the built-in 8. `test/advanced_container_layout/acl_builder_defaults_test.dart` pins both conventions against each other.
+| Setter | A `0` argument means |
+| ------ | -------------------- |
+| `setAclDefaultAppendGap`, `setAclDefaultRowGap` | **Off.** The gap is 0 — the built-in 8 is discarded. |
+| `setAclDefaultUnknownPreferredSize` | **Width only:** fall back to the factory 150. Height is stored as 0. |
+| `setAclDefaultUnknownMinimumSize` | **Stored as 0.** No fallback on either axis. |
+| `setPSize`, `setMSize`, `setXSize` (per-component) | **Leave that dimension alone** — keep the value an earlier call on the same component set, or 0 if there was none. |
+
+The split is structural rather than stylistic. A per-component setter targets a component that may already carry a size, so "leave it alone" names a real previous value. The builder-wide setters have no per-axis previous value to preserve — each call replaces the whole `Size` — so the only fallback available to them is a *factory constant*, and only the preferred width has one.
+
+A gap of 0 is meaningful in a way that a size of 0 is not, which is why the gap setters take it literally instead of falling back to the built-in 8.
+
+`test/advanced_container_layout/acl_builder_defaults_test.dart` pins every row of that table, including the two-call cases where "fall back to the factory" and "keep the previous value" stop looking alike. It also fails if a `setAclDefault*` setter is added and never exercised there.
 
 ### Example
 
@@ -738,8 +751,10 @@ AclBuilder setAclScrollableY()   // switch vertical axis to scroll mode
 
 ### Per-component sizing
 
-Height is optional on all three size setters: omit it to leave the vertical
-dimension untouched, per the zero-means-untouched convention of §5b.
+Height is optional on all three size setters: omitting it keeps the height an
+earlier call on the same component set. With no earlier call the height is `0`
+— see "What `0` means, setter by setter" (§5b), which is where the per-component
+rule is contrasted with the builder-wide one.
 
 ```dart
 AclBuilder setPSize(double width, [double height = 0])    // preferred
@@ -863,8 +878,8 @@ AclBuilder setAclTitleVerticalOffset(double offset)
 
 ### Container-level component defaults
 
-See §5b for the semantics, including why the two gap setters read `0` as
-"off" while the two size setters read it as "leave untouched".
+See "What `0` means, setter by setter" (§5b) for the semantics — the four
+setters below read a `0` argument three different ways.
 
 ```dart
 // Enable/disable expandX for all subsequently appended components
@@ -878,11 +893,11 @@ AclBuilder setAclDefaultAppendGap(double gap, [List<(double, double)> gapBpOverr
 AclBuilder setAclDefaultRowGap(int pixels)
 
 // Default minimum size for components without explicit setMSize/setMWidthInChars
-// Width = 0 or height = 0 means: leave that dimension untouched
+// Zeros are stored as zeros — no fallback on either axis
 AclBuilder setAclDefaultUnknownMinimumSize(double width, [double height = 0])
 
 // Default preferred size for components without explicit setPSize/setPWidthInChars
-// Width = 0 keeps the built-in default (150); height = 0 leaves height unconstrained
+// Width = 0 falls back to the factory 150; height = 0 leaves height unconstrained
 AclBuilder setAclDefaultUnknownPreferredSize(double width, [double height = 0])
 ```
 

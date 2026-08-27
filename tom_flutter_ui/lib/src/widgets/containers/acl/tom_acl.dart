@@ -616,14 +616,18 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
-  /// Sets a default minimum size for components without explicit minimum.
+  /// Sets a default minimum size for components without an explicit minimum.
+  /// Zeros are stored as zeros. See
+  /// [AclBuilder.setAclDefaultUnknownMinimumSize].
   TomAclBuilder<T> setAclDefaultUnknownMinimumSize(double width,
       [double height = 0]) {
     _builder.setAclDefaultUnknownMinimumSize(width, height);
     return this;
   }
 
-  /// Sets a default preferred size for components without explicit preferred size.
+  /// Sets a default preferred size for components without an explicit
+  /// preferred size. A 0 width falls back to the built-in 150. See
+  /// [AclBuilder.setAclDefaultUnknownPreferredSize].
   TomAclBuilder<T> setAclDefaultUnknownPreferredSize(double width,
       [double height = 0]) {
     _builder.setAclDefaultUnknownPreferredSize(width, height);

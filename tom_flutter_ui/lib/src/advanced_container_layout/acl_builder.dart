@@ -946,9 +946,15 @@ class AclBuilder {
   /// minimum size ([setMSize] / [setMWidthInChars]).
   ///
   /// There is no built-in default: unless this is called, a component without
-  /// an explicit minimum keeps a null minimum size. Pass 0 for [width] or
-  /// [height] to leave that dimension untouched (i.e. no default minimum is
-  /// applied on that axis).
+  /// an explicit minimum keeps a null minimum size.
+  ///
+  /// [width] and [height] are stored verbatim, including zeros, and a later
+  /// call replaces **both** dimensions — there is no per-axis fallback and no
+  /// previous value to fall back on. A 0 therefore means "a minimum of 0 on
+  /// that axis", which the layout cannot tell apart from no minimum at all;
+  /// that is what makes storing it harmless, not a special case that skips it.
+  /// Contrast [setMSize], which does leave a dimension alone on a 0, because a
+  /// component it targets already has a minimum to leave alone.
   ///
   /// **Note:** setting a minimum that is smaller than the preferred size has no
   /// visible effect — the preferred size already acts as the floor. Setting a
@@ -964,9 +970,16 @@ class AclBuilder {
   /// Sets a default preferred size for components that do not have an explicit
   /// preferred size ([setPSize] / [setPWidthInChars]).
   ///
-  /// Replaces the built-in default of 150 × 0. Pass 0 for [width] to keep
-  /// the built-in default width (150); pass 0 for [height] to keep the
-  /// default height of 0 (unconstrained).
+  /// Replaces the built-in default of 150 × 0.
+  ///
+  /// A 0 [width] falls back to [defaultPreferredWidth] — the *factory* 150,
+  /// not whatever an earlier call to this setter passed. [height] has no such
+  /// fallback: it is stored verbatim, and 0 leaves the height unconstrained
+  /// because 0 already is the built-in height.
+  ///
+  /// This is the only 0-means-fall-back among the builder-wide setters;
+  /// [setAclDefaultUnknownMinimumSize] stores its zeros, and the two gap
+  /// setters read 0 as "off".
   AclBuilder setAclDefaultUnknownPreferredSize(double width, [double height = 0]) {
     _defaultUnknownPreferredSize = Size(width, height);
     return this;
