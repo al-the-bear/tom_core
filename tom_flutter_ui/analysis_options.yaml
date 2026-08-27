@@ -8,5 +8,12 @@ analyzer:
     # SDK still exposes; none of that is actionable here.
     - test/support/list_form_fixtures.reflection.dart
 
+linter:
+  rules:
+    # Reaching into another package's `lib/src/` couples this package to a
+    # layout that package never promised to keep. flutter_lints does not
+    # enable this, so it is switched on here explicitly.
+    - implementation_imports
+
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

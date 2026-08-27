@@ -750,4 +750,39 @@ void main() {
               '${offences.join('\n\n')}');
     });
   });
+
+  group('the package reaches other packages only through their barrels', () {
+    test('no directive under lib/ names another package\'s lib/src', () {
+      // `lib/src/` is Dart's convention for "not part of the public API", so
+      // a directive that names one couples this package to a layout the other
+      // package never promised to keep: a reorganisation there becomes a
+      // compile error here even when its public surface never moved.
+      //
+      // Two files did this — both re-exporting the kernel's authorization
+      // types from `tom_core_kernel/src/tombase/security/`, which the kernel
+      // barrel already exports unfiltered. The deep path bought nothing and
+      // risked exactly that breakage.
+      //
+      // The `implementation_imports` lint covers the `import` half of this and
+      // is enabled in `analysis_options.yaml`; it does not fire on `export`,
+      // which is the half that actually occurred. Hence this test.
+      final directive = RegExp(
+        r"^\s*(import|export)\s+'package:(\w+)/src/([^']*)'",
+        multiLine: true,
+      );
+      final offences = <String>[];
+      for (final path in _allLibrarySources()) {
+        final source = File(path).readAsStringSync();
+        for (final m in directive.allMatches(source)) {
+          final package = m.group(2)!;
+          offences.add('$path\n'
+              '    ${m.group(1)} of package:$package/src/${m.group(3)}\n'
+              '    → name the public barrel, package:$package/$package.dart');
+        }
+      }
+      expect(offences, isEmpty,
+          reason: 'these directives reach into another package\'s private '
+              'source:\n\n${offences.join('\n\n')}');
+    });
+  });
 }

@@ -136,6 +136,15 @@ canonical kernel names directly — there are no UI-specific aliases. Consuming 
 auth types through this barrel means widget code imports a single
 `tom_flutter_ui` surface rather than reaching into the kernel directly.
 
+The re-export names the kernel's **public barrel**,
+`package:tom_core_kernel/tom_core_kernel.dart`, not the `lib/src/` path that
+declares the types — the barrel exports that file unfiltered, so the two are
+equivalent, but `lib/src/` is private by Dart convention and naming it would
+turn any reorganisation inside the kernel into a compile error here. The
+`implementation_imports` lint enforces that for `import`; it does not fire on
+`export`, so `test/library_dartdoc_test.dart` checks every directive under
+`lib/` for the same rule.
+
 ## Why name → object indirection?
 
 Storing `"mRed"` / `"mSave"` in resources rather than `Colors.red` / `Icons.save`
