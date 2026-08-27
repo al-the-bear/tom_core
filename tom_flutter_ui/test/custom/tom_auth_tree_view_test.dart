@@ -1,3 +1,34 @@
+/// Behavioural coverage for `TomAuthTreeView`'s per-node authorization.
+///
+/// This is the only widget in `custom/` that resolves a *different* auth state
+/// for every node it renders, and both risks below follow from that: one tree
+/// has to produce a different shape per user, so what a node passes down and
+/// how much of it is blocked are decisions taken once per row rather than once
+/// per widget.
+///
+///   * **Only a `disabled` node caps its subtree.** A `read` or `full` node
+///     passes `full` down and leaves every descendant to resolve on its own
+///     key. Narrowing children by the parent's state instead is the plausible
+///     implementation and the wrong one: a navigation tree exists precisely to
+///     put entries a user may open under a section header they may not
+///     activate, so the over-narrow version hides half the app from the people
+///     it was built for. The first group pins both halves.
+///
+///   * **The block covers the whole row, not just the row's own tap.**
+///     `leading:` and `trailing:` take arbitrary widgets, and a per-row action
+///     button is the usual reason to reach for them, so suppressing only
+///     `InkWell.onTap` would leave the one widget most likely to *do*
+///     something fully live on a node the user has no permission to act on.
+///     The second group taps real buttons for that reason.
+///
+/// The two groups therefore measure at different layers, which is itself
+/// load-bearing. The first reads `InkWell.onTap` back off the row; the second
+/// taps and counts. A barrier that wrapped each node's whole subtree instead
+/// of its own row would satisfy every assertion in the first group and still
+/// cap the children — so the case that taps a `full` child's button under a
+/// `read` parent is the only one that can see it.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 // The package barrel, not `src/custom/tom_auth_tree.dart`, and not only for
@@ -9,16 +40,8 @@ import 'package:flutter_test/flutter_test.dart';
 // It also covers the kernel's auth types, which is why no `tom_core_kernel`
 // import stands beside it: `resource_auth.dart` re-exports `TomAuthState`,
 // `TomAuthorization` and `TomAuthorizationAdapter`, so a consumer of this
-// package reaches them exactly the way this file now does.
+// package reaches them exactly the way this file does.
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
-
-// bug §33 + tests §23: TomAuthTreeView per-node authorization. The class
-// dartdoc deliberately distinguishes a `disabled` parent (children inherit the
-// cap, cannot be widened by their own keys) from a `read` parent (children
-// remain individually evaluated). The pre-fix resolver narrowed *every* child
-// by the parent's effective state, so a `full` child under a `read` parent was
-// wrongly downgraded to `read` and lost interactivity. These pin both halves of
-// the documented contract end-to-end through a real render.
 
 /// Map-backed adapter: each node path resolves to a predetermined state.
 class _MapAuthAdapter implements TomAuthorizationAdapter {
@@ -55,7 +78,7 @@ Future<void> _tapButton(WidgetTester tester, String label) async {
 void main() {
   tearDown(TomAuthorization.reset);
 
-  group('TomAuthTreeView per-node auth propagation (bug §33)', () {
+  group('TomAuthTreeView per-node auth propagation', () {
     testWidgets('read parent does NOT cap a full child — child stays interactive',
         (tester) async {
       TomAuthorization.adapter = _MapAuthAdapter({
@@ -157,12 +180,9 @@ void main() {
     });
   });
 
-  // tcinc731: suppressing the row's own `InkWell.onTap` is not the same as
-  // making the row non-interactive. `leading:` and `trailing:` take arbitrary
-  // widgets, and a per-row action button is the whole reason a caller reaches
-  // for those slots — so a tree that only nulls its own callback leaves the
-  // one widget most likely to *do* something fully live at `read` and
-  // `disabled`, while the module docs promise "pointer-blocked" at both.
+  // `doc/custom.md` states one "pointer-blocked" treatment at `read` and
+  // `disabled` across all three auth-gated composites; these are the cases
+  // that hold the tree to it.
   group('TomAuthTreeView blocks the whole row, not just its own tap', () {
     /// A tree of one node carrying a counting button in [slot].
     Widget treeWithButton(String slot, VoidCallback onPressed) {
@@ -223,7 +243,7 @@ void main() {
         'its button live', (tester) async {
       // The counterpart to the propagation rule above: `read` caps nothing, so
       // the block must wrap each node's own row and not the subtree. Wrapping
-      // the whole Column would re-introduce the bug the first group pins —
+      // the whole Column would impose the cap that the first group forbids —
       // through the pointer layer instead of the auth layer, and so invisible
       // to every assertion in it.
       TomAuthorization.adapter = _MapAuthAdapter({
