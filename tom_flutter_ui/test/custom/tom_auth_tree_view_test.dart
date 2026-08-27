@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/custom/tom_auth_tree.dart';
+// The package barrel, not `src/custom/tom_auth_tree.dart`, and not only for
+// consistency with the five sibling suites: importing the library directly
+// would keep this file green even if `tom_custom_widgets.dart` stopped
+// exporting the tree — which is the entire failure mode of a barrel
+// regression, and the one a test reaching past the public surface cannot see.
+//
+// It also covers the kernel's auth types, which is why no `tom_core_kernel`
+// import stands beside it: `resource_auth.dart` re-exports `TomAuthState`,
+// `TomAuthorization` and `TomAuthorizationAdapter`, so a consumer of this
+// package reaches them exactly the way this file now does.
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // bug §33 + tests §23: TomAuthTreeView per-node authorization. The class
 // dartdoc deliberately distinguishes a `disabled` parent (children inherit the
