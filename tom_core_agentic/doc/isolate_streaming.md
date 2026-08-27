@@ -92,6 +92,15 @@ since been disposed, so that cancel is dropped rather than pending forever
 told apart by a high-water mark over registered ids. `inFlightCount` and
 `pendingCancelCount` expose the two sides of the ledger.
 
+**Two `isCancelled`s, two scopes.** The registry's `isCancelled(token)` reports
+on what it currently holds — an in-flight entry or a remembered pre-open cancel
+— so it answers `false` once the request is disposed, even for one that really
+was cancelled. It has to: a durable record would accumulate cancelled-and-closed
+ids for the executor's whole life, for the same reason the post-close cancel is
+dropped. The handle's `isCancelled` does survive disposal, because the handle
+holds the entry directly. Prefer the handle wherever one is in scope; reach for
+the registry only when all you have is an id.
+
 ## Stream Close Signal
 
 A streaming worker holds one [`IsolateStreamCloseSignal`] per open stream. A

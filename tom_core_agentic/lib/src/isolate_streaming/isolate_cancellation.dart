@@ -41,8 +41,9 @@
 //      raises [IsolateCancellationException].
 //   5. The executor disposes the handle after the response is sent.
 //
-// Cancellation can be observed before, during, or after the call — the
-// registry honours whichever order it sees (see the late-cancel note on
+// Cancellation can be observed before, during, or after the call, up to
+// the point the handle is disposed — the registry honours whichever
+// order it sees within that window (see the late-cancel note on
 // [IsolateCancellationRegistry]).
 
 import 'dart:async';
@@ -168,8 +169,23 @@ final class IsolateCancellationRegistry {
     // else: post-close cancel for an already-seen id — dropped (bug §73).
   }
 
-  /// Whether [token] has been cancelled — independent of whether it is
-  /// currently registered.
+  /// Whether [token] is cancelled, **while the registry still holds it**:
+  /// between [register] and [IsolateCancellationHandle.dispose], or before
+  /// [register] while a pre-open cancel is remembered for it.
+  ///
+  /// Outside that window the answer is `false` — including for a request
+  /// that genuinely *was* cancelled and has since been disposed. The
+  /// registry is in-flight state, and deliberately keeps no record of
+  /// cancelled-and-closed ids: ids are never recycled, so such a record
+  /// could only grow for the executor's whole lifetime. That is the same
+  /// leak the post-close cancel drop above exists to avoid.
+  ///
+  /// [IsolateCancellationHandle.isCancelled] does **not** narrow this way.
+  /// A handle holds its own reference to the entry, so it still answers
+  /// `true` after `dispose`. Prefer the handle wherever one is in scope —
+  /// it is the durable answer for one request. This method answers "is
+  /// this id cancelled *right now*", which is what a dispatcher holding an
+  /// arbitrary id, and no handle, can ask.
   bool isCancelled(IsolateCancellationToken token) {
     final entry = _entries[token.id];
     if (entry != null) return entry._cancelled;
@@ -222,6 +238,11 @@ final class IsolateCancellationHandle {
   IsolateCancellationHandle._(this.token, this._entry, this._owner);
 
   /// Whether the request has been cancelled (either pre- or post-call).
+  ///
+  /// Survives [dispose]: the handle holds the entry directly, so it keeps
+  /// answering for its own request after the registry has dropped it. That
+  /// is the divergence noted on [IsolateCancellationRegistry.isCancelled],
+  /// and this is the side to trust for a single request.
   bool get isCancelled => _entry._cancelled;
 
   /// Completes the first time the request is cancelled. Lets a stream

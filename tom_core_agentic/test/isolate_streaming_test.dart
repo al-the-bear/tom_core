@@ -97,8 +97,44 @@ void main() {
       reg.cancel(tok); // late, post-close cancel for a completed request
       expect(reg.pendingCancelCount, equals(0),
           reason: 'a post-close cancel must not accumulate in pending');
-      // The completed request reports not-cancelled for the late signal.
+      // False here is a *consequence* of the narrowed registry contract,
+      // not an independent intention: the registry answers only for tokens
+      // it currently holds, and this one was disposed. See the pair of
+      // scope tests below for the contract itself.
       expect(reg.isCancelled(tok), isFalse);
+    });
+
+    // The registry's isCancelled is scoped to what it currently holds: the
+    // in-flight entries plus the remembered pre-open cancels. It is *not* a
+    // durable record of "was this ever cancelled" — keeping one would mean
+    // accumulating cancelled-and-closed ids for the executor's whole life,
+    // since ids are never recycled, which is the same leak the post-close
+    // drop above exists to avoid. The handle is the durable side.
+    test('registry isCancelled is scoped to the registration window', () {
+      final reg = IsolateCancellationRegistry();
+      final tok = const IsolateCancellationToken(5);
+
+      final h = reg.register(tok);
+      reg.cancel(tok);
+      expect(h.isCancelled, isTrue);
+      expect(reg.isCancelled(tok), isTrue,
+          reason: 'inside the window the two sides agree');
+
+      h.dispose();
+      expect(reg.isCancelled(tok), isFalse,
+          reason: 'the registry holds in-flight state only');
+      expect(h.isCancelled, isTrue,
+          reason: 'the handle keeps the answer for its own request');
+      expect(h.throwIfCancelled, throwsA(isA<IsolateCancellationException>()),
+          reason: 'so a post-dispose checkpoint still refuses to proceed');
+    });
+
+    test('a remembered pre-open cancel is inside the window', () {
+      final reg = IsolateCancellationRegistry();
+      final tok = const IsolateCancellationToken(6);
+      reg.cancel(tok);
+      expect(reg.isCancelled(tok), isTrue,
+          reason: 'pending cancels count as held, so register can consume it');
     });
 
     test('a pre-open cancel is still remembered after an earlier request closed'

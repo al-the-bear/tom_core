@@ -2,6 +2,26 @@
 
 ### Fixed
 
+- **`isolate_streaming/`**: `IsolateCancellationRegistry.isCancelled` was
+  documented as answering "whether or not it is currently registered", which
+  it has not done since the post-close-cancel fix and could not do cheaply.
+  `dispose()` removes the entry, so a request that really was cancelled reads
+  `false` from the registry a moment later — while its handle, which holds the
+  entry directly, still reads `true`. The doc promised the durable reading and
+  the code gives the in-flight one, and the difference is a silently wrong
+  answer rather than an error. The contract is now the narrow one on both the
+  dartdoc and in `doc/isolate_streaming.md`: the registry answers for what it
+  currently holds (an in-flight entry, or a remembered pre-open cancel), the
+  handle is the durable answer for one request, and callers should prefer the
+  handle wherever one is in scope. Making the registry durable instead was
+  rejected because it recreates the leak the post-close drop exists to prevent
+  — ids are never recycled, so a cancelled-and-closed record can only grow for
+  the executor's lifetime. Coverage: `registry isCancelled is scoped to the
+  registration window` and `a remembered pre-open cancel is inside the window`
+  in `test/isolate_streaming_test.dart`, which assert both sides of the
+  divergence; the neighbouring post-close-cancel test now says in a comment
+  that its `isFalse` follows from this contract rather than stating one of its
+  own.
 - **`isolate_streaming/`**: `doc/isolate_streaming.md` and the example
   described the cancellation split backwards — registry on the host, handle
   shipped across to the worker — where the source puts the registry and the
