@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import 'widget_census.dart';
+
 // tccf1: what the kit's documents may claim about widget families.
 //
 // Four documents said, without qualification, that *every* widget in the kit
@@ -21,85 +23,6 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // it names. A document that quotes a number this file does not agree with is
 // wrong, and this file is what says so.
 
-/// A public top-level `class` declaration and its `extends`/`with` clause.
-///
-/// The leading alternation is Dart's modifier soup (`abstract final class`);
-/// the second group is everything up to the opening brace, which is where the
-/// superclass and the mixins are.
-final _declaration = RegExp(
-  r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+|mixin\s+)*'
-  r'class\s+(Tom\w+)(?:<[^>]*>)?\s*([^{]*)\{',
-  multiLine: true,
-);
-
-final _extendsClause = RegExp(r'extends\s+(\w+)');
-
-/// Every Tom class declared under `lib/src/widgets/`, name → clause.
-Map<String, String> _widgetKitClasses() {
-  final out = <String, String>{};
-  final files = Directory('lib/src/widgets')
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.dart'));
-  for (final file in files) {
-    for (final m in _declaration.allMatches(file.readAsStringSync())) {
-      out[m.group(1)!] = m.group(2)!.split(RegExp(r'\s+')).join(' ');
-    }
-  }
-  return out;
-}
-
-/// The twenty branch bases, read from `widget_base/` rather than listed here.
-///
-/// Deriving the set is what keeps this test from becoming a second hand-kept
-/// copy of the catalogue it is guarding — adding a family base makes it a
-/// family base here too, with no edit.
-Set<String> _familyBases() {
-  final source =
-      File('lib/src/widget_base/tom_family_base.dart').readAsStringSync();
-  return RegExp(r'class\s+(Tom\w+Base)\s+extends\s+TomFamilyBase')
-      .allMatches(source)
-      .map((m) => m.group(1)!)
-      .toSet();
-}
-
-/// The types under `widgets/` that are not widgets: a route, a static facade,
-/// and seven plain classes that hold widgets without being one.
-const _nonWidgets = {
-  'TomAclBuilder',
-  'TomDataCell',
-  'TomDataColumn',
-  'TomDataRow',
-  'TomDialogs',
-  'TomExpansionPanel',
-  'TomMessenger',
-  'TomPageRoute',
-  'TomTreeNode',
-};
-
-/// The widgets that extend a Flutter widget directly and mix in
-/// `TomWidgetMixin`, because their Flutter original must be a specific subtype
-/// to satisfy the parent that accepts it.
-const _mixinUsers = {
-  'TomAnimatedPositioned',
-  'TomAnimatedPositionedDirectional',
-  'TomCheckedPopupMenuItem',
-  'TomCupertinoTabView',
-  'TomDropdownMenuItem',
-  'TomExpanded',
-  'TomFlexible',
-  'TomNavigationDestination',
-  'TomNavigationDrawerDestination',
-  'TomPopupMenuDivider',
-  'TomPopupMenuItem',
-  'TomRefreshProgressIndicator',
-  'TomSnackBar',
-  'TomSnackBarAction',
-  'TomSpacer',
-  'TomTab',
-  'TomTableCell',
-};
-
 /// A row of the family catalogue in `doc/widgets.md`: base, then the
 /// representative widget names it claims report that family.
 final _catalogueRow = RegExp(
@@ -107,11 +30,40 @@ final _catalogueRow = RegExp(
   multiLine: true,
 );
 
+/// A sentence that states the size of the widget kit.
+///
+/// Three digits, then up to three filler words, then a noun that means "the
+/// widget kit". Two digits is deliberately not matched: "18 widgets have
+/// wrapping problems" and "20 branch bases" are *subset* counts, true of a
+/// part rather than of the whole, and every kit-wide total worth guarding —
+/// 299, 290, 273 — happens to be three digits. The small kit-wide numbers are
+/// not left unguarded either; they are pinned by name above (`tccf1-02` fixes
+/// 20, `tccf1-03` fixes 17, `tccf1-04` fixes 9).
+final _censusClaim = RegExp(
+  r'(\d{3})(\+?)\s+(?:(?:[A-Za-z-]+|\d+)\s+){0,3}'
+  r'(?:wrappers|widgets|widget classes|Tom types|types)',
+);
+
+/// Every document and source comment in the package that could make a claim.
+Iterable<File> _prose() sync* {
+  for (final dir in const ['doc', 'lib', 'test', 'example']) {
+    yield* Directory(dir)
+        .listSync(recursive: true)
+        .whereType<File>()
+        // Generated reflection files are megabytes of literals in which
+        // three-digit runs occur by coincidence; nobody reads them and nobody
+        // edits them, so they make no claims.
+        .where((f) => !f.path.endsWith('.reflection.dart'))
+        .where((f) => f.path.endsWith('.md') || f.path.endsWith('.dart'));
+  }
+  yield File('CHANGELOG.md');
+  yield File('README.md');
+}
+
 void main() {
-  final classes = _widgetKitClasses();
-  final bases = _familyBases();
-  String? parentOf(String name) =>
-      _extendsClause.firstMatch(classes[name] ?? '')?.group(1);
+  final classes = widgetKitClasses();
+  final bases = familyBases();
+  String? parentOf(String name) => parentIn(classes[name]);
 
   group('tccf1: the family census the documents quote', () {
     test('tccf1-01: widgets/ declares 299 Tom types', () {
@@ -132,7 +84,7 @@ void main() {
           .where((e) => e.value.contains('TomWidgetMixin'))
           .map((e) => e.key)
           .toSet();
-      expect(mixers, _mixinUsers);
+      expect(mixers, mixinSurfaceWidgets);
     });
 
     test('tccf1-04: the remaining 9 types are not widgets at all', () {
@@ -140,7 +92,7 @@ void main() {
           .where((n) => !bases.contains(parentOf(n)))
           .where((n) => !classes[n]!.contains('TomWidgetMixin'))
           .toSet();
-      expect(rest, _nonWidgets);
+      expect(rest, nonWidgetTypes);
     });
 
     test('tccf1-05: every family-base extender reaches TomFamilyBase directly',
@@ -294,6 +246,74 @@ void main() {
       expect(faults, isEmpty,
           reason: 'nothing in this package is published, so a deprecated type '
               'has no migration to support — delete it instead: $faults');
+    });
+  });
+
+  // The group above pins what the *family* catalogue may say. This one pins
+  // the plainer claim that turned out to rot faster: how big the kit is.
+  //
+  // Deleting two wrappers left six documents quoting 292, 275 and 301 — an
+  // example header, a CHANGELOG entry, two design documents and two test
+  // preambles — and nothing failed, because the only census guard in the
+  // package (`tccf1-12`) reads exactly one file. A count is the cheapest thing
+  // in a document to get wrong: it is a fact about code, written in prose,
+  // that no compiler and no reader can check. So it is checked here, for every
+  // document at once, against the scan.
+  group('tccf1: no document quotes a census the source disagrees with', () {
+    final extenders =
+        classes.keys.where((n) => bases.contains(parentOf(n))).length;
+    // Derived, so the guard cannot itself go stale: adding a widget moves the
+    // permitted values with it, and the documents that quoted the old ones
+    // fail until they are updated.
+    final census = <int>{
+      classes.length,
+      classes.length - nonWidgetTypes.length,
+      extenders,
+    };
+
+    test('tccf1-14: every three-digit kit count is one the scan produces', () {
+      final faults = <String>[];
+      for (final file in _prose()) {
+        final lines = file.readAsStringSync().split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          for (final m in _censusClaim.allMatches(lines[i])) {
+            final where = '${file.path}:${i + 1}: "${m.group(0)}"';
+            if (!census.contains(int.parse(m.group(1)!))) {
+              faults.add('$where — the kit is $census');
+            } else if (m.group(2)!.isNotEmpty) {
+              // The implementation-status list hedged the wrapped-widget count
+              // with a trailing `+`, which read as caution and was wrong by
+              // nine. A hedge on a number the suite counts exactly is not
+              // caution; it is a licence never to recount.
+              faults.add('$where — a counted census does not take a "+"');
+            }
+          }
+        }
+      }
+      expect(faults, isEmpty, reason: faults.join('\n'));
+    });
+
+    test('tccf1-15: the wrapped-per-family table totals the widget count', () {
+      // The one census claim `tccf1-14` cannot read: a markdown table cell is
+      // a bare number with no noun beside it. It is also the claim most likely
+      // to be edited carelessly, because correcting it means finding *which*
+      // family row lost a widget — so the row sum is asserted too, and a
+      // totals row patched without its rows fails.
+      final doc = File('doc/tom_ui_flutter_widgets.md').readAsStringSync();
+      final rows = RegExp(r'^\|\s*\*\*([^*]+)\*\*\s*\|\s*\*{0,2}(\d+)\*{0,2}',
+              multiLine: true)
+          .allMatches(doc)
+          .toList();
+      final totals = rows.where((m) => m.group(1)!.trim() == 'Totals');
+      expect(totals, hasLength(1), reason: 'no Totals row to check');
+
+      final stated = int.parse(totals.single.group(2)!);
+      final summed = rows
+          .where((m) => m.group(1)!.trim() != 'Totals')
+          .fold(0, (sum, m) => sum + int.parse(m.group(2)!));
+      expect(summed, stated, reason: 'the family rows do not sum to the total');
+      expect(stated, classes.length - nonWidgetTypes.length,
+          reason: 'the table counts wrapped widgets, so its total is the kit');
     });
   });
 }

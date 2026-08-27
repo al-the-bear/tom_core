@@ -3,6 +3,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../widget_base/tom_construction_helpers.dart';
 import '../widget_base/tom_scope_path.dart';
+import '../widget_base/tom_widget_surface.dart';
 import '../theme/tom_theme.dart';
 
 /// Mixin for Tom widgets that extend Flutter widgets directly.
@@ -10,8 +11,11 @@ import '../theme/tom_theme.dart';
 /// This mixin provides the Tom UI concerns (ID, group, authorization, resources)
 /// to widgets that extend their Flutter originals.
 ///
-/// Implements [TomAuthorizable] for type-safe group registration.
-mixin TomWidgetMixin on Widget implements TomAuthorizable {
+/// Implements [TomWidgetSurface] — the same interface `TomNodeBase` implements,
+/// which is the point: these two are the kit's only two routes to a Tom widget,
+/// and naming one contract for both is what lets the conformance suite treat
+/// them uniformly instead of maintaining a second list of who has what.
+mixin TomWidgetMixin on Widget implements TomWidgetSurface {
   @override
   String? get tomId;
 
@@ -35,6 +39,7 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// belonging to some other member.
   TomScope get effectiveScope => scope ?? TomScope.current;
 
+  @override
   String? get basePath => TomScopePath.resolve(tomId, effectiveScope);
 
   /// Gets the effective authorization state for this widget.

@@ -7,3 +7,4 @@ export 'tom_scope_widgets.dart';
 export 'tom_screen_elements_provider.dart';
 export 'tom_style_resolvers.dart';
 export 'tom_widget_family.dart';
+export 'tom_widget_surface.dart';

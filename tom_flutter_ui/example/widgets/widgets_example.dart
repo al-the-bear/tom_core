@@ -1,8 +1,8 @@
 /// Executable example for the `widgets/` module of `tom_flutter_ui`.
 ///
-/// `widgets/` is the **general widget kit** — 292 thin Tom wrappers over the
+/// `widgets/` is the **general widget kit** — 290 thin Tom wrappers over the
 /// Flutter/Cupertino widget set, grouped into 20 families (buttons, labels,
-/// inputs, toggles, containers, dialogs, navigation, progress, …). 275 of them
+/// inputs, toggles, containers, dialogs, navigation, progress, …). 273 of them
 /// extend a family base class (`TomButtonBase`, `TomLabelBase`, …) from
 /// `widget_base/` and so share the whole Tom contract:
 ///
@@ -15,7 +15,7 @@
 /// The other 17 extend a Flutter widget directly (their parent type-checks for
 /// it) and mix in `TomWidgetMixin`: everything above holds for them except the
 /// family tag, which only `TomFamilyBase` supplies. Every widget used below is
-/// one of the 275.
+/// one of the 273.
 ///
 /// This example demonstrates those **context-free** surfaces across a handful
 /// of widgets from different families. Rendering (the `build` half) needs a

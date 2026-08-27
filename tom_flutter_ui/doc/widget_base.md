@@ -35,6 +35,7 @@ in this module:
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
 | `TomAuthorizable` | re-export | The kernel contract a Tom widget implements for group registration and auth participation. Re-exported from `tom_core_kernel` so existing imports keep working. |
+| `TomWidgetSurface` | abstract interface | What a Tom wrapper adds over the Flutter widget it wraps: `tomId`, `tomGroup`, `basePath`, `effectiveAuthState`. Extends `TomAuthorizable` with the one member it cannot carry — `basePath`, whose resolution reads the ambient scope. Both routes into the kit implement it, which is what lets the conformance suite enumerate every widget against one type. |
 | `TomNodeBase` | abstract `StatelessWidget` | Root of every Tom element. Holds `tomId`, `tomGroup`, `scope`, `authorizer`, and the resolved `basePath`. |
 | `TomPolicyNodeBase` | abstract | Adds the authorization gate: resolves the effective `TomAuthState` and routes to `buildContent` / `buildReadonly` / `buildDisabled` / hidden. |
 | `TomFamilyBase` | abstract | Adds widget-family reporting (`family`, `families`, `isFamily`). |
@@ -49,8 +50,10 @@ in this module:
 ## The node hierarchy
 
 ```
+TomWidgetSurface                   tomId + tomGroup + basePath + effectiveAuthState
+   │
 StatelessWidget
-   └── TomNodeBase                 identity + scope + basePath  (implements TomAuthorizable)
+   └── TomNodeBase                 identity + scope + basePath  (implements TomWidgetSurface)
          └── TomPolicyNodeBase     authorization gate (build → buildContent/…)
                └── TomFamilyBase   family reporting
                      ├── TomButtonBase      family = button
@@ -72,6 +75,36 @@ was supplied, registers the widget with that group. `basePath` is computed in
 the constructor, so it is readable on a node that has never been built —
 [`example/widget_base/widget_base_nodes_example.dart`](../example/widget_base/widget_base_nodes_example.dart)
 composes a nested provider and prints the paths that come out.
+
+### The two routes to the surface
+
+Extending `TomNodeBase` is the usual route, but not the only one, because some
+Flutter parents type-check their children: `Flex` accepts an `Expanded`, `TabBar`
+looks for a `Tab`, `Table` wants a `TableCell`. A wrapper for one of those has
+to *be* the Flutter subtype, so it cannot also extend `TomNodeBase`. Seventeen
+of the kit's widgets are in that position; they extend their Flutter original
+and mix in
+[`TomWidgetMixin`](#authorization-enforcement) instead.
+
+`TomWidgetSurface` is what makes the two routes one contract. It is an
+`abstract interface` declaring the four members a Tom wrapper adds over the
+Flutter widget it delegates to — `tomId`, `tomGroup`, `basePath` and
+`effectiveAuthState` — and both routes implement it. Three of the four come
+from the kernel's `TomAuthorizable`, which `TomWidgetSurface` extends; the
+fourth, `basePath`, cannot, because resolving a path reads the ambient
+`TomScope` and that is a Flutter-side concern.
+
+The interface earns its place by what it *forbids*. `basePath` used to be
+declared twice and required nowhere — a field on `TomNodeBase`, a getter on
+`TomWidgetMixin` — so a wrapper could take a `tomId`, resolve nothing, compile,
+read as gated at the call site and show to everyone. Eight wrappers shipped
+exactly that. With a single supertype naming all four members, the conformance
+suite can enumerate the kit against it: `test/widgets/widget_conformance_test.dart`
+builds all 290 widgets and asserts each one resolves its own path, reports its
+family (or is one of the seventeen), and answers all four authorization states
+from that path. A wrapper that skips the surface cannot be added to the suite's
+registry — the factory type refuses it — and one that is added to the kit but
+not to the registry fails the suite.
 
 ## Authorization enforcement
 

@@ -254,8 +254,8 @@ Remaining Flutter SDK widgets not yet wrapped, sorted by family. Scanned using t
 | `CupertinoDialogAction` | Yes | Yes | `child` (Widget) | — | Yes | — | Phase 3 | Individual button inside CupertinoAlertDialog. Per-action auth: e.g., "View" always visible, "Approve" only for managers. Each action needs independent auth gating. |
 | `CupertinoContextMenuAction` | Yes | Yes | `child` (Widget) | — | Yes | — | Phase 3 | Individual action inside CupertinoContextMenu. Per-action auth: e.g., "Copy" for all, "Transfer Ownership" for superadmin only. |
 | `ExpandIcon` | Yes | Yes | — | — | Yes | — | Phase 3 | Animated expand/collapse chevron. Auth can hide expand capability on restricted sections. |
-| `MaterialButton` | Yes | Yes | `child` (Widget) | — | Migrate | — | Phase 3 | **Deprecated.** Replaced by ElevatedButton/TextButton/OutlinedButton. Wrap for migration of existing codebases using it. |
-| `ButtonBar` | Yes | Yes | `children` (List\<Widget\>) | — | Migrate | — | Phase 3 | **Deprecated.** Replaced by OverflowBar. Was commonly used — wrap for migration support. |
+| `MaterialButton` | No | Yes | `child` (Widget) | — | No | — | — | **Deprecated by Flutter.** Replaced by ElevatedButton/TextButton/OutlinedButton. Not wrapped: nothing in this workspace is published, so there is no codebase to migrate. |
+| `ButtonBar` | No | Yes | `children` (List\<Widget\>) | — | No | — | — | **Deprecated by Flutter.** Replaced by OverflowBar, which *is* wrapped. Not wrapped, for the same reason as `MaterialButton`. |
 
 ### Input Family
 
@@ -508,7 +508,7 @@ Remaining Flutter SDK widgets not yet wrapped, sorted by family. Scanned using t
 | Section | Already Wrapped | Recommended to Wrap | Migrate | Skip |
 |---------|:-:|:-:|:-:|:-:|
 | **I. Core** | 131 | — | — | — |
-| **II. Extended — Button** | 11 | — | — | 0 |
+| **II. Extended — Button** | 9 | — | — | 2 |
 | **II. Extended — Input** | 9 | — | — | 0 |
 | **II. Extended — Select** | 5 | — | — | 0 |
 | **II. Extended — Toggle** | 2 | — | — | 0 |
@@ -525,7 +525,7 @@ Remaining Flutter SDK widgets not yet wrapped, sorted by family. Scanned using t
 | **II. Extended — Effect** | 6 | — | — | 1 |
 | **II. Extended — Interaction** | 9 | — | — | 3 |
 | **II. Extended — Builder** | 8 | — | — | 0 |
-| **Totals** | **292** | **0** | **0** | **13** |
+| **Totals** | **290** | **0** | **0** | **15** |
 
 ### Widgets with Wrapping Problems
 
@@ -557,7 +557,7 @@ These widgets need special wrapper patterns (extension types, delegation, or wra
 1. **Wrap everything used directly** — If a developer could reasonably use the widget in app code, wrap it. Only truly internal framework widgets skip.
 2. **Per-action auth in dialogs/sheets/menus** — Individual actions in action sheets, dialogs, and context menus each need independent auth control (e.g., "Edit" for all users, "Delete" for admin only).
 3. **Dividers need auto-hide** — Wrapping dividers (horizontal, vertical, popup menu) enables auto-hiding when adjacent items disappear, avoiding ugly orphan dividers.
-4. **Deprecated → Migrate** — `MaterialButton` and `ButtonBar` were commonly used — wrap them to support migration of existing codebases.
+4. **Deprecated → skip** — A wrapper for a Flutter-deprecated widget only earns its place if somebody is migrating off it. Nothing in this workspace is published, so nobody is: `MaterialButton` and `ButtonBar` are not wrapped, and their replacements (`ElevatedButton`, `OverflowBar`) are.
 5. **Cupertino parity** — Cupertino equivalents of wrapped Material widgets must be wrapped for consistent cross-platform authorization.
 6. **Resource value** — Widgets with text properties benefit from resource lookup (DatePickerDialog has 7, DateRangePickerDialog has 10 text strings).
 7. **Type constraints require special patterns** — 18 widgets have wrapping problems due to hard type constraints or runtime `is`-checks. These need extension types, delegation, or wrapper-aware parent implementations.

@@ -10,6 +10,15 @@ labels / colours / icons. Each widget exposes `effectiveAuthState`. 273 of the
 pick the Tom surface up from `TomWidgetMixin`, so they have no family base to
 get `family` from.
 
+Both routes arrive at the same interface, `TomWidgetSurface`, and every one of
+the 290 is checked against it:
+`test/widgets/widget_conformance_test.dart` constructs the whole kit and
+asserts per widget that it reports the id it was given, resolves its own
+`basePath` bare and under a scope, reports the family its base fixes, and
+answers all four authorization states from that path and no other. A wrapper
+added to this folder and not to that suite's registry fails it, so "every
+widget carries the Tom surface" is a checked claim rather than a convention.
+
 **Nothing here reads the platform.** A wrapper delegates to exactly one Flutter
 widget, and which design language you get is decided by the type you name:
 `TomSwitch` wraps `Switch`, `TomCupertinoSwitch` wraps `CupertinoSwitch`, and

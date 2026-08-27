@@ -7,8 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// module exports.
 ///
 /// Not every module can make that claim, and this list is the honest half of
-/// saying so. `widgets/` exports 301 mostly-mechanical Flutter wrappers and
-/// `widget_base/` 31 `…Base` families; enumerating either would produce a worse
+/// saying so. `widgets/` exports 290 mostly-mechanical Flutter wrappers and
+/// `widget_base/` 24 `…Base` types; enumerating either would produce a worse
 /// document than the summary that is there, so neither is checked. The four
 /// below are small enough that "the table lists everything" is both true and
 /// useful — and that is exactly the claim that rots, because adding a type to a

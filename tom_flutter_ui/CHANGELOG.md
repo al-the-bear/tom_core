@@ -2,6 +2,26 @@
 
 ### Added
 
+- **`TomWidgetSurface`** (`widget_base/`) — the interface naming the four
+  members a Tom wrapper adds over the Flutter widget it delegates to: `tomId`,
+  `tomGroup`, `basePath` and `effectiveAuthState`. It extends the kernel's
+  `TomAuthorizable`, which carries three of the four; `basePath` cannot live
+  there because resolving a path reads the ambient `TomScope`. Both `TomNodeBase`
+  and `TomWidgetMixin` now implement it, so the kit's two routes to the Tom
+  surface are one contract instead of two independent declarations of
+  `basePath` that nothing required.
+- **A conformance suite over the whole widget kit**
+  (`test/widgets/widget_conformance_test.dart`, 13 tests). It builds all 290
+  exported widgets from a registry of factories and asserts, for each, that the
+  id it was given is the id it reports, that its `basePath` resolves bare and
+  under a scope, that it reports the family its base fixes or is one of the
+  seventeen documented mixin users, and that it answers all four
+  `TomAuthState` values from its own path — including that a rule on a
+  *different* path does not reach it, which is the assertion that would have
+  caught the eight ungated wrappers on its own. The registry is guarded from
+  both sides: its factory type requires a `TomWidgetSurface`, so a wrapper that
+  skips the surface cannot be added, and the suite rescans `lib/src/widgets/`
+  and fails when a widget is in the kit but not the registry.
 - **`TomAuthGate`** (`groups/`) — a one-child widget that resolves a
   `tomId` / `tomGroup` / `scope` / `authorizer` / `uiStateController` through
   `TomWidgetMixin` and applies the result to its child. It exists for the
@@ -41,6 +61,22 @@
 
 ### Fixed
 
+- **Six documents quoted a widget census two wrappers out of date.** Deleting
+  the deprecated `TomMaterialButton` and `TomButtonBar` took the kit from 292
+  widgets to 290, and an example header, a CHANGELOG entry, two design
+  documents and two test preambles went on saying 292, 275 and 301. Nothing
+  failed, because the only census guard in the package read exactly one file.
+  `tccf1-14` now scans every markdown file and Dart comment in the package for
+  a three-digit count of the kit and requires it to be a number the source scan
+  produces — and rejects a trailing `+`, since a census the suite can count
+  exactly does not need hedging. `tccf1-15` covers the one shape a prose scan
+  cannot read, the wrapped-per-family table in `doc/tom_ui_flutter_widgets.md`,
+  by checking its totals row against both its own rows and the scan.
+- **`doc/tom_ui_flutter_widgets.md` listed two widgets that no longer exist.**
+  It still recorded `MaterialButton` and `ButtonBar` as wrapped and advised
+  wrapping them "to support migration of existing codebases" — the same reason
+  the wrappers themselves were deleted for being untrue. Nothing here is
+  published, so there are no codebases to migrate.
 - **`TomAppBar` resolved its authorization and then ignored it.** Its `build`
   returned an `AppBar` directly, with no `checkHidden()` and no
   `applyAuthState()`, so a `none` app bar rendered in full and a `disabled` one
@@ -50,7 +86,7 @@
   constructor also registered with `tomGroup` and never unregistered; the base
   owns that lifecycle now.
 - **Four documents claimed every widget in the kit reports its family.** 17 of
-  the 292 wrappers extend a Flutter widget directly (their parent type-checks
+  the 290 wrappers extend a Flutter widget directly (their parent type-checks
   for the Flutter subtype) and have no family base to get `family` from, and 9
   further types under `widgets/` are not widgets at all. The catalogue in
   `doc/widgets.md` also listed two widgets under families they do not report:

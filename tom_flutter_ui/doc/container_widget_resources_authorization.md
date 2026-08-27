@@ -2444,7 +2444,7 @@ List views participate in the same authorization model:
 ### Completed
 
 - Base class chain: `TomNodeBase` → `TomPolicyNodeBase` → `TomFamilyBase` → 20 family branch bases
-- 299+ wrapped Flutter widgets across all family branches
+- 290 wrapped Flutter widgets, 273 of them on a family branch base
 - `TomWidgetFamily` enum (26 values: 20 Flutter-derived + 6 custom form families)
 - Authorization: `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorization` singleton, `TomAuthorizer`, `TomAuthorizerStrategy`, `TomUIStateController`
 - Authorization enforcement in `TomPolicyNodeBase` (4-state switch, `resolveEffectiveAuth()`)

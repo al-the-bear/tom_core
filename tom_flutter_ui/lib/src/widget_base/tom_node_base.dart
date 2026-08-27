@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'tom_scope_path.dart';
+import 'tom_widget_surface.dart';
 
 /// Base class for all Tom UI elements (widgets, actions, containers).
 ///
@@ -19,9 +20,13 @@ import 'tom_scope_path.dart';
 /// path in the library goes through, so a node and the resources, policies
 /// and groups that address it always agree on where it lives.
 ///
-/// Implements [TomAuthorizable] for type-safe group registration and
-/// authorization system participation.
-abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
+/// Implements [TomWidgetSurface] — and through it [TomAuthorizable] — for
+/// type-safe group registration and authorization system participation. That
+/// interface is what the conformance suite enumerates against; a base that
+/// dropped [basePath] would stop compiling here rather than stop gating in
+/// production.
+abstract class TomNodeBase extends StatelessWidget
+    implements TomWidgetSurface {
   @override
   final String? tomId;
 
@@ -50,6 +55,7 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   final TomScope constructionScope;
 
   /// The resolved canonical resource base path for this node.
+  @override
   final String? basePath;
 
   TomNodeBase({

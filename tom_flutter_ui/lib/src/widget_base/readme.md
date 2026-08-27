@@ -12,6 +12,7 @@ the screen-elements provider, and the construction-time resolvers (`TomCtr`,
 
 | Type | Responsibility |
 | ---- | -------------- |
+| `TomWidgetSurface` | The four members every Tom wrapper adds over its Flutter widget — `tomId`, `tomGroup`, `basePath`, `effectiveAuthState` |
 | `TomNodeBase` / `TomPolicyNodeBase` | Base widget classes carrying `tomId` + authorization |
 | `TomWidgetFamily` | Material / Cupertino family selection |
 | `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | Construction-time base helpers |
