@@ -298,6 +298,51 @@ void main() {
       await expectLater(f, throwsStateError);
       await expectLater(t.awaitCredit(), throwsStateError);
     });
+
+    // Closing stops the ledger accounting, it does not stop the ledger
+    // checking its arguments. `grant` used to return on the closed flag
+    // before validating, so grant(0) threw while open and passed in
+    // silence once closed — the same call, two answers, decided by state
+    // the caller may not know. A nonsensical n is a caller bug either way.
+    test('argument validation survives close', () {
+      final t = BackpressureTracker(initialCredits: 1)..close();
+      expect(() => t.grant(0), throwsArgumentError);
+      expect(() => t.grant(-1), throwsArgumentError);
+      expect(() => t.consume(-1), throwsArgumentError);
+    });
+
+    // The other half: state-dependent effects *are* skipped once closed,
+    // and both mutators skip them the same way. consume had no closed
+    // check at all, so it kept drawing down a ledger nobody was keeping.
+    test('grant and consume are no-ops once closed', () {
+      final t = BackpressureTracker(initialCredits: 3)..close();
+      t.grant(5);
+      expect(t.credits, equals(3), reason: 'a closed ledger takes no credit');
+      t.consume(2);
+      expect(t.credits, equals(3), reason: 'and spends none');
+    });
+
+    // Why consume no-ops rather than throwing: a producer is routinely
+    // mid-iteration when the close lands — past awaitCredit, chunk already
+    // pushed, consume not yet called. Throwing there would raise from the
+    // loop body rather than at awaitCredit, which is the one place callers
+    // handle the unwind. (tom_brain_memory's producer catches StateError
+    // around awaitCredit only; a throwing consume would land in its generic
+    // catch and report a clean close to the host as a stream error.)
+    test('a closed over-consume does not throw', () {
+      final t = BackpressureTracker(initialCredits: 0)..close();
+      expect(() => t.consume(2), returnsNormally,
+          reason: 'the over-consume guard describes a live balance');
+    });
+
+    test('the unwind still arrives at the next awaitCredit', () async {
+      final t = BackpressureTracker(initialCredits: 1);
+      await t.awaitCredit();
+      t.close(); // as if a close envelope landed before the chunk settled
+      t.consume(); // trailing bookkeeping: silent
+      await expectLater(t.awaitCredit(), throwsStateError,
+          reason: 'the producer unwinds at its control-flow point, not here');
+    });
   });
 
   group('IsolateStreamCloseSignal', () {

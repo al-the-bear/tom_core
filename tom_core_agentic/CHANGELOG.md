@@ -2,6 +2,32 @@
 
 ### Fixed
 
+- **`isolate_streaming/`**: `BackpressureTracker` let the closed flag decide
+  whether an argument was valid. `grant` returned on `_closed` *before* its
+  `n <= 0` check, so `grant(0)` threw while open and passed in silence once
+  closed — the same call answered two ways by state the caller may not know,
+  and both documents stated the guard unconditionally. `consume` had no closed
+  check at all, so it kept drawing down a ledger nobody was keeping, and could
+  raise the over-consume `StateError` against a balance that had stopped
+  meaning anything. The two methods disagreed with each other and `grant`
+  disagreed with its own documentation. Both now follow one rule: **validate
+  the argument, then consult the closed flag.** A nonsensical count is a caller
+  bug in either state; a state-dependent effect is skipped once the ledger
+  closes. Coverage: four tests beside the existing close test in
+  `test/isolate_streaming_test.dart`.
+- **`isolate_streaming/`**: neither document said what a *closed* tracker does
+  with `consume`, which left the primitive's whole close path unspecified —
+  the todo's own note called this the real question, the line move being the
+  easy half. Written down now, on the class and in both documents: after
+  `close` the ledger stops accounting (`grant`/`consume` no-op, `credits`
+  freezes) and only `awaitCredit` reports the closure. Making `consume` throw
+  instead was considered and rejected on evidence, not symmetry: a close
+  routinely lands mid-iteration, after `awaitCredit` returned and the chunk
+  went out but before the trailing `consume`, and in `tom_brain_memory`'s
+  producer that throw would land outside its `on StateError` guard and in the
+  generic catch — reporting a clean close to the host as a stream error.
+  `awaitCredit` stays the single unwind point because it is the only one
+  callers already handle.
 - **`isolate_streaming/`**: `IsolateCancellationRegistry.isCancelled` was
   documented as answering "whether or not it is currently registered", which
   it has not done since the post-close-cancel fix and could not do cheaply.

@@ -137,8 +137,17 @@ bp.close();                  // fails parked waiters so producers unwind
 `awaitCredit` does **not** decrement — it returns once `credits > 0`; the
 producer calls `consume` after pushing the item. `grant(n)` must be positive and
 wakes up to `n` FIFO waiters; `consume` rejects going negative. `credits`,
-`waiterCount`, and `isClosed` expose the ledger state. After `close`, parked and
-subsequent `awaitCredit` calls fail with `StateError` so producers can unwind.
+`waiterCount`, and `isClosed` expose the ledger state.
+
+**After `close`, the ledger stops accounting but keeps checking.** `grant` and
+`consume` become no-ops and `credits` freezes; only `awaitCredit` reports the
+closure, failing with `StateError` — parked calls and later ones alike. That is
+where a producer is meant to unwind, and it is the only place it has to handle:
+a close routinely lands mid-iteration, after `awaitCredit` returned and the
+chunk went out but before the trailing `consume`, so making that `consume` throw
+would raise from the loop body instead. Argument checks are exempt from the
+silence: `grant(0)` and `consume(-1)` throw `ArgumentError` whether the tracker
+is open or closed, because a nonsensical count is a caller bug in either state.
 
 ## Request Guard
 
