@@ -29,16 +29,25 @@ makes `custom` the one module that does not rest on it.
 
 ## Key types
 
+Every type `tom_custom_widgets.dart` exports, the eight widgets first and then
+the models and signatures they take:
+
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomAuthGuard` | Renders / elides / locks a `child` by the `tomId`'s authorization state |
 | `TomAuthTreeView` | Tree view whose nodes honour authorization |
 | `TomEmptyState` | Title / description / optional action for empty collections |
 | `TomErrorBoundary` | Catches and renders a child subtree's errors |
-| `TomLoadingOverlay` | A scrim + message over a `child` while `isLoading` |
 | `TomInfiniteScroll` | Lazy-loading scrollable list |
-| `TomRadioGroup` / `TomRadioGroupItem` | A single-select radio group |
+| `TomLoadingOverlay` | A scrim + message over a `child` while `isLoading` |
+| `TomRadioGroup` | A single-select radio group |
 | `TomSkeletonLoader` | Shimmer placeholder while content loads |
+| `TomAuthTreeNode` | One node of a `TomAuthTreeView` — its own `tomId`, title, children |
+| `TomRadioGroupItem` | One option of a `TomRadioGroup` — value and label |
+| `TomInfiniteScrollState` | `TomInfiniteScroll`'s state, public so a `GlobalKey` can call `refresh()` |
+| `PageFetcher` | Signature of `TomInfiniteScroll.fetcher`; **must be idempotent** |
+| `InfiniteScrollItemBuilder` | Signature building one row of a `TomInfiniteScroll` |
+| `TomErrorBoundaryFallbackBuilder` | Signature of `TomErrorBoundary.fallbackBuilder` — the error details plus a `retry` closure |
 
 ## Quick start
 

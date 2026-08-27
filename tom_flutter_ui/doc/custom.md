@@ -38,7 +38,12 @@ lookup and the plain data models — is what the example demonstrates.
 | `TomInfiniteScroll` | `StatefulWidget` | Paginated list with a `PageFetcher`, reusing the empty / skeleton / error widgets above. |
 
 All eight are exported from the package barrel via
-`lib/src/custom/tom_custom_widgets.dart`.
+`lib/src/custom/tom_custom_widgets.dart`, together with the models and callback
+signatures they take — `TomAuthTreeNode`, `TomRadioGroupItem`,
+`TomInfiniteScrollState`, `PageFetcher`, `InfiniteScrollItemBuilder` and
+`TomErrorBoundaryFallbackBuilder`. The module readme
+([`lib/src/custom/readme.md`](../lib/src/custom/readme.md)) tables all fourteen;
+this document covers the eight widgets.
 
 ## Authorization widgets
 

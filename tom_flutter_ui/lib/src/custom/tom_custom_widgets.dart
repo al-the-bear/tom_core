@@ -1,8 +1,12 @@
 /// Non-form custom widgets.
 ///
 /// Eight widgets that are not form fields and carry no form-value
-/// binding, but consume the same authorization, resource, and
-/// state-binding systems the fields do:
+/// binding. They extend `StatelessWidget` / `StatefulWidget` directly
+/// rather than a `TomFamilyBase`, and they reach for the package's
+/// systems only where each genuinely needs one: [TomAuthGuard],
+/// [TomAuthTreeView] and [TomRadioGroup] resolve authorization through
+/// the kernel, [TomEmptyState] resolves resources, and the other four
+/// take their appearance from the ambient `ThemeData`.
 ///
 /// * [TomAuthGuard] — hides or disables a subtree by resolved auth state.
 /// * [TomAuthTreeView] — hierarchical tree with per-node authorization.
