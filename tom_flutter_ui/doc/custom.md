@@ -96,8 +96,14 @@ The remaining five are presentation idioms with no auth gate:
   the `child` otherwise.
 - **`TomSkeletonLoader`** — a `SingleTickerProviderStateMixin`-driven shimmer
   over a coloured rectangle, or masked to a `child` silhouette via `ShaderMask`.
-  Setting `enabled: false` yields a static placeholder (for tests / reduced
-  motion).
+  `enabled: false` drops the `ShaderMask` rather than freezing it, and the mask
+  is what *paints* the skeleton — so the two forms stop in different places.
+  Without a `child` the coloured rectangle remains: a static placeholder. With
+  a `child` the child is returned exactly as passed, in its own colours, which
+  the mask would otherwise have overpainted. Tests want this either way, since
+  a repeating animation never lets `pumpAndSettle` finish; a reduced-motion
+  caller gets a placeholder only from the childless form, or from a `child`
+  that is itself a silhouette rather than the real content.
 - **`TomErrorBoundary`** — installs a ref-counted global `ErrorWidget.builder`
   hook that routes a failing subtree's error to the *nearest enclosing*
   boundary (via `findAncestorStateOfType`), so nested boundaries contain their

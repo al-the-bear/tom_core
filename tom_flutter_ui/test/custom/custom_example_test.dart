@@ -157,12 +157,17 @@ void main() {
       expect(find.text('Working…'), findsOneWidget);
     });
 
-    testWidgets('disabled skeleton renders a static placeholder',
+    testWidgets('a disabled childless skeleton drops the shimmer mask',
         (tester) async {
+      // Scoped to the childless form on purpose. "Disabled renders a static
+      // placeholder" holds only here: with a `child`, disabling returns the
+      // caller's widget in its own colours and paints no placeholder at all.
+      // A ShaderMask check cannot tell those two apart — neither has a mask —
+      // so the real distinction is pinned by pixels in
+      // `tom_skeleton_loader_test.dart`.
       await tester.pumpWidget(_host(
         const TomSkeletonLoader(width: 80, height: 12, enabled: false),
       ));
-      // No shimmer mask when disabled — just the placeholder box.
       expect(find.byType(ShaderMask), findsNothing);
     });
   });

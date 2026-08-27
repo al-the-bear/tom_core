@@ -19,6 +19,11 @@ class TomSkeletonLoader extends StatefulWidget {
   /// Optional child whose silhouette receives the shimmer mask. When
   /// `null`, the loader renders a [width] × [height] rounded rectangle
   /// painted with the base colour.
+  ///
+  /// Only the silhouette survives: the mask repaints the child in the
+  /// shimmer colours, so its own colours never show while [enabled] is
+  /// true. Pass a placeholder shape, not real content — and see
+  /// [enabled], which passes the child through untouched.
   final Widget? child;
 
   /// Width of the default rectangle (ignored when [child] is non-null).
@@ -41,9 +46,29 @@ class TomSkeletonLoader extends StatefulWidget {
   /// Animation period for one shimmer cycle.
   final Duration period;
 
-  /// Whether the shimmer animation runs. When `false` the placeholder
-  /// is rendered as a static rectangle (useful for tests / reduced-
-  /// motion settings).
+  /// Whether the shimmer animation runs.
+  ///
+  /// `false` removes the [ShaderMask] rather than merely freezing it, and
+  /// the mask is what *paints* the skeleton — so the widget's two forms
+  /// stop in different places:
+  ///
+  /// * with no [child], the [width] × [height] rectangle it draws itself
+  ///   remains, filled with [baseColor]. A static placeholder.
+  /// * with a [child], the child is returned exactly as passed, **in its
+  ///   own colours**. Nothing is masked over it and no grey box is drawn,
+  ///   so whether the result still reads as a placeholder depends
+  ///   entirely on what the caller supplied.
+  ///
+  /// The difference is easy to miss because it is invisible while
+  /// `enabled` is true: the mask overpaints a child's colours with
+  /// [baseColor] / [highlightColor], so a red child shimmers grey like
+  /// every other skeleton and only reveals itself as red once disabled.
+  ///
+  /// Always right for tests, where a repeating animation never lets
+  /// `pumpAndSettle` finish. For reduced motion, only the childless form
+  /// is a placeholder on its own; a [child] must already be a silhouette
+  /// — which is how [child] is meant to be used — and not the real
+  /// content, or the caller gets the finished content instead.
   final bool enabled;
 
   const TomSkeletonLoader({
