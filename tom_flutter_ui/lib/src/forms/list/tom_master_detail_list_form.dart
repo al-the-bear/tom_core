@@ -8,7 +8,7 @@ import '../widgets/tom_unsaved_changes_guard.dart';
 import 'tom_list_form.dart';
 
 // ---------------------------------------------------------------------------
-// TomMasterDetailListForm — Phase 2a §16
+// TomMasterDetailListForm
 // ---------------------------------------------------------------------------
 
 /// Two-pane master-detail layout that consumes a [TomListForm] directly —
@@ -45,7 +45,7 @@ import 'tom_list_form.dart';
 /// Multiple [TomMasterDetailListForm] instances may share the same
 /// [TomListForm] — each maintains its own selection observable, so
 /// scaffold A may be looking at row 0 while scaffold B is looking at
-/// row 2. (See Demo H-A for the canonical two-scaffold-one-list demo.)
+/// row 2.
 ///
 /// **Resource resolution.** When [tomId] is set, the following keys are
 /// consulted (each falls back to the constructor argument or a hard-

@@ -7,7 +7,7 @@ import '../tom_form.dart';
 import 'tom_list_form.dart';
 
 // ---------------------------------------------------------------------------
-// TomListRowMoveButtons — Phase 2a §16
+// TomListRowMoveButtons
 // ---------------------------------------------------------------------------
 
 /// A pair of *Move up* / *Move down* buttons bound to row [index] of a

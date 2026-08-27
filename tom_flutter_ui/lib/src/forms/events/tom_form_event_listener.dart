@@ -22,7 +22,7 @@ mixin TomFormEventListener {
   void onFormDiscarded(FormDiscardedEvent event) {}
   void onFormValidated(FormValidatedEvent event) {}
 
-  // List form events (Phase 2a — §13)
+  // List form events
   void onListItemAdded(ListItemAddedEvent event) {}
   void onListItemRemoved(ListItemRemovedEvent event) {}
   void onListItemReordered(ListItemReorderedEvent event) {}

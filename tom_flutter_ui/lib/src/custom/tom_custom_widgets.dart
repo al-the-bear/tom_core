@@ -1,9 +1,17 @@
-/// Phase 6 — Non-form custom widgets barrel.
+/// Non-form custom widgets.
 ///
-/// Exports the eight custom widgets defined in §23 of
-/// `tom_ui_widgets_forms.md`. None of these are fields; they consume
-/// the same authorization, resource, and state-binding systems used
-/// by Phase 1–5 fields and form a reusable kit for downstream apps.
+/// Eight widgets that are not form fields and carry no form-value
+/// binding, but consume the same authorization, resource, and
+/// state-binding systems the fields do:
+///
+/// * [TomAuthGuard] — hides or disables a subtree by resolved auth state.
+/// * [TomAuthTreeView] — hierarchical tree with per-node authorization.
+/// * [TomEmptyState] — placeholder for an empty data view.
+/// * [TomErrorBoundary] — catches build errors raised inside a subtree.
+/// * [TomInfiniteScroll] — paginated list over a page fetcher.
+/// * [TomLoadingOverlay] — scrim and spinner over a subtree.
+/// * [TomRadioGroup] — radio selection with group-level authorization.
+/// * [TomSkeletonLoader] — shimmer placeholder for a loading surface.
 library;
 
 export 'tom_auth_guard.dart';

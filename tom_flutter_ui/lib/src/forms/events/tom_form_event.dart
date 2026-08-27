@@ -110,7 +110,7 @@ class FormValidatedEvent extends TomFormEvent {
 }
 
 // ---------------------------------------------------------------------------
-// List form events (Phase 2a — §13)
+// List form events
 // ---------------------------------------------------------------------------
 
 /// Fired when a sub-form is appended or inserted into a [TomListForm].

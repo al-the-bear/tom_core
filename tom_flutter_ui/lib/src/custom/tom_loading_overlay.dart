@@ -1,9 +1,9 @@
-/// Phase 6 — `TomLoadingOverlay`.
-///
-/// Full-surface loading indicator with optional message, used during
-/// [SlowValidator] / save-action roundtrips in form demos. Layers a
+/// Full-surface loading indicator with optional message. Layers a
 /// translucent scrim + centred [CircularProgressIndicator] (+ optional
 /// label) over the [child] subtree when [isLoading] is true.
+///
+/// Suits any operation that suspends a whole surface rather than one
+/// control — a [SlowValidator] round-trip or a save action, for example.
 ///
 /// Designed to wrap an entire screen body or a card-sized panel; the
 /// scrim sizes itself to the child via a [Stack] so callers don't need

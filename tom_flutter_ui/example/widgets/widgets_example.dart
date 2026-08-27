@@ -14,7 +14,7 @@
 ///
 /// This example demonstrates those **context-free** surfaces across a handful
 /// of widgets from different families. Rendering (the `build` half) needs a
-/// widget tree and is out of scope here — see `phase1_demo.dart` and the
+/// widget tree and is out of scope here — see `gallery_demo.dart` and the
 /// per-widget `testWidgets` suites for that.
 ///
 /// Because it imports `flutter/material` (→ `dart:ui`) through the package

@@ -1,6 +1,6 @@
-/// Phase 5c — Cupertino Search / Lookup concretes.
+/// Cupertino Search / Lookup concretes.
 ///
-/// Two concretes that subclass the Phase 4 abstract search / lookup bases:
+/// Two concretes that subclass the abstract search / lookup bases:
 ///   * [TomCupertinoFormSearchInput]  → `CupertinoTextField` + inline
 ///                                      Autocomplete options overlay.
 ///   * [TomCupertinoFormLookupSheet]  → Tappable tile that opens a full

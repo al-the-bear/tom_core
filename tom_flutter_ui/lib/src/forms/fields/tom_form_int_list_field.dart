@@ -14,11 +14,10 @@ import '../tom_form.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
-// TomFormIntListField — Abstract multi-select list of ints (Phase 4, §6)
+// TomFormIntListField — Abstract multi-select list of ints
 // ---------------------------------------------------------------------------
 //
-// Documented in §26 since Phase 1 but never scheduled until Phase 4. Mirrors
-// the surface of TomFormStringListField — same toggleItem semantics
+// Mirrors the surface of TomFormStringListField — same toggleItem semantics
 // (allocate-fresh on mutate so TomField change detection fires), same
 // labelTextOverride / descriptionTextOverride resource resolution.
 abstract class TomFormIntListField extends TomField<List<int>> {

@@ -91,7 +91,7 @@ class TomNavigationRail extends TomNavigationBase {
     _resolvedUnselectedIconTheme = unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme');
   }
 
-  // Phase 3: Resolve TextStyle from resources
+  // Resolve TextStyle from resources
   TextStyle? _resolveTextStyle(String suffix) {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
@@ -325,7 +325,7 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
         kToolbarHeight + (indicatorWeight ?? 2.0),
       );
 
-  // Phase 3: Resolve TextStyle from resources
+  // Resolve TextStyle from resources
   TextStyle? _resolveTextStyle(String suffix) {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, suffix);

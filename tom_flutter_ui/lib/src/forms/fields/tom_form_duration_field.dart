@@ -12,7 +12,7 @@ import '../tom_form.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
-// TomFormDurationField — abstract Duration-typed field (Phase 3)
+// TomFormDurationField — abstract Duration-typed field
 // ---------------------------------------------------------------------------
 
 abstract class TomFormDurationField extends TomField<Duration> {

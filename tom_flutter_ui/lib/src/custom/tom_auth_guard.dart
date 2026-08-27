@@ -1,9 +1,9 @@
-/// Phase 6 — `TomAuthGuard`.
-///
 /// Inline wrapper that hides or disables its [child] based on the
 /// authorization state resolved from a `tomId` (resource key path).
-/// Cuts the boilerplate currently hand-rolled per call-site to inspect
-/// `TomAuthorization.resolveAuth(...)` and conditionally render.
+///
+/// Reach for it wherever a subtree's visibility follows a resource key,
+/// in place of calling `TomAuthorization.resolveAuth(...)` at the call
+/// site and branching by hand.
 ///
 /// The guard supports four [TomAuthState] outcomes:
 /// * `none` — child is removed from the tree (replaced by [hiddenBuilder]

@@ -347,7 +347,7 @@ class TomTextField extends TomInputBase {
     );
   }
 
-  /// Phase 3: Resolves TextStyle from resources.
+  /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
@@ -499,7 +499,7 @@ class TomTextFormField extends TomInputBase {
     );
   }
 
-  /// Phase 3: Resolves TextStyle from resources.
+  /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
@@ -759,7 +759,7 @@ class TomSearchAnchor extends TomInputBase {
     );
   }
 
-  /// Phase 3: Resolves TextStyle from resources.
+  /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(String suffix) {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
@@ -1043,7 +1043,7 @@ class TomCupertinoTextField extends TomInputBase {
     );
   }
 
-  /// Phase 3: Resolves TextStyle from resources.
+  /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(String suffix) {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, suffix);

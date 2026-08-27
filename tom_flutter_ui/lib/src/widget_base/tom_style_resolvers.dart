@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../resource_auth/tom_colors.dart';
 import 'tom_construction_helpers.dart';
 
-/// Phase 3: Complex style resolution helpers for Tom UI widgets.
+/// Complex style resolution helpers for Tom UI widgets.
 ///
 /// Provides resolution of complex Flutter objects (TextStyle, ButtonStyle,
 /// InputDecoration, MenuStyle, ShapeBorder, BorderRadius, Decoration,

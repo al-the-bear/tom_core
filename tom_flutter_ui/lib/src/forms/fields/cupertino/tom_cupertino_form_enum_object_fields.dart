@@ -1,6 +1,6 @@
-/// Phase 5c — Cupertino Enum / Object selection concretes.
+/// Cupertino Enum / Object selection concretes.
 ///
-/// Three concretes that subclass the same Phase 4 abstract enum / object
+/// Three concretes that subclass the same abstract enum / object
 /// fields used by the Material side, but render through Cupertino
 /// primitives:
 ///   * [TomCupertinoFormEnumPicker]      → `CupertinoPicker` modal sheet
@@ -36,7 +36,7 @@ import '../tom_form_enum_object_fields.dart';
 /// Runs a Cupertino-style modal-sheet picker with a fixed Cancel/Done bar
 /// above a [CupertinoPicker]. Returns the selected value (or `null` on
 /// cancel). The picker's body is rendered inside a Cupertino popup so it
-/// matches the look of the Phase 5b date / time pickers.
+/// matches the look of the Cupertino date / time pickers.
 Future<T?> _showCupertinoListPicker<T>({
   required BuildContext context,
   required List<SelectableItem<T>> items,

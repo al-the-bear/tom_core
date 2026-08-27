@@ -189,4 +189,4 @@ prefixes its `basePath` (`settings.<tomId>`) — see [groups](groups.md) and
 > `flutter/material` (→ `dart:ui`), so run the example under the Flutter
 > toolchain — see [`example/widgets/widgets_example.dart`](../example/widgets/widgets_example.dart),
 > exercised by `flutter test`. Visual rendering is covered by the per-widget
-> `testWidgets` suites and the `phase1_demo.dart` demo.
+> `testWidgets` suites and the `gallery_demo.dart` demo.

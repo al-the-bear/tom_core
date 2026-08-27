@@ -1,6 +1,6 @@
-/// Phase 5b — Cupertino Date / Time / Duration / Range concretes.
+/// Cupertino Date / Time / Duration / Range concretes.
 ///
-/// Five concretes that subclass the same Phase 3 abstract date/time
+/// Five concretes that subclass the same abstract date/time
 /// fields used by the Material side, but render their inner picker as
 /// a `CupertinoDatePicker` / `CupertinoTimerPicker` inside a
 /// `showCupertinoModalPopup` sheet:
@@ -13,7 +13,7 @@
 /// Surface: every concrete uses [TomGenericFieldDecorationMixin] so
 /// label / error / description / action icons render through the same
 /// anatomy as the Material counterparts. The on-tap tile renders via
-/// [cupertinoFieldDecoration] for visual parity with Phase 5a tiles.
+/// [cupertinoFieldDecoration] for visual parity with the string-picker tiles.
 library;
 
 import 'package:flutter/cupertino.dart';
@@ -35,7 +35,7 @@ import '../tom_form_duration_field.dart';
 
 /// Renders a Cupertino-style trigger tile that displays [label] and a
 /// trailing chevron. Tapping invokes [onTap]. Uses the same surface
-/// decoration as the Phase 5a Cupertino picker tiles so date/time/range
+/// decoration as the Cupertino string-picker tiles so date/time/range
 /// fields sit visually flush with string pickers.
 Widget _cupertinoTriggerTile({
   required BuildContext context,

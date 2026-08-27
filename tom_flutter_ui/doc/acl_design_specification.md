@@ -11,7 +11,7 @@
 ACL is documented at two levels, and this is the deeper one.
 
 - **[advanced_container_layout.md](advanced_container_layout.md) — the module reference.** The public API of `lib/src/advanced_container_layout/` in isolation: what each type is, what each entry point does, and how to call it. Start there if you want to *use* ACL.
-- **This document — the design specification.** *Why* the engine behaves as it does: the coordinate conventions, the three-phase row-sizing algorithm, the convergence loop, the precedence rules between defaults, rows and components, and the reasoning behind each. Read it when the module reference tells you *what* happens and you need to know why, or when you are changing the engine rather than calling it.
+- **This document — the design specification.** *Why* the engine behaves as it does: the coordinate conventions, the three-step row-sizing algorithm, the convergence loop, the precedence rules between defaults, rows and components, and the reasoning behind each. Read it when the module reference tells you *what* happens and you need to know why, or when you are changing the engine rather than calling it.
 
 The split is the package-wide convention — see [README.md](README.md), which registers every subsystem under both headings.
 
@@ -207,12 +207,12 @@ final Acl acl = AclBuilder()
 
 ---
 
-## 6. Row Sizing — Three Phases
+## 6. Row Sizing — Three Steps
 
 Each content row is sized independently before cross-row constraints are applied.
 
 ```
-Phase 1 — Shrink to preferred
+Step 1 — Shrink to preferred
 ─────────────────────────────
 If Σ preferred > availableWidth:
 
@@ -221,14 +221,14 @@ If Σ preferred > availableWidth:
   ratio      = (Σ preferred − availableWidth) / shrinkCap
   fitted[i]  = preferred[i] − (preferred[i] − minimum[i]) * ratio
 
-Phase 2 — Grow to preferred
+Step 2 — Grow to preferred
 ────────────────────────────
 If Σ fitted < availableWidth and any fitted[i] < preferred[i]:
 
   Grow under-preferred components toward preferred
   (pro-rata on the deficit)
 
-Phase 3 — Fill remaining space beyond preferred
+Step 3 — Fill remaining space beyond preferred
 ────────────────────────────────────────────────
 If Σ fitted < availableWidth AND the row contains gap()/expandX components:
 
@@ -294,8 +294,8 @@ Example — Option B (expandX present, availableWidth = 500):
 
   [Label pref=90] [Field expandX pref=96]
 
-  Phase 1/2: Label=90, Field=96
-  Phase 3 Option B: surplus=314 → all given to Field (expandX)
+  Steps 1/2: Label=90, Field=96
+  Step 3 Option B: surplus=314 → all given to Field (expandX)
   Label stays at 90 (it is excluded by skip() because expandX is set)
 ```
 
@@ -557,7 +557,7 @@ Row 1: [Label B] [Field → sameWidthAs(labelA) → Field.width = 120px]
 
 `expandX` is **not** required for a component to grow beyond its preferred width.
 Without `expandX`, all ACL-hinted components (those with any size hint set) grow
-proportionally to fill any available surplus (Phase 3 Option C above).
+proportionally to fill any available surplus (Step 3 Option C above).
 Components with a finite `maximumSize` are capped at that value; others grow
 freely up to their proportional share of the remaining space.
 
@@ -595,16 +595,16 @@ ACL separates **size determination** from **Flutter layout** to avoid multi-fram
 ### Build-time flow
 
 ```
-Phase 0 — Collect natural sizes  (render tree, once per build)
+Step 0 — Collect natural sizes  (render tree, once per build)
   ∙ For every natural-sized component, read its cached measured size
     from the GlobalKey render tree (cached from the previous frame).
   ∙ If not yet measured (first frame), use 0×0 as initial estimate.
   ∙ This is the ONLY point where the Flutter render tree is consulted
     for sizing; all subsequent work is pure Dart.
 
-Phase 1..N — Iterative pre-calculation loop  (pure Dart, no Flutter paint)
+Steps 1..N — Iterative pre-calculation loop  (pure Dart, no Flutter paint)
   For each iteration:
-    1. Compute fitted widths for each row (3-phase algorithm, Section 6)
+    1. Compute fitted widths for each row (3-step algorithm, Section 6)
     2. Compute gap slot widths (Section 7) and gap row heights (Section 8)
     3. Resolve sameWidthAs / sameHeightAs / sameSize from values computed
        in Step 1 of the current iteration
@@ -617,7 +617,7 @@ Phase 1..N — Iterative pre-calculation loop  (pure Dart, no Flutter paint)
   If not converged after max iterations, use best available values.
   Layout may have residual errors but will never crash or infinite-loop.
 
-Phase 2 — Single Flutter layout pass
+Final step — Single Flutter layout pass
   Build the Flutter widget tree with all sizes and positions pre-computed.
   ConstrainedBox / SizedBox / Transform.translate receive the pre-calculated
   values directly — no further measurement or setState is needed for layout.
@@ -1010,19 +1010,19 @@ AclBuilder.build()  →  Acl (StatefulWidget)
                             ▼
                      LayoutBuilder  ←── availableWidth, availableHeight
                             │
-              Phase 0: read natural-size cache
+              Step 0: read natural-size cache
                 (GlobalKey render-tree measurements from last frame;
                  remapped from old keys by structural position)
                             │
-              Phase 1..N: pre-calculation loop  (pure Dart)
-               ├ 3-phase row fitting (shrink → grow → fill)
+              Steps 1..N: pre-calculation loop  (pure Dart)
+               ├ 3-step row fitting (shrink → grow → fill)
                ├ gap slot widths / gapRow heights
                ├ sameWidthAs / sameHeightAs resolution
                ├ alignXxx horizontal deltas (cross-row)
                ├ alignYxx vertical deltas   (same-row)
                └ converged (ε=0.5) or max-iterations hit?
                             │
-              Phase 2: single Flutter layout pass
+              Final step: single Flutter layout pass
                ├── content row (all sizes fixed)
                │    └ Row([ConstrainedBox(child), SizedBox(gap), ...])
                │         sizes and Transform.translate from pre-calc
@@ -1822,7 +1822,7 @@ Marker interface that restricts the generic type `T` on `TomAclBuilder<T>`:
 abstract interface class TomScreenElementsProvider {}
 ```
 
-Any `TomClass` or `TomForm` that implements `TomScreenElementsProvider` (or inherits the implementation) can be the element provider. A Phase 1 form like `CustomerForm` qualifies, so the typed lambda lets you reach into its fields directly.
+Any `TomClass` or `TomForm` that implements `TomScreenElementsProvider` (or inherits the implementation) can be the element provider. A form like `CustomerForm` qualifies, so the typed lambda lets you reach into its fields directly.
 
 ### TomAclBuilder Constructor
 
@@ -1919,7 +1919,7 @@ Rules of thumb:
 4. **Use `appendForm` / `append` uniformly.** Both delegate to the same `AclBuilder.append`. Pick one for legibility; mixing them in the same layout hides intent.
 5. **Nest forms via nested TomAclBuilders, not ad-hoc Columns.** For a `CustomerForm` with nested `AddressForm`s (Demos B and C), one `TomAclBuilder` per form keeps each section's IDs, auth, and resources independent. The sections can still share `sameWidthAs` references when alignment across sections matters.
 
-A typical Phase 1 layout looks like:
+A typical layout looks like:
 
 ```dart
 TomAclBuilder(

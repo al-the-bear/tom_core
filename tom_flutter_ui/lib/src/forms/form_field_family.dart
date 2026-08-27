@@ -1,14 +1,12 @@
-/// Phase 5c — `FormFieldFamily` factory.
-///
 /// A small factory that lets callers construct a field by abstract type
 /// while picking the concrete Material or Cupertino implementation at
 /// runtime. Both families share the same abstract bases (`TomFormStringField`,
 /// `TomFormEnumField<T>`, `TomFormFileField`, …), so a single declaration
 /// can resolve to either side just by switching the family.
 ///
-/// Designed for Phase 5c "Demo P" (family swap by breakpoint), but useful
-/// anywhere a form needs to render different concrete classes from the
-/// same field declaration.
+/// Swapping the family by breakpoint is the motivating case, but the
+/// factory is useful anywhere a form needs to render different concrete
+/// classes from the same field declaration.
 ///
 /// Usage:
 ///

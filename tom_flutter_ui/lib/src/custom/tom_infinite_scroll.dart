@@ -1,9 +1,7 @@
-/// Phase 6 — `TomInfiniteScroll`.
-///
 /// List wrapper with pagination, an observable page fetcher, and
-/// empty / error / loading-state hooks that reuse the other Phase 6
-/// custom widgets ([TomEmptyState], [TomSkeletonLoader],
-/// [TomErrorBoundary]).
+/// empty / error / loading-state hooks. The default slot builders render
+/// [TomEmptyState], [TomSkeletonLoader] and [TomErrorBoundary], so an
+/// unconfigured list already matches the rest of the kit.
 ///
 /// The widget is parameterised over a single [PageFetcher] callback
 /// of shape `Future<List<T>> Function(int page, int pageSize)`. The

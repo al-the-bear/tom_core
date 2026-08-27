@@ -1,4 +1,4 @@
-/// Phase 5a — Cupertino String-list concrete.
+/// Cupertino String-list concrete.
 ///
 /// Mirror of the Material multi-select string fields
 /// ([TomFormStringFilterChips], [TomFormStringMultiCheckbox]) using a
@@ -11,8 +11,8 @@
 ///
 /// Subclasses the same `TomFormStringListField` abstract used by the
 /// Material concretes so a shared bound state object can be rendered
-/// by either family — this is the contract the Phase 5c
-/// `FormFieldFamily` factory leans on.
+/// by either family — this is the contract the `FormFieldFamily`
+/// factory leans on.
 library;
 
 import 'dart:async';

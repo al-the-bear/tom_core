@@ -1,10 +1,7 @@
-/// Phase 6 — `TomRadioGroup`.
-///
-/// Radio-group container that applies authorization to the entire
-/// selection group. Per-field auth on radio implementations works
-/// today, but a stand-alone "grouped radio" layout with **group-level**
-/// auth (one resource key controlling the whole group) does not — this
-/// widget closes that gap.
+/// Radio-group container whose authorization is **group-level**: one
+/// resource key governs the whole selection, rather than each radio
+/// carrying its own. Use it when a grant covers the choice as a unit —
+/// a per-field radio is the right tool when the grant varies per option.
 ///
 /// The widget is value-semantic: callers pass [items], the current
 /// [selected] value, and an [onChanged] handler. Internally each tile

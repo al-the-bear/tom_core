@@ -207,13 +207,13 @@ class _Demo extends StatelessWidget {
 }
 ```
 
-Run it with `flutter run example/phase1_demo.dart` for the full gallery.
+Run it with `flutter run example/gallery_demo.dart` for the full gallery.
 
 ## Example projects
 
 | Sample | Demonstrates |
 | ------ | ------------ |
-| [`example/phase1_demo.dart`](example/phase1_demo.dart) | A single `runApp` demo paging the three pillars — widget kit, custom composites, and the full Phase-1 form feature set (lifecycle, four authorization states, authorizers, nesting, validation) |
+| [`example/gallery_demo.dart`](example/gallery_demo.dart) | A single `runApp` demo paging the three pillars — widget kit, custom composites, and the form feature set (lifecycle, four authorization states, authorizers, nesting, validation) |
 | [`example/widgets/`](example/widgets) | Per-widget usage snippets for the general kit |
 | [`example/advanced_container_layout/`](example/advanced_container_layout) | ACL sizing, growth, borders, variants, breakpoints |
 | [`example/forms/`](example/forms) | Form fields, validation, styles, list / master-detail forms |

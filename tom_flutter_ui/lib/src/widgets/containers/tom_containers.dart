@@ -435,7 +435,7 @@ class TomAppBar extends StatelessWidget
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
-    // Phase 2: Resolve optional parameters from resources
+    // Resolve optional parameters from resources
     final resolvedAutomaticallyImplyLeading =
         TomCtr.boolVal(basePath, 'automaticallyImplyLeading') ?? automaticallyImplyLeading;
     final resolvedElevation =
@@ -469,7 +469,7 @@ class TomAppBar extends StatelessWidget
     final resolvedForceMaterialTransparency =
         TomCtr.boolVal(basePath, 'forceMaterialTransparency') ?? forceMaterialTransparency;
 
-    // Phase 3: Resolve complex objects from resources
+    // Resolve complex objects from resources
     final resolvedIconTheme =
         iconTheme ?? _resolveIconThemeData('iconTheme');
     final resolvedActionsIconTheme =

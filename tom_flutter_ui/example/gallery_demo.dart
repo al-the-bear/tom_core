@@ -19,7 +19,7 @@
 ///    validation, the error banner, and resource resolution.
 ///
 /// The default landing tab is **Widgets**, so the app pumps cleanly under the
-/// Flutter toolchain (`flutter run example/phase1_demo.dart`). The **Forms**
+/// Flutter toolchain (`flutter run example/gallery_demo.dart`). The **Forms**
 /// tab relies on Tom reflection for its `@tomReflector` form models; a host app
 /// must call `initializeReflection()` (with generated reflection data) at
 /// startup. When that wiring is absent — as in this standalone example — the

@@ -15,7 +15,7 @@ import '../validation/validators.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
-// TomFormIntField — Abstract Int Field (Phase 3)
+// TomFormIntField — Abstract Int Field
 // ---------------------------------------------------------------------------
 
 /// Abstract base for integer-typed form fields. Mirrors the surface of

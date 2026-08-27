@@ -7,7 +7,7 @@ import '../tom_form.dart';
 import 'tom_list_form.dart';
 
 // ---------------------------------------------------------------------------
-// TomListFormToolbar — Phase 2a §16
+// TomListFormToolbar
 // ---------------------------------------------------------------------------
 
 /// Compact action bar with the standard list-form mutations:

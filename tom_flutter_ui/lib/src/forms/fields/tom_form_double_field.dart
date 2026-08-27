@@ -15,7 +15,7 @@ import '../validation/validators.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
-// TomFormDoubleField — Abstract Double Field (Phase 3)
+// TomFormDoubleField — Abstract Double Field
 // ---------------------------------------------------------------------------
 
 abstract class TomFormDoubleField extends TomField<double> {
@@ -250,8 +250,8 @@ class TomFormCurrencyDoubleInput extends TomFormDoubleField
 
   /// Currency formatting profile derived from [locale] / [currencyCode].
   /// Without `intl`, we ship a minimal table covering the common cases
-  /// (USD, EUR, GBP, JPY) plus a sensible default — the spec's Demo I
-  /// only needs locale-aware visual differences, not full ICU coverage.
+  /// (USD, EUR, GBP, JPY) plus a sensible default — a locale switcher
+  /// needs visual differences, not full ICU coverage.
   CurrencyFormatProfile get formatProfile =>
       CurrencyFormatProfile.resolve(locale: locale, code: currencyCode);
 
@@ -658,8 +658,8 @@ String? _floatingLabelOrNull(TomFieldStyle style, TomFormDoubleField field) {
 // CurrencyFormatProfile — minimal locale-aware currency renderer
 // ---------------------------------------------------------------------------
 
-/// Tiny built-in currency formatter so Phase 3 doesn't pull `intl` in.
-/// Covers USD / EUR / GBP / JPY visually — enough for Demo I's locale
+/// Tiny built-in currency formatter, so the package need not depend on
+/// `intl`. Covers USD / EUR / GBP / JPY visually — enough for a locale
 /// switcher. Apps that need full ICU coverage can swap their own
 /// `TomFormCurrencyDoubleInput` subclass that uses the `intl` package.
 class CurrencyFormatProfile {

@@ -201,7 +201,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
     _attachBindingObserver(target);
   }
 
-  /// Round-6 (a): subscribe to the bound TomClass so external mutations
+  /// Subscribes to the bound TomClass so external mutations
   /// (e.g. a sibling [TomForm] bound to the same target committing an
   /// edit) re-snapshot this form's fields. Without this, two scaffolds
   /// targeting the same data object only stay in sync for the side that
@@ -327,7 +327,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   void _applySave({required bool commitBaselines}) {
     onSaving();
-    // Round-6 (a): suppress our own binding observer while writing back —
+    // Suppress our own binding observer while writing back —
     // setValues fires the binding's observers synchronously, and we
     // don't want that to recursively re-snapshot the values we just
     // committed.
@@ -1256,7 +1256,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
 
 /// **Legacy** standard string form field for text input.
 ///
-/// Prefer [TomFormStringInput] from Phase 1 for new code.
+/// Prefer [TomFormStringInput] for new code.
 @Deprecated('Use TomFormStringInput instead')
 class TomFormStringInputClassic extends TomTextFormFieldBase<String> {
   TomFormStringInputClassic(
@@ -1332,7 +1332,7 @@ class TomFormEmailStringInputClassic extends TomTextFormFieldBase<String> {
 }
 
 /// **Legacy** integer form field with int conversion and optional min/max validation.
-@Deprecated('Use typed form fields from Phase 2+ instead')
+@Deprecated('Use the typed form fields instead')
 class TomFormIntInputClassic extends TomTextFormFieldBase<int> {
   final int? min;
   final int? max;
@@ -1382,7 +1382,7 @@ class TomFormIntInputClassic extends TomTextFormFieldBase<int> {
 }
 
 /// **Legacy** double/decimal form field with double conversion and optional min/max validation.
-@Deprecated('Use typed form fields from Phase 2+ instead')
+@Deprecated('Use the typed form fields instead')
 class TomFormDoubleInputClassic extends TomTextFormFieldBase<double> {
   final double? min;
   final double? max;

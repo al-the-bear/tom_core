@@ -1,6 +1,6 @@
-/// Phase 5c — Cupertino Nullable input variants.
+/// Cupertino Nullable input variants.
 ///
-/// Mirror the four Phase 4 Material nullable inputs but render through
+/// Mirror the four Material nullable inputs but render through
 /// Cupertino primitives. Each variant binds a `T?` value so the user can
 /// express "explicitly empty" as a distinct state from "default /
 /// pristine"; clearing emits `null`.

@@ -115,15 +115,15 @@ class _TomErrorViewState extends State<TomErrorView>
 
   /// Resolve a [FormValidationError] to user-facing text.
   ///
-  /// Round-6 (d) bug fix:
-  ///   - Previously prefixed `'error.'` to `error.errorKey` when looking
-  ///     up the field-scoped variant, but `errorKey` already includes the
-  ///     `error.` prefix produced by stock validators (e.g.
-  ///     `error.required`). The double-prefix lookup never matched.
-  ///   - Previously the global lookup used `TomCtr.textOrNull('', key)`,
-  ///     which builds the resource path as `'.<key>'` (leading dot) and
-  ///     breaks `getObjectFromTree`. We now pass the key as `basePath`
-  ///     directly with an empty suffix, matching the same pattern used by
+  /// Two lookup rules, both easy to get subtly wrong:
+  ///   - [FormValidationError.errorKey] is used **unprefixed**. Stock
+  ///     validators already emit it with the `error.` prefix attached
+  ///     (`error.required`), so adding another one yields
+  ///     `error.error.required` and never matches.
+  ///   - The global lookup passes the key as `basePath` with an empty
+  ///     suffix, not as `TomCtr.textOrNull('', key)`. The latter builds
+  ///     the path as `'.<key>'` — a leading dot that breaks
+  ///     `getObjectFromTree`. This mirrors
   ///     `resolveFieldValidationMessage`.
   String _resolveMessage(FormValidationError error) {
     final key = error.errorKey;

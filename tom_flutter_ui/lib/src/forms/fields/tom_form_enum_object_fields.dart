@@ -1,4 +1,4 @@
-/// Phase 4 — Enum & Object selection fields.
+/// Enum & Object selection fields.
 ///
 /// Four abstract field types and their concretes:
 ///   * [TomFormEnumField] / [TomFormObjectField] — single-value selection

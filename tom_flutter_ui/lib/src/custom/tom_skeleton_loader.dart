@@ -1,5 +1,3 @@
-/// Phase 6 — `TomSkeletonLoader`.
-///
 /// Shimmer / skeleton placeholder for async-loading surfaces. Renders
 /// a soft animated shimmer over a coloured rectangle (or a child widget
 /// when supplied), giving downstream apps a consistent loading idiom

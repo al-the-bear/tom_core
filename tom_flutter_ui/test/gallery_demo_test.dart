@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-import '../example/phase1_demo.dart' as demo;
+import '../example/gallery_demo.dart' as demo;
 
-/// Smoke test for the runnable demo app (`example/phase1_demo.dart`).
+/// Smoke test for the runnable demo app (`example/gallery_demo.dart`).
 ///
 /// Confirms the app pumps and that the two reflection-free galleries — the
 /// default **Widgets** tab and the **Custom** tab — render. The **Forms** tab

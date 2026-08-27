@@ -137,7 +137,7 @@ class TomDropdownButton<T> extends TomSelectBase {
     );
   }
 
-  /// Phase 3: Resolves TextStyle from resources.
+  /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
@@ -402,13 +402,13 @@ class TomDropdownMenu<T> extends TomSelectBase {
     );
   }
 
-  /// Phase 3: Resolves TextStyle from resources.
+  /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'textStyle');
   }
 
-  /// Phase 3: Resolves MenuStyle from resources.
+  /// Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath!, 'menuStyle');
@@ -481,7 +481,7 @@ class TomMenuAnchor extends TomSelectBase {
     );
   }
 
-  /// Phase 3: Resolves MenuStyle from resources.
+  /// Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath!, 'style');
@@ -642,13 +642,13 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
     );
   }
 
-  /// Phase 3: Resolves TextStyle from resources.
+  /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
 
-  /// Phase 3: Resolves InputDecoration from resources.
+  /// Resolves InputDecoration from resources.
   InputDecoration? _resolveInputDecoration() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveInputDecoration(basePath!, 'decoration');

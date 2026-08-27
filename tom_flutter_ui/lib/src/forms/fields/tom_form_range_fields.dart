@@ -34,7 +34,7 @@ class NumRange<T extends num> {
 }
 
 // ---------------------------------------------------------------------------
-// TomFormIntRangeField — Abstract Int-range field (Phase 3)
+// TomFormIntRangeField — Abstract Int-range field
 // ---------------------------------------------------------------------------
 
 abstract class TomFormIntRangeField extends TomField<NumRange<int>> {
@@ -161,7 +161,7 @@ class _TomFormIntRangeSliderWidgetState
 }
 
 // ---------------------------------------------------------------------------
-// TomFormDoubleRangeField — Abstract Double-range field (Phase 3)
+// TomFormDoubleRangeField — Abstract Double-range field
 // ---------------------------------------------------------------------------
 
 abstract class TomFormDoubleRangeField extends TomField<NumRange<double>> {

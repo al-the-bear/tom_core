@@ -1,4 +1,4 @@
-// Phase 0a — data model and prerequisites
+// Data model and prerequisites
 export 'tom_form.dart';
 export 'tom_form_child_container.dart';
 export 'validation/validation_result.dart';
@@ -13,7 +13,7 @@ export 'events/tom_form_event_listener.dart';
 export 'events/tom_form_event_source.dart';
 export 'events/tom_form_inspector.dart';
 
-// Phase 0b — widget infrastructure
+// Widget infrastructure
 export 'style/form_style_enums.dart';
 export 'style/tom_form_style.dart';
 export 'style/tom_form_style_scope.dart';
@@ -31,16 +31,16 @@ export 'widgets/tom_multi_observable_builder.dart';
 // consumers (e.g. ACL hide-unauthorized) can reach the field's auth state.
 export 'fields/tom_field_widget_adapter.dart';
 
-// Phase 1 — concrete string fields
+// Concrete string fields
 export 'fields/tom_form_string_field.dart';
 
-// Phase 2 — selection variants, list fields, boolean fields
+// Selection variants, list fields, boolean fields
 export 'fields/tom_form_string_selection.dart';
 export 'fields/tom_form_string_list_field.dart';
 export 'fields/tom_form_bool_field.dart';
 export 'fields/tom_form_nullable_bool_field.dart';
 
-// Phase 2a — collections, master-detail, inline list editing
+// Collections, master-detail, inline list editing
 export 'list/tom_list_form.dart';
 export 'list/tom_inline_list_form.dart';
 export 'list/tom_expandable_list_form.dart';
@@ -52,7 +52,7 @@ export 'widgets/tom_unsaved_changes_guard.dart';
 export 'widgets/tom_error_view.dart';
 export 'widgets/tom_row_error_strip.dart';
 
-// Phase 3 — numeric, date/time, duration field types
+// Numeric, date/time, duration field types
 export 'fields/tom_form_int_field.dart';
 export 'fields/tom_form_double_field.dart';
 export 'fields/tom_form_range_fields.dart';
@@ -60,14 +60,14 @@ export 'fields/tom_date_time_format.dart';
 export 'fields/tom_form_date_time_fields.dart';
 export 'fields/tom_form_duration_field.dart';
 
-// Phase 4 — enum, object, search, lookup, file, nullable inputs
+// Enum, object, search, lookup, file, nullable inputs
 export 'fields/tom_form_int_list_field.dart';
 export 'fields/tom_form_enum_object_fields.dart';
 export 'fields/tom_form_search_lookup_fields.dart';
 export 'fields/tom_form_file_field.dart';
 export 'fields/tom_form_nullable_inputs.dart';
 
-// Phase 4a — file plumbing: the picked value, the platform-picker registry,
+// File plumbing: the picked value, the platform-picker registry,
 // the transfer state machine, the transfer UX and the wording all of them
 // resolve. Usable on their own, not just through a file field.
 export 'files/file_ref.dart';
@@ -76,21 +76,21 @@ export 'files/tom_file_picker_registry.dart';
 export 'files/tom_file_transfer_controller.dart';
 export 'files/tom_file_transfer_indicator.dart';
 
-// Phase 5a — Cupertino style + string / bool / string-list concretes
+// Cupertino style + string / bool / string-list concretes
 export 'style/tom_cupertino_form_style.dart';
 export 'fields/cupertino/tom_cupertino_form_string_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_bool_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_string_list_field.dart';
 
-// Phase 5b — Cupertino numeric + date/time concretes
+// Cupertino numeric + date/time concretes
 export 'fields/cupertino/tom_cupertino_form_numeric_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_date_time_fields.dart';
 
-// Phase 5c — Cupertino enum/object, search/lookup, file, nullable concretes
+// Cupertino enum/object, search/lookup, file, nullable concretes
 export 'fields/cupertino/tom_cupertino_form_enum_object_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_search_lookup_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_file_field.dart';
 export 'fields/cupertino/tom_cupertino_form_nullable_inputs.dart';
 
-// Phase 5c — FormFieldFamily factory (Material vs Cupertino concrete picker)
+// FormFieldFamily factory (Material vs Cupertino concrete picker)
 export 'form_field_family.dart';

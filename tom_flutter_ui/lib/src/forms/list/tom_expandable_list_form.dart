@@ -8,7 +8,7 @@ import 'tom_list_form.dart';
 import 'tom_reorder_handle.dart';
 
 // ---------------------------------------------------------------------------
-// TomExpandableListForm — Phase 2a §16
+// TomExpandableListForm
 // ---------------------------------------------------------------------------
 
 /// Expansion policy for [TomExpandableListForm].

@@ -1,6 +1,6 @@
-/// Phase 4 — Nullable input variants.
+/// Nullable input variants.
 ///
-/// Mirror the surface of the non-nullable Phase 1 / Phase 3 inputs but
+/// Mirror the surface of the non-nullable string and numeric inputs but
 /// bind a `T?` value so the user can express "explicitly empty" as a
 /// distinct state from "default / pristine". Each variant ships with a
 /// trailing clear icon that sets the value to `null`; for text inputs,
@@ -63,8 +63,8 @@ mixin _NullableFieldLabels<T> on TomField<T> {
   /// their widget builders.
   String resolveNullDisplay() {
     if (nullDisplayOverride != null) return nullDisplayOverride!;
-    // Round-5 (k.b): consult the resource chain for a `nullDisplay`
-    // override before falling through to the hint / sentinel. Lets
+    // Consult the resource chain for a `nullDisplay` override before
+    // falling through to the hint / sentinel. Lets
     // forms ship a localised "Not set" / "Bitte wählen" placeholder
     // without touching the field declaration.
     final resourced = TomCtr.textOrNull(basePath, 'nullDisplay');
@@ -376,7 +376,7 @@ class _NullableTextInputWidgetState<T>
       // honours `nullDisplayOverride` (incl. empty for "render nothing"),
       // then `hintTextOverride`, then the `'— null —'` default.
       hintText: resolvedNullDisplay,
-      // Round-6 (k.a) — when the resolved null display is truly empty
+      // When the resolved null display is truly empty
       // (`nullDisplayOverride: ''` mode), force the label to stay
       // floating. Otherwise Material's InputDecorator drops the
       // labelText into the field area as a stand-in placeholder when
@@ -685,9 +685,9 @@ class _NEnumDropdownWidgetState<T> extends State<_NEnumDropdownWidget<T>> {
         // option from the source. Keeps the input style otherwise so
         // typography stays consistent with the rest of the form.
         //
-        // Round-5 (k.a): pass the resolved label through verbatim. We
-        // used to substitute `' '` for an empty label so the menu item
-        // kept clickable height; that broke the documented "empty
+        // Pass the resolved label through verbatim. Substituting `' '`
+        // for an empty label to keep the menu item's clickable height
+        // breaks the documented "empty
         // when null" mode by drawing a visible single-space line in
         // both the menu and the closed dropdown's selected slot. The
         // SizedBox(height: kMinInteractiveDimension) preserves a

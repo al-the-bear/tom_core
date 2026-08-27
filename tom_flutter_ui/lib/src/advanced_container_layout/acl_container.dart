@@ -528,7 +528,7 @@ double? aclResolveRowHeight(AclRow row, double? availableWidth) =>
 /// pre-calculation loop. These values are handed directly to [_buildRow] so
 /// that Flutter layout is performed in a single pass with all sizes fixed.
 class _AclRowLayout {
-  /// Fitted (phase 1/2/3) widths by component index. null → natural size.
+  /// Fitted (steps 1/2/3) widths by component index. null → natural size.
   final Map<int, double> fittedWidths;
 
   /// Computed horizontal translation delta for each component index.
@@ -2065,7 +2065,7 @@ class _AclContainerState extends State<AclContainer> {
     final gapSlotWidths = <int, double>{};
     final virtualRects = <Key, Rect>{};
 
-    // ── Phase 0: resolve linked sizes from sameWidthAs / sameHeightAs ────
+    // ── Step 0: resolve linked sizes from sameWidthAs / sameHeightAs ─────
     final hasGapSlots = row.components.any((c) => c.isGap);
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
@@ -2079,7 +2079,7 @@ class _AclContainerState extends State<AclContainer> {
       }
     }
 
-    // ── Phase 1/2/3: compute fitted widths ───────────────────────────────
+    // ── Steps 1/2/3: compute fitted widths ───────────────────────────────
     if (availableWidth != null && availableWidth.isFinite) {
       final fw = _computeFittedWidths(
         row: row,

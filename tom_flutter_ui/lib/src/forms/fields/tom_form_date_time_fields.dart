@@ -731,10 +731,9 @@ class _TomFormDateRangePickerWidgetState
 /// time-range fields. Equatable so observers see a real change only when
 /// at least one endpoint moves.
 ///
-/// No concrete widget ships in Phase 3 (the spec table treats Phase 3
-/// concretes as a "target — not every row is required"). Apps that need
-/// a time-range picker today can subclass [TomFormTimeRangeField] with
-/// two stacked [TomFormTimePicker]-style buttons.
+/// No concrete widget ships for this type. Apps that need a time-range
+/// picker can subclass [TomFormTimeRangeField] with two stacked
+/// [TomFormTimePicker]-style buttons.
 class TimeRange {
   final TimeOfDay start;
   final TimeOfDay end;
@@ -791,8 +790,8 @@ abstract class TomFormTimeRangeField extends TomField<TimeRange> {
 
 /// Abstract field for a `(start, end)` pair of full [DateTime] values.
 /// Reuses Flutter's [DateTimeRange] as the value type. As with
-/// [TomFormTimeRangeField], no concrete widget ships in Phase 3 — apps
-/// that need one can compose [TomFormDateTimePicker] twice.
+/// [TomFormTimeRangeField], no concrete widget ships — apps that need
+/// one can compose [TomFormDateTimePicker] twice.
 abstract class TomFormDateTimeRangeField extends TomField<DateTimeRange> {
   final String? labelTextOverride;
   final String? descriptionTextOverride;

@@ -1,11 +1,11 @@
-/// Phase 6 — `TomAuthTreeView` / `TomAuthTreeNode`.
+/// Hierarchical tree with **per-node authorization**.
 ///
-/// Hierarchical tree with **per-node authorization**. The framework
-/// already ships [TomTreeView] with widget-level auth (the whole tree
-/// is hidden / disabled together) and `TomTreeNode` as a plain data
-/// model. Phase 6 adds a sibling pair where every node carries its own
-/// resource key and resolves [TomAuthState] independently — needed for
-/// nav / permissions UIs that surface partial trees per user role.
+/// Every node carries its own resource key and resolves its
+/// [TomAuthState] independently, so one tree can surface a different
+/// shape per user role — which is what nav and permissions UIs need.
+/// Contrast [TomTreeView], whose authorization is widget-level: the
+/// whole tree is hidden or disabled together. Pick this pair when the
+/// grant varies *within* the tree, [TomTreeView] when it does not.
 ///
 /// Lookup rules per node:
 ///

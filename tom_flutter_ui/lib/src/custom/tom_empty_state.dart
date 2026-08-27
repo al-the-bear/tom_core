@@ -1,5 +1,3 @@
-/// Phase 6 — `TomEmptyState`.
-///
 /// Standard placeholder for empty data views. Used by `TomListForm`
 /// when its bound list is empty, and any other "no data yet" surface.
 ///

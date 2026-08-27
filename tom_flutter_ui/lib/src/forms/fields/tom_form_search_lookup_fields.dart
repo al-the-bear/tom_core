@@ -1,4 +1,4 @@
-/// Phase 4 — Search & Lookup fields.
+/// Search & Lookup fields.
 ///
 /// `TomFormSearchField<T>` is the type-ahead autocomplete pattern: large
 /// candidate set, filter as the user types, single-pick. `TomFormLookupField<T>`
@@ -237,9 +237,9 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
         return _items.where((i) => i.enabled && _match(q, i)).take(50);
       },
       onSelected: (it) => f.setValue(it.value),
-      // Round-5 (f): the default `optionsViewBuilder` constrains the
-      // popup to the field width, which clips long catalog labels in
-      // narrow cells (e.g. Demo H-C item rows). Render the popup
+      // The default `optionsViewBuilder` constrains the popup to the
+      // field width, which clips long catalog labels in narrow cells
+      // — an item row inside a list form, say. Render the popup
       // ourselves so it sizes to the widest option (capped to a
       // reasonable max so off-screen labels don't blow it up) while
       // still pinning to the field via Autocomplete's internal
@@ -622,8 +622,8 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
       readOnly: true,
       enabled: f.isEditable,
       style: inputStyle,
-      // Round-5 (h): align the read-only display text to the centre of
-      // the input box; without this the text rides the top edge of the
+      // Align the read-only display text to the centre of the input
+      // box; without this the text rides the top edge of the
       // content area, looking visibly higher than neighbouring fields.
       textAlignVertical: TextAlignVertical.center,
       mouseCursor: f.isEditable ? SystemMouseCursors.click : null,
@@ -636,8 +636,8 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
           floatingLabelStyle: floatingLabelStyle,
           hintText: '—',
           hintStyle: hintStyle,
-          // Round-5 (j): plain Icon (size 22 to match the dialog's
-          // prefix icon) instead of an IconButton — the IconButton's
+          // Plain Icon (size 22 to match the dialog's prefix icon)
+          // instead of an IconButton — the IconButton's
           // 48×48 minimum touch target was inflating the suffix slot
           // and pushing the input text up. The whole row is tappable
           // via the TextField's onTap, so the icon doesn't need its

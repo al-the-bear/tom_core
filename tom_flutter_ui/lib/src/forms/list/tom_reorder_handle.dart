@@ -4,7 +4,7 @@ import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 
 // ---------------------------------------------------------------------------
-// TomReorderHandle — Phase 2a §16
+// TomReorderHandle
 // ---------------------------------------------------------------------------
 
 /// A standard drag handle for reordering rows in a [ReorderableListView].

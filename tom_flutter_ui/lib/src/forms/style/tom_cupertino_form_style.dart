@@ -1,10 +1,10 @@
-/// Phase 5 — Cupertino flavour of [TomFormStyle].
+/// Cupertino flavour of [TomFormStyle].
 ///
 /// `TomCupertinoFormStyle` is the Cupertino counterpart of [TomFormStyle]:
 /// the *same* property surface (anatomy, typography, gaps, error-visual
 /// toggles), but its `cupertino` preset ships Cupertino-tuned defaults so
-/// that fields wrapped by Cupertino concretes (Phase 5a/5b/5c) sit
-/// visually flush with `CupertinoTextField` / `CupertinoSwitch` / etc.
+/// that fields wrapped by Cupertino concretes sit visually flush with
+/// `CupertinoTextField` / `CupertinoSwitch` / etc.
 ///
 /// Cupertino concretes (e.g. `TomCupertinoFormStringInput`) render their
 /// own native control inside the same [TomGenericFieldDecorationMixin] /
@@ -19,8 +19,7 @@
 /// keeps `TomFormStyleScope.style` polymorphic across families: the
 /// scope's `style: TomFormStyle?` parameter accepts either flavour and
 /// `styleBpOverrides` may interleave Material and Cupertino entries
-/// freely, which is what Demo P (Phase 5c) leans on for
-/// breakpoint-driven family swap.
+/// freely, which is what breakpoint-driven family swap leans on.
 library;
 
 import 'package:flutter/cupertino.dart';
@@ -89,8 +88,8 @@ class TomCupertinoFormStyle extends TomFormStyle {
   /// Delegates to [TomFormStyle.withTheme] for the bulk of the work and
   /// then re-wraps the result so it remains a [TomCupertinoFormStyle]
   /// (subtype identity matters for `is TomCupertinoFormStyle` checks
-  /// in style-family-aware widgets and `FormFieldFamily` resolution
-  /// downstream in Phase 5c).
+  /// in style-family-aware widgets and for `FormFieldFamily`
+  /// resolution downstream).
   @override
   TomCupertinoFormStyle withTheme(ThemeData theme) {
     final themed = super.withTheme(theme);

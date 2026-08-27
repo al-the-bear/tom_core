@@ -25,6 +25,15 @@
 /// undocumented today and are named in [_knownUndocumented]. The test fails if
 /// that set grows, or if a barrel on it is quietly deleted; removing an entry
 /// is the only edit that should ever be needed.
+///
+/// **The last group polices what the prose says, not whether it exists.**
+/// Documentation written alongside a build plan tends to describe the code's
+/// position in that plan — "Phase 5c — Cupertino concretes", "Round-6 (a):
+/// subscribe to…", "See Demo H-A". Every one of those is a fact about the
+/// schedule, not about the code, and it decays the moment the schedule is
+/// over: a reader who arrives at the published API documentation cannot
+/// resolve "Demo H-A" or place "Phase 5c" against anything they can see.
+/// The markers are enumerated in [_rolloutMarkers].
 library;
 
 import 'dart:io';
@@ -49,6 +58,55 @@ const _knownUndocumented = <String>{
   'lib/src/widget_base/widget_base.dart',
   'lib/src/widgets/widgets.dart',
 };
+
+/// Vocabularies that name a position in the build plan rather than the code.
+///
+/// Each entry pairs a pattern with the wording to use instead, so a failure
+/// tells the author what to write rather than only what not to write.
+///
+/// All three require a capital letter and an adjacent digit, which is what
+/// keeps them off ordinary prose: an animation that runs "in three phases",
+/// a `roundTo` helper and a `demoController` field all read past them. The
+/// cost of that precision is that the set is a denylist and an author who
+/// invents a fourth vocabulary escapes it — so this catches drift back into
+/// the established habits, not every conceivable way of writing a date into
+/// a doc comment.
+const _rolloutMarkers = <String, String>{
+  r'Phase[ -]\d':
+      'a rollout phase — describe what the code does; for the steps of an '
+          'algorithm write "Step 1", which reads as structure rather than '
+          'schedule',
+  r'Round[ -]\d':
+      'a review round — state the rule the code follows now, not the round '
+          'in which it changed',
+  r'Demo [A-Z]\b':
+      'a demo from the build plan — those letters resolve nowhere a reader '
+          'of the published documentation can look; name the example file, '
+          'or describe the arrangement',
+};
+
+/// Every Dart source file under `lib/`, as repo-relative paths.
+///
+/// Walked rather than listed: a file added tomorrow is covered without anyone
+/// remembering this test exists.
+List<String> _allLibrarySources() => Directory('lib')
+    .listSync(recursive: true)
+    .whereType<File>()
+    .map((f) => f.path)
+    .where((p) => p.endsWith('.dart'))
+    .toList()
+  ..sort();
+
+/// Type names declared in [source] — `class`, `enum`, `mixin`, `extension`
+/// and `typedef`.
+///
+/// Used to recognise an opening line that merely *names* the file's subject
+/// instead of describing it.
+Set<String> _declaredTypes(String source) => RegExp(
+      r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+)*'
+      r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
+      multiLine: true,
+    ).allMatches(source).map((m) => m.group(1)!).toSet();
 
 /// The `export 'src/…';` targets of the package barrel, as repo-relative paths.
 ///
@@ -221,6 +279,94 @@ void main() {
           reason: 'these entries in _knownUndocumented are no longer '
               'undocumented module barrels — remove them:\n'
               '${stale.map((p) => '  $p').join('\n')}');
+    });
+  });
+
+  group('the documentation describes the code, not its rollout', () {
+    test('no source names a build-plan position', () {
+      // Scans raw source rather than extracted comments, deliberately: the
+      // same narration reaches a user through `@Deprecated('… from Phase 2+
+      // …')`, which is a string literal. Since every marker needs a space
+      // between a capitalised word and a digit, and a Dart identifier cannot
+      // contain a space, scanning everything costs no false positives on code.
+      final offences = <String>[];
+      for (final path in _allLibrarySources()) {
+        final lines = File(path).readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          for (final entry in _rolloutMarkers.entries) {
+            if (!RegExp(entry.key).hasMatch(lines[i])) continue;
+            offences.add('$path:${i + 1}\n'
+                '    ${lines[i].trim()}\n'
+                '    → ${entry.value}');
+          }
+        }
+      }
+      expect(offences, isEmpty,
+          reason: 'these lines date the documentation to a schedule the '
+              'reader cannot see:\n\n${offences.join('\n\n')}');
+    });
+
+    test('no library dartdoc opens by naming its own subject', () {
+      // "`TomAuthGuard`." as an opening line tells a reader nothing they did
+      // not already know from the file name — and it is what a phase label is
+      // usually attached to, so removing the label can leave this behind.
+      //
+      // Derived from each file's own declarations rather than a list of
+      // names, so it keeps working as types are added and renamed.
+      final offences = <String>[];
+      for (final path in _allLibrarySources()) {
+        final doc = _libraryDartdoc(path);
+        if (doc.isEmpty) continue;
+
+        final opener = doc.split('\n').first;
+        // Strip the punctuation a label is dressed in — backticks, a
+        // trailing period — then split the "`A` / `B`" form into its parts.
+        final words = opener
+            .replaceAll('`', '')
+            .replaceAll(RegExp(r'[.]+$'), '')
+            .split(RegExp(r'\s*/\s*'))
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+        if (words.isEmpty) continue;
+
+        final declared = _declaredTypes(File(path).readAsStringSync());
+        if (words.every(declared.contains)) {
+          offences.add('$path\n'
+              '    $opener\n'
+              '    → names the file\'s own types and nothing else');
+        }
+      }
+      expect(offences, isEmpty,
+          reason: 'these library dartdocs open with a label instead of a '
+              'statement of what the library is:\n\n${offences.join('\n\n')}');
+    });
+
+    test('no published file is named after a build-plan position', () {
+      // A file name outranks any doc comment for visibility: it is what pub.dev
+      // lists, what an import statement spells out, and what a reader types.
+      // `example/phase1_demo.dart` announced a schedule position in the one
+      // place a reader could not skim past.
+      //
+      // Checked across the three directories that ship or are read by users;
+      // the doc/ plan documents are exempt because a build plan naming its own
+      // phases is describing its actual subject.
+      final offences = <String>[];
+      for (final dir in const ['lib', 'example', 'test']) {
+        for (final file in Directory(dir).listSync(recursive: true)) {
+          if (file is! File || !file.path.endsWith('.dart')) continue;
+          final name = file.uri.pathSegments.last;
+          if (!RegExp(r'(phase|round|step)[ _-]?\d', caseSensitive: false)
+              .hasMatch(name)) {
+            continue;
+          }
+          offences.add('${file.path}\n'
+              '    → name it for what it shows, not for when it was built');
+        }
+      }
+      expect(offences, isEmpty,
+          reason: 'these file names carry a schedule position:\n\n'
+              '${offences.join('\n\n')}');
     });
   });
 }

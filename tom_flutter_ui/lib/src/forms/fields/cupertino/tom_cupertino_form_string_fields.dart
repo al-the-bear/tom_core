@@ -1,7 +1,7 @@
-/// Phase 5a — Cupertino String concretes.
+/// Cupertino String concretes.
 ///
 /// Four concretes that subclass the same `TomFormStringField` abstract
-/// used by the Material side (Phase 1):
+/// used by the Material side:
 ///   * [TomCupertinoFormStringInput]      → `CupertinoTextField`
 ///   * [TomCupertinoFormStringSearchInput]→ `CupertinoSearchTextField`
 ///   * [TomCupertinoFormStringPicker]     → `CupertinoPicker` sheet
@@ -10,8 +10,8 @@
 /// All four share the Material decoration anatomy via
 /// [TomStringInputDecorationMixin] / [TomGenericFieldDecorationMixin] —
 /// label / error / description / action icons render the same way, only
-/// the inner control is Cupertino. This keeps mixed-family demos (Demo M)
-/// visually aligned vertically.
+/// the inner control is Cupertino. A form that mixes both families
+/// therefore still aligns vertically.
 library;
 
 import 'dart:async';

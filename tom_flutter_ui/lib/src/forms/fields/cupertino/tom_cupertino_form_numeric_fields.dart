@@ -1,6 +1,6 @@
-/// Phase 5b — Cupertino Numeric concretes.
+/// Cupertino Numeric concretes.
 ///
-/// Four concretes that subclass the same Phase 3 abstract numeric
+/// Four concretes that subclass the same abstract numeric
 /// fields (`TomFormIntField`, `TomFormDoubleField`) used by the
 /// Material side, but render their inner control with Cupertino
 /// widgets:

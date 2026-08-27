@@ -22,7 +22,7 @@ enum TomRowMoveButtonsPosition {
 }
 
 // ---------------------------------------------------------------------------
-// TomInlineListForm — Phase 2a §16
+// TomInlineListForm
 // ---------------------------------------------------------------------------
 
 /// Renders a [TomListForm] as a vertically stacked sequence of inline

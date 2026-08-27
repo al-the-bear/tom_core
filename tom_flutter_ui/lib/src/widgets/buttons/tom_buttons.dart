@@ -97,7 +97,7 @@ class TomElevatedButton extends TomButtonBase {
     return Icon(iconData);
   }
 
-  /// Phase 3: Resolves ButtonStyle from resources.
+  /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
@@ -191,7 +191,7 @@ class TomTextButton extends TomButtonBase {
     return Icon(iconData);
   }
 
-  /// Phase 3: Resolves ButtonStyle from resources.
+  /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
@@ -285,7 +285,7 @@ class TomOutlinedButton extends TomButtonBase {
     return Icon(iconData);
   }
 
-  /// Phase 3: Resolves ButtonStyle from resources.
+  /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
@@ -409,7 +409,7 @@ class TomFilledButton extends TomButtonBase {
     return Icon(iconData);
   }
 
-  /// Phase 3: Resolves ButtonStyle from resources.
+  /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
@@ -917,7 +917,7 @@ class TomMenuItemButton extends TomButtonBase {
     );
   }
 
-  /// Phase 3: Resolves ButtonStyle from resources.
+  /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
@@ -1001,19 +1001,19 @@ class TomSubmenuButton extends TomButtonBase {
     );
   }
 
-  /// Phase 3: Resolves ButtonStyle from resources.
+  /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 
-  /// Phase 3: Resolves MenuStyle from resources.
+  /// Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath!, 'menuStyle');
   }
 
-  /// Phase 3: Resolves Offset from resources.
+  /// Resolves Offset from resources.
   Offset? _resolveOffset(String suffix) {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveOffset(basePath!, suffix);
@@ -1067,7 +1067,7 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
     );
   }
 
-  /// Phase 3: Resolves ButtonStyle from resources.
+  /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
@@ -1375,19 +1375,19 @@ class TomIconButton extends TomButtonBase {
     }
   }
 
-  /// Phase 3: Resolves ButtonStyle from resources.
+  /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 
-  /// Phase 2: Resolves AlignmentGeometry from resources.
+  /// Resolves AlignmentGeometry from resources.
   AlignmentGeometry? _resolveAlignment(String suffix) {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 
-  /// Phase 2: Resolves BoxConstraints from resources.
+  /// Resolves BoxConstraints from resources.
   BoxConstraints? _resolveBoxConstraints(String suffix) {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
@@ -1496,7 +1496,7 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
   DropdownMenuEntry<T> toEntry(BuildContext context) {
     final resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
 
-    // Phase 3: Resolve ButtonStyle from resources
+    // Resolve ButtonStyle from resources
     final resolvedStyle = style ?? _resolveStyle();
 
     return DropdownMenuEntry<T>(
@@ -1519,7 +1519,7 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
     return Text(_resolvedLabel);
   }
 
-  /// Phase 3: Resolves ButtonStyle from resources.
+  /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');

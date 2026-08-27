@@ -55,10 +55,10 @@ Iterate in order. Each step states its **done** condition.
 10. **Per-module pass — `custom/`.**
 11. **Barrel exports & dead code.** Verify every public widget/symbol is
     exported from the package barrel in `lib/`; remove unused declarations.
-    *Done when `dart analyze` is clean.*
+    *Done when `flutter analyze` is clean.*
 12. **Examples app.** Ensure `example/` contains a runnable demo covering the
-    main widgets (extend `phase1_demo.dart`). *Done when the example runs.*
-13. **Whole-package QA.** Run `dart analyze` (zero warnings) and `flutter test`
+    main widgets (extend `gallery_demo.dart`). *Done when the example runs.*
+13. **Whole-package QA.** Run `flutter analyze` (zero warnings) and `flutter test`
     (all green; never run Flutter test invocations in parallel). *Done when
     analyzer and tests are clean.*
 14. **Final review.** Re-read each module doc and `api.dart`; confirm docs only
@@ -75,7 +75,7 @@ private additions allowed):
 2. Refactor and document per
    [`dart/coding_guidelines.md`](/_copilot_guidelines/dart/coding_guidelines.md);
    keep semantic layout separated from presentation.
-3. Quality check: no public API change; `dart analyze` clean.
+3. Quality check: no public API change; `flutter analyze` clean.
 4. Create / update module documentation in `doc/{module}.md` per
    [`documentation_guidelines.md`](/_copilot_guidelines/documentation_guidelines.md).
 5. Create **executable** examples (widget demos) per

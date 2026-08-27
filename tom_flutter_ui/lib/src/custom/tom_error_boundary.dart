@@ -1,11 +1,6 @@
-/// Phase 6 — `TomErrorBoundary`.
-///
 /// Catches widget-build errors raised anywhere in the guarded subtree and
 /// renders a fallback UI instead of letting them reach the global error
 /// widget.
-///
-/// Today every demo re-implements a version of this — Phase 6 promotes
-/// it to a first-class framework piece.
 ///
 /// Interception is one mechanism, and the indirection in it is what makes
 /// *nested* boundaries correct. [ErrorWidget.builder] is global, so it cannot
