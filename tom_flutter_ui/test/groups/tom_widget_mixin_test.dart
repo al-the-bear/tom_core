@@ -2,11 +2,23 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tests §24: TomWidgetMixin is the render contract every direct-extension Tom
-// widget shares — `getAuth()` (resource → group → authorizer →
-// uiStateController), `checkHidden()`, and the 4-state `applyAuthState` visual
-// treatment — yet it had no dedicated coverage. These pin the combination
-// order and the per-state rendering.
+// TomWidgetMixin is the render contract every direct-extension Tom widget
+// shares — `getAuth()`, `checkHidden()`, and the 4-state `applyAuthState`
+// visual treatment.
+//
+// `getAuth()` composes four layers in a fixed order: resource → group →
+// authorizer → uiStateController. The order is load-bearing, because the
+// layers are not all narrowing: `TomAuthorizer` in its `authorizerDecides`
+// mode and `TomAuthorizationGroup.applyMode` under `controlsAll` /
+// `controlsNarrowest` can *widen*, so a layer running later than it should
+// silently undoes what an earlier one established. The "layer order" group
+// below therefore pins each adjacent boundary with inputs that produce a
+// different `TomAuthState` if the two layers are swapped — a test that fixes
+// one layer and leaves the rest null cannot tell one order from another.
+//
+// The group↔controller boundary is pinned separately, for this mixin *and*
+// for `TomPolicyNodeBase`, in `test/widget_base/auth_resolution_order_test.dart`;
+// it is not repeated here.
 
 /// Minimal concrete widget mixing in [TomWidgetMixin].
 class _MixinWidget extends StatelessWidget with TomWidgetMixin {
@@ -46,7 +58,7 @@ Widget _host(Widget child) =>
 void main() {
   tearDown(TomAuthorization.reset);
 
-  group('TomWidgetMixin.getAuth combination order (§24)', () {
+  group('TomWidgetMixin.getAuth: each layer on its own', () {
     test('defaults to full with no tomId and no adapter', () {
       expect(_MixinWidget(child: const Text('x')).getAuth(), TomAuthState.full);
     });
@@ -57,14 +69,17 @@ void main() {
           TomAuthState.read);
     });
 
-    test('authorizer narrows resource auth', () {
+    test('authorizer replaces resource auth', () {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.full});
       final widget = _MixinWidget(
         tomId: 'w',
         authorizer: TomAuthorizer.fixed(TomAuthState.disabled),
         child: const Text('x'),
       );
-      // narrowsOnly default: full narrowed by disabled → disabled.
+      // `TomAuthorizer.fixed` is `authorizerDecides`, not the narrowsOnly
+      // constructor default — it returns its state outright rather than
+      // narrowing `full` with it. Both happen to answer disabled here; see
+      // the layer-order group for a case where the difference shows.
       expect(widget.getAuth(), TomAuthState.disabled);
     });
 
@@ -93,7 +108,63 @@ void main() {
     });
   });
 
-  group('TomWidgetMixin.checkHidden (§24)', () {
+  group('TomWidgetMixin.getAuth: layer order', () {
+    test('the group applies before the authorizer', () {
+      TomAuthorization.adapter = _MapAuthAdapter({
+        'w': TomAuthState.full,
+        'grp': TomAuthState.read,
+      });
+      final widget = _MixinWidget(
+        tomId: 'w',
+        tomGroup: TomAuthorizationGroup('grp', mode: AuthGroupMode.controlsAll),
+        authorizer: TomAuthorizer.fixed(TomAuthState.disabled),
+        child: const Text('x'),
+      );
+      // full → group replaces with read → authorizer decides disabled.
+      // Swap the two and `controlsAll` discards the authorizer's verdict
+      // wholesale, answering read: a per-widget authorizer would become
+      // unable to restrict a member of a controlsAll group.
+      expect(widget.getAuth(), TomAuthState.disabled);
+    });
+
+    test('the authorizer applies before the controller', () {
+      TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.read});
+      final widget = _MixinWidget(
+        tomId: 'w',
+        authorizer: TomAuthorizer.fixed(TomAuthState.full),
+        uiStateController:
+            TomUIStateController(resolve: (_, _) => TomAuthState.disabled),
+        child: const Text('x'),
+      );
+      // read → authorizer decides full (widening) → controller narrows to
+      // disabled. Swap the two and the authorizer widens away what the
+      // controller just narrowed, answering full — breaking the documented
+      // promise that the controller can only narrow.
+      expect(widget.getAuth(), TomAuthState.disabled);
+    });
+
+    test('all four layers compose in one fixed order', () {
+      TomAuthorization.adapter = _MapAuthAdapter({
+        'w': TomAuthState.full,
+        'grp': TomAuthState.disabled,
+      });
+      final widget = _MixinWidget(
+        tomId: 'w',
+        tomGroup: TomAuthorizationGroup('grp', mode: AuthGroupMode.controlsAll),
+        authorizer: TomAuthorizer.fixed(TomAuthState.full),
+        uiStateController:
+            TomUIStateController(resolve: (_, _) => TomAuthState.read),
+        child: const Text('x'),
+      );
+      // full → group replaces with disabled → authorizer decides full →
+      // controller narrows to read. Each adjacent transposition answers a
+      // different state: group↔authorizer gives disabled, authorizer↔
+      // controller gives full. One expectation, both boundaries.
+      expect(widget.getAuth(), TomAuthState.read);
+    });
+  });
+
+  group('TomWidgetMixin.checkHidden', () {
     test('returns SizedBox.shrink when none, null otherwise', () {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.none});
       expect(_MixinWidget(tomId: 'w', child: const Text('x')).checkHidden(),
@@ -104,7 +175,7 @@ void main() {
     });
   });
 
-  group('TomWidgetMixin.applyAuthState visual treatment (§24)', () {
+  group('TomWidgetMixin.applyAuthState visual treatment', () {
     testWidgets('full → bare child', (tester) async {
       await tester.pumpWidget(_host(_MixinWidget(child: const Text('x'))));
       expect(find.text('x'), findsOneWidget);
