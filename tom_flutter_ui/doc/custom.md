@@ -3,9 +3,17 @@
 `custom/` is the **non-form composite kit** of `tom_flutter_ui`: eight
 ready-made widgets that solve recurring *screen-level* problems — gating a
 subtree by permission, showing an empty / loading / error placeholder, paging
-a long list. They are not form fields and they do not edit a value, but they
-consume the **same authorization, resource, and state systems** the fields use,
-so they drop into a Tom screen with no extra wiring.
+a long list. They are not form fields and they do not edit a value, but where
+they need one they reach for the **same authorization and resource systems**
+the fields use, so they drop into a Tom screen with no extra wiring.
+
+They reach sparingly, which decides what a host has to install:
+`TomAuthGuard`, `TomAuthTreeView` and `TomRadioGroup` resolve authorization;
+`TomEmptyState` — and only when it is given a `tomId` — resolves strings
+through the resource provider; the remaining four read neither. **None of the
+eight resolves a colour or an icon through `TomUIColors` / `TomUIIcons`**, so a
+screen built only from this kit needs no colours adapter and takes its
+appearance from the ambient `ThemeData`.
 
 Unlike the [widgets](widgets.md) kit (thin wrappers that extend a
 `TomFamilyBase`), these are **composite** widgets that extend

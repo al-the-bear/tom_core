@@ -26,10 +26,13 @@ Finder _fadedAncestorOf(Finder child) => find.ancestor(
 
 void main() {
   setUp(() {
+    // TomEmptyState resolves strings in its constructor, so a provider has to
+    // be installed before any case builds one. No colours adapter: nothing in
+    // `custom/` resolves a colour through TomUIColors — these widgets take
+    // their appearance from the ambient ThemeData.
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(const {}),
     );
-    TomUIColors.adapter = AllColorsAdapter();
     TomAuthorization.reset();
   });
   tearDown(TomAuthorization.reset);
@@ -132,6 +135,26 @@ void main() {
       ));
       expect(find.text('Nothing here'), findsOneWidget);
       expect(find.text('Add one.'), findsOneWidget);
+    });
+
+    testWidgets('a tomId reads the headline from the installed bundle',
+        (tester) async {
+      // The module's only resource lookup, and so the only reason the example
+      // and this suite install a provider at all.
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from(const {
+          'reports': {
+            'empty': {'title': 'No reports', 'description': 'Nothing yet.'},
+          },
+        }),
+      );
+      await tester.pumpWidget(_host(
+        TomEmptyState(tomId: 'reports.empty', title: 'ignored'),
+      ));
+      // Resources win over the explicit parameter, which is the fallback.
+      expect(find.text('No reports'), findsOneWidget);
+      expect(find.text('ignored'), findsNothing);
+      expect(find.text('Nothing yet.'), findsOneWidget);
     });
 
     testWidgets('loading overlay shows scrim + spinner only when loading',

@@ -21,7 +21,7 @@ resource systems, but only where each one genuinely needs them:
 | Consumes | Widgets |
 | -------- | ------- |
 | the kernel's `TomAuthorization` / `TomAuthState` | `TomAuthGuard`, `TomAuthTreeView`, `TomRadioGroup` |
-| resources, via `TomCtr` from [`widget_base`](../widget_base/readme.md) | `TomEmptyState` |
+| resources, via `TomCtr` from [`widget_base`](../widget_base/readme.md) — and only when given a `tomId` | `TomEmptyState` |
 | neither — pure presentation | `TomErrorBoundary`, `TomLoadingOverlay`, `TomSkeletonLoader`, `TomInfiniteScroll` |
 
 `tom_empty_state.dart` is this module's single import from `widget_base`, which
@@ -50,6 +50,13 @@ the models and signatures they take:
 | `TomErrorBoundaryFallbackBuilder` | Signature of `TomErrorBoundary.fallbackBuilder` — the error details plus a `retry` closure |
 
 ## Quick start
+
+Nothing has to be installed for the widgets below. No colours adapter, because
+none of the eight resolves a colour through `TomUIColors`; and no resource
+provider, because the only widget that reads resources — `TomEmptyState` — does
+so only when given a `tomId`, and this one is passed literals. Add a `tomId` and
+a `TomTextResourceProvider` becomes mandatory: an uninstalled lookup throws
+rather than bootstrapping itself.
 
 ```dart
 import 'package:flutter/material.dart';

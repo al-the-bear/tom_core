@@ -20,8 +20,9 @@
 /// here is the shared machinery they delegate to: the `TomAuthState` lattice
 /// (`narrow` — the operation [TomAuthTreeView] uses to fold what a node
 /// inherits into the state it resolved for itself), the resource-path auth
-/// lookup every guard performs, and the plain data models
-/// ([TomRadioGroupItem], [TomAuthTreeNode]).
+/// lookup every guard performs, [TomEmptyState]'s constructor-time string
+/// resolution (the module's only use of the resource provider), and the plain
+/// data models ([TomRadioGroupItem], [TomAuthTreeNode]).
 ///
 /// Because it imports `flutter/material` (→ `dart:ui`) through the package
 /// barrel, run it under the Flutter toolchain, e.g.
@@ -46,13 +47,22 @@ class _PathAuthAdapter extends TomAuthorizationAdapter {
 }
 
 void run() {
-  // Several custom widgets resolve display strings / colours from Tom resources
-  // at construction time, so install an (empty) provider and a colours adapter
-  // — exactly as the widget tests do.
+  // [TomEmptyState] is the module's only resource consumer, and only when it is
+  // given a `tomId`: it resolves title / description / actionLabel through
+  // `TomCtr` in its constructor. A provider must therefore be installed before
+  // one is built — an uninstalled lookup throws rather than bootstrapping
+  // itself. The other seven widgets read no resources.
+  //
+  // No colours adapter is installed: none of the eight resolves a colour
+  // through `TomUIColors`. They take their appearance from the ambient
+  // `ThemeData`, so `Theme.of(context)` is the whole colour story here.
   TomTextResourceProvider.setAppResourceProvider(
-    TomTextResourceProvider.from(const {}),
+    TomTextResourceProvider.from(const {
+      'reports': {
+        'empty': {'title': 'No reports', 'description': 'Nothing published.'},
+      },
+    }),
   );
-  TomUIColors.adapter = AllColorsAdapter();
   TomAuthorization.reset();
 
   // ---------------------------------------------------------------------------
@@ -108,7 +118,30 @@ void run() {
       '${tree.children.length} child(ren)');
 
   // ---------------------------------------------------------------------------
-  // 4. The widgets instantiate (context-free) with their wiring — rendering is
+  // 4. The one resource consumer. TomEmptyState resolves its strings in the
+  //    constructor, not in build, so the bundle installed above is load-bearing
+  //    here and the failure modes land on the caller's own line.
+  // ---------------------------------------------------------------------------
+  // A tomId reads `<tomId>.title` / `.description` from the bundle. This is the
+  // call that needs the provider — with none installed it throws
+  // `resources.text_provider.not_installed`.
+  final fromResources = TomEmptyState(tomId: 'reports.empty');
+  print('resource-driven empty state: tomId=${fromResources.tomId}, '
+      'title parameter=${fromResources.title}'); // title parameter=null
+
+  // Neither a resource nor a literal: rejected at construction rather than
+  // becoming a wordless icon, or an error card in an enclosing
+  // TomErrorBoundary.
+  Object? refused;
+  try {
+    TomEmptyState();
+  } on StateError catch (error) {
+    refused = error;
+  }
+  print('no title and no tomId → ${refused.runtimeType}'); // StateError
+
+  // ---------------------------------------------------------------------------
+  // 5. The widgets instantiate (context-free) with their wiring — rendering is
   //    covered by the testWidgets cases.
   // ---------------------------------------------------------------------------
   const guard = TomAuthGuard(tomId: 'reports.export', child: SizedBox());
@@ -137,6 +170,10 @@ void run() {
   assert(cappedChild == TomAuthState.disabled);
   assert(freeChild == TomAuthState.read);
   assert(hiddenSubtree == TomAuthState.none);
+
+  assert(fromResources.tomId == 'reports.empty');
+  assert(fromResources.title == null);
+  assert(refused is StateError);
 
   assert(items.first.value == 'eur');
   assert(items.first.description == '€');
