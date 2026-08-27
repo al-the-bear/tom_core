@@ -341,7 +341,15 @@ class AclComponent {
 
   bool get expandX => (flags & AclFlags.expandX) != 0;
   bool get expandY => (flags & AclFlags.expandY) != 0;
+
+  /// `true` when this component is an elastic spacer rather than content.
+  ///
+  /// A gap slot's [child] is never built — the container replaces it with a
+  /// `Spacer` sized from [gapWeight]. This is how the layout passes tell a
+  /// spacer from a widget, so it reads as a plain component everywhere else in
+  /// the model. `AclBuilder.gap()` is what produces one.
   bool get isGap => (flags & AclFlags.gapElement) != 0;
+
   bool get useOtherDimX => (flags & AclFlags.otherDimX) != 0;
   bool get useOtherDimY => (flags & AclFlags.otherDimY) != 0;
 }

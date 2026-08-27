@@ -299,6 +299,22 @@ Gap[i] width    = remaining × weight[i] / Σ weights
 
 In scrollable-X mode, all gaps collapse to 0.
 
+A gap slot is a normal `AclComponent` carrying `AclFlags.gapElement`, read back
+through `AclComponent.isGap`, and holding its share in `AclComponent.gapWeight`.
+The bit is what separates a spacer from content in every layout pass, and the
+separation is total: **a gap slot's `child` is never built.** Both the measuring
+pass and the building pass skip it and emit a `Spacer` in its place, which is
+why `gap()` supplies a `SizedBox.shrink()` as a child that never renders. Two
+things follow. The builder stops targeting a current component when it inserts a
+slot, so per-component calls chained after `gap()` are ignored rather than
+applied to the slot — a gap is sized by its `weight`, never by a size hint. And
+setting `AclFlags.gapElement` on an appended component through `setAttr`
+discards that component's widget, so `gap()` is the only sanctioned producer.
+
+A row holding any gap slot has its horizontal alignment forced to left: the slot
+has already claimed the surplus that `setRowHorizontalAlignment` would otherwise
+distribute.
+
 ### Examples
 
 ```

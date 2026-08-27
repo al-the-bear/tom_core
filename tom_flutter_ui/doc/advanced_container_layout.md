@@ -34,6 +34,7 @@ sizing and authorization hiding intact.
 - [Layout attribute flags](#layout-attribute-flags)
 - [Sizing and the default preferred width](#sizing-and-the-default-preferred-width)
 - [Row alignment](#row-alignment)
+- [Gap slots — elastic horizontal space](#gap-slots--elastic-horizontal-space)
 - [Gap rows and separators](#gap-rows-and-separators)
 - [Container borders](#container-borders)
 - [Container titles](#container-titles)
@@ -158,18 +159,24 @@ so misuse fails loudly at build time, not silently at render time.
 
 [`AclFlags`] mirrors the Java AWT constants as composable bits:
 
-| Flag | Bit | Meaning |
-| ---- | --- | ------- |
-| `expandX` / `expandY` | 1 / 2 | Fill available width / height. |
-| `expand` | 3 | `expandX \| expandY`. |
-| `gapElement` | 4 | Component is a gap/spacer. |
-| `panelBackground` | 8 | Follow the parent container background. |
-| `charDim` | 16 | Sizes are in character units, not pixels. |
-| `otherDimX` / `otherDimY` | 32 / 64 | Take X / Y dimension from a reference. |
-| `otherDim` | 96 | `otherDimX \| otherDimY`. |
+| Flag | Bit | Meaning | Set with | Read with |
+| ---- | --- | ------- | -------- | --------- |
+| `expandX` / `expandY` | 1 / 2 | Claim the row's surplus width / fill the row height. | `expandX()` / `expandY()` | `.expandX` / `.expandY` |
+| `expand` | 3 | `expandX \| expandY`. | `expand()` | — |
+| `gapElement` | 4 | The component is an elastic spacer, not content — **its child is never built**. | `gap()` | `.isGap` |
+| `otherDimX` / `otherDimY` | 32 / 64 | Take the X / Y dimension from `referenceKey`. | `sameWidthAs()` / `sameHeightAs()` | `.useOtherDimX` / `.useOtherDimY` |
+| `otherDim` | 96 | `otherDimX \| otherDimY`. | `sameSize()` | — |
+
+The bit values are sparse because they mirror the AWT constants the Java
+`AdvancedContainerLike` used; 8 and 16 are unassigned. Every flag in the table
+is one the container actually reads — `acl_flags_contract_test.dart` derives
+this table's left three columns from `AclFlags` and fails if a flag is
+declared but never read, documented with the wrong bit, or missing here.
 
 The `AclBuilderExtensions` extension surfaces `expandX()` / `expandY()` /
-`expand()` shortcuts over `setAttr`.
+`expand()` shortcuts over `setAttr`. The "Read with" column is a getter on
+`AclComponent`, which is what lets you interpret a row you were handed rather
+than one you built.
 
 ## Sizing and the default preferred width
 
@@ -234,6 +241,65 @@ final Acl centred = AclBuilder()
 A row that called `setRowHorizontalAlignment` keeps its own value, so an
 explicit per-row override is never clobbered by a later default change.
 `setAclDefaultRowVerticalAlignment` is the cross-axis counterpart.
+
+## Gap slots — elastic horizontal space
+
+`gap({weight})` inserts an elastic **horizontal** spacer into the current row.
+Slots share whatever width is left after the row's real components have been
+fitted, divided by weight:
+
+```dart
+// Title hard left, buttons hard right — the slot absorbs the slack.
+final Acl bar = AclBuilder()
+    .append(const Text('Title'))
+    .gap()
+    .append(const Text('OK'))
+    .append(const Text('Cancel'))
+    .build();
+
+// Two slots, 2:1 — the left one takes twice the surplus of the right.
+final Acl split = AclBuilder()
+    .gap(weight: 2)
+    .append(const Text('centre-right'))
+    .gap(weight: 1)
+    .build();
+```
+
+A gap slot **is** an `AclComponent` — it sits in `AclRow.components` alongside
+the real ones, and carries `AclFlags.gapElement`, which `AclComponent.isGap`
+reads back. It differs from a content component in one decisive way: **its
+`child` is never built.** The container skips it in both the measuring and the
+building pass and emits a `Spacer` in its place. `gap()` therefore supplies a
+`SizedBox.shrink()` as a placeholder child that never renders.
+
+Two consequences follow from that, and both are easier to hit than to diagnose:
+
+- **`gap()` is not a target for per-component calls.** The builder stops
+  tracking a current component when it inserts a slot, so `setPSize`,
+  `expandX`, `setVerticalAlignment` and friends chained straight after a
+  `gap()` are silently ignored rather than applied to the slot. Size a gap
+  with its `weight`, not with a size hint.
+- **Setting `AclFlags.gapElement` by hand discards a widget.** Reaching for
+  `.append(w).setAttr(AclFlags.gapElement)` turns `w` into a spacer and drops
+  it from the tree. Use `gap()`; it sets the bit, the weight and the
+  placeholder together.
+
+| Situation | Slot width |
+| --------- | ---------- |
+| Surplus available, one slot | All of the surplus. |
+| Surplus available, several slots | `surplus × weight / Σ weights`. |
+| No surplus (row already full) | 0 — the slot collapses, content is never pushed out. |
+| `setAclScrollableX()` | 0 — elastic distribution is meaningless on a scrollable axis. |
+
+A row that contains any gap slot **overrides `setRowHorizontalAlignment` to
+left**. The two mechanisms both decide where content sits in surplus width, and
+a slot that has already absorbed the surplus leaves the alignment nothing to
+distribute — so the container settles it rather than letting the result depend
+on which one you set last. Justify a row with slots (`gap()` before, after, or
+both) *or* with `setRowHorizontalAlignment`, not with both.
+
+`gapRow()` is the vertical counterpart, and differs in kind — it is a *row*,
+not a component. See the next section.
 
 ## Gap rows and separators
 
