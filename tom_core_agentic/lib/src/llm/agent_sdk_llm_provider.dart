@@ -182,7 +182,9 @@ final class AgentSdkLlmProvider implements LlmProvider {
     // `quest` reads it from the window's quest history. A session-shaped failure
     // on a resumed call evicts the stored id and retries exactly once fresh.
     String? resumeId = await sessionStrategy.resumeIdFor(options);
-    var retried = false;
+    // Counted, not flagged: this is the number the report's `retries` field
+    // carries, so keeping it as an int is what stops the two drifting apart.
+    var retries = 0;
     var emittedChunk = false;
 
     while (true) {
@@ -230,13 +232,13 @@ final class AgentSdkLlmProvider implements LlmProvider {
         final message = caught.toString();
         if (await _shouldRetryFresh(
           resumeId: resumeId,
-          retried: retried,
+          retries: retries,
           emittedChunk: emittedChunk,
           message: message,
           options: options,
         )) {
           resumeId = null;
-          retried = true;
+          retries++;
           continue;
         }
         stopwatch.stop();
@@ -251,6 +253,7 @@ final class AgentSdkLlmProvider implements LlmProvider {
           report: _buildReport(
             prompt: prompt,
             modelId: modelId,
+            retries: retries,
             wallClockMs: stopwatch.elapsedMilliseconds,
           ),
         );
@@ -270,6 +273,7 @@ final class AgentSdkLlmProvider implements LlmProvider {
           report: _buildReport(
             prompt: prompt,
             modelId: modelId,
+            retries: retries,
             wallClockMs: stopwatch.elapsedMilliseconds,
           ),
         );
@@ -277,10 +281,18 @@ final class AgentSdkLlmProvider implements LlmProvider {
       }
 
       final resolved = result;
+      // The stopwatch, not `resolved.durationMs`: the SDK reports how long
+      // *this attempt* took on the backend, which on a retry omits both the
+      // failed first attempt and the wait between them. `wallClockMs` is the
+      // caller's total, and the stopwatch has been running since submission.
+      // Deliberately read without stopping it — the costed-error branch below
+      // may still `continue` into a retry, and a stopped stopwatch would then
+      // exclude everything that followed.
       final report = _buildReport(
         prompt: prompt,
         modelId: modelId,
-        wallClockMs: resolved.durationMs ?? stopwatch.elapsedMilliseconds,
+        retries: retries,
+        wallClockMs: stopwatch.elapsedMilliseconds,
         tokensIn: _usageTokens(resolved.usage, 'input_tokens'),
         tokensOut: _usageTokens(resolved.usage, 'output_tokens'),
         cost: resolved.totalCostUsd,
@@ -291,13 +303,13 @@ final class AgentSdkLlmProvider implements LlmProvider {
         final message = resolved.result ?? 'Agent SDK reported an error result.';
         if (await _shouldRetryFresh(
           resumeId: resumeId,
-          retried: retried,
+          retries: retries,
           emittedChunk: emittedChunk,
           message: message,
           options: options,
         )) {
           resumeId = null;
-          retried = true;
+          retries++;
           continue;
         }
         stopwatch.stop();
@@ -324,17 +336,18 @@ final class AgentSdkLlmProvider implements LlmProvider {
   /// Whether a failed *resumed* call should evict its stored session id and be
   /// retried once with a fresh session. Only fires when a session id was being
   /// resumed, no chunk has yet streamed (so the retry cannot duplicate output),
-  /// we have not already retried, and the failure looks session-shaped. Evicts
-  /// the stored id as a side effect when it returns true.
+  /// [retries] is still 0 (the retry is allowed once), and the failure looks
+  /// session-shaped. Evicts the stored id as a side effect when it returns
+  /// true.
   Future<bool> _shouldRetryFresh({
     required String? resumeId,
-    required bool retried,
+    required int retries,
     required bool emittedChunk,
     required String message,
     required LlmOptions options,
   }) async {
     if (resumeId == null ||
-        retried ||
+        retries > 0 ||
         emittedChunk ||
         !agentSdkLooksLikeSessionError(message)) {
       return false;
@@ -345,11 +358,16 @@ final class AgentSdkLlmProvider implements LlmProvider {
 
   /// Builds an [LlmCallReport] with the provider-invariant fields filled:
   /// provenance (`providerId` = [id]), the anchor stamp
-  /// (`anchorHash` = the prompt's), the body hash, `retries: 0`, and the
-  /// prompt's `templateSha`.
+  /// (`anchorHash` = the prompt's), the body hash, and the prompt's
+  /// `templateSha`.
+  ///
+  /// [retries] is required rather than defaulted, because a default is what let
+  /// every report claim a first-shot success: the caller holds the count and is
+  /// the only one that can tell a retried call from a fresh one.
   LlmCallReport _buildReport({
     required WirePrompt prompt,
     required String modelId,
+    required int retries,
     required int wallClockMs,
     int tokensIn = 0,
     int tokensOut = 0,
@@ -362,7 +380,7 @@ final class AgentSdkLlmProvider implements LlmProvider {
       promptHash: promptSha256(prompt.combined),
       tokensIn: tokensIn,
       tokensOut: tokensOut,
-      retries: 0,
+      retries: retries,
       wallClockMs: wallClockMs,
       cost: cost,
       templateSha: prompt.templateSha,

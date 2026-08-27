@@ -18,10 +18,19 @@ import 'package:test/test.dart';
 /// One scripted SDK query response: the messages to replay then either an
 /// `error` chunk or a `done` chunk.
 class _Attempt {
-  _Attempt({this.messages = const <Map<String, dynamic>>[], this.error});
+  _Attempt({
+    this.messages = const <Map<String, dynamic>>[],
+    this.error,
+    this.delay = Duration.zero,
+  });
 
   final List<Map<String, dynamic>> messages;
   final String? error;
+
+  /// How long this attempt takes before it replays. Puts real elapsed time
+  /// inside each attempt, so a retry's report can be checked for a
+  /// `wallClockMs` that spans *both* attempts rather than just the last one.
+  final Duration delay;
 }
 
 /// A fake transport that replays a *list* of [attempts], one per `query` call,
@@ -48,7 +57,7 @@ class _ScriptedAgentSdkTransport extends AgentSdkTransport {
     final attempt =
         attempts[_index < attempts.length ? _index : attempts.length - 1];
     _index++;
-    scheduleMicrotask(() {
+    void replay() {
       for (final message in attempt.messages) {
         if (_controller.isClosed) return;
         _controller.add({'streamId': streamId, 'message': message});
@@ -59,7 +68,13 @@ class _ScriptedAgentSdkTransport extends AgentSdkTransport {
       } else {
         _controller.add({'streamId': streamId, 'done': true});
       }
-    });
+    }
+
+    if (attempt.delay == Duration.zero) {
+      scheduleMicrotask(replay);
+    } else {
+      Timer(attempt.delay, replay);
+    }
   }
 
   @override
@@ -265,6 +280,9 @@ void main() {
       expect(transport.resumesSeen, <Object?>['claude-old']);
       // The returned Claude session id is written back for the next call.
       expect(await store.lookup('tb-1'), 'claude-new');
+      // A first-shot success reports no retries — the other half of the count
+      // the retry test pins at 1.
+      expect((events.last as LlmStreamCompleted).report.retries, 0);
     });
 
     test('a session-error on the resumed call evicts + retries once fresh',
@@ -272,13 +290,21 @@ void main() {
       final store =
           AgentSdkSessionStore(File('${tmp.path}/agent_sdk_sessions.json'));
       await store.put('tb-1', 'claude-stale');
+      // Both attempts take real time, so the report's elapsed figure can be
+      // told apart from the second attempt's own `duration_ms` of 12.
       final transport = _ScriptedAgentSdkTransport(<_Attempt>[
         // Attempt 1 (resume = claude-stale): a session-shaped failure.
-        _Attempt(error: 'Session claude-stale not found'),
+        _Attempt(
+          error: 'Session claude-stale not found',
+          delay: const Duration(milliseconds: 25),
+        ),
         // Attempt 2 (fresh): succeeds and yields a new session id.
-        _Attempt(messages: <Map<String, dynamic>>[
-          _successResult('claude-fresh', text: 'Paris.'),
-        ]),
+        _Attempt(
+          messages: <Map<String, dynamic>>[
+            _successResult('claude-fresh', text: 'Paris.'),
+          ],
+          delay: const Duration(milliseconds: 25),
+        ),
       ]);
       final provider = _provider(transport, BrainSessionStrategy(store));
 
@@ -293,6 +319,15 @@ void main() {
       expect(transport.resumesSeen, <Object?>['claude-stale', null]);
       // The fresh session id was written back over the evicted stale one.
       expect(await store.lookup('tb-1'), 'claude-fresh');
+
+      // The report tells the truth about the retry. `retries` counts it, and
+      // `wallClockMs` is the caller's total — it spans the failed first attempt
+      // and the wait as well as the successful second one, so it is well above
+      // the 50 ms the two scripted delays alone cost and nowhere near the
+      // second attempt's own `duration_ms` of 12.
+      final report = (events.last as LlmStreamCompleted).report;
+      expect(report.retries, 1);
+      expect(report.wallClockMs, greaterThanOrEqualTo(40));
     });
 
     test('a non-session error does NOT retry', () async {

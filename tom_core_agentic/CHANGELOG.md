@@ -2,6 +2,34 @@
 
 ### Fixed
 
+- **`llm/`**: `AgentSdkLlmProvider` misreported both retry fields of every
+  `LlmCallReport`. `_buildReport` hardcoded `retries: 0` — including on the
+  report emitted *after* the evict-and-retry-fresh path had just burned a
+  retry — and `wallClockMs` preferred the SDK result's `duration_ms` over the
+  provider's own stopwatch. The two defects compound: `duration_ms` times a
+  single attempt on the backend, so on a retried call it silently dropped the
+  failed first attempt and the wait between them, which is exactly the case the
+  retry counter was supposed to flag. The contract on `LlmCallReport` was right
+  all along ("in-caller retries burned before this report", "total wall-clock
+  between submission and completion (includes retry waits)"); only the provider
+  disagreed. This reached further than the trail: `LlmRouter._foldRetries`
+  computes `report.retries + retries`, so the hardcoded zero under-counted the
+  router's aggregate too. The provider's retry flag is now an `int retries`
+  that `_buildReport` takes as a required argument — required rather than
+  defaulted, because a default is what let every report claim a first-shot
+  success — and `wallClockMs` always reads the stopwatch, which is started once
+  at submission and deliberately read without stopping it, since the
+  costed-error branch may still continue into a retry. The agent-SDK provider
+  is the only provider affected: the HTTP and stub providers hardcode `0`
+  correctly, having no internal retry (the router owns retry for them).
+  Coverage: the existing evict-and-retry test now scripts a delay into both
+  attempts and asserts `retries: 1` plus a wall clock spanning both, and the
+  first-shot test pins `retries: 0`. One existing assertion had to be corrected
+  rather than kept — `agent_sdk_provider_test.dart` asserted
+  `wallClockMs == 1234`, the scripted `duration_ms`, so it was pinning the
+  defect in place; it now asserts the figure is a real elapsed measurement and
+  specifically not the backend number.
+
 - **`llm/`**: `AgentSdkSessionStore` honoured its no-throw contract on reads
   only. `_load` degraded a missing, corrupt or unreadable file to an empty map,
   but `_flush` caught nothing — and the provider awaits it twice on paths where

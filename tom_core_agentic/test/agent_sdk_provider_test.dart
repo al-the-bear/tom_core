@@ -158,7 +158,13 @@ void main() {
       expect(report.tokensIn, 88);
       expect(report.tokensOut, 40);
       expect(report.cost, 0.0021);
-      expect(report.wallClockMs, 1234);
+      // `wallClockMs` is the caller's own elapsed time, deliberately *not* the
+      // SDK's `duration_ms` (scripted here as 1234). The two differ whenever
+      // there is a retry, where the SDK figure covers only the last attempt;
+      // taking the backend number was the defect, so a non-1234 measurement is
+      // the assertion that holds it shut.
+      expect(report.wallClockMs, isNot(1234));
+      expect(report.wallClockMs, greaterThanOrEqualTo(0));
       expect(report.retries, 0);
     });
 
