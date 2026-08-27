@@ -2,6 +2,26 @@
 
 ### Fixed
 
+- **`llm/`**: four documents promised that a provider emits only
+  `classCode: 'unknown'`, which the one shipped provider has never done — a
+  stream that ends without a terminal result yields `'format'`. The promise was
+  the thing a consumer would most reasonably rely on ("I only ever have to
+  handle `unknown` from this layer"), and it was false at the single place it
+  could be checked, so a consumer switching on `classCode` mishandled exactly
+  the malformed-stream case. Resolved by correcting the documents rather than
+  narrowing the provider: `format` already appears in the dartdoc's own
+  taxonomy list, it is asserted by a test, and flattening it to `unknown` would
+  discard the one thing the provider genuinely observed for itself. The four
+  now state the actual contract — a provider settles the two classes it can
+  determine without interpreting the backend (`format` for a malformed stream,
+  `unknown` for everything else) and leaves the rest of the taxonomy to the
+  caller, so a consumer must handle both. The same paragraphs called `classCode`
+  "kebab-case" in three places while every example listed, and the two values
+  actually emitted, are snake_case; nothing in the module is kebab-case.
+  Coverage: the two paths that emit `unknown` had tests asserting `message` and
+  the report but never `classCode`, which is why the claim could drift
+  unnoticed — both now pin it, so all three emission sites are held.
+
 - **`llm/`**: `AgentSdkLlmProvider` misreported both retry fields of every
   `LlmCallReport`. `_buildReport` hardcoded `retries: 0` — including on the
   report emitted *after* the evict-and-retry-fresh path had just burned a

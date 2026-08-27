@@ -121,14 +121,21 @@ final class LlmStreamFailed extends LlmStreamEvent {
 
 /// Typed failure envelope.
 ///
-/// [classCode] is a stable kebab-case discriminator (e.g. `rate_limit`,
+/// [classCode] is a stable snake_case discriminator (e.g. `rate_limit`,
 /// `overloaded`, `billing`, `timeout`, `auth`, `auth_permanent`,
 /// `model_not_found`, `context_overflow`, `format`, `network`,
-/// `cancelled_by_consumer`, `unknown`). Providers emit `unknown` and leave the
-/// mapping onto the taxonomy to the caller; consumers that just need to log or
-/// surface the failure use [message].
+/// `cancelled_by_consumer`, `unknown`).
+///
+/// A provider emits only the classes it can settle by itself, which is two of
+/// them: `format` when the backend's own stream was malformed — the provider
+/// observed that directly, and flattening it to `unknown` would throw away the
+/// one thing it does know — and `unknown` for every failure whose meaning would
+/// take backend-specific interpretation to recover. Mapping those onto the rest
+/// of the taxonomy is the caller's job. So a consumer switching on [classCode]
+/// must handle **both** `format` and `unknown` from this layer; consumers that
+/// only need to log or surface the failure use [message] instead.
 final class LlmFailure {
-  /// Stable kebab-case discriminator.
+  /// Stable snake_case discriminator.
   final String classCode;
 
   /// Human-readable diagnostic. Not for end-user display; for logger / trail

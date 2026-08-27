@@ -221,6 +221,9 @@ void main() {
       expect(events.first, isA<LlmStreamStarted>());
       final failed = events.last as LlmStreamFailed;
       expect(failed.failure.message, contains('bridge exploded'));
+      // A transport error carries no backend-specific meaning the provider
+      // could recover, so it stays `unknown` for the caller to classify.
+      expect(failed.failure.classCode, 'unknown');
       expect(failed.report.anchorHash, 'anchor-hash-A1');
       expect(failed.report.providerId, 'claude:sonnet:none');
     });
@@ -243,6 +246,9 @@ void main() {
               .toList();
       final failed = events.last as LlmStreamFailed;
       expect(failed.failure.message, contains('turn limit exceeded'));
+      // A costed error result is well-formed but its *meaning* is the
+      // backend's; the provider does not guess a class for it.
+      expect(failed.failure.classCode, 'unknown');
       expect(failed.report.cost, 0.0005);
       expect(failed.report.tokensIn, 10);
     });
@@ -263,6 +269,10 @@ void main() {
           await _provider(transport).completeStream(_wire, LlmOptions.empty)
               .toList();
       final failed = events.last as LlmStreamFailed;
+      // `format`, not `unknown`: a stream that ended without a terminal result
+      // is malformed in a way the provider observed for itself. It is the only
+      // class the provider settles, and the second of the two a consumer of
+      // this layer has to handle.
       expect(failed.failure.classCode, 'format');
     });
 
