@@ -123,29 +123,57 @@ class _Builder extends TomBuilderBase {
   Widget buildContent(BuildContext context) => const SizedBox.shrink();
 }
 
-/// One instance per branch base, in declaration order.
-final _branchBases = <TomFamilyBase>[
-  _Button(),
-  _Input(),
-  _Select(),
-  _Toggle(),
-  _Slider(),
-  _Container(),
-  _Dialog(),
-  _Table(),
-  _Label(),
-  _Image(),
-  _Navigation(),
-  _Progress(),
-  _Chip(),
-  _List(),
-  _Tree(),
-  _Sliver(),
-  _Animated(),
-  _Effect(),
-  _Interaction(),
-  _Builder(),
+/// One branch base: an instance of it, and the family its *name* claims.
+///
+/// The type argument names the base the row is about. [instanceMatchesBase]
+/// checks that `instance` really extends it, because a row that named one base
+/// and held another would assert one binding twice and the named one not at
+/// all — and it would still pass, since both families are in the covered set.
+class _Binding<T extends TomFamilyBase> {
+  _Binding(this.instance, this.expected);
+
+  final TomFamilyBase instance;
+  final TomWidgetFamily expected;
+
+  Type get base => T;
+  bool get instanceMatchesBase => instance is T;
+}
+
+/// Every branch base paired with the family its name claims, in declaration
+/// order.
+///
+/// The expected families are written out here rather than read from the
+/// source. Restating them is the whole point: a test that asked each base what
+/// its family is and compared it to itself would pass on any answer.
+final _bindings = <_Binding>[
+  _Binding<TomButtonBase>(_Button(), TomWidgetFamily.button),
+  _Binding<TomInputBase>(_Input(), TomWidgetFamily.input),
+  _Binding<TomSelectBase>(_Select(), TomWidgetFamily.select),
+  _Binding<TomToggleBase>(_Toggle(), TomWidgetFamily.toggle),
+  _Binding<TomSliderBase>(_Slider(), TomWidgetFamily.slider),
+  _Binding<TomContainerBase>(_Container(), TomWidgetFamily.container),
+  _Binding<TomDialogBase>(_Dialog(), TomWidgetFamily.dialog),
+  _Binding<TomTableBase>(_Table(), TomWidgetFamily.table),
+  _Binding<TomLabelBase>(_Label(), TomWidgetFamily.label),
+  _Binding<TomImageBase>(_Image(), TomWidgetFamily.image),
+  _Binding<TomNavigationBase>(_Navigation(), TomWidgetFamily.navigation),
+  _Binding<TomProgressBase>(_Progress(), TomWidgetFamily.progress),
+  _Binding<TomChipBase>(_Chip(), TomWidgetFamily.chip),
+  _Binding<TomListBase>(_List(), TomWidgetFamily.list),
+  _Binding<TomTreeBase>(_Tree(), TomWidgetFamily.tree),
+  _Binding<TomSliverBase>(_Sliver(), TomWidgetFamily.sliver),
+  _Binding<TomAnimatedBase>(_Animated(), TomWidgetFamily.animated),
+  _Binding<TomEffectBase>(_Effect(), TomWidgetFamily.effect),
+  _Binding<TomInteractionBase>(_Interaction(), TomWidgetFamily.interaction),
+  _Binding<TomBuilderBase>(_Builder(), TomWidgetFamily.builder),
 ];
+
+/// One instance per branch base, in declaration order.
+///
+/// Derived from [_bindings] rather than listed again — two hand-maintained
+/// lists of the same twenty classes would be free to disagree, and the set
+/// assertions below would keep passing while one of them went short.
+final _branchBases = _bindings.map((b) => b.instance).toList();
 
 /// The six values the taxonomy declares but nothing claims.
 const _reservedFormFamilies = <TomWidgetFamily>{
@@ -156,6 +184,46 @@ const _reservedFormFamilies = <TomWidgetFamily>{
   TomWidgetFamily.searchField,
   TomWidgetFamily.fileUpload,
 };
+
+/// A widget reporting two families, which nothing in `lib/` does.
+///
+/// `formField` + `dateTimePicker` is the pairing
+/// `doc/container_widget_resources_authorization.md` §12.2 names as the
+/// intent, so the capability is pinned against the case it was designed for
+/// rather than an invented one.
+///
+/// It extends [TomFamilyBase] directly, not a branch base, so it stays outside
+/// the 20/6 partition asserted above — a stub that widened `covered` would
+/// break the very split this file exists to hold.
+class _MultiFamily extends TomFamilyBase {
+  @override
+  TomWidgetFamily get family => TomWidgetFamily.formField;
+
+  @override
+  Set<TomWidgetFamily> get families => {
+        TomWidgetFamily.formField,
+        TomWidgetFamily.dateTimePicker,
+      };
+
+  @override
+  Widget buildContent(BuildContext context) => const SizedBox.shrink();
+}
+
+/// A `families` override that leaves out the widget's own primary family.
+///
+/// Incoherent on its face, and nothing prevents it: `isFamily` reads `families`
+/// alone, so this widget answers `false` when asked about the family its own
+/// `family` getter returns.
+class _FamiliesWithoutPrimary extends TomFamilyBase {
+  @override
+  TomWidgetFamily get family => TomWidgetFamily.formField;
+
+  @override
+  Set<TomWidgetFamily> get families => {TomWidgetFamily.dateTimePicker};
+
+  @override
+  Widget buildContent(BuildContext context) => const SizedBox.shrink();
+}
 
 void main() {
   final covered = _branchBases.map((w) => w.family).toSet();
@@ -196,6 +264,101 @@ void main() {
       expect(TomWidgetFamily.values.toSet(), covered.union(
         _reservedFormFamilies,
       ));
+    });
+  });
+
+  group('TomWidgetFamily: each branch base claims the family it is named for',
+      () {
+    // Everything in the group above is a statement about *sets* — which
+    // families are covered, that they are distinct, that they partition the
+    // enum. None of it can see a permutation: swap the bodies of
+    // `TomListBase.family` and `TomChipBase.family` and the covered set is
+    // unchanged, still 20, still distinct, still disjoint from the reserved
+    // six. Every assertion above passes and two bases lie about what they are.
+    //
+    // The bases are near-identical boilerplate differing in one line, which is
+    // exactly the shape that invites a copy-paste slip, and neither the
+    // analyzer nor a consumer test can catch it: a widget reporting the wrong
+    // family builds and renders perfectly.
+
+    test('every row instantiates the base it names', () {
+      for (final binding in _bindings) {
+        expect(
+          binding.instanceMatchesBase,
+          isTrue,
+          reason: '${binding.instance.runtimeType} does not extend '
+              '${binding.base}, so this row asserts nothing about '
+              '${binding.base} and covers another base twice',
+        );
+      }
+    });
+
+    test('the table names each of the 20 branch bases exactly once', () {
+      expect(_bindings, hasLength(20));
+      expect(
+        _bindings.map((b) => b.base).toSet(),
+        hasLength(20),
+        reason: 'a duplicated base type would leave another untested while '
+            'the length check still passed',
+      );
+    });
+
+    test('each branch base reports the family its name claims', () {
+      for (final binding in _bindings) {
+        expect(
+          binding.instance.family,
+          binding.expected,
+          reason: '${binding.base} reports ${binding.instance.family}. The '
+              'name and the family must agree — every tool that switches on '
+              'TomWidgetFamily trusts that they do',
+        );
+      }
+    });
+  });
+
+  group('TomFamilyBase: how family, families and isFamily relate', () {
+    // `doc/widget_base.md` says `families` "allows it to report more than one"
+    // without saying how the two connect, and the connection is not the
+    // obvious one: `isFamily` consults `families` alone and never `family`.
+    // Since nothing in the package overrides `families`, the first widget to
+    // do so is the first to find out what the contract actually is.
+
+    test('the default families is exactly the primary family', () {
+      expect(_Button().families, {TomWidgetFamily.button});
+    });
+
+    test('isFamily answers from families, so an override adds members', () {
+      final widget = _MultiFamily();
+      expect(widget.families, {
+        TomWidgetFamily.formField,
+        TomWidgetFamily.dateTimePicker,
+      });
+      expect(widget.isFamily(TomWidgetFamily.formField), isTrue);
+      expect(widget.isFamily(TomWidgetFamily.dateTimePicker), isTrue);
+      expect(widget.isFamily(TomWidgetFamily.button), isFalse);
+    });
+
+    test('overriding families leaves family alone', () {
+      // The two are independent getters; a multi-family widget still has one
+      // primary, which is what a tool needing a single answer should read.
+      expect(_MultiFamily().family, TomWidgetFamily.formField);
+    });
+
+    test('a families override that omits the primary disowns it', () {
+      // Pinned as a consequence, not endorsed. `isFamily` reads `families`
+      // alone, so a widget can deny the family it reports as primary. The
+      // base class could rule this out by composing `families` as
+      // `{family, ...extra}`, which would cost a new overridable member for a
+      // capability with no users; until there is one, the trap is stated
+      // here and in the `families` dartdoc rather than designed around.
+      final widget = _FamiliesWithoutPrimary();
+      expect(widget.family, TomWidgetFamily.formField);
+      expect(
+        widget.isFamily(widget.family),
+        isFalse,
+        reason: 'if this now passes, families composes in the primary and '
+            'the dartdoc warning about omitting it is obsolete',
+      );
     });
   });
 

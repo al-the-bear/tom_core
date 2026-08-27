@@ -125,6 +125,14 @@ theme. The two enforcement points share the styling one level down — the same
 generically. A widget reports a primary `family`, fixed by its branch base, and
 `families` allows it to report more than one.
 
+The three members do not relate the way the names suggest. `isFamily` answers
+from `families` alone and never consults `family`; `families` defaults to
+`{family}`, which is why the two agree until something overrides it. An
+override that omits `family` therefore makes the widget deny its own primary
+family — `isFamily(family)` returns `false` — while `family` keeps returning
+it. The base class does not compose the primary back in, so an override should
+include it, conventionally as `{family, …}`.
+
 The enum has 26 values, but they divide unevenly, and the split is worth
 knowing before you write a tool that switches on it:
 

@@ -17,12 +17,30 @@ abstract class TomFamilyBase extends TomPolicyNodeBase {
   });
 
   /// The primary widget family for this widget.
+  ///
+  /// Every branch base below fixes this to one value, so a widget that extends
+  /// one of them has a primary family it cannot change. It stays a single
+  /// answer even when [families] reports several — a tool that needs one
+  /// family and not a set should read this.
   TomWidgetFamily get family;
 
   /// All families this widget belongs to. Defaults to just [family].
+  ///
+  /// This is the set [isFamily] consults, and the only one — [family] is not
+  /// consulted separately. So an override that leaves [family] out makes the
+  /// widget deny its own primary family: `isFamily(family)` answers `false`.
+  /// Overrides should therefore include [family], conventionally as
+  /// `{family, …}`.
+  ///
+  /// Nothing in this package overrides it: every Tom widget reports exactly
+  /// the one family its branch base gives it.
   Set<TomWidgetFamily> get families => {family};
 
   /// Whether this widget belongs to the given [type].
+  ///
+  /// Answers from [families] alone. For the default [families] that is the
+  /// same as comparing against [family]; for an override it is not — see the
+  /// warning on [families].
   bool isFamily(TomWidgetFamily type) => families.contains(type);
 }
 

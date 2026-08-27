@@ -156,6 +156,26 @@
 
 ### Documentation
 
+- **`family`, `families` and `isFamily` now say how they relate.** The dartdoc
+  and `doc/widget_base.md` described `families` as letting a widget "report
+  more than one" and stopped there, which leaves the reader to assume the
+  obvious composition. It is not the one in force: `isFamily` reads `families`
+  alone and never consults `family`, and the base class does not fold the
+  primary back in — so an override that omits `family` produces a widget that
+  denies its own primary family while `family` keeps returning it. Both places
+  now state the rule and the trap, and direct overrides to write `{family, …}`.
+  Nothing in `lib/` overrides `families`, so the first widget to do so would
+  otherwise have discovered this by accident;
+  `test/widget_base/tom_widget_family_coverage_test.dart` now pins the
+  behaviour, including the disowned-primary case, so the warning stays true.
+  The same file also pins each of the twenty branch bases to the family its
+  *name* claims. Every assertion it previously made was about sets — twenty
+  bases, distinct families, covering exactly the Flutter-derived values — and
+  no set assertion can see a permutation: swapping the bodies of
+  `TomListBase.family` and `TomChipBase.family` left all of them passing while
+  two bases lied about what they were. The bases are near-identical
+  boilerplate differing in one line, which is the shape that invites exactly
+  that slip, and neither the analyzer nor a rendering test can catch it.
 - **`TomStyleResolvers` no longer opens with a type list that had fallen five
   types behind its own members.** The class dartdoc summarised the class as
   resolving twelve named Flutter objects, an enumeration written when that was
