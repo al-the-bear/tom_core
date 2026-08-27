@@ -38,7 +38,11 @@ backend, so the same widgets drive either implementation:
   bearer, so the grants come over the wire rather than out of a token claim.
 
 ```dart
-final AppBackend backend = InMemoryAppBackend(); // or LiveAppBackend(auth, api)
+// `main.dart` installs one of the two by environment; every screen binds the
+// `AppBackend` seam rather than a concrete backend.
+final AppBackend backend = InMemoryAppBackend();
+final AppBackend liveBackend = LiveAppBackend.fromConfig();
+
 await backend.login(LoginRequest(username: 'alice', password: 'pw'));
 final workspaces = await backend.listWorkspaces();
 final roles = await backend.resourceRoles(); // resourceKey → roleName ('item:i-1' → 'owner')
