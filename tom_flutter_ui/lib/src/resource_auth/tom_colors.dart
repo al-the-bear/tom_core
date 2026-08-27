@@ -64,9 +64,28 @@ class TomUIColors {
     return _adapter?.colorExists(name) ?? false;
   }
 
-  /// Resets the adapter. Intended for testing only.
-  static void reset() => _adapter = null;
+  /// Drops the adapter **and** every custom registration.
+  ///
+  /// Intended for testing only. This is the whole hygiene hook: after it the
+  /// module holds no state, so a suite needs nothing else in its `tearDown`.
+  /// Clearing the registrations is the point — they live in a module-wide,
+  /// process-global registry, so an override left behind by one test would
+  /// silently change a colour in every later test rather than failing.
+  ///
+  /// To drop registrations while keeping the installed adapter, use
+  /// [AllColorsAdapter.clearCustomColors].
+  static void reset() {
+    _adapter = null;
+    _customColors.clear();
+  }
 }
+
+/// Colours registered at runtime, shared by every adapter in this module.
+///
+/// Module-level rather than a static on one adapter, mirroring the icon side:
+/// registration, resolution and [TomUIColors.reset] all have to agree about
+/// where the registry is, and only one of them belongs to any single adapter.
+final Map<String, Color> _customColors = {};
 
 /// Default adapter using all generated Flutter colors (Material + Cupertino).
 ///
@@ -79,9 +98,6 @@ class TomUIColors {
 /// - Hex: `#RRGGBB` or `#AARRGGBB`
 /// - RGB: `rgb(r, g, b)` or `rgba(r, g, b, a)`
 class AllColorsAdapter implements TomUIColorAdapter {
-  /// Custom colors registered at runtime.
-  static final Map<String, Color> _customColors = {};
-
   /// Hex color pattern: #RGB, #RRGGBB, or #AARRGGBB
   static final RegExp _hexPattern = RegExp(
     r'^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$',
@@ -181,11 +197,15 @@ class AllColorsAdapter implements TomUIColorAdapter {
   /// Registers additional custom colors.
   ///
   /// Use this to add app-specific colors or override existing ones.
+  /// Registrations take precedence over hex/rgb parsing and the generated
+  /// palette. [TomUIColors.reset] clears them along with the adapter.
   static void registerColors(Map<String, Color> colors) {
     _customColors.addAll(colors);
   }
 
-  /// Clears all custom registered colors.
+  /// Clears all custom registered colors, keeping the installed adapter.
+  ///
+  /// A test tearing down the whole module wants [TomUIColors.reset] instead.
   static void clearCustomColors() {
     _customColors.clear();
   }

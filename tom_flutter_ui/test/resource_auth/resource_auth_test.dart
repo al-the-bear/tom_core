@@ -9,21 +9,18 @@ import '../../example/resource_auth/resource_auth_example.dart' as example;
 
 void main() {
   // These globals are process-wide singletons; reset around every test so
-  // ordering can never leak state between cases.
+  // ordering can never leak state between cases. reset() covers registrations
+  // as well as the adapter, so these three calls are the whole teardown.
   setUp(() {
     TomUIColors.reset();
     TomUIIcons.reset();
     TomConfigProvider.reset();
-    AllColorsAdapter.clearCustomColors();
-    AllIconsAdapter.clearCustomIcons();
   });
 
   tearDown(() {
     TomUIColors.reset();
     TomUIIcons.reset();
     TomConfigProvider.reset();
-    AllColorsAdapter.clearCustomColors();
-    AllIconsAdapter.clearCustomIcons();
   });
 
   group('resource_auth example', () {
@@ -216,6 +213,55 @@ void main() {
       AllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
       expect(MaterialOnlyAdapter().resolveIcon('cShare'), isNull);
       expect(CupertinoOnlyAdapter().resolveIcon('mSave'), isNull);
+    });
+  });
+
+  // reset() is dartdoc'd as the test-hygiene hook, and it is the only hook a
+  // reader is told about. It used to clear the adapter and nothing else, so a
+  // suite that followed the dartdoc leaked every registration into every later
+  // test in the same process — where an override silently changed a colour
+  // instead of failing. This suite hid that from itself by calling
+  // clearCustomColors/clearCustomIcons in setUp and tearDown as well; those
+  // calls are gone now, so these tests are load-bearing for the whole file.
+  group('reset() is the whole test-hygiene hook', () {
+    test('TomUIColors.reset() drops custom colour registrations', () {
+      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      // The registry is process-global, so an adapter constructed before the
+      // reset must see the clear too — that instance is what a leak rides on.
+      final earlier = AllColorsAdapter();
+      TomUIColors.reset();
+      TomUIColors.adapter = AllColorsAdapter();
+
+      expect(TomUIColors.resolveColor('zBrand'), isNull);
+      expect(TomUIColors.colorExists('zBrand'), isFalse);
+      expect(earlier.resolveColor('zBrand'), isNull);
+    });
+
+    test('TomUIIcons.reset() drops custom icon registrations', () {
+      AllIconsAdapter.registerIcons({'zBrand': Icons.abc});
+      final earlier = AllIconsAdapter();
+      TomUIIcons.reset();
+      TomUIIcons.adapter = AllIconsAdapter();
+
+      expect(TomUIIcons.resolveIcon('zBrand'), isNull);
+      expect(TomUIIcons.iconExists('zBrand'), isFalse);
+      expect(earlier.resolveIcon('zBrand'), isNull);
+      // The registry is module-wide, so the single-family adapters lose it too.
+      expect(MaterialOnlyAdapter().resolveIcon('zBrand'), isNull);
+      expect(CupertinoOnlyAdapter().resolveIcon('zBrand'), isNull);
+    });
+
+    test('reset() drops an override without disturbing the built-in', () {
+      AllColorsAdapter.registerColors({'mRed': const Color(0xFF112233)});
+      AllIconsAdapter.registerIcons({'mSave': Icons.delete});
+      TomUIColors.reset();
+      TomUIIcons.reset();
+      TomUIColors.adapter = AllColorsAdapter();
+      TomUIIcons.adapter = AllIconsAdapter();
+
+      // Back to the generated tables, not to null and not to the override.
+      expect(TomUIColors.resolveColor('mRed'), Colors.red);
+      expect(TomUIIcons.resolveIcon('mSave'), Icons.save);
     });
   });
 

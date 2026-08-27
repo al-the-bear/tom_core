@@ -60,8 +60,14 @@ TomUIColors.resolveColor('rgb(0,128,255)');
 palette. With **no adapter installed**, `TomUIColors.resolveColor` returns `null`
 and `colorExists` returns `false` — so widgets degrade gracefully rather than
 throw. `AllColorsAdapter.registerColors` adds or overrides names at runtime;
-`clearCustomColors` undoes that. `TomUIColors.reset()` clears the adapter (test
-hygiene).
+`clearCustomColors` undoes that while keeping the adapter installed.
+
+`TomUIColors.reset()` / `TomUIIcons.reset()` drop the adapter **and** the
+registrations — that pair is the whole test-hygiene hook, so a `tearDown`
+needs nothing beside them. Registries are process-global and shared by every
+adapter instance, so a registration surviving a `reset()` would not fail a
+later test; it would quietly change a colour in it. Reach for `clearCustom*`
+only when you want to drop registrations and *keep* the adapter.
 
 The palette itself is generated. `tool/generate_colors.dart` reads the Flutter
 SDK's own `material/colors.dart` and `cupertino/colors.dart` and emits

@@ -19,12 +19,12 @@ import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void run() {
-  // Save and clear any globals so the example is self-contained and leaves no
-  // state behind (these are process-wide singletons).
+  // Clear any globals so the example is self-contained (these are process-wide
+  // singletons). reset() drops custom registrations along with the adapter, so
+  // it is the whole hook.
   TomUIColors.reset();
   TomUIIcons.reset();
   TomConfigProvider.reset();
-  AllColorsAdapter.clearCustomColors();
 
   // Example 1: colour resolution — named, hex, and rgb, via one adapter.
   TomUIColors.adapter = AllColorsAdapter();
@@ -91,11 +91,11 @@ void run() {
   assert(!TomAuthState.none.isVisible);
   assert(TomAuthState.full.isInteractive);
 
-  // Restore clean global state.
+  // Restore clean global state — including the brandPrimary registration
+  // above, which reset() drops with the adapter.
   TomUIColors.reset();
   TomUIIcons.reset();
   TomConfigProvider.reset();
-  AllColorsAdapter.clearCustomColors();
 }
 
 void main() => run();

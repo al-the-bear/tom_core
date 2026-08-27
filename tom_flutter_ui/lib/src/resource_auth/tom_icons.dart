@@ -63,8 +63,20 @@ class TomUIIcons {
     return _adapter?.iconExists(name) ?? false;
   }
 
-  /// Resets the adapter. Intended for testing only.
-  static void reset() => _adapter = null;
+  /// Drops the adapter **and** every custom registration.
+  ///
+  /// Intended for testing only. This is the whole hygiene hook: after it the
+  /// module holds no state, so a suite needs nothing else in its `tearDown`.
+  /// Clearing the registrations is the point — they live in a module-wide,
+  /// process-global registry, so an override left behind by one test would
+  /// silently change an icon in every later test rather than failing.
+  ///
+  /// To drop registrations while keeping the installed adapter, use
+  /// [AllIconsAdapter.clearCustomIcons].
+  static void reset() {
+    _adapter = null;
+    _customIcons.clear();
+  }
 }
 
 /// Icons registered at runtime, shared by every adapter in this module.
@@ -119,11 +131,15 @@ class AllIconsAdapter extends _RegistryFirstIconAdapter {
   /// registry is module-wide, so a name registered here also resolves through
   /// [MaterialOnlyAdapter] and [CupertinoOnlyAdapter]; registrations take
   /// precedence over the built-in tables in all three.
+  /// [TomUIIcons.reset] clears them along with the adapter.
   static void registerIcons(Map<String, IconData> icons) {
     _customIcons.addAll(icons);
   }
 
-  /// Clears all custom registered icons, for every adapter in this module.
+  /// Clears all custom registered icons, for every adapter in this module,
+  /// keeping the installed adapter.
+  ///
+  /// A test tearing down the whole module wants [TomUIIcons.reset] instead.
   static void clearCustomIcons() {
     _customIcons.clear();
   }
