@@ -51,10 +51,32 @@ than a probe.
 | `TomAnimatedContainer` / `TomAnimatedOpacity` / `TomAnimated…` | Animated variants |
 | `TomAclBuilder` | Widget-level entry into the [`advanced_container_layout`](../advanced_container_layout/readme.md) engine |
 
-Every widget accepts the same base parameters `tomId`, `tomGroup`, `scope`,
-`authorizer` and `uiStateController` — inherited from `TomNodeBase` by the 273
-that extend a family base, declared by `TomWidgetMixin` for the other 17 (see
-[`widget_base`](../widget_base/readme.md)).
+Every widget accepts the same six base parameters — inherited from
+`TomNodeBase` by the 273 that extend a family base, declared by
+`TomWidgetMixin` for the other 17 (see
+[`widget_base`](../widget_base/readme.md)):
+
+| Parameter | Type | Purpose |
+| --------- | ---- | ------- |
+| `key` | `Key?` | Flutter's widget key, forwarded unchanged |
+| `tomId` | `String?` | Identity; combines with the active scope into `basePath` |
+| `tomGroup` | `TomAuthorizationGroup?` | Collective-authorization group membership |
+| `scope` | `TomScope?` | Explicit scope override; defaults to `TomScope.current` at construction |
+| `authorizer` | `TomAuthorizer?` | Per-widget verdict, combined per its `TomAuthorizerStrategy` |
+| `uiStateController` | `TomUIStateController?` | Build-time narrowing callback |
+
+`uiStateController` is the only one of the six that runs at build time rather
+than at construction, and the only hook for state the resource layer cannot
+know — whether *this* row's record is locked, whether the user owns *this*
+item. `effectiveAuthState` composes four layers in order: the resource state
+for `basePath`, the `tomGroup` mode, the `authorizer`, then the controller.
+The controller runs last so that its "can only narrow" promise holds — a group
+applied afterwards would undo the narrowing, because `applyMode` widens under
+`controlsNarrowest` and replaces outright under `controlsAll`. The narrowing
+is enforced rather than trusted: `TomUIStateController.apply` returns
+`currentAuth.narrow(result)`, so a controller that answers `full` for a `read`
+widget still yields `read`. The order is pinned by
+`test/widget_base/auth_resolution_order_test.dart`.
 
 ## Quick start
 

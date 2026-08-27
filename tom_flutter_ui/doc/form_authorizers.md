@@ -58,29 +58,36 @@ class TomAuthorizer {
 ### Evaluation pipeline
 
 Every Tom widget routes its auth through
-[tom_policy_node_base.dart:39](../lib/src/widget_base/tom_policy_node_base.dart#L39):
+[tom_policy_node_base.dart:49](../lib/src/widget_base/tom_policy_node_base.dart#L49):
 
 ```dart
 TomAuthState resolveEffectiveAuth() {
   var state = basePath != null
       ? TomAuthorization.resolveAuth(basePath!)   // 1. resource auth
       : TomAuthState.full;
+  if (tomGroup != null) {
+    state = tomGroup!.applyMode(state, constructionScope);  // 2. group
+  }
   if (authorizer != null) {
-    state = authorizer!.effectiveAuth(state);      // 2. this widget's authorizer
+    state = authorizer!.effectiveAuth(state);     // 3. this widget's authorizer
   }
   if (uiStateController != null) {
-    state = uiStateController!.apply(state);       // 3. build-time narrowing
-  }
-  if (tomGroup != null) {
-    state = tomGroup!.applyMode(state);            // 4. group override
+    state = uiStateController!.apply(state);      // 4. build-time narrowing
   }
   return state;
 }
 ```
 
-There is no hook where a `data` object is threaded through. Anything
-your authorizer needs beyond `resourceAuth` must be captured by the
-closure itself (via `this`, a field reference, a controller, etc.).
+The authorizer runs third, after the group has established the ceiling but
+before the controller narrows it — so `resourceAuth` as the authorizer sees it
+already carries any group override. The controller is deliberately last;
+[the two-lanes section](#authorizer-vs-tomuistatecontroller--two-lanes-two-timings)
+explains why moving it would break its "can only narrow" guarantee.
+
+The authorizer gets no hook through which a `data` object is threaded — that
+parameter exists only on the controller's `resolve`. Anything your authorizer
+needs beyond `resourceAuth` must be captured by the closure itself (via
+`this`, a field reference, a controller, etc.).
 
 ---
 
@@ -246,13 +253,24 @@ one rebuild per frame.
 
 Everything above treats the authorizer as if it were the only hook. It
 isn't. The auth pipeline in
-[tom_policy_node_base.dart:39](../lib/src/widget_base/tom_policy_node_base.dart#L39)
-runs **both** an authorizer *and* a `TomUIStateController` — in that order
-— before group overrides kick in:
+[tom_policy_node_base.dart:49](../lib/src/widget_base/tom_policy_node_base.dart#L49)
+runs **both** an authorizer *and* a `TomUIStateController`, in that order,
+and the controller runs **last of all**:
 
 ```text
-resourceAuth  →  authorizer.effectiveAuth()  →  uiStateController.apply()  →  group.applyMode()
+resourceAuth
+  → tomGroup.applyMode()
+  → authorizer.effectiveAuth()
+  → uiStateController.apply()
 ```
+
+The group comes second, not last, and that is load-bearing rather than
+arbitrary: `applyMode` *widens* under `controlsNarrowest` and replaces the
+state outright under `controlsAll`, so a group applied after the controller
+would undo the narrowing the controller had just performed and the "can only
+narrow" promise would not hold. Fields insert a fifth layer — the enclosing
+form, which always narrows — between the group and the authorizer; see
+[`tom_form.dart:810`](../lib/src/forms/tom_form.dart#L810).
 
 They look similar but have different jobs:
 
@@ -272,7 +290,7 @@ textbook `TomUIStateController` — nothing about it is authorization.
 
 ### Minimal controller recap
 
-[tom_core_kernel/.../tom_authorization.dart:441](../../tom_core_kernel/lib/src/tombase/security/tom_authorization.dart#L441):
+[tom_core_kernel/.../tom_authorization.dart:521](../../tom_core_kernel/lib/src/tombase/security/tom_authorization.dart#L521):
 
 ```dart
 class TomUIStateController {

@@ -94,6 +94,26 @@
 
 ### Fixed
 
+- **`lib/src/widgets/readme.md` listed five of the six base parameters.** It
+  omitted `key`, and before that `uiStateController` as well, while the family
+  base constructor took all six the whole time. The list is now a table naming
+  each parameter's type and purpose, with a paragraph on what
+  `uiStateController` narrows and why it has to run last. A new suite,
+  `test/widget_base/base_parameter_claims_test.dart` (6 tests), derives the
+  list from `tom_family_base.dart` and writes no parameter name down as a
+  fact: it checks that all twenty branch bases forward it unchanged, that
+  `TomNodeBase` declares it and `TomWidgetMixin` exposes its five non-`key`
+  members, that the readme's table matches it *in signature order*, and that
+  any prose in the package counting the parameters counts them right.
+- **`doc/form_authorizers.md` stated the authorization order backwards, in two
+  places, while citing the source file that contradicts it.** Both the
+  `Evaluation pipeline` code block and the two-lanes section ran the authorizer
+  before the group and the group last; the real order is resource → group →
+  authorizer → controller. Stated the other way round the document's own
+  explanation collapses, since the controller can only keep its "narrows,
+  never widens" promise by running after a group whose `applyMode` widens. The
+  `applyMode(state, constructionScope)` signature and two stale line citations
+  are corrected with it.
 - **Six documents quoted a widget census two wrappers out of date.** Deleting
   the deprecated `TomMaterialButton` and `TomButtonBar` took the kit from 292
   widgets to 290, and an example header, a CHANGELOG entry, two design
