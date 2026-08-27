@@ -408,6 +408,22 @@ negotiable in the same way — a list of a length no form names, such as
 `[1, 2, 3]`, is rejected outright, because there is no way to tell which three
 sides were meant.
 
+`ButtonStyle`'s three size maps are the one place a missing entry is *completed*
+rather than skipped, because a `Size` has no partially-populated form — and each
+of the three completes differently, so there is no single default that would do:
+
+| Resource | Yields | Why |
+| -------- | ------ | --- |
+| `minimumSize: {height: 40}` | `Size(0, 40)` | An unspecified minimum is no minimum. |
+| `maximumSize: {height: 40}` | `Size(Infinity, 40)` | An unspecified maximum is no maximum. |
+| `fixedSize: {height: 40}` | *discarded* | Neither `0` nor `Infinity` is what "fixed" means. |
+
+Naming only the height is the natural thing an author writes — "buttons on this
+screen are at least 40 high" says nothing about width — so the completion has to
+be the one the slot means. A size map naming *neither* dimension constrains
+nothing and is discarded in all three slots, which keeps `minimumSize: {}` from
+being the sole reason a `ButtonStyle` comes back non-null.
+
 The distinction matters at the call site, where `parseX(map) ?? fallback` is the
 shape the API invites. It only reaches the fallback if a map that contributed
 nothing comes back `null`. A default-constructed object would render plausibly

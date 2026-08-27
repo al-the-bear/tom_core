@@ -164,6 +164,20 @@ class TomStyleResolvers {
   /// - `textStyle` (Map): TextStyle specification
   /// - `tapTargetSize` (String): "padded", "shrinkWrap"
   ///
+  /// The three size maps may name one dimension only, and each completes the
+  /// other differently — an unspecified minimum is `0`, an unspecified maximum
+  /// is `double.infinity`, and a `fixedSize` missing either dimension is
+  /// discarded, because "fixed" has no defensible completion:
+  ///
+  /// ```dart
+  /// parseButtonStyle({'minimumSize': {'height': 40}});  // Size(0, 40)
+  /// parseButtonStyle({'maximumSize': {'height': 40}});  // Size(Infinity, 40)
+  /// parseButtonStyle({'fixedSize':   {'height': 40}});  // null — no style
+  /// ```
+  ///
+  /// A size map naming neither dimension constrains nothing and is discarded
+  /// in all three slots.
+  ///
   /// All color properties are wrapped in [WidgetStatePropertyAll] for simplicity.
   /// For state-dependent colors, use explicit [ButtonStyle] in code.
   ///
@@ -179,8 +193,11 @@ class TomStyleResolvers {
     final surfaceTintColor = _wrapColor(map['surfaceTintColor']);
     final elevation = _wrapDouble(map['elevation']);
     final padding = _wrapEdgeInsets(map['padding']);
-    final minimumSize = _wrapSize(map['minimumSize']);
-    final maximumSize = _wrapSize(map['maximumSize']);
+    final minimumSize = _wrapSize(map['minimumSize'], fallback: 0);
+    final maximumSize = _wrapSize(
+      map['maximumSize'],
+      fallback: double.infinity,
+    );
     final fixedSize = _wrapSize(map['fixedSize']);
     final iconSize = _wrapDouble(map['iconSize']);
     final iconColor = _wrapColor(map['iconColor']);
@@ -1451,14 +1468,28 @@ class TomStyleResolvers {
         .toList();
   }
 
-  static Size? _parseSize(dynamic value) {
-    if (value == null) return null;
-    if (value is Map<String, dynamic>) {
-      final width = _parseDouble(value['width']) ?? double.infinity;
-      final height = _parseDouble(value['height']) ?? double.infinity;
-      return Size(width, height);
-    }
-    return null;
+  /// Parses a `{width, height}` map, completing a missing dimension with
+  /// [fallback].
+  ///
+  /// The fallback belongs to the caller because each of the three size slots
+  /// on a [ButtonStyle] completes differently: an unspecified *maximum* is no
+  /// maximum (`double.infinity`), an unspecified *minimum* is no minimum
+  /// (`0`), and a half-specified *fixed* size has no defensible completion at
+  /// all — callers say so by passing no fallback, and get `null` back. One
+  /// shared default cannot be right for all three; `double.infinity` used to
+  /// be it, which turned `minimumSize: {height: 40}` into a button demanding
+  /// every pixel of available width.
+  ///
+  /// A map naming neither dimension resolves to `null` whatever the fallback:
+  /// it constrains nothing, and treating it as a contribution would let
+  /// `minimumSize: {}` alone produce a non-null [ButtonStyle].
+  static Size? _parseSize(dynamic value, {double? fallback}) {
+    if (value is! Map<String, dynamic>) return null;
+    final width = _parseDouble(value['width']);
+    final height = _parseDouble(value['height']);
+    if (width == null && height == null) return null;
+    if (fallback == null && (width == null || height == null)) return null;
+    return Size(width ?? fallback!, height ?? fallback!);
   }
 
   // ===========================================================================
@@ -1484,8 +1515,11 @@ class TomStyleResolvers {
     return WidgetStatePropertyAll<EdgeInsetsGeometry?>(insets);
   }
 
-  static WidgetStateProperty<Size?>? _wrapSize(dynamic value) {
-    final size = _parseSize(value);
+  static WidgetStateProperty<Size?>? _wrapSize(
+    dynamic value, {
+    double? fallback,
+  }) {
+    final size = _parseSize(value, fallback: fallback);
     if (size == null) return null;
     return WidgetStatePropertyAll<Size?>(size);
   }

@@ -23,6 +23,17 @@
   supplied one. Omitting every source still throws. **Behavioural change:** a
   caller who passed *both* a `decoration.labelText` and a label resource now
   sees the decoration's value where they previously saw the resource's.
+- **A one-dimensional `minimumSize` no longer makes a button demand the whole
+  width.** `parseButtonStyle` completed a missing `width` / `height` with
+  `double.infinity` for all three of `minimumSize`, `maximumSize` and
+  `fixedSize`, so `minimumSize: {height: 40}` parsed to `Size(Infinity, 40)` —
+  a minimum of every available pixel, from a resource that only asked for a
+  height. Each slot now completes with what it means: an unspecified *minimum*
+  is `0`, an unspecified *maximum* stays `double.infinity`, and a `fixedSize`
+  missing either dimension is discarded, since neither value is what "fixed"
+  means. A size map naming neither dimension is now discarded in all three
+  slots rather than parsing to `Size(Infinity, Infinity)`, so `minimumSize: {}`
+  can no longer be the sole reason a `ButtonStyle` comes back non-null.
 - **`TomInputDatePickerFormField` no longer demands four resources.** Its
   label, hint and two error messages are optional in Flutter (defaulted from
   `MaterialLocalizations`), but all four were required, which made a plain

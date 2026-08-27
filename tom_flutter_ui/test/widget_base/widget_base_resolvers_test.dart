@@ -85,6 +85,89 @@ void main() {
       expect(style.minimumSize!.resolve(<WidgetState>{}), const Size(100, 40));
       expect(style.tapTargetSize, MaterialTapTargetSize.shrinkWrap);
     });
+
+    // Naming only one dimension of a size is the natural thing a resource
+    // author writes — "buttons on this screen are at least 40 high" says
+    // nothing about width. What the missing dimension completes to is
+    // different for each of the three slots, and getting it wrong is a layout
+    // bug the resource gives no hint of.
+    group('size completion', () {
+      Size? sizeOf(WidgetStateProperty<Size?>? property) =>
+          property?.resolve(<WidgetState>{});
+
+      test('an unspecified minimum dimension is no minimum (0)', () {
+        final style = TomStyleResolvers.parseButtonStyle({
+          'minimumSize': {'height': 40},
+        });
+        expect(sizeOf(style!.minimumSize), const Size(0, 40));
+
+        final byWidth = TomStyleResolvers.parseButtonStyle({
+          'minimumSize': {'width': 100},
+        });
+        expect(sizeOf(byWidth!.minimumSize), const Size(100, 0));
+      });
+
+      test('an unspecified maximum dimension is no maximum (infinity)', () {
+        final style = TomStyleResolvers.parseButtonStyle({
+          'maximumSize': {'height': 40},
+        });
+        expect(sizeOf(style!.maximumSize), const Size(double.infinity, 40));
+
+        final byWidth = TomStyleResolvers.parseButtonStyle({
+          'maximumSize': {'width': 100},
+        });
+        expect(sizeOf(byWidth!.maximumSize), const Size(100, double.infinity));
+      });
+
+      test('a half-specified fixed size is not a fixed size', () {
+        // There is no defensible completion — neither 0 nor infinity is what
+        // "fixed" means — so the key contributes nothing, and a map holding
+        // only that key parses to no style at all.
+        expect(
+          TomStyleResolvers.parseButtonStyle({
+            'fixedSize': {'height': 40},
+          }),
+          isNull,
+        );
+        final withCompanion = TomStyleResolvers.parseButtonStyle({
+          'fixedSize': {'height': 40},
+          'elevation': 2,
+        });
+        expect(withCompanion, isNotNull);
+        expect(withCompanion!.fixedSize, isNull);
+      });
+
+      test('a fully specified size is taken verbatim in all three slots', () {
+        final style = TomStyleResolvers.parseButtonStyle({
+          'minimumSize': {'width': 10, 'height': 20},
+          'maximumSize': {'width': 30, 'height': 40},
+          'fixedSize': {'width': 50, 'height': 60},
+        });
+        expect(sizeOf(style!.minimumSize), const Size(10, 20));
+        expect(sizeOf(style.maximumSize), const Size(30, 40));
+        expect(sizeOf(style.fixedSize), const Size(50, 60));
+      });
+
+      test('a size map naming neither dimension contributes nothing', () {
+        // `{}` constrains nothing whichever slot it lands in. Reporting it as
+        // a contribution would let it alone produce a non-null ButtonStyle.
+        expect(
+          TomStyleResolvers.parseButtonStyle({
+            'minimumSize': <String, dynamic>{},
+            'maximumSize': <String, dynamic>{},
+            'fixedSize': <String, dynamic>{},
+          }),
+          isNull,
+        );
+      });
+
+      test('a size that is not a map contributes nothing', () {
+        expect(
+          TomStyleResolvers.parseButtonStyle({'minimumSize': 40}),
+          isNull,
+        );
+      });
+    });
   });
 
   group('TomStyleResolvers.parseShapeBorder', () {
