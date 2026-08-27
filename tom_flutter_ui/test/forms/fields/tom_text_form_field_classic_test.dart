@@ -11,11 +11,11 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
-  // §75: classic-path input validators must keep their error message after an
-  // invalid keystroke is reverted. The defect (same as flutter §57) is that the
-  // controller revert re-enters `_onTextChanged`, which re-validates the now
-  // valid reverted text and wipes the error it had just set.
-  group('TomTextFormFieldBase — input-validator revert (§75)', () {
+  // Classic-path input validators must keep their error message after an
+  // invalid keystroke is reverted. The failure mode is that the controller
+  // revert re-enters `_onTextChanged`, which re-validates the now valid
+  // reverted text and wipes the error it had just set.
+  group('TomTextFormFieldBase — input-validator revert', () {
     testWidgets(
         'keeps the input error after reverting an invalid keystroke',
         (tester) async {

@@ -671,7 +671,7 @@ void main() {
     testWidgets('the download affordance stays derived, never authored', (
       tester,
     ) async {
-      // §5.18: whether a download affordance appears is derived from the field
+      // Whether a download affordance appears is derived from the field
       // being wired for transfer *and* the file being stored — the same rule
       // the other two presentations obey.
       final client = TomMemoryFileTransferClient();

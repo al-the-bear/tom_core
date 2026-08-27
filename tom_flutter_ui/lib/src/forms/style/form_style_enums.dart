@@ -1,4 +1,4 @@
-/// Placement enums for form field anatomy configuration (§10).
+/// Placement enums for form field anatomy (`tom_ui_widgets_forms.md` §10).
 library;
 
 /// Controls where the label appears relative to the field input.

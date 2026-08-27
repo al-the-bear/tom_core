@@ -14,7 +14,8 @@ import '../tom_form.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
-// TomFormStringListField — Abstract multi-select list of strings (§6)
+// TomFormStringListField — Abstract multi-select list of strings
+// (tom_ui_widgets_forms.md §6)
 // ---------------------------------------------------------------------------
 
 /// Abstract base for multi-select string form fields.

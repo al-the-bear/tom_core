@@ -18,7 +18,7 @@ import 'validation/validation_result.dart';
 import 'validation/validator_registry.dart';
 
 // ---------------------------------------------------------------------------
-// TomForm — Form Container (§5)
+// TomForm — Form Container (tom_ui_widgets_forms.md §5)
 // ---------------------------------------------------------------------------
 
 @tomReflector
@@ -151,7 +151,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// Subclasses create their fields here (called inside form's scope).
   void createFormElements();
 
-  // --- Binding (§5) ---
+  // --- Binding ---
 
   /// Nested forms discovered via TomClass reflection. Populated on first
   /// access so bind / isDirty / isValid / save / discard / validate can
@@ -440,7 +440,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
       nestedForms.every((f) => f.isValid) &&
       childContainers.every((c) => c.isValid);
 
-  // --- Validation (async — §20) ---
+  // --- Validation (async — tom_ui_widgets_forms.md §20) ---
 
   /// Validate every field in this form, every nested form, and every
   /// child container (e.g. `TomListForm`); then run this form's
@@ -587,7 +587,7 @@ class _FormChangeNotifier extends ChangeNotifier {
 }
 
 // ---------------------------------------------------------------------------
-// TomField<T> — Base Form Field (§4)
+// TomField<T> — Base Form Field (tom_ui_widgets_forms.md §4)
 // ---------------------------------------------------------------------------
 
 abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
@@ -791,7 +791,8 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Build-time UI state controller (optional).
   TomUIStateController? uiStateController;
 
-  /// Resolved effective authorization state (see §19 for resolution order).
+  /// Resolved effective authorization state; [resolveEffectiveAuth]
+  /// documents the order the five layers are applied in.
   @override
   TomAuthState get effectiveAuthState => resolveEffectiveAuth();
 
@@ -800,7 +801,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// CRITICAL: All five layers must be evaluated. Skipping any layer
   /// (especially group auth) is a severe bug.
   ///
-  /// Resolution order (§19):
+  /// Resolution order, per `tom_ui_widgets_forms.md` §19:
   /// 1. Resource-based authorization via basePath
   /// 2. Group authorization (applies group's auth via narrowing)
   /// 3. Form authorization (implicit group — always narrows)
@@ -1070,7 +1071,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
 
   /// Re-entrancy guard: set while we programmatically revert the controller
   /// text so the listener does not re-validate (and wipe the error) on the
-  /// revert pass. See bug §75.
+  /// revert pass.
   bool _suppressInputListener = false;
 
   final List<String? Function(String)> _valueValidators = [];
@@ -1153,7 +1154,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   /// Callers stay responsible for the value and the error message, because the
   /// two programmatic writers need opposite things from the error: the revert
   /// path ([_onTextChanged]) has just set the message this write exists to
-  /// preserve (bug §75), while [set] and [reset] must clear a message that now
+  /// preserve, while [set] and [reset] must clear a message that now
   /// refers to text no longer on screen.
   ///
   /// [text] becomes the revert target of the next rejected keystroke, since it

@@ -1099,6 +1099,8 @@ This convention prevents stale/orphaned values that don't match any available op
 
 ---
 
+## 8. Flutter Widget Binding Strategy
+
 Each concrete implementation bridges a Tom observable field to a Flutter widget. This section defines the binding categories and documents exactly how each Flutter widget parameter maps to a Tom concept.
 
 ### 8.1. Binding Categories

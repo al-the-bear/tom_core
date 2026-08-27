@@ -1,3 +1,10 @@
+/// String form fields — the abstract [TomFormStringField] and the two
+/// renderings that ship with it.
+///
+/// The abstract type is catalogued in `tom_ui_widgets_forms.md` §6 and its
+/// resource resolution follows `tom_ui_widgets_forms.md` §17; the concrete
+/// renderings are specified in `tom_ui_widgets_forms.md` §7, and the way
+/// each binds to its Flutter widget in `tom_ui_widgets_forms.md` §8.
 library;
 
 import 'dart:async';
@@ -15,7 +22,7 @@ import '../tom_form.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
-// TomFormStringField — Abstract String Field (§6)
+// TomFormStringField — Abstract String Field
 // ---------------------------------------------------------------------------
 
 /// Abstract base for all string-typed form fields.
@@ -56,7 +63,7 @@ abstract class TomFormStringField extends TomField<String> {
     super.onActionIconPressed,
   });
 
-  // --- Resource resolution (§17) ---
+  // --- Resource resolution ---
 
   /// Resolved label: explicit → resource → tomId.
   String? get labelText =>
@@ -83,7 +90,7 @@ abstract class TomFormStringField extends TomField<String> {
 }
 
 // ---------------------------------------------------------------------------
-// TomFormStringInput — Concrete Text Input (§7, §8)
+// TomFormStringInput — Concrete Text Input
 // ---------------------------------------------------------------------------
 
 /// A concrete text-input field that renders as a plain [TextField]
@@ -317,7 +324,7 @@ class _TomFormStringInputWidgetState
 }
 
 // ---------------------------------------------------------------------------
-// TomFormStringDropdown — Concrete Dropdown Selection (§7, §8)
+// TomFormStringDropdown — Concrete Dropdown Selection
 // ---------------------------------------------------------------------------
 
 /// A concrete dropdown selection field that renders as a

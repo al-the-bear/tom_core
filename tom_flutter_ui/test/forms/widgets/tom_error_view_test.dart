@@ -7,7 +7,7 @@ import 'package:tom_flutter_ui/src/forms/tom_form.dart';
 import 'package:tom_flutter_ui/src/forms/validation/form_validation_error.dart';
 import 'package:tom_flutter_ui/src/forms/widgets/tom_error_view.dart';
 
-// §60(c): starter coverage for the placement-flexible TomErrorView. Mirrors the
+// Starter coverage for the placement-flexible TomErrorView. Mirrors the
 // established TomFormErrorBanner harness — a lightweight event source plus
 // minimal fields for FormValidationError construction.
 

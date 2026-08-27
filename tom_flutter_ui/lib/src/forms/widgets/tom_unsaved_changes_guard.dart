@@ -16,8 +16,9 @@ enum UnsavedChangesChoice { save, discard, cancel }
 /// synthetic `discard` (nothing to save).
 ///
 /// Used by [TomMasterDetailListForm] for selection changes and by route
-/// pop guards. Keeps the spec's §15 master-detail Save/Discard/Cancel
-/// pattern in one place instead of being duplicated per demo.
+/// pop guards. Keeps the `tom_ui_widgets_forms.md` §15 master-detail
+/// Save/Discard/Cancel pattern in one place instead of being duplicated
+/// per demo.
 ///
 /// The five captions default to `null` rather than to English: left unset they
 /// resolve through [TomFormLabels] against the form's own resource scope, so a

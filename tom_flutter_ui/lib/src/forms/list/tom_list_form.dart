@@ -221,9 +221,9 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     ));
   }
 
-  /// Spec-canonical alias of [move] (§16: "reorder via drag handles
-  /// drives `.reorder`"). Forwards to [move] so existing callers and
-  /// events keep working unchanged.
+  /// Spec-canonical alias of [move] — `tom_ui_widgets_forms.md` §16 has
+  /// "reorder via drag handles drives `.reorder`". Forwards to [move] so
+  /// existing callers and events keep working unchanged.
   void reorder(int from, int to) => move(from, to);
 
   /// Bind this list to a [TomList] of [TItem]. Tears down any sub-forms

@@ -1,3 +1,9 @@
+/// Boolean form fields — the abstract [TomFormBoolField] and the three
+/// renderings that ship with it.
+///
+/// The abstract type is catalogued in `tom_ui_widgets_forms.md` §6; the
+/// concrete renderings are specified in `tom_ui_widgets_forms.md` §7, and
+/// the way each binds to its Flutter widget in `tom_ui_widgets_forms.md` §8.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,7 +17,7 @@ import '../tom_form.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
-// TomFormBoolField — Abstract Bool Field (§6)
+// TomFormBoolField — Abstract Bool Field
 // ---------------------------------------------------------------------------
 
 /// Abstract base for boolean form fields.
@@ -46,7 +52,7 @@ abstract class TomFormBoolField extends TomField<bool> {
 }
 
 // ---------------------------------------------------------------------------
-// TomFormBoolCheckbox — Concrete Checkbox (§7, §8)
+// TomFormBoolCheckbox — Concrete Checkbox
 // ---------------------------------------------------------------------------
 
 /// Renders the boolean as a Material [Checkbox] with the standard
@@ -155,7 +161,7 @@ class _TomFormBoolCheckboxWidgetState
 }
 
 // ---------------------------------------------------------------------------
-// TomFormBoolSwitch — Concrete Switch (§7, §8)
+// TomFormBoolSwitch — Concrete Switch
 // ---------------------------------------------------------------------------
 
 /// Renders the boolean as a Material [Switch].
@@ -251,7 +257,7 @@ class _TomFormBoolSwitchWidgetState extends State<_TomFormBoolSwitchWidget> {
 }
 
 // ---------------------------------------------------------------------------
-// TomFormBoolToggle — Concrete Toggle Button (§7, §8)
+// TomFormBoolToggle — Concrete Toggle Button
 // ---------------------------------------------------------------------------
 
 /// Renders the boolean as a two-segment [SegmentedButton] (Off/On).

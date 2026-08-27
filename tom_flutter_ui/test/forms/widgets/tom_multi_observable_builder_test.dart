@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/src/forms/widgets/tom_multi_observable_builder.dart';
 
-// §60(c): starter coverage for TomMultiObservableBuilder — verifies it rebuilds
+// Starter coverage for TomMultiObservableBuilder — verifies it rebuilds
 // when any watched observable changes and that it cleanly (de)registers
 // listeners across construction, list changes, and disposal.
 
