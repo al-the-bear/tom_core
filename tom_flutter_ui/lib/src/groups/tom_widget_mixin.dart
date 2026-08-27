@@ -25,9 +25,17 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// Optional build-time state controller.
   TomUIStateController? get uiStateController => null;
 
+  /// The scope this widget resolves in: the explicit [scope] when it was given
+  /// one, otherwise whatever the zone carries.
+  ///
+  /// Named once and read everywhere, because every path this widget produces
+  /// has to come out of the same frame. [basePath] and the group path are a
+  /// `<prefix>.<id>` pair; a prefix that differs between them looks up a rule
+  /// belonging to some other member.
+  TomScope get effectiveScope => scope ?? TomScope.current;
+
   String? get basePath {
     if (tomId == null) return null;
-    final effectiveScope = scope ?? TomScope.current;
     final scopePath = effectiveScope.getScopePath();
     if (scopePath.isNotEmpty) return '$scopePath.$tomId';
     return tomId;
@@ -43,9 +51,11 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
         ? TomAuthorization.resolveAuth(basePath!)
         : TomAuthState.full;
 
-    // 2. Group authorization (if member of a group)
+    // 2. Group authorization (if member of a group), resolved in the same
+    //    scope as the base path above — an explicit scope reaches both or the
+    //    group's ceiling is quietly looked up somewhere else.
     if (tomGroup != null) {
-      state = tomGroup!.applyMode(state);
+      state = tomGroup!.applyMode(state, effectiveScope);
     }
 
     // 3. Per-widget authorizer

@@ -229,32 +229,49 @@ class TomAuthorizationGroup {
   /// Whether the group has at least one visible member — see [members].
   bool get isNotEmpty => !isEmpty;
 
-  /// Resolves the full canonical path for this group.
-  String resolveGroupPath() {
-    final scopePath = TomScope.current.getScopePath();
+  /// Resolves the full canonical path for this group, in [scope].
+  ///
+  /// [scope] defaults to the ambient [TomScope.current], which is right
+  /// whenever the caller is standing in the frame it is asking about. It is
+  /// wrong for the two cases a scope is passed as a *value* rather than
+  /// installed on a zone — a member constructed with an explicit `scope`, and
+  /// a callback wrapped by [InScopeBuilder] — and those are exactly the cases
+  /// that supply it here.
+  ///
+  /// The member's own path and this one have to come out of the same frame:
+  /// they are a `<prefix>.<id>` pair, and a prefix that differs between them
+  /// looks up a ceiling that belongs to some other member.
+  String resolveGroupPath([TomScope? scope]) {
+    final scopePath = (scope ?? TomScope.current).getScopePath();
     if (scopePath.isNotEmpty) return '$scopePath.$groupId';
     return groupId;
   }
 
-  /// Gets the authorization state for this group.
-  TomAuthState get authState {
-    final fullPath = resolveGroupPath();
-    return TomAuthorization.resolveAuth(fullPath);
-  }
+  /// Gets the authorization state for this group in the ambient scope.
+  TomAuthState get authState => _authStateIn(null);
 
   /// Applies this group's authorization mode to a member's state.
   ///
   /// - [controlsAll]: group state replaces the member's state
   /// - [controlsWidest]: group state is the ceiling (narrows the member)
   /// - [controlsNarrowest]: group state is the floor (widens the member)
-  TomAuthState applyMode(TomAuthState memberState) {
-    final groupState = authState;
+  ///
+  /// [scope] is the frame the group is resolved in — see [resolveGroupPath].
+  /// A caller that resolved the member's own path against an explicit scope
+  /// must pass the same one, or the two halves of the composition disagree
+  /// about where they are and the group's ceiling is applied to the wrong
+  /// member, or to none.
+  TomAuthState applyMode(TomAuthState memberState, [TomScope? scope]) {
+    final groupState = _authStateIn(scope);
     return switch (mode) {
       AuthGroupMode.controlsAll => groupState,
       AuthGroupMode.controlsWidest => memberState.narrow(groupState),
       AuthGroupMode.controlsNarrowest => memberState.widen(groupState),
     };
   }
+
+  TomAuthState _authStateIn(TomScope? scope) =>
+      TomAuthorization.resolveAuth(resolveGroupPath(scope));
 
   /// Whether all visible members share the same effective auth state.
   ///

@@ -70,8 +70,12 @@ resolves the effective `TomAuthState` by combining, in order:
 
 1. **Resource auth** — `TomAuthorization.resolveAuth(basePath)` (`full` when no
    `basePath`).
-2. **Group auth** — `tomGroup.applyMode(state)` when the widget is a group
-   member.
+2. **Group auth** — `tomGroup.applyMode(state, constructionScope)` when the
+   widget is a group member. The scope is passed rather than left to
+   `TomScope.current` so the group resolves in the same frame `basePath` was
+   built from. `build` re-enters that frame anyway, so this only shows up when
+   the state is read from outside a build — which is exactly what
+   `TomAuthorizationGroup.members` and the inspection getters defined on it do.
 3. **Per-widget `authorizer`** — `authorizer.effectiveAuth(state)` when set.
 4. **`uiStateController`** — a build-time narrowing callback (can only narrow,
    never widen).

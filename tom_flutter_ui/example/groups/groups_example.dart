@@ -14,7 +14,7 @@
 ///    `controlsNarrowest`) via `applyMode`,
 /// 3. a `TomWidgetMixin` widget resolving its effective auth through the group,
 /// 4. group introspection (`mostRestrictive`, `isUniform`, `findMember`),
-/// 5. scope-aware path resolution.
+/// 5. scope-aware path resolution, in both the ambient and the explicit form.
 ///
 /// Because it imports `flutter/material` (→ `dart:ui`) through the package
 /// barrel, run it under the Flutter toolchain, e.g.
@@ -38,7 +38,13 @@ class _GroupedField extends StatelessWidget with TomWidgetMixin {
   @override
   final TomAuthorizationGroup? tomGroup;
 
-  const _GroupedField(this.tomId, {this.tomGroup});
+  /// An optional explicit scope. Overriding it is what lets step 5 below show
+  /// the second way a scope reaches a widget: as a value, rather than from the
+  /// zone the widget happens to be constructed in.
+  @override
+  final TomScope? scope;
+
+  const _GroupedField(this.tomId, {this.tomGroup, this.scope});
 
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
@@ -119,6 +125,15 @@ void run() {
     print('scoped group path: ${shipping.resolveGroupPath()}');
   });
 
+  // The same scope handed over as a value instead of installed on a zone —
+  // what `InScopeBuilder` does for callbacks Flutter invokes from its own zone.
+  // Both paths must come out prefixed, or the group would be looked up
+  // somewhere the member never was.
+  final checkout = TomScopeBase(scopeId: 'checkout');
+  final detached = _GroupedField('street', tomGroup: shipping, scope: checkout);
+  print('explicit basePath: ${detached.basePath}');
+  print('explicit group path: ${shipping.resolveGroupPath(checkout)}');
+
   // ---------------------------------------------------------------------------
   // Assertions
   // ---------------------------------------------------------------------------
@@ -152,6 +167,10 @@ void run() {
     assert(scoped.basePath == 'checkout.street');
     assert(shipping.resolveGroupPath() == 'checkout.shipping');
   });
+
+  // An explicit scope prefixes both paths exactly as the ambient one does.
+  assert(detached.basePath == 'checkout.street');
+  assert(shipping.resolveGroupPath(checkout) == 'checkout.shipping');
 
   TomAuthorization.reset();
 }

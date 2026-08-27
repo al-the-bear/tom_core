@@ -554,8 +554,8 @@ TomAuthorizationGroup(String groupId, {AuthGroupMode mode = AuthGroupMode.contro
 | ------ | ----------- | ----------- |
 | `register(TomAuthorizable element)` | `void` | Registers an element with this group. Hidden elements register like any other. |
 | `unregister(TomAuthorizable element)` | `void` | Unregisters an element. Works on the raw registrations, so hidden elements can still be removed. |
-| `resolveGroupPath()` | `String` | Resolves the full canonical `<scopePath>.<groupId>` path. |
-| `applyMode(TomAuthState memberState)` | `TomAuthState` | Applies this group's mode to a member's state. |
+| `resolveGroupPath([TomScope? scope])` | `String` | Resolves the full canonical `<scopePath>.<groupId>` path, in `scope` or in the ambient `TomScope.current`. |
+| `applyMode(TomAuthState memberState, [TomScope? scope])` | `TomAuthState` | Applies this group's mode to a member's state, resolving the group in `scope` — which must be the one the member's own path came from. |
 | `findMember(String tomId)` | `TomAuthorizable?` | Finds a *visible* member by `tomId`; `null` for one that is registered but hidden. |
 | `toString()` | `String` | *(override)* `'TomAuthorizationGroup(groupId, mode: mode)'`. |
 

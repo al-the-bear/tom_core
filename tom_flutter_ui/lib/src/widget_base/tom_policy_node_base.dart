@@ -49,9 +49,14 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
         ? TomAuthorization.resolveAuth(basePath!)
         : TomAuthState.full;
 
-    // 2. Group authorization (if member of a group)
+    // 2. Group authorization (if member of a group), resolved in the scope
+    //    [basePath] was built from. [build] re-enters that scope, so reading
+    //    the state from inside a build was always right; every other reader —
+    //    [TomAuthorizationGroup.members] and the inspection getters defined on
+    //    it — stands outside it, and would otherwise see a different ceiling
+    //    than the one the widget renders under.
     if (tomGroup != null) {
-      state = tomGroup!.applyMode(state);
+      state = tomGroup!.applyMode(state, constructionScope);
     }
 
     // 3. Per-widget authorizer

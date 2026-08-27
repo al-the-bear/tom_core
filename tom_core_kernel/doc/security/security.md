@@ -612,6 +612,16 @@ member's own state via `applyMode(memberState)`:
 | `controlsWidest` | Group state is the **ceiling** (narrows the member) |
 | `controlsNarrowest` | Group state is the **floor** (widens the member) |
 
+Both take the scope as an optional argument — `resolveGroupPath([scope])` and
+`applyMode(memberState, [scope])` — defaulting to the ambient `TomScope.current`.
+The default is right for a caller standing in the frame it is asking about, and
+wrong for the two cases where a scope travels as a *value* rather than on a
+zone: an element constructed with an explicit `scope`, and a callback wrapped by
+`InScopeBuilder`. Those must pass the same scope they resolved the member's own
+path against. A member path and a group path are a `<prefix>.<id>` pair; a
+prefix that differs between them looks up a rule belonging to some other member,
+so a ceiling can silently vanish rather than merely move.
+
 Inspection helpers all report on **visible** membership: a member whose
 `effectiveAuthState` is `none` does not exist from the user's perspective, so
 it does not exist for inspection either. `members` is the single place that

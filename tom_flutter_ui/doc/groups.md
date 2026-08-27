@@ -74,6 +74,7 @@ state, and both skip hidden (`none`) members.
 that extends a Flutter original to gain:
 
 - `tomId` / `tomGroup` / `scope` / `authorizer` / `uiStateController` hooks,
+- `effectiveScope` (the explicit `scope`, or `TomScope.current`),
 - `basePath` (the canonical `<scopePath>.<tomId>` path),
 - `getAuth()` / `effectiveAuthState`,
 - typed resource resolution (`getText`, `resolveColorOrNull`,
@@ -98,15 +99,56 @@ child unchanged for `full`).
 
 ## Scope-aware paths
 
-Inside a `TomScope`, both member and group paths are prefixed by the scope, so
-the same `tomId`/`groupId` resolves to different rules per context:
+Both the member and the group path are prefixed by the scope, so the same
+`tomId`/`groupId` resolves to different rules per context. A scope reaches a
+widget in one of two ways, and both prefix both paths.
+
+**Ambient** — the widget is constructed inside the scope's zone, and reads it
+from there:
 
 ```dart
 TomScope.withScope('checkout', () {
+  final field = TomTextField(tomId: 'street', tomGroup: shipping);
   field.basePath;              // 'checkout.street'
   shipping.resolveGroupPath(); // 'checkout.shipping'
 });
 ```
+
+**Explicit** — the scope is handed over as a value. This is what the `scope`
+constructor parameter is for, and it is the case
+[`InScopeBuilder`](../lib/src/widget_base/tom_scope_widgets.dart) exists to
+serve: Flutter invokes a builder callback from its own zone, long after the
+constructing one has been left, so `TomScope.current` there is the *wrong*
+answer and the scope has to travel as an argument instead.
+
+```dart
+final checkout = TomScopeBase(scopeId: 'checkout');
+
+// Constructed outside any zone — the scope arrives as an argument.
+final field = TomTextField(
+  tomId: 'street',
+  tomGroup: shipping,
+  scope: checkout,
+);
+
+field.basePath;                      // 'checkout.street'
+shipping.resolveGroupPath(checkout); // 'checkout.shipping'
+```
+
+The two forms are interchangeable: `getAuth()` resolves the member and the
+group in one frame — `effectiveScope`, which is the explicit `scope` when there
+is one and `TomScope.current` otherwise — so the same widget, group and rules
+produce the same answer either way.
+
+That single frame is the whole point. The member path and the group path are a
+`<prefix>.<id>` pair; if the prefix differed between them, the group would be
+looked up at a path that belongs to nobody — or, worse, to a *different*
+group of the same name in another scope, whose rule then silently replaces the
+ceiling this member was supposed to be under.
+
+`resolveGroupPath()` and `applyMode(state)` both take the scope as an optional
+argument and fall back to `TomScope.current`, so a caller standing in the frame
+it is asking about passes nothing.
 
 ## Dependencies
 
