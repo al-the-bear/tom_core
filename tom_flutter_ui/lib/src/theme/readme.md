@@ -12,9 +12,9 @@ styles are derived from the ambient `ColorScheme` via `TomButtonVariants`.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomTheme` | The Tom theme value; `TomTheme.defaultTheme` + `copyWith` |
+| `TomTheme` | The Tom theme value; `TomTheme.defaultTheme` + `copyWith`. `TomTheme.readonlyStyleOf(context)` is the lookup the field layer actually calls — it falls back to `TomReadonlyStyle.defaultStyle`, so a subtree with no `TomThemeScope` above it still styles correctly |
 | `TomThemeScope` | Inherited widget delivering a `TomTheme` to its `child` |
-| `TomReadonlyStyle` | The read-only field styling (opacity, pointer absorption, overlay) |
+| `TomReadonlyStyle` | The read-only field styling (opacity, pointer absorption, overlay); `TomReadonlyStyle.defaultStyle` is the framework default — `AbsorbPointer` plus 0.6 opacity |
 | `TomButtonVariants` | Semantic button `ButtonStyle` set from a `ColorScheme` |
 
 ## Quick start

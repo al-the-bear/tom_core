@@ -68,8 +68,11 @@ widgets degrade gracefully rather than throw.
 > two-thirds alpha, resolves here to an opaque blue-violet, and `colorExists`
 > returns `true` for it, so a validation pass over a resource file waves it
 > through. Reorder the channels when copying a colour in; there is no way for
-> the parser to detect the mistake for you. `AllColorsAdapter.registerColors` adds or overrides names at runtime;
-`clearCustomColors` undoes that while keeping the adapter installed.
+> the parser to detect the mistake for you.
+
+`AllColorsAdapter.registerColors` adds or overrides names at runtime;
+`AllColorsAdapter.clearCustomColors` undoes that while keeping the adapter
+installed.
 
 `MaterialOnlyColorAdapter` / `CupertinoOnlyColorAdapter` trade coverage for
 bundle size exactly as their icon counterparts do — an app targeting one

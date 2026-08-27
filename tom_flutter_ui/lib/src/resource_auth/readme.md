@@ -11,29 +11,60 @@ environment.
 
 ## Key types
 
+All thirteen types the module exports. The colour and icon halves are
+deliberate mirrors of each other, so every row names both.
+
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomUIColors` / `TomUIIcons` | Static colour / icon namespaces resolved through an adapter |
-| `AllColorsAdapter` / `AllIconsAdapter` | Default adapters; `registerColors` / `registerIcons` extend the sets module-wide |
-| `MaterialOnly…` / `CupertinoOnly…` `ColorAdapter` / `IconAdapter` | Single-family adapters, for bundle size or to catch off-platform names |
 | `TomUIColorAdapter` / `TomUIIconAdapter` | The pluggable adapter contracts |
-| `TomConfigProvider` | Config / feature-flag provider (`create` + `initialize` + `current`) |
+| `AllColorsAdapter` / `AllIconsAdapter` | The default adapters: registrations first, then the full Material **and** Cupertino tables. Both families' registration entry points live here |
+| `MaterialOnlyColorAdapter` / `MaterialOnlyIconAdapter` | Material only — for bundle size, or to make a stray `c…` name resolve to `null` and be caught instead of quietly working |
+| `CupertinoOnlyColorAdapter` / `CupertinoOnlyIconAdapter` | Cupertino only; the same two reasons mirrored |
+| `TomConfigProvider` | Config / feature-flag provider |
 | `TomEnvironment` / `TomPlatform` | Environment & platform enums feeding config + responsive layout |
+
+## Entry points, by lifecycle stage
+
+| Stage | Colours | Icons | Configuration |
+| ----- | ------- | ----- | ------------- |
+| Install | `TomUIColors.adapter =` | `TomUIIcons.adapter =` | `TomConfigProvider.initialize` of a `TomConfigProvider.create` |
+| Resolve | `TomUIColors.resolveColor` | `TomUIIcons.resolveIcon` | `TomConfigProvider.current`, then `feature<T>` / `isEnabled` / `environment` / `platform` |
+| Probe | `TomUIColors.colorExists` | `TomUIIcons.iconExists` | — |
+| Register | `AllColorsAdapter.registerColors` | `AllIconsAdapter.registerIcons` | flags are fixed at `create` |
+| Unregister | `AllColorsAdapter.clearCustomColors` | `AllIconsAdapter.clearCustomIcons` | — |
+| Tear down | `TomUIColors.reset` | `TomUIIcons.reset` | `TomConfigProvider.reset` |
+
+**Read the last two rows before writing a test.** Each registry is module-wide
+and process-global — shared by all three adapters of its family — so a
+registration left behind does not fail the next test, it silently changes a
+colour or icon in it. `reset()` drops the adapter **and** the registrations,
+which is what makes it the whole hygiene hook: a `tearDown` needs nothing
+beside it. `clearCustomColors` / `clearCustomIcons` are the narrower tool, for
+dropping registrations while *keeping* the installed adapter.
+
+Registration stays on the `All…` adapters even though the registry it fills is
+module-wide, so that each family has exactly one place to register. Calling
+`AllIconsAdapter.registerIcons` while `MaterialOnlyIconAdapter` is installed is
+therefore correct rather than a mistake — the name still resolves.
 
 ## Quick start
 
 ```dart
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void wireResources() {
   TomUIColors.adapter = AllColorsAdapter();
+  TomUIIcons.adapter = AllIconsAdapter();
   AllColorsAdapter.registerColors({'brandPrimary': const Color(0xFF123456)});
+  AllIconsAdapter.registerIcons({'brandMark': Icons.star});
 
   final red = TomUIColors.resolveColor('mRed');   // Material red
   final hex = TomUIColors.resolveColor('#FF5733'); // literal hex
   // Alpha leads: #AARRGGBB and #ARGB, as in Color(0x...).
   final faded = TomUIColors.resolveColor('#80FF5733'); // 50% orange
+  final save = TomUIIcons.resolveIcon('mSave');   // Icons.save
 
   TomConfigProvider.initialize(TomConfigProvider.create(
     environment: TomEnvironment.production,
@@ -41,6 +72,13 @@ void wireResources() {
     flags: {'newCheckout': true, 'maxItems': 50},
   ));
   print(TomConfigProvider.current.isEnabled('newCheckout')); // true
+}
+
+/// One call per namespace, and the module holds no state again.
+void tearDownResources() {
+  TomUIColors.reset();
+  TomUIIcons.reset();
+  TomConfigProvider.reset();
 }
 ```
 
