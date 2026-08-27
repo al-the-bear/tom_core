@@ -1681,7 +1681,15 @@ abstract class TomFamilyBase extends TomPolicyNodeBase {
 }
 ```
 
-This avoids errors from mismatched type declarations and handles widgets with multiple natures (e.g., a `TomFormDateTimePicker` is both a `TomWidgetFamily.formField` and a `TomWidgetFamily.dateTimePicker`). Only the widget class itself knows about its natures.
+This avoids errors from mismatched type declarations and allows for widgets with multiple natures — the design intent being that a `TomFormDateTimePicker` would report both `TomWidgetFamily.formField` and `TomWidgetFamily.dateTimePicker`. Only the widget class itself knows about its natures.
+
+> **Status: not yet built.** This part of the design is unrealised. `families`
+> is overridden nowhere in the package, so every Tom widget reports exactly one
+> family; and the six form values named here are claimed by no type at all,
+> because form fields descend from `TomField<T>` rather than from
+> `TomFamilyBase` and so carry no family. The multi-nature machinery above is
+> real and works — it simply has no users yet. See
+> [widget_base.md](widget_base.md#the-widget-family-taxonomy).
 
 ### 12.3 Form field anatomy
 

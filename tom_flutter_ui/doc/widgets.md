@@ -88,9 +88,12 @@ without `testWidgets`.
 Twenty rows, twenty sub-folders. The `containers/acl/` subfolder additionally
 hosts `TomAclBuilder<T>`, the widget-side bridge to the
 [advanced container layout](advanced_container_layout.md) engine.
-`TomWidgetFamily` declares six further families — `formField`,
-`dateTimePicker`, `listEditor`, `masterDetail`, `searchField`, `fileUpload` —
-which belong to the [forms](forms.md) module, not this kit.
+`TomWidgetFamily` declares six further values — `formField`, `dateTimePicker`,
+`listEditor`, `masterDetail`, `searchField`, `fileUpload` — which have no row
+here because they have no branch base and no widget reports them, in this kit
+or anywhere else. They are reserved for the [forms](forms.md) module, but
+forms does not use the enum today; see
+[widget_base.md](widget_base.md#the-widget-family-taxonomy).
 
 A handful of wrappers extend a Flutter widget directly and mix in
 `TomWidgetMixin` instead of a family base (`TomExpanded`, `TomFlexible`,

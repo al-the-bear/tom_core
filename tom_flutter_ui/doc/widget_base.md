@@ -39,7 +39,7 @@ in this module:
 | `TomPolicyNodeBase` | abstract | Adds the authorization gate: resolves the effective `TomAuthState` and routes to `buildContent` / `buildReadonly` / `buildDisabled` / hidden. |
 | `TomFamilyBase` | abstract | Adds widget-family reporting (`family`, `families`, `isFamily`). |
 | 20 family branch bases | abstract | One per family — `TomButtonBase`, `TomInputBase`, `TomSelectBase`, … — each fixes `family` to its `TomWidgetFamily` value. |
-| `TomWidgetFamily` | enum | The 26-value family taxonomy (20 Flutter-derived + 6 Tom form families). |
+| `TomWidgetFamily` | enum | The 26-value family taxonomy: 20 Flutter-derived values, each fixed by a branch base, plus 6 Tom form values that are reserved and claimed by nothing. |
 | `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | abstract | Scope-capturing base widgets for non-Tom wrappers that still need scope propagation. |
 | `TomScreenElementsProvider` / `TomScreenElementsProviderBase` | interface / class | Declarative, reflection-discoverable screen widget trees with chained scopes. |
 | `TomScopePath` | static helpers | The one place a scope path and a widget id are joined into a canonical resource path. Flutter-free, so the base classes can use it in an initialiser list. |
@@ -56,12 +56,16 @@ StatelessWidget
                      ├── TomButtonBase      family = button
                      ├── TomInputBase       family = input
                      ├── TomSelectBase      family = select
-                     ├── … (20 branch bases, one per Flutter-derived/form family)
+                     ├── … (20 branch bases, one per Flutter-derived family;
+                     │      the 6 Tom form families have no branch base)
                      └── TomBuilderBase      family = builder
 ```
 
-A concrete widget (in `widgets/`, `forms/`, …) extends the branch base for its
-family and implements `buildContent(context)` — never `build`. Construction
+A concrete widget (in `widgets/`, and a handful in `forms/`) extends the branch
+base for its family and implements `buildContent(context)` — never `build`.
+Most of `forms/` does not appear here at all: its fields descend from
+`TomField<T>`, not from `TomFamilyBase` — see
+[the taxonomy](#the-widget-family-taxonomy). Construction
 resolves `basePath` through
 [`TomScopePath.resolve`](#path-composition-tomscopepath) and, if a `tomGroup`
 was supplied, registers the widget with that group.
@@ -108,15 +112,44 @@ theme. The two enforcement points share the styling one level down — the same
 
 `TomWidgetFamily` classifies a widget by behavioural role so cross-cutting tools
 (layout engines, action wiring, ACL builders) can reason about widgets
-generically. A widget reports a primary `family` and may report extra
-`families` (e.g. a date picker is both `formField` and `dateTimePicker`).
+generically. A widget reports a primary `family`, fixed by its branch base, and
+`families` allows it to report more than one.
 
-- **Flutter-derived (20):** `button`, `input`, `select`, `toggle`, `slider`,
-  `container`, `dialog`, `table`, `label`, `image`, `navigation`, `progress`,
-  `chip`, `list`, `tree`, `sliver`, `animated`, `effect`, `interaction`,
-  `builder`.
-- **Tom form families (6):** `formField`, `dateTimePicker`, `listEditor`,
-  `masterDetail`, `searchField`, `fileUpload`.
+The enum has 26 values, but they divide unevenly, and the split is worth
+knowing before you write a tool that switches on it:
+
+- **Flutter-derived (20) — carried.** `button`, `input`, `select`, `toggle`,
+  `slider`, `container`, `dialog`, `table`, `label`, `image`, `navigation`,
+  `progress`, `chip`, `list`, `tree`, `sliver`, `animated`, `effect`,
+  `interaction`, `builder`. Each has a branch base that fixes `family` to it,
+  and each branch base has concrete subclasses in `widgets/`.
+- **Tom form families (6) — reserved, and claimed by nothing.** `formField`,
+  `dateTimePicker`, `listEditor`, `masterDetail`, `searchField`, `fileUpload`
+  have no branch base, and no widget reports them. The forms module does not
+  use this enum at all — it does not even import it. Its fields descend from
+  `TomField<T> extends TomObject<T>`, a kernel observable rendered through
+  `TomFieldWidgetAdapter`, so a form field carries *no* family rather than one
+  of these six. (`TomTextFormFieldBase` is on the `TomField` side too, despite
+  the `-Base` suffix; the handful of genuine widgets in `forms/`, such as
+  `TomReorderHandle`, extend ordinary Flutter-derived bases like
+  `TomImageBase`.)
+
+Two consequences follow, and both bite in practice:
+
+- **`isFamily(TomWidgetFamily.formField)` is false for every widget in the
+  package.** A tool that dispatches on the form values matches nothing; it will
+  not fail, it will silently do no work.
+- **`families` is never overridden.** The default `{family}` is its only
+  implementation, so today every Tom widget reports exactly one family. The
+  multi-family capability is real but has no users — do not infer from its
+  presence that some widget somewhere reports two.
+
+The six are kept, rather than deleted, because
+[the ACL/layout design](container_widget_resources_authorization.md) §12.2
+specifies them as the intended classification for form fields once those become
+family-reporting widgets. They record an intent; they do not describe the code.
+`test/widget_base/tom_widget_family_coverage_test.dart` pins the 20/6 split so
+this section cannot drift back out of step with the enum.
 
 ## Scope propagation
 
