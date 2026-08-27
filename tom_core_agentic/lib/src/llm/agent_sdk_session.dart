@@ -21,7 +21,10 @@
 // The provider never branches on the mode; it asks the strategy for a resume
 // id, streams, and reports the outcome back to the strategy. The store and the
 // quest reader degrade to "no session" on any I/O or parse error rather than
-// throwing, so a corrupt file can only ever cost one fresh call, never a crash.
+// throwing — reads and writes alike — so a damaged file can only ever cost one
+// fresh call, never a crash. That matters most on the write side: the provider
+// awaits `record` on the success path, just before the terminal event, so a
+// throwing store would discard a model call that has already been billed.
 
 import 'dart:convert';
 import 'dart:io';
@@ -32,9 +35,15 @@ import 'llm_options.dart' show LlmOptions;
 /// or starts fresh, and records the session id a successful call produced.
 ///
 /// All three methods key off the call's [LlmOptions] so a single provider can be
-/// configured with any one strategy. Implementations must never throw for
-/// missing / unreadable session state — they return `null` (no resume) instead,
-/// so a degraded store costs at most one fresh call.
+/// configured with any one strategy.
+///
+/// **No method may throw because the session state is damaged** — not just the
+/// read. [resumeIdFor] returns `null` (no resume) for state it cannot read, and
+/// [record] / [evict] return normally for state they cannot write. The provider
+/// awaits all three inline, `record` on the success path immediately before the
+/// terminal event, so a strategy that throws does not merely fail to persist a
+/// session id: it destroys the result of the call that produced it. A degraded
+/// store must cost at most one fresh call.
 abstract interface class AgentSdkSessionStrategy {
   /// The Claude-Code session id to resume for this call, or `null` to start a
   /// fresh session (every `none`-mode call, an unknown `brain` key, a missing
@@ -70,10 +79,13 @@ final class NoSessionStrategy implements AgentSdkSessionStrategy {
 /// [file].
 ///
 /// Loaded lazily on first access and cached in memory; every mutation flushes
-/// the whole map back to disk (the map is tiny — one entry per live session). A
-/// missing file reads as empty; a corrupt / unreadable file also degrades to
-/// empty rather than throwing, so a damaged store can only cost fresh sessions,
-/// never a crash.
+/// the whole map back to disk (the map is tiny — one entry per live session).
+///
+/// **No operation throws for a damaged store**, in either direction. A missing
+/// file reads as empty, a corrupt or unreadable one degrades to empty, and a
+/// flush that cannot land is dropped. The cache is authoritative for the
+/// lifetime of the instance either way, so a damaged store costs fresh sessions
+/// after a restart and nothing at all before one — never a failed call.
 final class AgentSdkSessionStore {
   /// The on-disk JSON file backing this store.
   final File file;
@@ -106,10 +118,31 @@ final class AgentSdkSessionStore {
     return _cache = loaded;
   }
 
+  /// Writes the whole cache back to [file], degrading exactly as [_load] does.
+  ///
+  /// A write that cannot land is dropped rather than raised. The provider
+  /// awaits the two callers of this method on paths where an exception would
+  /// destroy work that has already been done: [put] runs on the *success* path
+  /// immediately before the terminal event, so a throw here would discard a
+  /// model call that has already been made and billed, and [remove] runs from
+  /// the evict-and-retry-fresh decision, outside the provider's try/catch, so a
+  /// throw there would turn a classified failure into an unhandled stream
+  /// error. Neither is a fault the caller can act on, and both are strictly
+  /// worse than the cost of losing the write.
+  ///
+  /// Losing it costs less than it appears: both mutators update the in-memory
+  /// cache *before* flushing, so this process keeps resuming (or keeps having
+  /// evicted) the session as if the write had landed. Only a restart reads the
+  /// stale file, which is the one fresh call the store's contract allows for.
   Future<void> _flush() async {
     final cache = _cache ?? <String, String>{};
-    await file.parent.create(recursive: true);
-    await file.writeAsString(jsonEncode(cache));
+    try {
+      await file.parent.create(recursive: true);
+      await file.writeAsString(jsonEncode(cache));
+    } on FileSystemException {
+      // Unwritable path, read-only volume, revoked permission: the session id
+      // is a cache, not a ledger, and is not worth a call for.
+    }
   }
 
   /// The Claude-Code session id stored for [brainSessionId], or `null`.

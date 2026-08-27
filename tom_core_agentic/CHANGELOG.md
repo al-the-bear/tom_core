@@ -2,6 +2,26 @@
 
 ### Fixed
 
+- **`llm/`**: `AgentSdkSessionStore` honoured its no-throw contract on reads
+  only. `_load` degraded a missing, corrupt or unreadable file to an empty map,
+  but `_flush` caught nothing — and the provider awaits it twice on paths where
+  an exception destroys work already done. `put` runs on the **success** path,
+  immediately before the terminal event, so an unwritable store turned a
+  completed, billed model call into a stream error: no `LlmStreamCompleted`, no
+  report, no usage or cost, and `complete()` throwing too. `remove` runs from
+  the evict-and-retry-fresh decision, which the provider awaits *outside* its
+  try/catch, so the same store turned a classified `LlmStreamFailed` into an
+  unhandled stream error. `_flush` now degrades exactly as `_load` does. The
+  guard went into the store rather than into the provider's call ordering
+  because that is where the contract is stated, and because it covers both call
+  sites: making `record` fire-and-forget would have left the evict path open and
+  converted the throw into an unhandled async error. Little is actually lost —
+  both mutators update the in-memory cache before flushing, so the session
+  survives in-process and only a restart pays the one fresh call the contract
+  allows for. Coverage: four tests driving an unwritable store (a path whose
+  parent is an ordinary file, so it reproduces without depending on the uid the
+  suite runs as) through `put`, `remove`, a successful call, and the evict path.
+
 - **`isolate_streaming/`**: `doc/isolate_streaming.md` had drifted from the
   module in three places at once, all of them the same failure — the prose was
   written before the module reached its current shape and was not re-read as

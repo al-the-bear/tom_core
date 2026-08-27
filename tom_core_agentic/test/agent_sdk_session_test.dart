@@ -84,6 +84,16 @@ Map<String, dynamic> _successResult(String sessionId, {String text = 'ok'}) =>
       'session_id': sessionId,
     };
 
+/// A store path whose parent directory can never be created, because an
+/// ancestor component is an ordinary file. Both `create(recursive: true)` and
+/// the write itself then fail with a [FileSystemException] — the same shape a
+/// read-only volume or a revoked permission produces, but reproducible on every
+/// platform and without depending on the uid the suite runs as.
+File _unwritableFile(Directory tmp) {
+  File('${tmp.path}/blocker').writeAsStringSync('I am a file, not a folder.');
+  return File('${tmp.path}/blocker/sessions/agent_sdk_sessions.json');
+}
+
 AgentSdkLlmProvider _provider(
   _ScriptedAgentSdkTransport transport,
   AgentSdkSessionStrategy strategy,
@@ -133,6 +143,25 @@ void main() {
         ..writeAsStringSync('not json {{{');
       final store = AgentSdkSessionStore(file);
       expect(await store.lookup('x'), isNull);
+    });
+
+    test('put on an unwritable store degrades instead of throwing', () async {
+      final store = AgentSdkSessionStore(_unwritableFile(tmp));
+
+      await expectLater(store.put('tb-1', 'claude-aaa'), completes);
+      // The write is lost, but the id is not: `put` updates the in-memory
+      // cache before flushing, so this process still resumes the session and
+      // only a restart pays the fresh call the contract allows for.
+      expect(await store.lookup('tb-1'), 'claude-aaa');
+    });
+
+    test('remove on an unwritable store degrades instead of throwing',
+        () async {
+      final store = AgentSdkSessionStore(_unwritableFile(tmp));
+      await store.put('tb-1', 'claude-aaa');
+
+      await expectLater(store.remove('tb-1'), completes);
+      expect(await store.lookup('tb-1'), isNull);
     });
   });
 
@@ -283,6 +312,63 @@ void main() {
       expect(transport.resumesSeen, <Object?>['claude-old']);
       // No eviction on a non-session failure: the stored id is left intact.
       expect(await store.lookup('tb-1'), 'claude-old');
+    });
+
+    // The provider awaits `record` on the success path, immediately before the
+    // terminal event, so a throwing store would discard a call that has already
+    // been made and billed: no Completed, no report, no usage or cost. That is
+    // strictly worse than the crash the store's contract rules out, because it
+    // lands after the money is spent.
+    test('an unwritable store still completes a successful call', () async {
+      final store = AgentSdkSessionStore(_unwritableFile(tmp));
+      final transport = _ScriptedAgentSdkTransport(<_Attempt>[
+        _Attempt(messages: <Map<String, dynamic>>[
+          _successResult('claude-new', text: 'Paris.'),
+        ]),
+      ]);
+      final provider = _provider(transport, BrainSessionStrategy(store));
+
+      final events = await provider
+          .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
+          .toList();
+
+      final completed = events.last;
+      expect(completed, isA<LlmStreamCompleted>());
+      // The report survives intact — the usage and cost of a call that really
+      // happened are what a failed write must not be allowed to throw away.
+      final report = (completed as LlmStreamCompleted).report;
+      expect(report.tokensIn, 5);
+      expect(report.tokensOut, 9);
+      expect(report.modelId, 'claude-sonnet-4-6');
+      expect(report.anchorHash, 'anchor-hash-A1');
+      // And nothing was misreported as a failure along the way.
+      expect(events.whereType<LlmStreamFailed>(), isEmpty);
+    });
+
+    // `evict` reaches the same unguarded write, from `_shouldRetryFresh` —
+    // which the provider awaits *outside* the try/catch around the query. An
+    // unwritable store there would turn a classified failure into an unhandled
+    // stream error, so the guard has to cover the failure path too.
+    test('an unwritable store still evicts, retries and completes', () async {
+      final store = AgentSdkSessionStore(_unwritableFile(tmp));
+      // A process that recorded an id while the store was still healthy: the
+      // value is in the cache, so it is resumed, but it can no longer be
+      // written back.
+      await store.put('tb-1', 'claude-stale');
+      final transport = _ScriptedAgentSdkTransport(<_Attempt>[
+        _Attempt(error: 'Session claude-stale not found'),
+        _Attempt(messages: <Map<String, dynamic>>[
+          _successResult('claude-fresh', text: 'Paris.'),
+        ]),
+      ]);
+      final provider = _provider(transport, BrainSessionStrategy(store));
+
+      final events = await provider
+          .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
+          .toList();
+
+      expect(events.last, isA<LlmStreamCompleted>());
+      expect(transport.resumesSeen, <Object?>['claude-stale', null]);
     });
   });
 
