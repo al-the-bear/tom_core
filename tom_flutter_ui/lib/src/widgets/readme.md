@@ -5,10 +5,29 @@
 
 The general-purpose widget kit: every common Flutter widget given a Tom wrapper
 that adds a `tomId`, the kernel's four-state authorization, and resource-resolved
-labels / colours / icons. Each widget exposes `effectiveAuthState` and renders
-Material or Cupertino per the ambient family. 275 of the 292 also expose
-`family` — the other 17 extend a Flutter widget directly because their parent
-type-checks for it, and so have no family base to get it from.
+labels / colours / icons. Each widget exposes `effectiveAuthState`. 275 of the
+292 also expose `family` — the other 17 extend a Flutter widget directly and
+pick the Tom surface up from `TomWidgetMixin`, so they have no family base to
+get `family` from.
+
+**Nothing here reads the platform.** A wrapper delegates to exactly one Flutter
+widget, and which design language you get is decided by the type you name:
+`TomSwitch` wraps `Switch`, `TomCupertinoSwitch` wraps `CupertinoSwitch`, and
+neither consults `defaultTargetPlatform`. 35 of the wrappers are Cupertino
+ones, but they are not a parallel Material kit — only 11 have a sibling of the
+same name without the infix; the other 24 (`TomCupertinoActionSheet`,
+`TomCupertinoPicker`, `TomCupertinoPageScaffold`, …) wrap a control Material
+has no equivalent for. Picking a design language is the call site's job, and
+the census is asserted from the sources by
+`test/widgets/widget_family_claims_test.dart`.
+
+`family` has nothing to do with that. It is a `TomWidgetFamily` role tag —
+`button`, `input`, `label`, `dialog` — fixed on the base class at compile time,
+and it says what a widget is *for*, not what it looks like. The kit's one
+runtime Material-vs-Cupertino switch lives in [`forms`](../forms/readme.md),
+where `FormFieldFamily` builds either concrete from a single declaration; even
+there the caller chooses (by breakpoint, typically), so it is a decision rather
+than a probe.
 
 ## Key types
 

@@ -209,6 +209,62 @@ void main() {
       expect(find.text('Title'), findsOneWidget);
     });
   });
+
+  // The family census above answers "what is this widget for". These two
+  // answer "what does it look like", which the module readme spent a release
+  // getting wrong: it told the reader each widget "renders Material or
+  // Cupertino per the ambient family". Nothing in the kit has ever done that,
+  // and `family` is not a design language — so the sentence was false twice
+  // over, in a document a reader consults precisely because they do not yet
+  // know which of the two they get.
+  group('tccf1: the kit does not choose a design language', () {
+    test('tccf1-11: no wrapper reads the platform to decide how to render', () {
+      // These four are the ways a Flutter widget picks a design language at
+      // runtime. `.adaptive(` is the one worth naming: `Switch.adaptive` and
+      // `CircularProgressIndicator.adaptive` are Flutter's own opt-in, and a
+      // wrapper delegating to one would make the readme's claim true again
+      // without anyone editing the readme.
+      final probes = RegExp(r'defaultTargetPlatform|Platform\.is|'
+          r'CupertinoUserInterfaceLevel|\.adaptive\(');
+      final faults = <String>[];
+      final files = Directory('lib/src/widgets')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'));
+      for (final file in files) {
+        final lines = file.readAsStringSync().split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          if (probes.hasMatch(lines[i])) {
+            faults.add('${file.path}:${i + 1}: ${lines[i].trim()}');
+          }
+        }
+      }
+      expect(faults, isEmpty,
+          reason: 'a wrapper now varies its rendering by platform, so '
+              'lib/src/widgets/readme.md is wrong to say the design language '
+              'is the call site\'s choice: $faults');
+    });
+
+    test('tccf1-12: the readme states the Cupertino census source gives', () {
+      final cupertino = classes.keys.where((c) => c.startsWith('TomCupertino'));
+      // A "sibling" is the same name without the Cupertino infix — the only
+      // pairing a call site can use without consulting a table. It is also the
+      // claim that is easy to over-generalise: two thirds of these wrappers
+      // cover a control Material has no equivalent for, so a blanket
+      // `Tom*` / `TomCupertino*` pairing would be a second false claim
+      // replacing the first.
+      final paired = cupertino
+          .where((c) => classes.containsKey('Tom${c.substring(12)}'))
+          .toList();
+      expect(cupertino, hasLength(35));
+      expect(paired, hasLength(11));
+
+      final readme = File('lib/src/widgets/readme.md').readAsStringSync();
+      expect(readme, contains('${cupertino.length} of the wrappers'));
+      expect(readme, contains('only ${paired.length} have'));
+      expect(readme, isNot(contains('ambient family')));
+    });
+  });
 }
 
 class _MapAuthAdapter implements TomAuthorizationAdapter {

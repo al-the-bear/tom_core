@@ -69,6 +69,20 @@
   covers the README and all nine module readmes; `TomLabel` was the only
   phantom among them. `doc/` is excluded on purpose: it carries design
   material that names unshipped types deliberately and says so.
+- **The `widgets/` module readme promised platform-adaptive rendering the kit
+  does not do.** It said each widget "renders Material or Cupertino per the
+  ambient family". Nothing under `lib/src/widgets/` reads
+  `defaultTargetPlatform`, `Platform.is` or `CupertinoUserInterfaceLevel`, and
+  no wrapper delegates to one of Flutter's `.adaptive(` constructors — a
+  wrapper renders the one Flutter widget it wraps. The sentence also used
+  `family` for a design language, which it never was: `TomWidgetFamily` is a
+  compile-time role tag (`button`, `input`, `label`) on the base class. The
+  readme now describes what is there — 35 Cupertino wrappers the call site
+  names explicitly, of which only 11 have a same-name Material sibling — and
+  points at `forms/`, where `FormFieldFamily` is the kit's one
+  Material-vs-Cupertino switch and is driven by the caller, not by a probe.
+  `test/widgets/widget_family_claims_test.dart` now asserts the absence of the
+  four probe idioms and holds the readme to the census the sources give.
 
 - **Eight wrappers declared `tomId` / `tomGroup` / `scope` and never applied
   them.** `TomAnimatedPositioned`, `TomAnimatedPositionedDirectional`,
