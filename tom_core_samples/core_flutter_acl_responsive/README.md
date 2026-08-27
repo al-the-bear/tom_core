@@ -66,7 +66,7 @@ window to see the before/after (though the running app reacts live if you do).
 ```bash
 flutter pub get
 flutter run            # any device; desktop/web make resizing easiest
-flutter test           # 28 widget tests, all green
+flutter test --concurrency=1   # 28 widget tests, all green; serial
 ```
 
 The home screen is a list of the six mechanisms. Tap one to open its

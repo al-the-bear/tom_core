@@ -38,7 +38,7 @@ can be changed live from the `AppBar` language selector.
 ## Tests
 
 ```bash
-flutter test                       # default gate (serial; never run in parallel)
+flutter test --concurrency=1       # default gate; serial, never parallel
 flutter test test/screenshots.dart # on-demand visual-capture harness (not a gate)
 ```
 
