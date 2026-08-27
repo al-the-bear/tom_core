@@ -14,9 +14,9 @@
 ///
 /// Core classes:
 /// - `TomAuthorizationGroup` — a single group with weak-reference member
-///   tracking. It is defined in `tom_core_kernel` and re-exported by
-///   `resource_auth/tom_auth_state.dart`, so importing `tom_flutter_ui` is
-///   enough to name it and its `AuthGroupMode`.
+///   tracking. It is defined in `tom_core_kernel` and reaches consumers through
+///   `kernel_types.dart`, so importing `tom_flutter_ui` is enough to name it
+///   and its `AuthGroupMode`.
 /// - [TomWidgetMixin] — mixin for widgets that extend Flutter widgets
 library;
 

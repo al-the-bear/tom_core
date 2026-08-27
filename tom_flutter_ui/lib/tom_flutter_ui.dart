@@ -28,9 +28,10 @@
 /// | `forms` | The form and field runtime: typed observable fields, validation, layout separation. | [TomForm] |
 /// | `actions` | The action runtime — business logic with typed context, authorization and undo. | [TomAction], [TomActionController] |
 /// | `groups` | `tomGroup` collective visibility control over whole UI regions. | [TomWidgetMixin], [TomAuthorizationGroup] |
-/// | `resource_auth` | Colour, icon and config resolution, plus the authorization re-exports. | [TomUIColors], [TomUIIcons], [TomConfigProvider] |
+/// | `resource_auth` | Colour, icon and config resolution. | [TomUIColors], [TomUIIcons], [TomConfigProvider] |
 /// | `theme` | Theming and style variants. | [TomTheme] |
 /// | `custom` | Non-form custom widgets built on the same kit. | [TomEmptyState] |
+/// | `kernel_types` | The one bridge to `tom_core_kernel`: every kernel type named in a public signature here. | [TomScope], [TomAuthState] |
 ///
 /// ## Documentation
 ///
@@ -47,6 +48,7 @@ export 'src/advanced_container_layout.dart';
 export 'src/custom/tom_custom_widgets.dart';
 export 'src/forms/tom_forms.dart';
 export 'src/groups/groups.dart';
+export 'src/kernel_types.dart';
 export 'src/resource_auth/resource_auth.dart';
 export 'src/theme/theme.dart';
 export 'src/widget_base/widget_base.dart';

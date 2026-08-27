@@ -3,11 +3,11 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-The resource and configuration inputs every Tom widget resolves against:
-colour and icon namespaces (each backed by a pluggable adapter), the UI
-authorization bridge onto the kernel's `TomAuthState`, and a config / environment
-provider. Widgets look up colours, icons, and feature flags by name so the same
-widget tree renders differently per theme, platform, or environment.
+The resource and configuration inputs every Tom widget resolves against: colour
+and icon namespaces (each backed by a pluggable adapter) and a config /
+environment provider. Widgets look up colours, icons, and feature flags by name
+so the same widget tree renders differently per theme, platform, or
+environment.
 
 ## Key types
 
@@ -17,7 +17,6 @@ widget tree renders differently per theme, platform, or environment.
 | `AllColorsAdapter` / `AllIconsAdapter` | Default adapters; `registerColors` / `registerIcons` extend the sets module-wide |
 | `MaterialOnly…` / `CupertinoOnly…` `ColorAdapter` / `IconAdapter` | Single-family adapters, for bundle size or to catch off-platform names |
 | `TomUIColorAdapter` / `TomUIIconAdapter` | The pluggable adapter contracts |
-| `TomAuthorization` / `TomAuthorizationAdapter` | The kernel's four-state authorization, re-exported for UI code |
 | `TomConfigProvider` | Config / feature-flag provider (`create` + `initialize` + `current`) |
 | `TomEnvironment` / `TomPlatform` | Environment & platform enums feeding config + responsive layout |
 
@@ -52,8 +51,10 @@ misread rather than rejected — `#FF5733AA` becomes an opaque blue-violet and
 `colorExists` still answers `true`. Reorder the channels when copying one in.
 
 The four-state `TomAuthState` (hidden / disabled / read-only / editable) is
-defined in [`tom_core_kernel`](../../../../tom_core_kernel/README.md) — this
-module is the UI-side bridge that honours it.
+defined in [`tom_core_kernel`](../../../../tom_core_kernel/README.md) and
+reaches consumers through `../kernel_types.dart`. This module resolves what a
+widget renders once that state is known; it declares no authorization types of
+its own and imports nothing from the kernel.
 
 ---
 

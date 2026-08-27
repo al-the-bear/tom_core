@@ -12,14 +12,14 @@ the same grouping concept spans widgets, forms, and actions.
 
 This module owns only the widget-side wiring. The group itself
 (`TomAuthorizationGroup`, `AuthGroupMode`) is defined in `tom_core_kernel` and
-re-exported by `resource_auth/tom_auth_state.dart`, so importing
-`tom_flutter_ui` is enough to name both.
+reaches consumers through `kernel_types.dart`, so importing `tom_flutter_ui` is
+enough to name both.
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomAuthorizationGroup` | A named visibility/auth group — defined in `tom_core_kernel`, re-exported here |
+| `TomAuthorizationGroup` | A named visibility/auth group — defined in `tom_core_kernel`, bridged by `kernel_types.dart` |
 | `AuthGroupMode` | How the group's state applies to a member: `controlsAll` replaces it, `controlsWidest` (the default) caps it at a ceiling, `controlsNarrowest` lifts it to a floor |
 | `TomWidgetMixin` | Mixed into a widget to give it a `tomId` + `tomGroup` and `registerWithGroup()` |
 

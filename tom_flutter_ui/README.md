@@ -134,15 +134,33 @@ and download with progress, cancel and retry over the kernel's
 | `TomReadonlyStyle` | The read-only field styling |
 | `TomButtonVariants` | Button style-variant set |
 
-### Resource & authorization inputs (`resource_auth/`)
+### Resource & configuration inputs (`resource_auth/`)
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomUIColors`, `TomUIIcons` | Resource-resolved colour / icon namespaces |
 | `TomUIColorAdapter`, `TomUIIconAdapter` | The pluggable resource adapter contracts |
 | `AllColorsAdapter`, `AllIconsAdapter`, and the `MaterialOnly…` / `CupertinoOnly…` pairs | Full and single-family adapters for each namespace |
-| `TomAuthorization`, `TomAuthorizationAdapter` | The kernel four-state authorization, re-exported for UI code |
 | `TomConfigProvider`, `TomEnvironment`, `TomPlatform` | Config / environment inputs |
+
+### Kernel types (`kernel_types.dart`)
+
+The package does not re-export `tom_core_kernel` wholesale — `tom_basics`
+declares a `TomEnvironment` and a `TomPlatform` colliding with the enums above,
+so a blanket re-export would reach you as an `ambiguous_import`. One explicit
+list is the bridge instead, and every kernel type named in a public
+`tom_flutter_ui` signature is on it.
+
+| Group | Types |
+| ----- | ----- |
+| Authorization | `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `AuthGroupMode`, `TomAuthorizationAdapter`, `TomAuthorization`, `TomAuthorizer`, `TomAuthorizerStrategy`, `TomUIStateController` |
+| Scopes | `TomScope`, `TomScopeBase`, `TomScopeMixin` — the type of `scope:` on every Tom widget |
+| Observables | `TomObservable`, `TomObserver`, `TomFunctionObserver`, `TomObject`, `TomClass`, `TomList`, `TomListLifecycleListener`, `TomObservableEnum` |
+| File transfer | `TomFileTransferClient`, `TomFileSource`, `TomFileMetadata`, `TomTransferProgress`, `TomTransferCancellation`, `TomFileTransferException` |
+
+Anything outside that list is kernel work rather than UI work: import
+`package:tom_core_kernel/tom_core_kernel.dart` for it. See
+[`doc/kernel_types.md`](doc/kernel_types.md).
 
 ### Actions (`actions/`)
 
@@ -288,7 +306,8 @@ tom_flutter_ui
 ├── widget_base/                 # TomNodeBase / TomPolicyNodeBase / TomWidgetFamily,
 │                                #   scope widgets, screen-elements provider, resolvers
 ├── theme/                       # TomTheme + style-variant system
-├── resource_auth/               # TomUIColors / TomUIIcons / TomAuthorization adapters
+├── resource_auth/               # TomUIColors / TomUIIcons / TomConfigProvider
+├── kernel_types.dart            # the one bridge to tom_core_kernel
 ├── groups/                      # TomWidgetMixin — collective-visibility wiring
 ├── actions/                     # TomAction system (transactions, undo/redo, triggers)
 ├── advanced_container_layout/   # AclBuilder fluent row engine + Acl render widgets
@@ -298,8 +317,8 @@ tom_flutter_ui
 ```
 
 Every layer rests on `widget_base` (the `TomAuthorizable` contract + base
-classes) and resolves cross-cutting concerns through `resource_auth` (resources +
-authorization) and `theme` (appearance). `forms`, `widgets`, and
+classes) and resolves cross-cutting concerns through `resource_auth` (colours,
+icons, configuration) and `theme` (appearance). `forms`, `widgets`, and
 `advanced_container_layout` are the three feature surfaces an app composes.
 
 | Type | Responsibility |
@@ -347,7 +366,8 @@ Per-module guides live in [`doc/`](doc):
 [`groups.md`](doc/groups.md),
 [`advanced_container_layout.md`](doc/advanced_container_layout.md)
 (+ [`flutter_alignments_improvements.md`](doc/flutter_alignments_improvements.md)),
-[`widgets.md`](doc/widgets.md), [`custom.md`](doc/custom.md), and
+[`widgets.md`](doc/widgets.md), [`custom.md`](doc/custom.md),
+[`kernel_types.md`](doc/kernel_types.md), and
 [`debug_and_inspection_system.md`](doc/debug_and_inspection_system.md).
 Development guidelines live in [`_copilot_guidelines/`](_copilot_guidelines/index.md).
 

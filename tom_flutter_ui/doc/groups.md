@@ -7,9 +7,9 @@ an id (and an auth rule) on every leaf: tag the widgets with one
 according to the group's mode.
 
 The module is deliberately thin. The group *implementation*
-(`TomAuthorizationGroup`) lives in `tom_core_kernel` and is re-exported by
-`resource_auth/tom_auth_state.dart` together with its `AuthGroupMode`, so
-importing `tom_flutter_ui` is enough to name both. What `groups/` itself adds is
+(`TomAuthorizationGroup`) lives in `tom_core_kernel` and reaches consumers
+through `kernel_types.dart` together with its `AuthGroupMode`, so importing
+`tom_flutter_ui` is enough to name both. What `groups/` itself adds is
 the `TomWidgetMixin` that wires the Tom UI concerns (id, group, authorization,
 resources) into widgets that extend Flutter widgets directly.
 

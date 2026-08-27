@@ -461,41 +461,7 @@ void main() {
     });
   });
 
-  // `tom_auth_state.dart` re-exports a fixed list of kernel names, and
-  // `doc/resource_auth.md` enumerates that list in prose. Nothing kept the two
-  // in step, and they drifted: the doc named eight of the nine, omitting
-  // `AuthGroupMode` — the enum deciding whether a group narrows, replaces or
-  // lifts its members' states. An enumeration that silently loses an entry is
-  // worse than no enumeration, because it still reads as complete.
-  group('doc/resource_auth.md enumerates the re-export', () {
-    test('names every symbol the show list carries', () {
-      final source =
-          File('lib/src/resource_auth/tom_auth_state.dart').readAsStringSync();
-      final shown = RegExp(r'show\s+([^;]+);').firstMatch(source);
-      expect(shown, isNotNull, reason: 'no show list in tom_auth_state.dart');
-      final names = shown!
-          .group(1)!
-          .split(',')
-          .map((n) => n.trim())
-          .where((n) => n.isNotEmpty)
-          .toList();
-      expect(names, hasLength(9));
-
-      final doc = File('doc/resource_auth.md').readAsStringSync();
-      final start = doc.indexOf('## Authorization re-exports');
-      expect(start, greaterThan(-1), reason: 'no re-exports section');
-      final end = doc.indexOf('\n## ', start + 1);
-      final section = doc.substring(start, end == -1 ? doc.length : end);
-
-      final missing = names.where((n) => !section.contains('`$n`')).toList();
-      expect(missing, isEmpty,
-          reason: 'the re-export shows these names, but the '
-              '"Authorization re-exports" section of doc/resource_auth.md '
-              'never mentions them: $missing');
-    });
-  });
-
-  group('authorization re-exports', () {
+  group('authorization types', () {
     test('TomAuthState ordering and predicates', () {
       expect(TomAuthState.values,
           [TomAuthState.none, TomAuthState.disabled, TomAuthState.read,

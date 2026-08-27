@@ -54,10 +54,11 @@ One doc per `lib/src/` module — the public API of that module in isolation.
 | [form_authorizers.md](form_authorizers.md) | Form-field authorizers — how per-field `TomAuthState` is applied. |
 | [groups.md](groups.md) | `groups/` — `tomGroup` collective visibility control. |
 | [actions.md](actions.md) | `actions/` — the action runtime. |
-| [resource_auth.md](resource_auth.md) | `resource_auth/` — colour / icon / config resolution and authorization re-exports. |
+| [resource_auth.md](resource_auth.md) | `resource_auth/` — colour / icon / config resolution. |
 | [advanced_container_layout.md](advanced_container_layout.md) | `advanced_container_layout/` — the ACL widgets and builder. |
 | [theme.md](theme.md) | `theme/` — theming and `TomButtonVariants`. |
 | [custom.md](custom.md) | `custom/` — extension points for application-specific widgets. |
+| [kernel_types.md](kernel_types.md) | `kernel_types.dart` — the one bridge to `tom_core_kernel`: every kernel type named in a public signature here. |
 | [debug_and_inspection_system.md](debug_and_inspection_system.md) | The runtime debug / inspection overlay. |
 
 ## Working notes

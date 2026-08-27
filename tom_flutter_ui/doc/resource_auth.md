@@ -1,16 +1,15 @@
 # Resource-Auth Module
 
-`resource_auth/` is the **resource-resolution and authorization** layer of
+`resource_auth/` is the **resource-resolution and configuration** layer of
 `tom_flutter_ui`. It answers two questions Tom widgets ask at build time:
 
 1. *"What concrete `Color` / `IconData` does this resource name map to?"* — Tom
    widgets store **names** in resources (`"mRed"`, `"#FF5733"`, `"mSave"`), not
    live Flutter objects. This module turns those names into real `Color` /
    `IconData` through pluggable adapters.
-2. *"What authorization state applies here, and what environment/platform am I
-   running in?"* — it re-exports the canonical authorization types from
-   `tom_core_kernel` and provides the `TomConfigProvider` for environment /
-   platform / feature-flag data.
+2. *"What environment / platform am I running in, and which feature flags are
+   set?"* — `TomConfigProvider` holds the technical configuration a widget
+   resolves against, distinct from user-facing resources.
 
 The split is deliberate: **resources are user-facing text** (resolved by
 `TomCtr` in `widget_base`), while **colours, icons, and config are technical
@@ -22,7 +21,7 @@ data** resolved here.
 - [Colour resolution](#colour-resolution)
 - [Icon resolution](#icon-resolution)
 - [Configuration: `TomConfigProvider`](#configuration-tomconfigprovider)
-- [Authorization re-exports](#authorization-re-exports)
+- [Where the authorization types come from](#where-the-authorization-types-come-from)
 - [Why name → object indirection?](#why-name--object-indirection)
 - [Dependencies](#dependencies)
 
@@ -42,7 +41,6 @@ data** resolved here.
 | `MaterialOnlyIconAdapter` / `CupertinoOnlyIconAdapter` | adapters | Single-family icon resolvers for smaller bundles. |
 | `TomConfigProvider` | singleton | Environment, platform, and feature-flag configuration. |
 | `TomEnvironment` / `TomPlatform` | enums | `development`/`staging`/`production`; `mobile`/`web`/`desktop`. |
-| `TomAuthState`, `TomAuthorizable`, `TomAuthorization`, `TomAuthorizer`, … | re-exports | The canonical authorization types from `tom_core_kernel`. |
 
 ## Colour resolution
 
@@ -166,26 +164,21 @@ TomConfigProvider.current.feature<int>('maxItems');   // 50
 `null`); `isEnabled` treats `true`, `'true'`, and `1` as truthy. Flags are stored
 unmodifiable.
 
-## Authorization re-exports
+## Where the authorization types come from
 
-`tom_auth_state.dart` does not define new authorization types — it **re-exports**
-the canonical set from `tom_core_kernel`
-(`security/tom_authorization.dart`): `TomAuthState` (`none` < `disabled` <
-`read` < `full`), `TomAuthorizable`, `TomAuthorizationGroup`, `AuthGroupMode`,
+The canonical authorization set — `TomAuthState` (`none` < `disabled` < `read`
+< `full`), `TomAuthorizable`, `TomAuthorizationGroup`, `AuthGroupMode`,
 `TomAuthorizationAdapter`, `TomAuthorization`, `TomAuthorizer`,
-`TomAuthorizerStrategy`, `TomUIStateController`. Widget code uses these
-canonical kernel names directly — there are no UI-specific aliases. Consuming the
-auth types through this barrel means widget code imports a single
-`tom_flutter_ui` surface rather than reaching into the kernel directly.
+`TomAuthorizerStrategy`, `TomUIStateController` — is declared by
+`tom_core_kernel` (`security/tom_authorization.dart`). This module does not
+define, alias, or re-export it: widget code uses the kernel names directly, and
+they reach a consumer through `lib/src/kernel_types.dart`, the package's single
+bridge to the kernel. See [kernel_types.md](kernel_types.md) for the rules that
+decide what the bridge carries and the two guards that keep it honest.
 
-The re-export names the kernel's **public barrel**,
-`package:tom_core_kernel/tom_core_kernel.dart`, not the `lib/src/` path that
-declares the types — the barrel exports that file unfiltered, so the two are
-equivalent, but `lib/src/` is private by Dart convention and naming it would
-turn any reorganisation inside the kernel into a compile error here. The
-`implementation_imports` lint enforces that for `import`; it does not fire on
-`export`, so `test/library_dartdoc_test.dart` checks every directive under
-`lib/` for the same rule.
+What this module *does* own is everything a widget resolves once its
+authorization state is known: the colour, icon, and configuration lookups
+above.
 
 ## Why name → object indirection?
 
@@ -200,7 +193,9 @@ registering overrides, with zero widget changes.
 - `dart:ui` / `package:flutter/widgets.dart` / `package:flutter/material.dart` /
   `package:flutter/cupertino.dart` — `Color`, `IconData`, and the generated
   palettes/icon sets.
-- `package:tom_core_kernel/...` — the re-exported authorization types.
+
+No kernel dependency: every file here imports Flutter and its sibling
+generated file, and nothing else.
 
 > The colour, icon, and config resolvers are pure logic and need no widget tree,
 > but the package barrel pulls in `flutter/material` (→ `dart:ui`), so run the

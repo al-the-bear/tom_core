@@ -2,6 +2,15 @@
 
 ### Fixed
 
+- **`TomScope` is nameable from the package barrel.** `scope:` is a parameter
+  on every Tom widget and its type is the kernel's `TomScope`, but the package
+  does not re-export `tom_core_kernel` wholesale and `TomScope` was absent from
+  the only `show` list it had — so a consumer could read the parameter in a
+  signature and had no way to name its type or build an argument for it.
+  Nothing inside `lib/` could catch that, because the ~85 files declaring those
+  signatures import the kernel barrel unfiltered; the omission was visible only
+  from outside. Every kernel type in a public signature is now audited and
+  carried.
 - **An explicit `decoration` on the text inputs is no longer overwritten.**
   `TomTextField` and `TomTextFormField` resolved their label from resources
   unconditionally and wrote it over the supplied `InputDecoration` at the end,
@@ -29,8 +38,8 @@
   carried one spelling that was simultaneously discouraged and canonical. Every
   declaration, example, test and document now names the kernel type directly,
   leaving one spelling per type across the framework. `lib/src/groups/` keeps
-  only `TomWidgetMixin`; the group type reaches consumers through the
-  `resource_auth` re-export as before.
+  only `TomWidgetMixin`; the group type reaches consumers through
+  `kernel_types.dart`.
 - **The assertions that the removed alias still existed are gone too.** That
   rename was applied inside the sentences explaining the alias, so the groups
   example and its test were left stating that `TomAuthorizationGroup` is a
@@ -42,6 +51,20 @@
 
 ### Added
 
+- **`lib/src/kernel_types.dart` — one bridge to `tom_core_kernel`, and two
+  guards on it.** The package's kernel re-exports were split across
+  `resource_auth/tom_auth_state.dart` (nine authorization names) and
+  `widget_base/tom_authorizable.dart` (one), which is why nobody had ever
+  audited what the bridge carries against what the public signatures need. Both
+  files are replaced by one package-level list of 26 names, with the membership
+  rules written down beside it. `tool/check_kernel_bridge.py` fails when a
+  kernel type reaches a public declaration position without reaching the list;
+  `test/kernel_types_test.dart` imports nothing but the package barrel and uses
+  each bridged type, so a name that does not actually resolve stops the file
+  compiling. A blanket re-export is not the alternative: the kernel barrel
+  re-exports `tom_basics`, which declares a `TomEnvironment` and a `TomPlatform`
+  colliding with this package's own enums of those names, so every use of
+  either would be an `ambiguous_import`.
 - **`MaterialOnlyColorAdapter` and `CupertinoOnlyColorAdapter`.** The icon side
   of `resource_auth/` shipped three adapters and the colour side one, although
   `GeneratedColors` has exposed `materialColors` and `cupertinoColors` as
@@ -65,10 +88,10 @@
 - The two byte-identical private `_resolveDecoration` methods on the text
   inputs are replaced by one shared `_resolveInputDecoration` helper carrying
   the precedence rule and its rationale.
-- **`AuthGroupMode` is re-exported by `tom_flutter_ui`.** It was omitted from
-  the `resource_auth/tom_auth_state.dart` `show` list, so group code that named
-  a mode had to import `tom_core_kernel` as well. Importing `tom_flutter_ui` is
-  now sufficient for the group type and its mode enum together.
+- **`AuthGroupMode` is carried by the kernel bridge.** It was absent from the
+  package's `show` list, so group code that named a mode had to import
+  `tom_core_kernel` as well. Importing `tom_flutter_ui` is now sufficient for
+  the group type and its mode enum together.
 
 ### Documentation
 

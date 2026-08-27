@@ -30,7 +30,6 @@ library;
 // ignore_for_file: avoid_print
 
 import 'package:flutter/widgets.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// A minimal Tom widget that mixes in [TomWidgetMixin] so it participates in
