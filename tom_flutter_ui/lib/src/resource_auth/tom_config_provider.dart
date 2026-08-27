@@ -44,10 +44,38 @@ class TomConfigProvider {
     return value is T ? value : null;
   }
 
-  /// Whether a feature flag is truthy.
+  /// Whether the feature flag [name] is enabled.
+  ///
+  /// A flag is enabled when it is the boolean `true`, a number equal to `1`
+  /// (so `1.0` counts), or a string reading `true` or `1` once case and
+  /// surrounding whitespace are folded away. Everything else is disabled:
+  /// `false`, `0`, `'false'`, a value outside that vocabulary (`'yes'`, `2`),
+  /// a value of some other type, and a flag that was never set.
+  ///
+  /// The tolerance exists because a flag arrives spelled differently
+  /// depending on where it was authored — Dart hands over a `bool`, YAML and
+  /// JSON a `bool` or a `num`, and `--dart-define` and environment variables
+  /// can only carry text. Which source a flag came through must not change
+  /// what it means.
+  ///
+  /// It stops at spelling. Synonyms — `'yes'`, `'on'`, `'y'` — are *not*
+  /// enabled, because admitting one commits this to a list of them that
+  /// nobody agreed on. It is the line [AllColorsAdapter] already draws: it
+  /// folds case in `#FFF` and `rgb(...)` syntax and still does not know what
+  /// `crimson` means.
+  ///
+  /// Being outside the vocabulary is not the same as being lost — [feature]
+  /// still reports the value unchanged, which is where anything richer than
+  /// on/off belongs.
   bool isEnabled(String name) {
     final value = _flags[name];
-    return value == true || value == 'true' || value == 1;
+    if (value is bool) return value;
+    if (value is num) return value == 1;
+    if (value is String) {
+      final text = value.trim().toLowerCase();
+      return text == 'true' || text == '1';
+    }
+    return false;
   }
 }
 

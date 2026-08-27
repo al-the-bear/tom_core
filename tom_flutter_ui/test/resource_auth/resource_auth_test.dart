@@ -531,19 +531,71 @@ void main() {
       expect(cfg.feature<int>('missing'), isNull);
     });
 
-    test('isEnabled treats true, "true" and 1 as truthy', () {
-      TomConfigProvider.initialize(TomConfigProvider.create(
-        environment: TomEnvironment.development,
-        platform: TomPlatform.mobile,
-        flags: {'a': true, 'b': 'true', 'c': 1, 'd': false, 'e': 'no'},
-      ));
-      final cfg = TomConfigProvider.current;
-      expect(cfg.isEnabled('a'), isTrue);
-      expect(cfg.isEnabled('b'), isTrue);
-      expect(cfg.isEnabled('c'), isTrue);
-      expect(cfg.isEnabled('d'), isFalse);
-      expect(cfg.isEnabled('e'), isFalse);
-      expect(cfg.isEnabled('missing'), isFalse);
+    // `isEnabled` has one rule spanning three axes, and the axes are pinned
+    // together because the hazard is them disagreeing. The same flag reaches
+    // an application as a `bool` from Dart, as `1` from YAML or JSON, and as
+    // `'true'` or `'1'` from --dart-define or an environment variable, which
+    // can carry neither of the other two. Which source it came through must
+    // not change what it means.
+    test('isEnabled: every spelling of on agrees', () {
+      const on = <String, Object>{
+        'boolean': true,
+        'number': 1,
+        'double': 1.0,
+        'word': 'true',
+        'shouty': 'TRUE',
+        'mixed': 'True',
+        'padded': '  true  ',
+        'digit': '1',
+        'paddedDigit': ' 1 ',
+      };
+      final cfg = _withFlags(on);
+      for (final name in on.keys) {
+        expect(cfg.isEnabled(name), isTrue, reason: 'flag "$name"');
+      }
+    });
+
+    test('isEnabled: every spelling of off agrees, and so does absence', () {
+      const off = <String, Object>{
+        'boolean': false,
+        'zero': 0,
+        'zeroDouble': 0.0,
+        'word': 'false',
+        'shouty': 'FALSE',
+        'empty': '',
+      };
+      final cfg = _withFlags(off);
+      for (final name in off.keys) {
+        expect(cfg.isEnabled(name), isFalse, reason: 'flag "$name"');
+      }
+      expect(cfg.isEnabled('neverSet'), isFalse);
+    });
+
+    // The tolerance is bounded on purpose. Case and surrounding space are
+    // noise from the authoring source; a synonym is a different word, and
+    // admitting one commits the module to a list of them that nobody agreed
+    // on. It is the line AllColorsAdapter already draws — it folds case in
+    // `#FFF` and `rgb(...)` syntax and still does not know `crimson`.
+    test('isEnabled: the tolerance stops at spelling, not synonyms', () {
+      const outside = <String, Object>{
+        'yes': 'yes',
+        'on': 'on',
+        'y': 'y',
+        'enabled': 'enabled',
+        'typo': 'ture',
+        'two': 2,
+        'minusOne': -1,
+        'list': <String>['true'],
+      };
+      final cfg = _withFlags(outside);
+      for (final name in outside.keys) {
+        expect(cfg.isEnabled(name), isFalse, reason: 'flag "$name"');
+      }
+
+      // Falsy is not the same as lost: a value outside the on/off vocabulary
+      // is still readable, which is where anything richer than a flag lives.
+      expect(cfg.feature<String>('yes'), 'yes');
+      expect(cfg.feature<int>('two'), 2);
     });
   });
 
@@ -560,3 +612,15 @@ void main() {
     });
   });
 }
+
+/// A provider carrying [flags], built but deliberately **not** installed.
+///
+/// `isEnabled` is a rule about a value, so the flag-vocabulary cases have no
+/// use for the global singleton; going through it would only add teardown
+/// that could fail for reasons the case is not about.
+TomConfigProvider _withFlags(Map<String, Object> flags) =>
+    TomConfigProvider.create(
+      environment: TomEnvironment.development,
+      platform: TomPlatform.mobile,
+      flags: flags,
+    );

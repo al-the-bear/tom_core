@@ -181,8 +181,34 @@ TomConfigProvider.current.feature<int>('maxItems');   // 50
 ```
 
 `feature<T>` returns the flag value when it matches the requested type (else
-`null`); `isEnabled` treats `true`, `'true'`, and `1` as truthy. Flags are stored
-unmodifiable.
+`null`). Flags are stored unmodifiable.
+
+`isEnabled` reports a flag enabled when it is the boolean `true`, a number
+equal to `1` (so `1.0` counts), or a string reading `true` or `1` once case and
+surrounding whitespace are folded away:
+
+```dart
+final cfg = TomConfigProvider.create(
+  environment: TomEnvironment.production,
+  platform: TomPlatform.web,
+  flags: {'a': true, 'b': 1, 'c': 1.0, 'd': 'TRUE', 'e': ' true ', 'f': '1',
+          'g': false, 'h': 0, 'i': 'yes', 'j': 2},
+);
+cfg.isEnabled('a');        // true — and so are b, c, d, e, f
+cfg.isEnabled('g');        // false — and so are h, i, j
+cfg.isEnabled('neverSet'); // false
+```
+
+The tolerance is there because a flag is spelled differently depending on where
+it was authored: Dart hands over a `bool`, YAML and JSON a `bool` or a `num`,
+and `--dart-define` and environment variables can only carry text. Which source
+a flag came through must not change what it means.
+
+It stops at spelling. Synonyms — `'yes'`, `'on'`, `'y'` — are **not** enabled,
+because admitting one commits the module to a list of them that nobody agreed
+on. It is the same line `AllColorsAdapter` draws: it folds case in `#FFF` and
+`rgb(...)` syntax and still does not know what `crimson` means. A value outside
+the vocabulary is not lost, only not a flag — `feature<T>` still reports it.
 
 ## Where the authorization types come from
 

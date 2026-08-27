@@ -55,6 +55,15 @@ one point — `TomConfigProvider.current` **throws** before `initialize` rather
 than returning `null`, because a missing config is a startup bug while a
 missing adapter is a supported degraded mode.
 
+**A flag is enabled when it spells `true` or `1`.** `isEnabled` accepts the
+boolean `true`, a number equal to `1` (so `1.0` counts), and a string reading
+`true` or `1` once case and surrounding whitespace are folded away — because a
+flag is spelled differently depending on where it was authored, and
+`--dart-define` and environment variables can carry nothing but text. It stops
+at spelling: `'yes'`, `'on'` and `2` are **not** enabled, in the same way
+`AllColorsAdapter` folds case in `#FFF` syntax without knowing what `crimson`
+means. Anything outside the vocabulary is still readable through `feature<T>`.
+
 Registration stays on the `All…` adapters even though the registry it fills is
 module-wide, so that each family has exactly one place to register. Calling
 `AllIconsAdapter.registerIcons` while `MaterialOnlyIconAdapter` is installed is

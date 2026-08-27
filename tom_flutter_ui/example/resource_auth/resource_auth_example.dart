@@ -61,10 +61,19 @@ void run() {
   print('cupertinoOnly mSave -> ${cupertinoOnly.resolveIcon('mSave')}');
 
   // Example 5: configuration — environment, platform, and feature flags.
+  // The three enabled flags below are spelled the three ways the sources
+  // flags come from can spell them: Dart hands over a bool, YAML a number,
+  // and --dart-define nothing but text. All three mean the same thing.
   TomConfigProvider.initialize(TomConfigProvider.create(
     environment: TomEnvironment.production,
     platform: TomPlatform.web,
-    flags: {'newCheckout': true, 'maxItems': 50},
+    flags: {
+      'newCheckout': true,
+      'compactRows': 1,
+      'betaBanner': 'TRUE',
+      'legacyGrid': 'yes', // not the vocabulary — disabled, not enabled
+      'maxItems': 50,
+    },
   ));
   final cfg = TomConfigProvider.current;
   print('env=${cfg.environment} platform=${cfg.platform} '
@@ -101,9 +110,17 @@ void run() {
   assert(cupertinoOnly.resolveIcon('cShare') == CupertinoIcons.share);
 
   assert(cfg.environment == TomEnvironment.production);
-  assert(cfg.isEnabled('newCheckout'));
   assert(cfg.feature<int>('maxItems') == 50);
   assert(cfg.feature<String>('maxItems') == null); // wrong type -> null
+
+  // true, 1 and a case-folded 'true' are one rule, not three special cases.
+  assert(cfg.isEnabled('newCheckout'));
+  assert(cfg.isEnabled('compactRows'));
+  assert(cfg.isEnabled('betaBanner'));
+  // The tolerance stops at spelling: 'yes' is a synonym, not a spelling, and
+  // an unset flag is off. Neither is lost — feature<T> still reports them.
+  assert(!cfg.isEnabled('legacyGrid'));
+  assert(cfg.feature<String>('legacyGrid') == 'yes');
   assert(!cfg.isEnabled('missingFlag'));
 
   // none < disabled < read < full
