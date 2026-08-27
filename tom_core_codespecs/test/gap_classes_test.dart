@@ -910,6 +910,130 @@ void main() {
       );
     });
 
+    // tcinc937: the constructor dartdoc names six rejected defects and offers
+    // that list as what a generator may rely on being caught. Only three of
+    // them had a test, and `_rejectDuplicates` is applied to five namespaces
+    // of which only column name was exercised — so a namespace could have been
+    // dropped from the call list without failing anything. The cases below
+    // close that: one per remaining defect, so removing a check breaks a test
+    // that names it.
+
+    test('an empty reportId is rejected', () {
+      expect(
+        () => TomReportDefinition(
+          reportId: '',
+          sourceEntity: _Order,
+          columns: [
+            TomReportColumn(
+              name: 'region',
+              sourceKey: 'region',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+          dimensions: [
+            TomReportDimension(
+              key: 'region',
+              columnName: 'customer_region',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('duplicate dimension keys are rejected', () {
+      expect(
+        () => build(dimensions: [
+          TomReportDimension(
+            key: 'region',
+            columnName: 'customer_region',
+            valueKind: TomReportValueKind.string,
+          ),
+          TomReportDimension(
+            key: 'region',
+            columnName: 'billing_region',
+            valueKind: TomReportValueKind.string,
+          ),
+        ]),
+        throwsDuplicate('dimension key'),
+      );
+    });
+
+    test('duplicate measure keys are rejected', () {
+      expect(
+        () => build(measures: [
+          TomReportMeasure(
+            key: 'revenue',
+            function: TomReportMeasureFunction.sum,
+            columnName: 'total',
+            valueKind: TomReportValueKind.currency,
+          ),
+          TomReportMeasure(
+            key: 'revenue',
+            function: TomReportMeasureFunction.avg,
+            columnName: 'total',
+            valueKind: TomReportValueKind.currency,
+          ),
+        ]),
+        throwsDuplicate('measure key'),
+      );
+    });
+
+    test('duplicate parameter names are rejected', () {
+      expect(
+        () => TomReportDefinition(
+          reportId: 'sales_by_region',
+          sourceEntity: _Order,
+          dimensions: [
+            TomReportDimension(
+              key: 'region',
+              columnName: 'customer_region',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+          columns: [
+            TomReportColumn(
+              name: 'region',
+              sourceKey: 'region',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+          parameters: [
+            TomReportParameter(
+              name: 'from',
+              valueKind: TomReportValueKind.date,
+            ),
+            TomReportParameter(
+              name: 'from',
+              valueKind: TomReportValueKind.date,
+            ),
+          ],
+        ),
+        throwsDuplicate('parameter name'),
+      );
+    });
+
+    test('duplicate chart ids are rejected', () {
+      expect(
+        () => build(charts: [
+          TomReportChart(
+            chartId: 'by_region',
+            kind: TomReportChartKind.bar,
+            categoryColumn: 'region',
+            valueColumns: const ['revenue'],
+          ),
+          TomReportChart(
+            chartId: 'by_region',
+            kind: TomReportChartKind.line,
+            categoryColumn: 'region',
+            valueColumns: const ['revenue'],
+          ),
+        ]),
+        throwsDuplicate('chart id'),
+      );
+    });
+
     // An empty dimension list aggregates over the whole filtered set — the
     // same meaning an empty groupBy has in the query substrate.
     test('a report with no dimensions is a valid single-row aggregate', () {
@@ -1159,6 +1283,21 @@ void main() {
     });
   });
 }
+
+/// Matches the [ArgumentError] `_rejectDuplicates` raises for [what].
+///
+/// A bare `throwsArgumentError` is too weak for the duplicate cases: a
+/// repeated dimension key also shortens the combined key set, so
+/// `TomReportDefinition`'s key-claimed-by-both check throws on the same input.
+/// The test would then still pass with `_rejectDuplicates` deleted. Pinning
+/// the message ties each test to the check it names.
+Matcher throwsDuplicate(String what) => throwsA(
+      isA<ArgumentError>().having(
+        (e) => e.message,
+        'message',
+        contains('Duplicate $what'),
+      ),
+    );
 
 /// Stand-in CE-DB entity types for the CE-JB and CE-RP target tests.
 ///

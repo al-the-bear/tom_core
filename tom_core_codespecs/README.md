@@ -158,10 +158,12 @@ because a report exists for results too large to hold inline.
 `TomReportMeasureFunction` is 1:1 with `tom_core_server`'s `TomAggregateFunction`
 — a measure the query layer cannot compile is a measure that cannot run — and
 `COUNT(*)` / `COUNT(DISTINCT c)` are expressed as fields (`columnName`,
-`distinct`) rather than as extra members. Three checks run at construction,
-because each is a specification defect no generator can repair: a column whose
-`sourceKey` names neither a dimension nor a measure, one key claimed by both,
-and a chart plotting a column the report does not project.
+`distinct`) rather than as extra members. Construction is where a report's
+internal consistency is settled: the constructor throws `ArgumentError` on each
+specification defect no generator can repair — anything that would leave the
+emitted code referring to something that does not exist. `TomReportDefinition`'s
+constructor dartdoc enumerates them, and is the one place that does; a count
+repeated in prose is a count that goes stale.
 
 **A report's authorization is deliberately not held here.** It rides a
 `@CsAuthorize` beside the `@CsReport` marker, per `codespecs_mapping.md`

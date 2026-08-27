@@ -37,6 +37,21 @@
   legitimately names types from other packages — but it is the direction that
   drifted, and dropping one name from a parenthesised list is exactly the edit
   review does not catch.
+- Docs only: `TomReportDefinition`'s construction checks were described in
+  three places and agreed in none — the README counted three, the constructor
+  dartdoc named a different three, and the completion record listed five. All
+  three understated a constructor that rejects six defects. The dartdoc is now
+  the one normative enumeration: it sits beside the code, so a seventh check is
+  a diff a reviewer sees next to the list it belongs in. The README stops both
+  counting and enumerating and points there instead, since a count repeated in
+  prose is a count that goes stale.
+- Five tests close the gap the divergence hid. The empty-`reportId` check — the
+  one all three descriptions omitted — had no test at all, and of the five
+  namespaces `_rejectDuplicates` guards only column name was exercised, so four
+  could have been dropped from the call list without failing anything. The
+  duplicate cases assert the *message*, not just `ArgumentError`: a repeated
+  dimension key also trips the key-claimed-by-both check, so a weaker matcher
+  passes with the duplicate check deleted.
 
 ## 0.11.0
 

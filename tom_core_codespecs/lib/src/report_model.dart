@@ -443,11 +443,24 @@ class TomReportChart {
 class TomReportDefinition {
   /// Creates a definition and checks its internal consistency.
   ///
-  /// Throws [ArgumentError] when a key is duplicated, when a column displays a
-  /// key that no dimension or measure declares, or when a chart plots a column
-  /// the report does not project. These are the checks a generator cannot defer
-  /// to runtime: each one is a specification defect that would otherwise emit
-  /// code referring to something that does not exist.
+  /// Throws [ArgumentError] on any of six defects, each a specification error
+  /// that no generator can repair and that would otherwise emit code referring
+  /// to something that does not exist:
+  ///
+  /// - an empty [reportId];
+  /// - an empty [columns] list — a report that projects nothing;
+  /// - a duplicate identifier within one namespace: dimension key, measure key,
+  ///   column name, parameter name or chart id;
+  /// - one key claimed by both a dimension and a measure, which would leave a
+  ///   column's [TomReportColumn.sourceKey] ambiguous;
+  /// - a column whose [TomReportColumn.sourceKey] names neither a dimension nor
+  ///   a measure;
+  /// - a chart plotting a column the report does not project.
+  ///
+  /// This is the normative list. Prose elsewhere points here rather than
+  /// restating it, so there is one enumeration to keep in step with the code
+  /// below — and it sits in the same file, so a seventh check is a diff a
+  /// reviewer sees alongside it.
   TomReportDefinition({
     required this.reportId,
     required this.sourceEntity,
