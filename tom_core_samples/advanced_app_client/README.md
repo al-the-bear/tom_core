@@ -46,12 +46,16 @@ final roles = await backend.resourceRoles(); // resourceKey → roleName ('item:
 
 ## App shell (bootstrap + session)
 
-`lib/main.dart` performs the four bootstrap steps — reflection → platform →
-resource provider → `runApp` — and injects an `AppSession` over the chosen
-backend. By default (no dart-defines) that is the live stack: `LiveAppBackend`
-over the local servers, reading their URLs from the `AdvancedClientConfig` config
-bean. Pass `--dart-define=TEST_MODE=true` to boot on the seeded
-`InMemoryAppBackend` instead.
+`lib/main.dart` performs five registrations before the first frame —
+`initializeReflection()`, `registerProjectRoleVocabulary()` (the shared
+`ProjectRole → TomAuthState` grades), the client platform,
+`registerSampleFilePicker()` and `AdvancedClientConfig.registerDefault()` (the
+server URLs) — then injects an `AppSession` over the chosen backend, fetches the
+public login bundle into the resource provider, and calls `runApp`. By default
+(no dart-defines) that backend is the live stack: `LiveAppBackend` over the
+local servers, reading their URLs from the `AdvancedClientConfig` config bean.
+Pass `--dart-define=TEST_MODE=true` to boot on the seeded `InMemoryAppBackend`
+instead.
 
 `AppSession` (`lib/app/app_session.dart`) is a `ChangeNotifier` holding the
 signed-in principal, the token pair, and the principal's per-resource role

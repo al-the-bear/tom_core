@@ -1,7 +1,7 @@
 /// Entry point for `advanced_app_client` — the end-user task board for the
 /// advanced Tom Core full-stack sample (step 27).
 ///
-/// Four things happen before the first frame:
+/// Five registrations run before the first frame, in this order:
 ///
 ///  1. [initializeReflection] (from this app's `reflection_seed.dart`) registers
 ///     the reflected `@tomReflector` entities the backend constructs and the
@@ -9,13 +9,22 @@
 ///     client-local `LoginCredentials`/`LoginForm`, all captured by the one
 ///     generated seed. It must run before any reflected type is built (the
 ///     in-memory backend seeds its tree in its constructor), so it comes first.
-///  2. The Flutter client platform is registered via
+///  2. [registerProjectRoleVocabulary] establishes the shared
+///     `ProjectRole → TomAuthState` mapping in the [TomResourceRoleRegistry],
+///     which every resource-key lookup resolves a role name through (C-5).
+///  3. The Flutter client platform is registered via
 ///     `TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)` so kernel code
 ///     that probes the runtime gets the Flutter implementation.
-///  3. The public login resource bundle is fetched through the backend seam and
-///     installed as the singleton [TomTextResourceProvider], so the sign-in
-///     screen renders server-delivered chrome rather than any hardcoded string.
-///  4. The app runs over that [AppSession] wrapping the DI-selected [AppBackend].
+///  4. [registerSampleFilePicker] installs the one picker seam every file field
+///     in the app opens.
+///  5. [AdvancedClientConfig.registerDefault] installs the config bean holding
+///     the server URLs the live backend self-wires from.
+///
+/// Then an [AppSession] is constructed over the DI-selected [AppBackend]; the
+/// public login resource bundle is fetched through that backend seam and
+/// installed as the singleton [TomTextResourceProvider], so the sign-in screen
+/// renders server-delivered chrome rather than any hardcoded string; and
+/// [runApp] starts the shell over that session.
 ///
 /// The **default** run mode is the live stack: started with no dart-defines the
 /// app targets the local `advanced_auth_server` + `advanced_app_server` through
