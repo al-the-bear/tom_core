@@ -344,8 +344,18 @@ static** — testable with no widget tree:
 `buildConvenienceDetector({...})` assembles an [`AclVariantDetector`] from named
 facets with **AND** semantics — every supplied condition must hold. It returns
 `null` when no facet is given (the default variant); otherwise the predicate
-treats `width`/`height` as upper bounds (`>=` → no match) and compares the rest
-for equality/membership.
+treats `width`/`height` as **exclusive upper bounds** (`>=` → no match),
+`minAccessibilityScale` as an **inclusive lower bound** (the two numeric facets
+point in opposite directions), and compares the rest for equality/membership.
+
+`height` is the one facet whose input can be absent: `AclDeviceContext.height` is
+`double?`, and the container reports `null` for it whenever the incoming
+constraints have unbounded height. An absent height **fails** the facet rather
+than being skipped, so a `height`-gated variant never activates while the
+container shrink-wraps — inside a `Column`, a `ListView`, or any scrollable —
+and the row falls back to its default variant. Give the container a bounded
+height if a height-gated variant is meant to fire. See
+`test/advanced_container_layout/acl_variant_detector_test.dart`.
 
 ## Group visibility controllers
 

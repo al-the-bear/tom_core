@@ -148,6 +148,41 @@ class AclDeviceContext {
   /// All specified parameters combine with AND logic — every condition must be
   /// true for the detector to return true.  Returns `null` when no parameters
   /// are specified (indicating a default variant).
+  ///
+  /// The two size facets are **exclusive upper bounds**: [width] and [height]
+  /// match a device strictly *narrower* / *shorter* than the value given, so a
+  /// bound of `500` does not match a device of exactly `500`.
+  /// [minAccessibilityScale] points the other way and is an **inclusive lower
+  /// bound** — the parameter names are the only hint that the numeric facets
+  /// disagree about direction.
+  ///
+  /// ## An unknown device height never matches
+  ///
+  /// [AclDeviceContext.height] is nullable, and the container leaves it `null`
+  /// whenever the incoming constraints have unbounded height — that is,
+  /// whenever it shrink-wraps its content, which is the ordinary case inside a
+  /// `Column`, a `ListView`, or any scrollable.
+  ///
+  /// A [height] facet asked of such a context returns `false`. `null` is *not*
+  /// read as "no constraint on this axis" and does not fall back to a default
+  /// height: it fails the facet outright, and because the facets are ANDed it
+  /// vetoes the whole detector however well every other facet fits.
+  ///
+  /// This is the intended degradation — an unbounded height is not a *short*
+  /// one, so a spec meaning "activate when the viewport is short" should not
+  /// fire when the viewport has no height to speak of. But the consequence is
+  /// worth stating plainly, because it is invisible at the call site: **a
+  /// variant gated on [height] can never activate in a shrink-wrapping
+  /// container**, and the row falls back to its default variant instead. An
+  /// author who wants a height-gated variant must give the container a bounded
+  /// height — an enclosing `SizedBox`, `Expanded` or `Flexible`.
+  ///
+  /// [width] has no equivalent hazard: `width` is non-nullable, and the
+  /// container only builds a device context at all when the horizontal axis is
+  /// bounded.
+  ///
+  /// The behaviour is pinned by
+  /// `test/advanced_container_layout/acl_variant_detector_test.dart`.
   static AclVariantDetector? buildConvenienceDetector({
     double? width,
     double? height,

@@ -1493,6 +1493,32 @@ When **no parameters** are specified, the variant is the **default** — shown w
 | 9 | `textDirection` | `TextDirection?` | Active when `deviceContext.textDirection == textDirection` |
 | 10 | `minAccessibilityScale` | `double?` | Active when `deviceContext.accessibilityScale >= minAccessibilityScale` |
 
+Note that `width` and `height` are **exclusive upper** bounds while
+`minAccessibilityScale` is an **inclusive lower** one — the two numeric facets
+point in opposite directions, and nothing in the parameter list says so.
+
+#### The consequence of an unknown height
+
+Row 2 is the only facet whose input can be absent, and its `!= null` clause has
+a reach that the row alone does not convey. `AclDeviceContext.height` is `null`
+whenever the container's incoming constraints have unbounded height — that is,
+whenever it shrink-wraps, which is the ordinary case inside a `Column`, a
+`ListView`, or any scrollable. An absent height does not mean "no constraint on
+this axis" and does not fall back to a default: it **fails** the facet, and
+because the facets are ANDed it vetoes the whole variant however well every
+other facet fits.
+
+So **a variant gated on `height` never activates in a shrink-wrapping
+container**, and the row silently falls back to its default variant. That is the
+intended degradation — an unbounded height is not a *short* one — but an author
+who has not been told will read the missing variant as a bug in their own
+layout. Give the container a bounded height (`SizedBox`, `Expanded`,
+`Flexible`) when a height-gated variant is meant to fire.
+
+`width` carries no equivalent hazard: it is non-nullable, and the container
+builds no device context at all when the *horizontal* axis is unbounded — in
+which case no detector is evaluated and the default variant shows.
+
 ### Combination Rules
 
 When multiple convenience parameters are specified, they combine with **AND** logic — **every** condition must be true for the variant to be active.

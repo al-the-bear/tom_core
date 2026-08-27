@@ -1232,6 +1232,30 @@ class AclBuilder {
 
   // ── Inline Component Variants ──────────────────────────────────────────────
 
+  /// Opens a block whose appended components belong to one device variant.
+  ///
+  /// Everything appended until the matching [endVariant] is tagged with a
+  /// single detector. At layout time the container evaluates each row's
+  /// variants **in declaration order and keeps the first that matches**;
+  /// components of the losing variants are dropped from that row entirely.
+  ///
+  /// A `startVariant()` with no arguments builds no detector and marks its
+  /// components as the **default variant**. It is not part of that ordered
+  /// race — it is the fallback taken when no gated variant matched, so it may
+  /// be declared anywhere in the row. It is also what shows when the container
+  /// has no device context to test against at all, which happens whenever the
+  /// incoming constraints have unbounded *width*.
+  ///
+  /// The named facets are forwarded to
+  /// [AclDeviceContext.buildConvenienceDetector] and combine with AND. Read its
+  /// documentation before gating on [height] in particular: an unbounded
+  /// container reports an unknown height, which **fails** the facet, so a
+  /// height-gated variant never activates while the container shrink-wraps.
+  ///
+  /// Passing [detector] supplies the predicate directly and ignores every named
+  /// facet — use it for conditions the convenience parameters cannot express.
+  ///
+  /// Throws [StateError] when a variant block is already open.
   AclBuilder startVariant({
     double? width,
     double? height,
@@ -1268,6 +1292,13 @@ class AclBuilder {
     return this;
   }
 
+  /// Closes the block opened by [startVariant].
+  ///
+  /// Components appended after this call are untagged again, and untagged
+  /// components survive variant filtering unconditionally — they appear
+  /// whichever variant wins.
+  ///
+  /// Throws [StateError] when no variant block is open.
   AclBuilder endVariant() {
     if (!_inVariantBlock) {
       throw StateError(
