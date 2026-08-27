@@ -172,6 +172,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, or `const` one that is not |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
+| [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds source comments that cite a line number instead of naming the thing |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
@@ -355,6 +356,35 @@ would have been new and wrong; `[TomForm]` from `tom_form_child_container.dart`
 plausibly wants the link. No single rule separates them, so a gate here would
 spend most of its output being wrong. Re-run the report before revisiting any of
 this.
+
+```bash
+python3 tool/check_source_citations.py                 # the whole repository
+python3 tool/check_source_citations.py tom_flutter_ui  # one subtree
+```
+
+It reports comments that cite a line number rather than naming what they point
+at: `SELF` when no file is named, so the citation lands in its own file, and
+`CROSS` when one is. `// Per the class contract (lines 13-17)` was the case that
+prompted it. That citation was accurate the day it was written, and any
+insertion above it would have left it describing whatever slid into those lines
+— with nothing dangling, nothing failing to compile, and nothing for a reader
+to notice.
+
+This one fires **zero** times across 1443 files, and that is the argument for
+it rather than against. A gate earns its place by whether the fault would be
+caught if it came back, not by how much it currently finds; this fault is
+invisible by construction, and a convention met once a year is one no reviewer
+can be asked to hold. Because the rule is silent on the existing tree it adds
+no triage burden — the opposite of the two rules declined nearby, at 353 and
+519 violations of judgement. Naming the target is always possible, which is
+what keeps the rule fair: every line range sits inside a class, a member or a
+headed list that has a name, and the named form survives the edit that breaks
+the numbered one.
+
+A citation must show it is one — a plural range, a parenthesis, or a pointing
+word — so `a line 2 pixels wide` is left alone, and URLs are skipped whole,
+since a permalink pinned at a commit is the stable form this check is asking
+for.
 
 ## License
 
