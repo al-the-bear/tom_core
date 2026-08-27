@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/theme/theme.dart';
-import 'package:tom_flutter_ui/src/widget_base/tom_family_base.dart';
+// The public barrel, not `src/`, on purpose: every claim below is then made
+// against the path the documentation tells consumers to import. Reaching into
+// `src/theme/theme.dart` would verify the same behaviour through a path no
+// consumer uses, leaving the package barrel's re-export as the one fact about
+// this module with nothing behind it.
+//
+// It is the sole tom import here: the kernel types this file needs
+// (`TomAuthState`, `TomUIStateController`) arrive through the barrel's
+// `kernel_types` export, so the file compiles exactly as a consumer's would.
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../../example/theme/theme_example.dart' as example;
 
