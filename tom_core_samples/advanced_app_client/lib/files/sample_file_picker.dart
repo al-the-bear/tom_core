@@ -9,7 +9,7 @@
 ///
 /// ## What a real application writes here
 ///
-/// Six lines naming its picker package. With `file_picker`:
+/// One registration naming its picker package. With `file_picker`:
 ///
 /// ```dart
 /// import 'package:file_picker/file_picker.dart' as fp;
@@ -48,7 +48,7 @@
 /// Everything downstream of the picker is the real thing — the same
 /// [TomPickedFile] shape a plugin returns, the same [FileRef] conversion, the
 /// same streaming upload, the same progress, cancel and retry. Only the dialog
-/// is missing, and swapping it in is the six lines above.
+/// is missing, and swapping it in is the registration above.
 library;
 
 import 'dart:convert';
