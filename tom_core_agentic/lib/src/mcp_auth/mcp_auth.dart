@@ -1,3 +1,3 @@
-// Sub-barrel for the `mcp_auth/` submodule — generic MCP transport-auth
-// plumbing promoted from the brain packages.
-export 'bearer_auth_contract.dart';
+// Sub-barrel for the `mcp_auth/` submodule — the MCP-specific half of
+// bearer-token auth. The transport-neutral half is `bearer_auth/`.
+export 'mcp_bearer_wire.dart';

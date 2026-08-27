@@ -8,6 +8,7 @@ library;
 export 'src/agent/agent.dart';
 export 'src/argument_guards.dart';
 export 'src/async_shutdown.dart';
+export 'src/bearer_auth/bearer_auth.dart';
 export 'src/cancellation.dart';
 export 'src/category_log.dart';
 export 'src/close_guard.dart';

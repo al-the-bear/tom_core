@@ -1,5 +1,33 @@
 ## 1.8.0
 
+### Changed
+
+- **`mcp_auth/` → `bearer_auth/` + `mcp_auth/`**: the bearer-auth module was one
+  file holding two unrelated things — a transport-neutral failure taxonomy
+  (`BearerTokenAuthenticator<P>`, `BearerAuthFailure`,
+  `BearerAuthFailureReason`) and two MCP wire constants (`bearerTokenMetaKey`,
+  `bearerAuthRpcErrorCode`) — and three documents claimed its existence was what
+  stopped servers re-deriving that taxonomy. The claim was false: the HTTP edge
+  in `tom_brain_access` declares its own copy with a byte-identical `toString`,
+  and does so *while already depending on `tom_core_agentic`*, so availability
+  was never the obstacle — reaching the taxonomy meant importing a `_meta` key
+  and a JSON-RPC error code an HTTP edge has no use for. The three neutral types
+  now live in `lib/src/bearer_auth/`, whose contract file has no imports at all;
+  `mcp_auth/` keeps only the two constants and imports the contract, so the
+  dependency runs MCP → taxonomy and not back. Their dartdoc was de-MCP-ified in
+  the move (the prose described the `initialize` handshake as the only place a
+  token could arrive, and `BearerAuthFailure` cross-referenced
+  `bearerAuthRpcErrorCode` as *the* translation rather than one edge's mapping)
+  — moving the file without that would have carried the coupling along in the
+  one form a compiler cannot check. **No call site changes**: all five symbols
+  are still exported from the package barrel under the same names with the same
+  values and behaviour. Coverage: the six taxonomy tests moved verbatim to
+  `test/bearer_auth_test.dart`, which imports
+  `src/bearer_auth/bearer_auth_contract.dart` rather than the barrel — so the
+  separation is a compile-time fact and folding the types back in beside the
+  constants would stop that file compiling. `doc/mcp_auth.md` split accordingly,
+  gaining `doc/bearer_auth.md`.
+
 ### Fixed
 
 - **`llm/`**: the `llm` unit's flagship worked example — the `EchoProvider` a
