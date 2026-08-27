@@ -57,6 +57,18 @@
   `TomAppBar`, which had no `family` at all, and `TomSliverList`, which is a
   `TomContainerBase`. `test/widgets/widget_family_claims_test.dart` now reads
   the counts and the catalogue out of the sources, so neither can drift again.
+- **The package README and the `widgets/` module readme both offered
+  `TomLabel` as a representative of the label family, and no such type exists
+  anywhere in the package.** The label family is `TomText`,
+  `TomSelectableText`, `TomRichText`, `TomBadge`, `TomChip` and the other
+  `TomLabelBase` subclasses; both tables now name `TomRichText`.
+  `test/module_readme_inventory_test.dart` gained the reverse of the check it
+  already made — every bare `Tom…` type a surface document names must be
+  declared in this package or in `tom_core_kernel`, resolved through
+  `.dart_tool/package_config.json` — so a document cannot invent one again. It
+  covers the README and all nine module readmes; `TomLabel` was the only
+  phantom among them. `doc/` is excluded on purpose: it carries design
+  material that names unshipped types deliberately and says so.
 
 - **Eight wrappers declared `tomId` / `tomGroup` / `scope` and never applied
   them.** `TomAnimatedPositioned`, `TomAnimatedPositionedDirectional`,

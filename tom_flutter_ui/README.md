@@ -64,7 +64,7 @@ wrapper that adds `tomId`, authorization, and resource resolution.
 | Type | What it is |
 | ---- | ---------- |
 | `TomElevatedButton`, `TomTextButton`, `TomIconButton` | Authorization-aware buttons |
-| `TomText`, `TomLabel`, `TomBadge`, `TomChip` | Resource-bound display widgets |
+| `TomText`, `TomRichText`, `TomBadge`, `TomChip` | Resource-bound display widgets |
 | `TomCard`, `TomListTile`, `TomColumn`, `TomCenter`, `TomAlign` | Containers & layout |
 | `TomCheckbox`, `TomSwitch`, `TomSlider`, `TomAutocomplete` | Inputs & toggles |
 | `TomLinearProgressIndicator`, `TomCircularProgressIndicator` | Progress |
