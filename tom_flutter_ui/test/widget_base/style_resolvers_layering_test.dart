@@ -48,6 +48,42 @@ Map<String, String> _membersOf(String source) {
   return bodies;
 }
 
+/// English for [n], as the class dartdoc spells its counts.
+///
+/// The range is deliberately narrow and a miss is a failure rather than a
+/// skip: a class that has grown past it is exactly the class whose comment
+/// most needs re-reading, so it should stop the suite, not slip through an
+/// unmatched lookup.
+String _numberWord(int n) {
+  const words = <int, String>{
+    3: 'three',
+    4: 'four',
+    5: 'five',
+    6: 'six',
+    7: 'seven',
+    8: 'eight',
+    9: 'nine',
+    10: 'ten',
+    11: 'eleven',
+    12: 'twelve',
+    13: 'thirteen',
+    14: 'fourteen',
+    15: 'fifteen',
+    16: 'sixteen',
+    17: 'seventeen',
+    18: 'eighteen',
+    19: 'nineteen',
+    20: 'twenty',
+  };
+  final word = words[n];
+  if (word == null) {
+    fail('no English word registered for $n, so the count claims in the '
+        'TomStyleResolvers dartdoc cannot be checked; extend this map and '
+        're-read the comment while you are there');
+  }
+  return word;
+}
+
 void main() {
   group('TomStyleResolvers layering', () {
     final source =
@@ -106,6 +142,47 @@ void main() {
           'parseVisualDensity',
         ],
       );
+    });
+
+    test('the class dartdoc counts its own members correctly', () {
+      // The two assertions above hold the *members* to a count. Nothing held
+      // the *prose* that repeats it, and that asymmetry has already cost
+      // something: the class comment opened with a parenthesised list of
+      // twelve Flutter types while nineteen parsers sat below it, because a
+      // list in a comment is only correct on the day it is written.
+      //
+      // The list is gone; these counts are what replaced it. A count is small
+      // enough to check, so it is checked — otherwise the twentieth parser
+      // gets added, `hasLength(19)` above gets corrected, and the comment is
+      // left saying nineteen, which is the same drift in a shorter form.
+      final classDoc =
+          source.substring(0, source.indexOf('class TomStyleResolvers {'));
+
+      // Every parser that does not take a bare `dynamic` takes a map, and
+      // every raw parser either has its resolver here or in TomCtr — so all
+      // four counts follow from the two lists, and none is written twice.
+      final mapParsers = parsers.length - rawParsers.length;
+      final rawResolvedHere = rawParsers
+          .where((p) =>
+              resolvers.contains('resolve${p.substring('parse'.length)}'))
+          .length;
+
+      final claims = <String>[
+        '${_numberWord(parsers.length)} parsers live here',
+        '${_numberWord(resolvers.length)} have their',
+        '${_numberWord(mapParsers)} parsers take a',
+        '${_numberWord(rawParsers.length)} take a bare',
+        '${_numberWord(rawResolvedHere)} with resolvers here',
+      ];
+
+      for (final claim in claims) {
+        expect(
+          classDoc.toLowerCase(),
+          contains(claim),
+          reason: 'the class dartdoc no longer says "$claim", so a count it '
+              'states about its own members has drifted from them',
+        );
+      }
     });
 
     test('every resolve reads the provider exactly once, through TomCtr', () {

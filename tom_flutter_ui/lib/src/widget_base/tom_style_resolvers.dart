@@ -5,10 +5,16 @@ import 'tom_construction_helpers.dart';
 
 /// Complex style resolution helpers for Tom UI widgets.
 ///
-/// Provides resolution of complex Flutter objects (TextStyle, ButtonStyle,
-/// InputDecoration, MenuStyle, ShapeBorder, BorderRadius, Decoration,
-/// BoxConstraints, AlignmentGeometry, BorderSide, Offset, TableBorder)
-/// from JSON resource maps.
+/// Turns JSON resource maps into the composite Flutter objects a widget needs
+/// in order to render: text and button styles, input and menu decorations,
+/// borders and shapes, insets, and the small layout values around them.
+///
+/// The `parse…` members below are the list, and this paragraph deliberately
+/// does not repeat it. A second copy has to be kept in step by hand, and the
+/// copy that used to stand here named twelve types while nineteen parsers sat
+/// underneath it. What the comment states about its own members instead is a
+/// count — small enough that `style_resolvers_layering_test.dart` can hold it
+/// to them.
 ///
 /// Separate from [TomCtr] because of what it takes in, not what it imports.
 /// Both classes import the Material library — `tom_construction_helpers.dart`

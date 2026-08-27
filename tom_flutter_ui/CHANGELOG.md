@@ -106,6 +106,18 @@
 
 ### Documentation
 
+- **`TomStyleResolvers` no longer opens with a type list that had fallen five
+  types behind its own members.** The class dartdoc summarised the class as
+  resolving twelve named Flutter objects, an enumeration written when that was
+  true and never revisited as the class grew to nineteen parsers — so
+  `VisualDensity`, `IconThemeData`, `StrutStyle`, `TextHeightBehavior` and
+  `ScrollPhysics` were absent from the one paragraph a reader starts at. The
+  summary now describes what the class produces by category and points at the
+  `parse…` members as the list, and the counts the comment still states about
+  its own members — nineteen parsers, seventeen with a `resolve…` partner here,
+  twelve taking a map and seven a raw value — are checked against those members
+  by `style_resolvers_layering_test.dart`, so the shorter claim cannot drift the
+  way the list did.
 - **`TomErrorBoundary`'s library comment describes the interception the widget
   performs (tcinc349).** It claimed two layers, the first of which was a wrapped
   `FlutterError.onError` hook catching errors "flagged with the boundary's
