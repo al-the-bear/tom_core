@@ -8,7 +8,7 @@ Run from anywhere::
 
 Exits non-zero when any sample is wrong, so it can gate a build.
 
-Two faults are reported, and they are the two halves of the same mistake:
+Three faults are reported. The first two are the two halves of one mistake:
 
 ``POSITIONAL``
     A constructor declared to take named parameters only, called with a
@@ -17,6 +17,34 @@ Two faults are reported, and they are the two halves of the same mistake:
 ``NAMED``
     The reverse: a constructor whose first parameter is a required positional,
     called with a named argument first.
+
+The third is about a keyword rather than a bracket:
+
+``CONST``
+    A const instance of a class that has no ``const`` constructor. This is the
+    fault that rots *silently*: a sample written when the constructor was const
+    stays on the page unchanged after someone drops the modifier, and nothing in
+    the build notices. It happened here -- ``TomEmptyState`` gave up its
+    ``const`` so that a missing title would fail at the call site, and
+    ``custom/readme.md`` went on showing a const one.
+
+    Both written forms count, because both are const: the direct
+    ``const Foo(...)`` and the declaration ``const x = Foo(...)`` /
+    ``const Foo x = Foo(...)``. The second is worth its extra regex -- it is
+    what the module readmes' quick-start sections are written in, and a
+    first cut of this check that recognised only the direct form was silent on
+    the ``TomEmptyState`` regression that prompted the whole fault. A check that
+    misses the case that motivated it is worth nothing; the mutation test that
+    put the defect back is what caught that.
+
+    Only an explicit ``const`` keyword is matched. Inside a const context
+    (``const [Foo(), Bar()]``) the inner calls are const without saying so, and
+    catching those would mean tracking the context. A ``const`` followed by a
+    ``{`` or ``[`` parameter list is skipped as well -- that is a signature the
+    document is *quoting*, not a call it is making. That last skip is why a
+    handful of documents can show ``const TomElevatedButton({ ... })`` without
+    being reported: they are quoting a declaration, and whether the *real*
+    declaration carries ``const`` is a different question than this tool asks.
 
 **Why not just compile the samples.** The obvious guard is to extract every
 ```dart fence and analyze it, and that is a much larger job than it sounds:
@@ -47,6 +75,7 @@ from __future__ import annotations
 
 import re
 import sys
+from itertools import chain
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -62,8 +91,29 @@ CLASS = re.compile(
 # A constructor at the start of a line: `Foo(`, `Foo.named(`, `const Foo(`,
 # `factory Foo.x(`. The class-name guard below rejects the method calls this
 # also matches.
-CONSTRUCTOR = re.compile(r"(?:^|\n)[ \t]*(?:const\s+|factory\s+)*(\w+)(?:\.(\w+))?\s*\(")
+CONSTRUCTOR = re.compile(
+    r"(?:^|\n)[ \t]*(?P<mods>(?:const\s+|factory\s+)*)(?P<name>\w+)"
+    r"(?:\.(?P<named>\w+))?\s*\("
+)
 CALL = re.compile(r"\b([A-Z]\w*)(?:<[\w<>,\s?]*>)?(?:\.(\w+))?\s*\(")
+# A sample explicitly asking for a const instance, in its two written forms:
+# the direct `const Foo(...)`, and the declaration `const x = Foo(...)` /
+# `const Foo x = Foo(...)`. Both are equally const and equally illegal against a
+# non-const constructor. The second form is the one worth the extra regex -- it
+# is what the quick-start sections of the module readmes are written in, and a
+# checker that saw only the first would have missed the `TomEmptyState`
+# regression that prompted this fault in the first place.
+#
+# Only an explicit `const` is matched. Inside a const context
+# (`const [Foo(), Bar()]`) the inner calls are const without saying so, and
+# reporting those would need the context tracked.
+CONST_CALL = re.compile(
+    r"\bconst\s+(?P<cls>[A-Z]\w*)(?:<[\w<>,\s?]*>)?(?:\.(?P<named>\w+))?\s*\("
+)
+CONST_ASSIGN = re.compile(
+    r"\bconst[ \t]+(?:[\w<>,?]+[ \t]+)*?\w+[ \t]*=[ \t]*"
+    r"(?P<cls>[A-Z]\w*)(?:<[\w<>,\s?]*>)?(?:\.(?P<named>\w+))?[ \t]*\("
+)
 FENCE_OPEN = re.compile(r"^\s*```dart\s*$")
 FENCE_CLOSE = re.compile(r"^\s*```\s*$")
 LINE_COMMENT = re.compile(r"//.*$", re.M)
@@ -121,10 +171,15 @@ def package_of(path: Path) -> Path | None:
 
 
 Index = dict[Path, dict[tuple[str, str], set[str]]]
+# ``package -> (class, constructor name) -> {is it declared const}``. A set,
+# not a bool, for the same reason ``Index`` holds a set of styles: two files
+# declaring the same name differently leave no single rule to apply.
+ConstIndex = dict[Path, dict[tuple[str, str], set[bool]]]
 
 
-def constructor_index(root: Path) -> Index:
-    """``package -> (class, constructor name) -> {styles}``.
+def constructor_index(root: Path) -> tuple[Index, ConstIndex]:
+    """``package -> (class, constructor name) -> {styles}``, and the same
+    keys mapped to whether the declaration carries ``const``.
 
     **Indexed per package, and a document is only checked against its own
     package.** Indexing repository-wide is the tempting shortcut -- a document
@@ -137,6 +192,7 @@ def constructor_index(root: Path) -> Index:
     keeps the half that can be decided.
     """
     index: Index = {}
+    consts: ConstIndex = {}
     for path in dart_files(root):
         package = package_of(path)
         if package is None:
@@ -149,13 +205,16 @@ def constructor_index(root: Path) -> Index:
         if not declared:
             continue
         for match in CONSTRUCTOR.finditer(text):
-            name = match.group(1)
+            name = match.group("name")
             if name not in declared:
                 continue  # a method call or a nested function, not a constructor
-            key = (name, match.group(2) or "")
+            key = (name, match.group("named") or "")
             styles = index.setdefault(package, {}).setdefault(key, set())
             styles.add(parameter_style(text, match.end() - 1))
-    return index
+            consts.setdefault(package, {}).setdefault(key, set()).add(
+                "const" in match.group("mods")
+            )
+    return index, consts
 
 
 def strip_noise(block: str) -> str:
@@ -213,12 +272,13 @@ def fenced_dart(text: str):
         index += 1
 
 
-def audit(path: Path, index: Index) -> list[tuple[int, str, str]]:
+def audit(path: Path, index: Index, consts: ConstIndex) -> list[tuple[int, str, str]]:
     """``(line, fault, detail)`` for every miscalled constructor in ``path``."""
     package = package_of(path)
     if package is None:
         return []  # a document outside any package -- nothing to resolve against
     constructors = index.get(package, {})
+    constness = consts.get(package, {})
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
@@ -226,6 +286,21 @@ def audit(path: Path, index: Index) -> list[tuple[int, str, str]]:
     faults = []
     for first_line, block in fenced_dart(text):
         clean = strip_noise(block)
+        for match in chain(CONST_CALL.finditer(clean),
+                           CONST_ASSIGN.finditer(clean)):
+            key = (match.group("cls"), match.group("named") or "")
+            declared = constness.get(key)
+            if declared is None or len(declared) != 1:
+                continue  # unknown, or declared both ways across files
+            if next(iter(declared)):
+                continue  # genuinely const
+            if parameter_style(clean, match.end() - 1) != POSITIONAL:
+                continue  # `const Foo({` -- the signature, not a call
+            label = key[0] + ("." + key[1] if key[1] else "")
+            line = first_line + clean[: match.start()].count("\n")
+            faults.append(
+                (line, "CONST", f"{label} has no const constructor")
+            )
         for match in CALL.finditer(clean):
             key = (match.group(1), match.group(2) or "")
             styles = constructors.get(key)
@@ -261,7 +336,7 @@ def main(argv: list[str]) -> int:
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
-    index = constructor_index(REPO_ROOT)
+    index, consts = constructor_index(REPO_ROOT)
 
     documents = 0
     samples = 0
@@ -277,7 +352,7 @@ def main(argv: list[str]) -> int:
             continue
         documents += 1
         samples += len(blocks)
-        for line, fault, detail in audit(path, index):
+        for line, fault, detail in audit(path, index, consts):
             faults.append((path, line, fault, detail))
 
     for path, line, fault, detail in faults:

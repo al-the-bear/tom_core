@@ -126,11 +126,11 @@ A layout is declared by chaining fluent calls and finishing with `build()`:
 
 ```dart
 final Acl layout = AclBuilder(title: 'Address')
-    .append(const TomTextField(tomId: 'street')).expandX()
+    .append(TomTextField(tomId: 'street')).expandX()
     .gap()
-    .append(const TomTextField(tomId: 'no'))
+    .append(TomTextField(tomId: 'no'))
     .newRow()
-    .append(const TomTextField(tomId: 'city'))
+    .append(TomTextField(tomId: 'city'))
     .build();
 ```
 

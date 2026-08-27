@@ -170,7 +170,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
-| [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way |
+| [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, or `const` one that is not |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
@@ -281,6 +281,15 @@ It reports the two halves of one mistake: a constructor taking named parameters
 only, called positionally, and a constructor whose first parameter is a required
 positional, called with a named argument first. Either way the sample does not
 compile, and nothing about editing a signature brings the samples into view.
+
+A third fault is about a keyword rather than a bracket: a const instance —
+`const Foo(...)` or `const x = Foo(...)` — of a class with no const
+constructor. This one rots in place. A sample written while the constructor was
+const stays on the page after someone drops the modifier, and the build stays
+quiet. That is not hypothetical: `TomEmptyState` gave up its `const` so a
+missing title would fail at the call site rather than becoming an error card
+inside some enclosing `TomErrorBoundary`, and `custom/readme.md` went on showing
+a const one until this check was written.
 
 The obvious guard — extract every ` ```dart ` fence and analyze it — is a much
 larger job than it sounds. There are 1770 fences here and most are fragments: no
