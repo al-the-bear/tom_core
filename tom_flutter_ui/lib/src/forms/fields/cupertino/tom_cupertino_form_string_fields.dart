@@ -28,6 +28,7 @@ import '../../selection/tom_selectable_source.dart';
 import '../../style/tom_cupertino_form_style.dart';
 import '../../style/tom_form_style.dart';
 import '../../style/tom_form_style_scope.dart';
+import '../../tom_form_labels.dart';
 import '../tom_field_widget_adapter.dart';
 import '../tom_form_string_field.dart';
 
@@ -269,7 +270,7 @@ class _CupertinoSearchInputWidgetState
 
     final search = CupertinoSearchTextField(
       controller: _controller,
-      placeholder: hint ?? 'Search',
+      placeholder: hint ?? TomFormLabels.search(field.basePath),
       placeholderStyle: composeHintStyle(style, Theme.of(context)),
       style: style.inputStyle,
       onChanged: field.isEditable ? _onChanged : null,
@@ -412,7 +413,7 @@ class _CupertinoStringPickerWidgetState
                   children: [
                     CupertinoButton(
                       onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(TomFormLabels.cancel(field.basePath)),
                     ),
                     CupertinoButton(
                       onPressed: () {
@@ -421,7 +422,7 @@ class _CupertinoStringPickerWidgetState
                         }
                         Navigator.of(ctx).pop();
                       },
-                      child: const Text('Done'),
+                      child: Text(TomFormLabels.done(field.basePath)),
                     ),
                   ],
                 ),
@@ -447,7 +448,7 @@ class _CupertinoStringPickerWidgetState
 
   String _displayLabel() {
     final v = field.get();
-    if (v.isEmpty) return field.hintText ?? 'Choose…';
+    if (v.isEmpty) return field.hintText ?? TomFormLabels.choose(field.basePath);
     final found =
         _items.where((i) => i.value == v).map((i) => i.label).firstOrNull;
     return found ?? v;

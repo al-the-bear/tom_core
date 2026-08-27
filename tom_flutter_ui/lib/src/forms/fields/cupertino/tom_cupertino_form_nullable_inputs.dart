@@ -26,6 +26,7 @@ import '../../style/tom_cupertino_form_style.dart';
 import '../../style/tom_form_style.dart';
 import '../../style/tom_form_style_scope.dart';
 import '../../tom_form.dart';
+import '../../tom_form_labels.dart';
 import '../tom_field_widget_adapter.dart';
 
 // ===========================================================================
@@ -43,6 +44,17 @@ mixin _CupertinoNullableLabels<T> on TomField<T> {
       hintTextOverride ?? TomCtr.textOrNull(basePath, 'hint');
   String? get descriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
+  /// Text shown in place of the value when null.
+  ///
+  /// Same order as the Material nullable fields: a field-scoped `nullDisplay`
+  /// resource, then the field's hint, then the shared `form.nullDisplay`
+  /// caption — which is itself resolvable, so the sentinel is translatable
+  /// rather than a literal baked into the widget.
+  String resolveNullDisplay() =>
+      TomCtr.textOrNull(basePath, 'nullDisplay') ??
+      hintText ??
+      TomFormLabels.nullDisplay(basePath);
 }
 
 // ===========================================================================
@@ -87,6 +99,7 @@ class TomCupertinoFormNStringInput extends TomField<String?>
         child: _CupertinoNullableTextWidget<String?>(
           field: this,
           decorationField: this,
+          nullDisplay: resolveNullDisplay(),
           format: (v) => v ?? '',
           parse: (text) => text.isEmpty ? null : text,
           keyboardType: TextInputType.text,
@@ -136,6 +149,7 @@ class TomCupertinoFormNIntInput extends TomField<int?>
         child: _CupertinoNullableTextWidget<int?>(
           field: this,
           decorationField: this,
+          nullDisplay: resolveNullDisplay(),
           format: (v) => v?.toString() ?? '',
           parse: (text) => text.isEmpty ? null : int.tryParse(text),
           keyboardType: const TextInputType.numberWithOptions(signed: true),
@@ -193,6 +207,7 @@ class TomCupertinoFormNDoubleInput extends TomField<double?>
         child: _CupertinoNullableTextWidget<double?>(
           field: this,
           decorationField: this,
+          nullDisplay: resolveNullDisplay(),
           format: _format,
           parse: (text) => text.isEmpty ? null : double.tryParse(text),
           keyboardType: const TextInputType.numberWithOptions(
@@ -215,6 +230,10 @@ class _CupertinoNullableTextWidget<T> extends StatefulWidget {
   final TomField<T> field;
   final _NullableInputDecorator decorationField;
 
+  /// The resolved sentinel for a null value, computed by the concrete field
+  /// (which is where the resource chain is in scope).
+  final String nullDisplay;
+
   final String Function(T value) format;
   final T Function(String text) parse;
   final TextInputType keyboardType;
@@ -226,6 +245,7 @@ class _CupertinoNullableTextWidget<T> extends StatefulWidget {
   const _CupertinoNullableTextWidget({
     required this.field,
     required this.decorationField,
+    required this.nullDisplay,
     required this.format,
     required this.parse,
     required this.keyboardType,
@@ -308,7 +328,7 @@ class _CupertinoNullableTextWidgetState<T>
       inputFormatters: widget.inputFormatters,
       maxLength: widget.maxLength,
       style: style.inputStyle,
-      placeholder: '— null —',
+      placeholder: widget.nullDisplay,
       placeholderStyle: composeHintStyle(style, Theme.of(context)),
       onChanged: f.isEditable ? _onChanged : null,
       enabled: f.isEditable,
@@ -460,11 +480,11 @@ class _CupertinoNDateInputWidgetState
                   children: [
                     CupertinoButton(
                       onPressed: () => Navigator.of(ctx).pop(null),
-                      child: const Text('Cancel'),
+                      child: Text(TomFormLabels.cancel(field.basePath)),
                     ),
                     CupertinoButton(
                       onPressed: () => Navigator.of(ctx).pop(tempValue),
-                      child: const Text('Done'),
+                      child: Text(TomFormLabels.done(field.basePath)),
                     ),
                   ],
                 ),
@@ -513,7 +533,7 @@ class _CupertinoNDateInputWidgetState
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                v == null ? '— null —' : f._format(v),
+                v == null ? f.resolveNullDisplay() : f._format(v),
                 style: style.inputStyle,
               ),
             ),

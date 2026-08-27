@@ -5,6 +5,7 @@ import '../events/tom_form_event_listener.dart';
 import '../events/tom_form_event_source.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
+import '../tom_form_labels.dart';
 import '../validation/form_validation_error.dart';
 
 /// Material-style banner that displays form-level (cross-field) errors.
@@ -112,7 +113,9 @@ class _TomFormErrorBannerState extends State<TomFormErrorBanner>
               Icon(Icons.error_outline, color: errorColor, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Form Errors',
+                // Resolved globally: the banner reports the whole form, so
+                // there is no one field whose scope should reword it.
+                TomFormLabels.errorBannerTitle(null),
                 style: (style.errorStyle ?? theme.textTheme.titleSmall)
                     ?.copyWith(color: onErrorContainer),
               ),

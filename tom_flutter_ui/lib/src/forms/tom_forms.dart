@@ -1,6 +1,7 @@
 // Data model and prerequisites
 export 'tom_form.dart';
 export 'tom_form_child_container.dart';
+export 'tom_form_labels.dart';
 export 'validation/validation_result.dart';
 export 'validation/form_validation_error.dart';
 export 'validation/validators.dart';

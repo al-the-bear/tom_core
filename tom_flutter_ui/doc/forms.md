@@ -21,6 +21,7 @@ Cupertino sibling changes the rendering without touching the model.
 - [The event bus](#the-event-bus)
 - [Style and decoration](#style-and-decoration)
 - [The field catalogue and `FormFieldFamily`](#the-field-catalogue-and-formfieldfamily)
+- [Captions and wording](#captions-and-wording)
 - [File fields](#file-fields)
 - [List and master-detail forms](#list-and-master-detail-forms)
 - [Dependencies](#dependencies)
@@ -264,6 +265,55 @@ having no such control — rendering a three-segment Off / — / On slider.
 override → `<basePath>.tristate` resource → `true`) decides whether the user
 can *reach* the third state; setting it to `false` keeps the nullable value
 while making the control two-state.
+
+## Captions and wording
+
+Labels, hints and validation messages are per-field resources — a field reads
+its own `<basePath>.label`, `<basePath>.hint`, `<basePath>.validators`. But the
+widgets also show a few dozen strings that belong to no field in particular: the
+`Cancel` / `Done` on a Cupertino modal sheet, the `Choose…` on an empty picker,
+the `Open date picker` tooltip, the `Form Errors` banner heading. Those resolve
+through **`TomFormLabels`**, one static per caption:
+
+```dart
+Text(TomFormLabels.cancel(field.basePath))
+```
+
+Each call resolves in three tiers — `<basePath>.<key>` first, then the bare
+`<key>`, then the built-in English. The middle tier is the point: an application
+writes `form.cancel` **once** and every modal sheet in both field families
+follows it, while a single field that wants different wording still overrides it
+alone.
+
+```dart
+TomTextResourceProvider.setAppResourceProvider(
+  TomTextResourceProvider.from({
+    'form': {'cancel': 'Abbrechen', 'done': 'Fertig', 'choose': 'Bitte wählen…'},
+    // …and one picker that words it differently:
+    'country': {'form': {'choose': 'Land auswählen'}},
+  }),
+);
+```
+
+The keys are listed in the class's own dartdoc; the vocabulary covers the modal
+buttons, the picker and search placeholders, the null sentinel, the range
+captions, the date/time picker tooltips, the required-field suffix, the error
+banner and row-error captions, and the unsaved-changes prompt. Two carry
+placeholders — `form.formatHint` interpolates `{pattern}`, `form.rowErrorsMany`
+interpolates `{count}` — and the row-error caption is **two** keys rather than
+one so a language whose plural rule differs from English can serve both.
+
+A caption that already has a key of its own is deliberately *not* routed here.
+A list toolbar's `Add` resolves under `<listPath>.add.label`, a reorder handle's
+tooltip under `<handlePath>.tooltip`, a boolean field's `On` / `Off` under
+`<basePath>.onLabel` / `.offLabel` — those are per-instance affordances whose
+wording differs between two lists on the same page, so an application-wide tier
+would be the wrong default for them.
+
+`TomFileLabels` is the same façade for the file widgets. The division between
+the two is by vocabulary rather than by widget: a caption that only ever appears
+beside a file (`file.choose`, `file.uploading`) lives there, a caption any field
+might show (`form.cancel`, `form.done`) lives in `TomFormLabels`.
 
 ## File fields
 

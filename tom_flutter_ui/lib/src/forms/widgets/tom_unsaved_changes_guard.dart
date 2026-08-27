@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tom_form.dart';
+import '../tom_form_labels.dart';
 
 /// Result of an unsaved-changes prompt. [save] runs the form's save and
 /// only proceeds if it succeeds; [discard] resets the form; [cancel]
@@ -17,42 +18,49 @@ enum UnsavedChangesChoice { save, discard, cancel }
 /// Used by [TomMasterDetailListForm] for selection changes and by route
 /// pop guards. Keeps the spec's §15 master-detail Save/Discard/Cancel
 /// pattern in one place instead of being duplicated per demo.
+///
+/// The five captions default to `null` rather than to English: left unset they
+/// resolve through [TomFormLabels] against the form's own resource scope, so a
+/// localised application gets a localised prompt without passing anything.
+/// Passing a string still wins outright, which is what a caller wanting one
+/// specific wording here — and only here — is asking for.
 Future<UnsavedChangesChoice> guardUnsavedChanges({
   required BuildContext context,
   required TomForm form,
   required Future<void> Function() action,
-  String title = 'Unsaved changes',
-  String message = 'You have unsaved edits. What would you like to do?',
-  String saveLabel = 'Save',
-  String discardLabel = 'Discard',
-  String cancelLabel = 'Cancel',
+  String? title,
+  String? message,
+  String? saveLabel,
+  String? discardLabel,
+  String? cancelLabel,
 }) async {
   if (!form.isDirty) {
     await action();
     return UnsavedChangesChoice.discard;
   }
 
+  final path = form.basePath;
   final choice = await showDialog<UnsavedChangesChoice>(
     context: context,
     barrierDismissible: false,
     builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: Text(message),
+      title: Text(title ?? TomFormLabels.unsavedTitle(path)),
+      content: Text(message ?? TomFormLabels.unsavedMessage(path)),
       actions: [
         TextButton(
           onPressed: () =>
               Navigator.of(ctx).pop(UnsavedChangesChoice.cancel),
-          child: Text(cancelLabel),
+          child: Text(cancelLabel ?? TomFormLabels.cancel(path)),
         ),
         TextButton(
           onPressed: () =>
               Navigator.of(ctx).pop(UnsavedChangesChoice.discard),
-          child: Text(discardLabel),
+          child: Text(discardLabel ?? TomFormLabels.discard(path)),
         ),
         FilledButton(
           onPressed: () =>
               Navigator.of(ctx).pop(UnsavedChangesChoice.save),
-          child: Text(saveLabel),
+          child: Text(saveLabel ?? TomFormLabels.save(path)),
         ),
       ],
     ),
@@ -84,14 +92,18 @@ class TomUnsavedChangesGuard extends StatefulWidget {
     super.key,
     required this.form,
     required this.child,
-    this.title = 'Unsaved changes',
-    this.message = 'You have unsaved edits. What would you like to do?',
+    this.title,
+    this.message,
   });
 
   final TomForm form;
   final Widget child;
-  final String title;
-  final String message;
+
+  /// Heading of the prompt; `null` resolves it through [TomFormLabels].
+  final String? title;
+
+  /// Body of the prompt; `null` resolves it through [TomFormLabels].
+  final String? message;
 
   @override
   State<TomUnsavedChangesGuard> createState() =>

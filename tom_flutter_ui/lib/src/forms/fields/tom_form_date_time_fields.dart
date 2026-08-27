@@ -8,6 +8,7 @@ import '../decoration/tom_generic_field_decoration_mixin.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
 import '../tom_form.dart';
+import '../tom_form_labels.dart';
 import 'tom_date_time_format.dart';
 import 'tom_field_widget_adapter.dart';
 
@@ -1006,7 +1007,10 @@ class _TomFormDateTextInputWidgetState
     );
     if (mounted) {
       setState(() => _parseError =
-          parsed == null ? 'Format: ${field.resolvedHintText}' : null);
+          parsed == null
+              ? TomFormLabels.formatHint(
+                  field.basePath, field.resolvedHintText)
+              : null);
     }
   }
 
@@ -1040,7 +1044,7 @@ class _TomFormDateTextInputWidgetState
         errorText: _parseError,
         suffixIcon: IconButton(
           icon: const Icon(Icons.calendar_today, size: 18),
-          tooltip: 'Open date picker',
+          tooltip: TomFormLabels.openDatePicker(field.basePath),
           onPressed: field.isEditable ? _openPicker : null,
         ),
       ),
@@ -1211,7 +1215,10 @@ class _TomFormTimeTextInputWidgetState
     final parsed = field.resolvedFormat.parseTime(_ctrl.text);
     if (mounted) {
       setState(() => _parseError =
-          parsed == null ? 'Format: ${field.resolvedHintText}' : null);
+          parsed == null
+              ? TomFormLabels.formatHint(
+                  field.basePath, field.resolvedHintText)
+              : null);
     }
   }
 
@@ -1242,7 +1249,7 @@ class _TomFormTimeTextInputWidgetState
         errorText: _parseError,
         suffixIcon: IconButton(
           icon: const Icon(Icons.access_time, size: 18),
-          tooltip: 'Open time picker',
+          tooltip: TomFormLabels.openTimePicker(field.basePath),
           onPressed: field.isEditable ? _openPicker : null,
         ),
       ),
@@ -1425,7 +1432,10 @@ class _TomFormDateTimeTextInputWidgetState
     );
     if (mounted) {
       setState(() => _parseError =
-          parsed == null ? 'Format: ${field.resolvedHintText}' : null);
+          parsed == null
+              ? TomFormLabels.formatHint(
+                  field.basePath, field.resolvedHintText)
+              : null);
     }
   }
 
@@ -1470,7 +1480,7 @@ class _TomFormDateTimeTextInputWidgetState
         errorText: _parseError,
         suffixIcon: IconButton(
           icon: const Icon(Icons.event, size: 18),
-          tooltip: 'Open date + time picker',
+          tooltip: TomFormLabels.openDateTimePicker(field.basePath),
           onPressed: field.isEditable ? _openPicker : null,
         ),
       ),

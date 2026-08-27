@@ -28,6 +28,7 @@ import '../../selection/tom_selectable_source.dart';
 import '../../style/tom_cupertino_form_style.dart';
 import '../../style/tom_form_style.dart';
 import '../../style/tom_form_style_scope.dart';
+import '../../tom_form_labels.dart';
 import '../tom_field_widget_adapter.dart';
 import '../tom_form_search_lookup_fields.dart';
 
@@ -153,7 +154,7 @@ class _CupertinoSearchInputWidgetState<T>
   Widget build(BuildContext context) {
     final f = field;
     final style = f.resolveStyle(context);
-    final hint = f.hintText ?? 'Search…';
+    final hint = f.hintText ?? TomFormLabels.searchHint(f.basePath);
 
     final autocomplete = Autocomplete<SelectableItem<T>>(
       initialValue: TextEditingValue(text: _label(f.get())),
@@ -346,10 +347,14 @@ class _CupertinoLookupSheetWidgetState<T>
     final picked = await showCupertinoModalPopup<T>(
       context: context,
       builder: (ctx) {
-        final title = field.sheetTitle ?? field.labelText ?? 'Lookup';
+        final title =
+            field.sheetTitle ??
+            field.labelText ??
+            TomFormLabels.lookupTitle(field.basePath);
         return _CupertinoLookupSheetBody<T>(
           title: title,
           items: _items,
+          basePath: field.basePath,
         );
       },
     );
@@ -401,7 +406,16 @@ class _CupertinoLookupSheetWidgetState<T>
 class _CupertinoLookupSheetBody<T> extends StatefulWidget {
   final String title;
   final List<SelectableItem<T>> items;
-  const _CupertinoLookupSheetBody({required this.title, required this.items});
+
+  /// The opening field's resource scope, so its Cancel button and filter
+  /// placeholder can be reworded per field rather than only application-wide.
+  final String? basePath;
+
+  const _CupertinoLookupSheetBody({
+    required this.title,
+    required this.items,
+    this.basePath,
+  });
 
   @override
   State<_CupertinoLookupSheetBody<T>> createState() =>
@@ -439,7 +453,7 @@ class _CupertinoLookupSheetBodyState<T>
                   CupertinoButton(
                     padding: EdgeInsets.zero,
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(TomFormLabels.cancel(widget.basePath)),
                   ),
                   const Spacer(),
                   Text(
@@ -456,7 +470,7 @@ class _CupertinoLookupSheetBodyState<T>
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
               child: CupertinoSearchTextField(
-                placeholder: 'Filter…',
+                placeholder: TomFormLabels.filter(widget.basePath),
                 onChanged: (v) => setState(() => _filter = v),
               ),
             ),

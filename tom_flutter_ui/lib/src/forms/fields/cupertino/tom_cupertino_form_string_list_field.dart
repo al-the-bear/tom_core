@@ -26,6 +26,7 @@ import '../../selection/tom_selectable_source.dart';
 import '../../style/tom_cupertino_form_style.dart';
 import '../../style/tom_form_style.dart';
 import '../../style/tom_form_style_scope.dart';
+import '../../tom_form_labels.dart';
 import '../tom_field_widget_adapter.dart';
 import '../tom_form_string_list_field.dart';
 
@@ -149,7 +150,9 @@ class _CupertinoStringListCheckedPickerWidgetState
 
   String _displayLabel() {
     final selected = field.get();
-    if (selected.isEmpty) return field.hintText ?? 'Choose…';
+    if (selected.isEmpty) {
+      return field.hintText ?? TomFormLabels.choose(field.basePath);
+    }
     final byValue = {for (final item in _items) item.value: item.label};
     return selected.map((v) => byValue[v] ?? v).join(', ');
   }
@@ -160,6 +163,7 @@ class _CupertinoStringListCheckedPickerWidgetState
       builder: (ctx) {
         return _CheckedPickerSheet(
           items: _items,
+          basePath: field.basePath,
           height: field.sheetHeight,
           initialSelection: field.get().toSet(),
           onItemToggled: (value, include) =>
@@ -222,11 +226,16 @@ class _CheckedPickerSheet extends StatefulWidget {
   final Set<String> initialSelection;
   final void Function(String value, bool include) onItemToggled;
 
+  /// The opening field's resource scope, so its Done button can be reworded
+  /// per field rather than only application-wide.
+  final String? basePath;
+
   const _CheckedPickerSheet({
     required this.items,
     required this.height,
     required this.initialSelection,
     required this.onItemToggled,
+    this.basePath,
   });
 
   @override
@@ -268,7 +277,7 @@ class _CheckedPickerSheetState extends State<_CheckedPickerSheet> {
               children: [
                 CupertinoButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Done'),
+                  child: Text(TomFormLabels.done(widget.basePath)),
                 ),
               ],
             ),

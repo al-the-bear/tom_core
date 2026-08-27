@@ -8,6 +8,7 @@ import '../style/form_style_enums.dart';
 import '../style/tom_form_style.dart';
 import '../validation/validation_result.dart';
 import '../validation/validators.dart';
+import '../tom_form_labels.dart';
 
 /// Composes [CupertinoTextField.prefix] with [TomFieldStyle.leadingWidget].
 ///
@@ -149,11 +150,12 @@ String requiredIndicatorSuffixFor(
   RequiredIndicator kind, {
   required bool hasRequired,
   required bool isEditable,
+  String? basePath,
 }) {
   if (!hasRequired || !isEditable) return '';
   return switch (kind) {
     RequiredIndicator.asterisk => ' *',
-    RequiredIndicator.text => ' (required)',
+    RequiredIndicator.text => TomFormLabels.requiredSuffix(basePath),
     RequiredIndicator.none => '',
     RequiredIndicator.custom => '',
   };
@@ -510,8 +512,11 @@ Widget? _requiredIndicatorWidget(
           color: theme.colorScheme.error,
         ),
       ),
+    // Resolved globally rather than per field: the anatomy builder is style-
+    // driven and carries no basePath, and the required marker is a form-wide
+    // convention an application words once anyway.
     RequiredIndicator.text => Text(
-        ' (required)',
+        TomFormLabels.requiredSuffix(null),
         style: style.descriptionStyle ?? theme.textTheme.bodySmall,
       ),
     RequiredIndicator.none => null,

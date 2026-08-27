@@ -23,6 +23,7 @@ import '../decoration/tom_string_input_decoration_mixin.dart';
 import '../selection/tom_selectable_source.dart';
 import '../style/form_style_enums.dart';
 import '../tom_form.dart';
+import '../tom_form_labels.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ===========================================================================
@@ -262,7 +263,7 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
             context,
             InputDecoration(
               labelText: f.labelText,
-              hintText: f.hintText ?? 'Type to search…',
+              hintText: f.hintText ?? TomFormLabels.typeToSearch(f.basePath),
               suffixIcon: const Icon(Icons.search),
               contentPadding: style.fieldContentPadding,
               border: style.fieldBorder,
@@ -519,7 +520,9 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
                         it.label.toLowerCase().contains(filter.toLowerCase()))
                     .toList();
             return AlertDialog(
-              title: Text(field.dialogTitle ?? field.labelText ?? 'Lookup'),
+              title: Text(field.dialogTitle ??
+                  field.labelText ??
+                  TomFormLabels.lookupTitle(field.basePath)),
               content: SizedBox(
                 width: 400,
                 height: 400,
@@ -538,7 +541,7 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
                           minWidth: 40,
                           minHeight: 40,
                         ),
-                        hintText: 'Filter…',
+                        hintText: TomFormLabels.filter(field.basePath),
                         border: const OutlineInputBorder(),
                         focusedBorder: const OutlineInputBorder(),
                         enabledBorder: const OutlineInputBorder(),
@@ -569,7 +572,7 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(TomFormLabels.cancel(field.basePath)),
                 ),
               ],
             );

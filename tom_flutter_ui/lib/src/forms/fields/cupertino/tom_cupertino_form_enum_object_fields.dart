@@ -26,6 +26,7 @@ import '../../selection/tom_selectable_source.dart';
 import '../../style/tom_cupertino_form_style.dart';
 import '../../style/tom_form_style.dart';
 import '../../style/tom_form_style_scope.dart';
+import '../../tom_form_labels.dart';
 import '../tom_field_widget_adapter.dart';
 import '../tom_form_enum_object_fields.dart';
 
@@ -41,6 +42,7 @@ Future<T?> _showCupertinoListPicker<T>({
   required BuildContext context,
   required List<SelectableItem<T>> items,
   required int initialIndex,
+  String? basePath,
   double sheetHeight = 216,
 }) {
   return showCupertinoModalPopup<T?>(
@@ -59,7 +61,7 @@ Future<T?> _showCupertinoListPicker<T>({
                 children: [
                   CupertinoButton(
                     onPressed: () => Navigator.of(ctx).pop(null),
-                    child: const Text('Cancel'),
+                    child: Text(TomFormLabels.cancel(basePath)),
                   ),
                   CupertinoButton(
                     onPressed: () {
@@ -69,7 +71,7 @@ Future<T?> _showCupertinoListPicker<T>({
                         Navigator.of(ctx).pop(null);
                       }
                     },
-                    child: const Text('Done'),
+                    child: Text(TomFormLabels.done(basePath)),
                   ),
                 ],
               ),
@@ -240,10 +242,12 @@ class _CupertinoEnumPickerWidgetState<T>
   }
 
   String _displayLabel() {
-    if (_items.isEmpty) return field.placeholder ?? 'Choose…';
+    if (_items.isEmpty) {
+      return field.placeholder ?? TomFormLabels.choose(field.basePath);
+    }
     final v = field.get();
     final hit = _items.where((i) => i.value == v).map((i) => i.label).firstOrNull;
-    return hit ?? (field.placeholder ?? 'Choose…');
+    return hit ?? (field.placeholder ?? TomFormLabels.choose(field.basePath));
   }
 
   Future<void> _open() async {
@@ -253,6 +257,7 @@ class _CupertinoEnumPickerWidgetState<T>
     if (initialIndex < 0) initialIndex = 0;
     final picked = await _showCupertinoListPicker<T>(
       context: context,
+      basePath: field.basePath,
       items: _items,
       initialIndex: initialIndex,
       sheetHeight: field.sheetHeight,
@@ -509,10 +514,12 @@ class _CupertinoObjectPickerWidgetState<T>
   }
 
   String _displayLabel() {
-    if (_items.isEmpty) return field.placeholder ?? 'Choose…';
+    if (_items.isEmpty) {
+      return field.placeholder ?? TomFormLabels.choose(field.basePath);
+    }
     final v = field.get();
     final hit = _items.where((i) => i.value == v).map((i) => i.label).firstOrNull;
-    return hit ?? (field.placeholder ?? 'Choose…');
+    return hit ?? (field.placeholder ?? TomFormLabels.choose(field.basePath));
   }
 
   Future<void> _open() async {
@@ -522,6 +529,7 @@ class _CupertinoObjectPickerWidgetState<T>
     if (initialIndex < 0) initialIndex = 0;
     final picked = await _showCupertinoListPicker<T>(
       context: context,
+      basePath: field.basePath,
       items: _items,
       initialIndex: initialIndex,
       sheetHeight: field.sheetHeight,

@@ -18,6 +18,7 @@ library;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show DateTimeRange, TimeOfDay, Theme;
+import '../../tom_form_labels.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../../widget_base/tom_construction_helpers.dart';
@@ -75,10 +76,14 @@ Widget _cupertinoTriggerTile({
 
 /// Wraps [picker] in a modal-popup sheet with Cancel/Done buttons.
 /// Calls [onDone] only when the user taps Done; Cancel just closes.
+///
+/// [basePath] is the opening field's resource scope, so one field can reword
+/// the two buttons without the application rewording every sheet.
 Future<void> _showCupertinoPickerSheet({
   required BuildContext context,
   required Widget picker,
   required VoidCallback onDone,
+  String? basePath,
   double sheetHeight = 216,
 }) {
   return showCupertinoModalPopup<void>(
@@ -95,14 +100,14 @@ Future<void> _showCupertinoPickerSheet({
               children: [
                 CupertinoButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(TomFormLabels.cancel(basePath)),
                 ),
                 CupertinoButton(
                   onPressed: () {
                     onDone();
                     Navigator.of(ctx).pop();
                   },
-                  child: const Text('Done'),
+                  child: Text(TomFormLabels.done(basePath)),
                 ),
               ],
             ),
@@ -204,6 +209,7 @@ class _CupertinoDatePickerWidgetState
     DateTime temp = field.get();
     _showCupertinoPickerSheet(
       context: context,
+      basePath: field.basePath,
       picker: CupertinoDatePicker(
         mode: CupertinoDatePickerMode.date,
         initialDateTime: field.get(),
@@ -317,6 +323,7 @@ class _CupertinoTimePickerWidgetState
         DateTime(2020, 1, 1, t.hour, t.minute);
     _showCupertinoPickerSheet(
       context: context,
+      basePath: field.basePath,
       picker: CupertinoDatePicker(
         mode: CupertinoDatePickerMode.time,
         initialDateTime: temp,
@@ -428,6 +435,7 @@ class _CupertinoDateTimePickerWidgetState
     DateTime temp = field.get();
     _showCupertinoPickerSheet(
       context: context,
+      basePath: field.basePath,
       picker: CupertinoDatePicker(
         mode: CupertinoDatePickerMode.dateAndTime,
         initialDateTime: field.get(),
@@ -563,6 +571,7 @@ class _CupertinoDurationPickerWidgetState
     Duration temp = field.get();
     _showCupertinoPickerSheet(
       context: context,
+      basePath: field.basePath,
       picker: CupertinoTimerPicker(
         mode: field.mode,
         initialTimerDuration: field.get(),
@@ -690,7 +699,7 @@ class _CupertinoDateRangePickerWidgetState
                   children: [
                     CupertinoButton(
                       onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(TomFormLabels.cancel(field.basePath)),
                     ),
                     CupertinoButton(
                       onPressed: () {
@@ -704,14 +713,14 @@ class _CupertinoDateRangePickerWidgetState
                         field.setValue(DateTimeRange(start: s, end: e));
                         Navigator.of(ctx).pop();
                       },
-                      child: const Text('Done'),
+                      child: Text(TomFormLabels.done(field.basePath)),
                     ),
                   ],
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
-                    'Start',
+                    TomFormLabels.rangeStart(field.basePath),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ),
@@ -729,7 +738,7 @@ class _CupertinoDateRangePickerWidgetState
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
-                    'End',
+                    TomFormLabels.rangeEnd(field.basePath),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ),

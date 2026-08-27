@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tom_form.dart';
+import '../tom_form_labels.dart';
 
 // ---------------------------------------------------------------------------
 // TomRowErrorStrip — Inline row-level validation error display
@@ -95,9 +96,10 @@ class _TomRowErrorStripState extends State<TomRowErrorStrip> {
         crossAxisAlignment: widget.crossAxisAlignment,
         children: [
           Text(
-            count == 1
-                ? 'Row has 1 validation error:'
-                : 'Row has $count validation errors:',
+            // Resolved globally: the strip reports a whole row, and the
+            // one/many split is a key per plural form rather than a count
+            // interpolated into a single English template.
+            TomFormLabels.rowErrors(null, count),
             textAlign:
                 isCenter ? TextAlign.center : TextAlign.start,
             style: theme.textTheme.bodySmall

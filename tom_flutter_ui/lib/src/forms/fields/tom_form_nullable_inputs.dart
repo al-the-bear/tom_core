@@ -27,6 +27,7 @@ import '../selection/tom_selectable_source.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
 import '../tom_form.dart';
+import '../tom_form_labels.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ===========================================================================
@@ -71,7 +72,7 @@ mixin _NullableFieldLabels<T> on TomField<T> {
     if (resourced != null) return resourced;
     final hint = hintText;
     if (hint != null) return hint;
-    return '— null —';
+    return TomFormLabels.nullDisplay(basePath);
   }
 }
 
@@ -389,7 +390,7 @@ class _NullableTextInputWidgetState<T>
       suffixIcon: hasValue && f.isEditable
           ? IconButton(
               icon: const Icon(Icons.clear, size: 18),
-              tooltip: 'Clear (set to null)',
+              tooltip: TomFormLabels.clearToNull(f.basePath),
               onPressed: _clear,
             )
           : null,
@@ -543,7 +544,7 @@ class _NDateInputWidgetState extends State<_NDateInputWidget> {
         ),
         if (v != null && f.isEditable)
           IconButton(
-            tooltip: 'Clear (set to null)',
+            tooltip: TomFormLabels.clearToNull(f.basePath),
             icon: const Icon(Icons.clear, size: 18),
             onPressed: () => f.setValue(null),
           ),

@@ -4,6 +4,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../tom_form.dart';
+import '../tom_form_labels.dart';
 import '../widgets/tom_unsaved_changes_guard.dart';
 import 'tom_list_form.dart';
 
@@ -353,12 +354,14 @@ class _TomMasterDetailListFormImplState<TItem extends TomClass,
         ),
       );
     }
-    return const Center(
+    // Resolved globally: a master-detail view is a form-level surface with no
+    // field scope of its own, and an application words this invitation once.
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Text(
-          'Select an item from the list to edit it.',
-          style: TextStyle(fontStyle: FontStyle.italic),
+          TomFormLabels.masterDetailEmpty(null),
+          style: const TextStyle(fontStyle: FontStyle.italic),
         ),
       ),
     );

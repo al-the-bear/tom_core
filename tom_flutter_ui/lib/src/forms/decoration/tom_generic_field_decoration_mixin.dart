@@ -39,6 +39,7 @@ mixin TomGenericFieldDecorationMixin<T> on TomField<T> {
       kind,
       hasRequired: hasRequiredValidator,
       isEditable: isEditable,
+      basePath: basePath,
     );
   }
 

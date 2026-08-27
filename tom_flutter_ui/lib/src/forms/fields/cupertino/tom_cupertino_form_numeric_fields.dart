@@ -28,6 +28,7 @@ import '../../decoration/tom_string_input_decoration_mixin.dart';
 import '../../style/tom_cupertino_form_style.dart';
 import '../../style/tom_form_style.dart';
 import '../../style/tom_form_style_scope.dart';
+import '../../tom_form_labels.dart';
 import '../tom_field_widget_adapter.dart';
 import '../tom_form_double_field.dart';
 import '../tom_form_int_field.dart';
@@ -312,7 +313,7 @@ class _CupertinoIntPickerWidgetState extends State<_CupertinoIntPickerWidget> {
                   children: [
                     CupertinoButton(
                       onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(TomFormLabels.cancel(field.basePath)),
                     ),
                     CupertinoButton(
                       onPressed: () {
@@ -321,7 +322,7 @@ class _CupertinoIntPickerWidgetState extends State<_CupertinoIntPickerWidget> {
                         }
                         Navigator.of(ctx).pop();
                       },
-                      child: const Text('Done'),
+                      child: Text(TomFormLabels.done(field.basePath)),
                     ),
                   ],
                 ),
