@@ -295,9 +295,10 @@ void main() {
     /// Keys no parser reads, holding values no parser could use.
     const unrecognised = <String, dynamic>{'nonsense': 1, 'alsoNonsense': 'x'};
 
-    /// Every parser, keyed by name so a failure names the culprit.
+    /// Every parser that holds the property, keyed by name so a failure names
+    /// the culprit.
     ///
-    /// The five that take `dynamic` are assignable here: a function accepting
+    /// The ones taking `dynamic` are assignable here: a function accepting
     /// `dynamic` accepts a map.
     final parsers = <String, Object? Function(Map<String, dynamic>)>{
       'parseTextStyle': TomStyleResolvers.parseTextStyle,
@@ -317,12 +318,29 @@ void main() {
       'parseStrutStyle': TomStyleResolvers.parseStrutStyle,
       'parseTextHeightBehavior': TomStyleResolvers.parseTextHeightBehavior,
       'parseScrollPhysics': TomStyleResolvers.parseScrollPhysics,
+      'parseFontWeight': TomStyleResolvers.parseFontWeight,
     };
+
+    /// The one parser that does *not* hold the property.
+    ///
+    /// `parseEdgeInsets` reads an unrecognised map as four absent sides and
+    /// returns `EdgeInsets.zero` — a real object built out of nothing, which is
+    /// the exact failure the rest of this group forbids. It is named here
+    /// rather than left off the list, because an omission is indistinguishable
+    /// from an oversight; the fix is tracked separately as its own todo.
+    const knownException = 'parseEdgeInsets';
 
     test('the list covers every parser in the class', () {
       // Guards the guard: a parser added later and not listed here would be
       // exempt from the property without anything saying so.
-      expect(parsers, hasLength(17));
+      expect(parsers, hasLength(18));
+      expect(parsers.containsKey(knownException), isFalse);
+    });
+
+    test('$knownException is still the exception the list records', () {
+      // Held to its current behaviour so the note above cannot outlive it: if
+      // the leak is fixed, this fails and the parser moves into the list.
+      expect(TomStyleResolvers.parseEdgeInsets(unrecognised), EdgeInsets.zero);
     });
 
     for (final entry in parsers.entries) {

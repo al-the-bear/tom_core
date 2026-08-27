@@ -164,7 +164,7 @@ manual registration.
 | Icon | `icon` (resolved via `TomUIIcons`) |
 | Numeric | `doubleVal`, `doubleOrFail`, `intVal`, `intOrFail` |
 | Bool | `boolVal` |
-| Insets | `edgeInsets` (number / array / map forms) |
+| Insets | `edgeInsets` (number / array / map forms, via `TomStyleResolvers.parseEdgeInsets`) |
 | Generic | `value`, `list`, `map` |
 | Composite | `textStyle`, `inputBorder`, `widgetStateColor`, `breakpointed<T>` |
 | Default widgets | `defaultText`, `defaultTextOrEmpty` |
@@ -185,34 +185,49 @@ require the Material library (see [Dependencies](#dependencies)), so that could
 never have told them apart. The boundary is the resource provider — `TomCtr` is
 the one place that reads it, turning a key into a raw value, while
 `TomStyleResolvers` turns an already-decoded value into a composite Flutter
-object. The dependency runs one way, and visibly so: every `resolve…` makes
-exactly one `TomCtr` call and hands the result to the matching `parse…`, so
-none of them reaches the provider twice or builds its object inline. A new
-helper belongs here when it assembles a Flutter object out of a decoded value,
-and in `TomCtr` when it reaches the provider for one.
+object. It is the *provider* dependency that runs one way, not the reference
+between the two classes: every `resolve…` makes exactly one `TomCtr` call and
+hands the result to the matching `parse…`, while no `parse…` mentions `TomCtr`
+at all. A new helper belongs here when it assembles a Flutter object out of a
+decoded value, and in `TomCtr` when it reaches the provider for one — and in
+exactly one of the two.
+
+Two parsers have their resolver on the other side of that boundary.
+`parseEdgeInsets` and `parseFontWeight` are reached through `TomCtr.edgeInsets`
+and `TomCtr.textStyle`, which are long-established entry points with call sites
+throughout the widget layer; their resource route stays where callers already
+find it rather than moving here as an eighteenth `resolve…`. What is not
+allowed is the arrangement they replaced — `TomCtr` holding a private copy of
+each parser, kept in step by hand. That is why both are public here: something
+outside the class resolves them.
 
 Which accessor a resolver reads through follows from its parser's own
 signature, and is not a free choice. Twelve parsers take a
-`Map<String, dynamic>?`, so their resolvers read `TomCtr.map`. The five that
+`Map<String, dynamic>?`, so their resolvers read `TomCtr.map`. The seven that
 take a bare `dynamic` — `parseBorderRadius`, `parseAlignment`, `parseOffset`,
-`parseVisualDensity` and `parseScrollPhysics`, the rows below that advertise a
-scalar or list form — read `TomCtr.value` instead, because `TomCtr.map` yields
-`null` for anything that is not a map and those forms would otherwise be
-documented here and unreachable from a resource. Four of the five additionally
-unwrap a map carrying the value under the property's own name (`radius`,
-`alignment`, `visualDensity`, `physics`), so a resource can group it with
-siblings; `resolveOffset` has no such key, `{dx, dy}` being a value form rather
-than a wrapper.
+`parseVisualDensity`, `parseScrollPhysics` and the two resolved by `TomCtr`,
+the rows below that advertise a scalar or list form — read the raw value
+instead, because `TomCtr.map` yields `null` for anything that is not a map and
+those forms would otherwise be documented here and unreachable from a resource.
+Four of the five with a resolver in this class additionally unwrap a map
+carrying the value under the property's own name (`radius`, `alignment`,
+`visualDensity`, `physics`), so a resource can group it with siblings;
+`resolveOffset` has no such key, `{dx, dy}` being a value form rather than a
+wrapper.
 
 [`test/widget_base/style_resolvers_layering_test.dart`](../test/widget_base/style_resolvers_layering_test.dart)
 reads the source and holds it to every part of that rule — including the
 derived one, so a parser widened to `dynamic` later drags its resolver along —
 and so a resolver that opens a second route to the provider, or a parser that
 starts reading resources and can no longer be called with a plain map, fails
-rather than silently moving the boundary.
+rather than silently moving the boundary. It also fails if any member name is
+declared in both classes, which is what keeps the private-copy arrangement from
+coming back.
 [`test/widget_base/style_resolvers_resource_route_test.dart`](../test/widget_base/style_resolvers_resource_route_test.dart)
 exercises the same five through a real resource tree, asserting that each
-scalar or list form yields exactly what the direct `parse…` call does.
+scalar or list form yields exactly what the direct `parse…` call does, and
+[`test/widget_base/shared_parsers_test.dart`](../test/widget_base/shared_parsers_test.dart)
+does the same for the two `TomCtr` resolves.
 
 | Resolver | Parses |
 | -------- | ------ |
@@ -233,6 +248,8 @@ scalar or list form yields exactly what the direct `parse…` call does.
 | `parseStrutStyle` / `resolveStrutStyle` | `StrutStyle` |
 | `parseTextHeightBehavior` / `resolveTextHeightBehavior` | `TextHeightBehavior` |
 | `parseScrollPhysics` / `resolveScrollPhysics` | `ScrollPhysics` (bouncing / clamping / never / always / page / fixedExtent) |
+| `parseEdgeInsets` / `TomCtr.edgeInsets` | `EdgeInsets` (number / `[…]` / `{all}` / `{horizontal, vertical}` / per-side) |
+| `parseFontWeight` / `TomCtr.textStyle` | `FontWeight` (`normal` / `bold` / `w100`…`w900` in any case, or `100`…`900`) |
 
 All parsers skip an entry they cannot use rather than raising, so a
 partially-specified resource map yields a partially-populated object rather than
@@ -253,9 +270,12 @@ An unrecognised value for `type` in `parseShapeBorder` or `shape` in
 a misspelled name as the default shape would turn a typo into a real shape.
 
 [`test/widget_base/widget_base_resolvers_test.dart`](../test/widget_base/widget_base_resolvers_test.dart)
-asserts the `null` return for every one of the 17 parsers, and holds its own
-list of them to the class's member count so a parser added later cannot be
-exempt in silence.
+asserts the `null` return for 18 of the 19 parsers, and holds its own list of
+them to the class's member count so a parser added later cannot be exempt in
+silence. `parseEdgeInsets` is the one exception, and is named as such in the
+test rather than left off the list: an unrecognised map yields
+`EdgeInsets.zero`, a real object built out of nothing. That is tracked as its
+own fix; the test pins the current behaviour so the note cannot outlive it.
 
 ## Dependencies
 

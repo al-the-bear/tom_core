@@ -28,26 +28,32 @@ import 'package:flutter_test/flutter_test.dart';
 /// This reads the source rather than calling the API on purpose: the claim is
 /// about how the file is *written*, and a new helper added the wrong way would
 /// otherwise pass every behavioural test in the suite.
+/// A static member declaration, capturing its name.
+///
+/// Both classes are flat — every member sits at one indent level and no nested
+/// declaration exists — so a body reliably runs from the declaration to the
+/// next line that closes at that same indent.
+final _declaration =
+    RegExp(r'^  static\s+[\w<>?,\s]+?\s(\w+)\(', multiLine: true);
+
+/// Maps every static member name in [source] to the text of its body.
+Map<String, String> _membersOf(String source) {
+  final bodies = <String, String>{};
+  for (final match in _declaration.allMatches(source)) {
+    final end = source.indexOf('\n  }\n', match.end);
+    bodies[match.group(1)!] = end == -1
+        ? source.substring(match.start)
+        : source.substring(match.start, end);
+  }
+  return bodies;
+}
+
 void main() {
   group('TomStyleResolvers layering', () {
     final source =
         File('lib/src/widget_base/tom_style_resolvers.dart').readAsStringSync();
 
-    /// A static member declaration, capturing its name.
-    ///
-    /// The class is flat — every member sits at one indent level and no nested
-    /// declaration exists — so a body reliably runs from the declaration to the
-    /// next line that closes at that same indent.
-    final declaration = RegExp(r'^  static\s+[\w<>?,\s]+?\s(\w+)\(',
-        multiLine: true);
-
-    final bodies = <String, String>{};
-    for (final match in declaration.allMatches(source)) {
-      final end = source.indexOf('\n  }\n', match.end);
-      bodies[match.group(1)!] =
-          end == -1 ? source.substring(match.start) : source.substring(
-              match.start, end);
-    }
+    final bodies = _membersOf(source);
 
     final resolvers = bodies.keys.where((n) => n.startsWith('resolve')).toList();
     final parsers = bodies.keys.where((n) => n.startsWith('parse')).toList();
@@ -55,8 +61,13 @@ void main() {
     test('the source scan found the members it is meant to check', () {
       // Guards the guard: a regex that stopped matching would leave every
       // assertion below iterating an empty list and passing.
+      //
+      // The parsers outnumber the resolvers by the two whose resolver lives in
+      // TomCtr instead — parseEdgeInsets and parseFontWeight — so the rule
+      // below is stated over resolvers, each of which must find its parser,
+      // and not over parsers, which need not each find a resolver.
       expect(resolvers, hasLength(17));
-      expect(parsers, hasLength(17));
+      expect(parsers, hasLength(19));
     });
 
     /// A single leading `dynamic` parameter, which is how a parser declares
@@ -74,16 +85,22 @@ void main() {
     final rawParsers =
         parsers.where((p) => rawParameter.hasMatch(signatureOf(p))).toList();
 
-    test('the parsers accepting a raw value are the five that document one',
+    test('the parsers accepting a raw value are the seven that document one',
         () {
       // Guards the guard twice over: it pins the derived split so a signature
       // change cannot silently move a resolver out from under the rule below,
-      // and it names the five so the failure is legible.
+      // and it names the seven so the failure is legible.
+      //
+      // Five of them have a `resolve…` partner in this class and so fall under
+      // that rule; parseEdgeInsets and parseFontWeight are resolved by TomCtr,
+      // which reads the raw value for the same reason.
       expect(
         rawParsers..sort(),
         <String>[
           'parseAlignment',
           'parseBorderRadius',
+          'parseEdgeInsets',
+          'parseFontWeight',
           'parseOffset',
           'parseScrollPhysics',
           'parseVisualDensity',
@@ -149,6 +166,61 @@ void main() {
           reason: '$member reaches the resource provider, so it can no longer '
               'be called with a plain map and the parse half stops being '
               'testable without resources',
+        );
+      }
+    });
+  });
+
+  /// The two classes may call each other, but they may not each hold their own
+  /// copy of the same helper.
+  ///
+  /// `TomCtr` used to carry private clones of `_parseEdgeInsets`, `_asNum` and
+  /// `_parseFontWeight`. The first two were a comment-acknowledged verbatim
+  /// copy, kept in step by hand — and the invariant had already slipped, since
+  /// the third had drifted into accepting strictly less than its twin.
+  ///
+  /// A shared name is the signal, not the identical body: two functions in this
+  /// module named `_parseX` are two answers to one question, and a maintainer
+  /// fixing one will not think to look for the other. Checking names rather
+  /// than bodies also catches the case the comment could not — copies that have
+  /// already diverged.
+  group('TomCtr and TomStyleResolvers do not each hold their own helper', () {
+    final helpers = File('lib/src/widget_base/tom_construction_helpers.dart')
+        .readAsStringSync();
+    final resolvers =
+        File('lib/src/widget_base/tom_style_resolvers.dart').readAsStringSync();
+
+    final inTomCtr = _membersOf(helpers).keys.toSet();
+    final inResolvers = _membersOf(resolvers).keys.toSet();
+
+    test('the source scan found members in both files', () {
+      // Guards the guard: an empty set on either side would make the
+      // intersection empty and the assertion below vacuous.
+      expect(inTomCtr, isNotEmpty);
+      expect(inResolvers, isNotEmpty);
+    });
+
+    test('no member name is declared in both classes', () {
+      expect(
+        (inTomCtr.intersection(inResolvers).toList()..sort()),
+        isEmpty,
+        reason: 'a name declared in both classes is the same question answered '
+            'twice; move the implementation to TomStyleResolvers, which owns '
+            'the value-to-object parsers, and have TomCtr call it after '
+            'reading the resource',
+      );
+    });
+
+    test('TomCtr reaches the shared parsers by name', () {
+      // The two parsers TomStyleResolvers exposes without a `resolve…` partner
+      // are public *because* TomCtr is their resolver. If that call went away
+      // the parser would be public for no reason, and the duplicate would be
+      // the obvious way to bring the behaviour back.
+      for (final parser in <String>['parseEdgeInsets', 'parseFontWeight']) {
+        expect(
+          helpers,
+          contains('TomStyleResolvers.$parser('),
+          reason: 'TomCtr no longer routes through $parser',
         );
       }
     });

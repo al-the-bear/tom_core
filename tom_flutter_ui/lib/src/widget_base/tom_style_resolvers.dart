@@ -17,24 +17,34 @@ import 'tom_construction_helpers.dart';
 ///
 /// The boundary is the resource provider. [TomCtr] is the one place that reads
 /// it, turning a `basePath` + `suffix` key into a raw value; this class turns
-/// an already-decoded value into a composite Flutter object. The dependency
-/// runs one way, and visibly so: every `resolve…` below makes exactly one
-/// `TomCtr` call and hands the result to the matching `parse…`, so none of them
-/// reaches the provider twice or builds its object inline.
+/// an already-decoded value into a composite Flutter object. It is the
+/// *provider* dependency that runs one way, not the reference between the two
+/// classes — the seventeen `resolve…` members below each make exactly one
+/// `TomCtr` call and hand the result to the matching `parse…`, while no
+/// `parse…` names [TomCtr] at all. That asymmetry, and not a one-way import,
+/// is what lets the parsing half be tested with no resources installed.
 ///
-/// Which accessor it reads through follows from the parser's own signature.
-/// Twelve parsers take a `Map<String, dynamic>?`, so their resolvers read
-/// `TomCtr.map`. Five — [parseBorderRadius], [parseAlignment], [parseOffset],
-/// [parseVisualDensity] and [parseScrollPhysics] — take a `dynamic`, because a
-/// radius may be a bare number and an alignment a name; their resolvers read
-/// `TomCtr.value`, or those forms would be documented and unreachable from a
-/// resource. Four of the five additionally unwrap a map that carries the value
+/// Nineteen parsers live here; seventeen have their `resolve…` partner in this
+/// class, and [parseEdgeInsets] and [parseFontWeight] are resolved by
+/// [TomCtr.edgeInsets] and [TomCtr.textStyle] instead — long-established entry
+/// points with call sites throughout the widget layer, so their resource route
+/// stays where callers already find it. What must not return is the
+/// alternative [TomCtr] used to take: a private copy of each parser, kept in
+/// step by hand and already drifted apart by the time it was noticed.
+///
+/// Which accessor a resolver reads through follows from its parser's own
+/// signature. Twelve parsers take a `Map<String, dynamic>?`, so their resolvers
+/// read `TomCtr.map`. Seven take a bare `dynamic`, because a radius may be a
+/// number, an alignment a name and a font weight either — [parseBorderRadius],
+/// [parseAlignment], [parseOffset], [parseVisualDensity], [parseScrollPhysics]
+/// and the two [TomCtr] resolves. Those read the raw value, or the scalar and
+/// list forms would be documented and unreachable from a resource. Four of the
+/// five with resolvers here additionally unwrap a map that carries the value
 /// under the property's own name.
 ///
 /// A new helper therefore belongs here when it assembles a Flutter object out
-/// of a decoded value, and in [TomCtr] when it reaches the provider for one.
-/// Keeping the `parse…` half free of the provider is what lets it be tested
-/// with no resources installed.
+/// of a decoded value, and in [TomCtr] when it reaches the provider for one —
+/// and in exactly one of the two, never both.
 ///
 /// Every `parse…` returns `null` when the input contributed nothing — absent,
 /// empty, or holding only keys and values it cannot use — and an object only
@@ -81,7 +91,7 @@ class TomStyleResolvers {
     if (map == null || map.isEmpty) return null;
 
     final fontSize = _parseDouble(map['fontSize']);
-    final fontWeight = _parseFontWeight(map['fontWeight']);
+    final fontWeight = parseFontWeight(map['fontWeight']);
     final fontStyle = _parseFontStyle(map['fontStyle']);
     final color = _parseColor(map['color']);
     final backgroundColor = _parseColor(map['backgroundColor']);
@@ -273,7 +283,7 @@ class TomStyleResolvers {
     final filled = _asBool(map['filled']);
     final isDense = _asBool(map['isDense']);
     final isCollapsed = _asBool(map['isCollapsed']);
-    final contentPadding = _parseEdgeInsets(map['contentPadding']);
+    final contentPadding = parseEdgeInsets(map['contentPadding']);
     final labelStyle = parseTextStyle(_asStringMap(map['labelStyle']));
     final hintStyle = parseTextStyle(_asStringMap(map['hintStyle']));
     final helperStyle = parseTextStyle(_asStringMap(map['helperStyle']));
@@ -938,7 +948,7 @@ class TomStyleResolvers {
     final fontSize = _parseDouble(map['fontSize']);
     final height = _parseDouble(map['height']);
     final leading = _parseDouble(map['leading']);
-    final fontWeight = _parseFontWeight(map['fontWeight']);
+    final fontWeight = parseFontWeight(map['fontWeight']);
     final fontStyle = _parseFontStyle(map['fontStyle']);
     final forceStrutHeight = _asBool(map['forceStrutHeight']);
 
@@ -1090,6 +1100,145 @@ class TomStyleResolvers {
   }
 
   // ===========================================================================
+  // Parsers whose resolver lives in TomCtr
+  // ===========================================================================
+  //
+  // These two are public for the same reason the seventeen above are: something
+  // outside this class reads the resource and needs the parsing half. The
+  // difference is only where that reader sits — `TomCtr.edgeInsets` and
+  // `TomCtr.textStyle` are long-established entry points with call sites across
+  // every widget file, so their resource route stays in `TomCtr` rather than
+  // moving here as an eighteenth `resolve…`.
+  //
+  // What must not happen is the alternative `TomCtr` used to take: its own
+  // private copy of each. `style_resolvers_layering_test.dart` fails if any
+  // name is declared in both classes.
+
+  /// Parses [EdgeInsets] from a decoded resource value.
+  ///
+  /// Accepts a number for uniform insets; a list of `[all]`,
+  /// `[horizontal, vertical]` or `[left, top, right, bottom]`; or a map with an
+  /// `all` key, or any of `horizontal` / `vertical` / `left` / `top` / `right`
+  /// / `bottom`, where a side falls back to its axis and then to zero.
+  ///
+  /// Returns `null` if the value is absent or is a form out of which nothing
+  /// usable can be read — never a default-constructed object.
+  ///
+  /// [TomCtr.edgeInsets] is the resource route to this parser.
+  static EdgeInsets? parseEdgeInsets(dynamic value) {
+    if (value == null) return null;
+
+    // Single number = uniform
+    if (value is num) return EdgeInsets.all(value.toDouble());
+
+    // Array format
+    if (value is List) {
+      if (value.length == 1 && value[0] is num) {
+        return EdgeInsets.all((value[0] as num).toDouble());
+      }
+      if (value.length == 2 && value[0] is num && value[1] is num) {
+        return EdgeInsets.symmetric(
+          horizontal: (value[0] as num).toDouble(),
+          vertical: (value[1] as num).toDouble(),
+        );
+      }
+      if (value.length == 4) {
+        return EdgeInsets.only(
+          left: _asNum(value[0])?.toDouble() ?? 0,
+          top: _asNum(value[1])?.toDouble() ?? 0,
+          right: _asNum(value[2])?.toDouble() ?? 0,
+          bottom: _asNum(value[3])?.toDouble() ?? 0,
+        );
+      }
+    }
+
+    // Map format
+    if (value is Map<String, dynamic>) {
+      final all = _asNum(value['all']);
+      if (all != null) return EdgeInsets.all(all.toDouble());
+      return EdgeInsets.only(
+        left: _asNum(value['left'])?.toDouble() ??
+            _asNum(value['horizontal'])?.toDouble() ??
+            0,
+        top: _asNum(value['top'])?.toDouble() ??
+            _asNum(value['vertical'])?.toDouble() ??
+            0,
+        right: _asNum(value['right'])?.toDouble() ??
+            _asNum(value['horizontal'])?.toDouble() ??
+            0,
+        bottom: _asNum(value['bottom'])?.toDouble() ??
+            _asNum(value['vertical'])?.toDouble() ??
+            0,
+      );
+    }
+
+    return null;
+  }
+
+  /// Parses a [FontWeight] from a decoded resource value.
+  ///
+  /// Accepts the names `normal` and `bold` and `w100`…`w900` in any case, and
+  /// the integers `100`…`900`.
+  ///
+  /// Returns `null` if the value is absent or names no weight this parser
+  /// knows.
+  ///
+  /// [TomCtr.textStyle] is the resource route to this parser; the map route is
+  /// [parseTextStyle]'s `fontWeight` key.
+  static FontWeight? parseFontWeight(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'normal':
+          return FontWeight.normal;
+        case 'bold':
+          return FontWeight.bold;
+        case 'w100':
+          return FontWeight.w100;
+        case 'w200':
+          return FontWeight.w200;
+        case 'w300':
+          return FontWeight.w300;
+        case 'w400':
+          return FontWeight.w400;
+        case 'w500':
+          return FontWeight.w500;
+        case 'w600':
+          return FontWeight.w600;
+        case 'w700':
+          return FontWeight.w700;
+        case 'w800':
+          return FontWeight.w800;
+        case 'w900':
+          return FontWeight.w900;
+      }
+    }
+    if (value is int) {
+      switch (value) {
+        case 100:
+          return FontWeight.w100;
+        case 200:
+          return FontWeight.w200;
+        case 300:
+          return FontWeight.w300;
+        case 400:
+          return FontWeight.w400;
+        case 500:
+          return FontWeight.w500;
+        case 600:
+          return FontWeight.w600;
+        case 700:
+          return FontWeight.w700;
+        case 800:
+          return FontWeight.w800;
+        case 900:
+          return FontWeight.w900;
+      }
+    }
+    return null;
+  }
+
+  // ===========================================================================
   // Private Parsing Helpers
   // ===========================================================================
 
@@ -1143,59 +1292,6 @@ class TomStyleResolvers {
     if (value == null) return null;
     if (value is String) return TomUIColors.resolveColor(value);
     if (value is int) return Color(value);
-    return null;
-  }
-
-  static FontWeight? _parseFontWeight(dynamic value) {
-    if (value == null) return null;
-    if (value is String) {
-      switch (value.toLowerCase()) {
-        case 'normal':
-          return FontWeight.normal;
-        case 'bold':
-          return FontWeight.bold;
-        case 'w100':
-          return FontWeight.w100;
-        case 'w200':
-          return FontWeight.w200;
-        case 'w300':
-          return FontWeight.w300;
-        case 'w400':
-          return FontWeight.w400;
-        case 'w500':
-          return FontWeight.w500;
-        case 'w600':
-          return FontWeight.w600;
-        case 'w700':
-          return FontWeight.w700;
-        case 'w800':
-          return FontWeight.w800;
-        case 'w900':
-          return FontWeight.w900;
-      }
-    }
-    if (value is int) {
-      switch (value) {
-        case 100:
-          return FontWeight.w100;
-        case 200:
-          return FontWeight.w200;
-        case 300:
-          return FontWeight.w300;
-        case 400:
-          return FontWeight.w400;
-        case 500:
-          return FontWeight.w500;
-        case 600:
-          return FontWeight.w600;
-        case 700:
-          return FontWeight.w700;
-        case 800:
-          return FontWeight.w800;
-        case 900:
-          return FontWeight.w900;
-      }
-    }
     return null;
   }
 
@@ -1333,56 +1429,6 @@ class TomStyleResolvers {
         .toList();
   }
 
-  static EdgeInsets? _parseEdgeInsets(dynamic value) {
-    if (value == null) return null;
-
-    // Single number = uniform
-    if (value is num) return EdgeInsets.all(value.toDouble());
-
-    // Array format
-    if (value is List) {
-      if (value.length == 1 && value[0] is num) {
-        return EdgeInsets.all((value[0] as num).toDouble());
-      }
-      if (value.length == 2 && value[0] is num && value[1] is num) {
-        return EdgeInsets.symmetric(
-          horizontal: (value[0] as num).toDouble(),
-          vertical: (value[1] as num).toDouble(),
-        );
-      }
-      if (value.length == 4) {
-        return EdgeInsets.only(
-          left: _asNum(value[0])?.toDouble() ?? 0,
-          top: _asNum(value[1])?.toDouble() ?? 0,
-          right: _asNum(value[2])?.toDouble() ?? 0,
-          bottom: _asNum(value[3])?.toDouble() ?? 0,
-        );
-      }
-    }
-
-    // Map format
-    if (value is Map<String, dynamic>) {
-      final all = _asNum(value['all']);
-      if (all != null) return EdgeInsets.all(all.toDouble());
-      return EdgeInsets.only(
-        left: _asNum(value['left'])?.toDouble() ??
-            _asNum(value['horizontal'])?.toDouble() ??
-            0,
-        top: _asNum(value['top'])?.toDouble() ??
-            _asNum(value['vertical'])?.toDouble() ??
-            0,
-        right: _asNum(value['right'])?.toDouble() ??
-            _asNum(value['horizontal'])?.toDouble() ??
-            0,
-        bottom: _asNum(value['bottom'])?.toDouble() ??
-            _asNum(value['vertical'])?.toDouble() ??
-            0,
-      );
-    }
-
-    return null;
-  }
-
   static Size? _parseSize(dynamic value) {
     if (value == null) return null;
     if (value is Map<String, dynamic>) {
@@ -1411,7 +1457,7 @@ class TomStyleResolvers {
 
   static WidgetStateProperty<EdgeInsetsGeometry?>? _wrapEdgeInsets(
       dynamic value) {
-    final insets = _parseEdgeInsets(value);
+    final insets = parseEdgeInsets(value);
     if (insets == null) return null;
     return WidgetStatePropertyAll<EdgeInsetsGeometry?>(insets);
   }

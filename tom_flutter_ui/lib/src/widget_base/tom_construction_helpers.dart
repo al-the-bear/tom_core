@@ -4,6 +4,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../resource_auth/tom_colors.dart';
 import '../resource_auth/tom_icons.dart';
 import '../widgets/labels/tom_labels.dart';
+import 'tom_style_resolvers.dart';
 
 /// Single entry point for all resource resolution in Tom UI.
 ///
@@ -282,10 +283,14 @@ class TomCtr {
   /// - A single number for uniform insets
   /// - An array \[all\], \[horizontal, vertical\], or \[left, top, right, bottom\]
   /// - A map with keys: "all", "horizontal", "vertical", "left", "top", "right", "bottom"
+  ///
+  /// The value-to-object step is [TomStyleResolvers.parseEdgeInsets], which is
+  /// also what the `contentPadding` key of a decoration map goes through — one
+  /// implementation, so the two cannot read a resource differently.
   static EdgeInsets? edgeInsets(String? basePath, [String suffix = '']) {
     if (basePath == null) return null;
     final value = _provider.getObjectOrNull(_key(basePath, suffix));
-    return _parseEdgeInsets(value);
+    return TomStyleResolvers.parseEdgeInsets(value);
   }
 
   // ===========================================================================
@@ -324,7 +329,8 @@ class TomCtr {
   ///
   /// Reads the following keys (all optional):
   /// - `fontSize` (double)
-  /// - `fontWeight` (string: "w100".."w900" / "normal" / "bold", or int 100..900)
+  /// - `fontWeight` (string: "w100".."w900" / "normal" / "bold" in any case,
+  ///   or int 100..900 — see [TomStyleResolvers.parseFontWeight])
   /// - `fontFamily` (string)
   /// - `color` (color resolvable via [color])
   /// - `letterSpacing` (double)
@@ -336,7 +342,9 @@ class TomCtr {
     if (basePath == null) return null;
     final key = _key(basePath, suffix);
     final fontSize = doubleVal(key, 'fontSize');
-    final fontWeight = _parseFontWeight(textOrNull(key, 'fontWeight'));
+    final fontWeight = TomStyleResolvers.parseFontWeight(
+      value(key, 'fontWeight'),
+    );
     final fontFamily = textOrNull(key, 'fontFamily');
     final c = color(key, 'color');
     final letterSpacing = doubleVal(key, 'letterSpacing');
@@ -540,79 +548,4 @@ class TomCtr {
     return tomId != null ? '$tomId.$suffix' : null;
   }
 
-  // ===========================================================================
-  // Private Helpers
-  // ===========================================================================
-
-  static FontWeight? _parseFontWeight(String? value) {
-    if (value == null) return null;
-    return switch (value) {
-      'w100' => FontWeight.w100,
-      'w200' => FontWeight.w200,
-      'w300' => FontWeight.w300,
-      'w400' || 'normal' => FontWeight.w400,
-      'w500' => FontWeight.w500,
-      'w600' => FontWeight.w600,
-      'w700' || 'bold' => FontWeight.w700,
-      'w800' => FontWeight.w800,
-      'w900' => FontWeight.w900,
-      _ => null,
-    };
-  }
-
-  /// Tolerant num guard: returns null for a present-but-wrong-type value
-  /// instead of throwing a CastError (bug §77). Mirror of the same helper in
-  /// [TomStyleResolvers]; the [_parseEdgeInsets] body below is a verbatim copy
-  /// of that resolver's and must stay equally tolerant.
-  static num? _asNum(dynamic value) => value is num ? value : null;
-
-  static EdgeInsets? _parseEdgeInsets(dynamic value) {
-    if (value == null) return null;
-
-    // Single number = uniform
-    if (value is num) return EdgeInsets.all(value.toDouble());
-
-    // Array format
-    if (value is List) {
-      if (value.length == 1 && value[0] is num) {
-        return EdgeInsets.all((value[0] as num).toDouble());
-      }
-      if (value.length == 2 && value[0] is num && value[1] is num) {
-        return EdgeInsets.symmetric(
-          horizontal: (value[0] as num).toDouble(),
-          vertical: (value[1] as num).toDouble(),
-        );
-      }
-      if (value.length == 4) {
-        return EdgeInsets.only(
-          left: _asNum(value[0])?.toDouble() ?? 0,
-          top: _asNum(value[1])?.toDouble() ?? 0,
-          right: _asNum(value[2])?.toDouble() ?? 0,
-          bottom: _asNum(value[3])?.toDouble() ?? 0,
-        );
-      }
-    }
-
-    // Map format
-    if (value is Map<String, dynamic>) {
-      final all = _asNum(value['all']);
-      if (all != null) return EdgeInsets.all(all.toDouble());
-      return EdgeInsets.only(
-        left: _asNum(value['left'])?.toDouble() ??
-            _asNum(value['horizontal'])?.toDouble() ??
-            0,
-        top: _asNum(value['top'])?.toDouble() ??
-            _asNum(value['vertical'])?.toDouble() ??
-            0,
-        right: _asNum(value['right'])?.toDouble() ??
-            _asNum(value['horizontal'])?.toDouble() ??
-            0,
-        bottom: _asNum(value['bottom'])?.toDouble() ??
-            _asNum(value['vertical'])?.toDouble() ??
-            0,
-      );
-    }
-
-    return null;
-  }
 }

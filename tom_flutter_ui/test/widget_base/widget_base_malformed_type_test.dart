@@ -140,8 +140,7 @@ void main() {
       expect(strut!.fontSize, 12);
     });
 
-    test('TomCtr.edgeInsets routes the verbatim _parseEdgeInsets copy tolerantly',
-        () {
+    test('TomCtr.edgeInsets({all: String}) does not throw', () {
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from(<String, dynamic>{
           'pad': {'all': 'x'},
