@@ -49,19 +49,11 @@ void main() {
     });
   });
 
-  group('TomAuthorizationGroup typedef', () {
-    test('aliases TomAuthorizationGroup', () {
-      // A typedef's type literal evaluates to the aliased type.
-      expect(TomAuthorizationGroup, equals(TomAuthorizationGroup));
-      expect(TomAuthorizationGroup('g'), isA<TomAuthorizationGroup>());
-    });
-
+  group('AuthGroupMode', () {
     test('default mode is controlsWidest', () {
       expect(TomAuthorizationGroup('g').mode, AuthGroupMode.controlsWidest);
     });
-  });
 
-  group('AuthGroupMode via applyMode', () {
     test('controlsWidest narrows a member to the group ceiling', () {
       TomAuthorization.adapter =
           _PathAuthAdapter({'g': TomAuthState.read});

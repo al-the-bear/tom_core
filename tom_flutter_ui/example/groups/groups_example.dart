@@ -2,19 +2,21 @@
 ///
 /// `groups/` is the **collective-visibility** layer: a group controls the
 /// authorization of a whole region of related widgets without putting an id on
-/// every leaf. The module itself is thin — `TomAuthorizationGroup` is a backward-compatible
-/// typedef for `TomAuthorizationGroup` (the real implementation lives in
-/// `tom_core_kernel`), and `TomWidgetMixin` wires the Tom UI concerns (id,
-/// group, authorization, resources) into widgets that extend Flutter widgets.
+/// every leaf. The module itself is thin — `TomAuthorizationGroup` and its
+/// `AuthGroupMode` are implemented in `tom_core_kernel` and re-exported here,
+/// so importing `tom_flutter_ui` is enough to name both; what `groups/` adds
+/// is `TomWidgetMixin`, which wires the Tom UI concerns (id, group,
+/// authorization, resources) into widgets that extend Flutter widgets.
 ///
 /// This example demonstrates the pure-logic surfaces (no `BuildContext`):
 ///
-/// 1. building a group and registering members (weak-reference tracking),
-/// 2. the three `AuthGroupMode`s (`controlsAll` / `controlsWidest` /
-///    `controlsNarrowest`) via `applyMode`,
+/// 1. creating a group, and the default `controlsWidest` mode,
+/// 2. registering members (weak-reference tracking),
 /// 3. a `TomWidgetMixin` widget resolving its effective auth through the group,
-/// 4. group introspection (`mostRestrictive`, `isUniform`, `findMember`),
-/// 5. scope-aware path resolution, in both the ambient and the explicit form.
+/// 4. the three `AuthGroupMode`s (`controlsAll` / `controlsWidest` /
+///    `controlsNarrowest`) via `applyMode`,
+/// 5. group introspection (`mostRestrictive`, `isUniform`, `findMember`),
+/// 6. scope-aware path resolution, in both the ambient and the explicit form.
 ///
 /// Because it imports `flutter/material` (→ `dart:ui`) through the package
 /// barrel, run it under the Flutter toolchain, e.g.
@@ -70,12 +72,10 @@ void run() {
   });
 
   // ---------------------------------------------------------------------------
-  // 1. TomAuthorizationGroup is a typedef for TomAuthorizationGroup.
+  // 1. Creating a group. A group needs only an id; the mode defaults to
+  //    controlsWidest, i.e. the group acts as a ceiling on its members.
   // ---------------------------------------------------------------------------
-  final shipping =
-      TomAuthorizationGroup('shipping'); // default mode: controlsWidest
-  print('TomAuthorizationGroup is TomAuthorizationGroup: '
-      '${identical(TomAuthorizationGroup, TomAuthorizationGroup)}');
+  final shipping = TomAuthorizationGroup('shipping');
   print('shipping mode: ${shipping.mode}');
 
   // ---------------------------------------------------------------------------
@@ -137,7 +137,6 @@ void run() {
   // ---------------------------------------------------------------------------
   // Assertions
   // ---------------------------------------------------------------------------
-  assert(identical(TomAuthorizationGroup, TomAuthorizationGroup));
   assert(shipping.mode == AuthGroupMode.controlsWidest);
 
   assert(shipping.memberCount == 2);

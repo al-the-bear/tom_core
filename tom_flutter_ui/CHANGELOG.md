@@ -31,6 +31,14 @@
   leaving one spelling per type across the framework. `lib/src/groups/` keeps
   only `TomWidgetMixin`; the group type reaches consumers through the
   `resource_auth` re-export as before.
+- **The assertions that the removed alias still existed are gone too.** That
+  rename was applied inside the sentences explaining the alias, so the groups
+  example and its test were left stating that `TomAuthorizationGroup` is a
+  typedef for itself — and backing it with `identical(X, X)`, an assert that
+  cannot fail. The example's header sentence and its tautological assert are
+  deleted, and the `TomAuthorizationGroup typedef` test group goes with them;
+  its one real test (`default mode is controlsWidest`) survives under
+  `AuthGroupMode`, beside the mode behaviours it belongs with.
 
 ### Changed
 
