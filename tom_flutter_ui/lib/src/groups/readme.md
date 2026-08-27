@@ -4,10 +4,11 @@
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Collective visibility and authorization control. A `TomAuthorizationGroup` lets
-many widgets share one authorization ceiling without tagging every leaf with an
+many widgets share one authorization decision without tagging every leaf with an
 id: each member registers with the group, and its `effectiveAuthState` is
-narrowed by the group's mode. The group type is the kernel's, so the same
-grouping concept spans widgets, forms, and actions.
+combined with the group's according to the group's mode — which narrows the
+member, widens it, or replaces it outright. The group type is the kernel's, so
+the same grouping concept spans widgets, forms, and actions.
 
 This module owns only the widget-side wiring. The group itself
 (`TomAuthorizationGroup`, `AuthGroupMode`) is defined in `tom_core_kernel` and
@@ -19,7 +20,7 @@ re-exported by `resource_auth/tom_auth_state.dart`, so importing
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomAuthorizationGroup` | A named visibility/auth group — defined in `tom_core_kernel`, re-exported here |
-| `AuthGroupMode` | How the group combines member states (`controlsWidest` default / `controlsAll`) |
+| `AuthGroupMode` | How the group's state applies to a member: `controlsAll` replaces it, `controlsWidest` (the default) caps it at a ceiling, `controlsNarrowest` lifts it to a floor |
 | `TomWidgetMixin` | Mixed into a widget to give it a `tomId` + `tomGroup` and `registerWithGroup()` |
 
 ## Quick start
