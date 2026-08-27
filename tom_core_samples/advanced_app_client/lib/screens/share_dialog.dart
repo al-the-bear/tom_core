@@ -9,9 +9,12 @@
 ///
 /// **Grantee is entered as a user id, not picked from a list.** The frozen
 /// step-26 [AppBackend] seam has no "list users" operation (and [share] speaks
-/// `granteeUserId`, matching the live wire), so the dialog takes the id directly
-/// — the demo ids are `u-alice` / `u-bob` / `u-carol`. A denied share (only the
-/// project owner may share) surfaces inline rather than closing the dialog.
+/// `granteeUserId`, matching the live wire), so the dialog takes the id
+/// directly. Offline the five seeded ids are `u-alice`, `u-bob`, `u-carol`,
+/// `u-dave` and `u-erin`; on the live stack the grantee is the numeric
+/// `auth_db` user id the server parses (alice `2` … erin `6`), so the id to
+/// type depends on the run mode. A denied share (only the project owner may
+/// share) surfaces inline rather than closing the dialog.
 library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
