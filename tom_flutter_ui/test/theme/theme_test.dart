@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/src/theme/theme.dart';
+import 'package:tom_flutter_ui/src/widget_base/tom_family_base.dart';
 
 import '../../example/theme/theme_example.dart' as example;
 
@@ -339,6 +340,75 @@ void main() {
       expect(_DependentProbe.lastStyle?.opacity, 0.9);
     });
   });
+
+  // The theme resolves a treatment from the authorization state and nothing
+  // else; a widget's family does not enter into it. This used to be described
+  // the other way round — `readonlyStyle` was documented in three places as
+  // the treatment applied "when no per-family override exists", a fallback
+  // whose alternative branch was never written. The claim below is the
+  // corrected one, made executable.
+  //
+  // It guards the direction that actually matters. A family-sensitive lookup
+  // cannot be introduced without failing here, so the documentation has to
+  // move with the code instead of drifting from it a second time.
+  group('one theme, every family', () {
+    testWidgets('different families under one scope get one treatment',
+        (tester) async {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: TomThemeScope(
+            theme: const TomTheme(readonlyStyle: TomStateStyle(opacity: 0.5)),
+            child: Column(
+              children: [
+                _ButtonNode(uiStateController: _forceRead()),
+                _InputNode(uiStateController: _forceRead()),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // The premise: these two really are different families. Without this
+      // the test would still pass if both nodes reported the same one, and
+      // would be asserting nothing.
+      expect(
+        tester.widget<_ButtonNode>(find.byType(_ButtonNode)).family,
+        isNot(tester.widget<_InputNode>(find.byType(_InputNode)).family),
+      );
+
+      double opacityIn(Type node) => tester
+          .widget<Opacity>(find.descendant(
+            of: find.byType(node),
+            matching: find.byType(Opacity),
+          ))
+          .opacity;
+
+      expect(opacityIn(_ButtonNode), closeTo(0.5, 0.001));
+      expect(opacityIn(_InputNode), closeTo(0.5, 0.001));
+    });
+  });
+}
+
+TomUIStateController _forceRead() =>
+    TomUIStateController(resolve: (_, _) => TomAuthState.read);
+
+/// A widget of the `button` family. Content is a bare [SizedBox] so the only
+/// [Opacity] beneath it is the one the theme put there.
+class _ButtonNode extends TomButtonBase {
+  _ButtonNode({super.uiStateController});
+
+  @override
+  Widget buildContent(BuildContext context) => const SizedBox();
+}
+
+/// A widget of the `input` family — the family whose read-only form is the
+/// stock example of one that might want its own treatment.
+class _InputNode extends TomInputBase {
+  _InputNode({super.uiStateController});
+
+  @override
+  Widget buildContent(BuildContext context) => const SizedBox();
 }
 
 /// A hoisted builder, used to show that two styles naming the *same* function

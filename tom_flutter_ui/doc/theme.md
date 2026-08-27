@@ -154,6 +154,15 @@ Both route through `TomTheme.applyAuthState` or the same two style lookups, so
 customising a `TomStateStyle` once at the `TomThemeScope` level re-styles that
 state across the whole app, whichever half of the package a widget comes from.
 
+The theme resolves a treatment from the authorization state and nothing else —
+a widget's `TomWidgetFamily` does not enter into it, so every widget under a
+scope gets that scope's two styles. A family that needs something different
+overrides `buildReadonly` / `buildDisabled`, as above; there is no per-family
+map on the theme to consult. That is deliberate rather than pending: the
+lookups take a `BuildContext` and no family, and two of the enforcement points —
+`TomWidgetMixin` and `TomPolicyNodeBase` itself — carry no family to pass, so a
+family-keyed theme would apply in some places and silently not in others.
+
 ## Dependencies
 
 - `package:flutter/widgets.dart` — `TomStateStyle`, `TomTheme`,
