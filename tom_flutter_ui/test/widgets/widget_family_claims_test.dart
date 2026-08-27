@@ -114,15 +114,15 @@ void main() {
       _extendsClause.firstMatch(classes[name] ?? '')?.group(1);
 
   group('tccf1: the family census the documents quote', () {
-    test('tccf1-01: widgets/ declares 301 Tom types', () {
-      expect(classes.length, 301);
+    test('tccf1-01: widgets/ declares 299 Tom types', () {
+      expect(classes.length, 299);
     });
 
-    test('tccf1-02: 275 of them extend one of the 20 family bases', () {
+    test('tccf1-02: 273 of them extend one of the 20 family bases', () {
       expect(bases.length, 20);
       final extenders =
           classes.keys.where((n) => bases.contains(parentOf(n))).toList();
-      expect(extenders.length, 275);
+      expect(extenders.length, 273);
     });
 
     test('tccf1-03: 17 widgets mix TomWidgetMixin instead of a family base',
@@ -263,6 +263,37 @@ void main() {
       expect(readme, contains('${cupertino.length} of the wrappers'));
       expect(readme, contains('only ${paired.length} have'));
       expect(readme, isNot(contains('ambient family')));
+    });
+  });
+
+  group('tccf1: the kit ships no deprecated surface', () {
+    test('tccf1-13: no public type under widgets/ carries @Deprecated', () {
+      // `TomMaterialButton` and `TomButtonBar` sat behind a "wrapped for
+      // migration of existing codebases" banner. There were no existing
+      // codebases: nothing in tom_core is published. A deprecation marker is a
+      // promise about a transition, and with nobody transitioning the two
+      // wrappers only inflated the census every document quotes — while
+      // `doc/widgets.md` catalogued the button family without ever saying two
+      // of its members were on the way out.
+      //
+      // The rule for an unpublished kit is therefore simply: delete it now.
+      // Deprecating instead defers a free removal until it is expensive.
+      final faults = <String>[];
+      final files = Directory('lib/src/widgets')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'));
+      for (final file in files) {
+        final lines = file.readAsStringSync().split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].startsWith('@Deprecated')) {
+            faults.add('${file.path}:${i + 1}');
+          }
+        }
+      }
+      expect(faults, isEmpty,
+          reason: 'nothing in this package is published, so a deprecated type '
+              'has no migration to support — delete it instead: $faults');
     });
   });
 }

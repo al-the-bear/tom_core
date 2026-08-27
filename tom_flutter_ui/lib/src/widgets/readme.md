@@ -5,8 +5,8 @@
 
 The general-purpose widget kit: every common Flutter widget given a Tom wrapper
 that adds a `tomId`, the kernel's four-state authorization, and resource-resolved
-labels / colours / icons. Each widget exposes `effectiveAuthState`. 275 of the
-292 also expose `family` — the other 17 extend a Flutter widget directly and
+labels / colours / icons. Each widget exposes `effectiveAuthState`. 273 of the
+290 also expose `family` — the other 17 extend a Flutter widget directly and
 pick the Tom surface up from `TomWidgetMixin`, so they have no family base to
 get `family` from.
 
@@ -43,7 +43,7 @@ than a probe.
 | `TomAclBuilder` | Widget-level entry into the [`advanced_container_layout`](../advanced_container_layout/readme.md) engine |
 
 Every widget accepts the same base parameters `tomId`, `tomGroup`, `scope`,
-`authorizer` and `uiStateController` — inherited from `TomNodeBase` by the 275
+`authorizer` and `uiStateController` — inherited from `TomNodeBase` by the 273
 that extend a family base, declared by `TomWidgetMixin` for the other 17 (see
 [`widget_base`](../widget_base/readme.md)).
 

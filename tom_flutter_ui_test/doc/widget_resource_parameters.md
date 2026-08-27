@@ -301,15 +301,6 @@ No resource-loadable parameters.
 |-----------|------|----------|--------|
 | color | Color? | resolveColorOrNull | ✅ |
 
-#### TomButtonBar
-
-| Parameter | Type | Resolver | Status |
-|-----------|------|----------|--------|
-| buttonMinWidth | double? | resolveDoubleOrNull | ✅ |
-| buttonHeight | double? | resolveDoubleOrNull | ✅ |
-| buttonPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
-| overflowButtonSpacing | double? | resolveDoubleOrNull | ✅ |
-
 #### TomCheckboxMenuButton
 
 No resource-loadable parameters.
@@ -377,28 +368,6 @@ No resource-loadable parameters.
 | constraints | BoxConstraints? | resolveBoxConstraints | ✅ |
 | style | ButtonStyle? | resolveButtonStyle | ✅ |
 | tooltip | String? | resolveResourceOrNull | ✅ |
-
-#### TomMaterialButton
-
-| Parameter | Type | Resolver | Status |
-|-----------|------|----------|--------|
-| textColor | Color? | resolveColorOrNull | ✅ |
-| disabledTextColor | Color? | resolveColorOrNull | ✅ |
-| color | Color? | resolveColorOrNull | ✅ |
-| disabledColor | Color? | resolveColorOrNull | ✅ |
-| focusColor | Color? | resolveColorOrNull | ✅ |
-| hoverColor | Color? | resolveColorOrNull | ✅ |
-| highlightColor | Color? | resolveColorOrNull | ✅ |
-| splashColor | Color? | resolveColorOrNull | ✅ |
-| elevation | double? | resolveDoubleOrNull | ✅ |
-| focusElevation | double? | resolveDoubleOrNull | ✅ |
-| hoverElevation | double? | resolveDoubleOrNull | ✅ |
-| highlightElevation | double? | resolveDoubleOrNull | ✅ |
-| disabledElevation | double? | resolveDoubleOrNull | ✅ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
-| shape | ShapeBorder? | resolveShapeBorder | ✅ |
-| minWidth | double? | resolveDoubleOrNull | ✅ |
-| height | double? | resolveDoubleOrNull | ✅ |
 
 #### TomMenuBar
 
@@ -2739,7 +2708,7 @@ No resource-loadable parameters.
 |----------|---------|-------------|-------------|-------------|--------------|
 | Animated Widgets | 20 | 47 | 35 | 12 | 0 |
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
-| Buttons | 23 | 70 | 70 | 0 | 0 |
+| Buttons | 21 | 49 | 49 | 0 | 0 |
 | Chips | 5 | 83 | 83 | 0 | 0 |
 | Containers | 81 | 203 | 203 | 0 | 0 |
 | ACL Container | 1 | 5 | 0 | 5 | 0 |
@@ -2758,7 +2727,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 46 | 0 | 0 |
 | Toggles | 10 | 95 | 95 | 0 | 0 |
 | Trees | 3 | 8 | 8 | 0 | 0 |
-| **Total** | **293** | **1161** | **1131** | **30** | **0** |
+| **Total** | **291** | **1140** | **1110** | **30** | **0** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`

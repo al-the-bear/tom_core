@@ -191,6 +191,19 @@
   deleted, and the `TomAuthorizationGroup typedef` test group goes with them;
   its one real test (`default mode is controlsWidest`) survives under
   `AuthGroupMode`, beside the mode behaviours it belongs with.
+- **`TomMaterialButton` and `TomButtonBar` are gone**, together with the
+  "DEPRECATED BUTTONS — Wrapped for migration support" banner they sat under.
+  Nothing in this package is published, so there were no existing codebases to
+  migrate: the deprecation markers were carrying weight for a population of
+  zero, while both types still counted toward the kit's advertised surface and
+  `doc/widgets.md` catalogued the button family without saying two of its
+  members were on the way out. Their replacements already exist and are already
+  demonstrated — `TomOverflowBar` for the bar, `TomElevatedButton` /
+  `TomTextButton` / `TomOutlinedButton` for the button. The kit is 299 types,
+  290 of them widgets, 273 of those on a family base.
+  `test/widgets/widget_family_claims_test.dart` now fails on any `@Deprecated`
+  under `lib/src/widgets/`: an unpublished kit deletes instead of deprecating,
+  because deprecating defers a free removal until it is expensive.
 
 ### Added
 
