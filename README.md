@@ -173,6 +173,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, or `const` one that is not |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds source comments that cite a line number instead of naming the thing |
+| [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
@@ -385,6 +386,45 @@ A citation must show it is one — a plural range, a parenthesis, or a pointing
 word — so `a line 2 pixels wide` is left alone, and URLs are skipped whole,
 since a permalink pinned at a commit is the stable form this check is asking
 for.
+
+```bash
+python3 tool/check_doc_kinds.py                  # the whole repository
+python3 tool/check_doc_kinds.py tom_core_agentic # one subtree
+```
+
+Most module documents open with an Overview table whose second column is `Kind`,
+and a reader uses that column to decide what they may *do* with the symbol
+before reading another line. `abstract interface class` means implement me, do not
+extend me; `final class` means you may not subclass this at all; `class` means
+both are open. Those are not synonyms, and the difference is the entire reason
+the column exists — the neighbouring `Purpose` cell already says what the thing
+is *for*.
+
+The column decays in one direction. Nobody writes `exception`, `widget`,
+`entity` or `annotation` by misreading the source; they write it because it is
+the more *informative* word and Dart has no keyword for it. So the cell reads
+fluently, describes the symbol's role correctly, and answers the question the
+column is actually asked — may I subclass this? — with a word that cannot answer
+it. `BearerAuthFailure` was listed as `exception`: true as a description, and it
+happens to be a plain `class`, so a reader wanting to extend it was left to
+guess.
+
+This is a checker rather than a careful read because the fault was found three
+times by hand, one document at a time, and each fix took two minutes. Three
+identical findings in three consecutive scans is not bad luck — the documents
+were written by one pass, and a pass writes its habits into everything it
+touches. It is invisible to the neighbouring gates by construction:
+`check_doc_inventories` audits *measurements*, and a kind is not a measurement;
+`check_dartdoc_refs` and `check_consumer_claims` both ask whether a name
+resolves, and every symbol in these tables resolves perfectly while the sentence
+about it is still wrong.
+
+Only tables whose header has `Kind` as its second column are read, and that
+restriction is what keeps it honest — module documents carry other two-column
+tables of the same shape, and reading those as kind claims produced four false
+positives per real one when first measured. A symbol the repo does not declare
+is skipped rather than reported, since these documents name Flutter and Dart
+core types freely.
 
 ## License
 

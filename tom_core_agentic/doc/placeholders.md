@@ -25,13 +25,13 @@ failures (`placeholder_errors`), the `${{ … }}` expression seam
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `PlaceholderResolver` | class | Expands every placeholder form in a template; `resolve` (async) / `resolveSync` |
-| `PlaceholderStack` | class | Lexical, shadowing scope chain the simple and expression forms both read |
-| `PlaceholderExpressions` | interface | The seam the `${{ … }}` form evaluates through (d4rt in the engine, absent in config layers) |
+| `PlaceholderResolver` | final class | Expands every placeholder form in a template; `resolve` (async) / `resolveSync` |
+| `PlaceholderStack` | final class | Lexical, shadowing scope chain the simple and expression forms both read |
+| `PlaceholderExpressions` | abstract interface class | The seam the `${{ … }}` form evaluates through (d4rt in the engine, absent in config layers) |
 | `isSimpleIdentifier` | function | Whether a name is a bare Dart identifier (the simple fast-path / expression-locals shape) |
-| `PlaceholderRecursionException` | exception | Expansion did not converge within `maxRecursion` levels |
-| `PlaceholderUnresolvedException` | exception | An unknown `${name}` / `${env:NAME}` under strict mode |
-| `PlaceholderExpressionException` | exception | A `${{ … }}` that threw, would not parse, or had no backing |
+| `PlaceholderRecursionException` | final class | Expansion did not converge within `maxRecursion` levels |
+| `PlaceholderUnresolvedException` | final class | An unknown `${name}` / `${env:NAME}` under strict mode |
+| `PlaceholderExpressionException` | final class | A `${{ … }}` that threw, would not parse, or had no backing |
 | `placeholderRecursionExceededCode` / `placeholderUnresolvedCode` / `placeholderExpressionFailedCode` | `const String` | The three stable wire codes (one per failure) |
 
 ## The Placeholder Forms

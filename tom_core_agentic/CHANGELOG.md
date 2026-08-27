@@ -1,5 +1,20 @@
 ## 1.8.0
 
+### Fixed
+
+- **`Kind` columns in `doc/` named things Dart does not declare.** Eight
+  Overview rows across `doc/bearer_auth.md` and `doc/placeholders.md` described
+  a symbol's *role* in the column that is asked what its *declaration* is:
+  `BearerTokenAuthenticator<P>` was `interface` while being an
+  `abstract interface class`, `BearerAuthFailure` was `exception` while being a
+  plain `class`, and the six placeholder types were `class` / `interface` /
+  `exception` while being `final class` and `abstract interface class`. Each
+  cell was true as a description and useless as an answer to the question the
+  column exists for — may I extend this, or only implement it? — and the two
+  restrictive kinds are exactly the ones the informal words cannot express.
+  `doc/mcp_auth.md` and `doc/isolate_streaming.md` were checked the same way and
+  were already correct.
+
 ### Changed
 
 - **`mcp_auth/` → `bearer_auth/` + `mcp_auth/`**: the bearer-auth module was one
