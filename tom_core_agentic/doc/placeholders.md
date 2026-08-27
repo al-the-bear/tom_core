@@ -137,12 +137,17 @@ caller can route on the code without string-matching the message:
 
 ## Dependencies
 
-- `dart:io` — `PlaceholderResolver` currently imports `dart:io` for the
+- `dart:io` — `PlaceholderResolver` imports `dart:io` for the
   `Platform.environment` default behind the `environment` constructor parameter.
-  This is the package's **only** `dart:io` import and is at odds with the
-  package's otherwise `dart:io`-free design; removing it (by injecting the
-  environment the way `async_shutdown` injects `exit`) is tracked as deferred
-  work in `deferred.tom_core.md`. Until then, pass an explicit
-  `environment:` map to keep a resolver `dart:io`-decoupled in practice — which
-  every config-layer call site and every test already does.
+  It is one of fourteen `dart:io` importers in the package and one of five
+  coupled barrel exports (see the README's `dart:io` coupling section), so it is
+  not an exception to a `dart:io`-free package — no such package-wide property
+  exists. What is specific to this module is that its coupling is **incidental
+  rather than inherent**: unlike `path_scope_io.dart` or the `agent/` stores,
+  which exist to touch the filesystem, this one only supplies a default. Two
+  consequences follow. Passing an explicit `environment:` map avoids the
+  dependency at runtime, which every config-layer call site and every test
+  already does; and removing the import — tracked as deferred work in
+  `deferred.tom_core.md` — would un-couple not just this module but
+  `yaml_config_reader.dart`, whose only path to `dart:io` runs through here.
 - No other `tom_core_agentic` module.

@@ -2,6 +2,29 @@
 
 ### Fixed
 
+- **The package-wide `dart:io`-free claim was false, and the carve-out that
+  qualified it was too.** Four documents stated that `PlaceholderResolver` held
+  the package's *only* `dart:io` import. A grep returns fourteen importers, and
+  five of the thirty-six barrel exports reach one — `agent/`, `llm/`,
+  `path_scope_io.dart`, `placeholders/`, and `yaml_config_reader.dart`, the last
+  coupled only transitively through the placeholder resolver it uses for `${…}`
+  expansion. The claim was **true when written** (2026-06-15) and went stale the
+  next day, when `agent_sdk_session.dart` landed; nothing rechecked it as the
+  package grew. The carve-out made this worse than silence would have, because
+  it told a reader the exception had been counted.
+  The claim is now restated at the level where it holds: the package is not
+  `dart:io`-free, the other **31 exports are**, and that subset is what
+  `dart:io`-forbidding consumers use — `tom_brain_shared`, the one named
+  consumer, draws seven symbols and all seven are in it.
+  The documents also had the *mechanism* wrong. `dart compile js` does not
+  reject `dart:io`: it compiles, stubs the library, and throws
+  `UnsupportedError` only when a stubbed member is reached, so a web consumer
+  can import the barrel — or `show` a symbol from a coupled export — and fail at
+  runtime instead of at build time. Since no compiler catches this,
+  `test/dart_io_coupling_test.dart` now pins both the importer set and the
+  coupled/clean export split (514 → 517), which is what makes the README table
+  checkable rather than a second count waiting to rot.
+
 - **`Kind` columns in `doc/` named things Dart does not declare.** Eight
   Overview rows across `doc/bearer_auth.md` and `doc/placeholders.md` described
   a symbol's *role* in the column that is asked what its *declaration* is:
@@ -356,6 +379,8 @@
   existing `placeholder_resolver_test.dart` / `placeholder_stack_test.dart`
   remain the coverage. Flagged (for a follow-up) that `PlaceholderResolver` is
   the package's sole `dart:io` import, at odds with the `dart:io`-free design.
+  (True on the day this shipped; the next commit added a second importer and the
+  count has grown since. See 1.8.0 for the measured position.)
 
 ## 1.4.0
 

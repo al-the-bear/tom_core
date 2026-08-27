@@ -5,18 +5,44 @@ framework. Everything here depends only on `tom_basics` (plus `yaml` /
 `yaml_edit` for the config read/write path, `crypto` for the
 content-hash convention, and `path` for the `PathScope` sandbox) and is
 safe to reuse across the brain, the
-assistant, and any future agent runtime. The package is designed to be
-**`dart:io`-free**, so it stays usable from `dart:io`-forbidding
-consumers such as `tom_brain_shared`.
+assistant, and any future agent runtime.
 
-> **One known exception:** `PlaceholderResolver` (the `placeholders/`
-> module) currently imports `dart:io` for its `Platform.environment`
-> default. This is the package's *only* `dart:io` coupling and is at odds
-> with the design above; removing it (by injecting the environment the
-> way `AsyncShutdownCoordinator` injects `exit`) is tracked in
-> `deferred.tom_core.md`. Until then, pass an explicit
-> `environment:` map to keep a resolver `dart:io`-decoupled in practice —
-> which every config-layer call site and every test already does.
+## `dart:io` coupling
+
+The package as a whole is **not** `dart:io`-free and does not claim to
+be. Fourteen files under `lib/` import `dart:io`, and five of the
+thirty-six barrel exports reach one of them — directly or transitively:
+
+| Coupled barrel export | Reached through |
+|-----------------------|-----------------|
+| `src/agent/agent.dart` | eleven file-backed stores, `agent_send.dart`, `agent_sidecar.dart`, `bridge_connection.dart` |
+| `src/llm/llm.dart` | `agent_sdk_session.dart` (subprocess transport) |
+| `src/path_scope_io.dart` | itself — it *is* the `dart:io` half of `PathScope`, by design |
+| `src/placeholders/placeholders.dart` | `placeholder_resolver.dart` (`Platform.environment` default) |
+| `src/yaml_config_reader.dart` | `placeholder_resolver.dart`, via `${…}` expansion |
+
+The remaining **31 exports are `dart:io`-free**, and that subset is what
+makes the package usable from `dart:io`-forbidding consumers. The one in
+the tree today, `tom_brain_shared`, uses seven symbols
+(`requireNonEmpty`, `textPreview`, and the five `collection_equality`
+helpers), all of which live in that subset.
+
+**The failure mode is a runtime one, not a build one.** On the current
+SDK `dart compile js` does not reject `dart:io`: it compiles, stubs the
+library, and throws `UnsupportedError` when a stubbed member is actually
+reached. A web consumer can therefore import the barrel — even `show` a
+symbol from a coupled export — and only discover the problem when the
+coupled code path runs. That is precisely why the split above is pinned
+by `test/dart_io_coupling_test.dart` rather than by prose: the compiler
+will not catch a regression here, so a test has to.
+
+`PlaceholderResolver` is the one coupling that is incidental rather than
+inherent — it needs `dart:io` only to default `environment` to
+`Platform.environment`. Passing an explicit `environment:` map avoids
+touching the stub at runtime, which every config-layer call site and
+every test already does. Removing the import outright is tracked in
+`deferred.tom_core.md`; it would also un-couple `yaml_config_reader.dart`,
+which is coupled solely through it.
 
 ## What lives here
 
