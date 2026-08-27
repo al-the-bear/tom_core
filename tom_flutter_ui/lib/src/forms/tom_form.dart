@@ -1050,6 +1050,27 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
 /// Base class for text-based form fields with TextEditingController support.
 ///
+/// ## Converting between `T` and the text on screen
+///
+/// The controller holds a `String`; the field holds a `T`. Two converters
+/// bridge them, and they are deliberately not symmetric:
+///
+///   * **`T` → text** always has a default — `toString()` — so
+///     `valueToTextConverter` is optional for every `T`.
+///   * **text → `T`** has a default only for `T == String`, where it is the
+///     identity. Nothing can parse an arbitrary `T` out of a string.
+///
+/// So any use with a `T` other than `String` **must** pass `valueConverter`,
+/// and the constructor throws [ArgumentError] when it does not. The check is
+/// at construction rather than at the first keystroke because the requirement
+/// is knowable the moment the field is built, and a field that renders
+/// correctly and then dies on the user's first character is far harder to
+/// diagnose than one that refuses to exist.
+///
+/// [TomFormIntInputClassic] and [TomFormDoubleInputClassic] show the shape.
+///
+/// ## Resource lookup
+///
 /// Individual [InputDecoration] parameters (e.g. [labelText], [helperText],
 /// [prefixIcon]) follow the resource lookup pattern:
 ///   1. Explicit parameter value (highest priority)
@@ -1104,6 +1125,19 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     String? Function(String)? inputValidator,
     String? Function(String)? valueValidator,
   }) {
+    // Checked before anything is allocated, so a rejected field leaves no
+    // undisposed controller behind.
+    if (valueConverter == null && T != String) {
+      throw ArgumentError.value(
+        null,
+        'valueConverter',
+        'TomTextFormFieldBase<$T> has no way to turn typed text back into a '
+            '$T — only TomTextFormFieldBase<String> has a usable default. '
+            'Pass valueConverter, as TomFormIntInputClassic does with '
+            '(s) => int.tryParse(s) ?? 0',
+      );
+    }
+
     // Set default converters
     _valueToTextConverter = valueToTextConverter ?? _defaultToTextConverter;
     _valueConverter = valueConverter ?? _defaultFromTextConverter;
@@ -1137,13 +1171,12 @@ class TomTextFormFieldBase<T> extends TomField<T> {
 
   String _defaultToTextConverter(T value) => value.toString();
 
-  T _defaultFromTextConverter(String value) {
-    if (T == String) {
-      return value as T;
-    } else {
-      throw UnimplementedError('Override _valueConverter for type $T');
-    }
-  }
+  /// The text → `T` default, which exists only for `T == String`.
+  ///
+  /// The constructor rejects every other `T` that arrives without a
+  /// `valueConverter`, so by the time this runs the cast is the `String`
+  /// identity and cannot fail.
+  T _defaultFromTextConverter(String value) => value as T;
 
   /// Programmatically writes [text] into the controller, with the caret at the
   /// end, without triggering an input-validation pass. This is the *only* way
