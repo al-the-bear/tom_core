@@ -146,7 +146,7 @@ and a measure have nowhere to be authored. That gap is what these classes hold.
 
 | Class | Part | Purpose | Why the substrate does not cover it |
 |-------|------|---------|-------------------------------------|
-| `TomReportDefinition` (+ `TomReportDimension`, `TomReportMeasure`, `TomReportColumn`, `TomReportParameter`, `TomReportChart`, `TomReportValueKind`, `TomReportMeasureFunction`, `TomReportDeliveryChannel`, `TomReportChartKind`) | CE-RP Reporting (`codespecs_mapping.md` §5.28) | The grouped projection a specification authors — dimension by dimension, measure by measure — plus the output columns that display them, the per-execution parameters, and the charts declared over the projection. | `TomGroupedSelect` is a *query*, compiled from an already-decided grouping. Nothing in `tom_core` holds the decision itself, nor the report's identity, delivery channels or authorization key. |
+| `TomReportDefinition` (+ `TomReportDimension`, `TomReportMeasure`, `TomReportColumn`, `TomReportParameter`, `TomReportChart`, `TomReportValueKind`, `TomReportMeasureFunction`, `TomReportDeliveryChannel`, `TomReportChartKind`) | CE-RP Reporting (`codespecs_mapping.md` §5.28) | The grouped projection a specification authors — dimension by dimension, measure by measure — plus the output columns that display them, the per-execution parameters, and the charts declared over the projection. | `TomGroupedSelect` is a *query*, compiled from an already-decided grouping. Nothing in `tom_core` holds the decision itself, nor the report's identity or delivery channels. |
 | `TomReportResult` (+ `TomReportResultSection`) | CE-RP Reporting (`codespecs_mapping.md` §5.28) | The **shared** result envelope: sections of columns over a `Stream` of rows, plus the chart declarations and run metadata. | `tom_core_server`'s `TomTabularResult` is server-side, and the envelope's locus is *shared* — the client renders a report too. See below. |
 
 `TomReportResult` deliberately does **not** extend `TomTabularResult`. A shared
@@ -162,6 +162,15 @@ because a report exists for results too large to hold inline.
 because each is a specification defect no generator can repair: a column whose
 `sourceKey` names neither a dimension nor a measure, one key claimed by both,
 and a chart plotting a column the report does not project.
+
+**A report's authorization is deliberately not held here.** It rides a
+`@CsAuthorize` beside the `@CsReport` marker, per `codespecs_mapping.md`
+§5.15's field-level rule: the access level and the permitted roles are exactly
+that annotation's requirement kind and its typed `CsRoleRef` list, so the edge
+is compile-checked instead of being an id string on the definition. This is the
+same placement rule `TomJobDeclaration` follows — the `Cs*Ref` family lives in
+`tom_code_specs`, and `tom_core`-family classes hold plain ids, so an edge that
+wants a typed ref belongs on the annotation rather than on a class here.
 
 ## Status
 

@@ -17,6 +17,15 @@
   therefore not a gap class — it belongs in the package owning that type.
 - Two tests pin the invariant, so a single added import can no longer retract
   those two placement decisions without failing a check.
+- Docs only: the README's CE-RP row no longer counts an "authorization key"
+  among the responsibilities that justify the gap. `TomReportDefinition`
+  declines that field on purpose — authorization rides a `@CsAuthorize` beside
+  the `@CsReport` marker (`codespecs_mapping.md` §5.15) — so the README was
+  sending a reader to look for a field whose absence is the design. The
+  absence is now **stated** rather than merely not-claimed, and tied to the
+  rule it follows from: the `Cs*Ref` family lives in `tom_code_specs`, and
+  `tom_core`-family classes hold plain ids, so an edge wanting a typed ref
+  belongs on the annotation. Same rule as `TomJobDeclaration`'s report targets.
 
 ## 0.11.0
 
