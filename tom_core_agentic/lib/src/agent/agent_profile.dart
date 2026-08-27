@@ -90,9 +90,8 @@ final class AgentProfile {
         systemPrompt: yaml['systemPrompt'] as String? ?? '',
         configurationId: yaml['configurationId'] as String?,
         toolsEnabled: yaml['toolsEnabled'] as bool?,
-        enabledTools: (yaml['enabledTools'] as List?)
-            ?.map((e) => e as String)
-            .toList(),
+        enabledTools:
+            (yaml['enabledTools'] as List?)?.whereType<String>().toList(),
         maxRounds: yaml['maxRounds'] as int?,
         historyMode: yaml['historyMode'] as String?,
         maxTokens: yaml['maxTokens'] as int?,

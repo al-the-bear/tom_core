@@ -15,6 +15,7 @@ export 'agent_profile_store.dart';
 export 'agent_send.dart';
 export 'agent_settings.dart';
 export 'agent_settings_store.dart';
+export 'agent_sidecar.dart';
 export 'agent_yaml.dart';
 export 'bridge_connection.dart';
 export 'chat_message.dart';

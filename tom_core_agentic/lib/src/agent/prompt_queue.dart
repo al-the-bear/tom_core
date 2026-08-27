@@ -11,6 +11,8 @@
 // an `Object?` here and round-trips as a YAML scalar.
 library;
 
+import 'agent_yaml.dart';
+
 /// Lifecycle of a queued prompt.
 enum QueuedPromptStatus {
   staged('staged'),
@@ -340,15 +342,15 @@ final class QueuedPrompt {
         lastReminderAt: yaml['lastReminderAt'] as String?,
         requestId: yaml['requestId'] as String?,
         expectedRequestId: yaml['expectedRequestId'] as String?,
-        prePrompts: (yaml['prePrompts'] as List?)
-            ?.map((e) =>
-                QueuedPrePrompt.fromYaml((e as Map).cast<String, dynamic>()))
-            .toList(),
-        followUps: (yaml['followUps'] as List?)
-            ?.map((e) => QueuedFollowUpPrompt.fromYaml(
-                  (e as Map).cast<String, dynamic>(),
-                ))
-            .toList(),
+        prePrompts: decodeAgentYamlEntries(
+          yaml['prePrompts'],
+          QueuedPrePrompt.fromYaml,
+        ),
+        followUps: decodeAgentYamlEntries(
+          yaml['followUps'],
+          QueuedFollowUpPrompt.fromYaml,
+          identity: 'id',
+        ),
         followUpIndex: yaml['followUpIndex'] as int?,
         repeatCount: yaml['repeatCount'],
         resolvedRepeatCount: yaml['resolvedRepeatCount'] as int?,

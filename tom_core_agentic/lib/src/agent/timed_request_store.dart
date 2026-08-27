@@ -2,14 +2,15 @@
 //
 // Timed requests (interval or scheduled prompts) are editor configuration held
 // in the spec workspace as a YAML file. Mirrors [ChatVariableStore]: written
-// synchronously on every change, degrading to an empty set on any read/parse
-// error rather than throwing.
+// synchronously on every change, degrading rather than throwing when the file
+// is damaged — see `agent_sidecar.dart`.
 library;
 
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'agent_sidecar.dart';
 import 'agent_yaml.dart';
 import 'timed_request.dart';
 
@@ -30,27 +31,15 @@ class TimedRequestStore {
     return TimedRequestStore(File(path));
   }
 
-  /// Loads the persisted requests, or an empty list when the file is missing,
-  /// unreadable or malformed.
-  List<TimedRequest> load() {
-    try {
-      if (!file.existsSync()) return <TimedRequest>[];
-      final content = file.readAsStringSync();
-      if (content.trim().isEmpty) return <TimedRequest>[];
-      final root = decodeAgentYaml(content);
-      final items = root['requests'];
-      if (items is! List) return <TimedRequest>[];
-      return [
-        for (final item in items)
-          if (item is Map)
-            TimedRequest.fromYaml(item.cast<String, dynamic>()),
-      ];
-    } on FileSystemException {
-      return <TimedRequest>[];
-    } on FormatException {
-      return <TimedRequest>[];
-    }
-  }
+  /// Loads the persisted requests, or an empty list when the file is
+  /// missing, unreadable or malformed. Entries the file cannot supply
+  /// are skipped individually — see [decodeAgentYamlList].
+  List<TimedRequest> load() => decodeAgentYamlList(
+        readAgentYamlFile(file),
+        key: 'requests',
+        identity: 'id',
+        fromYaml: TimedRequest.fromYaml,
+      );
 
   /// Persists [requests], creating the parent directory if needed.
   void save(List<TimedRequest> requests) {

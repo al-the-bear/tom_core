@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'agent_settings.dart';
+import 'agent_sidecar.dart';
 import 'agent_yaml.dart';
 
 /// Loads/saves the singleton [AgentSettings] as YAML.
@@ -30,22 +31,13 @@ class AgentSettingsStore {
   }
 
   /// Loads the persisted settings, or the defaults when the file is missing,
-  /// unreadable or malformed.
-  AgentSettings load() {
-    try {
-      if (!file.existsSync()) return const AgentSettings();
-      final content = file.readAsStringSync();
-      if (content.trim().isEmpty) return const AgentSettings();
-      final root = decodeAgentYaml(content);
-      final settings = root['settings'];
-      if (settings is! Map) return const AgentSettings();
-      return AgentSettings.fromYaml(settings.cast<String, dynamic>());
-    } on FileSystemException {
-      return const AgentSettings();
-    } on FormatException {
-      return const AgentSettings();
-    }
-  }
+  /// unreadable, malformed or shaped unlike [AgentSettings].
+  AgentSettings load() => decodeAgentYamlValue(
+        readAgentYamlFile(file),
+        key: 'settings',
+        fromYaml: AgentSettings.fromYaml,
+        orElse: const AgentSettings(),
+      );
 
   /// Persists [settings], creating the parent directory if needed.
   void save(AgentSettings settings) {

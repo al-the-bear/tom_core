@@ -17,7 +17,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 
-import 'agent_yaml.dart';
+import 'agent_sidecar.dart';
 
 /// Lowest CLI bridge port scanned (inclusive).
 const int bridgeScanMinPort = defaultVSCodeBridgePort;
@@ -207,28 +207,18 @@ class BridgeChoiceStore {
   /// Loads the persisted choice, or `null` when the file is missing, empty,
   /// unreadable or malformed.
   ///
-  /// Degrades exactly like the other nine sidecar stores, and for the same
-  /// reason: a damaged sidecar should cost the user a re-pick, not a crash on
-  /// launch. This is the sidecar most likely to be hand-edited — it is the
-  /// file you open to check which port the editor bound to — so the syntax
-  /// damage this swallows is the realistic case, not the exotic one.
-  BridgeChoice? load() {
-    try {
-      if (!file.existsSync()) return null;
-      final content = file.readAsStringSync();
-      if (content.trim().isEmpty) return null;
-      // `decodeAgentYaml` throws a [FormatException] for a non-mapping root,
-      // so the root-shape check is the same one the other nine stores make.
-      final bridge = decodeAgentYaml(content)['bridge'];
-      if (bridge is! Map) return null;
-      return BridgeChoice.fromMap(bridge);
-    } on FileSystemException {
-      return null;
-    } on FormatException {
-      // Covers YAML syntax damage too: `YamlException` is a `FormatException`.
-      return null;
-    }
-  }
+  /// Degrades exactly like the other nine sidecar stores — and now through
+  /// the same code, which is what makes "exactly" checkable. A damaged
+  /// sidecar should cost the user a re-pick, not a crash on launch. This is
+  /// the sidecar most likely to be hand-edited, since it is the file you open
+  /// to check which port the editor bound to, so the damage this swallows is
+  /// the realistic case rather than the exotic one.
+  BridgeChoice? load() => decodeAgentYamlValue(
+        readAgentYamlFile(file),
+        key: 'bridge',
+        fromYaml: BridgeChoice.fromMap,
+        orElse: null,
+      );
 
   /// Persists [choice], creating the parent directory if needed.
   void save(BridgeChoice choice) {

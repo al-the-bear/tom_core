@@ -2,14 +2,15 @@
 //
 // Queue templates (named, ordered prompt sets that seed the queue) are editor
 // configuration held in the spec workspace as a YAML file. Mirrors
-// [ChatVariableStore]: written synchronously on every change, degrading to an
-// empty set on any read/parse error rather than throwing.
+// [ChatVariableStore]: written synchronously on every change, degrading rather
+// than throwing when the file is damaged — see `agent_sidecar.dart`.
 library;
 
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'agent_sidecar.dart';
 import 'agent_yaml.dart';
 import 'queue_template.dart';
 
@@ -30,27 +31,15 @@ class QueueTemplateStore {
     return QueueTemplateStore(File(path));
   }
 
-  /// Loads the persisted templates, or an empty list when the file is missing,
-  /// unreadable or malformed.
-  List<QueueTemplate> load() {
-    try {
-      if (!file.existsSync()) return <QueueTemplate>[];
-      final content = file.readAsStringSync();
-      if (content.trim().isEmpty) return <QueueTemplate>[];
-      final root = decodeAgentYaml(content);
-      final items = root['templates'];
-      if (items is! List) return <QueueTemplate>[];
-      return [
-        for (final item in items)
-          if (item is Map)
-            QueueTemplate.fromYaml(item.cast<String, dynamic>()),
-      ];
-    } on FileSystemException {
-      return <QueueTemplate>[];
-    } on FormatException {
-      return <QueueTemplate>[];
-    }
-  }
+  /// Loads the persisted templates, or an empty list when the file is
+  /// missing, unreadable or malformed. Entries the file cannot supply
+  /// are skipped individually — see [decodeAgentYamlList].
+  List<QueueTemplate> load() => decodeAgentYamlList(
+        readAgentYamlFile(file),
+        key: 'templates',
+        identity: 'id',
+        fromYaml: QueueTemplate.fromYaml,
+      );
 
   /// Persists [templates], creating the parent directory if needed.
   void save(List<QueueTemplate> templates) {

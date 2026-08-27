@@ -3,8 +3,9 @@
 // The TomSpecs editor's prompt queue is held in the spec workspace as a YAML
 // file so staged/pending prompts survive launches. This store mirrors the
 // editor's other sidecars (`SpecSessionStore`, `BridgeChoiceStore`): a small
-// YAML file written synchronously on every change, degrading to an empty queue
-// on any read/parse error rather than throwing.
+// YAML file written synchronously on every change, degrading rather than
+// throwing when the file is damaged — `agent_sidecar.dart` holds the shared
+// rule (parse damage costs the file, shape damage costs one entry).
 //
 // Held **out of** the document `*.docspecs.yaml` pass — the queue is editor
 // UI state, not specification content.
@@ -14,6 +15,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'agent_sidecar.dart';
 import 'agent_yaml.dart';
 import 'prompt_queue.dart';
 
@@ -34,27 +36,15 @@ class PromptQueueStore {
     return PromptQueueStore(File(path));
   }
 
-  /// Loads the persisted queue, or an empty list when the file is missing,
-  /// unreadable or malformed.
-  List<QueuedPrompt> load() {
-    try {
-      if (!file.existsSync()) return <QueuedPrompt>[];
-      final content = file.readAsStringSync();
-      if (content.trim().isEmpty) return <QueuedPrompt>[];
-      final root = decodeAgentYaml(content);
-      final items = root['items'];
-      if (items is! List) return <QueuedPrompt>[];
-      return [
-        for (final item in items)
-          if (item is Map)
-            QueuedPrompt.fromYaml(item.cast<String, dynamic>()),
-      ];
-    } on FileSystemException {
-      return <QueuedPrompt>[];
-    } on FormatException {
-      return <QueuedPrompt>[];
-    }
-  }
+  /// Loads the persisted queue, or an empty list when the file is
+  /// missing, unreadable or malformed. Entries the file cannot supply
+  /// are skipped individually — see [decodeAgentYamlList].
+  List<QueuedPrompt> load() => decodeAgentYamlList(
+        readAgentYamlFile(file),
+        key: 'items',
+        identity: 'id',
+        fromYaml: QueuedPrompt.fromYaml,
+      );
 
   /// Persists [queue], creating the parent directory if needed.
   void save(List<QueuedPrompt> queue) {

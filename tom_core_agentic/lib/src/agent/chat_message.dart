@@ -98,11 +98,11 @@ final class TrailPair {
         request: ChatMessage.fromYaml(
           (yaml['request'] as Map).cast<String, dynamic>(),
         ),
-        answer: yaml['answer'] == null
-            ? null
-            : ChatMessage.fromYaml(
+        answer: yaml['answer'] is Map
+            ? ChatMessage.fromYaml(
                 (yaml['answer'] as Map).cast<String, dynamic>(),
-              ),
+              )
+            : null,
         createdAt: yaml['createdAt'] as String? ?? '',
         summaryMarkdown: yaml['summaryMarkdown'] as String?,
         providerId: yaml['providerId'] as String?,

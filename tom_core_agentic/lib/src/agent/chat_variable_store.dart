@@ -2,9 +2,9 @@
 //
 // Custom chat variables are held in the spec workspace as a YAML file so the
 // user's bindings survive launches. Mirrors [PromptQueueStore]: a small YAML
-// file written synchronously on every change, degrading to an empty set on any
-// read/parse error rather than throwing. Built-in variables are supplied by the
-// composer at resolution time and are never written here.
+// file written synchronously on every change, degrading rather than throwing
+// when the file is damaged — see `agent_sidecar.dart`. Built-in variables are
+// supplied by the composer at resolution time and are never written here.
 //
 // Held **out of** the document `*.docspecs.yaml` pass — chat variables are
 // editor configuration, not specification content.
@@ -14,6 +14,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'agent_sidecar.dart';
 import 'agent_yaml.dart';
 import 'chat_variable.dart';
 
@@ -34,27 +35,15 @@ class ChatVariableStore {
     return ChatVariableStore(File(path));
   }
 
-  /// Loads the persisted variables, or an empty list when the file is missing,
-  /// unreadable or malformed.
-  List<ChatVariable> load() {
-    try {
-      if (!file.existsSync()) return <ChatVariable>[];
-      final content = file.readAsStringSync();
-      if (content.trim().isEmpty) return <ChatVariable>[];
-      final root = decodeAgentYaml(content);
-      final items = root['variables'];
-      if (items is! List) return <ChatVariable>[];
-      return [
-        for (final item in items)
-          if (item is Map)
-            ChatVariable.fromYaml(item.cast<String, dynamic>()),
-      ];
-    } on FileSystemException {
-      return <ChatVariable>[];
-    } on FormatException {
-      return <ChatVariable>[];
-    }
-  }
+  /// Loads the persisted variables, or an empty list when the file is
+  /// missing, unreadable or malformed. Entries the file cannot supply
+  /// are skipped individually — see [decodeAgentYamlList].
+  List<ChatVariable> load() => decodeAgentYamlList(
+        readAgentYamlFile(file),
+        key: 'variables',
+        identity: 'name',
+        fromYaml: ChatVariable.fromYaml,
+      );
 
   /// Persists [variables], creating the parent directory if needed. Built-in
   /// variables are dropped — only user-authored variables are written.

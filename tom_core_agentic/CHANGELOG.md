@@ -15,8 +15,29 @@
   slip — threw a `TypeError` straight past the store's catch. It now defaults
   an unusable value exactly as it already defaulted an absent one. Coverage
   for both defects: `test/bridge_connection_test.dart`.
+- **`agent/`**: every sidecar store caught `FileSystemException` and
+  `FormatException` around its load, which answers a file that will not
+  *parse* but not a file that parses into the wrong *shape*. An entry whose
+  `id` was absent or non-string — the shape a hand-edit produces when a line
+  is deleted — threw a `TypeError` out of `fromYaml`, past both catches and
+  into the caller. Entries the file cannot supply are now skipped
+  individually, so one damaged row costs that row rather than the whole file.
+  The nested lists (`QueuedPrompt.prePrompts` / `.followUps`,
+  `TimedRequest.scheduledTimes`, `AgentProfile.enabledTools`,
+  `TrailPair.answer`) skip bad elements the same way. Coverage:
+  `test/sidecar_shape_damage_test.dart`.
 
-## 1.7.0
+### Changed
+
+- **`agent/agent_sidecar.dart`** (new, exported): `readAgentYamlFile`,
+  `decodeAgentYamlList` and `decodeAgentYamlValue` — plus
+  `decodeAgentYamlEntries` in `agent/agent_yaml.dart` for the nested lists.
+  The ten stores had ten copies of one `load()` body, and the copies had
+  drifted exactly as copies do: one shipped with no `try` at all (above), and
+  all ten mistook "parses as YAML" for "is shaped like the model". All ten now
+  read through this one path, so "every sidecar degrades the same way" is a
+  property of one function rather than a claim about ten bodies. No behaviour
+  change beyond the fixes above.
 
 ### Features
 

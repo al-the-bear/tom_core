@@ -6,6 +6,8 @@
 // (`*.timed.yaml`).
 library;
 
+import 'agent_yaml.dart';
+
 /// Lifecycle of a timed request entry.
 enum TimedRequestStatus {
   active('active'),
@@ -102,11 +104,10 @@ final class TimedRequest {
         originalText: yaml['originalText'] as String? ?? '',
         scheduleMode: ScheduleMode.fromValue(yaml['scheduleMode'] as String?),
         intervalMinutes: yaml['intervalMinutes'] as int?,
-        scheduledTimes: (yaml['scheduledTimes'] as List?)
-            ?.map((e) => ScheduledTime.fromYaml(
-                  (e as Map).cast<String, dynamic>(),
-                ))
-            .toList(),
+        scheduledTimes: decodeAgentYamlEntries(
+          yaml['scheduledTimes'],
+          ScheduledTime.fromYaml,
+        ),
         reminderEnabled: yaml['reminderEnabled'] as bool?,
         reminderTemplateId: yaml['reminderTemplateId'] as String?,
         reminderTimeoutMinutes: yaml['reminderTimeoutMinutes'] as int?,

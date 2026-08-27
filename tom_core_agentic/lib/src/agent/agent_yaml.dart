@@ -48,3 +48,44 @@ Object? deepPlainYaml(Object? node) {
   }
   return node;
 }
+
+/// Builds models from the YAML list [node], skipping the elements it cannot
+/// build, or returns `null` when [node] is not a list at all.
+///
+/// A persisted file is untrusted input: it can be hand-edited, half-written by
+/// a crash, or left behind by an older schema. Every element is therefore
+/// treated as a claim to be checked rather than a value to be cast. An element
+/// is skipped when it is not a mapping, when [identity] is given and that field
+/// is not a non-empty string, or when [fromYaml] cannot read it.
+///
+/// Returning `null` for a non-list keeps "the field was absent" and "the field
+/// was unusable" the same answer, which is what every caller here wants: both
+/// leave an optional list unset.
+List<T>? decodeAgentYamlEntries<T>(
+  Object? node,
+  T Function(Map<String, dynamic>) fromYaml, {
+  String? identity,
+}) {
+  if (node is! List) return null;
+  final models = <T>[];
+  for (final element in node) {
+    if (element is! Map) continue;
+    if (identity != null) {
+      final id = element[identity];
+      if (id is! String || id.isEmpty) continue;
+    }
+    try {
+      models.add(fromYaml(element.cast<String, dynamic>()));
+    } on TypeError {
+      // The backstop for shape damage below the identity: a field the model
+      // reads through a cast, holding the wrong type. Catching an `Error` is
+      // justified by how narrow this is — it wraps a single call whose only
+      // input is untrusted file content, so a failed cast inside it is a fault
+      // in the file, not a bug in this package. It is also what keeps the
+      // guarantee true for fields added later, which enumerating today's casts
+      // one by one would not.
+      continue;
+    }
+  }
+  return models;
+}

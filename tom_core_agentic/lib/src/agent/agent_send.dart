@@ -26,10 +26,10 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
-import 'package:yaml/yaml.dart';
 
 import '../cancellation.dart';
 import 'agent_profile.dart' show AgentProfile;
+import 'agent_sidecar.dart';
 
 /// True when [message] should be treated as an SDK **session error** under the
 /// editor rule (§7.2, N3): its text contains `session`, `message`, or `msg`
@@ -72,21 +72,12 @@ class SpecSessionStore {
 
   /// Loads the stored session id, or `null` if none is persisted (or the file
   /// is missing / unreadable / malformed).
+  ///
+  /// The one sidecar holding a bare scalar rather than a model, so it reads
+  /// the shared file loader directly instead of one of its decoders.
   String? load() {
-    try {
-      if (!file.existsSync()) return null;
-      final content = file.readAsStringSync();
-      if (content.trim().isEmpty) return null;
-      final doc = loadYaml(content);
-      if (doc is! YamlMap) return null;
-      final id = doc['sessionId'];
-      if (id is String && id.isNotEmpty) return id;
-      return null;
-    } on FileSystemException {
-      return null;
-    } on YamlException {
-      return null;
-    }
+    final id = readAgentYamlFile(file)?['sessionId'];
+    return id is String && id.isNotEmpty ? id : null;
   }
 
   /// Persists [sessionId], creating the parent directory if needed.

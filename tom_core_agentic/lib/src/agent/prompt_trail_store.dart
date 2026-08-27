@@ -3,14 +3,15 @@
 // The trail's request/answer pairs are held in the spec workspace as a YAML
 // file so the exchange history survives launches (mirroring
 // `_ai/trail/anthropic/{quest}/`). Like the other editor sidecars it writes
-// synchronously on every change and degrades to an empty trail on any
-// read/parse error rather than throwing.
+// synchronously on every change and degrades rather than throwing when the
+// file is damaged — see `agent_sidecar.dart`.
 library;
 
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'agent_sidecar.dart';
 import 'agent_yaml.dart';
 import 'chat_message.dart';
 
@@ -31,26 +32,15 @@ class PromptTrailStore {
     return PromptTrailStore(File(path));
   }
 
-  /// Loads the persisted trail, or an empty list when the file is missing,
-  /// unreadable or malformed.
-  List<TrailPair> load() {
-    try {
-      if (!file.existsSync()) return <TrailPair>[];
-      final content = file.readAsStringSync();
-      if (content.trim().isEmpty) return <TrailPair>[];
-      final root = decodeAgentYaml(content);
-      final pairs = root['pairs'];
-      if (pairs is! List) return <TrailPair>[];
-      return [
-        for (final pair in pairs)
-          if (pair is Map) TrailPair.fromYaml(pair.cast<String, dynamic>()),
-      ];
-    } on FileSystemException {
-      return <TrailPair>[];
-    } on FormatException {
-      return <TrailPair>[];
-    }
-  }
+  /// Loads the persisted trail, or an empty list when the file is
+  /// missing, unreadable or malformed. Entries the file cannot supply
+  /// are skipped individually — see [decodeAgentYamlList].
+  List<TrailPair> load() => decodeAgentYamlList(
+        readAgentYamlFile(file),
+        key: 'pairs',
+        identity: 'id',
+        fromYaml: TrailPair.fromYaml,
+      );
 
   /// Persists [trail], creating the parent directory if needed.
   void save(List<TrailPair> trail) {
