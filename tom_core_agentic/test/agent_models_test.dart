@@ -62,6 +62,7 @@ void main() {
       const request = TimedRequest(
         id: 't1',
         originalText: 'Run the nightly summary',
+        scheduleMode: ScheduleMode.interval,
         intervalMinutes: 60,
         reminderEnabled: true,
         reminderTimeoutMinutes: 5,
@@ -89,6 +90,36 @@ void main() {
       expect(restored.scheduledTimes, hasLength(2));
       expect(restored.scheduledTimes![1].date, '2026-06-20');
       expect(restored.status, TimedRequestStatus.paused);
+    });
+
+    test('a file with no scheduleMode key still reads as interval', () {
+      // The constructor parameter is required, the persisted key is not.
+      // A hand-edit that drops the line should cost a re-pick of the mode,
+      // not the entry — so this asymmetry is the point, not an oversight.
+      final restored = TimedRequest.fromYaml(<String, dynamic>{
+        'id': 't3',
+        'originalText': 'no mode on disk',
+      });
+      expect(restored.scheduleMode, ScheduleMode.interval);
+      expect(restored.intervalMinutes, isNull);
+    });
+
+    test('an unknown scheduleMode token reads as interval', () {
+      final restored = TimedRequest.fromYaml(<String, dynamic>{
+        'id': 't4',
+        'originalText': 'mode this build does not know',
+        'scheduleMode': 'lunar',
+      });
+      expect(restored.scheduleMode, ScheduleMode.interval);
+    });
+
+    test('toYaml always writes scheduleMode, so a mode is never implied', () {
+      const request = TimedRequest(
+        id: 't5',
+        originalText: 'explicit on disk',
+        scheduleMode: ScheduleMode.scheduled,
+      );
+      expect(request.toYaml()['scheduleMode'], 'scheduled');
     });
   });
 

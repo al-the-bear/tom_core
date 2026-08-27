@@ -102,6 +102,7 @@ void main() {
         const TimedRequest(
           id: 'r1',
           originalText: 'check builds',
+          scheduleMode: ScheduleMode.interval,
           intervalMinutes: 30,
         ),
         const TimedRequest(

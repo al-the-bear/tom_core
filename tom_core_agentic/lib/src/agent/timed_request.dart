@@ -63,14 +63,23 @@ final class ScheduledTime {
 }
 
 /// A timed / repeating prompt entry.
+///
+/// [scheduleMode] is required while the payload it selects
+/// ([intervalMinutes] / [scheduledTimes]) is not, which is deliberate rather
+/// than an oversight. The mode is a decision — defaulting it would hand every
+/// caller that forgot it an interval request nobody chose — whereas the
+/// payload is something the user fills in afterwards. This is an editor
+/// working state, so "scheduled, but no times entered yet" is exactly what a
+/// request looks like between picking the mode and typing the first time, and
+/// the model has to be able to hold it.
 final class TimedRequest {
   const TimedRequest({
     required this.id,
     required this.originalText,
+    required this.scheduleMode,
     this.enabled = true,
     this.template = '(None)',
     this.answerWrapper,
-    this.scheduleMode = ScheduleMode.interval,
     this.intervalMinutes,
     this.scheduledTimes,
     this.reminderEnabled,
@@ -96,6 +105,13 @@ final class TimedRequest {
   final String? lastSentAt;
   final TimedRequestStatus status;
 
+  /// Reads a request from a persisted mapping.
+  ///
+  /// The `scheduleMode` *key* stays optional even though the constructor
+  /// parameter is required: a file is untrusted input, and a hand-edit that
+  /// drops the line should cost the user a re-pick of the mode, not the whole
+  /// entry. Requiring the parameter is about the callers this package can see
+  /// at compile time; coercing the key is about the ones it cannot.
   factory TimedRequest.fromYaml(Map<String, dynamic> yaml) => TimedRequest(
         id: yaml['id'] as String,
         enabled: yaml['enabled'] as bool? ?? true,

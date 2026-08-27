@@ -29,6 +29,16 @@
 
 ### Changed
 
+- **`agent/timed_request.dart`**: `TimedRequest.scheduleMode` is now a required
+  constructor parameter (it defaulted to `ScheduleMode.interval`). The default
+  was introduced by the port — the upstream
+  `tom_vscode_scripting_api.TimedRequest` requires it — and it meant a request
+  built without the parameter became an interval request nobody chose, with
+  `intervalMinutes` nullable beside it. Its payload stays optional: these are
+  editor working state, and "scheduled, but no times entered yet" is a state
+  the type has to be able to hold. The persisted key also stays optional,
+  coerced by `ScheduleMode.fromValue`, so a hand-edited file costs a re-pick
+  rather than the entry.
 - **`agent/agent_sidecar.dart`** (new, exported): `readAgentYamlFile`,
   `decodeAgentYamlList` and `decodeAgentYamlValue` — plus
   `decodeAgentYamlEntries` in `agent/agent_yaml.dart` for the nested lists.
