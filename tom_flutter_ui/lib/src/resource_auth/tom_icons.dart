@@ -67,6 +67,37 @@ class TomUIIcons {
   static void reset() => _adapter = null;
 }
 
+/// Icons registered at runtime, shared by every adapter in this module.
+///
+/// Module-level rather than a static on one adapter: registration and
+/// resolution have to agree no matter which adapter is installed. An app that
+/// registers its brand icons and then switches to [MaterialOnlyAdapter] for
+/// bundle size — the one documented reason to switch — must not lose them,
+/// and losing them would be silent: every registered name would simply
+/// resolve to `null` and render nothing.
+final Map<String, IconData> _customIcons = {};
+
+/// Resolves registered icons first, then the adapter's own family table.
+///
+/// The precedence is stated once here rather than in each adapter, so
+/// "registrations win" cannot hold for one adapter and not another.
+abstract class _RegistryFirstIconAdapter implements TomUIIconAdapter {
+  @override
+  IconData? resolveIcon(String name) =>
+      _customIcons[name] ?? resolveInFamily(name);
+
+  @override
+  bool iconExists(String name) =>
+      _customIcons.containsKey(name) || existsInFamily(name);
+
+  /// Resolves [name] against the adapter's own icon table, ignoring
+  /// registrations.
+  IconData? resolveInFamily(String name);
+
+  /// Whether [name] is in the adapter's own table, ignoring registrations.
+  bool existsInFamily(String name);
+}
+
 /// Default adapter using all generated Flutter icons (Material + Cupertino).
 ///
 /// Contains 10,000+ icons from both Material Design and Cupertino icon sets.
@@ -75,28 +106,24 @@ class TomUIIcons {
 /// Icon naming:
 /// - Material: `m<PascalCase>` (e.g., `mAdd`, `mArrowBack`, `mSettings`)
 /// - Cupertino: `c<PascalCase>` (e.g., `cShare`, `cBook`, `cLeftChevron`)
-class AllIconsAdapter implements TomUIIconAdapter {
-  /// Custom icons registered at runtime.
-  static final Map<String, IconData> _customIcons = {};
+class AllIconsAdapter extends _RegistryFirstIconAdapter {
+  @override
+  IconData? resolveInFamily(String name) => GeneratedIcons.resolve(name);
 
   @override
-  IconData? resolveIcon(String name) {
-    return _customIcons[name] ?? GeneratedIcons.resolve(name);
-  }
+  bool existsInFamily(String name) => GeneratedIcons.exists(name);
 
-  @override
-  bool iconExists(String name) {
-    return _customIcons.containsKey(name) || GeneratedIcons.exists(name);
-  }
-
-  /// Registers additional custom icons.
+  /// Registers additional custom icons for **every** adapter in this module.
   ///
-  /// Use this to add app-specific icons or override existing ones.
+  /// Use this to add app-specific icons or override existing ones. The
+  /// registry is module-wide, so a name registered here also resolves through
+  /// [MaterialOnlyAdapter] and [CupertinoOnlyAdapter]; registrations take
+  /// precedence over the built-in tables in all three.
   static void registerIcons(Map<String, IconData> icons) {
     _customIcons.addAll(icons);
   }
 
-  /// Clears all custom registered icons.
+  /// Clears all custom registered icons, for every adapter in this module.
   static void clearCustomIcons() {
     _customIcons.clear();
   }
@@ -105,29 +132,27 @@ class AllIconsAdapter implements TomUIIconAdapter {
 /// Adapter that only includes Material icons.
 ///
 /// Use this for smaller bundle size if you don't need Cupertino icons.
-class MaterialOnlyAdapter implements TomUIIconAdapter {
+/// Icons registered through [AllIconsAdapter.registerIcons] still resolve —
+/// the registry is module-wide — but the Cupertino table stays out.
+class MaterialOnlyAdapter extends _RegistryFirstIconAdapter {
   @override
-  IconData? resolveIcon(String name) {
-    return GeneratedIcons.materialIcons[name];
-  }
+  IconData? resolveInFamily(String name) => GeneratedIcons.materialIcons[name];
 
   @override
-  bool iconExists(String name) {
-    return GeneratedIcons.materialIcons.containsKey(name);
-  }
+  bool existsInFamily(String name) =>
+      GeneratedIcons.materialIcons.containsKey(name);
 }
 
 /// Adapter that only includes Cupertino icons.
 ///
 /// Use this for iOS-focused apps that only need Cupertino icons.
-class CupertinoOnlyAdapter implements TomUIIconAdapter {
+/// Icons registered through [AllIconsAdapter.registerIcons] still resolve —
+/// the registry is module-wide — but the Material table stays out.
+class CupertinoOnlyAdapter extends _RegistryFirstIconAdapter {
   @override
-  IconData? resolveIcon(String name) {
-    return GeneratedIcons.cupertinoIcons[name];
-  }
+  IconData? resolveInFamily(String name) => GeneratedIcons.cupertinoIcons[name];
 
   @override
-  bool iconExists(String name) {
-    return GeneratedIcons.cupertinoIcons.containsKey(name);
-  }
+  bool existsInFamily(String name) =>
+      GeneratedIcons.cupertinoIcons.containsKey(name);
 }

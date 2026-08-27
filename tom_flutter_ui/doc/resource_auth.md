@@ -98,9 +98,18 @@ TomUIIcons.resolveIcon('mSave');   // Icons.save
 TomUIIcons.resolveIcon('cShare');  // CupertinoIcons.share
 ```
 
-The same graceful-degradation and custom-registration semantics as colours
-apply. The original Flutter snake_case names are converted to PascalCase
-(`arrow_back` → `mArrowBack`, `left_chevron` → `cLeftChevron`).
+The same graceful-degradation semantics as colours apply. The original Flutter
+snake_case names are converted to PascalCase (`arrow_back` → `mArrowBack`,
+`left_chevron` → `cLeftChevron`).
+
+Custom registration is **module-wide**, not per-adapter:
+`AllIconsAdapter.registerIcons` fills one registry that all three adapters
+consult *before* their own table, and `clearCustomIcons` empties it for all
+three. So an app can register its brand icons and then switch to
+`MaterialOnlyAdapter` for bundle size — the one reason to switch — without
+losing them, and a registration overriding a built-in name (`mSave` → a house
+icon) overrides it everywhere. What the single-family adapters drop is the
+*other family's generated table*, never a registration.
 
 ## Configuration: `TomConfigProvider`
 

@@ -166,6 +166,57 @@ void main() {
       expect(adapter.iconExists('cShare'), isTrue);
       expect(adapter.iconExists('mSave'), isFalse);
     });
+
+    // Registration is module-wide, not a property of AllIconsAdapter. The
+    // failure this pins was silent and total: an app registers its brand
+    // icons, switches to MaterialOnlyAdapter for bundle size — the one
+    // documented reason to switch — and every registered icon resolves to
+    // null with iconExists reporting false. Nothing throws; icons just stop
+    // rendering. The two tests above could not see it because they only ever
+    // ask for built-in names.
+    test('registrations reach the single-family adapters too', () {
+      AllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
+      for (final adapter in <TomUIIconAdapter>[
+        AllIconsAdapter(),
+        MaterialOnlyAdapter(),
+        CupertinoOnlyAdapter(),
+      ]) {
+        expect(adapter.resolveIcon('zBrandLogo'), Icons.abc,
+            reason: '${adapter.runtimeType} lost the registration');
+        expect(adapter.iconExists('zBrandLogo'), isTrue,
+            reason: '${adapter.runtimeType} denies the registration exists');
+      }
+    });
+
+    test('a registration overrides a built-in for every adapter', () {
+      AllIconsAdapter.registerIcons({'mSave': Icons.delete});
+      expect(MaterialOnlyAdapter().resolveIcon('mSave'), Icons.delete);
+      expect(AllIconsAdapter().resolveIcon('mSave'), Icons.delete);
+    });
+
+    test('clearing drops registrations for every adapter', () {
+      AllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
+      AllIconsAdapter.clearCustomIcons();
+      for (final adapter in <TomUIIconAdapter>[
+        AllIconsAdapter(),
+        MaterialOnlyAdapter(),
+        CupertinoOnlyAdapter(),
+      ]) {
+        expect(adapter.resolveIcon('zBrandLogo'), isNull);
+        expect(adapter.iconExists('zBrandLogo'), isFalse);
+      }
+      // The built-in table is untouched by the round trip.
+      expect(MaterialOnlyAdapter().resolveIcon('mSave'), Icons.save);
+    });
+
+    test('registrations do not open the other family to a single-family '
+        'adapter', () {
+      // The point of these adapters is that they carry one family. A shared
+      // registry must not become a back door to the other one.
+      AllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
+      expect(MaterialOnlyAdapter().resolveIcon('cShare'), isNull);
+      expect(CupertinoOnlyAdapter().resolveIcon('mSave'), isNull);
+    });
   });
 
   group('TomConfigProvider', () {
