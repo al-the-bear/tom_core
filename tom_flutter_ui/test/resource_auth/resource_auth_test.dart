@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -73,6 +75,57 @@ void main() {
     test('unknown name resolves to null', () {
       TomUIColors.adapter = AllColorsAdapter();
       expect(TomUIColors.resolveColor('notARealColor'), isNull);
+    });
+
+    test('carries the swatch shades the SDK declares beyond 50..900', () {
+      // Grey is the one Material swatch with off-scale shades. A table
+      // transcribed by hand drops them, because they are not in the pattern
+      // every other family follows; one walked out of the SDK cannot.
+      final adapter = AllColorsAdapter();
+      expect(adapter.resolveColor('mGrey350'), const Color(0xFFD6D6D6));
+      expect(adapter.resolveColor('mGrey850'), const Color(0xFF303030));
+    });
+
+    test('carries every CupertinoColors constant, transparent included', () {
+      final adapter = AllColorsAdapter();
+      expect(adapter.resolveColor('cTransparent'), const Color(0x00000000));
+    });
+  });
+
+  // The colour table is emitted by `tool/generate_colors.dart` and must stay
+  // reproducible: regenerating an unchanged palette has to produce no diff, so
+  // the header may state nothing the entries do not determine. Both checks
+  // below failed on the hand-authored table this generator replaced — it
+  // claimed "60+" Cupertino colours against 46, and carried a wall-clock
+  // stamp for a file no tool had ever written.
+  group('tom_colors_generated.dart header', () {
+    final source =
+        File('lib/src/resource_auth/tom_colors_generated.dart').readAsStringSync();
+
+    int declaredCount(String label) {
+      final match = RegExp('^// $label: (\\d+)\$', multiLine: true)
+          .firstMatch(source);
+      expect(match, isNotNull, reason: 'no "$label:" line in the header');
+      return int.parse(match!.group(1)!);
+    }
+
+    int entryCount(String mapName) {
+      final start = source.indexOf('static const Map<String, Color> $mapName');
+      expect(start, greaterThan(-1), reason: 'no $mapName map');
+      final body = source.substring(start, source.indexOf('\n  };', start));
+      return RegExp("^    '\\w+':", multiLine: true).allMatches(body).length;
+    }
+
+    test('states the counts the two maps actually hold', () {
+      final material = entryCount('materialColors');
+      final cupertino = entryCount('cupertinoColors');
+      expect(declaredCount('Material colors'), material);
+      expect(declaredCount('Cupertino colors'), cupertino);
+      expect(declaredCount('Total'), material + cupertino);
+    });
+
+    test('records no generation timestamp', () {
+      expect(source, isNot(contains('Generated on:')));
     });
   });
 

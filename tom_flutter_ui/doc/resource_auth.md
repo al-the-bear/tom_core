@@ -63,6 +63,28 @@ throw. `AllColorsAdapter.registerColors` adds or overrides names at runtime;
 `clearCustomColors` undoes that. `TomUIColors.reset()` clears the adapter (test
 hygiene).
 
+The palette itself is generated. `tool/generate_colors.dart` reads the Flutter
+SDK's own `material/colors.dart` and `cupertino/colors.dart` and emits
+`lib/src/resource_auth/tom_colors_generated.dart` — every `Colors` and
+`CupertinoColors` constant the SDK declares, in declaration order, keyed
+`m<Name>` / `c<Name>` with the swatch shade appended (`mRed`, `mRed500`,
+`mRedAccent`, `mRedAccent100`). It parses the SDK source rather than importing
+Flutter because it runs under plain `dart`, which has no `dart:ui`; the icon
+table is produced the same way by `tool/generate_icons.dart`.
+
+Rerun it after a Flutter upgrade to pick up palette changes:
+
+```bash
+dart run tool/generate_colors.dart
+```
+
+The output is **reproducible** — no timestamp, and the header's counts are
+emitted from the maps — so regenerating an unchanged palette produces no diff,
+and a count that moved means the SDK's palette moved. Shades are emitted as
+literal values rather than `Colors.red[500]`, which is not a constant
+expression; every other entry is an SDK reference, so the dynamic Cupertino
+colours still resolve light/dark at lookup time.
+
 ## Icon resolution
 
 `TomUIIcons` mirrors the colour facade for `IconData`. `AllIconsAdapter` covers
