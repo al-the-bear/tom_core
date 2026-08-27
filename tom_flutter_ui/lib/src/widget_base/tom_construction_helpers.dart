@@ -415,6 +415,41 @@ class TomCtr {
   // WidgetStateProperty<Color> Resolution
   // ===========================================================================
 
+  /// The recognised state names, **in precedence order, highest first**.
+  ///
+  /// A control is routinely in several widget states at once — a pointer
+  /// resting on a disabled button reports `hovered` and `disabled` together —
+  /// and [widgetStateColor] must answer with exactly one colour. This list is
+  /// the tie-break, and its order is the whole of it: the first entry whose
+  /// state is present wins.
+  ///
+  /// Conditions outrank interactions. Being unavailable or invalid is a fact
+  /// about the control, and a passing pointer must not paint over it. Within
+  /// the interactions the more committed act wins: a drag is a press that went
+  /// somewhere, a press is a stronger statement of intent than focus, and
+  /// focus — which the user chose and which persists — is stronger than hover,
+  /// which is wherever the pointer happens to be. `scrolledUnder` is last
+  /// because it describes a position rather than the control.
+  ///
+  /// Two of these differ from Material's own resolvers, deliberately.
+  /// Flutter's button defaults rank `hovered` above `focused` and do not rank
+  /// `error` at all; a Tom widget favours the state the user committed to and
+  /// treats validity as a condition, on the reasoning above.
+  ///
+  /// `tom_ctr_helpers_test.dart` restates this order independently and asserts
+  /// each rank against the one below it, so reordering the list here without
+  /// meaning to fails the suite rather than changing the contract in silence.
+  static const _statePrecedence = <String, WidgetState>{
+    'disabled': WidgetState.disabled,
+    'error': WidgetState.error,
+    'dragged': WidgetState.dragged,
+    'pressed': WidgetState.pressed,
+    'selected': WidgetState.selected,
+    'focused': WidgetState.focused,
+    'hovered': WidgetState.hovered,
+    'scrolledUnder': WidgetState.scrolledUnder,
+  };
+
   /// Resolves a [WidgetStateProperty] of [Color] from resources.
   ///
   /// Reads the flat default color at [basePath] + [suffix], and per-state
@@ -422,6 +457,14 @@ class TomCtr {
   /// names: `hovered`, `focused`, `pressed`, `selected`, `disabled`,
   /// `error`, `dragged`, `scrolledUnder`. Missing states fall back to the
   /// default.
+  ///
+  /// When the control is in several states at once, the resolved colour is the
+  /// one for the highest-ranked state the bundle actually defines, ranked by
+  /// [_statePrecedence]: `disabled` > `error` > `dragged` > `pressed` >
+  /// `selected` > `focused` > `hovered` > `scrolledUnder`. Ranking applies
+  /// only among defined states — a bundle that colours `hovered` and not
+  /// `disabled` paints a hovered-and-disabled control with the hover colour,
+  /// because the higher rank is absent rather than losing.
   ///
   /// Returns `null` when neither the default nor any state override is
   /// present.
@@ -432,24 +475,17 @@ class TomCtr {
     if (basePath == null) return null;
     final flatKey = _key(basePath, suffix);
     final defaultColor = color(flatKey);
-    final statesMap = <WidgetState, Color>{};
-    const stateNames = {
-      'hovered': WidgetState.hovered,
-      'focused': WidgetState.focused,
-      'pressed': WidgetState.pressed,
-      'selected': WidgetState.selected,
-      'disabled': WidgetState.disabled,
-      'error': WidgetState.error,
-      'dragged': WidgetState.dragged,
-      'scrolledUnder': WidgetState.scrolledUnder,
-    };
-    for (final entry in stateNames.entries) {
+    // A list rather than a map: the order carries the meaning here, and a map
+    // that must be iterated in insertion order to be correct says nothing
+    // about that requirement in its own type.
+    final ranked = <MapEntry<WidgetState, Color>>[];
+    for (final entry in _statePrecedence.entries) {
       final c = color('$flatKey.states', entry.key);
-      if (c != null) statesMap[entry.value] = c;
+      if (c != null) ranked.add(MapEntry(entry.value, c));
     }
-    if (defaultColor == null && statesMap.isEmpty) return null;
+    if (defaultColor == null && ranked.isEmpty) return null;
     return WidgetStateProperty.resolveWith<Color>((states) {
-      for (final entry in statesMap.entries) {
+      for (final entry in ranked) {
         if (states.contains(entry.key)) return entry.value;
       }
       return defaultColor ?? const Color(0xFF000000);

@@ -217,6 +217,32 @@ resource is available — used where a value is structurally required. The plain
 variants return `null` (or the key string, for `text`, as a development
 indicator) when nothing resolves.
 
+`widgetStateColor` reads a default colour at its own key and per-state
+overrides beneath `<key>.states.<name>`, for the eight names `hovered`,
+`focused`, `pressed`, `selected`, `disabled`, `error`, `dragged` and
+`scrolledUnder`. A control is regularly in more than one of those states at
+once — a pointer resting on a disabled button is both `hovered` and `disabled`
+— so the resolver ranks them and returns the highest:
+
+```text
+disabled > error > dragged > pressed > selected > focused > hovered > scrolledUnder
+```
+
+Conditions outrank interactions: being unavailable or invalid is a fact about
+the control that a passing pointer must not paint over. Within the interactions
+the more committed act wins — a drag is a press that went somewhere, a press is
+a stronger statement of intent than focus, and focus persists where hover is
+merely wherever the pointer happens to be. Two ranks differ from Material,
+deliberately: Flutter's own resolvers put `hovered` above `focused` and give
+`error` no rank at all.
+
+The ranking applies only to the states a bundle actually defines. A bundle that
+colours hover alone paints the hover colour on a control that is hovered *and*
+disabled — the higher rank is absent, not silently defaulted. When no ranked
+state matches, the default colour applies; with neither a default nor any state
+override the method returns `null`, and a bundle that defines state colours but
+no default falls back to opaque black for the unmatched case.
+
 ## Style resolution: `TomStyleResolvers`
 
 `TomStyleResolvers` parses complex Material objects from JSON resources. Each

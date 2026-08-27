@@ -143,6 +143,133 @@ void main() {
     });
   });
 
+  group('TomCtr.widgetStateColor precedence', () {
+    // A control is regularly in more than one widget state at once — a pointer
+    // resting on a disabled button puts both `hovered` and `disabled` in the
+    // set — and the resolver must return exactly one colour. Which one is a
+    // deliberate ranking, restated here rather than read out of the source, so
+    // that reordering the source map fails this file instead of quietly
+    // becoming the new contract.
+    //
+    // Highest precedence first. Conditions outrank interactions: being
+    // unavailable or invalid is a fact about the control that a passing
+    // pointer must not paint over. Within the interactions the more committed
+    // act wins — a drag is a press that went somewhere, and a press is a
+    // stronger statement of intent than focus, which is stronger than hover.
+    const precedence = <String, WidgetState>{
+      'disabled': WidgetState.disabled,
+      'error': WidgetState.error,
+      'dragged': WidgetState.dragged,
+      'pressed': WidgetState.pressed,
+      'selected': WidgetState.selected,
+      'focused': WidgetState.focused,
+      'hovered': WidgetState.hovered,
+      'scrolledUnder': WidgetState.scrolledUnder,
+    };
+
+    /// A distinct, recognisable colour per rank.
+    Color colorFor(int rank) => Color(0xFF000010 + rank);
+
+    String hexFor(int rank) =>
+        '#${(0x000010 + rank).toRadixString(16).padLeft(6, '0')}';
+
+    test('the ranking covers every state name the resolver reads', () {
+      // Guards the guard. A state added to the resolver but not ranked here
+      // would take its precedence from wherever it happened to be declared,
+      // with nothing to say so.
+      expect(precedence, hasLength(8));
+      expect(
+        precedence.keys.toSet(),
+        {
+          'hovered',
+          'focused',
+          'pressed',
+          'selected',
+          'disabled',
+          'error',
+          'dragged',
+          'scrolledUnder',
+        },
+        reason: 'the dartdoc of widgetStateColor lists exactly these names',
+      );
+    });
+
+    test('each rank beats the one below it', () {
+      // Adjacent pairs are enough: beating your neighbour at every step
+      // establishes the whole order transitively, and it localises a failure
+      // to the one swap that caused it rather than reporting every pair that
+      // moved.
+      final names = precedence.keys.toList();
+      for (var i = 0; i < names.length - 1; i++) {
+        final higher = names[i];
+        final lower = names[i + 1];
+        _installResources({
+          'fill': '#FFFFFF',
+          'fill.states.$higher': hexFor(i),
+          'fill.states.$lower': hexFor(i + 1),
+        });
+        final prop = TomCtr.widgetStateColor('fill');
+        expect(
+          prop!.resolve({precedence[higher]!, precedence[lower]!}),
+          colorFor(i),
+          reason: '$higher outranks $lower, so a control in both states '
+              'must paint the $higher colour',
+        );
+      }
+    });
+
+    test('a pointer resting on a disabled control keeps the disabled colour',
+        () {
+      // The case that motivated the ranking, spelled out rather than left to
+      // the adjacent-pair loop: `hovered` and `disabled` are the two states
+      // most likely to co-occur, and they sit at opposite ends of the order.
+      _installResources({
+        'fill': '#111111',
+        'fill.states.hovered': '#AAAAAA',
+        'fill.states.disabled': '#DDDDDD',
+      });
+      final prop = TomCtr.widgetStateColor('fill');
+      expect(prop!.resolve({WidgetState.hovered, WidgetState.disabled}),
+          const Color(0xFFDDDDDD));
+    });
+
+    test('an invalid control that gains focus keeps the error colour', () {
+      _installResources({
+        'fill': '#111111',
+        'fill.states.focused': '#00FF00',
+        'fill.states.error': '#FF0000',
+      });
+      final prop = TomCtr.widgetStateColor('fill');
+      expect(prop!.resolve({WidgetState.error, WidgetState.focused}),
+          const Color(0xFFFF0000));
+    });
+
+    test('the highest rank wins out of the whole set at once', () {
+      _installResources({
+        'fill': '#FFFFFF',
+        for (final entry in precedence.entries.toList().asMap().entries)
+          'fill.states.${entry.value.key}': hexFor(entry.key),
+      });
+      final prop = TomCtr.widgetStateColor('fill');
+      expect(prop!.resolve(precedence.values.toSet()), colorFor(0));
+    });
+
+    test('precedence ranks the states a bundle defines, not all of them', () {
+      // Only states with a resource take part. A control that is hovered and
+      // disabled, in a bundle that colours hover alone, paints the hover
+      // colour — the higher rank is absent, not silently defaulted. Without
+      // this the ranking would read as "disabled always wins", which would be
+      // wrong at the call site that matters most.
+      _installResources({
+        'fill': '#111111',
+        'fill.states.hovered': '#AAAAAA',
+      });
+      final prop = TomCtr.widgetStateColor('fill');
+      expect(prop!.resolve({WidgetState.hovered, WidgetState.disabled}),
+          const Color(0xFFAAAAAA));
+    });
+  });
+
   group('TomCtr.breakpointed', () {
     test('returns null when both default and breakpoints absent', () {
       _installResources({});
