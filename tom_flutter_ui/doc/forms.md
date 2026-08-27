@@ -124,6 +124,14 @@ final rule = Validators.compose<String>([
 final result = await rule('ab'); // ValidationError('error.minLength', {min: 3})
 ```
 
+More precisely it returns the first result that is not `ValidationSuccess`, and
+an empty list is success. You do **not** need it for a field's `validators:`
+list — a field runs that list in order and stops at the first error by itself.
+Reach for `compose` where a *single* validator is required: nesting one rule set
+inside another, or handing one function to `SlowValidator`. A composite is a
+plain, fast validator however slow its members are; only `SlowValidator` grants
+the long debounce and the `ValidationPending` spinner.
+
 `minItems` / `maxItems` bound the *size* of a collection rather than a value,
 which is how a multi-select field expresses its selection count — the rules are
 typed over `Iterable<Object?>` so they drop straight into a

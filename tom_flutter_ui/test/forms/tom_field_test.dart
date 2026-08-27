@@ -208,6 +208,60 @@ void main() {
       final result = await field.validate();
       expect(result, isA<ValidationSuccess>());
     });
+
+    // Because the field already stops on the first error (above), composing
+    // rules before handing them over buys nothing — this pins the equivalence
+    // so the documented "don't bother" cannot quietly become false.
+    test('a composed rule and the same rules as a list agree', () async {
+      final asList = _TestField<String>(
+        'name',
+        'ab',
+        validators: [Validators.required(), Validators.minLength(3)],
+      );
+      final asComposite = _TestField<String>(
+        'name',
+        'ab',
+        validators: [
+          Validators.compose<String>(
+            [Validators.required(), Validators.minLength(3)],
+          ),
+        ],
+      );
+
+      expect(await asList.validate(), const ValidationError('error.minLength'));
+      expect(
+        await asComposite.validate(),
+        const ValidationError('error.minLength'),
+      );
+    });
+
+    // compose returns a plain Validator, so however slow its members are the
+    // composite is dispatched on the fast path — no pending spinner, short
+    // debounce. SlowValidator is what moves it, and it accepts a composite.
+    test('a composite of async rules is still a fast validator', () async {
+      Future<ValidationResult> remote(String value) async =>
+          const ValidationSuccess();
+
+      final fast = _TestField<String>(
+        'name',
+        'x',
+        validators: [
+          Validators.compose<String>([Validators.required(), remote]),
+        ],
+      );
+      expect(fast.hasSlowValidators, isFalse);
+
+      final slow = _TestField<String>(
+        'name',
+        'x',
+        validators: [
+          SlowValidator(
+            Validators.compose<String>([Validators.required(), remote]),
+          ),
+        ],
+      );
+      expect(slow.hasSlowValidators, isTrue);
+    });
   });
 
   group('TomField — authorization', () {

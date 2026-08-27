@@ -316,6 +316,31 @@ void main() {
           'error.needsAt',
         );
       });
+
+      // The short-circuit is on "not success", which is wider than "error" —
+      // and wider than a field's own validator loop, which walks past
+      // anything that is not a ValidationError.
+      test('stops on any non-success result, not only on an error', () async {
+        var afterPendingRan = false;
+        final validator = Validators.compose<String>([
+          (value) => const ValidationPending(),
+          (value) {
+            afterPendingRan = true;
+            return const ValidationSuccess();
+          },
+        ]);
+
+        expect(await validator('anything'), isA<ValidationPending>());
+        expect(afterPendingRan, isFalse);
+      });
+
+      // A composite is built from an async closure, so it reports as a Future
+      // whatever it holds. That is why it never satisfies a caller who needs a
+      // synchronously readable result.
+      test('is asynchronous even when every member rule is sync', () {
+        final validator = Validators.compose<String>([Validators.required()]);
+        expect(validator('ok'), isA<Future<ValidationResult>>());
+      });
     });
   });
 }
