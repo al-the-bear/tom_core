@@ -11,11 +11,12 @@
 /// This example demonstrates the pure-logic surfaces (no `BuildContext`):
 ///
 /// 1. creating a group, and the default `controlsWidest` mode,
-/// 2. registering members (weak-reference tracking),
+/// 2. registering members (weak-reference tracking) and looking one up with
+///    `findMember`,
 /// 3. a `TomWidgetMixin` widget resolving its effective auth through the group,
 /// 4. the three `AuthGroupMode`s (`controlsAll` / `controlsWidest` /
 ///    `controlsNarrowest`) via `applyMode`,
-/// 5. group introspection (`mostRestrictive`, `isUniform`, `findMember`) and
+/// 5. group introspection (`mostRestrictive`, `isUniform`, `isEmpty`) and
 ///    what it answers when nothing in the group is visible,
 /// 6. scope-aware path resolution, in both the ambient and the explicit form.
 ///
@@ -81,7 +82,7 @@ void run() {
   print('shipping mode: ${shipping.mode}');
 
   // ---------------------------------------------------------------------------
-  // 2. Members + weak-reference tracking.
+  // 2. Members + weak-reference tracking, and looking a member up by id.
   // ---------------------------------------------------------------------------
   final street = _GroupedField('street', tomGroup: shipping);
   final city = _GroupedField('city', tomGroup: shipping);
