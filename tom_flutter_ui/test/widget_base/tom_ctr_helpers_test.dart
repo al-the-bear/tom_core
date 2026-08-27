@@ -338,4 +338,126 @@ void main() {
       expect(r.$2, [(600.0, 8.0)]);
     });
   });
+
+  group('TomCtr …OrFail: the two failure conditions', () {
+    // The four `…OrFail` helpers can fail for two independent reasons: there
+    // is no `tomId`, so there is no key to look up at all; or there is a key
+    // and nothing is installed at it. They agree on the first and disagree on
+    // the second — `textOrFail` returns the key, the other three throw — and
+    // that disagreement is deliberate, not an oversight. A missing label
+    // painted as `checkout.submit.label` is how a missing translation makes
+    // itself visible during development, and the suite relies on it:
+    // `scope_propagation_test.dart` detects a mis-scoped widget by finding
+    // exactly that string on screen.
+    //
+    // These tests exist because that difference is easy to "tidy up" into
+    // consistency by someone reading only the family name. Asserting all four
+    // against both conditions in one place is what makes the asymmetry a
+    // stated contract rather than an accident of four separate methods.
+
+    group('no tomId — every variant throws', () {
+      test('textOrFail(null)', () {
+        expect(() => TomCtr.textOrFail(null, 'label'), throwsStateError);
+      });
+
+      test('colorOrFail(null)', () {
+        expect(() => TomCtr.colorOrFail(null, 'color'), throwsStateError);
+      });
+
+      test('doubleOrFail(null)', () {
+        expect(() => TomCtr.doubleOrFail(null, 'size'), throwsStateError);
+      });
+
+      test('intOrFail(null)', () {
+        expect(() => TomCtr.intOrFail(null, 'count'), throwsStateError);
+      });
+    });
+
+    group('key present, resource absent — only textOrFail survives', () {
+      setUp(() => _installResources({}));
+
+      test('textOrFail returns the key it looked up', () {
+        expect(TomCtr.textOrFail('nope', 'label'), 'nope.label');
+      });
+
+      test('colorOrFail throws', () {
+        expect(() => TomCtr.colorOrFail('nope', 'color'), throwsStateError);
+      });
+
+      test('doubleOrFail throws', () {
+        expect(() => TomCtr.doubleOrFail('nope', 'size'), throwsStateError);
+      });
+
+      test('intOrFail throws', () {
+        expect(() => TomCtr.intOrFail('nope', 'count'), throwsStateError);
+      });
+
+      test('the two conditions are distinguishable on textOrFail alone', () {
+        // The one method that answers differently to the two reasons. Stated
+        // as a single expectation so the asymmetry cannot be read as two
+        // unrelated facts about two unrelated calls.
+        expect(TomCtr.textOrFail('nope', 'label'), 'nope.label');
+        expect(() => TomCtr.textOrFail(null, 'label'), throwsStateError);
+      });
+    });
+
+    group('resource present — every variant returns it', () {
+      // Without these the throwing tests above would still pass against a
+      // helper that threw unconditionally.
+      setUp(() {
+        _installResources({
+          'w.label': 'Submit',
+          'w.color': '#FF0000',
+          'w.size': 12,
+          'w.count': 3,
+        });
+      });
+
+      test('textOrFail', () => expect(TomCtr.textOrFail('w', 'label'), 'Submit'));
+
+      test('colorOrFail', () {
+        expect(TomCtr.colorOrFail('w', 'color'), const Color(0xFFFF0000));
+      });
+
+      test('doubleOrFail', () => expect(TomCtr.doubleOrFail('w', 'size'), 12.0));
+
+      test('intOrFail', () => expect(TomCtr.intOrFail('w', 'count'), 3));
+    });
+
+    group('resource present but unusable — the third throw reason', () {
+      // Distinct from absence: the bundle named the key and got the type
+      // wrong. `textOrFail` has no such case — every resource is readable as
+      // text — which is the other half of why it cannot answer like the rest.
+      setUp(() {
+        _installResources({
+          'w.color': 'not-a-colour',
+          'w.size': 'not-a-number',
+          'w.count': 'not-a-number',
+        });
+      });
+
+      test('colorOrFail throws on an unresolvable colour name', () {
+        expect(() => TomCtr.colorOrFail('w', 'color'), throwsStateError);
+      });
+
+      test('doubleOrFail throws on a non-numeric value', () {
+        expect(() => TomCtr.doubleOrFail('w', 'size'), throwsStateError);
+      });
+
+      test('intOrFail throws on a non-numeric value', () {
+        expect(() => TomCtr.intOrFail('w', 'count'), throwsStateError);
+      });
+    });
+
+    test('supersededBy suppresses textOrFail entirely, tomId or not', () {
+      // The third exit. A caller offering a widget slot that renders instead
+      // of the text has nothing to demand a resource for, so neither failure
+      // condition applies — including the null-tomId one that is otherwise
+      // unconditional.
+      _installResources({});
+      const stand = SizedBox.shrink();
+      expect(TomCtr.textOrFail('nope', 'label', supersededBy: stand), '');
+      expect(TomCtr.textOrFail(null, 'label', supersededBy: stand), '');
+    });
+  });
 }

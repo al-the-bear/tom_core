@@ -212,10 +212,38 @@ interpolating a scope path into an id.
 | Composite | `textStyle`, `inputBorder`, `widgetStateColor`, `breakpointed<T>` |
 | Default widgets | `defaultText`, `defaultTextOrEmpty` |
 
-The `…OrFail` variants throw `StateError` when neither an explicit value nor a
-resource is available — used where a value is structurally required. The plain
-variants return `null` (or the key string, for `text`, as a development
-indicator) when nothing resolves.
+The plain variants return `null` (or the key string, for `text`, as a
+development indicator) when nothing resolves.
+
+The four `…OrFail` variants are for values a widget genuinely cannot render
+without, and they can fail for two independent reasons: there is no `tomId`, so
+there is no key to look up at all; or there is a key and nothing is installed at
+it. **They agree on the first and disagree on the second.**
+
+| Variant | No `tomId` | Key present, resource absent | Resource present but unusable |
+| ------- | ---------- | ---------------------------- | ----------------------------- |
+| `textOrFail` | throws `StateError` | **returns the key**, e.g. `'w.label'` | — (any resource reads as text) |
+| `colorOrFail` | throws `StateError` | throws `StateError` | throws `StateError` |
+| `doubleOrFail` | throws `StateError` | throws `StateError` | throws `StateError` |
+| `intOrFail` | throws `StateError` | throws `StateError` | throws `StateError` |
+
+`textOrFail` is the member whose behaviour its name does not announce, and the
+difference is deliberate rather than an oversight. A missing label painted as
+`checkout.submit.label` makes a missing translation obvious on screen during
+development, where an exception would only say that *something* was absent;
+`getText` on the group mixin answers the same way for the same reason (see
+[Groups](groups.md)). So the useful reading of the name is "fails when there is
+nothing to look up", not "fails when the lookup finds nothing" — and a caller
+who needs a required label to fail loudly must check `exists` first, because
+`textOrFail` will not do it.
+
+A third exit is unique to `textOrFail`: passing `supersededBy` a non-null widget
+returns `''` without consulting anything, including in the null-`tomId` case.
+The text is not going to be rendered, so there is nothing to require.
+
+`test/widget_base/tom_ctr_helpers_test.dart` asserts all four variants against
+both conditions in one place, so the asymmetry is a stated contract rather than
+an accident of four separate methods.
 
 `widgetStateColor` reads a default colour at its own key and per-state
 overrides beneath `<key>.states.<name>`, for the eight names `hovered`,

@@ -149,11 +149,25 @@ TomText(tomId: 'app.greeting'); // resolves the label from resources by basePath
 ```
 
 Nullable resolvers (`TomCtr.intVal`, `TomCtr.textStyle`, …) return `null` when
-the key is absent; the `*OrFail` resolvers (e.g. a `TomText` with neither
-`text` nor a `label` resource) **throw** so a missing required resource fails
-loudly at construction rather than rendering blank. Construction needs a
-resource provider installed (`TomTextResourceProvider.setAppResourceProvider`)
-but **no** `BuildContext`.
+the key is absent; the `*OrFail` resolvers **throw** so a missing required
+value fails loudly at construction rather than rendering blank. What counts as
+missing differs by type, and the split matters when picking one:
+
+```dart
+TomText();                      // throws — no text and no tomId, nothing to look up
+TomText(tomId: 'app.greeting'); // no `app.greeting.label` resource: renders
+                                // 'app.greeting.label', it does not throw
+TomOpacity(tomId: 'fade');      // no `fade.opacity` resource: throws
+```
+
+`textOrFail` returns the key rather than throwing once a `tomId` is present —
+deliberately, so a missing translation is visible on screen — while
+`colorOrFail`, `doubleOrFail` and `intOrFail` throw for an absent resource as
+well as an absent `tomId`. The full matrix is in
+[widget_base.md](widget_base.md#resource-resolution-tomctr).
+
+Construction needs a resource provider installed
+(`TomTextResourceProvider.setAppResourceProvider`) but **no** `BuildContext`.
 
 ## Authorization, groups, and scope
 
