@@ -150,8 +150,12 @@ void main() {
     });
 
     test('returns the defaults for a missing file', () {
+      // The host default is the shared `defaultBridgeHost`, not a second
+      // spelling of it: this settings object is scanned against a binding
+      // that defaults from the same constant, and the two used to disagree.
       final loaded = AgentSettingsStore(f('missing.yaml')).load();
-      expect(loaded.bridgeHost, 'localhost');
+      expect(loaded.bridgeHost, defaultBridgeHost);
+      expect(loaded.bridgeHost, '127.0.0.1');
       expect(loaded.portScanStart, 19900);
       expect(loaded.portScanEnd, 19909);
       expect(loaded.hasValidPortRange, isTrue);

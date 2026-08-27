@@ -25,6 +25,44 @@ const int bridgeScanMinPort = defaultVSCodeBridgePort;
 /// Highest CLI bridge port scanned (inclusive).
 const int bridgeScanMaxPort = maxVSCodeBridgePort;
 
+/// The host every bridge default in this package points at: IPv4 loopback.
+///
+/// Named rather than spelled out at each site because the sites have to agree
+/// and once did not — [AgentSettings.bridgeHost] defaulted to `localhost`
+/// while the other three defaulted to `127.0.0.1`, and since a binding was
+/// matched against a scan by comparing the host *strings*, a bridge that was
+/// up and answering was reported as gone. [BridgeChoice.matches] now makes
+/// that comparison endpoint-wise so the spellings can differ safely; this
+/// constant makes the defaults unable to differ in the first place.
+const String defaultBridgeHost = '127.0.0.1';
+
+/// Every spelling of the local loopback interface.
+const Set<String> _loopbackHosts = {'localhost', '127.0.0.1', '::1'};
+
+/// Lowercases a host and strips the brackets an IPv6 literal is written with,
+/// so `[::1]` and `::1` are one token.
+String _canonicalHost(String host) {
+  final trimmed = host.trim().toLowerCase();
+  return trimmed.length > 1 &&
+          trimmed.startsWith('[') &&
+          trimmed.endsWith(']')
+      ? trimmed.substring(1, trimmed.length - 1)
+      : trimmed;
+}
+
+/// Whether [a] and [b] name the same bridge endpoint.
+///
+/// Case-insensitive (host names are), and every spelling of loopback is one
+/// endpoint. Everything else compares as text — this layer scans a local port
+/// range and does no name resolution, so two hosts it cannot prove identical
+/// must stay distinct rather than a binding silently following a scan onto a
+/// different machine.
+bool _sameEndpoint(String a, String b) {
+  final x = _canonicalHost(a);
+  final y = _canonicalHost(b);
+  return x == y || (_loopbackHosts.contains(x) && _loopbackHosts.contains(y));
+}
+
 /// How a discovered server relates to the editor right now.
 enum BridgeServerStatus {
   /// A live server, reachable but not currently bound.
@@ -46,7 +84,7 @@ class BridgeServer {
   const BridgeServer({
     required this.port,
     required this.workspace,
-    this.host = '127.0.0.1',
+    this.host = defaultBridgeHost,
     this.status = BridgeServerStatus.available,
   });
 
@@ -109,7 +147,7 @@ Future<Map<int, String>> _defaultScanner({
 /// and never touches the transport package directly.
 class BridgeConnectionService {
   BridgeConnectionService({
-    this.host = '127.0.0.1',
+    this.host = defaultBridgeHost,
     this.minPort = bridgeScanMinPort,
     this.maxPort = bridgeScanMaxPort,
     BridgePortScanner scanner = _defaultScanner,
@@ -166,10 +204,27 @@ class BridgeChoice {
     final host = map['host'];
     final port = map['port'];
     return BridgeChoice(
-      host: host is String && host.isNotEmpty ? host : '127.0.0.1',
+      host: host is String && host.isNotEmpty ? host : defaultBridgeHost,
       port: port is num ? port.toInt() : defaultVSCodeBridgePort,
     );
   }
+
+  /// Whether [server] is the bridge this binding names.
+  ///
+  /// The port must be equal; the host must name the same *endpoint*, which is
+  /// weaker than being the same string. The two sides reach this comparison
+  /// from different places — the binding from the sidecar (or its
+  /// [defaultBridgeHost] fallback), the server from a scan of
+  /// `AgentSettings.bridgeHost` — so they can spell one loopback endpoint
+  /// differently while meaning the same bridge. When the comparison was
+  /// textual that reported a live bridge as gone: the still-gone modal for a
+  /// working bridge, no auto-resend, and the picker showing the bound server
+  /// as merely available.
+  ///
+  /// Deliberately not folded into [operator ==], which is value equality on
+  /// the record that was persisted and has to keep agreeing with [toMap].
+  bool matches(BridgeServer server) =>
+      server.port == port && _sameEndpoint(server.host, host);
 
   @override
   bool operator ==(Object other) =>

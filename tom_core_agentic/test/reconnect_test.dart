@@ -122,6 +122,85 @@ void main() {
       expect(result.attempts, defaultReconnectBackoff.length);
     });
 
+    // The bound choice and the discovered server reach the match from
+    // different places — the sidecar (or its `127.0.0.1` default) on one side,
+    // a scan of `AgentSettings.bridgeHost` on the other. A user who retypes
+    // the host in settings makes those two disagree on spelling while still
+    // naming one endpoint, and a textual match would then report a bridge
+    // that is up and answering as gone: the still-gone modal for a working
+    // bridge, and no auto-resend.
+    test('a localhost server satisfies a 127.0.0.1 binding', () async {
+      final service = _ScriptedService([
+        [BridgeServer(port: 19900, host: 'localhost', workspace: 'tomspecs')],
+      ]);
+      final result = await _coordinator(service).reconnect(
+        bound: const BridgeChoice(host: '127.0.0.1', port: 19900),
+        boundWorkspace: 'tomspecs',
+      );
+
+      expect(result.resolution, ReconnectResolution.sameWorkspace);
+      expect(result.attempts, 1);
+    });
+
+    test('a 127.0.0.1 server satisfies a localhost binding', () async {
+      final service = _ScriptedService([
+        [_server(19900, 'tomspecs')],
+      ]);
+      final result = await _coordinator(service).reconnect(
+        bound: const BridgeChoice(host: 'localhost', port: 19900),
+        boundWorkspace: 'tomspecs',
+      );
+
+      expect(result.resolution, ReconnectResolution.sameWorkspace);
+    });
+
+    test('an IPv6 loopback server satisfies a 127.0.0.1 binding', () async {
+      final service = _ScriptedService([
+        [BridgeServer(port: 19900, host: '::1', workspace: 'tomspecs')],
+      ]);
+      final result = await _coordinator(service).reconnect(
+        bound: _bound,
+        boundWorkspace: 'tomspecs',
+      );
+
+      expect(result.resolution, ReconnectResolution.sameWorkspace);
+    });
+
+    test('the workspace check still applies across host spellings', () async {
+      // Normalising the host must not weaken the workspace classification:
+      // a different workspace on the bound port still needs confirmation.
+      final service = _ScriptedService([
+        [
+          BridgeServer(
+            port: 19900,
+            host: 'localhost',
+            workspace: 'some-other-project',
+          ),
+        ],
+      ]);
+      final result = await _coordinator(service).reconnect(
+        bound: _bound,
+        boundWorkspace: 'tomspecs',
+      );
+
+      expect(result.resolution, ReconnectResolution.differentWorkspace);
+    });
+
+    test('a non-loopback host on the bound port does not match', () async {
+      // The other half of the guard: loopback spellings converge, but a real
+      // remote host must stay distinct or a binding could silently follow a
+      // scan onto a different machine.
+      final service = _ScriptedService([
+        [BridgeServer(port: 19900, host: '10.8.0.9', workspace: 'tomspecs')],
+      ]);
+      final result = await _coordinator(service).reconnect(
+        bound: _bound,
+        boundWorkspace: 'tomspecs',
+      );
+
+      expect(result.resolution, ReconnectResolution.stillGone);
+    });
+
     test('still gone after all three back-offs → stillGone', () async {
       final service = _ScriptedService([const []]);
       final result = await _coordinator(service).reconnect(

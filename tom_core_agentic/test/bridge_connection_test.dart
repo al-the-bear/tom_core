@@ -39,6 +39,87 @@ void main() {
     });
   });
 
+  // `matches` answers "is this discovered server the one I am bound to?",
+  // which is not the same question as string equality. The binding and the
+  // scan reach the comparison from different places — the sidecar (or its
+  // default) on one side, `AgentSettings.bridgeHost` on the other — so they
+  // can legitimately spell one loopback endpoint two ways.
+  group('BridgeChoice.matches', () {
+    BridgeServer serverOn(String host) =>
+        BridgeServer(host: host, port: 19900, workspace: 'ws');
+
+    test('matches a server with the identical host spelling', () {
+      const bound = BridgeChoice(host: '127.0.0.1', port: 19900);
+      expect(bound.matches(serverOn('127.0.0.1')), isTrue);
+    });
+
+    test('treats every spelling of loopback as the same endpoint', () {
+      for (final boundHost in ['127.0.0.1', 'localhost', '::1', '[::1]']) {
+        final bound = BridgeChoice(host: boundHost, port: 19900);
+        for (final serverHost in ['127.0.0.1', 'localhost', '::1', '[::1]']) {
+          expect(
+            bound.matches(serverOn(serverHost)),
+            isTrue,
+            reason: 'bound $boundHost should match server $serverHost',
+          );
+        }
+      }
+    });
+
+    test('compares host names case-insensitively', () {
+      const bound = BridgeChoice(host: 'LocalHost', port: 19900);
+      expect(bound.matches(serverOn('localhost')), isTrue);
+      expect(
+        const BridgeChoice(host: 'Build-Box', port: 19900)
+            .matches(serverOn('build-box')),
+        isTrue,
+      );
+    });
+
+    test('does not match a genuinely different host', () {
+      const bound = BridgeChoice(host: '127.0.0.1', port: 19900);
+      expect(bound.matches(serverOn('10.8.0.9')), isFalse);
+      expect(bound.matches(serverOn('bomber')), isFalse);
+      // Not a loopback address, despite the prefix — a substring test would
+      // wrongly accept this one.
+      expect(bound.matches(serverOn('127.0.0.1.example.com')), isFalse);
+    });
+
+    test('does not match a different port however the host is spelled', () {
+      const bound = BridgeChoice(host: 'localhost', port: 19900);
+      expect(bound.matches(serverOn('127.0.0.1')), isTrue);
+      expect(
+        bound.matches(
+          const BridgeServer(host: '127.0.0.1', port: 19901, workspace: 'ws'),
+        ),
+        isFalse,
+      );
+    });
+
+    test('== still distinguishes the two spellings', () {
+      // Deliberate: `==` is value equality on the record that was persisted,
+      // and must keep agreeing with `toMap()`. Endpoint identity is the
+      // separate question `matches` answers.
+      expect(
+        const BridgeChoice(host: 'localhost', port: 19900),
+        isNot(const BridgeChoice(host: '127.0.0.1', port: 19900)),
+      );
+    });
+  });
+
+  group('defaultBridgeHost', () {
+    test('is the one spelling every default in the package uses', () {
+      expect(defaultBridgeHost, '127.0.0.1');
+      expect(
+        const BridgeServer(port: 19900, workspace: 'ws').host,
+        defaultBridgeHost,
+      );
+      expect(BridgeConnectionService().host, defaultBridgeHost);
+      expect(BridgeChoice.fromMap(const {}).host, defaultBridgeHost);
+      expect(const AgentSettings().bridgeHost, defaultBridgeHost);
+    });
+  });
+
   group('BridgeChoiceStore', () {
     test('round-trips the bound choice through YAML', () {
       final dir = Directory.systemTemp.createTempSync('bridge_choice_');

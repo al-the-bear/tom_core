@@ -7,6 +7,7 @@
 library;
 
 import 'agent_profile.dart';
+import 'bridge_connection.dart';
 
 /// Global agent settings: bridge target + the §7.1 `Options` defaults.
 ///
@@ -15,9 +16,9 @@ import 'agent_profile.dart';
 /// profile selected on launch.
 final class AgentSettings {
   const AgentSettings({
-    this.bridgeHost = 'localhost',
-    this.portScanStart = 19900,
-    this.portScanEnd = 19909,
+    this.bridgeHost = defaultBridgeHost,
+    this.portScanStart = bridgeScanMinPort,
+    this.portScanEnd = bridgeScanMaxPort,
     this.defaultProfileId,
     this.maxTokens,
     this.maxRounds,
@@ -54,9 +55,9 @@ final class AgentSettings {
   final ToolApprovalMode? toolApprovalMode;
 
   factory AgentSettings.fromYaml(Map<String, dynamic> yaml) => AgentSettings(
-        bridgeHost: yaml['bridgeHost'] as String? ?? 'localhost',
-        portScanStart: yaml['portScanStart'] as int? ?? 19900,
-        portScanEnd: yaml['portScanEnd'] as int? ?? 19909,
+        bridgeHost: yaml['bridgeHost'] as String? ?? defaultBridgeHost,
+        portScanStart: yaml['portScanStart'] as int? ?? bridgeScanMinPort,
+        portScanEnd: yaml['portScanEnd'] as int? ?? bridgeScanMaxPort,
         defaultProfileId: yaml['defaultProfileId'] as String?,
         maxTokens: yaml['maxTokens'] as int?,
         maxRounds: yaml['maxRounds'] as int?,

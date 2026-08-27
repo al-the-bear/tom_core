@@ -2,6 +2,21 @@
 
 ### Fixed
 
+- **`agent/`**: a bound bridge that was up and answering could be reported as
+  gone. Four defaults named the bridge host and one disagreed —
+  `AgentSettings.bridgeHost` was `'localhost'` where `BridgeServer`,
+  `BridgeConnectionService` and `BridgeChoice.fromMap` all said `'127.0.0.1'`
+  — and both places that compare a binding to a discovered server compared the
+  host *strings*. `localhost` and `127.0.0.1` are one endpoint and two
+  strings, so in the package's own default configuration `ReconnectCoordinator`
+  resolved `stillGone` for a live bridge (the §6.1 still-gone modal, and no
+  auto-resend) and the picker's `isBound` showed the bound window as merely
+  `available`. Fixed at both levels: the new `defaultBridgeHost` constant
+  supplies every host default so they cannot drift again, and the new
+  `BridgeChoice.matches` compares endpoints rather than strings, so a host
+  typed by hand into the settings file costs nothing either. Coverage:
+  `test/bridge_connection_test.dart`, `test/reconnect_test.dart`, and
+  `connection_test.dart` in `tom_forge_agentic` for the picker side.
 - **`agent/bridge_connection.dart`**: `BridgeChoiceStore.load()` had no `try`
   at all — alone among the ten sidecar stores. An unreadable file raised
   `FileSystemException` and a syntactically damaged one raised

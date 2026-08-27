@@ -144,13 +144,18 @@ class ReconnectCoordinator {
     }
   }
 
-  /// The server answering on [bound]'s host+port, or `null`.
+  /// The server answering on [bound]'s endpoint, or `null`.
+  ///
+  /// Matching is [BridgeChoice.matches], not string equality on the host: the
+  /// binding and the scan can spell one loopback endpoint differently, and a
+  /// textual match would then resolve [ReconnectResolution.stillGone] for a
+  /// bridge that is up and answering.
   static BridgeServer? _serverOnPort(
     List<BridgeServer> servers,
     BridgeChoice bound,
   ) {
     for (final s in servers) {
-      if (s.host == bound.host && s.port == bound.port) return s;
+      if (bound.matches(s)) return s;
     }
     return null;
   }
