@@ -107,16 +107,11 @@ class TomIcon extends TomImageBase {
 
   /// Resolves icon from resources + icon provider.
   ///
-  /// Returns `null` if tomId is not set or icon cannot be resolved.
-  IconData? _resolveIconFromResources() {
-    if (tomId == null) return null;
-    // Get icon name from resources (e.g., "save", "delete")
-    final iconName = TomCtr.textOrFail(basePath, 'icon');
-    // Skip if it returns the key itself (no resource found)
-    if (iconName.endsWith('.icon')) return null;
-    // Look up IconData from icon provider
-    return TomUIIcons.resolveIcon(iconName);
-  }
+  /// Returns `null` if there is no `tomId`, no icon resource, or a name the
+  /// installed [TomUIIcons] adapter does not know — an icon a bundle simply
+  /// does not name is a legitimate empty [Icon] here, which is why this uses
+  /// the nullable [TomCtr.icon] rather than [TomCtr.iconOrFail].
+  IconData? _resolveIconFromResources() => TomCtr.icon(basePath, 'icon');
 }
 
 /// Tom wrapper for [Image].

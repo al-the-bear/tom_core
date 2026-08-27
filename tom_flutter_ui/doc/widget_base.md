@@ -250,7 +250,7 @@ interpolating a scope path into an id.
 | Path | `resolvePath(tomId, [scope])` (forwards to [`TomScopePath.resolve`](#path-composition-tomscopepath)), `childTomId(tomId, suffix)` |
 | Text | `text`, `textOrNull`, `textOrFail`, `exists` |
 | Colour | `color`, `colorOrFail` (resolved via `TomUIColors`) |
-| Icon | `icon` (resolved via `TomUIIcons`) |
+| Icon | `icon`, `iconOrFail` (resolved via `TomUIIcons`) |
 | Numeric | `doubleVal`, `doubleOrFail`, `intVal`, `intOrFail` |
 | Bool | `boolVal` |
 | Insets | `edgeInsets` (number / array / map forms, via `TomStyleResolvers.parseEdgeInsets`) |
@@ -261,7 +261,7 @@ interpolating a scope path into an id.
 The plain variants return `null` (or the key string, for `text`, as a
 development indicator) when nothing resolves.
 
-The four `…OrFail` variants are for values a widget genuinely cannot render
+The five `…OrFail` variants are for values a widget genuinely cannot render
 without, and they can fail for two independent reasons: there is no `tomId`, so
 there is no key to look up at all; or there is a key and nothing is installed at
 it. **They agree on the first and disagree on the second.**
@@ -270,8 +270,25 @@ it. **They agree on the first and disagree on the second.**
 | ------- | ---------- | ---------------------------- | ----------------------------- |
 | `textOrFail` | throws `StateError` | **returns the key**, e.g. `'w.label'` | — (any resource reads as text) |
 | `colorOrFail` | throws `StateError` | throws `StateError` | throws `StateError` |
+| `iconOrFail` | throws `StateError` | throws `StateError` | throws `StateError` |
 | `doubleOrFail` | throws `StateError` | throws `StateError` | throws `StateError` |
 | `intOrFail` | throws `StateError` | throws `StateError` | throws `StateError` |
+
+Which accessors have a variant at all is a rule, not a history: **an accessor
+gets an `…OrFail` when the resource it reads can be a widget's only source for
+a required parameter that has no default.** Each of the five reaches such a
+parameter — a button's label, a `ColoredBox.color`, the icon that *is* a
+`TomIconButton`, an `Opacity.opacity`, a `RotatedBox.quarterTurns`. Two groups
+are left out for reasons of their own, and both would look arbitrary without
+this sentence:
+
+- `boolVal` and `edgeInsets` read parameters Flutter always defaults, so a
+  resource *overrides* a value rather than supplying one, and its absence is
+  never a failure. Every `boolVal` call in this package reads
+  `boolVal(...) ?? someDefault`, which is what that looks like in practice.
+- `value`, `list` and `map` are the raw escape hatches. `TomCtr` is not told
+  what a caller means to do with a `List`, so it cannot decide what "unusable"
+  would be; only the call site can.
 
 `textOrFail` is the member whose behaviour its name does not announce, and the
 difference is deliberate rather than an oversight. A missing label painted as
@@ -287,9 +304,13 @@ A third exit is unique to `textOrFail`: passing `supersededBy` a non-null widget
 returns `''` without consulting anything, including in the null-`tomId` case.
 The text is not going to be rendered, so there is nothing to require.
 
-`test/widget_base/tom_ctr_helpers_test.dart` asserts all four variants against
+`test/widget_base/tom_ctr_helpers_test.dart` asserts all five variants against
 both conditions in one place, so the asymmetry is a stated contract rather than
-an accident of four separate methods.
+an accident of five separate methods. The same file scans the source for the
+`…OrFail` set and holds it to exactly those five, and to the presence of the
+five accessors the rule deliberately leaves unpartnered — so a sixth variant
+added without re-reading the rule fails, and the paragraph above cannot drift
+away from the class it describes.
 
 `widgetStateColor` reads a default colour at its own key and per-state
 overrides beneath `<key>.states.<name>`, for the eight names `hovered`,

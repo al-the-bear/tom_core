@@ -2,6 +2,26 @@
 
 ### Fixed
 
+- **A `TomIconButton` with no icon now says so instead of rendering a warning
+  glyph.** The icon *is* this widget, but it resolved through the nullable
+  `TomCtr.icon` and fell back to `const Icon(Icons.error_outline)` — leaving a
+  control that is present and tappable and names neither itself nor the key it
+  looked for. Worse, that fallback was reached identically by a bundle naming
+  no icon and a bundle naming a misspelt one, because `TomCtr.icon` answers
+  `null` to both. It now resolves through the new `TomCtr.iconOrFail` and
+  throws a `StateError` naming the missing key. **Behavioural change:** a
+  `TomIconButton` with neither an `icon` argument nor a resolvable
+  `<tomId>.icon` resource now throws from its constructor rather than
+  building. An icon beside
+  a label — `TomFloatingActionButton.extended` — is genuinely optional and
+  deliberately keeps the nullable accessor.
+- **`TomIcon` no longer drops an icon whose name ends in `.icon`.** It read the
+  resource through `textOrFail` and decided whether it had found anything by
+  asking whether the answer ended in `.icon`, because `textOrFail` returns the
+  *key* when nothing is installed. That is a second implementation of what
+  `TomCtr.icon` already does, and it reads a returned *value* as if it were a
+  key: an icon actually named `brand.icon` was indistinguishable from a missing
+  one and was silently discarded. It now calls `TomCtr.icon`.
 - **`TomScope` is nameable from the package barrel.** `scope:` is a parameter
   on every Tom widget and its type is the kernel's `TomScope`, but the package
   does not re-export `tom_core_kernel` wholesale and `TomScope` was absent from
@@ -62,6 +82,19 @@
 
 ### Added
 
+- **`TomCtr.iconOrFail`, and a stated rule for which accessors get an
+  `…OrFail` at all.** The family had grown to four with no criterion written
+  anywhere, so its shape read as an accident and the one widget that most
+  needed a throwing icon accessor did not have one. The rule is now stated in
+  `doc/widget_base.md` and in the `TomCtr` dartdoc: an accessor gets an
+  `…OrFail` when the resource it reads can be a widget's *only* source for a
+  required parameter that has no default. `boolVal` and `edgeInsets` are
+  excluded because Flutter always defaults those parameters, so a resource
+  overrides rather than supplies; `value`, `list` and `map` because `TomCtr`
+  is not told what the caller means to do with them and so cannot decide what
+  "unusable" is. `tom_ctr_helpers_test.dart` scans the source and holds the
+  set to exactly the five members and the five deliberate exclusions, so a
+  sixth variant added without re-reading the rule fails the suite.
 - **`lib/src/kernel_types.dart` — one bridge to `tom_core_kernel`, and two
   guards on it.** The package's kernel re-exports were split across
   `resource_auth/tom_auth_state.dart` (nine authorization names) and

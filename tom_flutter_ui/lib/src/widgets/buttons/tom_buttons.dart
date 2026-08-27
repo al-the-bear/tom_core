@@ -1266,12 +1266,14 @@ class TomIconButton extends TomButtonBase {
   }
 
   /// Resolves the icon widget from parameter or resources.
+  ///
+  /// Resolves through [TomCtr.iconOrFail] rather than [TomCtr.icon] because
+  /// here the icon *is* the button: with nothing to fall back to, a missing
+  /// one leaves a control that is present and tappable but says nothing about
+  /// what it does.
   Widget _resolveIconWidget() {
     if (icon != null) return icon!;
-    final iconData = TomCtr.icon(basePath, 'icon');
-    if (iconData != null) return Icon(iconData);
-    // Fallback to placeholder icon
-    return const Icon(Icons.error_outline);
+    return Icon(TomCtr.iconOrFail(basePath, 'icon'));
   }
 
   @override

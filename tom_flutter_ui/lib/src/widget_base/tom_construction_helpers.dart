@@ -21,6 +21,23 @@ import 'tom_style_resolvers.dart';
 /// // Base path + suffix (widget build methods):
 /// TomCtr.textOrNull(basePath, 'label')
 /// ```
+///
+/// Most accessors come in one form and answer `null` to a missing resource.
+/// Some come in two, the second named `…OrFail` and throwing instead. Which
+/// accessors those are is a rule rather than a history: **an accessor gets an
+/// `…OrFail` when the resource it reads can be a widget's only source for a
+/// required parameter that has no default.**
+///
+/// That admits [textOrFail], [colorOrFail], [iconOrFail], [doubleOrFail] and
+/// [intOrFail], and excludes the rest for two distinct reasons. [boolVal] and
+/// [edgeInsets] read parameters Flutter always defaults, so a resource
+/// *overrides* a value rather than supplying one and its absence is never a
+/// failure. [value], [list] and [map] are raw escape hatches: this class is
+/// not told what a caller means to do with a `List`, so it cannot decide what
+/// "unusable" would be.
+///
+/// `doc/widget_base.md` states the rule for readers and
+/// `test/widget_base/tom_ctr_helpers_test.dart` holds the class to it.
 class TomCtr {
   TomCtr._();
 
@@ -173,6 +190,44 @@ class TomCtr {
     if (value == null) return null;
     if (value is String) return TomUIIcons.resolveIcon(value);
     return null;
+  }
+
+  /// Resolves a required icon from resources.
+  ///
+  /// Throws [StateError] if [basePath] is null, no resource exists, or the
+  /// value is not a name [TomUIIcons] can resolve.
+  ///
+  /// Use this wherever the icon *is* the widget — an icon-only button has
+  /// nothing else to render, so a missing one leaves a control that is
+  /// present, tappable and blank. [icon] is the right accessor for the other
+  /// case, where an icon sits beside a label and its absence just means no
+  /// icon.
+  ///
+  /// The three exits matter more here than elsewhere: a bundle naming an icon
+  /// that does not exist and a bundle naming none at all are indistinguishable
+  /// through [icon], which answers `null` to both.
+  static IconData iconOrFail(String? basePath, String suffix) {
+    if (basePath == null) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a tomId for '
+        'resource lookup.',
+      );
+    }
+    final key = _key(basePath, suffix);
+    if (!_provider.exists(key) && !_provider.existsObject(key)) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or an icon '
+        'resource value at $key.',
+      );
+    }
+    final result = icon(basePath, suffix);
+    if (result == null) {
+      throw StateError(
+        'Resource $key must name an icon the installed TomUIIcons adapter '
+        'can resolve.',
+      );
+    }
+    return result;
   }
 
   // ===========================================================================

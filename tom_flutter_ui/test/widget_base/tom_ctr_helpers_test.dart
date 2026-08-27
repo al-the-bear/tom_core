@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/src/resource_auth/tom_colors.dart';
+import 'package:tom_flutter_ui/src/resource_auth/tom_icons.dart';
 import 'package:tom_flutter_ui/src/widget_base/tom_construction_helpers.dart';
 
 void _installResources(Map<String, dynamic> tree) {
@@ -13,6 +16,7 @@ void _installResources(Map<String, dynamic> tree) {
 void main() {
   setUpAll(() {
     TomUIColors.adapter = AllColorsAdapter();
+    TomUIIcons.adapter = AllIconsAdapter();
   });
 
   tearDown(() {
@@ -340,10 +344,10 @@ void main() {
   });
 
   group('TomCtr …OrFail: the two failure conditions', () {
-    // The four `…OrFail` helpers can fail for two independent reasons: there
+    // The five `…OrFail` helpers can fail for two independent reasons: there
     // is no `tomId`, so there is no key to look up at all; or there is a key
     // and nothing is installed at it. They agree on the first and disagree on
-    // the second — `textOrFail` returns the key, the other three throw — and
+    // the second — `textOrFail` returns the key, the other four throw — and
     // that disagreement is deliberate, not an oversight. A missing label
     // painted as `checkout.submit.label` is how a missing translation makes
     // itself visible during development, and the suite relies on it:
@@ -351,9 +355,102 @@ void main() {
     // exactly that string on screen.
     //
     // These tests exist because that difference is easy to "tidy up" into
-    // consistency by someone reading only the family name. Asserting all four
+    // consistency by someone reading only the family name. Asserting all five
     // against both conditions in one place is what makes the asymmetry a
-    // stated contract rather than an accident of four separate methods.
+    // stated contract rather than an accident of five separate methods.
+
+    group('which accessors carry an …OrFail is a stated rule', () {
+      // The line between the accessors that have a throwing variant and those
+      // that do not used to be described as "used where a value is
+      // structurally required" — a property of the *call site*, which cannot
+      // be applied when deciding what to give a new accessor, and could not
+      // explain why an icon may never be required. The rule is about the
+      // accessor:
+      //
+      //   an accessor gets an `…OrFail` when the resource it reads can be a
+      //   widget's *only* source for a required parameter that has no default.
+      //
+      // `text`, `color`, `icon`, `double` and `int` all reach such a
+      // parameter — a label, a `ColoredBox.color`, a `TomIconButton`'s icon,
+      // an `Opacity.opacity`, a `RotatedBox.quarterTurns` — so each has one.
+      //
+      // The rest are excluded for two distinct reasons, and both survive the
+      // question "why not this one too?":
+      //
+      // - `boolVal` and `edgeInsets` read values whose Flutter parameters
+      //   always carry a default, so a resource *overrides* rather than
+      //   *supplies*. Every `boolVal` call in this package is
+      //   `boolVal(…) ?? aDefault`; a throwing variant would have nothing to
+      //   be called from, and adding one would only invite a caller to demand
+      //   a flag that `false` already answers.
+      // - `value`, `list` and `map` are raw escape hatches. `TomCtr` is not
+      //   told what the caller means to do with a `List`, so it cannot decide
+      //   what "present but unusable" is — only the caller can, which is why
+      //   these three hand back what they found and stop.
+      //
+      // Scanned from the source rather than called, because the claim is
+      // about which members *exist*: a sixth variant added without a thought
+      // for the rule would pass every behavioural test in this file.
+      final source = File(
+        'lib/src/widget_base/tom_construction_helpers.dart',
+      ).readAsStringSync();
+      final declared =
+          RegExp(r'^  static\s+[\w<>?,\s]+?\s(\w+)\(', multiLine: true)
+              .allMatches(source)
+              .map((m) => m.group(1)!)
+              .toSet();
+
+      test('exactly five accessors have a throwing variant', () {
+        expect(
+          declared.where((n) => n.endsWith('OrFail')).toList()..sort(),
+          <String>[
+            'colorOrFail',
+            'doubleOrFail',
+            'iconOrFail',
+            'intOrFail',
+            'textOrFail',
+          ],
+          reason: 'the …OrFail family changed; if that was deliberate, the '
+              'rule above and the table in doc/widget_base.md both state which '
+              'accessors have one and why, and both need to say so too',
+        );
+      });
+
+      test('every throwing variant shadows a plain accessor, and the '
+          'excluded accessors exist to be excluded', () {
+        // Guards both ends of the line. A variant with no plain partner is a
+        // required-only value, which no resource key is; and a rule that
+        // excludes five accessors is vacuous if the five are not there.
+        const partners = <String, String>{
+          'textOrFail': 'text',
+          'colorOrFail': 'color',
+          'iconOrFail': 'icon',
+          'doubleOrFail': 'doubleVal',
+          'intOrFail': 'intVal',
+        };
+        partners.forEach((variant, plain) {
+          expect(
+            declared,
+            containsAll(<String>[variant, plain]),
+            reason: '$variant has no $plain to fall back to, so a caller who '
+                'can live without the value has nowhere to go',
+          );
+        });
+
+        expect(
+          declared,
+          containsAll(<String>[
+            'boolVal',
+            'edgeInsets',
+            'value',
+            'list',
+            'map',
+          ]),
+          reason: 'the accessors the rule deliberately leaves unpartnered are '
+              'no longer all present, so the rule now excludes nothing',
+        );
+      });
+    });
 
     group('no tomId — every variant throws', () {
       test('textOrFail(null)', () {
@@ -362,6 +459,10 @@ void main() {
 
       test('colorOrFail(null)', () {
         expect(() => TomCtr.colorOrFail(null, 'color'), throwsStateError);
+      });
+
+      test('iconOrFail(null)', () {
+        expect(() => TomCtr.iconOrFail(null, 'icon'), throwsStateError);
       });
 
       test('doubleOrFail(null)', () {
@@ -382,6 +483,10 @@ void main() {
 
       test('colorOrFail throws', () {
         expect(() => TomCtr.colorOrFail('nope', 'color'), throwsStateError);
+      });
+
+      test('iconOrFail throws', () {
+        expect(() => TomCtr.iconOrFail('nope', 'icon'), throwsStateError);
       });
 
       test('doubleOrFail throws', () {
@@ -408,6 +513,7 @@ void main() {
         _installResources({
           'w.label': 'Submit',
           'w.color': '#FF0000',
+          'w.icon': 'mSave',
           'w.size': 12,
           'w.count': 3,
         });
@@ -417,6 +523,10 @@ void main() {
 
       test('colorOrFail', () {
         expect(TomCtr.colorOrFail('w', 'color'), const Color(0xFFFF0000));
+      });
+
+      test('iconOrFail', () {
+        expect(TomCtr.iconOrFail('w', 'icon'), Icons.save);
       });
 
       test('doubleOrFail', () => expect(TomCtr.doubleOrFail('w', 'size'), 12.0));
@@ -431,6 +541,7 @@ void main() {
       setUp(() {
         _installResources({
           'w.color': 'not-a-colour',
+          'w.icon': 'notAnIcon',
           'w.size': 'not-a-number',
           'w.count': 'not-a-number',
         });
@@ -438,6 +549,13 @@ void main() {
 
       test('colorOrFail throws on an unresolvable colour name', () {
         expect(() => TomCtr.colorOrFail('w', 'color'), throwsStateError);
+      });
+
+      test('iconOrFail throws on an unresolvable icon name', () {
+        // The case the plain `icon` accessor cannot distinguish from absence:
+        // both answer `null`, so a caller that needs an icon learns only that
+        // it has none, never that the bundle named one that does not exist.
+        expect(() => TomCtr.iconOrFail('w', 'icon'), throwsStateError);
       });
 
       test('doubleOrFail throws on a non-numeric value', () {
