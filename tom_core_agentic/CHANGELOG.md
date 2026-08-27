@@ -2,6 +2,28 @@
 
 ### Fixed
 
+- **`isSimpleIdentifier` was documented as the simple form's grammar. The
+  simple form has no grammar.** Three texts called it "the shape the simple
+  `${name}` fast path accepts". Nothing in this package applies it: the scanner
+  routes on prefix alone, so any body that is not `env:` / `file:` / `state:`
+  is a lookup key, and `PlaceholderStack.bind` accepts any string as a name.
+  That latitude is load-bearing, not accidental — the brain substrate's
+  `role.anchor` built-in is a dotted name, and `SystemScaffold.template` leads
+  with it. Enforcing the documented rule in `bind` or `_classify` would have
+  broken the assistant's system prompt, which is why the texts were corrected
+  instead of the code.
+  The *second* half of the same sentence — "the only binding names that can be
+  injected as d4rt expression locals" — is true, and is enforced, just not
+  here: `D4rtExpressionContext.evaluate` in `tom_brain_procedure` filters
+  `flatten()` through this predicate before synthesising its parameter list.
+  The constraint is d4rt's (a local becomes a parameter name), so it belongs
+  to the backing, in the same tier-design that keeps this package free of a
+  d4rt dependency. The dartdoc now says which layer applies it.
+  The real consequence is milder than a failure and was undocumented: a
+  non-identifier binding is visible to `${name}` and silently absent from
+  `${{ … }}`. Four tests pin it (520 → 524), plus one in `tom_brain_procedure`
+  at the enforcement point.
+
 - **`${name}` was documented as "equivalent to `${{ name }}`". It is not.**
   The resolver header and `doc/placeholders.md` both invited a reader to
   substitute one form for the other, when the forms agree on exactly one case

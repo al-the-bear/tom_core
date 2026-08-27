@@ -74,5 +74,27 @@ void main() {
       expect(isSimpleIdentifier('a b'), isFalse);
       expect(isSimpleIdentifier(''), isFalse);
     });
+
+    test('it does not constrain what bind accepts or the stack stores', () {
+      // The predicate used to be documented as "the shape the simple ${name}
+      // fast path accepts". Nothing in this package applies it: bind takes any
+      // string, and flatten hands every binding to the backing unfiltered. The
+      // filtering happens in the backing (D4rtExpressionContext), because the
+      // constraint is d4rt's, not the stack's.
+      final stack = PlaceholderStack();
+      stack.bind('role.anchor', 'ANCHOR');
+      stack.bind('a b', 'SPACED');
+      expect(isSimpleIdentifier('role.anchor'), isFalse);
+      expect(isSimpleIdentifier('a b'), isFalse);
+
+      expect(stack.has('role.anchor'), isTrue);
+      expect(stack.lookup('role.anchor'), 'ANCHOR');
+      expect(
+        stack.flatten().keys,
+        containsAll(<String>['role.anchor', 'a b']),
+        reason: 'flatten must not filter — the backing decides what it can '
+            'express',
+      );
+    });
   });
 }

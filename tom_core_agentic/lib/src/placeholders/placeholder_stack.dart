@@ -18,10 +18,31 @@
 // push/pop shadow/restore semantics exactly, and (b) keeps the two forms
 // reading one set of bindings, the "unifies the simple and expression forms
 // under one variable namespace" property § 21.7 calls for.
+//
+// One namespace, but not one *visible* namespace: a binding name is any
+// string here, whereas a d4rt local must be an identifier, so a backing
+// filters what it can express. See [isSimpleIdentifier].
 
-/// Returns whether [name] is a bare Dart identifier — the shape the simple
-/// `${name}` fast path accepts and the only binding names that can be
-/// injected as d4rt expression locals.
+/// Returns whether [name] is a bare Dart identifier.
+///
+/// This is **not** the grammar of the simple `${name}` form. That form has
+/// no grammar: the scanner routes on prefix alone, so every body that is
+/// not `env:` / `file:` / `state:` becomes a lookup key, and [bind] accepts
+/// any string as a name. `${role.anchor}` — a built-in of the brain
+/// substrate, and the first thing its system scaffold emits — is a bound,
+/// resolvable, deliberately dotted name.
+///
+/// What it *is*: the shape a binding must have to be injected as a **d4rt
+/// expression local**, because such a local becomes a parameter name in the
+/// synthesised d4rt function. That constraint belongs to the backing rather
+/// than to this package (which keeps no d4rt dependency), and the backing
+/// applies it — `D4rtExpressionContext.evaluate` in `tom_brain_procedure`
+/// filters [PlaceholderStack.flatten] through this predicate before
+/// synthesising the parameter list.
+///
+/// The consequence is an asymmetry worth knowing: a non-identifier binding
+/// is visible to `${name}` and invisible to `${{ … }}`. It is silently
+/// dropped from the expression's locals, not reported as an error.
 bool isSimpleIdentifier(String name) => _identifier.hasMatch(name);
 
 final RegExp _identifier = RegExp(r'^[a-zA-Z_$][a-zA-Z0-9_$]*$');
@@ -62,6 +83,10 @@ final class PlaceholderStack {
 
   /// Binds [name] to [value] in the current (top) frame, shadowing any
   /// same-named binding in a parent frame for as long as this frame lives.
+  ///
+  /// [name] is not validated: any string is a legal binding name, and the
+  /// simple `${name}` form will resolve it. Only a `${{ … }}` backing
+  /// constrains the shape — see [isSimpleIdentifier].
   void bind(String name, Object? value) {
     _frames.last[name] = value;
   }

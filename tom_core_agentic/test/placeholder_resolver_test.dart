@@ -260,6 +260,48 @@ void main() {
     });
   });
 
+  group('PlaceholderResolver — the simple form has no grammar', () {
+    test('a non-identifier body is a lookup key like any other', () {
+      // `_classify` routes on prefix alone, so anything that is not env: /
+      // file: / state: is a simple lookup. `isSimpleIdentifier` describes the
+      // d4rt-locals shape, not this form's accepted shape — a dotted name
+      // (the shape of the substrate's `role.anchor` built-in) resolves fine.
+      final r = PlaceholderResolver(environment: const {});
+      r.stack.bind('role.anchor', 'ANCHOR');
+      r.stack.bind('a.b c', 'SPACED');
+      expect(r.resolveSync(r'${role.anchor}'), 'ANCHOR');
+      expect(r.resolveSync(r'${a.b c}'), 'SPACED');
+    });
+
+    test('an unbound non-identifier body fails as unresolved, not as a '
+        'malformed name', () {
+      // The failure names the reference, so a template typo like ${a.b}
+      // reports the thing that was not found rather than a grammar error.
+      final r = PlaceholderResolver(environment: const {});
+      expect(
+        () => r.resolveSync(r'${a.b}'),
+        throwsA(isA<PlaceholderUnresolvedException>()
+            .having((e) => e.reference, 'reference', 'a.b')),
+      );
+    });
+
+    test('the resolver hands the backing every binding, unfiltered', () {
+      // The identifier filter belongs to the backing. If the resolver applied
+      // it here, a backing with different name rules could not see bindings
+      // it is perfectly able to express.
+      final r = PlaceholderResolver(
+        environment: const {},
+        expressions: _FakeExpressions(),
+      );
+      r.stack.bind('role.anchor', 'ANCHOR');
+      r.stack.bind('ok', 1);
+      expect(
+        r.stack.flatten().keys,
+        containsAll(<String>['role.anchor', 'ok']),
+      );
+    });
+  });
+
   group('PlaceholderResolver — reserved prefixes', () {
     test(r'${file:…} / ${state:…} pass through verbatim and do not recurse', () {
       final r = PlaceholderResolver(environment: const {});
