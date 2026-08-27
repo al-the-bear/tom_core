@@ -2,6 +2,24 @@
 
 ### Fixed
 
+- **`isolate_streaming/`**: `doc/isolate_streaming.md` had drifted from the
+  module in three places at once, all of them the same failure — the prose was
+  written before the module reached its current shape and was not re-read as
+  the module moved. The `Kind` column called 8 of its 12 rows something the
+  declaration does not say (two `exception` rows for types that are
+  `final class ... implements Exception`, and six `class` rows for
+  `final class`); the Overview row for `IsolateCancellationRegistry` still
+  summarised the unknown-token cancel as "remembers late cancels", the
+  pre-fix half of a rule that has two branches; and the Concurrency section
+  repeated that same half-truth a third time while asserting the tests use
+  hand-held `Completer`s "rather than a real isolate" — which the sendability
+  group (a live `SendPort`) and the real-isolate cancellation demo in
+  `example/isolate_streaming/` had both already falsified. All corrected
+  against the declarations and the tests. The completion mirror in
+  `_ai/quests/tom_core/completion/` was accurate throughout and was used as
+  the reference; the drift was one-sided. Two of the three defects were found
+  by auditing the file rather than from the report, and the reported counts
+  were themselves off (8 of 12 rows, not nine).
 - **`isolate_streaming/`**: `BackpressureTracker` let the closed flag decide
   whether an argument was valid. `grant` returned on `_closed` *before* its
   `n <= 0` check, so `grant(0)` threw while open and passed in silence once

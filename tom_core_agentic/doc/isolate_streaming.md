@@ -25,16 +25,16 @@ transport; each primitive is a building block a host/worker pair assembles.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `IsolateCancellationToken` | class | Opaque, value-equal id naming one cancellable request — the only member of this family that crosses the boundary |
-| `IsolateCancellationTokenAllocator` | class | Host-side counter handing out monotonically increasing tokens |
-| `IsolateCancellationRegistry` | class | Worker-side registry; cancels in-flight tokens and remembers late cancels |
-| `IsolateCancellationHandle` | class | Worker-side view of one token: `isCancelled`, a `cancelled` future, `throwIfCancelled` |
-| `IsolateCancellationException` | exception | Thrown by `throwIfCancelled` when the token is cancelled |
-| `IsolateStreamCloseSignal` | class | Per-stream close flag + future a producer reacts to without busy-waiting |
-| `BackpressureTracker` | class | FIFO credit ledger gating a producer to the consumer's drain rate |
+| `IsolateCancellationToken` | final class | Opaque, value-equal id naming one cancellable request — the only member of this family that crosses the boundary |
+| `IsolateCancellationTokenAllocator` | final class | Host-side counter handing out monotonically increasing tokens |
+| `IsolateCancellationRegistry` | final class | Worker-side registry: cancels in-flight tokens, remembers a pre-open cancel, drops a post-close one |
+| `IsolateCancellationHandle` | final class | Worker-side view of one token: `isCancelled`, a `cancelled` future, `throwIfCancelled` |
+| `IsolateCancellationException` | final class | Thrown by `throwIfCancelled` when the token is cancelled |
+| `IsolateStreamCloseSignal` | final class | Per-stream close flag + future a producer reacts to without busy-waiting |
+| `BackpressureTracker` | final class | FIFO credit ledger gating a producer to the consumer's drain rate |
 | `IsolateRequestGuard` | class | Host-side per-request completion guard: fails in-flight requests on worker death or deadline |
 | `IsolateRequestFailureReason` | enum | `workerDeath` or `timeout` |
-| `IsolateRequestFailure` | exception | The failure delivered to a guarded request |
+| `IsolateRequestFailure` | final class | The failure delivered to a guarded request |
 | `IsolateExceptionRegistry` | class | Maps type tags to factories that rebuild typed errors across the boundary |
 | `IsolateExceptionFactory` | typedef | `Object Function(String message, Map<String, Object?> details)` |
 
@@ -192,14 +192,19 @@ generic error); `isRegistered` and `registeredTypes` expose the taxonomy.
 ## Concurrency and Lifecycle
 
 - **No isolate is spawned here.** Every primitive is a host- or worker-side
-  helper; the caller owns the `Isolate.spawn` / `SendPort` wiring. The tests
-  drive the host/worker handshake with hand-held `Completer`s rather than a real
-  isolate, which is why the module is unit-testable without isolate plumbing.
+  helper; the caller owns the `Isolate.spawn` / `SendPort` wiring, so the suite
+  exercises them directly rather than through isolate plumbing. The one place a
+  real boundary appears is the sendability group, which pushes each type through
+  a live `SendPort` to check what may cross. `example/isolate_streaming/` goes
+  further: its cancellation demo spawns a real isolate, because which side owns
+  what is the thing it demonstrates.
 - **Idempotent close/cancel.** `IsolateStreamCloseSignal.requestClose`,
   `BackpressureTracker.close`, and registry cancellation are all safe to call
   more than once.
-- **Late signals are remembered.** The cancellation registry tolerates a cancel
-  that races ahead of its registration.
+- **Late signals are remembered — the pre-open ones.** The cancellation registry
+  keeps a cancel that races ahead of its `register`, and drops one that arrives
+  after the request closed; see [Cancellation](#cancellation) for the
+  high-water mark that tells them apart.
 - **Allocation and registration sit on opposite sides.** `allocator.next()` runs
   on the host, `registry.register` inside the worker isolate, and the token id
   is what travels between them — it is what keeps one request identifiable on
