@@ -449,6 +449,65 @@ void main() {
       expect(isColorSchemeToken('#FF0000'), isFalse);
       expect(isColorSchemeToken('mRed'), isFalse);
     });
+
+    // resolveAnyColor is the entry point the style scope actually calls; the
+    // two functions above are the branches it chooses between. What matters
+    // is which branch a given string takes, and that the choice is exclusive
+    // — a `cs.` string is never offered to the fallback and a non-`cs.`
+    // string is never looked up in the scheme.
+    group('resolveAnyColor picks a branch and commits to it', () {
+      final cs = ColorScheme.fromSeed(seedColor: const Color(0xFF00897B));
+
+      test('a cs.* token resolves from the scheme', () {
+        var fallbackCalls = 0;
+        Color? fallback(String raw) {
+          fallbackCalls++;
+          return const Color(0xFFFFFFFF);
+        }
+
+        expect(resolveAnyColor('cs.primary', cs, fallback), cs.primary);
+        expect(fallbackCalls, 0,
+            reason: 'the fallback must not get a look at a cs.* token');
+      });
+
+      test('anything else is handed to the fallback, verbatim', () {
+        final seen = <String>[];
+        Color? fallback(String raw) {
+          seen.add(raw);
+          return const Color(0xFFFF0000);
+        }
+
+        expect(resolveAnyColor('#FF0000', cs, fallback),
+            const Color(0xFFFF0000));
+        expect(seen, ['#FF0000'],
+            reason: 'the raw string is passed through untouched');
+      });
+
+      test('an unknown cs.* name yields null rather than falling through', () {
+        // The prefix is a commitment: `cs.` says "this is a scheme token", so
+        // a misspelt one is an error to surface, not a name to try elsewhere.
+        var fallbackCalls = 0;
+        Color? fallback(String raw) {
+          fallbackCalls++;
+          return const Color(0xFFFFFFFF);
+        }
+
+        expect(resolveAnyColor('cs.nope', cs, fallback), isNull);
+        expect(fallbackCalls, 0);
+      });
+
+      test('a fallback that declines leaves the result null', () {
+        expect(resolveAnyColor('mRed', cs, (_) => null), isNull);
+      });
+
+      test('the branch is chosen case-insensitively, like the token itself',
+          () {
+        expect(
+          resolveAnyColor('CS.PRIMARY', cs, (_) => const Color(0xFFFFFFFF)),
+          cs.primary,
+        );
+      });
+    });
   });
 
   group('TomFormStyleScope — cs.* tokens in resource overlay', () {
