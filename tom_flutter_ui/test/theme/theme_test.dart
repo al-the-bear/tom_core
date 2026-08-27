@@ -338,18 +338,107 @@ void main() {
 
     testWidgets('falls back to defaults with no scope', (tester) async {
       late TomTheme seen;
+      late TomStateStyle seenReadonly;
       late TomStateStyle seenDisabled;
       await tester.pumpWidget(
         Builder(
           builder: (context) {
             seen = TomThemeScope.of(context);
+            // Both accessors, not just `disabledStyleOf`. They are separate
+            // entry points, and `readonlyStyleOf` is the one the widget layer
+            // calls most — leaving it out left the more-used half of the
+            // fallback resting on its sibling's assertion.
+            seenReadonly = TomThemeScope.readonlyStyleOf(context);
             seenDisabled = TomThemeScope.disabledStyleOf(context);
             return const SizedBox();
           },
         ),
       );
       expect(seen.name, TomTheme.defaultTheme.name);
+      expect(seenReadonly, TomStateStyle.readonly);
       expect(seenDisabled, TomStateStyle.disabled);
+    });
+
+    // `of` resolves through `dependOnInheritedWidgetOfExactType`, so the
+    // *nearest* scope wins and a subtree can be re-themed without touching the
+    // rest of the app — a dialog that dims its withheld fields harder than the
+    // page behind it, say. Nothing pinned that: every other case in the suite
+    // pumps exactly one scope, which cannot tell "nearest" from "any".
+    testWidgets('a nested scope overrides its ancestor for its subtree only',
+        (tester) async {
+      late TomStateStyle outerSaw;
+      late TomStateStyle innerSaw;
+      late TomStateStyle innerSawDisabled;
+
+      await tester.pumpWidget(
+        TomThemeScope(
+          // `disabledStyle` is set here and left unset on the inner scope, so
+          // the inner lookup below can tell replacement from merging.
+          theme: const TomTheme(
+            readonlyStyle: TomStateStyle(opacity: 0.5),
+            disabledStyle: TomStateStyle(opacity: 0.15),
+          ),
+          child: Builder(
+            builder: (outerContext) {
+              outerSaw = TomThemeScope.readonlyStyleOf(outerContext);
+              return TomThemeScope(
+                theme:
+                    const TomTheme(readonlyStyle: TomStateStyle(opacity: 0.25)),
+                child: Builder(
+                  builder: (innerContext) {
+                    innerSaw = TomThemeScope.readonlyStyleOf(innerContext);
+                    innerSawDisabled =
+                        TomThemeScope.disabledStyleOf(innerContext);
+                    return const SizedBox();
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(innerSaw.opacity, 0.25);
+      // The other half of "subtree only": a context between the two scopes
+      // must still see the outer one. Asserting the inner alone would pass
+      // just as well if the inner scope had replaced the outer for everyone.
+      expect(outerSaw.opacity, 0.5);
+      // Nesting replaces the whole `TomTheme`; it does not merge field by
+      // field. The inner scope names no `disabledStyle`, so its subtree gets
+      // the framework default rather than the outer scope's 0.15 — which is
+      // why an inner scope meaning to change one state should build from
+      // `TomThemeScope.of(context).copyWith(...)`.
+      expect(innerSawDisabled, TomStateStyle.disabled);
+      expect(innerSawDisabled.opacity, isNot(0.15));
+    });
+
+    // The scope-to-widget path is asserted elsewhere by reading the `Opacity`
+    // a scoped style produces (`tom_policy_node_auth_gate_test.dart`), which
+    // proves a number arrived but not that the *style* did — one field read
+    // back cannot distinguish "the whole TomStateStyle reached `apply`" from
+    // "something copied the opacity across". A scoped `builder` can: it
+    // short-circuits the entire default treatment, so if it reaches the widget
+    // the default wrappers are provably gone.
+    testWidgets('a scoped builder replaces the treatment of a rendered node',
+        (tester) async {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: TomThemeScope(
+            theme: const TomTheme(
+              readonlyStyle: TomStateStyle(builder: _brandTreatment),
+            ),
+            child: _ButtonNode(uiStateController: _forceRead()),
+          ),
+        ),
+      );
+
+      expect(find.byKey(_brandKey), findsOneWidget);
+      // What the builder is documented to displace. Both are what the default
+      // treatment would have added, so their absence is the short-circuit
+      // observed at the widget rather than inferred from `apply` in isolation.
+      expect(find.byType(Opacity), findsNothing);
+      expect(find.byType(AbsorbPointer), findsNothing);
     });
 
     // What the equality is *for*. `readonlyStyleOf` is reached from
@@ -496,6 +585,17 @@ class _InputNode extends TomInputBase {
 /// A hoisted builder, used to show that two styles naming the *same* function
 /// compare equal while two equivalent inline closures do not.
 Widget _dim(Widget content) => Opacity(opacity: 0.3, child: content);
+
+/// Marks the output of [_brandTreatment] so a test can find it.
+const _brandKey = Key('brandTreatment');
+
+/// A read-only treatment that looks nothing like the default one.
+///
+/// Deliberately neither an [Opacity] nor an [AbsorbPointer]: a test can then
+/// assert that *both* default wrappers are absent, which is what makes the
+/// short-circuit visible at the widget rather than only inside `apply`.
+Widget _brandTreatment(Widget content) =>
+    ColoredBox(key: _brandKey, color: const Color(0xFF00695C), child: content);
 
 /// Stands in for a read-only widget: it depends on [TomThemeScope] and counts
 /// how often it is built.

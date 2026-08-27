@@ -104,6 +104,14 @@ when no scope is in the tree, so widgets work without any theme wiring.
 `updateShouldNotify` compares themes by value, so dependents rebuild only when
 the theme actually changes.
 
+Scopes nest, and the nearest one wins. A subtree that needs a different
+treatment — a dialog that dims its withheld fields harder than the page behind
+it — wraps itself in a second `TomThemeScope`; widgets outside that subtree
+keep reading the outer theme. Nesting replaces the whole `TomTheme` rather than
+merging field by field, so an inner scope that means to change only one state
+should build from the outer one: `TomThemeScope.of(context).copyWith(
+disabledStyle: ...)`.
+
 `TomTheme.applyAuthState(state, content)` is the single mapping from an
 authorization state to its appearance — `none` to a zero-size box, `read` and
 `disabled` to their respective styles, `full` to the content unchanged — and
