@@ -48,6 +48,9 @@ import 'tom_skeleton_loader.dart';
 /// Fetches one page of items. `page` is zero-based, `pageSize` is the
 /// requested page size. Returning fewer items than `pageSize` signals
 /// end-of-source and stops further auto-fetches.
+///
+/// Must be idempotent: retries and refreshes re-request pages that have
+/// already been fetched. See [TomInfiniteScroll.fetcher] for when.
 typedef PageFetcher<T> = Future<List<T>> Function(int page, int pageSize);
 
 /// Builds a single list tile from an item.
@@ -60,7 +63,20 @@ typedef InfiniteScrollItemBuilder<T> = Widget Function(
 /// List wrapper with pagination, observable page fetcher, and
 /// empty / error / loading-state hooks.
 class TomInfiniteScroll<T> extends StatefulWidget {
-  /// Fetches a page of items. Called once per `(page, pageSize)`.
+  /// Fetches a page of items.
+  ///
+  /// **The same `(page, pageSize)` can be requested more than once, so this
+  /// callback must be idempotent.** A failed fetch does not advance the
+  /// cursor, so a retry re-issues the page that just failed, and
+  /// [TomInfiniteScrollState.refresh] restarts from page 0 — re-requesting
+  /// every page as the user scrolls back through them.
+  ///
+  /// It can also be re-entered: a `refresh()` during an in-flight fetch
+  /// starts the new request immediately, leaving two calls outstanding.
+  /// The older one's result is discarded, not cancelled — [PageFetcher]
+  /// has no cancellation channel — so anything the callback does besides
+  /// returning items has to be safe to do twice, and safe to do for
+  /// nothing.
   final PageFetcher<T> fetcher;
 
   /// Builds a tile for one item.
@@ -116,6 +132,16 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
   Object? _error;
   late final ScrollController _controller;
 
+  /// Bumped whenever the loaded set is thrown away, so a fetch that was
+  /// already in flight can tell that its result no longer belongs to
+  /// anything and drop it.
+  ///
+  /// `_pending` cannot do this job. [refresh] clears it in order to start
+  /// a new fetch immediately, which leaves the old request running with
+  /// nothing marking it stale — it would then append a page from the
+  /// discarded sequence on top of the new page 0.
+  int _generation = 0;
+
   /// Number of items currently loaded.
   int get loadedCount => _items.length;
 
@@ -152,10 +178,11 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
 
   Future<void> _fetchNextPage() async {
     if (_pending || _exhausted || _error != null) return;
+    final generation = _generation;
     setState(() => _pending = true);
     try {
       final batch = await widget.fetcher(_page, widget.pageSize);
-      if (!mounted) return;
+      if (!mounted || generation != _generation) return;
       setState(() {
         _items.addAll(batch);
         _page += 1;
@@ -163,7 +190,7 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
         _pending = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _generation) return;
       setState(() {
         _error = e;
         _pending = false;
@@ -172,8 +199,14 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
   }
 
   /// Resets the loaded set and re-issues the first page fetch.
+  ///
+  /// Safe to call while a fetch is in flight: the outstanding request is
+  /// abandoned rather than awaited, so its page cannot land in the
+  /// restarted list. The call itself is not cancelled — [PageFetcher] has
+  /// no cancellation channel — it simply stops mattering.
   Future<void> refresh() async {
     setState(() {
+      _generation += 1;
       _items.clear();
       _page = 0;
       _pending = false;

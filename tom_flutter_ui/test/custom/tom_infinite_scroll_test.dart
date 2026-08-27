@@ -492,7 +492,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(key.currentState!.loadedCount, 10);
-      expect(source.calls.last, (0, 10));
+      // Asserted as the whole log rather than `calls.last`, because the
+      // duplicate is the point: page 0 is fetched, then fetched again. The
+      // `last` form is true of a fetcher called once per page too, so it
+      // could not have caught the dartdoc that claimed exactly that.
+      expect(source.calls, [(0, 10), (1, 10), (0, 10)],
+          reason: 'refresh re-requests a page that was already fetched');
     });
 
     testWidgets('refresh clears a latched error', (tester) async {
@@ -513,6 +518,54 @@ void main() {
 
       expect(source.calls, hasLength(2),
           reason: 'refresh re-attempts rather than staying latched');
+    });
+
+    // The fetcher is re-entrant, not merely re-called. Three paths re-issue a
+    // page that was already requested — Retry ('Retry re-issues the same
+    // page'), refresh ('refresh restarts from page 0'), and the one below,
+    // where a refresh lands while a page is still in flight and leaves two
+    // calls outstanding at once. The first two are sequential and were
+    // already covered; this one is the reason `PageFetcher` needs a
+    // generation fence rather than just the `_pending` gate, because
+    // `refresh` clears `_pending` in order to start immediately.
+    testWidgets('a refresh during an in-flight fetch discards its result',
+        (tester) async {
+      final source = _Source(total: 100);
+      final key = GlobalKey<TomInfiniteScrollState<int>>();
+
+      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
+        key: key,
+        pageSize: 10,
+        fetcher: source.fetch,
+        itemBuilder: _tile,
+      )));
+      await tester.pumpAndSettle();
+      expect(key.currentState!.loadedCount, 10);
+
+      // Hold page 1 open, then refresh underneath it. Both requests are now
+      // parked on the same gate; completing it resolves them in order, the
+      // stale one first.
+      source.gate = Completer<void>();
+      await tester.drag(find.byType(ListView), const Offset(0, -2000));
+      await tester.pump();
+      expect(source.calls, [(0, 10), (1, 10)]);
+
+      final refreshed = key.currentState!.refresh();
+      await tester.pump();
+      expect(source.calls, [(0, 10), (1, 10), (0, 10)],
+          reason: 'refresh does not wait for the in-flight page — the two '
+              'calls overlap, so the fetcher must tolerate re-entry');
+
+      source.gate!.complete();
+      await refreshed;
+      await tester.pumpAndSettle();
+
+      // Without the fence the abandoned page 1 lands on top of the restarted
+      // sequence, giving 20 items whose first row is `item-10`.
+      expect(key.currentState!.loadedCount, 10,
+          reason: 'the abandoned page must not be appended to the new list');
+      expect(find.text('item-0'), findsOneWidget);
+      expect(find.text('item-10'), findsNothing);
     });
 
     testWidgets('padding reaches the inner list', (tester) async {
