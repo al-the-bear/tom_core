@@ -68,7 +68,10 @@ Most of `forms/` does not appear here at all: its fields descend from
 [the taxonomy](#the-widget-family-taxonomy). Construction
 resolves `basePath` through
 [`TomScopePath.resolve`](#path-composition-tomscopepath) and, if a `tomGroup`
-was supplied, registers the widget with that group.
+was supplied, registers the widget with that group. `basePath` is computed in
+the constructor, so it is readable on a node that has never been built —
+[`example/widget_base/widget_base_nodes_example.dart`](../example/widget_base/widget_base_nodes_example.dart)
+composes a nested provider and prints the paths that come out.
 
 ## Authorization enforcement
 
@@ -91,6 +94,13 @@ Resource and group together establish what is *granted*; the authorizer and the
 controller then narrow it. The controller runs last because `applyMode` widens
 under `controlsNarrowest` and replaces outright under `controlsAll` — a group
 applied afterwards would undo the narrowing the controller just performed.
+
+`resolveEffectiveAuth()` is public and takes no `BuildContext`, so the whole
+gate can be exercised on a constructed node without a widget tree — which is
+how
+[`example/widget_base/widget_base_nodes_example.dart`](../example/widget_base/widget_base_nodes_example.dart)
+walks one layer at a time: a resource grant, a group ceiling that narrows it,
+an authorizer that overrides it, and a controller that cannot widen it back.
 
 The resolved state selects the render path:
 
@@ -149,7 +159,10 @@ The six are kept, rather than deleted, because
 specifies them as the intended classification for form fields once those become
 family-reporting widgets. They record an intent; they do not describe the code.
 `test/widget_base/tom_widget_family_coverage_test.dart` pins the 20/6 split so
-this section cannot drift back out of step with the enum.
+this section cannot drift back out of step with the enum, and
+[`example/widget_base/widget_base_nodes_example.dart`](../example/widget_base/widget_base_nodes_example.dart)
+shows both consequences on two concrete widgets — `families.single`, and
+`isFamily(TomWidgetFamily.formField)` coming back false.
 
 ## Scope propagation
 
@@ -429,6 +442,16 @@ own fix; the test pins the current behaviour so the note cannot outlive it.
   default-widget helpers).
 
 > Because the barrel pulls in `flutter/material` (→ `dart:ui`), code that
-> imports `widget_base` runs under the Flutter toolchain. See
-> [`example/widget_base/widget_base_example.dart`](../example/widget_base/widget_base_example.dart),
-> which is exercised by `flutter test`.
+> imports `widget_base` runs under the Flutter toolchain. Two executable
+> examples split the module along the same line this page does — resource
+> binding on one side, nodes on the other — and both are exercised by
+> `flutter test`:
+>
+> - [`example/widget_base/widget_base_example.dart`](../example/widget_base/widget_base_example.dart)
+>   — resource binding: `TomCtr` lookups and `TomStyleResolvers` parsing.
+> - [`example/widget_base/widget_base_nodes_example.dart`](../example/widget_base/widget_base_nodes_example.dart)
+>   — identity and scope composition, the four-layer authorization gate, and
+>   the family a widget reports. None of the three needs a widget tree:
+>   `basePath` is computed in the constructor, `resolveEffectiveAuth()` takes
+>   no `BuildContext`, and `family` is a plain getter, so the example asserts
+>   on constructed nodes rather than pumping them.

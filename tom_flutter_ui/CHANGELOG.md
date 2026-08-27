@@ -109,6 +109,19 @@
   `[_resolveCommitBaselines]` for the nested-save rule; no such member exists,
   and the rule lives in `save`'s "Nested-save semantics" paragraph, which the
   comment now names.
+- **All three `widget_base` pillars now have an executable example.**
+  `doc/widget_base.md` opens by naming identity/scope, authorization and
+  resource binding as the three things every Tom node does, but the module's
+  only example covered resource binding — the two harder pillars were prose.
+  `example/widget_base/widget_base_nodes_example.dart` covers them: it composes
+  a nested `TomScreenElementsProviderBase`, asserts the base paths that come
+  out, walks the authorization gate one layer at a time (resource grant → group
+  ceiling → authorizer → the controller that cannot widen), and reports the
+  family each widget declares. None of it needs a widget tree — `basePath` is
+  computed in the constructor, `resolveEffectiveAuth()` takes no
+  `BuildContext`, and `family` is a plain getter — so the example asserts on
+  constructed nodes rather than pumping them, and
+  `test/widget_base/widget_base_nodes_example_test.dart` runs it.
 
 ## 1.1.0
 
