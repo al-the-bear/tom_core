@@ -2084,7 +2084,11 @@ When `tomId` is set, every style property readable by `TomCtr` helpers is picked
 
 Anywhere a `"color"` sub-key appears in the JSON (for text styles and borders), you can write either:
 
-- a hex string — `"#5E35B1"`, `"#RRGGBBAA"`
+- a hex string — `"#5E35B1"`, or `"#AARRGGBB"` with alpha **leading**
+  (`"#805E35B1"` is that purple at 50 %). `#RGB` and `#ARGB` shorthands expand
+  by doubling each digit. Alpha-last `#RRGGBBAA`, as CSS and design tools emit
+  it, is *not* rejected — it is read as `AARRGGBB` and silently gives a
+  different colour. See [resource_auth.md](resource_auth.md#colour-resolution).
 - a named color — `"mRed"`, `"cSystemBlue"` (via `TomUIColors`)
 - a **`cs.*` token** — resolved against the *active `ColorScheme`* at build time
 

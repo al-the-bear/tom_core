@@ -23,7 +23,8 @@ class _OverlayTextStyle {
   final String? fontFamily;
   final double? letterSpacing;
   final FontStyle? fontStyle;
-  final String? colorRaw; // hex "#RRGGBB", named "mRed", or "cs.primary"
+  // Hex "#RRGGBB" or alpha-first "#AARRGGBB", named "mRed", or "cs.primary".
+  final String? colorRaw;
 
   const _OverlayTextStyle({
     this.fontSize,

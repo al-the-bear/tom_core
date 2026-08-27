@@ -35,16 +35,70 @@ void main() {
       expect(TomUIColors.colorExists('mRed'), isFalse);
     });
 
-    test('resolves named, hex (3/6/8) and rgb colours', () {
+    test('resolves named, hex (3/4/6/8) and rgb colours', () {
       TomUIColors.adapter = AllColorsAdapter();
       expect(TomUIColors.resolveColor('mRed'), Colors.red);
       expect(TomUIColors.resolveColor('#FF5733'), const Color(0xFFFF5733));
       expect(TomUIColors.resolveColor('#F53'), const Color(0xFFFF5533));
       expect(TomUIColors.resolveColor('#80FF5733'), const Color(0x80FF5733));
+      expect(TomUIColors.resolveColor('#8F53'), const Color(0x88FF5533));
       expect(TomUIColors.resolveColor('rgb(0, 128, 255)'),
           const Color(0xFF0080FF));
       expect(TomUIColors.resolveColor('rgba(255, 0, 0, 0.5)'),
           const Color(0x80FF0000));
+    });
+
+    // Both alpha-carrying hex forms put alpha FIRST, matching Dart's
+    // Color(0x...) literal. CSS, Figma and Sketch put it last, and the two
+    // orderings are indistinguishable at runtime: a designer pasting
+    // #FF5733AA (orange at two-thirds alpha) gets an opaque blue-violet, with
+    // colorExists reporting true so no validation pass catches it. Nothing can
+    // fix that at parse time — which is why the position is pinned here and
+    // spelled out in the dartdoc, the readme and doc/resource_auth.md.
+    group('hex alpha is the leading pair, not the trailing one', () {
+      test('the 8-digit form reads AARRGGBB', () {
+        final adapter = AllColorsAdapter();
+        final c = adapter.resolveColor('#80FF5733')!;
+        expect(c, const Color(0x80FF5733));
+        // Spelled out channel by channel, so a reordering cannot pass by
+        // matching some other literal that happens to be equal.
+        expect(c.a, closeTo(0x80 / 0xFF, 0.001), reason: 'alpha is the first pair');
+        expect(c.r, closeTo(1.0, 0.001), reason: 'red is the second pair');
+        expect(c.g, closeTo(0x57 / 0xFF, 0.001));
+        expect(c.b, closeTo(0x33 / 0xFF, 0.001));
+      });
+
+      test('the 4-digit form reads ARGB, each digit doubled', () {
+        final adapter = AllColorsAdapter();
+        final c = adapter.resolveColor('#8F53')!;
+        expect(c, const Color(0x88FF5533));
+        expect(c.a, closeTo(0x88 / 0xFF, 0.001), reason: 'alpha is the first digit');
+        expect(c.r, closeTo(1.0, 0.001));
+        expect(c.g, closeTo(0x55 / 0xFF, 0.001));
+        expect(c.b, closeTo(0x33 / 0xFF, 0.001));
+        // The shorthand agrees with the long form it abbreviates.
+        expect(c, adapter.resolveColor('#88FF5533'));
+      });
+
+      test('the alpha-less forms are fully opaque', () {
+        final adapter = AllColorsAdapter();
+        expect(adapter.resolveColor('#FF5733')!.a, 1.0);
+        expect(adapter.resolveColor('#F53')!.a, 1.0);
+      });
+
+      test('colorExists agrees with resolveColor on every hex width', () {
+        final adapter = AllColorsAdapter();
+        for (final name in ['#F53', '#8F53', '#FF5733', '#80FF5733']) {
+          expect(adapter.colorExists(name), isTrue, reason: '$name should exist');
+          expect(adapter.resolveColor(name), isNotNull, reason: name);
+        }
+        // Widths between and beyond the four remain unknown rather than
+        // being coerced into the nearest one.
+        for (final name in ['#F', '#FF', '#FF573', '#FF57333', '#FF5733AAB']) {
+          expect(adapter.colorExists(name), isFalse, reason: name);
+          expect(adapter.resolveColor(name), isNull, reason: name);
+        }
+      });
     });
 
     test('rgb values are clamped to valid ranges', () {

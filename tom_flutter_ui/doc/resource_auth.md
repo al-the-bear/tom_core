@@ -34,7 +34,7 @@ data** resolved here.
 | ------ | ---- | ------- |
 | `TomUIColorAdapter` | interface | Contract: resolve a colour `name` → `Color?`, plus `colorExists`. |
 | `TomUIColors` | singleton | Global colour resolver; delegates to the installed adapter. |
-| `AllColorsAdapter` | adapter | Resolves named (`mRed`, `cSystemBlue`), hex (`#RRGGBB`), and `rgb()/rgba()` colours; supports custom registration. |
+| `AllColorsAdapter` | adapter | Resolves named (`mRed`, `cSystemBlue`), hex (`#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` — alpha first), and `rgb()/rgba()` colours; supports custom registration. |
 | `TomUIIconAdapter` | interface | Contract: resolve an icon `name` → `IconData?`, plus `iconExists`. |
 | `TomUIIcons` | singleton | Global icon resolver; delegates to the installed adapter. |
 | `AllIconsAdapter` | adapter | Resolves the full Material + Cupertino icon set; supports custom registration. |
@@ -56,10 +56,20 @@ TomUIColors.resolveColor('rgb(0,128,255)');
 ```
 
 `AllColorsAdapter` resolves, in order: custom registered colours → hex (`#RGB`,
-`#RRGGBB`, `#AARRGGBB`) → `rgb()/rgba()` → the generated Material/Cupertino
-palette. With **no adapter installed**, `TomUIColors.resolveColor` returns `null`
-and `colorExists` returns `false` — so widgets degrade gracefully rather than
-throw. `AllColorsAdapter.registerColors` adds or overrides names at runtime;
+`#ARGB`, `#RRGGBB`, `#AARRGGBB`) → `rgb()/rgba()` → the generated
+Material/Cupertino palette. With **no adapter installed**,
+`TomUIColors.resolveColor` returns `null` and `colorExists` returns `false` — so
+widgets degrade gracefully rather than throw.
+
+> **Hex alpha comes first.** The two alpha-carrying forms are `#AARRGGBB` and
+> `#ARGB`, matching Dart's `Color(0xAARRGGBB)`. CSS, Figma, Sketch and web
+> palette exports put alpha **last** (`#RRGGBBAA`), and the two orderings are
+> indistinguishable from the string alone — so a colour pasted from a design
+> tool is not rejected, it is *misread*. `#FF5733AA`, a designer's orange at
+> two-thirds alpha, resolves here to an opaque blue-violet, and `colorExists`
+> returns `true` for it, so a validation pass over a resource file waves it
+> through. Reorder the channels when copying a colour in; there is no way for
+> the parser to detect the mistake for you. `AllColorsAdapter.registerColors` adds or overrides names at runtime;
 `clearCustomColors` undoes that while keeping the adapter installed.
 
 `TomUIColors.reset()` / `TomUIIcons.reset()` drop the adapter **and** the

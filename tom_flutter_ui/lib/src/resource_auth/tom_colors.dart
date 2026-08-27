@@ -12,7 +12,9 @@ import 'tom_colors_generated.dart';
 /// - Material shade: `m<ColorName><Shade>` (e.g., `mRed500`, `mBlue100`)
 /// - Material accent: `m<ColorName>Accent` (e.g., `mRedAccent`, `mBlueAccent`)
 /// - Cupertino colors: `c<ColorName>` (e.g., `cSystemRed`, `cActiveBlue`)
-/// - Hex format: `#RRGGBB` or `#AARRGGBB` (e.g., `#FF5733`, `#80FF5733`)
+/// - Hex format: `#RGB`, `#ARGB`, `#RRGGBB` or `#AARRGGBB`
+///   (e.g., `#FF5733`, `#80FF5733`) — **alpha leads**, as in `Color(0x…)`,
+///   not the trailing-alpha `#RRGGBBAA` that CSS and design tools emit
 /// - RGB format: `rgb(255, 87, 51)` or `rgba(255, 87, 51, 0.5)`
 abstract class TomUIColorAdapter {
   /// Resolves a color by [name].
@@ -95,12 +97,15 @@ final Map<String, Color> _customColors = {};
 /// Color naming:
 /// - Material: `m<ColorName>` (e.g., `mRed`, `mBlue500`, `mAmberAccent`)
 /// - Cupertino: `c<ColorName>` (e.g., `cSystemRed`, `cActiveBlue`)
-/// - Hex: `#RRGGBB` or `#AARRGGBB`
+/// - Hex: `#RGB`, `#ARGB`, `#RRGGBB` or `#AARRGGBB` — alpha first, see
+///   [_parseHexColor] for why that matters when copying from a design tool
 /// - RGB: `rgb(r, g, b)` or `rgba(r, g, b, a)`
 class AllColorsAdapter implements TomUIColorAdapter {
-  /// Hex color pattern: #RGB, #RRGGBB, or #AARRGGBB
+  /// Hex color pattern: #RGB, #ARGB, #RRGGBB, or #AARRGGBB.
+  ///
+  /// Alpha leads in both forms that carry it — see [_parseHexColor].
   static final RegExp _hexPattern = RegExp(
-    r'^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$',
+    r'^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$',
   );
 
   /// RGB/RGBA pattern: rgb(r, g, b) or rgba(r, g, b, a)
@@ -141,24 +146,35 @@ class AllColorsAdapter implements TomUIColorAdapter {
   /// Parses a hex color string.
   ///
   /// Supports formats:
-  /// - `#RGB` (expanded to #RRGGBB)
+  /// - `#RGB` (expanded to `#RRGGBB`, opaque)
+  /// - `#ARGB` (expanded to `#AARRGGBB`)
   /// - `#RRGGBB` (opaque)
   /// - `#AARRGGBB` (with alpha)
+  ///
+  /// **Alpha comes first** in both forms that carry it, matching Dart's
+  /// `Color(0xAARRGGBB)` literal. CSS, Figma, Sketch and web palette exports
+  /// put alpha *last* (`#RRGGBBAA` / `#RGBA`), and the two orderings cannot be
+  /// told apart from the string: `#FF5733AA` is a designer's orange at
+  /// two-thirds alpha, but is read here as opaque blue-violet. Nothing detects
+  /// that, so the convention is documented rather than guessed — check the
+  /// channel order when copying a colour in from a design tool.
   Color? _parseHexColor(String hex) {
     final match = _hexPattern.firstMatch(hex);
     if (match == null) return null;
 
     var value = match.group(1)!;
 
-    // Expand 3-char hex to 6-char
-    if (value.length == 3) {
+    // Expand the shorthands by doubling each digit: RGB -> RRGGBB and
+    // ARGB -> AARRGGBB. Doubling preserves channel order, so the alpha-first
+    // reading below applies to the 4-digit form for free.
+    if (value.length == 3 || value.length == 4) {
       value = value
           .split('')
           .map((c) => '$c$c')
           .join();
     }
 
-    // Add alpha if not present
+    // Six digits carry no alpha, so the colour is opaque.
     if (value.length == 6) {
       value = 'FF$value';
     }

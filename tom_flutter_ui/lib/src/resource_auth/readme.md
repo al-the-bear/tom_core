@@ -32,6 +32,8 @@ void wireResources() {
 
   final red = TomUIColors.resolveColor('mRed');   // Material red
   final hex = TomUIColors.resolveColor('#FF5733'); // literal hex
+  // Alpha leads: #AARRGGBB and #ARGB, as in Color(0x...).
+  final faded = TomUIColors.resolveColor('#80FF5733'); // 50% orange
 
   TomConfigProvider.initialize(TomConfigProvider.create(
     environment: TomEnvironment.production,
@@ -41,6 +43,12 @@ void wireResources() {
   print(TomConfigProvider.current.isEnabled('newCheckout')); // true
 }
 ```
+
+**Hex alpha comes first.** `#AARRGGBB` and `#ARGB` follow Dart's
+`Color(0xAARRGGBB)`, not the `#RRGGBBAA` that CSS and design tools emit. The
+two are indistinguishable from the string, so a colour pasted from Figma is
+misread rather than rejected — `#FF5733AA` becomes an opaque blue-violet and
+`colorExists` still answers `true`. Reorder the channels when copying one in.
 
 The four-state `TomAuthState` (hidden / disabled / read-only / editable) is
 defined in [`tom_core_kernel`](../../../../tom_core_kernel/README.md) — this
