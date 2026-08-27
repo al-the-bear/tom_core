@@ -115,8 +115,16 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
     tomGroup?.unregister(this);
   }
 
+  /// Debug description for this widget.
+  ///
+  /// Matches `TomNodeBase.debugLabel` field for field, so one widget reads the
+  /// same way whichever half of the package it comes from. That includes
+  /// omitting an absent [tomId] rather than interpolating it: `tomId` is
+  /// nullable here, and `id: null` describes a widget whose id is the string
+  /// `null` instead of one that has no id at all.
   String get debugLabel {
-    final parts = <String>['id: $tomId'];
+    final parts = <String>[];
+    if (tomId != null) parts.add('id: $tomId');
     if (tomGroup != null) {
       parts.add('group: ${tomGroup!.groupId}');
     }

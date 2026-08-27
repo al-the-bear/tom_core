@@ -110,7 +110,11 @@ that extends a Flutter original to gain:
 - `basePath` (the canonical `<scopePath>.<tomId>` path),
 - `getAuth()` / `effectiveAuthState`,
 - [typed resource resolution](#typed-resource-resolution) via `TomCtr`,
-- visual helpers `checkHidden()` and `applyAuthState(context, child)`.
+- visual helpers `checkHidden()` and `applyAuthState(context, child)`,
+- `debugLabel`, a `<RuntimeType>(id: w, group: grp)` description that omits
+  whichever of the two is absent. It matches `TomNodeBase.debugLabel`, so a
+  widget reads the same way whether it mixes this in or extends the base
+  class.
 
 ## Typed resource resolution
 

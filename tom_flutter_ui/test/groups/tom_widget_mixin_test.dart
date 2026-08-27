@@ -45,6 +45,24 @@ class _MixinWidget extends StatelessWidget with TomWidgetMixin {
   Widget build(BuildContext context) => applyAuthState(context, child);
 }
 
+/// The other half of the same design. [TomNodeBase] is what a Tom widget
+/// inherits when it does *not* extend a Flutter original, and it builds the
+/// same debug label in its own method. The two have to agree: a label that
+/// identifies a widget differently depending on which half of the package it
+/// came from is worse than no label, because the reader cannot tell a format
+/// difference from a state difference.
+class _NodeWidget extends TomNodeBase {
+  _NodeWidget({super.tomId, super.tomGroup});
+
+  // Left abstract by TomNodeBase and supplied by TomPolicyNodeBase in the real
+  // hierarchy; irrelevant to the label, so it answers a constant here.
+  @override
+  TomAuthState get effectiveAuthState => TomAuthState.full;
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
 class _MapAuthAdapter implements TomAuthorizationAdapter {
   _MapAuthAdapter(this.rules);
   final Map<String, TomAuthState> rules;
@@ -207,6 +225,61 @@ void main() {
       expect(find.byType(AbsorbPointer), findsOneWidget);
       expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
           closeTo(0.6, 0.001));
+    });
+  });
+
+  group('TomWidgetMixin.debugLabel', () {
+    test('names the runtime type and the id', () {
+      expect(_MixinWidget(tomId: 'w', child: const Text('x')).debugLabel,
+          '_MixinWidget(id: w)');
+    });
+
+    test('appends the group id when the widget is a member', () {
+      final widget = _MixinWidget(
+        tomId: 'w',
+        tomGroup: TomAuthorizationGroup('grp'),
+        child: const Text('x'),
+      );
+      expect(widget.debugLabel, '_MixinWidget(id: w, group: grp)');
+    });
+
+    test('omits the id entirely when there is none', () {
+      // `tomId` is nullable on this mixin, so an anonymous widget is a
+      // reachable case, not a defensive one — the layout widgets that take
+      // part in grouping without owning a resource path are exactly it.
+      // Interpolating the absent id yields the literal text "null", which
+      // reads as a widget whose id *is* the string null rather than as a
+      // widget that has none.
+      expect(_MixinWidget(child: const Text('x')).debugLabel, '_MixinWidget()');
+    });
+
+    test('omits the id but keeps the group for an anonymous member', () {
+      final widget = _MixinWidget(
+        tomGroup: TomAuthorizationGroup('grp'),
+        child: const Text('x'),
+      );
+      expect(widget.debugLabel, '_MixinWidget(group: grp)');
+    });
+
+    test('agrees with TomNodeBase in every combination', () {
+      // The two implementations are independent, so nothing but a test keeps
+      // them in step. Compared on the parenthesised part only: the leading
+      // runtime type necessarily differs.
+      String args(String label) =>
+          label.substring(label.indexOf('(') + 1, label.length - 1);
+      final grp = TomAuthorizationGroup('grp');
+
+      expect(args(_MixinWidget(tomId: 'w', child: const Text('x')).debugLabel),
+          args(_NodeWidget(tomId: 'w').debugLabel));
+      expect(args(_MixinWidget(child: const Text('x')).debugLabel),
+          args(_NodeWidget().debugLabel));
+      expect(
+          args(_MixinWidget(
+                  tomId: 'w', tomGroup: grp, child: const Text('x'))
+              .debugLabel),
+          args(_NodeWidget(tomId: 'w', tomGroup: grp).debugLabel));
+      expect(args(_MixinWidget(tomGroup: grp, child: const Text('x')).debugLabel),
+          args(_NodeWidget(tomGroup: grp).debugLabel));
     });
   });
 }
