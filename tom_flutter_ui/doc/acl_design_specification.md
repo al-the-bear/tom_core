@@ -1291,6 +1291,23 @@ So a middle row being elided leaves the subsequent row positioned where the elid
 - **Components whose child is not `TomAuthorizable`** — `hideUnauthorized` has no effect; the component is kept regardless.
 - **Components whose effective auth is `full` / `read` / `disabled`** — hiding only applies to `none`.
 
+### Not this mechanism: the id-based policy gates
+
+A second, independent mechanism also removes elements, and conflating the two produces wrong predictions about the geometry. Rows and components carrying an `id` are resolved by path through `TomAuthorization.resolveAuth(...)` while the container builds its widgets — the row gate fires *before* the row's `gapBefore` is emitted, the component gate *after* its own gap has been. Those gates:
+
+- are **not** governed by `hideUnauthorized` — that flag belongs to the pass described above and has no effect on them;
+- fire for **any** child, `TomAuthorizable` or not, provided the element carries an `id` whose path resolves to `none`;
+- run too late to rebuild a row, so they cannot forward a gap the way this pass does.
+
+Their gap arithmetic is consequently the mirror image:
+
+| Denied element | Reclaimed | Left behind |
+| --- | --- | --- |
+| Component | Its width only — `SizedBox.shrink()` takes its place. | **Both** adjacent gaps: its own, already emitted, and the next component's. |
+| Row | The row height **and** the row's own `gapBefore`. | The next row's own `gapBefore`. |
+
+Neither mechanism reserves space. There is no placeholder of the removed element's size in either case, so a layout whose geometry must survive a grant change cannot be built on either. `test/advanced_container_layout/acl_auth_visibility_test.dart` measures all four cases against a single fixture.
+
 ### Usage
 
 ```dart

@@ -1648,6 +1648,13 @@ class _AclContainerState extends State<AclContainer> {
   ///     `gapBefore` dropped (it was the "gap after the elided row").
   ///   * Gap rows and components without a `TomAuthorizable` child are
   ///     always preserved.
+  ///
+  /// This is not the only mechanism that removes an unauthorized element.
+  /// Id'd rows and components are gated again at render time on their
+  /// resolved policy path, regardless of `hideUnauthorized`; that gate runs
+  /// too late to forward a gap, so it reclaims different space. Both are
+  /// measured side by side in
+  /// `test/advanced_container_layout/acl_auth_visibility_test.dart`.
   List<AclRow> _applyAuthHiding(List<AclRow> rows) {
     final containerDefault = widget.defaultHideUnauthorized;
     // Fast-path: nothing can ever be hidden.
@@ -1874,6 +1881,12 @@ class _AclContainerState extends State<AclContainer> {
             continue;
           }
 
+          // Row policy gate. Independent of `hideUnauthorized`, which gates
+          // `_applyAuthHiding` above — this one fires for any id'd row.
+          // Because the `continue` precedes the gapBefore emission below, a
+          // denied row takes its own gap with it and the next row keeps its
+          // own; `_applyAuthHiding` does the opposite. See
+          // `test/advanced_container_layout/acl_auth_visibility_test.dart`.
           TomAuthState? rowAuthState;
           if (row.id != null && row.id!.isNotEmpty) {
             final rowPath = _buildRowPolicyPath(
@@ -2598,6 +2611,11 @@ class _AclContainerState extends State<AclContainer> {
         continue;
       }
 
+      // Component policy gate. Like the row gate, independent of
+      // `hideUnauthorized`. `renderGap` above has already been emitted by the
+      // time we get here, and the next component emits its own, so a denied
+      // component reclaims its width and leaves *both* gaps — the mirror of
+      // `_applyAuthHiding`, which forwards one gap and drops the other.
       String? componentPolicyPath;
       TomAuthState? authState;
       if (component.id != null && component.id!.isNotEmpty) {

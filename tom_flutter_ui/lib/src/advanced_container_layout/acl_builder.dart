@@ -877,9 +877,19 @@ class AclBuilder {
   /// When a row is left with no components it is dropped in turn, along
   /// with the next row's `gapBefore`.
   ///
-  /// The default is `false` — components still render as whatever their
-  /// own self-shrink-on-`none` path produces (typically a `SizedBox.shrink()`
-  /// placeholder inside a preserved gap).
+  /// The default is `false`, which switches this pass off. That does **not**
+  /// leave unauthorized elements visible: a row or component carrying an `id`
+  /// is separately gated at render time on `TomAuthorization.resolveAuth` of
+  /// its policy path, and that gate never consults this flag. It also runs too
+  /// late to move a gap, so its arithmetic comes out the other way round — a
+  /// denied component keeps **both** adjacent gaps, and a denied row loses its
+  /// own. See "Not this mechanism: the id-based policy gates" in
+  /// `doc/acl_design_specification.md` §26b, and
+  /// `test/advanced_container_layout/acl_auth_visibility_test.dart` for the
+  /// measured numbers.
+  ///
+  /// With this pass off and no id to gate on, a component renders whatever its
+  /// own self-shrink-on-`none` path produces, inside its preserved gap.
   ///
   /// Override per-component with [setHideUnauthorized].
   AclBuilder setAclDefaultHideUnauthorized(bool value) {

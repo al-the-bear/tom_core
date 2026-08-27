@@ -773,23 +773,64 @@ same paths at every width.
 
 ## Authorization integration
 
-When a component child implements `TomAuthorizable`, the container honours its
-`effectiveAuthState`. `setAclDefaultHideUnauthorized()` makes the whole
-container hide components whose resolved state is `none`; an individual
-component can opt out with a per-component `setHideUnauthorized(false)`. When a
-hidden component (or a fully hidden row) is elided, the engine forwards the
-appropriate gap so the surviving neighbours keep their spacing — the behaviour
-covered in detail by `test/advanced_container_layout/acl_hide_unauthorized_test.dart`.
+Two mechanisms can make an element disappear, and they are not variants of one
+another: they read different inputs, run at different times, and leave
+different gaps behind. Which one applies depends on how the element was
+authored, not on a setting you choose between.
 
-Rows and components carrying an `id` are additionally resolved by path through
-`TomAuthorization.resolveAuth(...)`. Of the four `TomAuthState` values the
-container acts on only two:
+### The hide-unauthorized pass — driven by the child's own state
+
+`setAclDefaultHideUnauthorized()` makes the container drop components whose
+child implements `TomAuthorizable` and reports `effectiveAuthState ==
+TomAuthState.none`; an individual component opts out with a per-component
+`setHideUnauthorized(false)`. A child that is not `TomAuthorizable` is never
+touched by this pass, whatever the flag says.
+
+It runs **before layout** and rebuilds the row list, so it is the only one of
+the two that can move a gap:
+
+- a dropped component's own `gapBefore` is carried onto the next survivor, and
+  that survivor's own `gapBefore` is discarded;
+- a row whose components are all dropped is elided the same way — its own
+  `gapBefore` travels to the next content row, whose own `gapBefore` is
+  discarded.
+
+The next visible element therefore lands exactly where the dropped one
+started. `test/advanced_container_layout/acl_hide_unauthorized_test.dart`
+covers the chains and the mixed cases.
+
+### The policy gates — driven by the element's resolved path
+
+Rows and components carrying an `id` are resolved by path through
+`TomAuthorization.resolveAuth(...)` as the container builds. These gates are
+**not** governed by `hideUnauthorized` — that flag names the pass above — and
+they fire for any child, `TomAuthorizable` or not.
+
+They run too late to rebuild a row, so they can only skip a widget. A denied
+component and a denied row consequently reclaim different things:
+
+| Denied element | Reclaimed | Left behind |
+| -------------- | --------- | ----------- |
+| **Component** | Its width only — the child becomes a `SizedBox.shrink()`. | **Both** neighbouring gaps. Its own `gapBefore` has already been emitted when the gate fires, and the next component emits its own as usual, so the two end up adjacent. |
+| **Row** | The row's height **and its own `gapBefore`** — the gate returns before the gap is emitted. | The next row's own `gapBefore`. |
+
+The arithmetic is thus the mirror image of the pass above: there, the removed
+element's gap survives and its neighbour's is dropped; here, a removed
+component keeps both and a removed row keeps neither of its own.
+
+What neither mechanism does is reserve space. Nothing is left in place — no
+placeholder, no empty box of the element's size — so a layout that must not
+reflow when a grant changes cannot be built on either of them.
+`test/advanced_container_layout/acl_auth_visibility_test.dart` measures all
+four cases against one fixture.
+
+### What the container does with each state
 
 | State | What the container does |
 | ----- | ----------------------- |
-| `none` | Elided — the component (or row) is replaced by a zero-size box, or removed outright under `hideUnauthorized`. |
+| `none` | Removed, by whichever of the two mechanisms applies — see above. |
 | `disabled` | **Nothing. It renders exactly as `full`** — full opacity, input live. |
-| `read` | Wrapped in `TomThemeScope.readonlyStyleOf(context).apply(child)` — by default `AbsorbPointer` + `Opacity(0.6)`: the value stays readable, dimmed, and inert. Applies at both levels — a `read` row styles all its components, a `read` component styles itself. |
+| `read` | Wrapped in `TomThemeScope.readonlyStyleOf(context).apply(child)` — by default `AbsorbPointer` + `Opacity(0.6)`: the value stays readable, dimmed, and inert. Applies at both levels — a `read` row styles all its components, a `read` component styles itself. Geometry is untouched. |
 | `full` | Rendered as authored — no wrapper. |
 
 `TomAuthState.disabled` is intended to render a component visible but inert,

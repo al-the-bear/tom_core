@@ -9,6 +9,13 @@
 ///   * Components without a [TomAuthorizable] child are never touched.
 ///   * Per-component `setHideUnauthorized(false)` overrides the container
 ///     default.
+///
+/// All of that is the `_applyAuthHiding` pass, which keys on the *child
+/// widget's* own auth state. It is not the only way an unauthorized element
+/// is removed: id'd rows and components are gated again at render time on
+/// their resolved policy path, ignoring `hideUnauthorized` entirely and
+/// reclaiming different space. `acl_auth_visibility_test.dart` measures the
+/// two against a shared fixture.
 library;
 
 import 'package:flutter/material.dart';
