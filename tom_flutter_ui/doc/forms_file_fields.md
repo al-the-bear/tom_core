@@ -206,8 +206,13 @@ confirmation after success, and an optional download affordance. It renders
 **nothing** while idle, so a field can include it unconditionally without
 gaining a permanent empty row.
 
-`tomTransferErrorMessage(state)` maps the transfer keys to user-facing wording
-in one place, instead of every widget re-inventing it. The Cupertino file field
+`tomTransferErrorMessage(state, {String? basePath})` maps the transfer keys to
+user-facing wording in one place, instead of every widget re-inventing it.
+`basePath` names the resource scope the wording is looked up under: the error
+key is tried beneath that path first, then as a global key, then falls back to
+the built-in English sentence. Pass a field's `basePath` — as the indicator
+does — to let one upload field word a failure its own way while the rest keep
+the shared wording. The Cupertino file field
 builds an equivalent row from Cupertino widgets — the behaviour is shared
 through `TomFileFieldStateMixin`, only the chrome differs.
 

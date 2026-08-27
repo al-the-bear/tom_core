@@ -253,4 +253,98 @@ void main() {
       expect(tomTransferErrorMessage(state), 'The transfer failed.');
     });
   });
+
+  // -------------------------------------------------------------------------
+  // basePath selects the resource scope the message is looked up under, and
+  // the three levels are tried in order: the field's own key, the global key,
+  // then the built-in English wording. Each level is asserted separately, so a
+  // regression names which one it broke.
+  // -------------------------------------------------------------------------
+
+  group('tomTransferErrorMessage resource resolution', () {
+    void install(Map<String, dynamic> resources) =>
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from(resources),
+        );
+
+    tearDown(() => install(<String, dynamic>{}));
+
+    String rejectionFor({String? basePath}) => tomTransferErrorMessage(
+      TomFileTransferState(
+        phase: TomTransferPhase.failed,
+        error: TomFileTransferException('file_transfer.rejected', 'raw'),
+      ),
+      basePath: basePath,
+    );
+
+    test("a field's own key outranks the global one", () {
+      install(<String, dynamic>{
+        'invoice': {
+          'scan': {
+            'file_transfer': {'rejected': 'That scan was refused.'},
+          },
+        },
+        'file_transfer': {'rejected': 'Refused.'},
+      });
+
+      expect(rejectionFor(basePath: 'invoice.scan'), 'That scan was refused.');
+    });
+
+    test('a field with no key of its own falls back to the global one', () {
+      install(<String, dynamic>{
+        'file_transfer': {'rejected': 'Refused.'},
+      });
+
+      expect(rejectionFor(basePath: 'invoice.scan'), 'Refused.');
+    });
+
+    test('the global key applies when no basePath is given', () {
+      install(<String, dynamic>{
+        'file_transfer': {'rejected': 'Refused.'},
+      });
+
+      expect(rejectionFor(), 'Refused.');
+    });
+
+    test('an undeclared key falls back to the built-in wording', () {
+      install(<String, dynamic>{});
+
+      expect(
+        rejectionFor(basePath: 'invoice.scan'),
+        'The server rejected the transfer.',
+      );
+    });
+
+    testWidgets('the indicator resolves through its own basePath', (
+      tester,
+    ) async {
+      install(<String, dynamic>{
+        'invoice': {
+          'scan': {
+            'file_transfer': {'rejected': 'That scan was refused.'},
+          },
+        },
+      });
+
+      final client = _GatedClient(failWith: 'file_transfer.rejected');
+      final controller = TomFileTransferController(client: client, slot: 's');
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        _wrap(
+          TomFileTransferIndicator(
+            controller: controller,
+            basePath: 'invoice.scan',
+          ),
+        ),
+      );
+
+      final running = controller.upload(_ref());
+      client.gate.complete();
+      await running;
+      await tester.pump();
+
+      expect(find.text('That scan was refused.'), findsOneWidget);
+    });
+  });
 }
