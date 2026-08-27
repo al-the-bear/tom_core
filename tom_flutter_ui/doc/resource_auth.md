@@ -129,7 +129,7 @@ unmodifiable.
 `tom_auth_state.dart` does not define new authorization types — it **re-exports**
 the canonical set from `tom_core_kernel`
 (`security/tom_authorization.dart`): `TomAuthState` (`none` < `disabled` <
-`read` < `full`), `TomAuthorizable`, `TomAuthorizationGroup`,
+`read` < `full`), `TomAuthorizable`, `TomAuthorizationGroup`, `AuthGroupMode`,
 `TomAuthorizationAdapter`, `TomAuthorization`, `TomAuthorizer`,
 `TomAuthorizerStrategy`, `TomUIStateController`. Widget code uses these
 canonical kernel names directly — there are no UI-specific aliases. Consuming the
