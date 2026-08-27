@@ -56,5 +56,75 @@ void main() {
       store.clear();
       expect(store.load(), isNull);
     });
+
+    // The sidecar is the one a user is most likely to edit by hand — it is the
+    // file you open to check which port the editor bound to. `load()` degrades
+    // like the other nine stores: missing, empty, unreadable and malformed all
+    // yield `null`, and nothing propagates to the caller.
+
+    test('returns null for a syntactically damaged file', () {
+      final dir = Directory.systemTemp.createTempSync('bridge_choice_bad_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}/bridge.yaml')
+        ..writeAsStringSync('version: 1\nbridge: {port: 19900\n  broken: [\n');
+
+      // `loadYaml` throws a `YamlException` here. It is a `FormatException`,
+      // which is why catching that one type covers YAML damage as well.
+      expect(BridgeChoiceStore(file).load(), isNull);
+    });
+
+    test('returns null for a file whose root is not a mapping', () {
+      final dir = Directory.systemTemp.createTempSync('bridge_choice_list_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}/bridge.yaml')
+        ..writeAsStringSync('- just\n- a\n- list\n');
+
+      expect(BridgeChoiceStore(file).load(), isNull);
+    });
+
+    test('falls back to the defaults for mis-typed host and port', () {
+      final dir = Directory.systemTemp.createTempSync('bridge_choice_type_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+
+      // Valid YAML, wrong types — a quoted port is the classic hand-edit slip.
+      // `fromMap` already defaults an *absent* key, so a value it cannot read
+      // is treated the same way rather than escaping as a `TypeError`.
+      final file = File('${dir.path}/bridge.yaml')
+        ..writeAsStringSync('version: 1\nbridge:\n  host: 42\n'
+            '  port: "not-a-number"\n');
+
+      final loaded = BridgeChoiceStore(file).load();
+      expect(loaded, isNotNull);
+      expect(loaded!.host, '127.0.0.1');
+      expect(loaded.port, 19900);
+    });
+
+    test('returns null for an unreadable file', () {
+      final dir = Directory.systemTemp.createTempSync('bridge_choice_perm_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}/bridge.yaml')
+        ..writeAsStringSync('version: 1\nbridge:\n  host: 127.0.0.1\n'
+            '  port: 19900\n');
+
+      // Permissions are the only portable way to make an *existing* file
+      // unreadable, and they do not bite on Windows or for root. Rather than
+      // assert vacuously, confirm the read really fails before claiming the
+      // store survives it.
+      Process.runSync('chmod', ['000', file.path]);
+      addTearDown(() => Process.runSync('chmod', ['600', file.path]));
+
+      var readThrew = false;
+      try {
+        file.readAsStringSync();
+      } on FileSystemException {
+        readThrew = true;
+      }
+      if (!readThrew) {
+        markTestSkipped('the platform let the process read a 000 file');
+        return;
+      }
+
+      expect(BridgeChoiceStore(file).load(), isNull);
+    });
   });
 }

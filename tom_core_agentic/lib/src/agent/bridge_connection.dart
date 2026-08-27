@@ -16,7 +16,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
-import 'package:yaml/yaml.dart';
+
+import 'agent_yaml.dart';
 
 /// Lowest CLI bridge port scanned (inclusive).
 const int bridgeScanMinPort = defaultVSCodeBridgePort;
@@ -154,10 +155,21 @@ class BridgeChoice {
 
   Map<String, Object?> toMap() => {'host': host, 'port': port};
 
-  factory BridgeChoice.fromMap(Map map) => BridgeChoice(
-        host: (map['host'] as String?) ?? '127.0.0.1',
-        port: (map['port'] as num?)?.toInt() ?? defaultVSCodeBridgePort,
-      );
+  /// Reads a choice from a persisted mapping, defaulting either field it
+  /// cannot use.
+  ///
+  /// Type-tests rather than casts, so a hand-edited `port: "19900"` reads as
+  /// the default instead of throwing a `TypeError` past the store's catch. An
+  /// unusable value and an absent one are the same thing to a reader, and the
+  /// absent case already defaulted.
+  factory BridgeChoice.fromMap(Map map) {
+    final host = map['host'];
+    final port = map['port'];
+    return BridgeChoice(
+      host: host is String && host.isNotEmpty ? host : '127.0.0.1',
+      port: port is num ? port.toInt() : defaultVSCodeBridgePort,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -192,16 +204,30 @@ class BridgeChoiceStore {
     return BridgeChoiceStore(File(path));
   }
 
-  /// Loads the persisted choice, or `null` if none is stored.
+  /// Loads the persisted choice, or `null` when the file is missing, empty,
+  /// unreadable or malformed.
+  ///
+  /// Degrades exactly like the other nine sidecar stores, and for the same
+  /// reason: a damaged sidecar should cost the user a re-pick, not a crash on
+  /// launch. This is the sidecar most likely to be hand-edited — it is the
+  /// file you open to check which port the editor bound to — so the syntax
+  /// damage this swallows is the realistic case, not the exotic one.
   BridgeChoice? load() {
-    if (!file.existsSync()) return null;
-    final content = file.readAsStringSync();
-    if (content.trim().isEmpty) return null;
-    final doc = loadYaml(content);
-    if (doc is! YamlMap) return null;
-    final bridge = doc['bridge'];
-    if (bridge is! YamlMap) return null;
-    return BridgeChoice.fromMap(bridge);
+    try {
+      if (!file.existsSync()) return null;
+      final content = file.readAsStringSync();
+      if (content.trim().isEmpty) return null;
+      // `decodeAgentYaml` throws a [FormatException] for a non-mapping root,
+      // so the root-shape check is the same one the other nine stores make.
+      final bridge = decodeAgentYaml(content)['bridge'];
+      if (bridge is! Map) return null;
+      return BridgeChoice.fromMap(bridge);
+    } on FileSystemException {
+      return null;
+    } on FormatException {
+      // Covers YAML syntax damage too: `YamlException` is a `FormatException`.
+      return null;
+    }
   }
 
   /// Persists [choice], creating the parent directory if needed.

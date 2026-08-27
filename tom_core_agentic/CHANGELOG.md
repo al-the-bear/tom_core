@@ -1,3 +1,21 @@
+## 1.8.0
+
+### Fixed
+
+- **`agent/bridge_connection.dart`**: `BridgeChoiceStore.load()` had no `try`
+  at all — alone among the ten sidecar stores. An unreadable file raised
+  `FileSystemException` and a syntactically damaged one raised
+  `YamlException`, so a hand-edited sidecar crashed the editor on launch
+  instead of costing a re-pick. It now degrades like its nine siblings
+  (`FileSystemException` / `FormatException` → `null`) and reads through the
+  shared `decodeAgentYaml`, which makes the root-shape check the same one
+  they make.
+- **`agent/bridge_connection.dart`**: `BridgeChoice.fromMap` cast rather than
+  type-tested, so a mis-typed value — `port: "19900"`, the classic hand-edit
+  slip — threw a `TypeError` straight past the store's catch. It now defaults
+  an unusable value exactly as it already defaulted an absent one. Coverage
+  for both defects: `test/bridge_connection_test.dart`.
+
 ## 1.7.0
 
 ### Features
