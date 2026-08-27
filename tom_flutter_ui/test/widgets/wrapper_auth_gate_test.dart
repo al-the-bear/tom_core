@@ -4,10 +4,11 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // tcce1: the eight wrappers that cannot resolve their own authorization.
 //
-// Most of the kit gates itself: 274 of the 300 public widget classes extend a
-// family base, and 14 more extend a Flutter widget whose `State` is public and
-// wrap `super.build`. Eight can do neither, for two structural reasons that a
-// call site cannot see:
+// Most of the kit gates itself: 275 of the 292 widget classes extend a family
+// base, and 13 more extend a Flutter widget whose `State` is public and wrap
+// `super.build`. That leaves four widgets — and four of the nine types under
+// `widgets/` that are not widgets at all — which can do neither, for two
+// structural reasons that a call site cannot see:
 //
 //   - `DataCell`, `DataColumn`, `DataRow` and `ExpansionPanel` are *not
 //     widgets*. They are plain classes holding widgets, so `TomWidgetMixin`

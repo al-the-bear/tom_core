@@ -1,20 +1,26 @@
 # Widgets Module
 
-`widgets/` is the **general widget kit** of `tom_flutter_ui`: 301 thin Tom
-wrappers over the Flutter and Cupertino widget set. Each wrapper adds the
-Tom concerns — a `tomId`, scope-resolved `basePath`, authorization, group
-membership, and resource-driven display values — on top of the Flutter widget
-it delegates to, while keeping the familiar Flutter constructor shape.
+`widgets/` is the **general widget kit** of `tom_flutter_ui`: 301 Tom types,
+292 of them thin wrappers over the Flutter and Cupertino widget set. Each
+wrapper adds the Tom concerns — a `tomId`, scope-resolved `basePath`,
+authorization, group membership, and resource-driven display values — on top of
+the Flutter widget it delegates to, while keeping the familiar Flutter
+constructor shape.
 
 The kit spans **20 sub-folders**, one per widget family, behind the
-`widgets.dart` barrel. Every wrapper extends its family base class
-(`TomButtonBase`, `TomLabelBase`, …) from `widget_base/`, so the whole kit
-shares one contract; see [`doc/widget_base.md`](widget_base.md) for the node
-hierarchy and the four-state authorization gate that underpins it.
+`widgets.dart` barrel. 275 of the 292 wrappers extend their family base class
+(`TomButtonBase`, `TomLabelBase`, …) from `widget_base/`; the other 17 mix in
+`TomWidgetMixin` because their Flutter original must stay a specific subtype
+(see [Family catalogue](#family-catalogue)). Both routes give the same `tomId`,
+`basePath` and authorization contract — only the family tag is exclusive to the
+base classes. See [`doc/widget_base.md`](widget_base.md) for the node hierarchy
+and the four-state authorization gate that underpins it.
 
-Two of the sub-folders also carry a type that is *not* a widget — a page route
-and a static messenger facade. They are catalogued under
-[Navigation and messaging](#navigation-and-messaging), below the family table.
+The remaining nine types are *not* widgets: seven are plain classes that hold
+widgets (a data cell, a tree node, …) and are documented beside the widget that
+takes them, and two — a page route and a static messenger facade — are
+catalogued under [Navigation and messaging](#navigation-and-messaging), below
+the family table.
 
 ## Table of Contents
 
@@ -40,8 +46,8 @@ and a static messenger facade. They are catalogued under
 
 ## The shared family contract
 
-Every widget in the kit is a `TomFamilyBase` subclass and therefore reports the
-family it belongs to:
+275 of the kit's 292 widgets are `TomFamilyBase` subclasses and therefore
+report the family they belong to:
 
 ```dart
 final button = TomElevatedButton(tomId: 'save', onPressed: save, child: TomText(text: 'Save'));
@@ -59,6 +65,14 @@ Through `TomNodeBase` the widget also exposes a `tomId` and a `basePath`
 `TomPolicyNodeBase` an `effectiveAuthState`. Both resolve without a
 `BuildContext`, which is what makes the kit's Tom behaviour unit-testable
 without `testWidgets`.
+
+The 17 wrappers that mix in `TomWidgetMixin` instead expose the same `tomId`,
+`basePath` and `effectiveAuthState` — the mixin declares them — so only
+`family`, `families` and `isFamily` are exclusive to the base classes. Code
+that must handle any wrapper should therefore test for `TomFamilyBase` rather
+than assume it; the counts here are pinned by
+`test/widgets/widget_family_claims_test.dart`, which reads them out of the
+sources so this paragraph cannot drift from them.
 
 ## Family catalogue
 
@@ -79,7 +93,7 @@ without `testWidgets`.
 | `chip` | `TomChipBase` | `TomFilterChip`, `TomChoiceChip`, `TomActionChip`, `TomInputChip`, `TomRawChip` |
 | `list` | `TomListBase` | `TomListView`, `TomAnimatedList`, `TomDismissible`, `TomReorderableList`, `TomCupertinoListSection` |
 | `tree` | `TomTreeBase` | `TomTreeView`, `TomTreeSliver` |
-| `sliver` | `TomSliverBase` | `TomSliverPadding`, `TomSliverList` family, `TomSliverPersistentHeader`, `TomSliverVisibility` |
+| `sliver` | `TomSliverBase` | `TomSliverPadding`, `TomSliverFixedExtentList`, `TomSliverPrototypeExtentList`, `TomSliverPersistentHeader`, `TomSliverVisibility` |
 | `animated` | `TomAnimatedBase` | `TomAnimatedContainer`, `TomAnimatedOpacity`, `TomAnimatedSwitcher`, `TomHero`, `TomFadeTransition` |
 | `effect` | `TomEffectBase` | `TomBackdropFilter`, `TomColorFiltered`, `TomShaderMask`, `TomSelectionArea` |
 | `interaction` | `TomInteractionBase` | `TomGestureDetector`, `TomInkWell`, `TomDraggable`, `TomDragTarget`, `TomMouseRegion` |
@@ -95,17 +109,35 @@ or anywhere else. They are reserved for the [forms](forms.md) module, but
 forms does not use the enum today; see
 [widget_base.md](widget_base.md#the-widget-family-taxonomy).
 
-A handful of wrappers extend a Flutter widget directly and mix in
-`TomWidgetMixin` instead of a family base (`TomExpanded`, `TomFlexible`,
-`TomSpacer`, the `Tom*PopupMenuItem`/`Tom*DropdownMenuItem` entries) — these
-exist because their Flutter originals must be a specific subtype to satisfy
-their parent (`Flex`, `PopupMenuButton`, …).
+**Seventeen wrappers have no row here**, because they extend a Flutter widget
+directly and mix in `TomWidgetMixin` instead of a family base. They exist
+because their Flutter original must remain a specific subtype for the parent
+that accepts it — `Flex` type-checks for `Flexible`, `PopupMenuButton` for
+`PopupMenuEntry`, `TabBar` for `Tab`, and so on — so a Tom base class cannot be
+inserted above them. In full: `TomAnimatedPositioned`,
+`TomAnimatedPositionedDirectional`, `TomCheckedPopupMenuItem`,
+`TomCupertinoTabView`, `TomDropdownMenuItem`, `TomExpanded`, `TomFlexible`,
+`TomNavigationDestination`, `TomNavigationDrawerDestination`,
+`TomPopupMenuDivider`, `TomPopupMenuItem`, `TomRefreshProgressIndicator`,
+`TomSnackBar`, `TomSnackBarAction`, `TomSpacer`, `TomTab`, `TomTableCell`.
+
+**A further nine types under `widgets/` are not widgets at all** and so cannot
+report a family either: `TomDialogs` and `TomMessenger` are static facades,
+`TomPageRoute` is a route, and `TomAclBuilder`, `TomDataCell`, `TomDataColumn`,
+`TomDataRow`, `TomExpansionPanel` and `TomTreeNode` are plain classes that hold
+widgets without being one. Four of the nine — `TomDataCell`, `TomDataColumn`,
+`TomDataRow` and `TomExpansionPanel` — nonetheless carry `tomId`/`tomGroup` and
+are gated through `TomAuthGate`, which wraps the slot they own; see
+[Authorization, groups, and scope](#authorization-groups-and-scope).
+
+275 + 17 + 9 = 301.
 
 ## Navigation and messaging
 
-Two types in the kit are not widgets and so have no family row above. Both
-exist for the same reason the wrappers do: to give a Flutter *mechanism* a
-Tom-owned surface, so a screen does not have to reach past the framework.
+Two of the nine non-widgets are documented here rather than beside the type
+they hold, because they exist for the same reason the wrappers do: to give a
+Flutter *mechanism* — a route push, a messenger — a Tom-owned surface, so a
+screen does not have to reach past the framework.
 
 **`TomPageRoute<T>`** (`navigation/tom_page_route.dart`) is a
 `MaterialPageRoute` that carries the active `TomScope` across a push. Flutter

@@ -330,10 +330,11 @@ class TomScaffold extends TomContainerBase {
 ///
 /// Adds ID, group, authorization, and resource resolution for title text.
 ///
-/// Implements [PreferredSizeWidget] for use in [Scaffold.appBar].
-class TomAppBar extends StatelessWidget
-    with TomWidgetMixin
-    implements PreferredSizeWidget {
+/// Implements [PreferredSizeWidget] for use in [Scaffold.appBar]. That is an
+/// `implements`, so it is orthogonal to the superclass: the app bar is a
+/// `TomContainerBase` like every other bar in this file, and reports
+/// [TomWidgetFamily.container].
+class TomAppBar extends TomContainerBase implements PreferredSizeWidget {
   final Widget? leading;
   final bool automaticallyImplyLeading;
   final Widget? title;
@@ -365,28 +366,13 @@ class TomAppBar extends StatelessWidget
   final ShapeBorder? shape;
   final ScrollNotificationPredicate notificationPredicate;
 
-  @override
-  final String? tomId;
-  @override
-  final TomAuthorizationGroup? tomGroup;
-  @override
-  final TomScope? scope;
-  @override
-  final TomAuthorizer? authorizer;
-
-  @override
-  final TomUIStateController? uiStateController;
-
-  @override
-  final String? basePath;
-
   TomAppBar({
     super.key,
-    this.tomId,
-    this.tomGroup,
-    this.scope,
-    this.authorizer,
-    this.uiStateController,
+    super.tomId,
+    super.tomGroup,
+    super.scope,
+    super.authorizer,
+    super.uiStateController,
     this.leading,
     this.automaticallyImplyLeading = true,
     this.title,
@@ -417,9 +403,7 @@ class TomAppBar extends StatelessWidget
     this.clipBehavior,
     this.shape,
     this.notificationPredicate = defaultScrollNotificationPredicate,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  });
 
   @override
   Size get preferredSize {
@@ -428,11 +412,11 @@ class TomAppBar extends StatelessWidget
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final resolvedTitleText =
         titleText ?? TomCtr.textOrNull(basePath, 'titleText');
-    final resolvedTitle =
-        resolvedTitleText ?? (tomId != null ? getText('label') : null);
+    final resolvedTitle = resolvedTitleText ??
+        (tomId != null ? TomCtr.text(basePath, 'label') : null);
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 

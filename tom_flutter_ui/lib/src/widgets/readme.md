@@ -5,8 +5,10 @@
 
 The general-purpose widget kit: every common Flutter widget given a Tom wrapper
 that adds a `tomId`, the kernel's four-state authorization, and resource-resolved
-labels / colours / icons. Each widget exposes `family` and `effectiveAuthState`
-and renders Material or Cupertino per the ambient family.
+labels / colours / icons. Each widget exposes `effectiveAuthState` and renders
+Material or Cupertino per the ambient family. 275 of the 292 also expose
+`family` — the other 17 extend a Flutter widget directly because their parent
+type-checks for it, and so have no family base to get it from.
 
 ## Key types
 
@@ -21,8 +23,10 @@ and renders Material or Cupertino per the ambient family.
 | `TomAnimatedContainer` / `TomAnimatedOpacity` / `TomAnimated…` | Animated variants |
 | `TomAclBuilder` | Widget-level entry into the [`advanced_container_layout`](../advanced_container_layout/readme.md) engine |
 
-Every widget shares the inherited base parameters `tomId`, `tomGroup`, `scope`,
-and `authorizer` (see [`widget_base`](../widget_base/readme.md)).
+Every widget accepts the same base parameters `tomId`, `tomGroup`, `scope`,
+`authorizer` and `uiStateController` — inherited from `TomNodeBase` by the 275
+that extend a family base, declared by `TomWidgetMixin` for the other 17 (see
+[`widget_base`](../widget_base/readme.md)).
 
 ## Quick start
 

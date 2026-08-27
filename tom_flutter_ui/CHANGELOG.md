@@ -33,8 +33,30 @@
   an `authState` getter. This matches `TomForm`'s own `bool get isVisible`.
 - **`TomExpansionPanel.authorizationGroup` is renamed `tomGroup`**, and the
   class gains a `scope`, matching the widget wrappers it sits among.
+- **`TomAppBar` extends `TomContainerBase`** instead of `StatelessWidget` with
+  `TomWidgetMixin`, joining `TomBottomAppBar` and `TomSliverAppBar` on the base
+  its sub-folder implies. `PreferredSizeWidget` is an `implements` and so was
+  never the obstacle. It now reports `TomWidgetFamily.container`, which is what
+  `doc/widgets.md` had always claimed it did.
 
 ### Fixed
+
+- **`TomAppBar` resolved its authorization and then ignored it.** Its `build`
+  returned an `AppBar` directly, with no `checkHidden()` and no
+  `applyAuthState()`, so a `none` app bar rendered in full and a `disabled` one
+  stayed interactive — while `tomId`, `tomGroup`, `scope`, `authorizer` and
+  `uiStateController` all type-checked. Extending `TomContainerBase` moves
+  the body to `buildContent` and puts the four-state gate back in the path. The
+  constructor also registered with `tomGroup` and never unregistered; the base
+  owns that lifecycle now.
+- **Four documents claimed every widget in the kit reports its family.** 17 of
+  the 292 wrappers extend a Flutter widget directly (their parent type-checks
+  for the Flutter subtype) and have no family base to get `family` from, and 9
+  further types under `widgets/` are not widgets at all. The catalogue in
+  `doc/widgets.md` also listed two widgets under families they do not report:
+  `TomAppBar`, which had no `family` at all, and `TomSliverList`, which is a
+  `TomContainerBase`. `test/widgets/widget_family_claims_test.dart` now reads
+  the counts and the catalogue out of the sources, so neither can drift again.
 
 - **Eight wrappers declared `tomId` / `tomGroup` / `scope` and never applied
   them.** `TomAnimatedPositioned`, `TomAnimatedPositionedDirectional`,
