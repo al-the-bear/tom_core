@@ -50,20 +50,34 @@ abstract class TomUIColorAdapter {
 class TomUIColors {
   TomUIColors._();
 
-  static TomUIColorAdapter? _adapter;
-
-  static set adapter(TomUIColorAdapter adapter) => _adapter = adapter;
+  /// The installed colour adapter, or `null` when none is installed.
+  ///
+  /// Readable so that a diagnostics screen or a startup assertion can ask
+  /// what is wired, and so that code installing an adapter for one operation
+  /// can put the previous one back:
+  ///
+  /// ```dart
+  /// final saved = TomUIColors.adapter;
+  /// TomUIColors.adapter = MaterialOnlyColorAdapter();
+  /// // ...
+  /// TomUIColors.adapter = saved;
+  /// ```
+  ///
+  /// Assigning `null` is what makes that restore total: it uninstalls without
+  /// touching the registrations, which [reset] would also clear. [reset]
+  /// remains the teardown hook for tests; this is the narrower tool.
+  static TomUIColorAdapter? adapter;
 
   /// Resolves a color by [name].
   ///
   /// Returns `null` if no adapter is set or the color is not found.
   static Color? resolveColor(String name) {
-    return _adapter?.resolveColor(name);
+    return adapter?.resolveColor(name);
   }
 
   /// Whether a color with [name] exists.
   static bool colorExists(String name) {
-    return _adapter?.colorExists(name) ?? false;
+    return adapter?.colorExists(name) ?? false;
   }
 
   /// Drops the adapter **and** every custom registration.
@@ -77,7 +91,7 @@ class TomUIColors {
   /// To drop registrations while keeping the installed adapter, use
   /// [AllColorsAdapter.clearCustomColors].
   static void reset() {
-    _adapter = null;
+    adapter = null;
     _customColors.clear();
   }
 }

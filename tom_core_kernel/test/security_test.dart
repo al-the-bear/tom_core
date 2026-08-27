@@ -1917,6 +1917,47 @@ void main() {
       TomAuthorization.reset();
       expect(TomAuthorization.resolveAuth('x'), equals(TomAuthState.full));
     });
+
+    // `adapter` reads as well as writes. A diagnostics screen, a startup
+    // assertion, and any caller that installs an adapter for one operation
+    // all need that read: without it the only way back from a temporary
+    // install is `reset()`, which is a teardown rather than a restore.
+    test('the installed adapter reads back, and is null until one is set', () {
+      TomAuthorization.reset();
+      expect(TomAuthorization.adapter, isNull);
+
+      final adapter = _FakeAuthAdapter({'x': TomAuthState.none});
+      TomAuthorization.adapter = adapter;
+      expect(TomAuthorization.adapter, same(adapter));
+
+      TomAuthorization.reset();
+      expect(TomAuthorization.adapter, isNull);
+    });
+
+    test('an adapter can be swapped in and the previous one put back', () {
+      final original = _FakeAuthAdapter({'x': TomAuthState.read});
+      TomAuthorization.adapter = original;
+      final saved = TomAuthorization.adapter;
+
+      TomAuthorization.adapter = _FakeAuthAdapter({'x': TomAuthState.none});
+      expect(TomAuthorization.resolveAuth('x'), equals(TomAuthState.none));
+
+      TomAuthorization.adapter = saved;
+      expect(TomAuthorization.adapter, same(original));
+      expect(TomAuthorization.resolveAuth('x'), equals(TomAuthState.read));
+    });
+
+    // The setter accepts null so that restoring "nothing was installed" is
+    // expressible without a branch through reset(). Here the two happen to be
+    // equivalent — this class holds no registrations — but the read/write
+    // contract is shared with TomUIColors and TomUIIcons, where they are not.
+    test('assigning null restores the no-adapter development default', () {
+      TomAuthorization.adapter = _FakeAuthAdapter({'x': TomAuthState.none});
+      TomAuthorization.adapter = null;
+
+      expect(TomAuthorization.adapter, isNull);
+      expect(TomAuthorization.resolveAuth('x'), equals(TomAuthState.full));
+    });
   });
 
   // ===========================================================================

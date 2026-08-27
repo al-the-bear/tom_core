@@ -47,20 +47,34 @@ abstract class TomUIIconAdapter {
 class TomUIIcons {
   TomUIIcons._();
 
-  static TomUIIconAdapter? _adapter;
-
-  static set adapter(TomUIIconAdapter adapter) => _adapter = adapter;
+  /// The installed icon adapter, or `null` when none is installed.
+  ///
+  /// Readable so that a diagnostics screen or a startup assertion can ask
+  /// what is wired, and so that code installing an adapter for one operation
+  /// can put the previous one back:
+  ///
+  /// ```dart
+  /// final saved = TomUIIcons.adapter;
+  /// TomUIIcons.adapter = MaterialOnlyIconAdapter();
+  /// // ...
+  /// TomUIIcons.adapter = saved;
+  /// ```
+  ///
+  /// Assigning `null` is what makes that restore total: it uninstalls without
+  /// touching the registrations, which [reset] would also clear. [reset]
+  /// remains the teardown hook for tests; this is the narrower tool.
+  static TomUIIconAdapter? adapter;
 
   /// Resolves an icon by [name].
   ///
   /// Returns `null` if no adapter is set or the icon is not found.
   static IconData? resolveIcon(String name) {
-    return _adapter?.resolveIcon(name);
+    return adapter?.resolveIcon(name);
   }
 
   /// Whether an icon with [name] exists.
   static bool iconExists(String name) {
-    return _adapter?.iconExists(name) ?? false;
+    return adapter?.iconExists(name) ?? false;
   }
 
   /// Drops the adapter **and** every custom registration.
@@ -74,7 +88,7 @@ class TomUIIcons {
   /// To drop registrations while keeping the installed adapter, use
   /// [AllIconsAdapter.clearCustomIcons].
   static void reset() {
-    _adapter = null;
+    adapter = null;
     _customIcons.clear();
   }
 }

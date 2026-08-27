@@ -383,17 +383,18 @@ The `TomAuthorization` singleton resolves auth state globally (no BuildContext n
 class TomAuthorization {
   TomAuthorization._();
 
-  static TomAuthorizationAdapter? _adapter;
-
-  static set adapter(TomAuthorizationAdapter adapter) => _adapter = adapter;
+  /// The installed adapter, or `null` when none is. Readable so a diagnostics
+  /// screen can ask what is wired, and so a caller that installs an adapter
+  /// for one operation can put the previous one back.
+  static TomAuthorizationAdapter? adapter;
 
   /// Returns [TomAuthState.full] if no adapter is set (development mode).
   static TomAuthState resolveAuth(String resourceKeyPath) {
-    return _adapter?.resolveAuth(resourceKeyPath) ?? TomAuthState.full;
+    return adapter?.resolveAuth(resourceKeyPath) ?? TomAuthState.full;
   }
 
   /// Resets the adapter. Intended for testing only.
-  static void reset() => _adapter = null;
+  static void reset() => adapter = null;
 }
 ```
 

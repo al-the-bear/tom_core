@@ -360,23 +360,36 @@ abstract class TomAuthorizationAdapter {
 class TomAuthorization {
   TomAuthorization._();
 
-  static TomAuthorizationAdapter? _adapter;
-
-  /// Installs the [TomAuthorizationAdapter] that backs [resolveAuth].
+  /// The installed [TomAuthorizationAdapter] backing [resolveAuth], or `null`
+  /// when none is installed — in which case authorization resolves to
+  /// [TomAuthState.full] (development mode).
   ///
-  /// When no adapter is set, authorization resolves to [TomAuthState.full]
-  /// (development mode).
-  static set adapter(TomAuthorizationAdapter adapter) => _adapter = adapter;
+  /// Readable so that a diagnostics screen or a startup assertion can ask
+  /// what is wired, and so that code installing an adapter for one operation
+  /// can put the previous one back rather than tearing down whatever the
+  /// application had:
+  ///
+  /// ```dart
+  /// final saved = TomAuthorization.adapter;
+  /// TomAuthorization.adapter = ReadOnlyAuthorizationAdapter();
+  /// // ...
+  /// TomAuthorization.adapter = saved;
+  /// ```
+  ///
+  /// Assigning `null` uninstalls. [reset] does the same and stays the named
+  /// teardown hook for tests; the two coincide here because this class holds
+  /// nothing besides the adapter.
+  static TomAuthorizationAdapter? adapter;
 
   /// Resolves authorization for the given resource key path.
   ///
   /// Returns [TomAuthState.full] if no adapter is set (development mode).
   static TomAuthState resolveAuth(String resourceKeyPath) {
-    return _adapter?.resolveAuth(resourceKeyPath) ?? TomAuthState.full;
+    return adapter?.resolveAuth(resourceKeyPath) ?? TomAuthState.full;
   }
 
   /// Resets the adapter. Intended for testing only.
-  static void reset() => _adapter = null;
+  static void reset() => adapter = null;
 }
 
 // =============================================================================

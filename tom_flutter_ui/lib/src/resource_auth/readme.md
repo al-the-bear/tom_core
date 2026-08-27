@@ -29,6 +29,7 @@ deliberate mirrors of each other, so every row names both.
 | Stage | Colours | Icons | Configuration |
 | ----- | ------- | ----- | ------------- |
 | Install | `TomUIColors.adapter =` | `TomUIIcons.adapter =` | `TomConfigProvider.initialize` of a `TomConfigProvider.create` |
+| Inspect | `TomUIColors.adapter` | `TomUIIcons.adapter` | `TomConfigProvider.current` |
 | Resolve | `TomUIColors.resolveColor` | `TomUIIcons.resolveIcon` | `TomConfigProvider.current`, then `feature<T>` / `isEnabled` / `environment` / `platform` |
 | Probe | `TomUIColors.colorExists` | `TomUIIcons.iconExists` | — |
 | Register | `AllColorsAdapter.registerColors` | `AllIconsAdapter.registerIcons` | flags are fixed at `create` |
@@ -42,6 +43,17 @@ colour or icon in it. `reset()` drops the adapter **and** the registrations,
 which is what makes it the whole hygiene hook: a `tearDown` needs nothing
 beside it. `clearCustomColors` / `clearCustomIcons` are the narrower tool, for
 dropping registrations while *keeping* the installed adapter.
+
+**Inspect and tear down are not the same row either.** `adapter` reads back the
+installed adapter, or `null` — which is what lets a caller install one for a
+single operation and then put the previous one back (`final saved =
+TomUIColors.adapter; … TomUIColors.adapter = saved;`). The setter accepts
+`null` precisely so that restore is total: when nothing was installed, `saved`
+is `null`, and the only other way back would be `reset()`, which would drop the
+application's registrations as collateral. The configuration column differs on
+one point — `TomConfigProvider.current` **throws** before `initialize` rather
+than returning `null`, because a missing config is a startup bug while a
+missing adapter is a supported degraded mode.
 
 Registration stays on the `All…` adapters even though the registry it fills is
 module-wide, so that each family has exactly one place to register. Calling

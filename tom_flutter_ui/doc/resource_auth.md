@@ -91,6 +91,23 @@ adapter instance, so a registration surviving a `reset()` would not fail a
 later test; it would quietly change a colour in it. Reach for `clearCustom*`
 only when you want to drop registrations and *keep* the adapter.
 
+`TomUIColors.adapter` / `TomUIIcons.adapter` read as well as write, returning
+`null` when nothing is installed — enough for a diagnostics screen or a startup
+assertion to ask what is wired. Reading is also what makes a temporary install
+reversible:
+
+```dart
+final saved = TomUIColors.adapter;
+TomUIColors.adapter = MaterialOnlyColorAdapter();
+// ...
+TomUIColors.adapter = saved;
+```
+
+The setter accepts `null` for the sake of that last line: when nothing was
+installed to begin with, `saved` is `null`, and the alternative way back —
+`reset()` — would take the application's registrations with it. Restoring and
+tearing down are different operations, and only one of them is `reset()`.
+
 The palette itself is generated. `tool/generate_colors.dart` reads the Flutter
 SDK's own `material/colors.dart` and `cupertino/colors.dart` and emits
 `lib/src/resource_auth/tom_colors_generated.dart` — every `Colors` and

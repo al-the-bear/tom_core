@@ -415,6 +415,92 @@ void main() {
     });
   });
 
+  // `adapter` reads as well as writes, and is nullable in both directions.
+  // Both halves are pinned below: the read is what lets anything ask what is
+  // installed, and writing `null` is what lets a caller put back "nothing was
+  // installed" without going through `reset()`, which would drop every
+  // registration along with the adapter.
+  group('the installed adapter reads back', () {
+    test('TomUIColors.adapter is null until one is installed', () {
+      expect(TomUIColors.adapter, isNull);
+
+      final adapter = AllColorsAdapter();
+      TomUIColors.adapter = adapter;
+      expect(TomUIColors.adapter, same(adapter));
+
+      TomUIColors.reset();
+      expect(TomUIColors.adapter, isNull);
+    });
+
+    test('TomUIIcons.adapter is null until one is installed', () {
+      expect(TomUIIcons.adapter, isNull);
+
+      final adapter = AllIconsAdapter();
+      TomUIIcons.adapter = adapter;
+      expect(TomUIIcons.adapter, same(adapter));
+
+      TomUIIcons.reset();
+      expect(TomUIIcons.adapter, isNull);
+    });
+
+    test('a narrow adapter can be installed and the wide one put back', () {
+      final wide = AllColorsAdapter();
+      TomUIColors.adapter = wide;
+      final saved = TomUIColors.adapter;
+
+      TomUIColors.adapter = MaterialOnlyColorAdapter();
+      // Observable through resolution, not only through identity: the narrow
+      // adapter really is the one answering.
+      expect(TomUIColors.resolveColor('cSystemBlue'), isNull);
+
+      TomUIColors.adapter = saved;
+      expect(TomUIColors.adapter, same(wide));
+      expect(TomUIColors.resolveColor('cSystemBlue'), isNotNull);
+    });
+
+    test('a narrow icon adapter can be installed and the wide one put back',
+        () {
+      final wide = AllIconsAdapter();
+      TomUIIcons.adapter = wide;
+      final saved = TomUIIcons.adapter;
+
+      TomUIIcons.adapter = CupertinoOnlyIconAdapter();
+      expect(TomUIIcons.resolveIcon('mSave'), isNull);
+
+      TomUIIcons.adapter = saved;
+      expect(TomUIIcons.adapter, same(wide));
+      expect(TomUIIcons.resolveIcon('mSave'), Icons.save);
+    });
+
+    // The reason the setter accepts null. Restoring "nothing was installed"
+    // through reset() would take the caller's registrations with it — so the
+    // one branch a save/restore helper would otherwise need is also the one
+    // that silently loses application state.
+    test('restoring "nothing installed" keeps the registrations', () {
+      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      final saved = TomUIColors.adapter; // nothing installed yet
+
+      TomUIColors.adapter = MaterialOnlyColorAdapter();
+      TomUIColors.adapter = saved;
+
+      expect(TomUIColors.adapter, isNull);
+      TomUIColors.adapter = AllColorsAdapter();
+      expect(TomUIColors.resolveColor('zBrand'), const Color(0xFF112233));
+    });
+
+    test('restoring "nothing installed" keeps icon registrations', () {
+      AllIconsAdapter.registerIcons({'zBrand': Icons.abc});
+      final saved = TomUIIcons.adapter;
+
+      TomUIIcons.adapter = MaterialOnlyIconAdapter();
+      TomUIIcons.adapter = saved;
+
+      expect(TomUIIcons.adapter, isNull);
+      TomUIIcons.adapter = AllIconsAdapter();
+      expect(TomUIIcons.resolveIcon('zBrand'), Icons.abc);
+    });
+  });
+
   group('TomConfigProvider', () {
     test('throws before initialisation', () {
       expect(() => TomConfigProvider.current, throwsStateError);
