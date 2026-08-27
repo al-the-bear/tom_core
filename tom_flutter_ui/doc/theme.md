@@ -43,7 +43,7 @@ state. The style composes its effects in a fixed order:
 | Field | Default | Effect (`apply`) |
 | ----- | ------- | ---------------- |
 | `colorOverlay` | `null` | `ColorFiltered` (`BlendMode.srcATop`) when set |
-| `opacity` | `0.6` (`readonly`) / `0.38` (`disabled`) | `Opacity` when `< 1.0` |
+| `opacity` | `0.6` (`readonly`) / `0.38` (`disabled`) | `Opacity` when `< 1.0`; must be within `0.0`..`1.0` |
 | `absorbPointers` | `true` | `AbsorbPointer` |
 | `builder` | `null` | **Replaces** all of the above when set |
 
@@ -58,6 +58,16 @@ right now" changes it on the theme.
 Setting `opacity: 1.0` disables dimming; setting `absorbPointers: false` is for
 families that handle the state at the widget level (e.g. a text field that
 switches to a non-editable display).
+
+`opacity` is a fraction, not a percentage, and the constructor asserts the
+`0.0`..`1.0` range. The check earns its place because the `< 1.0` test in the
+table above is what a too-large value would fail: `opacity: 60` written for
+"60 %" would take the same branch as the deliberate pass-through, dimming
+nothing and reporting nothing. A negative value did fail, but only later and
+elsewhere — inside Flutter's own `Opacity` at render time, naming a frame in
+`basic.dart` instead of the style that caused it. `TomStateStyle`'s constructor
+is `const`, so both mistakes are now caught at the literal, at compile time
+wherever the style is written as a constant.
 
 **If you set `builder`, hoist the function — do not write it inline in
 `build`.** Styles compare by value, but a function can only be compared by

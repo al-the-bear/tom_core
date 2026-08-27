@@ -14,7 +14,10 @@ import 'package:flutter/widgets.dart';
 /// one constant: how much a widget is dimmed is what tells a user *why* it is
 /// inert.
 class TomStateStyle {
-  /// Opacity applied to the content. Set to 1.0 to disable dimming.
+  /// Opacity applied to the content, from 0.0 (invisible) to 1.0 (opaque).
+  /// Set it to 1.0 to disable dimming. Values outside that range are rejected
+  /// by the constructor: this is a fraction, not a percentage, and 60 written
+  /// for "60 %" would otherwise dim nothing at all.
   final double opacity;
 
   /// Whether pointer events are absorbed (blocked). Almost always `true` —
@@ -37,12 +40,22 @@ class TomStateStyle {
   /// held on the state, compares equal to itself and avoids that entirely.
   final Widget Function(Widget content)? builder;
 
+  /// Creates a style. [opacity] must be within 0.0..1.0 inclusive.
+  ///
+  /// The range is checked here rather than left to Flutter because both ways
+  /// of getting it wrong were previously silent at the call site: a negative
+  /// value reached [Opacity] and failed inside `basic.dart`, naming a frame
+  /// the caller never wrote, while a value above 1.0 was accepted and then
+  /// ignored, since [apply] only dims when the opacity is below 1.0. Being a
+  /// `const` constructor, this rejects the out-of-range literal at compile
+  /// time — which is where nearly every style in an app is written.
   const TomStateStyle({
     this.opacity = 0.6,
     this.absorbPointers = true,
     this.colorOverlay,
     this.builder,
-  });
+  }) : assert(opacity >= 0.0 && opacity <= 1.0,
+            'opacity must be within 0.0..1.0 (a fraction, not a percentage)');
 
   /// The framework default for `read` — AbsorbPointer + 0.6 opacity.
   static const readonly = TomStateStyle();

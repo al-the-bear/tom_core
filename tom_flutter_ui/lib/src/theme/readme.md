@@ -20,7 +20,7 @@ describes them and the theme carries one instance per state.
 | ---- | -------------- |
 | `TomTheme` | The Tom theme value; `TomTheme.defaultTheme` + `copyWith`, one `TomStateStyle` per withheld state. `TomTheme.applyAuthState(state, content)` is the single mapping from authorization state to appearance, which both enforcement points come through |
 | `TomThemeScope` | Inherited widget delivering a `TomTheme` to its `child`. `TomThemeScope.readonlyStyleOf(context)` / `disabledStyleOf(context)` are the lookups the widget layer actually calls — they fall back to the framework defaults, so a subtree with no scope above it still styles correctly; `TomThemeScope.applyAuthState(context, state, content)` combines the lookup and the mapping |
-| `TomStateStyle` | The treatment of one withheld state (opacity, pointer absorption, overlay, optional builder). `TomStateStyle.readonly` and `TomStateStyle.disabled` are the framework defaults — `AbsorbPointer` plus 0.6 and 0.38 opacity respectively |
+| `TomStateStyle` | The treatment of one withheld state (opacity within `0.0`..`1.0`, pointer absorption, overlay, optional builder). `TomStateStyle.readonly` and `TomStateStyle.disabled` are the framework defaults — `AbsorbPointer` plus 0.6 and 0.38 opacity respectively |
 | `TomButtonVariants` | Semantic button `ButtonStyle` set from a `ColorScheme` |
 
 ## Quick start

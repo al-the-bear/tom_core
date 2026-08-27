@@ -66,6 +66,40 @@ void main() {
     });
   });
 
+  // Out of range used to fail in two different silent ways. Below 0.0 the
+  // constructor accepted the value and Flutter's own assert inside `Opacity`
+  // rejected it at render time, naming a frame in `basic.dart` that the caller
+  // never wrote. Above 1.0 nothing rejected it at all: `apply` wraps only when
+  // `opacity < 1.0`, so `opacity: 60` written for "60 %" produced no dimming
+  // and no diagnostic, indistinguishable from the deliberate `opacity: 1.0`
+  // pass-through above. The constructor assert turns both into a failure at
+  // the offending literal.
+  group('TomStateStyle opacity range', () {
+    // The assert's main effect — rejecting a const literal at compile time —
+    // is by its nature not writable in a test that must itself compile. These
+    // route the value through a function so the constructor runs at runtime
+    // and the assert becomes observable.
+    double atRuntime(double value) => value;
+
+    test('rejects a negative opacity at construction', () {
+      expect(() => TomStateStyle(opacity: atRuntime(-1.0)),
+          throwsA(isA<AssertionError>()));
+    });
+
+    test('rejects an opacity above 1.0 instead of ignoring it', () {
+      expect(() => TomStateStyle(opacity: atRuntime(5.0)),
+          throwsA(isA<AssertionError>()));
+    });
+
+    // Pins the bounds as inclusive: 0.0 (fully transparent) and 1.0 (the
+    // documented way to opt out of dimming) are both legal settings, so the
+    // range check must not be strict at either end.
+    test('accepts both inclusive bounds', () {
+      expect(() => TomStateStyle(opacity: atRuntime(0.0)), returnsNormally);
+      expect(() => TomStateStyle(opacity: atRuntime(1.0)), returnsNormally);
+    });
+  });
+
   group('TomTheme', () {
     test('defaults', () {
       const theme = TomTheme.defaultTheme;
