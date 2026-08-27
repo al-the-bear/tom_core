@@ -13,6 +13,12 @@ import 'package:tom_flutter_ui/src/widget_base/tom_style_resolvers.dart';
 // assert the resolver degrades gracefully (skips the bad value) instead of
 // throwing — i.e. a single mistyped config entry must not take down the whole
 // widget build.
+//
+// Each case pairs the mistyped entry with a usable one, because "skips the bad
+// value" is only observable next to a value that survived. A map whose *every*
+// entry is unusable contributed nothing and resolves to `null` — that contract
+// belongs to the parsers themselves and is asserted in
+// `widget_base_resolvers_test.dart`.
 
 void main() {
   setUpAll(() {
@@ -28,10 +34,14 @@ void main() {
   group('TomStyleResolvers malformed-type tolerance (§77)', () {
     test('parseBorderRadius({all: String}) degrades instead of throwing', () {
       late BorderRadius? radius;
-      expect(() => radius = TomStyleResolvers.parseBorderRadius({'all': '8'}),
+      expect(
+          () => radius = TomStyleResolvers
+              .parseBorderRadius({'all': '8', 'topRight': 6}),
           returnsNormally);
-      // The wrong-typed `all` is skipped, so no rounding is applied.
-      expect(radius, BorderRadius.zero);
+      // The wrong-typed `all` does not short-circuit the per-corner branch,
+      // and contributes no rounding of its own.
+      expect(radius!.topRight, const Radius.circular(6));
+      expect(radius!.topLeft, Radius.zero);
     });
 
     test('parseBorderRadius({corner: String}) skips the bad corner', () {
@@ -47,28 +57,32 @@ void main() {
     test('parseInputDecoration({filled: String}) skips filled', () {
       late InputDecoration? deco;
       expect(
-          () => deco = TomStyleResolvers.parseInputDecoration({'filled': 'yes'}),
+          () => deco = TomStyleResolvers
+              .parseInputDecoration({'filled': 'yes', 'labelText': 'Name'}),
           returnsNormally);
       expect(deco, isNotNull);
       expect(deco!.filled, isNull);
+      expect(deco!.labelText, 'Name');
     });
 
     test('parseInputDecoration({labelText: int}) skips labelText', () {
       late InputDecoration? deco;
       expect(
-          () =>
-              deco = TomStyleResolvers.parseInputDecoration({'labelText': 123}),
+          () => deco = TomStyleResolvers
+              .parseInputDecoration({'labelText': 123, 'hintText': 'Type it'}),
           returnsNormally);
       expect(deco!.labelText, isNull);
+      expect(deco!.hintText, 'Type it');
     });
 
     test('parseInputDecoration({labelStyle: String}) skips labelStyle', () {
       late InputDecoration? deco;
       expect(
           () => deco = TomStyleResolvers
-              .parseInputDecoration({'labelStyle': 'bold'}),
+              .parseInputDecoration({'labelStyle': 'bold', 'labelText': 'Name'}),
           returnsNormally);
       expect(deco!.labelStyle, isNull);
+      expect(deco!.labelText, 'Name');
     });
 
     test('parseInputDecoration({contentPadding: {all: String}}) is tolerant',
@@ -98,11 +112,12 @@ void main() {
     test('parseButtonStyle({textStyle: String}) skips textStyle', () {
       late ButtonStyle? style;
       expect(
-          () =>
-              style = TomStyleResolvers.parseButtonStyle({'textStyle': 'bold'}),
+          () => style = TomStyleResolvers
+              .parseButtonStyle({'textStyle': 'bold', 'elevation': 2}),
           returnsNormally);
       expect(style, isNotNull);
       expect(style!.textStyle, isNull);
+      expect(style!.elevation?.resolve(<WidgetState>{}), 2);
     });
 
     test('parseStrutStyle({forceStrutHeight: String}) skips the flag', () {
@@ -118,10 +133,11 @@ void main() {
     test('parseStrutStyle({fontFamilyFallback: String}) skips the list', () {
       late StrutStyle? strut;
       expect(
-          () => strut = TomStyleResolvers
-              .parseStrutStyle({'fontFamilyFallback': 'Arial'}),
+          () => strut = TomStyleResolvers.parseStrutStyle(
+              {'fontFamilyFallback': 'Arial', 'fontSize': 12}),
           returnsNormally);
       expect(strut!.fontFamilyFallback, isNull);
+      expect(strut!.fontSize, 12);
     });
 
     test('TomCtr.edgeInsets routes the verbatim _parseEdgeInsets copy tolerantly',

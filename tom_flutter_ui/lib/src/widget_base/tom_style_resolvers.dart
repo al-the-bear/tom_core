@@ -29,6 +29,17 @@ import 'tom_construction_helpers.dart';
 /// Keeping the `parse…` half free of the provider is what lets it be tested
 /// with no resources installed.
 ///
+/// Every `parse…` returns `null` when the input contributed nothing — absent,
+/// empty, or holding only keys and values it cannot use — and an object only
+/// when at least one key was read. There is no third outcome — an unusable
+/// entry is skipped rather than raised, so one mistyped value in a resource
+/// bundle never takes down a widget build.
+///
+/// That distinction is what makes `parse…(map) ?? fallback` work. A map full
+/// of typos yields no object, so the fallback runs; were a default-constructed
+/// one returned instead, it would render plausibly — `TextStyle()` inherits
+/// from the ambient theme — and the mistake would go unreported.
+///
 /// Usage in widgets:
 /// ```dart
 /// final style =
@@ -57,23 +68,54 @@ class TomStyleResolvers {
   /// - `decorationStyle` (String): "solid", "double", "dotted", "dashed", "wavy"
   /// - `overflow` (String): "clip", "fade", "ellipsis", "visible"
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static TextStyle? parseTextStyle(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
+    final fontSize = _parseDouble(map['fontSize']);
+    final fontWeight = _parseFontWeight(map['fontWeight']);
+    final fontStyle = _parseFontStyle(map['fontStyle']);
+    final color = _parseColor(map['color']);
+    final backgroundColor = _parseColor(map['backgroundColor']);
+    final letterSpacing = _parseDouble(map['letterSpacing']);
+    final wordSpacing = _parseDouble(map['wordSpacing']);
+    final height = _parseDouble(map['height']);
+    final decoration = _parseTextDecoration(map['decoration']);
+    final decorationColor = _parseColor(map['decorationColor']);
+    final decorationStyle = _parseTextDecorationStyle(map['decorationStyle']);
+    final overflow = _parseTextOverflow(map['overflow']);
+
+    if (_nothingContributed([
+      fontSize,
+      fontWeight,
+      fontStyle,
+      color,
+      backgroundColor,
+      letterSpacing,
+      wordSpacing,
+      height,
+      decoration,
+      decorationColor,
+      decorationStyle,
+      overflow,
+    ])) {
+      return null;
+    }
+
     return TextStyle(
-      fontSize: _parseDouble(map['fontSize']),
-      fontWeight: _parseFontWeight(map['fontWeight']),
-      fontStyle: _parseFontStyle(map['fontStyle']),
-      color: _parseColor(map['color']),
-      backgroundColor: _parseColor(map['backgroundColor']),
-      letterSpacing: _parseDouble(map['letterSpacing']),
-      wordSpacing: _parseDouble(map['wordSpacing']),
-      height: _parseDouble(map['height']),
-      decoration: _parseTextDecoration(map['decoration']),
-      decorationColor: _parseColor(map['decorationColor']),
-      decorationStyle: _parseTextDecorationStyle(map['decorationStyle']),
-      overflow: _parseTextOverflow(map['overflow']),
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      fontStyle: fontStyle,
+      color: color,
+      backgroundColor: backgroundColor,
+      letterSpacing: letterSpacing,
+      wordSpacing: wordSpacing,
+      height: height,
+      decoration: decoration,
+      decorationColor: decorationColor,
+      decorationStyle: decorationStyle,
+      overflow: overflow,
     );
   }
 
@@ -108,25 +150,60 @@ class TomStyleResolvers {
   /// All color properties are wrapped in [WidgetStatePropertyAll] for simplicity.
   /// For state-dependent colors, use explicit [ButtonStyle] in code.
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static ButtonStyle? parseButtonStyle(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
+    final foregroundColor = _wrapColor(map['foregroundColor']);
+    final backgroundColor = _wrapColor(map['backgroundColor']);
+    final overlayColor = _wrapColor(map['overlayColor']);
+    final shadowColor = _wrapColor(map['shadowColor']);
+    final surfaceTintColor = _wrapColor(map['surfaceTintColor']);
+    final elevation = _wrapDouble(map['elevation']);
+    final padding = _wrapEdgeInsets(map['padding']);
+    final minimumSize = _wrapSize(map['minimumSize']);
+    final maximumSize = _wrapSize(map['maximumSize']);
+    final fixedSize = _wrapSize(map['fixedSize']);
+    final iconSize = _wrapDouble(map['iconSize']);
+    final iconColor = _wrapColor(map['iconColor']);
+    final textStyle = _wrapTextStyle(map['textStyle']);
+    final tapTargetSize = _parseMaterialTapTargetSize(map['tapTargetSize']);
+
+    if (_nothingContributed([
+      foregroundColor,
+      backgroundColor,
+      overlayColor,
+      shadowColor,
+      surfaceTintColor,
+      elevation,
+      padding,
+      minimumSize,
+      maximumSize,
+      fixedSize,
+      iconSize,
+      iconColor,
+      textStyle,
+      tapTargetSize,
+    ])) {
+      return null;
+    }
+
     return ButtonStyle(
-      foregroundColor: _wrapColor(map['foregroundColor']),
-      backgroundColor: _wrapColor(map['backgroundColor']),
-      overlayColor: _wrapColor(map['overlayColor']),
-      shadowColor: _wrapColor(map['shadowColor']),
-      surfaceTintColor: _wrapColor(map['surfaceTintColor']),
-      elevation: _wrapDouble(map['elevation']),
-      padding: _wrapEdgeInsets(map['padding']),
-      minimumSize: _wrapSize(map['minimumSize']),
-      maximumSize: _wrapSize(map['maximumSize']),
-      fixedSize: _wrapSize(map['fixedSize']),
-      iconSize: _wrapDouble(map['iconSize']),
-      iconColor: _wrapColor(map['iconColor']),
-      textStyle: _wrapTextStyle(map['textStyle']),
-      tapTargetSize: _parseMaterialTapTargetSize(map['tapTargetSize']),
+      foregroundColor: foregroundColor,
+      backgroundColor: backgroundColor,
+      overlayColor: overlayColor,
+      shadowColor: shadowColor,
+      surfaceTintColor: surfaceTintColor,
+      elevation: elevation,
+      padding: padding,
+      minimumSize: minimumSize,
+      maximumSize: maximumSize,
+      fixedSize: fixedSize,
+      iconSize: iconSize,
+      iconColor: iconColor,
+      textStyle: textStyle,
+      tapTargetSize: tapTargetSize,
     );
   }
 
@@ -168,35 +245,90 @@ class TomStyleResolvers {
   /// - `prefixStyle` (Map): TextStyle specification
   /// - `suffixStyle` (Map): TextStyle specification
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static InputDecoration? parseInputDecoration(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
+    final labelText = _asString(map['labelText']);
+    final hintText = _asString(map['hintText']);
+    final helperText = _asString(map['helperText']);
+    final errorText = _asString(map['errorText']);
+    final counterText = _asString(map['counterText']);
+    final prefixText = _asString(map['prefixText']);
+    final suffixText = _asString(map['suffixText']);
+    final fillColor = _parseColor(map['fillColor']);
+    final focusColor = _parseColor(map['focusColor']);
+    final hoverColor = _parseColor(map['hoverColor']);
+    final iconColor = _parseColor(map['iconColor']);
+    final prefixIconColor = _parseColor(map['prefixIconColor']);
+    final suffixIconColor = _parseColor(map['suffixIconColor']);
+    final filled = _asBool(map['filled']);
+    final isDense = _asBool(map['isDense']);
+    final isCollapsed = _asBool(map['isCollapsed']);
+    final contentPadding = _parseEdgeInsets(map['contentPadding']);
+    final labelStyle = parseTextStyle(_asStringMap(map['labelStyle']));
+    final hintStyle = parseTextStyle(_asStringMap(map['hintStyle']));
+    final helperStyle = parseTextStyle(_asStringMap(map['helperStyle']));
+    final errorStyle = parseTextStyle(_asStringMap(map['errorStyle']));
+    final counterStyle = parseTextStyle(_asStringMap(map['counterStyle']));
+    final prefixStyle = parseTextStyle(_asStringMap(map['prefixStyle']));
+    final suffixStyle = parseTextStyle(_asStringMap(map['suffixStyle']));
+
+    if (_nothingContributed([
+      labelText,
+      hintText,
+      helperText,
+      errorText,
+      counterText,
+      prefixText,
+      suffixText,
+      fillColor,
+      focusColor,
+      hoverColor,
+      iconColor,
+      prefixIconColor,
+      suffixIconColor,
+      filled,
+      isDense,
+      isCollapsed,
+      contentPadding,
+      labelStyle,
+      hintStyle,
+      helperStyle,
+      errorStyle,
+      counterStyle,
+      prefixStyle,
+      suffixStyle,
+    ])) {
+      return null;
+    }
+
     return InputDecoration(
-      labelText: _asString(map['labelText']),
-      hintText: _asString(map['hintText']),
-      helperText: _asString(map['helperText']),
-      errorText: _asString(map['errorText']),
-      counterText: _asString(map['counterText']),
-      prefixText: _asString(map['prefixText']),
-      suffixText: _asString(map['suffixText']),
-      fillColor: _parseColor(map['fillColor']),
-      focusColor: _parseColor(map['focusColor']),
-      hoverColor: _parseColor(map['hoverColor']),
-      iconColor: _parseColor(map['iconColor']),
-      prefixIconColor: _parseColor(map['prefixIconColor']),
-      suffixIconColor: _parseColor(map['suffixIconColor']),
-      filled: _asBool(map['filled']),
-      isDense: _asBool(map['isDense']),
-      isCollapsed: _asBool(map['isCollapsed']) ?? false,
-      contentPadding: _parseEdgeInsets(map['contentPadding']),
-      labelStyle: parseTextStyle(_asStringMap(map['labelStyle'])),
-      hintStyle: parseTextStyle(_asStringMap(map['hintStyle'])),
-      helperStyle: parseTextStyle(_asStringMap(map['helperStyle'])),
-      errorStyle: parseTextStyle(_asStringMap(map['errorStyle'])),
-      counterStyle: parseTextStyle(_asStringMap(map['counterStyle'])),
-      prefixStyle: parseTextStyle(_asStringMap(map['prefixStyle'])),
-      suffixStyle: parseTextStyle(_asStringMap(map['suffixStyle'])),
+      labelText: labelText,
+      hintText: hintText,
+      helperText: helperText,
+      errorText: errorText,
+      counterText: counterText,
+      prefixText: prefixText,
+      suffixText: suffixText,
+      fillColor: fillColor,
+      focusColor: focusColor,
+      hoverColor: hoverColor,
+      iconColor: iconColor,
+      prefixIconColor: prefixIconColor,
+      suffixIconColor: suffixIconColor,
+      filled: filled,
+      isDense: isDense,
+      isCollapsed: isCollapsed ?? false,
+      contentPadding: contentPadding,
+      labelStyle: labelStyle,
+      hintStyle: hintStyle,
+      helperStyle: helperStyle,
+      errorStyle: errorStyle,
+      counterStyle: counterStyle,
+      prefixStyle: prefixStyle,
+      suffixStyle: suffixStyle,
     );
   }
 
@@ -220,16 +352,33 @@ class TomStyleResolvers {
   /// - `elevation` (double): Elevation value
   /// - `padding` (EdgeInsets format): Padding specification
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static MenuStyle? parseMenuStyle(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
+    final backgroundColor = _wrapColor(map['backgroundColor']);
+    final shadowColor = _wrapColor(map['shadowColor']);
+    final surfaceTintColor = _wrapColor(map['surfaceTintColor']);
+    final elevation = _wrapDouble(map['elevation']);
+    final padding = _wrapEdgeInsets(map['padding']);
+
+    if (_nothingContributed([
+      backgroundColor,
+      shadowColor,
+      surfaceTintColor,
+      elevation,
+      padding,
+    ])) {
+      return null;
+    }
+
     return MenuStyle(
-      backgroundColor: _wrapColor(map['backgroundColor']),
-      shadowColor: _wrapColor(map['shadowColor']),
-      surfaceTintColor: _wrapColor(map['surfaceTintColor']),
-      elevation: _wrapDouble(map['elevation']),
-      padding: _wrapEdgeInsets(map['padding']),
+      backgroundColor: backgroundColor,
+      shadowColor: shadowColor,
+      surfaceTintColor: surfaceTintColor,
+      elevation: elevation,
+      padding: padding,
     );
   }
 
@@ -251,37 +400,44 @@ class TomStyleResolvers {
   /// - `borderRadius` (dynamic): BorderRadius specification
   /// - `side` (Map): BorderSide specification
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static ShapeBorder? parseShapeBorder(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
-    final type = _asString(map['type'])?.toLowerCase() ?? 'rounded';
-    final side = parseBorderSide(_asStringMap(map['side'])) ??
-        BorderSide.none;
+    // An unrecognised name contributes nothing, exactly like an unrecognised
+    // key: reading it as `rounded` would turn a typo into a real shape.
+    const shapes = {'rounded', 'stadium', 'circle', 'beveled', 'continuous'};
+    final name = _asString(map['type'])?.toLowerCase();
+    final type = shapes.contains(name) ? name : null;
+    final side = parseBorderSide(_asStringMap(map['side']));
+    final borderRadius = parseBorderRadius(map['borderRadius']);
+
+    if (_nothingContributed([type, side, borderRadius])) return null;
+
+    final resolvedSide = side ?? BorderSide.none;
+    final resolvedRadius = borderRadius ?? BorderRadius.zero;
 
     switch (type) {
       case 'stadium':
-        return StadiumBorder(side: side);
+        return StadiumBorder(side: resolvedSide);
       case 'circle':
-        return CircleBorder(side: side);
+        return CircleBorder(side: resolvedSide);
       case 'beveled':
         return BeveledRectangleBorder(
-          borderRadius: parseBorderRadius(map['borderRadius']) ??
-              BorderRadius.zero,
-          side: side,
+          borderRadius: resolvedRadius,
+          side: resolvedSide,
         );
       case 'continuous':
         return ContinuousRectangleBorder(
-          borderRadius: parseBorderRadius(map['borderRadius']) ??
-              BorderRadius.zero,
-          side: side,
+          borderRadius: resolvedRadius,
+          side: resolvedSide,
         );
       case 'rounded':
       default:
         return RoundedRectangleBorder(
-          borderRadius: parseBorderRadius(map['borderRadius']) ??
-              BorderRadius.zero,
-          side: side,
+          borderRadius: resolvedRadius,
+          side: resolvedSide,
         );
     }
   }
@@ -304,15 +460,23 @@ class TomStyleResolvers {
   /// - `style` (String): "solid" or "none"
   /// - `strokeAlign` (double): -1.0 (inside), 0.0 (center), 1.0 (outside)
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static BorderSide? parseBorderSide(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
+    final color = _parseColor(map['color']);
+    final width = _parseDouble(map['width']);
+    final style = _parseBorderStyle(map['style']);
+    final strokeAlign = _parseDouble(map['strokeAlign']);
+
+    if (_nothingContributed([color, width, style, strokeAlign])) return null;
+
     return BorderSide(
-      color: _parseColor(map['color']) ?? const Color(0xFF000000),
-      width: _parseDouble(map['width']) ?? 1.0,
-      style: _parseBorderStyle(map['style']),
-      strokeAlign: _parseDouble(map['strokeAlign']) ?? BorderSide.strokeAlignInside,
+      color: color ?? const Color(0xFF000000),
+      width: width ?? 1.0,
+      style: style ?? BorderStyle.solid,
+      strokeAlign: strokeAlign ?? BorderSide.strokeAlignInside,
     );
   }
 
@@ -334,7 +498,8 @@ class TomStyleResolvers {
   ///   number for circular radius)
   /// - Map with `all` (number for uniform circular radius)
   ///
-  /// Returns `null` if value is null or parsing fails.
+  /// Returns `null` if the value is absent, or is a form or a map out of which
+  /// nothing usable can be read — never a default-constructed object.
   static BorderRadius? parseBorderRadius(dynamic value) {
     if (value == null) return null;
 
@@ -344,15 +509,21 @@ class TomStyleResolvers {
     if (value is Map<String, dynamic>) {
       final all = _asNum(value['all']);
       if (all != null) return BorderRadius.circular(all.toDouble());
+
+      final topLeft = _asNum(value['topLeft'])?.toDouble();
+      final topRight = _asNum(value['topRight'])?.toDouble();
+      final bottomLeft = _asNum(value['bottomLeft'])?.toDouble();
+      final bottomRight = _asNum(value['bottomRight'])?.toDouble();
+
+      if (_nothingContributed([topLeft, topRight, bottomLeft, bottomRight])) {
+        return null;
+      }
+
       return BorderRadius.only(
-        topLeft: Radius.circular(
-            _asNum(value['topLeft'])?.toDouble() ?? 0),
-        topRight: Radius.circular(
-            _asNum(value['topRight'])?.toDouble() ?? 0),
-        bottomLeft: Radius.circular(
-            _asNum(value['bottomLeft'])?.toDouble() ?? 0),
-        bottomRight: Radius.circular(
-            _asNum(value['bottomRight'])?.toDouble() ?? 0),
+        topLeft: Radius.circular(topLeft ?? 0),
+        topRight: Radius.circular(topRight ?? 0),
+        bottomLeft: Radius.circular(bottomLeft ?? 0),
+        bottomRight: Radius.circular(bottomRight ?? 0),
       );
     }
 
@@ -384,19 +555,33 @@ class TomStyleResolvers {
   ///   `spreadRadius`, `offset`
   /// - `shape` (String): "rectangle" or "circle" (default "rectangle")
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static Decoration? parseDecoration(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
-    final shapeStr = _asString(map['shape'])?.toLowerCase() ?? 'rectangle';
+    // As in `parseShapeBorder`: only a name Flutter knows counts as given.
+    const shapes = {'rectangle', 'circle'};
+    final shapeName = _asString(map['shape'])?.toLowerCase();
+    final shape = shapes.contains(shapeName) ? shapeName : null;
+    final isCircle = shape == 'circle';
+
+    final color = _parseColor(map['color']);
+    final borderRadius =
+        isCircle ? null : parseBorderRadius(map['borderRadius']);
+    final border = _parseBoxBorder(map['border']);
+    final boxShadow = _parseBoxShadowList(map['boxShadow']);
+
+    if (_nothingContributed([shape, color, borderRadius, border, boxShadow])) {
+      return null;
+    }
 
     return BoxDecoration(
-      color: _parseColor(map['color']),
-      borderRadius:
-          shapeStr == 'circle' ? null : parseBorderRadius(map['borderRadius']),
-      shape: shapeStr == 'circle' ? BoxShape.circle : BoxShape.rectangle,
-      border: _parseBoxBorder(map['border']),
-      boxShadow: _parseBoxShadowList(map['boxShadow']),
+      color: color,
+      borderRadius: borderRadius,
+      shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+      border: border,
+      boxShadow: boxShadow,
     );
   }
 
@@ -418,15 +603,25 @@ class TomStyleResolvers {
   /// - `minHeight` (double): Minimum height (default 0.0)
   /// - `maxHeight` (double): Maximum height (default infinity)
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static BoxConstraints? parseBoxConstraints(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
+    final minWidth = _parseDouble(map['minWidth']);
+    final maxWidth = _parseDouble(map['maxWidth']);
+    final minHeight = _parseDouble(map['minHeight']);
+    final maxHeight = _parseDouble(map['maxHeight']);
+
+    if (_nothingContributed([minWidth, maxWidth, minHeight, maxHeight])) {
+      return null;
+    }
+
     return BoxConstraints(
-      minWidth: _parseDouble(map['minWidth']) ?? 0.0,
-      maxWidth: _parseDouble(map['maxWidth']) ?? double.infinity,
-      minHeight: _parseDouble(map['minHeight']) ?? 0.0,
-      maxHeight: _parseDouble(map['maxHeight']) ?? double.infinity,
+      minWidth: minWidth ?? 0.0,
+      maxWidth: maxWidth ?? double.infinity,
+      minHeight: minHeight ?? 0.0,
+      maxHeight: maxHeight ?? double.infinity,
     );
   }
 
@@ -446,7 +641,8 @@ class TomStyleResolvers {
   /// - String: named alignment ("topLeft", "center", "bottomRight", etc.)
   /// - Map: {x: double, y: double} for custom alignment
   ///
-  /// Returns `null` if value is null or parsing fails.
+  /// Returns `null` if the value is absent, or is a form or a map out of which
+  /// nothing usable can be read — never a default-constructed object.
   static AlignmentGeometry? parseAlignment(dynamic value) {
     if (value == null) return null;
 
@@ -511,7 +707,8 @@ class TomStyleResolvers {
   /// - Map: {dx: double, dy: double} or {x: double, y: double}
   /// - List: [dx, dy]
   ///
-  /// Returns `null` if value is null or parsing fails.
+  /// Returns `null` if the value is absent, or is a form or a map out of which
+  /// nothing usable can be read — never a default-constructed object.
   static Offset? parseOffset(dynamic value) {
     if (value == null) return null;
 
@@ -548,34 +745,45 @@ class TomStyleResolvers {
   /// - `horizontalInside`, `verticalInside` (Map): BorderSide specifications
   /// - `all` (Map): Uniform BorderSide for all sides
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static TableBorder? parseTableBorder(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
     // Shorthand: 'all' applies to every side
-    if (map.containsKey('all')) {
-      final side =
-          parseBorderSide(_asStringMap(map['all'])) ?? BorderSide.none;
+    final all = parseBorderSide(_asStringMap(map['all']));
+    if (all != null) {
       return TableBorder(
-        top: side,
-        right: side,
-        bottom: side,
-        left: side,
-        horizontalInside: side,
-        verticalInside: side,
+        top: all,
+        right: all,
+        bottom: all,
+        left: all,
+        horizontalInside: all,
+        verticalInside: all,
       );
     }
 
+    final top = parseBorderSide(_asStringMap(map['top']));
+    final right = parseBorderSide(_asStringMap(map['right']));
+    final bottom = parseBorderSide(_asStringMap(map['bottom']));
+    final left = parseBorderSide(_asStringMap(map['left']));
+    final horizontalInside =
+        parseBorderSide(_asStringMap(map['horizontalInside']));
+    final verticalInside =
+        parseBorderSide(_asStringMap(map['verticalInside']));
+
+    if (_nothingContributed(
+        [top, right, bottom, left, horizontalInside, verticalInside])) {
+      return null;
+    }
+
     return TableBorder(
-      top: parseBorderSide(_asStringMap(map['top'])) ?? BorderSide.none,
-      right: parseBorderSide(_asStringMap(map['right'])) ?? BorderSide.none,
-      bottom: parseBorderSide(_asStringMap(map['bottom'])) ?? BorderSide.none,
-      left: parseBorderSide(_asStringMap(map['left'])) ?? BorderSide.none,
-      horizontalInside:
-          parseBorderSide(_asStringMap(map['horizontalInside'])) ??
-              BorderSide.none,
-      verticalInside: parseBorderSide(_asStringMap(map['verticalInside'])) ??
-          BorderSide.none,
+      top: top ?? BorderSide.none,
+      right: right ?? BorderSide.none,
+      bottom: bottom ?? BorderSide.none,
+      left: left ?? BorderSide.none,
+      horizontalInside: horizontalInside ?? BorderSide.none,
+      verticalInside: verticalInside ?? BorderSide.none,
     );
   }
 
@@ -595,7 +803,8 @@ class TomStyleResolvers {
   /// - String: "comfortable", "compact", "standard", "adaptivePlatformDensity"
   /// - Map: {horizontal: double, vertical: double}
   ///
-  /// Returns `null` if value is null or parsing fails.
+  /// Returns `null` if the value is absent, or is a form or a map out of which
+  /// nothing usable can be read — never a default-constructed object.
   static VisualDensity? parseVisualDensity(dynamic value) {
     if (value == null) return null;
 
@@ -614,9 +823,10 @@ class TomStyleResolvers {
     }
 
     if (value is Map<String, dynamic>) {
-      final h = _parseDouble(value['horizontal']) ?? 0.0;
-      final v = _parseDouble(value['vertical']) ?? 0.0;
-      return VisualDensity(horizontal: h, vertical: v);
+      final h = _parseDouble(value['horizontal']);
+      final v = _parseDouble(value['vertical']);
+      if (_nothingContributed([h, v])) return null;
+      return VisualDensity(horizontal: h ?? 0.0, vertical: v ?? 0.0);
     }
 
     return null;
@@ -647,18 +857,32 @@ class TomStyleResolvers {
   /// - `grade` (double): Icon grade
   /// - `opticalSize` (double): Optical size
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static IconThemeData? parseIconThemeData(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
+    final color = _parseColor(map['color']);
+    final opacity = _parseDouble(map['opacity']);
+    final size = _parseDouble(map['size']);
+    final fill = _parseDouble(map['fill']);
+    final weight = _parseDouble(map['weight']);
+    final grade = _parseDouble(map['grade']);
+    final opticalSize = _parseDouble(map['opticalSize']);
+
+    if (_nothingContributed(
+        [color, opacity, size, fill, weight, grade, opticalSize])) {
+      return null;
+    }
+
     return IconThemeData(
-      color: _parseColor(map['color']),
-      opacity: _parseDouble(map['opacity']),
-      size: _parseDouble(map['size']),
-      fill: _parseDouble(map['fill']),
-      weight: _parseDouble(map['weight']),
-      grade: _parseDouble(map['grade']),
-      opticalSize: _parseDouble(map['opticalSize']),
+      color: color,
+      opacity: opacity,
+      size: size,
+      fill: fill,
+      weight: weight,
+      grade: grade,
+      opticalSize: opticalSize,
     );
   }
 
@@ -684,20 +908,43 @@ class TomStyleResolvers {
   /// - `fontStyle` (String): "normal", "italic"
   /// - `forceStrutHeight` (bool): Whether to force strut height
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static StrutStyle? parseStrutStyle(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
+    final fontFamily = _asString(map['fontFamily']);
+    final fontFamilyFallback =
+        _asList(map['fontFamilyFallback'])?.whereType<String>().toList();
+    final fontSize = _parseDouble(map['fontSize']);
+    final height = _parseDouble(map['height']);
+    final leading = _parseDouble(map['leading']);
+    final fontWeight = _parseFontWeight(map['fontWeight']);
+    final fontStyle = _parseFontStyle(map['fontStyle']);
+    final forceStrutHeight = _asBool(map['forceStrutHeight']);
+
+    if (_nothingContributed([
+      fontFamily,
+      fontFamilyFallback,
+      fontSize,
+      height,
+      leading,
+      fontWeight,
+      fontStyle,
+      forceStrutHeight,
+    ])) {
+      return null;
+    }
+
     return StrutStyle(
-      fontFamily: _asString(map['fontFamily']),
-      fontFamilyFallback:
-          _asList(map['fontFamilyFallback'])?.whereType<String>().toList(),
-      fontSize: _parseDouble(map['fontSize']),
-      height: _parseDouble(map['height']),
-      leading: _parseDouble(map['leading']),
-      fontWeight: _parseFontWeight(map['fontWeight']),
-      fontStyle: _parseFontStyle(map['fontStyle']),
-      forceStrutHeight: _asBool(map['forceStrutHeight']),
+      fontFamily: fontFamily,
+      fontFamilyFallback: fontFamilyFallback,
+      fontSize: fontSize,
+      height: height,
+      leading: leading,
+      fontWeight: fontWeight,
+      fontStyle: fontStyle,
+      forceStrutHeight: forceStrutHeight,
     );
   }
 
@@ -718,7 +965,8 @@ class TomStyleResolvers {
   /// - `applyHeightToLastDescent` (bool): Apply height to last descent (default true)
   /// - `leadingDistribution` (String): "proportional" or "even"
   ///
-  /// Returns `null` if no map is found or parsing fails.
+  /// Returns `null` if the map is absent, empty, or contains no key this
+  /// parser can use — never a default-constructed object.
   static TextHeightBehavior? parseTextHeightBehavior(
       Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
@@ -736,11 +984,20 @@ class TomStyleResolvers {
       }
     }
 
+    final applyHeightToFirstAscent = _asBool(map['applyHeightToFirstAscent']);
+    final applyHeightToLastDescent = _asBool(map['applyHeightToLastDescent']);
+
+    if (_nothingContributed([
+      applyHeightToFirstAscent,
+      applyHeightToLastDescent,
+      leadingDistribution,
+    ])) {
+      return null;
+    }
+
     return TextHeightBehavior(
-      applyHeightToFirstAscent:
-          _asBool(map['applyHeightToFirstAscent']) ?? true,
-      applyHeightToLastDescent:
-          _asBool(map['applyHeightToLastDescent']) ?? true,
+      applyHeightToFirstAscent: applyHeightToFirstAscent ?? true,
+      applyHeightToLastDescent: applyHeightToLastDescent ?? true,
       leadingDistribution:
           leadingDistribution ?? TextLeadingDistribution.proportional,
     );
@@ -767,7 +1024,8 @@ class TomStyleResolvers {
   /// - "page": [PageScrollPhysics]
   /// - "fixedExtent": [FixedExtentScrollPhysics]
   ///
-  /// Returns `null` if value is null or unrecognized.
+  /// Returns `null` if the value is absent or names no physics this parser
+  /// knows.
   static ScrollPhysics? parseScrollPhysics(dynamic value) {
     if (value == null) return null;
 
@@ -810,6 +1068,21 @@ class TomStyleResolvers {
   // ===========================================================================
   // Private Parsing Helpers
   // ===========================================================================
+
+  /// Whether a map yielded nothing a parser could use.
+  ///
+  /// Pass the parsed values, not the raw map entries: every helper in this
+  /// class returns `null` for a key that is absent, unrecognised *or* present
+  /// with an unusable value, so an all-`null` list means the map contributed
+  /// nothing however it came to be wrong. Checking raw key presence instead
+  /// would let `{'fontSize': 'large'}` through as "specified".
+  ///
+  /// A parser that returned its object anyway would hand back one built
+  /// entirely from Flutter's defaults, which the caller cannot tell from a
+  /// deliberate style — [TomCtr.textStyle] answers the same question the same
+  /// way for the resource-tree half of the module.
+  static bool _nothingContributed(List<Object?> values) =>
+      values.every((value) => value == null);
 
   static double? _parseDouble(dynamic value) {
     if (value == null) return null;
@@ -984,7 +1257,10 @@ class TomStyleResolvers {
     return null;
   }
 
-  static BorderStyle _parseBorderStyle(dynamic value) {
+  /// Nullable like every other helper here, so [_nothingContributed] can see
+  /// that an absent or unrecognised `style` contributed nothing. The caller
+  /// applies Flutter's own `BorderStyle.solid` default.
+  static BorderStyle? _parseBorderStyle(dynamic value) {
     if (value is String) {
       switch (value.toLowerCase()) {
         case 'none':
@@ -993,7 +1269,7 @@ class TomStyleResolvers {
           return BorderStyle.solid;
       }
     }
-    return BorderStyle.solid;
+    return null;
   }
 
   static BoxBorder? _parseBoxBorder(dynamic value) {

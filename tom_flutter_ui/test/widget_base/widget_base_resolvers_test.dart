@@ -278,4 +278,84 @@ void main() {
       expect(b.leadingDistribution, TextLeadingDistribution.even);
     });
   });
+
+  /// A non-empty map out of which no parser can read anything is the case a
+  /// caller cannot see for itself.
+  ///
+  /// `parse…(map) ?? fallback` is the shape the API invites, and it only works
+  /// if a map that contributed nothing comes back `null`. Returning a
+  /// fully-default object instead makes a typo'd bundle render plausibly —
+  /// `TextStyle()` inherits from the ambient theme — so the fallback never runs
+  /// and nothing reports the mistake.
+  ///
+  /// Every parser is listed rather than a representative few: the property is
+  /// uniform, and one parser quietly left out is exactly the silent channel
+  /// this closes.
+  group('a map that contributes nothing resolves to null', () {
+    /// Keys no parser reads, holding values no parser could use.
+    const unrecognised = <String, dynamic>{'nonsense': 1, 'alsoNonsense': 'x'};
+
+    /// Every parser, keyed by name so a failure names the culprit.
+    ///
+    /// The five that take `dynamic` are assignable here: a function accepting
+    /// `dynamic` accepts a map.
+    final parsers = <String, Object? Function(Map<String, dynamic>)>{
+      'parseTextStyle': TomStyleResolvers.parseTextStyle,
+      'parseButtonStyle': TomStyleResolvers.parseButtonStyle,
+      'parseInputDecoration': TomStyleResolvers.parseInputDecoration,
+      'parseMenuStyle': TomStyleResolvers.parseMenuStyle,
+      'parseShapeBorder': TomStyleResolvers.parseShapeBorder,
+      'parseBorderSide': TomStyleResolvers.parseBorderSide,
+      'parseBorderRadius': TomStyleResolvers.parseBorderRadius,
+      'parseDecoration': TomStyleResolvers.parseDecoration,
+      'parseBoxConstraints': TomStyleResolvers.parseBoxConstraints,
+      'parseAlignment': TomStyleResolvers.parseAlignment,
+      'parseOffset': TomStyleResolvers.parseOffset,
+      'parseTableBorder': TomStyleResolvers.parseTableBorder,
+      'parseVisualDensity': TomStyleResolvers.parseVisualDensity,
+      'parseIconThemeData': TomStyleResolvers.parseIconThemeData,
+      'parseStrutStyle': TomStyleResolvers.parseStrutStyle,
+      'parseTextHeightBehavior': TomStyleResolvers.parseTextHeightBehavior,
+      'parseScrollPhysics': TomStyleResolvers.parseScrollPhysics,
+    };
+
+    test('the list covers every parser in the class', () {
+      // Guards the guard: a parser added later and not listed here would be
+      // exempt from the property without anything saying so.
+      expect(parsers, hasLength(17));
+    });
+
+    for (final entry in parsers.entries) {
+      test('${entry.key} returns null for unrecognised keys', () {
+        expect(
+          entry.value(unrecognised),
+          isNull,
+          reason: '${entry.key} built an object out of a map it could read '
+              'nothing from, so a caller writing `?? fallback` silently gets '
+              'the default object instead of its fallback',
+        );
+      });
+    }
+
+    /// A key the parser knows, holding a value it cannot use, is the same
+    /// situation: nothing was contributed. This is the sharper half of the
+    /// property, because the map *looks* right to whoever wrote it.
+    test('a recognised key holding an unusable value contributes nothing', () {
+      expect(TomStyleResolvers.parseTextStyle({'fontSize': 'large'}), isNull);
+      expect(TomStyleResolvers.parseBorderSide({'width': 'thick'}), isNull);
+      expect(TomStyleResolvers.parseIconThemeData({'size': []}), isNull);
+    });
+
+    /// The tolerance this must not cost: one bad key among good ones still
+    /// yields the partially-populated object rather than nothing at all.
+    test('one unusable key among usable ones still yields an object', () {
+      final style = TomStyleResolvers.parseTextStyle({
+        'fontSize': 12,
+        'fontWeight': 'nonsense',
+      });
+      expect(style, isNotNull);
+      expect(style!.fontSize, 12);
+      expect(style.fontWeight, isNull);
+    });
+  });
 }

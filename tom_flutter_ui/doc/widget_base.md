@@ -220,9 +220,28 @@ the boundary.
 | `parseTextHeightBehavior` / `resolveTextHeightBehavior` | `TextHeightBehavior` |
 | `parseScrollPhysics` / `resolveScrollPhysics` | `ScrollPhysics` (bouncing / clamping / never / always / page / fixedExtent) |
 
-All parsers return `null` for a `null`/empty map and skip unrecognised values,
-so a partially-specified resource map yields a partially-populated object rather
-than an error.
+All parsers skip an entry they cannot use rather than raising, so a
+partially-specified resource map yields a partially-populated object rather than
+an error. They return `null` in the other case — when the input contributed
+*nothing*, whether it was `null`, empty, or held only keys and values no parser
+reads. Those are the only two outcomes; none of them has a failure mode.
+
+The distinction matters at the call site, where `parseX(map) ?? fallback` is the
+shape the API invites. It only reaches the fallback if a map that contributed
+nothing comes back `null`. A default-constructed object would render plausibly
+instead — `TextStyle()` inherits from the ambient theme — so a typo'd bundle
+would look styled, the fallback would never run, and nothing would report the
+mistake. `TomCtr.textStyle` answers the same question the same way for the
+resource-tree half of the module.
+
+An unrecognised value for `type` in `parseShapeBorder` or `shape` in
+`parseDecoration` counts as contributing nothing, on the same grounds: reading
+a misspelled name as the default shape would turn a typo into a real shape.
+
+[`test/widget_base/widget_base_resolvers_test.dart`](../test/widget_base/widget_base_resolvers_test.dart)
+asserts the `null` return for every one of the 17 parsers, and holds its own
+list of them to the class's member count so a parser added later cannot be
+exempt in silence.
 
 ## Dependencies
 
