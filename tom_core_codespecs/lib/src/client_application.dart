@@ -1,7 +1,7 @@
 /// The client-application descriptor a CodeSpec's `@CsClient` (CE-CL) is built on.
 ///
-/// **Why this is a gap (csm2r7 survey `codespecs_mapping.md` §1.1b).**
-/// `tom_core` has no client-application *descriptor* root:
+/// **Why this is a gap (csm2r7 survey `codespecs_mapping.md` §1.1
+/// pillar (b)).** `tom_core` has no client-application *descriptor* root:
 /// `TomAuthenticationData` carries a `client` id string and
 /// `TomClientRemoteContext` models a live connection, but neither names the
 /// client application as a first-class, spec-authorable unit (its id,

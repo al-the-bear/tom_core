@@ -4,11 +4,11 @@
 /// a CodeSpec instantiates must be a `tom_core`-family class — one of the four
 /// packages `tom_core_kernel`, `tom_core_flutter`, `tom_core_server`, and
 /// `tom_flutter_ui` (the fourth basis, dsb6 /
-/// `codespecs_mapping.md` §1.1b). Prefer reusing an existing `tom_core` class
-/// directly; only the **concrete** gap classes `tom_core` genuinely lacks live
-/// here — **never abstract `Cs*` bases** (the framework carries annotations
-/// only, `codespecs_mapping.md` §1.1) — keeping `tom_core` clean of
-/// CodeSpecs-only concerns.
+/// `codespecs_mapping.md` §1.1 pillar (b)). Prefer reusing an existing
+/// `tom_core` class directly; only the **concrete** gap classes `tom_core`
+/// genuinely lacks live here — **never abstract `Cs*` bases** (the framework
+/// carries annotations only, `codespecs_mapping.md` §1.1) — keeping
+/// `tom_core` clean of CodeSpecs-only concerns.
 ///
 /// The gap classes are authored by the CodeSpecs waves: csm4 surveys `tom_core`
 /// per part (reuse / extend / new-in-codespecs) and the genuine gaps land here.
@@ -23,10 +23,11 @@
 /// therefore not a gap class — it belongs in the package whose type it needs,
 /// since taking the dependency here would retract both of those decisions.
 ///
-/// **csm2r7 — the four new parts (`codespecs_mapping.md` §1.1b).** CE-AU
-/// (Authentication) reuses `tom_core_server` `TomAuthenticationService`* and
-/// CE-CF (ServerConfiguration) reuses `TomBaseServerConfiguration`, so neither
-/// needs a gap class. CE-CC (ClientConfiguration) reuses `tom_core_flutter`'s
+/// **csm2r7 — the four new parts (`codespecs_mapping.md` §1.1 pillar (b)).**
+/// CE-AU (Authentication) reuses `tom_core_server`
+/// `TomAuthenticationService`* and CE-CF (ServerConfiguration) reuses
+/// `TomBaseServerConfiguration`, so neither needs a gap class. CE-CC
+/// (ClientConfiguration) reuses `tom_core_flutter`'s
 /// `TomBaseClientConfiguration` / `TomSetting<T>` /
 /// `TomClientConfigurationStore` (`codespecs_mapping.md` §4.1/§5.16), which is
 /// the (client app, machine) holder with no user in the key — so it needs no

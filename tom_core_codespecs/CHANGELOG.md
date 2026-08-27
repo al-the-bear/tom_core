@@ -52,6 +52,18 @@
   duplicate cases assert the *message*, not just `ArgumentError`: a repeated
   dimension key also trips the key-claimed-by-both check, so a weaker matcher
   passes with the duplicate check deleted.
+- Docs only: three dartdoc sites and one CHANGELOG entry cited
+  `codespecs_mapping.md` **§1.1b**, which that document does not contain. The
+  referent is §1.1's lettered pillar **(b)**, carried as a bold inline marker
+  under one heading rather than as a heading of its own. The package already
+  wrote it correctly in `README.md`, so one passage was cited two ways. All
+  four now match the README's `§1.1 pillar (b)`.
+- The form was plausible because lettered sections are real in this tree —
+  `acl_design_specification.md` genuinely has `## 26b.` — so the convention was
+  borrowed from a document that has it to one that does not.
+  `check_section_refs` cannot see that: it asks whether a `§` reference *names*
+  a document, never whether the number is in it, which is why a citation naming
+  the right file and the wrong section outlived the ones naming no file at all.
 
 ## 0.11.0
 
@@ -272,9 +284,9 @@
 ## 0.2.0
 
 - csm2r7: add the first concrete gap classes for the four new csm2r5 parts
-  (survey `codespecs_mapping.md` §1.1b). CE-AU (Authentication) and CE-CF
-  (ServerConfiguration) reuse existing `tom_core` classes; the three parts with
-  no `tom_core` holder land here:
+  (survey `codespecs_mapping.md` §1.1 pillar (b)). CE-AU (Authentication) and
+  CE-CF (ServerConfiguration) reuse existing `tom_core` classes; the three
+  parts with no `tom_core` holder land here:
   - `TomClientApplication` (CE-CL) — client-application descriptor.
   - `TomClientConfiguration` (CE-CC) — per-machine client config holder.
   - `TomUserSettings` + `enum TomUserSettingsPersistence { local, roaming }`
