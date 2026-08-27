@@ -26,6 +26,17 @@
   rule it follows from: the `Cs*Ref` family lives in `tom_code_specs`, and
   `tom_core`-family classes hold plain ids, so an edge wanting a typed ref
   belongs on the annotation. Same rule as `TomJobDeclaration`'s report targets.
+- Docs only: the README's CE-LO row named six of the seven layout symbols,
+  dropping `TomLayoutNode` — the sealed base that types
+  `TomLayoutContainerNode.children` and `TomLayoutModel.findNode`'s return, and
+  whose sealedness is what makes the two-layer reconcile exhaustive. A reader
+  working from the README could see neither. The row now names it ahead of its
+  two subtypes, so the hierarchy reads in order.
+- A test pins the inventory: every public top-level declaration under `lib/src`
+  must be named in the README. Only that direction is checkable — the README
+  legitimately names types from other packages — but it is the direction that
+  drifted, and dropping one name from a parenthesised list is exactly the edit
+  review does not catch.
 
 ## 0.11.0
 

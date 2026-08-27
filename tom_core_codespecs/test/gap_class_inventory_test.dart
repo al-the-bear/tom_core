@@ -148,4 +148,50 @@ void main() {
       );
     });
   });
+
+  group('tcinc936: the README enumerates every public declaration', () {
+    // **Why this is pinned.** The README's per-part table is this package's
+    // only inventory of what it ships, and the CE-LO row silently dropped
+    // TomLayoutNode — the sealed base that types TomLayoutContainerNode's
+    // children and TomLayoutModel.findNode's return. A reader working from the
+    // README could not see either. Omitting one name from a parenthesised list
+    // is invisible on review, which is why it survived: an inventory compared
+    // by eye is an inventory that drifts.
+    //
+    // Only the forward direction is checkable. The README legitimately names
+    // types from other packages (TomGroupedSelect, AclComponent, CsRoleRef),
+    // so "every name in the README is ours" is false by design; "every symbol
+    // of ours is in the README" is the invariant that holds.
+
+    test('every public top-level declaration is named in README.md', () {
+      final declaration = RegExp(
+        r'^(?:abstract |final |sealed |base |interface |mixin )*'
+        r'(?:class|enum|extension|typedef|mixin) ([A-Za-z_]\w*)',
+      );
+      final readme = File('README.md').readAsStringSync();
+      final missing = <String>[];
+
+      for (final entity in Directory('lib/src').listSync()) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final lines = entity.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          final match = declaration.firstMatch(lines[i]);
+          if (match == null) continue;
+          final name = match.group(1)!;
+          if (name.startsWith('_')) continue;
+          if (!readme.contains(name)) {
+            missing.add('$name (${entity.path}:${i + 1})');
+          }
+        }
+      }
+
+      expect(
+        missing,
+        isEmpty,
+        reason: 'Each symbol above is exported but absent from the README '
+            'inventory. Add it to its part row, next to the symbols it '
+            'relates to, rather than to the end of the list.',
+      );
+    });
+  });
 }
