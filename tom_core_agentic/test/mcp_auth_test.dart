@@ -11,7 +11,24 @@ import 'package:test/test.dart';
 void main() {
   group('mcp_auth contract constants', () {
     test('bearerTokenMetaKey is the agreed namespaced _meta slot', () {
-      expect(bearerTokenMetaKey, equals('tomBrainBearerToken'));
+      expect(bearerTokenMetaKey, equals('tomBearerToken'));
+    });
+
+    test('bearerTokenMetaKey is scoped to the framework, not to a package', () {
+      // The key is the only part of this module that a client and a
+      // server must agree on out of band, so it is the only part whose
+      // name cannot be corrected by the compiler later. It read
+      // `tomBrainBearerToken` while the constant lived in `tom_brain`,
+      // which would have had a planning or procedure server presenting
+      // its token under a key named for a package it does not depend on.
+      expect(bearerTokenMetaKey, startsWith('tom'));
+      for (final package in const ['Brain', 'Memory', 'Access', 'Agentic']) {
+        expect(
+          bearerTokenMetaKey,
+          isNot(contains(package)),
+          reason: 'the shared wire key must not name one framework package',
+        );
+      }
     });
 
     test('bearerAuthRpcErrorCode sits in the JSON-RPC server-defined range', () {

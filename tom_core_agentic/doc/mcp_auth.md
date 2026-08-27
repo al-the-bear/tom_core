@@ -42,9 +42,18 @@ final initializeMeta = <String, Object?>{
 };
 ```
 
-The key is namespaced (`tomBrainBearerToken`) so it cannot collide with the MCP
+The key is namespaced (`tomBearerToken`) so it cannot collide with the MCP
 standard `_meta.progressToken` reservation or with any other `_meta` consumer a
 host layers on.
+
+The `tom` prefix scopes it to the **framework**, not to a package in it. The
+value read `tomBrainBearerToken` while the constant lived in `tom_brain`, which
+would have had every future MCP server here — a planning server, a procedure
+server — presenting its token under a key named for a package it does not depend
+on. This is the one value in the module worth being careful about: every other
+part of the contract is a Dart symbol a consumer can rename freely, whereas the
+`_meta` key is the single thing a client and a server agree on **out of band**,
+so it is the hardest element to change once independent implementations exist.
 
 ## Translating a Failure
 

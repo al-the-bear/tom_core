@@ -17,6 +17,26 @@
 
 ### Changed
 
+- **Wire key `tomBrainBearerToken` → `tomBearerToken`** (`bearerTokenMetaKey`).
+  The value named `tom_brain` — a package this one does not depend on and never
+  will — from when the constant lived there, so every future MCP server in the
+  framework (a planning server, a procedure server) would have presented its
+  token under a key named for someone else's package, in a package whose barrel
+  and README both advertise "generic, domain-free building blocks". Of the five
+  symbols in the module this is the only one that had to be *renamed* rather
+  than re-exported: the other four are Dart symbols a consumer can rename at
+  will, whereas the `_meta` key is the single thing a client and a server agree
+  on **out of band** — the compiler renames a symbol, only a coordinated
+  release renames a wire key, which is why it was done now, before publication,
+  rather than left. Every Dart consumer reads the constant rather than the
+  literal, so the compiler carried the rename; the only edits were prose and two
+  test expectations. Downstream: `tom_brain_memory`'s MCP server and its
+  `a76_bearer_auth_test.dart` were swept in the same pass — its full suite
+  (1496 tests, including a two-OS-process client/server run over HTTP) is green,
+  so the rename is verified end-to-end on the wire and not merely
+  compile-clean. Coverage: `test/mcp_auth_test.dart` gains a case asserting the
+  key is scoped to the framework and names no package in it, pinning the
+  invariant the rename restored so it cannot quietly regress (513 → 514).
 - **`mcp_auth/` → `bearer_auth/` + `mcp_auth/`**: the bearer-auth module was one
   file holding two unrelated things — a transport-neutral failure taxonomy
   (`BearerTokenAuthenticator<P>`, `BearerAuthFailure`,

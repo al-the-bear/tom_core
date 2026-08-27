@@ -21,10 +21,19 @@ import '../bearer_auth/bearer_auth_contract.dart';
 /// The MCP wire protocol does not carry an `Authorization` header on
 /// stdio / UNIX-socket transports; the only request-level extensibility
 /// point at the `initialize` boundary is the `_meta` map. This well-known
-/// key is the agreed slot. It is namespaced so it does not collide with
-/// the MCP standard `_meta.progressToken` reservation or with other
-/// `_meta` consumers a host might layer on.
-const bearerTokenMetaKey = 'tomBrainBearerToken';
+/// key is the agreed slot.
+///
+/// The `tom` prefix namespaces it twice over: away from the MCP standard
+/// `_meta.progressToken` reservation and any other `_meta` consumer a
+/// host layers on, and *to the framework* rather than to one package in
+/// it. The value read `tomBrainBearerToken` while this constant lived in
+/// `tom_brain`, which made every future MCP server in the framework
+/// present its token under a key named for a package it does not depend
+/// on. Of everything in this module it is the one value that has to be
+/// renamed rather than merely re-exported, because it is the only part a
+/// client and a server agree on out of band — a Dart symbol is renamed by
+/// the compiler, a wire key by a coordinated release.
+const bearerTokenMetaKey = 'tomBearerToken';
 
 /// JSON-RPC error code an MCP server returns when a
 /// [BearerAuthFailure] is raised during the `initialize` handshake.
