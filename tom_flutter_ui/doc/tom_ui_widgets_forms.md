@@ -1052,7 +1052,9 @@ Multi-value concrete classes extend the per-type list field and bind to `TomList
 
 | Abstract Type | Concrete Implementation | Description | Additional Bindings |
 |-------------|----------------------|-------------|-------------------|
-| `TomFormFileField` | `TomFormFileUpload` | Drop zone + browse button | `allowedExtensions`, `maxSize` |
+| `TomFormFileField` | `TomFormFileUpload` | Compact "Choose file…" button | `allowedExtensions`, `maxSizeBytes` |
+| | `TomFormFileDropzone` | Large drop-target surface | `allowedExtensions`, `maxSizeBytes`, `height` |
+| | `TomFormFileThumbnail` | Square preview of the file itself | `allowedExtensions`, `maxSizeBytes`, `thumbnailSize` |
 
 ### TomSelectableSource\<T\> Adapters
 
@@ -5617,7 +5619,7 @@ Multi-value concrete classes extend the per-type list field and bind to `TomList
 
 | Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
 |-------------|----------------------|-----------|-----------|-------------------|-------|
-| `TomFormFileField` | `TomFormFileUpload` **(TBD)** | `FileRef` | `TomNFileRef` **(TBD)** | `allowedExtensions`, `maxSize` | Drop zone + browse |
+| `TomFormFileField` | `TomFormFileUpload` **(TBD)** | `FileRef` | `TomNFileRef` **(TBD)** | `allowedExtensions`, `maxSizeBytes` | Drop zone + browse |
 
 ## C.10. TomSelectableSource\<T\> Adapters
 

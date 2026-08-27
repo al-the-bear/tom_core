@@ -230,13 +230,22 @@ final report = TomFormFileUpload(
 );
 ```
 
+`allowedExtensions` (`List<String>?`, lowercase and without the dot) and
+`maxSizeBytes` (`int?`, inclusive) are the two constraints that make a file
+field refuse a file at all. Either may be left `null` to disable it; a field
+with neither accepts whatever the picker returns.
+
 What the field then does:
 
 1. Opens the registered picker with this field's constraints.
 2. Rejects a file the constraints exclude — a snackbar on Material, a dialog on
    Cupertino — before it ever becomes the value. The same constraints are also
    auto-prepended as `Validator<FileRef?>`s, so a programmatic `setValue` is
-   caught by the normal validation pipeline.
+   caught by the normal validation pipeline. Both routes report the same key —
+   `error.fileExtension` or `error.fileTooLarge` — so wording the refusal once
+   words it everywhere, and the picker's immediate message cannot drift from
+   the validation error the form shows later. `field.checkFile(ref)` returns
+   that key directly, or `null` for a file the field accepts.
 3. Uploads it (unless `autoUpload: false`), showing progress and offering
    cancel and retry.
 4. Replaces the value with one carrying the server's key — which is what makes
