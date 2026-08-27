@@ -33,10 +33,15 @@ final class LlmStreamStarted extends LlmStreamEvent {
   /// [LlmStreamCompleted] / [LlmStreamFailed].
   final String callId;
 
-  /// Provider that was selected for this call.
+  /// Provider that was selected for this call. Equals the emitting provider's
+  /// `id`, and the `providerId` of the [LlmCallReport] the stream terminates
+  /// with.
   final String providerId;
 
-  /// Model id within the provider.
+  /// Model id within the provider — the *resolved* one, after any
+  /// `LlmOptions.model` override, and equal to the terminating report's
+  /// `modelId`. Hardcoding the pair here (which a `const` constructor forces)
+  /// is what makes a stream announce one route and complete on another.
   final String modelId;
 
   const LlmStreamStarted({

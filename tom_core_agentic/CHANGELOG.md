@@ -2,6 +2,30 @@
 
 ### Fixed
 
+- **`llm/`**: the `llm` unit's flagship worked example — the `EchoProvider` a
+  reader copies to write their own provider — broke both of the contracts the
+  prose around it is about. It announced `LlmStreamStarted(providerId: 'echo',
+  modelId: 'echo')` from a `const` constructor while completing with
+  `providerId: id, modelId: options.model ?? 'echo'`, so
+  `EchoProvider('primary')` under `LlmOptions(model: 'sonnet')` opened on one
+  route and terminated on another; the `const` is what forced it, since a const
+  constructor cannot read either value, making the mistake structural rather
+  than a typo. Its `complete()` was
+  `completeStream(...).whereType<LlmStreamCompleted>().first`, which on a
+  failed stream raises a bare `StateError: No element` and discards the
+  `LlmStreamFailed` carrying the reason — every failure reported identically
+  and uninformatively. The example now stamps `id`/`modelId` on Started and
+  drains the stream, rethrowing `failure.cause` or the failure message, which
+  is the shape the shipped provider already had. Root cause: the invariant was
+  real and tested but stated nowhere a copier would read it —
+  `LlmProvider.completeStream` and `LlmStreamStarted`'s field dartdoc only ever
+  constrained the *terminal report*, so nothing said Started had to agree with
+  it. Both now say so. Coverage: the two tests that touched Started asserted
+  its fields against literals that happened to match the report's, which pins
+  two values but not the relationship between them; they now assert the
+  agreement directly, so a provider that hardcoded the pair fails instead of
+  passing.
+
 - **`llm/`**: four documents promised that a provider emits only
   `classCode: 'unknown'`, which the one shipped provider has never done — a
   stream that ends without a terminal result yields `'format'`. The promise was

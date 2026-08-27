@@ -68,6 +68,10 @@ abstract class LlmProvider {
   ///
   /// **Anchor + provenance.** Same invariants as [complete]: the terminal
   /// report MUST carry the prompt's anchor hash, this provider's [id], the
-  /// resolved model id, and the prompt body hash.
+  /// resolved model id, and the prompt body hash. The opening
+  /// [LlmStreamStarted] MUST carry the *same* `providerId` and `modelId` as
+  /// that report — consumers log the route from the first event, long before
+  /// the report exists, and a stream that announces one route and completes
+  /// on another makes the two disagree.
   Stream<LlmStreamEvent> completeStream(WirePrompt prompt, LlmOptions options);
 }

@@ -123,13 +123,18 @@ void main() {
     });
 
     test('Started carries provider id + resolved model', () async {
-      final started = (await provider
-              .completeStream(_wire, LlmOptions.empty)
-              .toList())
-          .whereType<LlmStreamStarted>()
-          .single;
+      final events =
+          await provider.completeStream(_wire, LlmOptions.empty).toList();
+      final started = events.whereType<LlmStreamStarted>().single;
       expect(started.providerId, 'claude:sonnet:none');
       expect(started.modelId, 'claude-sonnet-4-6');
+      // Pinned as a *relationship*, not as two literals that happen to match
+      // the report's: consumers log the route from Started long before the
+      // report exists, so a stream that announced one route and completed on
+      // another would leave the two disagreeing with nothing to catch it.
+      final report = events.whereType<LlmStreamCompleted>().single.report;
+      expect(started.providerId, report.providerId);
+      expect(started.modelId, report.modelId);
     });
 
     test('text blocks stream as chunks; thinking blocks are dropped', () async {
@@ -177,6 +182,9 @@ void main() {
       final completed = events.whereType<LlmStreamCompleted>().single;
       expect(started.modelId, 'claude-opus-4-8');
       expect(completed.report.modelId, 'claude-opus-4-8');
+      // Provenance travels as a pair: an override moves `modelId` on both
+      // events, and `providerId` stays this provider's own id on both.
+      expect(started.providerId, completed.report.providerId);
     });
 
     test('wire prompt is handed to the SDK unmodified, no session id set',
