@@ -16,13 +16,28 @@ the reading end except an absent link nobody was told to expect.
 
 **Why only private names.** The obvious detector is the ``comment_references``
 lint, and it is the wrong tool for this tree. It flags every reference not
-visible in the importing scope, which here is 150-odd *correct* references to
-real classes in sibling files -- ``[TomAuditAnchor]`` from ``audit_sink.dart``,
-``[TomMessageTransport]`` from ``message.dart``. Satisfying it would mean adding
-imports that exist only for prose, several of them cycles (``audit_anchor.dart``
-already imports ``audit_sink.dart``, so the reverse link is a loop). Trading
-import graph clarity for link rendering is a bad trade, and a lint nobody can
-turn on is not a guard.
+visible in the importing scope, which here is hundreds of *correct* references
+to real classes in sibling files -- ``[TomAuditAnchor]`` from
+``audit_sink.dart``, ``[TomMessageTransport]`` from ``message.dart``. Measured
+by the neighbouring ``report_crosslib_refs.py``, 353 of the 5556 bracketed
+references that name a workspace-declared type do not resolve from the library
+writing them (``tom_flutter_ui`` alone: 68 of 744) -- and that is a lower bound
+on the lint's output, which judges SDK names too. Re-run that report before
+revisiting any of this; it exists so these numbers stay checkable rather than
+becoming folklore. Satisfying the lint would mean adding imports that
+exist only for prose, several of them cycles (``audit_anchor.dart`` already
+imports ``audit_sink.dart``, so the reverse link is a loop). Trading import
+graph clarity for link rendering is a bad trade, and a lint nobody can turn on
+is not a guard.
+
+Nor can that backlog be triaged mechanically. Whether a given reference wants an
+import or a demotion to backticks turns on whether the two libraries *ought* to
+depend on each other, which is an architectural judgement and not a property of
+the reference. ``custom/tom_loading_overlay.dart`` linking ``[SlowValidator]``
+over in ``forms/validation`` wanted backticks -- the dependency would have been
+new and wrong; ``[TomForm]`` from ``tom_form_child_container.dart`` plausibly
+wants the link. No single rule separates them, so a checker over this population
+would spend most of its output being wrong.
 
 Private names carry no such ambiguity. ``_foo`` can only ever resolve inside its
 own library, so "does it exist?" is answerable from the library alone, with no

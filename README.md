@@ -172,6 +172,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
+| [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
 python3 tool/check_doc_tocs.py                # the whole repository
@@ -240,12 +241,13 @@ python3 tool/check_dartdoc_refs.py tom_core_server # one subtree
 A `[name]` in a `///` comment renders as a link when it resolves and as plain
 text when it does not, so renaming a member turns every reference to it into
 prose without anything failing. The obvious detector, the `comment_references`
-lint, is the wrong tool here: it flags 150-odd *correct* references to real
-classes in sibling files, and satisfying it would mean adding imports that exist
-only for prose, several of them cycles. This check takes the part of the problem
-that has no such ambiguity — a private name can only ever resolve inside its own
-library, so whether it exists is answerable from that library alone. That is
-also exactly the shape a rename leaves behind.
+lint, is the wrong tool here: it flags hundreds of *correct* references to real
+classes in sibling files (353 of 5556, measured — see `report_crosslib_refs.py`
+below), and satisfying it would mean adding imports that exist only for prose,
+several of them cycles. This check takes the part of the problem that has no
+such ambiguity — a private name can only ever resolve inside its own library, so
+whether it exists is answerable from that library alone. That is also exactly
+the shape a rename leaves behind.
 
 ```bash
 python3 tool/check_consumer_claims.py                 # the whole repository
@@ -319,6 +321,31 @@ here. That rule is cheap to satisfy correctly — write the document name you
 meant — and cannot be satisfied by accident, which is what makes it worth gating
 on. `tom_core_server` is clean; the other packages are not yet, so run it with a
 subtree argument.
+
+```bash
+python3 tool/report_crosslib_refs.py                  # the whole repository
+python3 tool/report_crosslib_refs.py tom_flutter_ui   # one subtree
+```
+
+The odd one out: it **reports and never gates**, and always exits 0. Everything
+above fails a build when it finds something; this cannot, because what it finds
+is not by itself a defect. It counts the population `check_dartdoc_refs.py`
+declines to police — `[Name]` references naming a type this repository declares
+but the writing library cannot see — which is 353 of 5556 repo-wide, and 68 of
+744 in `tom_flutter_ui` alone.
+
+It exists so that number stays checkable instead of becoming folklore. The
+decision to leave public references alone rests on the population being large
+and untriageable, and a claim like that decays in silence — exactly what the
+checks above are for. Untriageable is the operative half: whether a given
+reference wants an import or a demotion to backticks turns on whether the two
+libraries *ought* to depend on each other, which is an architectural judgement
+and not a property of the reference. `custom/tom_loading_overlay.dart` linking
+`[SlowValidator]` over in `forms/validation` wanted backticks — that dependency
+would have been new and wrong; `[TomForm]` from `tom_form_child_container.dart`
+plausibly wants the link. No single rule separates them, so a gate here would
+spend most of its output being wrong. Re-run the report before revisiting any of
+this.
 
 ## License
 
