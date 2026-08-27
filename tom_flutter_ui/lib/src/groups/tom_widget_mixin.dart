@@ -44,7 +44,8 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// Gets the effective authorization state for this widget.
   ///
   /// Combines resource auth, group auth, authorizer, and UI state controller,
-  /// in that order (§78 — the same order `TomPolicyNodeBase` uses).
+  /// in that order — the same four layers, in the same sequence, as
+  /// `TomPolicyNodeBase.resolveEffectiveAuth`.
   TomAuthState getAuth() {
     // 1. Resource-based authorization
     var state = (basePath != null)

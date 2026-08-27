@@ -36,11 +36,14 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
   /// Resolves the effective [TomAuthState] for this widget.
   ///
   /// Combines resource auth, group auth, authorizer, and UI state controller,
-  /// in that order (§78 — the same order `TomField` uses).
+  /// in that order — the same four layers, in the same sequence, as
+  /// `TomWidgetMixin.getAuth`. `TomField.resolveEffectiveAuth` runs a fifth:
+  /// it narrows by the enclosing form between the group and the authorizer.
   ///
-  /// Resource and group together establish what is *granted*; the authorizer
-  /// and the controller then narrow it. The controller has to run last for its
-  /// "can only narrow" promise to hold — [TomAuthorizationGroup.applyMode]
+  /// Resource and group together establish what is *granted*; the controller
+  /// then narrows it, and the authorizer either narrows or decides outright
+  /// depending on its [TomAuthorizerStrategy]. The controller has to run last
+  /// for its "can only narrow" promise to hold — [TomAuthorizationGroup.applyMode]
   /// widens under `controlsNarrowest` and replaces outright under
   /// `controlsAll`, so a group applied afterwards would undo the narrowing.
   TomAuthState resolveEffectiveAuth() {
