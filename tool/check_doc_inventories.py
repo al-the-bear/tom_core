@@ -36,7 +36,15 @@ had 21, and the claim survived a sweep that corrected the same census in six
 other documents -- because a bare number in a table cell is invisible to a
 scan that looks for a count beside a noun.
 
-Five faults are reported:
+A package document maps its whole tree instead, in a fenced block that labels
+each barrel with how much it re-exports::
+
+    advanced_app_client/
+      lib/
+        app/
+          app.dart                       barrel — 4 exports
+
+Six faults are reported:
 
 ``LINES``
     A tabulated file whose line count is not the file's line count. The common
@@ -53,12 +61,30 @@ Five faults are reported:
     A sub-folder map row whose ``Types`` count is not the number of ``Tom``
     classes declared under that sub-folder, or a sub-folder present in the
     module and missing from the map.
+``BARREL``
+    A layout-block ``barrel — N exports`` label whose number is not the count
+    of ``export`` directives in the file it labels.
 
-``--fix`` repairs ``LINES``, ``HEADER`` and ``COUNT`` by writing the
-measurement back, so keeping the numbers true costs one command rather than a
-manual pass. It never touches ``UNKNOWN`` or ``ABSENT``, nor a missing map
-row: adding or retiring a row means writing the sentence that says what the
+``BARREL`` is the one measurement here that has twice hidden a defect rather
+than merely gone stale. ``advanced_app_client``'s ``lib/app/app.dart`` was
+labelled ``4 exports`` and had three: the missing fourth was
+``session_two_factor_controller.dart``, a real file the same layout block
+listed one line below and the document gave its own section, but which no
+consumer of ``package:advanced_app_client/app/app.dart`` could name. The
+number was right about what the barrel was *for* and wrong about what it
+*was*, and only counting the directives tells the two apart. Three of the nine
+labels in this set were wrong when the check was written.
+
+``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT`` and ``BARREL`` by writing
+the measurement back, so keeping the numbers true costs one command rather
+than a manual pass. It never touches ``UNKNOWN`` or ``ABSENT``, nor a missing
+map row: adding or retiring a row means writing the sentence that says what the
 file or folder carries, and only a reader of it can do that.
+
+Note what ``--fix`` means for a ``BARREL`` fault: it makes the *document*
+agree with the code, which is right when the label is stale and wrong when the
+label is a symptom, as the case above was. The repair is always available and
+never automatic -- read which of the two you have before running it.
 
 The type count mirrors ``declarationPattern`` in
 ``tom_flutter_ui/test/widgets/widget_census.dart``, which answers the same
@@ -85,6 +111,24 @@ DOCS_ROOT = REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completio
 # at a project and reaches into its source tree. Taken from the first mention,
 # which is the "On disk at ..." opening; later mentions point at neighbours.
 MODULE_PATH = re.compile(r"`(tom_\w+/lib/src/[\w/]+?)/?`")
+
+# A package document's "path on disk" line: the backticked package directory
+# opening a paragraph, followed by the em dash that introduces its file count.
+# Anchored at the line start so a mid-sentence mention of a neighbour package
+# -- of which these documents have several -- cannot be taken for the subject.
+PACKAGE_PATH = re.compile(r"^`(tom_\w+/[\w/]+?)/?`\s+—", re.M)
+
+# The layout block: a ```text fence whose first line is the package directory.
+LAYOUT_FENCE = re.compile(r"^```text\n(.*?)^```", re.M | re.S)
+
+# A barrel label inside it. `entity barrel — 9 exports, no generated code` and
+# `DTO barrel — 9 exports` both carry the same claim, so the word `barrel` is
+# matched wherever it falls rather than required to start the label.
+BARREL_LABEL = re.compile(r"\bbarrel\s+—\s+(\d+)\s+exports")
+
+#: An `export` directive, counted the way the barrels are written -- one per
+#: line, at the left margin. A `part` is not an export and is not counted.
+EXPORT = re.compile(r"^export\s", re.M)
 
 TABLE_HEADER = re.compile(r"^\|\s*File\s*\|\s*Lines\s*\|")
 TABLE_ROW = re.compile(r"^\|\s*`([^`]+)`\s*\|\s*(\d+)\s*\|", re.M)
@@ -167,22 +211,88 @@ class Report:
 def audit(path: Path) -> Report | None:
     """Return a Report, or None if the document measures nothing.
 
-    Two independent audits, either of which may find nothing to say: a
-    document carries a file inventory, or a sub-folder map, or neither.
+    Three independent audits, any of which may find nothing to say: a document
+    carries a file inventory, a sub-folder map, a layout block, or none of
+    them. The barrel audit runs first and on its own terms, because a package
+    document has a layout block and no module directory to resolve -- the two
+    shapes describe different things and neither implies the other.
     """
     text = path.read_text(encoding="utf-8", errors="replace")
 
-    module_match = MODULE_PATH.search(text)
-    if module_match is None:
-        return None
-    module = REPO_ROOT / module_match.group(1)
-    if not module.is_dir():
-        return None
-
     report = Report(path)
-    measured = audit_file_inventory(text, module, report)
-    measured |= audit_subfolder_map(text, module, report)
+    measured = audit_barrel_exports(text, report)
+
+    module_match = MODULE_PATH.search(text)
+    if module_match is not None:
+        module = REPO_ROOT / module_match.group(1)
+        if module.is_dir():
+            measured |= audit_file_inventory(text, module, report)
+            measured |= audit_subfolder_map(text, module, report)
+
     return report if measured else None
+
+
+def layout_barrels(text: str, package: Path):
+    """Yield `(path, match)` for every barrel label in a layout block.
+
+    The block is an indented tree, so a file's directory is the chain of
+    folder lines above it at smaller indents -- the same reading a person
+    gives it. The root line names the package the tree is rooted at and is
+    dropped, since `package` already points there.
+    """
+    for fence in LAYOUT_FENCE.finditer(text):
+        body, offset = fence.group(1), fence.start(1)
+        stack: list[tuple[int, str]] = []
+        position = offset
+        for line in body.splitlines(keepends=True):
+            stripped = line.strip()
+            indent = len(line) - len(line.lstrip())
+            if stripped:
+                while stack and stack[-1][0] >= indent:
+                    stack.pop()
+                name = stripped.split()[0]
+                if name.endswith("/"):
+                    stack.append((indent, name))
+                else:
+                    end = position + len(line)
+                    label = BARREL_LABEL.search(text, position, end)
+                    if label:
+                        # `stack[1:]` drops the tree's root line.
+                        folders = "".join(f for _, f in stack[1:])
+                        yield package / (folders + name), label
+            position += len(line)
+
+
+def audit_barrel_exports(text: str, report: Report) -> bool:
+    """Check each layout-block barrel label against the file's export count.
+
+    Returns whether the document has a layout block with labels at all.
+    """
+    package_match = PACKAGE_PATH.search(text)
+    if package_match is None:
+        return False
+    package = REPO_ROOT / package_match.group(1)
+    if not package.is_dir():
+        return False
+
+    found = False
+    for path, label in layout_barrels(text, package):
+        found = True
+        shown = path.relative_to(package)
+        if not path.is_file():
+            report.faults.append(
+                f"BARREL   `{shown}` is not in {package.name}/"
+            )
+            continue
+        source = path.read_text(encoding="utf-8", errors="replace")
+        actual = len(EXPORT.findall(source))
+        claimed = int(label.group(1))
+        if actual != claimed:
+            report.faults.append(
+                f"BARREL   `{shown}` says {claimed} exports, has {actual}"
+            )
+            report.edits.append(rewrite_groups(label, {1: str(actual)}))
+    return found
 
 
 def audit_subfolder_map(text: str, module: Path, report: Report) -> bool:
