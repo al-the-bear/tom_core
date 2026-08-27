@@ -25,7 +25,7 @@ Complete inventory of all Tom Flutter UI widget constructor parameters that can 
 | `resolveColorOrNull` | `Color?` | Hex string `#RRGGBB` / `#AARRGGBB` |
 | `resolveColorOrFail` | `Color` | Hex string (FlutterError if missing) |
 | `resolveDoubleOrNull` | `double?` | Numeric |
-| `resolveDoubleOrFail` | `double` | Numeric (FlutterError if missing) |
+| `resolveDoubleOrFail` | `double` | Numeric (`StateError` if missing) |
 | `resolveIntOrNull` | `int?` | Integer |
 | `resolveIntOrFail` | `int` | Integer (FlutterError if missing) |
 | `resolveBoolOrNull` | `bool?` | Boolean |
