@@ -139,7 +139,8 @@ and download with progress, cancel and retry over the kernel's
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomUIColors`, `TomUIIcons` | Resource-resolved colour / icon namespaces |
-| `TomUIColorAdapter`, `TomUIIconAdapter`, `AllColorsAdapter` | Pluggable resource adapters |
+| `TomUIColorAdapter`, `TomUIIconAdapter` | The pluggable resource adapter contracts |
+| `AllColorsAdapter`, `AllIconsAdapter`, and the `MaterialOnly…` / `CupertinoOnly…` pairs | Full and single-family adapters for each namespace |
 | `TomAuthorization`, `TomAuthorizationAdapter` | The kernel four-state authorization, re-exported for UI code |
 | `TomConfigProvider`, `TomEnvironment`, `TomPlatform` | Config / environment inputs |
 

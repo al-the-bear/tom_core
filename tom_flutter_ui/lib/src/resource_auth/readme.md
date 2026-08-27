@@ -14,7 +14,8 @@ widget tree renders differently per theme, platform, or environment.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomUIColors` / `TomUIIcons` | Static colour / icon namespaces resolved through an adapter |
-| `AllColorsAdapter` / `AllIconsAdapter` | Default adapters; `registerColors` extends the colour set |
+| `AllColorsAdapter` / `AllIconsAdapter` | Default adapters; `registerColors` / `registerIcons` extend the sets module-wide |
+| `MaterialOnly…` / `CupertinoOnly…` `ColorAdapter` / `IconAdapter` | Single-family adapters, for bundle size or to catch off-platform names |
 | `TomUIColorAdapter` / `TomUIIconAdapter` | The pluggable adapter contracts |
 | `TomAuthorization` / `TomAuthorizationAdapter` | The kernel's four-state authorization, re-exported for UI code |
 | `TomConfigProvider` | Config / feature-flag provider (`create` + `initialize` + `current`) |

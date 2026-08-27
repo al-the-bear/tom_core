@@ -87,20 +87,21 @@ class TomUIColors {
 /// Module-level rather than a static on one adapter, mirroring the icon side:
 /// registration, resolution and [TomUIColors.reset] all have to agree about
 /// where the registry is, and only one of them belongs to any single adapter.
+/// An app that registers its brand colours and then switches to
+/// [MaterialOnlyColorAdapter] for bundle size must not lose them, and losing
+/// them would be silent — every registered name would simply resolve to
+/// `null`.
 final Map<String, Color> _customColors = {};
 
-/// Default adapter using all generated Flutter colors (Material + Cupertino).
+/// Resolves registrations first, then hex/rgb syntax, then the adapter's own
+/// palette.
 ///
-/// Contains Material and Cupertino color palettes plus hex/RGB parsing.
-/// This is the recommended adapter for most applications.
-///
-/// Color naming:
-/// - Material: `m<ColorName>` (e.g., `mRed`, `mBlue500`, `mAmberAccent`)
-/// - Cupertino: `c<ColorName>` (e.g., `cSystemRed`, `cActiveBlue`)
-/// - Hex: `#RGB`, `#ARGB`, `#RRGGBB` or `#AARRGGBB` — alpha first, see
-///   [_parseHexColor] for why that matters when copying from a design tool
-/// - RGB: `rgb(r, g, b)` or `rgba(r, g, b, a)`
-class AllColorsAdapter implements TomUIColorAdapter {
+/// The order is stated once here rather than in each adapter, so
+/// "registrations win" cannot hold for one adapter and not another. Hex and
+/// rgb sit in the base because they are *syntax*, not a palette: neither
+/// belongs to the Material or the Cupertino family, so a single-family adapter
+/// is a smaller palette, not a different contract.
+abstract class _RegistryFirstColorAdapter implements TomUIColorAdapter {
   /// Hex color pattern: #RGB, #ARGB, #RRGGBB, or #AARRGGBB.
   ///
   /// Alpha leads in both forms that carry it — see [_parseHexColor].
@@ -131,8 +132,7 @@ class AllColorsAdapter implements TomUIColorAdapter {
       return _parseRgbColor(name);
     }
 
-    // Try generated colors
-    return GeneratedColors.resolve(name);
+    return resolveInPalette(name);
   }
 
   @override
@@ -140,8 +140,15 @@ class AllColorsAdapter implements TomUIColorAdapter {
     if (_customColors.containsKey(name)) return true;
     if (_hexPattern.hasMatch(name)) return true;
     if (_rgbPattern.hasMatch(name)) return true;
-    return GeneratedColors.exists(name);
+    return existsInPalette(name);
   }
+
+  /// Resolves [name] against the adapter's own palette, ignoring registrations
+  /// and the hex/rgb syntax the base already handled.
+  Color? resolveInPalette(String name);
+
+  /// Whether [name] is in the adapter's own palette, ignoring registrations.
+  bool existsInPalette(String name);
 
   /// Parses a hex color string.
   ///
@@ -210,19 +217,72 @@ class AllColorsAdapter implements TomUIColorAdapter {
     return Color.fromARGB(alpha, red, green, blue);
   }
 
-  /// Registers additional custom colors.
+}
+
+/// Default adapter using all generated Flutter colors (Material + Cupertino).
+///
+/// Contains Material and Cupertino color palettes plus hex/RGB parsing.
+/// This is the recommended adapter for most applications.
+///
+/// Color naming:
+/// - Material: `m<ColorName>` (e.g., `mRed`, `mBlue500`, `mAmberAccent`)
+/// - Cupertino: `c<ColorName>` (e.g., `cSystemRed`, `cActiveBlue`)
+/// - Hex: `#RGB`, `#ARGB`, `#RRGGBB` or `#AARRGGBB` — alpha first, see
+///   [_parseHexColor] for why that matters when copying from a design tool
+/// - RGB: `rgb(r, g, b)` or `rgba(r, g, b, a)`
+class AllColorsAdapter extends _RegistryFirstColorAdapter {
+  @override
+  Color? resolveInPalette(String name) => GeneratedColors.resolve(name);
+
+  @override
+  bool existsInPalette(String name) => GeneratedColors.exists(name);
+
+  /// Registers additional custom colors for **every** adapter in this module.
   ///
-  /// Use this to add app-specific colors or override existing ones.
-  /// Registrations take precedence over hex/rgb parsing and the generated
-  /// palette. [TomUIColors.reset] clears them along with the adapter.
+  /// Use this to add app-specific colors or override existing ones. The
+  /// registry is module-wide, so a name registered here also resolves through
+  /// [MaterialOnlyColorAdapter] and [CupertinoOnlyColorAdapter]; registrations
+  /// take precedence over hex/rgb parsing and the generated palette in all
+  /// three. [TomUIColors.reset] clears them along with the adapter.
   static void registerColors(Map<String, Color> colors) {
     _customColors.addAll(colors);
   }
 
-  /// Clears all custom registered colors, keeping the installed adapter.
+  /// Clears all custom registered colors, for every adapter in this module,
+  /// keeping the installed adapter.
   ///
   /// A test tearing down the whole module wants [TomUIColors.reset] instead.
   static void clearCustomColors() {
     _customColors.clear();
   }
+}
+
+/// Adapter that only includes Material colors.
+///
+/// Use this for smaller bundle size if you don't need the Cupertino palette,
+/// or to make a stray `cSystemBlue` in a resource file resolve to `null` and
+/// be caught rather than quietly working. Colors registered through
+/// [AllColorsAdapter.registerColors] still resolve — the registry is
+/// module-wide — as do hex and rgb literals; only the Cupertino table is gone.
+class MaterialOnlyColorAdapter extends _RegistryFirstColorAdapter {
+  @override
+  Color? resolveInPalette(String name) => GeneratedColors.materialColors[name];
+
+  @override
+  bool existsInPalette(String name) =>
+      GeneratedColors.materialColors.containsKey(name);
+}
+
+/// Adapter that only includes Cupertino colors.
+///
+/// The iOS-facing counterpart to [MaterialOnlyColorAdapter], with the same
+/// two reasons to reach for it and the same guarantees: registrations, hex and
+/// rgb all still resolve; only the Material table is gone.
+class CupertinoOnlyColorAdapter extends _RegistryFirstColorAdapter {
+  @override
+  Color? resolveInPalette(String name) => GeneratedColors.cupertinoColors[name];
+
+  @override
+  bool existsInPalette(String name) =>
+      GeneratedColors.cupertinoColors.containsKey(name);
 }

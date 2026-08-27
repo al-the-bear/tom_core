@@ -35,10 +35,11 @@ data** resolved here.
 | `TomUIColorAdapter` | interface | Contract: resolve a colour `name` → `Color?`, plus `colorExists`. |
 | `TomUIColors` | singleton | Global colour resolver; delegates to the installed adapter. |
 | `AllColorsAdapter` | adapter | Resolves named (`mRed`, `cSystemBlue`), hex (`#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` — alpha first), and `rgb()/rgba()` colours; supports custom registration. |
+| `MaterialOnlyColorAdapter` / `CupertinoOnlyColorAdapter` | adapters | Single-family colour resolvers for smaller bundles. |
 | `TomUIIconAdapter` | interface | Contract: resolve an icon `name` → `IconData?`, plus `iconExists`. |
 | `TomUIIcons` | singleton | Global icon resolver; delegates to the installed adapter. |
 | `AllIconsAdapter` | adapter | Resolves the full Material + Cupertino icon set; supports custom registration. |
-| `MaterialOnlyAdapter` / `CupertinoOnlyAdapter` | adapters | Single-family icon resolvers for smaller bundles. |
+| `MaterialOnlyIconAdapter` / `CupertinoOnlyIconAdapter` | adapters | Single-family icon resolvers for smaller bundles. |
 | `TomConfigProvider` | singleton | Environment, platform, and feature-flag configuration. |
 | `TomEnvironment` / `TomPlatform` | enums | `development`/`staging`/`production`; `mobile`/`web`/`desktop`. |
 | `TomAuthState`, `TomAuthorizable`, `TomAuthorization`, `TomAuthorizer`, … | re-exports | The canonical authorization types from `tom_core_kernel`. |
@@ -71,6 +72,16 @@ widgets degrade gracefully rather than throw.
 > through. Reorder the channels when copying a colour in; there is no way for
 > the parser to detect the mistake for you. `AllColorsAdapter.registerColors` adds or overrides names at runtime;
 `clearCustomColors` undoes that while keeping the adapter installed.
+
+`MaterialOnlyColorAdapter` / `CupertinoOnlyColorAdapter` trade coverage for
+bundle size exactly as their icon counterparts do — an app targeting one
+platform stops carrying the other family's table. The second reason matters
+more often: with a single-family adapter installed, a stray `cSystemBlue` in a
+Material-only resource file resolves to `null` and gets caught, instead of
+quietly working. What they drop is the *other family's generated palette* and
+nothing else — registrations, hex and `rgb()/rgba()` all still resolve, because
+those are syntax rather than a palette. They are a smaller palette, not a
+different contract.
 
 `TomUIColors.reset()` / `TomUIIcons.reset()` drop the adapter **and** the
 registrations — that pair is the whole test-hygiene hook, so a `tearDown`
@@ -105,7 +116,7 @@ colours still resolve light/dark at lookup time.
 
 `TomUIIcons` mirrors the colour facade for `IconData`. `AllIconsAdapter` covers
 the full generated Material (`m<PascalCase>`) and Cupertino (`c<PascalCase>`)
-icon sets; `MaterialOnlyAdapter` / `CupertinoOnlyAdapter` trade coverage for
+icon sets; `MaterialOnlyIconAdapter` / `CupertinoOnlyIconAdapter` trade coverage for
 bundle size by exposing a single family:
 
 ```dart
@@ -118,14 +129,20 @@ The same graceful-degradation semantics as colours apply. The original Flutter
 snake_case names are converted to PascalCase (`arrow_back` → `mArrowBack`,
 `left_chevron` → `cLeftChevron`).
 
-Custom registration is **module-wide**, not per-adapter:
-`AllIconsAdapter.registerIcons` fills one registry that all three adapters
-consult *before* their own table, and `clearCustomIcons` empties it for all
+Custom registration is **module-wide**, not per-adapter, and that holds on both
+sides: `AllIconsAdapter.registerIcons` and `AllColorsAdapter.registerColors`
+each fill one registry that all three adapters of their family consult *before*
+their own table, and `clearCustomIcons` / `clearCustomColors` empty it for all
 three. So an app can register its brand icons and then switch to
-`MaterialOnlyAdapter` for bundle size — the one reason to switch — without
+`MaterialOnlyIconAdapter` for bundle size — the one reason to switch — without
 losing them, and a registration overriding a built-in name (`mSave` → a house
 icon) overrides it everywhere. What the single-family adapters drop is the
 *other family's generated table*, never a registration.
+
+The registration entry points stay on the `All…` adapters even though the
+registry they fill is module-wide, so that each family has exactly one place to
+register. Reaching for `AllIconsAdapter.registerIcons` while running
+`MaterialOnlyIconAdapter` is therefore correct, not a mistake.
 
 ## Configuration: `TomConfigProvider`
 

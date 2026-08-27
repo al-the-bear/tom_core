@@ -40,8 +40,28 @@
   its one real test (`default mode is controlsWidest`) survives under
   `AuthGroupMode`, beside the mode behaviours it belongs with.
 
+### Added
+
+- **`MaterialOnlyColorAdapter` and `CupertinoOnlyColorAdapter`.** The icon side
+  of `resource_auth/` shipped three adapters and the colour side one, although
+  `GeneratedColors` has exposed `materialColors` and `cupertinoColors` as
+  separate maps all along. Both reasons for the icon adapters apply equally to
+  colours: an app targeting one platform stops carrying the other family's
+  table, and — the reason that surfaces as a bug rather than a bundle size — a
+  stray `cSystemBlue` in a Material-only resource file now resolves to `null`
+  and is caught instead of quietly working. Registrations, hex and `rgb()` still
+  resolve through them; only the other family's palette is gone.
+
 ### Changed
 
+- **The single-family icon adapters are renamed `MaterialOnlyIconAdapter` and
+  `CupertinoOnlyIconAdapter`.** With colour siblings beside them, the old
+  `MaterialOnlyAdapter` / `CupertinoOnlyAdapter` no longer said which family
+  they carried.
+- The colour adapters now share a `_RegistryFirstColorAdapter` base that holds
+  the registry-then-hex-then-rgb order once, mirroring the icon side. Hex and
+  `rgb()` live in the base because they are syntax rather than a palette, so a
+  single-family adapter is a smaller palette and not a different contract.
 - The two byte-identical private `_resolveDecoration` methods on the text
   inputs are replaced by one shared `_resolveInputDecoration` helper carrying
   the precedence rule and its rationale.
@@ -169,7 +189,7 @@ change — this release records the widget set that already exists.
   behaviour, and the undo/redo coordinator actions. No public API change.
 - **`resource_auth/`** — authored `doc/resource_auth.md` (the name → object
   resolution layer: `TomUIColors` / `AllColorsAdapter` for named/hex/rgb colours,
-  `TomUIIcons` with the `AllIcons` / `MaterialOnly` / `CupertinoOnly` adapters,
+  `TomUIIcons` with the all / Material-only / Cupertino-only icon adapters,
   the `TomConfigProvider` environment/platform/feature-flag store, and the
   authorization types re-exported from `tom_core_kernel`); added
   `example/resource_auth/resource_auth_example.dart`; added

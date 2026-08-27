@@ -143,6 +143,102 @@ void main() {
     });
   });
 
+  // The single-family colour adapters mirror the icon ones, and for the same
+  // two reasons: an app targeting one platform stops carrying the other
+  // family's table, and — the reason that shows up in a bug report rather than
+  // a bundle report — a `cSystemBlue` left in a Material-only resource file
+  // resolves to null and gets caught, instead of quietly working.
+  group('single-family colour adapters', () {
+    test('MaterialOnlyColorAdapter resolves only Material colours', () {
+      final adapter = MaterialOnlyColorAdapter();
+      expect(adapter.resolveColor('mRed'), Colors.red);
+      expect(adapter.resolveColor('mBlueGrey500'), const Color(0xFF607D8B));
+      expect(adapter.resolveColor('cSystemBlue'), isNull);
+      expect(adapter.colorExists('mRed'), isTrue);
+      expect(adapter.colorExists('cSystemBlue'), isFalse);
+    });
+
+    test('CupertinoOnlyColorAdapter resolves only Cupertino colours', () {
+      final adapter = CupertinoOnlyColorAdapter();
+      expect(adapter.resolveColor('cTransparent'), const Color(0x00000000));
+      expect(adapter.resolveColor('mRed'), isNull);
+      expect(adapter.colorExists('cTransparent'), isTrue);
+      expect(adapter.colorExists('mRed'), isFalse);
+    });
+
+    // Hex and rgb are syntax, not a palette: nothing about them belongs to
+    // either family, and dropping them would make the single-family adapters
+    // a different contract rather than a smaller one.
+    test('hex and rgb parse through every colour adapter', () {
+      for (final adapter in <TomUIColorAdapter>[
+        AllColorsAdapter(),
+        MaterialOnlyColorAdapter(),
+        CupertinoOnlyColorAdapter(),
+      ]) {
+        final what = adapter.runtimeType;
+        expect(adapter.resolveColor('#80FF5733'), const Color(0x80FF5733),
+            reason: '$what cannot parse hex');
+        expect(adapter.resolveColor('rgba(255, 0, 0, 0.5)'),
+            const Color(0x80FF0000),
+            reason: '$what cannot parse rgba');
+        expect(adapter.colorExists('#F53'), isTrue, reason: '$what');
+      }
+    });
+
+    // Same module-wide registry as the icon side, and the same silent failure
+    // if it were not: registered brand colours would resolve to null after a
+    // switch to a single-family adapter, with colorExists denying they exist.
+    test('registrations reach the single-family colour adapters too', () {
+      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      for (final adapter in <TomUIColorAdapter>[
+        AllColorsAdapter(),
+        MaterialOnlyColorAdapter(),
+        CupertinoOnlyColorAdapter(),
+      ]) {
+        expect(adapter.resolveColor('zBrand'), const Color(0xFF112233),
+            reason: '${adapter.runtimeType} lost the registration');
+        expect(adapter.colorExists('zBrand'), isTrue,
+            reason: '${adapter.runtimeType} denies the registration exists');
+      }
+    });
+
+    test('a colour registration overrides a built-in for every adapter', () {
+      AllColorsAdapter.registerColors({'mRed': const Color(0xFF112233)});
+      expect(MaterialOnlyColorAdapter().resolveColor('mRed'),
+          const Color(0xFF112233));
+      expect(AllColorsAdapter().resolveColor('mRed'), const Color(0xFF112233));
+    });
+
+    test('clearing drops colour registrations for every adapter', () {
+      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      AllColorsAdapter.clearCustomColors();
+      for (final adapter in <TomUIColorAdapter>[
+        AllColorsAdapter(),
+        MaterialOnlyColorAdapter(),
+        CupertinoOnlyColorAdapter(),
+      ]) {
+        expect(adapter.resolveColor('zBrand'), isNull);
+        expect(adapter.colorExists('zBrand'), isFalse);
+      }
+      // The built-in table is untouched by the round trip.
+      expect(MaterialOnlyColorAdapter().resolveColor('mRed'), Colors.red);
+    });
+
+    test('colour registrations do not open the other family to a '
+        'single-family adapter', () {
+      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      expect(MaterialOnlyColorAdapter().resolveColor('cSystemBlue'), isNull);
+      expect(CupertinoOnlyColorAdapter().resolveColor('mRed'), isNull);
+    });
+
+    test('TomUIColors.reset() drops registrations for these adapters too', () {
+      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomUIColors.reset();
+      expect(MaterialOnlyColorAdapter().resolveColor('zBrand'), isNull);
+      expect(CupertinoOnlyColorAdapter().resolveColor('zBrand'), isNull);
+    });
+  });
+
   // The colour table is emitted by `tool/generate_colors.dart` and must stay
   // reproducible: regenerating an unchanged palette has to produce no diff, so
   // the header may state nothing the entries do not determine. Both checks
@@ -202,16 +298,16 @@ void main() {
       expect(TomUIIcons.resolveIcon('mSave'), Icons.save);
     });
 
-    test('MaterialOnlyAdapter resolves only Material icons', () {
-      final adapter = MaterialOnlyAdapter();
+    test('MaterialOnlyIconAdapter resolves only Material icons', () {
+      final adapter = MaterialOnlyIconAdapter();
       expect(adapter.resolveIcon('mSave'), Icons.save);
       expect(adapter.resolveIcon('cShare'), isNull);
       expect(adapter.iconExists('mSave'), isTrue);
       expect(adapter.iconExists('cShare'), isFalse);
     });
 
-    test('CupertinoOnlyAdapter resolves only Cupertino icons', () {
-      final adapter = CupertinoOnlyAdapter();
+    test('CupertinoOnlyIconAdapter resolves only Cupertino icons', () {
+      final adapter = CupertinoOnlyIconAdapter();
       expect(adapter.resolveIcon('cShare'), CupertinoIcons.share);
       expect(adapter.resolveIcon('mSave'), isNull);
       expect(adapter.iconExists('cShare'), isTrue);
@@ -220,7 +316,7 @@ void main() {
 
     // Registration is module-wide, not a property of AllIconsAdapter. The
     // failure this pins was silent and total: an app registers its brand
-    // icons, switches to MaterialOnlyAdapter for bundle size — the one
+    // icons, switches to MaterialOnlyIconAdapter for bundle size — the one
     // documented reason to switch — and every registered icon resolves to
     // null with iconExists reporting false. Nothing throws; icons just stop
     // rendering. The two tests above could not see it because they only ever
@@ -229,8 +325,8 @@ void main() {
       AllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
       for (final adapter in <TomUIIconAdapter>[
         AllIconsAdapter(),
-        MaterialOnlyAdapter(),
-        CupertinoOnlyAdapter(),
+        MaterialOnlyIconAdapter(),
+        CupertinoOnlyIconAdapter(),
       ]) {
         expect(adapter.resolveIcon('zBrandLogo'), Icons.abc,
             reason: '${adapter.runtimeType} lost the registration');
@@ -241,7 +337,7 @@ void main() {
 
     test('a registration overrides a built-in for every adapter', () {
       AllIconsAdapter.registerIcons({'mSave': Icons.delete});
-      expect(MaterialOnlyAdapter().resolveIcon('mSave'), Icons.delete);
+      expect(MaterialOnlyIconAdapter().resolveIcon('mSave'), Icons.delete);
       expect(AllIconsAdapter().resolveIcon('mSave'), Icons.delete);
     });
 
@@ -250,14 +346,14 @@ void main() {
       AllIconsAdapter.clearCustomIcons();
       for (final adapter in <TomUIIconAdapter>[
         AllIconsAdapter(),
-        MaterialOnlyAdapter(),
-        CupertinoOnlyAdapter(),
+        MaterialOnlyIconAdapter(),
+        CupertinoOnlyIconAdapter(),
       ]) {
         expect(adapter.resolveIcon('zBrandLogo'), isNull);
         expect(adapter.iconExists('zBrandLogo'), isFalse);
       }
       // The built-in table is untouched by the round trip.
-      expect(MaterialOnlyAdapter().resolveIcon('mSave'), Icons.save);
+      expect(MaterialOnlyIconAdapter().resolveIcon('mSave'), Icons.save);
     });
 
     test('registrations do not open the other family to a single-family '
@@ -265,8 +361,8 @@ void main() {
       // The point of these adapters is that they carry one family. A shared
       // registry must not become a back door to the other one.
       AllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
-      expect(MaterialOnlyAdapter().resolveIcon('cShare'), isNull);
-      expect(CupertinoOnlyAdapter().resolveIcon('mSave'), isNull);
+      expect(MaterialOnlyIconAdapter().resolveIcon('cShare'), isNull);
+      expect(CupertinoOnlyIconAdapter().resolveIcon('mSave'), isNull);
     });
   });
 
@@ -301,8 +397,8 @@ void main() {
       expect(TomUIIcons.iconExists('zBrand'), isFalse);
       expect(earlier.resolveIcon('zBrand'), isNull);
       // The registry is module-wide, so the single-family adapters lose it too.
-      expect(MaterialOnlyAdapter().resolveIcon('zBrand'), isNull);
-      expect(CupertinoOnlyAdapter().resolveIcon('zBrand'), isNull);
+      expect(MaterialOnlyIconAdapter().resolveIcon('zBrand'), isNull);
+      expect(CupertinoOnlyIconAdapter().resolveIcon('zBrand'), isNull);
     });
 
     test('reset() drops an override without disturbing the built-in', () {

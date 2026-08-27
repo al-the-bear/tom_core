@@ -83,7 +83,7 @@ class TomUIIcons {
 ///
 /// Module-level rather than a static on one adapter: registration and
 /// resolution have to agree no matter which adapter is installed. An app that
-/// registers its brand icons and then switches to [MaterialOnlyAdapter] for
+/// registers its brand icons and then switches to [MaterialOnlyIconAdapter] for
 /// bundle size — the one documented reason to switch — must not lose them,
 /// and losing them would be silent: every registered name would simply
 /// resolve to `null` and render nothing.
@@ -129,7 +129,7 @@ class AllIconsAdapter extends _RegistryFirstIconAdapter {
   ///
   /// Use this to add app-specific icons or override existing ones. The
   /// registry is module-wide, so a name registered here also resolves through
-  /// [MaterialOnlyAdapter] and [CupertinoOnlyAdapter]; registrations take
+  /// [MaterialOnlyIconAdapter] and [CupertinoOnlyIconAdapter]; registrations take
   /// precedence over the built-in tables in all three.
   /// [TomUIIcons.reset] clears them along with the adapter.
   static void registerIcons(Map<String, IconData> icons) {
@@ -150,7 +150,7 @@ class AllIconsAdapter extends _RegistryFirstIconAdapter {
 /// Use this for smaller bundle size if you don't need Cupertino icons.
 /// Icons registered through [AllIconsAdapter.registerIcons] still resolve —
 /// the registry is module-wide — but the Cupertino table stays out.
-class MaterialOnlyAdapter extends _RegistryFirstIconAdapter {
+class MaterialOnlyIconAdapter extends _RegistryFirstIconAdapter {
   @override
   IconData? resolveInFamily(String name) => GeneratedIcons.materialIcons[name];
 
@@ -164,7 +164,7 @@ class MaterialOnlyAdapter extends _RegistryFirstIconAdapter {
 /// Use this for iOS-focused apps that only need Cupertino icons.
 /// Icons registered through [AllIconsAdapter.registerIcons] still resolve —
 /// the registry is module-wide — but the Material table stays out.
-class CupertinoOnlyAdapter extends _RegistryFirstIconAdapter {
+class CupertinoOnlyIconAdapter extends _RegistryFirstIconAdapter {
   @override
   IconData? resolveInFamily(String name) => GeneratedIcons.cupertinoIcons[name];
 

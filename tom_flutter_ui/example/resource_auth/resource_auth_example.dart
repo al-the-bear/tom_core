@@ -38,18 +38,29 @@ void run() {
   final brand = TomUIColors.resolveColor('brandPrimary');
   print('brandPrimary=$brand  exists=${TomUIColors.colorExists('brandPrimary')}');
 
-  // Example 3: icon resolution across families and the single-family adapters.
+  // Example 3: single-family colour adapters — one palette instead of both.
+  // Registrations and hex/rgb literals still resolve through them; only the
+  // other family's table is gone.
+  final materialColors = MaterialOnlyColorAdapter();
+  final cupertinoColors = CupertinoOnlyColorAdapter();
+  print('materialColors cSystemBlue -> '
+      '${materialColors.resolveColor('cSystemBlue')}');
+  print('cupertinoColors mRed -> ${cupertinoColors.resolveColor('mRed')}');
+  print('materialColors brandPrimary -> '
+      '${materialColors.resolveColor('brandPrimary')}');
+
+  // Example 4: icon resolution across families and the single-family adapters.
   TomUIIcons.adapter = AllIconsAdapter();
   final save = TomUIIcons.resolveIcon('mSave');
   final share = TomUIIcons.resolveIcon('cShare');
   print('mSave=$save  cShare=$share');
 
-  final materialOnly = MaterialOnlyAdapter();
-  final cupertinoOnly = CupertinoOnlyAdapter();
+  final materialOnly = MaterialOnlyIconAdapter();
+  final cupertinoOnly = CupertinoOnlyIconAdapter();
   print('materialOnly cShare -> ${materialOnly.resolveIcon('cShare')}');
   print('cupertinoOnly mSave -> ${cupertinoOnly.resolveIcon('mSave')}');
 
-  // Example 4: configuration — environment, platform, and feature flags.
+  // Example 5: configuration — environment, platform, and feature flags.
   TomConfigProvider.initialize(TomConfigProvider.create(
     environment: TomEnvironment.production,
     platform: TomPlatform.web,
@@ -60,7 +71,7 @@ void run() {
       'newCheckout=${cfg.isEnabled('newCheckout')} '
       'maxItems=${cfg.feature<int>('maxItems')}');
 
-  // Example 5: the re-exported authorization state ordering.
+  // Example 6: the re-exported authorization state ordering.
   print('auth states (restrictive→full): ${TomAuthState.values}');
 
   // -------------------------------------------------------------------------
@@ -71,6 +82,15 @@ void run() {
   assert(rgb == const Color(0xFF0080FF));
   assert(brand == const Color(0xFF123456));
   assert(TomUIColors.colorExists('#FFFFFF'));
+
+  // Single-family colour adapters resolve only their own palette, but keep
+  // the module-wide registrations and the hex/rgb syntax.
+  assert(materialColors.resolveColor('cSystemBlue') == null);
+  assert(materialColors.resolveColor('mRed') == Colors.red);
+  assert(materialColors.resolveColor('brandPrimary') == const Color(0xFF123456));
+  assert(materialColors.resolveColor('#FF5733') == const Color(0xFFFF5733));
+  assert(cupertinoColors.resolveColor('mRed') == null);
+  assert(cupertinoColors.resolveColor('cTransparent') == const Color(0x00000000));
 
   assert(save == Icons.save);
   assert(share == CupertinoIcons.share);
