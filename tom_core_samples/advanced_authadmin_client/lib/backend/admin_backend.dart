@@ -8,14 +8,29 @@
 /// `advanced_client_core` over HTTP. Keeping the seam here is what makes the
 /// admin widget tests deterministic.
 ///
-/// The seam mirrors [AdminApiService] one-to-one — the Users/Roles/Groups CRUD,
-/// the grant matrix, and assignments — plus the two **session** operations
-/// ([login]/[logout]) the admin API client does not own (the live wiring routes
-/// those through `AuthClient`). Every administrative operation requires the
-/// `admin` role: each `/admin/*` endpoint's contract declares
-/// `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) and the live server's
-/// pipeline enforces it, and the in-memory fake mirrors that gate so a
-/// non-admin principal is refused identically either way.
+/// The seam carries all sixteen [AdminApiService] operations — the
+/// Users/Roles/Groups CRUD, the grant matrix, assignments and the admin
+/// resource bundle — and adds six members that API does not own. Four are the
+/// **session** ([login], [submitSecondFactor], [pendingChallenge], [logout]),
+/// one is the **pre-sign-in bundle** ([loginResources]) the login screen needs
+/// before any token exists, and one is the **byte transport** ([files]) the
+/// avatar slot needs. All but [pendingChallenge] and [files] are
+/// `AuthApiService` members that the live wiring routes through `AuthClient`,
+/// so what this seam genuinely invents is one piece of challenge state and one
+/// second seam for bytes.
+///
+/// Nor is the carry signature-for-signature, deliberately. The wire contract
+/// addresses a row by folding its id into the payload (`updateUser(UserDto)`,
+/// `deleteUser(EntityIdRequest)`) because that is what binds a `{id}` path
+/// capture; a UI seam should not make a screen build a request object to delete
+/// a row, so here the id is a leading parameter. [LiveAdminBackend] is the one
+/// place the two shapes meet.
+///
+/// Every administrative operation requires the `admin` role: each `/admin/*`
+/// endpoint's contract declares `TomRoleAccess(['admin'])`
+/// (`TomApiEndpoint.access`) and the live server's pipeline enforces it, and
+/// the in-memory fake mirrors that gate so a non-admin principal is refused
+/// identically either way.
 library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';

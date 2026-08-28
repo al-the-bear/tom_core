@@ -89,11 +89,23 @@ against the same secret the auth server's `[005]` migration seeds.
 
 `lib/backend/backend.dart` is the barrel. Bind every screen against the
 transport-independent `AdminBackend` (`admin_backend.dart`), never a concrete
-backend, so the same widgets drive either implementation. The seam mirrors the
-auth server's `AdminApiService` (`advanced_todo_contracts`) one-to-one — the
-Users/Roles/Groups CRUD, the `(role, fieldResourceKey) → TomAuthState` grant
-matrix, and role/group assignments — plus the two session operations
-(`login`/`logout`) the admin API client does not own.
+backend, so the same widgets drive either implementation. The seam carries all
+sixteen operations of the auth server's `AdminApiService`
+(`advanced_todo_contracts`) — the Users/Roles/Groups CRUD, the
+`(role, fieldResourceKey) → TomAuthState` grant matrix, role/group assignments
+and the admin resource bundle — and adds six members that API does not own:
+
+| Added member | Why the seam needs it |
+| ------------ | --------------------- |
+| `login`, `submitSecondFactor`, `pendingChallenge`, `logout` | The session, including a two-pass login through a challenge. |
+| `loginResources` | The pre-sign-in text bundle, fetched before any token exists. |
+| `files` | The `TomFileTransferClient` for avatar bytes — a second seam beside the JSON one. |
+
+All but `pendingChallenge` and `files` are `AuthApiService` members that
+`LiveAdminBackend` routes through `AuthClient`, so what the seam genuinely
+invents is one piece of challenge state and one byte transport. It also takes a
+leading id where the contract folds one into the payload, so no screen builds an
+`EntityIdRequest` to delete a row.
 
 - **`InMemoryAdminBackend`** — a seeded, socket-free fake the contract and widget
   tests bind. It seeds the same demo accounts as the app client (`admin` plus
