@@ -44,8 +44,14 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// exceptions (`AuthClientException`/`AdminApiException`/`TomAuthExpiredException`)
 /// in it. It carries a human [message] to show the user and, when the underlying
 /// failure had one, the server's stable error [key] so a caller can branch
-/// without parsing the message (e.g. the shell rejects a non-admin login by
-/// keying on `admin.access.forbidden`).
+/// without parsing the message.
+///
+/// The console branches on exactly two: `admin.no_session` and
+/// `auth.session_expired`, which together mean "re-authenticate". Every other
+/// key is surfaced rather than matched — `admin.access.forbidden` among them,
+/// because a forbidden operation is not a lost session, and because the
+/// non-admin sign-in is already rejected by the admin probe failing at all
+/// rather than by the key it carried.
 class AdminBackendException implements Exception {
   /// What went wrong, fit to show the user.
   final String message;
