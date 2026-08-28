@@ -75,10 +75,8 @@ class _ContractDtoAnchor {
   LoginRequest? loginRequest;
   UserDto? userDto;
   LoginResult? loginResult;
-  ShareRequest? shareRequest;
   GrantMatrixDto? grantMatrixDto;
   ResourceBundleDto? resourceBundleDto;
-  GradedFieldDto? gradedFieldDto;
 }
 
 // The reflection generator treats this file as a runnable program and requires a
