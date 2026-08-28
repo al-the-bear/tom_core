@@ -6,10 +6,11 @@
 /// *implicit* `workspace.owner_id` chain the bespoke resolver once
 /// walked; RCC1 makes it an *explicit* owner grant so the login can fold it into
 /// [TomAccessControlInformation.resourceRoles] and the app/client resolve
-/// resource-level access through the framework registry (C-5, G-AUTHZ-5). The
-/// create paths (`createProject`/`createItem`) stamp the grant here after the row
-/// is persisted, and the demo seed writes the same shape for the starter tree —
-/// so seeded and runtime-created ownership share one representation.
+/// resource-level access through the framework registry (C-5, G-AUTHZ-5). All
+/// three of [AppWriteService]'s create paths — `createWorkspace`,
+/// `createProject` and `createItem` — stamp the grant here after the row is
+/// persisted, and the demo seed writes the same shape for the starter tree, so
+/// seeded and runtime-created ownership share one representation.
 ///
 /// Writes sit behind an [OwnershipGrantWriter] seam so the write service is pure
 /// over whichever writer it is handed: [RepositoryOwnershipGrantWriter] is the
@@ -71,8 +72,8 @@ class RepositoryOwnershipGrantWriter implements OwnershipGrantWriter {
 /// A recording, database-free [OwnershipGrantWriter] for tests.
 ///
 /// Holds the ownership grants it is asked to record, so a write-path test can
-/// drive `createProject`/`createItem` through the service and assert the owner
-/// grant was stamped for the creator — no connection or reflection.
+/// drive a create path through the service and assert the owner grant was
+/// stamped for the creator — no connection or reflection.
 class InMemoryOwnershipGrantWriter implements OwnershipGrantWriter {
   final List<TomPrincipalResourceGrant> _grants = [];
 

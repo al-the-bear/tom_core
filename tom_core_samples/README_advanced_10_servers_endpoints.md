@@ -156,9 +156,11 @@ authorization is two resolvers the handlers consult per call (introduced in
   endpoints hand the client a flat `resourceRoles` map (`GET /resource-roles`),
   from which the client grades fields locally.
 
-Writes enforce both layers. Structural mutations require a **minimum role**
-(`createProject`/`createItem` need `editor`, `deleteItem` `editor`, `addComment`
-`commenter`), and item writes enforce the **field grade**: every gradable field
+Writes enforce both layers. Six mutations require a **minimum role**
+(`createProject`/`createItem` need `editor` on the parent, `deleteItem` `editor`
+on the item, `addSubtask`/`updateSubtask` `editor` on the parent item, and
+`addComment` `commenter`), and item writes enforce the **field grade**: every
+gradable field
 the payload *changes* must be graded `full` for the caller, or the whole write is
 rejected with `app.item.field_forbidden`; the persisted row overlays only the
 permitted fields, so server-owned columns and non-`full` fields keep their stored
