@@ -2,10 +2,12 @@
 -- admin API manages. Column names match the @TomDbColumn mappings in
 -- lib/src/persistence/auth_persistence_model.dart (step 7).
 --
--- This migration is DDL only. The seed principals (one admin + three end-users,
--- their roles, group, and group members) live in the separate sample-data
--- migration [100]-auth_sample_data.sql, applied after this one and after the
--- grant table is created in [001].
+-- This migration is DDL only. The seed principals live in separate migrations,
+-- applied after this one and after the grant table is created in [001]: the
+-- untagged [002]-auth_admin_seed.sql, which every environment including
+-- production applies, plus [003]-auth_demo_seed@dev,test.sql and
+-- [005]-auth_two_factor_seed@dev,test.sql, whose tag makes a production apply
+-- skip them.
 
 CREATE TABLE IF NOT EXISTS auth_users (
   id            BIGINT       NOT NULL AUTO_INCREMENT,

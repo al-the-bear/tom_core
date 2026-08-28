@@ -74,6 +74,10 @@ void main() {
         // production deployment that skipped them would accept an avatar upload
         // and then have nowhere to put it.
         'auth_blob_tables',
+        // The enrolment table is what lets a production user set up a factor
+        // for themselves. Tagging it dev/test would leave production with the
+        // offer and nowhere to store the answer.
+        'auth_two_factor_enrolments',
       ]) {
         expect(byDesc[desc]!.environments, isEmpty,
             reason: '$desc must be untagged (applies in every environment)');
