@@ -18,8 +18,12 @@
 /// authentication middleware itself is the framework default
 /// (`tomDefaultAuthenticationMiddleware`), which `TomServer.start()` installs
 /// automatically when the configuration leaves `authenticationMiddleware` null —
-/// it is what reads the bearer token into the request zone for
-/// `TomBearerAuthentication.getPrincipal()`.
+/// it verifies the bearer token and places the resulting `TomPrincipal` in the
+/// request zone, where handlers read it with `getFromCurrentZone<TomPrincipal>()`
+/// — never through the client-side `TomBearerAuthentication` singleton, which is
+/// a token store the server middleware never populates (and is not
+/// request-scoped, so it is unsafe under concurrent requests). See the comment
+/// on `AdvancedAuthApiService.me()` for the same warning at the point of use.
 ///
 /// Run it from the package root (relative asset/migration paths resolve against
 /// the CWD):
