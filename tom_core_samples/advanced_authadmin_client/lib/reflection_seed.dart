@@ -56,17 +56,16 @@ export 'forms/role_form.dart';
 export 'forms/group_form.dart';
 export 'reflection_seed.reflection.dart';
 
-// Contract-DTO capture anchor. In a Flutter package the generator's closure
-// resolution partially fails (a Material/analyzer summary RangeError under the
-// cached-summary path), so a bare barrel import or a `main()` that merely
-// *constructs* the DTOs does NOT get them into the reflected graph — the
-// client-local drafts only make it in because the reflected forms reference them
-// as type-argument types, and the generator follows that type graph. So we
-// anchor each contract DTO the same way the forms anchor the drafts: as a
-// *field type* on a reflected holder. This holder is generator plumbing only —
-// never constructed or reflected at runtime; it exists solely so the type-graph
-// walk reaches every wire DTO the admin console round-trips through
-// advanced_client_core. (Regenerate with `--no-cache`; see reflection_generation.sh.)
+// Contract-DTO capture anchor. A bare barrel import — or a `main()` that merely
+// *constructs* the DTOs — does NOT get them into the reflected graph: the
+// generator follows the type graph, which is why the client-local drafts make
+// it in (the reflected forms reference them as type-argument types) and the
+// imported wire DTOs do not. So we anchor each contract DTO the same way the
+// forms anchor the drafts: as a *field type* on a reflected holder. This holder
+// is generator plumbing only — never constructed or reflected at runtime; it
+// exists solely so the type-graph walk reaches every wire DTO the admin console
+// round-trips through advanced_client_core. (Regenerate with
+// ./reflection_generation.sh, which runs with the summary cache enabled.)
 @tomReflector
 class _ContractDtoAnchor {
   CreateUserRequest? createUserRequest;

@@ -139,16 +139,18 @@ seed of its own.)
 The invocation is **flag-free**: the generator's framework default scans the
 current project only (scan `.`, non-recursive), so it needs no workspace registry
 and no scan flag — it works standalone from the package root. The two Flutter
-clients are the one exception: their scripts pass `--no-cache`
-(`dart run tom_reflection_generator --no-cache`) because the analyzer
-summary-cache resolver crashes on the Flutter closure; `--no-cache` forces a
-full live analysis. A regen is required **only when a reflected type's signature
-changes** — a field/method/annotation added, removed, or retyped on a
-`@tomReflector`/`@tomService` type, or a new reflected type added to a seed.
-Editing *bodies* or non-reflected code needs no regen. The
-`*.reflection.dart` outputs are **generated, do-not-edit** files; regenerate them,
-never hand-edit, and take them as a complete set from one generator run (never
-hand-merge them).
+clients are no exception: their scripts pass no flags either, and their headers
+warn *against* `--no-cache`, because on a Flutter package it forces a full live
+analysis of the entire Flutter closure under the analyzer and takes 20+ minutes.
+They run with the summary cache **enabled** — the fast path. The escape hatch,
+if a cache is ever suspected of being stale, is `--rebuild-cache`, which the
+scripts forward through `"$@"`. A regen is required **only when a reflected
+type's signature changes** — a field/method/annotation added, removed, or
+retyped on a `@tomReflector`/`@tomService` type, or a new reflected type added
+to a seed. Editing *bodies* or non-reflected code needs no regen. The
+`*.reflection.dart` outputs are **generated, do-not-edit** files; regenerate
+them, never hand-edit, and take them as a complete set from one generator run
+(never hand-merge them).
 
 ## Running build_runner
 
@@ -163,8 +165,8 @@ dart run build_runner build --delete-conflicting-outputs
 
 Either path produces the same `<entry>.reflection.dart`. Use
 `reflection_generation.sh` unless you have a reason to drive `build_runner`
-yourself — it encodes the correct flag-free invocation and target (and the
-`--no-cache` flag the Flutter clients need).
+yourself — it encodes the correct flag-free invocation and target, and forwards
+`--rebuild-cache` on the rare occasion you need it.
 
 ## Local run: env, Docker compose, flutter run
 
