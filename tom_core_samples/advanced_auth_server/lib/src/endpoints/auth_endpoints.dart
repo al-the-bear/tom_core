@@ -371,14 +371,18 @@ const LoginUnauthorizedErrorHandler _loginErrorHandler =
 
 /// The `@tomComponent` implementing the registry's `auth` API.
 ///
-/// Bound to the four `authApi` endpoints (`tomRemoteApis['auth']`); the bean
-/// container instantiates it through the no-argument constructor, which wires
-/// the production [AuthTokenService] over the repository-backed user store. The
-/// per-endpoint access policy is **declared on the contract** (each `authApi`
-/// endpoint's `TomApiEndpoint.access`, G-API-3) and extracted by the pipeline on
-/// first call, so these handlers carry no inline access annotation: `authLogin`
-/// / `authLoginResources` are public, the rest require an authenticated
-/// principal, which the pipeline reads from the bearer token.
+/// Bound to every endpoint of the registry's `auth` API
+/// (`tomRemoteApis['auth']`); the bean container instantiates it through the
+/// no-argument constructor, which wires the production [AuthTokenService] over
+/// the repository-backed user store. The per-endpoint access policy is
+/// **declared on the contract** (each `authApi` endpoint's
+/// `TomApiEndpoint.access`, G-API-3) and extracted by the pipeline on first
+/// call, so these handlers carry no inline access annotation: everything a
+/// caller needs *before* it holds a session token is public — credential
+/// exchange, the second factor, the enrolment passes and the pre-login
+/// resource bundle — while the session endpoints (`authRefresh`, `authLogout`,
+/// `authMe`) require an authenticated principal, which the pipeline reads from
+/// the bearer token.
 @tomReflector
 @tomComponent
 @TomApiImplementation(apiId: 'auth')
