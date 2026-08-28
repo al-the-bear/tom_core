@@ -255,7 +255,10 @@ wire. A role drop-down (keyed `share-role-picker`, default `viewer`) and a
 `AppSession.guard`. Only the project owner may share: a denied share surfaces its
 `AppBackendException` message inline (keyed `share-error`) and keeps the dialog
 open rather than closing it; an empty grantee is blocked client-side before any
-backend call. The demo ids are `u-alice` / `u-bob` / `u-carol`.
+backend call. Offline the demo ids are `u-alice`, `u-bob`, `u-carol`, `u-dave`
+and `u-erin`; against the live servers the grantee is the numeric auth user id
+(alice `2`, bob `3`, carol `4`, dave `5`, erin `6`) — `share` parses it with
+`int.tryParse` and rejects anything else.
 
 ## Running the full stack
 
@@ -264,10 +267,12 @@ both databases have to be up first:
 
 ```sh
 # 1. Auth server (issues bearer tokens) — from advanced_auth_server/
+cp .env.example .env                     # compose + runtime settings
 docker compose up -d auth-db             # MariaDB on host port 3307
 dart run bin/auth_server_start.dart      # binds http://localhost:8081
 
 # 2. App server (the board API) — from advanced_app_server/
+cp .env.example .env                     # compose + runtime settings
 docker compose up -d app-db              # MariaDB on host port 3308
 dart run bin/app_server_start.dart       # binds http://localhost:8080
 
