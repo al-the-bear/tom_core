@@ -878,14 +878,23 @@ List<String> get gradableItemFieldKeys =>
 /// Pure write logic over an [AppWriteStore], gated by the same two authorization
 /// layers the reads use.
 ///
-/// Every mutation first resolves the principal's effective [ProjectRole] on the
-/// target through the step-17 [ResourceRoleResolver] (no access → the resource
-/// is treated as not-found, closed/safe). It then enforces the §A.4 policy:
+/// Item, comment, subtask and project mutations first resolve the principal's
+/// effective [ProjectRole] on the target through the step-17
+/// [ResourceRoleResolver] (no access → the resource is treated as not-found,
+/// closed/safe); the three workspace mutations carry no role resolution at all
+/// and rely on ownership instead, as below. The §A.4 policy is then enforced in
+/// two layers:
 ///
-/// - **Role gating.** Structural mutations check a minimum role —
-///   `createProject`/`createItem` require `editor` or above on the parent,
-///   `deleteItem` requires `editor` or above on the item, `addComment` requires
-///   `commenter` or above.
+/// - **Role gating.** Six mutations check a minimum role through `_requireRole`:
+///   `createProject` and `createItem` require `editor` or above on the parent,
+///   `deleteItem` `editor` on the item, `addSubtask` and `updateSubtask`
+///   `editor` on the **parent item** (a subtask has no owner of its own), and
+///   `addComment` `commenter` or above. The other four writes are protected
+///   without a role gate: [updateWorkspace] and [deleteWorkspace] are owner-only
+///   *by construction* — the CRUD repository's C-3 write enforcement rejects a
+///   non-owner's row before any statement runs; [updateItem] resolves the role
+///   only to grade the fields below; and [createWorkspace] has no parent to gate
+///   against, recording the creator's C-5 ownership instead.
 /// - **Field-grade enforcement.** For item writes every gradable field the
 ///   caller *changes* must be graded [TomAuthState.full] for their role (the
 ///   step-18 [FieldGradeResolver]); the first violation rejects the whole write.
