@@ -176,7 +176,6 @@ class InMemoryAppBackend implements AppBackend {
     'board.signedInAs': 'Signed in as {name}',
     'board.workspace': 'Workspace',
     'board.project': 'Project',
-    'board.emptyProject': 'No items in this project yet.',
     'board.shared': 'Project shared',
     'board.shareTooltip': 'Share project',
     'board.signOut': 'Sign out',

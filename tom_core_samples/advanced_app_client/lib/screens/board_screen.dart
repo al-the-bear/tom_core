@@ -313,7 +313,7 @@ class _BoardScreenState extends State<BoardScreen> {
       return Center(child: TomText(text: _error!, key: const Key('board-error')));
     }
     if (_items.isEmpty) {
-      return Center(child: TomText(text: TomCtr.text('board.emptyProject')));
+      return Center(child: TomText(text: TomCtr.text('board.empty')));
     }
     return _buildBoard();
   }

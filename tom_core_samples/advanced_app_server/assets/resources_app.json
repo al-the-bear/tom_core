@@ -16,7 +16,6 @@
     "signedInAs": "Signed in as {name}",
     "workspace": "Workspace",
     "project": "Project",
-    "emptyProject": "No items in this project yet.",
     "shared": "Project shared",
     "shareTooltip": "Share project",
     "signOut": "Sign out",
