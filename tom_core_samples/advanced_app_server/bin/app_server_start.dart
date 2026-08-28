@@ -8,19 +8,28 @@
 ///   platform → registry → reflection → runtime → config → datasource →
 ///   JWT signing → bean context → migrations → `TomServer.start()`
 ///
-/// Every endpoint but `/health` is contract-declared `TomAuthenticatedAccess`
-/// (`TomApiEndpoint.access`, extracted by the pipeline), so the boot trusts
-/// the **same JWT signing key as the auth server**: [initializeJwtSigning] applies
-/// the identical framework sample keypair, which is what lets a token minted by
-/// `advanced_auth_server` verify here — the standard "resource server trusts the
-/// authorization server" split. That keypair is a development ("dummy")
-/// certificate on both servers, so [warnIfDevelopmentSigningKey] warns at boot
-/// until a real one is installed. The authentication middleware
-/// itself is left null so `TomServer.start()` installs the framework default
-/// (`tomDefaultAuthenticationMiddleware`), which reads the bearer token into the
-/// request zone for `TomBearerAuthentication.getPrincipal()`. The server-level
-/// [appServerErrorHandler] maps the service layer's closed/safe denial keys to
-/// HTTP 403/404 (the mapping step 20 deferred to the boot).
+/// Every endpoint but `GET /status` is contract-declared
+/// `TomAuthenticatedAccess` (`TomApiEndpoint.access`, extracted by the
+/// pipeline) — `/status` is `appHealth`, the contract's one `TomPublicAccess`
+/// entry, and it avoids `/health` because that path is not a contract
+/// endpoint at all but the plain-text liveness probe `TomHealthService`
+/// auto-mounts in every server. Because the rest are authenticated, the boot
+/// trusts the **same JWT signing key as the auth server**:
+/// [initializeJwtSigning] applies the identical framework sample keypair,
+/// which is what lets a token minted by `advanced_auth_server` verify here —
+/// the standard "resource server trusts the authorization server" split. That
+/// keypair is a development ("dummy") certificate on both servers, so
+/// [warnIfDevelopmentSigningKey] warns at boot until a real one is installed.
+/// The authentication middleware itself is left null so `TomServer.start()`
+/// installs the framework default (`tomDefaultAuthenticationMiddleware`),
+/// which verifies the bearer token and places the resulting `TomPrincipal` in
+/// the request zone, where handlers read it with
+/// `getFromCurrentZone<TomPrincipal>()` — never through the client-side
+/// `TomBearerAuthentication` singleton, which is a token store the server
+/// middleware never populates (and is not request-scoped, so it is unsafe
+/// under concurrent requests). The server-level [appServerErrorHandler] maps
+/// the service layer's closed/safe denial keys to HTTP 403/404 (the mapping
+/// step 20 deferred to the boot).
 ///
 /// Two datasources are wired (`assets/datasources_default.yaml`): `app_db` holds
 /// the app's own tables, and `main` points at the auth server's `auth_db` — home
