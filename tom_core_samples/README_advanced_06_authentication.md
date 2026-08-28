@@ -78,9 +78,9 @@ This is why the migrations leave `password_hash` **NULL** (part
 [05](README_advanced_05_persistence_database.md#migrations-schema-creation-vs-sample-data)):
 hashing is the server's job, not the SQL's. At boot the auth server runs an
 idempotent `seedDemoPasswords()` that fills a demo password onto each seed user
-that still has none (`admin`/`alice`/`bob`/`carol`/`dave` → `*-pass`), so the README
-`curl`s authenticate on first run; a user that already carries a hash is left
-untouched, so a real credential is never clobbered.
+that still has none (`admin`/`alice`/`bob`/`carol`/`dave`/`erin` → `*-pass`), so
+the README `curl`s authenticate on first run; a user that already carries a hash
+is left untouched, so a real credential is never clobbered.
 
 ## The bearer token and the shared signing key
 

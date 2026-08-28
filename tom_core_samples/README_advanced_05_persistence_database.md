@@ -332,13 +332,13 @@ format (part [06](README_advanced_06_authentication.md)).
 
 > **Verified.** Booting both databases from a fresh volume under `dev`/`test`
 > applies every migration in order and lands every seed row (app: 1 workspace / 1
-> project / 2 lists / 3 items / 1 comment / 2 subtasks / 2 shares; auth: 5 users —
-> `admin`, `alice`, `bob`, `carol` and the TOTP-enrolled `dave` — / 5 roles / 1
-> user-role / 1 group / 2 members / 32 grants), and the cross-tier
-> scenario stays green. A **production** apply runs only the untagged migrations —
-> the schema (including `[004]`'s second-factor columns) plus `auth_db` `[002]` —
-> so it lands **1 admin user / 1 role / 1
-> user-role** and **no demo users, no grants, no app rows**.
+> project / 2 lists / 3 items / 1 comment / 2 subtasks / 2 shares; auth: 6 users —
+> `admin`, `alice`, `bob`, `carol`, TOTP-enrolled `dave` and enrollable `erin` —
+> / 7 roles / 3 user-roles / 1 group / 2 members / 32 grants), and the
+> cross-tier scenario stays green. A **production** apply runs only the untagged
+> migrations — the schema (including `[004]`'s second-factor columns) plus
+> `auth_db` `[002]` — so it lands **1 admin user / 1 role / 1 user-role** and
+> **no demo users, no grants, no app rows**.
 
 ## Primary sources
 

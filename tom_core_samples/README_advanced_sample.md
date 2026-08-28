@@ -191,6 +191,8 @@ reading their URLs from the `AdvancedClientConfig` config bean. Launch with
 | `alice` | `alice-pass` | — | owns the starter workspace + project; can share |
 | `bob` | `bob-pass` | — | editor on alice's project (seeded share) |
 | `carol` | `carol-pass` | — | viewer on alice's project (seeded share) |
+| `dave` | `dave-pass` | `two_factor_required` | none — exists for the TOTP challenge (part [06](README_advanced_06_authentication.md)) |
+| `erin` | `erin-pass` | `two_factor_optional` | none — exists for the enrolment offer (part [06](README_advanced_06_authentication.md)) |
 
 Sign into the **admin console** as `admin` to edit roles and the grant matrix;
 sign into the **end-user app** as `alice` / `bob` / `carol` to see how each

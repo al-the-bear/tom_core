@@ -73,9 +73,9 @@ const int _defaultPort = 8081;
 /// Demo passwords seeded onto the seed users' password-less rows so the README
 /// `curl`s can log in on first boot — `admin` from the untagged [002] admin seed
 /// (present in every environment), `alice`/`bob`/`carol` from the `@dev,test`
-/// [003] demo seed, and `dave` from the `@dev,test` [005] two-factor seed
-/// (dev/test only). [seedDemoPasswords] fills only the rows that
-/// exist, so a production apply (no demo seed) sets just the admin password.
+/// [003] demo seed, and `dave`/`erin` from the `@dev,test` [005] two-factor
+/// seed (dev/test only). [seedDemoPasswords] fills only the rows that exist,
+/// so a production apply (no demo seed) sets just the admin password.
 /// Hashing is the auth server's job (never raw SQL), so the migrations leave
 /// `password_hash` NULL and the boot fills it through the step-9 [applyPassword]
 /// helper. Sample credentials only — never ship these.
