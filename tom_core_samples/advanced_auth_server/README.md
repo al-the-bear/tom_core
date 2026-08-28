@@ -27,10 +27,12 @@ Each surface is split into a pure, database-free logic class and a thin
 
 The adapters carry the production wiring (the repository-backed stores); the
 per-endpoint access policy is **declared on the contract** (`TomApiEndpoint.access`,
-G-API-3), not annotated on the handlers: `/auth/login` and
-`/auth/second-factor` are `TomPublicAccess`, the rest of `/auth/*` is
-`TomAuthenticatedAccess`, and every `/admin/*`
-endpoint is `TomRoleAccess(['admin'])` (the shared `adminAccess` constant). The
+G-API-3), not annotated on the handlers: everything a caller needs *before* it
+holds a session token is `TomPublicAccess` — credential exchange, the second
+factor, the three enrolment passes and the login screen's resource bundle —
+while the session endpoints (`/auth/refresh`, `/auth/me`, `/auth/logout`) are
+`TomAuthenticatedAccess`, and every `/admin/*` endpoint is
+`TomRoleAccess(['admin'])` (the shared `adminAccess` constant). The
 endpoint pipeline extracts that declaration on first call, reads the caller's
 principal from the bearer token via the default
 `tomDefaultAuthenticationMiddleware`, and rejects a non-admin **before** the

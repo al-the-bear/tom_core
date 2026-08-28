@@ -104,9 +104,12 @@ declared directly on each endpoint's `TomApiEndpoint.access` value (G-API-3 —
 the endpoint carries an `access` field; there is no companion map). The values
 are the kernel `TomAccessControl` types:
 
-- `authLogin` / `authSecondFactor` / `authLoginResources` → `TomPublicAccess()`
-  (reachable unauthenticated — you must be able to log in, complete a pending
-  second factor, and fetch login texts before you have a usable token);
+- the six pre-session `/auth/*` endpoints — `authLogin`, `authSecondFactor`,
+  `authBeginEnrolment`, `authConfirmEnrolment`, `authSkipEnrolment` and
+  `authLoginResources` — plus `appHealth` → `TomPublicAccess()` (reachable
+  unauthenticated: you must be able to log in, complete a pending second factor,
+  enrol or decline an offered one, and fetch login texts before you have a
+  usable token — and a health probe answers before any principal exists);
 - every other auth/app endpoint → `TomAuthenticatedAccess()`;
 - **every `/admin/*` endpoint → the shared `adminAccess`
   (`TomRoleAccess(['admin'])`) constant** — the single policy gating the whole

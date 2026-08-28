@@ -59,7 +59,7 @@ The three access policies the sample uses, all from the kernel's
 
 | Access policy | Meaning | Where declared |
 | ------------- | ------- | -------------- |
-| `TomPublicAccess()` | No token required | `authLogin`, `authSecondFactor`, `authLoginResources`, `appHealth` |
+| `TomPublicAccess()` | No token required | the six pre-session `/auth/*` endpoints — `authLogin`, `authSecondFactor`, `authBeginEnrolment`, `authConfirmEnrolment`, `authSkipEnrolment`, `authLoginResources` — and `appHealth` |
 | `TomAuthenticatedAccess()` | Any valid bearer principal | every other `/auth/*` and every `/app` endpoint |
 | `TomRoleAccess(['admin'])` | A principal carrying the `admin` role | every `/admin/*` endpoint |
 
@@ -79,8 +79,10 @@ G-API-3).
 The three surfaces gate at different granularities:
 
 - **`/auth/*` — mostly public-then-authenticated.** `authLogin`,
-  `authSecondFactor` and `authLoginResources` declare `TomPublicAccess()` (you
-  cannot require a token to log in, or to fetch the pre-login screen texts);
+  `authSecondFactor`, the three enrolment passes (`authBeginEnrolment`,
+  `authConfirmEnrolment`, `authSkipEnrolment`) and `authLoginResources` declare
+  `TomPublicAccess()` (you cannot require a token to log in, to settle a factor
+  the login is still offering, or to fetch the pre-login screen texts);
   `authRefresh`, `authLogout`, `authMe` declare `TomAuthenticatedAccess()`
   (`api_registry.dart`, `authApi`). `authSecondFactor` additionally sets
   `includeBearerAuthentication: false`: it completes a login whose interim
