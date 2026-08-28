@@ -51,7 +51,7 @@ dart run bin/auth_server_start.dart   # HTTP on port 8081
 ```
 
 On first boot the server applies the migrations (creating `auth_db` + the
-framework `tom_resource_grant` table and seeding the §A.4 grant matrix), then
+framework `tom_resource_grant` table and seeding its grant matrix), then
 hashes a **demo password** onto each seed account that has none. The seeded
 credentials are (sample only — never ship them):
 
@@ -68,9 +68,10 @@ credentials are (sample only — never ship them):
 
 `POST` / `PUT` bodies are JSON; the `Authorization: Bearer <authzToken>` header
 carries the login's `authzToken` (the token that carries the encrypted roles and
-groups). The token deliberately does **not** carry a per-resource role map (RCD3,
-option b): the bearer is opaque and never read for enforcement, so the effective
-`resourceRoles` map (C-5 ownership grants ∪ C-6 `share`-mode delegations) is
+groups). The token deliberately does **not** carry a per-resource role map: the
+bearer is opaque and never read for enforcement, so the effective
+`resourceRoles` map (`tom_principal_resource_grant` ownership rows ∪
+`share`-mode `tom_principal_delegation` rows) is
 resolved **live** instead — the app server re-resolves it from `auth_db` on every
 request and exposes it through `GET /resource-roles`, which the client reads.
 
@@ -116,7 +117,7 @@ Read the grant matrix, raise a cell to `full`, and write it back — the
 admin-only grant edit:
 
 ```sh
-# The §A.4 seed: viewer.title is "read".
+# The seeded matrix: viewer.title is "read".
 curl -s http://localhost:8081/admin/grants -H "Authorization: Bearer $AUTHZ"
 
 # Promote viewer.title to full and persist it.
@@ -189,6 +190,6 @@ payload using the framework's bundled sample keypair, installed by
 **development ("dummy") certificate**, so the framework emits its development-key
 warning on every sign and verify and `warnIfDevelopmentSigningKey()` repeats it
 at boot — intentionally not suppressed (G-AUTH-2). The app server
-(advanced_app_server, step 21) applies the identical configuration so a token
+(`advanced_app_server`) applies the identical configuration so a token
 minted here verifies there. **Replace the keys with real ones — built into a
 `TomJwtConfiguration` with `isDummy: false` — before any real deployment.**

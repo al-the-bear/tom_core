@@ -63,7 +63,7 @@ void main() {
 
     test('the avatar carries no column grade', () {
       // Unlike `app_items.attachment`, the avatar is not graded per row: a user
-      // owns their own picture, and the file endpoint's C-3 row scope on
+      // owns their own picture, and the file endpoint's row scope on
       // `auth_users` already answers who may reach the row at all. Adding an
       // `authKey` here would demand a resolver the auth server does not
       // register, and an unregistered key falls back to the process-global

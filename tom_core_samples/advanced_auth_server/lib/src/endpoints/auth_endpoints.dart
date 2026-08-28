@@ -1,5 +1,5 @@
 /// The auth server's `/auth/*` HTTP surface — credential login and the token
-/// lifecycle (step 11).
+/// lifecycle.
 ///
 /// Two collaborators, split by responsibility:
 ///
@@ -14,10 +14,12 @@
 ///   endpoint (`tomRemoteApis['auth'][...]`), sources the caller's principal
 ///   from the bearer token in the request zone, and maps a rejected login to
 ///   HTTP 401. It carries the production wiring (the repository-backed store,
-///   the configured JWT issuer) and is exercised end-to-end at boot (step 13).
+///   the configured JWT issuer) and is exercised end-to-end by
+///   `bin/auth_server_start.dart`.
 ///
 /// The split keeps the token logic testable while the component stays a
-/// boundary adapter — the same seam philosophy as the step-10 `AuthUserStore`.
+/// boundary adapter — the same seam philosophy as `AuthUserStore` in
+/// `auth/authentication_service.dart`.
 library;
 
 import 'dart:convert';
@@ -242,7 +244,8 @@ class AuthTokenService {
 
   /// Maps a [LoginRequest] onto the framework's wire message. The single-tenant
   /// sample fixes the locale/client fields the multi-tenant UAM server resolves
-  /// per request (see step-10 decision 2).
+  /// per request — the same single-tenant choice
+  /// [AdvancedAuthenticationService] makes.
   TomAuthenticationMessage _messageFor(LoginRequest request) =>
       TomAuthenticationMessage()
         ..userName = request.username
@@ -328,7 +331,7 @@ class SecondFactorRetryException extends TomLoginException {
 /// A [TomLoginException] is the expected outcome of bad credentials, so the
 /// login endpoint answers it with `401 Unauthorized` carrying only the stable
 /// error key — never which of username/password failed (no account-existence
-/// leak, per step-10 decision 3). Any other error is a genuine fault and is
+/// leak). Any other error is a genuine fault and is
 /// masked behind the default handler's generic 500.
 ///
 /// A [SecondFactorRetryException] additionally carries the re-issued challenge
@@ -390,11 +393,12 @@ class AdvancedAuthApiService implements AuthApiService {
   /// Production token logic: verifies credentials through the repository-backed
   /// store and signs with the server-wide JWT issuer.
   ///
-  /// The login does not fold effective per-resource roles into the token (RCD3,
-  /// option b): the token is an opaque bearer, enforcement re-resolves the C-5
-  /// grant and C-6 delegation rows live from `auth_db` on every request, and the
-  /// client reads its current roles from the app server's `/resource-roles`
-  /// endpoint — so no grant/delegation repository is wired here.
+  /// The login does not fold effective per-resource roles into the token: the
+  /// token is an opaque bearer, enforcement re-resolves the
+  /// `tom_principal_resource_grant` and `tom_principal_delegation` rows live from
+  /// `auth_db` on every request, and the client reads its current roles from the
+  /// app server's `/resource-roles` endpoint — so no grant/delegation repository
+  /// is wired here. See [AdvancedAuthenticationService] for the full reasoning.
   final AuthTokenService _tokens = AuthTokenService(
     AdvancedAuthenticationService(const RepositoryAuthUserStore()),
   );

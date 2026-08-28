@@ -1,4 +1,4 @@
-/// Tests for the auth server's two resource endpoints (todo 7).
+/// Tests for the auth server's two resource endpoints.
 ///
 /// Per D-A9/D-A10 the auth server serves the **public** login texts
 /// (`/auth/resources/login`) and the **admin-gated** console texts
@@ -20,7 +20,7 @@ TomPrincipal _principal({required List<String> roles}) => TomPrincipal(
     );
 
 void main() {
-  group('login resource bundle (public, todo 7)', () {
+  group('login resource bundle (public)', () {
     test('loginBundle carries the public login + adminLogin texts', () {
       final texts = AuthResourceBundles.loginBundle().texts;
       expect(texts['login.username.label'], 'Username');
@@ -72,7 +72,7 @@ void main() {
     });
   });
 
-  group('admin console resource bundle (admin-gated, todo 7)', () {
+  group('admin console resource bundle (admin-gated)', () {
     test('adminConsoleBundle carries the editor + grants texts', () {
       final texts = AuthResourceBundles.adminConsoleBundle().texts;
       expect(texts['adminConsole.title'], 'Advanced Todo — Admin console');

@@ -2,8 +2,9 @@
 /// record <-> domain `User` and record <-> wire DTO conversions are pure and
 /// total, so they verify without a server or MariaDB.
 ///
-/// The live schema boot + seed rows are the gate of step 8; these tests cover
-/// everything that does not need a database — step 7's "Done" bar.
+/// The live schema and its seed rows are proven by booting
+/// `bin/auth_server_start.dart` against MariaDB; these tests cover everything
+/// that does not need a database.
 library;
 
 import 'package:advanced_auth_server/advanced_auth_server.dart';
@@ -133,7 +134,7 @@ void main() {
       expect(record.email, 'grace@example.com');
       expect(record.status, UserStatus.active.name);
       expect(record.passwordHash, isNull,
-          reason: 'hashing is the step-9 helper, not the mapper');
+          reason: 'hashing is applyPassword\'s job, not the mapper\'s');
     });
   });
 

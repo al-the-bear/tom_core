@@ -6,12 +6,14 @@
 /// This is the one place the relational and the domain/wire worlds meet. The
 /// records use integer surrogate keys and foreign-key columns; the domain `User`
 /// uses display-string ids and observable fields; the DTOs are flat value
-/// records. Every conversion here is **pure and total**, so the whole boundary
-/// unit-tests without a database (step 7's "Done" bar).
+/// records. Every conversion here is **pure and total**, which is what lets
+/// `test/auth_persistence_mapping_test.dart` cover the whole boundary without a
+/// database.
 ///
 /// Server-only columns ([UserRecord.passwordHash] / [UserRecord.hashType]) never
-/// round-trip through the domain or the DTOs — they are written by the password
-/// helper (step 9) and the authentication service, never echoed on the wire.
+/// round-trip through the domain or the DTOs — they are written by `applyPassword`
+/// in `auth/password_hashing.dart` and by the authentication service, never
+/// echoed on the wire.
 library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
@@ -34,7 +36,7 @@ String _idString(int? value) => value?.toString() ?? '';
 ///
 /// The auth columns are server-only and not part of the domain entity, so they
 /// are left untouched (callers that set a password write [UserRecord.passwordHash]
-/// separately via the step-9 helper).
+/// separately via `applyPassword`).
 UserRecord userToRecord(User user) => UserRecord()
   ..id = _idOrNull(user.id.get())
   ..username = user.username.get()
@@ -77,7 +79,7 @@ UserRecord applyUserDto(UserRecord record, UserDto dto) => record
 
 /// Builds a fresh [UserRecord] from a [CreateUserRequest] (the
 /// `POST /admin/users` create path). The password is hashed and written
-/// separately by the step-9 helper, so [UserRecord.passwordHash] stays `null`
+/// separately by `applyPassword`, so [UserRecord.passwordHash] stays `null`
 /// here; [UserRecord.status] seeds to [UserStatus.active].
 UserRecord createUserRequestToRecord(CreateUserRequest request) => UserRecord()
   ..username = request.username

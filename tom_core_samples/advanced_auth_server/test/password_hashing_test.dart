@@ -1,4 +1,4 @@
-/// Unit tests for the auth server's password helper (step 9). The helper is a
+/// Unit tests for the auth server's password helper. The helper is a
 /// thin adapter over the kernel `TomPasswordHasher`, so these tests assert the
 /// security properties that matter at the auth_db boundary: verify accepts the
 /// right password and rejects the wrong one, the stored hash is salted (same
@@ -83,8 +83,8 @@ void main() {
     });
 
     test('a record with no stored hash can never authenticate', () {
-      // A freshly seeded row (step-8 seeds leave password_hash NULL) must reject
-      // every password rather than throw.
+      // A freshly seeded row (the migrations leave password_hash NULL) must
+      // reject every password rather than throw.
       final seeded = UserRecord()
         ..username = 'admin'
         ..passwordHash = null

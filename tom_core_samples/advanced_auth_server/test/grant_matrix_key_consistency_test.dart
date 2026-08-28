@@ -78,7 +78,7 @@ List<_GrantRow> _gradeGrantRows(String sql) {
 }
 
 void main() {
-  group('grant-matrix key consistency (RC-26)', () {
+  group('grant-matrix key consistency', () {
     late final List<_GrantRow> rows;
 
     setUpAll(() {
@@ -154,7 +154,8 @@ void main() {
       expect(
         seeded.keys.toSet(),
         equals({for (final role in ProjectRole.values) role.name}),
-        reason: 'the file endpoint resolves its C-4 grade from this table, so '
+        reason: 'the file endpoint resolves its attachment grade from this '
+            'table, so '
             'a role with no attachment row would resolve to `none` and be '
             'refused even the download',
       );

@@ -1,5 +1,5 @@
 /// The auth server's [TomAuthenticationService] — the credential check that the
-/// framework's `TomAuthenticationServer` delegates each login to (step 11).
+/// framework's `TomAuthenticationServer` delegates each login to.
 ///
 /// It verifies a username/password against `auth_db`, loads the user's role keys
 /// and group names, and builds the authenticated [TomPrincipal] +
@@ -9,7 +9,8 @@
 ///
 /// The DB reads sit behind an [AuthUserStore] seam so the service is unit-testable
 /// without a database or the reflection runtime: [RepositoryAuthUserStore] is the
-/// real query-backed store wired at boot (step 13); [InMemoryAuthUserStore] is a
+/// real query-backed store wired in `bin/auth_server_start.dart`;
+/// [InMemoryAuthUserStore] is a
 /// seeded store for tests. The service itself is pure over whichever store it is
 /// handed.
 library;
@@ -53,8 +54,9 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
   /// in-memory one under test).
   ///
   /// The login deliberately does **not** fold the principal's effective
-  /// per-resource roles (C-5 ownership grants ∪ C-6 active share delegations) into
-  /// the minted token (RCD3, option b). The bearer token is opaque to the client
+  /// per-resource roles (`tom_principal_resource_grant` ownership rows ∪ active
+  /// `share`-mode `tom_principal_delegation` rows) into the minted token. The
+  /// bearer token is opaque to the client
   /// and never read for enforcement: the app server re-resolves the live grant and
   /// delegation rows from `auth_db` on every request (so a revoked share stops
   /// granting access immediately, not at token expiry), and the client reads its
@@ -168,7 +170,7 @@ void installTotpSecretResolver(AuthUserStore store) {
   };
 }
 
-/// The query-backed [AuthUserStore] wired at boot (step 13).
+/// The query-backed [AuthUserStore] wired in `bin/auth_server_start.dart`.
 ///
 /// Reads through the process-wide singleton repositories, resolving the
 /// `user_roles -> roles.role_key` and `group_members -> groups.name` joins with

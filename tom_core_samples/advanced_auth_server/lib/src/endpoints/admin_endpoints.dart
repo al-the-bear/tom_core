@@ -1,13 +1,14 @@
 /// The auth server's `/admin/*` HTTP surface — account/role/group CRUD,
-/// assignments, and the four-state grant matrix (step 12).
+/// assignments, and the four-state grant matrix.
 ///
 /// Three collaborators, split by responsibility (the same seam philosophy as
-/// the step-10 `AuthUserStore` and the step-11 `AuthTokenService`):
+/// `AuthUserStore` in `auth/authentication_service.dart` and `AuthTokenService`
+/// in `endpoints/auth_endpoints.dart`):
 ///
 /// - [AdminStore] is the data seam the admin operations read and write through.
 ///   [RepositoryAdminStore] is the production implementation over the `auth_db`
 ///   repository singletons (plus the framework's `tom_resource_grant` table),
-///   wired at boot (step 13); [InMemoryAdminStore] is a seeded, database-free
+///   wired in `bin/auth_server_start.dart`; [InMemoryAdminStore] is a seeded, database-free
 ///   store for unit tests.
 /// - [AdminService] is the pure logic over an [AdminStore]: it maps the wire
 ///   DTOs to/from the persistence records, projects the grant rows to/from the
@@ -22,14 +23,14 @@
 ///   constant set as each `adminApi` endpoint's `TomApiEndpoint.access` in
 ///   `advanced_todo_contracts`, G-API-3 full form / G-API-4). The pipeline
 ///   extracts that policy on first call, so no handler restates or annotates the
-///   gate inline; it carries the production wiring and is exercised end-to-end at
-///   boot (step 13).
+///   gate inline; it carries the production wiring and is exercised end-to-end by
+///   `bin/auth_server_start.dart`.
 ///
 /// A non-admin caller is rejected by the pipeline's access check *before* the
 /// method runs (it throws the access-denied [TomEndpointHandlerException]). The
 /// default server error handler masks every fault behind an opaque 500, so
-/// [forbiddenOnAccessDenied] maps that one exception to HTTP 403; the auth-server
-/// boot (step 13) installs it as the server-level error handler.
+/// [forbiddenOnAccessDenied] maps that one exception to HTTP 403;
+/// `bin/auth_server_start.dart` installs it as the server-level error handler.
 library;
 
 import 'dart:convert';
@@ -46,7 +47,7 @@ import '../resources/auth_resource_bundles.dart';
 /// Repository for the framework's [TomResourceGrant] table (`tom_resource_grant`).
 ///
 /// The grant table is owned by `tom_core_server` (datasource `main`); the
-/// auth-server boot (step 13) registers `main` against the same `auth_db`
+/// auth-server boot (`bin/auth_server_start.dart`) registers `main` against the same `auth_db`
 /// connection, so this singleton reads/writes the grant rows alongside the
 /// auth records.
 class GrantRepository extends TomSqlDatasourceRepository<TomResourceGrant, int> {}
@@ -119,7 +120,7 @@ abstract class AdminStore {
   Future<void> replaceGrantsForRole(String roleName, List<TomResourceGrant> grants);
 }
 
-/// The query-backed [AdminStore] wired at boot (step 13).
+/// The query-backed [AdminStore] wired in `bin/auth_server_start.dart`.
 ///
 /// Reads/writes through the process-wide singleton repositories. Requires a live
 /// `auth_db` connection and the reflection runtime, so it is exercised
@@ -424,8 +425,8 @@ class InMemoryAdminStore implements AdminStore {
 /// Pure admin logic over an [AdminStore]: account/role/group CRUD, assignments,
 /// and the grant matrix.
 ///
-/// Maps the wire DTOs to/from the `auth_db` records (reusing the step-7
-/// `auth_mapping` conversions and the step-9 password helper) and the grant rows
+/// Maps the wire DTOs to/from the `auth_db` records (reusing the
+/// `persistence/auth_mapping.dart` conversions and `applyPassword`) and the grant rows
 /// to/from the [GrantMatrixDto]. No server/zone/reflection dependency, so every
 /// path is unit-testable against a seeded [InMemoryAdminStore].
 class AdminService {
@@ -443,7 +444,7 @@ class AdminService {
       [for (final record in await store.allUsers()) userRecordToDto(record)];
 
   /// Creates an account from [request], hashing the plaintext password into the
-  /// server-only credential columns (step-9 helper) before persisting.
+  /// server-only credential columns (via `applyPassword`) before persisting.
   Future<UserDto> createUser(CreateUserRequest request) async {
     final record = applyPassword(
       createUserRequestToRecord(request),
@@ -615,7 +616,8 @@ const String endpointAccessDeniedKey =
 /// method runs and, on denial,
 /// throws the access-denied [TomEndpointHandlerException] — which the
 /// default server handler would mask behind an opaque 500. Installing this on the
-/// server configuration (step 13) turns that one exception into a `403 Forbidden`
+/// server configuration in `bin/auth_server_start.dart` turns that one exception
+/// into a `403 Forbidden`
 /// carrying the stable key; every other fault returns `null`, falling through to
 /// the server's default handler.
 Response? forbiddenOnAccessDenied(
@@ -642,7 +644,7 @@ Response? forbiddenOnAccessDenied(
 /// `adminApi` endpoint's `TomApiEndpoint.access` in `advanced_todo_contracts`
 /// (G-API-3 / G-API-4). The pipeline extracts that policy on first call and
 /// rejects a non-admin caller before the method runs, so these handlers carry
-/// **no inline access annotation** (C-12, the full form of G-API-3) — the
+/// **no inline access annotation** (the full form of G-API-3) — the
 /// contract is the single source of the gate.
 @tomReflector
 @tomComponent

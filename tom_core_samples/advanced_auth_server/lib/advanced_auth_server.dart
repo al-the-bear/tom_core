@@ -5,10 +5,14 @@
 /// clients present, and exposes `/admin/*` CRUD for users/roles/groups and the
 /// `(role, resourceKey) → TomAuthState` grant matrix.
 ///
-/// The auth_db records + domain/DTO mapping are defined in step 7, the password
-/// helper in step 9, and the authentication service in step 10; the JWT
-/// endpoints, admin API, and boot are wired in steps 11–13 of the implementation
-/// plan. This barrel is the package's stable public entry point.
+/// The `auth_db` records and their domain/DTO mapping live in
+/// `src/persistence/`, the password helper in
+/// `src/auth/password_hashing.dart`, and the login itself in
+/// `src/auth/authentication_service.dart`; the JWT endpoints
+/// (`src/endpoints/auth_endpoints.dart`) and the admin API
+/// (`src/endpoints/admin_endpoints.dart`) are assembled into a running server
+/// by `bin/auth_server_start.dart`. This barrel is the package's stable public
+/// entry point.
 library;
 
 export 'src/auth/authentication_service.dart';

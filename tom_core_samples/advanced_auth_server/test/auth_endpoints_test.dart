@@ -1,12 +1,12 @@
-/// Unit tests for the auth server's `/auth/*` token logic (step 11).
+/// Unit tests for the auth server's `/auth/*` token logic.
 ///
 /// The HTTP-routed [AdvancedAuthApiService] is a thin adapter whose production
 /// wiring needs a database (the repository-backed store) and a live request zone
-/// (the bearer principal), so it is exercised end-to-end at boot (step 13). The
-/// behaviour the plan's "Done" bar calls out — login returns a signed token
-/// pair, `/auth/me` echoes the principal that token decodes to, and bad
-/// credentials are rejected (→ HTTP 401) — is proven here against the pure
-/// [AuthTokenService] seeded with the step-10 [InMemoryAuthUserStore] and the
+/// (the bearer principal), so it is exercised end-to-end by
+/// `bin/auth_server_start.dart`. What matters here — login returns a signed
+/// token pair, `/auth/me` echoes the principal that token decodes to, and bad
+/// credentials are rejected (→ HTTP 401) — is proven against the pure
+/// [AuthTokenService] seeded with [InMemoryAuthUserStore] and the
 /// [LoginUnauthorizedErrorHandler], with no server.
 library;
 
@@ -51,8 +51,8 @@ InMemoryAuthUserStore _storeWith({List<UserRecord> extraUsers = const []}) {
 
 /// A token service over a freshly seeded store, signing with a fixed issuer.
 ///
-/// The login does not fold per-resource roles into the token (RCD3, option b),
-/// so the service is built over the store alone.
+/// The login does not fold per-resource roles into the token, so the service is
+/// built over the store alone.
 AuthTokenService _service({List<UserRecord> extraUsers = const []}) =>
     AuthTokenService(
       AdvancedAuthenticationService(_storeWith(extraUsers: extraUsers)),

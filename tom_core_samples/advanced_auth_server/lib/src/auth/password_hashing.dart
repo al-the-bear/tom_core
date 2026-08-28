@@ -3,9 +3,10 @@
 ///
 /// The kernel hasher returns a `(salt$hash, spec)` pair; `auth_db` stores those
 /// two halves in [UserRecord.passwordHash] and [UserRecord.hashType]. This is the
-/// one place plaintext is turned into stored credentials (the create-user path,
-/// step 12) and checked against them (the authentication service, step 10), so
-/// the column split lives here and nowhere else.
+/// one place plaintext is turned into stored credentials (the create-user path
+/// in `endpoints/admin_endpoints.dart`) and checked against them
+/// (`auth/authentication_service.dart`), so the column split lives here and
+/// nowhere else.
 ///
 /// The hash is salted (a fresh random salt per [hashPassword] call, embedded in
 /// the stored value) and non-reversible (Argon2 key derivation): the same

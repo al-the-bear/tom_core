@@ -1,8 +1,8 @@
-/// Unit tests for the auth server's [AdvancedAuthenticationService] (step 10).
+/// Unit tests for the auth server's [AdvancedAuthenticationService].
 ///
 /// The DB reads sit behind the [AuthUserStore] seam, so these tests run the real
 /// login logic against a seeded [InMemoryAuthUserStore] — no database and no
-/// reflection. They assert the two paths the plan calls out: the **accept** path
+/// reflection. They assert both directions: the **accept** path
 /// returns an authenticated [TomPrincipal] carrying the user's expected roles and
 /// groups, and the **reject** paths (wrong password, unknown user, suspended
 /// account, credential-less row) each throw a [TomLoginException] rather than
@@ -95,8 +95,8 @@ void main() {
       },
     );
 
-    test('the login does not fold effective per-resource roles into the token '
-        '(RCD3, option b)', () async {
+    test('the login does not fold effective per-resource roles into the token',
+        () async {
       // The bearer token is opaque and never read for enforcement; the app
       // server re-resolves grants/shares live from auth_db and the client reads
       // its roles from /resource-roles. So the login leaves aci.resourceRoles
@@ -153,7 +153,7 @@ void main() {
     test(
       'rejects a credential-less row (freshly seeded, no password)',
       () async {
-        // Step-8 seeds leave password_hash NULL until a password is set.
+        // The migrations leave password_hash NULL until a password is set.
         final seeded = UserRecord()
           ..id = 3
           ..username = 'carol'

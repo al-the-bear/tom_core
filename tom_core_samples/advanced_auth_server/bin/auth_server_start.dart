@@ -13,7 +13,7 @@
 /// authenticates and role-gates, so it adds the two pieces that surface that:
 /// the JWT signing configuration (so the minted token pair is properly signed +
 /// encrypted, and verifies again here and — with the identical configuration —
-/// in the app server at step 21), and the server-level error handler that maps
+/// in `advanced_app_server`), and the server-level error handler that maps
 /// the pipeline's pre-invocation access-denied throw to HTTP 403. The
 /// authentication middleware itself is the framework default
 /// (`tomDefaultAuthenticationMiddleware`), which `TomServer.start()` installs
@@ -61,7 +61,7 @@ import 'package:advanced_auth_server/advanced_auth_server.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 
 // Registers the ProjectRole → TomAuthState resource-role vocabulary the
-// framework's TomResourceRoleAdapter resolves grades through (C-5).
+// framework's TomResourceRoleAdapter resolves grades through.
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 
 import 'auth_server_start.reflection.dart';
@@ -77,7 +77,7 @@ const int _defaultPort = 8081;
 /// seed (dev/test only). [seedDemoPasswords] fills only the rows that exist,
 /// so a production apply (no demo seed) sets just the admin password.
 /// Hashing is the auth server's job (never raw SQL), so the migrations leave
-/// `password_hash` NULL and the boot fills it through the step-9 [applyPassword]
+/// `password_hash` NULL and the boot fills it through the [applyPassword]
 /// helper. Sample credentials only — never ship these.
 const Map<String, String> _demoPasswords = {
   'admin': 'admin-pass',
@@ -220,7 +220,8 @@ void initializeServerResources() {
 /// The token pair the auth server mints is signed (HS256) and carries an
 /// RSA-encrypted access-control payload. Reusing the framework's standard sample
 /// keys — rather than minting per-server keys — is what lets the app server
-/// (step 21) verify a token issued here by applying the identical configuration.
+/// (`advanced_app_server`) verify a token issued here by applying the identical
+/// configuration.
 ///
 /// The configuration is left marked as a development ("dummy") certificate — the
 /// bundled keypair is a non-fresh, non-production convenience shared across every
@@ -277,7 +278,7 @@ Future<void> seedDemoPasswords() async {
 
 /// Installs the deployment's second-factor policy and enrolment store — the two
 /// beans that turn 2FA from "whatever the user row happens to say" into a
-/// server-wide rule with a first-login set-up path (C-10).
+/// server-wide rule with a first-login set-up path.
 ///
 /// **The rule is carried by two roles, not by a server-wide default.** The
 /// `two_factor_optional` role makes a login *offer* a factor the holder may
@@ -351,7 +352,7 @@ Future<void> main(List<String> args) async {
 
   initializeReflection();
   // Establishes the shared ProjectRole → TomAuthState grade vocabulary the
-  // framework's TomResourceRoleAdapter resolves resource keys through (C-5).
+  // framework's TomResourceRoleAdapter resolves resource keys through.
   // Every advanced_* runtime registers the identical mapping at boot.
   registerProjectRoleVocabulary();
   initializeRuntime();

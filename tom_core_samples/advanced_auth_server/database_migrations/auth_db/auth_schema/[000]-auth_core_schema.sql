@@ -1,6 +1,6 @@
 -- auth_db identity schema: the principals the auth server authenticates and the
 -- admin API manages. Column names match the @TomDbColumn mappings in
--- lib/src/persistence/auth_persistence_model.dart (step 7).
+-- lib/src/persistence/auth_persistence_model.dart.
 --
 -- This migration is DDL only. The seed principals live in separate migrations,
 -- applied after this one and after the grant table is created in [001]: the

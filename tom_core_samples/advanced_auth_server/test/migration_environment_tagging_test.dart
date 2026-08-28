@@ -1,4 +1,4 @@
-/// Step 20 done-bar guard (G-MIG-1/2/3): the `auth_db` migration filenames are
+/// Migration-naming guard (G-MIG-1/2/3): the `auth_db` migration filenames are
 /// numbered consecutively and tagged so a **production** apply seeds the admin
 /// account while omitting every demo user.
 ///
@@ -37,7 +37,7 @@ List<({int version, TomMigrationFileName parsed})> _migrations(String dir) {
 }
 
 void main() {
-  group('auth_db migration environment tagging (Step 20 / G-MIG-1/2/3)', () {
+  group('auth_db migration environment tagging (G-MIG-1/2/3)', () {
     late final List<({int version, TomMigrationFileName parsed})> migrations;
 
     setUpAll(() => migrations = _migrations(_authSchemaDir));
@@ -91,7 +91,7 @@ void main() {
       expect(byDesc['auth_two_factor_seed']!.environments, ['dev', 'test']);
     });
 
-    test('a production apply seeds admin without demo users (done-bar)', () {
+    test('a production apply seeds admin without demo users', () {
       bool appliesIn(String env, String desc) =>
           migrations.firstWhere((m) => m.parsed.description == desc)
               .parsed

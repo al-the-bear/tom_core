@@ -1,12 +1,12 @@
 -- The two demo accounts that carry the second-factor story, and the two roles
--- the deployment's `Tom2FAPolicy` keys on — so both halves of C-10 are exercised
--- out of the box rather than merely available:
+-- the deployment's `Tom2FAPolicy` keys on — so both halves of the policy,
+-- challenge and offer, are exercised out of the box rather than merely available:
 --
 --   dave — already holds a TOTP factor, so his login is **challenged**;
 --   erin — holds none, so her login is **offered** one she may decline.
 --
 -- Both are **demo** content, so the filename carries the `@dev,test` environment
--- tag (G-MIG-2/3, step 12): a production apply skips this file entirely and
+-- tag (G-MIG-2/3): a production apply skips this file entirely and
 -- gains neither the accounts, the pre-enrolled secret, nor the demo roles. The
 -- columns dave fills are created by the untagged [004], which production *does*
 -- apply.

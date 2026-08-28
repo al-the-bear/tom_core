@@ -1,10 +1,10 @@
-/// Unit tests for the auth server's `/admin/*` logic (step 12).
+/// Unit tests for the auth server's `/admin/*` logic.
 ///
 /// The HTTP-routed [AdvancedAdminApiService] is a thin adapter whose production
 /// wiring needs a database (the repository-backed store) and the request zone,
-/// so it is exercised end-to-end at boot (step 13). The behaviour the plan's
-/// "Done" bar calls out — an admin can edit a grant and the edit is persisted,
-/// and a non-admin is rejected with HTTP 403 — is proven here against the pure
+/// so it is exercised end-to-end by `bin/auth_server_start.dart`. What matters
+/// here — an admin can edit a grant and the edit is persisted,
+/// and a non-admin is rejected with HTTP 403 — is proven against the pure
 /// [AdminService] seeded with an [InMemoryAdminStore], the role-gate
 /// [TomRoleAccess], and the [forbiddenOnAccessDenied] handler, with no server.
 library;
@@ -38,7 +38,7 @@ void main() {
       expect(matrix.accessFor('viewer', 'item.notes'), TomAuthState.none);
     });
 
-    test('an admin can edit a grant and the edit is persisted (the Done bar)',
+    test('an admin can edit a grant and the edit is persisted',
         () async {
       final store = InMemoryAdminStore(grants: [
         _grant('editor', 'item.title', TomAuthState.read),

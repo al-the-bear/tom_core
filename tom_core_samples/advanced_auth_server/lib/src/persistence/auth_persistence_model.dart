@@ -11,7 +11,7 @@
 /// Each record is `@tomReflector` + `@TomDbTable` and is loaded/saved through a
 /// process-wide singleton `TomSqlDatasourceRepository`, exactly as
 /// `core_server_sample` and the migrated `tom_uam` persistence model do. The
-/// four-state **grant matrix** is *not* defined here: step 7 reuses the
+/// four-state **grant matrix** is *not* defined here: the sample reuses the
 /// framework's `TomResourceGrant` (re-exported from the `tom_core_server`
 /// barrel) for that table.
 library;
@@ -24,15 +24,17 @@ import 'package:tom_core_server/tom_core_server.dart';
 /// The `auth_db` datasource name every record below binds to.
 ///
 /// The reused `TomResourceGrant` carries the framework default datasource
-/// (`main`) in its own annotation; the auth-server boot (step 13) registers the
-/// auth connection so both names resolve to the same `auth_db` schema.
+/// (`main`) in its own annotation; the auth-server boot
+/// (`bin/auth_server_start.dart`) registers the auth connection so both names
+/// resolve to the same `auth_db` schema.
 const String authDatasource = 'auth_db';
 
 /// A user account row in `auth_users` — the principal the auth server
 /// authenticates and the admin API manages.
 ///
 /// [passwordHash] / [hashType] are server-only (the kernel-crypto hash written
-/// at creation, step 9); they never cross the wire onto `UserDto`.
+/// at creation by `auth/password_hashing.dart`); they never cross the wire onto
+/// `UserDto`.
 @tomReflector
 // The table and the avatar column are read from the shared contract
 // (`AppFileSlots`) rather than spelled here, because the admin console composes
@@ -227,12 +229,16 @@ final userRoleRepository = UserRoleRepository();
 
 /// Repository for the framework's [TomPrincipalResourceGrant] table
 /// (`tom_principal_resource_grant`) — the per-principal-per-resource role grants
-/// (C-5) the login folds into `TomAccessControlInformation.resourceRoles`.
+/// the framework's `TomResourceRoleAdapter` resolves into
+/// `TomAccessControlInformation.resourceRoles` per request. They are *not* folded
+/// into the token at login; see `AdvancedAuthenticationService` in
+/// `auth/authentication_service.dart` for why.
 ///
 /// The entity carries the framework default `main` datasource, which the boot
-/// (step 13) delegates to `auth_db`, so the grant rows live in the same physical
-/// schema as the identity tables — reachable here and, through the same `main`
-/// delegation, from the app server that writes ownership grants.
+/// (`bin/auth_server_start.dart`) delegates to `auth_db`, so the grant rows live
+/// in the same physical schema as the identity tables — reachable here and,
+/// through the same `main` delegation, from the app server that writes ownership
+/// grants.
 class PrincipalResourceGrantRepository
     extends TomSqlDatasourceRepository<TomPrincipalResourceGrant, int> {}
 
@@ -241,14 +247,15 @@ final principalResourceGrantRepository = PrincipalResourceGrantRepository();
 
 /// Repository for the framework's [TomPrincipalDelegation] table
 /// (`tom_principal_delegation`) — the per-delegate delegation rows, of which the
-/// sample uses only C-6 `share`-mode grants ("owner shares a resource with a
-/// grantee"). The login folds a delegate's active shares into
-/// `TomAccessControlInformation.resourceRoles` (RCB7) so the minted token's
-/// effective-role claim matches what the servers enforce.
+/// sample uses only `share`-mode rows ("owner shares a resource with a
+/// grantee"). The framework's `TomDelegationResolver` folds a delegate's active
+/// shares into `TomAccessControlInformation.resourceRoles` per request, so a
+/// revoked share stops granting access immediately rather than at token expiry.
 ///
 /// Like the grant table it binds the framework default `main` datasource, which
-/// the boot (step 13) delegates to `auth_db`, so the delegation rows the app
-/// server writes on `main` are read here through the same physical schema.
+/// the boot (`bin/auth_server_start.dart`) delegates to `auth_db`, so the
+/// delegation rows the app server writes on `main` are read here through the
+/// same physical schema.
 class PrincipalDelegationRepository
     extends TomSqlDatasourceRepository<TomPrincipalDelegation, int> {}
 

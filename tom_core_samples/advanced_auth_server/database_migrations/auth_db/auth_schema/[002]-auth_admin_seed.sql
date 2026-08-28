@@ -2,15 +2,17 @@
 -- gated on, plus the `admin` role and the assignment that grants it. This is the
 -- one seed a **production** apply keeps — it is **untagged**, so it runs in every
 -- environment (G-MIG-2/3). The demo users, the project roles, the demo group and
--- the §A.4 grant matrix are all sample content and live in the `@dev,test`-tagged
--- [003]-auth_demo_seed migration, which a production apply skips.
+-- the tom_resource_grant matrix are all sample content and live in the
+-- `@dev,test`-tagged [003]-auth_demo_seed migration, which a production apply
+-- skips.
 --
 -- Runs after [000] (identity tables) and [001] (grant table), so auth_users,
 -- auth_roles and auth_user_roles all exist. Every insert uses
 -- `ON DUPLICATE KEY UPDATE`, so a re-applied migration is idempotent.
 --
--- password_hash is left NULL: hashing is the auth server's step-9 kernel-crypto
--- job, applied at boot (seedDemoPasswords), never in raw SQL. On boot the admin
+-- password_hash is left NULL: hashing is the auth server's kernel-crypto job
+-- (lib/src/auth/password_hashing.dart), applied at boot by seedDemoPasswords,
+-- never in raw SQL. On boot the admin
 -- row is filled with the sample `admin` credential — sample only, never ship it.
 
 -- The administrator account. Holds the global `admin` role for /admin/* gating;

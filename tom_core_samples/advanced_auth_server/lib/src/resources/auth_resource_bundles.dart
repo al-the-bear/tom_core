@@ -1,16 +1,17 @@
-/// The auth server's text resource bundles (step / todo 7; externalized in RC-24).
+/// The auth server's text resource bundles.
 ///
 /// Per D-A10 the auth server owns two text sets: the **public** login-screen
 /// texts (served before anyone signs in, by both clients) and the **admin
 /// console** texts (served after an admin signs in). Both are served as the flat
 /// `<basePath>.<suffix>` maps the resource endpoints return and the clients
-/// install via `TomTextResourceProvider.from(dto.texts)` (todos 8–9).
+/// install via `TomTextResourceProvider.from(dto.texts)` — see
+/// `advanced_app_client` and `advanced_authadmin_client`.
 ///
 /// The texts no longer live as Dart `const` maps: each set is a **nested JSON
 /// asset** structured along the client's scope → form → field hierarchy, loaded
-/// once and [flattenResourceTree]-ed into the flat served shape (byte-equivalent
-/// to the pre-RC-24 bundles, so the wire contract and endpoint tests are
-/// unchanged):
+/// once and [flattenResourceTree]-ed into the flat served shape. The nesting is
+/// an authoring convenience only: flattening is what the endpoints return, so
+/// the wire contract is the flat map either way:
 ///
 /// - [loginBundle] (public, `GET /auth/resources/login`,
 ///   `assets/resources_login.json`) carries the `login.*` keys the app client's

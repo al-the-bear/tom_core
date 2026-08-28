@@ -1,7 +1,7 @@
 -- auth_db demo seed: the sample principals, project roles, demo group and the
--- §A.4 grant matrix that let a first login, the admin lists, and per-field
--- grading all return non-empty out of the box. This is **demo** content — the
--- filename carries the `@dev,test` environment tag (G-MIG-2/3, step 12), so a
+-- tom_resource_grant matrix that let a first login, the admin lists, and
+-- per-field grading all return non-empty out of the box. This is **demo**
+-- content — the filename carries the `@dev,test` environment tag (G-MIG-2/3), so a
 -- production apply (any environment other than `dev`/`test`) **skips** it and is
 -- seeded only with the admin account from [002]-auth_admin_seed.
 --
@@ -13,8 +13,9 @@
 -- boot-time job (seedDemoPasswords), never raw SQL.
 
 -- Demo end-users. They carry no global role row — their per-project access is
--- granted through C-5 ownership grants and C-6 `share`-mode delegation rows in
--- this schema (see below), resolved by the framework, not by app-server tables.
+-- granted through tom_principal_resource_grant ownership rows and
+-- tom_principal_delegation `share`-mode rows in this schema (see below),
+-- resolved by the framework, not by app-server tables.
 INSERT INTO auth_users (id, username, display_name, email, status) VALUES
   (2, 'alice', 'Alice Lovelace', 'alice@example.com', 'active'),
   (3, 'bob',   'Bob Turing',     'bob@example.com',   'active'),
@@ -120,16 +121,17 @@ INSERT INTO tom_resource_grant (role_name, resource_key, access_level) VALUES
   ('viewer',    'todo.item.attachment',  'read')
 ON DUPLICATE KEY UPDATE access_level = VALUES(access_level);
 
--- C-5 ownership grants (RCC1). Ownership is now a per-principal-per-resource
--- role grant that the login folds into TomAccessControlInformation.resourceRoles,
--- rather than an implicit `workspace.owner_id` chain read by the bespoke
--- resolver. Alice (auth user 2) owns the whole demo tree: her starter workspace,
+-- Ownership grants. Ownership is a per-principal-per-resource role grant that
+-- the login folds into TomAccessControlInformation.resourceRoles, rather than an
+-- implicit `workspace.owner_id` chain read by a bespoke resolver — one
+-- framework-enforced representation instead of a second, hand-written one.
+-- Alice (auth user 2) owns the whole demo tree: her starter workspace,
 -- its project, both lists and all three items. The write paths (createProject/
 -- createItem) stamp the same `owner` grant for whoever creates a resource, so
 -- first-run demo ownership and runtime-created ownership share one representation.
 -- resource_key is `<type>:<id>` (see ResourceRoleKeys in advanced_todo_domain).
--- Shares (bob editor / carol viewer) are C-6 `share`-mode delegations, seeded
--- below; RCC1 owns owner grants only.
+-- Shares (bob editor / carol viewer) are `share`-mode tom_principal_delegation
+-- rows, seeded below; this block seeds owner grants only.
 INSERT INTO tom_principal_resource_grant (principal_id, resource_key, role) VALUES
   ('2', 'workspace:1', 'owner'),
   ('2', 'project:1',   'owner'),
@@ -140,7 +142,7 @@ INSERT INTO tom_principal_resource_grant (principal_id, resource_key, role) VALU
   ('2', 'item:3',      'owner')
 ON DUPLICATE KEY UPDATE role = VALUES(role);
 
--- C-6 cross-user shares (RCC3). Alice (delegator 2) shares project 1 with bob
+-- Cross-user shares. Alice (delegator 2) shares project 1 with bob
 -- (editor) and carol (viewer) as `share`-mode tom_principal_delegation rows.
 -- The framework's TomDelegationResolver folds these in alongside each delegate's
 -- direct grants, so on first run bob and carol already see project 1 through the
