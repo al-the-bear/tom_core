@@ -1487,18 +1487,22 @@ class AppEndpointErrorHandler extends TomErrorHandler {
 /// The `@tomComponent` implementing the registry's `app` API.
 ///
 /// Bound to the `appApi` endpoints (`tomRemoteApis['app']`); the bean container
-/// instantiates it through the no-argument constructor, which wires the
-/// production [AppReadService]. The per-endpoint access policy is **declared on
-/// the contract** (each `appApi` endpoint's `TomApiEndpoint.access`, G-API-3)
+/// instantiates it through the no-argument constructor, which wires nothing —
+/// [AppReadService], [AppWriteService] and [AppShareService] are each built
+/// lazily on first use (the `_reads` field below documents why the wiring has
+/// to be deferred). The per-endpoint access policy is **declared on the
+/// contract** (each `appApi` endpoint's `TomApiEndpoint.access`, G-API-3)
 /// and extracted by the pipeline on first call, so these handlers carry no
 /// inline access annotation: `appHealth` is public, every other endpoint
 /// requires an authenticated principal, which the pipeline reads from the bearer
 /// token; the resource- and field-level checks then run inside the handlers.
 ///
-/// The read endpoints delegate to [AppReadService], the write endpoints
-/// (`createProject`/`createItem`/`updateItem`/`deleteItem`/`addComment`) to
+/// The read endpoints delegate to [AppReadService], the write endpoints — the
+/// workspace, project, item, comment and subtask mutations — to
 /// [AppWriteService] (role gating + field-grade enforcement), and the share
-/// endpoints (`share`/`revokeShare`) to [AppShareService] (owner-only).
+/// endpoints (`share`/`revokeShare`) to [AppShareService] (owner-only). Two
+/// endpoints reach no service at all: `health` answers with a literal status
+/// map and `resources` with the static [AppResourceBundles] bundle.
 @tomReflector
 @tomComponent
 @TomApiImplementation(apiId: 'app', errorHandler: AppEndpointErrorHandler())
