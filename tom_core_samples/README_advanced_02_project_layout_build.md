@@ -171,10 +171,14 @@ yourself — it encodes the correct flag-free invocation and target (and the
 Each server owns its database via a `docker-compose.yaml` plus a `.env.example`
 you copy to `.env`. The two databases bind **distinct host ports (3307 / 3308)**
 so both servers — and a host-local MariaDB — coexist. The auth server's
-`.env.example` shows the shape (db image/host/port/name/credentials, the HTTP
-port, the **shared `AUTH_JWT_SECRET`** the app server must also trust, and an
+`.env.example` shows the shape (db image/host/port/name/credentials, plus an
 `env=dev|int|prod` selector that picks the matching
-`assets/config-resources_<env>.yaml` overlay).
+`assets/config-resources_<env>.yaml` overlay). Each file declares only what
+something reads: the HTTP port is a constant in the boot file, overridden with
+`--port=`, and both servers sign with the framework's **bundled sample
+keypair**, so there is no shared signing secret to keep in step — replacing it
+means installing real keys, not setting a variable (part
+[06](README_advanced_06_authentication.md)).
 
 The end-to-end run is four moves (full commands in the hub's
 [Run the whole thing](README_advanced_sample.md#run-the-whole-thing)):
