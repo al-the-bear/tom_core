@@ -44,7 +44,12 @@ each barrel with how much it re-exports::
         app/
           app.dart                       barrel — 4 exports
 
-Six faults are reported:
+and opens by sizing the package as a whole::
+
+    `tom_core_samples/advanced_todo_domain/` — 23 files, of which 17 are Dart:
+    14 under `lib/` (619 lines, all hand-written) and 3 under `test/`, ...
+
+Seven faults are reported:
 
 ``LINES``
     A tabulated file whose line count is not the file's line count. The common
@@ -64,6 +69,30 @@ Six faults are reported:
 ``BARREL``
     A layout-block ``barrel — N exports`` label whose number is not the count
     of ``export`` directives in the file it labels.
+``PKGINV``
+    An atom of a package document's opening inventory -- the package's file
+    count, its Dart-file count, how many of those sit under ``lib/``, ``bin/``
+    or ``test/``, and the hand-written line totals -- disagreeing with the
+    package.
+
+``PKGINV`` exists because the opening inventory was the one measurement in
+these documents that nothing checked. ``HEADER`` looks for the literal words
+``N source files``, which a *module* document writes and a *package* document
+never does, so every ``advanced_*`` package opened with a hand-maintained
+census that no gate could see. It drifted exactly as the docstring above
+predicts: ``advanced_todo_domain`` claimed 24 files when it had 23, and its
+line total went stale the next time anyone edited a dartdoc -- a one-line
+comment change silently falsifies the paragraph a reader trusts most, because
+it is the first one they read.
+
+The atoms are deliberately narrow. Only a directory carrying a ``pubspec.yaml``
+is treated as a package, and a number counts only where it sits immediately
+beside the noun it measures (``— 23 files``, ``of which 17 are Dart``,
+``14 under `lib/```). Prose that merely contains a number near a noun -- ``14
+hand-written library files``, ``10 test suites and 1 shared test fixture`` --
+is left alone. That is what keeps the check free of false positives across the
+43 documents whose opening line it inspects while still covering the 8 it can
+measure exactly; a wider pattern would flag the other 35 and be turned off.
 
 ``BARREL`` is the one measurement here that has twice hidden a defect rather
 than merely gone stale. ``advanced_app_client``'s ``lib/app/app.dart`` was
@@ -75,11 +104,11 @@ number was right about what the barrel was *for* and wrong about what it
 *was*, and only counting the directives tells the two apart. Three of the nine
 labels in this set were wrong when the check was written.
 
-``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT`` and ``BARREL`` by writing
-the measurement back, so keeping the numbers true costs one command rather
-than a manual pass. It never touches ``UNKNOWN`` or ``ABSENT``, nor a missing
-map row: adding or retiring a row means writing the sentence that says what the
-file or folder carries, and only a reader of it can do that.
+``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT``, ``BARREL`` and ``PKGINV``
+by writing the measurement back, so keeping the numbers true costs one command
+rather than a manual pass. It never touches ``UNKNOWN`` or ``ABSENT``, nor a
+missing map row: adding or retiring a row means writing the sentence that says
+what the file or folder carries, and only a reader of it can do that.
 
 Note what ``--fix`` means for a ``BARREL`` fault: it makes the *document*
 agree with the code, which is right when the label is stale and wrong when the
@@ -101,6 +130,7 @@ editing a module brings its completion document into view.
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -129,6 +159,30 @@ BARREL_LABEL = re.compile(r"\bbarrel\s+—\s+(\d+)\s+exports")
 #: An `export` directive, counted the way the barrels are written -- one per
 #: line, at the left margin. A `part` is not an export and is not counted.
 EXPORT = re.compile(r"^export\s", re.M)
+
+#: A number as these documents group it: digits, optionally split by a space or
+#: a thin space every three (``4 337``). Kept as written when a figure is
+#: rewritten, so ``--fix`` does not restyle the prose around it.
+#:
+#: It must begin and end on a digit. Letting the separator class lead would
+#: allow the match to start on the space in front of the figure, and `--fix`
+#: would overwrite that space along with the number -- turning
+#: `20 hand-written, 4 337 lines` into `20 hand-written,4 337 lines`.
+NUMBER = r"\d(?:[\d   ]*\d)?"
+
+#: The package's own file count, taken only where it sits directly after the em
+#: dash that opens the inventory. `— 14 hand-written library files` does not
+#: match: the number must be the one immediately in front of `files`.
+PKG_FILES = re.compile(r"—\s*(" + NUMBER + r")\s+files\b")
+PKG_DART = re.compile(r"of\s+which\s+(" + NUMBER + r")\s+are\s+Dart\b")
+#: `21 under `lib/``, `2 under `bin/``, `12 under `test/`` -- Dart files only.
+PKG_UNDER = re.compile(r"(" + NUMBER + r")\s+under\s+`(lib|bin|test)/`")
+#: A parenthetical qualifying an `under `lib/`` / `under `test/`` mention, which
+#: is where the line totals and hand-written file counts live.
+PKG_SEGMENT = re.compile(r"under\s+`(lib|test)/`[^()]*\(([^)]*)\)", re.S)
+PKG_LINES = re.compile(r"(" + NUMBER + r")\s+(?:hand-written\s+)?lines")
+#: `20 hand-written, 4 337 lines` -- a file count, not the line count beside it.
+PKG_HAND = re.compile(r"(" + NUMBER + r")\s+hand-written(?!\s+lines)")
 
 TABLE_HEADER = re.compile(r"^\|\s*File\s*\|\s*Lines\s*\|")
 TABLE_ROW = re.compile(r"^\|\s*`([^`]+)`\s*\|\s*(\d+)\s*\|", re.M)
@@ -221,6 +275,7 @@ def audit(path: Path) -> Report | None:
 
     report = Report(path)
     measured = audit_barrel_exports(text, report)
+    measured |= audit_package_inventory(text, report)
 
     module_match = MODULE_PATH.search(text)
     if module_match is not None:
@@ -293,6 +348,120 @@ def audit_barrel_exports(text: str, report: Report) -> bool:
             )
             report.edits.append(rewrite_groups(label, {1: str(actual)}))
     return found
+
+
+def tracked_files(package: Path) -> list[str] | None:
+    """The package's git-tracked files, which is what the inventories count.
+
+    ``git ls-files`` rather than a directory walk, because the counts are meant
+    to describe the package as it is committed -- build output under
+    ``.dart_tool`` and a scratch file are not part of its shape. Returns
+    None when git cannot answer, so the audit stays silent rather than
+    reporting every atom as wrong.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-files"],
+            cwd=package,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return result.stdout.split()
+
+
+def as_number(written: str) -> int:
+    """Read a grouped figure (``4 337``) as an integer."""
+    return int(re.sub(r"\D", "", written))
+
+
+def like(written: str, value: int) -> str:
+    """Render `value` in the grouping style `written` used.
+
+    A document that writes ``4 337`` keeps its thin space when the figure is
+    repaired; one that writes ``619`` stays bare. Without this, ``--fix`` would
+    slowly normalise the prose to whatever the tool happened to prefer.
+    """
+    separator = next((c for c in written if not c.isdigit()), "")
+    if not separator or len(str(value)) <= 3:
+        return str(value)
+    digits = str(value)
+    head = len(digits) % 3 or 3
+    rest = [digits[i:i + 3] for i in range(head, len(digits), 3)]
+    return separator.join([digits[:head], *rest])
+
+
+def audit_package_inventory(text: str, report: Report) -> bool:
+    """Check the opening inventory of a package document against the package.
+
+    Only the atoms whose meaning is unambiguous are measured -- see ``PKGINV``
+    in the module docstring for why the patterns are as tight as they are.
+    Returns whether this document has a package inventory at all.
+    """
+    package_match = PACKAGE_PATH.search(text)
+    if package_match is None:
+        return False
+    package = REPO_ROOT / package_match.group(1)
+    if not (package / "pubspec.yaml").is_file():
+        return False
+
+    # The inventory is the paragraph the package path opens, and nothing after
+    # it: later paragraphs describe the same package in prose full of numbers.
+    # The patterns are bounded to that span rather than run against a slice, so
+    # every match offset is absolute and can be handed straight to `--fix`.
+    start = package_match.start()
+    blank = text.find("\n\n", start)
+    end = len(text) if blank < 0 else blank
+
+    file_claim = PKG_FILES.search(text, start, end)
+    dart_claim = PKG_DART.search(text, start, end)
+    if file_claim is None and dart_claim is None:
+        return False
+
+    files = tracked_files(package)
+    if files is None:
+        return False
+    dart = [f for f in files if f.endswith(".dart")]
+
+    def under(folder: str) -> list[str]:
+        return [f for f in dart if f.startswith(f"{folder}/")]
+
+    def handwritten(paths: list[str]) -> list[str]:
+        return [p for p in paths if not p.endswith(".reflection.dart")]
+
+    # (claim, measured, what the number counts)
+    claims: list[tuple[re.Match[str], int, str]] = []
+    if file_claim is not None:
+        claims.append((file_claim, len(files), "files"))
+    if dart_claim is not None:
+        claims.append((dart_claim, len(dart), "Dart files"))
+    for match in PKG_UNDER.finditer(text, start, end):
+        folder = match.group(2)
+        noun = f"Dart files under {folder}/"
+        claims.append((match, len(under(folder)), noun))
+    for segment in PKG_SEGMENT.finditer(text, start, end):
+        folder = segment.group(1)
+        hand = handwritten(under(folder))
+        body, tail = segment.start(2), segment.end(2)
+        for match in PKG_LINES.finditer(text, body, tail):
+            total = sum(line_count(package / p) for p in hand)
+            claims.append((match, total, f"hand-written lines under {folder}/"))
+        for match in PKG_HAND.finditer(text, body, tail):
+            claims.append(
+                (match, len(hand), f"hand-written files under {folder}/")
+            )
+
+    for match, measured, noun in claims:
+        written = match.group(1)
+        if as_number(written) == measured:
+            continue
+        report.faults.append(
+            f"PKGINV   says {written.strip()} {noun}; is {measured}"
+        )
+        report.edits.append(rewrite_groups(match, {1: like(written, measured)}))
+    return True
 
 
 def audit_subfolder_map(text: str, module: Path, report: Report) -> bool:
