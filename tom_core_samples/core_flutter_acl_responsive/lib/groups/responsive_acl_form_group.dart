@@ -45,6 +45,9 @@ TomFormStyle get _responsiveStyle => TomFormStyle(
 /// Builds the capstone layout at a fixed [width]: a [TomFormStyleScope] (style
 /// axis) wrapping a [TomAclBuilder] whose row reflows at 480px (layout axis).
 Widget _responsiveForm(String scopeId, double width) {
+  // Why: a raw SizedBox rather than TomSizedBox — the width pin is gallery
+  // harness imposing the constraint this cell exists to demonstrate, not
+  // chrome. One of the two raw-Flutter exceptions named in `README.md` §5.
   return SizedBox(
     width: width,
     child: FormHost<CompanyForm>(

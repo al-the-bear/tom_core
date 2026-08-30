@@ -41,6 +41,8 @@ class ResponsiveApp extends TomStatelessWidget {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Why: raw MaterialApp — the app root has no Tom counterpart. One of the two
+    // raw-Flutter exceptions named in `README.md` §5.
     return MaterialApp(
       // OS-level app identity (task switcher / window title), not on-screen copy
       // — intentionally hardcoded, outside the G-RES-1 resource bundle.

@@ -26,7 +26,8 @@ Widget _factorLayout(double width) {
   final factor = AclDeviceContext.resolveFormFactor(width);
   // G-UI-2: the readout and its column are Tom primitives, matching every other
   // group's badge. Only the width pin below stays a raw SizedBox — pure
-  // geometry, and it is the constraint the cell exists to demonstrate.
+  // geometry, and it is the constraint the cell exists to demonstrate. One of
+  // the two raw-Flutter exceptions named in `README.md` §5.
   return TomColumn(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [

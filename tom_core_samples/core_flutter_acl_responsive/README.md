@@ -161,13 +161,27 @@ Live forms are owned by **`FormHost<F>`**, which creates the form inside a
 `TomScope`, binds it to a fresh entity, and disposes it on teardown — so each
 group file states *what* to render, never the binding ceremony.
 
-**The scaffold conforms to G-UI-1/G-UI-2.** `ShowcaseCell`, `_PreviewSurface`,
-`CodeBlock` and `GroupScreen` derive from `TomStatelessWidget`, and `FormHost`
-from `TomStatefulWidget` + `TomState`; layout uses `TomColumn` / `TomPadding` /
-`TomContainer` / `TomAlign` / `TomListView` / `TomSizedBox` / `TomDecoratedBox` /
-`TomStack` / `TomPositioned` and `demoBox` returns a `TomContainer` — no raw
-Flutter widgets. These wrappers own no `tomId`/resources and no family identity,
-so `TomStatelessWidget`/`TomStatefulWidget` (not a family base) is the sanctioned
+**The scaffold conforms to G-UI-1/G-UI-2.** Stated as the rule rather than as an
+inventory — the roster of widget types runs past twenty across 18 files, and a
+hand-maintained list of it is stale the week after it is written: *every* widget
+class the package declares extends `TomStatelessWidget` or `TomStatefulWidget` +
+`TomState`, and what they build composes Tom widgets (`TomColumn`, `TomText`,
+`TomAclBuilder`, `TomFormStyleScope`, …) with exactly **two deliberate
+raw-Flutter exceptions**:
+
+- `MaterialApp` in `ResponsiveApp.buildContent` — the app root, which has no Tom
+  counterpart;
+- four raw `SizedBox(width: …)` **width pins**, one per group that renders the
+  same layout at two widths side by side (`row_breakpoint`, `form_factor`,
+  `adaptive_sizing`, `responsive_acl_form`). The pin is the gallery harness
+  imposing the constraint the cell exists to demonstrate, not chrome.
+
+Each exception is called out in a comment at its own site, which keeps the rule
+checkable: grep `lib/` for a raw Flutter constructor and every hit should have a
+justification beside it.
+
+These wrappers own no `tomId`/resources and no family identity, so
+`TomStatelessWidget`/`TomStatefulWidget` (not a family base) is the sanctioned
 base; because that base captures `TomScope.current` at construction, the widgets
 are non-const. See the G-UI-2 clarification in
 [`README_tom_core_guidelines.md`](../README_tom_core_guidelines.md).

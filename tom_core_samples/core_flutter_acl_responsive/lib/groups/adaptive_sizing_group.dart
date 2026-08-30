@@ -15,6 +15,9 @@ import '../common/showcase_cell.dart';
 import '../common/showcase_section.dart';
 
 Widget _sizingLayout(double width) {
+  // Why: a raw SizedBox rather than TomSizedBox — the width pin is gallery
+  // harness imposing the constraint this cell exists to demonstrate, not
+  // chrome. One of the two raw-Flutter exceptions named in `README.md` §5.
   return SizedBox(
     width: width,
     child: AclBuilder()
