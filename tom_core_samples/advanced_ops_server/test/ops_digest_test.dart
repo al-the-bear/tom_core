@@ -1,7 +1,8 @@
 /// The digest, asserted on the seam it exists to demonstrate: composition and
 /// delivery retry on *separate* budgets.
 ///
-/// `messaging.md:308` says the outbox puts retries on the job queue.
+/// `messaging.md` §"Delivery Semantics: One Retry Mechanism" says the outbox
+/// puts retries on the job queue.
 /// `ops_jobs.dart` gives the digest job [TomRetryPolicy.none] on the strength of
 /// that claim — one attempt, and a failure is final — which is only defensible
 /// if the queue really does carry the redelivery. That is the assertion below:

@@ -23,10 +23,10 @@ demonstrated nowhere:
 
 | Seam | Stated in | Made observable here |
 | --- | --- | --- |
-| the anchor publisher is not a scheduled job | `audit.md:496` | `lib/src/ops_anchoring.dart` + `test/ops_anchor_test.dart` asserts that no `@TomScheduledJob` declares it |
-| the outbox puts retries on the job queue | `messaging.md:317` | a job composes, a *second* scheduler delivers; `test/ops_digest_test.dart` shows a failed send redelivered without recomposition |
-| a mail names a template key, never a subject | `messaging.md:435` | the digest holds no user-facing string; `assets/text_{en,de}.yaml` carry subject and body, and `ops_digest_test.dart` renders one digest in two languages |
-| an export's only seam is storage | `export.md:394` | the weekly report lands in the same `tom_blob` pair as an item attachment, under its own prefix |
+| the anchor publisher is not a scheduled job | [audit.md · Why the publisher is not a scheduled job](../../tom_core_server/doc/audit.md#why-the-publisher-is-not-a-scheduled-job) | `lib/src/ops_anchoring.dart` + `test/ops_anchor_test.dart` asserts that no `@TomScheduledJob` declares it |
+| the outbox puts retries on the job queue | [messaging.md · Delivery Semantics: One Retry Mechanism](../../tom_core_server/doc/messaging.md#delivery-semantics-one-retry-mechanism) | a job composes, a *second* scheduler delivers; `test/ops_digest_test.dart` shows a failed send redelivered without recomposition |
+| a mail names a template key, never a subject | [messaging.md · Application Email: A Template Key, Not a Body](../../tom_core_server/doc/messaging.md#application-email-a-template-key-not-a-body) | the digest holds no user-facing string; `assets/text_{en,de}.yaml` carry subject and body, and `ops_digest_test.dart` renders one digest in two languages |
+| an export's only seam is storage | [export.md · Storage: A Deliberately Narrow Seam](../../tom_core_server/doc/export.md#storage-a-deliberately-narrow-seam) | the weekly report lands in the same `tom_blob` pair as an item attachment, under its own prefix |
 | the repository is the audit chokepoint | `audit.md` | a machine deleting rows at 03:00 produces the same trail a human's `DELETE` would |
 
 It is also where the sample's `min(user, server)` authorization meet stops being

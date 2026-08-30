@@ -3,7 +3,8 @@
 ///
 /// ## What this demonstrates that `messaging.md` only describes
 ///
-/// `messaging.md:308` states that the outbox puts retries on the job queue.
+/// `messaging.md` §"Delivery Semantics: One Retry Mechanism" states that the
+/// outbox puts retries on the job queue.
 /// That is a sentence about two modules meeting, and until something composed
 /// them it was only a sentence. Here the composition is literal and doubled:
 /// the digest is produced *by* a scheduled job and delivered *through* a queue

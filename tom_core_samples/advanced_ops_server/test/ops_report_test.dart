@@ -1,8 +1,9 @@
 /// The scheduled export, asserted where export and file storage meet.
 ///
-/// `export.md:394` narrows the seam to storage: rendering produces bytes, and
-/// what happens to them afterwards is the store's business. This job is the
-/// first artifact in the suite that crosses it on a timer — the weekly report
+/// `export.md` §"Storage: A Deliberately Narrow Seam" narrows the seam to
+/// storage: rendering produces bytes, and what happens to them afterwards is
+/// the store's business. This job is the first artifact in the suite that
+/// crosses it on a timer — the weekly report
 /// lands in the very blob store the application's attachments live in, under a
 /// date-partitioned key nobody has to invent.
 ///

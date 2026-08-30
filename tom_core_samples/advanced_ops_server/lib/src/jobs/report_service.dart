@@ -3,12 +3,13 @@
 ///
 /// ## The seam this closes
 ///
-/// `export.md:394` narrows the export module's dependency on storage to one
-/// interface — `TomExportStore` — and observes that a deployment already running
-/// `TomBlobStore` for its `@TomFileReference` columns has somewhere to put an
-/// export without adding infrastructure. `TomBlobExportStore` is that adapter,
-/// and until this job existed nothing in the suite instantiated it. Here the two
-/// modules genuinely meet: the report goes into `app_db`'s `tom_blob` /
+/// `export.md` §"Storage: A Deliberately Narrow Seam" narrows the export
+/// module's dependency on storage to one interface — `TomExportStore` — and
+/// observes that a deployment already running `TomBlobStore` for its
+/// `@TomFileReference` columns has somewhere to put an export without adding
+/// infrastructure. `TomBlobExportStore` is that adapter, and until this job
+/// existed nothing in the suite instantiated it. Here the two modules
+/// genuinely meet: the report goes into `app_db`'s `tom_blob` /
 /// `tom_blob_chunk` tables, beside the item attachments of
 /// README_advanced_13_file_transfer.md, under a key prefix that keeps them
 /// apart.

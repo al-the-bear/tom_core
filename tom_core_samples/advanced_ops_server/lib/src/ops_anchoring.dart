@@ -3,11 +3,11 @@
 ///
 /// ## Why it is not on the queue
 ///
-/// `audit.md:496` gives the reason, and this server is where it stops being an
-/// argument and starts being a shape:
+/// `audit.md` §"Why the publisher is not a scheduled job" gives the reason, and
+/// this server is where it stops being an argument and starts being a shape:
 ///
-/// > The scheduler exists to run a job *once across the cluster*, which is
-/// > exactly wrong here.
+/// > `TomScheduler` runs a job once *across the cluster*, which is exactly
+/// > wrong here.
 ///
 /// The trail is a hash chain **per writer**, and the writer is the process —
 /// that is precisely what allows several nodes to append to one
