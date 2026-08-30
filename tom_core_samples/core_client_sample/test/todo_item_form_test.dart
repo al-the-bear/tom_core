@@ -50,11 +50,17 @@ void main() {
   });
 
   testWidgets(
-      'CCS-FORM-03: a field absent from the matrix is closed-safe (none)',
+      'CCS-FORM-03: a gradable field absent from the matrix is closed-safe (none)',
       (tester) async {
     final form = TodoItemForm(const {});
     expect(form.title.effectiveAuthState, TomAuthState.none);
     expect(form.assigneeId.effectiveAuthState, TomAuthState.none);
+    // `description` is declared without an authorizer, so it is not addressed
+    // by the matrix at all — `resolveEffectiveAuth` guards the per-widget layer
+    // with `authorizer != null` and skips it. An empty matrix closes the graded
+    // surface; it does not close the ungraded field. Pinned here because the
+    // absence of this assertion is what let "every field is none" stand.
+    expect(form.description.effectiveAuthState, TomAuthState.full);
   });
 
   testWidgets('CCS-FORM-04: the label resolves from the same field identity',
