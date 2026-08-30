@@ -38,9 +38,11 @@ final ShowcaseGroup familySwapGroup = ShowcaseGroup(
           'final material  = FamilyForm(family: FormFieldFamily.material);\n'
           'final cupertino = FamilyForm(family: FormFieldFamily.cupertino);\n'
           'material.bind(shared); cupertino.bind(shared);\n\n'
+          '// (minWidth, style): highest minWidth <= width wins, so the\n'
+          '// override applies at/above 700 where the Material family renders.\n'
           'TomFormStyleScope(\n'
-          '  style: const TomFormStyle(),\n'
-          '  styleBpOverrides: [(700, TomCupertinoFormStyle.cupertino)],\n'
+          '  style: TomCupertinoFormStyle.cupertino,\n'
+          '  styleBpOverrides: [(700, TomFormStyle.material3)],\n'
           '  child: TomLayoutBuilder(builder: (ctx, c) {\n'
           '    final wide = c.maxWidth >= 700;\n'
           '    return (wide ? material : cupertino).buildColumn();\n'
@@ -95,10 +97,18 @@ class _FamilySwapDemoState extends TomState<FamilySwapDemo> {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Why the Cupertino style is the *base* and Material3 the override:
+    // `styleBpOverrides` entries are `(minWidth, style)` and the highest
+    // `minWidth <= width` wins, so an entry keyed at the breakpoint applies on
+    // the **wide** side of it — the side where the Material family renders.
+    // Keying Cupertino there would dress the Material form in Cupertino chrome
+    // and leave the Cupertino form under Material3 below the breakpoint, i.e.
+    // the inverse of the swap. The base style covers everything below the
+    // lowest override, which is exactly the narrow, Cupertino-family side.
     return TomFormStyleScope(
-      style: const TomFormStyle(),
+      style: TomCupertinoFormStyle.cupertino,
       styleBpOverrides: [
-        (familySwapBreakpoint, TomCupertinoFormStyle.cupertino),
+        (familySwapBreakpoint, TomFormStyle.material3),
       ],
       child: TomLayoutBuilder(
         builder: (context, constraints) {

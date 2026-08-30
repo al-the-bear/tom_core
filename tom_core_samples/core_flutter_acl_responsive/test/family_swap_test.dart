@@ -26,6 +26,20 @@ void main() {
     );
   });
 
+  void Function(FlutterErrorDetails)? previousOnError;
+
+  /// Hands error reporting back to `flutter_test` after the pump.
+  ///
+  /// [pumpAtWidth] silences `FlutterError.onError` so auxiliary field chrome
+  /// overflowing at extreme widths does not fail the pump. That silencing also
+  /// disables the framework's own failure reporting: a later `expect` failure
+  /// then surfaces as an opaque `_pendingExceptionDetails != null` binding
+  /// assertion and a ten-minute timeout instead of the actual mismatch. The
+  /// style tests below exist precisely to fail when the pairing inverts, so
+  /// they take reporting back before asserting — a guard nobody can read is
+  /// barely a guard.
+  void restoreErrorReporting() => FlutterError.onError = previousOnError;
+
   /// Pump the demo inside a fixed-width SizedBox so its internal LayoutBuilder
   /// sees exactly [width] and picks the matching family.
   Future<void> pumpAtWidth(WidgetTester tester, double width) async {
@@ -34,7 +48,8 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final previous = FlutterError.onError;
+    previousOnError = FlutterError.onError;
+    final previous = previousOnError;
     FlutterError.onError = (_) {};
     addTearDown(() => FlutterError.onError = previous);
 
@@ -54,6 +69,16 @@ void main() {
     );
     await tester.pump();
   }
+
+  /// The form style the page-root [TomFormStyleScope] resolved at the pumped
+  /// width, read from a context *below* the scope.
+  ///
+  /// `TomCard` is rendered by the form column and the state panel, both of which
+  /// sit inside the scope, so its element is a valid descendant context.
+  /// [TomCupertinoFormStyle.withTheme] re-wraps its result to preserve the
+  /// subtype precisely so `is TomCupertinoFormStyle` stays answerable here.
+  TomFormStyle resolvedStyle(WidgetTester tester) =>
+      TomFormStyleScope.of(tester.element(find.byType(TomCard).first));
 
   Finder adapterByTomId(String tomId) {
     return find.byWidgetPredicate(
@@ -101,6 +126,55 @@ void main() {
     expect(find.text('Active family: cupertino'), findsOneWidget,
         reason: 'narrow branch must render the Cupertino family form');
     expect(find.textContaining('narrow → Cupertino'), findsOneWidget);
+  });
+
+  // The style flip is the half of the mechanism the family assertions above
+  // cannot see: the demo rendered the right *family* on each side of the
+  // breakpoint while dressing it in the other side's *style*, and every
+  // family-level assertion still passed. These pin the resolved style itself.
+  //
+  // The direction is the whole point. `styleBpOverrides` entries are
+  // `(minWidth, style)` resolved as "highest minWidth <= width wins", so an
+  // entry keyed at 700 applies at and above 700 — the Material side. The
+  // Cupertino style therefore has to be the scope's *base*, which covers
+  // everything below the lowest override.
+
+  testWidgets('narrow viewport (600px) resolves the Cupertino form style',
+      (tester) async {
+    await pumpAtWidth(tester, 600);
+    final style = resolvedStyle(tester);
+    restoreErrorReporting();
+    expect(style, isA<TomCupertinoFormStyle>(),
+        reason: 'the Cupertino family renders below 700, so the Cupertino '
+            'style must resolve there — not the Material3 default');
+    expect(style.defaults.borderRadius, 6.0,
+        reason: 'Cupertino preset radius (6.0); Material3 uses 8.0, so this '
+            'pins the actual preset rather than merely the subtype');
+  });
+
+  testWidgets('wide viewport (800px) resolves the Material3 form style',
+      (tester) async {
+    await pumpAtWidth(tester, 800);
+    final style = resolvedStyle(tester);
+    restoreErrorReporting();
+    expect(style, isNot(isA<TomCupertinoFormStyle>()),
+        reason: 'the Material family renders at/above 700, so Cupertino chrome '
+            'must not be applied there');
+  });
+
+  testWidgets('the style flips on the same side of 700 as the family',
+      (tester) async {
+    // Exactly at the breakpoint both rules take their wide branch: the family
+    // selector uses `width >= 700` and the override matches on `minWidth <=
+    // width`. Pinning the boundary is what stops the two drifting apart by one
+    // pixel later.
+    await pumpAtWidth(tester, familySwapBreakpoint);
+    final style = resolvedStyle(tester);
+    restoreErrorReporting();
+    expect(find.text('Active family: material'), findsOneWidget);
+    expect(style, isNot(isA<TomCupertinoFormStyle>()),
+        reason: 'at exactly 700 the family is Material, so the style must be '
+            'Material3 too');
   });
 
   testWidgets('editing fullName in the active form reaches the shared panel',

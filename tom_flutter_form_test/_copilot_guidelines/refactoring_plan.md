@@ -60,6 +60,51 @@ Iterate in order. Each step states its **done** condition.
 
 ---
 
+## Known Defects
+
+### Demo P pairs each family with the other family's style
+
+`lib/demos/demo_p_family_swap_breakpoint.dart` states its intent in a comment at
+`:78-79` — "Width >= 700 px → Material3, width < 700 px → Cupertino" — and the
+family selector at `:87-90` implements exactly that (`isWide ? material :
+cupertino`). The `TomFormStyleScope` above it does the opposite:
+
+```dart
+style: const TomFormStyle(),                              // :81
+styleBpOverrides: [
+  (_phase5cBreakpoint, TomCupertinoFormStyle.cupertino),  // :83
+],
+```
+
+`styleBpOverrides` entries are `(minWidth, style)` and resolution picks the
+highest `minWidth <= width` (`tom_flutter_ui/.../tom_form_style_scope.dart`), so
+an entry keyed at 700 applies **at and above** 700 — the Material side. The base
+`style:` covers everything below the lowest override — the Cupertino side. Demo
+P therefore renders the Material family in Cupertino chrome above the breakpoint
+and the Cupertino family under the Material3 default below it: each family
+wearing the other's dress.
+
+The correction is to swap the two values — `TomCupertinoFormStyle.cupertino` as
+the scope's base and `TomFormStyle.material3` as the override at
+`_phase5cBreakpoint` — leaving the family selector and the badge alone, since
+four artifacts (the comment, the selector, the badge, the demo catalogue) already
+agree on wide = Material.
+
+The pairing is easy to invert because the wrong form reads more naturally, and
+no assertion here distinguishes the two: the demo has no widget test, and a test
+that checks only which *family* renders passes either way. A regression test must
+read the resolved style — `TomFormStyleScope.of(context)` from a descendant —
+and assert `isA<TomCupertinoFormStyle>()` plus `defaults.borderRadius` (6.0 for
+the Cupertino preset, 8.0 for Material3) on both sides of the breakpoint and at
+the boundary itself. `TomCupertinoFormStyle.withTheme` re-wraps its result to
+preserve the subtype precisely so that check stays answerable.
+
+A working reference implementation of both the fix and the test lives in
+`tom_core_samples/core_flutter_acl_responsive` (`lib/groups/family_swap_group.dart`
+and `test/family_swap_test.dart`), which was re-cast from this demo.
+
+---
+
 ## Guidelines References
 
 | Guideline | Location |

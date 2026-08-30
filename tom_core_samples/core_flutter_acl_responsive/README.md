@@ -234,9 +234,11 @@ final material  = FamilyForm(family: FormFieldFamily.material);
 final cupertino = FamilyForm(family: FormFieldFamily.cupertino);
 material.bind(shared); cupertino.bind(shared);   // ONE entity
 
+// (minWidth, style): highest minWidth <= width wins, so the override
+// applies at/above 700 where the Material family renders.
 TomFormStyleScope(
-  style: const TomFormStyle(),
-  styleBpOverrides: [(700, TomCupertinoFormStyle.cupertino)],
+  style: TomCupertinoFormStyle.cupertino,
+  styleBpOverrides: [(700, TomFormStyle.material3)],
   child: TomLayoutBuilder(builder: (ctx, c) {
     final wide = c.maxWidth >= 700;
     return (wide ? material : cupertino).buildColumn();
@@ -247,8 +249,16 @@ TomFormStyleScope(
 Because both forms bind the same `TomObject`s, **edits survive the swap** — type
 a name at desktop width, resize to phone, and the Cupertino form shows it. A
 shared-state panel (driven by `TomMultiObservableBuilder`) proves the single
-source of truth. `styleBpOverrides` flips the *form style* to Cupertino at the
-same threshold so the swap is visually coherent.
+source of truth.
+
+`styleBpOverrides` flips the *form style* at the same threshold, so a form is
+never dressed in the other family's chrome. Note which side each style goes on:
+entries are `(minWidth, style)` and the highest `minWidth <= width` wins, so an
+entry keyed at 700 applies **at and above** it — the Material side. Cupertino is
+therefore the scope's *base* style, which covers everything below the lowest
+override. Keying Cupertino at 700 instead reads naturally and does the exact
+opposite; `test/family_swap_test.dart` pins the resolved style on both sides of
+the threshold so that reading cannot creep back in.
 
 ---
 
