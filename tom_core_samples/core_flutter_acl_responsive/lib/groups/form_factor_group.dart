@@ -25,14 +25,15 @@ import '../common/showcase_section.dart';
 Widget _factorLayout(double width) {
   final factor = AclDeviceContext.resolveFormFactor(width);
   // G-UI-2: the readout and its column are Tom primitives, matching every other
-  // group's badge. Only the width pin below stays a raw SizedBox — pure
-  // geometry, and it is the constraint the cell exists to demonstrate. One of
-  // the two raw-Flutter exceptions named in `README.md` §5.
+  // group's badge. Only the width pin below is exempt.
   return TomColumn(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       TomText(text: 'resolveFormFactor($width) → ${factor.name}'),
       TomSizedBox(height: 8),
+      // Why: a raw SizedBox rather than TomSizedBox — the width pin is gallery
+      // harness imposing the constraint this cell exists to demonstrate, not
+      // chrome. One of the two raw-Flutter exceptions named in `README.md` §5.
       SizedBox(
         width: width,
         child: AclBuilder()

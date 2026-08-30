@@ -188,9 +188,25 @@ raw-Flutter exceptions**:
   `adaptive_sizing`, `responsive_acl_form`). The pin is the gallery harness
   imposing the constraint the cell exists to demonstrate, not chrome.
 
-Each exception is called out in a comment at its own site, which keeps the rule
-checkable: grep `lib/` for a raw Flutter constructor and every hit should have a
-justification beside it.
+Each exception is called out in a `// Why:` comment directly above the
+constructor it excuses, and the four width pins carry the *identical* note, so
+the reason reads the same wherever a reader lands instead of being re-argued per
+file.
+
+That makes the rule checkable rather than merely asserted. Across the
+hand-written sources — everything under `lib/` except the generated
+`reflection_seed.reflection.dart` — the only raw Flutter **widget** constructors
+are `MaterialApp` once and `SizedBox` four times, and each of those five sites
+carries its note:
+
+```bash
+grep -rn --exclude='*.reflection.dart' -E '\b(MaterialApp|SizedBox)\(' lib/
+```
+
+Six `SizedBox` hits come back: the four pins, plus two inside the `code:` strings
+the gallery prints on screen. Raw Flutter *value* types (`TextStyle`,
+`BoxDecoration`, `ThemeData`, `BoxConstraints`, …) are not widgets, so G-UI-2
+does not cover them and they carry no note.
 
 These wrappers own no `tomId`/resources and no family identity, so
 `TomStatelessWidget`/`TomStatefulWidget` (not a family base) is the sanctioned
