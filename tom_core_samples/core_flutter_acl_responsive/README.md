@@ -335,6 +335,14 @@ AclBuilder()
 Above 600px the default side-by-side row applies; below it the registered phone
 variant replaces it with a stacked layout.
 
+The group carries **one cell per tier** — 1200px, 900px and 400px — because the
+two numbers involved are independent. `resolveFormFactor` maps `< 600` to phone,
+`< 1024` to tablet and the rest to desktop; `addVariant(atWidth: 600)` swaps the
+shape. So the desktop and tablet cells render the *same* row while reporting
+different tiers, and only the 400px cell stacks. `test/form_factor_test.dart`
+pins one badge per tier and additionally requires every cell's title to name the
+tier its own badge reports, so a cell cannot drift away from the resolver.
+
 ---
 
 ## 10. Mechanism 5 — Adaptive sizing
@@ -439,7 +447,7 @@ regenerating.
 
 ## 14. Tests
 
-Thirty-seven widget tests under `test/`, all green, runnable with `flutter test`
+Forty-two widget tests under `test/`, all green, runnable with `flutter test`
 (run serially — `--concurrency=1` — per the workspace convention):
 
 | File | Covers |
@@ -447,6 +455,7 @@ Thirty-seven widget tests under `test/`, all green, runnable with `flutter test`
 | `responsive_smoke_test.dart` | Every group builds at phone/tablet/desktop widths; only benign preview overflows are tolerated, any other exception fails. Home screen lists every group. |
 | `breakpoint_field_style_test.dart` | The badge row reports the exact tier values at 800 / 450 / 360 px (label placement, fonts, gaps, border, icon). |
 | `family_swap_test.dart` | Active family flips at 700px; seeds echo in the shared panel; an edit propagates; **state survives the swap**. |
+| `form_factor_test.dart` | One badge per tier at 1200 / 900 / 400 px, and — the drift guard — every cell title names the tier that cell's own badge reports (§9). |
 | `showcase_cell_test.dart` | The cell contract — both the snippet and the live child render, no group ships an empty snippet, and no snippet names an API the group's live code never calls (§15). |
 | `validation_message_test.dart` | Every `error.*` key `CompanyForm` can emit resolves to its human sentence, `{min}` is interpolated, and no `Text` in the form renders a raw resource key (§5). |
 

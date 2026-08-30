@@ -6,6 +6,11 @@
 /// engine selects below a width — so one builder chain carries a desktop default
 /// plus a stacked phone variant. Each cell pins a width and reads back the
 /// resolved form factor.
+///
+/// The two numbers are independent, which is why there is a cell per tier rather
+/// than one per shape: the tier boundary (1024) and the variant threshold (600)
+/// answer different questions, so the desktop and tablet cells render the *same*
+/// row while reporting different tiers.
 library;
 
 import 'package:flutter/material.dart';
@@ -53,10 +58,15 @@ final ShowcaseGroup formFactorGroup = ShowcaseGroup(
       'addVariant swaps in a stacked phone layout below 600px — one chain, two '
       'shapes.',
   icon: Icons.devices_outlined,
+  // One cell per tier, in descending width. Each title names the tier its own
+  // width resolves to, and the badge beside it prints what the resolver actually
+  // returned — `form_factor_test.dart` requires the two to agree, so a cell
+  // cannot be re-pinned to a width that contradicts its own title.
   cells: (context) => [
     ShowcaseCell(
-      title: 'Desktop (900px) — default row',
-      note: 'Above the 600px phone variant the default side-by-side row applies.',
+      title: 'Desktop (1200px) — default row',
+      note: 'At 1024px and above the tier is desktop. Being above the 600px '
+          'phone variant too, the default side-by-side row applies.',
       code: 'AclBuilder()\n'
           "    .append(demoBox('Label', Colors.indigo))\n"
           "    .append(demoBox('Value', Colors.cyan), dist: 12)\n"
@@ -66,6 +76,16 @@ final ShowcaseGroup formFactorGroup = ShowcaseGroup(
           "          .append(demoBox('Value', Colors.cyan));\n"
           '    })\n'
           '    .build()',
+      child: _factorLayout(1200),
+    ),
+    ShowcaseCell(
+      title: 'Tablet (900px) — the same default row',
+      note: 'Below 1024px the tier is tablet, but the layout is unchanged: the '
+          'variant threshold is 600, not the tier boundary. Same chain, same '
+          'shape, different tier name.',
+      code: '// Same chain as above — 900px is below the 1024px desktop\n'
+          '// boundary but still above the 600px atWidth threshold, so the\n'
+          '// tier changes and the shape does not.',
       child: _factorLayout(900),
     ),
     ShowcaseCell(
