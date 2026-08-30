@@ -40,7 +40,8 @@ TomAuthState parseAuthState(String? token) =>
 /// enum's name (the server stores them that way); an empty token falls back to
 /// the domain default.
 List<TodoItem> parseTodos(List<Object?> body) => [
-      for (final element in body) _dtoToItem(dtoFromJson<TodoItemDto>(_asMap(element))),
+      for (final element in body)
+        _dtoToItem(dtoFromJson<TodoItemDto>(_asMap(element))),
     ];
 
 /// Maps the `GET /todos/field-states` body (`{ states: { role: { key: token } } }`)
