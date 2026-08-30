@@ -344,12 +344,11 @@ endpoints need. In order, `main()`:
 
 The JWT / auth-server / worker-pool machinery `tom_uam_server` also wires is
 intentionally omitted — the endpoints are `@TomPublicAccess`, so none of it is
-exercised. (Authenticated, per-principal field grading is the natural next step;
-the four-state resolver it would use is already built and tested.) That next
-step is realized in full by the
+exercised. Authenticated, per-principal field grading is realized in full by the
 [**Advanced Tom Core Full-Stack Sample**](../README_advanced_sample.md), which
 wires a JWT auth server, bearer-validated app endpoints, and per-principal
-four-state grading over the wire — this sample stays public and read-only for
+four-state grading over the wire — on top of the same four-state resolver this
+sample already builds and tests. This sample stays public and read-only for
 teaching.
 
 ### The endpoints
@@ -528,5 +527,5 @@ and the three `curl`s in [§9](#9-the-live-server-boot).
   `GET` endpoints
 - **Secured, full-stack successor:**
   [`README_advanced_sample.md`](../README_advanced_sample.md) — the advanced
-  suite that takes this read-only public server to a JWT-secured, two-server
+  suite that takes this read-only public server to a JWT-secured, three-server
   full stack with write endpoints and per-principal field grading

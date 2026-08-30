@@ -37,7 +37,7 @@ live server.
 11. [Project layout](#11-project-layout)
 12. [Reflection regeneration](#12-reflection-regeneration)
 13. [Tests](#13-tests)
-14. [Known limitations and the cross-tier work](#14-known-limitations-and-the-cross-tier-work)
+14. [Deliberate limits and the full-stack successor](#14-deliberate-limits-and-the-full-stack-successor)
 
 ---
 
@@ -113,7 +113,7 @@ action is hidden and everything runs in memory.
                     └──────────────► TodoApi ◄─────────┴────────────────────┘
                                        │
                     ┌──────────────────┴───────────────────┐
-            InMemoryTodoApi                    (HTTP write/login — cross-tier)
+            InMemoryTodoApi                 (HTTP write/login — advanced suite)
           (default; tests)                   LiveTodoReadClient (live reads only)
 ```
 
@@ -154,8 +154,8 @@ Two things implement (or partially implement) the read side of that contract:
 exposes a *read-only* surface — it has no login or write endpoints. Pretending it
 did (by throwing `UnimplementedError` from a half-written HTTP `TodoApi`) would
 be dishonest and untestable. Instead the writes and login run in memory, the
-live reads run over the wire, and the gap between them is documented as the
-[cross-tier work](#14-known-limitations-and-the-cross-tier-work). Swap
+live reads run over the wire, and the boundary between them is
+[deliberate](#14-deliberate-limits-and-the-full-stack-successor). Swap
 the backend in exactly one place — `main.dart` — and the whole app follows.
 
 ---
@@ -469,32 +469,32 @@ test: it exercises every screen, form, and the four-state matrix end to end.
 
 ---
 
-## 14. Known limitations and the cross-tier work
+## 14. Deliberate limits and the full-stack successor
 
-This sample is honest about the seam it cannot yet cross:
+Two limits shape this sample, and both are teaching choices rather than
+unfinished work:
 
-- **Login and writes are in-memory.** `core_server_sample` exposes only read
-  endpoints today, so there is no live login or persistence over the wire. The
-  client models them with `InMemoryTodoApi` and isolates them behind `TodoApi`.
+- **Login and writes are in-memory.** `core_server_sample` exposes three `GET`
+  endpoints and nothing else, so there is no live login or persistence over the
+  wire. The client models both with `InMemoryTodoApi`, behind `TodoApi`.
 - **The live path is read-only.** `LiveTodoReadClient` covers `GET /health`,
-  `GET /todos` and `GET /todos/field-states` — a genuine round-trip, but a read.
+  `GET /todos` and `GET /todos/field-states` — a genuine wire round-trip, but a
+  read.
 
-Closing that gap — server-side login + write endpoints and a full HTTP
-`TodoApi` — is the **cross-tier work**. When it lands, the single
-backend swap in `main.dart` is the only client change required: the screens,
-forms, session and authorization model are already written against the
-interface, not the transport.
+Keeping them is what lets this pair stay small enough to read in one sitting.
+The secured, full-stack version is a **separate series** rather than a retrofit
+of this one: the
+[**Advanced Tom Core Full-Stack Sample**](../README_advanced_sample.md) — three
+servers, two databases and two Flutter clients, with live login, write
+endpoints, an authenticated HTTP client that presents and refreshes a bearer
+token, per-principal four-state field grading over the wire, and cross-user
+sharing. Its `run_cross_tier_integration.sh` drives that whole loop end to end.
 
-> **The cross-tier work is now realized — in a dedicated suite.** Rather than retrofit live
-> login and writes onto this read-only pair, the secured, full-stack version is
-> built as its own series: the
-> [**Advanced Tom Core Full-Stack Sample**](../README_advanced_sample.md) — two
-> servers (JWT auth/admin + secured app), two databases, and two Flutter clients,
-> with live login, write endpoints, an authenticated HTTP client that presents
-> and refreshes a bearer token, per-principal four-state field grading over the
-> wire, and cross-user sharing. This sample stays intentionally read-only and
-> in-memory for teaching; the advanced suite is where the full cross-tier loop
-> runs end-to-end (verified by its `run_cross_tier_integration.sh`).
+What this sample gives you instead is the *seam*. The screens, forms, session
+and authorization model are written against `TodoApi`, not against a transport,
+so a live backend slots in at the single `main.dart` line shown in
+[§4](#4-the-backend-seam-one-interface-two-implementations) — which is precisely
+the shape the advanced suite builds out.
 
 ---
 
@@ -513,5 +513,5 @@ interface, not the transport.
   live path consumes
 - **Secured, full-stack successor:**
   [`README_advanced_sample.md`](../README_advanced_sample.md) — the advanced
-  suite that closes the [cross-tier gap](#14-known-limitations-and-the-cross-tier-work)
+  suite that goes [where this one deliberately stops](#14-deliberate-limits-and-the-full-stack-successor),
   with live login, writes, bearer auth, and cross-user sharing

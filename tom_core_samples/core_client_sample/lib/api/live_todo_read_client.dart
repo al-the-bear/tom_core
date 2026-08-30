@@ -1,13 +1,14 @@
 /// The live read path: a thin HTTP client over `core_server_sample`'s three
 /// public `GET` endpoints.
 ///
-/// `core_server_sample` today exposes a read-only surface — `GET /health`,
+/// `core_server_sample` exposes a read-only surface — `GET /health`,
 /// `GET /todos`, and `GET /todos/field-states` — so this client demonstrates a
 /// genuine wire round-trip against the running backend without pretending the
-/// server has write/auth endpoints it does not (those are the cross-tier item
-/// 28 work). The app's CRUD and login still run through [InMemoryTodoApi]; this
-/// client is offered as a "refresh from the live server" action and is the
-/// honest live-tier seam.
+/// server has write/auth endpoints it does not. Writing over the wire is what
+/// the advanced full-stack suite demonstrates; it is a separate series, not a
+/// planned extension of this pair. The app's CRUD and login run through
+/// [InMemoryTodoApi]; this client is offered as a "refresh from the live
+/// server" action and is the honest live-tier seam.
 ///
 /// The wire shapes are the **reflection-first DTOs** (G-DTO): `/todos` a JSON
 /// array of [TodoItemDto], `/todos/field-states` a [TodoFieldMatrixDto]. The
