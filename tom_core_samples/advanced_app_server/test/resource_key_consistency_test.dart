@@ -12,8 +12,9 @@
 /// (G-RES-6: addressing is by scope + `tomId`, so there is no catalogue class.
 /// Step 21 derives the *server's* gradable set from the resource bundle
 /// ([AppResourceBundles.gradableItemKeys], asserted below); steps 24/26 derive
-/// the *client's* set from the form. The inline literals here are the drift
-/// anchor the derivation is checked against.)
+/// the *client's* set from the form. The anchor both derivations are checked
+/// against is the shared domain's own [gradableItemKeys], not a list re-typed
+/// here — the same anchor the auth server's grant-matrix guard uses.)
 ///
 /// The existing `resource_bundle_endpoint_test.dart` already asserts the *first*
 /// direction (every gradable field has a label key). This test adds the *reverse*
@@ -36,27 +37,18 @@ import 'package:advanced_app_server/advanced_app_server.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:test/test.dart';
 
-/// The gradable item field tokens (plain field names) and their full wire keys.
-/// Step 21 derives the server set from the resource bundle; here they are the
-/// inline expectation this drift guard checks the derivation against.
-const _gradableItemFields = <String>[
-  'title',
-  'status',
-  'priority',
-  'assigneeId',
-  'dueDate',
-  'estimate',
-  'description',
-];
-const _gradableItemKeys = <String>[
-  'todo.item.title',
-  'todo.item.status',
-  'todo.item.priority',
-  'todo.item.assigneeId',
-  'todo.item.dueDate',
-  'todo.item.estimate',
-  'todo.item.description',
-];
+/// The plain field tokens of the domain's [gradableItemKeys]
+/// (`todo.item.title` → `title`) — the shape the resource JSON nests its labels
+/// under, which is the only reason this second spelling exists at all.
+///
+/// **Derived, not re-typed.** Everything this guard asserts is anchored on the
+/// shared domain vocabulary, so a regrade that renames a key in
+/// [gradableItemKeys] without touching `resources_app.json` fails here. An
+/// inline copy of the seven would leave exactly that drift green — which is the
+/// drift the guard exists to catch.
+final Set<String> _gradableItemFields = {
+  for (final key in gradableItemKeys) key.split('.').last,
+};
 
 /// Extracts the distinct `<field>` segment of every `todo.item.<field>.<suffix>`
 /// key in the flattened resource bundle (e.g. `todo.item.title.label` → `title`).
@@ -82,7 +74,7 @@ void main() {
 
       expect(
         labelled,
-        equals(_gradableItemFields.toSet()),
+        equals(_gradableItemFields),
         reason: 'The todo.item.* fields labelled in resources_app.json must '
             'match the gradable item field set exactly. A difference means '
             'the text tree drifted from the field set — add the missing '
@@ -96,7 +88,7 @@ void main() {
       final texts = AppResourceBundles.appBundle().texts;
       for (final field in _gradedFieldsLabelledIn(texts)) {
         expect(
-          _gradableItemKeys,
+          gradableItemKeys,
           contains('todo.item.$field'),
           reason: 'labelled field "$field" has no matching gradable item key',
         );
@@ -108,8 +100,11 @@ void main() {
       // Step 21: the server no longer holds a hand-maintained gradable-key
       // list — the resolver and the write path both address
       // AppResourceBundles.gradableItemKeys(). Pin that derivation (set + order)
-      // to the expected literals so a reordered or renamed label is caught.
-      expect(AppResourceBundles.gradableItemKeys(), orderedEquals(_gradableItemKeys));
+      // to the shared domain vocabulary, so a reordered or renamed label is
+      // caught, and so is a regrade applied to `gradableItemKeys` alone. The
+      // two orders are independent: the bundle's comes from the JSON tree, the
+      // domain's from its own declaration.
+      expect(AppResourceBundles.gradableItemKeys(), orderedEquals(gradableItemKeys));
     });
 
     test('the write path enforces exactly the bundle-derived keys (step 21)',
@@ -117,7 +112,7 @@ void main() {
       // The write path's field-binding table is built from the same bundle keys,
       // so a bundle field without a read/copy binding (or a stray binding) would
       // surface here as a mismatch.
-      expect(gradableItemFieldKeys, orderedEquals(_gradableItemKeys));
+      expect(gradableItemFieldKeys, orderedEquals(gradableItemKeys));
     });
 
     test('the graded attachment column stays out of the gradable field set',
