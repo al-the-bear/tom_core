@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart'
     show
         TomAuthState,
+        TomClass,
         TomObservableEnum,
         TomResourceRoleRegistry,
         TomString;
@@ -36,6 +39,7 @@ void main() {
       expect(user.avatarRef.get(), 'avatars/alice.png');
       expect(user.status.get(), 'suspended');
       expect(user.statusValue, UserStatus.suspended);
+      expectEveryFieldExercised(user, User());
     });
   });
 
@@ -55,6 +59,7 @@ void main() {
       expect(workspace.name.get(), 'Acme Engineering');
       expect(workspace.ownerId.get(), 'u1');
       expect(workspace.createdAt.getOrNull(), created);
+      expectEveryFieldExercised(workspace, Workspace());
     });
   });
 
@@ -77,6 +82,7 @@ void main() {
       expect(project.description.get(), 'Q1 marketing site');
       expect(project.colour.get(), '#3366FF');
       expect(project.archived.get(), isTrue);
+      expectEveryFieldExercised(project, Project());
     });
   });
 
@@ -95,6 +101,7 @@ void main() {
       expect(list.projectId.get(), 'p1');
       expect(list.name.get(), 'Sprint backlog');
       expect(list.position.get(), 3);
+      expectEveryFieldExercised(list, TodoList());
     });
   });
 
@@ -125,6 +132,7 @@ void main() {
         ..reporterId.set('u2')
         ..dueDate.set(due)
         ..estimateHours.set(4.5)
+        ..attachment.set('items/i1/spec.pdf')
         ..createdAt.set(created)
         ..updatedAt.set(updated);
       item.tags.add(TomString('backend'));
@@ -144,11 +152,18 @@ void main() {
       expect(item.reporterId.get(), 'u2');
       expect(item.dueDate.getOrNull(), due);
       expect(item.estimateHours.getOrNull(), 4.5);
+      // Covered like any other member: `attachment` is server-minted on upload
+      // and does not travel back on save, but that is a wire-contract property.
+      // On the entity it is an ordinary TomString, and this test is the entity's
+      // round-trip — excluding it here would assert nothing about the wire and
+      // would leave the sample's one separately-graded field untested.
+      expect(item.attachment.get(), 'items/i1/spec.pdf');
       expect(item.createdAt.getOrNull(), created);
       expect(item.updatedAt.getOrNull(), updated);
       expect(item.tags.length, 2);
       expect(item.tags[0].get(), 'backend');
       expect(item.tags[1].get(), 'reflection');
+      expectEveryFieldExercised(item, TodoItem());
     });
 
     test('unknown stored status falls back to backlog', () {
@@ -171,6 +186,7 @@ void main() {
       expect(comment.authorId.get(), 'u1');
       expect(comment.body.get(), 'Looks good to me');
       expect(comment.createdAt.getOrNull(), created);
+      expectEveryFieldExercised(comment, TodoComment());
     });
   });
 
@@ -193,6 +209,7 @@ void main() {
       expect(subtask.title.get(), 'Write the test');
       expect(subtask.done.get(), isTrue);
       expect(subtask.position.get(), 2);
+      expectEveryFieldExercised(subtask, Subtask());
     });
   });
 
@@ -220,6 +237,7 @@ void main() {
       expect(share.projectRoleValue, ProjectRole.editor);
       expect(share.grantedById.get(), 'u1');
       expect(share.createdAt.getOrNull(), created);
+      expectEveryFieldExercised(share, Share());
     });
 
     test('unknown stored role falls back to viewer', () {
@@ -334,4 +352,49 @@ void main() {
       );
     });
   });
+}
+
+/// Asserts that no field of [populated] still holds the value a freshly built
+/// [pristine] of the same entity carries — that the caller really did exercise
+/// *every* reflected field, not only the ones it remembered.
+///
+/// This is what lets the "round-trips every field" tests keep their name. The
+/// entities are `@tomReflector`ed, so `TomClass.getValues()` enumerates their
+/// members by name; asking the entity for its field list instead of restating
+/// the list here means a newly added field is covered by construction — the
+/// test fails, naming it, until it is set. Without this the claim decays
+/// silently on the next field, which is exactly how `TodoItem.attachment` came
+/// to be the one member of fifteen that nothing here touched.
+///
+/// Every field of all eight entities differs from its default once populated,
+/// so the check needs no per-entity exemption list. If a future field cannot
+/// meaningfully be set to a non-default value, exempt it here by name with the
+/// reason — do not drop the call.
+///
+/// Scope, measured rather than assumed: the member list comes from reflection,
+/// so a field added to an entity is caught on the next `build_runner` run, not
+/// at the moment it is typed. That is not a hole worth closing — until the
+/// reflection is regenerated the field is invisible to persistence and
+/// serialization too, so it fails far more loudly than a missing assertion.
+void expectEveryFieldExercised(TomClass populated, TomClass pristine) {
+  final defaults = pristine.getValues();
+  final actual = populated.getValues();
+  expect(
+    actual.keys.toSet(),
+    defaults.keys.toSet(),
+    reason: 'populated and pristine must expose the same reflected members',
+  );
+  // Compare encoded, so collection members (TodoItem.tags) compare by content
+  // rather than by identity.
+  final untouched = [
+    for (final name in actual.keys)
+      if (jsonEncode(actual[name]) == jsonEncode(defaults[name])) name,
+  ];
+  expect(
+    untouched,
+    isEmpty,
+    reason:
+        '${populated.runtimeType} fields still at their default, so this test '
+        'does not actually cover them: ${untouched.join(', ')}',
+  );
 }
