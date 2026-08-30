@@ -19,7 +19,10 @@ flutter test --concurrency=1   # smoke + cell-contract + authorization states
 ```
 
 > **Run tests serially.** `flutter test` runs several suites at once unless you
-> pass `--concurrency=1`, and these suites share process-global state.
+> pass `--concurrency=1`. This is the workspace convention, not a requirement of
+> these suites: each test file gets its own `flutter_tester` process at any
+> concurrency, so the process-global state each file installs is never shared
+> with another file.
 
 ---
 
