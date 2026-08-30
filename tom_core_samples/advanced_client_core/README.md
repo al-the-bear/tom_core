@@ -15,7 +15,7 @@ parsers are unit-testable headless (no sockets in tests).
 
 ## The HTTP seam
 
-Every client talks to the servers through one seam, [`JsonTransport`]
+Every client talks to the servers through one seam, `JsonTransport`
 (`lib/src/http/json_transport.dart`) — a request reduced to *method, URI,
 headers, JSON body* → `HttpJsonResponse(statusCode, body)`. The live
 `IoJsonTransport` backs it with `dart:io`; tests pass a fake, so the whole client
