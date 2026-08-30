@@ -22,12 +22,16 @@ library;
 // authorization types both resolve through this single barrel.
 import 'package:tom_core_server/tom_core_server.dart';
 
-/// The gradable todo-item field resource keys, in display order (G-RES-6).
+/// The gradable todo-item field resource keys (G-RES-6).
 ///
 /// There is no `*ResourceKeys` catalogue class: a field self-addresses by its
 /// own resource key, resolved at use. This bare list is only the *enumeration*
 /// the request-time fold walks — it names the same keys the migration
 /// `[001]-todo_authz_grants.sql` seeds into `tom_resource_grant`.
+///
+/// Only the set matters, not the order: the fold stamps a grade on every key so
+/// each role's response is total. `core_client_sample` keeps its own copy of
+/// this vocabulary (`gradableItemKeys`) so it runs offline.
 const List<String> gradableTodoItemKeys = [
   'todo.item.title',
   'todo.item.done',

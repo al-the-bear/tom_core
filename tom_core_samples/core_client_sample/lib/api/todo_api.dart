@@ -11,6 +11,28 @@ library;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:todo_domain/todo_domain.dart';
 
+/// The gradable todo-item field resource keys — the vocabulary every
+/// [TodoApi.fieldStates] result is expanded over (G-RES-6).
+///
+/// A bare list, not a `*ResourceKeys` catalogue class: it only *enumerates* the
+/// keys, which a field otherwise self-addresses by at its use site. They are the
+/// same wire keys `core_server_sample` seeds into `tom_resource_grant`; the
+/// client keeps its own copy so it works offline, rather than depending on the
+/// server package.
+///
+/// Its job is to make each role's map **total**: both backends fold over it and
+/// stamp [TomAuthState.none] on every key the role was not granted, which is
+/// what delivers the closed-safe default instead of a missing entry. Only the
+/// set matters, so this is not a display order — it is not even a candidate for
+/// one, since `description` is rendered by the detail screen but is not
+/// gradable and so does not appear here.
+const List<String> gradableItemKeys = [
+  'todo.item.title',
+  'todo.item.done',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+];
+
 /// The outcome of a successful [TodoApi.login]: the authenticated principal and
 /// the bearer token subsequent calls present.
 class LoginResult {

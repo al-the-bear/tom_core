@@ -24,16 +24,7 @@ import 'dart:io';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:todo_domain/todo_domain.dart';
 
-/// The gradable todo-item field resource keys, in display order (G-RES-6).
-///
-/// A bare list, not a `*ResourceKeys` catalogue class: it enumerates the keys
-/// each role's field-state block is expanded to. Same wire keys the server uses.
-const List<String> _gradableItemKeys = [
-  'todo.item.title',
-  'todo.item.done',
-  'todo.item.priority',
-  'todo.item.assigneeId',
-];
+import 'todo_api.dart';
 
 /// Parses a [TomAuthState] from its stored [TomAuthState.name] token; an
 /// unknown or absent token degrades to [TomAuthState.none] (the closed-safe
@@ -63,7 +54,7 @@ Map<String, Map<String, TomAuthState>> parseFieldStates(
   return {
     for (final role in matrix.roles)
       role: {
-        for (final key in _gradableItemKeys) key: matrix.accessFor(role, key),
+        for (final key in gradableItemKeys) key: matrix.accessFor(role, key),
       },
   };
 }

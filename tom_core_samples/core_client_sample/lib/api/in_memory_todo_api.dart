@@ -13,18 +13,6 @@ import 'package:todo_domain/todo_domain.dart';
 
 import 'todo_api.dart';
 
-/// The gradable todo-item field resource keys, in display order (G-RES-6).
-///
-/// A bare list, not a `*ResourceKeys` catalogue class: it only *enumerates* the
-/// keys the field-state fold walks. They are the same wire keys the server seeds
-/// into `tom_resource_grant`.
-const List<String> _gradableItemKeys = [
-  'todo.item.title',
-  'todo.item.done',
-  'todo.item.priority',
-  'todo.item.assigneeId',
-];
-
 /// An in-memory implementation of [TodoApi], seeded with demo data.
 class InMemoryTodoApi implements TodoApi {
   /// Creates the backend and seeds its users, items and grant matrix.
@@ -161,7 +149,7 @@ class InMemoryTodoApi implements TodoApi {
   Future<Map<String, TomAuthState>> fieldStates(String role) async {
     final granted = _grantMatrix[role] ?? const {};
     return {
-      for (final key in _gradableItemKeys)
+      for (final key in gradableItemKeys)
         key: granted[key] ?? TomAuthState.none,
     };
   }

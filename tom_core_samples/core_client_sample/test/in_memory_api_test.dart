@@ -10,14 +10,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:todo_domain/todo_domain.dart' hide initializeReflection;
 
-/// The gradable field keys, in display order (mirrors the backend enumeration).
-const _gradableItemKeys = [
-  'todo.item.title',
-  'todo.item.done',
-  'todo.item.priority',
-  'todo.item.assigneeId',
-];
-
 void main() {
   setUpAll(initializeReflection);
 
@@ -122,7 +114,7 @@ void main() {
 
     test('CCS-API-13: an unknown role degrades every field to none', () async {
       final states = await api.fieldStates('ghost');
-      for (final key in _gradableItemKeys) {
+      for (final key in gradableItemKeys) {
         expect(states[key], TomAuthState.none);
       }
     });
