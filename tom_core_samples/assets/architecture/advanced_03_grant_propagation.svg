@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 440" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 444" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
   <!--
     End-to-end request + grant-propagation loop.
       (1) An administrator edits the grant matrix via /admin/* on the auth server
@@ -6,13 +6,29 @@
       (2) The auth tier now owns the changed authority; the app server reads the
           grant matrix (sourced from the auth tier) on the next request.
       (3) The end-user (alice) makes her next request with her bearer; the app
-          server grades each field hidden/read-only/disabled/editable for that
-          principal, so the admin's edit shows in alice's editor.
+          server re-reads the grant rows and applies the new grade to that
+          request — a field now graded below `full` is refused field-by-field
+          on the write, and what she may see is re-resolved too.
       (4) An owner shares a project; on a SECOND user's next request the app
           server resolves the new share and reveals the project on their board.
-    ANNOTATION: an authorization change applies on the NEXT JWT refresh — either
-    a re-login or the client's automatic token refresh — because the authz claims
-    ride in the bearer; the edit is not pushed to a live session.
+    ANNOTATION: the two tiers move at different speeds, and conflating them is
+    the mistake this figure exists to prevent.
+      SERVER: a grant edit binds on the very next request. The write check
+        re-reads the grant table through a stateless store and read visibility
+        is resolved per request; neither is cached, and neither needs a new
+        token. TC-37-01 asserts exactly this live: the admin regrades
+        `viewer.todo.item.title` and carol's next write of that field flips
+        from refused to accepted without her re-authenticating.
+      CLIENT: the field shaping is a login-time snapshot. The app client fetches
+        the resourceKey -> roleName map ONCE at login (figure 09) and grades
+        every widget from it, so the rendered grade follows at the next
+        sign-in. A token refresh does NOT update it: /auth/refresh re-mints the
+        bearer inside the HTTP layer, which holds no reference to the session
+        that owns the map, so it cannot refresh the shaping even in principle.
+      The bearer is not what the client grades from: it carries the principal's
+      encrypted access data, while the shaping comes from the separately
+      fetched roles map. Client-side timing therefore follows that map, not
+      the token, and the two have no reason to move together.
   -->
   <defs>
     <marker id="arrow3" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
@@ -64,18 +80,23 @@
   <text class="note" x="500" y="164" text-anchor="middle">grant matrix sourced</text>
   <text class="note" x="500" y="178" text-anchor="middle">from the auth tier</text>
 
-  <!-- 3: alice next request -> graded fields -->
+  <!-- 3: alice next request -> the new grade is enforced server-side -->
   <path class="flow" d="M240,250 L290,250"/>
   <text class="step" x="265" y="210" text-anchor="middle">3</text>
-  <text class="note" x="150" y="305" text-anchor="middle">next request → graded editor</text>
+  <text class="note" x="150" y="305" text-anchor="middle">next request → write re-graded</text>
 
   <!-- 4: share reveals to second user -->
   <path class="flow" d="M490,250 L540,250"/>
   <text class="step" x="515" y="210" text-anchor="middle">4</text>
   <text class="note" x="640" y="305" text-anchor="middle">next request → share revealed</text>
 
-  <!-- annotation -->
-  <text class="annot" x="40" y="360">⚑ An authorization change applies on the NEXT JWT refresh —</text>
-  <text class="annot" x="40" y="376">   a re-login or the client's automatic token refresh — because the</text>
-  <text class="annot" x="40" y="392">   authz claims ride in the bearer; it is not pushed to a live session.</text>
+  <!-- The annotation separates the two tiers because the whole point of the
+       figure is that they do not propagate at the same speed. Written as one
+       sentence it invites the reader to pick a single answer, and the single
+       answer is wrong on one tier whichever one is chosen. -->
+  <text class="annot" x="40" y="352" font-weight="600">⚑ The two tiers move at different speeds:</text>
+  <text class="annot" x="40" y="372">SERVER — a grant edit binds on the very next request. The write check re-reads the grant</text>
+  <text class="annot" x="40" y="388">table and read visibility is resolved per request; neither is cached, neither needs a new token.</text>
+  <text class="annot" x="40" y="410">CLIENT — the field shaping is a login-time snapshot (the resourceKey → roleName map, fetched</text>
+  <text class="annot" x="40" y="426">once at login), so the rendered grade follows at the next SIGN-IN, not on a token refresh.</text>
 </svg>

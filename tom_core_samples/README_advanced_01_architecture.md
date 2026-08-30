@@ -158,23 +158,27 @@ Putting the pieces in motion, the headline scenario is a single loop that crosse
    via `/admin/*` on the auth server — for example, raising a `projectRole`'s
    grade on a field from read-only to editable.
 2. An **end-user** (say `alice`) makes their next request to the app server with
-   their bearer token. The app server reads the grant matrix (sourced from the
-   auth tier) and grades each field **hidden / read-only / disabled / editable**
-   for that principal — so the admin's edit is now visible in alice's item editor.
+   their bearer token. The app server re-reads the grant matrix (sourced from the
+   auth tier) and applies the new grade **to that request** — a field graded
+   below `full` is refused field-by-field on the write, and what alice may see is
+   re-resolved from the same rows. No new token is involved.
 3. An owner **shares** a project; on a *second* user's next request the app server
    resolves the new share and reveals the project on their board.
 
 <!-- Figure: end-to-end request + grant-propagation loop. (1) An administrator
 edits the grant matrix via /admin/* on the auth server. (2) The auth tier owns
 the changed authority; the app server reads the grant matrix (sourced from the
-auth tier). (3) alice's next request is graded per-field by the app server, so
-the edit shows in her editor. (4) An owner shares a project; on a second user's
-next request the app server reveals it. ANNOTATION: an authorization change
-applies on the NEXT JWT refresh — a re-login or the client's automatic refresh —
-because the authz claims ride in the bearer; it is not pushed to a live
-session. -->
+auth tier). (3) alice's next request is re-graded per-field by the app server,
+so a field graded below `full` is refused on the write. (4) An owner shares a
+project; on a second user's next request the app server reveals it. ANNOTATION:
+the two tiers move at different speeds. SERVER — a grant edit binds on the very
+next request; the write check re-reads the grant table and read visibility is
+resolved per request, neither cached and neither needing a new token. CLIENT —
+the field shaping is a login-time snapshot (the resourceKey to roleName map,
+fetched once at login), so the rendered grade follows at the next sign-in, not
+on a token refresh. -->
 
-![End-to-end grant-propagation loop: an admin's grant edit at the auth server reaches an end-user's per-field grades on their next request, and a share reveals a project to a second user on theirs; authorization changes apply on the next JWT refresh.](assets/architecture/advanced_03_grant_propagation.svg)
+![End-to-end grant-propagation loop: an admin's grant edit at the auth server binds on the end-user's very next request server-side, and a share reveals a project to a second user on theirs; the client's own field shaping is a login-time snapshot, so it follows at the next sign-in rather than on a token refresh.](assets/architecture/advanced_03_grant_propagation.svg)
 
 <details><summary>Text / mermaid equivalent</summary>
 
@@ -182,13 +186,24 @@ session. -->
 graph LR
   admin[administrator] -- "1 · PUT /admin/grants" --> auth[advanced_auth_server<br/>owns the grant matrix]
   auth -- "2 · matrix sourced from auth tier" --> app[advanced_app_server<br/>grades fields per request]
-  alice[end-user alice] -- "3 · next request → graded editor" --> app
+  alice[end-user alice] -- "3 · next request → write re-graded" --> app
   app -- "4 · next request → share revealed" --> bob[second user bob]
 ```
 
-**⚑ Timing:** an authorization change applies on the **next JWT refresh** — a
-re-login or the client's automatic token refresh — because the authz claims ride
-in the bearer; the edit is not pushed to a live session.
+**⚑ Timing — the two tiers move at different speeds.** *Server-side*, a grant
+edit binds on the **very next request**: the write check re-reads the grant table
+through a stateless store and read visibility is resolved per request, so neither
+is cached and neither needs a new token. `TC-37-01` asserts exactly this over the
+live stack — the admin regrades `viewer`'s `todo.item.title` and carol's next
+write of that field flips from refused to accepted without her re-authenticating.
+*Client-side*, the field shaping is a **login-time snapshot**: the app client
+fetches the `resourceKey → roleName` map once at login
+([A1](README_advanced_A1_authorization_state_machine.md)) and grades every widget
+from it, so the rendered grade follows at the next **sign-in**. A token refresh
+does not update it — `/auth/refresh` re-mints the bearer inside the HTTP layer,
+which holds no reference to the session that owns the map. The bearer carries the
+principal's encrypted access data, but it is not what the client grades from, so
+client-side timing follows the map rather than the token.
 
 </details>
 

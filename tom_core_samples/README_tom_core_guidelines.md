@@ -479,8 +479,9 @@ Anchor: `TomAction`
   alongside, so the diagram is legible to both humans and tools. Diagrams
   required in `README_advanced_01_architecture.md`: layering/dependency arrows;
   shared JWT signing key; the end-to-end request + grant-propagation loop
-  (annotated that an authorization change applies on the next JWT refresh —
-  re-login or automatic refresh); the
+  (annotated with the propagation speed of *each* tier — server-side a grant edit
+  binds on the very next request, client-side the field shaping is a login-time
+  snapshot that follows at the next sign-in); the
   overall architecture; the client-call ↔ API-definition ↔ service-impl ↔ routing
   relationship; the token refresh mechanism; the two round-trips of the request
   lifecycle.
