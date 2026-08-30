@@ -1,16 +1,18 @@
 /// Owns the lifecycle of a single live [TomForm] inside a showcase cell.
 ///
 /// A form is stateful: it must be created inside a [TomScope] (so its fields
-/// resolve ids consistently), bound to a fresh domain entity, and disposed when
-/// the cell leaves the tree. Doing that by hand in every group would be the kind
-/// of copy-paste this sample exists to discourage, so the binding ceremony lives
-/// here once and every `code | rendered` cell hands [FormHost] a `create`, an
-/// optional `bind`, and a `builder`. Shared in shape with
-/// `core_flutter_form_showcase`.
+/// resolve ids consistently) and disposed when the cell leaves the tree. Doing
+/// that by hand in every group would be the kind of copy-paste this sample
+/// exists to discourage, so the lifecycle lives here once and every
+/// `code | rendered` cell hands [FormHost] a `create`, an optional `bind`, and a
+/// `builder`. Shared in shape with `core_flutter_form_showcase`.
+///
+/// Binding is the *caller's* step and is optional: this class constructs no
+/// domain entity, and an unbound form renders against the defaults its fields
+/// declare. `form_host_test.dart` pins both paths.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// A stateful preview that creates [create] inside the [scopeId] scope, runs

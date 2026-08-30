@@ -157,9 +157,21 @@ AclBuilder()
     .build()
 ```
 
-Live forms are owned by **`FormHost<F>`**, which creates the form inside a
-`TomScope`, binds it to a fresh entity, and disposes it on teardown — so each
-group file states *what* to render, never the binding ceremony.
+**`FormHost<F>`** carries the form lifecycle for the groups that only need to
+render one: it creates the form inside a `TomScope`, runs the caller's optional
+`bind` callback, and disposes the form on teardown, so those group files state
+*what* to render and never the ceremony.
+
+Binding is the **caller's** step, not the host's. `bind` is nullable and
+`FormHost` constructs no entity of its own; omit it and the form renders against
+the defaults its fields declare — empty, for `CompanyForm`. Both cells that use
+the host do pass one, since the reflection round-trip is what they exist to show,
+so the unbound path is pinned by `form_host_test.dart` rather than by a group.
+
+The host is a convenience, not a rule: `breakpoint_field_style` and
+`family_swap` run the same three steps in their own `TomState`, because both need
+the form as a field between builds — one reads the resolved style off it per
+width, the other holds two forms over one shared entity.
 
 **The scaffold conforms to G-UI-1/G-UI-2.** Stated as the rule rather than as an
 inventory — the roster of widget types runs past twenty across 18 files, and a
@@ -461,14 +473,14 @@ regenerating.
 
 ## 14. Tests
 
-Forty-two widget tests under `test/`, all green:
+Forty-five widget tests under `test/`, all green:
 
 ```bash
 flutter test --concurrency=1
 ```
 
 The flag is the **workspace convention, not a requirement of this suite**: the
-suite passes identically with it omitted, verified both ways at the current 42
+suite passes identically with it omitted, verified both ways at the current 45
 tests. `flutter test` gives every test file its own `flutter_tester` process at
 any concurrency, so the process-global state these files install — the app text
 resource provider, the `FlutterError.onError` overflow filter, the viewport
@@ -482,6 +494,7 @@ size — is per-file already and there is nothing across files to race over.
 | `form_factor_test.dart` | One badge per tier at 1200 / 900 / 400 px, and — the drift guard — every cell title names the tier that cell's own badge reports (§9). |
 | `showcase_cell_test.dart` | The cell contract — both the snippet and the live child render, no group ships an empty snippet, and no snippet names an API the group's live code never calls (§15). |
 | `validation_message_test.dart` | Every `error.*` key `CompanyForm` can emit resolves to its human sentence, `{min}` is interpolated, and no `Text` in the form renders a raw resource key (§5). |
+| `form_host_test.dart` | The shared form lifecycle (§5): an unbound host renders the field defaults and constructs no entity, a supplied `bind` seeds every field, and teardown disposes the form so a later mutation of the entity no longer reaches it. |
 | `overflow_tolerance.dart` | Not a test — the single filter through which the suite tolerates a preview overflow (see below). |
 
 The width-reactive demos are pumped inside a fixed-width `SizedBox` so the
