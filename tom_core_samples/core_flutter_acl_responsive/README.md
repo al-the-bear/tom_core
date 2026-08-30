@@ -27,7 +27,7 @@ responsive group.
 2. [Running the sample](#2-running-the-sample)
 3. [The mental model: two independent responsive axes](#3-the-mental-model-two-independent-responsive-axes)
 4. [Bootstrap: reflection must come first](#4-bootstrap-reflection-must-come-first)
-5. [The showcase scaffold (`ShowcaseCell` / `ShowcaseGroup`)](#5-the-showcase-scaffold)
+5. [The showcase scaffold (`ShowcaseCell` / `ShowcaseGroup`)](#5-the-showcase-scaffold-showcasecell--showcasegroup)
 6. [Mechanism 1 — Breakpoint field style](#6-mechanism-1--breakpoint-field-style)
 7. [Mechanism 2 — Family swap](#7-mechanism-2--family-swap)
 8. [Mechanism 3 — Row breakpoints](#8-mechanism-3--row-breakpoints)
