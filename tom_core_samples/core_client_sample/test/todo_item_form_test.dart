@@ -2,7 +2,7 @@
 // field addresses itself ONE way. Its `basePath` — the scope its label key is
 // composed from (`<basePath>.label`) — is byte-identical to the wire/authz key
 // used to look the field's grade up in the session matrix. There is no second
-// `todo.item.*` addressing scheme living beside the form's `todoItem.*` labels.
+// `todoItem.*` addressing scheme living beside the form's `todo.item.*` labels.
 
 import 'package:core_client_sample/reflection_seed.dart';
 import 'package:core_client_sample/resources/app_texts.dart';
