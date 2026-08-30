@@ -26,8 +26,10 @@ final ShowcaseGroup variantsBreakpointsGroup = ShowcaseGroup(
   cells: (context) => [
     ShowcaseCell(
       title: 'Row breakpoint — addRowBreakpoint',
-      note: 'Below 480px the row breaks after the second cell onto a new line. '
-          'The reflow is live; this is the same chain a responsive layout uses.',
+      note: 'Once the container narrows past 480px the row splits after the '
+          'second cell; above that width all four sit on one line. This is a '
+          'static snapshot of whichever regime the preview width selects — the '
+          'live reflow is the sibling `core_flutter_acl_responsive` sample.',
       code: 'AclBuilder()\n'
           "    .append(demoBox('First', teal))\n"
           "    .append(demoBox('Second', teal))\n"
