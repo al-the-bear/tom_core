@@ -54,9 +54,27 @@ final ShowcaseGroup nestingGroup = ShowcaseGroup(
       title: 'Two nested panels side by side',
       note: 'Each panel is its own ACL build result; the outer row sizes and '
           'spaces them like any other component.',
-      code: 'AclBuilder()\n'
-          '    .append(leftPanel).setPSize(150)\n'
-          '    .append(rightPanel, dist: 12).setPSize(150)\n'
+      code: 'final leftPanel = AclBuilder()\n'
+          "    .append(demoBox('Left · A', blue))\n"
+          '    .newRow(dist: 4)\n'
+          "    .append(demoBox('Left · B', blue))\n"
+          '    .setAclBorderStyle(const AclBorderStyle.solid())\n'
+          "    .setAclTitle('Left')\n"
+          '    .build();\n'
+          '\n'
+          'final rightPanel = AclBuilder()\n'
+          "    .append(demoBox('Right · A', purple))\n"
+          '    .newRow(dist: 4)\n'
+          "    .append(demoBox('Right · B', purple))\n"
+          '    .setAclBorderStyle(const AclBorderStyle.solid())\n'
+          "    .setAclTitle('Right')\n"
+          '    .build();\n'
+          '\n'
+          'AclBuilder()\n'
+          '    .append(leftPanel)\n'
+          '    .setPSize(150)\n'
+          '    .append(rightPanel, dist: 12)\n'
+          '    .setPSize(150)\n'
           '    .build()',
       child: AclBuilder()
           .append(

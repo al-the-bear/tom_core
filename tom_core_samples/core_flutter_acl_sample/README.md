@@ -82,6 +82,17 @@ The snippets are kept in lock-step with the live `child` by hand (an article wan
 trimmed, copy-paste-ready code), and `test/showcase_cell_test.dart` asserts both
 halves are always present so an empty snippet can never slip through.
 
+**What "trimmed" is allowed to mean.** Exactly one thing: a `demoBox` tint is
+written bare (`green`, `teal`, `purple`) where the `child` says `Colors.green`.
+That shorthand is uniform across every group, and it elides nothing a reader
+needs — the chain's shape is identical and the qualifier restores itself. It may
+**never** stretch to eliding a builder chain behind a name the snippet does not
+define. A cell that composes sub-layouts spells them out as locals the snippet
+itself declares (`nesting_group.dart`, `reference_group.dart`), because a name
+like `leftPanel` would hide precisely the construction — the border and title
+calls — that the cell exists to teach. `showcase_cell_test.dart` checks only that
+a snippet is non-empty, so this boundary is a review obligation, not a gated one.
+
 > The `common/` framework (`ShowcaseCell` / `CodeBlock` / `ShowcaseGroup`) is the
 > same one used by [`core_flutter_ui_showcase`](../core_flutter_ui_showcase); this
 > sample is its ACL counterpart.
