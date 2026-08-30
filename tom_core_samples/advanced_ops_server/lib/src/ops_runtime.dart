@@ -53,9 +53,6 @@ const Duration opsTickInterval = Duration(minutes: 1);
 /// How often the outbox looks for queued messages.
 const Duration opsOutboxTickInterval = Duration(seconds: 15);
 
-/// The blob-store key prefix scheduled exports are written under.
-const String opsExportPrefix = opsExportKeyPrefix;
-
 /// The assembled ops server.
 class OpsRuntime {
   /// Creates a runtime over already-built collaborators.
@@ -159,7 +156,7 @@ class OpsRuntime {
       report: OpsReportService(
         source: const RepositoryReportSource(),
         exports: TomExportService(
-          store: TomBlobExportStore.named(null, keyPrefix: opsExportPrefix),
+          store: TomBlobExportStore.named(null, keyPrefix: opsExportKeyPrefix),
         ),
       ),
     );

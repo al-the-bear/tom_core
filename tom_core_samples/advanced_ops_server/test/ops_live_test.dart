@@ -296,7 +296,7 @@ void main() {
       final service = OpsReportService(
         source: const RepositoryReportSource(),
         exports: TomExportService(
-          store: TomBlobExportStore.named(null, keyPrefix: opsExportPrefix),
+          store: TomBlobExportStore.named(null, keyPrefix: opsExportKeyPrefix),
         ),
       );
 
@@ -314,7 +314,10 @@ void main() {
       // address to publish, so its `location` is legitimately null — and the
       // documented way to retrieve an export is the key it was stored under,
       // because only the store knows how keys map to storage.
-      final store = TomBlobExportStore.named(null, keyPrefix: opsExportPrefix);
+      final store = TomBlobExportStore.named(
+        null,
+        keyPrefix: opsExportKeyPrefix,
+      );
       final bytes = await store
           .open(outcome.stored.key)
           .fold<List<int>>(<int>[], (all, chunk) => all..addAll(chunk));
