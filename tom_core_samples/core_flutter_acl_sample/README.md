@@ -124,9 +124,16 @@ a snippet is non-empty, so this boundary is a review obligation, not a gated one
 ## The capabilities
 
 Each section below is one `lib/groups/*.dart` file and one screen in the app. The
-snippets are the exact code rendered in the corresponding cell. Every capability
-maps 1:1 onto a verified `tom_flutter_ui_test/lib/acl_demos/` source, listed at the
-end of each section.
+snippets are the exact code rendered in the corresponding cell. Sections 1–9 are
+the ACL capabilities, and each maps 1:1 onto a verified
+`tom_flutter_ui_test/lib/acl_demos/` source, listed at the end of the section.
+
+Section 10, authorization, is the deliberate exception: it is a widget-base
+capability that composes with the layout engine rather than a capability of the
+engine, so `acl_demos/` holds nothing for it and its sources are
+`widget_demos/demo_28_authorization` plus `tom_policy_node_base.dart`. It is in
+an ACL sample because only a cell combining the two shows what an auth state
+does to the row around it.
 
 ### 1. Sizing — preferred / minimum / maximum
 

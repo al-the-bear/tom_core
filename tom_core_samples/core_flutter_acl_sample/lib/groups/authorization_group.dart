@@ -13,6 +13,16 @@
 /// with the layout engine. `disabled` and `read` render **distinctly** — they
 /// are separate renderings, not two names for the same greying. In a real app
 /// the state flows from a resource provider or action controller.
+///
+/// Maps to the verified `widget_demos/demo_28_authorization.dart` and
+/// `tom_flutter_ui/lib/src/widget_base/tom_policy_node_base.dart`. This is the
+/// one group in the sample whose source sits outside `acl_demos/`, and it is
+/// meant to: authorization is a widget-base capability that *composes* with the
+/// layout engine rather than a layout capability of its own. That is also why
+/// the group earns a place in an ACL sample: only a cell that puts the two
+/// together shows what a state does to the *row* — a `none` button collapses to
+/// nothing and leaves its label box behind, which neither source demonstrates
+/// on its own.
 library;
 
 import 'package:flutter/material.dart';
