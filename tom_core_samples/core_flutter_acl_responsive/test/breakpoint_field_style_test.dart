@@ -14,6 +14,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'overflow_tolerance.dart';
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -33,9 +35,8 @@ void main() {
 
     // Auxiliary field chrome can overflow at the very narrow widths; that's not
     // what these tests assert (the badge text is still computed and visible).
-    final previous = FlutterError.onError;
-    FlutterError.onError = (_) {};
-    addTearDown(() => FlutterError.onError = previous);
+    // Only the overflow is tolerated — anything else still fails the test.
+    tolerateOverflowErrors();
 
     await tester.pumpWidget(
       MaterialApp(

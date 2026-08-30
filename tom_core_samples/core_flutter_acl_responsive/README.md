@@ -452,16 +452,30 @@ Forty-two widget tests under `test/`, all green, runnable with `flutter test`
 
 | File | Covers |
 | ---- | ------ |
-| `responsive_smoke_test.dart` | Every group builds at phone/tablet/desktop widths; only benign preview overflows are tolerated, any other exception fails. Home screen lists every group. |
+| `responsive_smoke_test.dart` | Every group builds at phone/tablet/desktop widths; any exception other than a preview overflow fails the pump. Home screen lists every group. |
 | `breakpoint_field_style_test.dart` | The badge row reports the exact tier values at 800 / 450 / 360 px (label placement, fonts, gaps, border, icon). |
 | `family_swap_test.dart` | Active family flips at 700px; seeds echo in the shared panel; an edit propagates; **state survives the swap**. |
 | `form_factor_test.dart` | One badge per tier at 1200 / 900 / 400 px, and — the drift guard — every cell title names the tier that cell's own badge reports (§9). |
 | `showcase_cell_test.dart` | The cell contract — both the snippet and the live child render, no group ships an empty snippet, and no snippet names an API the group's live code never calls (§15). |
 | `validation_message_test.dart` | Every `error.*` key `CompanyForm` can emit resolves to its human sentence, `{min}` is interpolated, and no `Text` in the form renders a raw resource key (§5). |
+| `overflow_tolerance.dart` | Not a test — the single filter through which the suite tolerates a preview overflow (see below). |
 
 The width-reactive demos are pumped inside a fixed-width `SizedBox` so the
 published width is pinned exactly, making the per-tier assertions deterministic —
 the same technique the verified `tom_flutter_form_test` breakpoint demos use.
+
+Pinning a preview narrower than its content makes it overflow inside the harness
+column. That is an artifact of the harness, not a defect, so the suite tolerates
+it — in exactly one place. `tolerateOverflowErrors()` in
+`test/overflow_tolerance.dart` drops reports whose text `contains('overflowed')`,
+**forwards every other error** to `flutter_test`'s own handler, and restores that
+handler via `addTearDown`. No test file installs `FlutterError.onError` itself.
+
+The forwarding is the point. The tempting local form, `FlutterError.onError =
+(_) {}`, reads like "ignore the overflow" and means "ignore everything" — a
+failed assertion in a build method, a bad state, a `RenderBox` layout error all
+vanish and the test passes on whatever is left in the tree. Three files here did
+that and stayed green while every build under them reported a `StateError`.
 
 ---
 
@@ -477,7 +491,9 @@ To add a mechanism:
 3. If it binds a new entity or form, seed it in `reflection_seed.dart` and
    regenerate (§13).
 4. Add a deterministic test that pumps the demo at fixed widths and asserts a
-   badge/state value per tier; keep the smoke test's overflow tolerance in mind.
+   badge/state value per tier. If the pinned preview overflows the harness
+   column, call `tolerateOverflowErrors()` — do not install a handler of your
+   own (§14).
 
 ### The snippet contract
 

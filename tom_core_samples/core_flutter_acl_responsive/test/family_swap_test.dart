@@ -17,6 +17,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import 'overflow_tolerance.dart';
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -26,20 +28,6 @@ void main() {
     );
   });
 
-  void Function(FlutterErrorDetails)? previousOnError;
-
-  /// Hands error reporting back to `flutter_test` after the pump.
-  ///
-  /// [pumpAtWidth] silences `FlutterError.onError` so auxiliary field chrome
-  /// overflowing at extreme widths does not fail the pump. That silencing also
-  /// disables the framework's own failure reporting: a later `expect` failure
-  /// then surfaces as an opaque `_pendingExceptionDetails != null` binding
-  /// assertion and a ten-minute timeout instead of the actual mismatch. The
-  /// style tests below exist precisely to fail when the pairing inverts, so
-  /// they take reporting back before asserting — a guard nobody can read is
-  /// barely a guard.
-  void restoreErrorReporting() => FlutterError.onError = previousOnError;
-
   /// Pump the demo inside a fixed-width SizedBox so its internal LayoutBuilder
   /// sees exactly [width] and picks the matching family.
   Future<void> pumpAtWidth(WidgetTester tester, double width) async {
@@ -48,10 +36,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    previousOnError = FlutterError.onError;
-    final previous = previousOnError;
-    FlutterError.onError = (_) {};
-    addTearDown(() => FlutterError.onError = previous);
+    // Auxiliary field chrome overflows at the extreme widths; nothing else is
+    // tolerated, and reporting stays live so the style assertions below — which
+    // exist precisely to fail when the pairing inverts — still report legibly.
+    tolerateOverflowErrors();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -143,7 +131,6 @@ void main() {
       (tester) async {
     await pumpAtWidth(tester, 600);
     final style = resolvedStyle(tester);
-    restoreErrorReporting();
     expect(style, isA<TomCupertinoFormStyle>(),
         reason: 'the Cupertino family renders below 700, so the Cupertino '
             'style must resolve there — not the Material3 default');
@@ -156,7 +143,6 @@ void main() {
       (tester) async {
     await pumpAtWidth(tester, 800);
     final style = resolvedStyle(tester);
-    restoreErrorReporting();
     expect(style, isNot(isA<TomCupertinoFormStyle>()),
         reason: 'the Material family renders at/above 700, so Cupertino chrome '
             'must not be applied there');
@@ -170,7 +156,6 @@ void main() {
     // pixel later.
     await pumpAtWidth(tester, familySwapBreakpoint);
     final style = resolvedStyle(tester);
-    restoreErrorReporting();
     expect(find.text('Active family: material'), findsOneWidget);
     expect(style, isNot(isA<TomCupertinoFormStyle>()),
         reason: 'at exactly 700 the family is Material, so the style must be '

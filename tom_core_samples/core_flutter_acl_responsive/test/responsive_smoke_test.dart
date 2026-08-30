@@ -16,6 +16,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'overflow_tolerance.dart';
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -27,16 +29,16 @@ void main() {
     );
   });
 
-  /// Pumps a group screen at [width] and returns any captured render errors.
+  /// Pumps a group screen at [width].
   ///
   /// Several cells pin a preview to a fixed width (e.g. a 600px adaptive-sizing
   /// row, a 900px form-factor row) to show a width regime; rendered inside the
   /// narrow preview column of the showcase harness those can overflow by a few
   /// pixels. That is a harness artifact, not a defect in the mechanism under
-  /// test — so the render errors are captured here and the caller asserts that
-  /// none of them are anything other than a benign overflow. Mirrors the
-  /// overflow-tolerant pattern in the verified `tom_flutter_form_test` demos.
-  Future<List<FlutterErrorDetails>> pumpGroupAt(
+  /// test, so it is tolerated — by the same shared filter the rest of the suite
+  /// uses, which forwards every other error and so fails this pump with the
+  /// real message.
+  Future<void> pumpGroupAt(
     WidgetTester tester,
     ShowcaseGroup group,
     double width,
@@ -46,20 +48,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final captured = <FlutterErrorDetails>[];
-    final previous = FlutterError.onError;
-    FlutterError.onError = captured.add;
-    addTearDown(() => FlutterError.onError = previous);
+    tolerateOverflowErrors();
 
     await tester.pumpWidget(
       MaterialApp(home: GroupScreen(group: group)),
     );
     await tester.pump();
-    return captured;
   }
-
-  bool isOverflow(FlutterErrorDetails d) =>
-      d.exception.toString().contains('overflowed');
 
   // One phone, one tablet, one desktop width — the three form-factor tiers.
   const widths = <(String, double)>[
@@ -73,16 +68,13 @@ void main() {
       for (final (tier, width) in widths) {
         testWidgets('group "${group.id}" renders at $tier ($width)',
             (tester) async {
-          final errors = await pumpGroupAt(tester, group, width);
+          // Any non-overflow error during the pump reaches flutter_test's own
+          // handler and fails this test with its real message — the pump itself
+          // is the assertion that every cell built.
+          await pumpGroupAt(tester, group, width);
 
           // The group's title appears in the AppBar.
           expect(find.text(group.title), findsWidgets);
-          // The only tolerated render errors are benign preview overflows; any
-          // other exception means a cell failed to build.
-          final unexpected = errors.where((d) => !isOverflow(d)).toList();
-          expect(unexpected, isEmpty,
-              reason: 'group ${group.id} threw a non-overflow error: '
-                  '${unexpected.map((d) => d.exception).join("; ")}');
         });
       }
     }

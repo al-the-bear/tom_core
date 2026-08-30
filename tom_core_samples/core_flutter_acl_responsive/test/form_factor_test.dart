@@ -22,6 +22,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'overflow_tolerance.dart';
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -31,18 +33,6 @@ void main() {
     );
   });
 
-  void Function(FlutterErrorDetails)? previousOnError;
-
-  /// Hands error reporting back to `flutter_test` before any `expect` runs.
-  ///
-  /// [pumpGroup] silences `FlutterError.onError` because the cells pin previews
-  /// to fixed widths that overflow the narrower preview column — a harness
-  /// artifact, not a defect. That silencing also disables the framework's own
-  /// failure reporting, which turns a plain mismatch into an opaque
-  /// `_pendingExceptionDetails != null` binding assertion. Same guard as
-  /// `family_swap_test.dart`.
-  void restoreErrorReporting() => FlutterError.onError = previousOnError;
-
   /// Render the whole form-factor group wide enough that every cell is laid out.
   Future<void> pumpGroup(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1400, 4000);
@@ -50,9 +40,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    previousOnError = FlutterError.onError;
-    FlutterError.onError = (_) {};
-    addTearDown(restoreErrorReporting);
+    // The cells pin previews to fixed widths that overflow the narrower preview
+    // column — a harness artifact, not a defect in the resolver under test. That
+    // is the only thing tolerated.
+    tolerateOverflowErrors();
 
     await tester.pumpWidget(
       MaterialApp(home: GroupScreen(group: formFactorGroup)),
@@ -98,7 +89,6 @@ void main() {
   testWidgets('a desktop-tier cell is pinned at a width that resolves desktop',
       (tester) async {
     await pumpGroup(tester);
-    restoreErrorReporting();
     expect(find.text('resolveFormFactor(1200.0) → desktop'), findsOneWidget,
         reason: 'desktop starts at 1024, so demonstrating the tier needs a '
             'width at or above it');
@@ -107,7 +97,6 @@ void main() {
   testWidgets('a tablet-tier cell is pinned at a width that resolves tablet',
       (tester) async {
     await pumpGroup(tester);
-    restoreErrorReporting();
     expect(find.text('resolveFormFactor(900.0) → tablet'), findsOneWidget,
         reason: '900 sits between the 600 and 1024 boundaries');
   });
@@ -115,7 +104,6 @@ void main() {
   testWidgets('a phone-tier cell is pinned at a width that resolves phone',
       (tester) async {
     await pumpGroup(tester);
-    restoreErrorReporting();
     expect(find.text('resolveFormFactor(400.0) → phone'), findsOneWidget,
         reason: 'below 600 the tier is phone — and 400 is also the only cell '
             'below the 600px addVariant threshold, so it is the stacked one');
@@ -125,7 +113,6 @@ void main() {
       (tester) async {
     await pumpGroup(tester);
     final observed = titledBadges(tester);
-    restoreErrorReporting();
 
     for (final (title, badge) in observed) {
       expect(titleTier(title), tierOf(badge),
@@ -137,7 +124,6 @@ void main() {
   testWidgets('the group demonstrates all three tiers', (tester) async {
     await pumpGroup(tester);
     final tiers = titledBadges(tester).map((e) => tierOf(e.$2)).toSet();
-    restoreErrorReporting();
 
     expect(tiers, containsAll(<String>['phone', 'tablet', 'desktop']),
         reason: 'the group exists to show the phone/tablet/desktop mapping, so '
