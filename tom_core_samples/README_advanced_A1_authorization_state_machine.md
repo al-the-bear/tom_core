@@ -127,13 +127,14 @@ grade a field renders at from the server's folded roles to a widget:
 2. GET /resource-roles → Map<String,String> over the wire, once at login;
 3. client installs AppResourceRoleAdapter(resourceRoles) as the global
    TomAuthorization adapter (over the TomResourceRoleRegistry);
-4. item_detail_screen.dart:146-171 — itemKey = ResourceRoleKeys.item(id),
+4. item_detail_screen.dart _resolveForm() — itemKey = ResourceRoleKeys.item(id),
    resourceState = TomAuthorization.resolveAuth(itemKey) (ceiling via the
    registry), role = resourceRoles[itemKey], grades = projectRoleFieldGrades[role]
    (shared domain);
 5. field.authorizer = TomAuthorizer.fixed(resourceState.narrow(grades[basePath]
    ?? TomAuthState.none)) — per-field, closed-safe;
-6. TomField.resolveEffectiveAuth() layer 4 [tom_form.dart:823]
+6. TomField.resolveEffectiveAuth() layer 4, the per-widget authorizer
+   [tom_flutter_ui/lib/src/forms/tom_form.dart resolveEffectiveAuth()]
    (authorizer.effectiveAuth(state));
 7. TomAuthState → the field renders at its grade. -->
 
@@ -145,9 +146,9 @@ grade a field renders at from the server's folded roles to a widget:
 graph TB
   fold["server folds ownership grants + share delegations<br/>expanded down each containment subtree<br/>AppReadService.resourceRoles"] -- "GET /resource-roles" --> map["Map&lt;String,String&gt; resourceKey→roleName<br/>over the wire, once at login"]
   map --> adapter["client installs AppResourceRoleAdapter(resourceRoles)<br/>global TomAuthorization adapter over TomResourceRoleRegistry"]
-  adapter -- "item_detail_screen.dart:146-171" --> resolve["itemKey = ResourceRoleKeys.item(id)<br/>resourceState = TomAuthorization.resolveAuth(itemKey)<br/>role = resourceRoles[itemKey] · grades = projectRoleFieldGrades[role]"]
+  adapter -- "item_detail_screen.dart _resolveForm()" --> resolve["itemKey = ResourceRoleKeys.item(id)<br/>resourceState = TomAuthorization.resolveAuth(itemKey)<br/>role = resourceRoles[itemKey] · grades = projectRoleFieldGrades[role]"]
   resolve --> stamp["field.authorizer = TomAuthorizer.fixed(resourceState.narrow(grades[basePath] ?? none))<br/>per-field, closed-safe"]
-  stamp -- "tom_form.dart:823" --> field["TomField.resolveEffectiveAuth() layer 4<br/>authorizer.effectiveAuth(state)"]
+  stamp -- "tom_form.dart resolveEffectiveAuth()" --> field["TomField.resolveEffectiveAuth() layer 4<br/>authorizer.effectiveAuth(state)"]
   field --> state["TomAuthState → the field renders at its grade"]
 ```
 

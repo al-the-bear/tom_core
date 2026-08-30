@@ -45,6 +45,32 @@ something with a name -- a class, a member, a library doc comment, a headed
 list. The fix is never "delete the reference"; it is "say what you mean", and
 the named form survives every edit that breaks the numbered one.
 
+**Figures are checked too, and are the worst host of all.** The rule was
+originally Dart-only, and ``advanced_09_grade_data_path.svg`` collected five
+``CROSS`` citations in the blind spot -- three distinct ones, each written twice
+because a figure carries its claims in both an XML comment and the ``<text>``
+elements a reader actually sees. All three had rotted: one pointed a whole
+layer away from the layer it named, one named a file at a path that no longer
+existed, and one had the right start line and a stale end. That is the ``CROSS``
+argument intensified rather than a new fault. A Dart comment at least sits in a
+file somebody opens; a figure is an *asset*, so nothing compiles it, no test
+reads it, and the editing session that moves the target contains no trace of the
+reference at all. The stale number then goes on reading as authoritative,
+because a number is the most confident thing a citation can say.
+
+So the scan covers ``.svg``, and there it reads **every line**, not just the
+comment: the citation a reader of the rendered figure sees is the drawn one, so
+checking only the comment would miss the copy that matters most.
+
+**Markdown is deliberately left out.** It is not an oversight and not a
+follow-up. The same pattern occurs 173 times across 18 files of guide prose,
+where a line citation in a paragraph of explanation is a normal and often useful
+thing to write, and switching the rule on there would mean 173 judgement calls
+on day one. That is the noise threshold this suite has twice declined to cross
+(353 for the cross-library dartdoc rule, 519 for "name every public type"), and
+the reason the figure case is different is arithmetic, not taste: nine files,
+and after this change zero violations.
+
 **What is deliberately not matched.** A citation needs syntactic evidence that
 it *is* one: a plural range (``lines 13-17``), a parenthesis (``(line 12)``),
 or a pointing word (``see line 12``). A bare singular ``line 2`` is left alone,
@@ -63,6 +89,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
 SKIP_SUFFIXES = (".reflection.dart", "_generated.dart", "_bridges.dart", ".g.dart")
+SUFFIXES = (".dart", ".svg")
 
 # A comment line, `//` or `///`, capturing the prose after the slashes.
 COMMENT = re.compile(r"^\s*///?(?!/)(.*)$")
@@ -83,7 +110,9 @@ SELF = re.compile(
 
 
 def source_files(root: Path):
-    for path in sorted(root.rglob("*.dart")):
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.suffix not in SUFFIXES:
+            continue
         if SKIP_DIRS & set(path.parts):
             continue
         if path.name.endswith(SKIP_SUFFIXES):
@@ -91,14 +120,29 @@ def source_files(root: Path):
         yield path
 
 
-def citations(text: str) -> list[tuple[int, str, str]]:
-    """``(line, fault, the citing prose)`` for each comment citing a line."""
+def citable_lines(path: Path, text: str) -> list[tuple[int, str]]:
+    """``(line number, the prose that could carry a citation)``.
+
+    In Dart, only a comment can -- code is checked by the compiler. A figure has
+    no code, so the whole file is prose, and the citation that reaches a reader
+    is the one drawn in a `<text>` element rather than the one in the XML
+    comment. Reading only the comment would check the copy nobody sees.
+    """
+    numbered = list(enumerate(text.split("\n"), start=1))
+    if path.suffix == ".svg":
+        return numbered
+    return [
+        (number, comment.group(1))
+        for number, line in numbered
+        if (comment := COMMENT.match(line))
+    ]
+
+
+def citations(path: Path, text: str) -> list[tuple[int, str, str]]:
+    """``(line, fault, the citing prose)`` for each line citing a line."""
     found: list[tuple[int, str, str]] = []
-    for number, line in enumerate(text.split("\n"), start=1):
-        comment = COMMENT.match(line)
-        if not comment:
-            continue
-        prose = URL.sub(" ", comment.group(1))
+    for number, raw in citable_lines(path, text):
+        prose = URL.sub(" ", raw)
         if CROSS.search(prose):
             found.append((number, "CROSS", prose.strip()))
         elif SELF.search(prose):
@@ -112,22 +156,21 @@ def main(argv: list[str]) -> int:
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
-    scanned = 0
+    scanned = {".dart": 0, ".svg": 0}
     faults: list[tuple[Path, int, str, str]] = []
     for path in source_files(root):
         try:
             text = path.read_text(encoding="utf-8")
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             continue
-        scanned += 1
-        for number, fault, prose in citations(text):
+        scanned[path.suffix] += 1
+        for number, fault, prose in citations(path, text):
             faults.append((path, number, fault, prose))
 
-    if not scanned:
+    if not sum(scanned.values()):
         # Distinguishing "clean" from "looked nowhere" has to be audible: a
         # report whose only failure mode is printing zeros is worse than none.
-        print(f"scanned no Dart files under {root} -- wrong path?",
-              file=sys.stderr)
+        print(f"scanned no files under {root} -- wrong path?", file=sys.stderr)
         return 2
 
     for path, number, fault, prose in faults:
@@ -135,8 +178,11 @@ def main(argv: list[str]) -> int:
         print(f"{path.relative_to(REPO_ROOT)}:{number}: {fault} -- {excerpt}")
 
     print()
-    print(f"dart files scanned       : {scanned}")
-    print(f"comments citing a line   : {len(faults)}")
+    # Counted per kind: the figures are nine files among thousands, so a single
+    # total would hide the day the figure scan silently stops finding them.
+    print(f"dart files scanned       : {scanned['.dart']}")
+    print(f"figures scanned          : {scanned['.svg']}")
+    print(f"citations naming a line  : {len(faults)}")
     return 1 if faults else 0
 
 

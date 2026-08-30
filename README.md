@@ -172,7 +172,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, or `const` one that is not |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
-| [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds source comments that cite a line number instead of naming the thing |
+| [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments and SVG figures that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
@@ -366,24 +366,35 @@ python3 tool/check_source_citations.py                 # the whole repository
 python3 tool/check_source_citations.py tom_flutter_ui  # one subtree
 ```
 
-It reports comments that cite a line number rather than naming what they point
-at: `SELF` when no file is named, so the citation lands in its own file, and
-`CROSS` when one is. `// Per the class contract (lines 13-17)` was the case that
-prompted it. That citation was accurate the day it was written, and any
-insertion above it would have left it describing whatever slid into those lines
-— with nothing dangling, nothing failing to compile, and nothing for a reader
-to notice.
+It reports Dart comments — and every line of an SVG figure — that cite a line
+number rather than naming what they point at: `SELF` when no file is named, so
+the citation lands in its own file, and `CROSS` when one is. `// Per the class
+contract (lines 13-17)` was the case that prompted it. That citation was
+accurate the day it was written, and any insertion above it would have left it
+describing whatever slid into those lines — with nothing dangling, nothing
+failing to compile, and nothing for a reader to notice.
 
-This one fires **zero** times across 1443 files, and that is the argument for
-it rather than against. A gate earns its place by whether the fault would be
-caught if it came back, not by how much it currently finds; this fault is
-invisible by construction, and a convention met once a year is one no reviewer
-can be asked to hold. Because the rule is silent on the existing tree it adds
-no triage burden — the opposite of the two rules declined nearby, at 353 and
-519 violations of judgement. Naming the target is always possible, which is
-what keeps the rule fair: every line range sits inside a class, a member or a
-headed list that has a name, and the named form survives the edit that breaks
-the numbered one.
+**Figures are the worst host of all**, which is why they are scanned end to end
+rather than only in their XML comment. A figure is an asset: nothing compiles
+it, no test opens it, and the citation a reader actually sees is the one drawn
+in a `<text>` element. `advanced_09_grade_data_path.svg` carried five such
+citations — three distinct ones, each written twice, because a figure states
+its claims in both the comment and the drawing — and all three had rotted: one
+pointed a whole layer away from the layer it named, one named a path that no
+longer existed, one had a stale end line. Nothing reported any of it.
+
+The rule now fires **zero** times across 1486 Dart files and 9 figures, and
+that is the argument for it rather than against. A gate earns its place by
+whether the fault would be caught if it came back, not by how much it currently
+finds; this fault is invisible by construction, and a convention met once a
+year is one no reviewer can be asked to hold. Because the rule is silent on the
+existing tree it adds no triage burden — the opposite of the two rules declined
+nearby, at 353 and 519 violations of judgement. Markdown is left out on the
+same arithmetic: the pattern occurs 173 times across 18 files of guide prose,
+where a line citation in a paragraph of explanation is a normal thing to write.
+Naming the target is always possible, which is what keeps the rule fair: every
+line range sits inside a class, a member or a headed list that has a name, and
+the named form survives the edit that breaks the numbered one.
 
 A citation must show it is one — a plural range, a parenthesis, or a pointing
 word — so `a line 2 pixels wide` is left alone, and URLs are skipped whole,
