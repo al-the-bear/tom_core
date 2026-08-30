@@ -245,7 +245,7 @@ unchanged) and `AdvancedClientConfig.resolve()` wherever it needs a URL.
 
 ## Tests
 
-Seven socket-free suites always run; four live suites **skip themselves** when a
+Six socket-free suites always run; five live suites **skip themselves** when a
 server is unreachable, so `dart test` stays green without a stack. All of them
 install the combined domain+contracts reflection seed
 (`package:advanced_client_core/reflection_seed.dart`) in `setUpAll`.
