@@ -6,42 +6,34 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../common/form_host.dart';
 import '../common/showcase_cell.dart';
 import '../common/showcase_section.dart';
 import '../domain/showcase_entities.dart';
 import '../forms/order_item_form.dart';
 
-/// A self-contained editable order-items list: inline rows plus a toolbar,
-/// tracking the selected row so the toolbar's remove/move act on it.
+/// The inline rows plus toolbar for an already-live [listForm], tracking the
+/// selected row so the toolbar's remove/move act on it.
+///
+/// Selection is the only state here: [ListFormHost] owns the list form's
+/// creation, binding and disposal, so this widget has one reason to change.
 // Why: extends [TomStatefulWidget]/[TomState] (not raw) so the demo payload
 // conforms to G-UI-2. No tomId/resources → scope bases, which are non-const
 // (construction reads [TomScope.current]).
 class _InlineOrderList extends TomStatefulWidget {
-  _InlineOrderList();
+  _InlineOrderList({required this.listForm});
+
+  /// The live list form supplied by the enclosing [ListFormHost].
+  final TomListForm<OrderItem, OrderItemForm> listForm;
 
   @override
   TomState<_InlineOrderList> createState() => _InlineOrderListState();
 }
 
 class _InlineOrderListState extends TomState<_InlineOrderList> {
-  late final OrderItemListForm _listForm;
   int? _selectedIndex;
-
-  @override
-  void initState() {
-    super.initState();
-    _listForm = TomScope.withScope('lists_inline', OrderItemListForm.new);
-    _listForm.bind(seededOrderItems());
-  }
-
-  @override
-  void dispose() {
-    _listForm.dispose();
-    super.dispose();
-  }
 
   void _select(int? index) => setState(() => _selectedIndex = index);
 
@@ -60,7 +52,7 @@ class _InlineOrderListState extends TomState<_InlineOrderList> {
           TomExpanded(
             child: TomSingleChildScrollView(
               child: TomInlineListForm<OrderItem, OrderItemForm>(
-                listForm: _listForm,
+                listForm: widget.listForm,
                 reorderable: true,
                 rowBuilder: (context, index, rowForm) => TomCard(
                   key: ValueKey('order-row-${rowForm.hashCode}'),
@@ -91,7 +83,7 @@ class _InlineOrderListState extends TomState<_InlineOrderList> {
           ),
           TomDivider(height: 8),
           TomListFormToolbar<OrderItem, OrderItemForm>(
-            listForm: _listForm,
+            listForm: widget.listForm,
             selectedIndex: _selectedIndex,
             onSelectionChanged: (i) async => _select(i),
           ),
@@ -131,7 +123,12 @@ final ShowcaseGroup listsGroup = ShowcaseGroup(
           "  selectedIndex: selectedIndex,\n"
           "  onSelectionChanged: select,\n"
           ")",
-      child: _InlineOrderList(),
+      child: ListFormHost<OrderItem, OrderItemForm>(
+        scopeId: 'lists_inline',
+        create: OrderItemListForm.new,
+        items: seededOrderItems,
+        builder: (context, listForm) => _InlineOrderList(listForm: listForm),
+      ),
     ),
   ],
 );

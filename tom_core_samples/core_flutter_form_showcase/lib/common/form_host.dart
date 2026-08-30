@@ -13,7 +13,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// A stateful preview that creates [create] inside the [scopeId] scope, runs
@@ -76,6 +75,12 @@ class _FormHostState<F extends TomForm<TomClass>>
 /// [TomObservable] (not [TomForm]), so it needs its own lifecycle owner: this
 /// host creates the list form in [scopeId], binds it to a [TomList] of items,
 /// and renders [builder]. Used by the list and master-detail cells.
+///
+/// Unlike [FormHost], this host does not carry the concrete list-form type
+/// through to [builder] — it is parameterised on the item and row-form types,
+/// so `builder` receives the `TomListForm<TItem, TForm>` base. That is what the
+/// list widgets ([TomInlineListForm], [TomListFormToolbar],
+/// [TomMasterDetailListForm]) accept, so nothing is lost by it.
 // Why: same rationale as [FormHost] — a scope-participating stateful chrome
 // wrapper, so it extends [TomStatefulWidget] + [TomState] and is non-const.
 class ListFormHost<TItem extends TomClass, TForm extends TomForm<TItem>>

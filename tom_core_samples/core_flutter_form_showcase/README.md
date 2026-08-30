@@ -247,7 +247,21 @@ valid `F`, and the concrete type is preserved inside `builder`.
 
 `TomListForm` extends `TomObservable` (not `TomForm`), so it gets its own owner,
 **`ListFormHost`**, which binds the list form to a `TomList<TItem>`. The list and
-master-detail groups use a small stateful widget built on the same pattern.
+master-detail groups both use it:
+
+```dart
+ListFormHost<OrderItem, OrderItemForm>(
+  scopeId: 'lists_inline',
+  create: OrderItemListForm.new,
+  items: seededOrderItems,
+  builder: (context, listForm) => _InlineOrderList(listForm: listForm),
+)
+```
+
+Master-detail passes the bound list straight to `TomMasterDetailListForm` and so
+needs no widget of its own. The lists group still has one, but the host having
+taken creation, binding and disposal off it leaves it holding only the selected
+row index — one reason to change instead of two.
 
 ---
 

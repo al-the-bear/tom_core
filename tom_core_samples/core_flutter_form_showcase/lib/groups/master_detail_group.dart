@@ -7,61 +7,13 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../common/form_host.dart';
 import '../common/showcase_cell.dart';
 import '../common/showcase_section.dart';
 import '../domain/showcase_entities.dart';
 import '../forms/order_item_form.dart';
-
-/// A self-contained master-detail editor over a seeded order-items list.
-// Why: extends [TomStatefulWidget]/[TomState] (not raw) so the demo payload
-// conforms to G-UI-2. No tomId/resources → scope bases, which are non-const
-// (construction reads [TomScope.current]).
-class _MasterDetailDemo extends TomStatefulWidget {
-  _MasterDetailDemo();
-
-  @override
-  TomState<_MasterDetailDemo> createState() => _MasterDetailDemoState();
-}
-
-class _MasterDetailDemoState extends TomState<_MasterDetailDemo> {
-  late final OrderItemListForm _listForm;
-
-  @override
-  void initState() {
-    super.initState();
-    _listForm = TomScope.withScope('md_list', OrderItemListForm.new);
-    _listForm.bind(seededOrderItems());
-  }
-
-  @override
-  void dispose() {
-    _listForm.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget buildContent(BuildContext context) {
-    return TomSizedBox(
-      height: 440,
-      child: TomMasterDetailListForm<OrderItem, OrderItemForm>(
-        listForm: _listForm,
-        masterPaneWidth: 220,
-        draggableSplitter: true,
-        initialSelectedIndex: 0,
-        masterBuilder: (context, listForm, selected, selectIndex) =>
-            _MasterPane(
-          listForm: listForm,
-          selectedIndex: selected,
-          selectIndex: selectIndex,
-        ),
-        detailBuilder: (context, _, rowForm) => _DetailPane(form: rowForm),
-      ),
-    );
-  }
-}
 
 // Why: scope-participating layout wrapper (no tomId/resources) →
 // [TomStatelessWidget], non-const; raw layout primitives swapped for Tom ones.
@@ -222,7 +174,29 @@ final ShowcaseGroup masterDetailGroup = ShowcaseGroup(
       // The master pane is a fixed 220px; below ~560 the detail pane has no
       // room left for its field column, so the cell stacks rather than split.
       previewMinWidth: 560,
-      child: _MasterDetailDemo(),
+      child: ListFormHost<OrderItem, OrderItemForm>(
+        scopeId: 'md_list',
+        create: OrderItemListForm.new,
+        items: seededOrderItems,
+        builder: (context, listForm) => TomSizedBox(
+          height: 440,
+          child: TomMasterDetailListForm<OrderItem, OrderItemForm>(
+            listForm: listForm,
+            masterPaneWidth: 220,
+            draggableSplitter: true,
+            initialSelectedIndex: 0,
+            // The scaffold hands its own reference back; it is the same
+            // instance the host created, so `_` it and close over `listForm`
+            // rather than shadow the name.
+            masterBuilder: (context, _, selected, selectIndex) => _MasterPane(
+              listForm: listForm,
+              selectedIndex: selected,
+              selectIndex: selectIndex,
+            ),
+            detailBuilder: (context, _, rowForm) => _DetailPane(form: rowForm),
+          ),
+        ),
+      ),
     ),
   ],
 );
