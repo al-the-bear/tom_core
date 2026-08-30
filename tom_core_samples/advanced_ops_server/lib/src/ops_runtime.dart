@@ -220,16 +220,36 @@ class OpsRuntime {
     return definitions;
   }
 
-  /// Stops the timers, removes the trail, drains it, then anchors what it ends
-  /// on.
+  /// Undoes [start] in reverse, then drains the trail and anchors where it
+  /// stopped.
   ///
-  /// The reverse of [start], and the order is the whole point:
+  /// Read [start]'s list bottom-up and this is it:
   ///
-  ///  1. the timers stop, so nothing new is started;
-  ///  2. the trail is uninstalled, so nothing new reaches the sink;
-  ///  3. the sink is **drained**, so what did reach it is stored;
-  ///  4. the final anchor is published, so the head it was drained to is
+  ///  1. the anchor **schedule** stops (its publication is step 7 — see below);
+  ///  2. the outbox stops, then
+  ///  3. the scheduler — the reverse of the order they were started in. Both
+  ///     queues are rows in `tom_job_run`, so whatever was in flight is still
+  ///     there at the next boot and neither order loses work; what the reverse
+  ///     buys is one sequence to remember instead of two. `registerAll` needs
+  ///     no step of its own: the registry is scheduler state, and the event
+  ///     subscriptions that reach outside it are cancelled by
+  ///     [TomScheduler.close];
+  ///  4. the deployment principal is cleared;
+  ///  5. the trail is uninstalled, so nothing new reaches the sink.
+  ///
+  /// Then two steps that reverse nothing and must follow all five:
+  ///
+  ///  6. the sink is **drained**, so what did reach it is stored;
+  ///  7. the final anchor is published, so the head it was drained to is
   ///     pinned.
+  ///
+  /// Clearing the principal (4) is not housekeeping. [TomServerPrincipal] is
+  /// *process*-global while this object is not, so a closed runtime that left
+  /// its cap standing would hand the deployment's licence to whatever ran next
+  /// — in a test process, the next suite; in production, anything that outlives
+  /// the shutdown. Like the trail it lives on the process rather than on this
+  /// object, so discarding the runtime does not take it back; it has to be
+  /// handed back by name.
   ///
   /// Uninstalling before the schedulers had stopped would let an in-flight
   /// run's final mutation go unrecorded — the one record most worth having,
@@ -240,15 +260,20 @@ class OpsRuntime {
   /// stores it, and awaiting it here is what lets the caller exit knowing the
   /// trail is complete rather than merely closed.
   ///
-  /// Anchoring comes **last**, and that is not tidiness. An anchor is a claim
-  /// about a *position*, so one taken before the drain would pin the head as it
-  /// stood before the records the drain went on to store — and those records
-  /// would end up outside the anchored range, which is the one place a
-  /// truncation is invisible. Publishing after the drain is what makes the
-  /// final anchor cover the trail the process actually finished with.
+  /// Anchoring is therefore the one thing whose reversal is **split**, and that
+  /// is not tidiness. An anchor is a claim about a *position*, so one taken
+  /// before the drain would pin the head as it stood before the records the
+  /// drain went on to store — and those records would end up outside the
+  /// anchored range, which is the one place a truncation is invisible. So the
+  /// timer goes off at (1), where a strict reversal puts it and where it can no
+  /// longer pin a head about to move, and the publication waits until (7),
+  /// mirroring the immediate anchor [OpsAnchoring.start] takes once everything
+  /// is up.
   Future<void> close() async {
-    scheduler.close();
+    anchoring.stop();
     outbox.close();
+    scheduler.close();
+    TomServerPrincipal.clear();
     TomAuditTrail.uninstall();
     await auditSink.flushAndClose();
     await anchoring.publishAndClose();

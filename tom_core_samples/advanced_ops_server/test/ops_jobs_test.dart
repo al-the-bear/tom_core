@@ -247,6 +247,65 @@ void main() {
       expect(TomAuditTrail.isEnabled, isFalse);
     });
 
+    test('close leaves no process-global state behind', () async {
+      await runtime.start();
+      expect(TomServerPrincipal.isConfigured, isTrue);
+      expect(runtime.anchoring.publisher.isScheduled, isTrue);
+
+      await runtime.close();
+
+      // The runtime is an object; these three are not. `TomServerPrincipal`
+      // and `TomAuditTrail` are process-global and a live [Timer] holds the
+      // isolate up on its own — so anything `start` put outside the object has
+      // to come back out, or a closed runtime hands its deployment licence to
+      // whatever runs next and its timer keeps the process alive.
+      expect(TomServerPrincipal.isConfigured, isFalse);
+      expect(runtime.anchoring.publisher.isScheduled, isFalse);
+      expect(TomAuditTrail.isEnabled, isFalse);
+    });
+
+    test(
+      'a second runtime does not inherit the cap the first installed',
+      () async {
+        // Two runtimes in one process is not a hypothetical — it is what this
+        // group already builds. A cap that survived the first `close` would be
+        // inherited silently, and every assertion about the second runtime's
+        // authorization would then be about the first one's licence.
+        await runtime.start();
+        await runtime.close();
+
+        final secondSink = TomMemoryAuditSink();
+        final second = OpsRuntime(
+          scheduler: TomScheduler(
+            store: TomMemoryJobStore(),
+            dispatcher: const TomInlineJobDispatcher(),
+            ownerId: 'second-node',
+          ),
+          outbox: TomMessageOutbox(
+            router: TomMessageRouter([TomMemoryMessageTransport()]),
+            store: TomMemoryJobStore(),
+          ),
+          auditSink: secondSink,
+          anchoring: OpsAnchoring(
+            publisher: TomAuditAnchorPublisher(
+              sink: secondSink,
+              store: TomMemoryAuditAnchorStore(),
+              writer: opsAuditWriter,
+            ),
+            storeDescription: 'memory:test',
+            independentOfServer: false,
+          ),
+        );
+        addTearDown(second.close);
+
+        // Uncapped *between* the two: that is what says the first runtime's
+        // cap really came off, rather than being overwritten by the second's.
+        expect(TomServerPrincipal.isConfigured, isFalse);
+        await second.start();
+        expect(TomServerPrincipal.isConfigured, isTrue);
+      },
+    );
+
     test('close drains the audit sink rather than abandoning it', () async {
       // A *file* sink, not the memory one the other tests use: the claim under
       // test is that the shutdown waits for the queue, and a memory sink has

@@ -140,14 +140,25 @@ class OpsAnchoring {
   /// permission for.
   Future<void> publishAndClose() => runAsOpsService(publisher.publishAndClose);
 
-  /// Cancels the timer. Publishes **nothing** — see [publishAndClose].
+  /// Disarms the timer and leaves the publisher able to publish.
+  ///
+  /// The reversal of [start] is split in two, and this is the first half:
+  /// `OpsRuntime.close` stops the schedule early, so no tick can pin a head its
+  /// drain is about to move, and takes the *final* anchor afterwards. Between
+  /// those two calls the publisher must still accept a publication — which is
+  /// exactly what distinguishes this from [close].
+  void stop() => publisher.stop();
+
+  /// Closes the publisher for good. Publishes **nothing** — see
+  /// [publishAndClose].
   ///
   /// Kept alongside its awaitable sibling rather than folded into it, because
   /// the two answer different questions and a sample that offered only one
-  /// would hide the choice. This is the one to reach for when all that is
-  /// wanted is to stop the schedule — a test tearing down, or a synchronous
-  /// shutdown path with no `await` to be had. [OpsRuntime.close] has an
-  /// `await`, so it uses the other.
+  /// would hide the choice. This is for a caller with no `await` to be had — a
+  /// test tearing down, a synchronous shutdown path — and the price is stated:
+  /// no final anchor, so the entries written since the last tick stay
+  /// unanchored. `OpsRuntime.close` has an `await`, so it uses the other, and
+  /// reaches for [stop] when all it wants is the timer off.
   void close() => publisher.close();
 
   /// One line describing the arrangement, for the boot log.

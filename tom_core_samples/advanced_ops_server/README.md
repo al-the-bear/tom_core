@@ -71,6 +71,15 @@ which does not wait for pending work. Four independent `start()` calls in a
 `main` are four chances to get that order wrong with the constraint living only
 in a comment.
 
+`close()` walks `start()`'s list backwards, and two of the steps are worth
+naming. The deployment principal is cleared, because `TomServerPrincipal` is
+*process*-global while the runtime is not — a closed runtime that left its cap
+standing would hand the deployment's licence to whatever ran next. And anchoring
+is split: the timer is disarmed at the top of the shutdown, so no tick can pin a
+head the drain is about to move, while the final anchor is published at the very
+end, after the drain, so it covers the records the drain stored rather than the
+head as it stood before them.
+
 ## The digest's text is not in the digest
 
 `OpsDigestService` holds no sentence a recipient reads. It builds a
