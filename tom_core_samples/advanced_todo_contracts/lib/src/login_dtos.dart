@@ -125,7 +125,7 @@ class TwoFactorEnrolmentRequest {
 /// auth server returns from login and the admin API returns from
 /// `GET /admin/users`.
 ///
-/// [status] travels as the [UserStatus.name] token (`active`/`suspended`) under
+/// [status] travels as the `UserStatus.name` token (`active`/`suspended`) under
 /// the wire key `status`; use [statusValue] for the typed enum. Deliberately a
 /// flat record (not the reflected `User` entity) so it carries only the wire
 /// projection.
@@ -146,7 +146,7 @@ class UserDto {
   /// Contact email.
   String email;
 
-  /// Account lifecycle state as a [UserStatus.name] token; use [statusValue].
+  /// Account lifecycle state as a `UserStatus.name` token; use [statusValue].
   String status;
 
   /// Creates a user projection. [status] defaults to `active`.

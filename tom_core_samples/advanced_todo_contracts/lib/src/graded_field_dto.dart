@@ -17,7 +17,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// fields, no hand-written serializer. The framework serializes it through the
 /// reflection path ([TomReflectionInfo.getValues] /
 /// [TomReflectionInfo.createInstanceFromJson]) exactly like the reflected
-/// domain entities. [access] travels as the stable [TomAuthState.name] token
+/// domain entities. [access] travels as the stable `TomAuthState.name` token
 /// under the wire key `access`; use [accessState] for the typed enum. An
 /// unset/unknown token resolves to [TomAuthState.none] (closed-safe).
 @tomReflector
@@ -25,7 +25,7 @@ class GradedFieldDto {
   /// The resource key this grade applies to, e.g. `todo.item.title`.
   String resourceKey;
 
-  /// The resolved access as its stable [TomAuthState.name] token
+  /// The resolved access as its stable `TomAuthState.name` token
   /// (`none`/`disabled`/`read`/`full`). Reflection serializes this field
   /// directly under the wire key `access`; use [accessState] for the typed enum.
   String access;

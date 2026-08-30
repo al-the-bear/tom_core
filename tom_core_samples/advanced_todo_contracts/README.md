@@ -38,7 +38,7 @@ registry inside `tom_core_server` by each server.
 The DTOs (`lib/src/`, re-exported from `advanced_todo_contracts.dart`) are
 **reflection-first** (G-DTO): each is a `@tomReflector` class with plain
 non-`final` fields and **no** hand-written `toJson`/`fromJson`. The kernel
-reflection path serializes them ([`TomReflectionInfo.getValues`] /
+reflection path serializes them (`TomReflectionInfo.getValues` /
 `createInstanceFromJson`) exactly like the reflected `advanced_todo_domain`
 entities — the server endpoint pipeline drives it directly, while off-server
 consumers (the Flutter client core, the round-trip tests) go through the

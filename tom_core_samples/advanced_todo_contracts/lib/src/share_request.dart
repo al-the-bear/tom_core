@@ -6,7 +6,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 ///
 /// The owner names the target ([resourceType] + [resourceId]), the grantee
 /// ([granteeUserId]) and the role to grant. The role travels as its
-/// [ProjectRole.name] token under the wire key `projectRole`; use
+/// `ProjectRole.name` token under the wire key `projectRole`; use
 /// [projectRoleValue] for the typed enum. An unset/unknown token resolves to the
 /// least-privileged [ProjectRole.viewer] (closed-safe).
 ///
@@ -23,7 +23,7 @@ class ShareRequest {
   /// [UserDto.id] the access is granted to.
   String granteeUserId;
 
-  /// Role granted on the resource, as its [ProjectRole.name] token; use
+  /// Role granted on the resource, as its `ProjectRole.name` token; use
   /// [projectRoleValue] for the typed enum.
   String projectRole;
 

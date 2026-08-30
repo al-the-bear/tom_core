@@ -13,7 +13,7 @@ import 'graded_field_dto.dart';
 /// A reflection-first wire DTO (G-DTO): `@tomReflector`, a single plain
 /// non-`final` [matrix] field, no hand-written serializer. Because the four-state
 /// grade cannot cross the wire as an enum, [matrix] holds the access as its
-/// stable [TomAuthState.name] token: it is a nested
+/// stable `TomAuthState.name` token: it is a nested
 /// `{role: {resourceKey: token}}` map typed `Map<String, Object?>` so the
 /// reflection serializer round-trips it as a plain nested map. The wire shape is
 /// therefore `{matrix: {role: {resourceKey: token}}}`. The typed helpers
@@ -22,7 +22,7 @@ import 'graded_field_dto.dart';
 /// ([accessFor] returns [TomAuthState.none] for an unset cell).
 @tomReflector
 class GrantMatrixDto {
-  /// role name → (resourceKey → [TomAuthState.name] token). Held as tokens so
+  /// role name → (resourceKey → `TomAuthState.name` token). Held as tokens so
   /// the reflection serializer round-trips it as a plain nested map.
   Map<String, Object?> matrix;
 

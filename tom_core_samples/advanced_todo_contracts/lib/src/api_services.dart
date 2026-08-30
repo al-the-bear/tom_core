@@ -156,7 +156,7 @@ abstract class AdminApiService {
 abstract class AppApiService {
   /// `appHealth` — `GET /status` (public). Application status JSON; no
   /// persistence. Served at `/status`, not `/health`: the framework's built-in
-  /// [TomHealthService] already owns the plain-text `GET /health` liveness probe
+  /// `TomHealthService` already owns the plain-text `GET /health` liveness probe
   /// (auto-mounted in every server), so an app-defined `/health` would collide
   /// with — and be shadowed by — it. `/health` = infra liveness, `/status` =
   /// typed app status.
@@ -196,7 +196,8 @@ abstract class AppApiService {
   Future<List<TodoList>> listLists(String projectId);
 
   /// `appListItems` — `GET /items?listId=`. Items in a visible list; the client
-  /// resolves each field's grade locally from its resource-role map ([appResourceRoles]).
+  /// resolves each field's grade locally from its resource-role map
+  /// ([resourceRoles]).
   Future<List<TodoItem>> listItems(String listId);
 
   /// `appListAttachments` — `GET /attachments?listId=`. The attachment
@@ -205,7 +206,7 @@ abstract class AppApiService {
   ///
   /// This is the board's paperclip source. Each entry is exactly what a `HEAD`
   /// against `app_items/<id>/attachment` returns ([FileDescriptorDto] wraps the
-  /// kernel's [TomFileMetadata] losslessly), so the list view renders the
+  /// kernel's `TomFileMetadata` losslessly), so the list view renders the
   /// presence, media type and size without moving a single byte — and without
   /// one round trip per item.
   Future<List<FileDescriptorDto>> listAttachments(String listId);
