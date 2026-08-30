@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 470" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
   <!--
-    Overall architecture as a wiring diagram (replaces the crowded ASCII).
+    Overall architecture as a wiring diagram.
     Two clients on the outside, two servers in the middle, the shared JWT signing
     key closing the loop underneath, and each server's own database:
       - advanced_authadmin_client logs in at the auth server and drives /admin/*
