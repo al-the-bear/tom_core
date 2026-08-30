@@ -2,9 +2,9 @@
 /// ownership as a C-5 [TomPrincipalResourceGrant] (`principal:resource -> owner`)
 /// in the shared `main`/`auth_db` grant table.
 ///
-/// This is the write half of RCC1's ownership model. Ownership used to be an
-/// *implicit* `workspace.owner_id` chain the bespoke resolver once
-/// walked; RCC1 makes it an *explicit* owner grant so the login can fold it into
+/// This is the write half of RCC1's ownership model: ownership is an *explicit*
+/// owner grant, not an implicit `workspace.owner_id` chain a resolver walks, so
+/// the login can fold it into
 /// [TomAccessControlInformation.resourceRoles] and the app/client resolve
 /// resource-level access through the framework registry (C-5, G-AUTHZ-5). All
 /// three of [AppWriteService]'s create paths — `createWorkspace`,

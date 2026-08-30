@@ -10,10 +10,10 @@
 /// `TomObservableEnum` (G-RES-5), so no Dart-side label table stands between the
 /// enum and this bundle.
 ///
-/// The keys are flat dotted paths (the provider looks a flat key up directly);
-/// their **values are byte-identical** to the literals they replaced, so nothing
-/// the user sees changed — only where the string lives did. Parameterised copy
-/// uses `{placeholder}` templates the call site fills with `replaceAll`.
+/// The keys are flat dotted paths (the provider looks a flat key up directly)
+/// and the values are the display strings themselves — this bundle is the one
+/// place the app's copy lives. Parameterised copy uses `{placeholder}`
+/// templates the call site fills with `replaceAll`.
 ///
 /// Two boundaries are intentionally *not* in this bundle: `MaterialApp.title`
 /// (OS-level app identity, not screen copy) and the non-user-facing diagnostic
@@ -29,7 +29,7 @@
 /// first, then global `<key>`), so no message string is ever hardcoded.
 library;
 
-/// The installed text bundle. Flat dotted keys → byte-identical display values.
+/// The installed text bundle: flat dotted keys → display strings.
 const Map<String, dynamic> appTexts = {
   // --- Login form fields (scope 'login') ---
   'login.username.label': 'Username',
