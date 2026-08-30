@@ -18,10 +18,11 @@
 /// build.
 library;
 
-import 'package:advanced_app_server/advanced_app_server.dart';
 import 'package:advanced_ops_server/advanced_ops_server.dart';
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
+
+import 'support/retention_fixtures.dart';
 
 /// A principal holding exactly [entitlements] — the second operand under test.
 TomPrincipal _principal(String username, List<String> entitlements) =>
@@ -166,7 +167,10 @@ void main() {
   });
 
   group('the retention pass reports the refusal it was given', () {
-    final service = OpsRetentionService(store: _NullRetentionStore());
+    // These tests are about the *decision* a pass makes, not about the sweep
+    // that follows it, so the store yields nothing and objects loudly if the
+    // service reaches past it.
+    final service = OpsRetentionService(store: const NullRetentionStore());
 
     test('uncapped it would archive rather than destroy', () {
       expect(service.reassignInsteadOfDeleting, isTrue);
@@ -253,20 +257,4 @@ void main() {
       expect(sink.records, isEmpty);
     });
   });
-}
-
-/// A retention store with nothing in it.
-///
-/// The meet tests are about the *decision*, not about the sweep, so the store
-/// returns no candidates and would fail loudly if one were destroyed anyway.
-class _NullRetentionStore implements OpsRetentionStore {
-  @override
-  Future<List<ItemRecord>> expiredItems(
-    DateTime cutoff, {
-    required int limit,
-  }) async => const [];
-
-  @override
-  Future<void> destroy(ItemRecord item) async =>
-      throw StateError('nothing should be destroyed by an empty pass');
 }

@@ -26,6 +26,7 @@ import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import '../bin/ops_server_start.reflection.dart' show initializeReflection;
+import 'support/retention_fixtures.dart';
 
 /// The discovered definition named [name].
 TomJobDefinition _definition(String name) =>
@@ -410,7 +411,7 @@ void main() {
     });
 
     test('registerServices publishes the beans the job bodies resolve', () async {
-      final retention = OpsRetentionService(store: _NullRetentionStore());
+      final retention = OpsRetentionService(store: const NullRetentionStore());
       runtime.registerServices(
         retention: retention,
         digest: OpsDigestService(
@@ -452,19 +453,6 @@ void main() {
       },
     );
   });
-}
-
-/// A retention store with nothing in it.
-class _NullRetentionStore implements OpsRetentionStore {
-  @override
-  Future<List<ItemRecord>> expiredItems(
-    DateTime cutoff, {
-    required int limit,
-  }) async => const [];
-
-  @override
-  Future<void> destroy(ItemRecord item) async =>
-      throw StateError('nothing should be destroyed here');
 }
 
 /// An audience with nobody in it.
