@@ -241,7 +241,14 @@ TomFormStyleScope(
   styleBpOverrides: [(700, TomFormStyle.material3)],
   child: TomLayoutBuilder(builder: (ctx, c) {
     final wide = c.maxWidth >= 700;
-    return (wide ? material : cupertino).buildColumn();
+    final form = wide ? material : cupertino;
+    return TomColumn(children: [
+      form.fullName.widget,
+      form.quantity.widget,
+      form.ratio.widget,
+      form.notifyMe.widget,
+      form.eventDate.widget,
+    ]);
   }),
 )
 ```

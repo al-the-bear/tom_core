@@ -45,7 +45,14 @@ final ShowcaseGroup familySwapGroup = ShowcaseGroup(
           '  styleBpOverrides: [(700, TomFormStyle.material3)],\n'
           '  child: TomLayoutBuilder(builder: (ctx, c) {\n'
           '    final wide = c.maxWidth >= 700;\n'
-          '    return (wide ? material : cupertino).buildColumn();\n'
+          '    final form = wide ? material : cupertino;\n'
+          '    return TomColumn(children: [\n'
+          '      form.fullName.widget,\n'
+          '      form.quantity.widget,\n'
+          '      form.ratio.widget,\n'
+          '      form.notifyMe.widget,\n'
+          '      form.eventDate.widget,\n'
+          '    ]);\n'
           '  }),\n'
           ')',
       child: FamilySwapDemo(),
