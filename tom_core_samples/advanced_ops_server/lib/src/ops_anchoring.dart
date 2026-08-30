@@ -36,7 +36,7 @@
 /// of the same claim, rewritable by exactly the attacker who would need to
 /// rewrite it.
 ///
-/// [describeAnchoring] therefore reports what the arrangement *is* at boot
+/// [OpsAnchoring.describe] therefore reports what the arrangement *is* at boot
 /// rather than asserting what it should be, and the README says the same thing
 /// in prose. Note what is deliberately absent: a SQL anchor store. Anchoring the
 /// trail into the database that holds it is one credential and one blast radius,
@@ -143,7 +143,7 @@ class OpsAnchoring {
   /// Disarms the timer and leaves the publisher able to publish.
   ///
   /// The reversal of [start] is split in two, and this is the first half:
-  /// `OpsRuntime.close` stops the schedule early, so no tick can pin a head its
+  /// [OpsRuntime.close] stops the schedule early, so no tick can pin a head its
   /// drain is about to move, and takes the *final* anchor afterwards. Between
   /// those two calls the publisher must still accept a publication — which is
   /// exactly what distinguishes this from [close].
@@ -157,7 +157,7 @@ class OpsAnchoring {
   /// would hide the choice. This is for a caller with no `await` to be had — a
   /// test tearing down, a synchronous shutdown path — and the price is stated:
   /// no final anchor, so the entries written since the last tick stay
-  /// unanchored. `OpsRuntime.close` has an `await`, so it uses the other, and
+  /// unanchored. [OpsRuntime.close] has an `await`, so it uses the other, and
   /// reaches for [stop] when all it wants is the timer off.
   void close() => publisher.close();
 
