@@ -1,5 +1,8 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'todo_item.dart';
+import 'user.dart';
+
 /// A discussion entry on a [TodoItem].
 ///
 /// Forms the comment thread shown on the item detail view; [authorId] points
@@ -9,7 +12,7 @@ class TodoComment extends TomClass {
   /// Stable identifier (the server's primary key).
   late final id = TomString('');
 
-  /// `TodoItem.id` this comment is attached to.
+  /// [TodoItem.id] this comment is attached to.
   late final itemId = TomString('');
 
   /// [User.id] of the comment author.

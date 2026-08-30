@@ -8,8 +8,10 @@
 /// every client must build that key the same way, so the format lives here — in
 /// the shared domain — rather than being re-derived at each write and read site.
 ///
-/// The key is `<type>:<id>`: the resource's kind ([workspaceType] / [projectType]
-/// / [listType] / [itemType]) and its surrogate id. This mirrors the containment
+/// The key is `<type>:<id>`: the resource's kind
+/// ([ResourceRoleKeys.workspaceType] / [ResourceRoleKeys.projectType] /
+/// [ResourceRoleKeys.listType] / [ResourceRoleKeys.itemType]) and its surrogate
+/// id. This mirrors the containment
 /// vocabulary the sample already uses for shares (a share names the same four
 /// types), so an ownership grant and a share on the same resource share one key
 /// namespace.

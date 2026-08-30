@@ -32,7 +32,7 @@ import '../enums.dart';
 /// grades a key the same way wherever it runs. That is four boots: the auth
 /// server, the app server, the ops server, and the end-user app client. The
 /// administrator console is the only runtime that does not call it, because it
-/// grades no `ProjectRole` resource — it edits users, roles and grants.
+/// grades no [ProjectRole] resource — it edits users, roles and grants.
 void registerProjectRoleVocabulary() {
   TomResourceRoleRegistry.registerAll(<String, TomAuthState>{
     ProjectRole.owner.name: TomAuthState.full,

@@ -1,2 +1,12 @@
 # Shared workspace analysis options (excludes generated *.reflection.dart).
 include: ../../analysis_options.yaml
+
+linter:
+  rules:
+    # `entities.dart` folds the eight entity files into one library, so dartdoc
+    # resolves a `[Sibling]` reference whether or not the referring file imports
+    # the sibling — a broken cross-entity link does not show up in `dart doc`.
+    # This lint resolves against the defining file's import scope instead, which
+    # is what an IDE's go-to-definition uses, and is the only thing that keeps
+    # the doc links navigable. See the convention note in `lib/src/entities.dart`.
+    - comment_references

@@ -1,5 +1,8 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'project.dart';
+import 'todo_item.dart';
+
 /// A column/section within a [Project]; groups [TodoItem]s.
 ///
 /// Middle of the hierarchy `Project → TodoList → TodoItem`. [position] orders
@@ -9,7 +12,7 @@ class TodoList extends TomClass {
   /// Stable identifier (the server's primary key).
   late final id = TomString('');
 
-  /// `Project.id` this list belongs to.
+  /// [Project.id] this list belongs to.
   late final projectId = TomString('');
 
   /// Display name, e.g. `Sprint backlog`.

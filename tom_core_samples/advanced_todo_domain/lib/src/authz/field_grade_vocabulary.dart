@@ -28,6 +28,7 @@ library;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../enums.dart';
+import 'resource_role_vocabulary.dart';
 
 /// The resolved per-field [TomAuthState] for each [ProjectRole], keyed by the
 /// gradable item resource keys (`todo.item.<field>`).
@@ -67,7 +68,8 @@ import '../enums.dart';
 /// (`showsContent` is false): the server's write path preserves a changed
 /// `disabled` field silently instead of rejecting it the way it rejects a change
 /// to a visible `read` field. Both are non-writable; they differ in the shape of
-/// the refusal. See `TomColumnAuthorization.decideWrites`.
+/// the refusal. See `TomColumnAuthorization.decideWrites` (server-side, so it is
+/// named rather than linked — the shared domain does not depend on the server).
 const Map<ProjectRole, Map<String, TomAuthState>> projectRoleFieldGrades = {
   ProjectRole.owner: {
     'todo.item.title': TomAuthState.full,

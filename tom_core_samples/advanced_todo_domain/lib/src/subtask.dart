@@ -1,5 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'todo_item.dart';
+
 /// A checklist row on a [TodoItem].
 ///
 /// Lightweight sub-step of an item; [done] toggles the checkbox and [position]
@@ -9,7 +11,7 @@ class Subtask extends TomClass {
   /// Stable identifier (the server's primary key).
   late final id = TomString('');
 
-  /// `TodoItem.id` this subtask belongs to.
+  /// [TodoItem.id] this subtask belongs to.
   late final itemId = TomString('');
 
   /// Short label for the checklist row.

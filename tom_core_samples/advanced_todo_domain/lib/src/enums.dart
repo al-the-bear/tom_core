@@ -1,6 +1,6 @@
 /// Closed-set enums shared by the advanced todo-management domain model.
 ///
-/// Each enum is stored on its owning entity as the enum's [Enum.name] (a
+/// Each enum is stored on its owning entity as the enum's [EnumName.name] (a
 /// `TomString`), so it round-trips cleanly to the server's SQL persistence and
 /// JSON without a custom codec. The typed accessors on the entities convert the
 /// stored name back to these enums, falling back to a sensible default for an
@@ -31,7 +31,7 @@ enum UserStatus { active, suspended }
 
 /// The role a principal holds on a shared resource, most to least privileged.
 ///
-/// The effective `ProjectRole` (from ownership or a `Share`) is what the
+/// The effective [ProjectRole] (from ownership or a `Share`) is what the
 /// auth server's grant matrix keys field-level `TomAuthState` grades on. Stored
-/// on a `Share` as the role's [Enum.name] in a `TomString`.
+/// on a `Share` as the role's [EnumName.name] in a `TomString`.
 enum ProjectRole { owner, editor, commenter, viewer }

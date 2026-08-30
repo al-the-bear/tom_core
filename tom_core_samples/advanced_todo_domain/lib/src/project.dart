@@ -1,5 +1,8 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'todo_list.dart';
+import 'workspace.dart';
+
 /// A project inside a [Workspace]; groups [TodoList]s.
 ///
 /// Relations are flat foreign keys ([workspaceId]) rather than nested lists, so
@@ -9,7 +12,7 @@ class Project extends TomClass {
   /// Stable identifier (the server's primary key).
   late final id = TomString('');
 
-  /// `Workspace.id` this project belongs to.
+  /// [Workspace.id] this project belongs to.
   late final workspaceId = TomString('');
 
   /// Display name, e.g. `Website relaunch`.

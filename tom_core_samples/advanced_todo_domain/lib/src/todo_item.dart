@@ -1,6 +1,8 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'enums.dart';
+import 'todo_list.dart';
+import 'user.dart';
 
 /// The core record: a single task on a [TodoList].
 ///
@@ -9,7 +11,7 @@ import 'enums.dart';
 /// [dueDate], [estimateHours], [description]) map to per-principal
 /// `TomAuthState` grades.
 ///
-/// [status], [priority], and [label] are stored as their enum's [Enum.name] in
+/// [status], [priority], and [label] are stored as their enum's [EnumName.name] in
 /// a `TomString` so they persist and serialize without a custom codec; the
 /// [statusValue] / [priorityValue] / [labelValue] accessors expose them as
 /// typed enums.
@@ -18,7 +20,7 @@ class TodoItem extends TomClass {
   /// Stable identifier (the server's primary key).
   late final id = TomString('');
 
-  /// `TodoList.id` this item belongs to.
+  /// [TodoList.id] this item belongs to.
   late final listId = TomString('');
 
   /// Short task title.
@@ -27,15 +29,16 @@ class TodoItem extends TomClass {
   /// Optional longer description.
   late final description = TomString('');
 
-  /// Workflow state stored as [TodoStatus.name]; use [statusValue] for the
-  /// typed enum.
+  /// Workflow state stored as a [TodoStatus] name ([EnumName.name]); use
+  /// [statusValue] for the typed enum.
   late final status = TomString(TodoStatus.backlog.name);
 
-  /// Priority stored as [TodoPriority.name]; use [priorityValue] for the typed
-  /// enum.
+  /// Priority stored as a [TodoPriority] name ([EnumName.name]); use
+  /// [priorityValue] for the typed enum.
   late final priority = TomString(TodoPriority.medium.name);
 
-  /// Category stored as [TodoLabel.name]; use [labelValue] for the typed enum.
+  /// Category stored as a [TodoLabel] name ([EnumName.name]); use [labelValue]
+  /// for the typed enum.
   late final label = TomString(TodoLabel.feature.name);
 
   /// [User.id] of the assignee; empty when unassigned.

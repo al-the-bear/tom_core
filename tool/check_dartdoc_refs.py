@@ -45,6 +45,28 @@ import question to get wrong. That makes this check total for the one case the
 lint cannot express: a reference that names *nothing at all*, which is what a
 renamed member leaves behind.
 
+**One package does turn the lint on, and the exception proves the rule.**
+``tom_core_samples/advanced_todo_domain`` enables ``comment_references`` in its
+own ``analysis_options.yaml``. It can afford to because the argument above is
+about scale and ambiguity, and it has neither: ten hand-written files, 62
+repo-declared references, and -- per this report -- 0 that do not resolve. Every
+one of its cross-entity links wanted the import (the eight entity files already
+model a mutually-referring graph, so the imports document a real relation), and
+the single case that would have needed a cycle was demoted to backticks instead:
+``enums.dart`` is the leaf every entity depends on, so it names its owning
+entities in backticks rather than importing them back for a link. The
+architectural judgement the paragraph above says cannot be made mechanically was
+made by hand, once, for one small package.
+
+It generalises no further. The package also has a reason the rest of the tree
+does not: its barrel folds all eight files into a single library, so ``dart doc``
+resolves a cross-entity ``[Sibling]`` whether or not the referring file imports
+it -- a broken link there is invisible in the generated output *and* in the
+warning count. That was measured, not assumed: deleting one doc-only import
+leaves ``dart doc`` reporting "0 warnings and 0 errors" while the analyzer
+reports two dangling references. Where the generated docs cannot see the fault,
+the lint is the only thing that can.
+
 Existence is decided by looking for the identifier anywhere in the library's
 code -- deliberately lenient. The point is to catch names that vanished, not to
 police whether a reference points at a declaration rather than a local. A

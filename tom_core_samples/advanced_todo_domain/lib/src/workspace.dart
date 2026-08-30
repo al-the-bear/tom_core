@@ -1,5 +1,8 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'project.dart';
+import 'user.dart';
+
 /// Top-level container a [User] owns; groups [Project]s.
 ///
 /// Root of the ownership chain `Workspace → Project → TodoList → TodoItem`

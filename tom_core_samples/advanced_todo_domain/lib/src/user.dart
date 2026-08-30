@@ -1,6 +1,8 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'enums.dart';
+import 'todo_item.dart';
+import 'workspace.dart';
 
 /// An authenticated principal: owns [Workspace]s and is assigned [TodoItem]s.
 ///
@@ -27,8 +29,8 @@ class User extends TomClass {
   /// Optional reference to an avatar asset; empty when unset.
   late final avatarRef = TomString('');
 
-  /// Account state stored as [UserStatus.name]; use [statusValue] for the
-  /// typed enum.
+  /// Account state stored as a [UserStatus] name ([EnumName.name]); use
+  /// [statusValue] for the typed enum.
   late final status = TomString(UserStatus.active.name);
 
   /// Typed view of [status]; falls back to [UserStatus.active] for an unknown

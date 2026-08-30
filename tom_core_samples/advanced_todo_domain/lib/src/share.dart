@@ -1,6 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'enums.dart';
+import 'user.dart';
 
 /// A cross-user access record: grants a principal a role on a resource.
 ///
@@ -25,8 +26,8 @@ class Share extends TomClass {
   /// [User.id] the access is granted to.
   late final granteeUserId = TomString('');
 
-  /// Role granted on the resource, stored as [ProjectRole.name]; use
-  /// [projectRoleValue] for the typed enum.
+  /// Role granted on the resource, stored as a [ProjectRole] name
+  /// ([EnumName.name]); use [projectRoleValue] for the typed enum.
   late final projectRole = TomString(ProjectRole.viewer.name);
 
   /// [User.id] of the principal who created the share.
