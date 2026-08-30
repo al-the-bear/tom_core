@@ -304,8 +304,8 @@ Live (all guarded by a reachability check):
 ## The cross-tier scenario
 
 `tool/run_cross_tier_integration.sh` boots the whole stack — both MariaDB
-databases from each server's `docker-compose`, then both Dart servers — runs the
-three live suites against it, and tears everything down. It refuses to start if
+databases from each server's `docker-compose`, then both Dart servers — runs all
+five live suites against it, and tears everything down. It refuses to start if
 a leftover server holds `8080`/`8081`, starts the databases from *fresh* volumes
 so the seed re-applies, dumps the server logs on any non-zero exit, and treats a
 whole-suite skip as a failure (under this runner the servers are guaranteed up,

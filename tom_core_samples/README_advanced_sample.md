@@ -208,7 +208,7 @@ again in a single command (fresh database volumes each run):
 tom_core_samples/advanced_client_core/tool/run_cross_tier_integration.sh
 ```
 
-It boots both databases and both servers, runs the three live suites in
+It boots both databases and both servers, runs every live suite in
 `advanced_client_core/test/` against them, and tears the stack down on exit:
 
 | Suite | What it walks |
@@ -216,6 +216,8 @@ It boots both databases and both servers, runs the three live suites in
 | `cross_tier_integration_test.dart` | an admin grant edit → the end-user's field matrix reflects it → a share reveals a project to a second user → the same kind of edit reaches the **file endpoint**, taking the upload away from the owner of the row |
 | `auth_client_integration_test.dart` | a real login, including the two-pass 2FA exchange |
 | `file_transfer_integration_test.dart` | bytes through both blob stores, the closed-column and anonymous refusals, and a `read`-graded principal who gets the download but not the upload |
+| `app_api_client_integration_test.dart` | one end-user call over the wire — health, then `alice` listing her workspaces through the typed app client |
+| `admin_api_client_integration_test.dart` | the same, one tier down — `admin` signing in and listing users through the typed admin client |
 
 A green run is a genuine live-stack pass — the runner converts a
 server-unreachable skip into a failure.

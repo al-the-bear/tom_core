@@ -105,14 +105,23 @@ the backstop for a client that ignores its grade.
 
 ## The cross-tier integration runner
 
-Three suites in `advanced_client_core/test/` run against the real stack, all
-driven by the one script `advanced_client_core/tool/run_cross_tier_integration.sh`:
+Every `*_integration_test.dart` in `advanced_client_core/test/` runs against the
+real stack — five suites, all driven by the one script
+`advanced_client_core/tool/run_cross_tier_integration.sh`:
 
 | Suite | What only a live stack can show |
 | --- | --- |
-| `cross_tier_integration_test.dart` (**TC-37-01…09**) | the two servers' authorization agreeing across the database boundary — including at the file endpoint |
-| `auth_client_integration_test.dart` (**TC-22-11/12**) | a real login, including the two-pass 2FA exchange |
+| `cross_tier_integration_test.dart` (**TC-37-01…10**) | the two servers' authorization agreeing across the database boundary — including at the file endpoint and on an item's child collections |
+| `auth_client_integration_test.dart` (**TC-22-11…13**) | a real login, including the two-pass 2FA exchange and a mid-run enrolment |
 | `file_transfer_integration_test.dart` (**TC-FT-01…05**) | bytes moving through both blob stores, the closed/anonymous refusals, and a read-only column grade |
+| `app_api_client_integration_test.dart` (**TC-24-14**) | that the typed app client's base URI, routes and DTO decoding still agree with `advanced_app_server` |
+| `admin_api_client_integration_test.dart` (**TC-25-14**) | the same for the typed admin client against the auth server's `/admin/*` |
+
+The last two are deliberately narrow. The three above them reach the clients only
+*through* a scenario, so when one breaks it cannot say whether the wire contract
+or the authorization logic stopped holding; these two answer that in one line of
+output. A suite no script runs decays silently, which is why they run here rather
+than being left to a manual invocation.
 
 The runner is one scripted command for the Phase-7 "scenario passes end-to-end"
 bar:

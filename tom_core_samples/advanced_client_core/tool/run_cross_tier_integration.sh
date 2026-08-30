@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Boots the whole advanced sample stack — both MariaDB databases (via each
-# server's docker-compose) and both Dart servers — then runs the cross-tier
-# integration test (step 37) against it and tears everything down again.
+# server's docker-compose) and both Dart servers — then runs every live suite in
+# this package against it and tears everything down again.
 #
 # One scripted command for the Phase-7 "scripted scenario passes end-to-end"
 # done bar: an admin grant edit reaching the end-user's field matrix, a share
@@ -190,7 +190,8 @@ wait_app_health
 #    means something died after the health checks — treat it as a failure and
 #    surface the server logs.
 #
-#    Three suites, because they prove different things and any can break alone:
+#    Every `*_integration_test.dart` in the package runs here — five suites,
+#    because they prove different things and any can break alone:
 #      - cross_tier_integration_test  — the admin→end-user authorization loop
 #        (step 37): a grant edit reaching the field matrix, a share revealing a
 #        project to a second user, and — the file step — a grant edit reaching
@@ -221,6 +222,19 @@ wait_app_health
 #        and the delete are refused. Nothing short of a running stack can show a
 #        client, an endpoint, a column grade, a blob store and a database
 #        agreeing about one file.
+#      - app_api_client_integration_test — one end-user call over the wire
+#        (TC-24-14): health, then alice listing her workspaces through the typed
+#        app service client.
+#      - admin_api_client_integration_test — the same shape one tier down
+#        (TC-25-14): admin signing in and listing users through the typed admin
+#        client, against the auth server alone.
+#
+#    Those last two are deliberately narrow. The three above them exercise the
+#    clients only *through* a scenario, so when one of them breaks it cannot say
+#    whether the base URI, the route shape and the DTO decoding stopped agreeing,
+#    or whether the authorization logic did. These two answer that question in
+#    one line of output — which is worth the two seconds only for as long as
+#    something actually runs them.
 run_live_suite() {
   local label="$1" path="$2" output status
   log "Running $label"
@@ -246,6 +260,10 @@ run_live_suite "the live auth-client suite (incl. the two-pass 2FA login)" \
   test/auth_client_integration_test.dart || result=1
 run_live_suite "the live file-transfer suite (both blob stores, closed column)" \
   test/file_transfer_integration_test.dart || result=1
+run_live_suite "the live app API client smoke suite" \
+  test/app_api_client_integration_test.dart || result=1
+run_live_suite "the live admin API client smoke suite" \
+  test/admin_api_client_integration_test.dart || result=1
 
 # Server logs are dumped by the EXIT trap (cleanup) whenever the run exits
 # non-zero, so a test failure here surfaces them without an explicit dump.
