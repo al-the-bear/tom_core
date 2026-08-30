@@ -166,8 +166,7 @@ AclBuilder()
 
 `setPSize`/`setMSize`/`setXSize` each take `(width, [height])`, so you can pin a
 height too (`setPSize(180, 96)`). Use all three on one cell to define the exact
-band it may occupy. *Source: `all_dimensions_demo`, `size_constraints_demo`,
-`character_width_sizing_demo`.*
+band it may occupy. *Source: `all_dimensions_demo`, `size_constraints_demo`.*
 
 ### 2. Growth — expand to fill the row
 

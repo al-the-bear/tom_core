@@ -3,7 +3,7 @@
 /// `setAclBorderStyle(AclBorderStyle.solid(...))` draws a border around the
 /// whole container; `setAclTitle` adds a caption and `setAclTitlePosition`
 /// places it (`topLeft` / `topCenter` / `topRight`). Maps to the verified
-/// `bordered_groups_demo` / `border_styles_demo`.
+/// `bordered_groups_demo` / `border_styles_demo` / `groups_demo`.
 library;
 
 import 'package:flutter/material.dart';

@@ -6,7 +6,8 @@
 /// **static snapshots** — the same chain a responsive screen uses, rendered at
 /// whatever width the preview happens to have. The live width-reactive reflow
 /// is the subject of the sibling `core_flutter_acl_responsive` sample. Maps to
-/// the verified `row_breakpoints_demo` / `inline_variants_demo`.
+/// the verified `row_breakpoints_demo` / `inline_variants_demo` /
+/// `responsive_variants_demo`.
 library;
 
 import 'package:flutter/material.dart';
