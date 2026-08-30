@@ -1,4 +1,4 @@
-/// Live integration smoke test for [AppApiClient] (step 24): hits the public
+/// Live integration smoke test for [AppApiClient]: hits the public
 /// `GET /status` on a running `advanced_app_server` (`localhost:8080`), then —
 /// once logged in against `advanced_auth_server` (`localhost:8081`) — pulls the
 /// seeded `alice`'s workspaces through the authorized transport.

@@ -1,4 +1,4 @@
-/// Socket-free tests for [AuthorizedHttp] (step 23): bearer injection and the
+/// Socket-free tests for [AuthorizedHttp]: bearer injection and the
 /// refresh-once-on-401 recovery, verified against a path-routing fake
 /// [JsonTransport] shared by the wrapper and its [AuthClient].
 ///

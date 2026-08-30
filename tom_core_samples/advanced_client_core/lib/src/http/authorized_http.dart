@@ -1,6 +1,6 @@
-/// The authenticated request decorator the app and admin API clients (steps
-/// 24–25) send through: it attaches the stored bearer to every call and, when a
-/// token has gone stale, transparently refreshes **once** and retries — so a
+/// The authenticated request decorator the app and admin API clients send
+/// through: it attaches the stored bearer to every call and, when a token has
+/// gone stale, transparently refreshes **once** and retries — so a
 /// single expiry is invisible to the caller, but a genuinely dead session
 /// surfaces as a typed error instead of looping.
 ///

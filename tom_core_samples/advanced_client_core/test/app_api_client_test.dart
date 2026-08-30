@@ -1,4 +1,4 @@
-/// Socket-free tests for [AppApiClient] (step 24): the pure `parse*` functions
+/// Socket-free tests for [AppApiClient]: the pure `parse*` functions
 /// against captured server-shaped responses, and the typed methods over a
 /// path-routing fake [JsonTransport].
 ///

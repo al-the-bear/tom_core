@@ -1,4 +1,4 @@
-/// Socket-free tests for the client half of the two-pass login (csex3): the
+/// Socket-free tests for the client half of the two-pass login: the
 /// challenge arriving on pass 1, the second factor going back on pass 2, and the
 /// retry the server offers when a code is refused.
 ///

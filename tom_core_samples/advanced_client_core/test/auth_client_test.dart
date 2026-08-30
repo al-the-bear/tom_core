@@ -1,4 +1,4 @@
-/// Database- and socket-free tests for [AuthClient] (step 22): the login /
+/// Database- and socket-free tests for [AuthClient]: the login /
 /// refresh / logout sequencing and token storage verify against a fake
 /// [JsonTransport], and the "pure JSON parsers" done-bar verifies by feeding a
 /// *captured* `/auth/login` response body straight through the reflection path

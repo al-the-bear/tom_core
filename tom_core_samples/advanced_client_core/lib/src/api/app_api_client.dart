@@ -1,4 +1,4 @@
-/// The typed client over `advanced_app_server`'s todo-board API (step 24).
+/// The typed client over `advanced_app_server`'s todo-board API.
 ///
 /// Every call goes through [AuthorizedHttp] — so the bearer is attached and a
 /// single token expiry self-heals (refresh-once-on-401) — and the JSON↔entity
@@ -25,10 +25,11 @@
 /// is fixed). Hand-mapping keeps the client correct regardless and matches
 /// `LiveTodoReadClient`'s explicit pure-parser discipline.
 ///
-/// A denial the server maps to `403`/`404` (an `{"error": key}` body, see plan
-/// §A.6) surfaces as a typed [AppApiException] carrying that stable key; a
-/// persistent `401` was already turned into an `TomAuthExpiredException` by the
-/// wrapper before it reaches here.
+/// A denial the server maps to `403`/`404` — an `{"error": key}` body, the
+/// error contract both servers answer with — surfaces as a typed
+/// [AppApiException] carrying that stable key; a persistent `401` was already
+/// turned into an `TomAuthExpiredException` by the wrapper before it reaches
+/// here.
 ///
 /// Reflection must be initialized (`initializeReflection()` from
 /// `advanced_todo_domain`) before any parser runs, since they construct
@@ -189,8 +190,8 @@ DateTime? _date(Object? raw) {
 /// The typed client over the app server's endpoints (the `appApi` registry).
 ///
 /// Implements [AppApiService] so it is the live seam the app client's backend
-/// plugs in (step 26); the in-memory fake implements the same interface for
-/// widget tests. All authenticated transport flows through the supplied
+/// plugs in; the in-memory fake implements the same interface for widget
+/// tests. All authenticated transport flows through the supplied
 /// [AuthorizedHttp].
 class AppApiClient implements AppApiService {
   /// Base URL of the app server, e.g. `http://localhost:8080` (no path suffix —

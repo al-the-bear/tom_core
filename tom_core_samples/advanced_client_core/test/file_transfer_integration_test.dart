@@ -97,8 +97,8 @@ const _authBaseUri = 'http://localhost:8081';
 
 final _aliceLogin = LoginRequest(username: 'alice', password: 'alice-pass');
 
-/// Carol holds a `viewer` share on project 1 (the `app_db` `[000]` seed's C-6
-/// delegation), so item 1 is inside her row scope and her seeded attachment
+/// Carol holds a `viewer` share on project 1 (the `app_db` `[000]` seed's
+/// share-mode delegation), so item 1 is inside her row scope and her seeded attachment
 /// grade is `read` — the principal TC-FT-05 needs.
 final _carolLogin = LoginRequest(username: 'carol', password: 'carol-pass');
 

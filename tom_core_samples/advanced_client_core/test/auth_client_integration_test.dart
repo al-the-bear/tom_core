@@ -1,8 +1,8 @@
-/// Live integration tests for [AuthClient] (step 22): logs in against a running
+/// Live integration tests for [AuthClient]: logs in against a running
 /// `advanced_auth_server` on `localhost:8081` with the seeded accounts and
 /// asserts the returned principal plus stored bearer — for `alice`, whose login
-/// is single-pass; for `dave`, who owes a TOTP second factor (csex3); and for
-/// `erin`, who owes one and holds none, so her login is *offered* one (tcca5).
+/// is single-pass; for `dave`, who owes a TOTP second factor; and for
+/// `erin`, who owes one and holds none, so her login is *offered* one.
 ///
 /// This needs the auth server *and* its database up (see
 /// `../advanced_auth_server/README.md`). Because neither is guaranteed in a
@@ -90,7 +90,7 @@ void main() {
       expect(client.pendingChallenge, isNull);
     });
 
-    // The csex3 loop over a real socket: the only place where the real
+    // The two-pass login over a real socket: the only place where the real
     // AuthClient, the real TomAuthenticationServer, the real endpoints and a
     // secret that came out of the database all take part in one run. The
     // package's own suites necessarily fake one side or the other — the client
@@ -136,8 +136,8 @@ void main() {
         expect(pass2.authzToken, isNotEmpty);
         expect(TomBearerAuthentication.authorizationToken,
             equals(pass2.authzToken));
-        // The done-when of the whole todo: pass 2 yields the session a
-        // 2FA-free login would have, with nothing left to answer.
+        // What the whole two-pass flow exists to produce: pass 2 yields the
+        // session a 2FA-free login would have, with nothing left to answer.
         expect(client.pendingChallenge, isNull);
         expect(TomBearerAuthentication.getPrincipal().authenticated, isTrue);
       } on SocketException catch (e) {
@@ -150,7 +150,7 @@ void main() {
       }
     });
 
-    // tcca5's done-when over a real socket: a factor that did not exist when the
+    // Mid-run enrolment over a real socket: a factor that did not exist when the
     // run started is offered, declined, set up, and then *challenged* on the
     // next login. Three sign-ins in one test rather than three tests, because
     // the beats are a sequence over one account's server-side state — split up,

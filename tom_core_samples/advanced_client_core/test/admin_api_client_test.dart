@@ -1,4 +1,4 @@
-/// Socket-free tests for [AdminApiClient] (step 25): the pure `parse*` functions
+/// Socket-free tests for [AdminApiClient]: the pure `parse*` functions
 /// against captured server-shaped responses, and the typed methods over a
 /// path-routing fake [JsonTransport].
 ///

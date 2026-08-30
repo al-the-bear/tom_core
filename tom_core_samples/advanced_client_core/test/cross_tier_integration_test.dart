@@ -1,6 +1,6 @@
-/// End-to-end cross-tier integration test (step 37, Phase 7; extended for RCC5):
-/// the whole stack — both servers and both databases — exercised through the
-/// real client tier in one scripted scenario, then the RCC5 live-DB C-5/C-6
+/// End-to-end cross-tier integration test: the whole stack — both servers and
+/// both databases — exercised through the real client tier in one scripted
+/// scenario, then the live-DB ownership-grant and share-delegation
 /// authorization checks over the same stack.
 ///
 /// [TC-37-01] walks the two authorization mechanisms that span the tiers:
@@ -17,21 +17,21 @@
 ///     **resourceRoles** driving what it may *see* — is [TC-37-06].)
 ///  2. **A share lets a second user see a project.** `alice` (workspace owner)
 ///     creates a fresh project, `bob` cannot list it, `alice` shares it with
-///     `bob` as `editor`, and `bob` then lists it — the step-17 ownership-or-share
+///     `bob` as `editor`, and `bob` then lists it — the ownership-or-share
 ///     resolver in action over the live wire.
 ///
-/// **RCC5 — the live-DB C-5/C-6 checks folded onto the same stack.** Each is an
+/// **The live-DB ownership/share checks folded onto the same stack.** Each is an
 /// independent, health-gated test that skips when the stack is down (like
 /// TC-37-01), so the socket-free unit suites keep the always-on coverage and
 /// these prove the live path when an operator brings the stack up via
 /// `tool/run_cross_tier_integration.sh`:
 ///
-///  - [TC-37-02] **row-scope reads are filtered.** RCC4 owner-scopes workspace
-///    reads (`@TomDbScope(field: 'ownerId')`): `alice` (owner of workspace 1)
+///  - [TC-37-02] **row-scope reads are filtered.** Workspace reads are
+///    owner-scoped (`@TomDbScope(field: 'ownerId')`): `alice` (owner of workspace 1)
 ///    lists it, `bob` (not the owner) does not — the DB row scope and the
 ///    service filter agree, so a non-owner never sees another principal's
 ///    workspace.
-///  - [TC-37-03] **a delegation grants, then withholds.** The seeded C-6
+///  - [TC-37-03] **a delegation grants, then withholds.** The seeded
 ///    `share`-mode delegation (id 1: `bob` → `editor` on project 1) makes
 ///    project 1 visible to `bob`; `alice` (the owner) revokes it and `bob` loses
 ///    the project; the share is restored so the run stays re-runnable.
@@ -42,38 +42,38 @@
 ///  - [TC-37-05] **a second user's WRITE/DELETE of another principal's row is
 ///    rejected at the service layer.** `carol` (a `viewer`, below `editor`) tries
 ///    to delete `alice`'s item 1 and is denied (`app.access.forbidden`, HTTP 403)
-///    — the reachable live counterpart of RCA4's connection-free write-scope
+///    — the reachable live counterpart of the connection-free write-scope
 ///    tests. This is the *service-layer* rejection (the item write is gated by the
 ///    role/field-grade check before it reaches the DB scope); the *framework's*
 ///    own `TomDataScopeAuthorizationException` — thrown by the CRUD repository on a
 ///    `@TomDbScope` row write — is the distinct live check in [TC-37-08].
-///  - [TC-37-06] **the live resource-role map reflects ownership and shares
-///    (RCB5).** `alice` reads `GET /resource-roles` and holds `owner` over her
-///    workspace's project and items (a C-5 owner grant expanded down the
+///  - [TC-37-06] **the live resource-role map reflects ownership and shares.**
+///    `alice` reads `GET /resource-roles` and holds `owner` over her
+///    workspace's project and items (an ownership grant expanded down the
 ///    containment chain); `bob` holds only `editor` over the shared project's
-///    subtree (the seeded C-6 share) and no workspace role — the same map the
-///    app client installs as its exact-match resource-role adapter (RCC2).
+///    subtree (the seeded share) and no workspace role — the same map the
+///    app client installs as its exact-match resource-role adapter.
 ///  - [TC-37-07] **the DB-side union scope reaches a shared subtree at the item
-///    level (RCB8).** With RCB8 the project/list/item reads are filtered at
-///    `app_db` by the async union scope `(id IN (owned…) OR id IN (shared…))` on
-///    the surrogate `id`. `bob`, whose only grant is an `editor` share on project
+///    level.** The project/list/item reads are filtered at `app_db` by the
+///    async union scope `(id IN (owned…) OR id IN (shared…))` on the
+///    surrogate `id`. `bob`, whose only grant is an `editor` share on project
 ///    1, walks project → list → item to the shared item — proof the shared
 ///    disjunct expands *down* the containment chain at the database (not merely
 ///    in the service filter). The revoke-side negative is covered at the project
 ///    level by [TC-37-03], so this check asserts only the positive item-level
 ///    reach and stays independent of that test's share id.
-///  - [TC-37-08] **the framework's `@TomDbScope` write-scope exception fires live
-///    (RCB9).** `WorkspaceRecord` is owner-scoped (`@TomDbScope(field: 'ownerId')`)
-///    and now has a client write path (create/update/delete). `bob` creates his
+///  - [TC-37-08] **the framework's `@TomDbScope` write-scope exception fires
+///    live.** `WorkspaceRecord` is owner-scoped (`@TomDbScope(field: 'ownerId')`)
+///    and has a client write path (create/update/delete). `bob` creates his
 ///    own workspace (owner-by-construction — the create stamps `ownerId` to his id
-///    and records the C-5 owner grant) and renames it (an owner update succeeds),
+///    and records the ownership grant) and renames it (an owner update succeeds),
 ///    then tries to update *and* delete `alice`'s workspace 1: both are rejected
 ///    with HTTP 403 carrying the framework key `data_scope.write.out_of_scope`.
 ///    This is the CRUD repository's `TomDataScopeAuthorizationException` — the
 ///    non-owner's `save`/`deleteById` scope-filters the target row to null and the
 ///    repository refuses the write — mapped to 403 by the app server's
-///    `appForbiddenOrNotFound`. It is the live end-to-end counterpart RCB9 adds
-///    because TC-37-05's rejection is only the service-layer `app.access.forbidden`.
+///    `appForbiddenOrNotFound`. It is the live end-to-end counterpart to
+///    TC-37-05, whose rejection is only the service-layer `app.access.forbidden`.
 ///  - [TC-37-09] **the admin grant edit reaches the *file* endpoint too.** The
 ///    admin narrows the `owner` role's `todo.item.attachment` grade from `full`
 ///    to `read`; `alice`, who owns item 1, keeps the download and loses the
@@ -99,8 +99,8 @@
 /// **Why the grant edit writes the whole `viewer` row.** `adminPutGrants`
 /// replaces grants *per role* (`replaceGrantsForRole`), so a partial row would
 /// drop the keys it omits. Rather than read-modify-write the matrix, the test
-/// posts the complete intended `viewer` row (the §A.4 seed with just `title`
-/// flipped — see [_seededRow]); that preserves the role's other seven graded
+/// posts the complete intended `viewer` row (the seeded grant matrix with just
+/// `title` flipped — see [_seededRow]); that preserves the role's other seven graded
 /// keys and keeps the scenario independent of whatever else the matrix holds.
 /// The test normalises
 /// `title` to `read` first (carol's write is rejected), regrades it to `full`
@@ -152,7 +152,7 @@ const _titleKey = 'todo.item.title';
 /// TC-37-09 regrades through the admin API.
 const _attachmentSlot = 'app_items/1/attachment';
 
-// The seeded C-6 share the RCC5 delegation check revokes and restores: row id 1
+// The seeded share the delegation check revokes and restores: row id 1
 // in `[003]-auth_demo_seed` is alice(2) → bob(3) `editor` on `project:1`. The id
 // is an explicit seed value (not an auto-increment), so it is stable across the
 // fresh-seeded runs the integration script guarantees (`docker compose down -v`).
@@ -163,7 +163,7 @@ const _sharedProjectId = '1';
 // writes/deletes a `@TomDbScope` row (`WorkspaceRecord.ownerId`). The app
 // server's `appForbiddenOrNotFound` maps `TomDataScopeAuthorizationException`
 // to a 403 carrying this exact key (distinct from the service-layer
-// `app.access.forbidden`). See TC-37-08 and RCB9.
+// `app.access.forbidden`). See TC-37-08.
 const _dataScopeWriteKey = 'data_scope.write.out_of_scope';
 
 void main() {
@@ -232,7 +232,7 @@ void main() {
         await auth.login(_aliceLogin);
         final created = await app.createProject(Project()
           ..workspaceId.set(_aliceWorkspaceId)
-          ..name.set('Step 37 cross-tier project')
+          ..name.set('Cross-tier integration project')
           ..description.set('Created by the cross-tier integration test.')
           ..colour.set('#3366cc')
           ..archived.set(false));
@@ -279,11 +279,11 @@ void main() {
       }
     });
 
-    // --- RCC5: live-DB C-5/C-6 authorization checks over the same stack. ------
+    // --- Live-DB ownership-grant and share-delegation checks, same stack. -----
 
     test(
         'TC-37-02: row-scope reads are filtered — a non-owner never sees '
-        "another principal's workspace (RCC4 @TomDbScope)", () async {
+        "another principal's workspace (@TomDbScope)", () async {
       final c = _liveClients();
       try {
         expect((await c.app.health())['status'], equals('ok'));
@@ -412,13 +412,13 @@ void main() {
     });
 
     test(
-        'TC-37-06: the live resource-role map reflects ownership and shares '
-        '(RCB5)', () async {
+        'TC-37-06: the live resource-role map reflects ownership and shares',
+        () async {
       final c = _liveClients();
       try {
         expect((await c.app.health())['status'], equals('ok'));
 
-        // alice owns workspace 1 (a C-5 owner grant); the app server's
+        // alice owns workspace 1 (an ownership grant); the app server's
         // `/resource-roles` expands it down the containment chain, so she holds
         // `owner` on the project and its items — the surrogate ids the live
         // entities carry, so `item:1`/`project:1` match the client's lookups.
@@ -427,7 +427,7 @@ void main() {
         expect(aliceRoles[ResourceRoleKeys.project(1)], ProjectRole.owner.name);
         expect(aliceRoles[ResourceRoleKeys.item(1)], ProjectRole.owner.name);
 
-        // bob holds only the seeded C-6 `editor` share on project 1 — no
+        // bob holds only the seeded `editor` share on project 1 — no
         // ownership — so his map grades the project subtree `editor` and never
         // reaches the workspace (a share does not flow up).
         await c.auth.login(_bobLogin);
@@ -445,17 +445,17 @@ void main() {
 
     test(
         'TC-37-07: the DB-side union scope reaches a shared subtree at the item '
-        'level — a share-only user lists the shared project\'s descendant item '
-        '(RCB8)', () async {
+        'level — a share-only user lists the shared project\'s descendant item',
+        () async {
       final c = _liveClients();
       try {
         expect((await c.app.health())['status'], equals('ok'));
 
         // bob's only grant is an active `editor` share on project 1 (the seeded
         // delegation, or TC-37-03's identical restored replacement — either way
-        // an editor share on project 1). With RCB8 the project/list/item reads
-        // are filtered at app_db by the async union scope
-        // `(id IN (owned…) OR id IN (shared…))` on the surrogate `id`, so bob
+        // an editor share on project 1). The project/list/item reads are
+        // filtered at app_db by the async union scope `(id IN (owned…) OR id
+        // IN (shared…))` on the surrogate `id`, so bob
         // reaching item 1 — a grandchild of the shared project, which he does
         // not own and was never directly shared — proves the shared disjunct
         // expands *down* the containment chain (project → list → item) at the
@@ -482,7 +482,7 @@ void main() {
 
     test(
         "TC-37-08: a non-owner's workspace UPDATE/DELETE raises the framework "
-        'TomDataScopeAuthorizationException (RCB9 scoped-entity write)', () async {
+        'TomDataScopeAuthorizationException (scoped-entity write)', () async {
       // The one client write path onto a `@TomDbScope` entity. `WorkspaceRecord`
       // carries `@TomDbScope(field: 'ownerId')`, so an update/delete of a
       // workspace the caller does not own is rejected by the framework CRUD
@@ -490,15 +490,15 @@ void main() {
       // `TomDataScopeAuthorizationException`, mapped by the app server to a 403
       // carrying its own `data_scope.write.out_of_scope` key (distinct from the
       // service-layer `app.access.forbidden` TC-37-05 asserts). This is the live
-      // end-to-end reach of RCA4's connection-free framework write-scope tests.
+      // end-to-end reach of the connection-free framework write-scope tests.
       final c = _liveClients();
       String? bobWorkspaceId;
       try {
         expect((await c.app.health())['status'], equals('ok'));
 
-        // Positive create: bob makes his own workspace and becomes its owner (the
-        // `ownerId` column plus the C-5 grant); the insert-scope check permits a
-        // row scoped to his own id.
+        // Positive create: bob makes his own workspace and becomes its owner
+        // (the `ownerId` column plus the ownership grant); the insert-scope
+        // check permits a row scoped to his own id.
         await c.auth.login(_bobLogin);
         final created = await c.app
             .createWorkspace(Workspace()..name.set('Bob cross-tier workspace'));
@@ -765,7 +765,7 @@ Future<List<int>?> _downloadAll(
 }
 
 /// One live transport plus the auth/admin/app clients that share it — the
-/// runtime wiring each RCC5 check builds (and closes) independently.
+/// runtime wiring each authorization check builds (and closes) independently.
 ({
   IoJsonTransport transport,
   AuthClient auth,
@@ -821,7 +821,7 @@ GrantMatrixDto _viewerRow(TomAuthState title) =>
 GrantMatrixDto _ownerRow(TomAuthState attachment) =>
     _seededRow(ProjectRole.owner, overrides: {itemAttachmentGradeKey: attachment});
 
-/// [role]'s complete row of the §A.4 grant matrix — its eight graded keys at the
+/// [role]'s complete row of the grant matrix — its eight graded keys at the
 /// values `[003]-auth_demo_seed@dev,test.sql` seeds — with [overrides] applied.
 ///
 /// Posting the whole row (not just the one cell under test) is forced by the

@@ -1,5 +1,5 @@
 /// The auth server's `/auth/*` client: credential login, token refresh, and
-/// logout, with token storage through [TomBearerAuthentication] (step 22).
+/// logout, with token storage through [TomBearerAuthentication].
 ///
 /// Pure JSON↔DTO mapping lives in the contract DTOs ([LoginRequest]/
 /// [LoginResult]); this client only sequences the HTTP call, maps a non-success

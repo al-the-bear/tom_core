@@ -1,9 +1,9 @@
 /// The one HTTP seam the whole client core talks to the servers through.
 ///
 /// Reducing a request/response to "a method, a URI, some headers and a JSON
-/// string" keeps every client (`AuthClient` in step 22, then `AuthorizedHttp`,
-/// `AppApiClient` and `AdminApiClient`) unit-testable against a fake transport —
-/// no sockets in tests — while the live [IoJsonTransport] backs them at runtime.
+/// string" keeps every client (`AuthClient`, `AuthorizedHttp`, `AppApiClient`
+/// and `AdminApiClient`) unit-testable against a fake transport — no sockets in
+/// tests — while the live [IoJsonTransport] backs them at runtime.
 library;
 
 import 'dart:convert';

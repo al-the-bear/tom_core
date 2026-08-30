@@ -4,14 +4,14 @@
 # server's docker-compose) and both Dart servers — then runs every live suite in
 # this package against it and tears everything down again.
 #
-# One scripted command for the Phase-7 "scripted scenario passes end-to-end"
-# done bar: an admin grant edit reaching the end-user's field matrix, a share
-# revealing a project to a second user, and the same admin edit reaching the
-# file endpoint — one grant cell deciding whether bytes may be written. The
-# share is then followed into the item's *child collections*: an owner's comment
-# read back by the shared-with user, who appends a checklist step the viewer on
-# the same project is refused. It also carries tcca5's loop: a second factor
-# enrolled mid-run, declined once, and then challenged on the next login.
+# One scripted command for the whole cross-tier scenario: an admin grant edit
+# reaching the end-user's field matrix, a share revealing a project to a second
+# user, and the same admin edit reaching the file endpoint — one grant cell
+# deciding whether bytes may be written. The share is then followed into the
+# item's *child collections*: an owner's comment read back by the shared-with
+# user, who appends a checklist step the viewer on the same project is refused.
+# It also carries the enrolment loop: a second factor enrolled mid-run, declined
+# once, and then challenged on the next login.
 #
 #   tom_core_samples/advanced_client_core/tool/run_cross_tier_integration.sh
 #
@@ -192,42 +192,42 @@ wait_app_health
 #
 #    Every `*_integration_test.dart` in the package runs here — five suites,
 #    because they prove different things and any can break alone:
-#      - cross_tier_integration_test  — the admin→end-user authorization loop
-#        (step 37): a grant edit reaching the field matrix, a share revealing a
-#        project to a second user, and — the file step — a grant edit reaching
-#        the *file endpoint*, where narrowing one `tom_resource_grant` cell takes
-#        the upload away from the owner of the row and restoring it gives it
-#        back (TC-37-09). That beat is what makes file transfer part of this
-#        sample's authorization story rather than a feature bolted beside it.
-#        It closes on the item's child collections (TC-37-10): the owner
-#        comments, the shared-with user reads that history back and appends a
-#        checklist step, and the viewer on the same project reads the thread but
-#        is refused both writes — the one-step-apart gating (`commenter` for a
-#        comment, `editor` for a subtask) is only visible when several
-#        principals touch one item, so it can only be asserted here.
-#      - auth_client_integration_test — the login paths themselves (step 22 +
-#        csex3 + tcca5): dave's two-pass TOTP login, and erin's *enrolment* —
-#        offered a factor, declining it, setting one up, and then being
-#        challenged on the factor she just created (TC-22-13). It is the only run
-#        in which the real client, the real server and a real secret all take
-#        part, so it is the only one that can catch the two halves of the 2FA
-#        flow disagreeing on the wire — and the only one where the secret under
-#        test is one the server minted mid-run rather than one a migration
-#        seeded. It needs no authenticator app: the codes are derived from the
-#        enrolment's own `clientData` with the kernel's TomTotp.
+#      - cross_tier_integration_test  — the admin→end-user authorization loop:
+#        a grant edit reaching the field matrix, a share revealing a project to
+#        a second user, and a grant edit reaching the *file endpoint*, where
+#        narrowing one `tom_resource_grant` cell takes the upload away from the
+#        owner of the row and restoring it gives it back. That beat is what
+#        makes file transfer part of this sample's authorization story rather
+#        than a feature bolted beside it. It closes on the item's child
+#        collections: the owner comments, the shared-with user reads that
+#        history back and appends a checklist step, and the viewer on the same
+#        project reads the thread but is refused both writes — the
+#        one-step-apart gating (`commenter` for a comment, `editor` for a
+#        subtask) is only visible when several principals touch one item, so it
+#        can only be asserted here.
+#      - auth_client_integration_test — the login paths themselves: dave's
+#        two-pass TOTP login, and erin's *enrolment* — offered a factor,
+#        declining it, setting one up, and then being challenged on the factor
+#        she just created. It is the only run in which the real client, the
+#        real server and a real secret all take part, so it is the only one
+#        that can catch the two halves of the 2FA flow disagreeing on the wire
+#        — and the only one where the secret under test is one the server
+#        minted mid-run rather than one a migration seeded. It needs no
+#        authenticator app: the codes are derived from the enrolment's own
+#        `clientData` with the kernel's TomTotp.
 #      - file_transfer_integration_test — bytes moving across both servers: an
 #        upload landing in each server's own blob store and being served back,
-#        the non-exposed file column staying unaddressable, and a principal whose
-#        C-4 grade on the column is `read` getting the download while the upload
-#        and the delete are refused. Nothing short of a running stack can show a
+#        the non-exposed file column staying unaddressable, and a principal
+#        whose column grade is `read` getting the download while the upload and
+#        the delete are refused. Nothing short of a running stack can show a
 #        client, an endpoint, a column grade, a blob store and a database
 #        agreeing about one file.
-#      - app_api_client_integration_test — one end-user call over the wire
-#        (TC-24-14): health, then alice listing her workspaces through the typed
-#        app service client.
-#      - admin_api_client_integration_test — the same shape one tier down
-#        (TC-25-14): admin signing in and listing users through the typed admin
-#        client, against the auth server alone.
+#      - app_api_client_integration_test — one end-user call over the wire:
+#        health, then alice listing her workspaces through the typed app
+#        service client.
+#      - admin_api_client_integration_test — the same shape one tier down:
+#        admin signing in and listing users through the typed admin client,
+#        against the auth server alone.
 #
 #    Those last two are deliberately narrow. The three above them exercise the
 #    clients only *through* a scenario, so when one of them breaks it cannot say

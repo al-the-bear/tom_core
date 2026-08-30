@@ -1,4 +1,4 @@
-/// The typed client over `advanced_auth_server`'s `/admin/*` API (step 25).
+/// The typed client over `advanced_auth_server`'s `/admin/*` API.
 ///
 /// Like [AppApiClient], every call goes through [AuthorizedHttp] — so the bearer
 /// is attached and a single token expiry self-heals (refresh-once-on-401) — and
@@ -93,8 +93,8 @@ Map<String, Object?> _asMap(Object? element) =>
 /// registry).
 ///
 /// Implements [AdminApiService] so it is the live seam the authadmin client's
-/// backend plugs in (step 32); the in-memory fake implements the same interface
-/// for widget tests. All transport flows through the supplied [AuthorizedHttp],
+/// backend plugs in; the in-memory fake implements the same interface for
+/// widget tests. All transport flows through the supplied [AuthorizedHttp],
 /// which carries the `admin` principal's bearer.
 class AdminApiClient implements AdminApiService {
   /// Base URL of the auth server, e.g. `http://localhost:8081` (no path suffix —

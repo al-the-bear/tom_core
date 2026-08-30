@@ -1,5 +1,5 @@
-/// Socket-free tests for [AuthorizedFileTransferClient] (step 24, the byte half
-/// of the authenticated client): all four transfer operations recover from an
+/// Socket-free tests for [AuthorizedFileTransferClient], the byte half of the
+/// authenticated client: all four transfer operations recover from an
 /// expired token, and they do it through the *same* credential and the *same*
 /// refresher the JSON half uses.
 ///

@@ -1,4 +1,4 @@
-/// Live integration smoke test for [AdminApiClient] (step 25): logs in as the
+/// Live integration smoke test for [AdminApiClient]: logs in as the
 /// seeded `admin` against `advanced_auth_server` (`localhost:8081`) and pulls the
 /// user list through the authorized transport.
 ///
