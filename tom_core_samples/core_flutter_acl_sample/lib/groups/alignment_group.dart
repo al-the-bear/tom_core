@@ -51,8 +51,10 @@ final ShowcaseGroup alignmentGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Cross-axis bottom — setRowAlignBottom',
-      note: 'A short cell next to a tall one: bottom alignment lines them up on '
-          'their baselines.',
+      note: 'A short cell next to a tall one: bottom alignment lines up their '
+          'bottom edges, not their text baselines. ACL cross-axis alignment is '
+          'edge-based — AclRowCrossAlignment is {top, center, bottom}, with no '
+          'baseline member.',
       code: 'AclBuilder()\n'
           "    .append(demoBox('tall', red))\n"
           '    .setPSize(110, 88)\n'
