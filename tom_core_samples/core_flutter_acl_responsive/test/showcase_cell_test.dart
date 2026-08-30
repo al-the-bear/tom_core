@@ -1,10 +1,20 @@
 // Cell-contract tests: a [ShowcaseCell] always shows BOTH halves of the
-// teaching pair — the verbatim code snippet and the rendered child — and no
-// responsive group ships a cell with an empty snippet.
+// teaching pair — the curated code snippet and the rendered child — and every
+// responsive group honours the snippet contract documented on
+// [ShowcaseCell.code] and in README section 15.
 //
-// The whole point of the showcase is that the source that produced a live,
-// width-reactive layout is displayed beside it; these tests make that contract
-// enforceable across every group.
+// That contract has two halves, and only one of them is machine-checkable:
+//
+//  - A snippet **may abridge**. It drops the gallery harness (width pins,
+//    FormHost scaffolding, badge rows), elides repetition behind a `…` comment,
+//    and substitutes short stand-ins for gallery-specific ids. Judging an
+//    abridgement is an editorial call, so no test tries.
+//  - A snippet **may not invent**. Naming a constructor or method that does not
+//    exist is the one failure a reader cannot recover from, because that is the
+//    half they lean on when they lift a line into their own project. That half
+//    *is* checkable, and the last test below checks it.
+
+import 'dart:io';
 
 import 'package:core_flutter_acl_responsive/common/showcase_cell.dart';
 import 'package:core_flutter_acl_responsive/reflection_seed.dart';
@@ -39,7 +49,7 @@ void main() {
           body: SingleChildScrollView(
             child: ShowcaseCell(
               title: 'Demo',
-              code: 'AclBuilder().append(demoBox("x", teal)).build()',
+              code: 'AclBuilder().append(demoBox("x", Colors.teal)).build()',
               child: SizedBox(key: marker, width: 24, height: 24),
             ),
           ),
@@ -50,7 +60,7 @@ void main() {
 
     expect(find.byKey(marker), findsOneWidget);
     expect(
-      find.textContaining('AclBuilder().append(demoBox("x", teal)).build()'),
+      find.textContaining('AclBuilder().append(demoBox("x", Colors.teal)).build()'),
       findsOneWidget,
     );
     expect(find.text('Demo'), findsOneWidget);
@@ -79,4 +89,122 @@ void main() {
       }
     }
   });
+
+  testWidgets('no snippet names an API absent from its own group source',
+      (tester) async {
+    late BuildContext capturedContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    for (final group in responsiveGroups) {
+      // The group id doubles as the file name (README section 15, step 1); a
+      // group whose file is renamed away from that mapping must fail loudly
+      // rather than silently skip its snippets.
+      final file = File('lib/groups/${group.id}_group.dart');
+      expect(file.existsSync(), isTrue,
+          reason: 'group ${group.id}: expected its source at ${file.path} — '
+              'the snippet check reads the live child from there');
+      // Why the stripping matters: the snippets are themselves string literals
+      // in this very file, so searching the raw text would find every name in
+      // its own snippet and pass unconditionally.
+      final live = _executableSource(file.readAsStringSync());
+
+      for (final cell in group.cells(capturedContext)) {
+        for (final name in _calledNames(cell.code)) {
+          expect(live, contains(RegExp('\\b${RegExp.escape(name)}\\s*\\(')),
+              reason: 'group ${group.id}, cell "${cell.title}": the snippet '
+                  'calls `$name(...)`, which is never called by the live code '
+                  'in ${file.path}. A snippet may abridge the live child, but '
+                  'it may not name an API that does not exist. If the call is '
+                  'genuine but reached indirectly, make the snippet say so — '
+                  'that is a real gap between what is shown and what runs.');
+        }
+      }
+    }
+  });
+}
+
+/// A group file reduced to the code that actually runs: comments and string
+/// literals removed, everything else left in place.
+///
+/// This is what makes the check non-circular. A cell's snippet is a string
+/// literal *inside the group file it describes*, so searching the raw file for
+/// a name the snippet uses always succeeds — including for a name the snippet
+/// invented. Dropping the literals leaves only the live `child` and its
+/// helpers, which is the thing the snippet claims to illustrate. Comments go
+/// first and in the same pass, so an apostrophe in prose ("the cell's width")
+/// cannot open a phantom string and swallow the rest of the file.
+String _executableSource(String dart) {
+  final out = StringBuffer();
+  var i = 0;
+  while (i < dart.length) {
+    final c = dart[i];
+    final next = i + 1 < dart.length ? dart[i + 1] : '';
+
+    if (c == '/' && next == '/') {
+      while (i < dart.length && dart[i] != '\n') {
+        i++;
+      }
+      continue;
+    }
+    if (c == '/' && next == '*') {
+      i += 2;
+      while (i + 1 < dart.length && !(dart[i] == '*' && dart[i + 1] == '/')) {
+        i++;
+      }
+      i += 2;
+      continue;
+    }
+    if (c == '"' || c == "'") {
+      final triple = dart.startsWith(c * 3, i);
+      final close = triple ? c * 3 : c;
+      i += close.length;
+      while (i < dart.length && !dart.startsWith(close, i)) {
+        i += dart[i] == r'\' ? 2 : 1;
+      }
+      i += close.length;
+      // Emit a separator so `a'x'b` cannot fuse into the identifier `ab`.
+      out.write(' ');
+      continue;
+    }
+    out.write(c);
+    i++;
+  }
+  return out.toString();
+}
+
+/// Every identifier a snippet invokes — the `foo` of any `foo(`.
+///
+/// Comments are stripped first so an elision marker (`// …gaps / errorIcon
+/// overrides…`) cannot smuggle a name past the reader's eye and into the check.
+/// Language keywords that can legally precede `(` are dropped: they are Dart
+/// syntax, not API surface, and a snippet is free to use control flow the live
+/// child spells differently.
+Set<String> _calledNames(String code) {
+  final withoutComments = code
+      .split('\n')
+      .map((line) {
+        final marker = line.indexOf('//');
+        return marker == -1 ? line : line.substring(0, marker);
+      })
+      .join('\n');
+
+  const keywords = {
+    'if', 'for', 'while', 'switch', 'return', 'catch', 'assert', 'super',
+    'this', 'new', 'await', 'in', 'is', 'as', 'else', 'do', 'throw', 'yield',
+  };
+
+  return RegExp(r'([A-Za-z_$][A-Za-z0-9_$]*)\s*\(')
+      .allMatches(withoutComments)
+      .map((m) => m.group(1)!)
+      .where((name) => !keywords.contains(name))
+      .toSet();
 }

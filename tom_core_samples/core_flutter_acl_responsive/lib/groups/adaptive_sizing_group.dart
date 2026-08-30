@@ -42,9 +42,9 @@ final ShowcaseGroup adaptiveSizingGroup = ShowcaseGroup(
       note: 'At 600px the first cell sits near its 160px preferred width and '
           'the second cell expands to fill the rest.',
       code: 'AclBuilder()\n'
-          "    .append(demoBox('sized', teal))\n"
+          "    .append(demoBox('sized', Colors.teal))\n"
           '    .setMSize(80).setPSize(160).setXSize(240)\n'
-          "    .append(demoBox('expandX', orange), dist: 12)\n"
+          "    .append(demoBox('expandX', Colors.orange), dist: 12)\n"
           '    .expandX()\n'
           '    .build()',
       child: _sizingLayout(600),

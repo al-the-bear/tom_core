@@ -58,12 +58,12 @@ final ShowcaseGroup formFactorGroup = ShowcaseGroup(
       title: 'Desktop (900px) — default row',
       note: 'Above the 600px phone variant the default side-by-side row applies.',
       code: 'AclBuilder()\n'
-          "    .append(demoBox('Label', indigo))\n"
-          "    .append(demoBox('Value', cyan), dist: 12)\n"
+          "    .append(demoBox('Label', Colors.indigo))\n"
+          "    .append(demoBox('Value', Colors.cyan), dist: 12)\n"
           "    .addVariant('phone', atWidth: 600, builder: (b) {\n"
-          "      b.append(demoBox('Label', indigo))\n"
+          "      b.append(demoBox('Label', Colors.indigo))\n"
           '          .newRow(dist: 6)\n'
-          "          .append(demoBox('Value', cyan));\n"
+          "          .append(demoBox('Value', Colors.cyan));\n"
           '    })\n'
           '    .build()',
       child: _factorLayout(900),

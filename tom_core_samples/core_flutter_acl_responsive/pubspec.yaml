@@ -1,8 +1,8 @@
 name: core_flutter_acl_responsive
 description: >-
   Tom Core sample — responsive UIs built with the ACL/forms engine. Every cell
-  pairs a live, width-reactive layout with the verbatim Dart that declared it,
-  grouped by responsive mechanism (breakpoint field style, family swap, row
+  pairs a live, width-reactive layout with a curated snippet of the Dart that
+  declares it, grouped by responsive mechanism (breakpoint field style, family swap, row
   breakpoints, form-factor variants, adaptive sizing, responsive ACL forms).
 publish_to: 'none'
 version: 1.0.0+1

@@ -3,8 +3,8 @@
 A **code-beside-layout** tour of the responsive machinery in `tom_flutter_ui`:
 the ways a Tom form or an ACL layout **reshapes and re-styles itself as the
 viewport changes**, with no width branching in application code. Every cell
-renders a live, width-reactive layout **next to the verbatim Dart that produced
-it**, so you read the API and watch its effect at the same time.
+renders a live, width-reactive layout **next to a curated snippet of the Dart
+that drives it**, so you read the API and watch its effect at the same time.
 
 Where the sibling [`core_flutter_form_showcase`](../core_flutter_form_showcase)
 tours the forms framework as a whole (binding, validation, theming, lists) and
@@ -138,9 +138,10 @@ Two small types under `lib/common/` carry every page:
 - **`ShowcaseGroup`** — one responsive mechanism: an `id`, a `title`, a
   one-line `summary`, an `icon`, and a `cells(context)` builder. The home screen
   lists every group; `GroupScreen` scrolls its cells.
-- **`ShowcaseCell`** — one `code | rendered` entry: a `title`, the verbatim
+- **`ShowcaseCell`** — one `code | rendered` entry: a `title`, a curated
   `code` snippet, the live `child`, and an optional `note` naming the width
-  threshold the mechanism reacts at.
+  threshold the mechanism reacts at. What the snippet may abridge — and the one
+  thing it may not — is §15.
 
 `ShowcaseCell` **dogfoods the engine the sample is about** to lay *itself* out —
 snippet and preview share one row while the cell is at least 720px wide, and
@@ -174,7 +175,7 @@ are non-const. See the G-UI-2 clarification in
 **Which strings are hardcoded vs resources (G-RES-1).** The teaching content is a
 deliberate copy-paste exemption: group titles/summaries, the `code:` bodies, and
 the form field labels (resolved through `labelTextOverride`) stay inline so a
-reader can lift a snippet verbatim. The showcase's own **application chrome** is
+reader can lift a snippet and run it. The showcase's own **application chrome** is
 not exempt — the home screen's app-bar title (`showcase.app.title`) and the code
 panel's copy-button tooltip (`showcase.codeBlock.copyTooltip`) are real on-screen
 text, so G-RES-1 applies and they resolve through the `chromeTexts` bundle that
@@ -301,12 +302,12 @@ a desktop default plus a stacked phone variant. The cells also read back
 
 ```dart
 AclBuilder()
-    .append(demoBox('Label', indigo))
-    .append(demoBox('Value', cyan), dist: 12)
+    .append(demoBox('Label', Colors.indigo))
+    .append(demoBox('Value', Colors.cyan), dist: 12)
     .addVariant('phone', atWidth: 600, builder: (b) {
-      b.append(demoBox('Label', indigo))
+      b.append(demoBox('Label', Colors.indigo))
           .newRow(dist: 6)
-          .append(demoBox('Value', cyan));
+          .append(demoBox('Value', Colors.cyan));
     })
     .build()
 ```
@@ -326,9 +327,9 @@ grows to, and `expandX()` lets a cell soak up the leftover row space:
 
 ```dart
 AclBuilder()
-    .append(demoBox('sized', teal))
+    .append(demoBox('sized', Colors.teal))
     .setMSize(80).setPSize(160).setXSize(240)
-    .append(demoBox('expandX', orange), dist: 12)
+    .append(demoBox('expandX', Colors.orange), dist: 12)
     .expandX()
     .build()
 ```
@@ -352,7 +353,10 @@ same width:
 TomFormStyleScope(
   style: TomFormStyle(defaults: TomFieldStyle(
     labelPlacement: LabelPlacement.floating,
-    labelPlacementBpOverrides: [(400, above), (700, inline)],
+    labelPlacementBpOverrides: [
+      (400, LabelPlacement.above),
+      (700, LabelPlacement.inline),
+    ],
     // …labelStyle / labelFieldGap overrides…
   )),
   child: TomAclBuilder(id: 'cap', elementProvider: form)
@@ -423,7 +427,7 @@ Twenty-eight widget tests under `test/`, all green, runnable with `flutter test`
 | `responsive_smoke_test.dart` | Every group builds at phone/tablet/desktop widths; only benign preview overflows are tolerated, any other exception fails. Home screen lists every group. |
 | `breakpoint_field_style_test.dart` | The badge row reports the exact tier values at 800 / 450 / 360 px (label placement, fonts, gaps, border, icon). |
 | `family_swap_test.dart` | Active family flips at 700px; seeds echo in the shared panel; an edit propagates; **state survives the swap**. |
-| `showcase_cell_test.dart` | The cell contract — both the snippet and the live child render, and no group ships an empty snippet. |
+| `showcase_cell_test.dart` | The cell contract — both the snippet and the live child render, no group ships an empty snippet, and no snippet names an API the group's live code never calls (§15). |
 
 The width-reactive demos are pumped inside a fixed-width `SizedBox` so the
 published width is pinned exactly, making the per-tier assertions deterministic —
@@ -437,12 +441,41 @@ To add a mechanism:
 
 1. Add a `lib/groups/<mechanism>_group.dart` exporting a `ShowcaseGroup` (follow
    the existing files — pin each cell to the width that makes the behaviour
-   visible, and keep the `code` snippet byte-aligned with the live `child`).
+   visible, and write the `code` snippet under the contract below). The file name
+   must be `<group id>_group.dart`; the snippet test relies on that mapping.
 2. Register it in `responsiveGroups` in `lib/showcase_app.dart`.
 3. If it binds a new entity or form, seed it in `reflection_seed.dart` and
    regenerate (§13).
 4. Add a deterministic test that pumps the demo at fixed widths and asserts a
    badge/state value per tier; keep the smoke test's overflow tolerance in mind.
+
+### The snippet contract
+
+A cell's `code` is a **curated snippet of the API the cell teaches**, not a
+transcript of the live `child`. Transcribing would defeat the purpose: the child
+is wrapped in gallery harness — `SizedBox` width pins, `FormHost` scaffolding,
+badge rows that exist to make the behaviour observable and testable — and paired
+wide/narrow cells deliberately carry nothing but `// same chain, the width
+differs`, because repeating the chain is precisely what would hide their point.
+
+So a snippet **may**:
+
+- drop the harness and show only the chain under discussion;
+- elide repetition behind a `// …labelStyle / gaps / errorIcon overrides…`
+  comment, so the reader can see that something was left out;
+- use a short stand-in — `id: 'bp'`, a bare `form` — where the live code threads
+  a gallery-specific id or a private widget.
+
+A snippet **may not name an API that does not exist**. That is the line between
+an abridgement and a lie, and it is the half a reader actually leans on when
+they lift a line into their own project. `showcase_cell_test.dart` enforces it:
+every `name(` a snippet contains must also be called by the *live* code in
+`lib/groups/<group id>_group.dart`, which is where the `child` is built. The
+test strips comments and string literals from that file before looking —
+otherwise it would find each name inside the snippet's own literal and pass
+unconditionally. A snippet that invents a convenient `form.buildColumn()` fails
+the suite; so does one that names something the file merely mentions in a
+comment.
 
 ---
 
