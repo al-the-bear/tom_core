@@ -1,4 +1,4 @@
-/// The client-local reflected entities the admin editor forms bind (step 34).
+/// The client-local reflected entities the admin editor forms bind.
 ///
 /// The wire DTOs (`UserDto`/`RoleDto`/`GroupDto`/…) in `advanced_todo_contracts`
 /// are reflection-first value records: `@tomReflector` classes with plain

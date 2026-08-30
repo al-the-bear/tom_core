@@ -3,7 +3,8 @@
 ///
 /// Socket-free — the bundle is fetched through the backend seam against the
 /// seeded [InMemoryAppBackend], whose canned login bundle mirrors what the live
-/// auth server serves (D-A11). The proof is the resource provider's key-fallback
+/// auth server serves from `AuthResourceBundles.loginBundle()`. The proof is the
+/// resource provider's key-fallback
 /// behaviour: with no bundle installed the screen renders the *raw keys*
 /// (`login.title`, …) — so there is no hardcoded label baked into the widget —
 /// and only after [AppSession.loadLoginResources] installs the bundle do the

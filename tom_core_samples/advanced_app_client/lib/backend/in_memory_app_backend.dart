@@ -98,7 +98,7 @@ class InMemoryAppBackend implements AppBackend {
   final Map<String, String> _secrets = Map.of(twoFactorSecrets);
 
   /// The canned public login bundle, mirroring `advanced_auth_server`'s
-  /// `AuthResourceBundles.loginBundle()` (D-A11) so the offline app installs the
+  /// `AuthResourceBundles.loginBundle()` so the offline app installs the
   /// exact same sign-in chrome the live auth server serves — the widget tests
   /// stay socket-free while still proving the screen renders *server-delivered*
   /// texts.
@@ -158,7 +158,7 @@ class InMemoryAppBackend implements AppBackend {
   };
 
   /// The canned authenticated full bundle, mirroring `advanced_app_server`'s
-  /// `AppResourceBundles.appBundle()` (D-A11) — the item-form field labels
+  /// `AppResourceBundles.appBundle()` — the item-form field labels
   /// (keyed `todo.item.<field>.label` so the label key tracks the grade key)
   /// plus the `board.*` chrome that has no grade counterpart. The session
   /// installs this right after sign-in so every post-login screen renders

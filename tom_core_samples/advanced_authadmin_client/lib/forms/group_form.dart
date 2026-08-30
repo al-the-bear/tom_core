@@ -1,4 +1,4 @@
-/// The group editor — a `TomForm` bound to a [GroupDraft] (step 34).
+/// The group editor — a `TomForm` bound to a [GroupDraft].
 ///
 /// The form owns only the group's name; membership is a list of user ids, not a
 /// scalar field, so the screen edits it as a checklist alongside this form

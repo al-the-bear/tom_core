@@ -1,5 +1,5 @@
 /// The Users destination: list accounts and create/edit/delete them through a
-/// bound [UserForm] (step 34).
+/// bound [UserForm].
 ///
 /// A thin configuration of [AdminCrudScreen]: it names how a [UserDto] row reads
 /// and folds the reflected [UserDraft] the form edits into the wire types the

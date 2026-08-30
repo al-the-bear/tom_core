@@ -1,10 +1,10 @@
 /// Entry point for `advanced_authadmin_client` — the administrator console for
-/// the advanced Tom Core full-stack sample (steps 33–34).
+/// the advanced Tom Core full-stack sample.
 ///
 /// Before the first frame these bootstraps run: [initializeReflection] (from
 /// this app's `reflection_seed.dart`) registers the reflected drafts and the
 /// user/role/group editor forms so the admin screens' `TomForm` bind/save
-/// round-trips resolve (step 34); the Flutter client platform is registered via
+/// round-trips resolve; the Flutter client platform is registered via
 /// `TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)` so kernel code that
 /// probes the runtime gets the Flutter implementation; and the public login
 /// resource bundle is fetched through the backend seam and installed as the

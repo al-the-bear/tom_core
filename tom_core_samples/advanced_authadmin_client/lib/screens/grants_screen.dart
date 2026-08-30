@@ -1,5 +1,5 @@
 /// The Grants destination: the `projectRole` × field-resource-key grant matrix
-/// editor (step 35).
+/// editor.
 ///
 /// Unlike the Users/Roles/Groups destinations this is not a list of rows but a
 /// single editing surface — a grid whose cells are the four-state

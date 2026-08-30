@@ -1,5 +1,5 @@
 /// The admin console's client-local reflected login entity: the
-/// username/password pair the [AdminLoginForm] binds (todo 12).
+/// username/password pair the [AdminLoginForm] binds.
 ///
 /// It mirrors the app client's `LoginCredentials`: credentials never leave the
 /// client as a persisted entity (the screen folds them into a wire

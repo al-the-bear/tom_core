@@ -1,5 +1,4 @@
-/// Unit tests for [AdminLoginForm] — the reflected admin login form added in
-/// todo 12.
+/// Unit tests for [AdminLoginForm] — the reflected admin login form.
 ///
 /// Three things the form has to get right:
 ///
@@ -7,14 +6,14 @@
 ///    `basePath` is `adminLogin` and each field's `basePath` is its served bundle
 ///    key (`adminLogin.username` / `adminLogin.password`). That equality is the
 ///    precondition for labels to resolve from the public `/resources/login`
-///    bundle the admin client installs before sign-in (todo 8) — a double-scope
+///    bundle the admin client installs before sign-in — a double-scope
 ///    (`adminLogin.adminLogin.*`) would silently miss every key.
 /// 2. **Required validation.** Both fields are `Validators.required()`, so a
 ///    `save()` with either empty fails (returns false) and a `save()` with both
 ///    present succeeds.
 /// 3. **`bind`/`save` round-trip.** Saving writes the typed field values straight
 ///    back into the bound [AdminLoginCredentials] through the reflection
-///    round-trip, exactly as the screen (todo 13) will consume them.
+///    round-trip, exactly as [AdminLoginScreen] consumes them.
 ///
 /// A fourth widget test proves labels are bundle-driven (no overrides): a
 /// sentinel `adminLogin.*` bundle renders through the field, mirroring the
@@ -38,7 +37,7 @@ void main() {
     );
   });
 
-  group('AdminLoginForm self-addressing (todo 12)', () {
+  group('AdminLoginForm self-addressing', () {
     test('the form runs unscoped under adminLogin', () {
       final form = AdminLoginForm();
       expect(form.basePath, 'adminLogin');
@@ -53,7 +52,7 @@ void main() {
     });
   });
 
-  group('AdminLoginForm required validation (todo 12)', () {
+  group('AdminLoginForm required validation', () {
     test('save fails when either field is empty', () async {
       final form = AdminLoginForm()..bind(AdminLoginCredentials());
 
@@ -81,8 +80,7 @@ void main() {
     });
   });
 
-  test('bind/save round-trips into the bound AdminLoginCredentials (todo 12)',
-      () async {
+  test('bind/save round-trips into the bound AdminLoginCredentials', () async {
     final credentials = AdminLoginCredentials();
     final form = AdminLoginForm()..bind(credentials);
 
@@ -91,15 +89,14 @@ void main() {
     expect(await form.save(), isTrue);
 
     // The save wrote the typed field values straight back into the bound entity
-    // — exactly what the screen folds into a LoginRequest in todo 13.
+    // — exactly what AdminLoginScreen folds into a LoginRequest.
     expect(credentials.username.get(), 'admin');
     expect(credentials.password.get(), 's3cret');
 
     form.dispose();
   });
 
-  testWidgets(
-      'labels resolve from the adminLogin.* login bundle, not overrides (todo 12)',
+  testWidgets('labels resolve from the adminLogin.* login bundle, not overrides',
       (tester) async {
     // Install a sentinel login bundle (the `[srv]` suffix is distinct from both
     // the canned strings and the bare tomId fallback). The form carries no

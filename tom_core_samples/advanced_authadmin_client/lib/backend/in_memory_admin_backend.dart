@@ -1,5 +1,4 @@
-/// The default backend: a seeded, fully working in-memory [AdminBackend]
-/// (step 32).
+/// The default backend: a seeded, fully working in-memory [AdminBackend].
 ///
 /// It mirrors what `advanced_auth_server`'s `/admin/*` API exposes — the same
 /// demo accounts the app client uses (so the two consoles line up), a small set
@@ -13,7 +12,7 @@
 /// exactly the contract-declared `TomRoleAccess(['admin'])` gate
 /// (`TomApiEndpoint.access`) the live server's pipeline enforces on each
 /// endpoint. A signed-in non-admin is refused with `admin.access.forbidden`, the
-/// stable key the shell (step 33) rejects a non-admin login on.
+/// stable key the shell's `AdminSession.login` rejects a non-admin login on.
 library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
@@ -112,7 +111,7 @@ class InMemoryAdminBackend implements AdminBackend {
   static const String demoPassword = 'pw';
 
   /// The canned public login bundle, mirroring `advanced_auth_server`'s
-  /// `AuthResourceBundles.loginBundle()` (D-A11) so the offline console installs
+  /// `AuthResourceBundles.loginBundle()` so the offline console installs
   /// the exact same sign-in chrome the live auth server serves — the widget
   /// tests stay socket-free while still proving the screen renders
   /// *server-delivered* texts. The console reads the `adminLogin.*` /
@@ -146,7 +145,7 @@ class InMemoryAdminBackend implements AdminBackend {
   };
 
   /// The canned authenticated console bundle, mirroring `advanced_auth_server`'s
-  /// `AuthResourceBundles.adminConsoleBundle()` (D-A11) — the reflected editors'
+  /// `AuthResourceBundles.adminConsoleBundle()` — the reflected editors'
   /// field labels (`user.*`/`role.*`/`group.*`, keyed `<formId>.<tomId>.label`)
   /// and the grant-matrix screen texts, plus the `adminConsole.title` shell
   /// chrome (no form override, no grade counterpart). The session installs this

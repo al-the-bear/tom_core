@@ -1,5 +1,6 @@
-/// Widget tests for the Roles destination (step 34): list, create, edit, and
-/// delete roles through the bound [RoleForm], over the seeded in-memory backend.
+/// Widget tests for the Roles destination (`RolesScreen`): list, create, edit,
+/// and delete roles through the bound [RoleForm], over the seeded in-memory
+/// backend.
 ///
 /// The role key is the stable identifier the grant matrix keys on, so the tests
 /// assert it is editable on create but read-only on edit (only the name changes).

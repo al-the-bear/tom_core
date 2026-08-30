@@ -1,6 +1,6 @@
 /// The admin login screen: a bound [AdminLoginForm] over [AdminLoginCredentials]
-/// driving [AdminSession.login] (step 33; reflected in todo 13) — and, when the
-/// administrator's account owes one, the second factor that completes it.
+/// driving [AdminSession.login] — and, when the administrator's account owes
+/// one, the second factor that completes it.
 ///
 /// The form is built unscoped, so its `formId: 'adminLogin'` *is* its base path
 /// and each field self-addresses as its resource key (`adminLogin.username`,

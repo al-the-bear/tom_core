@@ -25,7 +25,7 @@ void main() {
   setUpAll(initializeReflection);
 
   setUp(() {
-    // The chrome is server-delivered (todo 8): the canned bundle now carries the
+    // The chrome is server-delivered: the canned bundle carries the
     // `adminTwoFactor.*` scope the code phase renders from.
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(

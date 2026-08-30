@@ -1,15 +1,16 @@
-/// Bootstrap done-when for todo 8: the admin login screen renders
+/// Resource bootstrap for the pre-login admin screen: it renders
 /// **server-delivered** chrome, with no client-side string and no override.
 ///
 /// Socket-free — the bundle is fetched through the backend seam against the
 /// seeded [InMemoryAdminBackend], whose canned login bundle mirrors what the live
-/// auth server serves (D-A11). The proof is the resource provider's key-fallback
+/// auth server serves from `AuthResourceBundles.loginBundle()`. The proof is the
+/// resource provider's key-fallback
 /// behaviour: with no bundle installed the screen's chrome renders the *raw keys*
 /// (`adminLogin.title`, …) — so there is no hardcoded chrome string baked into the
 /// widget — and only after [AdminSession.loadLoginResources] installs the bundle
 /// do the server texts appear. The login screen drives the reflected
-/// [AdminLoginForm] (todo 13), so the console's `initializeReflection()` runs once
-/// in [setUpAll].
+/// [AdminLoginForm], so the console's `initializeReflection()` runs once in
+/// [setUpAll].
 library;
 
 import 'package:advanced_authadmin_client/app/admin_app.dart';

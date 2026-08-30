@@ -1,12 +1,11 @@
 /// The admin console shell: a [MaterialApp] that swaps between the login and the
-/// console (shell) screen as a pure function of [AdminSession.isLoggedIn]
-/// (step 33).
+/// console (shell) screen as a pure function of [AdminSession.isLoggedIn].
 ///
 /// The session is a [ChangeNotifier]; a [ListenableBuilder] rebuilds the home on
 /// every login/logout, so "signed out → signed in" (and a sign-out routing back
 /// to login) is state-driven rather than imperative navigation. The Users/Roles/
-/// Groups, grant-matrix, and assignments screens (steps 34–36) hang off the
-/// console shell.
+/// Groups, grant-matrix, and assignments screens hang off the console shell
+/// (`AdminShellScreen`), not off this root.
 library;
 
 import 'package:flutter/material.dart';

@@ -1,4 +1,4 @@
-/// Contract tests for the seeded [InMemoryAdminBackend] (step 32): the offline
+/// Contract tests for the seeded [InMemoryAdminBackend]: the offline
 /// teaching backend the admin console's widgets bind in tests, exercised across
 /// the seam's whole surface — the `admin`-role gate, Users/Roles/Groups CRUD, the
 /// four-state grant matrix round-trip, and role/group assignments.

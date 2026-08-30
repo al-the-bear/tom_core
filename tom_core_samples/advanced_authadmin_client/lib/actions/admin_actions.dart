@@ -1,5 +1,5 @@
 /// The admin console's mutating operations, modelled as `TomAction`s with
-/// action-level authorization (step 27, G-ACT-1/2).
+/// action-level authorization (G-ACT-1/2).
 ///
 /// Every write the console performs — creating, editing, or deleting a user,
 /// role, or group; assigning a role/group; saving the grant matrix — runs

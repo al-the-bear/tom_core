@@ -5,7 +5,8 @@
 ///
 /// Socket-free — the full bundle is fetched through the backend seam against the
 /// seeded [InMemoryAppBackend], whose canned full bundle mirrors what
-/// `advanced_app_server` serves (D-A11). The proof is the resource provider's
+/// `advanced_app_server` serves from `AppResourceBundles.appBundle()`. The proof
+/// is the resource provider's
 /// key-fallback behaviour applied to the **post-login** chrome: `board.title`
 /// (no grade counterpart, no form override) falls back to its raw key while only
 /// the login bundle is installed, and resolves to the server text once

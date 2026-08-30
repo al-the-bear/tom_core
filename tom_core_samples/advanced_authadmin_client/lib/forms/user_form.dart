@@ -1,5 +1,5 @@
 /// The user editor — a `TomForm` bound to a [UserDraft], rendering the right
-/// field set for create vs. edit (step 34).
+/// field set for create vs. edit.
 ///
 /// On **create** the admin enters username + password + profile (the fields
 /// `CreateUserRequest` carries). On **edit** the username is a stable key

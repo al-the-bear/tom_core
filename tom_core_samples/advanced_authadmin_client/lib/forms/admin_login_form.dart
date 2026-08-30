@@ -1,12 +1,13 @@
 /// The admin login form — a `TomForm` bound to the client-local
-/// [AdminLoginCredentials] (todo 12).
+/// [AdminLoginCredentials].
 ///
 /// Mirrors the app client's `LoginForm`: built with `tom_flutter_ui`
 /// [TomFormStringInput]s (not the legacy `TomFormOld`/`TomEmailField` API), and
 /// built **unscoped** with `formId: 'adminLogin'`, so its `formId` *is* its base
 /// path and each field self-addresses as its resource key (`adminLogin.username`,
 /// `adminLogin.password`) — exactly the keys the auth server serves on the public
-/// `/resources/login` bundle the admin client installs before sign-in (todo 8).
+/// `/resources/login` bundle the admin client installs before sign-in
+/// (`AdminBackend.loginResources`).
 /// No `labelTextOverride`: labels/hints resolve from that installed bundle.
 ///
 /// Field member names match the entity's (`username`, `password`) so the

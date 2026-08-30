@@ -1,10 +1,9 @@
-/// Render-level proof that the realigned admin CRUD forms source their field
-/// labels from the installed resource bundle, not from hard-coded overrides
-/// (todo 10).
+/// Render-level proof that the admin CRUD forms source their field labels from
+/// the installed resource bundle, not from hard-coded overrides.
 ///
-/// Todo 10 dropped every `labelTextOverride` from [UserForm], [RoleForm] and
-/// [GroupForm] and removed the `TomScope.withScope('userCreate'/…)` wrappers the
-/// CRUD screens built them under, so each form's `formId` *is* its base path
+/// [UserForm], [RoleForm] and [GroupForm] carry no `labelTextOverride`, and the
+/// CRUD screens build them without a `TomScope.withScope('userCreate'/…)`
+/// wrapper, so each form's `formId` *is* its base path
 /// (`user`, `role`, `group`) and each field self-addresses as its wire resource
 /// key (`user.username`, `role.key`, `group.name`, …) — exactly the keys the
 /// admin console bundle serves. A field with no override resolves its label

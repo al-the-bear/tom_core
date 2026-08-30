@@ -1,6 +1,6 @@
-/// Widget tests for the Users destination (step 34): list, create, edit, and
-/// delete accounts through the bound [UserForm], all over the seeded in-memory
-/// backend.
+/// Widget tests for the Users destination (`UsersScreen`): list, create, edit,
+/// and delete accounts through the bound [UserForm], all over the seeded
+/// in-memory backend.
 ///
 /// Socket-free and reflection-driven — the editor forms bind reflected drafts, so
 /// the console's `initializeReflection()` runs once in [setUpAll] and the

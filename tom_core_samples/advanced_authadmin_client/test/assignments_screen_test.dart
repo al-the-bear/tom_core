@@ -1,16 +1,16 @@
-/// Widget tests for the Assignments destination (step 36): assigning a role
-/// and/or a group to a user over the seeded in-memory backend.
+/// Widget tests for the Assignments destination (`AssignmentsScreen`):
+/// assigning a role and/or a group to a user over the seeded in-memory backend.
 ///
-/// The contract here is the step's done bar: picking a role and/or a group for a
-/// user and saving issues the expected [AssignmentRequest], and the persisted
-/// effect is what the backend reports afterwards — a role lands in
+/// The contract: picking a role and/or a group for a user and saving issues the
+/// expected [AssignmentRequest], and the persisted effect is what the backend
+/// reports afterwards — a role lands in
 /// `backend.rolesOf(userId)` (the seam has no UI read-back for roles), a group
 /// lands in `listGroups().memberUserIds` and is reflected back in the user's row
 /// subtitle on reload.
 ///
 /// Socket-free (the assign editor binds no `TomForm`), driven through the same
 /// shared harness: sign in, then open the rail's Assignments destination. Signing
-/// in renders the reflected [AdminLoginForm] (todo 13), so the console's
+/// in renders the reflected [AdminLoginForm], so the console's
 /// `initializeReflection()` runs once in [setUpAll].
 library;
 

@@ -1,5 +1,5 @@
 /// The Roles destination: list roles and create/edit/delete them through a bound
-/// [RoleForm] (step 34).
+/// [RoleForm].
 ///
 /// A thin configuration of [AdminCrudScreen]. The role [RoleDto.key] is the
 /// stable identifier the grant matrix and `@TomRoleAccess` key on, so it is

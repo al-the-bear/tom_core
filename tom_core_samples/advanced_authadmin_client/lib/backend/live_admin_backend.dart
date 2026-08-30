@@ -1,7 +1,6 @@
-/// The live [AdminBackend]: delegates to `advanced_client_core` over HTTP
-/// (step 32).
+/// The live [AdminBackend]: delegates to `advanced_client_core` over HTTP.
 ///
-/// This is the production wiring the admin bootstrap (step 33) installs: an
+/// This is the production wiring `lib/main.dart`'s bootstrap installs: an
 /// [AuthClient] against `advanced_auth_server` for login/logout/token storage,
 /// and an [AdminApiClient] (over the shared [AuthorizedHttp]) against the same
 /// auth server's `/admin/*` API. Both share one [JsonTransport], so the bearer

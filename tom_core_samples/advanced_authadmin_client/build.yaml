@@ -1,8 +1,8 @@
 # Reflection generator config. Seed the generator from one entry point
 # (lib/reflection_seed.dart) so the reflected graph is exactly what the admin
 # console binds: the advanced_todo_contracts DTOs and the TomForm subclasses
-# over them. The seed + forms are wired in steps 32–36 of the implementation
-# plan. Emits lib/reflection_seed.reflection.dart.
+# over them. The seed lists what lib/domain/ declares and lib/forms/ binds.
+# Emits lib/reflection_seed.reflection.dart.
 targets:
   $default:
     builders:

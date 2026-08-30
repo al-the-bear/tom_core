@@ -1,18 +1,19 @@
-/// Done-when for todo 9 (admin console): right after an admin sign-in the
-/// **admin-gated full bundle** is installed over the login bundle, so the
-/// post-login console chrome renders server-delivered texts; logout resets the
-/// provider to the login bundle.
+/// Resource bootstrap for the signed-in admin console: right after an admin
+/// sign-in the **admin-gated full bundle** is installed over the login bundle,
+/// so the post-login console chrome renders server-delivered texts; logout
+/// resets the provider to the login bundle.
 ///
 /// Socket-free — the full bundle is fetched through the backend seam against the
 /// seeded [InMemoryAdminBackend], whose canned console bundle mirrors what
-/// `advanced_auth_server` serves (D-A11). The proof is the resource provider's
+/// `advanced_auth_server` serves from `AuthResourceBundles.adminConsoleBundle()`.
+/// The proof is the resource provider's
 /// key-fallback behaviour applied to the **post-login** chrome:
 /// `adminConsole.title` (no grade counterpart, no form override) falls back to
 /// its raw key while only the login bundle is installed, and resolves to the
 /// server text once [AdminSession.login] installs the full bundle. The login
 /// chrome stays resolvable underneath (the merge keeps it), and logout drops the
 /// full keys back to fallback while restoring the login bundle. The login screen
-/// drives the reflected [AdminLoginForm] (todo 13), so the console's
+/// drives the reflected [AdminLoginForm], so the console's
 /// `initializeReflection()` runs once in [setUpAll].
 library;
 

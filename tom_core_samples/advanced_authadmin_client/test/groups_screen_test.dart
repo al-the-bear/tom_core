@@ -1,6 +1,6 @@
-/// Widget tests for the Groups destination (step 34): list, create, edit, and
-/// delete groups through the bound [GroupForm] plus the membership checklist,
-/// over the seeded in-memory backend.
+/// Widget tests for the Groups destination (`GroupsScreen`): list, create, edit,
+/// and delete groups through the bound [GroupForm] plus the membership
+/// checklist, over the seeded in-memory backend.
 ///
 /// Membership is the extra here: a group's members are a checklist over every
 /// account, so the tests assert the checklist pre-checks current members on edit

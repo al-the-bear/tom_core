@@ -1,5 +1,4 @@
-/// The Assignments destination: assign a role and/or a group to a user
-/// (step 36).
+/// The Assignments destination: assign a role and/or a group to a user.
 ///
 /// Unlike the Users/Roles/Groups destinations this destination does not edit an
 /// entity in place — it issues an [AssignmentRequest] (`POST /admin/assignments`)

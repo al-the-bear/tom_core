@@ -1,5 +1,5 @@
 /// The Groups destination: list groups and create/edit/delete them, editing
-/// membership as a checklist alongside the bound [GroupForm] (step 34).
+/// membership as a checklist alongside the bound [GroupForm].
 ///
 /// A configuration of [AdminCrudScreen] with one extra: a group's membership is
 /// a list of user ids, not a scalar field, so the editor pairs the form (which

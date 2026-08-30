@@ -1,4 +1,4 @@
-/// The admin console shell barrel (step 33): the [AdminSession] and the
+/// The admin console shell barrel: the [AdminSession] and the
 /// [AdminConsoleApp] root that swaps between the login and console screens on
 /// session state.
 ///

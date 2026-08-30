@@ -1,5 +1,5 @@
 /// The generic list-with-CRUD body the Users, Roles, and Groups destinations
-/// share (step 34).
+/// share.
 ///
 /// All three screens are the same shape — load a list, show loading / error /
 /// empty / rows, offer "New …", and let a row be edited or deleted — differing

@@ -1,5 +1,5 @@
 /// The admin console's signed-in session: who is logged in, the token pair, and
-/// the login-time `admin`-role probe (step 33).
+/// the login-time `admin`-role probe.
 ///
 /// A [ChangeNotifier] so the console shell ([AdminConsoleApp]) rebuilds between
 /// "signed out" and "signed in" as a pure function of [isLoggedIn] — navigation

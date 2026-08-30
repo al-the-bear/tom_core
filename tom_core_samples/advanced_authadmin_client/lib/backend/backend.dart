@@ -1,4 +1,4 @@
-/// The admin console's backend seam and its two implementations (step 32).
+/// The admin console's backend seam and its two implementations.
 ///
 /// Import this barrel to bind an admin screen against the transport-independent
 /// [AdminBackend]: the seeded [InMemoryAdminBackend] for offline use and widget

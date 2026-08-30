@@ -1,14 +1,13 @@
-/// Widget tests for the admin login + shell (step 33; login reflected in todo
-/// 13): the console's sign-in driving [AdminSession.login] through the seeded
-/// in-memory backend, and the shell it opens onto once an administrator is
-/// authenticated.
+/// Widget tests for the admin login + shell: the console's sign-in driving
+/// [AdminSession.login] through the seeded in-memory backend, and the shell it
+/// opens onto once an administrator is authenticated.
 ///
-/// Socket-free — the console runs over [InMemoryAdminBackend]. Since todo 13 the
-/// login is a bound `TomForm` ([AdminLoginForm]) over reflected credentials, so
-/// (like the app client's login test) the console's `initializeReflection()` runs
-/// once in [setUpAll]; the resource provider is installed per test. The contract
-/// is the step's done bar: an admin proceeds to the console shell; a signed-in
-/// non-admin is rejected at login with an access error and never leaves the page.
+/// Socket-free — the console runs over [InMemoryAdminBackend]. The login is a
+/// bound `TomForm` ([AdminLoginForm]) over reflected credentials, so (like the
+/// app client's login test) the console's `initializeReflection()` runs once in
+/// [setUpAll]; the resource provider is installed per test. The contract: an
+/// admin proceeds to the console shell; a signed-in non-admin is rejected at
+/// login with an access error and never leaves the page.
 library;
 
 import 'package:advanced_authadmin_client/app/admin_app.dart';
@@ -23,7 +22,7 @@ void main() {
   setUpAll(initializeReflection);
 
   setUp(() {
-    // The admin login chrome (title/intro/submit) is server-delivered (todo 8):
+    // The admin login chrome (title/intro/submit) is server-delivered:
     // install the same canned login bundle the in-memory backend serves so the
     // rendered texts match what the live auth server would deliver.
     TomTextResourceProvider.setAppResourceProvider(

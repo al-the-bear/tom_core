@@ -1,5 +1,5 @@
 /// A small reusable editor dialog the Users/Roles/Groups screens host their
-/// bound forms in (step 34).
+/// bound forms in.
 ///
 /// It owns the busy/error chrome so each entity screen only supplies the field
 /// widgets (and any extra controls, e.g. a group's membership checklist) and a

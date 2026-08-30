@@ -1,4 +1,4 @@
-/// The role editor — a `TomForm` bound to a [RoleDraft] (step 34).
+/// The role editor — a `TomForm` bound to a [RoleDraft].
 ///
 /// The role key is the stable identifier the grant matrix and `@TomRoleAccess`
 /// key on, so it is editable only on create; on edit it renders read-only and

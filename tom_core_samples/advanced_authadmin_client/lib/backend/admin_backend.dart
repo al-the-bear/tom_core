@@ -1,8 +1,8 @@
-/// The backend contract the admin console talks to, independent of transport
-/// (step 32).
+/// The backend contract the admin console talks to, independent of transport.
 ///
-/// Every admin screen (steps 33–36) is written against this seam, not a concrete
-/// backend, so the same widgets drive either the seeded [InMemoryAdminBackend]
+/// Every screen under `lib/screens/` is written against this seam, not a
+/// concrete backend, so the same widgets drive either the seeded
+/// [InMemoryAdminBackend]
 /// (the offline teaching default — and what the widget tests bind, never
 /// touching a socket) or the [LiveAdminBackend], which delegates to
 /// `advanced_client_core` over HTTP. Keeping the seam here is what makes the
@@ -94,7 +94,8 @@ abstract class AdminBackend {
   /// Login itself does not require the `admin` role (it is the public auth
   /// endpoint); the role gate is enforced on every administrative call below, so
   /// a signed-in non-admin is refused the moment they touch admin data. The
-  /// admin shell (step 33) uses that to reject a non-admin at the login screen.
+  /// admin shell's `AdminSession.login` uses that to reject a non-admin at the
+  /// login screen.
   ///
   /// A [LoginResult] with `requires2FA` set is **not** a session: the stored
   /// token is an interim challenge carrier, so the shell's `admin` probe must

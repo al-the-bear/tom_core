@@ -1,5 +1,5 @@
-/// Shared widget-test harness for the admin console's Users/Roles/Groups screens
-/// (step 34).
+/// Shared widget-test harness for the admin console's Users/Roles/Groups
+/// screens.
 ///
 /// The three CRUD test suites drive the *whole* console — pump it, sign in as the
 /// seeded administrator, switch destinations on the rail — so that boilerplate
@@ -14,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// Installs the canned public login bundle so the sign-in screen renders its
-/// server-delivered chrome (todo 8) — without it the submit button shows the raw
+/// server-delivered chrome — without it the submit button shows the raw
 /// `adminLogin.submit` key and the sign-in helper's `'Sign in'` finder misses.
 void installLoginBundle() {
   TomTextResourceProvider.setAppResourceProvider(

@@ -1,17 +1,16 @@
-/// Widget tests for the Grants destination (step 35): the `projectRole` ×
+/// Widget tests for the Grants destination (`GrantsScreen`): the `projectRole` ×
 /// field-resource-key grant matrix editor over the seeded in-memory backend.
 ///
 /// The matrix is the four-state authorization grid: each cell cycles
 /// `none → disabled → read → full` on tap, and Save writes the whole
-/// [GrantMatrixDto] back through `putGrants` then re-reads it. The contract here
-/// is the step's done bar: editing a cell and saving issues the expected matrix
-/// to the backend, and a reload reflects exactly what was persisted.
+/// [GrantMatrixDto] back through `putGrants` then re-reads it. The contract:
+/// editing a cell and saving issues the expected matrix to the backend, and a
+/// reload reflects exactly what was persisted.
 ///
 /// Socket-free, but driven through the same shared harness: sign in, then open
 /// the rail's Grants destination. The grants screen itself carries no `TomForm`,
-/// but signing in renders the reflected [AdminLoginForm] (todo 13), so the
-/// console's `initializeReflection()` runs once in [setUpAll] like the CRUD
-/// suites.
+/// but signing in renders the reflected [AdminLoginForm], so the console's
+/// `initializeReflection()` runs once in [setUpAll] like the CRUD suites.
 library;
 
 import 'package:advanced_authadmin_client/app/admin_app.dart';

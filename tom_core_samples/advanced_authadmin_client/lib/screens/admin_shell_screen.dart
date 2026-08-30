@@ -1,5 +1,5 @@
 /// The admin console shell: the signed-in frame that hosts the administrative
-/// destinations behind a [NavigationRail] (steps 33–34).
+/// destinations behind a [NavigationRail].
 ///
 /// Once an administrator is authenticated the [AdminConsoleApp] shows this
 /// shell. It owns the app bar (with sign-out, which clears the session and
