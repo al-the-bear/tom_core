@@ -1,8 +1,9 @@
-/// A component group: the unit of navigation in the showcase.
+/// A capability group: the unit of navigation in the ACL tour.
 ///
-/// Each group owns a title, a one-line summary, and a builder that produces
-/// the list of [ShowcaseCell]s for that family. The home screen lists every
-/// group; tapping one opens a [GroupScreen] that scrolls its cells.
+/// Each group owns a title, a one-line summary, and a builder that produces the
+/// list of [ShowcaseCell]s for that ACL capability. The home screen lists every
+/// group; tapping one opens a [GroupScreen] that scrolls its cells. Shared in
+/// shape with `core_flutter_ui_showcase` / `core_flutter_acl_responsive`.
 library;
 
 import 'package:flutter/material.dart';
@@ -10,7 +11,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'showcase_cell.dart';
 
-/// Describes one component family (buttons, labels, ACL, …).
+/// Describes one ACL capability (sizing, nesting, group visibility, …).
 class ShowcaseGroup {
   const ShowcaseGroup({
     required this.id,
@@ -23,7 +24,7 @@ class ShowcaseGroup {
   /// Stable identifier (used by tests and routing).
   final String id;
 
-  /// Display title, e.g. "Buttons".
+  /// Display title, e.g. "Reference constraints".
   final String title;
 
   /// One-line description shown on the home list tile.
