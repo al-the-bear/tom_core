@@ -19,7 +19,7 @@ void main() {
 
   setUp(() {
     TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(chromeTexts),
+      TomTextResourceProvider.from(showcaseTexts),
     );
   });
 

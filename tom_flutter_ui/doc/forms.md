@@ -156,6 +156,29 @@ the `errorKey`, so tests can assert the key without reconstructing params.
 `FormValidationError` represents a **cross-field** error (e.g. "end before
 start"); it carries the involved `TomField`s and exposes their ids via `tomIds`.
 
+### From key to sentence
+
+A validator never carries a message, only a key: the built-ins emit
+`error.required`, `error.minLength` (with `params: {'min': n}`), `error.email`,
+and `Validators.pattern` emits its `errorKey:` argument, defaulting to
+`error.format`. The field resolves that key against `<basePath>.<key>` first — so
+one field can override a message every other field shares — then the field's
+scope, then the bare `<key>`, and finally **returns the key itself** as a
+development indicator. Whatever level answers, the error's `params` are
+substituted into it by `ValidationError.interpolate`, so a template such as
+`Use at least {min} characters.` reaches the screen with the bound value in place
+of the placeholder.
+
+That last fallback is worth stating plainly, because it fails quietly: a key no
+bundle defines does not throw, log, or render blank — it paints as
+`error.invalidUrl`, which reads enough like a message to survive review and to
+satisfy any test that merely asserts an error appeared. An application that
+introduces its own `errorKey` should assert the resolved *sentence*, not the
+presence of an error;
+`core_flutter_acl_responsive/test/validation_message_test.dart` is the worked
+example, and it also sweeps the rendered tree for any `Text` still starting with
+`error.`.
+
 ## Selectable sources
 
 Selection fields (dropdowns, pickers, lookups, search) read their options from a

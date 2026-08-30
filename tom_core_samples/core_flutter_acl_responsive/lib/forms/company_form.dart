@@ -58,6 +58,13 @@ class CompanyForm extends TomForm<CompanyProfile> {
   );
 
   /// Tax ID — pattern-checked.
+  ///
+  /// The `errorKey` keeps the framework's `error.*` prefix (`Validators`
+  /// built-ins emit `error.required`, `error.minLength`, …) so a custom rule
+  /// lands in the same namespace and resolves through the same chain. Its
+  /// message lives in `companyValidationTexts`; the key on its own would render
+  /// as literal text, which is why `validation_message_test.dart` asserts the
+  /// sentence rather than the presence of an error.
   late final taxId = TomFormStringInput(
     'taxId',
     '',
@@ -65,7 +72,10 @@ class CompanyForm extends TomForm<CompanyProfile> {
     labelTextOverride: 'Tax ID',
     validators: [
       Validators.required(),
-      Validators.pattern(RegExp(r'^[A-Z0-9-]+$'), errorKey: 'taxIdFormat'),
+      Validators.pattern(
+        RegExp(r'^[A-Z0-9-]+$'),
+        errorKey: 'error.taxIdFormat',
+      ),
     ],
   );
 
@@ -81,7 +91,7 @@ class CompanyForm extends TomForm<CompanyProfile> {
           r'^https?:\/\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+'
           r'[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$',
         ),
-        errorKey: 'invalidUrl',
+        errorKey: 'error.invalidUrl',
       ),
     ],
     keyboardType: TextInputType.url,

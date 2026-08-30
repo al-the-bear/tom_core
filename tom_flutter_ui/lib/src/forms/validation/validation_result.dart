@@ -61,6 +61,26 @@ class ValidationError extends ValidationResult {
 
   const ValidationError(this.errorKey, {this.params});
 
+  /// Substitutes this error's [params] into a resolved message [template],
+  /// replacing each `{name}` placeholder with its value.
+  ///
+  /// This lives on the error rather than inside a resolver because *two*
+  /// resolvers need it — [TomField.resolvedErrorMessage] and the decoration
+  /// layer's `resolveFieldValidationMessage`, which is the one that actually
+  /// paints the message. While only the former interpolated, every
+  /// parameterised built-in (`minLength`, `maxLength`, `min`, `max`,
+  /// `minItems`, `maxItems`) rendered its template verbatim on screen — a
+  /// field would say "Use at least {min} characters." Keeping the substitution
+  /// with the data it substitutes is what stops the two paths drifting apart
+  /// again.
+  String interpolate(String template) {
+    final values = params;
+    if (values == null || values.isEmpty) return template;
+    var out = template;
+    values.forEach((key, value) => out = out.replaceAll('{$key}', '$value'));
+    return out;
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

@@ -118,7 +118,7 @@ a form's fields through kernel reflection — so reflection has to be registered
 void main() {
   initializeReflection();                       // from reflection_seed.dart
   TomTextResourceProvider.setAppResourceProvider(
-    TomTextResourceProvider.from(chromeTexts),  // interactive-chrome bundle
+    TomTextResourceProvider.from(showcaseTexts),  // chrome + validator messages
   );
   runApp(ResponsiveApp());
 }
@@ -175,13 +175,33 @@ are non-const. See the G-UI-2 clarification in
 **Which strings are hardcoded vs resources (G-RES-1).** The teaching content is a
 deliberate copy-paste exemption: group titles/summaries, the `code:` bodies, and
 the form field labels (resolved through `labelTextOverride`) stay inline so a
-reader can lift a snippet and run it. The showcase's own **application chrome** is
-not exempt — the home screen's app-bar title (`showcase.app.title`) and the code
-panel's copy-button tooltip (`showcase.codeBlock.copyTooltip`) are real on-screen
-text, so G-RES-1 applies and they resolve through the `chromeTexts` bundle that
-`main` installs (the widget tests install it in their `setUp`). The only string
-kept hardcoded outside the bundle is `MaterialApp.title` — OS-level app identity,
-not on-screen copy. See `lib/common/chrome_texts.dart`.
+reader can lift a snippet and run it. Two categories are *not* exempt, and
+`lib/common/chrome_texts.dart` holds one map for each:
+
+- **Application chrome** (`chromeTexts`) — the home screen's app-bar title
+  (`showcase.app.title`) and the code panel's copy-button tooltip
+  (`showcase.codeBlock.copyTooltip`). These are the showcase's own affordances,
+  not snippets, so G-RES-1 applies.
+- **Validator messages** (`companyValidationTexts`) — `error.required`,
+  `error.minLength`, `error.taxIdFormat`, `error.invalidUrl`.
+
+`showcaseTexts` is the union, and it is what `main` installs and what every
+widget test installs in its `setUp`. The only string kept hardcoded outside it is
+`MaterialApp.title` — OS-level app identity, not on-screen copy.
+
+**Validator messages are the category with teeth.** A validator never carries a
+sentence; it emits a key (`Validators.minLength(2)` emits `error.minLength` with
+`params: {'min': 2}`, and a `Validators.pattern` emits whatever `errorKey:` it
+was given — see `lib/forms/company_form.dart`). The field resolves that key
+through `<basePath>.<key>` → `<key>` → **the key itself**, that last step being a
+development indicator. So a key no bundle defines does not throw, log, or render
+blank: it paints as `error.invalidUrl`, which reads enough like a message to
+survive review, and passes any test that merely asserts an error appeared.
+`test/validation_message_test.dart` is what makes the claim falsifiable — it
+drives each validator to failure through the widget, asserts the *human sentence*
+by name, and sweeps the tree for any `Text` still starting with `error.`. Adding
+a validator whose `errorKey` is undefined is therefore a failing build rather
+than a silently ugly screen.
 
 ---
 
@@ -419,7 +439,7 @@ regenerating.
 
 ## 14. Tests
 
-Twenty-eight widget tests under `test/`, all green, runnable with `flutter test`
+Thirty-seven widget tests under `test/`, all green, runnable with `flutter test`
 (run serially — `--concurrency=1` — per the workspace convention):
 
 | File | Covers |
@@ -428,6 +448,7 @@ Twenty-eight widget tests under `test/`, all green, runnable with `flutter test`
 | `breakpoint_field_style_test.dart` | The badge row reports the exact tier values at 800 / 450 / 360 px (label placement, fonts, gaps, border, icon). |
 | `family_swap_test.dart` | Active family flips at 700px; seeds echo in the shared panel; an edit propagates; **state survives the swap**. |
 | `showcase_cell_test.dart` | The cell contract — both the snippet and the live child render, no group ships an empty snippet, and no snippet names an API the group's live code never calls (§15). |
+| `validation_message_test.dart` | Every `error.*` key `CompanyForm` can emit resolves to its human sentence, `{min}` is interpolated, and no `Text` in the form renders a raw resource key (§5). |
 
 The width-reactive demos are pumped inside a fixed-width `SizedBox` so the
 published width is pinned exactly, making the per-tier assertions deterministic —

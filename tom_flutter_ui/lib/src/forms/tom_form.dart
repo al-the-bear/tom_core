@@ -871,22 +871,10 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   String get resolvedErrorMessage {
     final state = validationState;
     if (state is! ValidationError) return '';
-    return _resolveErrorKey(state.errorKey, state.params);
-  }
-
-  String _resolveErrorKey(String key, Map<String, Object?>? params) {
-    final scoped = TomCtr.textOrNull(basePath, key);
-    if (scoped != null) return _applyParams(scoped, params);
-    final global = TomCtr.textOrNull(key);
-    if (global != null) return _applyParams(global, params);
-    return key;
-  }
-
-  static String _applyParams(String template, Map<String, Object?>? params) {
-    if (params == null || params.isEmpty) return template;
-    var out = template;
-    params.forEach((k, v) => out = out.replaceAll('{$k}', '$v'));
-    return out;
+    final template = TomCtr.textOrNull(basePath, state.errorKey) ??
+        TomCtr.textOrNull(state.errorKey) ??
+        state.errorKey;
+    return state.interpolate(template);
   }
 
   // --- Validation ---

@@ -94,6 +94,25 @@
 
 ### Fixed
 
+- **Every parameterised validation message reached the screen uninterpolated.**
+  Two resolvers had drifted: `TomField.resolvedErrorMessage` substituted a
+  `ValidationError`'s `params` into the resolved template, but
+  `resolveFieldValidationMessage` — the one the three decoration mixins actually
+  paint through — did not. So `minLength`, `maxLength`, `min`, `max`, `minItems`
+  and `maxItems` all rendered their template verbatim, and a field told the user
+  `Use at least {min} characters.` The substitution now lives on
+  `ValidationError.interpolate`, beside the `params` it substitutes, and both
+  resolvers call it; the duplicated private `_applyParams` is gone. The
+  divergence was found by a sample suite asserting the resolved sentence rather
+  than the presence of an error
+  (`core_flutter_acl_responsive/test/validation_message_test.dart`).
+- **`doc/forms.md` did not state how an error key becomes a sentence.** It said
+  validation messages were per-field resources and stopped there, so neither the
+  resolution chain nor its last step — returning *the key itself* as a
+  development indicator, which makes an undeclared key render as plausible text
+  rather than fail — was written down anywhere. A new *From key to sentence*
+  subsection states the chain, the interpolation, and why an application adding
+  its own `errorKey` must assert the resolved sentence.
 - **`lib/src/widgets/readme.md` listed five of the six base parameters.** It
   omitted `key`, and before that `uiStateController` as well, while the family
   base constructor took all six the whole time. The list is now a table naming

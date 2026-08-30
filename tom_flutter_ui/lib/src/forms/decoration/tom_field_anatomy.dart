@@ -131,6 +131,11 @@ bool fieldHasRequiredValidator(List<Object> validators) {
 ///   2. Form-scoped:   `scope.errorKey`
 ///   3. Global:        `errorKey`
 /// Falls through to the raw errorKey as a development indicator.
+///
+/// Whatever level resolves, the error's `params` are interpolated into it (see
+/// [ValidationError.interpolate]), so a template such as
+/// `Use at least {min} characters.` reaches the screen with the bound value
+/// substituted rather than the placeholder showing through.
 String? resolveFieldValidationMessage({
   required ValidationResult validationState,
   required String basePath,
@@ -138,10 +143,11 @@ String? resolveFieldValidationMessage({
 }) {
   if (validationState is! ValidationError) return null;
   final key = validationState.errorKey;
-  return TomCtr.textOrNull(basePath, key) ??
+  final template = TomCtr.textOrNull(basePath, key) ??
       TomCtr.textOrNull(scope, key) ??
       TomCtr.textOrNull(key) ??
       key;
+  return validationState.interpolate(template);
 }
 
 /// Text suffix for the required indicator in plain-text slots such as

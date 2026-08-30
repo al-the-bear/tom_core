@@ -23,7 +23,7 @@ void main() {
     // Mirror main(): install the chrome bundle so TomCtr.text resolves rather
     // than echoing the key back as a development indicator.
     TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(chromeTexts),
+      TomTextResourceProvider.from(showcaseTexts),
     );
   });
 
