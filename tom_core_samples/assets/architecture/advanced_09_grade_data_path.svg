@@ -22,8 +22,23 @@
       6. TomField.resolveEffectiveAuth() layer 4  [tom_form.dart:823]
          (authorizer.effectiveAuth(state))
       7. TomAuthState -> the field renders at its grade.
+    TWO KEY SPACES meet at step 5, and they are not one namespace:
+      item:<id>          addresses the RESOURCE — picks the principal's role
+                         (resourceRoles[itemKey]). Only ResourceRoleKeys writes
+                         this format; never hand-interpolate it.
+      todo.item.<field>  addresses the GRADED FIELD — a TomField basePath,
+                         picking the grade within that role's row
+                         (grades[basePath]).
+    Putting the dotted scope in front of the resource type — writing `todo.`
+    immediately before `item:` and the id — merges the two, and the merge fails
+    silently: the installed adapter gates any key containing ':'
+    [app_resource_role_adapter.dart], so the merged key resolves as a resource
+    key, matches no grant, and collapses the field to none. Closed-safe and
+    wrong, with nothing said. That is why this figure names both spaces: it is
+    the one place the path from a grant row to a rendered field crosses them
+    both. tool/check_resource_key_namespace.py gates the merged form tree-wide.
     The server re-resolves the same grade on WRITE (FieldGradeResolver in
-    AppWriteService) and rejects a changed field graded below full -- the client
+    AppWriteService) and rejects a changed field graded below full — the client
     grade is a UX convenience, the server write-check is the guarantee.
   -->
   <defs>
@@ -88,4 +103,12 @@
 
   <rect class="box render" x="120" y="452" width="520" height="42" rx="7"/>
   <text class="lbl" x="380" y="478" text-anchor="middle" font-weight="600">TomAuthState → the field renders at its grade</text>
+
+  <!-- Step 5 is where the two key spaces meet; drawing them merged is the
+       recurring error this legend exists to prevent. -->
+  <text class="side" x="120" y="518" font-weight="600">Two key spaces meet at step 5 — they are not one namespace:</text>
+  <text class="mono" x="120" y="536">item:&lt;id&gt;</text>
+  <text class="side" x="248" y="536">the resource — picks the role (resourceRoles[itemKey])</text>
+  <text class="mono" x="120" y="552">todo.item.&lt;field&gt;</text>
+  <text class="side" x="248" y="552">the graded field — picks the grade (grades[basePath])</text>
 </svg>

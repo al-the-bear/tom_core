@@ -175,6 +175,8 @@ package lives in that package's own `tool/`.
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds source comments that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
+| [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
+| [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
@@ -461,6 +463,49 @@ to say which column "the rest" belongs to. And the whole check is scoped to
 files mentioning `commenter` — a role only the advanced matrix has, which
 cleanly separates it from `core_client_sample`, whose own three-role matrix
 makes the identical sentence true.
+
+```bash
+python3 tool/check_resource_key_namespace.py                  # the whole repository
+python3 tool/check_resource_key_namespace.py tom_core_samples # one subtree
+```
+
+The advanced sample addresses things in two key spaces that meet at exactly one
+point: `item:<id>` names a **resource** and picks the principal's role, while
+`todo.item.<field>` is a `TomField` basePath and picks the grade within that
+role's row. Gluing the dotted scope to the front of the type merges them, and
+the merged form was printed in roughly fifteen places across the guides and in
+both representations of figure 09 — with doc 07 stating the rule those examples
+violate six lines above them.
+
+Nothing reported any of it, and nothing would: no compiler sees a string in
+prose, and the merged key is invisible even when *executed* — the adapter gates
+any key containing `:`, so it resolves as a resource key, matches no grant, and
+collapses the field to `none`. Closed-safe, so it fails as silence.
+
+The rule keys on the type segment rather than on "a dotted path before a colon",
+which would match every source citation in the tree (`tom_form.dart:823`). The
+four type names are read from `resource_keys.dart`, so a fifth resource type is
+covered by construction. Two narrowings separate the fault from a Dart `switch`
+label (`case AppResourceTypes.item:`, ten of them here): the scope segment must
+start lowercase, and the colon must be followed by something on the same line.
+
+```bash
+python3 tool/check_figure_wellformed.py                  # the whole repository
+python3 tool/check_figure_wellformed.py tom_core_samples # one subtree
+```
+
+SVG is an XML dialect, so a figure that is not well-formed does not render
+partially — it does not render at all. `advanced_09_grade_data_path.svg` spent
+four commits in that state: its description contained `--` inside an XML
+comment, which the specification forbids. Nothing compiled it, no test opened
+it, and no other checker parsed it; the two later commits that edited the very
+same comment left it there.
+
+It hides at the reading end too. A missing image looks like a bad path or a
+stale checkout, not like a file that is present, visually correct, and rejected
+over two characters in a comment nobody reads. Well-formedness is decidable, so
+the check is total for the fault it names — and it fires zero times on the nine
+figures today.
 
 ## License
 
