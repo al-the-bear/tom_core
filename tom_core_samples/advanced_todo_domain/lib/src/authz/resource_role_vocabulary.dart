@@ -25,13 +25,14 @@ import '../enums.dart';
 /// Registers the [ProjectRole] resource-role vocabulary in the framework's
 /// [TomResourceRoleRegistry].
 ///
-/// Idempotent: [TomResourceRoleRegistry.registerAll] overwrites, so calling it
-/// again at another runtime's boot re-establishes the same mapping. The runtimes
-/// that resolve a [ProjectRole] resource to a grade call this once at startup so
-/// the resource-role adapter resolves grades consistently on both tiers: the
-/// auth server, the app server, and the end-user app client. The administrator
-/// console does not grade `ProjectRole` resources (it edits users/roles/grants),
-/// so it does not register this vocabulary.
+/// Idempotent: [TomResourceRoleRegistry.registerAll] overwrites, so a second
+/// call — another runtime's boot, or a test's `setUp` — re-establishes the same
+/// mapping rather than conflicting. Every runtime that resolves a [ProjectRole]
+/// resource to a grade calls this once at startup, so the resource-role adapter
+/// grades a key the same way wherever it runs. That is four boots: the auth
+/// server, the app server, the ops server, and the end-user app client. The
+/// administrator console is the only runtime that does not call it, because it
+/// grades no `ProjectRole` resource — it edits users, roles and grants.
 void registerProjectRoleVocabulary() {
   TomResourceRoleRegistry.registerAll(<String, TomAuthState>{
     ProjectRole.owner.name: TomAuthState.full,

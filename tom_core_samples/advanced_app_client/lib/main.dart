@@ -67,7 +67,8 @@ Future<void> main() async {
   initializeReflection();
   // Establishes the shared ProjectRole → TomAuthState grade vocabulary the
   // framework's TomResourceRoleAdapter resolves resource keys through (C-5);
-  // every advanced_* runtime registers the identical mapping at boot.
+  // every runtime that grades a ProjectRole resource registers the identical
+  // mapping at boot — here, the auth server, the app server and the ops server.
   registerProjectRoleVocabulary();
   TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
   // The one file-picker registration every file field in the app opens. A real
