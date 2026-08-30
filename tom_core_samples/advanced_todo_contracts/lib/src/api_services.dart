@@ -26,9 +26,10 @@ import 'share_request.dart';
 
 /// Authentication surface of the auth server (`/auth/*`).
 ///
-/// `login`, `submitSecondFactor` and the login resources are public — together
-/// they are exactly the surface a caller reaches *before* it holds a token.
-/// Everything else requires a valid one.
+/// `login`, `submitSecondFactor`, the three enrolment passes and
+/// `loginResources` are public — together they are exactly the surface a caller
+/// reaches *before* it holds a session token. `refresh`, `logout` and `me`
+/// require a valid one.
 abstract class AuthApiService {
   /// `authLogin` — `POST /auth/login` (public). Exchanges credentials for the
   /// signed token pair and the resolved principal.

@@ -42,8 +42,15 @@ const TomRoleAccess adminAccess = TomRoleAccess([adminRole]);
 
 /// Authentication API (`/auth/*`) — credential exchange and session lifecycle.
 ///
-/// `authLogin` and `authLoginResources` are the two public endpoints (credential
-/// exchange and the pre-login texts); the rest require authentication.
+/// Everything a caller reaches *before* it holds a session token is public:
+/// `authLogin`, `authSecondFactor`, the three enrolment passes
+/// (`authBeginEnrolment`, `authConfirmEnrolment`, `authSkipEnrolment`) and
+/// `authLoginResources`. The session endpoints — `authRefresh`, `authLogout`
+/// and `authMe` — require an authenticated principal.
+///
+/// The mid-login four are the non-obvious ones: their caller *does* hold a
+/// token, just not one that authenticates anybody. Why that makes a bearer gate
+/// the wrong instrument is stated beside the endpoints themselves below.
 final TomApi authApi = TomApi(
   id: 'auth',
   name: 'Authentication API',
