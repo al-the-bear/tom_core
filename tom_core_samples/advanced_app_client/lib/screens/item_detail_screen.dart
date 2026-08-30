@@ -144,7 +144,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   /// adapter at login, RCC2), so there is no backend round-trip to await — this
   /// runs once from [initState], before the first build.
   void _resolveForm() {
-    final itemKey = '${ResourceRoleKeys.itemType}:${_item.id.get()}';
+    final itemKey = ResourceRoleKeys.item(_item.id.get());
     // The item's resource-level state, resolved through the framework registry:
     // the installed AppResourceRoleAdapter maps the principal's role on this item
     // to a TomAuthState via the TomResourceRoleRegistry (no role → none).

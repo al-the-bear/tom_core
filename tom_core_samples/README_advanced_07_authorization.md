@@ -149,12 +149,13 @@ containing `:`); any dotted path (`todo.item.title`, chrome) stays permissive
 (`full`), matching the pre-RCC2 no-adapter behaviour.
 
 When the item detail screen opens an item, `_resolveForm()` grades each gradable
-field **synchronously** (`advanced_app_client/lib/screens/item_detail_screen.dart:85-111`):
+field **synchronously** (`advanced_app_client/lib/screens/item_detail_screen.dart:146-171`):
 
 ```dart
-final resourceState = TomAuthorization.resolveAuth('todo.item:$id'); // ceiling via the registry
-final role = ProjectRole.values.asNameMap()[session.resourceRoles['todo.item:$id']];
-final grades = projectRoleFieldGrades[role];                          // shared-domain per-role row
+final itemKey = ResourceRoleKeys.item(_item.id.get());       // shared-domain builder
+final resourceState = TomAuthorization.resolveAuth(itemKey); // ceiling via the registry
+final role = ProjectRole.values.asNameMap()[session.resourceRoles[itemKey]];
+final grades = projectRoleFieldGrades[role];                 // shared-domain per-role row
 for (final field in form.gradableFields) {
   field.authorizer =
       TomAuthorizer.fixed(resourceState.narrow(grades[field.basePath] ?? TomAuthState.none));

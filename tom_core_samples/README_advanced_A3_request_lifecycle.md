@@ -198,7 +198,7 @@ role*:
    the folded map the result is `null` = **no access**.
 
 For our request the resolver returns `ProjectRole.viewer`, and `val`'s
-`resourceRoles` map carries `todo.item:<id> → viewer`. A resource the caller
+`resourceRoles` map carries `item:<id> → viewer`. A resource the caller
 cannot reach simply does not appear in the folded map (and a direct read of it is
 reported *missing* — **404**, not 403 — never leaking that it exists,
 [A1](README_advanced_A1_authorization_state_machine.md), closed-safe).
@@ -211,10 +211,10 @@ resource-level ceiling (resolved through the framework registry via the installe
 `AppResourceRoleAdapter`) and the shared per-role field-grade rows,
 `projectRoleFieldGrades[role]` — which live in the SHARED DOMAIN, not in the
 client. The item detail screen's `_resolveForm()` is fully **synchronous** (no
-backend round-trip, `advanced_app_client/lib/screens/item_detail_screen.dart:85-111`):
+backend round-trip, `advanced_app_client/lib/screens/item_detail_screen.dart:146-171`):
 
 ```dart
-final itemKey = 'todo.item:$id';                              // ResourceRoleKeys.itemType
+final itemKey = ResourceRoleKeys.item(_item.id.get());         // shared-domain builder
 final resourceState = TomAuthorization.resolveAuth(itemKey);   // ceiling via the registry
 final role = ProjectRole.values.asNameMap()[session.resourceRoles[itemKey]];
 final grades = projectRoleFieldGrades[role];                   // shared-domain per-role row
@@ -227,7 +227,7 @@ for (final field in form.gradableFields) {
 Three facts keep this closed-safe *and* keep the registry load-bearing:
 
 - **The ceiling comes through the registry.** `TomAuthorization.resolveAuth`
-  routes the `todo.item:<id>` key through the installed `AppResourceRoleAdapter`
+  routes the `item:<id>` key through the installed `AppResourceRoleAdapter`
   (`advanced_app_client/lib/app/app_resource_role_adapter.dart`); a key with no
   role resolves to `none`, so the item's fields collapse — closed-safe.
 - **The grades reuse the shared domain verbatim.** `projectRoleFieldGrades[role]`
@@ -236,7 +236,7 @@ Three facts keep this closed-safe *and* keep the registry load-bearing:
 - **The narrow reproduces the matrix.** Because every role's field grades sit at
   or below its resource ceiling, `resourceState.narrow(grades[basePath] ?? none)`
   reproduces the §A.4 matrix exactly; a missing grade or a missing role collapses
-  the field to `none` (`:85-111`).
+  the field to `none` (`:146-171`).
 
 **The server still computes per-field grades — but only to ENFORCE writes**
 (§"The write path", below), never as a read payload. For the `viewer` role the
@@ -279,14 +279,15 @@ only `<type>:<id>` resource keys (those containing `:`); any dotted path
 the pre-RCC2 no-adapter behaviour.
 
 When the item detail screen opens an item, `_resolveForm()`
-(`advanced_app_client/lib/screens/item_detail_screen.dart:85-111`) grades each
+(`advanced_app_client/lib/screens/item_detail_screen.dart:146-171`) grades each
 gradable field **synchronously** — resolving the item's resource ceiling through
 the registry and narrowing it by the shared `projectRoleFieldGrades[role]` row
 (§4):
 
 ```dart
-final resourceState = TomAuthorization.resolveAuth('todo.item:$id'); // via the installed adapter
-final grades = projectRoleFieldGrades[role];                          // shared-domain row
+final itemKey = ResourceRoleKeys.item(_item.id.get());       // shared-domain builder
+final resourceState = TomAuthorization.resolveAuth(itemKey); // via the installed adapter
+final grades = projectRoleFieldGrades[role];                 // shared-domain row
 for (final field in form.gradableFields) {
   field.authorizer =
       TomAuthorizer.fixed(resourceState.narrow(grades[field.basePath] ?? TomAuthState.none));
@@ -367,7 +368,7 @@ against sockets, not just on paper.
 - `advanced_client_core/lib/src/api/app_api_client.dart:229`,`:247` (`resourceRoles`);
   `advanced_app_client/lib/app/app_session.dart` (`_resourceRoles`);
   `advanced_app_client/lib/app/app_resource_role_adapter.dart`;
-  `advanced_app_client/lib/screens/item_detail_screen.dart:85-111`
+  `advanced_app_client/lib/screens/item_detail_screen.dart:146-171`
 - `run_cross_tier_integration.sh` (the same loop, executed live)
 - Companions: [06](README_advanced_06_authentication.md) ·
   [07](README_advanced_07_authorization.md) ·

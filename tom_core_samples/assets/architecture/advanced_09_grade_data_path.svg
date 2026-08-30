@@ -14,10 +14,11 @@
          app_resource_role_adapter.dart]
       5. item screen resolves the item's resource ceiling through the registry and
          narrows it by the shared per-role field grade:
-         resourceState = TomAuthorization.resolveAuth('todo.item:<id>')
+         itemKey = ResourceRoleKeys.item(id)   // shared-domain builder
+         resourceState = TomAuthorization.resolveAuth(itemKey)
          field.authorizer = TomAuthorizer.fixed(
              resourceState.narrow(projectRoleFieldGrades[role][basePath] ?? none))
-         [item_detail_screen.dart:85-111]
+         [item_detail_screen.dart:146-171]
       6. TomField.resolveEffectiveAuth() layer 4  [tom_form.dart:823]
          (authorizer.effectiveAuth(state))
       7. TomAuthState -> the field renders at its grade.
@@ -69,8 +70,8 @@
   <text class="mono" x="380" y="262" text-anchor="middle">AppSession installs AppResourceRoleAdapter → TomResourceRoleRegistry</text>
 
   <path class="flow" d="M380,278 L380,308"/>
-  <text class="side" x="390" y="298">resourceState = TomAuthorization.resolveAuth('todo.item:&lt;id&gt;')</text>
-  <text class="cite" x="630" y="298" text-anchor="end">item_detail_screen.dart:85-111</text>
+  <text class="side" x="390" y="298">resolve the item ceiling: ResourceRoleKeys.item(id)</text>
+  <text class="cite" x="630" y="298" text-anchor="end">item_detail_screen.dart:146-171</text>
 
   <rect class="box client" x="120" y="308" width="520" height="42" rx="7"/>
   <text class="mono" x="380" y="334" text-anchor="middle">field.authorizer = fixed(resourceState.narrow(fieldGrade ?? none))</text>

@@ -43,7 +43,7 @@ InMemoryResourceContainmentStore demoContainment() =>
 List<TomPrincipalResourceGrant> demoGrants() => [
       TomPrincipalResourceGrant(
         principalId: '$alice',
-        resourceKey: ResourceRoleKeys.workspace(1),
+        resourceKey: ResourceRoleKeys.workspace('1'),
         role: ProjectRole.owner.name,
       ),
     ];
@@ -55,7 +55,7 @@ List<TomPrincipalDelegation> demoShares() => [
         mode: TomDelegationMode.share.name,
         delegatorId: '$alice',
         delegateId: '$bob',
-        resourceKey: ResourceRoleKeys.project(1),
+        resourceKey: ResourceRoleKeys.project('1'),
         role: ProjectRole.editor.name,
       ),
     ];
@@ -97,7 +97,7 @@ void main() {
           store.delegations.firstWhere((d) => d.delegateId == '$carol');
       expect(saved.id, greaterThan(0)); // surrogate key assigned
       expect(saved.mode, TomDelegationMode.share.name);
-      expect(saved.resourceKey, ResourceRoleKeys.project(1));
+      expect(saved.resourceKey, ResourceRoleKeys.project('1'));
       expect(saved.role, ProjectRole.commenter.name);
       expect(saved.delegatorId, '$alice'); // the sharer is recorded as delegator
     });

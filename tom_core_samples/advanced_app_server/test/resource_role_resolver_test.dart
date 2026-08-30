@@ -46,7 +46,7 @@ InMemoryResourceContainmentStore demoContainment() =>
 List<TomPrincipalResourceGrant> demoGrants() => [
       TomPrincipalResourceGrant(
         principalId: '$alice',
-        resourceKey: ResourceRoleKeys.workspace(1),
+        resourceKey: ResourceRoleKeys.workspace('1'),
         role: ProjectRole.owner.name,
       ),
     ];
@@ -56,13 +56,13 @@ List<TomPrincipalDelegation> demoShares() => [
       shareDelegation(
         delegator: alice,
         delegate: bob,
-        resourceKey: ResourceRoleKeys.project(1),
+        resourceKey: ResourceRoleKeys.project('1'),
         role: ProjectRole.editor,
       ),
       shareDelegation(
         delegator: alice,
         delegate: carol,
-        resourceKey: ResourceRoleKeys.project(1),
+        resourceKey: ResourceRoleKeys.project('1'),
         role: ProjectRole.viewer,
       ),
     ];
@@ -183,7 +183,7 @@ void main() {
         shareDelegation(
           delegator: alice,
           delegate: dave,
-          resourceKey: ResourceRoleKeys.item(1),
+          resourceKey: ResourceRoleKeys.item('1'),
           role: ProjectRole.editor,
         ),
       ]);
@@ -215,13 +215,13 @@ void main() {
         shareDelegation(
           delegator: alice,
           delegate: dave,
-          resourceKey: ResourceRoleKeys.project(1),
+          resourceKey: ResourceRoleKeys.project('1'),
           role: ProjectRole.viewer,
         ),
         shareDelegation(
           delegator: alice,
           delegate: dave,
-          resourceKey: ResourceRoleKeys.item(1),
+          resourceKey: ResourceRoleKeys.item('1'),
           role: ProjectRole.editor,
         ),
       ]);
@@ -242,7 +242,7 @@ void main() {
           mode: TomDelegationMode.share.name,
           delegatorId: '$alice',
           delegateId: '$dave',
-          resourceKey: ResourceRoleKeys.project(1),
+          resourceKey: ResourceRoleKeys.project('1'),
           role: 'not-a-role',
         ),
       ]);

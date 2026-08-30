@@ -96,7 +96,7 @@ defaulting to `none`, so no single omission can leak an editable control:
 
 1. **Ungranted resource key.** The installed `AppResourceRoleAdapter` gates every
    `<type>:<id>` key through the framework registry; a key the principal holds no
-   grant on resolves to `none`, so `TomAuthorization.resolveAuth('todo.item:<id>')`
+   grant on resolves to `none`, so `TomAuthorization.resolveAuth('item:<id>')`
    returns `none` and the whole item's fields collapse. The kernel codec agrees —
    `TomAuthStateCodec.fromStored(null)` and `fromStored('bogus')` both return
    `none` (`tom_core_server/test/graded_authorization_test.dart:33`,`:37`).
@@ -107,7 +107,7 @@ defaulting to `none`, so no single omission can leak an editable control:
    whenever the principal holds no role on it — the item's fields collapse.
 3. **Client per-field narrow.** The item screen stamps each gradable field with
    `TomAuthorizer.fixed(resourceState.narrow(projectRoleFieldGrades[role][field.basePath] ?? TomAuthState.none))`
-   (`item_detail_screen.dart:85-111`): a field with no grade in the shared row
+   (`item_detail_screen.dart:146-171`): a field with no grade in the shared row
    falls to `none`, and the narrow keeps it at or below the resource ceiling.
 
 The same value at all three layers is what makes the lattice's "unknown =
@@ -127,9 +127,9 @@ grade a field renders at from the server's folded roles to a widget:
 2. GET /resource-roles → Map<String,String> over the wire, once at login;
 3. client installs AppResourceRoleAdapter(resourceRoles) as the global
    TomAuthorization adapter (over the TomResourceRoleRegistry);
-4. item_detail_screen.dart:85-111 — resourceState =
-   TomAuthorization.resolveAuth('todo.item:<id>') (ceiling via the registry),
-   role = resourceRoles['todo.item:<id>'], grades = projectRoleFieldGrades[role]
+4. item_detail_screen.dart:146-171 — itemKey = ResourceRoleKeys.item(id),
+   resourceState = TomAuthorization.resolveAuth(itemKey) (ceiling via the
+   registry), role = resourceRoles[itemKey], grades = projectRoleFieldGrades[role]
    (shared domain);
 5. field.authorizer = TomAuthorizer.fixed(resourceState.narrow(grades[basePath]
    ?? TomAuthState.none)) — per-field, closed-safe;
@@ -145,7 +145,7 @@ grade a field renders at from the server's folded roles to a widget:
 graph TB
   fold["server folds ownership grants + share delegations<br/>expanded down each containment subtree<br/>AppReadService.resourceRoles"] -- "GET /resource-roles" --> map["Map&lt;String,String&gt; resourceKey→roleName<br/>over the wire, once at login"]
   map --> adapter["client installs AppResourceRoleAdapter(resourceRoles)<br/>global TomAuthorization adapter over TomResourceRoleRegistry"]
-  adapter -- "item_detail_screen.dart:85-111" --> resolve["resourceState = TomAuthorization.resolveAuth('todo.item:&lt;id&gt;')<br/>role = resourceRoles[key] · grades = projectRoleFieldGrades[role]"]
+  adapter -- "item_detail_screen.dart:146-171" --> resolve["itemKey = ResourceRoleKeys.item(id)<br/>resourceState = TomAuthorization.resolveAuth(itemKey)<br/>role = resourceRoles[itemKey] · grades = projectRoleFieldGrades[role]"]
   resolve --> stamp["field.authorizer = TomAuthorizer.fixed(resourceState.narrow(grades[basePath] ?? none))<br/>per-field, closed-safe"]
   stamp -- "tom_form.dart:823" --> field["TomField.resolveEffectiveAuth() layer 4<br/>authorizer.effectiveAuth(state)"]
   field --> state["TomAuthState → the field renders at its grade"]
@@ -161,7 +161,7 @@ C-5 ownership grants and C-6 `share`-mode delegations through the framework
 grant down its containment subtree `item → list → project → workspace`: an `owner`
 grant on the workspace surfaces on every contained item, else the **strongest**
 covering share wins (`ProjectRole` is declared `owner, editor, commenter, viewer`
-— most-to-least privileged, so the lowest index is strongest, `enums.dart:75`),
+— most-to-least privileged, so the lowest index is strongest, `enums.dart:37`),
 else the key is absent (no access → closed/safe 404). That flat map is the only
 authorization payload the app read ships; the per-role field grades themselves
 live in the SHARED DOMAIN (`projectRoleFieldGrades`), so the client narrows the
@@ -179,10 +179,10 @@ The installed `AppResourceRoleAdapter` gates only `<type>:<id>` resource keys
 `todo.item.<field>` keys alike) stays permissive (`full`) — matching the pre-RCC2
 no-adapter behaviour for everything except the item's resource ceiling. The grade
 a gradable field renders at is the item's resource ceiling — layer 1
-(`TomAuthorization.resolveAuth('todo.item:<id>')`, resolved through the registry
-via the adapter) — **narrowed** by the shared `projectRoleFieldGrades[role]` row
-and stamped at **layer 4** by the per-field `TomAuthorizer.fixed` the item screen
-sets (`item_detail_screen.dart:85-111`). Two properties fall out:
+(`TomAuthorization.resolveAuth(ResourceRoleKeys.item(id))`, resolved through the
+registry via the adapter) — **narrowed** by the shared `projectRoleFieldGrades[role]`
+row and stamped at **layer 4** by the per-field `TomAuthorizer.fixed` the item
+screen sets (`item_detail_screen.dart:146-171`). Two properties fall out:
 
 | Path | Resolves to | Why |
 | --- | --- | --- |
@@ -206,7 +206,7 @@ Take one field — `assigneeId` (`todo.item.assigneeId`) — and trace its effec
 state for each role, using the seeded §A.4 field-grade rows (doc 07) and the
 resolution layers above. The item field carries one per-field authorizer (layer
 4) and no group or controller; the dotted `todo.item.assigneeId` path stays at
-the adapter's permissive default at layers 1 and 3 (only the `todo.item:<id>`
+the adapter's permissive default at layers 1 and 3 (only the `item:<id>`
 resource key is gated). The per-field authorizer holds
 `resourceState.narrow(grade)`, where `resourceState` is the item's ceiling and
 `grade` is `projectRoleFieldGrades[role][todo.item.assigneeId]`:

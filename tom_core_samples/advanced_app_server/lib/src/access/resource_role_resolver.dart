@@ -127,7 +127,7 @@ class ResourceRoleResolver {
     final chain = await _ancestry(resourceType, resourceId);
     ProjectRole? best;
     for (final ref in chain) {
-      final token = effective[ResourceRoleKeys.forResource(ref.type, ref.id)];
+      final token = effective[ResourceRoleKeys.forResource(ref.type, ref.id.toString())];
       if (token == null) continue;
       final role = _parseRole(token);
       if (best == null || role.index < best.index) best = role;

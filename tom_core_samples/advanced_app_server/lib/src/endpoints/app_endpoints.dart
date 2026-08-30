@@ -443,7 +443,7 @@ class AppReadService {
         .resolveEffectiveRoles(userId.toString(), DateTime.now());
     final roles = <String, ProjectRole>{};
     void put(String type, int id, ProjectRole role) {
-      final key = ResourceRoleKeys.forResource(type, id);
+      final key = ResourceRoleKeys.forResource(type, id.toString());
       final existing = roles[key];
       if (existing == null || role.index < existing.index) roles[key] = role;
     }
@@ -963,7 +963,7 @@ class AppWriteService {
     // resolver walks.
     await ownershipWriter.recordOwner(
       userId.toString(),
-      ResourceRoleKeys.project(saved.id!),
+      ResourceRoleKeys.project(saved.id!.toString()),
     );
     return projectFromRecord(saved);
   }
@@ -985,7 +985,7 @@ class AppWriteService {
     final saved = await store.saveWorkspace(record);
     await ownershipWriter.recordOwner(
       userId.toString(),
-      ResourceRoleKeys.workspace(saved.id!),
+      ResourceRoleKeys.workspace(saved.id!.toString()),
     );
     return workspaceFromRecord(saved);
   }
@@ -1055,7 +1055,7 @@ class AppWriteService {
     // owner grant so ownership is an explicit, resolvable resource role.
     await ownershipWriter.recordOwner(
       userId.toString(),
-      ResourceRoleKeys.item(saved.id!),
+      ResourceRoleKeys.item(saved.id!.toString()),
     );
     return itemFromRecord(saved);
   }
@@ -1344,7 +1344,8 @@ class AppShareService {
         delegatorId: userId.toString(),
         delegateId: granteeId.toString(),
         resourceKey:
-            ResourceRoleKeys.forResource(request.resourceType, resourceId),
+            ResourceRoleKeys.forResource(
+                request.resourceType, resourceId.toString()),
         role: request.projectRole,
       ),
     );

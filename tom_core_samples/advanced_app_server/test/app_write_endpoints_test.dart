@@ -111,7 +111,7 @@ ItemRecord demoItem() => ItemRecord()
 List<TomPrincipalResourceGrant> demoGrants() => [
       TomPrincipalResourceGrant(
         principalId: '$alice',
-        resourceKey: ResourceRoleKeys.workspace(1),
+        resourceKey: ResourceRoleKeys.workspace('1'),
         role: ProjectRole.owner.name,
       ),
     ];
@@ -135,7 +135,7 @@ TomPrincipalDelegation shareDelegation({
       mode: TomDelegationMode.share.name,
       delegatorId: '$alice',
       delegateId: '$delegate',
-      resourceKey: ResourceRoleKeys.project(1),
+      resourceKey: ResourceRoleKeys.project('1'),
       role: role.name,
     );
 
@@ -527,7 +527,7 @@ void main() {
       expect(owner.grants, hasLength(1));
       final grant = owner.grants.single;
       expect(grant.principalId, '$bob');
-      expect(grant.resourceKey, ResourceRoleKeys.item(int.parse(created.id.get())));
+      expect(grant.resourceKey, ResourceRoleKeys.item(created.id.get()));
       expect(grant.role, ProjectRole.owner.name);
     });
 
@@ -607,7 +607,7 @@ void main() {
       final grant = owner.grants.single;
       expect(grant.principalId, '$alice');
       expect(
-          grant.resourceKey, ResourceRoleKeys.project(int.parse(created.id.get())));
+          grant.resourceKey, ResourceRoleKeys.project(created.id.get()));
       expect(grant.role, ProjectRole.owner.name);
     });
 
@@ -662,7 +662,7 @@ void main() {
       final grant = owner.grants.single;
       expect(grant.principalId, '$dave');
       expect(grant.resourceKey,
-          ResourceRoleKeys.workspace(int.parse(created.id.get())));
+          ResourceRoleKeys.workspace(created.id.get()));
       expect(grant.role, ProjectRole.owner.name);
     });
   });

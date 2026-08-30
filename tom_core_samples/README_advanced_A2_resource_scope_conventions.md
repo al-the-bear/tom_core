@@ -157,7 +157,7 @@ describes (`advanced_app_server/assets/resources_app.json`):
 The nesting **is** the dotted key: `todo → item → title → label` *is*
 `todo.item.title.label`. The server loads the asset once and **flattens** it to
 the flat `<basePath>.<suffix>` map the wire bundle carries —
-`flattenResourceTree` (`advanced_todo_contracts/lib/src/resource_bundle_dto.dart:110`)
+`flattenResourceTree` (`advanced_todo_contracts/lib/src/resource_bundle_dto.dart:52`)
 walks the tree, joining each segment with `.`, descending only *map* nodes and
 terminating a key at the first non-map value (so a scalar leaf like
 `"board.title": "My Board"` flattens as written, `:112-124`). The flattened
@@ -184,7 +184,7 @@ contract pins.
 - `tom_flutter_ui/lib/src/forms/tom_form.dart:146` (form `basePath`), `:614-617` (field `basePath`), `:809` (auth lookup), `:855` (`resolvedLabel`)
 - `tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart` (`TomCtr._key`/`textOrNull`)
 - `advanced_app_client/lib/forms/todo_item_form.dart:39`,`:104`; `advanced_app_client/lib/screens/item_detail_screen.dart:161`
-- `advanced_todo_contracts/lib/src/resource_bundle_dto.dart:110` (`flattenResourceTree`); `advanced_app_server/assets/resources_app.json`
+- `advanced_todo_contracts/lib/src/resource_bundle_dto.dart:52` (`flattenResourceTree`); `advanced_app_server/assets/resources_app.json`
 - Companions [08](README_advanced_08_resources_texts.md) / [09](README_advanced_09_forms_ui.md)
 
 ---

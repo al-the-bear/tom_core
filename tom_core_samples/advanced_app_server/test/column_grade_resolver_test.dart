@@ -41,7 +41,7 @@ InMemoryResourceContainmentStore _containment() =>
 List<TomPrincipalResourceGrant> _ownerGrants() => [
       TomPrincipalResourceGrant(
         principalId: '$_alice',
-        resourceKey: ResourceRoleKeys.workspace(1),
+        resourceKey: ResourceRoleKeys.workspace('1'),
         role: ProjectRole.owner.name,
       ),
     ];
@@ -56,7 +56,7 @@ List<TomPrincipalDelegation> _shares() => [
           mode: TomDelegationMode.share.name,
           delegatorId: '$_alice',
           delegateId: '${share.$1}',
-          resourceKey: ResourceRoleKeys.project(1),
+          resourceKey: ResourceRoleKeys.project('1'),
           role: share.$2.name,
         ),
     ];

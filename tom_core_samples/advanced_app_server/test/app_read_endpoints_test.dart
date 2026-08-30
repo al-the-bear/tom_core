@@ -51,7 +51,7 @@ List<ItemRecord> demoItems() => [
 List<TomPrincipalResourceGrant> demoGrants() => [
       TomPrincipalResourceGrant(
         principalId: '$alice',
-        resourceKey: ResourceRoleKeys.workspace(1),
+        resourceKey: ResourceRoleKeys.workspace('1'),
         role: ProjectRole.owner.name,
       ),
     ];
@@ -63,14 +63,14 @@ List<TomPrincipalDelegation> demoShares() => [
         mode: TomDelegationMode.share.name,
         delegatorId: '$alice',
         delegateId: '$bob',
-        resourceKey: ResourceRoleKeys.project(1),
+        resourceKey: ResourceRoleKeys.project('1'),
         role: ProjectRole.editor.name,
       ),
       TomPrincipalDelegation(
         mode: TomDelegationMode.share.name,
         delegatorId: '$alice',
         delegateId: '$carol',
-        resourceKey: ResourceRoleKeys.project(1),
+        resourceKey: ResourceRoleKeys.project('1'),
         role: ProjectRole.viewer.name,
       ),
     ];
@@ -269,12 +269,12 @@ void main() {
   group('resourceRoles expands each grant down the containment subtree', () {
     test("the owner's workspace grant covers the whole tree", () async {
       expect(await service.resourceRoles(alice), {
-        ResourceRoleKeys.workspace(1): ProjectRole.owner.name,
-        ResourceRoleKeys.project(1): ProjectRole.owner.name,
-        ResourceRoleKeys.list(1): ProjectRole.owner.name,
-        ResourceRoleKeys.list(2): ProjectRole.owner.name,
-        ResourceRoleKeys.item(1): ProjectRole.owner.name,
-        ResourceRoleKeys.item(2): ProjectRole.owner.name,
+        ResourceRoleKeys.workspace('1'): ProjectRole.owner.name,
+        ResourceRoleKeys.project('1'): ProjectRole.owner.name,
+        ResourceRoleKeys.list('1'): ProjectRole.owner.name,
+        ResourceRoleKeys.list('2'): ProjectRole.owner.name,
+        ResourceRoleKeys.item('1'): ProjectRole.owner.name,
+        ResourceRoleKeys.item('2'): ProjectRole.owner.name,
       });
     });
 
@@ -283,22 +283,22 @@ void main() {
       // bob is shared `editor` on project 1 — his map covers the project and
       // its lists/items, but not the workspace (a share never flows up).
       expect(await service.resourceRoles(bob), {
-        ResourceRoleKeys.project(1): ProjectRole.editor.name,
-        ResourceRoleKeys.list(1): ProjectRole.editor.name,
-        ResourceRoleKeys.list(2): ProjectRole.editor.name,
-        ResourceRoleKeys.item(1): ProjectRole.editor.name,
-        ResourceRoleKeys.item(2): ProjectRole.editor.name,
+        ResourceRoleKeys.project('1'): ProjectRole.editor.name,
+        ResourceRoleKeys.list('1'): ProjectRole.editor.name,
+        ResourceRoleKeys.list('2'): ProjectRole.editor.name,
+        ResourceRoleKeys.item('1'): ProjectRole.editor.name,
+        ResourceRoleKeys.item('2'): ProjectRole.editor.name,
       });
     });
 
     test('the viewer grantee gets the viewer role over the project subtree',
         () async {
       expect(await service.resourceRoles(carol), {
-        ResourceRoleKeys.project(1): ProjectRole.viewer.name,
-        ResourceRoleKeys.list(1): ProjectRole.viewer.name,
-        ResourceRoleKeys.list(2): ProjectRole.viewer.name,
-        ResourceRoleKeys.item(1): ProjectRole.viewer.name,
-        ResourceRoleKeys.item(2): ProjectRole.viewer.name,
+        ResourceRoleKeys.project('1'): ProjectRole.viewer.name,
+        ResourceRoleKeys.list('1'): ProjectRole.viewer.name,
+        ResourceRoleKeys.list('2'): ProjectRole.viewer.name,
+        ResourceRoleKeys.item('1'): ProjectRole.viewer.name,
+        ResourceRoleKeys.item('2'): ProjectRole.viewer.name,
       });
     });
 

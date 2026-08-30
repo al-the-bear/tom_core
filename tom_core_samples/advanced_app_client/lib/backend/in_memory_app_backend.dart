@@ -1019,12 +1019,12 @@ class InMemoryAppBackend implements AppBackend {
     for (final project in _projects) {
       final role = _roleOnProject(project, principal);
       if (role == null) continue;
-      roles['${ResourceRoleKeys.projectType}:${project.id.get()}'] = role.name;
+      roles[ResourceRoleKeys.project(project.id.get())] = role.name;
       for (final list
           in _lists.where((l) => l.projectId.get() == project.id.get())) {
         for (final item
             in _items.where((i) => i.listId.get() == list.id.get())) {
-          roles['${ResourceRoleKeys.itemType}:${item.id.get()}'] = role.name;
+          roles[ResourceRoleKeys.item(item.id.get())] = role.name;
         }
       }
     }

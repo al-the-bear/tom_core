@@ -321,16 +321,16 @@ void main() {
 
   group('resource-role keys', () {
     test('builds <type>:<id> keys for each resource kind', () {
-      expect(ResourceRoleKeys.workspace(1), 'workspace:1');
-      expect(ResourceRoleKeys.project(7), 'project:7');
-      expect(ResourceRoleKeys.list(12), 'list:12');
-      expect(ResourceRoleKeys.item(34), 'item:34');
+      expect(ResourceRoleKeys.workspace('1'), 'workspace:1');
+      expect(ResourceRoleKeys.project('7'), 'project:7');
+      expect(ResourceRoleKeys.list('12'), 'list:12');
+      expect(ResourceRoleKeys.item('34'), 'item:34');
     });
 
     test('forResource composes the type token and id', () {
       expect(
-        ResourceRoleKeys.forResource(ResourceRoleKeys.projectType, 7),
-        ResourceRoleKeys.project(7),
+        ResourceRoleKeys.forResource(ResourceRoleKeys.projectType, '7'),
+        ResourceRoleKeys.project('7'),
       );
     });
   });

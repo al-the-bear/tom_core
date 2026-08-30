@@ -424,17 +424,17 @@ void main() {
         // entities carry, so `item:1`/`project:1` match the client's lookups.
         await c.auth.login(_aliceLogin);
         final aliceRoles = await c.app.resourceRoles();
-        expect(aliceRoles[ResourceRoleKeys.project(1)], ProjectRole.owner.name);
-        expect(aliceRoles[ResourceRoleKeys.item(1)], ProjectRole.owner.name);
+        expect(aliceRoles[ResourceRoleKeys.project('1')], ProjectRole.owner.name);
+        expect(aliceRoles[ResourceRoleKeys.item('1')], ProjectRole.owner.name);
 
         // bob holds only the seeded `editor` share on project 1 — no
         // ownership — so his map grades the project subtree `editor` and never
         // reaches the workspace (a share does not flow up).
         await c.auth.login(_bobLogin);
         final bobRoles = await c.app.resourceRoles();
-        expect(bobRoles[ResourceRoleKeys.project(1)], ProjectRole.editor.name);
-        expect(bobRoles[ResourceRoleKeys.item(1)], ProjectRole.editor.name);
-        expect(bobRoles.containsKey(ResourceRoleKeys.workspace(1)), isFalse);
+        expect(bobRoles[ResourceRoleKeys.project('1')], ProjectRole.editor.name);
+        expect(bobRoles[ResourceRoleKeys.item('1')], ProjectRole.editor.name);
+        expect(bobRoles.containsKey(ResourceRoleKeys.workspace('1')), isFalse);
       } on SocketException catch (e) {
         markTestSkipped(_skipMessage(e));
         return;

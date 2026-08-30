@@ -117,9 +117,9 @@ once at login (`GET /resource-roles`) and installed as the **global**
 (`app_session.dart`, `app_resource_role_adapter.dart`); logout resets it. The
 item detail screen then grades each gradable field **synchronously** — resolving
 the item's resource ceiling through the registry
-(`TomAuthorization.resolveAuth('todo.item:<id>')`) and narrowing it by the shared
-`projectRoleFieldGrades[role]` row, stamped as a per-field
-`TomAuthorizer.fixed(...)` (`item_detail_screen.dart:85-111`). This is the bridge
+(`TomAuthorization.resolveAuth(ResourceRoleKeys.item(id))`) and narrowing it by
+the shared `projectRoleFieldGrades[role]` row, stamped as a per-field
+`TomAuthorizer.fixed(...)` (`item_detail_screen.dart:146-171`). This is the bridge
 between "the principal holds `viewer` on this item" and "the widget renders its
 `title` read-only."
 
