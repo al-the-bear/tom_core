@@ -172,9 +172,10 @@ class InMemoryAdminBackend implements AdminBackend {
     'group.name.label': 'Name',
     'grants.title': 'Grant matrix',
     'grants.unsaved': 'Unsaved changes',
-    'grants.column.none': 'None',
-    'grants.column.read': 'Read',
-    'grants.column.full': 'Full',
+    // No `grants.column.*` wording here: the matrix cells label themselves from
+    // the framework's own state names (`global.tomauthstate.<name>`, seeded
+    // below), which is what keeps the matrix reading the same as every other
+    // place a `TomAuthState` is rendered.
     'grants.save': 'Save grants',
     'grants.empty': 'No grants to edit.',
     'grants.roleColumn': 'Role',

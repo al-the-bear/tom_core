@@ -112,7 +112,6 @@
   "grants": {
     "title": "Grant matrix",
     "unsaved": "Unsaved changes",
-    "column": { "none": "None", "read": "Read", "full": "Full" },
     "save": "Save grants",
     "empty": "No grants to edit.",
     "roleColumn": "Role"
