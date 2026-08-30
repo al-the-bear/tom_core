@@ -92,7 +92,7 @@ independent. The effort-estimate field:
 
 - binds the reflected entity member **`estimateHours`** — `bind`/`save`
   round-trips on the *member name*, so the value lands in `TodoItem.estimateHours`
-  (`todo_item_form.dart:85`, `TomFormNDoubleInput('estimate', …)`);
+  (`todo_item_form.dart:104`, `TomFormNDoubleInput('estimate', …)`);
 - carries `tomId` = **`estimate`**, so it self-addresses as `todo.item.estimate`
   — the graded/resourced key.
 
@@ -123,12 +123,12 @@ form declares:
   `LoginForm` gives `login.username`, `login.password`.
 - **Scoped.** The item editor **must** run under scope `todo` so its field paths
   equal the server's grade keys. The screen pushes the scope around the
-  constructor (`advanced_app_client/lib/screens/item_detail_screen.dart:88`):
+  constructor (`advanced_app_client/lib/screens/item_detail_screen.dart:161`):
   ```dart
   final form = TomScope.withScope('todo', TodoItemForm.new);
   ```
   `TodoItemForm` itself only declares `super(formId: 'item')`
-  (`todo_item_form.dart:38`); the `todo` scope comes from the **call site**, so
+  (`todo_item_form.dart:39`); the `todo` scope comes from the **call site**, so
   the field at `tomId: 'title'` lands at `todo.item.title`.
 
 > **This is the one place the "one name, two uses" rule can silently break.** If
@@ -183,7 +183,7 @@ contract pins.
 - The `scope`/`formId`/`tomId` convention (D-A1, D-A2): segments are plain string literals declared at use — `formId` in `super(formId: 'item')`, scope in `TomScope.withScope('todo', …)` — resolved by naming, not catalogued as constants (G-RES-2/6)
 - `tom_flutter_ui/lib/src/forms/tom_form.dart:146` (form `basePath`), `:614-617` (field `basePath`), `:809` (auth lookup), `:855` (`resolvedLabel`)
 - `tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart` (`TomCtr._key`/`textOrNull`)
-- `advanced_app_client/lib/forms/todo_item_form.dart:38`,`:85`; `advanced_app_client/lib/screens/item_detail_screen.dart:88`
+- `advanced_app_client/lib/forms/todo_item_form.dart:39`,`:104`; `advanced_app_client/lib/screens/item_detail_screen.dart:161`
 - `advanced_todo_contracts/lib/src/resource_bundle_dto.dart:110` (`flattenResourceTree`); `advanced_app_server/assets/resources_app.json`
 - Companions [08](README_advanced_08_resources_texts.md) / [09](README_advanced_09_forms_ui.md)
 

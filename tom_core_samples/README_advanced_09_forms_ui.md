@@ -95,7 +95,7 @@ Whether a form is "scoped" is decided **at construction**, by whether a
   `user.email`, …; `LoginForm` gives `login.username`, `login.password`.
 - **Scoped** — the item editor *must* run under scope `todo` so its field paths
   equal the server's grade keys (`todo.item.<field>`). The screen constructs it
-  inside a pushed scope (`item_detail_screen.dart:88`):
+  inside a pushed scope (`item_detail_screen.dart:161`):
   ```dart
   final form = TomScope.withScope('todo', TodoItemForm.new);
   ```
@@ -258,9 +258,9 @@ The sample's reactivity has two layers, both pull-based:
 
 - [`advanced_app_client/README.md`](advanced_app_client/README.md), [`advanced_authadmin_client/README.md`](advanced_authadmin_client/README.md)
 - `advanced_app_client/lib/forms/{login_form,todo_item_form}.dart`; `advanced_authadmin_client/lib/forms/{user_form,role_form,group_form}.dart`
-- `advanced_app_client/lib/screens/item_detail_screen.dart:88` (`TomScope.withScope`), `:181-188` (`field.widget` / `isEditable` gate)
+- `advanced_app_client/lib/screens/item_detail_screen.dart:161` (`TomScope.withScope`), `:181-188` (`field.widget` / `isEditable` gate)
 - `tom_flutter_ui/.../tom_form.dart:24` (`TomForm`), `:146` (form `basePath`), `:592`/`:614-617` (`TomField` / field `basePath`), `:196` (`bind`), `:315`/`:335` (`save`), `:838` (`isEditable`), `:1163` (`field.widget`)
-- `advanced_app_client/lib/forms/todo_item_form.dart:37` (`super(formId: 'item')`), `advanced_app_client/lib/screens/item_detail_screen.dart:89` (`TomScope.withScope('todo', …)`) — the `formId`/scope literals, declared at use (no key catalogue)
+- `advanced_app_client/lib/forms/todo_item_form.dart:39` (`super(formId: 'item')`), `advanced_app_client/lib/screens/item_detail_screen.dart:161` (`TomScope.withScope('todo', …)`) — the `formId`/scope literals, declared at use (no key catalogue)
 - Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 
 ---

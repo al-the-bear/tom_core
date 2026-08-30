@@ -74,8 +74,8 @@ is already "doing it the tom_core way":
 
 - [ ] **Use bound reflected forms** (`TomForm<T>`/`TomField<T>`); fields self-render via `field.widget`, `createFormElements` stays empty. → [09](README_advanced_09_forms_ui.md); sample `todo_item_form.dart`, `user_form.dart`.
 - [ ] **Unscoped: `formId` *is* the base path.** A plainly-constructed `LoginForm` (`formId: 'login'`) gives `login.username`. Use this for login + admin editors. → [A2](README_advanced_A2_resource_scope_conventions.md).
-- [ ] **Scoped: push the scope at the *call site*** to make field paths equal the server's grade keys — `TomScope.withScope('todo', TodoItemForm.new)`. Constructing the item form unscoped silently breaks every grade/text lookup (renders empty, no throw). → [A2](README_advanced_A2_resource_scope_conventions.md) D-RC17-b; sample `item_detail_screen.dart:88`.
-- [ ] **`bind`/`save` round-trip on the reflected *member* name**, independent of `tomId`. The one deliberate divergence (`estimate` tomId ↔ `estimateHours` member) proves the decoupling. → [A2](README_advanced_A2_resource_scope_conventions.md) D-A2; sample `todo_item_form.dart:85`.
+- [ ] **Scoped: push the scope at the *call site*** to make field paths equal the server's grade keys — `TomScope.withScope('todo', TodoItemForm.new)`. Constructing the item form unscoped silently breaks every grade/text lookup (renders empty, no throw). → [A2](README_advanced_A2_resource_scope_conventions.md) D-RC17-b; sample `item_detail_screen.dart:161`.
+- [ ] **`bind`/`save` round-trip on the reflected *member* name**, independent of `tomId`. The one deliberate divergence (`estimate` tomId ↔ `estimateHours` member) proves the decoupling. → [A2](README_advanced_A2_resource_scope_conventions.md) D-A2; sample `todo_item_form.dart:104`.
 - [ ] **Observe state with the two-layer model** — `ListenableBuilder` over a `ChangeNotifier` session, `TomObject` fields for in-form reactivity. → [09](README_advanced_09_forms_ui.md), [11](README_advanced_11_clients_app_admin.md).
 
 ## Persistence & migrations

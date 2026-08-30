@@ -126,10 +126,11 @@ void main() {
       // auth-server matrix, but it is a **column**, not a form field, and the
       // difference is a security boundary rather than bookkeeping:
       //
-      //  * the gradable field set is the list of JSON members the item write
-      //    path copies from a client payload. `attachment` holds a *blob key*
-      //    minted server-side by `saveFile`; a caller able to write it would
-      //    repoint their row at somebody else's bytes.
+      //  * the gradable field set is the list of form fields the item write
+      //    path will overlay from a client payload, each bound to its column
+      //    explicitly. `attachment` holds a *blob key* minted server-side by
+      //    `saveFile`; a caller able to write it would repoint their row at
+      //    somebody else's bytes.
       //  * the set is bundle-derived, and the write path looks every derived key
       //    up in its binding table with `!`. A `todo.item.attachment.label` text
       //    added to `resources_app.json` would therefore not merely widen the

@@ -172,7 +172,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     _form = form;
     _attachment = _buildAttachmentField(resourceState, role);
     // The checklist's own grade. Not a member of the field matrix — a subtask
-    // is a row of its own, not a JSON member of the item — so it is narrowed
+    // is a row of its own, not a field of the item form — so it is narrowed
     // here by the server's rule instead: `editor` and above may write
     // (`full`), everyone who can open the screen may look (`read`). Narrowing
     // through `resourceState` keeps the registry load-bearing here too: no role

@@ -20,9 +20,9 @@
 /// grants are exactly the graded item key set, and the matrix is fully
 /// populated — one row per ([ProjectRole], graded key) pair.
 ///
-/// The graded set is **not** the gradable *field* set alone. It is the fields a
-/// client sends in an item payload *plus* the authorized **columns** the file
-/// endpoint grades per row — currently [itemAttachmentGradeKey]. Both kinds are
+/// The graded set is **not** the gradable *field* set alone. It is the item's
+/// gradable **form fields** *plus* the authorized **columns** the file endpoint
+/// grades per row — currently [itemAttachmentGradeKey]. Both kinds are
 /// graded from this one table by the same four roles; they differ only in where
 /// the grade is enforced (the item write path's field overlay vs.
 /// `saveFile`/`openFile`). Splitting them here keeps that distinction visible

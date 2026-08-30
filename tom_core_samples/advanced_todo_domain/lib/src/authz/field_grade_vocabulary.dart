@@ -110,6 +110,15 @@ const Map<ProjectRole, Map<String, TomAuthState>> projectRoleFieldGrades = {
 /// The gradable item resource keys, in display order — the columns of
 /// [projectRoleFieldGrades] (the owner map carries the full set). The item
 /// screen and the backends resolve grades over exactly these keys.
+///
+/// They name the item form's **gradable fields**, addressed by scope + `tomId`
+/// (G-RES-6) — so a key names the *concept*, not the storage member and not the
+/// wire member. `todo.item.estimate` grades the entity's `estimateHours`, and no
+/// item payload carries a member called `estimate` at all; the wire sends
+/// `estimateHours` like the entity stores it. Nothing here matches by name: the
+/// server binds each key to its column explicitly (`_gradableItemBindings` in
+/// `app_endpoints.dart`), and the form reaches its field by `tomId` while
+/// `bind`/`save` round-trips by reflected member name.
 const List<String> gradableItemKeys = [
   'todo.item.title',
   'todo.item.status',
@@ -124,9 +133,8 @@ const List<String> gradableItemKeys = [
 /// column behind the slot `app_items/<id>/attachment`.
 ///
 /// Deliberately *not* a member of [gradableItemKeys], because it is not a form
-/// field. The keys in that list name JSON members a client sends back in an item
-/// payload; this one names a **blob-key column** which no client may ever write
-/// directly — the key is minted server-side by `saveFile`, and a caller able to
+/// field: it names a **blob-key column** which no client may ever write
+/// directly. The key is minted server-side by `saveFile`, and a caller able to
 /// write it would repoint their row at somebody else's bytes. Keeping it out of
 /// the gradable field set is what keeps it out of the item write path's
 /// overlay; it is graded on the *file endpoint* instead, where the only thing a
