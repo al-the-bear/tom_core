@@ -1,12 +1,13 @@
 /// The `min(user, server)` meet, as a test rather than as a comment.
 ///
-/// csexd4 built the deployment cap and csexd6 documented it. What neither could
-/// show is the arrangement that makes it *observable*: a principal that holds a
-/// grant, in a process that is not licensed for it, being refused — and the same
-/// principal, holding the same grant, being allowed the moment the cap is
-/// lifted. One of those halves alone proves nothing. A refusal without the
-/// second half is indistinguishable from a missing entitlement; a success
-/// without the first is indistinguishable from an absent cap.
+/// `ops_identity.dart` builds the deployment cap and `README.md` explains it
+/// under "Identity: the narrow cap". What neither can show is the arrangement
+/// that makes it *observable*: a principal that holds a grant, in a process that
+/// is not licensed for it, being refused — and the same principal, holding the
+/// same grant, being allowed the moment the cap is lifted. One of those halves
+/// alone proves nothing. A refusal without the second half is indistinguishable
+/// from a missing entitlement; a success without the first is indistinguishable
+/// from an absent cap.
 ///
 /// So every assertion here comes in pairs, and the *only* thing that changes
 /// between the two runs is [TomServerPrincipal]. That is the whole content of

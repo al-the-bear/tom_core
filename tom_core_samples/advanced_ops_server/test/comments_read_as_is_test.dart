@@ -22,10 +22,13 @@
 /// `tom_core_kernel/test/comments_read_as_is_test.dart` guards the same two
 /// habits over the kernel — including the three `codespecs_mapping.md` §5.26
 /// citations in `access_controls.dart` that this package's one was written
-/// alongside. The rule is duplicated rather than shared because a test cannot be
-/// imported
-/// across packages, and because the two packages disagree about scope: this one
-/// scans `bin/`, which the kernel does not have.
+/// alongside. It is a sibling rather than a shared rule because a test cannot be
+/// imported across packages, and the two have since diverged in two ways that
+/// are worth knowing about: this one scans `bin/`, which the kernel does not
+/// have, and it detects ids by [_identifier]'s *shape* rather than by a list of
+/// known quest prefixes. The prefix list is what let `csexd4` and `csexd6` — ids
+/// from the `webwork` quest — open this package's authorization suite while the
+/// guard reported it clean.
 library;
 
 import 'dart:io';
@@ -35,11 +38,11 @@ import 'package:test/test.dart';
 void main() {
   group('shipped artefacts read as-is', () {
     test('no comment points at a quest work item', () {
-      expect(_scan(_workItemPatterns), isEmpty, reason: _workItemReason);
+      expect(_scan(_citesAWorkItem), isEmpty, reason: _workItemReason);
     });
 
     test('no comment narrates what the code used to do', () {
-      expect(_scan(_narrationPatterns), isEmpty, reason: _narrationReason);
+      expect(_scan(_narratesHistory), isEmpty, reason: _narrationReason);
     });
   });
 }
@@ -48,14 +51,50 @@ void main() {
 // What counts as a violation
 // -----------------------------------------------------------------------------
 
-/// Quest todo ids (`tcinc991`, `tcincb2`) and bare section pointers.
+/// The shape a quest id has: a run of lowercase letters followed by digits,
+/// standing as a whole word — `tcinc991`, `csexd4`, `woneprpc12`.
 ///
-/// The bare-`§` case is the interesting one, because legitimate uses of the
-/// character have to survive it — see [_allowedSectionRefs].
-final _workItemPatterns = <RegExp>[
-  RegExp(r'\b(tcinc|tcincb|tcopen|tcca|tccc|tcser|tcdocc|tcscan)\d+\b'),
-  RegExp('§'),
-];
+/// Matching the *shape* and exempting the legitimate tokens is the wrong way
+/// round only until you count the two sets. Quest prefixes are minted ad hoc and
+/// there are dozens of them across the workspace's quests, so a gate that lists
+/// the ones it knows is permanently one prefix behind — and it fails silently,
+/// because an unknown prefix looks exactly like no citation at all. The tokens
+/// on the other side are names from published standards, a closed vocabulary
+/// that changes when a standards body acts rather than when somebody opens a
+/// todo. So the open set is matched and the closed one is enumerated, in
+/// [_knownTechnicalTokens].
+///
+/// The word boundaries are load-bearing: they keep the rule off camelCase, where
+/// a digit run is followed by more letters (`sha256Digest` does not match, the
+/// standalone `sha256` does).
+final _identifier = RegExp(r'\b[a-z]{2,10}\d+\b');
+
+/// Tokens of [_identifier]'s shape that name something a reader can look up.
+///
+/// Add to this list only for a name defined by a published standard — an
+/// encoding, a hash, a protocol version. An id minted for a work item never
+/// qualifies, which is the whole distinction the list exists to draw.
+const _knownTechnicalTokens = <String>{
+  'base32',
+  'base64',
+  'crc32',
+  'http2',
+  'http3',
+  'iso8601',
+  'md5',
+  'oauth2',
+  'pbkdf2',
+  'pkcs1',
+  'pkcs8',
+  'sha1',
+  'sha224',
+  'sha256',
+  'sha384',
+  'sha512',
+  'utf8',
+  'utf16',
+  'x509',
+};
 
 /// Phrasings that describe a previous state of the code rather than the rule.
 ///
@@ -131,8 +170,25 @@ bool _isExempt(String path) =>
 /// Extensions carrying prose a reader is expected to believe.
 const _scannedExtensions = ['.dart', '.md', '.sh'];
 
-/// Returns `'<path>:<line>: <text>'` for every line matching [patterns].
-List<String> _scan(List<RegExp> patterns) {
+/// True when [line] points at something only a quest document could resolve.
+///
+/// The two halves are judged separately on purpose. The section exemption is
+/// necessarily line-wide — it asks whether a document is named *near* the number
+/// — so folding the id check into it would let one valid citation excuse
+/// everything else on its line, which is the failure the exemption is supposed
+/// to prevent rather than cause.
+bool _citesAWorkItem(String line) =>
+    _identifier
+        .allMatches(line)
+        .any((m) => !_knownTechnicalTokens.contains(m[0])) ||
+    (line.contains('§') && !_allowedSectionRefs.any((p) => p.hasMatch(line)));
+
+/// True when [line] describes a previous state of the code.
+bool _narratesHistory(String line) =>
+    _narrationPatterns.any((p) => p.hasMatch(line));
+
+/// Returns `'<path>:<line>: <text>'` for every line [offends] rejects.
+List<String> _scan(bool Function(String line) offends) {
   final offenders = <String>[];
 
   for (final entity in _filesToScan()) {
@@ -142,10 +198,8 @@ List<String> _scan(List<RegExp> patterns) {
     final path = entity.path.replaceFirst(RegExp(r'^\./'), '');
     final lines = entity.readAsLinesSync();
     for (var i = 0; i < lines.length; i++) {
-      final line = lines[i];
-      if (!patterns.any((p) => p.hasMatch(line))) continue;
-      if (_allowedSectionRefs.any((p) => p.hasMatch(line))) continue;
-      offenders.add('$path:${i + 1}: ${line.trim()}');
+      if (!offends(lines[i])) continue;
+      offenders.add('$path:${i + 1}: ${lines[i].trim()}');
     }
   }
 
