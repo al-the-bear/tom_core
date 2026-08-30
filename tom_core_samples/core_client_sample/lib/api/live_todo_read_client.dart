@@ -4,11 +4,13 @@
 /// `core_server_sample` exposes a read-only surface — `GET /health`,
 /// `GET /todos`, and `GET /todos/field-states` — so this client demonstrates a
 /// genuine wire round-trip against the running backend without pretending the
-/// server has write/auth endpoints it does not. Writing over the wire is what
-/// the advanced full-stack suite demonstrates; it is a separate series, not a
-/// planned extension of this pair. The app's CRUD and login run through
-/// [InMemoryTodoApi]; this client is offered as a "refresh from the live
-/// server" action and is the honest live-tier seam.
+/// server has write/auth endpoints it does not. Staying read-only is a teaching
+/// choice, not an unfinished one — it keeps this pair small enough to read in
+/// one sitting. The live login/write loop is a separate series: the advanced
+/// full-stack suite, mapped by `README_advanced_sample.md`, which adds bearer
+/// tokens, write endpoints and per-principal field grading over the wire. The
+/// app's CRUD and login run through [InMemoryTodoApi]; this client is offered as
+/// a "refresh from the live server" action and is the honest live-tier seam.
 ///
 /// The wire shapes are the **reflection-first DTOs** (G-DTO): `/todos` a JSON
 /// array of [TodoItemDto], `/todos/field-states` a [TodoFieldMatrixDto]. The

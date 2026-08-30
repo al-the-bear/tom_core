@@ -5,9 +5,9 @@
 /// four-state field authorization. Each demo asserts its own deterministic
 /// result, so this file doubles as a headless smoke test: it reports a pass/fail
 /// tally and exits non-zero on any failure. The live HTTP boot + persistence
-/// round-trip against the bundled Docker MariaDB is documented in the README and
-/// gated on the workspace's Docker integration step (`readme_and_example_plan.md`
-/// item 28 — the final QA gate).
+/// round-trip against the bundled Docker MariaDB is built and verified, not
+/// pending: `README.md` §9 ("The live server boot") gives the
+/// `docker compose up` and the three `curl`s that exercise it.
 ///
 /// Run it with:
 ///

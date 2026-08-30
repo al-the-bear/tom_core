@@ -5,12 +5,11 @@
 /// [LiveTodoReadClient] is configured, the app-bar refresh pulls the same list
 /// from the running `core_server_sample` over HTTP — an honest live read that
 /// swaps the view to server data and labels it as such, without pretending the
-/// in-memory edits round-trip to the server — writing over the wire is what the
-/// advanced full-stack suite demonstrates.
+/// in-memory edits round-trip to the server. Writing over the wire is what the
+/// advanced full-stack suite demonstrates — see `README_advanced_sample.md`.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart' show TomObservableEnum;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'package:todo_domain/todo_domain.dart';
 

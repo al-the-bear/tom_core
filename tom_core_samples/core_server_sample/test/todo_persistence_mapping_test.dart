@@ -1,10 +1,10 @@
 /// Database-free unit tests for the persistence boundary: the domain ↔ record
 /// mapping is pure and total, so it verifies without a server or MariaDB.
 ///
-/// The live endpoint + persistence round-trip against Docker MariaDB is the
-/// final QA gate of `readme_and_example_plan.md` item 28; these tests cover
-/// everything that
-/// does not need a database.
+/// The live endpoint + persistence round-trip against Docker MariaDB is built
+/// and verified by booting the server and curling the endpoints
+/// (`README.md` §9); these tests cover everything that does not need a
+/// database.
 library;
 
 import 'package:core_server_sample/core_server_sample.dart';
