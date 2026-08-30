@@ -155,6 +155,7 @@ AclBuilder()
 AclBuilder()
     .append(demoBox('min 120', indigo)).setMSize(120)
     .append(demoBox('flex', cyan))
+    .append(demoBox('flex', green))
     .build();
 
 // Maximum — stops widening at 160px; the surplus flows to neighbours.
