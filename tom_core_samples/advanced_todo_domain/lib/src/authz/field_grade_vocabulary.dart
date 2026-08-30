@@ -46,9 +46,9 @@ import '../enums.dart';
 ///
 /// `owner` is fully editable; `editor` cannot reassign or edit the estimate
 /// (read); `commenter` cannot see `priority`/`estimate` (none); `viewer` can
-/// toggle nothing — `status` renders disabled while the rest are read-only. A
-/// field absent from a role's map (or a role absent here) resolves closed-safe to
-/// [TomAuthState.none].
+/// toggle nothing and cannot see the `estimate` (none) — `status` renders
+/// disabled and the remaining five are read-only. A field absent from a role's
+/// map (or a role absent here) resolves closed-safe to [TomAuthState.none].
 ///
 /// This is the **client's** copy, used to shape the item form without a round
 /// trip; the *authoritative* copy is the `tom_resource_grant` row the auth server

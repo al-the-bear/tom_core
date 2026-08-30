@@ -141,9 +141,10 @@ stamping the result on each gradable field of a `TodoItemForm`
 (`lib/forms/todo_item_form.dart`). The composition reproduces the four ACL states
 per role: `owner` edits every field; `editor` sees the assignee and estimate
 read-only; `commenter` loses priority/estimate entirely; `viewer` toggles
-nothing — the status control renders disabled while the rest are read-only. With
-no role the resource ceiling resolves to `TomAuthState.none` and every field
-collapses (the closed-safe default — the registry stays the load-bearing gate).
+nothing and loses the estimate — the status control renders disabled and the
+remaining five are read-only. With no role the resource ceiling resolves to
+`TomAuthState.none` and every field collapses (the closed-safe default — the
+registry stays the load-bearing gate).
 
 Save (keyed `item-save-button`) is offered only when at least one gradable field
 is editable; it runs the form's reflection round-trip (`save()` writes the typed

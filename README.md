@@ -174,6 +174,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds source comments that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
+| [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
@@ -425,6 +426,41 @@ tables of the same shape, and reading those as kind claims produced four false
 positives per real one when first measured. A symbol the repo does not declare
 is skipped rather than reported, since these documents name Flutter and Dart
 core types freely.
+
+```bash
+python3 tool/check_field_grade_matrix.py                  # the whole repository
+python3 tool/check_field_grade_matrix.py tom_core_samples # one subtree
+```
+
+The advanced sample's per-field grade matrix is its worked example of the
+four-state authorization model, so it is quoted far more often than a normal
+constant: three documents reproduce the whole 7×4 table and a dozen sentences
+paraphrase one of its columns. `grant_matrix_key_consistency_test.dart` already
+pins the *seed SQL* against the map, cell for cell — but nothing pinned the
+**documentation** copies, and that is exactly where the drift landed.
+
+The two questions it asks are different because the fault was asymmetric. All 84
+documented cells were correct; four separate sentences beneath them were not.
+Each said a `viewer` sees `status` disabled "while the rest are read-only", when
+the viewer's `estimate` is `none` — masked, not read-only. A reader who trusted
+the prose expected a greyed estimate on the item screen and would find nothing
+there, which is why this outranks a wording slip: `none` and `read` differ in
+what the user *sees*, not merely in what they may change.
+
+So tables are compared cell for cell, and remainder claims are checked
+separately. "The rest are read-only" is sound only when the named role has
+exactly one non-`read` cell; the advanced `viewer` has two, so the sentence is
+false however fluently it reads. The repaired form — "the remaining five are
+read-only" — is checked numerically against the column, which makes it
+self-checking: adding a field to the matrix breaks the count rather than
+silently widening the word "rest".
+
+Two restrictions keep it from crying wolf. A sentence must name exactly one
+role, because a summary walking all four in one breath gives no mechanical way
+to say which column "the rest" belongs to. And the whole check is scoped to
+files mentioning `commenter` — a role only the advanced matrix has, which
+cleanly separates it from `core_client_sample`, whose own three-role matrix
+makes the identical sentence true.
 
 ## License
 

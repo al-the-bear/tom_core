@@ -12,7 +12,8 @@
 /// as a fixed authorizer keyed by that same `basePath`. So the
 /// *same* form renders four ways (owner edits everything; editor cannot change
 /// the assignee or estimate; commenter cannot see priority or estimate; viewer
-/// toggles nothing and the status control renders disabled) without the form
+/// toggles nothing, cannot see the estimate, and the status control renders
+/// disabled) without the form
 /// holding any grade map of its own — a field's `tomId` and its wire key are the
 /// one origin, resolved at use from scope + formId + tomId.
 ///

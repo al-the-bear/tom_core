@@ -184,10 +184,11 @@ the authadmin client (`adminGetGrants` / `adminPutGrants`, carrying
 
 Reading the matrix: an `owner` edits everything; an `editor` can do likewise
 except `assigneeId` and `estimate` (read-only); a `commenter` reads most fields
-but cannot see `priority`/`estimate` (`none`); a `viewer` edits nothing — the
-`status` control renders `disabled` and the rest are read-only. Read down the
-columns and all four states appear, which is what makes this matrix the sample's
-worked example of the state machine rather than a two-state permission list.
+but cannot see `priority`/`estimate` (`none`); a `viewer` edits nothing and
+cannot see the `estimate` either (`none`) — the `status` control renders
+`disabled` and the remaining five are read-only. Read down the columns and all
+four states appear, which is what makes this matrix the sample's worked example
+of the state machine rather than a two-state permission list.
 
 The same values are declared in code as `projectRoleFieldGrades`
 (`advanced_todo_domain`) — the *client's* copy, used to shape the item form

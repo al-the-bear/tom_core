@@ -76,15 +76,16 @@ roles = 32 rows** (the seven form fields below plus the item's file column,
 | `priority` | full | full | **none** | read |
 | `assigneeId` | full | **read** | read | read |
 | `dueDate` | full | full | read | read |
-| `estimate` | full | **read** | **none** | none |
+| `estimate` | full | **read** | **none** | **none** |
 | `description` | full | full | read | read |
 
 The shape is intentional, and it is the one place all four `TomAuthState` values
 are visible at once: an *owner* edits everything; an *editor* edits all but the
 assignee and the estimate (`read`); a *commenter* reads most fields but cannot
-see `priority`/`estimate` (`none`); a *viewer* edits nothing — `status` renders
-as a `disabled` control and the rest are read-only. Several rows for one key
-fold to the **most permissive** grade (`widen`) via the framework's
+see `priority`/`estimate` (`none`); a *viewer* edits nothing and cannot see the
+`estimate` either (`none`) — `status` renders as a `disabled` control and the
+remaining five are read-only. Several rows for one key fold to the **most
+permissive** grade (`widen`) via the framework's
 `TomGradedAccessControlInformation.fromGrants` — the same projection the auth
 server's admin API uses, so the two tiers agree on grade semantics.
 

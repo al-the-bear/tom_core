@@ -190,7 +190,7 @@ void main() {
 
       // After: carol now sees the workspace and holds the viewer role on the
       // shared project and its items — the client narrows that into the viewer
-      // field matrix (status disabled, the rest read-only).
+      // field matrix (status disabled, estimate masked, the rest read-only).
       await loginAs('carol');
       expect((await backend.listWorkspaces()).map((w) => w.id.get()), ['w-1']);
       final roles = await backend.resourceRoles();
