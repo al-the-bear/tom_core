@@ -9,11 +9,11 @@
 ///  2. The [showcaseTexts] bundle is installed. The showcase's teaching snippets
 ///     resolve their field labels through `labelTextOverride` (no resource file
 ///     needed), but two categories are real application text and so fall under
-///     G-RES-1: the **interactive chrome** ([chromeTexts] — the code panel's
-///     copy-button tooltip) and the **validator messages**
-///     ([companyValidationTexts]). Installing the union before the first frame is
-///     what stops a validator's `error.*` key rendering as its own name; see
-///     `common/chrome_texts.dart` for the exemption boundary.
+///     G-RES-1: the showcase's own **interactive chrome** ([chromeTexts]) and the
+///     **validator messages** ([companyValidationTexts]). Installing the union
+///     before the first frame is what stops a validator's `error.*` key rendering
+///     as its own name; see `common/chrome_texts.dart` for the exemption boundary
+///     and for what each bundle carries.
 library;
 
 import 'package:flutter/material.dart';
