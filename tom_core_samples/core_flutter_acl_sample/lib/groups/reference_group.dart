@@ -32,8 +32,8 @@ final ShowcaseGroup referenceGroup = ShowcaseGroup(
         title: 'Linked width + left edge',
         note: 'Row 2 borrows the width and left edge of the row-1 anchors, so '
             'the two columns line up exactly.',
-        code: 'final anchorLabel = demoBox(...);\n'
-            'final anchorField = demoBox(...);\n'
+        code: "final anchorLabel = demoBox('Anchor label', deepOrange);\n"
+            "final anchorField = demoBox('Anchor field (wide)', blueGrey);\n"
             '\n'
             'AclBuilder()\n'
             '    .setAclDefaultRowVerticalAlignment(\n'
