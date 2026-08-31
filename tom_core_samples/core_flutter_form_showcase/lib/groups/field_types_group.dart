@@ -67,6 +67,7 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
           "  form: this,\n"
           "  source: productSource(),\n"
           "  labelTextOverride: 'Product',\n"
+          "  hintTextOverride: 'Type to search the catalogue…',\n"
           "  validators: [Validators.required()],\n"
           ")",
       child: FormHost<OrderItemForm>(
@@ -86,6 +87,7 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
           "  labelTextOverride: 'Description',\n"
           "  maxLength: 500,\n"
           "  maxLines: 4,\n"
+          "  validators: [Validators.maxLength(500)],\n"
           ")",
       child: FormHost<CompanyForm>(
         scopeId: 'ft_multiline',

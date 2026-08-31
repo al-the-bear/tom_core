@@ -383,6 +383,7 @@ its `elementProvider`:
 ```dart
 TomAclBuilder(id: 'company', elementProvider: form)
     .setAclExpandXDefault(true)
+    .setAclDefaultAppendGap(0)                 // default is 8; gaps stay explicit
     .append((p) => p.name.widget)
     .newRow()
     .append((p) => p.industry.widget)
@@ -429,6 +430,7 @@ side by side:
 ```dart
 TomAclBuilder(id: 'bp', elementProvider: form)
     .setAclExpandXDefault(true)
+    .setAclDefaultAppendGap(0)
     .append((p) => p.industry.widget)
     .addRowBreakpoint(atWidth: 400)
     .append((p) => p.taxId.widget, dist: 16)

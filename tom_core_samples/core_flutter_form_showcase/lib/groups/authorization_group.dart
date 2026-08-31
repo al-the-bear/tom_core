@@ -10,8 +10,14 @@
 ///
 /// Each cell renders one field of a single [AuthShowcaseForm], each pinned to a
 /// state with [TomAuthorizer.fixed], so the four renderings of the same field
-/// can be compared. In real apps the state flows from a resource provider or an
-/// action controller instead of being hard-pinned.
+/// can be compared. In real apps the state is not hard-pinned: resource-level
+/// state comes from `TomAuthorization.resolveAuth`, backed by whichever
+/// `TomAuthorizationAdapter` the application installs, and an authorizer's
+/// `strategy` decides how it combines with that — `authorizerNarrowsOnly` may
+/// only restrict it, while `authorizerDecides` overrides it, which is what
+/// [TomAuthorizer.fixed] uses. Installing no adapter, as this sample does,
+/// resolves every resource to [TomAuthState.full], which is why pinning alone
+/// can demonstrate all four states here.
 library;
 
 import 'package:flutter/material.dart';

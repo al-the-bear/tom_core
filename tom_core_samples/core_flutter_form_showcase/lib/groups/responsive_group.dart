@@ -49,6 +49,8 @@ final ShowcaseGroup responsiveGroup = ShowcaseGroup(
       title: 'Wide (520px) — side by side',
       note: 'Above the 400px breakpoint the two fields share one row.',
       code: "TomAclBuilder(id: 'bp', elementProvider: form)\n"
+          "    .setAclExpandXDefault(true)\n"
+          "    .setAclDefaultAppendGap(0)\n"
           "    .append((p) => p.industry.widget)\n"
           "    .addRowBreakpoint(atWidth: 400)\n"
           "    .append((p) => p.taxId.widget, dist: 16)\n"

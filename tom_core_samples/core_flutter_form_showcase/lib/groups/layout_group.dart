@@ -28,6 +28,7 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
       note: 'Every field on its own row — the default form rhythm.',
       code: "TomAclBuilder(id: 'basic', elementProvider: form)\n"
           "    .setAclExpandXDefault(true)\n"
+          "    .setAclDefaultAppendGap(0)\n"
           "    .append((p) => p.name.widget)\n"
           "    .newRow()\n"
           "    .append((p) => p.website.widget)\n"
@@ -54,6 +55,7 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
           'the width.',
       code: "TomAclBuilder(id: 'pair', elementProvider: form)\n"
           "    .setAclExpandXDefault(true)\n"
+          "    .setAclDefaultAppendGap(0)\n"
           "    .append((p) => p.industry.widget)\n"
           "    .append((p) => p.taxId.widget, dist: 16)\n"
           "    .build(context)",
@@ -78,6 +80,7 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
           'website, then a multi-line description.',
       code: "TomAclBuilder(id: 'company', elementProvider: form)\n"
           "    .setAclExpandXDefault(true)\n"
+          "    .setAclDefaultAppendGap(0)\n"
           "    .append((p) => p.name.widget)\n"
           "    .newRow()\n"
           "    .append((p) => p.industry.widget)\n"

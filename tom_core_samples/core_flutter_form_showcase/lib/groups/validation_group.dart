@@ -84,6 +84,7 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
           "  'quantity',\n"
           "  '1',\n"
           "  form: this,\n"
+          "  labelTextOverride: 'Qty',\n"
           "  autoValidate: true,\n"
           "  validators: [Validators.required(), positiveInteger],\n"
           ")",
