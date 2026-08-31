@@ -113,10 +113,14 @@ TomFilledButton(tonal: true, label: 'Continue', onPressed: () {})
 TomIconButton(icon: const Icon(Icons.favorite), tooltip: 'Favorite', onPressed: () {})
 ```
 
-### Labels & text — `groups/labels_group.dart`
+### Labels & images — `groups/labels_group.dart`
 
 `TomText`, `TomSelectableText`, `TomIcon`, `TomChip` and `TomBadge` — the
-read-only display widgets.
+read-only display widgets. The name spans two kit families on purpose:
+`TomText`, `TomSelectableText`, `TomChip` and `TomBadge` derive from
+`TomLabelBase` in `widgets/labels/`, while `TomIcon` derives from
+`TomImageBase` in `widgets/images/`. Its sibling there, `TomImage`, needs an
+asset to show anything and is left to the coverage note below.
 
 ```dart
 TomText(text: 'Heading', style: Theme.of(context).textTheme.titleLarge)
@@ -130,7 +134,7 @@ TomBadge(labelText: '5', child: TomIcon(icon: Icons.notifications))
 separate content.
 
 ```dart
-TomCard(elevation: 2, child: Padding(
+TomCard(elevation: 2, child: TomPadding(
   padding: const EdgeInsets.all(16),
   child: TomText(text: 'Card content'),
 ))
@@ -236,7 +240,7 @@ new group that throws at build time fails CI without any extra test wiring.
 
 | File | Guards |
 | --- | --- |
-| `test/showcase_smoke_test.dart` | Every group screen builds and pumps without throwing; the home screen lists every group |
+| `test/showcase_smoke_test.dart` | Every group screen builds and pumps without throwing; the home screen lists every group; every "### \<title\> — `groups/<file>.dart`" section above names a file that exists and declares that exact title |
 | `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet; no snippet names an identifier that exists nowhere in the file that renders it; no snippet quotes a construct and then omits what the child passes to it (arguments, ACL builder calls, or a `TomSizedBox` constraint) |
 
 ---

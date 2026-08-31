@@ -1,4 +1,9 @@
 /// Labels & images group — text, icons, chips and badges.
+///
+/// The "& images" is not a leftover: [TomIcon] is `widgets/images/`'s
+/// [TomImageBase], not a label, so the group genuinely spans both kit families
+/// even though it renders no picture. [TomImage], the other member of that
+/// family, needs an asset and is not shown here.
 library;
 
 import 'package:flutter/material.dart';
