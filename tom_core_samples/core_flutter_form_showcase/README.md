@@ -653,9 +653,9 @@ Adding a feature group is mechanical:
 The smoke test picks it up automatically. If the new group needs a new reflected
 form, annotate it `@tomReflector`, add it to `reflection_seed.dart`, and run
 `./reflection_generation.sh`. Keep each cell's `code` snippet in lock-step with
-its `child` by hand — the article wants curated snippets, and the cell test
-guarantees neither half is empty.
-```
+its `child` by hand — the article wants curated snippets. The cell test
+guarantees neither half is empty and rejects raw Flutter layout widgets in a
+snippet, but everything else about the match is on you.
 
 ---
 
