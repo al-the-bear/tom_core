@@ -2,11 +2,15 @@
 // teaching pair — the verbatim code snippet and the rendered child.
 //
 // The whole point of the showcase is that the source that produced a live form
-// is displayed beside it, so these tests make that contract enforceable. They
-// gate four things: both halves render; no group ships a cell with an empty
-// snippet; no snippet teaches a raw Flutter widget where the child uses the Tom
-// equivalent; and a snippet that quotes a configurable construct shows that
-// construct's whole configuration rather than a partial one.
+// is displayed beside it, so these tests make that contract enforceable: both
+// halves render, no group ships a cell with an empty snippet, and a snippet
+// that quotes a configurable construct shows that construct's whole
+// configuration rather than a partial one.
+//
+// The other machine-checkable part of "verbatim" — that a snippet names the Tom
+// widget the child actually builds — lives in `widget_convention_test.dart`,
+// beside the source-level half of the same rule and the one vocabulary both
+// share.
 
 import 'dart:io';
 
@@ -74,50 +78,6 @@ void main() {
       for (final cell in group.cells(capturedContext)) {
         expect(cell.code.trim(), isNotEmpty,
             reason: 'group ${group.id}: a cell has an empty code snippet');
-      }
-    }
-  });
-
-  testWidgets('no snippet teaches a raw Flutter widget over its Tom equivalent',
-      (tester) async {
-    // The sample lays out exclusively with Tom* widgets (G-UI-1), and every
-    // snippet is advertised as verbatim — so a snippet naming `Row` or
-    // `Expanded` is wrong twice: it does not match the child it claims to
-    // reproduce, and a reader who copies it is taught the very thing the
-    // surrounding code avoids.
-    //
-    // Naming the widget is the half of "verbatim" a machine can check by
-    // vocabulary alone; the test below checks the other machine-checkable half,
-    // that a quoted construct is fully configured.
-    final rawWidget = RegExp(
-      r'(?<![A-Za-z0-9_$.])'
-      r'(Row|Column|Expanded|Flexible|SizedBox|Padding|Card|Divider|InkWell'
-      r'|ListView|ListTile|Wrap|SingleChildScrollView|Stack|Positioned'
-      r'|DecoratedBox|Chip|Text|Icon|IconButton|SelectableText'
-      r'|ElevatedButton|FilledButton|OutlinedButton|TextButton)'
-      r'\s*\(',
-    );
-
-    late BuildContext capturedContext;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) {
-            capturedContext = context;
-            return const SizedBox.shrink();
-          },
-        ),
-      ),
-    );
-
-    for (final group in showcaseGroups) {
-      for (final cell in group.cells(capturedContext)) {
-        final hits =
-            rawWidget.allMatches(cell.code).map((m) => m.group(1)).toSet();
-        expect(hits, isEmpty,
-            reason: 'group "${group.id}", cell "${cell.title}": snippet uses '
-                'raw Flutter ${hits.join(", ")} instead of the Tom '
-                'equivalent(s)');
       }
     }
   });

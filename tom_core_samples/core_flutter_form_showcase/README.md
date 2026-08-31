@@ -539,8 +539,8 @@ TomColumn(
 Every layout primitive above is the Tom one, because that is the rule the sample
 follows everywhere (G-UI-1) — and because the snippet claims to be verbatim, so
 naming `Row` or `Expanded` here would both misdescribe the child and teach the
-opposite of what the code does. `showcase_cell_test.dart` enforces this across
-every cell in every group.
+opposite of what the code does. `widget_convention_test.dart` enforces this in
+every library file and across every cell in every group.
 
 The scroll view is part of the pattern: `TomInlineListForm` shrink-wraps its
 rows and gives them `NeverScrollableScrollPhysics`, so it always renders at its
@@ -608,6 +608,7 @@ lib/
 test/
   showcase_smoke_test.dart      # every group builds without exceptions
   showcase_cell_test.dart       # every cell shows both code and child
+  widget_convention_test.dart   # G-UI-1 holds in the source AND in the snippets
   list_form_host_test.dart      # the list-bearing groups really bind their items
 ```
 
@@ -641,23 +642,29 @@ results):
 flutter test --concurrency=1
 ```
 
-All three suites call `initializeReflection()` in `setUpAll`:
+All four suites call `initializeReflection()` in `setUpAll`:
 
 - **`showcase_smoke_test.dart`** — pumps each group and the home screen at a
   large size, asserting the group title renders and `takeException` is null.
 - **`showcase_cell_test.dart`** — asserts every cell shows both its code snippet
-  and its live child, that no cell's snippet is empty, that no snippet names a
-  raw Flutter layout widget where a Tom one exists, and that a snippet quoting a
-  configurable construct shows its whole configuration. The last two are the
-  machine-checkable halves of the "verbatim" promise: a snippet saying `Row`
-  cannot be reproducing a child built from `TomRow`, and a snippet that quotes
+  and its live child, that no cell's snippet is empty, and that a snippet
+  quoting a configurable construct shows its whole configuration. The last is
+  one machine-checkable half of the "verbatim" promise: a snippet that quotes
   `TomAclBuilder` or a list scaffold but drops a call the child makes would
   render differently if copied.
+- **`widget_convention_test.dart`** — enforces G-UI-1 on both surfaces a reader
+  learns from. No library file may build a raw Flutter widget that has a Tom
+  counterpart (`MaterialApp` is the sole exemption — there is no
+  `TomMaterialApp`, because Tom widgets live inside an app rather than replacing
+  its root), and no snippet may name one either. That second rule is the other
+  machine-checkable half of "verbatim": a snippet saying `Row` cannot be
+  reproducing a child built from `TomRow`. Both rules read one shared list of
+  widget names, which is what stops the two halves drifting apart.
 - **`list_form_host_test.dart`** — asserts the two list-bearing groups really
   bind their seeded items, which the smoke test cannot see (an unbound list form
   renders zero rows without throwing).
 
-Current status: `dart analyze` → *No issues found!*; `flutter test` → **15/15
+Current status: `dart analyze` → *No issues found!*; `flutter test` → **16/16
 green** (serial).
 
 ---
@@ -672,14 +679,17 @@ Adding a feature group is mechanical:
 
 The smoke test picks it up automatically. If the new group needs a new reflected
 form, annotate it `@tomReflector`, add it to `reflection_seed.dart`, and run
-`./reflection_generation.sh`. Keep each cell's `code` snippet in lock-step with
-its `child` by hand — the article wants curated snippets. The cell test gates
-what a machine can see: neither half empty, no raw Flutter layout widget in a
-snippet, and no under-configured quote of `TomAclBuilder` or a list scaffold. A
-snippet may still legitimately *abstract* — the theming cells stand in for the
-whole layout with `formLayout` — but the moment it names a construct, it owes
-that construct's full configuration, and everything the gates cannot see is
-still on you.
+Lay the group out with Tom widgets, not raw Flutter ones — `widget_convention_test.dart`
+will fail the build otherwise, and it reads your snippets too.
+
+Keep each cell's `code` snippet in lock-step with its `child` by hand — the
+article wants curated snippets. The tests gate what a machine can see: neither
+half empty, no raw Flutter layout widget in the source or in a snippet, and no
+under-configured quote of `TomAclBuilder` or a list scaffold. A snippet may
+still legitimately *abstract* — the theming cells stand in for the whole layout
+with `formLayout` — but the moment it names a construct, it owes that
+construct's full configuration, and everything the gates cannot see is still on
+you.
 
 ---
 
