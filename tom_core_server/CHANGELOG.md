@@ -1091,6 +1091,47 @@
 
 ### Fixed
 
+- **A `.env` file could not reach a `${VAR:default}` placeholder, so three
+  documents describing `core_server_sample` were describing something that did
+  not happen (tcinc1078).** `TomYaml.loadYamlFile` expanded placeholders from
+  `Platform.environment`, and Dart's process environment is read-only — so no
+  amount of reading a `.env` put its values where the expansion looked. Nothing
+  errored; the values were simply absent and every placeholder fell back to its
+  `:default`. The failure that surfaces from that is the confusing kind: the
+  sample's `.env` also drives its `docker-compose.yaml`, which *does* read it
+  natively, so editing `TODO_DB_PORT` moved the database while the server kept
+  dialling `3306`. The configuration keys behaved correctly throughout
+  (`TomBaseServerConfiguration` merges a `.env` itself), which is what made the
+  gap hard to see: the running server *reported* the `.env` values it was not
+  connecting with. The same silence covered the `env` overlay selector — a
+  `.env` saying `env=dev` selected the prod overlay.
+
+  `TomYaml.loadYamlFile` and `mergeInYamlFile` now take an optional
+  `environment` map, which **replaces** `Platform.environment` for the
+  substitution rather than layering over it, so a caller states exactly what a
+  file may see. `TomEnvFile.resolveEnvironment({path, processEnvironment})`
+  builds the usual map: the process environment with the `.env` layered on top,
+  stringified because an expansion is substituted as text. A key whose `.env`
+  value is empty is dropped rather than contributed as `''`, so it leaves any
+  process value standing instead of blanking it.
+
+  The `.env` winning over the OS environment is deliberate and matches
+  `getDefaultValues`, which already layered it that way for config keys — a boot
+  reads both, and the two disagreeing about the same file would be worse than
+  either rule. It is the **opposite** of Docker Compose, where the shell wins;
+  that divergence is now stated in `doc/cmdline.md`, `doc/configuration.md` and
+  the sample's `.env.example`, since the two commonly read one file.
+
+  Proving this needed a non-default `.env`: every value in the sample's
+  `.env.example` equals its own placeholder default, so a server ignoring the
+  file entirely reached the same database and passed. `tool/run_integration.sh`
+  now writes its own with `TODO_DB_PORT=3307` and `env=dev`, publishes MariaDB
+  on 3307 alone, and greps the boot log for the resolved environment — two
+  independent guards, each failing by name. (It refuses to overwrite an existing
+  `.env` and removes only one it wrote.) The boot's start-up line now names the
+  resolved environment as well as the port, which is what that second guard
+  reads and the first thing anyone asks when a server behaves like the wrong one.
+
 - **The transactions example demonstrated five of the module's seven documented
   behaviours, and checked none of them under its own command (tcinc646).** Two
   capabilities had no step at all — `hasTransactionScope`, and opening a

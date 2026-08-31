@@ -20,8 +20,18 @@ class TomYaml {
   /// variables.
   ///
   /// This is the class's only loader; [mergeInYamlFile] is one line over it.
-  /// Values are expanded from [Platform.environment] and support placeholders
-  /// like `${VAR_NAME}` or `${VAR_NAME:default}`.
+  /// Values are expanded from [environment] — [Platform.environment] when it is
+  /// omitted — and support placeholders like `${VAR_NAME}` or
+  /// `${VAR_NAME:default}`.
+  ///
+  /// Pass [environment] when the process environment is not the whole story.
+  /// The case this exists for is a `.env` file: `TomEnvFile.resolveEnvironment`
+  /// returns the OS environment with `./.env` layered on top, in the same order
+  /// `TomBaseServerConfiguration.getDefaultValues` uses, so a boot that resolves
+  /// it once and passes it here expands its YAML from the same variables its
+  /// configuration keys came from. Left to the default, a `.env` reaches the
+  /// configuration and *not* the placeholders — the datasource keeps the
+  /// `${VAR:default}` defaults while everything else follows the file.
   ///
   /// ## Example YAML with placeholders
   /// ```yaml
@@ -38,19 +48,23 @@ class TomYaml {
   /// or catch [PathNotFoundException] specifically — a bare `catch` would
   /// also swallow a syntax error in a file that *is* there and report it as
   /// absent.
-  static Map<String, Object?> loadYamlFile(String filename) {
+  static Map<String, Object?> loadYamlFile(
+    String filename, {
+    Map<String, String>? environment,
+  }) {
     var yamlText = File(filename).readAsStringSync();
     var yamlData = loadYaml(yamlText);
     var cleanMap = makeCleanJsonMap(yamlData);
-    substituteEnvVars(cleanMap, Platform.environment);
+    substituteEnvVars(cleanMap, environment ?? Platform.environment);
     return cleanMap;
   }
 
   /// Loads a YAML file with [loadYamlFile] and merges it into [result].
   ///
-  /// The load *is* [loadYamlFile] — same normalisation, same substitution,
-  /// same [PathNotFoundException] for an absent [filename]. See there for the
-  /// placeholder syntax and for what to do about an optional overlay.
+  /// The load *is* [loadYamlFile] — same normalisation, same substitution from
+  /// [environment], same [PathNotFoundException] for an absent [filename]. See
+  /// there for the placeholder syntax, for what [environment] is for, and for
+  /// what to do about an optional overlay.
   ///
   /// The merge is one-sided: keys from [filename] overwrite those already in
   /// [result], and keys only in [result] survive. Because the load is an
@@ -62,7 +76,11 @@ class TomYaml {
   /// `db` branch's other keys standing. That is what lets a per-environment
   /// file state only its differences instead of restating every sibling
   /// setting to avoid losing it.
-  static void mergeInYamlFile(Map<String, Object?> result, String filename) {
-    mergeMapsOneSided(result, loadYamlFile(filename));
+  static void mergeInYamlFile(
+    Map<String, Object?> result,
+    String filename, {
+    Map<String, String>? environment,
+  }) {
+    mergeMapsOneSided(result, loadYamlFile(filename, environment: environment));
   }
 }

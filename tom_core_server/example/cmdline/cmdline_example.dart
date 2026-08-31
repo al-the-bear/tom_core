@@ -2,8 +2,10 @@
 ///
 /// Demonstrates the codegen-free helpers: parsing `key=value` arguments into a
 /// typed map ([TomArgs.parseArgsToMap]), normalising an existing string map
-/// ([TomArgs.convertToObjectMap]), and parsing, reading and merging `.env`
-/// content ([TomEnvFile]).
+/// ([TomArgs.convertToObjectMap]), parsing, reading and merging `.env` content
+/// ([TomEnvFile]), and resolving the two into the environment that
+/// `${VAR:default}` placeholders expand from
+/// ([TomEnvFile.resolveEnvironment]).
 ///
 /// Two members are deliberately not shown, for two different reasons:
 ///
@@ -133,6 +135,36 @@ ENABLED=true
   check(
     merged['SERVER_PORT'] == 8080 && merged['SERVER_NAME'] == 'override',
     'a later source overrides an earlier one and leaves the rest alone',
+  );
+
+  // 8. Build the environment that `${VAR:default}` placeholders expand from:
+  //    the process environment with the `.env` layered on top. This is the map
+  //    to hand `TomYaml.loadYamlFile(..., environment:)`, and it is what makes
+  //    editing a `.env` move the datasource the server actually dials rather
+  //    than only the one Docker Compose starts.
+  //
+  //    Note the direction: the `.env` wins over the process environment, which
+  //    is the opposite of Docker Compose's precedence and the same as
+  //    `TomBaseServerConfiguration.getDefaultValues`. A boot reads both, so the
+  //    two halves of it agree.
+  final expansion = TomEnvFile.resolveEnvironment(
+    path: envFile.path,
+    processEnvironment: {'SERVER_PORT': '3306', 'HOME': '/home/deploy'},
+  );
+  print('8. expansion environment     : $expansion');
+  check(
+    expansion['SERVER_PORT'] == '8080',
+    'the .env value wins over the one already in the process environment',
+  );
+  check(
+    expansion['HOME'] == '/home/deploy',
+    'a process variable the .env says nothing about survives',
+  );
+  // Values arrive as text because that is what a placeholder expands to. Step
+  // 4 read the same key as the int 8080; here it is the string '8080'.
+  check(
+    expansion['ENABLED'] == 'true',
+    'values are stringified, because an expansion is substituted as text',
   );
 
   await dir.delete(recursive: true);

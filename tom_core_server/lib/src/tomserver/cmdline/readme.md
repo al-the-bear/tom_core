@@ -14,7 +14,7 @@ unquoted string, otherwise the raw `String`).
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomArgs` | Static namespace: `fillFromArgs<T>` populates a reflected object, `parseArgsToMap` returns a loose `Map`, `convertToObjectMap` normalises an existing string map (e.g. `Platform.environment`). |
-| `TomEnvFile` | Reads a `.env` file into a `Map<String, Object?>` via `read([path])` / `readAsync([path])`; supports comments, blank lines, quoted and inline-commented values. Missing file → empty map. |
+| `TomEnvFile` | Reads a `.env` file into a `Map<String, Object?>` via `read([path])` / `readAsync([path])`; supports comments, blank lines, quoted and inline-commented values. Missing file → empty map. `resolveEnvironment` returns the OS environment with the `.env` layered on top, stringified — the map to hand `TomYaml.loadYamlFile(..., environment:)` so `${VAR:default}` placeholders see the `.env`. |
 
 ## Quick start
 

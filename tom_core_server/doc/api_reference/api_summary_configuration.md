@@ -353,6 +353,12 @@ untyped, and `TomConfig<T>` casts rather than parses.
 `loadYamlFile` is the class's only loader; `mergeInYamlFile` is one line over
 it, so the two cannot disagree about how a file is read.
 
+The variables come from `Platform.environment` unless an `environment` map is
+passed. Since Dart's process environment is read-only, that parameter is the
+only way a `.env` file can reach a placeholder — pass
+`TomEnvFile.resolveEnvironment()`, which returns the OS environment with the
+`.env` layered over it.
+
 Both methods require the file to exist and throw `PathNotFoundException` when
 it does not — the opposite of `TomEnvFile.read`, which returns an empty map
 for an absent `.env`. There is no optional-load variant, so an optional
@@ -364,8 +370,8 @@ one.
 
 | Method | Signature | Description | Throws |
 | ------ | --------- | ----------- | ------ |
-| `loadYamlFile` | `static Map<String, Object?> loadYamlFile(String filename)` | Loads a YAML file and returns it as a map with environment-variable substitution. | `PathNotFoundException` if `filename` is absent |
-| `mergeInYamlFile` | `static void mergeInYamlFile(Map<String, Object?> result, String filename)` | Loads a YAML file with `loadYamlFile` and merges it one-sided into `result`. The load is an argument to the merge, so it completes first and a throw leaves `result` untouched. The merge recurses into subtrees, so the overwrite is per leaf: a file naming `db.host` alone leaves the `db` branch's other keys standing. | `PathNotFoundException` if `filename` is absent |
+| `loadYamlFile` | `static Map<String, Object?> loadYamlFile(String filename, {Map<String, String>? environment})` | Loads a YAML file and returns it as a map with environment-variable substitution. `environment` supplies the variables; omitted, it is `Platform.environment`. | `PathNotFoundException` if `filename` is absent |
+| `mergeInYamlFile` | `static void mergeInYamlFile(Map<String, Object?> result, String filename, {Map<String, String>? environment})` | Loads a YAML file with `loadYamlFile` and merges it one-sided into `result`, passing `environment` through. The load is an argument to the merge, so it completes first and a throw leaves `result` untouched. The merge recurses into subtrees, so the overwrite is per leaf: a file naming `db.host` alone leaves the `db` branch's other keys standing. | `PathNotFoundException` if `filename` is absent |
 
 ## Global Functions and Constants
 

@@ -195,7 +195,7 @@ surface documented here.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomArgs` | class | CLI argument parsing/conversion (static). |
-| `TomEnvFile` | class | `.env` file loading (static). |
+| `TomEnvFile` | class | `.env` file loading, and resolving it with the OS environment into the map `${VAR:default}` expansion reads (static). |
 
 ### Configuration (`lib/src/tomserver/configuration/`)
 

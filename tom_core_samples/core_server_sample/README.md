@@ -269,7 +269,7 @@ core_server_sample/
 │   ├── config-resources_default.yaml
 │   └── config-resources_dev.yaml
 ├── docker-compose.yaml                  # bundled MariaDB
-├── .env.example                         # copy to .env
+├── .env.example                         # copy to .env; read by compose and the boot
 ├── build.yaml                           # reflection generate_for: bin/server_start.dart
 └── reflection_generation.sh
 ```
@@ -343,7 +343,21 @@ endpoints need. In order, `main()`:
 5. Initialises the bean context (`initializeBeanContext`), which instantiates
    the `@tomComponent` endpoint server.
 6. Runs migrations: `TomDbMigrations.migrateDatabases(...)`.
-7. Starts HTTP: `TomServer(config).start()`.
+7. Starts HTTP: `TomServer(config).start()`, then logs the port **and the
+   resolved environment** — which overlay won is decided by a `.env` that is not
+   visible in the process list, so it is worth naming where anyone will see it.
+
+Underneath steps 2 and 4 sits one piece of wiring that is easy to miss and
+breaks quietly when it is absent: the file-level
+
+```dart
+final Map<String, String> _environment = TomEnvFile.resolveEnvironment();
+```
+
+is the package-root `.env` layered over the OS environment, and it is passed to
+every `TomYaml.loadYamlFile` call in the boot and read for the `env` overlay
+selector. It has to be explicit because Dart's process environment is read-only
+— see [§10](#10-datasources-and-configuration).
 
 The JWT / auth-server / worker-pool machinery `tom_uam_server` also wires is
 intentionally omitted — the endpoints are `@TomPublicAccess`, so none of it is
@@ -442,7 +456,29 @@ store (`TomResourceGrant`). Rather than duplicate the connection block it
 tables and the `tom_resource_grant` grants.
 
 Copy `.env.example` to `.env` and adjust. It feeds both `docker-compose.yaml`
-and the runtime datasource loader.
+and the running server — but by two different routes, and the second one is
+wiring the boot has to do explicitly.
+
+Compose reads a `.env` beside it natively. The server cannot: Dart's
+`Platform.environment` is read-only, so nothing a program reads out of a `.env`
+can be put where `TomYaml`'s default `${VAR:default}` expansion looks. The boot
+therefore resolves the file itself, once:
+
+```dart
+final Map<String, String> _environment = TomEnvFile.resolveEnvironment();
+```
+
+and hands that map to every `TomYaml.loadYamlFile(..., environment: …)` call, as
+well as reading the `env` overlay selector out of it. Without that argument the
+substitution would silently fall back to the process environment: the database
+would move with the `.env` (Compose having read it) while the server kept
+dialling `${TODO_DB_PORT:3306}`, and `env=dev` would select the prod overlay.
+
+`resolveEnvironment` layers the `.env` **over** the OS environment, matching how
+`TomBaseServerConfiguration` merges it into the configuration keys — so the two
+halves of the boot agree about the file. Compose resolves the opposite way
+(shell wins), so a variable set in both your shell and the `.env` is the one case
+where the server and the container will disagree.
 
 ---
 
@@ -523,6 +559,26 @@ server, waits for `/health`, and only then runs the suite — so a skip at that
 point means the stack died mid-run, and the runner reports it as a failure. It
 finishes by running the database-free suites and the example, so one command and
 one exit code cover the whole package.
+
+### The runner writes its own `.env`, deliberately not the default one
+
+Every value in `.env.example` equals its own `${VAR:default}`, which is
+convenient and makes the file useless as a test: a server ignoring the `.env`
+entirely would reach the same database and pass. So the runner writes a `.env`
+with two **non-default** values — `TODO_DB_PORT=3307` and `env=dev` — and then
+requires the run to depend on both:
+
+- Compose publishes MariaDB on 3307 and nothing listens on 3306, so a server
+  that expanded `${TODO_DB_PORT:3306}` from the process environment cannot reach
+  a database at all; every persistence endpoint fails.
+- The boot logs the environment it resolved, and the runner greps the log for
+  `environment: dev`. That is the second route the `.env` travels — the overlay
+  selector rather than a placeholder — and it fails independently, so reverting
+  either half of the wiring is caught by name rather than by a puzzling
+  connection error.
+
+The runner refuses to overwrite an existing `.env` and removes only a file it
+wrote itself, so running it does not disturb a `.env` you are working with.
 
 ---
 

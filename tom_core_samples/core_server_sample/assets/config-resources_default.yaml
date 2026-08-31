@@ -1,5 +1,9 @@
 # Base server configuration. Environment overlays (config-resources_dev.yaml,
-# _int.yaml, _prod.yaml) merge on top; OS env, .env, and CLI args win last.
+# _int.yaml, _prod.yaml) merge on top; OS env, .env, and CLI args win last —
+# that layering is TomBaseServerConfiguration.getDefaultValues, and it applies
+# to the keys. A ${VAR} placeholder *inside* one of these files is separate: it
+# expands while the file is read, from the map bin/server_start.dart hands to
+# TomYaml.loadYamlFile as `environment:`.
 app:
   title: "Tom Core — Todo API"
 # Single isolate keeps the sample readable (UAM defaults to a worker pool).

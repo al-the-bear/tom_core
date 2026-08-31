@@ -781,6 +781,94 @@ void main() {
       await f.writeAsString('LOADED=yes\n');
       expect(TomEnvFile.load(f.path)['LOADED'], 'yes');
     });
+
+    test('resolveEnvironment lets the .env file win over the process', () async {
+      // The precedence question this method exists to answer, and the one that
+      // could reasonably have gone the other way: Docker Compose lets the shell
+      // win over `.env`. This layering follows TomBaseServerConfiguration
+      // .getDefaultValues instead -- OS environment, then `.env` -- so one file
+      // means the same thing whether it is read as a config key or expanded
+      // into a ${VAR} placeholder.
+      final f = File('${dir.path}/.env');
+      await f.writeAsString('SHARED=fromFile\nONLY_IN_FILE=yes\n');
+      final env = TomEnvFile.resolveEnvironment(
+        path: f.path,
+        processEnvironment: <String, String>{
+          'SHARED': 'fromProcess',
+          'ONLY_IN_PROCESS': 'kept',
+        },
+      );
+      expect(env['SHARED'], 'fromFile');
+      expect(env['ONLY_IN_FILE'], 'yes');
+      // Both directions, because "layered on top" is a claim about each: the
+      // file overwrites what it names and leaves what it does not.
+      expect(env['ONLY_IN_PROCESS'], 'kept');
+    });
+
+    test('resolveEnvironment stringifies the values read typed', () async {
+      // read() converts, but substituteEnvVars takes Map<String, String> and
+      // writes its expansion back into the tree as text anyway -- so the typing
+      // is undone here rather than lost somewhere downstream. A port written as
+      // 3307 must arrive as '3307' and not blow up on the covariant cast that
+      // Map<String, Object?> would have allowed.
+      final f = File('${dir.path}/.env');
+      await f.writeAsString('PORT=3307\nDEBUG=true\nRATE=1.5\n');
+      final env = TomEnvFile.resolveEnvironment(
+        path: f.path,
+        processEnvironment: const <String, String>{},
+      );
+      expect(env['PORT'], '3307');
+      expect(env['DEBUG'], 'true');
+      expect(env['RATE'], '1.5');
+    });
+
+    test('resolveEnvironment drops a key whose .env value is empty', () async {
+      // read() maps an empty value to null, which cannot be stringified into a
+      // Map<String, String> without inventing something. Dropping is the honest
+      // choice *and* the equivalent one: substituteEnvVars treats a present-
+      // but-empty value exactly as an absent one, so `${EMPTY:fallback}`
+      // resolves to the fallback either way. What the drop does change is that
+      // a process-environment value of the same name is no longer shadowed by
+      // a blank line in the file.
+      final f = File('${dir.path}/.env');
+      await f.writeAsString('EMPTY=\nKEPT=x\n');
+      final env = TomEnvFile.resolveEnvironment(
+        path: f.path,
+        processEnvironment: <String, String>{'EMPTY': 'fromProcess'},
+      );
+      expect(env.containsKey('EMPTY'), isTrue);
+      expect(env['EMPTY'], 'fromProcess');
+      expect(env['KEPT'], 'x');
+    });
+
+    test('resolveEnvironment returns the process environment unchanged '
+        'when there is no .env', () async {
+      // The default path for anyone who has not copied .env.example: absent
+      // file, nothing contributed, no behaviour change. read() returning {}
+      // rather than throwing is what makes this a no-op instead of a guard the
+      // caller has to write.
+      final process = <String, String>{'A': '1', 'B': '2'};
+      expect(
+        TomEnvFile.resolveEnvironment(
+          path: '${dir.path}/.env.absent',
+          processEnvironment: process,
+        ),
+        equals(process),
+      );
+    });
+
+    test('resolveEnvironment defaults to the real process environment', () async {
+      // The no-argument call is the one every boot makes, and it must see the
+      // OS environment rather than an empty map -- otherwise a ${VAR} that used
+      // to resolve from an exported variable would silently fall back to its
+      // default the moment a boot started resolving .env.
+      final path = Platform.environment['PATH'];
+      expect(path, isNotNull, reason: 'PATH must be set for this test');
+      expect(
+        TomEnvFile.resolveEnvironment(path: '${dir.path}/.env.absent')['PATH'],
+        path,
+      );
+    });
   });
 
   group('The example runs green', () {

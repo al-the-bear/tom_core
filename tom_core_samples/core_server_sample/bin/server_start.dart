@@ -13,9 +13,13 @@
 /// paths resolve against the CWD):
 ///
 /// ```sh
+/// cp .env.example .env
 /// docker compose up -d db
 /// dart run bin/server_start.dart
 /// ```
+///
+/// The `.env` is read by this boot as well as by Docker Compose — see
+/// [_environment] — so the two halves of that workflow cannot drift apart.
 ///
 /// This file is also the reflection-generation root (`build.yaml`): the
 /// generator follows its import graph to discover every `@tomReflector`
@@ -44,6 +48,23 @@ import 'server_start.reflection.dart';
 /// HTTP port the sample binds (overridable via the `port` config key / env /
 /// `--port=`).
 const int _defaultPort = 8080;
+
+/// The variables this boot expands `${VAR:default}` placeholders from and reads
+/// the `env` overlay selector out of: the process environment with the
+/// package-root `.env` layered on top.
+///
+/// Resolving it explicitly is what makes the documented workflow — `cp
+/// .env.example .env`, edit, `docker compose up -d db`, run — actually work.
+/// `TomBaseServerConfiguration` merges `.env` into the *configuration* keys on
+/// its own, but `TomYaml` expands placeholders from `Platform.environment`
+/// unless it is given something else, and `TomRuntime` is told which
+/// environment to select by this file. So without this the `.env` moved the
+/// database (Docker Compose reads it directly) while the server kept dialling
+/// the `${TODO_DB_PORT:3306}` default, and `env=dev` selected the prod overlay.
+///
+/// Read once at first use rather than per call, so every consumer below sees
+/// one consistent snapshot even if the file changes under a running server.
+final Map<String, String> _environment = TomEnvFile.resolveEnvironment();
 
 /// The sample server configuration.
 ///
@@ -84,18 +105,19 @@ const TomEnvironment environmentDev = TomEnvironment(
 );
 
 /// Registers the environment hierarchy and resolves the current environment
-/// from the `env` variable (defaults to `prod`).
+/// from the `env` variable in [_environment] (defaults to `prod`).
 void initializeRuntime() {
   TomRuntime.addEnvironment(environmentProd);
   TomRuntime.addEnvironment(environmentDev);
   TomRuntime.setRootEnvironment(environmentProd);
-  TomRuntime.setCurrentEnvironment(Platform.environment['env'], 'prod');
+  TomRuntime.setCurrentEnvironment(_environment['env'], 'prod');
   TomRuntime.getCurrentEnvironment().initialize();
   TomRuntime.initializePlatform();
 }
 
 /// Loads `assets/config-resources_default.yaml` plus the active environment
-/// overlay (`_<env>.yaml`), env/`.env`/args win on top inside the base config.
+/// overlay (`_<env>.yaml`); OS env, `.env` and args win on top of the result
+/// inside the base config (`TomBaseServerConfiguration.getDefaultValues`).
 Map<String, dynamic> configLoaderFunction() {
   final result = <String, dynamic>{};
   _mergeYamlIfPresent(result, 'assets/config-resources_default.yaml');
@@ -105,7 +127,8 @@ Map<String, dynamic> configLoaderFunction() {
   return result;
 }
 
-/// Loads `assets/datasources_default.yaml` (with `${VAR:default}` substitution).
+/// Loads `assets/datasources_default.yaml` (with `${VAR:default}` substitution
+/// against [_environment], so the connection follows `.env`).
 Map<String, dynamic> datasourceLoaderFunction() {
   final result = <String, dynamic>{};
   _mergeYamlIfPresent(result, 'assets/datasources_default.yaml');
@@ -114,7 +137,10 @@ Map<String, dynamic> datasourceLoaderFunction() {
 
 void _mergeYamlIfPresent(Map<String, dynamic> into, String path) {
   if (!File(path).existsSync()) return;
-  mergeMapsOneSided(into, TomYaml.loadYamlFile(path));
+  mergeMapsOneSided(
+    into,
+    TomYaml.loadYamlFile(path, environment: _environment),
+  );
 }
 
 /// Installs the config-resource provider so the configuration can read the
@@ -152,5 +178,11 @@ Future<void> main(List<String> args) async {
 
   startServer(configuration);
 
-  tomLog.info('Todo API server started on port ${configuration.port}.');
+  // Names the resolved environment as well as the port: which overlay won is
+  // the first thing anyone asks when a server behaves like the wrong one, and
+  // it is decided by a `.env` the operator cannot see from the process list.
+  tomLog.info(
+    'Todo API server started on port ${configuration.port} '
+    '(environment: ${TomRuntime.getCurrentEnvironment().env}).',
+  );
 }

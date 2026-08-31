@@ -17,7 +17,7 @@ resolve individual keys — obligatory (throws when absent) or with a default.
 | `TomConfig<T>` | Resolves one key to `T`; `TomConfig(key)` is obligatory, `TomConfig.withDefault(key, value)` falls back. `get()` / `~config` read the value. |
 | `TomStringConfig` · `TomIntConfig` · `TomDoubleConfig` · `TomBoolConfig` | Typed specialisations of `TomConfig<T>`. |
 | `TomConfigurationException` | Raised when a value fails the cast to `T`. Chains the `TypeError` as `rootException` — read it for a generic mismatch, where the message alone names a value that looks valid. |
-| `TomYaml` | Parses YAML configuration resources. Both entry points require the file to exist and throw `PathNotFoundException` when it does not — unlike `TomEnvFile.read`, which returns `{}`. |
+| `TomYaml` | Parses YAML configuration resources, expanding `${VAR:default}` from `Platform.environment` or from an `environment:` map you pass (`TomEnvFile.resolveEnvironment()` to include a `.env`). Both entry points require the file to exist and throw `PathNotFoundException` when it does not — unlike `TomEnvFile.read`, which returns `{}`. |
 
 ## Quick start
 

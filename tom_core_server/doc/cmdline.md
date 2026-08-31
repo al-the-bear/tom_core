@@ -191,6 +191,37 @@ other three does. A setting that appears in the running server without being
 passed anywhere came from the YAML the provider loaded — see
 [configuration.md](configuration.md) for how that tree is built.
 
+### The `.env` reaches placeholders only if you carry it there
+
+The layering above covers **config keys**. It does not cover the `${VAR:default}`
+placeholders *inside* the YAML that forms the base layer: those are expanded by
+`TomYaml.loadYamlFile` while the file is being read, before anything is layered,
+and it expands from `Platform.environment` unless it is handed another map. A
+`.env` cannot change that by itself — Dart's process environment is read-only, so
+no amount of reading a `.env` puts its values where a default expansion will look.
+
+This matters most for the datasource YAML, which is normally where the `${...}`
+placeholders live. A boot that reads a `.env` for its config keys and then loads
+`datasources_default.yaml` the default way will connect to the placeholder
+defaults while its configuration reports the `.env` values — and if the same
+`.env` also drives a Docker Compose file, the database moves and the server does
+not follow.
+
+Pass the merged map explicitly:
+
+```dart
+final environment = TomEnvFile.resolveEnvironment();          // OS env + .env
+final yaml = TomYaml.loadYamlFile('assets/datasources_default.yaml',
+    environment: environment);
+```
+
+`resolveEnvironment` layers the `.env` **over** the OS environment, matching
+`getDefaultValues` above so both halves of a boot read the file the same way.
+(Docker Compose resolves the other way round — the shell wins there — so a
+variable set in *both* the shell and a `.env` is one of the few things the server
+and Compose will disagree about.) Values come back as `String`, since that is
+what a placeholder expands to.
+
 To build the three upper layers yourself — without a resource tree beneath
 them — use `merge`:
 
@@ -263,8 +294,9 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
   matched-pair quoting rule), and the `intPattern` / `doublePattern` matchers
   that drive numeric detection.
 - **`TomEnvFile`** — `read` / `readAsync` (file → map), `parse` (lines → map),
-  `merge` (overlay maps), and `load` (read for manual use; the OS environment is
-  read-only and is not mutated).
+  `merge` (overlay maps), `resolveEnvironment` (OS environment + `.env`,
+  stringified, for `${VAR:default}` expansion), and `load` (read for manual use;
+  the OS environment is read-only and is not mutated).
 
 ## Verification
 

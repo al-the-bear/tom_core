@@ -418,6 +418,31 @@ TomYaml.mergeInYamlFile(existing, 'config.yaml');
 A placeholder with no matching environment variable falls back to its `:default`
 (or stays unresolved if no default is given).
 
+### Where the variables come from — and how a `.env` reaches them
+
+`Platform.environment` is the default, not the only option. Both entry points
+take an `environment:` map, and when one is given it **replaces** the process
+environment rather than layering over it — so the caller decides exactly what the
+file can see:
+
+```dart
+final environment = TomEnvFile.resolveEnvironment();   // OS env + ./.env
+final map = TomYaml.loadYamlFile('config.yaml', environment: environment);
+TomYaml.mergeInYamlFile(existing, 'overlay.yaml', environment: environment);
+```
+
+This parameter is the only route by which a `.env` file can reach a placeholder.
+Dart's process environment is read-only, so reading a `.env` cannot put its
+values where the default expansion looks — a boot that reads a `.env` for its
+config keys but loads its YAML the default way will expand to the placeholder
+defaults while its configuration reports the `.env` values. That gap is worst for
+the datasource YAML, where the placeholders usually are: a `.env` shared with a
+Docker Compose file moves the database and the server keeps dialling the default.
+
+`resolveEnvironment` layers the `.env` **over** the OS environment, matching the
+precedence `getDefaultValues` uses for config keys, so both halves of a boot read
+the same file the same way. (Docker Compose resolves the other way round.)
+
 ### An overlay is a patch, not a replacement
 
 `mergeInYamlFile` is one-sided: keys the file names overwrite what is already

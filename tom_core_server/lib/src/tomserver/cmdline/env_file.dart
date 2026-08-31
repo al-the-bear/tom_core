@@ -171,4 +171,50 @@ class TomEnvFile {
     // add to it. This method returns the loaded values for manual use.
     return env;
   }
+
+  /// The effective environment for `${VAR}` expansion: [processEnvironment]
+  /// (the OS environment by default) with the `.env` file at [path] layered
+  /// **on top**.
+  ///
+  /// This is the map `TomYaml.loadYamlFile`'s `environment` parameter wants.
+  /// Without it a `.env` reaches a server's *configuration keys* — because
+  /// `TomBaseServerConfiguration.getDefaultValues` merges [read] — but not the
+  /// `${VAR:default}` placeholders in its datasource and resource YAML, which
+  /// expand from the OS environment alone. A boot that resolves this once and
+  /// passes it down closes that gap.
+  ///
+  /// **The `.env` file wins over the process environment**, because that is the
+  /// order `getDefaultValues` already applies to the same two sources (config
+  /// resources, then OS environment, then `.env`, then CLI args). One file, one
+  /// rule: a variable behaves the same whether it is read as a config key or
+  /// expanded into a placeholder. Note this inverts Docker Compose's own
+  /// precedence, where the shell wins over `.env` — so a `.env` shared with a
+  /// compose file resolves differently on the two sides for a key that is
+  /// *also* exported in the shell. Export nothing you also write in `.env`, and
+  /// the question does not arise.
+  ///
+  /// Values are stringified because that is what `substituteEnvVars` takes, and
+  /// nothing is lost by it: substitution writes its expansion back into the
+  /// tree as text, so a substituted value is a `String` whatever [read] typed
+  /// it as. A key whose `.env` value is empty — [read] maps that to `null` —
+  /// is dropped rather than contributed as `''`; `substituteEnvVars` treats an
+  /// empty value as unset, so the two resolve identically, and dropping keeps
+  /// the map free of entries that mean nothing.
+  ///
+  /// A missing file contributes nothing ([read] returns `{}`), so the result is
+  /// then [processEnvironment] unchanged.
+  static Map<String, String> resolveEnvironment({
+    String path = '.env',
+    Map<String, String>? processEnvironment,
+  }) {
+    final result = <String, String>{
+      ...processEnvironment ?? Platform.environment,
+    };
+    for (final entry in read(path).entries) {
+      final value = entry.value;
+      if (value == null) continue;
+      result[entry.key] = '$value';
+    }
+    return result;
+  }
 }

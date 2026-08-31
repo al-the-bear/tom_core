@@ -706,6 +706,50 @@ void main() {
       expect(map['p'], path);
     });
 
+    test('an explicit environment replaces the process environment', () async {
+      // The parameter exists so a boot can expand its YAML from something the
+      // process environment does not contain -- a `.env` file, in the case it
+      // was added for. PATH is used as the probe because it is set on every
+      // supported platform, so shadowing it proves the passed map *replaces*
+      // the process environment rather than layering under it: if the two were
+      // merged with the process winning, the assertion below would see the real
+      // PATH. Nothing here reads a `.env`; assembling one is the caller's job
+      // (TomEnvFile.resolveEnvironment), and this is only the seam it hands to.
+      final f = File('${dir.path}/c.yaml');
+      await f.writeAsString(
+        'p: \${PATH}\n'
+        'host: \${TOM_CFG_TEST_HOST:fallback}\n',
+      );
+      final map = TomYaml.loadYamlFile(
+        f.path,
+        environment: <String, String>{
+          'PATH': '/from/the/passed/map',
+          'TOM_CFG_TEST_HOST': 'explicit.host',
+        },
+      );
+      expect(map['p'], '/from/the/passed/map');
+      // And a variable the passed map *does* supply beats the `:default`,
+      // exactly as a process-environment one would.
+      expect(map['host'], 'explicit.host');
+    });
+
+    test('mergeInYamlFile passes the environment through', () async {
+      // mergeInYamlFile is one line over loadYamlFile, and that line is the
+      // whole risk: forgetting to forward the argument would leave every
+      // overlay expanding from the process environment while the base file
+      // expanded from the caller's -- a split that no other assertion here
+      // would notice, because both files parse and merge fine either way.
+      final f = File('${dir.path}/o.yaml');
+      await f.writeAsString('host: \${TOM_CFG_TEST_HOST:fallback}\n');
+      final target = <String, Object?>{};
+      TomYaml.mergeInYamlFile(
+        target,
+        f.path,
+        environment: <String, String>{'TOM_CFG_TEST_HOST': 'overlaid.host'},
+      );
+      expect(target['host'], 'overlaid.host');
+    });
+
     test('a substituted value is text, where a literal one is typed', () async {
       // The one place a configuration value reaches TomConfig untyped. A YAML
       // scalar is typed by the YAML parser, but substitution runs afterwards
