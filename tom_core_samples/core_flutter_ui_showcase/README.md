@@ -89,7 +89,7 @@ the `Icon`s that `TomIconButton(icon:)` and `TomFloatingActionButton(child:)`
 require by signature.
 
 The **chrome follows the same rule**: `ShowcaseCell`, `_PreviewSurface`,
-`CodeBlock` and `GroupScreen` derive from
+`CodeBlock`, `GroupScreen`, `ShowcaseApp` and `_ShowcaseHome` derive from
 `TomStatelessWidget` (the sanctioned base for a scope-participating layout
 wrapper that owns no `tomId`/resources and no family identity) and lay out with
 `TomColumn` / `TomPadding` / `TomContainer` / `TomAlign` / `TomListView` /
@@ -97,6 +97,15 @@ wrapper that owns no `tomId`/resources and no family identity) and lay out with
 `StatelessWidget` or `Column`/`Container`. That base captures `TomScope.current`
 at construction, so these widgets are non-const too. See the G-UI-2 clarification
 in [`README_tom_core_guidelines.md`](../README_tom_core_guidelines.md).
+
+The last two names are the ones worth checking. `ShowcaseApp` and `_ShowcaseHome`
+are the app shell — where a reader would most expect raw Flutter to have
+survived, since something has to build the `MaterialApp`. It does not: the shell
+sits on the same base as the rest, and `MaterialApp` is the single raw widget
+constructed anywhere in the chrome, because the kit offers nothing to replace it.
+`_ShowcaseHome` already returns `TomScaffold`/`TomAppBar`/`TomListView`. The list
+above is checked against `lib/` by `showcase_smoke_test.dart`, so it cannot fall
+behind the source.
 
 ## Component groups
 
@@ -248,7 +257,7 @@ new group that throws at build time fails CI without any extra test wiring.
 
 | File | Guards |
 | --- | --- |
-| `test/showcase_smoke_test.dart` | Every group screen builds and pumps without throwing; the home screen lists every group; every "### \<title\> — `groups/<file>.dart`" section above names a file that exists and declares that exact title |
+| `test/showcase_smoke_test.dart` | Every group screen builds and pumps without throwing; the home screen lists every group; every "### \<title\> — `groups/<file>.dart`" section above names a file that exists and declares that exact title; the chrome paragraph above names every class in `lib/` that extends `TomStatelessWidget`, and no class in `lib/` extends a raw `StatelessWidget`/`StatefulWidget` |
 | `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet; no snippet names an identifier that exists nowhere in the file that renders it; no snippet quotes a construct and then omits what the child passes to it (arguments, ACL builder calls, or a `TomSizedBox` constraint); no illustration in this README shows a literal, identifier or number its group file does not have |
 
 ---

@@ -100,4 +100,75 @@ void main() {
               'running app finds no such screen');
     });
   });
+
+  // The README's chrome paragraph makes a claim about the source by
+  // *enumeration*, which is the one shape of claim that a new file silently
+  // falsifies: adding a seventh chrome class does not touch the README, so the
+  // list quietly becomes "some of" while still reading as "all of". That is not
+  // hypothetical — the list stood at four while the source had six, and the two
+  // it had dropped were the app shell, the single most load-bearing case for a
+  // paragraph whose whole point is that no raw widget survives.
+  //
+  // Checked one way only. Forward — every declared class is named — is exact.
+  // The inverse would have to tolerate the names that are deliberately *not*
+  // classes here (`MaterialApp`, `StatelessWidget`, `Column`, `Container`, all
+  // cited as counter-examples), and an exclusion list for those would go stale
+  // in the same way the enumeration did.
+  test('the README names every chrome class that extends TomStatelessWidget',
+      () {
+    final readme = File('README.md');
+    expect(readme.existsSync(), isTrue,
+        reason: 'tests must run from the package root');
+
+    // Anchored on the two phrases the claim cannot be made without, rather than
+    // on a line number or heading. Requiring exactly one match is what keeps
+    // the anchor honest: a second such paragraph would mean the claim had been
+    // duplicated, and half of it could then drift unchecked.
+    final claims = readme
+        .readAsStringSync()
+        .split('\n\n')
+        .where((p) => p.contains('derive from') &&
+            p.contains('`TomStatelessWidget`'))
+        .toList();
+    expect(claims, hasLength(1),
+        reason: 'the README must state the chrome base-class claim in exactly '
+            'one paragraph');
+    final claim = claims.single;
+
+    final declared = <String, String>{};
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      for (final match
+          in RegExp(r'^class (\w+) extends TomStatelessWidget\b', multiLine: true)
+              .allMatches(entity.readAsStringSync())) {
+        declared[match.group(1)!] = entity.path;
+      }
+    }
+
+    // A guard against the check passing vacuously — a moved directory or a
+    // renamed base class would otherwise leave nothing to assert.
+    expect(declared, hasLength(greaterThanOrEqualTo(6)),
+        reason: 'expected the showcase chrome to still be built from '
+            'TomStatelessWidget subclasses; found ${declared.length}');
+
+    declared.forEach((name, path) {
+      expect(claim, contains('`$name`'),
+          reason: '$path declares $name, which extends TomStatelessWidget, but '
+              'the README paragraph listing the chrome classes does not name '
+              'it — the list reads as exhaustive and is not');
+    });
+
+    // The other half of the same sentence: "no raw StatelessWidget". Stated in
+    // the README as a fact about the whole package, so it is checked there.
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      expect(
+          RegExp(r'^class \w+ extends State(?:less|ful)Widget\b',
+                  multiLine: true)
+              .hasMatch(entity.readAsStringSync()),
+          isFalse,
+          reason: '${entity.path} declares a raw Flutter widget subclass; the '
+              'README claims the package has none');
+    }
+  });
 }
