@@ -41,12 +41,43 @@ void main() {
 
   testWidgets('T01: Demo list screen shows all 5 demos', (tester) async {
     await tester.pumpWidget(const FormDemoApp());
+    await tester.pumpAndSettle();
 
-    expect(find.text('Demo 1: Basic Form'), findsOneWidget);
-    expect(find.text('Demo 2: Nested Forms'), findsOneWidget);
-    expect(find.text('Demo 3: Authorization'), findsOneWidget);
-    expect(find.text('Demo 4: Validation'), findsOneWidget);
-    expect(find.text('Demo 5: Settings Form'), findsOneWidget);
+    // The five numbered demos this file exercises sit near the bottom of a
+    // 33-tile list, so none of them is on screen at the first frame. Scroll
+    // each into view before asserting.
+    //
+    // A small `delta` (80 px) with a long `duration` (500 ms) is required, not
+    // stylistic: with the defaults, fling momentum carries the viewport past
+    // short tiles between iterations and `scrollUntilVisible` skips one.
+    //
+    // `maxScrolls` must be raised too: the first hop travels the whole list
+    // (33 tiles) to reach 'Demo 1', which measures at ~60 drags of 80 px —
+    // past the default budget of 50. `widget_test.dart` gets away with the
+    // default because it walks every tile top-down, so each hop is short.
+    for (final label in const [
+      'Demo 1: Basic Form',
+      'Demo 2: Nested Forms',
+      'Demo 3: Authorization',
+      'Demo 4: Validation',
+      'Demo 5: Settings Form',
+    ]) {
+      await tester.scrollUntilVisible(
+        find.text(label),
+        80,
+        // RootScreen wraps the demo list in a TabBarView, so the tree holds
+        // several Scrollables (the PageView plus each tab's ListView). Scope
+        // the scroll to the DemoListScreen's own Scrollable; the bare finder
+        // would match more than one and throw.
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),
+        maxScrolls: 200,
+        duration: const Duration(milliseconds: 500),
+      );
+      expect(find.text(label), findsOneWidget);
+    }
   });
 
   // ─── Test 2: Demo 1 renders without overflow ──────────────────────────────

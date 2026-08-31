@@ -12,8 +12,21 @@
   that made bare scroll finders throw `Bad state: Too many elements`; removed
   redundant internal `tom_field_widget_adapter.dart` imports now that the
   `tom_flutter_ui` barrel exports `TomFieldWidgetAdapter`.
-- Quality: `dart analyze` clean (zero warnings); full `flutter test` suite green
-  (`+350 / 0`). No production behaviour changes.
+- Tests: renamed `demo_tests.dart`, `form_validation_tests.dart`,
+  `layout_tests.dart` and `screenshot_tests.dart` to the singular
+  `*_test.dart`. `flutter test` discovers `**_test.dart` only, so the plural
+  names matched nothing and all 43 of their tests had never run — hiding one
+  test that had rotted against the grown demo list and five golden baselines
+  (`demo1`–`demo5`) that nothing compared. `demo_test.dart` T01 now scrolls
+  with `maxScrolls: 200` in addition to the scoped `scrollable:` finder: its
+  first hop crosses the whole 33-tile list and needs ~60 drags of 80 px, past
+  the default budget of 50.
+- Quality: `dart analyze` clean over `test/` (zero issues). Full `flutter test
+  -j 1` runs 453: `+431 -22`. The 22 failures share one pre-existing cause —
+  the kernel rejects the `examples/` subsystem's dotted scope ids
+  (`example.customer`, `example.order`) with
+  `scope_ids.init_scope.separator_in_id` — and are unchanged in count, file and
+  name by the work above. No production behaviour changes.
 
 ## 1.0.0
 

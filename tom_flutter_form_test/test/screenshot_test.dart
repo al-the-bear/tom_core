@@ -1,6 +1,6 @@
 // Golden screenshot tests for all 5 form demos.
 //
-// Run with: flutter test test/screenshot_tests.dart --update-goldens
+// Rebaseline with: flutter test test/screenshot_test.dart --update-goldens
 // Generated PNGs go to: test/goldens/
 
 import 'dart:convert';
