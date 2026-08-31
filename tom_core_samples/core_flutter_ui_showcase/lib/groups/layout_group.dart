@@ -4,14 +4,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../common/demo_box.dart';
 import '../common/showcase_cell.dart';
 import '../common/showcase_section.dart';
-
-Widget _box(String label, Color color) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      color: color,
-      child: TomText(text: label),
-    );
 
 /// The Layout component group.
 final ShowcaseGroup layoutGroup = ShowcaseGroup(
@@ -24,32 +19,44 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'TomRow',
       code: "TomRow(\n"
-          "  children: [boxA, boxB, boxC],\n"
+          "  mainAxisSize: MainAxisSize.min,\n"
+          "  children: [\n"
+          "    demoBox('A', Colors.red),\n"
+          "    TomSizedBox(width: 8),\n"
+          "    demoBox('B', Colors.green),\n"
+          "    TomSizedBox(width: 8),\n"
+          "    demoBox('C', Colors.blue),\n"
+          "  ],\n"
           ")",
       child: TomRow(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _box('A', Colors.red.shade100),
-          const SizedBox(width: 8),
-          _box('B', Colors.green.shade100),
-          const SizedBox(width: 8),
-          _box('C', Colors.blue.shade100),
+          demoBox('A', Colors.red),
+          TomSizedBox(width: 8),
+          demoBox('B', Colors.green),
+          TomSizedBox(width: 8),
+          demoBox('C', Colors.blue),
         ],
       ),
     ),
     ShowcaseCell(
       title: 'TomColumn',
       code: "TomColumn(\n"
+          "  mainAxisSize: MainAxisSize.min,\n"
           "  crossAxisAlignment: CrossAxisAlignment.start,\n"
-          "  children: [boxA, boxB],\n"
+          "  children: [\n"
+          "    demoBox('First', Colors.orange),\n"
+          "    TomSizedBox(height: 8),\n"
+          "    demoBox('Second', Colors.purple),\n"
+          "  ],\n"
           ")",
       child: TomColumn(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _box('First', Colors.orange.shade100),
-          const SizedBox(height: 8),
-          _box('Second', Colors.purple.shade100),
+          demoBox('First', Colors.orange),
+          TomSizedBox(height: 8),
+          demoBox('Second', Colors.purple),
         ],
       ),
     ),
@@ -57,14 +64,14 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
       title: 'TomRow + TomExpanded',
       code: "TomRow(\n"
           "  children: [\n"
-          "    TomExpanded(flex: 2, child: boxA),\n"
-          "    TomExpanded(flex: 1, child: boxB),\n"
+          "    TomExpanded(flex: 2, child: demoBox('flex 2', Colors.teal)),\n"
+          "    TomExpanded(flex: 1, child: demoBox('flex 1', Colors.amber)),\n"
           "  ],\n"
           ")",
       child: TomRow(
         children: [
-          TomExpanded(flex: 2, child: _box('flex 2', Colors.teal.shade100)),
-          TomExpanded(flex: 1, child: _box('flex 1', Colors.amber.shade100)),
+          TomExpanded(flex: 2, child: demoBox('flex 2', Colors.teal)),
+          TomExpanded(flex: 1, child: demoBox('flex 1', Colors.amber)),
         ],
       ),
     ),
@@ -73,16 +80,21 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
       code: "TomWrap(\n"
           "  spacing: 8,\n"
           "  runSpacing: 8,\n"
-          "  children: [chipA, chipB, chipC, chipD],\n"
+          "  children: [\n"
+          "    demoBox('one', Colors.red),\n"
+          "    demoBox('two', Colors.green),\n"
+          "    demoBox('three', Colors.blue),\n"
+          "    demoBox('four', Colors.orange),\n"
+          "  ],\n"
           ")",
       child: TomWrap(
         spacing: 8,
         runSpacing: 8,
         children: [
-          _box('one', Colors.red.shade100),
-          _box('two', Colors.green.shade100),
-          _box('three', Colors.blue.shade100),
-          _box('four', Colors.orange.shade100),
+          demoBox('one', Colors.red),
+          demoBox('two', Colors.green),
+          demoBox('three', Colors.blue),
+          demoBox('four', Colors.orange),
         ],
       ),
     ),

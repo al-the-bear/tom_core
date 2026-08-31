@@ -8,18 +8,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../common/demo_box.dart';
 import '../common/showcase_cell.dart';
 import '../common/showcase_section.dart';
-
-Widget _box(String label, Color color) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: TomText(text: label),
-    );
 
 /// The ACL component group.
 final ShowcaseGroup aclGroup = ShowcaseGroup(
@@ -32,14 +23,14 @@ final ShowcaseGroup aclGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'Basic row',
       code: "AclBuilder()\n"
-          "    .append(boxA)\n"
-          "    .append(boxB)\n"
-          "    .append(boxC)\n"
+          "    .append(demoBox('A', Colors.red))\n"
+          "    .append(demoBox('B', Colors.green))\n"
+          "    .append(demoBox('C', Colors.blue))\n"
           "    .build()",
       child: AclBuilder()
-          .append(_box('A', Colors.red))
-          .append(_box('B', Colors.green))
-          .append(_box('C', Colors.blue))
+          .append(demoBox('A', Colors.red))
+          .append(demoBox('B', Colors.green))
+          .append(demoBox('C', Colors.blue))
           .build(),
     ),
     ShowcaseCell(
@@ -47,28 +38,29 @@ final ShowcaseGroup aclGroup = ShowcaseGroup(
       note: 'The first cell is given a 200px preferred width; the rest share '
           'the remainder.',
       code: "AclBuilder()\n"
-          "    .append(wide).setPSize(200)\n"
-          "    .append(narrowA)\n"
-          "    .append(narrowB)\n"
+          "    .append(demoBox('200px preferred', Colors.teal))\n"
+          "    .setPSize(200)\n"
+          "    .append(demoBox('rest', Colors.orange))\n"
+          "    .append(demoBox('rest', Colors.purple))\n"
           "    .build()",
       child: AclBuilder()
-          .append(_box('200px preferred', Colors.teal))
+          .append(demoBox('200px preferred', Colors.teal))
           .setPSize(200)
-          .append(_box('rest', Colors.orange))
-          .append(_box('rest', Colors.purple))
+          .append(demoBox('rest', Colors.orange))
+          .append(demoBox('rest', Colors.purple))
           .build(),
     ),
     ShowcaseCell(
       title: 'Titled & bordered group',
       code: "AclBuilder()\n"
-          "    .append(boxA)\n"
-          "    .append(boxB)\n"
+          "    .append(demoBox('Name', Colors.indigo))\n"
+          "    .append(demoBox('Email', Colors.cyan))\n"
           "    .setAclBorderStyle(const AclBorderStyle.solid())\n"
           "    .setAclTitle('Contact')\n"
           "    .build()",
       child: AclBuilder()
-          .append(_box('Name', Colors.indigo))
-          .append(_box('Email', Colors.cyan))
+          .append(demoBox('Name', Colors.indigo))
+          .append(demoBox('Email', Colors.cyan))
           .setAclBorderStyle(const AclBorderStyle.solid())
           .setAclTitle('Contact')
           .build(),

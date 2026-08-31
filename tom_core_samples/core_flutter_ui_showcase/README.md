@@ -26,6 +26,7 @@ flutter test --concurrency=1   # smoke + cell-contract tests; serial
 | The teaching cell | `lib/common/showcase_cell.dart` | A `ShowcaseCell` shows a verbatim snippet beside the live widget |
 | Code block | `lib/common/code_block.dart` | Monospace, copy-to-clipboard source rendering |
 | Group model | `lib/common/showcase_section.dart` | `ShowcaseGroup` + `GroupScreen` |
+| Demo filler | `lib/common/demo_box.dart` | `demoBox(label, color)` — the generic box the layouts arrange |
 | Component groups | `lib/groups/*.dart` | One file per component family |
 
 The single new idea over `tom_flutter_ui_test` is `ShowcaseCell`: it pairs a
@@ -33,6 +34,15 @@ The single new idea over `tom_flutter_ui_test` is `ShowcaseCell`: it pairs a
 snippets are kept in lock-step with the live `child` by hand (an article wants
 trimmed, copy-paste-ready code), and `test/showcase_cell_test.dart` asserts both
 halves are always present so an empty snippet can never slip through.
+
+Trimming has a floor: **a snippet may only name identifiers that exist.** It may
+leave out detail the reader does not need, but it may not stand in a placeholder
+(`boxA`) or borrow a local from another file (`scheme`) — both read as real code
+and neither compiles when copied. `showcase_cell_test.dart` checks that every
+identifier a snippet names also appears in the file that renders it. That is why
+the layout and ACL cells build their filler with the public
+`demoBox(label, color)` rather than a private helper: the snippet and the child
+then say exactly the same thing, and a reader can look up what they say.
 
 ### A note on resources and `const`
 
@@ -136,8 +146,8 @@ Flutter's flex and spacing primitives.
 
 ```dart
 TomRow(children: [
-  TomExpanded(flex: 2, child: boxA),
-  TomExpanded(flex: 1, child: boxB),
+  TomExpanded(flex: 2, child: demoBox('flex 2', Colors.teal)),
+  TomExpanded(flex: 1, child: demoBox('flex 1', Colors.amber)),
 ])
 ```
 
@@ -148,9 +158,9 @@ borders and titles without nesting `Row`/`Column`.
 
 ```dart
 AclBuilder()
-    .append(name)
-    .append(email)
-    .setAclBorderStyle(AclBorderStyle.solid)
+    .append(demoBox('Name', Colors.indigo))
+    .append(demoBox('Email', Colors.cyan))
+    .setAclBorderStyle(const AclBorderStyle.solid())
     .setAclTitle('Contact')
     .build()
 ```
@@ -188,7 +198,8 @@ selects). Adding a group is mechanical:
 
 1. Create `lib/groups/<family>_group.dart` exposing a `final ShowcaseGroup`.
 2. Give each component a `ShowcaseCell(title:, code:, child:)` — keep `code`
-   verbatim with `child`.
+   verbatim with `child`, and name only identifiers the file defines or imports
+   (`showcase_cell_test.dart` rejects the rest).
 3. Add the group to `showcaseGroups` in `lib/showcase_app.dart`.
 
 The smoke test picks it up automatically (it iterates `showcaseGroups`), so a
@@ -199,7 +210,7 @@ new group that throws at build time fails CI without any extra test wiring.
 | File | Guards |
 | --- | --- |
 | `test/showcase_smoke_test.dart` | Every group screen builds and pumps without throwing; the home screen lists every group |
-| `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet |
+| `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet; no snippet names an identifier that exists nowhere in the file that renders it |
 
 ---
 
