@@ -1,9 +1,14 @@
 // Cell-contract tests: a [ShowcaseCell] always shows BOTH halves of the
-// teaching pair — the verbatim code snippet and the rendered child — and no
-// group ships a cell with an empty snippet.
+// teaching pair — the verbatim code snippet and the rendered child.
 //
 // The whole point of the showcase is that the source that produced a live form
-// is displayed beside it; these tests make that contract enforceable.
+// is displayed beside it, so these tests make that contract enforceable. They
+// gate four things: both halves render; no group ships a cell with an empty
+// snippet; no snippet teaches a raw Flutter widget where the child uses the Tom
+// equivalent; and a snippet that quotes a configurable construct shows that
+// construct's whole configuration rather than a partial one.
+
+import 'dart:io';
 
 import 'package:core_flutter_form_showcase/common/showcase_cell.dart';
 import 'package:core_flutter_form_showcase/reflection_seed.dart';
@@ -81,9 +86,9 @@ void main() {
     // reproduce, and a reader who copies it is taught the very thing the
     // surrounding code avoids.
     //
-    // Non-emptiness was previously the only gated part of the snippet
-    // contract; matching the child stayed a review obligation. This closes the
-    // half of that gap a machine can actually check.
+    // Naming the widget is the half of "verbatim" a machine can check by
+    // vocabulary alone; the test below checks the other machine-checkable half,
+    // that a quoted construct is fully configured.
     final rawWidget = RegExp(
       r'(?<![A-Za-z0-9_$.])'
       r'(Row|Column|Expanded|Flexible|SizedBox|Padding|Card|Divider|InkWell'
@@ -116,4 +121,110 @@ void main() {
       }
     }
   });
+
+  test('a snippet quoting a configurable construct shows its whole '
+      'configuration', () {
+    // The recurring snippet defect is not a wrong line, it is a *missing* one:
+    // the child configures something and the snippet quietly leaves it out, so
+    // a reader who copies the snippet gets different behaviour from the preview
+    // it stands beside. Both `.setAclDefaultAppendGap(0)` (the builder default
+    // is 8) and `draggableSplitter: true` (default false) are invisible when
+    // dropped, and change what the copied code renders.
+    //
+    // A snippet is free to *abstract* — the theming cells stand in for the whole
+    // layout with `formLayout`. What it may not do is name a construct and then
+    // under-configure it. So each rule below applies only when the snippet
+    // actually quotes the construct, which exempts a deliberate placeholder
+    // automatically while binding anything that claims to show the real thing.
+    final groups = Directory('lib/groups');
+    expect(groups.existsSync(), isTrue,
+        reason: 'tests must run from the package root');
+
+    var aclChecked = 0;
+    var scaffoldChecked = 0;
+
+    for (final file in groups
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))) {
+      final source = file.readAsStringSync();
+      final snippet = _snippetText(source);
+      final child = _childText(source);
+      final name = file.uri.pathSegments.last;
+
+      if (snippet.contains('TomAclBuilder(')) {
+        aclChecked++;
+        final missing = _builderCalls(child).difference(_builderCalls(snippet));
+        expect(missing, isEmpty,
+            reason: '$name: the snippet quotes TomAclBuilder but omits '
+                '${missing.map((c) => ".$c()").join(", ")}, which the child '
+                'calls — the copied layout would render differently');
+      }
+
+      for (final ctor in const [
+        'TomMasterDetailListForm',
+        'TomInlineListForm',
+      ]) {
+        if (!snippet.contains(ctor)) continue;
+        scaffoldChecked++;
+        final missing =
+            _flagArguments(child, ctor).difference(_flagArguments(snippet, ctor));
+        expect(missing, isEmpty,
+            reason: '$name: the snippet quotes $ctor but omits '
+                '${missing.join(", ")}, which the child passes');
+      }
+    }
+
+    // Guard against the rules silently matching nothing, which would let the
+    // test pass while checking no cell at all.
+    expect(aclChecked, greaterThanOrEqualTo(2));
+    expect(scaffoldChecked, greaterThanOrEqualTo(2));
+  });
+}
+
+final _doubleQuoted = RegExp(r'"((?:[^"\\]|\\.)*)"');
+final _lineComment = RegExp(r'//[^\n]*');
+final _builderCall = RegExp(r'\.(setAcl[A-Za-z0-9]+|addRowBreakpoint)\s*\(');
+final _flagArgument = RegExp(r'(\w+)\s*:\s*(true|false)\b');
+
+/// The snippets in [source]. Cell snippets are the only double-quoted literals
+/// in this package — everything else is single-quoted, per the lint.
+String _snippetText(String source) =>
+    _doubleQuoted.allMatches(source).map((m) => m.group(1)!).join('\n');
+
+/// [source] with the snippets and comments removed: what the cells actually run.
+///
+/// Snippets go first, because a snippet may legitimately *contain* a `//`
+/// comment (the lists cell quotes one) that must not be treated as source.
+String _childText(String source) =>
+    source.replaceAll(_doubleQuoted, '""').replaceAll(_lineComment, '');
+
+/// The fluent configuration calls made on a `TomAclBuilder` chain in [source].
+Set<String> _builderCalls(String source) =>
+    _builderCall.allMatches(source).map((m) => m.group(1)!).toSet();
+
+/// The boolean `name: value` arguments passed *directly* to [constructor] in
+/// [source] — arguments of nested widgets are a different call's business, so
+/// only depth one counts.
+Set<String> _flagArguments(String source, String constructor) {
+  final flags = <String>{};
+  final opener = RegExp('$constructor\\s*(?:<[^>]*>\\s*)?\\(');
+  for (final match in opener.allMatches(source)) {
+    final args = StringBuffer();
+    var depth = 0;
+    for (var i = match.end - 1; i < source.length; i++) {
+      final char = source[i];
+      if (char == '(' || char == '[' || char == '{') {
+        depth++;
+      } else if (char == ')' || char == ']' || char == '}') {
+        depth--;
+        if (depth == 0) break;
+      }
+      if (depth == 1) args.write(char);
+    }
+    for (final flag in _flagArgument.allMatches(args.toString())) {
+      flags.add('${flag.group(1)}: ${flag.group(2)}');
+    }
+  }
+  return flags;
 }

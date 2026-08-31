@@ -160,11 +160,13 @@ final ShowcaseGroup masterDetailGroup = ShowcaseGroup(
   cells: (context) => [
     ShowcaseCell(
       title: 'TomMasterDetailListForm',
-      note: 'Select a row to edit it on the right. Edit a field then pick '
-          'another row to see the Save / Discard / Cancel guard.',
+      note: 'Select a row to edit it on the right, and drag the splitter to '
+          'rebalance the panes. Edit a field then pick another row to see the '
+          'Save / Discard / Cancel guard.',
       code: "TomMasterDetailListForm<OrderItem, OrderItemForm>(\n"
           "  listForm: listForm,\n"
           "  masterPaneWidth: 220,\n"
+          "  draggableSplitter: true,\n"
           "  initialSelectedIndex: 0,\n"
           "  masterBuilder: (context, listForm, selected, selectIndex) =>\n"
           "      MasterPane(...),\n"

@@ -564,11 +564,16 @@ guard intercepting a switch away from a dirty row:
 TomMasterDetailListForm<OrderItem, OrderItemForm>(
   listForm: listForm,
   masterPaneWidth: 220,
+  draggableSplitter: true,          // default is false: a fixed divider
   initialSelectedIndex: 0,
   masterBuilder: (context, listForm, selected, selectIndex) => MasterPane(...),
   detailBuilder: (context, _, rowForm) => DetailPane(form: rowForm),
 )
 ```
+
+`masterPaneWidth` is the *initial* width; with `draggableSplitter: true` the
+divider becomes a drag handle, so the reader can rebalance the two panes. It
+defaults to `false`, which is why the sample passes it explicitly.
 
 The detail pane stacks the row form's field widgets, surfaces a `Dirty` chip
 from `rowForm.isDirty`, shows a `TomErrorView`, and offers `form.save()` /
@@ -641,15 +646,18 @@ All three suites call `initializeReflection()` in `setUpAll`:
 - **`showcase_smoke_test.dart`** — pumps each group and the home screen at a
   large size, asserting the group title renders and `takeException` is null.
 - **`showcase_cell_test.dart`** — asserts every cell shows both its code snippet
-  and its live child, that no cell's snippet is empty, and that no snippet names
-  a raw Flutter layout widget where a Tom one exists. The last is the
-  machine-checkable half of the "verbatim" promise: a snippet saying `Row`
-  cannot be reproducing a child built from `TomRow`.
+  and its live child, that no cell's snippet is empty, that no snippet names a
+  raw Flutter layout widget where a Tom one exists, and that a snippet quoting a
+  configurable construct shows its whole configuration. The last two are the
+  machine-checkable halves of the "verbatim" promise: a snippet saying `Row`
+  cannot be reproducing a child built from `TomRow`, and a snippet that quotes
+  `TomAclBuilder` or a list scaffold but drops a call the child makes would
+  render differently if copied.
 - **`list_form_host_test.dart`** — asserts the two list-bearing groups really
   bind their seeded items, which the smoke test cannot see (an unbound list form
   renders zero rows without throwing).
 
-Current status: `dart analyze` → *No issues found!*; `flutter test` → **14/14
+Current status: `dart analyze` → *No issues found!*; `flutter test` → **15/15
 green** (serial).
 
 ---
@@ -665,9 +673,13 @@ Adding a feature group is mechanical:
 The smoke test picks it up automatically. If the new group needs a new reflected
 form, annotate it `@tomReflector`, add it to `reflection_seed.dart`, and run
 `./reflection_generation.sh`. Keep each cell's `code` snippet in lock-step with
-its `child` by hand — the article wants curated snippets. The cell test
-guarantees neither half is empty and rejects raw Flutter layout widgets in a
-snippet, but everything else about the match is on you.
+its `child` by hand — the article wants curated snippets. The cell test gates
+what a machine can see: neither half empty, no raw Flutter layout widget in a
+snippet, and no under-configured quote of `TomAclBuilder` or a list scaffold. A
+snippet may still legitimately *abstract* — the theming cells stand in for the
+whole layout with `formLayout` — but the moment it names a construct, it owes
+that construct's full configuration, and everything the gates cannot see is
+still on you.
 
 ---
 
