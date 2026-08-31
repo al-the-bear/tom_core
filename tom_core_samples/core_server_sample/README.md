@@ -549,8 +549,12 @@ store (`TomResourceGrant`). Rather than duplicate the connection block it
 tables and the `tom_resource_grant` grants.
 
 Copy `.env.example` to `.env` and adjust. It feeds both `docker-compose.yaml`
-and the running server — but by two different routes, and the second one is
-wiring the boot has to do explicitly.
+and the running server — but by different routes, and the server's is wiring the
+boot has to do explicitly. Which variable travels which route is not uniform,
+so `.env.example` says it per variable rather than in one sentence: of the seven
+`TODO_DB_*` variables only four are read by both consumers, `TODO_DB_HOST` is
+the server's alone, and `TODO_DB_DOCKER_IMAGE` and `TODO_DB_ROOT_PASSWORD`
+bootstrap the container without ever describing the connection.
 
 Compose reads a `.env` beside it natively. The server cannot: Dart's
 `Platform.environment` is read-only, so nothing a program reads out of a `.env`
@@ -572,6 +576,25 @@ dialling `${TODO_DB_PORT:3306}`, and `env=dev` would select the prod overlay.
 halves of the boot agree about the file. Compose resolves the opposite way
 (shell wins), so a variable set in both your shell and the `.env` is the one case
 where the server and the container will disagree.
+
+That configuration merge is a route in its own right, and it is how the HTTP port
+is set. There is no `TODO_SERVER_PORT` placeholder to expand, which can read as
+"the port is not settable from here"; it is, as a plain `port=9000` line, because
+`getDefaultValues` merges the file into the configuration keys and `port` is one
+of them. `_defaultPort = 8080` in `bin/server_start.dart` applies only where that
+merge left the value at `0`. Every line in the file is merged this way, but only
+one naming a configuration field lands anywhere — which is why `port` works and
+`TODO_DB_HOST`, whose value reaches the server through the placeholder route
+instead, does not.
+
+On the command line the same key is spelled `port=9000`, **undashed**. The
+conventional `--port=9000` does nothing: a key is the argument text before the
+first `=`, dashes included, so the dashed form fills a key named `--port`, which
+matches no field and is dropped without a diagnostic. It is an easy claim to
+make and a hard one to notice, because the usual demonstration passes the port
+the server would have chosen anyway — `tom_core_server`'s `configuration_test.dart`
+pins both spellings for that reason, and `tool/run_integration.sh` uses the
+undashed form.
 
 ---
 

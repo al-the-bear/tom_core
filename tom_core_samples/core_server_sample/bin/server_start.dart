@@ -52,8 +52,19 @@ import 'package:core_server_sample/core_server_sample.dart';
 
 import 'server_start.reflection.dart';
 
-/// HTTP port the sample binds (overridable via the `port` config key / env /
-/// `--port=`).
+/// HTTP port the sample binds when nothing else supplies one.
+///
+/// Every override is the same configuration key, `port`, reached by whichever
+/// of the merge's sources is convenient: a config asset, the OS environment,
+/// the `.env`, or a `port=9000` command-line argument. The dashed
+/// `--port=9000` is **not** among them — a key is the argument text before the
+/// first `=`, dashes included, so it fills a key named `--port`, which names no
+/// field and is dropped in silence (`TomBaseServerConfiguration.port`,
+/// `tom_core_server/doc/cmdline.md`, and pinned in both directions by
+/// `configuration_test.dart`).
+///
+/// This constant applies only where that merge left the field at `0`, which is
+/// what makes it a default rather than a fixed choice.
 const int _defaultPort = 8080;
 
 /// The variables this boot expands `${VAR:default}` placeholders from and reads

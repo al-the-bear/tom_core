@@ -281,21 +281,29 @@ log "Resolving Dart dependencies"
 (cd "$SAMPLE_DIR" && dart pub get)
 
 # 3. Boot the server from the package root, since the asset and migration paths
-#    it loads are relative to the CWD. `--port=8080` is passed explicitly rather
-#    than relied upon: it is the documented override, and pinning it here means a
-#    stray `port` key in a config overlay cannot move the server out from under
-#    the health check below. `exec` makes the subshell *become* the dart process,
+#    it loads are relative to the CWD. `port=8080` is passed explicitly rather
+#    than relied upon, so a stray `port` key in a config overlay cannot move the
+#    server out from under the health check below.
+#
+#    Undashed on purpose, and this is the one place in the sample where the
+#    distinction bites: a configuration key is the argument text before the
+#    first `=`, dashes included, so `--port=8080` would fill a key named
+#    `--port`, match no field, and be dropped without a word — leaving the
+#    pinning above as something this script only believed it had. It would still
+#    pass today, because 8080 is also the default. See
+#    `TomBaseServerConfiguration.port` and `tom_core_server/doc/cmdline.md`.
+#    `exec` makes the subshell *become* the dart process,
 #    so the recorded PID is the server itself — killing it in cleanup actually
 #    frees the port instead of orphaning a child that fails the next run's
 #    preflight.
 #
 #    Only the HTTP port is passed: the database coordinates are deliberately
 #    left to `.env`, because the server reaching MariaDB at all is what proves
-#    the file got through. Passing --port here and not the database port is the
-#    difference between pinning what the harness needs and pinning what is
+#    the file got through. Passing the port here and not the database port is
+#    the difference between pinning what the harness needs and pinning what is
 #    under test.
 log "Starting the sample server"
-(cd "$SAMPLE_DIR" && exec dart run bin/server_start.dart --port=8080 \
+(cd "$SAMPLE_DIR" && exec dart run bin/server_start.dart port=8080 \
   >"$LOG_DIR/server.log" 2>&1) &
 SERVER_PID=$!
 wait_server_up
