@@ -257,7 +257,10 @@ core_server_sample/
 ├── example/
 │   └── run_all_examples.dart            # DB-free mapping + authorization demo
 ├── test/
-│   └── todo_persistence_mapping_test.dart
+│   ├── todo_persistence_mapping_test.dart  # DB-free mapping unit tests
+│   └── todo_endpoints_integration_test.dart # live endpoints (skips if down)
+├── tool/
+│   └── run_integration.sh                 # brings the stack up, verifies it
 ├── database_migrations/todo_db/todo_schema/
 │   ├── [000]-todo_core_schema.sql       # tables + seed rows
 │   └── [001]-todo_authz_grants.sql      # tom_resource_grant + seed grants
@@ -383,6 +386,10 @@ curl -s localhost:8080/todos
 curl -s localhost:8080/todos/field-states
 ```
 
+These three `curl`s are for reading the API by hand. The same three requests are
+made and asserted automatically by `./tool/run_integration.sh` ([§12](#12-testing)),
+which is what to run when the question is whether the live path still works.
+
 `/todos/field-states` returns the four-state table from [§5](#5-four-state-authorization)
 straight out of the database:
 
@@ -465,9 +472,15 @@ live boot.
 
 ## 12. Testing
 
+The package is verified at two levels, and which one you run decides what you
+learn:
+
 ```sh
-dart test
+dart test                    # the database-free half
+./tool/run_integration.sh    # that half plus the live stack, end to end
 ```
+
+### Without a database
 
 `test/todo_persistence_mapping_test.dart` covers the mapping boundary without a
 database:
@@ -481,9 +494,35 @@ The domain entities are observable `TomClass`es, so the suite calls
 `initializeReflection()` in `setUpAll` before constructing any of them; the
 records themselves are plain DTOs and need no setup.
 
-The live endpoint + persistence round-trip against Docker MariaDB is verified by
-booting the server and curling the three endpoints (§9) — it is built, not
-gated.
+### Against the live stack
+
+`test/todo_endpoints_integration_test.dart` asserts the three endpoints of §9
+against a running server and the bundled MariaDB. It is the only check in the
+package that touches the boot sequence, the datasource registration, the
+migration tree or the DTO serialization — everything above verifies pure
+functions, so all four could break with `dart test` still green.
+
+- `/health` returns the literal status map (no database — so when it passes and
+  the others fail, the fault is in persistence rather than in the boot);
+- `/todos` returns the two rows `[000]-todo_core_schema.sql` seeds, asserted by
+  their seeded *values*. Those strings exist nowhere in Dart, so the only route
+  they can take into the response is the database. It also names the reflected
+  `TodoItemDto` fields, which nothing else covers: the mapping unit tests stop
+  at record, and record → DTO → wire is only observable over a socket;
+- `/todos/field-states` must equal **the JSON printed in [§9](#9-the-live-server-boot)**.
+  The document is not consulted for flavour — the test parses that fenced block
+  and uses it as the expectation, so re-grading a field in
+  `[001]-todo_authz_grants.sql` fails here until the README is corrected.
+
+**Run it through `tool/run_integration.sh`, not directly.** The suite *skips*
+when nothing is listening on `:8080`, so that `dart test` stays green on a
+machine without Docker — which also means a skip is indistinguishable from a
+pass in the exit code. The runner closes that gap: it recreates the database
+from the migration tree, waits for the container to report healthy, boots the
+server, waits for `/health`, and only then runs the suite — so a skip at that
+point means the stack died mid-run, and the runner reports it as a failure. It
+finishes by running the database-free suites and the example, so one command and
+one exit code cover the whole package.
 
 ---
 
@@ -499,7 +538,8 @@ gated.
 - the full infrastructure: Docker compose, migrations (schema + grants),
   datasource/config assets, `.env.example`, reflection wiring.
 
-**Live, verified against the bundled Docker MariaDB:**
+**Live, and asserted against the bundled Docker MariaDB by
+`tool/run_integration.sh`:**
 
 - the `bin/server_start.dart` `TomServer` boot entrypoint;
 - the `@tomService` HTTP endpoints and their JSON responses
@@ -507,9 +547,13 @@ gated.
 - the end-to-end persistence round-trip (`/todos`) and four-state authorization
   resolved from DB grants (`/todos/field-states`).
 
-Everything that can be verified without a live database is unit-tested; the live
-boot is exercised by `docker compose up -d db && dart run bin/server_start.dart`
-and the three `curl`s in [§9](#9-the-live-server-boot).
+Everything in the first list is unit-tested; everything in the second is covered
+by `test/todo_endpoints_integration_test.dart`, which
+[`tool/run_integration.sh`](tool/run_integration.sh) runs against a stack it
+brings up itself ([§12](#12-testing)). "Verified" here therefore means a command
+anyone can re-run and CI can gate on — not a `curl` someone typed once. The
+manual path in [§9](#9-the-live-server-boot) still works and is the better way
+to *explore* the API; it is no longer what the claim rests on.
 
 ---
 

@@ -4,10 +4,13 @@
 /// pieces that do not need a database — the domain ↔ record mapping and the
 /// four-state field authorization. Each demo asserts its own deterministic
 /// result, so this file doubles as a headless smoke test: it reports a pass/fail
-/// tally and exits non-zero on any failure. The live HTTP boot + persistence
-/// round-trip against the bundled Docker MariaDB is built and verified, not
-/// pending: `README.md` §9 ("The live server boot") gives the
-/// `docker compose up` and the three `curl`s that exercise it.
+/// tally and exits non-zero on any failure — and `tool/run_integration.sh` runs
+/// it for exactly that reason, so a broken walkthrough fails the gate.
+///
+/// The live HTTP boot and the persistence round-trip are the half this file
+/// deliberately does not reach; they are covered by
+/// `test/todo_endpoints_integration_test.dart` against the bundled Docker
+/// MariaDB, which the same runner brings up.
 ///
 /// Run it with:
 ///

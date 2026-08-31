@@ -3,8 +3,8 @@ description: >-
   Tom Core sample backend — a read-only todo-management API on tom_core_server.
   Persists the shared todo_domain model and serves the four-state authorization
   grade matrix over public endpoints. The persistence + authorization core is
-  analyze-clean and unit-tested without a database; the live boot runs against
-  the bundled Docker MariaDB.
+  analyze-clean and unit-tested without a database; the live boot against the
+  bundled Docker MariaDB is asserted end-to-end by tool/run_integration.sh.
 version: 0.1.0
 publish_to: none
 
