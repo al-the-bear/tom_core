@@ -56,11 +56,11 @@ class ShowcaseCell extends TomStatelessWidget {
 
   /// The narrowest surface [child] renders correctly on, when it has one.
   ///
-  /// Most previews are elastic and leave this null. A few — the master-detail
-  /// scaffold with its fixed-width master pane, the editable list with its
-  /// multi-field rows — stop fitting below a width, and side-by-side is what
-  /// takes them there: the split halves the cell. Declaring the width lets the
-  /// cell stack instead of shrinking the preview past what it can render.
+  /// Most previews are elastic and leave this null. Only the master-detail
+  /// cell declares one: its fixed-width master pane leaves the detail pane no
+  /// room for its field column below that point. Side-by-side is what takes a
+  /// preview there — the split halves the cell — so declaring the width lets
+  /// the cell stack instead of shrinking the preview past what it can render.
   final double? previewMinWidth;
 
   /// The narrowest code column worth splitting for. Below it the snippet wraps
