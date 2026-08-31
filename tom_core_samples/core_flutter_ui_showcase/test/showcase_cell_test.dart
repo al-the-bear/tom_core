@@ -223,7 +223,85 @@ void main() {
     expect(ctorsChecked, greaterThanOrEqualTo(20));
     expect(aclChecked, greaterThanOrEqualTo(1));
   });
+
+  // The same floor, one document further out. The README reproduces a few lines
+  // from each group as an illustration, and those copies can drift from the
+  // cells exactly as a snippet drifts from its child — with the same
+  // consequence, since a package whose whole premise is "the printed source is
+  // the rendered result" cannot afford two sources of truth.
+  //
+  // The fences stay free to *abridge*: they show two or three cells of a group,
+  // usually compressed onto one line. What they may not do is show a value the
+  // source does not have, so the rule is subset, not equality — every literal,
+  // identifier and number in a fence must occur in the file it cites.
+  // Tokenising both sides identically is what makes it precise: the source's
+  // `Icons.notifications_outlined` is one token, so a fence saying
+  // `Icons.notifications` is missing from the set rather than a prefix of it.
+  //
+  // (`showcase_smoke_test.dart` holds the other half of the README's group
+  // contract — that each section names a screen that exists.)
+  test('a README illustration only shows values its group file has', () {
+    final readme = File('README.md');
+    expect(readme.existsSync(), isTrue,
+        reason: 'tests must run from the package root');
+
+    final heading = RegExp(r'^[^\n]+? — `(groups/\w+\.dart)`$');
+    final fence = RegExp(r'^```dart\n([\s\S]*?)^```', multiLine: true);
+
+    var sectionsChecked = 0;
+    var tokensChecked = 0;
+
+    for (final section in readme.readAsStringSync().split('\n### ').skip(1)) {
+      final cited = heading.firstMatch(section.split('\n').first);
+      if (cited == null) continue; // a prose section, not a group
+      final illustration = fence.firstMatch(section);
+      if (illustration == null) continue; // a group described without code
+
+      final path = cited.group(1)!;
+      final file = File('lib/$path');
+      expect(file.existsSync(), isTrue,
+          reason: 'the README illustrates $path, which does not exist');
+
+      // Comments are commentary on both sides; strings are data, so they are
+      // compared as whole literals rather than tokenised into identifiers.
+      final source = file.readAsStringSync().replaceAll(_lineComment, '');
+      final shown = illustration.group(1)!.replaceAll(_lineComment, '');
+
+      void requireAll(String kind, RegExp token, String from, String inside) {
+        final available = token.allMatches(inside).map((m) => m[0]!).toSet();
+        for (final match in token.allMatches(from)) {
+          final value = match[0]!;
+          if (_syntax.contains(value)) continue;
+          tokensChecked++;
+          expect(available, contains(value),
+              reason: 'README section for $path shows the $kind `$value`, '
+                  'which appears nowhere in that file — the illustration and '
+                  'the cell it illustrates have drifted apart');
+        }
+      }
+
+      requireAll('string', _singleQuoted, shown, source);
+      final bare = shown.replaceAll(_singleQuoted, "''");
+      requireAll('identifier', _dottedIdentifier, bare,
+          source.replaceAll(_singleQuoted, "''"));
+      requireAll('number', _number, bare, source);
+
+      sectionsChecked++;
+    }
+
+    // Every group must have been illustrated and checked; otherwise a renamed
+    // heading would quietly drop its fence out of the rule.
+    expect(sectionsChecked, equals(showcaseGroups.length));
+    expect(tokensChecked, greaterThan(80));
+  });
 }
+
+/// A dotted reference (`Icons.notifications_outlined`, `textTheme.titleLarge`)
+/// taken whole, so that a shorter path is a *different* token rather than a
+/// prefix of the real one.
+final _dottedIdentifier = RegExp(
+    r'[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*');
+final _number = RegExp(r'\d+(?:\.\d+)?');
 
 final _tomConstructor = RegExp(r'\b(Tom[A-Za-z0-9]*)\s*\(');
 final _builderCall =

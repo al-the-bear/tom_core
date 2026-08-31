@@ -102,6 +102,14 @@ in [`README_tom_core_guidelines.md`](../README_tom_core_guidelines.md).
 
 Each group below maps to one file in `lib/groups/` and one screen in the app.
 
+The code under each heading is an **abridged illustration**, not the group's
+full set of cells: it shows a representative two or three, and often compresses
+a cell's five-line snippet onto one line. What it does not do is drift — the
+same floor that binds the cells binds these fences, so every value one shows
+(every literal, every identifier, every number) exists in the file it cites.
+Read them as a faithful excerpt; read `lib/groups/` for the whole. The fences
+are checked against the source by `showcase_cell_test.dart`.
+
 ### Buttons — `groups/buttons_group.dart`
 
 The Tom button family: elevated, filled (and tonal), text, outlined, icon and
@@ -123,9 +131,9 @@ read-only display widgets. The name spans two kit families on purpose:
 asset to show anything and is left to the coverage note below.
 
 ```dart
-TomText(text: 'Heading', style: Theme.of(context).textTheme.titleLarge)
+TomText(text: 'Headline text', style: Theme.of(context).textTheme.headlineSmall)
 TomChip(labelText: 'Flutter')
-TomBadge(labelText: '5', child: TomIcon(icon: Icons.notifications))
+TomBadge(labelText: '5', child: TomIcon(icon: Icons.notifications_outlined))
 ```
 
 ### Cards & surfaces — `groups/cards_group.dart`
@@ -241,7 +249,7 @@ new group that throws at build time fails CI without any extra test wiring.
 | File | Guards |
 | --- | --- |
 | `test/showcase_smoke_test.dart` | Every group screen builds and pumps without throwing; the home screen lists every group; every "### \<title\> — `groups/<file>.dart`" section above names a file that exists and declares that exact title |
-| `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet; no snippet names an identifier that exists nowhere in the file that renders it; no snippet quotes a construct and then omits what the child passes to it (arguments, ACL builder calls, or a `TomSizedBox` constraint) |
+| `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet; no snippet names an identifier that exists nowhere in the file that renders it; no snippet quotes a construct and then omits what the child passes to it (arguments, ACL builder calls, or a `TomSizedBox` constraint); no illustration in this README shows a literal, identifier or number its group file does not have |
 
 ---
 
