@@ -280,6 +280,7 @@ core_server_sample/
 │   ├── todo_persistence_mapping_test.dart  # DB-free mapping unit tests
 │   ├── todo_health_config_test.dart        # DB-free: /health's configured title
 │   ├── todo_authorization_test.dart        # DB-free: the four-state resolver
+│   ├── boot_assets_test.dart               # DB-free: required vs optional assets
 │   └── todo_endpoints_integration_test.dart # live endpoints (skips if down)
 ├── tool/
 │   └── run_integration.sh                 # brings the stack up, verifies it
@@ -306,15 +307,28 @@ reflection-generation root; it is described in [§9](#9-the-live-server-boot).
 No database, no server, no setup beyond `pub get`:
 
 ```sh
+cd tom_core_samples/core_server_sample
 dart pub get
 dart run example/run_all_examples.dart
 dart test
 ```
 
+**Run every command in this README from the package root.** The configuration
+assets, the migration tree, `docker-compose.yaml` and `.env` are all addressed
+by paths relative to it, so the working directory is part of how this sample is
+invoked rather than a convenience. That is deliberate: resolving assets against
+the script location instead would hide the fact that a deployed server has to be
+*given* its configuration. What the boot does not leave to chance is the failure
+mode — the two assets it cannot start without are loaded by a helper that throws
+naming the absolute path it tried and the directory it resolved against, so a
+wrong directory is a first-line error rather than a puzzle several layers later
+(see [§9](#9-the-live-server-boot)).
+
 `run_all_examples.dart` prints the mapping round-trip and the full four-state
-resolution for the three demo roles. `dart test` runs the three database-free
-suites — mapping, `/health`'s configured title, and the four-state authorizer —
-and skips the live one. Both are green and `dart analyze` reports no issues.
+resolution for the three demo roles. `dart test` runs the four database-free
+suites — mapping, `/health`'s configured title, the four-state authorizer, and
+the boot's asset preconditions — and skips the live one. Both are green and
+`dart analyze` reports no issues.
 
 ---
 
@@ -339,7 +353,8 @@ so the first `curl` returns non-empty without a write.
 `[001]-todo_authz_grants.sql` creates `tom_resource_grant` and seeds the grants
 from the table in [§5](#5-four-state-authorization).
 
-Bring the database up with:
+Bring the database up with, from the package root ([§7](#7-running-the-database-free-core)) —
+both `docker-compose.yaml` and the `.env` it reads live there:
 
 ```sh
 cp .env.example .env
@@ -382,6 +397,28 @@ every `TomYaml.loadYamlFile` call in the boot and read for the `env` overlay
 selector. It has to be explicit because Dart's process environment is read-only
 — see [§10](#10-datasources-and-configuration).
 
+**Required assets versus the optional overlay.** Every one of those paths is
+relative, so the boot only works from the package root. It draws the line
+between the assets it may and may not do without, rather than treating them
+alike:
+
+| Asset | If absent |
+| ----- | --------- |
+| `assets/config-resources_default.yaml` | `mergeRequiredYaml` throws |
+| `assets/datasources_default.yaml` | `mergeRequiredYaml` throws |
+| `assets/config-resources_<env>.yaml` | `mergeOptionalYaml` skips it |
+
+The overlay has to be optional because the hierarchy loop asks *every*
+environment for one and the root environment (`prod`) ships none — so
+"if present" is the correct rule there and only there. Applying it to the other
+two is what made a wrong working directory hard to diagnose: the server started
+with no configuration and no datasource, said nothing, and surfaced a connection
+or missing-key error much further along. The throw names the absolute path it
+tried and the directory it resolved against, which is the pair a reader needs to
+see that the `cd` was wrong. `test/boot_assets_test.dart` pins both halves,
+including the fact that the root environment has no overlay file — the premise
+the optional branch rests on.
+
 The JWT / auth-server / worker-pool machinery `tom_uam_server` also wires is
 intentionally omitted — the endpoints are `@TomPublicAccess`, so none of it is
 exercised. Authenticated, per-principal field grading is realized in full by the
@@ -422,7 +459,8 @@ read-only, greyed, or hidden.
 
 ### Running it
 
-Once the database is up (§8):
+Once the database is up (§8), from the package root
+([§7](#7-running-the-database-free-core)):
 
 ```sh
 dart run bin/server_start.dart
@@ -525,7 +563,8 @@ records, and — transitively through the `tom_core_server` barrel — the Maria
 driver, the migration adaptor, and `TomResourceGrant`.
 
 Regenerate the reflection code after changing any reflected shape (a record's
-fields, the config class, an endpoint signature):
+fields, the config class, an endpoint signature) — from the package root
+([§7](#7-running-the-database-free-core)):
 
 ```sh
 ./reflection_generation.sh   # dart run tom_reflection_generator (flag-free)
@@ -541,7 +580,10 @@ live boot.
 ## 12. Testing
 
 The package is verified at two levels, and which one you run decides what you
-learn:
+learn — both from the package root
+([§7](#7-running-the-database-free-core)); the suites read the configuration
+assets by the same relative paths the boot uses, and say so when they cannot
+find them:
 
 ```sh
 dart test                    # the database-free half
@@ -591,7 +633,19 @@ field in the migration fails here until this README is corrected, on any machine
 Previously that link was made only by the example (which checks three of the
 twelve cells) and by the live suite (which needs Docker).
 
-The three database-free suites read the artifacts through two shared helpers:
+`test/boot_assets_test.dart` covers the last database-free thing the boot does
+before it needs anything external: deciding which configuration files it may
+start without. It pins the throw for each required asset — including that the
+message carries the absolute path and the working directory, which is the pair
+that identifies a wrong `cd` — and the silent skip for the environment overlay.
+Two of its cases exist to keep the distinction honest rather than to describe it:
+one asserts the two required assets are actually present in the package (every
+other case would still pass if a path constant were misspelled, because the
+loader would throw for the wrong reason), and one reads off disk that the root
+environment ships no overlay file — the premise the optional branch rests on, and
+the thing that would quietly change if someone added `config-resources_prod.yaml`.
+
+The four database-free suites read the artifacts through two shared helpers:
 `test/config_assets.dart` loads the config assets, `test/documented_authorization.dart`
 parses the seeded grants and the README's matrix. One loader each, because two
 copies would be free to disagree about what the artifacts say — which is the
@@ -688,6 +742,8 @@ wrote itself, so running it does not disturb a `.env` you are working with.
 - `/health`'s resolution of the configured `app.title` through the
   config-resource provider, including the environment overlay
   (`todo_health_config_test.dart`);
+- the boot's asset preconditions — which configuration files it refuses to start
+  without, and the resolved path its failure names (`boot_assets_test.dart`);
 - the runnable database-free example (`run_all_examples.dart`);
 - the full infrastructure: Docker compose, migrations (schema + grants),
   datasource/config assets, `.env.example`, reflection wiring.
