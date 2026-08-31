@@ -148,4 +148,116 @@ void main() {
     expect(files.length, equals(showcaseGroups.length));
     expect(identifiersChecked, greaterThan(10 * files.length));
   });
+
+  // The third failure mode, and the one naming identifiers cannot see: a
+  // snippet that compiles, names only real things, and *still* renders
+  // differently from the preview beside it, because it drops what the child
+  // passes. A `TomColumn` without `mainAxisSize: MainAxisSize.min` takes the
+  // full height; a `TomLinearProgressIndicator` without the `TomSizedBox`
+  // around it spans its whole parent. Both read as complete code.
+  //
+  // A snippet stays free to *abstract* — `toggles_sliders_group.dart` stands in
+  // for a whole StatefulWidget with `_value` and `setState`. What it may not do
+  // is quote a construct and then under-configure it, so every rule below fires
+  // only where the snippet actually quotes the construct.
+  test('a snippet quoting a construct shows its whole configuration', () {
+    final groups = Directory('lib/groups');
+    expect(groups.existsSync(), isTrue,
+        reason: 'tests must run from the package root');
+
+    var sizingChecked = 0;
+    var ctorsChecked = 0;
+    var aclChecked = 0;
+
+    for (final file in groups
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))) {
+      final source = file.readAsStringSync();
+      final snippet = _snippetText(source);
+      final child = _childText(source);
+      final name = file.uri.pathSegments.last;
+
+      // A `TomSizedBox` in a group file is never decoration — it is there
+      // because the widget inside has no intrinsic extent. Dropping it is the
+      // one omission that changes the rendering without changing a single
+      // argument, so it cannot be caught by comparing argument lists.
+      if (child.contains('TomSizedBox(')) {
+        sizingChecked++;
+        expect(snippet, contains('TomSizedBox('),
+            reason: '$name: the child constrains a widget with TomSizedBox but '
+                'no snippet shows it — a reader copying the snippet gets an '
+                'unconstrained widget, not the one previewed');
+      }
+
+      // For every Tom widget a snippet quotes, the arguments the child passes
+      // directly to that widget must all appear. Depth one only: what a nested
+      // widget is given is that widget's own rule to answer.
+      for (final ctor in _tomConstructors(snippet)) {
+        ctorsChecked++;
+        final missing = _namedArguments(child, ctor)
+            .difference(_namedArguments(snippet, ctor));
+        expect(missing, isEmpty,
+            reason: '$name: the snippet quotes $ctor but omits '
+                '${missing.map((a) => "$a:").join(", ")}, which the child '
+                'passes — the copied widget would render differently');
+      }
+
+      // The ACL engine configures through a fluent chain rather than
+      // arguments, so the same rule needs the same shape as in
+      // `core_flutter_acl_sample`: a dropped `.setPSize(200)` is invisible and
+      // changes the layout.
+      if (snippet.contains('AclBuilder(')) {
+        aclChecked++;
+        final missing = _builderCalls(child).difference(_builderCalls(snippet));
+        expect(missing, isEmpty,
+            reason: '$name: the snippet quotes AclBuilder but omits '
+                '${missing.map((c) => ".$c()").join(", ")}, which the child '
+                'calls — the copied layout would render differently');
+      }
+    }
+
+    // Guard against the rules silently matching nothing, which would let the
+    // test pass while checking no cell at all.
+    expect(sizingChecked, greaterThanOrEqualTo(3));
+    expect(ctorsChecked, greaterThanOrEqualTo(20));
+    expect(aclChecked, greaterThanOrEqualTo(1));
+  });
+}
+
+final _tomConstructor = RegExp(r'\b(Tom[A-Za-z0-9]*)\s*\(');
+final _builderCall =
+    RegExp(r'\.(append|setPSize|setMinSize|setMaxSize|setAcl[A-Za-z0-9]*)\s*\(');
+final _namedArgument = RegExp(r'\b(\w+)\s*:');
+
+/// The Tom widget constructors invoked in [source].
+Set<String> _tomConstructors(String source) =>
+    _tomConstructor.allMatches(source).map((m) => m.group(1)!).toSet();
+
+/// The fluent configuration calls made on an `AclBuilder` chain in [source].
+Set<String> _builderCalls(String source) =>
+    _builderCall.allMatches(source).map((m) => m.group(1)!).toSet();
+
+/// The names of the arguments passed *directly* to [constructor] in [source],
+/// unioned over every call to it. Arguments of nested widgets belong to that
+/// widget's own call, so only depth one counts.
+Set<String> _namedArguments(String source, String constructor) {
+  final names = <String>{};
+  final opener = RegExp('\\b$constructor\\s*(?:<[^>]*>\\s*)?\\(');
+  for (final match in opener.allMatches(source)) {
+    final args = StringBuffer();
+    var depth = 0;
+    for (var i = match.end - 1; i < source.length; i++) {
+      final char = source[i];
+      if (char == '(' || char == '[' || char == '{') {
+        depth++;
+      } else if (char == ')' || char == ']' || char == '}') {
+        depth--;
+        if (depth == 0) break;
+      }
+      if (depth == 1) args.write(char);
+    }
+    names.addAll(_namedArgument.allMatches(args.toString()).map((m) => m[1]!));
+  }
+  return names;
 }

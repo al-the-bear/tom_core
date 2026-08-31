@@ -44,6 +44,17 @@ the layout and ACL cells build their filler with the public
 `demoBox(label, color)` rather than a private helper: the snippet and the child
 then say exactly the same thing, and a reader can look up what they say.
 
+The floor has a second half, and it catches snippets that pass the first: **a
+snippet may abstract, but it may not quote a construct and then
+under-configure it.** Standing in for a whole `StatefulWidget` with `_value` and
+`setState` is fair — a `TomColumn` shown without the
+`mainAxisSize: MainAxisSize.min` the child passes is not, because the copy then
+takes the full height while the preview beside it does not. The same goes for
+what a snippet drops *around* a widget: `TomSlider` and
+`TomLinearProgressIndicator` have no intrinsic width, so the `TomSizedBox` that
+constrains them is part of the lesson and appears in the snippet.
+`showcase_cell_test.dart` enforces both halves.
+
 ### A note on resources and `const`
 
 The showcase uses the **direct-parameter** form of every widget — `label:`,
@@ -133,8 +144,11 @@ that owns its own value.
 
 ```dart
 TomSwitch(value: _on, onChanged: (v) => setState(() => _on = v))
-TomSlider(value: _value, min: 0, max: 100,
-    onChanged: (v) => setState(() => _value = v))
+TomSizedBox(
+  width: 240,
+  child: TomSlider(value: _value, min: 0, max: 100,
+      onChanged: (v) => setState(() => _value = v)),
+)
 ```
 
 ### Progress — `groups/progress_group.dart`
@@ -142,10 +156,13 @@ TomSlider(value: _value, min: 0, max: 100,
 `TomCircularProgressIndicator` and `TomLinearProgressIndicator`, determinate and
 indeterminate.
 
+A circular indicator sizes itself; a linear one does not, so the linear cell
+shows the width constraint rather than leaving the reader to discover it.
+
 ```dart
 TomCircularProgressIndicator()              // indeterminate
 TomCircularProgressIndicator(value: 0.65)   // determinate
-TomLinearProgressIndicator(value: 0.4)
+TomSizedBox(width: 240, child: TomLinearProgressIndicator(value: 0.4))
 ```
 
 ### Layout — `groups/layout_group.dart`
@@ -207,7 +224,8 @@ selects). Adding a group is mechanical:
 
 1. Create `lib/groups/<family>_group.dart` exposing a `final ShowcaseGroup`.
 2. Give each component a `ShowcaseCell(title:, code:, child:)` — keep `code`
-   verbatim with `child`, and name only identifiers the file defines or imports
+   verbatim with `child`: name only identifiers the file defines or imports,
+   and pass through every argument and constraint the child carries
    (`showcase_cell_test.dart` rejects the rest).
 3. Add the group to `showcaseGroups` in `lib/showcase_app.dart`.
 
@@ -219,7 +237,7 @@ new group that throws at build time fails CI without any extra test wiring.
 | File | Guards |
 | --- | --- |
 | `test/showcase_smoke_test.dart` | Every group screen builds and pumps without throwing; the home screen lists every group |
-| `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet; no snippet names an identifier that exists nowhere in the file that renders it |
+| `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet; no snippet names an identifier that exists nowhere in the file that renders it; no snippet quotes a construct and then omits what the child passes to it (arguments, ACL builder calls, or a `TomSizedBox` constraint) |
 
 ---
 

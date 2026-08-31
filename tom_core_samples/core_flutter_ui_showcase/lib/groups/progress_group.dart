@@ -29,8 +29,12 @@ final ShowcaseGroup progressGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomLinearProgressIndicator (determinate)',
-      code: "TomLinearProgressIndicator(\n"
-          "  value: 0.4,\n"
+      note: 'A linear indicator has no intrinsic width — it fills whatever its '
+          'parent offers, so the constraint is part of what the cell teaches '
+          'and belongs in the snippet.',
+      code: "TomSizedBox(\n"
+          "  width: 240,\n"
+          "  child: TomLinearProgressIndicator(value: 0.4),\n"
           ")",
       child: TomSizedBox(
         width: 240,

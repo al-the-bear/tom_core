@@ -37,11 +37,17 @@ final ShowcaseGroup togglesSlidersGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomSlider',
-      code: "TomSlider(\n"
-          "  value: _value,\n"
-          "  min: 0,\n"
-          "  max: 100,\n"
-          "  onChanged: (v) => setState(() => _value = v),\n"
+      note: 'A slider has no intrinsic width either — the demo constrains it '
+          'to 240px, and the snippet shows that constraint because without it '
+          'the copied slider spans its whole parent.',
+      code: "TomSizedBox(\n"
+          "  width: 240,\n"
+          "  child: TomSlider(\n"
+          "    value: _value,\n"
+          "    min: 0,\n"
+          "    max: 100,\n"
+          "    onChanged: (v) => setState(() => _value = v),\n"
+          "  ),\n"
           ")",
       child: _SliderDemo(),
     ),
