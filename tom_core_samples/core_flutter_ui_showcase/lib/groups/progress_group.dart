@@ -32,7 +32,7 @@ final ShowcaseGroup progressGroup = ShowcaseGroup(
       code: "TomLinearProgressIndicator(\n"
           "  value: 0.4,\n"
           ")",
-      child: SizedBox(
+      child: TomSizedBox(
         width: 240,
         child: TomLinearProgressIndicator(value: 0.4),
       ),

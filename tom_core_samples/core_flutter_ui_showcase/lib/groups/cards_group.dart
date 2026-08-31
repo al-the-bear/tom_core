@@ -19,14 +19,14 @@ final ShowcaseGroup cardsGroup = ShowcaseGroup(
       title: 'TomCard',
       code: "TomCard(\n"
           "  elevation: 2,\n"
-          "  child: Padding(\n"
+          "  child: TomPadding(\n"
           "    padding: const EdgeInsets.all(16),\n"
           "    child: TomText(text: 'Card content'),\n"
           "  ),\n"
           ")",
       child: TomCard(
         elevation: 2,
-        child: Padding(
+        child: TomPadding(
           padding: const EdgeInsets.all(16),
           child: TomText(text: 'Card content'),
         ),
@@ -42,7 +42,7 @@ final ShowcaseGroup cardsGroup = ShowcaseGroup(
           "    ),\n"
           "    borderRadius: BorderRadius.circular(8),\n"
           "  ),\n"
-          "  child: Center(child: TomText(text: 'Boxed')),\n"
+          "  child: TomCenter(child: TomText(text: 'Boxed')),\n"
           ")",
       child: TomContainer(
         height: 80,
@@ -50,12 +50,12 @@ final ShowcaseGroup cardsGroup = ShowcaseGroup(
           border: Border.all(color: Theme.of(context).colorScheme.outline),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Center(child: TomText(text: 'Boxed')),
+        child: TomCenter(child: TomText(text: 'Boxed')),
       ),
     ),
     ShowcaseCell(
       title: 'TomDivider',
-      code: "Column(\n"
+      code: "TomColumn(\n"
           "  mainAxisSize: MainAxisSize.min,\n"
           "  children: [\n"
           "    TomText(text: 'Above'),\n"
@@ -63,7 +63,7 @@ final ShowcaseGroup cardsGroup = ShowcaseGroup(
           "    TomText(text: 'Below'),\n"
           "  ],\n"
           ")",
-      child: Column(
+      child: TomColumn(
         mainAxisSize: MainAxisSize.min,
         children: [
           TomText(text: 'Above'),

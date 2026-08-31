@@ -68,8 +68,17 @@ Tom widgets resolve their inputs in the constructor body (`late final` fields),
 so they are **not** `const`-constructible. None of the snippets wrap a Tom
 widget in `const`; copy them as-is.
 
-The **chrome itself follows the same rule and conforms to G-UI-1/G-UI-2**:
-`ShowcaseCell`, `_PreviewSurface`, `CodeBlock` and `GroupScreen` derive from
+**G-UI-1/G-UI-2 holds throughout — in the teaching cells as well as the
+chrome.** The cells matter most: they are the part a reader copies, so a snippet
+that began `Column(` or `Padding(` would teach the raw widget in a package whose
+purpose is to teach the Tom kit. The group files therefore use `TomColumn`,
+`TomPadding`, `TomCenter`, `TomSizedBox` and `TomContainer` (including inside
+`demoBox`) in both halves of every cell. The only raw Flutter widgets left are
+the `Icon`s that `TomIconButton(icon:)` and `TomFloatingActionButton(child:)`
+require by signature.
+
+The **chrome follows the same rule**: `ShowcaseCell`, `_PreviewSurface`,
+`CodeBlock` and `GroupScreen` derive from
 `TomStatelessWidget` (the sanctioned base for a scope-participating layout
 wrapper that owns no `tomId`/resources and no family identity) and lay out with
 `TomColumn` / `TomPadding` / `TomContainer` / `TomAlign` / `TomListView` /
