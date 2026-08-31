@@ -114,4 +114,89 @@ void main() {
       expect(back.statesFor('owner'), hasLength(2));
     });
   });
+
+  // The matrix is an authorization decision that arrives from the network, so
+  // its degenerate inputs are the contract, not an afterthought: every one of
+  // them must deny rather than throw. A reader that throws on a malformed
+  // payload fails *open* in the sense that matters — the client's read path
+  // breaks instead of rendering the most restrictive grade.
+  group('TodoFieldMatrixDto closed-safe reads', () {
+    /// A matrix whose `viewer` row mixes a well-formed token with cells that
+    /// are not strings at all — the shape an untrusted or version-skewed
+    /// payload can take, since `states` is typed `Map<String, Object?>`.
+    TodoFieldMatrixDto malformed() => TodoFieldMatrixDto()
+      ..states = <String, Object?>{
+        'viewer': <String, Object?>{
+          'todo.item.title': 'read', // well-formed: must still parse
+          'todo.item.priority': 42, // an int where a token belongs
+          'todo.item.done': <String, Object?>{}, // a nested map
+          'todo.item.label': true, // a bool
+        },
+        'ghost': 'not-a-row', // a row that is not a map at all
+      };
+
+    test('TDW-MTX-01: accessFor resolves a non-String cell to none', () {
+      final dto = malformed();
+      expect(dto.accessFor('viewer', 'todo.item.priority'), TomAuthState.none);
+      expect(dto.accessFor('viewer', 'todo.item.done'), TomAuthState.none);
+      expect(dto.accessFor('viewer', 'todo.item.label'), TomAuthState.none);
+      // Anti-vacuity: the well-formed cell beside them still parses, so the
+      // test would fail if accessFor simply returned none for everything.
+      expect(dto.accessFor('viewer', 'todo.item.title'), TomAuthState.read);
+    });
+
+    test('TDW-MTX-02: statesFor resolves a non-String cell to none', () {
+      final row = malformed().statesFor('viewer');
+      expect(row['todo.item.priority'], TomAuthState.none);
+      expect(row['todo.item.done'], TomAuthState.none);
+      expect(row['todo.item.label'], TomAuthState.none);
+      expect(row['todo.item.title'], TomAuthState.read); // anti-vacuity
+      expect(row, hasLength(4)); // no cell is silently dropped
+    });
+
+    test('TDW-MTX-03: a malformed cell survives the wire path', () {
+      // The threat model is a payload off the network, not a hand-built DTO,
+      // so assert the same guarantee after reflection deserialization.
+      final back = dtoFromJson<TodoFieldMatrixDto>(const {
+        'states': {
+          'viewer': {'todo.item.title': 'read', 'todo.item.priority': 42},
+        },
+      });
+      expect(back.accessFor('viewer', 'todo.item.priority'), TomAuthState.none);
+      expect(back.statesFor('viewer')['todo.item.priority'], TomAuthState.none);
+      expect(back.accessFor('viewer', 'todo.item.title'), TomAuthState.read);
+    });
+
+    test('TDW-MTX-04: an absent role denies through both readers', () {
+      final dto = malformed();
+      expect(dto.accessFor('nobody', 'todo.item.title'), TomAuthState.none);
+      expect(dto.statesFor('nobody'), isEmpty);
+      // A role whose row is present but is not a map behaves the same way.
+      expect(dto.accessFor('ghost', 'todo.item.title'), TomAuthState.none);
+      expect(dto.statesFor('ghost'), isEmpty);
+    });
+
+    test('TDW-MTX-05: an unrecognised token resolves to none', () {
+      expect(TodoFieldMatrixDto.parseState('bogus'), TomAuthState.none);
+      expect(TodoFieldMatrixDto.parseState(null), TomAuthState.none);
+      expect(TodoFieldMatrixDto.parseState(42), TomAuthState.none);
+      expect(TodoFieldMatrixDto.parseState('full'), TomAuthState.full);
+    });
+
+    test('TDW-MTX-06: orElse chooses the fallback for every bad input', () {
+      const fallback = TomAuthState.disabled;
+      expect(TodoFieldMatrixDto.parseState('bogus', orElse: fallback),
+          fallback);
+      expect(TodoFieldMatrixDto.parseState(null, orElse: fallback), fallback);
+      expect(TodoFieldMatrixDto.parseState(42, orElse: fallback), fallback);
+      // A recognised token still wins over orElse.
+      expect(TodoFieldMatrixDto.parseState('read', orElse: fallback),
+          TomAuthState.read);
+    });
+
+    test('TDW-MTX-07: roles names every row the matrix carries', () {
+      expect(malformed().roles, containsAll(<String>['viewer', 'ghost']));
+      expect(TodoFieldMatrixDto().roles, isEmpty);
+    });
+  });
 }

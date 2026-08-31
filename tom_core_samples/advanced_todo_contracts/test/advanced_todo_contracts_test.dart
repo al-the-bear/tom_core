@@ -111,6 +111,21 @@ void main() {
       expect(GradedFieldDto.parseAccess('full'), TomAuthState.full);
       expect(GradedFieldDto.parseAccess('bogus'), TomAuthState.none);
       expect(GradedFieldDto.parseAccess(null), TomAuthState.none);
+      // Not every caller can promise a String: `GrantMatrixDto.matrix` is typed
+      // `Map<String, Object?>`, so the guard has to cover any value at all.
+      expect(GradedFieldDto.parseAccess(7), TomAuthState.none);
+      expect(GradedFieldDto.parseAccess(const <String, Object?>{}),
+          TomAuthState.none);
+    });
+
+    test('parseAccess honours a non-default orElse', () {
+      const fallback = TomAuthState.disabled;
+      expect(GradedFieldDto.parseAccess('bogus', orElse: fallback), fallback);
+      expect(GradedFieldDto.parseAccess(null, orElse: fallback), fallback);
+      expect(GradedFieldDto.parseAccess(7, orElse: fallback), fallback);
+      // A recognised token still wins over orElse.
+      expect(GradedFieldDto.parseAccess('read', orElse: fallback),
+          TomAuthState.read);
     });
 
     test('round-trips through reflection JSON', () {
@@ -228,6 +243,75 @@ void main() {
 
     test('toString summarises role and cell counts', () {
       expect(sampleMatrix().toString(), 'GrantMatrixDto(2 roles, 4 cells)');
+    });
+
+    // `matrix` is typed `Map<String, Object?>`, so a cell can hold anything the
+    // sender put there. All four readers must deny such a cell rather than
+    // throw: this object is an authorization decision arriving from the
+    // network, and a reader that throws breaks the console's read path instead
+    // of rendering the most restrictive grade.
+    group('malformed cells', () {
+      GrantMatrixDto malformed() => GrantMatrixDto()
+        ..matrix = <String, Object?>{
+          'owner': <String, Object?>{
+            'todo.item.title': 'full', // well-formed: must still parse
+            'todo.item.status': 7, // an int where a token belongs
+            'todo.item.priority': <String, Object?>{}, // a nested map
+          },
+          'ghost': 'not-a-row', // a row that is not a map at all
+        };
+
+      test('accessFor denies a non-String cell', () {
+        final dto = malformed();
+        expect(dto.accessFor('owner', 'todo.item.status'), TomAuthState.none);
+        expect(dto.accessFor('owner', 'todo.item.priority'), TomAuthState.none);
+        expect(dto.accessFor('ghost', 'todo.item.title'), TomAuthState.none);
+        // Anti-vacuity: the well-formed cell beside them still parses.
+        expect(dto.accessFor('owner', 'todo.item.title'), TomAuthState.full);
+      });
+
+      test('gradeMapFor denies a non-String cell', () {
+        final row = malformed().gradeMapFor('owner');
+        expect(row['todo.item.status'], TomAuthState.none);
+        expect(row['todo.item.priority'], TomAuthState.none);
+        expect(row['todo.item.title'], TomAuthState.full); // anti-vacuity
+        expect(row, hasLength(3)); // no cell is silently dropped
+        expect(malformed().gradeMapFor('ghost'), isEmpty);
+      });
+
+      test('gradesFor denies a non-String cell and keeps key order', () {
+        final grades = malformed().gradesFor('owner');
+        expect(grades.map((g) => g.resourceKey),
+            ['todo.item.priority', 'todo.item.status', 'todo.item.title']);
+        expect(grades.map((g) => g.accessState), [
+          TomAuthState.none,
+          TomAuthState.none,
+          TomAuthState.full, // anti-vacuity
+        ]);
+      });
+
+      test('withAccess copies a malformed row as denied', () {
+        final updated = malformed()
+            .withAccess('owner', 'todo.item.status', TomAuthState.read);
+        expect(updated.accessFor('owner', 'todo.item.status'),
+            TomAuthState.read); // the edited cell
+        expect(updated.accessFor('owner', 'todo.item.priority'),
+            TomAuthState.none); // the other malformed cell, now a token
+        expect(updated.accessFor('owner', 'todo.item.title'),
+            TomAuthState.full); // anti-vacuity
+      });
+
+      test('a malformed cell survives the wire path', () {
+        final back = dtoFromJson<GrantMatrixDto>(const {
+          'matrix': {
+            'owner': {'todo.item.title': 'full', 'todo.item.status': 7},
+          },
+        });
+        expect(back.accessFor('owner', 'todo.item.status'), TomAuthState.none);
+        expect(back.gradeMapFor('owner')['todo.item.status'],
+            TomAuthState.none);
+        expect(back.accessFor('owner', 'todo.item.title'), TomAuthState.full);
+      });
     });
   });
 

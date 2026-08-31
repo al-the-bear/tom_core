@@ -18,8 +18,12 @@ import 'graded_field_dto.dart';
 /// reflection serializer round-trips it as a plain nested map. The wire shape is
 /// therefore `{matrix: {role: {resourceKey: token}}}`. The typed helpers
 /// ([accessFor], [gradesFor], [withAccess], [fromGrades]) convert tokens ↔
-/// [TomAuthState] via [GradedFieldDto.parseAccess]; lookups are closed-safe
-/// ([accessFor] returns [TomAuthState.none] for an unset cell).
+/// [TomAuthState] via [GradedFieldDto.parseAccess]; all four are closed-safe
+/// for every degenerate input a payload can carry — an absent role, a row that
+/// is not a map, an unset cell, an unrecognised token, or a cell holding
+/// something that is not a string at all all resolve to [TomAuthState.none].
+/// The whole decision lives in [GradedFieldDto.parseAccess], so no reader can
+/// reintroduce a throwing path by narrowing the type on its own.
 @tomReflector
 class GrantMatrixDto {
   /// role name → (resourceKey → `TomAuthState.name` token). Held as tokens so
@@ -50,44 +54,44 @@ class GrantMatrixDto {
   Iterable<String> get roles => matrix.keys;
 
   /// The resolved access for `(role, resourceKey)`, or [TomAuthState.none] when
-  /// the cell is unset (closed-safe).
+  /// the cell is unset, the role is absent, or the stored value is not a
+  /// recognised token (closed-safe throughout).
   TomAuthState accessFor(String role, String resourceKey) {
     final row = matrix[role];
-    if (row is Map) {
-      return GradedFieldDto.parseAccess(row[resourceKey] as String?);
-    }
+    if (row is Map) return GradedFieldDto.parseAccess(row[resourceKey]);
     return TomAuthState.none;
   }
 
   /// The decoded typed grade map for [role] (`resourceKey → TomAuthState`),
-  /// empty when the role is absent. The natural input for
-  /// `TomGradedAccessControlInformation(grades:)` on the server.
+  /// empty when the role is absent or its row is not a map. The natural input
+  /// for `TomGradedAccessControlInformation(grades:)` on the server. A cell
+  /// holding anything other than a recognised token decodes to
+  /// [TomAuthState.none] rather than being dropped, so the row's key set
+  /// survives intact.
   Map<String, TomAuthState> gradeMapFor(String role) {
     final row = matrix[role];
     if (row is! Map) return const {};
     return {
       for (final entry in row.entries)
-        '${entry.key}': GradedFieldDto.parseAccess(entry.value as String?),
+        '${entry.key}': GradedFieldDto.parseAccess(entry.value),
     };
   }
 
   /// The grades for [role] as [GradedFieldDto]s, ordered by resource key for a
-  /// stable rendering. Empty when the role is absent.
+  /// stable rendering. Empty when the role is absent or its row is not a map.
   List<GradedFieldDto> gradesFor(String role) {
-    final row = matrix[role];
-    if (row is! Map) return const [];
-    final keys = row.keys.cast<String>().toList()..sort();
-    return [
-      for (final key in keys)
-        GradedFieldDto(
-          resourceKey: key,
-          access: GradedFieldDto.parseAccess(row[key] as String?),
-        ),
+    final grades = [
+      for (final entry in gradeMapFor(role).entries)
+        GradedFieldDto(resourceKey: entry.key, access: entry.value),
     ];
+    grades.sort((a, b) => a.resourceKey.compareTo(b.resourceKey));
+    return grades;
   }
 
   /// Returns a new matrix with `(role, resourceKey)` set to [access], leaving
-  /// this instance unchanged.
+  /// this instance unchanged. Every other cell is decoded and re-encoded, so an
+  /// unparseable value elsewhere in the grid comes back as [TomAuthState.none]
+  /// rather than failing the edit.
   GrantMatrixDto withAccess(
       String role, String resourceKey, TomAuthState access) {
     final decoded = <String, Map<String, TomAuthState>>{};
@@ -95,7 +99,7 @@ class GrantMatrixDto {
       if (row is Map) {
         decoded[r] = {
           for (final cell in row.entries)
-            '${cell.key}': GradedFieldDto.parseAccess(cell.value as String?),
+            '${cell.key}': GradedFieldDto.parseAccess(cell.value),
         };
       }
     });

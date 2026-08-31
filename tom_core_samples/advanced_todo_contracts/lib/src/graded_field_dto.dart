@@ -44,14 +44,21 @@ class GradedFieldDto {
   /// Sets [access] from a typed [TomAuthState].
   set accessState(TomAuthState value) => access = value.name;
 
-  /// Parses a stored [TomAuthState] token back to its enum value. A `null` or
-  /// unrecognised token yields [orElse] (default [TomAuthState.none], the
+  /// Parses a stored [TomAuthState] token back to its enum value. Anything that
+  /// is not a recognised token — `null`, an unknown string, or a value that is
+  /// not a string at all — yields [orElse] (default [TomAuthState.none], the
   /// closed/safe fallback) rather than throwing.
+  ///
+  /// [token] is `Object?` rather than `String?` deliberately. The grant matrix
+  /// stores its cells in a `Map<String, Object?>`, so a value arriving off the
+  /// wire may be any JSON type; keeping the guard here means `GrantMatrixDto`'s
+  /// four readers cannot reintroduce a throwing path by narrowing the type
+  /// themselves.
   static TomAuthState parseAccess(
-    String? token, {
+    Object? token, {
     TomAuthState orElse = TomAuthState.none,
   }) {
-    if (token == null) return orElse;
+    if (token is! String) return orElse;
     for (final state in TomAuthState.values) {
       if (state.name == token) return state;
     }

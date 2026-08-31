@@ -47,7 +47,12 @@ Every DTO has a **log-safe** `toString` (passwords and bearer tokens are never
 rendered). Values that cannot cross the wire as their native type travel as the
 enum's `.name` token in a plain `String`, with a typed accessor for callers; the
 token readers are **closed-safe**, so an unknown access token degrades to
-`TomAuthState.none` and an unknown role to `ProjectRole.viewer`.
+`TomAuthState.none` and an unknown role to `ProjectRole.viewer`. `parseAccess`
+takes `Object?`, not `String?`, because `GrantMatrixDto` stores its cells in a
+`Map<String, Object?>`: a value that is not a string at all degrades the same
+way rather than throwing, and keeping that guard in one place is what stops the
+matrix's four readers from reintroducing a throwing path by narrowing the type
+themselves.
 
 - **Auth/login** (`login_dtos.dart`): `LoginRequest`
   (`{username, password, app, org}`), `SecondFactorRequest`,

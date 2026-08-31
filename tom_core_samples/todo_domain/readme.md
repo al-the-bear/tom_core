@@ -144,9 +144,20 @@ final back = dtoFromJson<TodoItemDto>(map);      // map  → DTO
 ```
 
 Values that cannot cross the wire as their native type travel as a stable token
-with a typed accessor on the near side, and the readers are **closed-safe**: an
-unset or unrecognised `TodoFieldMatrixDto` cell resolves to `TomAuthState.none`
+with a typed accessor on the near side, and the readers are **closed-safe**:
+every degenerate `TodoFieldMatrixDto` input a payload can carry — an absent
+role, a row that is not a map, an unset cell, an unrecognised token, or a cell
+holding something that is not a string at all — resolves to `TomAuthState.none`
 rather than throwing, so an unknown grade denies rather than escalates.
+
+That last case is why `parseState` takes `Object?` rather than `String?`:
+`states` is typed `Map<String, Object?>`, so a cell may hold any JSON value, and
+keeping the decision in one place is what stops a reader from reintroducing a
+throwing path by narrowing the type itself. The guarantee matters more here than
+ordinary leniency would suggest — the matrix *is* an authorization decision
+arriving over the network, so a reader that threw on a malformed cell would
+break the client's read path instead of denying. `todo_domain_test.dart` asserts
+each of those inputs against both readers.
 
 The DTOs live beside the entities rather than in a separate contracts package
 because this deliberately-minimal pair already shares one reflected package
