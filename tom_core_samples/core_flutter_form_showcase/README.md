@@ -665,8 +665,10 @@ snippet, but everything else about the match is on you.
 - **Sample suite index:** [`tom_core_samples/README.md`](../README.md)
 - **The kit on display:** [`tom_flutter_ui`](../../tom_flutter_ui/README.md) — the
   forms framework (fields, validation, layout, theming, lists, master-detail)
-- **Shared model:** [`todo_domain`](../todo_domain/readme.md) — the reflected
-  entities the demo forms bind
+- **Model:** local to this package — the reflected entities the demo forms bind,
+  `CompanyProfile` and `OrderItem`, are declared in
+  [`lib/domain/showcase_entities.dart`](lib/domain/showcase_entities.dart); there
+  is no shared-model dependency
 - **Sibling samples:**
   [`core_flutter_ui_showcase`](../core_flutter_ui_showcase/README.md) (the widget
   catalogue),
