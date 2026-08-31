@@ -5,6 +5,3 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - lib/reflection_seed.reflection.dart
-
-linter:
-  rules:
