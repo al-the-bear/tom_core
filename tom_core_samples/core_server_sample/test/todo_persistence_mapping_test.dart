@@ -1,5 +1,6 @@
 /// Database-free unit tests for the persistence boundary: the domain ↔ record
-/// mapping is pure and total, so it verifies without a server or MariaDB.
+/// mapping is pure — no I/O — so it verifies without a server or MariaDB. It is
+/// also total, bar the single rejected input the `malformed ids` group pins.
 ///
 /// The live endpoint + persistence round-trip against Docker MariaDB is
 /// asserted by its own suite, `todo_endpoints_integration_test.dart`, which
@@ -114,6 +115,56 @@ void main() {
       expect(list.name.get(), 'Backlog');
       expect(list.projectId.get(), '2');
       expect(listToRecord(list).projectId, 2);
+    });
+  });
+
+  // The domain ids are free-form strings a client can put anything into, and on
+  // the way to the database `null` is not a neutral value: it is the INSERT
+  // signal for a primary key and "unowned"/"unassigned" for a foreign key. So a
+  // malformed id that quietly became `null` would duplicate a row or strip an
+  // assignment rather than fail. These pin that it cannot.
+  group('malformed ids', () {
+    test('a malformed primary key throws instead of inserting a new row', () {
+      final user = User()
+        ..id.set('abc')
+        ..displayName.set('Ada');
+      expect(() => userToRecord(user), throwsFormatException);
+    });
+
+    test('a malformed foreign key throws instead of unassigning', () {
+      final item = TodoItem()
+        ..title.set('Write tests')
+        ..assigneeId.set('nobody');
+      expect(() => itemToRecord(item, listId: 1), throwsFormatException);
+    });
+
+    test('the failure names the offending field and value', () {
+      final project = Project()..ownerId.set('me');
+      expect(
+        () => projectToRecord(project),
+        throwsA(
+          isA<FormatException>()
+              .having((e) => e.message, 'message', contains('Project.ownerId'))
+              .having((e) => e.source, 'source', 'me'),
+        ),
+      );
+    });
+
+    test('both of a list\'s ids are checked', () {
+      expect(
+        () => listToRecord(TodoList()..id.set('five')),
+        throwsFormatException,
+      );
+      expect(
+        () => listToRecord(TodoList()..projectId.set('two')),
+        throwsFormatException,
+      );
+    });
+
+    // Without this the four cases above would all pass if every non-empty id
+    // threw, which would break every write in the sample.
+    test('a well-formed id still parses', () {
+      expect(userToRecord(User()..id.set('42')).id, 42);
     });
   });
 }

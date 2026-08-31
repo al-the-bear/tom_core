@@ -92,7 +92,7 @@ are plain Dart classes with typed fields, an **integer primary key**,
 ### The boundary
 
 `lib/src/persistence/todo_mapping.dart` is the **one place** the two shapes
-meet. It is a set of pure, total functions — no I/O, no database — so it can be
+meet. It is a set of pure functions — no I/O, no database — so it can be
 unit-tested directly. Keeping the database mapping here (rather than annotating
 the domain entities) is a deliberate design decision: the domain model stays the
 client's clean observable form model, the records stay the server's relational
@@ -166,7 +166,9 @@ Column names use `snake_case` to match the SQL schema; the Dart fields use
 ## 4. The mapping layer
 
 `lib/src/persistence/todo_mapping.dart` provides a `*ToRecord` / `*FromRecord`
-pair for each entity. They are pure and total:
+pair for each entity. They are pure, and total in the `*FromRecord` direction —
+anything the database can hold rebuilds into an entity. Going the other way they
+reject exactly one input, described below:
 
 ```dart
 // Domain -> row. The owning list id is supplied because the domain models
@@ -182,9 +184,19 @@ The interesting cases the tests pin down:
 - **Unpersisted entities map to a `null` primary key.** An entity whose display
   id is the empty string has never been saved, so `userToRecord(user).id` is
   `null` — the repository will INSERT.
+- **A malformed id is rejected, not folded into that `null`.** The domain ids are
+  free-form strings, and `null` on this side of the boundary is an instruction
+  rather than an absence: INSERT for a primary key, unowned/unassigned for a
+  foreign key. So `userToRecord(User()..id.set('abc'))` throws a
+  `FormatException` naming the field and the value, instead of filing a
+  duplicate row or quietly dropping an assignment. This is the one input the
+  domain → record direction rejects.
 - **Unknown stored enum tokens degrade to the default.** A row whose `priority`
   column holds a bogus string rebuilds as `TodoPriority.medium`, because the
-  domain's typed accessor (`priorityValue`) is lenient by design.
+  domain's typed accessor (`priorityValue`) is lenient by design. The leniency
+  is direction-specific rather than inconsistent with the bullet above:
+  degrading an unreadable *stored* value keeps one bad row from breaking a whole
+  list, while degrading an unreadable *incoming* id is what would write one.
 - **A `null` role defaults to `member`** on the way out of the database — the
   least-privileged sensible default.
 - **Nested collections are not part of a row.** `projectToRecord` does not touch
@@ -599,6 +611,10 @@ database:
 - item round-trip with the owning list id; unknown priority → `medium`;
   unassigned → null assignee key
 - project and list foreign-key round-trips
+- malformed ids: a display id that is neither empty nor an integer throws rather
+  than becoming `null`, on primary keys and foreign keys alike, with the message
+  naming the field and the value. A fifth case asserts a well-formed id still
+  parses, so the group cannot pass by rejecting everything
 
 The domain entities are observable `TomClass`es, so the suite calls
 `initializeReflection()` in `setUpAll` before constructing any of them; the

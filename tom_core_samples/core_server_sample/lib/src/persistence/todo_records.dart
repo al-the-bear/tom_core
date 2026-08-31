@@ -23,9 +23,9 @@
 /// `tom_core_server` responsible for a `tom_core_kernel` concern.
 ///
 /// The cost is real and worth naming: every entity exists twice, and a new field
-/// must be added in both places plus the mapping. `todo_mapping.dart` is total
-/// and unit-tested precisely so that omission fails a test rather than silently
-/// dropping a column.
+/// must be added in both places plus the mapping. `todo_mapping.dart` covers
+/// every field and is unit-tested precisely so that such an omission fails a
+/// test rather than silently dropping a column.
 library;
 
 // tom_core_server re-exports tom_core_kernel, so `@tomReflector` and the
