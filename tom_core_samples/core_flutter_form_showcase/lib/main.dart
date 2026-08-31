@@ -9,10 +9,10 @@
 ///  2. The [chromeTexts] bundle is installed. The showcase's teaching snippets
 ///     resolve their field labels through `labelTextOverride` (no resource file
 ///     needed — error keys fall through to their raw key, which is intentionally
-///     instructive), but the showcase's own **interactive chrome** — the code
-///     panel's copy-button tooltip — is real application text, so G-RES-1 applies
-///     and it is resolved from this bundle (see `common/chrome_texts.dart` for
-///     the exemption boundary).
+///     instructive), but the showcase's own **interactive chrome** is real
+///     application text, so G-RES-1 applies and it is resolved from this bundle
+///     (see `common/chrome_texts.dart` for the exemption boundary and for what
+///     the bundle carries).
 library;
 
 import 'package:flutter/material.dart';

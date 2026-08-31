@@ -3,10 +3,10 @@
 /// The showcase deliberately uses the *direct-parameter* form of every Tom
 /// widget (`label:`, `text:`, `value:` …) so no [TomTextResourceProvider]
 /// lookup is required for the **teaching snippets** — each snippet is
-/// copy-paste-ready on its own. The showcase's own **interactive chrome** — the
-/// code panel's copy-button tooltip — is different: it is real application text,
-/// so G-RES-1 applies and it is resolved from the [chromeTexts] bundle installed
-/// here (see `common/chrome_texts.dart` for the exemption boundary).
+/// copy-paste-ready on its own. The showcase's own **interactive chrome** is
+/// different: it is real application text, so G-RES-1 applies and it is resolved
+/// from the [chromeTexts] bundle installed here (see `common/chrome_texts.dart`
+/// for the exemption boundary and for what the bundle carries).
 library;
 
 import 'package:flutter/material.dart';

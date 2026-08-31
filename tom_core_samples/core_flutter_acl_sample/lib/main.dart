@@ -4,11 +4,11 @@
 /// screen, the *direct-parameter* form of Tom widgets) so no
 /// [TomTextResourceProvider] lookup is required for the **teaching snippets** —
 /// each ACL snippet is copy-paste-ready on its own. The showcase's own
-/// **interactive chrome** (the code panel's copy-button tooltip, the visibility
-/// demo's toggle label) is different: it is real application text, so G-RES-1
+/// **interactive chrome** is different: it is real application text, so G-RES-1
 /// applies and it is resolved from the [chromeTexts] bundle installed here (see
-/// `common/chrome_texts.dart` for the exemption boundary). There is **no
-/// reflection step**: an ACL layout binds no reflected entities.
+/// `common/chrome_texts.dart` for the exemption boundary and for what the bundle
+/// carries). There is **no reflection step**: an ACL layout binds no reflected
+/// entities.
 library;
 
 import 'package:flutter/material.dart';

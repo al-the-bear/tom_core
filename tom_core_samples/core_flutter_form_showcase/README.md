@@ -154,8 +154,8 @@ void main() {
    run before any form is constructed.
 2. The **`chromeTexts` bundle** is installed. The showcase resolves its teaching
    labels through `labelTextOverride` (nothing to wire up), but its own
-   interactive chrome — the code panel's copy-button tooltip — is a resource per
-   G-RES-1 (see §5 and `lib/common/chrome_texts.dart`).
+   interactive chrome is a resource per G-RES-1 (see §5 for the boundary, and
+   `lib/common/chrome_texts.dart` for what the bundle carries).
 
 `TomTextResourceProvider` is not re-exported by the `tom_flutter_ui` barrel — it
 is imported from `package:tom_core_kernel/tom_core_kernel.dart`.

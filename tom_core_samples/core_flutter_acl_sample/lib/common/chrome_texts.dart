@@ -8,10 +8,15 @@
 ///   inside a snippet). These are a documented copy-paste exemption: a reader
 ///   must be able to lift a snippet into their own project with nothing to wire
 ///   up first, so they carry their literals inline (see `main.dart`).
-/// - **Interactive chrome is a resource** — strings on the showcase's *own*
-///   affordances (the code panel's copy-button tooltip, the demo's toggle
-///   labels) are real application chrome, not teaching snippets, so G-RES-1
-///   applies and they resolve through the installed [TomTextResourceProvider].
+/// - **Interactive chrome is a resource** — text the tour puts on screen in its
+///   own right, rather than inside a snippet, is real application copy, so
+///   G-RES-1 applies and it resolves through the installed
+///   [TomTextResourceProvider]. What decides the category is *where a string
+///   renders*, not how it reads: the app-bar title goes through the bundle,
+///   while the identical sentence in `MaterialApp.title` stays hardcoded beside
+///   it, because that one names the app to the OS rather than to the reader.
+///   [chromeTexts] below is the authoritative list, and each entry names the
+///   call site that reads it.
 ///
 /// This bundle holds only that second category. `main` installs it before the
 /// first frame and the widget tests install it in their `setUp`, so
