@@ -195,8 +195,14 @@ If you add a field or an entity, regenerate the reflection:
 
 ```bash
 cd tom_core_samples/todo_domain
-./reflection_generation.sh        # runs: dart run tom_reflection_generator build
+./reflection_generation.sh        # runs: dart run tom_reflection_generator
 ```
+
+The script runs the generator **flag-free** — it scans the current project only
+(the framework default is scan `.`, non-recursive) and reads `build.yaml`'s
+`generate_for`. Do not add a `build` positional argument: the generator reads it
+as a target filter, matches nothing, and exits with `Target not found: build`
+having written no output.
 
 The generator's entrypoint is `lib/src/reflection_entry.dart` (configured in
 `build.yaml`); the generator only processes files that expose a `main()`, so
@@ -213,7 +219,7 @@ shared workspace `analysis_options.yaml`.
 ```
 todo_domain/
   pubspec.yaml                     pure-Dart package; depends on tom_core_kernel
-  build.yaml                       reflection generator config (target: lib/src/entities.dart)
+  build.yaml                       reflection generator config (target: lib/src/reflection_entry.dart)
   reflection_generation.sh         one-command reflection rebuild
   analysis_options.yaml            includes the shared workspace options
   lib/
