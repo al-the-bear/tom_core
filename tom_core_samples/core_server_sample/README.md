@@ -257,7 +257,9 @@ core_server_sample/
 ├── example/
 │   └── run_all_examples.dart            # DB-free mapping + authorization demo
 ├── test/
+│   ├── config_assets.dart                  # shared: reads the config assets
 │   ├── todo_persistence_mapping_test.dart  # DB-free mapping unit tests
+│   ├── todo_health_config_test.dart        # DB-free: /health's configured title
 │   └── todo_endpoints_integration_test.dart # live endpoints (skips if down)
 ├── tool/
 │   └── run_integration.sh                 # brings the stack up, verifies it
@@ -378,9 +380,18 @@ layer of the stack:
 
 | Endpoint              | Proves                                                        |
 | --------------------- | ------------------------------------------------------------ |
-| `/health`             | the server boots and routes                                  |
+| `/health`             | the server boots, routes, and resolved its configuration     |
 | `/todos`              | the DB persistence round-trip (`todoItemRepository.findAll`) |
 | `/todos/field-states` | four-state authorization resolved **from DB grants**         |
+
+`/health` answers `{"status": "ok", "app": …}` without touching the database.
+The `app` value is **not** a string in the source: it is the `app.title`
+configuration key, read through `TomStringConfig` at request time, so the probe
+reports the title the *active overlay* configured. Under `env=dev` that is
+`Tom Core — Todo API (DEV)`. This is deliberate and is what makes the endpoint
+worth more than a constant: it is the one place a client can see which
+configuration the server actually resolved, and it is why the live suite can
+assert that the `.env` selector reached the wire and not merely the log.
 
 `/todos/field-states` loads every `TomResourceGrant` (via a
 `TomSqlDatasourceRepository<TomResourceGrant, int>`), folds the grants per role
@@ -530,6 +541,22 @@ The domain entities are observable `TomClass`es, so the suite calls
 `initializeReflection()` in `setUpAll` before constructing any of them; the
 records themselves are plain DTOs and need no setup.
 
+`test/todo_health_config_test.dart` covers the one *configured* value an
+endpoint serves — `/health`'s `app.title` — with no database and no server: it
+installs a `TomServerConfigResourceProvider` and calls `TodoApiServer().health()`
+directly. Three cases: a title that appears in no file (so only the provider can
+have supplied it), the base asset alone, and the base asset with the dev overlay
+merged. The third is the one that matters. A hardcoded title would be a copy of
+the *default*, so it agrees with the base asset and only ever diverges under an
+overlay — the case that looks least worth testing is the only one that can fail.
+
+Both suites read the assets through `test/config_assets.dart`, which loads them
+with `TomYaml` and merges them with `TomYaml.mergeInYamlFile` — the loader and
+the merge `bin/server_start.dart` uses. One helper for both is what stops a test
+from asserting about a configuration the server never assembles: `Map.addAll`
+replaces a whole branch where the real merge overwrites per leaf, and the two
+agree on today's assets only because `app` has a single key.
+
 ### Against the live stack
 
 `test/todo_endpoints_integration_test.dart` asserts the three endpoints of §9
@@ -538,8 +565,13 @@ package that touches the boot sequence, the datasource registration, the
 migration tree or the DTO serialization — everything above verifies pure
 functions, so all four could break with `dart test` still green.
 
-- `/health` returns the literal status map (no database — so when it passes and
-  the others fail, the fault is in persistence rather than in the boot);
+- `/health` returns `{"status": "ok", "app": …}` (no database — so when it
+  passes and the others fail, the fault is in persistence rather than in the
+  boot). The `app` value is asserted against `assets/config-resources_dev.yaml`,
+  read out of the asset rather than restated in the test, which makes this the
+  end-to-end half of the configuration claim: the `.env` selector, the overlay
+  merge and the provider install all have to survive a real boot for the `(DEV)`
+  title to reach an HTTP client;
 - `/todos` returns the two rows `[000]-todo_core_schema.sql` seeds, asserted by
   their seeded *values*. Those strings exist nowhere in Dart, so the only route
   they can take into the response is the database. It also names the reflected
@@ -576,6 +608,13 @@ requires the run to depend on both:
   selector rather than a placeholder — and it fails independently, so reverting
   either half of the wiring is caught by name rather than by a puzzling
   connection error.
+- The overlay is also visible **on the wire**: `env=dev` selects
+  `config-resources_dev.yaml`, which sets `app.title`, which `/health` serves.
+  The log check and the endpoint assertion are independent witnesses to the same
+  fact and fail in different places — the log check fails before any test runs
+  and names the environment, the endpoint fails inside the suite and names the
+  title — so between them a break says both *that* the selector stopped working
+  and *how far* it got.
 
 The runner refuses to overwrite an existing `.env` and removes only a file it
 wrote itself, so running it does not disturb a `.env` you are working with.
@@ -590,6 +629,9 @@ wrote itself, so running it does not disturb a `.env` you are working with.
   (`todo_records.dart`);
 - the pure domain ↔ record mapping (`todo_mapping.dart`) with full unit tests;
 - the four-state field authorizer (`todo_authorization.dart`);
+- `/health`'s resolution of the configured `app.title` through the
+  config-resource provider, including the environment overlay
+  (`todo_health_config_test.dart`);
 - the runnable database-free example (`run_all_examples.dart`);
 - the full infrastructure: Docker compose, migrations (schema + grants),
   datasource/config assets, `.env.example`, reflection wiring.

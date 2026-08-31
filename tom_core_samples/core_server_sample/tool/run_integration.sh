@@ -168,9 +168,14 @@ EOF
 #
 # The database side needs no assertion of its own — the server is talking to a
 # MariaDB that only exists on port $DB_PORT, so every live test below is already
-# evidence it followed the file. The overlay leaves no such trace on the wire
-# (nothing served depends on it), so the boot names the environment it resolved
-# and that line is checked here.
+# evidence it followed the file.
+#
+# The overlay has a wire witness too: it sets app.title, which /health serves,
+# and the live suite asserts it against the asset. This check is kept anyway,
+# and is not redundant with it. It runs *before* the suite and names the
+# environment, so a broken selector is reported as "the boot did not resolve
+# dev" rather than as a title mismatch three tests later — the difference
+# between naming the cause and naming a symptom of it.
 assert_dotenv_selected_environment() {
   log "Checking the boot honoured env=$RUN_ENVIRONMENT from .env"
   # Echo the line that satisfied the check. A guard that passes in silence

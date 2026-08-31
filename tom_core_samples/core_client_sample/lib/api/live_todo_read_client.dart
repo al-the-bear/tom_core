@@ -86,7 +86,13 @@ class LiveTodoReadClient {
   final String baseUrl;
   final HttpClient _client;
 
-  /// `GET /health` — true when the server answers `{ "status": "ok" }`.
+  /// `GET /health` — true when the server's answer carries `"status": "ok"`.
+  ///
+  /// Only `status` is read. The response also carries an `app` entry — the
+  /// server's configured `app.title`, which differs per environment overlay —
+  /// and a liveness check has no business failing because a backend was
+  /// deployed under a different configuration than the one this client was
+  /// written against.
   Future<bool> isHealthy() async {
     final body = await _getJson('/health');
     return body['status'] == 'ok';

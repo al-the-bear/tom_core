@@ -5,7 +5,7 @@
 ///
 /// | Method & URI            | Proves                                          |
 /// | ----------------------- | ----------------------------------------------- |
-/// | `GET /health`           | the server booted and is serving (no DB)        |
+/// | `GET /health`           | the server booted, is serving, and resolved its configuration (no DB) |
 /// | `GET /todos`            | a real persistence round-trip (reads `todo_items`) |
 /// | `GET /todos/field-states` | four-state authorization resolved from DB grants |
 ///
@@ -14,11 +14,14 @@
 /// `TodoFieldMatrixDto`. The endpoint pipeline serializes the returned DTO(s)
 /// through the kernel reflection path — no hand-written `toJson` and no ad-hoc
 /// `Map` projection. `/health` stays a plain status `Map` (a liveness probe, not
-/// a data shape). The service is split into a `@tomService` interface and a
-/// `@tomComponent` implementation — the codebase convention the endpoint router
-/// resolves: the router finds the component bean implementing the annotated
-/// interface, which is why `initializeBeanContext()` must run before the server
-/// starts.
+/// a data shape), but its `app` entry is the configured `app.title` rather than
+/// a literal — so the probe reports which configuration overlay the server
+/// resolved, and the sample has one endpoint that proves the configuration
+/// pipeline reached the wire. The service is split into a `@tomService`
+/// interface and a `@tomComponent` implementation — the codebase convention the
+/// endpoint router resolves: the router finds the component bean implementing
+/// the annotated interface, which is why `initializeBeanContext()` must run
+/// before the server starts.
 library;
 
 // tom_core_server re-exports tom_core_kernel, so the endpoint annotations, the
@@ -83,6 +86,13 @@ abstract class TodoApiService {
   Future<TodoFieldMatrixDto> fieldStates();
 }
 
+/// Configuration key for the application's display name.
+///
+/// Declared in `assets/config-resources_default.yaml` and overridden by
+/// `assets/config-resources_dev.yaml`; the dotted path is resolved against the
+/// merged tree by [TomServerConfigResourceProvider].
+const _appTitleKey = 'app.title';
+
 /// Live implementation of [TodoApiService] backed by the sample repositories.
 @tomReflector
 @tomComponent
@@ -90,7 +100,27 @@ class TodoApiServer implements TodoApiService {
   @override
   Future<Map<String, Object>> health() async => <String, Object>{
         'status': 'ok',
-        'app': 'Tom Core — Todo API',
+        // Read through the config-resource provider rather than written here
+        // (G-RES-1). `app.title` is declared in `config-resources_default.yaml`
+        // and overridden by the `_dev` overlay, so a literal would report the
+        // production name while the server ran the dev configuration — the
+        // probe would describe a server nobody was running.
+        //
+        // Declared obligatory (no `withDefault`): restating the asset's value
+        // as a fallback would put the same string back in the source, one
+        // rename away from silently serving a stale name again. Absent, it
+        // fails naming the key.
+        //
+        // Resolved per call, not once into a field: `TomConfig` caches at
+        // construction, and a liveness probe is the one place that should
+        // report the configuration the server holds *now* rather than the one
+        // it held when its beans were built.
+        //
+        // `.get()!` rather than the `~config` shorthand: `~x!` parses as
+        // `~(x!)`, so the shorthand cannot carry the non-null assertion an
+        // obligatory key earns. The bang is safe — an absent key throws, and a
+        // key configured explicitly `null` fails the cast and throws.
+        'app': TomStringConfig(_appTitleKey).get()!,
       };
 
   @override

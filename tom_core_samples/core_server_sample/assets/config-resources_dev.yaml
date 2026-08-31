@@ -1,4 +1,9 @@
-# Development overlay — merged on top of config-resources_default.yaml.
+# Development overlay — merged on top of config-resources_default.yaml, and
+# selected by `env=dev` (from .env, via TomRuntime.setCurrentEnvironment).
 app:
+  # The `(DEV)` suffix is load-bearing, not decoration: GET /health serves this
+  # value, so it is how a client can tell which overlay the server resolved, and
+  # test/todo_endpoints_integration_test.dart asserts the wire against this
+  # line. Keep it different from the default title.
   title: "Tom Core — Todo API (DEV)"
 logLevel: "development"

@@ -30,19 +30,31 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
+import 'config_assets.dart';
+
 /// Where `bin/server_start.dart` binds by default (`_defaultPort`).
 const _baseUri = 'http://localhost:8080';
 
 void main() {
   group('live endpoints (running server + MariaDB)', () {
-    test('GET /health reports the server booted and is routing', () async {
+    test('GET /health reports the server booted under the dev overlay',
+        () async {
       final body = await _getJsonOrSkip('/health');
       if (body == null) return;
 
-      // Matches the literal map `TodoApiServer.health()` returns. It touches no
-      // database on purpose, so when this passes and the two below fail, the
-      // fault is in persistence rather than in the boot.
-      expect(body, equals({'status': 'ok', 'app': 'Tom Core — Todo API'}));
+      // Touches no database on purpose, so when this passes and the two below
+      // fail, the fault is in persistence rather than in the boot.
+      //
+      // `app` is the *configured* title, read out of the dev overlay asset
+      // rather than restated here. That makes this the end-to-end half of the
+      // configuration claim: `todo_health_config_test.dart` proves `health()`
+      // reads the provider, and this proves the `.env` selector, the overlay
+      // merge and the provider install all survive a real boot and reach an
+      // HTTP client. Both supported boots select `env=dev` — the runner writes
+      // it, and the README's manual boot copies `.env.example`, which sets it —
+      // so the `(DEV)` title is what a correctly booted sample serves.
+      expect(
+          body, equals({'status': 'ok', 'app': assetAppTitle(devConfigAsset)}));
     });
 
     test('GET /todos round-trips the seeded rows out of MariaDB', () async {

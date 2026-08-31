@@ -5,6 +5,9 @@
 # expands while the file is read, from the map bin/server_start.dart hands to
 # TomYaml.loadYamlFile as `environment:`.
 app:
+  # Served as the `app` entry of GET /health, read through TomStringConfig by
+  # todo_endpoints.dart. Editing this changes what the endpoint reports — the
+  # overlay below is how the running environment becomes visible on the wire.
   title: "Tom Core — Todo API"
 # Single isolate keeps the sample readable (UAM defaults to a worker pool).
 isolateCount: 0
