@@ -243,8 +243,8 @@ todo_domain/
     enum_round_trip_example.dart   enum stored as name, read back typed
     assign_and_complete_example.dart  User ↔ TodoItem link + completion
     run_all_examples.dart          headless smoke test over the examples above
-    readme.md                      example index
-  readme.md                        this document
+    README.md                      example index
+  README.md                        this document
 ```
 
 Run the examples as a smoke test:

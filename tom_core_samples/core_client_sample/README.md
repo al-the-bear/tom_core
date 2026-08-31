@@ -506,7 +506,7 @@ the shape the advanced suite builds out.
   (platform + runtime) and [`tom_flutter_ui`](../../tom_flutter_ui/README.md)
   (the bound `TomForm`s and four-state field rendering), on
   [`tom_core_kernel`](../../tom_core_kernel/README.md) (reflection, `TomAuthState`)
-- **Shared model:** [`todo_domain`](../todo_domain/readme.md) — the reflected
+- **Shared model:** [`todo_domain`](../todo_domain/README.md) — the reflected
   `TodoItem`/`User` entities the forms bind
 - **Sibling sample:** [`core_server_sample`](../core_server_sample/README.md) —
   the backend whose grant matrix this client mirrors and whose read endpoints the

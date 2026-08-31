@@ -9,7 +9,7 @@ running application — a todo-management system** — so the same domain model
 flows from the server, through the client, into the showcases. Read an article,
 open the matching sample, run it, change it.
 
-This document is the **map**; each sample ships its own article-grade `readme.md`
+This document is the **map**; each sample ships its own article-grade `README.md`
 with the depth. Nothing about a package's API is re-documented here — the samples
 *use* the Tom Core packages and link back to their READMEs
 ([repository map](../README.md)).
@@ -76,14 +76,14 @@ restarting from scratch each time.
 
 ## The samples
 
-Each row is a self-contained subproject with its own article-grade `readme.md`,
+Each row is a self-contained subproject with its own article-grade `README.md`,
 linked from its name.
 
 ### Shared domain
 
 | Project | What it is | Exercises |
 | --- | --- | --- |
-| [`todo_domain`](todo_domain/readme.md) | The shared, reflected todo-management model (`User`, `Project`, `TodoList`, `TodoItem`, label/priority enums). Single source of truth depended on by both the server and the client samples. | [`tom_core_kernel`](../tom_core_kernel/README.md) reflection |
+| [`todo_domain`](todo_domain/README.md) | The shared, reflected todo-management model (`User`, `Project`, `TodoList`, `TodoItem`, label/priority enums). Single source of truth depended on by both the server and the client samples. | [`tom_core_kernel`](../tom_core_kernel/README.md) reflection |
 
 ### Client & server
 
@@ -110,7 +110,7 @@ previous ones introduced.
 
 | Order | Sample | Introduces |
 | --- | --- | --- |
-| 0 | [`todo_domain`](todo_domain/readme.md) | The shared reflected entities every other sample reuses. |
+| 0 | [`todo_domain`](todo_domain/README.md) | The shared reflected entities every other sample reuses. |
 | 1 | [`core_server_sample`](core_server_sample/README.md) | The server stack against MySQL-in-Docker — endpoints, persistence, auth, healthcheck. |
 | 2 | [`core_client_sample`](core_client_sample/README.md) | A Flutter todo app with four-state field authorization — in-memory backend by default, live read path to the server. |
 | 3 | [`core_flutter_ui_showcase`](core_flutter_ui_showcase/README.md) | Every `tom_flutter_ui` widget group, each shown with its instantiation code. |
@@ -122,7 +122,7 @@ previous ones introduced.
 
 ## Running the samples
 
-Each sample documents its own run command in its `readme.md`. The common shape:
+Each sample documents its own run command in its `README.md`. The common shape:
 
 ```bash
 # Headless / server samples
@@ -136,7 +136,7 @@ flutter run                    # pick a device when prompted
 ```
 
 `core_server_sample` additionally brings up MySQL in Docker (compose file +
-bootstrap) — see its `readme.md` for the one-command bring-up.
+bootstrap) — see its `README.md` for the one-command bring-up.
 
 ---
 

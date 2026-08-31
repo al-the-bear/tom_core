@@ -29,6 +29,6 @@ fails the suite rather than waiting to be noticed by hand. A new example must be
 listed in both places.
 
 Every example calls `initializeReflection()` once before constructing an
-entity — see the package [`readme.md`](../readme.md) for why. The form- and
+entity — see the package [`README.md`](../README.md) for why. The form- and
 widget-level samples that *render* this model live in the Flutter showcases
 under [`tom_core_samples`](../../README.md).

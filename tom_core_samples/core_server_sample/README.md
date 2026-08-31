@@ -824,7 +824,7 @@ to *explore* the API; it is no longer what the claim rests on.
 - **The kits on display:** [`tom_core_server`](../../tom_core_server/README.md)
   (the server stack) on top of [`tom_core_kernel`](../../tom_core_kernel/README.md)
   (security, persistence, reflection)
-- **Shared model:** [`todo_domain`](../todo_domain/readme.md) — the reflected
+- **Shared model:** [`todo_domain`](../todo_domain/README.md) — the reflected
   entities this server persists and serves
 - **Sibling sample:** [`core_client_sample`](../core_client_sample/README.md) —
   the Flutter client whose live read path consumes this server's three public
