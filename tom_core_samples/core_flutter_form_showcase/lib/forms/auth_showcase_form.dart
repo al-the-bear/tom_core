@@ -20,8 +20,13 @@ const String _sampleCompany = 'Analytical Engines Ltd.';
 /// Form backing the four-state authorization cells.
 @tomReflector
 class AuthShowcaseForm extends TomForm<CompanyProfile> {
-  /// Creates the form in the ambient scope.
-  AuthShowcaseForm() : super(formId: 'company');
+  /// Creates the form in the ambient scope. `formId` is the canonical
+  /// authorization and resource prefix, so it stays distinct from
+  /// `CompanyForm`'s `company` even though both bind a [CompanyProfile]: an
+  /// ACL declared against `company` should reach the real company form, not
+  /// these four pinned demo fields. Ids pair only where that is meant —
+  /// `OrderItemForm` and `OrderItemListForm` share `items` deliberately.
+  AuthShowcaseForm() : super(formId: 'authShowcase');
 
   @override
   void createFormElements() {}

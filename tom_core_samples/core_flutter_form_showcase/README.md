@@ -477,6 +477,14 @@ and `.fixed` uses the latter. `TomAuthorizer.fromAction` derives the state from 
 [`form_authorizers.md`](../../tom_flutter_ui/doc/form_authorizers.md) for the
 evaluation pipeline and the cross-field cases.
 
+That resource key path is prefixed by the form's `formId`, which is why
+`AuthShowcaseForm` carries its own — `authShowcase` — rather than reusing
+`CompanyForm`'s `company`. The two bind the same entity, but an id names a
+resource namespace, not an entity: the `TomAclBuilder(id: 'company', …)` of §9
+is meant to reach the real company form and not these four pinned demo fields.
+Two forms share an id only where their resources should resolve together, which
+is what `OrderItemForm` and `OrderItemListForm` do with `items` (§13).
+
 The `none` cell renders an empty preview surface on purpose: the field collapses
 to nothing.
 
