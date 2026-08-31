@@ -3,7 +3,8 @@
 /// Each group owns a title, a one-line summary, and a builder that produces the
 /// list of [ShowcaseCell]s for that responsive mechanism. The home screen lists
 /// every group; tapping one opens a [GroupScreen] that scrolls its cells. Shared
-/// in shape with `core_flutter_form_showcase` / `core_flutter_acl_sample`.
+/// in shape with `core_flutter_ui_showcase` / `core_flutter_form_showcase` /
+/// `core_flutter_acl_sample`.
 library;
 
 import 'package:flutter/material.dart';

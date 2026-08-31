@@ -7,7 +7,8 @@
 /// itself out: an [AclBuilder] row breakpoint keeps the snippet and the preview
 /// side by side while the cell is at least 720px wide and reflows them to a
 /// stack below it, rather than a hand-rolled `MediaQuery` compare (G-UI-4).
-/// Shared in shape with `core_flutter_form_showcase` / `core_flutter_acl_sample`.
+/// Shared in shape with `core_flutter_ui_showcase` /
+/// `core_flutter_form_showcase` / `core_flutter_acl_sample`.
 library;
 
 import 'package:flutter/material.dart';

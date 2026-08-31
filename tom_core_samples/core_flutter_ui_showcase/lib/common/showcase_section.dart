@@ -3,6 +3,9 @@
 /// Each group owns a title, a one-line summary, and a builder that produces
 /// the list of [ShowcaseCell]s for that family. The home screen lists every
 /// group; tapping one opens a [GroupScreen] that scrolls its cells.
+///
+/// Shared in shape with `core_flutter_acl_sample` /
+/// `core_flutter_acl_responsive` / `core_flutter_form_showcase`.
 library;
 
 import 'package:flutter/material.dart';

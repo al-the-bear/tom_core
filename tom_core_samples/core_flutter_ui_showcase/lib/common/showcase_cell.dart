@@ -8,6 +8,9 @@
 /// app and in the screenshots a published article is built from. Fittingly for
 /// a `tom_flutter_ui` sample, the reflow is driven by an [AclBuilder] row
 /// breakpoint (G-UI-4), not a hand-rolled `MediaQuery` width compare.
+///
+/// Shared in shape with `core_flutter_acl_sample` /
+/// `core_flutter_acl_responsive` / `core_flutter_form_showcase`.
 library;
 
 import 'package:flutter/material.dart';

@@ -5,8 +5,9 @@
 /// straight into their own project. The chrome is styled to stay visually
 /// neutral — a monospace [TomSelectableText] inside a bordered panel with a
 /// [TomIconButton] copy affordance — so it never competes with the
-/// `tom_flutter_ui` layout on display (G-UI-1). Shared in shape with the
-/// sibling `core_flutter_form_showcase` / `core_flutter_acl_sample` samples.
+/// `tom_flutter_ui` layout on display (G-UI-1). Shared in shape with
+/// `core_flutter_ui_showcase` / `core_flutter_form_showcase` /
+/// `core_flutter_acl_sample`.
 library;
 
 import 'package:flutter/material.dart';

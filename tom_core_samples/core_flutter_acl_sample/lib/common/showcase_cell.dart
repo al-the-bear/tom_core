@@ -1,13 +1,15 @@
-/// The defining piece of this sample: a cell that shows a widget's
-/// instantiation source *beside* the live, rendered widget.
+/// The defining piece of this sample: a cell that shows an ACL builder chain's
+/// source *beside* the live layout that chain produces.
 ///
-/// `tom_flutter_ui_test` renders every widget but never displays the source
-/// that produced it; the showcase's teaching value is precisely that
-/// `code | rendered` pairing. The cell is responsive — side-by-side on wide
-/// viewports, stacked on narrow ones — so it reads well both in the running
-/// app and in the screenshots a published article is built from. Fittingly for
-/// a `tom_flutter_ui` sample, the reflow is driven by an [AclBuilder] row
-/// breakpoint (G-UI-4), not a hand-rolled `MediaQuery` width compare.
+/// The teaching value is precisely that `code | rendered` pairing — a curated
+/// snippet of the chain next to the arrangement it lays out, which is the one
+/// thing a screenshot of the layout alone cannot convey. The cell is responsive
+/// — side-by-side on wide viewports, stacked on narrow ones — so it reads well
+/// both in the running app and in the screenshots a published article is built
+/// from. Fittingly for a sample *about* the layout engine, the reflow is driven
+/// by an [AclBuilder] row breakpoint (G-UI-4), not a hand-rolled `MediaQuery`
+/// width compare. Shared in shape with `core_flutter_ui_showcase` /
+/// `core_flutter_form_showcase` / `core_flutter_acl_responsive`.
 library;
 
 import 'package:flutter/material.dart';
@@ -34,7 +36,7 @@ class ShowcaseCell extends TomStatelessWidget {
     this.note,
   });
 
-  /// Human-readable label for the component being shown.
+  /// Human-readable label for the ACL capability being shown.
   final String title;
 
   /// The verbatim Dart that produced [child]. Kept in lock-step with [child]

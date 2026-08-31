@@ -3,7 +3,8 @@
 /// Each group owns a title, a one-line summary, and a builder that produces the
 /// list of [ShowcaseCell]s for that ACL capability. The home screen lists every
 /// group; tapping one opens a [GroupScreen] that scrolls its cells. Shared in
-/// shape with `core_flutter_ui_showcase` / `core_flutter_acl_responsive`.
+/// shape with `core_flutter_ui_showcase` / `core_flutter_form_showcase` /
+/// `core_flutter_acl_responsive`.
 library;
 
 import 'package:flutter/material.dart';

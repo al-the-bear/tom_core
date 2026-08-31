@@ -17,6 +17,9 @@
 /// first frame and the widget tests install it in their `setUp`, so
 /// `TomCtr.text('showcase.…')` resolves to the value below rather than echoing
 /// the key back as a development indicator.
+///
+/// Shared in shape with `core_flutter_ui_showcase` /
+/// `core_flutter_acl_responsive` / `core_flutter_form_showcase`.
 library;
 
 /// The installed interactive-chrome bundle. Flat dotted keys → display values.

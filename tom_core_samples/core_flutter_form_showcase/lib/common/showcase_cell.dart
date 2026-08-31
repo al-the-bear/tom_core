@@ -1,13 +1,16 @@
-/// The defining piece of this sample: a cell that shows a widget's
-/// instantiation source *beside* the live, rendered widget.
+/// The defining piece of this sample: a cell that shows a form field's
+/// declaration source *beside* the live, bound field it produces.
 ///
-/// `tom_flutter_ui_test` renders every widget but never displays the source
-/// that produced it; the showcase's teaching value is precisely that
-/// `code | rendered` pairing. The cell is responsive — side-by-side on wide
-/// viewports, stacked on narrow ones — so it reads well both in the running
-/// app and in the screenshots a published article is built from. Fittingly for
-/// a `tom_flutter_ui` sample, the reflow is driven by an [AclBuilder] row
-/// breakpoint (G-UI-4), not a hand-rolled `MediaQuery` width compare.
+/// The teaching value is precisely that `code | rendered` pairing, and here the
+/// rendered half is not a static widget: it is a field really bound to a
+/// reflected entity, so the validation, formatting and authorization the reader
+/// exercises are the ones the snippet declared. The cell is responsive —
+/// side-by-side on wide viewports, stacked on narrow ones — so it reads well
+/// both in the running app and in the screenshots a published article is built
+/// from. Fittingly for a `tom_flutter_ui` sample, the reflow is driven by an
+/// [AclBuilder] row breakpoint (G-UI-4), not a hand-rolled `MediaQuery` width
+/// compare. Shared in shape with `core_flutter_ui_showcase` /
+/// `core_flutter_acl_sample` / `core_flutter_acl_responsive`.
 library;
 
 import 'dart:math' as math;
@@ -37,7 +40,7 @@ class ShowcaseCell extends TomStatelessWidget {
     this.previewMinWidth,
   });
 
-  /// Human-readable label for the component being shown.
+  /// Human-readable label for the forms capability being shown.
   final String title;
 
   /// The verbatim Dart that produced [child]. Kept in lock-step with [child]

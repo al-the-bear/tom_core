@@ -6,6 +6,9 @@
 /// monospace [TomSelectableText] inside a bordered panel with a [TomIconButton]
 /// copy affordance — so it never competes with the `tom_flutter_ui` widget on
 /// display (G-UI-1: the sample's own UI is built from Tom* components too).
+///
+/// Shared in shape with `core_flutter_ui_showcase` /
+/// `core_flutter_acl_responsive` / `core_flutter_form_showcase`.
 library;
 
 import 'package:flutter/material.dart';

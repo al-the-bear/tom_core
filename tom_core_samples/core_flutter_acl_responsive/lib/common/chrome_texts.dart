@@ -26,6 +26,9 @@
 /// frame and what every test installs in its `setUp`, so `TomCtr.text('…')`
 /// resolves to a value below rather than echoing the key back as a development
 /// indicator.
+///
+/// Shared in shape with `core_flutter_ui_showcase` / `core_flutter_acl_sample`
+/// / `core_flutter_form_showcase`.
 library;
 
 /// Strings on the showcase's own interactive affordances. Flat dotted keys →

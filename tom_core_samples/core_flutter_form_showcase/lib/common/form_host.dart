@@ -10,6 +10,8 @@
 /// The generic bound is `TomForm<TomClass>`; because Dart class generics are
 /// covariant, a concrete `CompanyForm extends TomForm<CompanyProfile>` is a
 /// valid `F`, so callers keep their concrete form type inside [builder].
+///
+/// Shared in shape with `core_flutter_acl_responsive`.
 library;
 
 import 'package:flutter/material.dart';
