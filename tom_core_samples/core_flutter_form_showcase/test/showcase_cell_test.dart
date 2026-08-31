@@ -72,4 +72,48 @@ void main() {
       }
     }
   });
+
+  testWidgets('no snippet teaches a raw Flutter widget over its Tom equivalent',
+      (tester) async {
+    // The sample lays out exclusively with Tom* widgets (G-UI-1), and every
+    // snippet is advertised as verbatim — so a snippet naming `Row` or
+    // `Expanded` is wrong twice: it does not match the child it claims to
+    // reproduce, and a reader who copies it is taught the very thing the
+    // surrounding code avoids.
+    //
+    // Non-emptiness was previously the only gated part of the snippet
+    // contract; matching the child stayed a review obligation. This closes the
+    // half of that gap a machine can actually check.
+    final rawWidget = RegExp(
+      r'(?<![A-Za-z0-9_$.])'
+      r'(Row|Column|Expanded|Flexible|SizedBox|Padding|Card|Divider|InkWell'
+      r'|ListView|ListTile|Wrap|SingleChildScrollView|Stack|Positioned'
+      r'|DecoratedBox|Chip|Text|Icon|IconButton|SelectableText'
+      r'|ElevatedButton|FilledButton|OutlinedButton|TextButton)'
+      r'\s*\(',
+    );
+
+    late BuildContext capturedContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    for (final group in showcaseGroups) {
+      for (final cell in group.cells(capturedContext)) {
+        final hits =
+            rawWidget.allMatches(cell.code).map((m) => m.group(1)).toSet();
+        expect(hits, isEmpty,
+            reason: 'group "${group.id}", cell "${cell.title}": snippet uses '
+                'raw Flutter ${hits.join(", ")} instead of the Tom '
+                'equivalent(s)');
+      }
+    }
+  });
 }

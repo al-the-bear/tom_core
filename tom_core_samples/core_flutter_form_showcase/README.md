@@ -477,25 +477,58 @@ sub-form per item, and `TomListFormToolbar` adds, removes and reorders rows.
 Structural mutations flow straight back into the bound list:
 
 ```dart
-// The inline list shrink-wraps; a bounded pane scrolls it.
-SingleChildScrollView(
-  child: TomInlineListForm<OrderItem, OrderItemForm>(
-    listForm: listForm,
-    reorderable: true,
-    rowBuilder: (context, index, rowForm) => Row(children: [
-      TomReorderHandle(index: index),
-      Expanded(flex: 3, child: rowForm.productName.widget),
-      Expanded(child: rowForm.quantity.widget),
-    ]),
-  ),
-)
-// …
-TomListFormToolbar<OrderItem, OrderItemForm>(
-  listForm: listForm,
-  selectedIndex: selectedIndex,
-  onSelectionChanged: select,
+// The inline list shrink-wraps and never scrolls itself, so the
+// bounded pane above the toolbar supplies the scrolling.
+TomColumn(
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    TomExpanded(
+      child: TomSingleChildScrollView(
+        child: TomInlineListForm<OrderItem, OrderItemForm>(
+          listForm: listForm,
+          reorderable: true,
+          rowBuilder: (context, index, rowForm) => TomCard(
+            key: ValueKey('order-row-${rowForm.hashCode}'),
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            color: index == selectedIndex
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
+                : null,
+            child: TomInkWell(
+              onTap: () => select(index),
+              child: TomPadding(
+                padding: const EdgeInsets.all(8),
+                child: TomRow(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TomReorderHandle(index: index),
+                    TomSizedBox(width: 8),
+                    TomExpanded(
+                        flex: 3, child: rowForm.productName.widget),
+                    TomSizedBox(width: 8),
+                    TomExpanded(child: rowForm.quantity.widget),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+    TomDivider(height: 8),
+    TomListFormToolbar<OrderItem, OrderItemForm>(
+      listForm: listForm,
+      selectedIndex: selectedIndex,
+      onSelectionChanged: (i) async => select(i),
+    ),
+  ],
 )
 ```
+
+Every layout primitive above is the Tom one, because that is the rule the sample
+follows everywhere (G-UI-1) — and because the snippet claims to be verbatim, so
+naming `Row` or `Expanded` here would both misdescribe the child and teach the
+opposite of what the code does. `showcase_cell_test.dart` enforces this across
+every cell in every group.
 
 The scroll view is part of the pattern: `TomInlineListForm` shrink-wraps its
 rows and gives them `NeverScrollableScrollPhysics`, so it always renders at its
@@ -558,6 +591,7 @@ lib/
 test/
   showcase_smoke_test.dart      # every group builds without exceptions
   showcase_cell_test.dart       # every cell shows both code and child
+  list_form_host_test.dart      # the list-bearing groups really bind their items
 ```
 
 ---
@@ -590,14 +624,20 @@ results):
 flutter test --concurrency=1
 ```
 
-Both suites call `initializeReflection()` in `setUpAll`:
+All three suites call `initializeReflection()` in `setUpAll`:
 
 - **`showcase_smoke_test.dart`** — pumps each group and the home screen at a
   large size, asserting the group title renders and `takeException` is null.
 - **`showcase_cell_test.dart`** — asserts every cell shows both its code snippet
-  and its live child, and that no cell's snippet is empty.
+  and its live child, that no cell's snippet is empty, and that no snippet names
+  a raw Flutter layout widget where a Tom one exists. The last is the
+  machine-checkable half of the "verbatim" promise: a snippet saying `Row`
+  cannot be reproducing a child built from `TomRow`.
+- **`list_form_host_test.dart`** — asserts the two list-bearing groups really
+  bind their seeded items, which the smoke test cannot see (an unbound list form
+  renders zero rows without throwing).
 
-Current status: `dart analyze` → *No issues found!*; `flutter test` → **11/11
+Current status: `dart analyze` → *No issues found!*; `flutter test` → **14/14
 green** (serial).
 
 ---

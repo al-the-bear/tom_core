@@ -16,7 +16,10 @@ import '../domain/showcase_entities.dart';
 import '../forms/company_form.dart';
 
 Widget _breakpointForm(String scopeId, double width) {
-  return SizedBox(
+  // Why: TomSizedBox, not SizedBox — the sample lays out exclusively with Tom
+  // widgets (G-UI-1), and this box is quoted verbatim by the narrow cell's
+  // snippet, so a raw one would teach the rule's opposite.
+  return TomSizedBox(
     width: width,
     child: FormHost<CompanyForm>(
       scopeId: scopeId,
@@ -56,7 +59,7 @@ final ShowcaseGroup responsiveGroup = ShowcaseGroup(
       title: 'Narrow (320px) — stacked',
       note: 'The identical layout below 400px reflows the row to a stack.',
       code: "// Same builder as above — only the available width differs.\n"
-          "SizedBox(width: 320, child: formLayout)",
+          "TomSizedBox(width: 320, child: formLayout)",
       child: _breakpointForm('rsp_narrow', 320),
     ),
   ],
