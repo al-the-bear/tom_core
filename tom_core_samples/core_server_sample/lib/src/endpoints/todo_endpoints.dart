@@ -134,7 +134,11 @@ class TodoApiServer implements TodoApiService {
     final grants = await todoGrantRepository.findAll();
 
     // Group the flat grant rows by role, then resolve each role's per-field
-    // state through the same four-state authorizer the unit tests exercise.
+    // state through the same four-state authorizer `todo_authorization_test`
+    // pins. The grouping is load-bearing, not tidiness: `fromGrants` ignores
+    // `roleName` and unions every row it is handed, so passing the whole table
+    // would grade every field by the most permissive role in the system — the
+    // viewer's response would claim owner rights. That trap has its own test.
     final grantsByRole = <String, List<TomResourceGrant>>{};
     for (final grant in grants) {
       grantsByRole.putIfAbsent(grant.roleName, () => []).add(grant);

@@ -215,6 +215,11 @@ authorizer.canEdit('todo.item.title');      // full?
 authorizer.canSee('todo.item.assigneeId');  // not none?
 ```
 
+The variable is named `grantsForRole` because that is a precondition, not a
+convention: `fromGrants` ignores `roleName` and unions every row it is handed,
+so the caller must filter first. Hand it the whole grant table and every field
+is graded by the most permissive role in the system.
+
 A field self-addresses by its own resource key — there is no `*ResourceKeys`
 catalogue class (G-RES-6). The four gradable item fields (`todo.item.title`,
 `todo.item.done`, `todo.item.priority`, `todo.item.assigneeId`) are just the keys
@@ -233,7 +238,11 @@ The seeded demo roles in `[001]-todo_authz_grants.sql` exercise all four states:
 
 `example/run_all_examples.dart` builds those exact grants in memory and prints
 the resolved state for every role and field — a database-free way to see the
-table above come out of the actual resolver.
+table above come out of the actual resolver. The table is not merely printed,
+though: `test/todo_authorization_test.dart` parses the grades out of
+`[001]-todo_authz_grants.sql` and requires the resolver to reproduce the matrix
+in [§9](#9-the-live-server-boot) cell for cell, so re-grading a field here
+without updating both documents fails `dart test`.
 
 ---
 
@@ -258,8 +267,10 @@ core_server_sample/
 │   └── run_all_examples.dart            # DB-free mapping + authorization demo
 ├── test/
 │   ├── config_assets.dart                  # shared: reads the config assets
+│   ├── documented_authorization.dart       # shared: reads the seeds + matrix
 │   ├── todo_persistence_mapping_test.dart  # DB-free mapping unit tests
 │   ├── todo_health_config_test.dart        # DB-free: /health's configured title
+│   ├── todo_authorization_test.dart        # DB-free: the four-state resolver
 │   └── todo_endpoints_integration_test.dart # live endpoints (skips if down)
 ├── tool/
 │   └── run_integration.sh                 # brings the stack up, verifies it
@@ -292,8 +303,9 @@ dart test
 ```
 
 `run_all_examples.dart` prints the mapping round-trip and the full four-state
-resolution for the three demo roles. `dart test` runs the mapping tests. Both
-are green and `dart analyze` reports no issues.
+resolution for the three demo roles. `dart test` runs the three database-free
+suites — mapping, `/health`'s configured title, and the four-state authorizer —
+and skips the live one. Both are green and `dart analyze` reports no issues.
 
 ---
 
@@ -550,12 +562,45 @@ merged. The third is the one that matters. A hardcoded title would be a copy of
 the *default*, so it agrees with the base asset and only ever diverges under an
 overlay — the case that looks least worth testing is the only one that can fail.
 
-Both suites read the assets through `test/config_assets.dart`, which loads them
-with `TomYaml` and merges them with `TomYaml.mergeInYamlFile` — the loader and
-the merge `bin/server_start.dart` uses. One helper for both is what stops a test
-from asserting about a configuration the server never assembles: `Map.addAll`
-replaces a whole branch where the real merge overwrites per leaf, and the two
-agree on today's assets only because `app` has a single key.
+`test/todo_authorization_test.dart` covers the other half of what the sample
+teaches — the four-state grade resolver — also without a database, because
+`TodoFieldAuthorizer` takes grants rather than a connection. It pins the four
+grades resolving out of stored rows, the closed-safe `none` default for an
+ungranted key, the most-permissive merge (order-independently, so a fold that
+merely overwrote would fail), and `fieldStates` being *total* over
+`gradableTodoItemKeys`. One test exists purely as a trap-marker: `fromGrants`
+ignores `roleName` and unions everything handed to it, so the grouping loop in
+`fieldStates()` is load-bearing — hand it the whole table and every field is
+graded by the most permissive role in the system.
+
+Its last group closes the loop the endpoint actually walks. The seeded
+`(role, key, grade)` tuples are parsed out of `[001]-todo_authz_grants.sql`,
+grouped by role, folded through the authorizer, and required to equal the
+`states` map printed in [§9](#9-the-live-server-boot). Neither side is restated
+in Dart — both are read from the artifacts that make the claim — so re-grading a
+field in the migration fails here until this README is corrected, on any machine.
+Previously that link was made only by the example (which checks three of the
+twelve cells) and by the live suite (which needs Docker).
+
+The three database-free suites read the artifacts through two shared helpers:
+`test/config_assets.dart` loads the config assets, `test/documented_authorization.dart`
+parses the seeded grants and the README's matrix. One loader each, because two
+copies would be free to disagree about what the artifacts say — which is the
+drift these suites exist to catch.
+
+`config_assets.dart` merges with `TomYaml.mergeInYamlFile` — the loader and the
+merge `bin/server_start.dart` itself uses — rather than with `Map.addAll`, which
+replaces a whole branch where the real merge overwrites per leaf. The two agree
+on today's assets only because `app` has a single key, and a test that merged
+differently from the boot would be asserting about a configuration the server
+never assembles.
+
+`documented_authorization.dart` guards two ways its parsing could pass while
+proving nothing: it requires the seed file to yield exactly twelve grant rows
+(an unrecognised `INSERT` shape would yield none, and an empty grant list grades
+every field `none` — green, and vacuous), and it rejects an unknown grade token
+before handing it to `TomAuthStateCodec.fromStored`, which is deliberately
+lenient and would otherwise turn a typo in the expectation into a silent `none`.
 
 ### Against the live stack
 
@@ -628,7 +673,9 @@ wrote itself, so running it does not disturb a `.env` you are working with.
 - the relational persistence records and their repositories
   (`todo_records.dart`);
 - the pure domain ↔ record mapping (`todo_mapping.dart`) with full unit tests;
-- the four-state field authorizer (`todo_authorization.dart`);
+- the four-state field authorizer (`todo_authorization.dart`) with full unit
+  tests, including the seeded grants folding to the documented matrix
+  (`todo_authorization_test.dart`);
 - `/health`'s resolution of the configured `app.title` through the
   config-resource provider, including the environment overlay
   (`todo_health_config_test.dart`);

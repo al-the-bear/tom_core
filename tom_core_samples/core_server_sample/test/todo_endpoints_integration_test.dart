@@ -31,6 +31,7 @@ import 'dart:io';
 import 'package:test/test.dart';
 
 import 'config_assets.dart';
+import 'documented_authorization.dart';
 
 /// Where `bin/server_start.dart` binds by default (`_defaultPort`).
 const _baseUri = 'http://localhost:8080';
@@ -115,7 +116,7 @@ void main() {
       // expectation. Re-grading a field in `[001]-todo_authz_grants.sql` now
       // fails here until the README is updated to match, instead of leaving the
       // document quietly wrong.
-      expect(body, equals(_documentedFieldStates()));
+      expect(body, equals(documentedFieldStates()));
 
       // Stated separately because the round-trip above would still pass if both
       // the migration and the README lost a state: all four `TomAuthState`
@@ -157,32 +158,3 @@ Future<Object?> _getJsonOrSkip(String path) async {
   }
 }
 
-/// The `/todos/field-states` response as printed in `README.md`, under
-/// "The live server boot".
-///
-/// Cited by section *title* rather than number on purpose: a number renumbers
-/// silently when a section is inserted above it, which is the same drift this
-/// test exists to catch. The anchor the code actually uses is neither — it is
-/// the fenced block itself.
-///
-/// Read out of the document rather than duplicated here — a copy would drift
-/// from the README exactly as the README could drift from the server, which is
-/// the failure this test exists to prevent. Anchored on the fence rather than a
-/// line number, and required to be the only one, so a second JSON sample makes
-/// the anchor ambiguous and fails loudly instead of silently matching the wrong
-/// block.
-Object? _documentedFieldStates() {
-  final readme = File('README.md');
-  expect(readme.existsSync(), isTrue,
-      reason: 'tests must run from the package root');
-
-  final blocks = RegExp(r'^```json\n(.*?)^```', multiLine: true, dotAll: true)
-      .allMatches(readme.readAsStringSync())
-      .map((m) => m.group(1)!)
-      .toList();
-  expect(blocks, hasLength(1),
-      reason: 'README.md must contain exactly one ```json block — the '
-          '/todos/field-states sample response this test asserts against');
-
-  return jsonDecode(blocks.single);
-}

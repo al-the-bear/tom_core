@@ -9,10 +9,11 @@
 #
 # ## What this proves that the connection-free suites cannot
 #
-# `todo_persistence_mapping_test.dart` and `example/run_all_examples.dart` are
-# pure: they exercise the domain <-> record mapping and the four-state
-# authorizer without a socket. That is most of the package's logic and none of
-# its claim. What makes this a *sample backend* is the part they cannot reach —
+# The three database-free suites are pure: they exercise the domain <-> record
+# mapping, the configured `/health` title, and the four-state authorizer —
+# including the seeded grants folding to the documented matrix — without ever
+# opening a socket. That is most of the package's logic and none of its claim.
+# What makes this a *sample backend* is the part they cannot reach —
 # the boot sequence in `bin/server_start.dart`, the datasource registration, the
 # migration tree actually creating and seeding tables, the endpoint router
 # resolving the `@tomComponent` behind the `@tomService`, and the reflection
