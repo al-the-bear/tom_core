@@ -463,10 +463,20 @@ TomFormStringInput(
 )
 ```
 
-In real apps the state flows from a resource provider or an action controller
-instead of being hard-pinned — see `four_state_authorization_design.md` /
-`uam_four_state_migration.md` for the migration path. The `none` cell renders an
-empty preview surface on purpose: the field collapses to nothing.
+In real apps the state is not hard-pinned. Resource-level state comes from
+`TomAuthorization.resolveAuth(resourceKeyPath)`, backed by whatever
+`TomAuthorizationAdapter` the application installs; with none installed it
+resolves to `full` — which is why this sample, installing none, can demonstrate
+all four states through `TomAuthorizer.fixed` alone. An authorizer's `strategy`
+decides how it combines with that resource state: `authorizerNarrowsOnly` (the
+default) may only restrict it, while `authorizerDecides` overrides it outright,
+and `.fixed` uses the latter. `TomAuthorizer.fromAction` derives the state from a
+`TomAction`'s own authorization instead. See
+[`form_authorizers.md`](../../tom_flutter_ui/doc/form_authorizers.md) for the
+evaluation pipeline and the cross-field cases.
+
+The `none` cell renders an empty preview surface on purpose: the field collapses
+to nothing.
 
 ---
 
