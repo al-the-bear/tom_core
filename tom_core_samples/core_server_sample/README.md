@@ -117,10 +117,21 @@ and ships to a Flutter client unchanged.
         ▼            │
   *Record (plain fields, int PK, FK columns)   ← todo_records.dart (@TomDbColumn)
         │            ▲
-   repository.save   repository.findById        ← TomSqlDatasourceRepository
+   repository.save*  repository.findAll         ← TomSqlDatasourceRepository
         ▼            │
                   MariaDB
+
+  * inherited from the repository, never called here: the three endpoints of
+    this sample are all GETs, so only the upward path runs at request time.
 ```
+
+The two halves of the boundary are therefore exercised differently, and it is
+worth knowing which. The **mapping** layer runs in both directions — the unit
+tests and `example/run_all_examples.dart` call `*ToRecord` as well as
+`*FromRecord` — but the **repository** layer only runs upward, because the
+endpoints read and never write. That is precisely why a write-side mapping bug
+can hide here: nothing at request time would trip over it, so `*ToRecord` is
+covered by tests or not at all.
 
 ---
 
