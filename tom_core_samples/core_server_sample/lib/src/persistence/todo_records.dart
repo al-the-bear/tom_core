@@ -8,11 +8,24 @@
 /// columns, no nested collections — so these records are the persistence-side
 /// counterparts. `todo_mapping.dart` converts between the two worlds.
 ///
-/// Keeping the DB mapping here (rather than annotating the domain entities)
-/// settles the blueprint's open question in the only direction the shared
-/// `todo_domain` package allows: the domain model is the client's observable
-/// form model, the records are the server's relational model, and the boundary
-/// is explicit and tested. See `core_server_sample_design.md` (Open decision #1).
+/// Keeping the DB mapping here rather than annotating the domain entities is
+/// the deliberate choice: the domain model is the client's observable form
+/// model, the records are the server's relational model, and the boundary is
+/// explicit and tested.
+///
+/// The alternative — `@TomDbColumn` on [User] and friends — collapses that
+/// boundary. `todo_domain` is a *shared* package: the Flutter client depends on
+/// it too, so annotating it would put the server's storage shape on the client's
+/// dependency path, where a column rename becomes a client-visible change and
+/// the domain no longer builds without the persistence layer. Pushing the
+/// coupling the other way instead — teaching the persistence layer to read
+/// `TomString`/`TomList` holders — only moves it down a level, making
+/// `tom_core_server` responsible for a `tom_core_kernel` concern.
+///
+/// The cost is real and worth naming: every entity exists twice, and a new field
+/// must be added in both places plus the mapping. `todo_mapping.dart` is total
+/// and unit-tested precisely so that omission fails a test rather than silently
+/// dropping a column.
 library;
 
 // tom_core_server re-exports tom_core_kernel, so `@tomReflector` and the

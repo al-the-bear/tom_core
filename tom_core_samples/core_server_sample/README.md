@@ -96,10 +96,19 @@ meet. It is a set of pure, total functions — no I/O, no database — so it can
 unit-tested directly. Keeping the database mapping here (rather than annotating
 the domain entities) is a deliberate design decision: the domain model stays the
 client's clean observable form model, the records stay the server's relational
-model, and the conversion between them is explicit and tested. (This resolves
-the design blueprint's open question about where the DB annotations live, in the
-only direction the realised domain model allows — see
-`core_server_sample_design.md`.)
+model, and the conversion between them is explicit and tested.
+
+The two obvious alternatives were both rejected for the same reason. **Annotating
+the domain entities** with `@TomDbColumn` would put the server's storage shape
+into a package the Flutter client also depends on — every column rename would
+reach the client, and `todo_domain` would stop building without the server's
+persistence layer on its dependency path. **Teaching the persistence layer about
+observables** would push the coupling one level down instead, making
+`tom_core_server` responsible for a `tom_core_kernel` concern. Either way the
+client's model and the server's storage become one thing. The price of the
+boundary chosen here is a second class per entity and a mapping function to keep
+in step; what it buys is that `todo_domain` depends on `tom_core_kernel` alone
+and ships to a Flutter client unchanged.
 
 ```
   todo_domain (TomClass, observable, string ids, nested)
