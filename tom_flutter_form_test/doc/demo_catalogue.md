@@ -68,7 +68,7 @@ with the Examples section's `example.*` keys) at startup — see `lib/main.dart`
 | Demo | Source file | `tom_flutter_ui` / kernel feature validated |
 | ---- | ----------- | ------------------------------------------- |
 | E — Selection Variants | `demo_e_selection_variants.dart` | Single/multi-select concretes (FilterChips / MultiCheckbox / Segmented / RadioGroup / ChoiceChips) over one shared `SelectableSource` |
-| F — Boolean Variants | `demo_f_boolean_variants.dart` | Boolean concretes (Checkbox / Switch / Toggle), independent and shared-state rows |
+| F — Boolean Variants | `demo_f_boolean_variants.dart` | `TomFormBoolCheckbox` / `TomFormBoolSwitch` / `TomFormBoolToggle`, once as three independent fields and once as a lock-step trio propagating through the observable channel |
 | G — Complex Breakpoint Scenarios | `demo_g_breakpoint_scenarios.dart` | `ProjectBriefForm` across four style + theme presets at 400 / 800 / 1200 / 1600 px, every ACL breakpoint API + priority widget-type swap |
 | H — Complex Authorization Scenarios | `demo_h_complex_authorization.dart` | Per-field / per-section / form-level auth switches driving verifiable live re-layout |
 

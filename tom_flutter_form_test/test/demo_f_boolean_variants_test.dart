@@ -1,13 +1,19 @@
 /// Interaction tests for Demo F — Boolean Variants.
 ///
-/// Demo F renders three boolean widgets (Checkbox, Switch, Toggle)
-/// twice: once each bound to its own [TomBool], once each bound to a
-/// single shared [TomBool] so flipping any of the three flips all.
-/// The right-hand "Bound values" panel echoes each binding live.
+/// Demo F renders the three concrete boolean fields — [TomFormBoolCheckbox],
+/// [TomFormBoolSwitch], [TomFormBoolToggle] — twice: once each holding its
+/// own value, once each kept in lock-step so flipping one flips all three.
+/// The right-hand "Bound values" panel echoes every binding live.
 ///
-/// These tests drive each variant in turn and assert the matching
-/// binding row updates. Critically, they assert that flipping any
-/// member of the shared row updates *every* member of that row.
+/// These tests drive each rendering in turn and assert the matching binding
+/// row updates. Critically, they assert that flipping any member of the
+/// lock-step row moves *every* member of that row — both in the bindings
+/// panel and in the peer widgets' own rendered state.
+///
+/// Finders are scoped by the per-field `ValueKey('field-<tomId>')` the demo
+/// attaches to each row: the six rows repeat the same inner Material widgets
+/// (and both toggles repeat the segment captions "On"/"Off"), so an unscoped
+/// finder would be ambiguous.
 library;
 
 import 'dart:convert';
@@ -16,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'package:tom_flutter_form_test/main.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
@@ -24,13 +31,16 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
     );
   });
+
+  /// Every binding the demo exposes, in render order.
+  const independent = ['checkboxFlag', 'switchFlag', 'toggleFlag'];
+  const shared = ['sharedCheckbox', 'sharedSwitch', 'sharedToggle'];
 
   Future<void> openDemoF(WidgetTester tester) async {
     tester.view.physicalSize = const Size(2400, 2000);
@@ -38,193 +48,196 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo F: Boolean Variants'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo F: Boolean Variants'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo F: Boolean Variants'));
     await tester.pumpAndSettle();
   }
 
-  /// Tap a boolean widget identified by its label text. Each row is
-  /// uniquely labelled so this finder is collision-free.
-  Future<void> tapByLabel<W extends Widget>(
+  /// The row the demo keys with [tomId].
+  Finder row(String tomId) => find.byKey(ValueKey('field-$tomId'));
+
+  /// Tap the inner widget of type [W] inside the field row [tomId].
+  Future<void> tapField<W extends Widget>(
     WidgetTester tester,
-    String label,
+    String tomId,
   ) async {
-    final finder = find.widgetWithText(W, label);
-    expect(finder, findsOneWidget,
-        reason: 'No $W with label "$label"');
+    final finder = find.descendant(of: row(tomId), matching: find.byType(W));
+    expect(finder, findsOneWidget, reason: 'No $W inside field row "$tomId"');
     await tester.ensureVisible(finder);
     await tester.pumpAndSettle();
     await tester.tap(finder);
     await tester.pumpAndSettle();
   }
 
-  /// Tap the 'on' or 'off' segment of the SegmentedButton inside the
-  /// toggle row whose label matches. Walk up to the surrounding Padding
-  /// (the Row level) to scope, then find the segment ButtonSegment.
-  Future<void> tapToggleSegment(
+  /// Tap the 'On' or 'Off' segment of the toggle in field row [tomId].
+  Future<void> tapSegment(
     WidgetTester tester,
-    String label,
-    String segment, // 'on' or 'off'
+    String tomId,
+    String segment,
   ) async {
-    final row = find.ancestor(
-      of: find.text(label),
-      matching: find.byType(Row),
-    );
-    expect(row, findsAtLeastNWidgets(1), reason: 'Toggle row "$label" missing');
-    final segmentText = find.descendant(
-      of: row.first,
+    final finder = find.descendant(
+      of: row(tomId),
       matching: find.text(segment),
     );
-    expect(segmentText, findsOneWidget,
-        reason: 'Segment "$segment" must exist inside row "$label"');
-    await tester.ensureVisible(segmentText);
+    expect(finder, findsOneWidget,
+        reason: 'Segment "$segment" must exist inside field row "$tomId"');
+    await tester.ensureVisible(finder);
     await tester.pumpAndSettle();
-    await tester.tap(segmentText);
+    await tester.tap(finder);
     await tester.pumpAndSettle();
   }
 
-  /// The bindings panel renders as `Row[Text(name), Text(value)]`.
-  /// Locate the value cell adjacent to a given binding name.
-  Finder valueOf(String bindingName) {
-    final row = find.ancestor(
-      of: find.text(bindingName),
+  /// The bindings panel renders as `Row[Text(tomId), Text(value)]`.
+  void expectBinding(String tomId, bool value) {
+    final labelRow = find.ancestor(
+      of: find.text(tomId),
       matching: find.byType(Row),
     );
-    return find.descendant(
-      of: row.first,
-      matching: find.byWidgetPredicate(
-        (w) => w is Text && (w.data == 'true' || w.data == 'false'),
+    final candidates = find
+        .descendant(
+          of: labelRow.first,
+          matching: find.byWidgetPredicate(
+            (w) => w is Text && (w.data == 'true' || w.data == 'false'),
+          ),
+        )
+        .evaluate();
+    expect(candidates, isNotEmpty, reason: '$tomId binding row not found');
+    expect((candidates.first.widget as Text).data, '$value',
+        reason: '$tomId must be $value');
+  }
+
+  void expectAll(Iterable<String> tomIds, bool value) {
+    for (final id in tomIds) {
+      expectBinding(id, value);
+    }
+  }
+
+  /// Whether the toggle in field row [tomId] currently shows `true` selected.
+  bool toggleSelection(WidgetTester tester, String tomId) {
+    final segmented = tester.widget<SegmentedButton<bool>>(
+      find.descendant(
+        of: row(tomId),
+        matching: find.byType(SegmentedButton<bool>),
       ),
     );
+    return segmented.selected.contains(true);
   }
 
-  void expectBinding(String bindingName, bool value) {
-    final candidates = valueOf(bindingName).evaluate();
-    expect(candidates, isNotEmpty,
-        reason: '$bindingName binding row not found');
-    final text = candidates.first.widget as Text;
-    expect(text.data, '$value',
-        reason: '$bindingName must be $value');
-  }
-
-  testWidgets('baseline — all four bindings start at false',
-      (tester) async {
+  testWidgets('the demo binds the real TomFormBool* fields, not Material '
+      'stand-ins', (tester) async {
+    // The regression guard for tcinc1096. Demo F used to render bare
+    // CheckboxListTile / SwitchListTile captioned with the framework widget
+    // names, so a viewer was told they were looking at TomFormBoolCheckbox
+    // while looking at Material. Assert on what is actually in the tree:
+    // six real fields (each field wraps its rendering in a
+    // TomFieldWidgetAdapter) and none of the old stand-ins.
     await openDemoF(tester);
-    expect(find.text('checkboxFlag'), findsOneWidget);
-    expect(find.text('switchFlag'), findsOneWidget);
-    expect(find.text('toggleFlag'), findsOneWidget);
-    expect(find.text('shared'), findsOneWidget);
-    expectBinding('checkboxFlag', false);
-    expectBinding('switchFlag', false);
-    expectBinding('toggleFlag', false);
-    expectBinding('shared', false);
+    expect(find.byType(TomFieldWidgetAdapter), findsNWidgets(6),
+        reason: 'six real TomFormBool* fields must render');
+    expect(find.byType(CheckboxListTile), findsNothing,
+        reason: 'the Material stand-ins must be gone');
+    expect(find.byType(SwitchListTile), findsNothing,
+        reason: 'the Material stand-ins must be gone');
+    // Each rendering appears twice: once independent, once lock-step.
+    expect(find.byType(Checkbox), findsNWidgets(2));
+    expect(find.byType(Switch), findsNWidgets(2));
+    expect(find.byType(SegmentedButton<bool>), findsNWidgets(2));
+    // Labels come from the fields, so each row is individually anchored.
+    expect(find.text('TomFormBoolCheckbox (checkboxFlag)'), findsOneWidget);
+    expect(find.text('TomFormBoolSwitch (switchFlag)'), findsOneWidget);
+    expect(find.text('TomFormBoolToggle (toggleFlag)'), findsOneWidget);
+  });
+
+  testWidgets('baseline — all six bindings start at false', (tester) async {
+    await openDemoF(tester);
+    expectAll([...independent, ...shared], false);
   });
 
   testWidgets('tap the independent checkbox — only checkboxFlag flips',
       (tester) async {
     await openDemoF(tester);
-    await tapByLabel<CheckboxListTile>(
-      tester,
-      'TomFormBoolCheckbox (checkboxFlag)',
-    );
+    await tapField<Checkbox>(tester, 'checkboxFlag');
     expectBinding('checkboxFlag', true);
-    expectBinding('switchFlag', false);
-    expectBinding('toggleFlag', false);
-    expectBinding('shared', false);
+    expectAll(['switchFlag', 'toggleFlag', ...shared], false);
   });
 
   testWidgets('tap the independent switch — only switchFlag flips',
       (tester) async {
     await openDemoF(tester);
-    await tapByLabel<SwitchListTile>(
-      tester,
-      'TomFormBoolSwitch (switchFlag)',
-    );
-    expectBinding('checkboxFlag', false);
+    await tapField<Switch>(tester, 'switchFlag');
     expectBinding('switchFlag', true);
-    expectBinding('toggleFlag', false);
-    expectBinding('shared', false);
+    expectAll(['checkboxFlag', 'toggleFlag', ...shared], false);
   });
 
   testWidgets('tap the independent toggle — only toggleFlag flips',
       (tester) async {
     await openDemoF(tester);
-    await tapToggleSegment(
-      tester,
-      'TomFormBoolToggle (toggleFlag)',
-      'on',
-    );
-    expectBinding('checkboxFlag', false);
-    expectBinding('switchFlag', false);
+    await tapSegment(tester, 'toggleFlag', 'On');
     expectBinding('toggleFlag', true);
-    expectBinding('shared', false);
+    expectAll(['checkboxFlag', 'switchFlag', ...shared], false);
   });
 
-  testWidgets('shared row — flipping the checkbox flips the shared value',
+  testWidgets('lock-step — flipping the checkbox moves all three',
       (tester) async {
     await openDemoF(tester);
-    await tapByLabel<CheckboxListTile>(tester, 'Checkbox ↔ shared');
-    expectBinding('shared', true);
-    // Independents must NOT have flipped.
-    expectBinding('checkboxFlag', false);
-    expectBinding('switchFlag', false);
-    expectBinding('toggleFlag', false);
+    await tapField<Checkbox>(tester, 'sharedCheckbox');
+    expectAll(shared, true);
+    // The independent row must not have moved.
+    expectAll(independent, false);
   });
 
-  testWidgets('shared row — flipping the switch flips the shared value',
+  testWidgets('lock-step — flipping the switch moves all three',
       (tester) async {
     await openDemoF(tester);
-    await tapByLabel<SwitchListTile>(tester, 'Switch ↔ shared');
-    expectBinding('shared', true);
+    await tapField<Switch>(tester, 'sharedSwitch');
+    expectAll(shared, true);
+    expectAll(independent, false);
   });
 
-  testWidgets('shared row — flipping the toggle on flips the shared value',
+  testWidgets('lock-step — flipping the toggle moves all three',
       (tester) async {
     await openDemoF(tester);
-    await tapToggleSegment(tester, 'Toggle ↔ shared', 'on');
-    expectBinding('shared', true);
+    await tapSegment(tester, 'sharedToggle', 'On');
+    expectAll(shared, true);
+    expectAll(independent, false);
   });
 
-  testWidgets('shared row — flipping any one widget reflects in the others',
+  testWidgets('lock-step — the peer widgets rerender, not just the bindings',
       (tester) async {
-    // The structural promise of the demo: the three shared widgets show
-    // the same value because they read from the same TomBool. After
-    // flipping the checkbox to true, the switch must also display "ON"
-    // (i.e. its value is true) and the toggle's "on" segment must be
-    // selected. We assert on the binding (single source of truth) plus
-    // a structural sanity check on the SegmentedButton selection.
+    // The structural promise: propagation reaches the peers' own rendered
+    // state, not merely the inspector panel that reads the values back.
     await openDemoF(tester);
-    await tapByLabel<CheckboxListTile>(tester, 'Checkbox ↔ shared');
-    expectBinding('shared', true);
-    // Locate the Toggle ↔ shared row's SegmentedButton<bool> and
-    // confirm its `selected` set contains true.
-    final row = find.ancestor(
-      of: find.text('Toggle ↔ shared'),
-      matching: find.byType(Row),
+    expect(toggleSelection(tester, 'sharedToggle'), isFalse);
+
+    await tapField<Checkbox>(tester, 'sharedCheckbox');
+
+    expect(toggleSelection(tester, 'sharedToggle'), isTrue,
+        reason: 'shared toggle must follow the checkbox');
+    final peerSwitch = tester.widget<Switch>(
+      find.descendant(
+        of: row('sharedSwitch'),
+        matching: find.byType(Switch),
+      ),
     );
-    final segmented = find
-        .descendant(
-          of: row.first,
-          matching: find.byType(SegmentedButton<bool>),
-        )
-        .evaluate()
-        .first
-        .widget as SegmentedButton<bool>;
-    expect(segmented.selected, contains(true),
-        reason: 'Shared toggle must reflect the new value (true)');
+    expect(peerSwitch.value, isTrue,
+        reason: 'shared switch must follow the checkbox');
+    // The independent toggle is untouched — propagation is scoped to the trio.
+    expect(toggleSelection(tester, 'toggleFlag'), isFalse);
   });
 
-  testWidgets('toggling shared off after on returns shared to false',
+  testWidgets('lock-step — flipping back off returns the whole trio to false',
       (tester) async {
     await openDemoF(tester);
-    await tapByLabel<CheckboxListTile>(tester, 'Checkbox ↔ shared');
-    expectBinding('shared', true);
-    // Use the toggle's 'off' segment to flip it back.
-    await tapToggleSegment(tester, 'Toggle ↔ shared', 'off');
-    expectBinding('shared', false);
+    await tapField<Checkbox>(tester, 'sharedCheckbox');
+    expectAll(shared, true);
+    // Flip back via a *different* rendering than the one that set it.
+    await tapSegment(tester, 'sharedToggle', 'Off');
+    expectAll(shared, false);
   });
 }

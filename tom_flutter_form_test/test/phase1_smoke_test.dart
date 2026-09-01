@@ -104,8 +104,9 @@ void main() {
       (tester) async {
     await openDemo(tester, 'Demo F: Boolean Variants');
     expect(find.text('Demo F — Boolean Variants'), findsOneWidget);
-    expect(find.text('Independent (one TomBool per variant)'), findsOneWidget);
-    expect(find.text('Shared TomBool — flip any, flip all'), findsOneWidget);
+    expect(
+        find.text('Independent (one field per rendering)'), findsOneWidget);
+    expect(find.text('Lock-step trio — flip any, flip all'), findsOneWidget);
   });
 
   testWidgets('Demo G opens with the breakpoint splitter', (tester) async {
