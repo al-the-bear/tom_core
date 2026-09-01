@@ -5,12 +5,10 @@ Framework**: the form widgets and field concretes published by
 **`tom_flutter_ui`**, driven by the observable state, reflection, resources and
 security APIs of **`tom_core_kernel`**.
 
-> **Upstream package note.** Although the plan wording mentions
-> "`tom_core_flutter` / `tom_flutter_ui`", this app depends on **`tom_flutter_ui`**
-> (form widgets/fields) and **`tom_core_kernel`** (observables / reflection /
-> resources) — it does **not** depend on `tom_core_flutter`. The "feature
-> validated" column below therefore names the `tom_flutter_ui` concrete (or the
-> kernel API) exercised by each screen.
+> **Upstream package note.** This app does **not** depend on
+> `tom_core_flutter` — a mix-up worth naming, because it has been made before.
+> The "feature validated" column below therefore names the `tom_flutter_ui`
+> concrete (or the `tom_core_kernel` API) exercised by each screen.
 
 The two tabs map to the two tables below:
 

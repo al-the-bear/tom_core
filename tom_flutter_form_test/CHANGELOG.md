@@ -1,5 +1,14 @@
 ## Unreleased — cleanup pass
 
+- Documentation: `_copilot_guidelines/refactoring_plan.md` reconciled with the
+  project it describes — it named `tom_core_flutter` (never a dependency; see
+  `pubspec.yaml`) as an upstream, called `CHANGELOG.md` and `LICENSE` missing
+  when both are tracked, said a catalogue still had to be written when
+  `doc/demo_catalogue.md` covers all 33 demo screens, and prescribed
+  `dart analyze` where the project's own `analysis_options.yaml` names
+  `flutter analyze`. Its QA step now carries the measured baseline instead of an
+  unreachable "all green". `doc/demo_catalogue.md` dropped the correction note
+  that existed only to work around the plan's wrong upstream.
 - Documentation: every demo, demo-backing form, and the public `@tomReflector`
   classes gained feature-naming `///` class doc comments stating the
   `tom_flutter_ui` (or `tom_core_kernel`) feature they exercise; added
@@ -21,12 +30,14 @@
   with `maxScrolls: 200` in addition to the scoped `scrollable:` finder: its
   first hop crosses the whole 33-tile list and needs ~60 drags of 80 px, past
   the default budget of 50.
-- Quality: `dart analyze` clean over `test/` (zero issues). Full `flutter test
-  -j 1` runs 453: `+431 -22`. The 22 failures share one pre-existing cause —
-  the kernel rejects the `examples/` subsystem's dotted scope ids
+- Quality: `flutter analyze` clean over `test/` (zero issues). Full `flutter
+  test -j 1` runs 455: `+433 -22`. The 22 failures are pre-existing and
+  unchanged in count, file and name by the work above, and have **two** causes:
+  21 come from the kernel rejecting the `examples/` subsystem's dotted scope ids
   (`example.customer`, `example.order`) with
-  `scope_ids.init_scope.separator_in_id` — and are unchanged in count, file and
-  name by the work above. No production behaviour changes.
+  `scope_ids.init_scope.separator_in_id`; the 22nd is unrelated to scope ids —
+  `list_form_widget_repro_test.dart:249`, where "Discard all" leaves the items
+  list short of the 3 rows it must restore. No production behaviour changes.
 
 ## 1.0.0
 
