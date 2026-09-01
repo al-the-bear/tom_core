@@ -45,7 +45,8 @@ flutter pub get
 
 # Reflection glue (lib/main.reflection.dart) is generated and committed.
 # Only regenerate it when reflected type signatures change:
-./reflection_generation.sh   # wraps `dart run tom_reflection_generator build`
+./reflection_generation.sh   # wraps `dart run tom_reflection_generator --nested`
+                             # set DART=/path/to/dart if dart is not on PATH
 
 flutter run                  # on any configured device/emulator
 ```
