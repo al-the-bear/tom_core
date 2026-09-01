@@ -51,8 +51,14 @@ class _DemoMCupertinoBasicsState extends State<DemoMCupertinoBasics> {
   /// `TomFormStyleScope` so both panels re-resolve their anatomy.
   _StyleChoice _styleChoice = _StyleChoice.material;
 
-  // Pair-wise sync guards.
-  final List<TomFunctionObserver<TomObservable>> _observers = [];
+  /// Unregisters the pair-wise sync observers on dispose.
+  ///
+  /// Closures rather than bare observers: [_pair] is the only place that
+  /// knows which observable each observer was attached to, so it captures
+  /// the two together here instead of discarding the pairing. Retaining
+  /// the closures is also what keeps the observers alive — [TomObservable]
+  /// holds them by [WeakReference].
+  final List<void Function()> _observerCancels = [];
   bool _syncing = false;
 
   @override
@@ -76,42 +82,37 @@ class _DemoMCupertinoBasicsState extends State<DemoMCupertinoBasics> {
   }
 
   void _pair<V>(TomField<V> a, TomField<V> b) {
-    _observers.add(a >> (_) {
-      if (_syncing) return;
-      if (b.get() != a.get()) {
-        _syncing = true;
-        b.setValue(a.get());
-        _syncing = false;
-      }
+    _observe(a, () {
+      if (b.get() != a.get()) b.setValue(a.get());
     });
-    _observers.add(b >> (_) {
-      if (_syncing) return;
-      if (a.get() != b.get()) {
-        _syncing = true;
-        a.setValue(b.get());
-        _syncing = false;
-      }
+    _observe(b, () {
+      if (a.get() != b.get()) a.setValue(b.get());
     });
   }
 
-  void _pairList(
-      TomField<List<String>> a, TomField<List<String>> b) {
-    _observers.add(a >> (_) {
+  void _pairList(TomField<List<String>> a, TomField<List<String>> b) {
+    _observe(a, () {
+      if (!_listEq(a.get(), b.get())) b.setValue([...a.get()]);
+    });
+    _observe(b, () {
+      if (!_listEq(a.get(), b.get())) a.setValue([...b.get()]);
+    });
+  }
+
+  /// Observes [source] and runs [propagate] on change, guarded against the
+  /// re-entry the propagation itself causes: writing to the peer fires the
+  /// peer's own observer, which would write straight back.
+  void _observe(TomObservable source, void Function() propagate) {
+    final observer = source >> (_) {
       if (_syncing) return;
-      if (!_listEq(a.get(), b.get())) {
-        _syncing = true;
-        b.setValue([...a.get()]);
+      _syncing = true;
+      try {
+        propagate();
+      } finally {
         _syncing = false;
       }
-    });
-    _observers.add(b >> (_) {
-      if (_syncing) return;
-      if (!_listEq(a.get(), b.get())) {
-        _syncing = true;
-        a.setValue([...b.get()]);
-        _syncing = false;
-      }
-    });
+    };
+    _observerCancels.add(() => source.removeObserver(observer));
   }
 
   bool _listEq(List<String> a, List<String> b) {
@@ -125,16 +126,10 @@ class _DemoMCupertinoBasicsState extends State<DemoMCupertinoBasics> {
 
   @override
   void dispose() {
-    for (final o in _observers) {
-      // Observers were attached via `>>` to either the material or
-      // cupertino field — we don't track which, so try both via the
-      // standard removeObserver path. removeObserver is a no-op for
-      // unknown observers, so this is safe.
-      try {
-        _materialForm.name.removeObserver(o);
-        _cupertinoForm.name.removeObserver(o);
-      } catch (_) {}
+    for (final cancel in _observerCancels) {
+      cancel();
     }
+    _observerCancels.clear();
     _materialForm.dispose();
     _cupertinoForm.dispose();
     super.dispose();
