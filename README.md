@@ -172,6 +172,8 @@ package lives in that package's own `tool/`.
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, or `const` one that is not |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
+| [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
+| [`tool/check_test_inventories.py`](tool/check_test_inventories.py) | Audits a document that claims to inventory a package's test files against the files the runner discovers |
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments and SVG figures that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
@@ -335,6 +337,45 @@ here. That rule is cheap to satisfy correctly — write the document name you
 meant — and cannot be satisfied by accident, which is what makes it worth gating
 on. `tom_core_server` is clean; the other packages are not yet, so run it with a
 subtree argument.
+
+```bash
+python3 tool/check_section_numbers.py                  # the whole repository
+python3 tool/check_section_numbers.py tom_core_server  # one subtree
+```
+
+The sibling of the check above, one step further in. `check_section_refs.py`
+asks whether a `§` reference names a document a reader can reach;
+`check_section_numbers.py` takes the ones that do and asks whether the document
+actually has that section. Both failures read identically in the source — a
+plausible number beside a plausible filename — and only the second survives the
+first check, so it needs its own pass.
+
+```bash
+python3 tool/check_test_inventories.py
+```
+
+Audits a document that claims to inventory a package's test files. The claim
+has two halves and both rot: every file on disk should appear in the document,
+and every file in the document should exist on disk. The second is the one that
+bites — a document naming a file the runner never discovers vouches for a suite
+that cannot run, and is the *reason* nobody looks. `tom_flutter_form_test`'s
+completion document listed `screenshot_tests.dart`, plural; `flutter test`
+matches `**_test.dart` and found nothing, so five committed golden baselines had
+no comparer at all while the document said they were guarded.
+
+The check requires **literal filenames** and so rejects a table that describes
+its rows with patterns. That is the point rather than a limitation: the same
+table once used `demo_*_test.dart` and `phase*_test.dart`, and a pattern cannot
+be wrong — twelve files matched no row, including every regression guard in the
+package, and the gap was invisible from inside the document. A row that names
+its files can be falsified; a row that describes a shape cannot.
+
+Registration is explicit, one entry in the script's `INVENTORIES` map, because a
+document earns an entry by claiming to be exhaustive and most documents that
+mention a test file in passing do not. The inventory itself is delimited by
+`<!-- test-inventory:begin -->` / `<!-- test-inventory:end -->`, and only the
+files column of the table inside is read — so the description column stays free
+to name a file when it has something specific to say about it.
 
 ```bash
 python3 tool/report_crosslib_refs.py                  # the whole repository
