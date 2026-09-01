@@ -4,6 +4,13 @@
 #
 # Run from the project root:
 #   ./reflection_generation.sh
+#
+# Why `--nested` and no other argument: the generator's CLI takes *paths*, not
+# subcommands. `--nested` is single-project mode, in which it reads build.yaml
+# and generates for the `generate_for` entry. Passing a bare word such as
+# `build` makes the CLI treat it as a path — and because this project has a
+# `build/` directory, it resolved to that, warned "build is a directory" and
+# generated nothing while still exiting 0.
 set -e
 cd "$(dirname "$0")"
-/srv/flutter/flutter/bin/dart run tom_reflection_generator build
+dart run tom_reflection_generator --nested

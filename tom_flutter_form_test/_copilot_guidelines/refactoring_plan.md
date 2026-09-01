@@ -8,8 +8,7 @@ end-to-end exercise harness for the Tom forms stack (`tom_core_flutter` forms
 and `tom_flutter_ui` form widgets).
 
 **Project type:** Flutter application (`publish_to: none`)
-**Entrypoint:** `lib/main.dart` (+ `lib/main.reflection.dart`,
-`lib/reflection_init.dart`)
+**Entrypoint:** `lib/main.dart` (+ `lib/main.reflection.dart`, generated from it)
 
 ---
 
@@ -37,11 +36,10 @@ Iterate in order. Each step states its **done** condition.
    `CHANGELOG.md` and `LICENSE` are **missing** — create both (copy the
    BSD 3-Clause `LICENSE` wording from a sibling project). *Done when all three
    exist and the README orients a new reader.*
-2. **Entry + bootstrap clarity.** Review `main.dart`, `reflection_init.dart`,
-   and `main.reflection.dart`; document the startup path and reflection
-   initialization with `// Why:` comments where non-obvious. Only regenerate
-   reflection on signature changes. *Done when the startup path is clear from
-   the files.*
+2. **Entry + bootstrap clarity.** Review `main.dart` and `main.reflection.dart`;
+   document the startup path and reflection initialization with `// Why:`
+   comments where non-obvious. Only regenerate reflection on signature changes.
+   *Done when the startup path is clear from the files.*
 3. **Per-area clean-up — `common/`, `actions/`, `state/`.** Apply clean-code
    principles; remove dead code and unused declarations; name demos by intent.
    *Done when `dart analyze` is clean for these areas.*

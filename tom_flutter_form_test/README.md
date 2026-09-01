@@ -59,8 +59,7 @@ initializes reflection before `runApp`.
 | Path | Contents |
 | --- | --- |
 | `lib/main.dart` | App entry point, resource bootstrap, two-tab shell |
-| `lib/main.reflection.dart` | Generated reflection registration (do not hand-edit) |
-| `lib/reflection_init.dart` | Reflection initialization wiring |
+| `lib/main.reflection.dart` | Generated reflection registration, seeded from `lib/main.dart` (do not hand-edit) |
 | `lib/demos/` | The Demos-tab catalogue (one file per demo) |
 | `lib/examples/` | The Examples-tab stripped-down samples |
 | `lib/forms/` | Form definitions shared across demos |

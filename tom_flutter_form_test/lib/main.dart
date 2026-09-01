@@ -11,8 +11,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-// `main.reflection.dart` is generator output (see reflection_init.dart). It
-// provides `initializeReflection()`; do not hand-edit it.
+// `main.reflection.dart` is generator output: `build.yaml` seeds the reflection
+// generator from *this* file, so the reflected graph is whatever `main.dart`
+// reaches. It provides `initializeReflection()`; do not hand-edit it, and
+// regenerate only when a reflected signature changes.
 import 'main.reflection.dart';
 import 'state/application_state.dart';
 import 'demos/demo_1_basic_form.dart';
