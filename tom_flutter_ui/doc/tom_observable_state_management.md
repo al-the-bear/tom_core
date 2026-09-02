@@ -162,6 +162,7 @@ name >> (obs) => print("Changed to: ${~name}");
 
 ## Part 2 — Observable Value Types
 
+**Package:** `tom_core_kernel`  
 **Source:** `lib/src/tombase/observable/tom_observable_objects.dart`
 
 ### TomObject\<T\> — Generic Base
@@ -385,8 +386,8 @@ users['alice']!.score | 100;                // "Users changed!" (value change)
 
 > For the full widget architecture built on top of these integration patterns — including authorization-aware widgets, the action system, screen definitions, and the theming layer — see [tom_ui_design_architecture.md](tom_ui_design_architecture.md).
 
-**Package:** `tom_core_flutter`  
-**Source:** `lib/src/tomclient/observing/` and `lib/src/tomclient/forms/`
+**Packages:** `tom_core_flutter` and `tom_flutter_ui`  
+**Source:** `tom_core_flutter/lib/src/tomclient/observing/` and `tom_flutter_ui/lib/src/forms/`
 
 ### TomObservingWidget
 
@@ -457,7 +458,7 @@ This wraps any `TomObservable` (here `AppErrorInfo extends TomClass`) into a `Va
 
 ### Tom Forms Framework — TomForm / TomField (tom_flutter_ui)
 
-**Source:** `tom_ai/core/tom_flutter_ui/lib/src/forms/`
+**Source:** `tom_flutter_ui/lib/src/forms/`  
 **Full spec:** [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md)
 
 The `TomForm` / `TomField` pattern in `tom_core_flutter` is **superseded** by the Tom Forms Framework in `tom_flutter_ui`. The legacy wrappers (`TomFormStringInputClassic`, `TomFormEmailStringInputClassic`, `TomFormPasswordStringInputClassic`, `TomFormIntInputClassic`, `TomFormDoubleInputClassic`) still compile — `@Deprecated` — for the Classic-field coexistence story in Demo C, but no new code should add to them.
@@ -539,7 +540,7 @@ install their own in `setUp`.
 
 ### Global State Extension Pattern
 
-**Source:** `tom_uam_client/lib/uam/sample_app_state.dart`
+**Source:** `tom_uam/tom_uam_client/lib/uam/sample_app_state.dart`
 
 The UAM client demonstrates a global state pattern:
 

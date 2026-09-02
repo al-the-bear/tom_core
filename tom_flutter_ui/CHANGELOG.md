@@ -1,5 +1,49 @@
 ## Unreleased
 
+### Fixed
+
+- **`tom_observable_state_management.md` Part 5 pointed at a directory deleted
+  two refactors ago.** The part header gave its source as
+  `lib/src/tomclient/observing/ and lib/src/tomclient/forms/` under
+  `**Package:** tom_core_flutter`. The first exists; the second does not, and
+  has not since the forms framework moved to `tom_flutter_ui`. The document
+  already knew this — its own third subsection points at
+  `tom_flutter_ui/lib/src/forms/` — so the header was contradicted two screens
+  below it, and had been since the move. The header now names both packages and
+  only surfaces that exist.
+
+  Two neighbouring pointers were corrected in the same pass, and one
+  deliberately was not. Part 2's `**Source:**` was a bare package-relative path
+  with no `**Package:**` line to be relative to, so the line was added; the
+  UAM sample pointer was under-qualified and is now workspace-relative like the
+  other cross-repo reference. Part 1's bare path was left alone: it sits
+  directly under `**Package:** tom_core_kernel` and is correct *in context*.
+  The new checker below is what proves that distinction rather than asserting
+  it — Part 1's path resolves only because of that line, and stops resolving
+  when it is removed.
+
+  Prose naming removed types was also left alone, deliberately. The paragraph
+  above the header names the legacy `tom_core_flutter.TomForm` and contrasts it
+  with the shape that replaced it, which is the correct way to mention
+  something deleted; the fault was never "mentions a removed thing" but
+  "instructs the reader to go and read one".
+
+### Added
+
+- **`tool/check_doc_source_paths.py`** — checks that every `**Source:**`
+  pointer in the documentation names a path that exists, resolving against the
+  workspace root, the repo root, or a package named in an adjacent
+  `**Package:**` line. Nine pointers, zero faults after the fix above.
+
+  The rule earns a gate on the same grounds as `check_source_citations.py`: it
+  is exact rather than heuristic (the file is on disk or it is not, so there is
+  no triage burden), and the fault is invisible by construction — the markdown
+  renders, no build step reads these paths, and the only signal is a reader
+  following one and coming back empty, long after the cheap moment to fix it.
+
+  It carries no exemption list, including for history documents, because
+  `**Source:**` means "go and read this" whatever document it appears in.
+
 ### Changed
 
 - **Dropped the `flutter create` tutorial commentary from the pubspec.** The

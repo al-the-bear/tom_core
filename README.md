@@ -182,6 +182,7 @@ package lives in that package's own `tool/`.
 | [`tool/check_kernel_bridge.py`](tool/check_kernel_bridge.py) | Audits the kernel bridge registrations against the types the bridge declares |
 | [`tool/check_demo_counts.py`](tool/check_demo_counts.py) | Pins the demo screen/tile counts printed in `tom_flutter_ui_test/README.md` to the source |
 | [`tool/check_pubspec_boilerplate.py`](tool/check_pubspec_boilerplate.py) | Finds pubspecs still carrying a `flutter create` / `dart create` placeholder description or its tutorial commentary |
+| [`tool/check_doc_source_paths.py`](tool/check_doc_source_paths.py) | Checks that every `**Source:**` pointer in documentation names a path that exists |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
@@ -594,6 +595,29 @@ placeholder there is the package failing to say what it is however well its
 README reads. The commentary is worse than merely useless: in
 `tom_flutter_ui_test` it was 62 of 100 lines, and its commented-out asset block
 described an asset bundle the package does not have.
+
+```bash
+python3 tool/check_doc_source_paths.py                  # the whole repository
+python3 tool/check_doc_source_paths.py tom_flutter_ui   # one subtree
+```
+
+Checks that every `**Source:**` pointer in the documentation names something
+that is actually on disk. A pointer resolves against the workspace root (for
+cross-repo targets), the repo root (the usual package-prefixed form), or — when
+an adjacent `**Package:**` line supplies the prefix — that package's root. That
+third root is what makes the rule fair rather than merely strict: a bare
+`lib/src/...` under a `**Package:**` header is correct, and the same path
+without one has no package to be relative to.
+
+Nothing else reads these paths, so a pointer at a deleted directory breaks
+silently and stays broken. The instance that prompted the check had a part
+header naming a `tomclient/forms/` directory removed refactors earlier, while a
+subsection of that same part correctly named the directory it had moved to.
+
+There is no exemption for history documents. Naming a removed type in prose is
+fine and often necessary; `**Source:**` is different, because it is an
+instruction to go and read something, and that instruction is false once the
+target is gone.
 
 Unlike a prose slip this defect is machine-generated, reproducibly, by the
 standard way packages are created — so every future `flutter create` reintroduces
