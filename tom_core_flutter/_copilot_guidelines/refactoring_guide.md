@@ -17,12 +17,42 @@ Located in `lib/src/tomclient/` (keep in sync with the folder):
 
 | Module | Description |
 | ------ | ----------- |
-| `forms/` | Form handling and validation widgets |
-| `little_things/` | Small utility widgets and helpers |
-| `observing/` | Observable state patterns for Flutter |
-| `resources/` | Resource loading and management |
-| `runtime/` | Flutter runtime / platform detection |
-| `security/` | Security utilities for mobile/web |
+| `configuration/` | Machine-scoped client settings — declare, load, observe, persist only the overrides |
+| `little_things/` | The client exception family (`TomClientException`, `TomClientUIException`) |
+| `observing/` | Observable state patterns for Flutter — rebuild a widget when a kernel `TomObservable` notifies |
+| `preferences/` | Device-local preferences and the typed client for the account's server-held ones |
+| `resources/` | Typed, eagerly-resolved config values (`TomProperty` and its variants) |
+| `runtime/` | Flutter runtime / platform detection — the compile-time-selected `TomPlatformUtils` |
+| `security/` | The framework-owned second-factor flow, its mechanism registry and the `TomClient2FAAdaptor` marker |
+
+> **This table is a census, not a floor** — it must name every directory under
+> `lib/src/tomclient/` and nothing else. It is enforced by
+> `test/module_inventory_test.dart`, which reads the directory listing and
+> compares, asserting set *equality* in both directions. That guard exists
+> because this table, and three other inventories in this file, silently
+> disagreed with the folder for weeks: `configuration` and `preferences` were
+> added and `forms/` was deleted without any of them noticing (tcinc1111). The
+> sibling guard in `example_instructions_test.dart` could not catch it — its own
+> comment calls it "a floor, not a census", and a floor cannot notice an
+> *addition*, which is exactly the change that leaves every hand-written list
+> behind.
+>
+> The same suite holds five further inventories level with the folder: every
+> live module has a per-module checklist step below; the barrel exports exactly
+> the live modules; each module ships its five artifacts (module `readme.md`,
+> `doc/<m>.md`, `doc/api_reference/api_summary_<m>.md`, `example/<m>/`,
+> `test/<m>_test.dart`); no doc, summary or example outlives the module it
+> describes; and every **bolded** number word in this file equals the current
+> module count.
+>
+> That last one fixes a convention this file already follows, so read it before
+> editing a count: **a bolded number is a claim about *now* and must be true; a
+> plain number is history and stays as written.** "six at OT2" is right forever
+> because it is unbolded and date-anchored; a bolded count is right only while
+> the folder still agrees, and the suite fails the moment it does not. (The
+> gate matches a bolded number word anywhere in the file, including inside a
+> code span — so illustrate the rule in words, as this paragraph does, rather
+> than by quoting a bolded numeral that would then be read as a claim.)
 
 > Placeholder modules that contain only a `readme.md` (no implementation) must
 > be either implemented or removed during their step — do not leave empty
@@ -51,9 +81,11 @@ Iterate in order. Each step states its **done** condition.
 > is 59/59 green. The four placeholder modules (`camera/`, `localstorage/`,
 > `preferences/`, `qrcode/`) and the empty `iding/` folder were already removed
 > (recorded in `CHANGELOG.md` 1.1.0 — `preferences/` was rebuilt as a real
-> module afterwards, see step 7), and all review-findings issues are
+> module afterwards, see step 8), and all review-findings issues are
 > resolved. The six real modules each already received a full per-module pass
-> (dartdoc + `doc/{module}.md` + executable example + test suite). The
+> (dartdoc + `doc/{module}.md` + executable example + test suite) — six was the
+> count on 15 July 2026; all **seven** modules carry those four artifacts
+> today. The
 > open-ended **deepening** work — scaling test/example surface coverage and
 > optional `doc/api/api_summary_{module}.md` files — is tracked as quest todo
 > **RCE3** (the kernel reference has no `api.dart`/`doc/api` either).
@@ -65,7 +97,11 @@ Iterate in order. Each step states its **done** condition.
 > (`doc/api/` is gitignored for generated HTML, so summaries live in
 > `doc/api_reference/`). This package's six per-module summaries
 > (`forms`, `little_things`, `observing`, `resources`, `runtime`, `security`)
-> plus `api_summary_index.md` were re-verified accurate against current source;
+> plus `api_summary_index.md` were re-verified accurate against current source
+> — that was the set on 15 July 2026; `doc/api_reference/` holds **seven**
+> today, `forms` having gone with the module and `configuration` and
+> `preferences` having arrived since (see the Target Modules table, which is
+> the current census);
 > `dart analyze` is clean and the OT2 59/59 serial baseline stands unchanged.
 > Two follow-ups were filed rather than rushed into a doc pass: **RCF2** —
 > remove the explicitly-legacy `forms/` module (`TomFormOld`/`TomFieldOld` etc.,
@@ -83,7 +119,7 @@ Iterate in order. Each step states its **done** condition.
 > module it used to import is gone, which it could not do if the migration were
 > partial. `TomFormOld` survives only as a dartdoc contrast in
 > `tom_core_samples/advanced_authadmin_client/`, not as code. The package suite
-> is **+326 / 0** (`flutter test --concurrency=1`, 2026-09-02); the `59/59`
+> is **+332 / 0** (`flutter test --concurrency=1`, 2026-09-02); the `59/59`
 > figures above are what OT2 ran on 15 July 2026 and stay as written. **RCF3**
 > was not assessed in this pass — read its status from the todo, not from
 > RCF2's closure.
@@ -97,33 +133,43 @@ Iterate in order. Each step states its **done** condition.
    describes the package accurately.*
 2. **Per-module pass — `camera/`.** ✅ **Done (OT2) — removed** (placeholder,
    see CHANGELOG 1.1.0 §Removed).
-3. **Per-module pass — `forms/`.** ✅ **Done (OT2) — since removed (RCF2,
+3. **Per-module pass — `configuration/`.** ✅ **Done (2026-09-02, tcinc1111).**
+   The module postdates OT2, so it never appeared in this checklist and reads
+   as unvisited. It is not: the machine-scoped settings holder carries dartdoc
+   on its public surface (336 dartdoc lines across five files),
+   [`doc/configuration.md`](../doc/configuration.md),
+   `doc/api_reference/api_summary_configuration.md`,
+   `example/configuration/configuration_example.dart` and
+   `test/configuration_test.dart`. What it genuinely lacked was the module
+   `readme.md` its six siblings all carry; that was written in the same pass.
+4. **Per-module pass — `forms/`.** ✅ **Done (OT2) — since removed (RCF2,
    2026-09-02).** The legacy module (`TomFormOld`/`TomFieldOld`) is gone and its
    only consumer `tom_uam_client` now uses `tom_flutter_ui`'s widget-based
    `TomForm`. Nothing is pending here; see the RCF2 done-marker above.
-4. **Per-module pass — `little_things/`.** ✅ **Done (OT2).** Deepening → RCE3.
-5. **Per-module pass — `localstorage/`.** ✅ **Done (OT2) — removed** (placeholder).
-6. **Per-module pass — `observing/`.** ✅ **Done (OT2).** Deepening → RCE3.
-7. **Per-module pass — `preferences/`.** ✅ **Done (OT2) — removed** (placeholder).
+5. **Per-module pass — `little_things/`.** ✅ **Done (OT2).** Deepening → RCE3.
+6. **Per-module pass — `localstorage/`.** ✅ **Done (OT2) — removed** (placeholder).
+7. **Per-module pass — `observing/`.** ✅ **Done (OT2).** Deepening → RCE3.
+8. **Per-module pass — `preferences/`.** ✅ **Done (OT2) — removed** (placeholder).
    **Superseded (2026-08-03).** The directory holds a real module again: the
    device-preferences API and its framework client, with barrel exports,
    `doc/preferences.md`, an example and a test suite. What OT2 removed was a
    `readme.md` of research links, so both statements are true of different
    things — read the marker above as "the placeholder is gone", not as "there
    is no preferences module".
-8. **Per-module pass — `qrcode/`.** ✅ **Done (OT2) — removed** (placeholder).
-9. **Per-module pass — `resources/`.** ✅ **Done (OT2).** Deepening → RCE3.
-10. **Per-module pass — `runtime/`.** ✅ **Done (OT2).** Deepening → RCE3.
-11. **Per-module pass — `security/`.** ✅ **Done (OT2).** `security/authentication.dart`
+9. **Per-module pass — `qrcode/`.** ✅ **Done (OT2) — removed** (placeholder).
+10. **Per-module pass — `resources/`.** ✅ **Done (OT2).** Deepening → RCE3.
+11. **Per-module pass — `runtime/`.** ✅ **Done (OT2).** Deepening → RCE3.
+12. **Per-module pass — `security/`.** ✅ **Done (OT2).** `security/authentication.dart`
     is exported from the package barrel.
-12. **Barrel exports & dead code.** ✅ **Done (OT2, 2026-07-15).** Barrel exports
-    all six modules incl. `authentication.dart`; the unused `_onChange` is gone;
+13. **Barrel exports & dead code.** ✅ **Done (OT2, 2026-07-15).** Barrel exports
+    every module incl. `authentication.dart` — six at OT2, **seven** today; the
+    unused `_onChange` is gone;
     `dart analyze` clean. Verify every public symbol is exported from
     `lib/`; remove unused private declarations. *Done when `flutter analyze` is
     clean.*
-13. **Whole-package QA.** ✅ **Done (OT2, 2026-07-15).** `dart analyze` clean +
+14. **Whole-package QA.** ✅ **Done (OT2, 2026-07-15).** `dart analyze` clean +
     `flutter test --concurrency=1` 59/59 green; re-verified 2026-09-02 at
-    `+326 / 0`. Run `flutter analyze` (zero warnings) and
+    `+332 / 0`. Run `flutter analyze` (zero warnings) and
     `flutter test --concurrency=1` (all green; never run Flutter test
     invocations in parallel). *Done when analyzer and tests are clean.*
 
@@ -134,7 +180,7 @@ Iterate in order. Each step states its **done** condition.
     > measured in this package: with one planted `unawaited_futures` violation,
     > `flutter analyze` exits 1 and `dart analyze` exits 0. A `dart analyze`
     > gate therefore passes a tree with lint violations in it.
-14. **Final review.** ✅ **Done (OT2, 2026-07-15).** Module docs re-read;
+15. **Final review.** ✅ **Done (OT2, 2026-07-15).** Module docs re-read;
     `doc/review_findings.md` annotated as resolved; `CHANGELOG.md` updated.
     Re-read each module doc and `api.dart`; confirm docs only
     describe features that exist and cover all public API. Update `CHANGELOG.md`.
@@ -150,7 +196,7 @@ private additions allowed):
 2. Review real-world usage in `tom_uam_client`.
 3. Refactor and document per
    [`dart/coding_guidelines.md`](/_copilot_guidelines/dart/coding_guidelines.md).
-4. Quality check: no public API change; `flutter analyze` clean (see step 13 —
+4. Quality check: no public API change; `flutter analyze` clean (see step 14 —
    `dart analyze` exits 0 on the `info`-severity lints this workspace enables).
 5. Create module documentation in `doc/{module}.md` per
    [`documentation_guidelines.md`](/_copilot_guidelines/documentation_guidelines.md).

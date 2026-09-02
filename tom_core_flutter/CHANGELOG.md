@@ -1,6 +1,47 @@
 ## 1.2.1
 
+### Added
+
+- **`lib/src/tomclient/configuration/readme.md`** — the one artifact the module
+  lacked. Its six siblings each carry a module readme; `configuration` shipped
+  with dartdoc, a doc page, an API summary, an example and a suite, but no
+  readme, and no inventory noticed. Covers the `(client app, machine)` scope and
+  why a per-user value belongs in `preferences/` instead, the three-layer
+  resolution order and why only the override layer is persisted, and the three
+  deliberate non-features (no validation, no autosave, no concurrency control).
+
+- **`test/module_inventory_test.dart`** — six census checks that hold every
+  module inventory level with `lib/src/tomclient/`: the guide's Target Modules
+  table (set equality both ways), a per-module checklist step for every live
+  module, the barrel's exports, each module's five artifacts, no artifact
+  outliving its module, and every bolded number word in the guide equalling the
+  current module count.
+
+  The existing `example_instructions_test.dart` could not catch any of this: its
+  own comment calls its module list "a floor, not a census", so it fails on a
+  *deleted* module and never on an *added* one — and an addition is exactly the
+  change that leaves hand-written lists behind. Each check was falsified before
+  being trusted (a planted module directory trips five of the six; a table row
+  for a non-existent module, an orphaned `doc/*.md`, a removed module readme, a
+  stale bolded count and a dropped barrel export each trip their own). That
+  exercise found a real defect in the test itself — the barrel pattern was
+  unanchored, so a *commented-out* export still counted as an export; it is now
+  anchored to the line start and both the commented and deleted forms fail.
+
 ### Fixed
+
+- **Four module inventories in the refactoring guide disagreed with the folder
+  (tcinc1111).** The `## Target Modules` table (whose own caption asks to be
+  kept in sync), the RCE3 six-summaries list, the OT2 "six real modules" figure
+  and the step-13 barrel sentence all described a module set that had not
+  existed for weeks: they named the deleted `forms/` and omitted `configuration`
+  and `preferences`. Six independent sources — directories, barrel exports, doc
+  pages, API summaries, example folders and suites — agree on the same seven
+  modules, so the set was never in doubt; only the prose was. The table is now
+  the current census; the dated figures keep their historical counts and gain a
+  clause naming today's. `configuration` also gained the per-module checklist
+  step it never had, having postdated OT2 and so reading as unvisited when in
+  fact only its readme was missing.
 
 - **The refactoring guide briefed the next agent to do work that is already
   finished (tcinc1110).** `_copilot_guidelines/refactoring_guide.md` carried
