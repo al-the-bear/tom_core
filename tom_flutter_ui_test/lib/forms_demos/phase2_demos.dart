@@ -78,6 +78,10 @@ Widget _panel({required String title, required List<Widget> children}) {
 // Demo E — Selection Variants
 // ===========================================================================
 
+/// Exercises the `tom_flutter_ui` form feature: the string selection field
+/// flavours — dropdown, radio group, segmented, choice chips, filter chips and
+/// multi-checkbox — all bound to one shared `TomSelectableSource`, so the same
+/// option list renders in every presentation.
 class SelectionVariantsDemo extends StatefulWidget {
   const SelectionVariantsDemo({super.key});
 
@@ -269,6 +273,10 @@ class SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
 // Demo F — Boolean Variants
 // ===========================================================================
 
+/// Exercises the `tom_flutter_ui` form feature: the boolean field flavours —
+/// `TomFormBoolCheckbox`, `TomFormBoolSwitch` and `TomFormBoolToggle` — shown
+/// side by side over the same form state so the three presentations of one
+/// value stay in step.
 class BooleanVariantsDemo extends StatefulWidget {
   const BooleanVariantsDemo({super.key});
 
@@ -428,6 +436,9 @@ class _BooleanVariantsDemoState extends State<BooleanVariantsDemo> {
 // Demo G — Complex Breakpoint Scenarios
 // ===========================================================================
 
+/// Exercises the `tom_flutter_ui` form feature: `TomFormStyleScope` breakpoint
+/// overrides, where a `TomFormStyle` / `TomFieldStyle` pair is swapped by
+/// available width so the form collapses from two columns to one.
 class ComplexBreakpointsDemo extends StatefulWidget {
   const ComplexBreakpointsDemo({super.key});
 
@@ -559,6 +570,10 @@ const _spacious = TomFormStyle(
 // Demo H — Complex Authorization Scenarios
 // ===========================================================================
 
+/// Exercises the `tom_flutter_ui` form feature: authorization-driven field
+/// state, where a `TomAuthorizer` resolves each field to a `TomAuthState` and
+/// `TomAuthorizationGroup` applies the outcome — visible, readonly or hidden —
+/// across a whole group as the selected role changes.
 class ComplexAuthDemo extends StatefulWidget {
   const ComplexAuthDemo({super.key});
 

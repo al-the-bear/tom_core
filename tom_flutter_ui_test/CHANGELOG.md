@@ -1,5 +1,50 @@
 ## Unreleased — cleanup pass
 
+- **The four Phase-2 forms demos now name the feature they exercise**, which
+  closes the last gap in a convention the other 55 demos already kept: all 26
+  ACL and all 28 widget demo classes carried a `///` doc naming their
+  `tom_flutter_ui` target, while `SelectionVariantsDemo`, `BooleanVariantsDemo`,
+  `ComplexBreakpointsDemo` and `ComplexAuthDemo` had only the `// ====` banner
+  giving their letter and title. A banner says *which* demo this is; the doc
+  says *what it is for*. 59 of 59 now carry one.
+- **The local refactoring plan described a project that no longer exists, and
+  glossed ACL as access control.** `_copilot_guidelines/refactoring_plan.md` is
+  the only project-specific guideline this package has, so its errors are the
+  first thing a new reader inherits.
+
+  The damaging one was the gloss: the intro called this the harness for "ACL
+  (resource authorization) behavior" and the structure table read `acl_demos/`
+  as "Demos of resource authorization / access control". **ACL here is Advanced
+  Container Layout** — the layout engine — as the folder's own barrel, all 26
+  demo classes, the README and the catalogue all say. `lib/acl_demos/` contains
+  no authorization API whatsoever (grepped: zero hits for `Authoriz`,
+  `Permission`, `accessControl`), and authorization actually lives in
+  `demo_28_authorization.dart` and `ComplexAuthDemo`. Someone following that
+  table would have gone looking for authorization in the layout demos and found
+  none of it.
+
+  It also declared `CHANGELOG.md` and `LICENSE` "**missing** — create both".
+  Both were added by `64a13a59` — the same commit that wrote the 1.0.0 entry —
+  so the instruction had been stale since the day the files landed.
+
+  The plan is rewritten to describe the project as it is: the corrected ACL
+  meaning and where authorization really lives, a structure table that includes
+  `test/` and `doc/`, the standing conventions a pass must not undo (the meta
+  files, the per-demo docs, the `// Why:` bootstrap comments, the three places a
+  new demo must be registered, the "no `_test.dart` suffix unless it can fail"
+  rule, and the gated inventories), and a procedure whose done-conditions are
+  the commands that actually run.
+- **`dart analyze` is not a gate for this package, and the plan prescribed it
+  twice.** This is the same command confusion as the CHANGELOG entry below, but
+  worse, because here it was the *instruction* rather than the record — and
+  measuring it showed the difference is not cosmetic. Both commands read the
+  same `analysis_options.yaml` and report the *same* findings; but on a probe
+  widget with a missing `key`, a non-const immutable constructor and a redundant
+  `Container`, `dart analyze` reported all three and **exited 0**, while
+  `flutter analyze` reported all three and **exited 1**. `flutter_lints` raises
+  most rules at `info` severity, so a done-condition of "`dart analyze` is
+  clean" would have been satisfied by a package full of lint violations. The
+  plan now says `flutter analyze` and records why.
 - **The 1.0.0 entry's demo counts were wrong when they were written, and are
   corrected rather than left standing as history.** It claimed "27 layout
   demos"; `lib/acl_demos/` holds 26 screens and four support files (the barrel,
