@@ -1,9 +1,20 @@
 /// Demo-local interactive-logic coverage for the forms_demos showcase — review
 /// tests finding §68.
 ///
-/// The five forms demos carry substantial demo-local logic that only the
-/// screenshot harness (mount-once) and `widget_test.dart` (tab labels) touch.
-/// These `WidgetTester` cases drive that logic from a consumer's vantage point
+/// The five forms demos carry substantial demo-local logic, and everything that
+/// reached them before this suite only ever **mounted** them. All five are in
+/// `demos` (`test/demo_harness.dart`), so `demo_overflow_test.dart` pumps each
+/// one and measures it for overflow, `demo_coverage_test.dart` constructs each
+/// to prove the app's tiles are reachable, `forms_dispose_test.dart` mounts and
+/// unmounts each twice, and `screenshots.dart` captures each on demand. Not one
+/// of them presses a button, types into a field or opens a dropdown —
+/// collectively zero `tap` and zero `enterText` calls. (`widget_test.dart`
+/// reaches them least of all: it asserts the four tab labels and three ACL tile
+/// titles, and never opens the Forms/Actions tab.)
+///
+/// A mount proves a demo builds and fits; it says nothing about whether its
+/// logic is right. These `WidgetTester` cases drive that logic from a
+/// consumer's vantage point
 /// — buttons, fields, dropdowns — and assert the observable outcome rather than
 /// reaching into the private `State` classes (the one seam used,
 /// [SelectionVariantsDemoState.debugSharedSource], was added in non-core step

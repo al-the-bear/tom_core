@@ -1,9 +1,12 @@
 /// Demo-local pure-logic coverage for the widget_demos showcase — review
 /// tests finding §69.
 ///
-/// Two genuinely-pure demo-local helpers had no behavioural assertions (the 28
-/// demos are otherwise mount/screenshot-only, which is expected for a showcase
-/// and is *not* the finding):
+/// Two genuinely-pure demo-local helpers had no behavioural assertions. The
+/// widget demos are otherwise mount-only — `demo_overflow_test.dart`,
+/// `demo_coverage_test.dart` and `screenshots.dart` build them and assert
+/// nothing about their behaviour; the one exception is `widget_04_toggles`,
+/// which `demo_04_radio_group_test.dart` drives. That is expected for a
+/// showcase and is *not* the finding:
 ///
 ///  - [DemoAuthorizationAdapter.resolveAuth] — an exact-match-then-parent-walk
 ///    auth resolver (`demo_28_authorization.dart`): split the path on `.`,

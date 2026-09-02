@@ -1,5 +1,42 @@
 ## Unreleased — cleanup pass
 
+- **Both demo-logic suites described a coverage landscape that had moved under
+  them.** A suite's opening docstring is the argument for why it exists, so the
+  claim it makes about what came before is the one part a reader is most likely
+  to take on trust and least likely to re-derive.
+
+  `forms_demos_logic_test.dart` said the five forms demos were touched only by
+  "the screenshot harness (mount-once) and `widget_test.dart` (tab labels)".
+  Every part of that was wrong by the time it was read. `widget_test.dart`
+  touches none of them — it asserts four tab labels and three ACL tile titles
+  and never opens the Forms/Actions tab. The screenshot harness is not the
+  mount source but one of four consumers of the shared `demos` list, three of
+  which are gates. And the sentence was written when the four Phase-2 screens
+  were missing from that list; they were added when the harness went 55 → 59,
+  and the docstring did not follow.
+
+  The correction is not a smaller claim but a stronger one, because the
+  original was arguing the wrong thing. What matters is not *how few* suites
+  reach these demos — four do — but that every one of them only **mounts**
+  them: `demo_overflow_test` measures them for overflow, `demo_coverage_test`
+  constructs them, `forms_dispose_test` mounts and unmounts them twice,
+  `screenshots.dart` captures them. Between them they make **zero** `tap` and
+  **zero** `enterText` calls. A mount proves a demo builds and fits and says
+  nothing about whether its logic is right — which is the actual case for this
+  suite, and it survives the correction intact.
+
+  `widget_demos_logic_test.dart` carried the same fault one file over, found by
+  sweeping for the shape rather than the wording: it called the widget demos
+  "otherwise mount/screenshot-only", which stopped being true when
+  `demo_04_radio_group_test.dart` began driving `widget_04_toggles`. It now
+  names that exception.
+
+  Both rewrites state their claims as counts a reader can check with one grep,
+  rather than as impressions. No new gate was added: the half that actually
+  went stale — harness membership — is already gated by `demo_coverage_test`,
+  which fails when the app offers a demo `demos` cannot construct, and a
+  checker for "no other suite drives these" would be a grep heuristic offering
+  more confidence than it earns.
 - **The four Phase-2 forms demos now name the feature they exercise**, which
   closes the last gap in a convention the other 55 demos already kept: all 26
   ACL and all 28 widget demo classes carried a `///` doc naming their
