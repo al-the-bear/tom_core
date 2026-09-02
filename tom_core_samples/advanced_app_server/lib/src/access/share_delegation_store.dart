@@ -3,7 +3,7 @@
 ///
 /// A share is exactly "principal A lends principal B a named role on a named
 /// resource" — a [TomPrincipalDelegation] in [TomDelegationMode.share]. RCC3
-/// retires the bespoke `ShareRecord` + `app_shares` table: shares are now
+/// retires the sample's earlier bespoke `app_shares` table: shares are now
 /// [TomPrincipalDelegation] rows on the framework `tom_principal_delegation`
 /// table (datasource `main`, bound to the shared `auth_db` connection at boot),
 /// resolved through the framework [TomDelegationResolver] alongside the C-5

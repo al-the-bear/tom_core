@@ -71,6 +71,59 @@ Existence is decided by looking for the identifier anywhere in the library's
 code -- deliberately lenient. The point is to catch names that vanished, not to
 police whether a reference points at a declaration rather than a local. A
 lenient rule that never cries wolf is one people leave switched on.
+
+**Second check: prose that orients the reader against a type that is gone.**
+The argument above rules out judging *bracketed* public references, because a
+dangling one is indistinguishable from a correct one that simply lacks an
+import. Backticked names carry no such ambiguity, and for the same structural
+reason private names do not: dartdoc never links a backticked span, so there is
+no import question to get wrong. The only question left is whether the name
+exists at all.
+
+That matters because a removed type leaves its name behind in prose, and
+nothing objects. ``advanced_authadmin_client/lib/forms/admin_login_form.dart``
+described its fields as "not the legacy ``TomFormOld``/``TomEmailField`` API"
+for the three weeks after both types were deleted with the ``forms/`` module.
+Backticks rather than brackets meant dartdoc emitted no broken link, the
+analyzer saw a string, and the build stayed green -- which is precisely why it
+survived. The cost is paid by the reader, who is told what the code *is not* by
+appeal to something they cannot look up, in a sample whose job is to be the
+worked example a newcomer copies. Two more copies sat in
+``tom_uam_client/lib/uam/sample_app_state.dart`` (tcinc1112).
+
+So the rule is narrow on purpose: a capitalised identifier inside backticks, on
+a doc line that frames it as *past* -- "legacy", "formerly", "used to be",
+"replaced by", "no longer" -- must appear somewhere in the repo's code. Framing
+is what makes the line checkable. "The legacy ``TomFormOld``" is a claim that
+something existed and has been superseded; if the name appears nowhere, the
+claim orients the reader at nothing. A backticked name with no such framing is
+usually a parameter, a key, or a literal, and judging those would produce the
+wolf-crying this file's first check was designed to avoid.
+
+Existence is again decided leniently, by looking for the identifier anywhere in
+repo code rather than for a declaration. That is what keeps SDK and third-party
+names (``String``, ``Future``, ``Widget``) out of the output without an
+allowlist to maintain: they are all over the code already. Only a name that
+appears in *no* code anywhere -- a genuinely vanished one -- can fail.
+
+**Framing is matched per line, and that was measured rather than assumed.** The
+obvious alternative is to judge a whole ``///`` block, so that a name wrapped
+onto the line below its framing still counts. Measured on this tree, block scope
+judges 195 backticked names and reports 8, of which **6 are wrong**: ``O_EXCL``
+(a POSIX flag), ``QRTZ_JOB_DETAILS`` and ``JOB_CLASS_NAME`` (Quartz's SQL column
+names, quoted as the schema this one is modelled on), ``ClassName`` twice (a
+metavariable in a test's format description), and ``CsRouteRef``. Every one sits
+in a paragraph that happens to contain a framing word about something else
+entirely. Line scope judges 21 names and reports 2, both real. Six false
+positives is the wolf-crying the first check was built to avoid, so the miss is
+accepted: a wrapped name goes unflagged, and ``resource_role_resolver.dart``
+had exactly one such case. Re-measure before widening this -- the numbers are
+here so they stay checkable rather than becoming folklore.
+
+The framing vocabulary earns its entries the same way. Adding ``replaces`` and
+``retires`` took the judged population from 3 names to 21 and surfaced a second
+genuine fault (``ShareRecord`` in ``share_delegation_store.dart``) with no new
+false positive. A word that cannot show that ledger does not belong in the list.
 """
 
 from __future__ import annotations
@@ -90,6 +143,14 @@ PART_OF = re.compile(r"""^\s*part\s+of\s+['"]([^'"]+)['"]\s*;""", re.M)
 PART = re.compile(r"""^\s*part\s+['"]([^'"]+)['"]\s*;""", re.M)
 IDENTIFIER = re.compile(r"\b_\w+")
 INLINE_CODE = re.compile(r"`[^`]*`")
+CAPITALISED = re.compile(r"\b[A-Z]\w*")
+# Words that frame a backticked name as something that *was* -- the framing is
+# what turns "a name in backticks" into a checkable claim about existence.
+PAST_FRAMING = re.compile(
+    r"\b(legacy|formerly|used to be|replaces?|replaced by|retires?|supersede[sd]|"
+    r"no longer|deprecated in favour of|old\s+\w*\s*API)\b",
+    re.I,
+)
 # A bracketed run with no nested brackets. The trailing lookahead rejects
 # markdown links -- `[text](url)` and `[text][ref]` are not dartdoc references.
 REFERENCE = re.compile(r"\[([^\[\]]+)\](?![\(\[])")
@@ -169,6 +230,32 @@ def private_references(text: str) -> list[tuple[int, str]]:
     return found
 
 
+def code_names(text: str) -> set[str]:
+    """Every capitalised identifier appearing outside a doc comment."""
+    lines = [ln for ln in text.split("\n") if not DOC_LINE.match(ln)]
+    return set(CAPITALISED.findall("\n".join(lines)))
+
+
+def past_framed_names(text: str) -> list[tuple[int, str]]:
+    """``(line number, name)`` for backticked types framed as superseded."""
+    found = []
+    in_fence = False
+    for number, line in enumerate(text.split("\n"), start=1):
+        doc = DOC_LINE.match(line)
+        if not doc:
+            in_fence = False
+            continue
+        if FENCE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence or not PAST_FRAMING.search(doc.group(1)):
+            continue
+        for span in INLINE_CODE.findall(doc.group(1)):
+            for name in CAPITALISED.findall(span.strip("`")):
+                found.append((number, name))
+    return found
+
+
 def main(argv: list[str]) -> int:
     root = REPO_ROOT / argv[0] if argv else REPO_ROOT
     if not root.exists():
@@ -179,31 +266,50 @@ def main(argv: list[str]) -> int:
     checked = 0
     references = 0
     dangling: list[tuple[Path, int, str]] = []
+    framed = 0
+    vanished: list[tuple[Path, int, str]] = []
 
-    for path in source_files(root):
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
+    # The second check judges a name against the *whole* repo's code, so the
+    # vocabulary has to be complete before any line can be judged. Scanning the
+    # repo rather than `root` keeps a subtree run honest: narrowing the search
+    # must not turn a name that exists elsewhere into a reported fault.
+    sources = [(p, p.read_text(encoding="utf-8", errors="replace"))
+               for p in source_files(REPO_ROOT)]
+    known_names: set[str] = set()
+    for _, text in sources:
+        known_names |= code_names(text)
+
+    for path, text in sources:
+        if root != REPO_ROOT and root not in path.parents and path != root:
             continue
         refs = private_references(text)
-        if not refs:
-            continue
-        checked += 1
-        references += len(refs)
-        known = library_identifiers(library_of(path, text), cache)
-        for number, name in refs:
-            if name not in known:
-                dangling.append((path, number, name))
+        if refs:
+            checked += 1
+            references += len(refs)
+            known = library_identifiers(library_of(path, text), cache)
+            for number, name in refs:
+                if name not in known:
+                    dangling.append((path, number, name))
+        for number, name in past_framed_names(text):
+            framed += 1
+            if name not in known_names:
+                vanished.append((path, number, name))
 
     for path, number, name in dangling:
         rel = path.relative_to(REPO_ROOT)
         print(f"{rel}:{number}: [{name}] resolves to nothing in this library")
+    for path, number, name in vanished:
+        rel = path.relative_to(REPO_ROOT)
+        print(f"{rel}:{number}: `{name}` is framed as superseded but appears in "
+              f"no code in this repo -- the reader cannot look it up")
 
     print()
     print(f"files with private dartdoc references : {checked}")
     print(f"private references checked            : {references}")
     print(f"references resolving to nothing       : {len(dangling)}")
-    return 1 if dangling else 0
+    print(f"backticked names framed as superseded : {framed}")
+    print(f"  of those, naming nothing in the repo: {len(vanished)}")
+    return 1 if dangling or vanished else 0
 
 
 if __name__ == "__main__":

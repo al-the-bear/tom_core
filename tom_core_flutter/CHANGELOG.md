@@ -28,7 +28,50 @@
   unanchored, so a *commented-out* export still counted as an export; it is now
   anchored to the line start and both the commented and deleted forms fail.
 
+- **A second check in `tool/check_dartdoc_refs.py`** — a backticked capitalised
+  name on a doc line that frames it as *past* ("legacy", "replaces", "retires",
+  "no longer") must appear somewhere in repo code. This is the fault below,
+  generalised: the existing gate deliberately judges only bracketed *private*
+  references, because a dangling public `[Ref]` cannot be told apart from a
+  correct one missing an import. Backticks remove that ambiguity by construction
+  — dartdoc never links them — so "does this name exist at all" is answerable,
+  and past-framing is what turns a backticked name into a claim worth checking.
+
+  Both the line-vs-block scope and the framing vocabulary were settled by
+  measurement, and both are recorded in the module docstring. Judging whole
+  comment blocks reports 8 names of which 6 are wrong (`O_EXCL`,
+  `QRTZ_JOB_DETAILS`, `ClassName`…), each sitting in a paragraph whose framing
+  word is about something else; per-line judges 21 and reports 2, both real.
+  Adding `replaces`/`retires` to the vocabulary took the judged population from
+  3 to 21 and found a second genuine fault with no new false positive.
+  Falsified in six directions before being trusted: it fires on the original
+  fault and on a novel name/framing pair, and stays silent for a framed name
+  that exists, a vanished name with no framing, and a framed vanished name
+  inside a fenced code block.
+
 ### Fixed
+
+- **A shipping sample's dartdoc oriented the reader against deleted types
+  (tcinc1112).** `advanced_authadmin_client/lib/forms/admin_login_form.dart`
+  described its fields as "not the legacy `TomFormOld`/`TomEmailField` API" —
+  both removed with `forms/` in 1.1.0. Backticks rather than brackets meant
+  dartdoc emitted no broken link and nothing failed to build, which is why it
+  survived; the cost fell on the reader, told what the code *is not* by appeal
+  to something they cannot look up, in the sample a newcomer copies. The
+  sentence already said positively what the form is, so the contrast simply
+  went.
+
+  The new gate then found the same fault twice more in `advanced_app_server`,
+  where prose named a bespoke `ResourceAccessResolver` and `ShareRecord` that
+  exist nowhere in the workspace; both now describe what they replaced without
+  naming a type the reader cannot reach. Two further copies in
+  `tom_uam/tom_uam_client/lib/uam/sample_app_state.dart` were fixed in the same
+  pass — one of them (the "modern replacement for the legacy `bloc`" comment)
+  had not been filed. Where the contrast was load-bearing, the positive reason
+  replaced it: the login form is a lazy getter because reflection must be
+  initialised first, which is a fact about *this* code rather than about a
+  deleted one. `TomFormOld` now survives only in the CHANGELOG entries that
+  record its removal.
 
 - **Four module inventories in the refactoring guide disagreed with the folder
   (tcinc1111).** The `## Target Modules` table (whose own caption asks to be

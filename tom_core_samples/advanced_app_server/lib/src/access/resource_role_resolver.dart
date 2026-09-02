@@ -7,8 +7,8 @@
 /// the field-level grade resolver (step 18) then maps the resolved role to
 /// per-field `TomAuthState`s.
 ///
-/// It **replaces** the bespoke `ResourceAccessResolver`. It no longer walks an
-/// implicit `workspace.owner_id` chain or reads a bespoke `ShareRecord` table:
+/// It **replaces** the sample's earlier bespoke resolver, which walked an
+/// implicit `workspace.owner_id` chain and read a separate share table:
 /// ownership is now an explicit C-5 owner grant (RCC1) and a share is a C-6
 /// `share`-mode `TomPrincipalDelegation` (RCC3). Both arrive folded into one
 /// flat `resourceKey → roleName` map from

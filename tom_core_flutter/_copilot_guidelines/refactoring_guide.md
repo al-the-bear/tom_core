@@ -117,8 +117,9 @@ Iterate in order. Each step states its **done** condition.
 > follow-up said it did not yet have. The two facts check each other — the
 > client analyzes clean (`flutter analyze`, "No issues found!") *while* the
 > module it used to import is gone, which it could not do if the migration were
-> partial. `TomFormOld` survives only as a dartdoc contrast in
-> `tom_core_samples/advanced_authadmin_client/`, not as code. The package suite
+> partial. `TomFormOld` survives nowhere in live source — not as code, and (since
+> tcinc1112) not as prose either; the name appears only in the CHANGELOG entries
+> that record its removal, which is where a removed type belongs. The package suite
 > is **+332 / 0** (`flutter test --concurrency=1`, 2026-09-02); the `59/59`
 > figures above are what OT2 ran on 15 July 2026 and stay as written. **RCF3**
 > was not assessed in this pass — read its status from the todo, not from

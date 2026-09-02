@@ -2,8 +2,8 @@
 /// [AdminLoginCredentials].
 ///
 /// Mirrors the app client's `LoginForm`: built with `tom_flutter_ui`
-/// [TomFormStringInput]s (not the legacy `TomFormOld`/`TomEmailField` API), and
-/// built **unscoped** with `formId: 'adminLogin'`, so its `formId` *is* its base
+/// [TomFormStringInput]s, and built **unscoped** with `formId: 'adminLogin'`, so
+/// its `formId` *is* its base
 /// path and each field self-addresses as its resource key (`adminLogin.username`,
 /// `adminLogin.password`) — exactly the keys the auth server serves on the public
 /// `/resources/login` bundle the admin client installs before sign-in
