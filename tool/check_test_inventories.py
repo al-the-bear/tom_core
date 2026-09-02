@@ -54,9 +54,25 @@ QUEST_COMPLETION = (
     REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completion"
 )
 
-# doc -> the test directory it claims to inventory, relative to REPO_ROOT.
-INVENTORIES: dict[str, str] = {
-    "tom_flutter_form_test_app_changes.md": "tom_flutter_form_test/test",
+# doc -> the test directory it claims to inventory (relative to REPO_ROOT) and
+# the table column its file names sit in.
+#
+# Only the *files* column of the table is the inventory. The other columns
+# routinely name a file to say something specific about it ("...including
+# validator behaviour (`form_validation_test.dart`)"), and reading those as
+# inventory entries would report a duplicate for a file that is in fact filed
+# exactly once. The narrower rule also frees the description column to be prose.
+#
+# The column is per-document because the two demo apps group their suites
+# differently, and neither grouping is wrong. `tom_flutter_form_test` has 61
+# suites and files them by kind, so its table is `| Kind | Files | ... |` and one
+# row names many files. `tom_flutter_ui_test` has 13 and gives each its own row,
+# so its table is `| Suite | What it asserts |` and the names are in column 1.
+# Forcing the second into the first's shape would trade thirteen specific
+# sentences for four generic ones purely to satisfy this checker.
+INVENTORIES: dict[str, tuple[str, int]] = {
+    "tom_flutter_form_test_app_changes.md": ("tom_flutter_form_test/test", 2),
+    "tom_flutter_ui_test_app_changes.md": ("tom_flutter_ui_test/test", 1),
 }
 
 # The document's inventory lives between these two markers, so that test files
@@ -65,18 +81,10 @@ INVENTORIES: dict[str, str] = {
 BEGIN = "<!-- test-inventory:begin -->"
 END = "<!-- test-inventory:end -->"
 
-# Within the block, only the *files* column of the table is the inventory. The
-# description column routinely names a file to say something specific about it
-# ("...including validator behaviour (`form_validation_test.dart`)"), and
-# reading those as inventory entries would report a duplicate for a file that is
-# in fact filed exactly once. The narrower rule also frees the description
-# column to be prose.
-FILES_COLUMN = 2
-
 FILENAME = re.compile(r"`([A-Za-z0-9_]+_test\.dart)`")
 
 
-def documented(doc: Path) -> tuple[list[str], str | None]:
+def documented(doc: Path, files_column: int) -> tuple[list[str], str | None]:
     """Names in the inventory table's files column, duplicates preserved."""
     text = doc.read_text(encoding="utf-8")
     if BEGIN not in text or END not in text:
@@ -88,9 +96,9 @@ def documented(doc: Path) -> tuple[list[str], str | None]:
         if not line.lstrip().startswith("|"):
             continue
         cells = line.split("|")
-        if len(cells) <= FILES_COLUMN:
+        if len(cells) <= files_column:
             continue
-        names.extend(FILENAME.findall(cells[FILES_COLUMN]))
+        names.extend(FILENAME.findall(cells[files_column]))
     return names, None
 
 
@@ -102,7 +110,7 @@ def main() -> int:
     faults = 0
     checked = 0
 
-    for doc_name, test_rel in sorted(INVENTORIES.items()):
+    for doc_name, (test_rel, files_column) in sorted(INVENTORIES.items()):
         doc = QUEST_COMPLETION / doc_name
         test_dir = REPO_ROOT / test_rel
 
@@ -115,7 +123,7 @@ def main() -> int:
             faults += 1
             continue
 
-        listed, error = documented(doc)
+        listed, error = documented(doc, files_column)
         if error:
             print(f"{doc_name}: {error}")
             faults += 1
