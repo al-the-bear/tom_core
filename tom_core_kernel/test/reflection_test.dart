@@ -500,6 +500,56 @@ class NestedCollectionHolder {
   NestedCollectionHolder();
 }
 
+/// An annotated class whose every wire member is `final`.
+///
+/// The shape the field walk cannot serve: `final` members are skipped outbound
+/// because they cannot be restored inbound, so a class made only of them
+/// contributed nothing and rendered as `{}`.
+@tomReflector
+class AllFinalHolder {
+  final String name;
+  final int age;
+
+  AllFinalHolder(this.name, this.age);
+}
+
+/// The same shape, declaring the structural `toJson` hook.
+///
+/// The control for [AllFinalHolder]: an immutable DTO is not refused for being
+/// immutable, it is refused for having said nothing about how to render. This
+/// one has said, so the walk is never reached.
+@tomReflector
+class AllFinalWithToJsonHolder {
+  final String name;
+
+  AllFinalWithToJsonHolder(this.name);
+
+  Map<String, Object?> toJson() => {'name': name};
+}
+
+/// An annotated class mixing one `final` member with a settable one.
+///
+/// The guard asks whether the walk produced *nothing*, not whether a `final`
+/// member exists — a class that still contributes a field is serializable and
+/// is left alone, silently dropping only the member that could never return.
+@tomReflector
+class PartlyFinalHolder {
+  final String id;
+  String label = '';
+
+  PartlyFinalHolder(this.id);
+}
+
+/// An annotated class with no wire members at all.
+///
+/// The other control: `{}` is the honest rendering of a class that declares
+/// nothing, so nothing is diagnosed. Only a class that *has* members and
+/// dropped every one of them is a silent loss.
+@tomReflector
+class NoMemberHolder {
+  NoMemberHolder();
+}
+
 /// A *generic* reflected class.
 ///
 /// The registry is keyed by declaration, so `reflectType(GenericHolder<int>)`
@@ -3765,6 +3815,152 @@ void main() {
         tomReflectionInfo.setValues(GenericHolder<int>(), {'name': 'x'}).name,
         'x',
       );
+    });
+  });
+
+  group('an all-final class is refused rather than rendered as nothing', () {
+    // `final` members are skipped outbound because they cannot be restored
+    // inbound: no reflective deserializer can assign one after construction,
+    // and emitting a member that will never come back produces an asymmetric
+    // round trip — serializes, never restores — which is a worse answer than
+    // an empty map, not a better one.
+    //
+    // So the skip stays. What does not stay is the silence around it. A class
+    // whose members are *all* final walked every declaration, skipped every
+    // one, and returned `{}` as a success — the same valid-looking payload
+    // with everything dropped that `reflector.type.not_annotated` exists to
+    // stop, arrived at by a different route. That silence is what pushes
+    // hand-written serializers back into framework code: the developer sees
+    // an empty body and nothing that says why.
+    //
+    // The refusal is narrow on purpose. It asks whether the walk produced
+    // nothing *while* the class declares at least one member it dropped — so
+    // a class with no members at all still renders `{}`, and a class that
+    // contributes even one field is left alone.
+
+    test('getValues refuses a class whose every member is final', () {
+      expect(
+        () => tomReflectionInfo.getValues(AllFinalHolder('Ada', 36)),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.type.all_final',
+          ),
+        ),
+      );
+    });
+
+    test('the message names the type and every member it dropped', () {
+      // The diagnostic is the whole point of the change, so its content is
+      // pinned rather than left to prose: without the member names the
+      // developer still has to go looking for which fields vanished.
+      expect(
+        () => tomReflectionInfo.getValues(AllFinalHolder('Ada', 36)),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            allOf(
+              contains('AllFinalHolder'),
+              contains('name'),
+              contains('age'),
+            ),
+          ),
+        ),
+      );
+    });
+
+    test('the message points at the remedies rather than only the fault', () {
+      expect(
+        () => tomReflectionInfo.getValues(AllFinalHolder('Ada', 36)),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            allOf(contains('final'), contains('toJson')),
+          ),
+        ),
+      );
+    });
+
+    test('convertToJsonString inherits the refusal', () {
+      // The string-level entry point is where `"{}"` actually reached a wire,
+      // so it is asserted separately from the map-level one.
+      expect(
+        () => tomReflectionInfo.convertToJsonString(AllFinalHolder('Ada', 36)),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
+    test('a final member inside a container is refused too', () {
+      // `convertToJsonString` renders a `List` by handing each element to
+      // `getValues`, so the guard has to reach elements as well — otherwise
+      // the one shape that most often carries DTOs would keep the silence.
+      expect(
+        () => tomReflectionInfo.convertToJsonString([AllFinalHolder('Ada', 1)]),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
+    test('declaring toJson is enough to keep an immutable DTO working', () {
+      // Immutability is not what is refused. All four rendering hooks are
+      // consulted before the field walk, so a class that says how to render
+      // itself never reaches the guard — which is what makes the refusal a
+      // demand for a decision rather than a ban on a shape.
+      expect(tomReflectionInfo.getValues(AllFinalWithToJsonHolder('Ada')), {
+        'name': 'Ada',
+      });
+    });
+
+    test('a class that still contributes a field is not refused', () {
+      // The `final` member is dropped exactly as before. Only the total loss
+      // is diagnosed, because only the total loss is indistinguishable from a
+      // class that genuinely has nothing to say.
+      final values = tomReflectionInfo.getValues(
+        PartlyFinalHolder('abc')..label = 'visible',
+      );
+
+      expect(values, {'label': 'visible'});
+      expect(values.containsKey('id'), isFalse);
+    });
+
+    test('a class with no members at all still renders an empty map', () {
+      // The control that keeps the guard honest: `{}` is only wrong when
+      // something was lost producing it.
+      expect(tomReflectionInfo.getValues(NoMemberHolder()), isEmpty);
+    });
+
+    test('inbound was never the silent direction, and is left alone', () {
+      // Decision 1: a `final` field cannot be assigned after construction, so
+      // inbound there is nothing to choose. But it was already *loud* — a
+      // payload naming a final member raises rather than being dropped — so
+      // only the outbound half of this asymmetry was ever silent, and only the
+      // outbound half changes. Asserted here so that stays true: if the
+      // inbound refusal were ever relaxed into a skip, the pair would go quiet
+      // again from the other end.
+      expect(
+        () => tomReflectionInfo.setValues(PartlyFinalHolder('abc'), {
+          'id': 'xyz',
+        }),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.unexpected_condition_final_static_private',
+          ),
+        ),
+      );
+    });
+
+    test('a settable member is still written when no final one is named', () {
+      final holder = PartlyFinalHolder('abc');
+
+      expect(
+        tomReflectionInfo.setValues(holder, {'label': 'set'}).label,
+        'set',
+      );
+      expect(holder.id, 'abc');
     });
   });
 

@@ -246,6 +246,30 @@ anyone who was writing them.
   informatively). A bare scalar stays refused: it is not a container, so it
   takes the object path and meets the guard exactly as before.
 
+- **An all-`final` class is refused outbound rather than serialized as `{}`
+  (tcinc1119).** The reflective field walk skips `final` members, and that stays:
+  a `final` field cannot be assigned after construction, so no reflective
+  deserializer can restore one, and emitting it would buy a payload that renders
+  and never round-trips — data lost in the direction nobody checks. The defect
+  was the *silence*. A class whose members are all `final` reached the wire as
+  `{}` and reported success: the same valid-looking payload with everything
+  dropped that `reflector.type.not_annotated` was added to prevent, arrived at by
+  a second route. `getValues` now throws `TomReflectorException`
+  (`reflector.type.all_final`), naming the type and every member it skipped, and
+  listing the remedies. Throwing rather than debug-logging is the point — a
+  framework log line is invisible to the caller and would have reproduced the
+  very silence the change exists to remove, and the neighbouring `{}`-as-success
+  case already throws. The condition is deliberately narrow: **nothing
+  contributed *and* something dropped**. A class contributing even one field
+  serializes as before, and a class with no wire members at all still renders
+  `{}`, which is true of it. Nor is this a ban on immutable DTOs — all four
+  rendering hooks are consulted ahead of the walk, so an all-`final` class that
+  declares `toJson()`, a `jsonEncode` getter, `TomJsonSerializable` or extends
+  `TomClass` never reaches the guard. The exception asks how the type means to
+  render itself; it does not answer for it. Only the outbound half changed:
+  inbound was never quiet, a payload key naming a `final` member having always
+  raised `reflection.set.unexpected_condition_final_static_private`.
+
 - **`TomAuthorizationGroup.mostRestrictive` answers `none` for a group with
   nothing visible, not `full` (tcinc752).** The getter folds its visible members
   with `narrow`, starting from `TomAuthState.full` — and when there are no

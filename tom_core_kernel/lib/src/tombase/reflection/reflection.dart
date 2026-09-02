@@ -2032,19 +2032,70 @@ class TomReflectionInfo {
     if (encoded != null) return encoded;
 
     final result = <String, dynamic>{};
+    final skippedFinals = <String>[];
 
     for (var d in classMirror.declarations.entries) {
       final dm = d.value;
-      if (dm is VariableMirror &&
-          !dm.isStatic &&
-          !dm.isFinal &&
-          !dm.isPrivate) {
-        _addFieldToResult(im, d.key, result);
+      if (dm is! VariableMirror || dm.isStatic || dm.isPrivate) continue;
+      if (dm.isFinal) {
+        skippedFinals.add(d.key);
+        continue;
       }
+      _addFieldToResult(im, d.key, result);
+    }
+
+    if (result.isEmpty && skippedFinals.isNotEmpty) {
+      throw _allFinalException(o, skippedFinals);
     }
 
     return result;
   }
+
+  /// The exception raised when every wire member of a class was skipped for
+  /// being `final`.
+  ///
+  /// `final` members are skipped because they cannot be restored: no
+  /// reflective deserializer can assign one after construction, so emitting
+  /// them would buy a payload that never round-trips — asymmetric in the
+  /// direction that loses data quietly. That skip is not in question here.
+  ///
+  /// What is in question is the answer it produced. A class made entirely of
+  /// `final` members walked every declaration, dropped every one, and returned
+  /// `{}` reported as success: the same valid-looking payload with everything
+  /// gone that [_notAnnotatedException] exists to prevent, reached by a
+  /// different route. The silence is the defect, not the skip — an empty body
+  /// with no diagnostic is what sends developers back to hand-written
+  /// serializers, which is the outcome the reflective path exists to avoid.
+  ///
+  /// The condition is deliberately narrow: *nothing* was contributed **and**
+  /// something was dropped. A class declaring no wire members at all still
+  /// renders `{}`, because there `{}` is the truth; a class contributing even
+  /// one field is left alone, because a caller can see which field survived
+  /// and infer the rest. Only total, invisible loss is refused.
+  ///
+  /// This is not a ban on immutability. All four rendering hooks — [TomClass],
+  /// [TomJsonSerializable], a structural `toJson()`, a `jsonEncode` getter —
+  /// are consulted before the walk, so an immutable DTO that says how it
+  /// renders never arrives here. The refusal asks for that decision to be
+  /// made, not for the fields to be made mutable.
+  static TomReflectorException _allFinalException(
+    Object o,
+    List<String> skipped,
+  ) => TomReflectorException(
+    "reflector.type.all_final",
+    "TomReflectionInfo.getValues: every wire member of ${o.runtimeType} is "
+        "final (${skipped.join(', ')}), so the reflective walk produced an "
+        "empty object rather than a rendering; a final member is skipped "
+        "because deserialization can never assign it back. Make the members "
+        "non-final, or declare how the type renders itself — toJson(), a "
+        "jsonEncode getter, TomJsonSerializable, or TomClass — all of which "
+        "are honoured ahead of the walk",
+    autoLog: true,
+    parameters: {
+      'type': o.runtimeType.toString(),
+      'members': skipped.join(', '),
+    },
+  );
 
   /// Invokes the optional structural `toJson()` hook, if [cm] declares one.
   ///

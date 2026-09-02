@@ -34,7 +34,8 @@ Two globals are exported: `tomReflector` (the annotation) and
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // Mark a domain type as reflectable; the generator emits its mirror.
-// Fields must be non-final, non-static, non-private, and initialised.
+// Fields must be non-final, non-static, non-private, and initialised — a
+// class whose members are *all* final is refused rather than rendered empty.
 @tomReflector
 class TodoItem {
   String title = '';
@@ -68,6 +69,21 @@ each complex element rendered by `getValues`. `getValues` still refuses both —
 neither is a reflected type and neither has fields to read. The distinction is
 what lets a handler return a list of DTOs without its transport growing a
 serialization policy of its own.
+
+The field walk skips `final` members, because deserialization can never assign
+one back — emitting them would buy a payload that serializes and never
+restores, which loses data in the quieter direction. But a class whose members
+are *all* final used to reach the wire as `{}`, reported as a success: the same
+valid-looking payload with everything dropped that `reflector.type.not_annotated`
+exists to prevent, arrived at by a different route. `getValues` now raises
+`reflector.type.all_final`, naming the type and the members it skipped. The
+condition is deliberately narrow — **nothing contributed *and* something
+dropped** — so a class with no wire members at all still renders `{}` truthfully,
+and a class contributing even one field is left alone. Nor is it a ban on
+immutability: all four rendering hooks are consulted ahead of the walk, so an
+immutable DTO that declares `toJson()`, a `jsonEncode` getter,
+`TomJsonSerializable` or `TomClass` never reaches the guard. The refusal asks
+for a decision; it does not make one.
 
 A string that will not parse into a `DateTime`, `TomZonedDate`,
 `TomZonedTime` or `TomZonedDateTime` field raises

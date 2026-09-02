@@ -455,7 +455,9 @@ In order, stopping at the first that applies:
    class declares one, supplies the map.
 4. Otherwise **a `jsonEncode` getter**, if the class declares one.
 5. Otherwise the **field walk** — every non-static, non-final, non-private
-   field.
+   field. If the walk contributes *nothing* and it skipped at least one `final`
+   member, it raises `reflector.type.all_final` rather than returning `{}` —
+   see [Use Non-Final Fields](#2-use-non-final-fields).
 
 Steps 1–3 are one hook under three spellings — two nominal, one structural —
 which is why they are ranked together, ahead of `jsonEncode`:
@@ -899,6 +901,7 @@ apart.
 |-----------|-------------|
 | `reflector.reflect.not_reflectable` | The class has no generated reflection data at all — it was never annotated and never reached by quantification |
 | `reflector.type.not_annotated` | The class reflects, but carries no `@tomReflector` — a built-in such as `String`, `int`, `DateTime` or `List` that only has data because it appears as a field type |
+| `reflector.type.all_final` | `getValues` reached the field walk, the walk contributed no field, and every member it skipped was `final` — names the type and the skipped members. Declare a rendering hook or make the members non-final; see [Use Non-Final Fields](#2-use-non-final-fields) |
 | `reflector.instance_creation.failed` | Failed to create instance |
 | `reflector.type_resolution.not_a_generic_type` | The collection's runtime type carries no type arguments |
 | `reflector.type_resolution.not_a_map_type` | `mapValueElementType` was given a collection with an argument count other than two — see [Each Method Takes One Arity](#each-method-takes-one-arity) |
@@ -1208,6 +1211,42 @@ class Person {
   String _internal = '';      // ✗ Cannot be set (private)
 }
 ```
+
+Neither direction is quiet about it. Inbound, a payload key naming such a
+member raises `reflection.set.unexpected_condition_final_static_private`: you
+addressed a field the class has and asked for a value it will never hold.
+
+Outbound the skip is a *choice*, and the choice is not to emit. A `final`
+member cannot be assigned after construction, so serializing one buys a payload
+that renders and never restores — an asymmetry that loses data in the direction
+nobody checks. What was wrong was the silence around it: a class whose members
+are all `final` returned `{}` and reported success. `getValues` now raises
+**`reflector.type.all_final`**, naming the type and every member it dropped:
+
+```dart
+@tomReflector
+class AllFinalDto {
+  final String name;
+  final int age;
+  AllFinalDto(this.name, this.age);
+}
+
+tomReflectionInfo.getValues(AllFinalDto('Ada', 36));
+// throws TomReflectorException: reflector.type.all_final
+//   "every wire member of AllFinalDto is final (name, age) …"
+```
+
+Two things the guard deliberately does *not* do:
+
+- **It does not fire on partial loss.** The condition is *nothing contributed
+  **and** something dropped*. `PartlyFinalDto` with one `final` and one settable
+  field renders the settable one and omits the other, as before; a class with no
+  wire members at all still renders `{}`, which is the truth about it.
+- **It does not forbid immutable DTOs.** All four rendering hooks are consulted
+  ahead of the field walk (see [Outbound precedence](#outbound-precedence--getvalues)),
+  so an all-`final` class that declares `toJson()`, a `jsonEncode` getter,
+  `TomJsonSerializable` or extends `TomClass` never reaches the guard. The
+  exception asks how the type means to render itself; it does not answer for it.
 
 ### 3. Annotate All Related Classes
 
