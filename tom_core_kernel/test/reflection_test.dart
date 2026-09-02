@@ -296,6 +296,65 @@ class PlainToJsonHolder {
   Map<String, Object?> toJson() => {'ok': status};
 }
 
+/// Declares the interface and carries **no `@tomReflector`**.
+///
+/// The interface is meant to be settled by an `is` test before any mirror is
+/// taken, and this type is the only way to show that it is: every other
+/// fixture here would serialize anyway by walking its fields, so an
+/// implementation that consulted the interface after reflecting would still
+/// pass. This one cannot be reflected at all — if the `is` test moved below
+/// `_annotatedType` it would throw instead of rendering.
+class UnreflectedSelfSerializingDto implements TomJsonSerializable {
+  String status = '';
+
+  UnreflectedSelfSerializingDto();
+
+  @override
+  Map<String, Object?> toJson() => {'ok': status};
+}
+
+/// Declares the interface *and* carries a disagreeing `jsonEncode` getter.
+///
+/// Pins that the nominal `toJson` outranks `jsonEncode`, which is the half of
+/// the ordering that keeps the interface from changing a type's wire format:
+/// [EncodeAndToJsonHolder] is this class without the `implements`, and the two
+/// must answer the same way.
+@tomReflector
+class InterfaceAndEncodeHolder implements TomJsonSerializable {
+  String status = '';
+
+  InterfaceAndEncodeHolder();
+
+  Map<String, Object?> get jsonEncode => {'from': 'jsonEncode'};
+
+  @override
+  Map<String, Object?> toJson() => {'from': 'toJson'};
+}
+
+/// A `toJson` that returns something other than a JSON object.
+///
+/// The structural counterpart of the same fault on the `jsonEncode` getter:
+/// the hook was written to replace the field walk, so quietly performing the
+/// walk anyway would hide the defect behind a plausible-looking payload.
+@tomReflector
+class BadToJsonHolder {
+  String status = '';
+
+  BadToJsonHolder();
+
+  Object toJson() => 'not a map';
+}
+
+/// A `toJson` that always throws, to separate "no hook" from "broken hook".
+@tomReflector
+class ThrowingToJsonHolder {
+  String status = '';
+
+  ThrowingToJsonHolder();
+
+  Map<String, Object?> toJson() => throw StateError('toJson is broken');
+}
+
 /// Carries two *outbound* hooks that disagree.
 @tomReflector
 class EncodeAndToJsonHolder {
@@ -3022,9 +3081,14 @@ void main() {
   group('when two hooks disagree, the precedence is pinned', () {
     // Each class here carries two hooks that would produce different results,
     // so the assertion is not "a hook ran" but "*this* hook ran". Without
-    // these, the order is an accident of how the `if`s happen to be stacked,
-    // and reordering them — which the planned central-dispatch rework sets
-    // out to do — would be invisible to the suite.
+    // these the order is an accident of how the `if`s happen to be stacked,
+    // and a reordering would be invisible to the suite.
+    //
+    // The order under test is the one documented on `getValues` and
+    // `setValues`: outbound, TomClass then TomJsonSerializable then a `toJson`
+    // method then a `jsonEncode` getter then the fields; inbound, TomClass
+    // then a `fromJson` constructor then a `jsonDecode` method then the
+    // fields.
 
     ClassMirror mirrorOf(Type t) => tomReflector.reflectType(t) as ClassMirror;
 
@@ -3052,10 +3116,28 @@ void main() {
       );
     });
 
-    test('outbound: the jsonEncode getter beats a plain toJson method', () {
+    test('outbound: a plain toJson method beats the jsonEncode getter', () {
       expect(tomReflectionInfo.getValues(EncodeAndToJsonHolder()), {
-        'from': 'jsonEncode',
+        'from': 'toJson',
       });
+    });
+
+    test('outbound: the declared interface beats the jsonEncode getter', () {
+      expect(tomReflectionInfo.getValues(InterfaceAndEncodeHolder()), {
+        'from': 'toJson',
+      });
+    });
+
+    test('outbound: declaring the interface does not change the answer', () {
+      // The point of ranking all three `toJson` forms above `jsonEncode`.
+      // These two fixtures differ only by `implements TomJsonSerializable`; if
+      // the interface sat above `jsonEncode` and the bare method below it,
+      // adding that clause to a class carrying both hooks would silently
+      // change what it puts on the wire.
+      expect(
+        tomReflectionInfo.getValues(InterfaceAndEncodeHolder()),
+        tomReflectionInfo.getValues(EncodeAndToJsonHolder()),
+      );
     });
 
     test('inbound: the fromJson constructor beats the jsonDecode method', () {
@@ -3068,67 +3150,111 @@ void main() {
       expect(built.source, 'fromJson');
     });
 
-    test('inbound: reaching setValues directly runs jsonDecode instead', () {
-      // Same class, same payload, different entry point, different hook. That
-      // the answer depends on which method the caller happened to reach for is
-      // the asymmetry the planned central-dispatch rework removes; pinning it
-      // here means the removal shows up as a failing test rather than as a
-      // silent change.
+    test('inbound: reaching setValues directly runs fromJson too', () {
+      // Same class, same payload, different entry point — and now the same
+      // hook. The answer no longer depends on which method the caller happened
+      // to reach for, which is the whole reason the two entry points share
+      // one order.
       final holder = tomReflectionInfo.setValues(FromJsonAndDecodeHolder(), {
         'source': 'payload',
       });
 
-      expect(holder.source, 'jsonDecode');
+      expect(holder.source, 'fromJson');
     });
 
-    test('inbound: a fromJson-only class is field-walked by setValues', () {
-      // The documented asymmetry, from the other side: `fromJson` is a
-      // construction-time hook and there is nothing to construct when the
-      // object already exists, so `setValues` walks the fields instead.
-      //
-      // The fixture is the hook that always throws, because it is the only
-      // way to tell the two paths apart — a working `fromJson` would produce
-      // the same values the walk does, and the test would pass either way.
-      final holder = tomReflectionInfo.setValues(ThrowingFromJsonHolder(), {
-        'name': 'Ann',
+    test('inbound: setValues and createInstanceFromJson agree', () {
+      // Stated directly rather than left to be inferred from the two tests
+      // above: whichever door the caller uses, the same hook runs and the same
+      // value comes out.
+      final viaSetValues = tomReflectionInfo.setValues(
+        FromJsonAndDecodeHolder(),
+        {'source': 'payload'},
+      );
+      final viaCreate = tomReflectionInfo
+          .createInstanceFromJson<FromJsonAndDecodeHolder>(
+            mirrorOf(FromJsonAndDecodeHolder),
+            {'source': 'payload'},
+          );
+
+      expect(viaSetValues.source, viaCreate.source);
+    });
+
+    test('inbound: setValues returns the fromJson instance, not its argument', () {
+      // The one price of the unification, pinned so it cannot be paid by
+      // accident. A constructor builds an object rather than filling one, so
+      // for a `fromJson` class the argument is left untouched and the result
+      // is a different instance. Callers must assign the return value.
+      final original = FromJsonAndDecodeHolder()..source = 'untouched';
+
+      final returned = tomReflectionInfo.setValues(original, {
+        'source': 'payload',
       });
 
-      expect(holder.name, 'Ann');
+      expect(returned.source, 'fromJson');
+      expect(
+        original.source,
+        'untouched',
+        reason: 'the argument is not the object that was built',
+      );
+      expect(identical(returned, original), isFalse);
+    });
+
+    test('inbound: a failing fromJson is reported, not walked around', () {
+      // The fixture is the hook that always throws, because it is the only way
+      // to tell the two paths apart — a working `fromJson` would produce the
+      // same values a field walk does, and the test would pass either way.
+      // Falling back to the walk here would turn a broken hook into a silent
+      // one; see `_hookFailed`.
+      expect(
+        () => tomReflectionInfo.setValues(ThrowingFromJsonHolder(), {
+          'name': 'Ann',
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having((e) => e.key, 'key', 'reflection.hook.failed')
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('ThrowingFromJsonHolder.fromJson'),
+              ),
+        ),
+      );
     });
   });
 
-  group('toJson is not an outbound hook of the reflective path', () {
-    // Recorded as it stands, not as it should stand. `getValues` consults
-    // `TomClass` and the `jsonEncode` getter and nothing else, so a type that
-    // renders itself through `toJson` — whether it says so nominally by
-    // implementing `TomJsonSerializable` or structurally by just having the
-    // method — is serialized by walking its fields, and its own rendering is
-    // discarded. The server endpoint pipeline compensates with a hook chain of
-    // its own (`endpoint_pipeline.dart`), which is why this has not bitten in
-    // practice, and also why it is worth pinning: the compensation is what
-    // hides it.
-    //
-    // The planned central-dispatch rework makes `getValues` honour both.
-    // These two tests are written to fail when it lands — deliberately. A
-    // change that big should not be able
-    // to land while the suite stays green, and the failure is the notification
-    // that the expectations below, and the doc they mirror, are now wrong.
+  group('toJson is an outbound hook of the reflective path', () {
+    // A type that renders itself through `toJson` is asked, rather than being
+    // field-walked with its own rendering discarded — whether it says so
+    // nominally by implementing `TomJsonSerializable` or structurally by
+    // having the method. Before this held, the server endpoint pipeline
+    // compensated with a hook chain of its own, which is exactly what kept the
+    // gap from being noticed.
 
-    test('a TomJsonSerializable is field-walked, not asked', () {
+    test('a TomJsonSerializable is asked, not walked', () {
       final dto = SelfSerializingDto()..status = 'up';
 
       expect(
         tomReflectionInfo.getValues(dto),
-        {'status': 'up'},
-        reason: 'the interface is not consulted by getValues today',
+        {'ok': 'up'},
+        reason: 'the interface renames the field, so a walk cannot match',
       );
-      expect(dto.toJson(), {'ok': 'up'}, reason: 'and it would say otherwise');
+      expect(tomReflectionInfo.getValues(dto), dto.toJson());
     });
 
-    test('a plain toJson method is field-walked too', () {
+    test('the interface is honoured without @tomReflector', () {
+      // The `is` test is settled before any mirror is taken, so the type never
+      // has to be reflectable. This fixture is not, and would throw
+      // `reflector.reflect.not_reflectable` if the check had been placed after
+      // the reflection step.
+      final dto = UnreflectedSelfSerializingDto()..status = 'up';
+
+      expect(tomReflectionInfo.getValues(dto), {'ok': 'up'});
+    });
+
+    test('a plain toJson method is asked too', () {
       final holder = PlainToJsonHolder()..status = 'up';
 
-      expect(tomReflectionInfo.getValues(holder), {'status': 'up'});
+      expect(tomReflectionInfo.getValues(holder), {'ok': 'up'});
     });
 
     test('convertToJsonString inherits the same answer', () {
@@ -3136,7 +3262,40 @@ void main() {
       // whatever `getValues` produced.
       final dto = SelfSerializingDto()..status = 'up';
 
-      expect(tomReflectionInfo.convertToJsonString(dto), '{"status":"up"}');
+      expect(tomReflectionInfo.convertToJsonString(dto), '{"ok":"up"}');
+    });
+
+    test('a toJson returning the wrong shape is reported, not ignored', () {
+      // The hook exists to replace the field walk, so producing the walk's
+      // output instead would be a silent substitution of the very thing the
+      // hook overrides. Same rule as the `jsonEncode` getter.
+      expect(
+        () => tomReflectionInfo.getValues(BadToJsonHolder()),
+        throwsA(
+          isA<TomReflectorException>()
+              .having((e) => e.key, 'key', 'reflection.hook.invalid_return')
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('BadToJsonHolder.toJson'),
+              ),
+        ),
+      );
+    });
+
+    test('a failing toJson is reported as a failing hook', () {
+      expect(
+        () => tomReflectionInfo.getValues(ThrowingToJsonHolder()),
+        throwsA(
+          isA<TomReflectorException>()
+              .having((e) => e.key, 'key', 'reflection.hook.failed')
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('ThrowingToJsonHolder.toJson'),
+              ),
+        ),
+      );
     });
   });
 

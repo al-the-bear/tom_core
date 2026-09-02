@@ -6,6 +6,7 @@ import 'package:tom_basics/tom_basics.dart';
 import 'package:tom_reflection/tom_reflection.dart';
 import '../little_things/exception_base.dart';
 import '../timezoned/date_timestamp.dart';
+import '../json/json_serializable.dart';
 import '../observable/tom_observable_objects.dart';
 
 /// Exception thrown when reflection operations fail.
@@ -624,8 +625,10 @@ class TomReflectionInfo {
 
   /// Reports that an optional conversion hook ran and raised.
   ///
-  /// The three hooks — the `fromJson` constructor, the `jsonDecode` method and
-  /// the `jsonEncode` getter — are all *optional*. Detecting one by *trying*
+  /// The four hooks — the `fromJson` constructor, the `jsonDecode` method, the
+  /// `toJson` method and the `jsonEncode` getter — are all *optional*. (The
+  /// nominal form, [TomJsonSerializable], needs none of this: an `is` test
+  /// cannot mistake absence for failure.) Detecting one by *trying*
   /// it inside an unqualified `catch` — whatever comes out, the hook is
   /// declared missing and the ordinary field-walking path takes over — would
   /// make a hook that does not exist and a hook that exists and is buggy the
@@ -850,7 +853,9 @@ class TomReflectionInfo {
   /// print(person.name); // "John"
   /// ```
   ///
-  /// Returns the same object [o] with fields populated.
+  /// Returns [o] with its fields populated — except for a class declaring a
+  /// `fromJson` constructor, where it returns the instance that constructor
+  /// built. Assign the result rather than reading [o] back; see [setValues].
   T convertFromJsonString<T extends Object>(T o, String s) {
     return setValues<T>(o, jsonDecode(s));
   }
@@ -874,9 +879,16 @@ class TomReflectionInfo {
 
   /// Creates a new instance of type [T] from JSON data.
   ///
-  /// This method first attempts to use a `fromJson` constructor if available.
-  /// If not, it creates an instance using the default constructor and
-  /// populates fields via [setValues].
+  /// The inbound entry point for the case where there is no object yet. It
+  /// honours the same hooks in the same order as [setValues] — see there for
+  /// the precedence and why it is in that order — reaching them by the only
+  /// route open to it: the `fromJson` constructor if the class declares one,
+  /// otherwise the default constructor followed by [setValues], which settles
+  /// [TomClass], `jsonDecode` and the field walk.
+  ///
+  /// The two entry points therefore agree. A class carrying a `fromJson`
+  /// constructor decodes through it whichever of the two is called, which is
+  /// what [setValues] gives up identity for.
   ///
   /// Example:
   /// ```dart
@@ -920,20 +932,30 @@ class TomReflectionInfo {
       return setValues<T>(blank, jsonData);
     }
 
+    return _invokeFromJson<T>(objectMirror, jsonData);
+  }
+
+  /// Invokes the `fromJson` constructor of [cm], which must declare one.
+  ///
+  /// Shared by [createInstanceFromJson] and [setValues] so that the two cannot
+  /// drift: the hook is one hook, and a class must not decode differently
+  /// depending on which entry point reached it. Callers check
+  /// [_declaresConstructor] first — absence is settled before anything runs,
+  /// per [_hookFailed], so everything caught here is a hook that exists and
+  /// failed.
+  T _invokeFromJson<T extends Object>(
+    ClassMirror cm,
+    Map<String, dynamic> jsonData,
+  ) {
     final Object? built;
     try {
-      built = objectMirror.newInstance("fromJson", [jsonData]);
+      built = cm.newInstance("fromJson", [jsonData]);
     } catch (error, stack) {
-      throw _hookFailed('fromJson', objectMirror.simpleName, error, stack);
+      throw _hookFailed('fromJson', cm.simpleName, error, stack);
     }
 
     if (built is T) return built;
-    throw _hookReturnedWrongType(
-      'fromJson',
-      objectMirror.simpleName,
-      built,
-      '$T',
-    );
+    throw _hookReturnedWrongType('fromJson', cm.simpleName, built, '$T');
   }
 
   /// Creates a new instance using its default constructor.
@@ -989,12 +1011,36 @@ class TomReflectionInfo {
 
   /// Sets values on an object from a map of field names to values.
   ///
-  /// This is the main entry point for deserialization. The method handles:
+  /// This is **the** inbound entry point, and it honours every decoding hook
+  /// the framework recognises. [createInstanceFromJson] resolves to the same
+  /// order, so the answer no longer depends on which of the two a caller
+  /// happened to reach for.
   ///
-  /// - **TomClass objects**: Delegates to `TomClass.setValues()` for observable
-  ///   field handling
-  /// - **Objects with `jsonDecode` method**: Invokes that method directly
-  /// - **Other objects**: Sets fields via reflection
+  /// ## Precedence
+  ///
+  /// The first match wins:
+  ///
+  /// 1. **[TomClass]** — delegates to `TomClass.setValues()`, which knows how
+  ///    to write observable fields. An `is` test.
+  /// 2. **a `fromJson` constructor** — construction *is* the hook, so this
+  ///    returns a **new instance** built from [values]; see below.
+  /// 3. **a `jsonDecode` method** — invoked on [o], which decodes itself.
+  /// 4. **the reflected fields** — written one by one.
+  ///
+  /// ## A `fromJson` class does not preserve identity
+  ///
+  /// Steps 1, 3 and 4 fill [o] and return it. Step 2 cannot: a constructor
+  /// produces an object, it does not populate one, and a type that declares
+  /// `fromJson` has said that building from a payload is *its* business. So
+  /// for such a type this method returns the constructed instance and leaves
+  /// [o] untouched.
+  ///
+  /// **Use the return value.** `converter.setValues(x, map)` and then reading
+  /// `x` is correct for every other shape and wrong for this one; write
+  /// `x = converter.setValues(x, map)`. The alternative — field-walking a
+  /// `fromJson` type, as this method used to — meant the same class decoded
+  /// two different ways depending on the entry point, which is the asymmetry
+  /// this ordering exists to remove.
   ///
   /// ## Supported Field Types
   ///
@@ -1014,7 +1060,8 @@ class TomReflectionInfo {
   /// });
   /// ```
   ///
-  /// Returns the same object [o] with fields populated.
+  /// Returns [o] with its fields populated, or — for a class declaring a
+  /// `fromJson` constructor — the instance that constructor built.
   T setValues<T extends Object>(T o, Map<String, dynamic> values) {
     if (o is TomClass) {
       o.setValues(values);
@@ -1029,6 +1076,13 @@ class TomReflectionInfo {
     // Resolved before the hook, so that a target which is not ours is
     // reported as such rather than as a hook that could not be found on it.
     final cm = _annotatedType(im, o, 'setValues');
+
+    // Ahead of `jsonDecode`, matching [createInstanceFromJson]: when a type
+    // declares both, the constructor is the more complete statement — it owns
+    // the object from nothing, where the method only overwrites what is there.
+    if (_declaresConstructor(cm, "fromJson")) {
+      return _invokeFromJson<T>(cm, values);
+    }
 
     if (_tryInvokeJsonDecode(im, cm, o, values)) {
       return o;
@@ -1843,11 +1897,34 @@ class TomReflectionInfo {
 
   /// Gets all values from an object as a JSON-compatible map.
   ///
-  /// This is the main entry point for serialization. The method handles:
+  /// This is **the** outbound entry point: every way a Tom Core object reaches
+  /// the wire passes through here, and every rendering hook the framework
+  /// recognises is honoured here. A consumer therefore never needs a hook chain
+  /// of its own — asking this method is the whole contract.
   ///
-  /// - **TomClass objects**: Delegates to `TomClass.toJson()`
-  /// - **Objects with `jsonEncode` getter**: Uses that getter's result
-  /// - **Other objects**: Extracts non-static, non-final, non-private fields via reflection
+  /// ## Precedence
+  ///
+  /// The first match wins, and the order is deliberate rather than incidental:
+  ///
+  /// 1. **[TomClass]** — delegates to `TomClass.toJson()`. An `is` test.
+  /// 2. **[TomJsonSerializable]** — delegates to its `toJson()`. Also an `is`
+  ///    test, and settled *before any mirror work*, so a self-rendering type
+  ///    need not be reflectable at all.
+  /// 3. **a `toJson()` method** — the same rendering declared structurally
+  ///    rather than nominally, found on the reflected type.
+  /// 4. **a `jsonEncode` getter** — the kernel's own hook name.
+  /// 5. **the reflected fields** — non-static, non-final, non-private.
+  ///
+  /// Why `toJson` outranks `jsonEncode`: steps 2 and 3 are the same method
+  /// under two spellings, one nominal and one structural. Were `jsonEncode`
+  /// placed between them, adding `implements TomJsonSerializable` to a class
+  /// that happens to have both hooks would silently change its wire format —
+  /// a declaration of intent would become a behavioural change. Ranking all
+  /// three `toJson` forms together removes that trap.
+  ///
+  /// Steps 1 and 2 are `is` tests by design, not lookups: see
+  /// [TomJsonSerializable] for why "this type serializes itself" is worth
+  /// making a type-system fact rather than something to probe for.
   ///
   /// ## Supported Field Types
   ///
@@ -1871,6 +1948,14 @@ class TomReflectionInfo {
       return o.toJson();
     }
 
+    // Ahead of `_reflect`, so a self-rendering DTO is never asked to be
+    // reflectable. The interface exists to be cheap; consulting it after a
+    // mirror round-trip would spend exactly what it was introduced to save,
+    // and would make an unannotated one throw rather than serialize.
+    if (o is TomJsonSerializable) {
+      return o.toJson();
+    }
+
     final im = _reflect(o, 'getValues');
 
     // Taken from the instance mirror rather than looked up again by
@@ -1882,6 +1967,9 @@ class TomReflectionInfo {
     // with the first. Checked for the annotation on the way through: without
     // that, a quantified type walks zero declarations and returns `{}`.
     final classMirror = _annotatedType(im, o, 'getValues');
+
+    final rendered = _tryInvokeToJson(im, classMirror, o);
+    if (rendered != null) return rendered;
 
     final encoded = _tryGetJsonEncode(im, classMirror, o);
     if (encoded != null) return encoded;
@@ -1899,6 +1987,40 @@ class TomReflectionInfo {
     }
 
     return result;
+  }
+
+  /// Invokes the optional structural `toJson()` hook, if [cm] declares one.
+  ///
+  /// This is the same rendering [TomJsonSerializable] names nominally, reached
+  /// for a type that has the method without declaring the interface. It is
+  /// looked up rather than probed, and its failures are attributed, for the
+  /// reasons given in [_hookFailed]; a hook returning the wrong shape is
+  /// reported rather than skipped, as in [_tryGetJsonEncode].
+  ///
+  /// [TomClass] never arrives here — it declares `toJson()` too, and is
+  /// answered by the `is` test at the top of [getValues] before any mirror is
+  /// taken.
+  Map<String, Object?>? _tryInvokeToJson(
+    InstanceMirror im,
+    ClassMirror cm,
+    Object o,
+  ) {
+    if (!cm.instanceMembers.containsKey("toJson")) return null;
+
+    final Object? rendered;
+    try {
+      rendered = im.invoke("toJson", []);
+    } catch (error, stack) {
+      throw _hookFailed('toJson', o.runtimeType, error, stack);
+    }
+
+    if (rendered is Map<String, Object?>) return rendered;
+    throw _hookReturnedWrongType(
+      'toJson',
+      o.runtimeType,
+      rendered,
+      'Map<String, Object?>',
+    );
   }
 
   /// Reads the optional `jsonEncode` hook, if [cm] declares one.

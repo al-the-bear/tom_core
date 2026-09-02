@@ -356,10 +356,15 @@ class CustomPerson {
 }
 ```
 
-These are the two inbound hooks, and they belong to different entry points:
-`jsonDecode` is honoured by `setValues` (and so by `createInstanceFromJson`,
-which calls it), `fromJson` only by `createInstanceFromJson`. For the outbound
-pair and the full precedence order, see [Serialization
+These are the two inbound hooks, and **both entry points honour both**:
+`setValues` and `createInstanceFromJson` apply the same order, so which one a
+caller reaches for does not change which hook runs. `fromJson` is tried first —
+a constructor owns the object from nothing, where the method only overwrites
+what is already there. One consequence is worth stating plainly: because a
+constructor *builds*, `setValues` on a `fromJson` class returns a **new**
+instance and leaves the argument untouched, so write
+`o = converter.setValues(o, map)` rather than calling it and reading `o`. For
+the outbound pair and the full precedence order, see [Serialization
 Hooks](#serialization-hooks); for what happens when a hook exists and fails,
 [Hooks That Fail](#hooks-that-fail).
 
@@ -385,7 +390,8 @@ final jsonString = tomReflectionInfo.convertToJsonString(person);
 
 ### Custom Serialization
 
-If your class has a `jsonEncode` getter, it will be used instead of reflection:
+If your class has a `toJson()` method or a `jsonEncode` getter, it will be used
+instead of reflection:
 
 ```dart
 @tomReflector
@@ -400,30 +406,34 @@ class CustomPerson {
 }
 ```
 
-The getter must return a `Map<String, Object?>` (or a subtype — a
+Either must return a `Map<String, Object?>` (or a subtype — a
 `Map<String, dynamic>` or `Map<String, String>` is fine). Anything else is
 reported rather than ignored; see [Hooks That Fail](#hooks-that-fail).
 
-`jsonEncode` is the *only* hook `getValues` consults. A plain `toJson()` method
-is not enough — see [Serialization Hooks](#serialization-hooks).
+A class declaring both is served by `toJson()`, for the reason given in
+[Serialization Hooks](#serialization-hooks).
 
 ## Serialization Hooks
 
 Four member names let a class take conversion over from the field walk. They
 are described one at a time above; this section is the single place that states
-what each one is, and — more importantly — **which entry point honours which**,
-because that is not uniform.
+what each one is and in what order they are tried.
 
 | Hook | Kind | Signature | Direction |
 | ---- | ---- | --------- | --------- |
-| `jsonEncode` | getter | `Map<String, Object?> get jsonEncode` | out |
 | `toJson` | method | `Map<String, Object?> toJson()` | out |
-| `jsonDecode` | method | `void jsonDecode(Map<String, dynamic> json)` | in |
+| `jsonEncode` | getter | `Map<String, Object?> get jsonEncode` | out |
 | `fromJson` | named constructor | `Class.fromJson(Map<String, dynamic> json)` | in |
+| `jsonDecode` | method | `void jsonDecode(Map<String, dynamic> json)` | in |
+
+There are **two** entry points, one per direction — `getValues` outbound,
+`setValues` inbound — and each honours every hook of its direction. Which
+function you reach for therefore never decides which hooks apply, and a
+consumer never needs a hook chain of its own.
 
 The naming is asymmetric and worth reading twice. On the way out a hook is
-either a **getter** (`jsonEncode`) or a **method** (`toJson`); on the way in
-either a **method** (`jsonDecode`) or a named **constructor** (`fromJson`).
+either a **method** (`toJson`) or a **getter** (`jsonEncode`); on the way in
+either a named **constructor** (`fromJson`) or a **method** (`jsonDecode`).
 Nothing requires a class that declares one to declare its counterpart, so a
 type can perfectly well encode through a hook and decode through the field
 walk.
@@ -435,85 +445,79 @@ In order, stopping at the first that applies:
 1. **`o is TomClass`** — delegates to `TomClass.toJson()` and returns. This is
    ahead of everything else, so a `TomClass` subclass declaring `jsonEncode`
    never sees it used.
-2. **Reflection is resolved.** No generated mirror data throws
+2. **`o is TomJsonSerializable`** — delegates to its `toJson()` and returns.
+   Also before any mirror is taken: the interface exists to be cheap, and
+   testing it here is what lets a self-rendering DTO serialize *without*
+   carrying `@tomReflector` at all.
+3. **Reflection is resolved.** No generated mirror data throws
    `reflector.reflect.not_reflectable`; mirror data without `@tomReflector`
-   throws `reflector.type.not_annotated`.
-3. **A `jsonEncode` getter**, if the class declares one, supplies the map.
-4. Otherwise the **field walk** — every non-static, non-final, non-private
+   throws `reflector.type.not_annotated`. Then **a `toJson()` method**, if the
+   class declares one, supplies the map.
+4. Otherwise **a `jsonEncode` getter**, if the class declares one.
+5. Otherwise the **field walk** — every non-static, non-final, non-private
    field.
 
-**A plain `toJson()` method is not consulted at step 3.** Only `TomClass`
-reaches `toJson`, and only through step 1. This is the gap worth knowing about:
+Steps 1–3 are one hook under three spellings — two nominal, one structural —
+which is why they are ranked together, ahead of `jsonEncode`:
 
 ```dart
 // SelfSerializingDto implements TomJsonSerializable and has a working toJson()
 // that deliberately renames the field, so the two answers cannot coincide.
 final dto = SelfSerializingDto()..status = 'up';
 
-dto.toJson();
-// {ok: up}
+dto.toJson();                        // {ok: up}
+tomReflectionInfo.getValues(dto);    // {ok: up} — the same answer
 
-tomReflectionInfo.getValues(dto);
-// {status: up} — the interface was not consulted
+// And the same again with the annotation stripped: an unannotated DTO is
+// answered at step 2, before anything asks it to be reflectable.
 ```
 
-`getValues` does not `is`-check `TomJsonSerializable`, and what that costs
-depends only on whether the class carries `@tomReflector`. Annotated, as above,
-it is field-walked: the hand-written shape is silently replaced by the raw field
-map, which is the quieter and more dangerous of the two outcomes. *Un*annotated,
-it never gets that far — `getValues` reflects a class that was never annotated
-(it does not need to be, having a hand-written `toJson`) and throws
-`reflector.reflect.not_reflectable`. A shape adapter whose fields are `final`
-walks to `{}`. In every case the declared shape is lost.
+Were `jsonEncode` ranked between them, adding `implements TomJsonSerializable`
+to a class carrying both hooks would silently change its wire format — a
+declaration of intent turning into a behavioural change. `test/reflection_test.dart`
+pins that with a pair of fixtures differing only by the declaration and asserts
+they answer identically.
 
-The example is the fixture from `test/reflection_test.dart`, and the pair of
-tests that pin it are written to fail deliberately if the planned
-central-dispatch rework lands — so this passage cannot drift from the behaviour
-without the suite saying so.
+### Inbound precedence — `setValues` and `createInstanceFromJson`
 
-This is why the server endpoint pipeline carries a chain of its own
-(`endpoint_pipeline.dart:925-933`), testing `TomClass` and then
-`TomJsonSerializable` **before** falling through to `convertToJsonString`. That
-chain is load-bearing, not a convenience: a `TomJsonSerializable` returned from
-an endpoint serializes to its declared shape because the pipeline caught it
-first, while the same object handed straight to `tomReflectionInfo.getValues`
-is field-walked or throws.
-
-### Inbound precedence — `createInstanceFromJson` and `setValues`
-
-The two inbound hooks belong to two different functions, which is the thing to
-get right:
-
-`createInstanceFromJson(mirror, json)` — builds a new object:
-
-1. **A `fromJson` named constructor**, if the class declares one, is used and
-   its result returned.
-2. Otherwise the **default constructor**, followed by `setValues` on the
-   result.
-
-`setValues(o, values)` — populates an object that already exists:
+`setValues(o, values)` — the inbound entry point:
 
 1. **`o is TomClass`** — delegates to `TomClass.setValues()` and returns.
-2. **Reflection is resolved**, exactly as outbound.
-3. **A `jsonDecode` method**, if the class declares one, takes deserialization
-   over entirely and returns.
+2. **Reflection is resolved**, exactly as outbound. Then **a `fromJson` named
+   constructor**, if the class declares one, is invoked and **its** instance
+   returned.
+3. Otherwise **a `jsonDecode` method**, if the class declares one, takes
+   deserialization over entirely and `o` is returned.
 4. Otherwise the **field walk**, entry by entry.
 
-Because step 2 of `createInstanceFromJson` runs `setValues`, a class declaring
-only `jsonDecode` is honoured by *both* entry points. The reverse does not
-hold: `fromJson` is a construction-time hook, so a class declaring only
-`fromJson` gets the plain field walk when a caller updates an object that
-already exists. If you need custom decoding on an existing instance, the hook
-you want is `jsonDecode`.
+`fromJson` outranks `jsonDecode` because a constructor is the more complete
+statement: it owns the object from nothing, where the method only overwrites
+what is already there.
+
+`createInstanceFromJson(mirror, json)` — builds a new object — applies the same
+order from a mirror rather than an instance: `fromJson` if the class declares
+one, otherwise the default constructor followed by `setValues`, which reaches
+steps 3 and 4 above. **The two functions therefore agree on all four hooks**,
+and a class declaring only `fromJson`, or only `jsonDecode`, is honoured by
+both.
+
+**A `fromJson` class does not preserve identity.** Step 2 *builds*, so
+`setValues(o, map)` on such a class hands back a new instance and leaves `o`
+exactly as it was. `o = converter.setValues(o, map)` is correct for every
+shape; calling `setValues` and then reading `o` is correct for every shape but
+this one.
 
 ### `TomJsonSerializable`
 
 `TomJsonSerializable` is an interface declaring a single `toJson()`. Its value
-is not that it enables custom JSON — a bare `toJson()` method would do that
-wherever `toJson` is honoured — but that it makes "this type serializes itself"
+is not that it enables custom JSON — a bare `toJson()` method does that too,
+and produces the same map — but that it makes "this type serializes itself"
 **cheap to detect**: an `is` check, with no mirror round-trip and no calling a
 speculative member to see whether it exists. Where a custom path has to be
-detected, that is the mechanism to prefer.
+detected, that is the mechanism to prefer. Two things follow from the interface
+being ranked *with* the structural `toJson()` rather than above or below it:
+adding or removing the declaration never changes the resulting JSON, and an
+implementer needs no `@tomReflector` to be serialized.
 
 It is an escape hatch, not the default. Reflection is how a wire type is meant
 to cross the boundary; a type should need nothing beyond `@tomReflector` and
@@ -522,12 +526,12 @@ wire shape it does not own, and keep the implementation a shape adapter with no
 business or security logic in it. If the only reason is a member name that does
 not match the wire name, rename the member instead.
 
-Three of the four — `jsonEncode`, `jsonDecode` and `fromJson` — share one
-failure contract: each is looked up before it is called, so a hook that exists
-and fails is reported rather than mistaken for an absent one. See [Hooks That
-Fail](#hooks-that-fail). `toJson` is not among them, because nothing looks it
-up: `TomClass.toJson()` is called directly and a failure inside it propagates
-as whatever it threw.
+All four share one failure contract: each is looked up before it is called, so
+a hook that exists and fails is reported rather than mistaken for an absent
+one. See [Hooks That Fail](#hooks-that-fail). The two *nominal* forms need none
+of this — an `is` test cannot mistake absence for failure — so
+`TomClass.toJson()` and `TomJsonSerializable.toJson()` are called directly and a
+failure inside either propagates as whatever it threw.
 
 ## Supported Types
 
@@ -667,7 +671,7 @@ attribute bags, passthrough payloads.
 
 If such a field must carry typed values, the class itself is the only place
 left that knows what they are, and
-[`jsonDecode`](#inbound-precedence--createinstancefromjson-and-setvalues) is
+[`jsonDecode`](#inbound-precedence--setvalues-and-createinstancefromjson) is
 where that knowledge goes:
 
 ```dart
@@ -691,9 +695,9 @@ class Session {
 
 Note the cost: `jsonDecode` takes deserialization over **entirely**, so the
 hook must populate every field, not only the one it cares about — `label` is
-restored by hand above for that reason. `fromJson` is not an alternative here;
-it is a construction-time hook, so it is skipped when a caller fills an object
-that already exists.
+restored by hand above for that reason. `fromJson` would work here too and pays
+the same cost, with one difference: it *builds* rather than fills, so a caller
+must keep what `setValues` returns rather than reading the object it passed in.
 
 **Collections nest one level deep.** The element type of a `List<T>` or a
 `Map<String, T>` must be a primitive, one of the date/time types, or a class
@@ -914,15 +918,18 @@ apart.
 | `reflection.set.list_element_materialization_failed` | An element could not be materialized into a `List<T>` field |
 | `reflection.set.collection_element_type_mismatch` | An element of a typed primitive collection is not of the field's element type |
 | `reflection.set.map_key_type_mismatch` | A `Map<String, T>` field was given a key that is not a `String` |
-| `reflection.hook.failed` | A `fromJson`, `jsonDecode` or `jsonEncode` hook exists and raised — names the hook and the class, and keeps the original error as `rootException` |
-| `reflection.hook.invalid_return` | A hook exists, returned normally, and returned something unusable — a `jsonEncode` that is not a `Map<String, Object?>`, or a `fromJson` that is not an instance of the requested type |
+| `reflection.hook.failed` | A `fromJson`, `jsonDecode`, `toJson` or `jsonEncode` hook exists and raised — names the hook and the class, and keeps the original error as `rootException` |
+| `reflection.hook.invalid_return` | A hook exists, returned normally, and returned something unusable — a `toJson` or `jsonEncode` that is not a `Map<String, Object?>`, or a `fromJson` that is not an instance of the requested type |
 
 ### Hooks That Fail
 
-The three conversion hooks — the `fromJson` constructor, the `jsonDecode`
-method and the `jsonEncode` getter — are all optional, so *not having one* is
-the ordinary case and must stay silent. It does: a class that declares no hook
-is converted by the field walk exactly as before.
+The four conversion hooks — the `fromJson` constructor, the `jsonDecode` and
+`toJson` methods and the `jsonEncode` getter — are all optional, so *not having
+one* is the ordinary case and must stay silent. It does: a class that declares
+no hook is converted by the field walk exactly as before. (The two *nominal*
+forms, `TomClass` and `TomJsonSerializable`, need none of this machinery: an
+`is` test cannot mistake absence for failure, so a throw from either propagates
+unwrapped.)
 
 What is no longer silent is a hook that **exists and fails**:
 
@@ -949,12 +956,12 @@ differed by hook and were all bad:
   from the same payload by the fallback path, and the error the caller
   eventually saw — if any — named a *field* and pointed at the reflection
   layer rather than at their constructor;
-- a throwing `jsonDecode` or `jsonEncode` did not even produce an error: the
-  custom representation was simply not used, and a plausible-looking
+- a throwing `jsonDecode`, `toJson` or `jsonEncode` did not even produce an
+  error: the custom representation was simply not used, and a plausible-looking
   field-by-field result was returned in its place.
 
 Each hook is now looked up before it is called — `instanceMembers` for the
-method and the getter, the declared constructor names for `fromJson` — so
+methods and the getter, the declared constructor names for `fromJson` — so
 absence is settled without running anything, and the `catch` around the call
 exists only to attribute a failure. Nothing is inferred from the *type* of the
 error, which matters: `tom_reflection` does not report absence

@@ -188,6 +188,39 @@ anyone who was writing them.
 
 ### Changed
 
+- **One outbound and one inbound entry point now honour all four serialization
+  hooks (tcinc1117).** Four hook names are part of the reflection contract —
+  `toJson`, `jsonEncode`, `fromJson`, `jsonDecode` — and no single code path
+  honoured them all. They were dispatched from three places, each honouring a
+  different subset: `getValues` knew `TomClass` and `jsonEncode` but neither a
+  plain `toJson()` nor `TomJsonSerializable`, so a DTO carrying a perfectly good
+  `toJson` serialized to its raw field map — or, unannotated, threw
+  `reflector.reflect.not_reflectable` — and the server's endpoint pipeline
+  compensated with a five-way chain of its own. Inbound was split the other way:
+  `createInstanceFromJson` tried `fromJson`, `setValues` tried `jsonDecode`, so
+  which hook applied depended on which function the caller happened to reach
+  for. There are now **two** entry points, one per direction, each honouring
+  every hook of its direction in a documented order. Outbound: `TomClass`, then
+  `TomJsonSerializable`, then a `toJson()` method, then the `jsonEncode` getter,
+  then the field walk. The two `is` tests run *before* any mirror is taken, so a
+  self-rendering DTO no longer needs `@tomReflector` to be serialized — which is
+  what `TomJsonSerializable` was introduced to buy. The three `toJson` spellings
+  are ranked together, ahead of `jsonEncode`, because they are one hook under
+  two nominal names and one structural one; were `jsonEncode` ranked between
+  them, adding `implements TomJsonSerializable` to a class carrying both would
+  silently change its wire format — a declaration of intent becoming a
+  behavioural change. Inbound: `TomClass`, then the `fromJson` constructor, then
+  the `jsonDecode` method, then the field walk, applied identically by
+  `setValues` and `createInstanceFromJson`. `fromJson` outranks `jsonDecode`
+  because a constructor owns the object from nothing where the method only
+  overwrites what is there. **One behaviour change to note:** a constructor
+  builds rather than fills, so `setValues` on a class declaring `fromJson` now
+  returns *that* instance and leaves its argument untouched — write
+  `o = converter.setValues(o, map)`. All four hooks keep the existing failure
+  contract (looked up before they are called, `reflection.hook.failed` /
+  `reflection.hook.invalid_return`); the two nominal forms need none of it,
+  since an `is` test cannot mistake absence for failure.
+
 - **`TomAuthorizationGroup.mostRestrictive` answers `none` for a group with
   nothing visible, not `full` (tcinc752).** The getter folds its visible members
   with `narrow`, starting from `TomAuthState.full` — and when there are no
