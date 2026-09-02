@@ -49,7 +49,68 @@
   that exists, a vanished name with no framing, and a framed vanished name
   inside a fenced code block.
 
+- **A second check in `tool/check_doc_source_paths.py`** — a backticked module
+  directory (`` `lib/src/.../x/` ``) named in package documentation must exist on
+  disk, or be named in the tom_core completion corpus, which is where this repo
+  records removals. The existing gate deliberately restricts itself to
+  `**Source:**` lines because naming a removed directory in prose is legitimate;
+  the fault below is what that carve-out cost. So the bar here is **coverage,
+  not existence** — a directory that is gone may be named freely, provided the
+  record accounts for it. Neither lookup is a judgement, so the rule adds no
+  triage.
+
+  Measured before being switched on: 97 directory claims across the repo, of
+  which six sites name five absent directories (`camera`, `forms`,
+  `localstorage`, `qrcode`, `iding`), all five covered — zero faults on the
+  current tree. Run against the completion corpus as committed before the fix
+  below, it reports exactly one fault: the real one.
+
+  Falsified in ten directions against the shipped `audit_module_dirs`, not a
+  reimplementation. Five of those directions exist because a draft resolved
+  package-prefixed claims wrongly, and the sequence is recorded in the module
+  docstring rather than quietly fixed, because each wrong version passed
+  everything it was tested against at the time. Draft one used the repo root
+  alone and reported `advanced_ops_server/lib/src/jobs/` missing — packages
+  nest, and that one sits under `tom_core_samples/`. Draft two walked the
+  *document's* ancestors, which resolved it from the ops README and still failed
+  from this CHANGELOG, a fault this very entry exposed within minutes of being
+  written by citing that directory from `tom_core_flutter`. Where a claim is
+  written has nothing to do with where the package it names lives, so the
+  shipped version indexes packages by name.
+
+  Separately, the first falsification harness *passed while testing nothing*: it
+  reverted only the removal record, but the fix had also added the name to the
+  corpus overview and README, which it read from disk — so the name was still
+  present and the rule stayed silent for the wrong reason. The harness now takes
+  the whole corpus from the revision under test.
+
 ### Fixed
+
+- **The removal record covered four removed directories; a fifth was invisible
+  to the method that built it (tcinc1114).**
+  `tom_core_flutter_removed_modules_changes.md` scoped itself to "four
+  directories that are no longer part of `tom_core_flutter`" — and for a record
+  built by diffing the baseline tree against HEAD, four is *correct*: exactly
+  four tracked directories were removed. `lib/src/tomclient/iding/` held no
+  files, and git tracks files, not directories, so it appears in **no commit on
+  any branch**. A tree diff is a census of tracked files, not of directories;
+  the diff answered the question it was asked.
+
+  That is not a comfort to a reader. `iding` is named five times in
+  documentation that outlived it — four in `doc/review_findings.md`, once in
+  `_copilot_guidelines/refactoring_guide.md` — and this record is the designated
+  answer to "where did this go?". The record now covers five directories, with a
+  table row and a dedicated section stating that it held nothing, has no
+  successor, and why no git-based detector could ever have found it. Three
+  sibling scope claims were swept with it (the completion overview's name list
+  and its own four-row table, and the corpus README), so nothing contradicts the
+  record it links to.
+
+  One claim in the first draft of the fix was wrong and was caught by measuring
+  it: "what it was *for* is not recoverable" is false — a staged guideline in
+  `tom_specs` describes it as "Identity and identification utilities". The row
+  now carries that description together with its provenance: a table that
+  predates every removal, corroborated by nothing else.
 
 - **Two completion records promised "verbatim" for blocks that were not
   (tcinc1113).** The removal record introduced its `AdminLoginForm` block as
