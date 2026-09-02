@@ -1,5 +1,34 @@
 ## 1.2.1
 
+### Fixed
+
+- **Two documents said the `preferences` module had been deleted; it is the
+  destination the removal record redirects *to* (tcinc1109).** The status banner
+  in `doc/review_findings.md` and the per-module marker in
+  `_copilot_guidelines/refactoring_guide.md` both recorded `preferences/` among
+  the four placeholders removed in 1.1.0. Both were true when written — 1.1.0
+  really did delete a `readme.md` of research links from that directory — and
+  neither recorded that the real device-preferences module was built in the same
+  place three weeks later. Read today they say the package has no preferences
+  module, contradicting the barrel, the source, `doc/preferences.md` and the
+  removal record, whose "where did local storage go?" answer is that module.
+  Both now separate the placeholder from what replaced it.
+
+  A third instance the filing did not name was fixed with them: the OT2 baseline
+  blockquote in the same guide carries the identical claim.
+
+  Three further instances were found and deliberately **left alone**, which is
+  the distinction worth recording. The 1.1.0 §Removed entry below, and the
+  finding table and recommendation list in `review_findings.md`, are accurate
+  records of what a dated release did and what a dated review found. They differ
+  from the three that were fixed not in wording but in role: a status banner and
+  a per-module marker answer "how is it now", a changelog entry and a review
+  finding answer "what happened then". Only the first kind can go stale.
+
+  Nothing above introduces a count. The filing itself described the module as
+  "seven files" when it is nine, which is the argument in miniature — an
+  unchecked number in prose is a second copy of something that drifts.
+
 ### Added
 
 - **security: the two panel-context fields nobody was watching are now pinned

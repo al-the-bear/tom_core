@@ -50,7 +50,8 @@ Iterate in order. Each step states its **done** condition.
 > automated gate: `dart analyze` is clean and `flutter test --concurrency=1`
 > is 59/59 green. The four placeholder modules (`camera/`, `localstorage/`,
 > `preferences/`, `qrcode/`) and the empty `iding/` folder were already removed
-> (recorded in `CHANGELOG.md` 1.1.0), and all review-findings issues are
+> (recorded in `CHANGELOG.md` 1.1.0 — `preferences/` was rebuilt as a real
+> module afterwards, see step 7), and all review-findings issues are
 > resolved. The six real modules each already received a full per-module pass
 > (dartdoc + `doc/{module}.md` + executable example + test suite). The
 > open-ended **deepening** work — scaling test/example surface coverage and
@@ -90,6 +91,12 @@ Iterate in order. Each step states its **done** condition.
 5. **Per-module pass — `localstorage/`.** ✅ **Done (OT2) — removed** (placeholder).
 6. **Per-module pass — `observing/`.** ✅ **Done (OT2).** Deepening → RCE3.
 7. **Per-module pass — `preferences/`.** ✅ **Done (OT2) — removed** (placeholder).
+   **Superseded (2026-08-03).** The directory holds a real module again: the
+   device-preferences API and its framework client, with barrel exports,
+   `doc/preferences.md`, an example and a test suite. What OT2 removed was a
+   `readme.md` of research links, so both statements are true of different
+   things — read the marker above as "the placeholder is gone", not as "there
+   is no preferences module".
 8. **Per-module pass — `qrcode/`.** ✅ **Done (OT2) — removed** (placeholder).
 9. **Per-module pass — `resources/`.** ✅ **Done (OT2).** Deepening → RCE3.
 10. **Per-module pass — `runtime/`.** ✅ **Done (OT2).** Deepening → RCE3.

@@ -11,6 +11,16 @@ Date: 10 January 2026
 > placeholder modules (`camera/`, `localstorage/`, `preferences/`, `qrcode/`)
 > were removed (see `CHANGELOG.md` 1.1.0). The package now passes `dart analyze`
 > clean and `flutter test --concurrency=1` 59/59 green.
+>
+> **`preferences/` has since come back, and is not a placeholder.** What 1.1.0
+> removed from that directory was a `readme.md` of research links with no code
+> behind it; the directory now holds the real device-preferences module, with
+> its own barrel exports, [`doc/preferences.md`](preferences.md), an example and
+> a test suite. Everything above is a record of 15 July 2026 and is left as
+> written — this note exists because the sentence before it is the one a reader
+> lands on after following a "where did local storage go?" redirection to
+> `preferences`, and on its own it answers that the destination was deleted.
+> `camera/`, `localstorage/`, `qrcode/` and `iding/` are still gone.
 
 ## Critical Issues
 
