@@ -19,21 +19,6 @@ import 'endpoint_results.dart';
 import 'form_binding.dart';
 import 'web_socket_endpoint.dart';
 
-/// Serializes one element of a `List` endpoint result to a JSON-encodable value.
-///
-/// Used as the `toEncodable` for `jsonEncode` when a handler returns a
-/// `List<Object>`: `jsonEncode` handles primitives, maps and nested lists
-/// natively and only calls this for the remaining complex elements. An element
-/// that owns its wire shape ([TomClass]/[TomJsonSerializable]) is serialized
-/// through its `toJson`; every other object — notably the reflection-first wire
-/// DTOs, which carry no hand-written serializer — goes through the kernel
-/// reflection path, matching how a *single* such result is serialized below.
-Object? _encodeResultElement(Object? element) {
-  if (element is TomClass) return element.toJson();
-  if (element is TomJsonSerializable) return element.toJson();
-  return tomReflectionInfo.getValues(element!);
-}
-
 /// Thrown while *serving* a request: access denied, parameter instantiation
 /// failure, a failing error handler, or a result that cannot be converted.
 class TomEndpointHandlerException extends TomServerException {
@@ -904,11 +889,11 @@ class TomEndpointHandler {
       if (result is TomRedirect) result = result.toResponse();
       // A handler that returns a shelf Response has already decided everything
       // this block would decide — status, headers, and a body that may be an
-      // un-materialised stream. Answered first, before the conversion chain,
-      // because that chain's fall-through is `convertToJsonString(result)`: a
-      // Response is not a reflected DTO, so converting it throws and the
-      // handler's own answer is lost to a 500. This is the escape hatch that
-      // makes streaming endpoints (see `TomFileService`) possible at all.
+      // un-materialised stream. Answered first, before the conversion below,
+      // because that conversion is `convertToJsonString(result)`: a Response is
+      // neither a reflected DTO nor a JSON container, so converting it throws
+      // and the handler's own answer is lost to a 500. This is the escape hatch
+      // that makes streaming endpoints (see `TomFileService`) possible at all.
       if (result is Response) {
         if (shouldLogRequests) {
           tomLog.info(
@@ -918,18 +903,19 @@ class TomEndpointHandler {
         }
         return result;
       }
+      // A String is passed through rather than serialized: a handler that
+      // returns one has already written the body, and encoding it again would
+      // wrap it in quotes. Everything else is the kernel's outbound entry
+      // point, which honours every rendering hook the framework recognises and
+      // takes the JSON containers as well — so the chain this used to be
+      // (TomClass, TomJsonSerializable, Map, List, then reflection) is not
+      // shortened here but *removed*: repeating that policy in a transport is
+      // how the server and the client came to disagree about which hooks a
+      // type had.
       String? resultString = result == null
           ? null
           : result is String
           ? result
-          : result is TomClass
-          ? jsonEncode(result.toJson())
-          : result is TomJsonSerializable
-          ? jsonEncode(result.toJson())
-          : result is Map<String, Object>
-          ? jsonEncode(result)
-          : result is List<Object>
-          ? jsonEncode(result, toEncodable: _encodeResultElement)
           : tomReflectionInfo.convertToJsonString(result);
 
       Response? response;

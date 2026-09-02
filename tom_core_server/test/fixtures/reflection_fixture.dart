@@ -172,6 +172,113 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> parse(FixtureParseRequest request);
 
+  // ==========================================================================
+  // The echo endpoints — one per serialization hook shape.
+  //
+  // Each takes its DTO and returns the same DTO, so a single call crosses all
+  // four legs the framework has: the client encodes, the server decodes, the
+  // handler hands the object straight back, the server encodes, the client
+  // decodes. Every DTO renames its field on the wire, so a leg that skipped
+  // the hook loses the value rather than merely spelling it differently — the
+  // assertion can be "the value survived" instead of a comparison of two
+  // renderings.
+  // ==========================================================================
+
+  /// Echoes the [TomClass] shape — the first branch of both entry points.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/echo_observable',
+    consumes: TomMimeType.json,
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<FixtureEchoObservableDto> echoObservable(
+    FixtureEchoObservableDto request,
+  );
+
+  /// Echoes the declared-interface shape — `TomJsonSerializable` outbound,
+  /// a `fromJson` constructor inbound.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/echo_interface',
+    consumes: TomMimeType.json,
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<FixtureEchoInterfaceDto> echoInterface(
+    FixtureEchoInterfaceDto request,
+  );
+
+  /// Echoes the structural shape — a plain `toJson()` with no interface,
+  /// a `fromJson` constructor inbound.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/echo_method',
+    consumes: TomMimeType.json,
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<FixtureEchoMethodDto> echoMethod(FixtureEchoMethodDto request);
+
+  /// Echoes the hook shape — a `jsonEncode` getter out, a `jsonDecode` method
+  /// in.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/echo_hook',
+    consumes: TomMimeType.json,
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<FixtureEchoHookDto> echoHook(FixtureEchoHookDto request);
+
+  /// Echoes the shape with no hook at all — the reflected field walk, which is
+  /// what every other shape is measured against.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/echo_plain',
+    consumes: TomMimeType.json,
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<FixtureEchoPlainDto> echoPlain(FixtureEchoPlainDto request);
+
+  /// Returns a **list** of DTOs, which no single object hook can render.
+  ///
+  /// The container shapes are the reason the pipeline used to carry a chain of
+  /// its own: `getValues` refuses a `List` outright, so a handler returning one
+  /// could not reach the outbound entry point and the transport encoded it
+  /// itself. This endpoint is what makes that no longer true.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/echo_list',
+    consumes: TomMimeType.json,
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<List<FixtureEchoInterfaceDto>> echoList(
+    FixtureEchoInterfaceDto request,
+  );
+
+  /// Returns a `Map<String, dynamic>` whose value is a DTO — the other
+  /// container shape, and the one the old chain got wrong twice over: its type
+  /// test named `Map<String, Object>`, which this is not, and the branch it
+  /// named would have thrown on the DTO value anyway.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/echo_map',
+    consumes: TomMimeType.json,
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, dynamic>> echoMap(FixtureEchoInterfaceDto request);
+
   /// Two parameters of which the **first** cannot be bound by any strategy.
   ///
   /// [first] is a request DTO on a `GET` with no body, no path capture and no
@@ -432,6 +539,90 @@ class FixtureParseRequest {
   FixtureParseRequest();
 }
 
+// =============================================================================
+// The echo DTOs — one per serialization hook shape.
+//
+// Each renames its field on the wire, so the hook having run is visible in the
+// payload and a leg that skipped it loses the value. The plain one cannot
+// rename anything (there is no hook to do it in), which is exactly what makes
+// it the control.
+// =============================================================================
+
+/// The [TomClass] shape: observable members, decoded by `TomClass.setValues`.
+///
+/// This one cannot rename its field — the member walk is the framework's, not
+/// the class's. It does not need to: a [TomString] field is not something the
+/// reflective field walk can write or `jsonEncode` can render, so a value that
+/// arrives intact proves the `TomClass` branch was taken on both ends.
+@tomReflector
+class FixtureEchoObservableDto extends TomClass {
+  /// The payload carried across the round trip.
+  TomString value = TomString('');
+}
+
+/// The declared-interface shape: [TomJsonSerializable] out, `fromJson` in.
+@tomReflector
+class FixtureEchoInterfaceDto implements TomJsonSerializable {
+  /// The payload carried across the round trip.
+  String value = '';
+
+  /// Creates an empty DTO — required by the client, which builds the response
+  /// instance before it has a body to fill it from.
+  FixtureEchoInterfaceDto();
+
+  /// Reads the renamed wire field; the inbound hook.
+  FixtureEchoInterfaceDto.fromJson(Map<String, dynamic> json)
+    : value = json['viaInterface'] as String? ?? '';
+
+  @override
+  Map<String, Object?> toJson() => {'viaInterface': value};
+}
+
+/// The structural shape: a plain `toJson()`, no interface, `fromJson` in.
+@tomReflector
+class FixtureEchoMethodDto {
+  /// The payload carried across the round trip.
+  String value = '';
+
+  /// Creates an empty DTO; see [FixtureEchoInterfaceDto].
+  FixtureEchoMethodDto();
+
+  /// Reads the renamed wire field; the inbound hook.
+  FixtureEchoMethodDto.fromJson(Map<String, dynamic> json)
+    : value = json['viaMethod'] as String? ?? '';
+
+  /// The outbound hook, found structurally rather than by an interface.
+  Map<String, Object?> toJson() => {'viaMethod': value};
+}
+
+/// The hook shape: a `jsonEncode` getter out, a `jsonDecode` method in.
+@tomReflector
+class FixtureEchoHookDto {
+  /// The payload carried across the round trip.
+  String value = '';
+
+  /// Creates an empty DTO; the `jsonDecode` hook fills it in place.
+  FixtureEchoHookDto();
+
+  /// The outbound hook.
+  Map<String, Object?> get jsonEncode => {'viaHook': value};
+
+  /// The inbound hook.
+  void jsonDecode(Map<String, dynamic> json) {
+    value = json['viaHook'] as String? ?? '';
+  }
+}
+
+/// No hook at all: the reflected field walk, both ways.
+@tomReflector
+class FixtureEchoPlainDto {
+  /// The payload carried across the round trip, under its own name.
+  String value = '';
+
+  /// Creates an empty DTO; the field walk fills it.
+  FixtureEchoPlainDto();
+}
+
 /// Live implementation of [FixtureApiService]; the pipeline invokes these
 /// bodies on the instance registered with the bean locator.
 @tomReflector
@@ -521,6 +712,42 @@ class FixtureApiServer implements FixtureApiService {
         'label': request.label,
         'when': request.when.toIso8601String(),
       };
+
+  // The echo handlers hand the decoded object straight back, so the only thing
+  // between the sent DTO and the received one is serialization — four legs of
+  // it. Anything else in the body would be a second explanation for a
+  // difference.
+
+  @override
+  Future<FixtureEchoObservableDto> echoObservable(
+    FixtureEchoObservableDto request,
+  ) async => request;
+
+  @override
+  Future<FixtureEchoInterfaceDto> echoInterface(
+    FixtureEchoInterfaceDto request,
+  ) async => request;
+
+  @override
+  Future<FixtureEchoMethodDto> echoMethod(FixtureEchoMethodDto request) async =>
+      request;
+
+  @override
+  Future<FixtureEchoHookDto> echoHook(FixtureEchoHookDto request) async =>
+      request;
+
+  @override
+  Future<FixtureEchoPlainDto> echoPlain(FixtureEchoPlainDto request) async =>
+      request;
+
+  @override
+  Future<List<FixtureEchoInterfaceDto>> echoList(
+    FixtureEchoInterfaceDto request,
+  ) async => [request, request];
+
+  @override
+  Future<Map<String, dynamic>> echoMap(FixtureEchoInterfaceDto request) async =>
+      <String, dynamic>{'wrapped': request, 'count': 1};
 
   @override
   Future<Map<String, Object>> pair(

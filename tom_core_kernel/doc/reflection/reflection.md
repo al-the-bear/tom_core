@@ -136,7 +136,7 @@ The main class for reflection operations. Key methods:
 | `createInstanceFromJson<T>(mirror, data)` | Create instance and populate from JSON; returns a `T` or throws |
 | `setValues<T>(object, values)` | Set field values on an existing object |
 | `getValues(object)` | Get all field values as a map |
-| `convertToJsonString(object)` | Serialize object to JSON string |
+| `convertToJsonString(object)` | Serialize object to JSON string; a `List` or `Map` is encoded as itself, with complex elements rendered by `getValues` |
 | `convertFromJsonString<T>(object, json)` | Deserialize JSON string to object |
 
 ### Global Instances
@@ -1016,6 +1016,47 @@ built-ins as well, and it holds declaration mirrors, so the mirror of an
 annotated **generic** instantiation such as `GenericHolder<int>` is absent from
 it. The check reads the `@tomReflector` metadata on the resolved class mirror,
 which survives instantiation and marks exactly the annotated set.
+
+### Except The Containers, At The String Level
+
+`convertToJsonString` takes a `List` or a `Map` and encodes it as itself,
+rendering each complex element through `getValues`:
+
+```dart
+tomReflectionInfo.convertToJsonString([firstDto, secondDto]);
+// [{"ok":"one"},{"ok":"two"}] — each element rendered exactly as a
+// top-level object would be, by the outbound precedence above
+```
+
+`getValues` is unchanged and still refuses both: a container has no fields and
+is not one of yours, so asking it for *values* has no answer. Only the string
+form has one, because a container is directly encodable once its contents are.
+
+This exists so that no consumer needs a hook chain of its own. A handler
+returning `List<Task>` is ordinary, and before this the only way to put one on
+the wire was for its transport to encode it — which is how the endpoint
+pipeline and the HTTP client came to honour different hook sets, and how a type
+could round-trip on one side and fail on the other.
+
+The container is walked explicitly rather than handed to `jsonEncode` with a
+`toEncodable` callback, because `dart:convert` catches whatever that callback
+raises and rethrows `JsonUnsupportedObjectError` — the annotation guard's
+message, which names the offending type and says what to do about it, would
+reach the caller as "converting object to an encodable object failed". Walking
+it here lets the guard's own exception through unwrapped:
+
+```dart
+tomReflectionInfo.convertToJsonString([NotOurs()]);
+// throws TomReflectorException(reflector.reflect.not_reflectable)
+```
+
+Nothing in the container walk reproduces the field walk's own conversions
+(dates, zoned times) — those belong to `getValues`, and a second copy of that
+table is how the two would drift. A bare `DateTime` sitting directly in a map
+is therefore refused rather than silently rendered.
+
+A bare scalar stays refused as well: a `String` is not a container, so it takes
+the object path and meets the annotation guard exactly as before.
 
 ### Atomic Collection Updates
 

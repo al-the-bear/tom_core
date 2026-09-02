@@ -16,6 +16,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Parameter Binding](#parameter-binding)
 - [Access Control](#access-control)
 - [Transactions](#transactions)
+- [What a Handler May Return](#what-a-handler-may-return)
 - [Taking Over the Request and the Response](#taking-over-the-request-and-the-response)
 - [Multipart Forms](#multipart-forms)
 - [Redirects](#redirects)
@@ -311,6 +312,26 @@ also held.
 When a method carries `@TomTransactional`, the handler starts a transaction
 through `TomTransactionManager` before invoking it, commits on success, and
 rolls back if the method throws.
+
+## What a Handler May Return
+
+Whatever `tomReflectionInfo.convertToJsonString` accepts — which is the same
+thing the framework's HTTP client sends, deliberately. A DTO of any shape the
+reflection hooks recognise (`tom_core_kernel/doc/reflection/reflection.md`,
+§ Serialization Hooks), a `List` of them, a `Map` with them inside, to any
+depth. The
+pipeline holds **no** serialization policy of its own: it hands the result to
+that one entry point and encodes nothing itself.
+
+That matters more than it sounds. When a transport restates the framework's
+hook precedence, it becomes a second, quietly divergent copy of it — which is
+what the pipeline used to be, honouring a set of hooks the client did not, so
+a DTO could round-trip over the client and fail over an endpoint. Anything the
+pipeline cannot serialize is a gap in the entry point, to be fixed there.
+
+A `String` is the one thing passed through rather than serialized: a handler
+returning one has already written the body, and encoding it again would wrap it
+in quotes. `null` produces an empty body.
 
 ## Taking Over the Request and the Response
 

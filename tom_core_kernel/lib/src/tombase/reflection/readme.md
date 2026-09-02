@@ -53,14 +53,21 @@ void main() {
 ```
 
 Every entry point insists the target class carries `@tomReflector`. Passing a
-`String`, an `int`, a `DateTime`, a `List` or a plain `Map` raises
-`reflector.type.not_annotated` rather than doing nothing: those types have
-mirror data only because they appear as *field types* of annotated classes, so
-they reflect successfully and then present no settable fields — without the check
-`getValues` would return `{}` and `convertToJsonString` the string `"{}"`, a
-valid-looking payload with every field dropped. A class with no generated data
-at all still raises `reflector.reflect.not_reflectable`; both are
-`TomReflectorException`, so one `catch` covers either.
+`String`, an `int` or a `DateTime` raises `reflector.type.not_annotated` rather
+than doing nothing: those types have mirror data only because they appear as
+*field types* of annotated classes, so they reflect successfully and then
+present no settable fields — without the check `getValues` would return `{}` and
+`convertToJsonString` the string `"{}"`, a valid-looking payload with every
+field dropped. A class with no generated data at all still raises
+`reflector.reflect.not_reflectable`; both are `TomReflectorException`, so one
+`catch` covers either.
+
+The two JSON *containers* are the exception, and only at the string level: a
+`List` or a `Map` handed to `convertToJsonString` is encoded as itself, with
+each complex element rendered by `getValues`. `getValues` still refuses both —
+neither is a reflected type and neither has fields to read. The distinction is
+what lets a handler return a list of DTOs without its transport growing a
+serialization policy of its own.
 
 A string that will not parse into a `DateTime`, `TomZonedDate`,
 `TomZonedTime` or `TomZonedDateTime` field raises

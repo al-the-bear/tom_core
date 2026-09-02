@@ -221,6 +221,31 @@ anyone who was writing them.
   `reflection.hook.invalid_return`); the two nominal forms need none of it,
   since an `is` test cannot mistake absence for failure.
 
+- **`convertToJsonString` renders the JSON containers, so a transport does not
+  have to (tcinc1118).** One outbound entry point is only *the* outbound entry
+  point if everything a handler returns can go through it, and a `List` or a
+  `Map` could not: `getValues` refuses both — correctly, since neither is a
+  reflected type with fields to read — and `convertToJsonString` was defined as
+  `jsonEncode(getValues(o))`. So a handler returning `List<Task>`, which is
+  ordinary, had no way onto the wire except for its transport to encode it
+  itself. That is precisely why the server's endpoint pipeline carried a
+  five-way chain of its own, and why the two sides came to honour different
+  hook sets. `convertToJsonString` now encodes a `List` or a `Map` as itself,
+  rendering complex elements through `getValues` and passing scalars through,
+  to any depth; `getValues` is unchanged and still refuses both, because only
+  the *string* form has an answer for a container. Two things are deliberate.
+  The container is walked explicitly rather than handed to `jsonEncode` with a
+  `toEncodable` callback: `dart:convert` catches whatever that callback raises
+  and rethrows `JsonUnsupportedObjectError`, so the annotation guard's
+  message — which names the offending type — would have reached callers as
+  "converting object to an encodable object failed"; walking it here lets the
+  guard's own exception out unwrapped. And nothing in the walk reproduces the
+  field walk's date/zoned-time conversions, which belong to `getValues`; a
+  second copy of that table is how the two would drift, so a bare `DateTime`
+  sitting directly in a map is refused (it threw before too, less
+  informatively). A bare scalar stays refused: it is not a container, so it
+  takes the object path and meets the guard exactly as before.
+
 - **`TomAuthorizationGroup.mostRestrictive` answers `none` for a group with
   nothing visible, not `full` (tcinc752).** The getter folds its visible members
   with `narrow`, starting from `TomAuthState.full` — and when there are no

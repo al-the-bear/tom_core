@@ -1416,6 +1416,87 @@ void main() {
     });
   });
 
+  // ==========================================================================
+  // convertToJsonString over the JSON containers — the shapes a handler
+  // returns that are not themselves DTOs. `getValues` refuses these (a Map is
+  // not a reflected type and a List cannot even resolve), so before this the
+  // only way to put one on the wire was to encode it yourself — which is how
+  // the endpoint pipeline came to carry a five-way chain of its own.
+  // ==========================================================================
+  group('convertToJsonString renders the JSON containers', () {
+    test('a Map is encoded as itself', () {
+      expect(
+        tomReflectionInfo.convertToJsonString({'a': 1, 'b': 'two'}),
+        '{"a":1,"b":"two"}',
+      );
+    });
+
+    test('a List is encoded as itself', () {
+      expect(
+        tomReflectionInfo.convertToJsonString([1, 'two', true]),
+        '[1,"two",true]',
+      );
+    });
+
+    test('a Map value that is a DTO is rendered, not refused', () {
+      // `jsonEncode(map)` alone throws JsonUnsupportedObjectError here: the
+      // value is not a JSON-native type and there is no `toEncodable`. This is
+      // the case the pipeline's `Map` branch silently could not serve.
+      expect(
+        tomReflectionInfo.convertToJsonString({
+          'person': SimplePerson()
+            ..name = 'Ada'
+            ..age = 36,
+        }),
+        contains('"name":"Ada"'),
+      );
+    });
+
+    test('every element of a List goes through the outbound precedence', () {
+      // One element per hook shape: the interface, the structural method, the
+      // getter, and a plain reflected DTO. If the container path did anything
+      // other than call `getValues`, at least one of these would come out as
+      // its field walk instead of its hook.
+      final json = tomReflectionInfo.convertToJsonString([
+        SelfSerializingDto()..status = 'iface',
+        PlainToJsonHolder()..status = 'method',
+        JsonHookHolder()..name = 'getter',
+        SimplePerson()..name = 'plain',
+      ]);
+
+      expect(
+        json,
+        '[{"ok":"iface"},{"ok":"method"},{"encoded":"getter"},'
+        '{"name":"plain","age":0,"active":false,"salary":0.0}]',
+      );
+    });
+
+    test('containers nest to any depth', () {
+      expect(
+        tomReflectionInfo.convertToJsonString({
+          'rows': [
+            {'dto': SelfSerializingDto()..status = 'deep'},
+          ],
+        }),
+        '{"rows":[{"dto":{"ok":"deep"}}]}',
+      );
+    });
+
+    test('a value inside a container that is not ours is still refused', () {
+      // The container path must not become a way around the annotation guard:
+      // an element reaches exactly the same `getValues` a top-level object
+      // would, and is refused on the same terms.
+      expect(
+        () => tomReflectionInfo.convertToJsonString([NotReflectedHolder()]),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
+    // A bare scalar stays refused — it is not a container, so it takes the
+    // object path and meets the annotation guard. Pinned where that guard is
+    // asserted: 'convertToJsonString no longer produces the string "{}"'.
+  });
+
   group('createInstance and setValues from JSON', () {
     test('should create instance from JSON map', () {
       final person = tomReflectionInfo.createInstance<SimplePerson>();
@@ -3179,25 +3260,28 @@ void main() {
       expect(viaSetValues.source, viaCreate.source);
     });
 
-    test('inbound: setValues returns the fromJson instance, not its argument', () {
-      // The one price of the unification, pinned so it cannot be paid by
-      // accident. A constructor builds an object rather than filling one, so
-      // for a `fromJson` class the argument is left untouched and the result
-      // is a different instance. Callers must assign the return value.
-      final original = FromJsonAndDecodeHolder()..source = 'untouched';
+    test(
+      'inbound: setValues returns the fromJson instance, not its argument',
+      () {
+        // The one price of the unification, pinned so it cannot be paid by
+        // accident. A constructor builds an object rather than filling one, so
+        // for a `fromJson` class the argument is left untouched and the result
+        // is a different instance. Callers must assign the return value.
+        final original = FromJsonAndDecodeHolder()..source = 'untouched';
 
-      final returned = tomReflectionInfo.setValues(original, {
-        'source': 'payload',
-      });
+        final returned = tomReflectionInfo.setValues(original, {
+          'source': 'payload',
+        });
 
-      expect(returned.source, 'fromJson');
-      expect(
-        original.source,
-        'untouched',
-        reason: 'the argument is not the object that was built',
-      );
-      expect(identical(returned, original), isFalse);
-    });
+        expect(returned.source, 'fromJson');
+        expect(
+          original.source,
+          'untouched',
+          reason: 'the argument is not the object that was built',
+        );
+        expect(identical(returned, original), isFalse);
+      },
+    );
 
     test('inbound: a failing fromJson is reported, not walked around', () {
       // The fixture is the hook that always throws, because it is the only way

@@ -1091,6 +1091,33 @@
 
 ### Fixed
 
+- **The endpoint pipeline serialized differently from the HTTP client, so a
+  type could round-trip on one side and fail on the other (tcinc1118).** The
+  pipeline ran its own five-way chain on the way out — `String`, `TomClass`,
+  `TomJsonSerializable`, `Map<String, Object>`, `List` with a bespoke
+  per-element encoder, then reflection — while the kernel's `TomServerEndpoint`
+  called `convertToJsonString`. Two transports restating one policy is two
+  policies, and they had already diverged: a DTO carrying a plain `toJson()`
+  was honoured by the pipeline and not by the client, and the pipeline's `Map`
+  arm was wrong twice over — it named `Map<String, Object>`, which the
+  `Map<String, dynamic>` a handler actually returns is not, so such a result
+  fell through to a converter that then refused it; and had it matched, its
+  bare `jsonEncode` would have thrown `JsonUnsupportedObjectError` on any DTO
+  value inside. The chain is not shortened but **removed**: with
+  `convertToJsonString` now taking the JSON containers (see the kernel's
+  tcinc1118), every result but a `String` goes through the one outbound entry
+  point, and `_encodeResultElement` is gone. The `String` passthrough stays
+  because it is not serialization — a handler returning one has already written
+  the body, and encoding it again would wrap it in quotes. Inbound was already
+  the shared entry point on both sides. A new round-trip suite
+  (`endpoints_serialization_roundtrip_test.dart`) drives one DTO per hook shape
+  through a live loopback server using the shipped client, which exercises all
+  four legs — client encode, server decode, server encode, client decode — in a
+  single call; each DTO renames its field on the wire, so a hook skipped on any
+  one leg loses the value rather than merely spelling it differently. It also
+  asserts the claim directly: for the same object, the string the client
+  produces and the string the server produces are identical.
+
 - **A `.env` file could not reach a `${VAR:default}` placeholder, so three
   documents describing `core_server_sample` were describing something that did
   not happen (tcinc1078).** `TomYaml.loadYamlFile` expanded placeholders from

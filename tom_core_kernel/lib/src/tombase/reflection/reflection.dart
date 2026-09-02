@@ -1880,8 +1880,28 @@ class TomReflectionInfo {
 
   /// Converts an object to a JSON string.
   ///
-  /// This is a convenience method that calls [getValues] and encodes the
-  /// result to JSON.
+  /// This is the string-level outbound entry point, and the only one a
+  /// transport needs: it is [getValues] plus encoding, extended to the two
+  /// shapes JSON has natively.
+  ///
+  /// ## What [o] may be
+  ///
+  /// - **a `Map` or a `List`** — encoded as itself. Its elements are JSON
+  ///   values already, except the complex ones, and each of those is rendered
+  ///   by [getValues] with the full outbound precedence. Nesting is walked to
+  ///   any depth.
+  /// - **anything else** — rendered by [getValues], which is where the
+  ///   precedence and the `@tomReflector` guard live. A bare `String` or `int`
+  ///   is therefore still refused: it is not a container, and a caller handing
+  ///   a scalar to a DTO serializer is not describing an object.
+  ///
+  /// Containers are the reason this method is not simply
+  /// `jsonEncode(getValues(o))`. A handler that answers with a list of DTOs, or
+  /// a map whose values are DTOs, has no reflected type of its own, so
+  /// [getValues] refuses it — which left every transport to encode collections
+  /// itself and, in the endpoint pipeline, to grow a parallel hook chain to do
+  /// it with. Naming the container case once here is what lets those callers
+  /// be one line.
   ///
   /// Example:
   /// ```dart
@@ -1890,9 +1910,46 @@ class TomReflectionInfo {
   ///   ..age = 30;
   /// final json = tomReflectionInfo.convertToJsonString(person);
   /// // '{"name":"John","age":30}'
+  ///
+  /// tomReflectionInfo.convertToJsonString([person]);
+  /// // '[{"name":"John","age":30}]'
   /// ```
   String convertToJsonString(Object o) {
+    if (o is Map || o is List) {
+      return jsonEncode(_renderJsonValue(o));
+    }
     return jsonEncode(getValues(o));
+  }
+
+  /// Renders [value] into something `jsonEncode` accepts without a
+  /// `toEncodable`.
+  ///
+  /// The containers are walked here rather than handed to `jsonEncode` with a
+  /// `toEncodable` callback, because that callback's exceptions do not
+  /// survive: `dart:convert` catches whatever it raises and rethrows a
+  /// `JsonUnsupportedObjectError`, so the annotation guard's message — which
+  /// names the type and says it is not annotated — would reach the caller as
+  /// "converting object to an encodable object failed". Walking the container
+  /// ourselves lets [getValues] throw its own exception, unwrapped.
+  ///
+  /// Complex values get exactly the [getValues] a top-level object would: an
+  /// element is not serialized on easier terms than the object containing it,
+  /// and the same guard applies to it. Nothing here reproduces the field
+  /// walk's own conversions (dates, zoned times) — those belong to [getValues]
+  /// and having a second copy of that table is how the two would drift.
+  Object? _renderJsonValue(Object? value) {
+    if (value == null || value is String || value is num || value is bool) {
+      return value;
+    }
+    if (value is Map) {
+      return value.map(
+        (key, element) => MapEntry('$key', _renderJsonValue(element)),
+      );
+    }
+    if (value is List) {
+      return value.map(_renderJsonValue).toList();
+    }
+    return getValues(value);
   }
 
   /// Gets all values from an object as a JSON-compatible map.
