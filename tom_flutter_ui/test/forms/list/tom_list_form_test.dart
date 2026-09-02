@@ -23,9 +23,6 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-// For the `>>` observation operator, which the kernel supplies as an
-// extension on TomObservable and so must be imported to be in scope.
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../../support/list_form_fixtures.dart';

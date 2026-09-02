@@ -43,10 +43,11 @@ flutter test test/screenshots.dart # on-demand visual-capture harness (not a gat
 ```
 
 `test/screenshots.dart` is a manual "rerun and diff the PNGs" tool, deliberately
-excluded from the default gate (no `_test.dart` suffix). The remaining
-`*_test.dart` files (`widget_test.dart`, `demo_overflow_test.dart`,
-`debug_form_test.dart`, `debug_heights_test.dart`, `debug_shrink_test.dart`)
-are the automated suite.
+excluded from the default gate — `flutter test` discovers `*_test.dart` and
+nothing else, and neither it nor `demo_harness.dart` carries the suffix. Every
+other file under `test/` does, and together they are the automated suite; the
+suffix is the whole rule, so no inventory of names is kept here to fall out of
+date.
 
 `demo_overflow_test.dart` mounts every demo and fails if any of them overflows
 the 1280x2400 viewport — an overflow hides a control the demo exists to show, so

@@ -45,6 +45,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui_test/acl_demos/acl_demos.dart';
 import 'package:tom_flutter_ui_test/demo_resources.dart';
 import 'package:tom_flutter_ui_test/forms_demos/forms_demos.dart';
+import 'package:tom_flutter_ui_test/forms_demos/phase2_demos.dart';
 import 'package:tom_flutter_ui_test/widget_demos/demo_01_buttons.dart';
 import 'package:tom_flutter_ui_test/widget_demos/demo_02_inputs.dart';
 import 'package:tom_flutter_ui_test/widget_demos/demo_03_selection.dart';
@@ -77,6 +78,14 @@ import 'package:tom_flutter_ui_test/widget_demos/demo_28_authorization.dart';
 /// `(slug, demoFactory)` — slug names the demo in test output and PNG files.
 ///
 /// Order follows the sidebar in main.dart so screenshots are easy to scan.
+///
+/// **This list must cover every screen the app can open.** Both the overflow
+/// gate and the screenshot harness iterate it and nothing else, so an omitted
+/// screen is not merely untested — it is skipped in silence by the two tools
+/// whose whole job is to look at every screen. `demo_coverage_test.dart`
+/// enforces the completeness by comparing this list against the `DemoTile`s
+/// each tab actually builds, so adding a demo to `main.dart` and forgetting it
+/// here now fails instead of going unnoticed.
 final List<(String, Widget Function())> demos = [
   ('acl_01_basic_row', () => BasicRowDemo()),
   ('acl_02_multi_row', () => MultiRowDemo()),
@@ -132,6 +141,11 @@ final List<(String, Widget Function())> demos = [
   ('widget_26_scope_action', () => ScopeActionDemo()),
   ('forms_01_forms', () => FormsDemo()),
   ('forms_02_forms_overview', () => FormsOverviewDemo()),
+  // The Phase-2 forms screens, in the order `FormsActionsTab` mounts them.
+  ('forms_03_selection_variants', () => SelectionVariantsDemo()),
+  ('forms_04_boolean_variants', () => BooleanVariantsDemo()),
+  ('forms_05_complex_breakpoints', () => ComplexBreakpointsDemo()),
+  ('forms_06_complex_auth', () => ComplexAuthDemo()),
   ('auth_01_authorization', () => AuthorizationDemo()),
 ];
 

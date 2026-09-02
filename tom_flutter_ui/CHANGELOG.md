@@ -2,6 +2,16 @@
 
 ### Added
 
+- **`TomObservableObservation` on the kernel bridge** (`lib/src/kernel_types.dart`,
+  26 → 27 names). It is the extension declaring `>>`, the kernel's documented
+  way to register an observer and get back the `TomFunctionObserver` you must
+  retain. In Dart an extension is in scope only if its own name is shown, so
+  exporting the return type without the operator left `field >> (_) => …`
+  undefined on a `TomField` for anyone importing only the package barrel — as
+  evidenced by two of this package's own tests, which imported
+  `package:tom_core_kernel/tom_core_kernel.dart` for no other reason. Those
+  workarounds are removed. `doc/kernel_types.md` and the `hasLength` tripwire
+  in `test/kernel_types_doc_test.dart` are updated to match.
 - **`TomWidgetSurface`** (`widget_base/`) — the interface naming the four
   members a Tom wrapper adds over the Flutter widget it delegates to: `tomId`,
   `tomGroup`, `basePath` and `effectiveAuthState`. It extends the kernel's

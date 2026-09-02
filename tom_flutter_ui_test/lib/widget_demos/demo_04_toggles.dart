@@ -496,18 +496,22 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
           // Payment method (vertical)
           TomText(tomId: 'radio.paymentLabel'),
           TomSizedBox(height: 8),
-          ..._buildPaymentRadios(),
+          _buildPaymentRadios(),
           TomSizedBox(height: 16),
 
           // Shirt size (horizontal)
           TomText(tomId: 'radio.sizeLabel'),
           TomSizedBox(height: 8),
-          TomRow(
-            children: [
-              _buildSizeRadio('small', 'S'),
-              _buildSizeRadio('medium', 'M'),
-              _buildSizeRadio('large', 'L'),
-            ],
+          RadioGroup<String>(
+            groupValue: _shirtSize,
+            onChanged: (v) => setState(() => _shirtSize = v),
+            child: TomRow(
+              children: [
+                _buildSizeRadio('small', 'S'),
+                _buildSizeRadio('medium', 'M'),
+                _buildSizeRadio('large', 'L'),
+              ],
+            ),
           ),
           TomSizedBox(height: 12),
           TomText(
@@ -519,32 +523,40 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
     );
   }
 
-  List<Widget> _buildPaymentRadios() {
+  /// The payment options, under the `RadioGroup` that carries the selection.
+  ///
+  /// A [TomRadio] forwards only its `value`; which radio is filled, and what
+  /// happens when one is picked, both come from the nearest `RadioGroup` of
+  /// the same type argument. So the group — not the radio — is where
+  /// `groupValue` and `onChanged` live, and a radio without one renders
+  /// unselected and inert.
+  Widget _buildPaymentRadios() {
     const methods = ['credit', 'paypal', 'bank', 'cash'];
-    return methods.map((method) {
-      return TomRow(
-        children: [
-          TomRadio<String>(
-            value: method,
-            groupValue: _paymentMethod,
-            onChanged: (v) => setState(() => _paymentMethod = v),
-          ),
-          TomSizedBox(width: 4),
-          TomText(tomId: 'radio.payment.$method'),
-        ],
-      );
-    }).toList();
+    return RadioGroup<String>(
+      groupValue: _paymentMethod,
+      onChanged: (v) => setState(() => _paymentMethod = v),
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: methods.map((method) {
+          return TomRow(
+            children: [
+              TomRadio<String>(value: method),
+              TomSizedBox(width: 4),
+              TomText(tomId: 'radio.payment.$method'),
+            ],
+          );
+        }).toList(),
+      ),
+    );
   }
 
+  /// One size option. The enclosing `RadioGroup<String>` is supplied by
+  /// [_buildRadioSection]; see [_buildPaymentRadios] for why it has to be.
   Widget _buildSizeRadio(String value, String label) {
     return TomRow(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TomRadio<String>(
-          value: value,
-          groupValue: _shirtSize,
-          onChanged: (v) => setState(() => _shirtSize = v),
-        ),
+        TomRadio<String>(value: value),
         TomText(text: label),
         TomSizedBox(width: 12),
       ],
@@ -554,38 +566,36 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
   Widget _buildRadioListTileSection() {
     return _DemoCard(
       tomId: 'radioListTile',
-      child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TomText(tomId: 'radioListTile.shippingLabel'),
-          TomSizedBox(height: 8),
-          TomRadioListTile<String>(
-            tomId: 'radioListTile.standard',
-            value: 'standard',
-            groupValue: _shippingMethod,
-            subtitle: TomText(tomId: 'radioListTile.standard.subtitle'),
-            secondary: TomIcon(icon: Icons.local_shipping),
-            onChanged: (v) => setState(() => _shippingMethod = v),
-          ),
-          TomDivider(height: 1),
-          TomRadioListTile<String>(
-            tomId: 'radioListTile.express',
-            value: 'express',
-            groupValue: _shippingMethod,
-            subtitle: TomText(tomId: 'radioListTile.express.subtitle'),
-            secondary: TomIcon(icon: Icons.flight),
-            onChanged: (v) => setState(() => _shippingMethod = v),
-          ),
-          TomDivider(height: 1),
-          TomRadioListTile<String>(
-            tomId: 'radioListTile.nextDay',
-            value: 'nextDay',
-            groupValue: _shippingMethod,
-            subtitle: TomText(tomId: 'radioListTile.nextDay.subtitle'),
-            secondary: TomIcon(icon: Icons.rocket_launch),
-            onChanged: (v) => setState(() => _shippingMethod = v),
-          ),
-        ],
+      child: RadioGroup<String>(
+        groupValue: _shippingMethod,
+        onChanged: (v) => setState(() => _shippingMethod = v),
+        child: TomColumn(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TomText(tomId: 'radioListTile.shippingLabel'),
+            TomSizedBox(height: 8),
+            TomRadioListTile<String>(
+              tomId: 'radioListTile.standard',
+              value: 'standard',
+              subtitle: TomText(tomId: 'radioListTile.standard.subtitle'),
+              secondary: TomIcon(icon: Icons.local_shipping),
+            ),
+            TomDivider(height: 1),
+            TomRadioListTile<String>(
+              tomId: 'radioListTile.express',
+              value: 'express',
+              subtitle: TomText(tomId: 'radioListTile.express.subtitle'),
+              secondary: TomIcon(icon: Icons.flight),
+            ),
+            TomDivider(height: 1),
+            TomRadioListTile<String>(
+              tomId: 'radioListTile.nextDay',
+              value: 'nextDay',
+              subtitle: TomText(tomId: 'radioListTile.nextDay.subtitle'),
+              secondary: TomIcon(icon: Icons.rocket_launch),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -596,14 +606,18 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomRow(
-            children: [
-              _buildCupertinoRadioOption('a', 'Option A'),
-              TomSizedBox(width: 16),
-              _buildCupertinoRadioOption('b', 'Option B'),
-              TomSizedBox(width: 16),
-              _buildCupertinoRadioOption('c', 'Option C'),
-            ],
+          RadioGroup<String>(
+            groupValue: _cupertinoOption,
+            onChanged: (v) => setState(() => _cupertinoOption = v),
+            child: TomRow(
+              children: [
+                _buildCupertinoRadioOption('a', 'Option A'),
+                TomSizedBox(width: 16),
+                _buildCupertinoRadioOption('b', 'Option B'),
+                TomSizedBox(width: 16),
+                _buildCupertinoRadioOption('c', 'Option C'),
+              ],
+            ),
           ),
           TomSizedBox(height: 12),
           TomText(
@@ -615,15 +629,13 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
     );
   }
 
+  /// One Cupertino option. The enclosing `RadioGroup<String>` is supplied by
+  /// [_buildCupertinoRadioSection]; see [_buildPaymentRadios] for why.
   Widget _buildCupertinoRadioOption(String value, String label) {
     return TomRow(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TomCupertinoRadio<String>(
-          value: value,
-          groupValue: _cupertinoOption,
-          onChanged: (v) => setState(() => _cupertinoOption = v),
-        ),
+        TomCupertinoRadio<String>(value: value),
         TomSizedBox(width: 4),
         TomText(text: label),
       ],
@@ -842,29 +854,21 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
           .gap()
           .newRow(dist: 8)
           .append(
-            TomRow(
-              children: [
-                TomRadio<String>(
-                  value: 'option1',
-                  groupValue: _aclRadio,
-                  onChanged: (v) => setState(() => _aclRadio = v),
-                ),
-                TomText(tomId: 'aclToggle.option1'),
-                TomSizedBox(width: 16),
-                TomRadio<String>(
-                  value: 'option2',
-                  groupValue: _aclRadio,
-                  onChanged: (v) => setState(() => _aclRadio = v),
-                ),
-                TomText(tomId: 'aclToggle.option2'),
-                TomSizedBox(width: 16),
-                TomRadio<String>(
-                  value: 'option3',
-                  groupValue: _aclRadio,
-                  onChanged: (v) => setState(() => _aclRadio = v),
-                ),
-                TomText(tomId: 'aclToggle.option3'),
-              ],
+            RadioGroup<String>(
+              groupValue: _aclRadio,
+              onChanged: (v) => setState(() => _aclRadio = v),
+              child: TomRow(
+                children: [
+                  TomRadio<String>(value: 'option1'),
+                  TomText(tomId: 'aclToggle.option1'),
+                  TomSizedBox(width: 16),
+                  TomRadio<String>(value: 'option2'),
+                  TomText(tomId: 'aclToggle.option2'),
+                  TomSizedBox(width: 16),
+                  TomRadio<String>(value: 'option3'),
+                  TomText(tomId: 'aclToggle.option3'),
+                ],
+              ),
             ),
           )
           // Why expandX: a TomRow is a Row, so it takes the width its ACL

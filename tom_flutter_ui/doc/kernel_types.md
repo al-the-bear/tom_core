@@ -45,13 +45,13 @@ doing kernel work rather than UI work, and imports
 
 ## The list
 
-Twenty-six names, in four groups.
+Twenty-seven names, in four groups.
 
 | Group | Names | Why |
 | ----- | ----- | --- |
 | Authorization | `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `AuthGroupMode`, `TomAuthorizationAdapter`, `TomAuthorization`, `TomAuthorizer`, `TomAuthorizerStrategy`, `TomUIStateController` | The four-state model every Tom widget resolves against, plus the adapter, groups and controllers that feed it. Every Tom widget implements `TomAuthorizable`; `tomGroup:`, `authorizer:` and `uiStateController:` are constructor parameters. |
 | Scopes | `TomScope`, `TomScopeBase`, `TomScopeMixin` | `scope:` is a parameter on every Tom widget, `TomScreenElementsProviderBase` mixes `TomScopeMixin` in, and `TomScopeBase` is the only concrete `TomScope` there is. |
-| Observables | `TomObservable`, `TomObserver`, `TomFunctionObserver`, `TomObject`, `TomClass`, `TomList`, `TomListLifecycleListener`, `TomObservableEnum` | `TomField` extends `TomObject`, `TomListForm` extends `TomObservable` and implements `TomListLifecycleListener`, the list forms bind a `TomList` of a `TomClass`, and observing any of them takes a `TomObserver`. |
+| Observables | `TomObservable`, `TomObservableObservation`, `TomObserver`, `TomFunctionObserver`, `TomObject`, `TomClass`, `TomList`, `TomListLifecycleListener`, `TomObservableEnum` | `TomField` extends `TomObject`, `TomListForm` extends `TomObservable` and implements `TomListLifecycleListener`, the list forms bind a `TomList` of a `TomClass`, and observing any of them takes a `TomObserver`. `TomObservableObservation` is the extension declaring `>>`, the kernel's documented way to register an observer and get back the `TomFunctionObserver` you must retain; an extension reaches a consumer only if its own name is shown, so exporting that return type without the operator leaves `field >> (_) => …` undefined on a `TomField`. |
 | File transfer | `TomFileTransferClient`, `TomFileSource`, `TomFileMetadata`, `TomTransferProgress`, `TomTransferCancellation`, `TomFileTransferException` | `TomFormFileField.transferClient` takes a client, `FileRef` is built from and converts to the client's types, and the client's own methods name the progress, cancellation and error types. |
 
 With the bridge in place, the DONE condition reads as ordinary consumer code:

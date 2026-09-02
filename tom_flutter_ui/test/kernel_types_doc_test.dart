@@ -36,7 +36,10 @@ void main() {
           .map((n) => n.trim())
           .where((n) => n.isNotEmpty)
           .toList();
-      expect(names, hasLength(26));
+      // A tripwire, not a fact worth knowing: widening the bridge is a
+      // deliberate act, so it should require saying so in two places. Bump
+      // this and the count in the doc's "The list" heading together.
+      expect(names, hasLength(27));
 
       final doc = File('doc/kernel_types.md').readAsStringSync();
       final start = doc.indexOf('## The list');

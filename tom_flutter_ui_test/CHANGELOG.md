@@ -1,5 +1,39 @@
 ## Unreleased — cleanup pass
 
+- **The demo app was the one consumer left behind by the `RadioGroup<T>`
+  ancestor migration**, and the omission was larger than it looked.
+  `demo_04_toggles.dart` still passed `groupValue:` / `onChanged:` to its five
+  radio groups — 18 `undefined_named_parameter` errors — and three uses of the
+  kernel's `>>` operator did not resolve. `flutter analyze` reported 21 errors,
+  and four test files never loaded as a result, **`demo_overflow_test.dart`
+  among them**: the layout gate was not missing four demos, it was measuring
+  none. All five groups now sit under a `RadioGroup<String>` that carries the
+  selection, and the radios forward only their `value`. Analyze clean.
+- **The four Phase-2 forms screens are in the harness** (`demos` in
+  `test/demo_harness.dart`: 55 → 59 slugs, all passing the overflow gate).
+  `SelectionVariantsDemo`, `BooleanVariantsDemo`, `ComplexBreakpointsDemo` and
+  `ComplexAuthDemo` are the widest layouts in the package — Demo G is a
+  two-column → one-column collapse — so they were the demos most likely to
+  overflow, not the least.
+- **`test/demo_coverage_test.dart`** — opens each of the four tabs, reads the
+  screen off every `DemoTile` the app builds, and fails when `demos` cannot
+  construct one of the same type. Keeping the two in step was a documented
+  manual step in the "Adding a demo" procedure, and that is exactly the step
+  that was skipped; this replaces the instruction with a failure. The
+  comparison is by runtime type, not by slug — a slug is the harness's own name
+  and proves nothing about the app.
+- **`test/demo_04_radio_group_test.dart`** — pins the migrated wiring, which
+  otherwise fails silently: a radio with no `RadioGroup` ancestor still
+  compiles, renders unselected and does nothing. Asserts each of the five
+  groups starts on its seed and that picking a value moves that group alone.
+- README: the test-file inventory named 5 files when 12 exist. Replaced the
+  enumeration with the discovery rule (`flutter test` takes `*_test.dart`;
+  `screenshots.dart` and `demo_harness.dart` deliberately lack the suffix) so
+  no list is kept there to fall out of date.
+
+  Default `flutter test` gate `+116 / 0`, serial (was `+37 / -4`);
+  `flutter analyze` clean.
+
 - Follows `tom_flutter_ui`'s removal of the `TomUIGroup` alias: the demo app
   names `TomAuthorizationGroup` throughout. `phase2_demos.dart` also drops its
   `tom_core_kernel` import, which became redundant once `tom_flutter_ui` began

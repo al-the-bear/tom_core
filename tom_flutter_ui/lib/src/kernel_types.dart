@@ -66,7 +66,16 @@ export 'package:tom_core_kernel/tom_core_kernel.dart'
         // `TomObservable` and implements `TomListLifecycleListener`, the list
         // forms bind a `TomList` of a `TomClass`, and observing any of them
         // takes a `TomObserver`.
+        //
+        // `TomObservableObservation` is the extension declaring `>>`, the
+        // kernel's documented way to register an observer and get back the
+        // `TomFunctionObserver` you must retain to keep it alive. An extension
+        // reaches a consumer only if its own name is shown, so omitting it
+        // while exporting the type it returns leaves `field >> (_) => …`
+        // undefined on a `TomField` — a form field is UI, and observing one is
+        // the most ordinary thing a consumer of this package does.
         TomObservable,
+        TomObservableObservation,
         TomObserver,
         TomFunctionObserver,
         TomObject,
