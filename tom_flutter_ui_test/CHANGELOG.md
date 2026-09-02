@@ -1,5 +1,34 @@
 ## Unreleased — cleanup pass
 
+- **Two suites were in the gate that could not fail.** `debug_form_test.dart`
+  and `debug_heights_test.dart` mounted a layout, `print()`ed measurements and
+  contained no `expect` between them — three tests whose only cost was their
+  mount time. This is the criterion the package had already applied to the
+  screenshot harness, and written down: `screenshots.dart` explains that it
+  dropped the `_test.dart` suffix because "a suite that always passes has no
+  business in the gating run". The two debug files were the same artefact and
+  had kept the suffix.
+
+  Both are **deleted** rather than renamed, because neither investigation is
+  open. `debug_form_test` was probing "the 3397 px overflow reported in the
+  engine" in `comprehensive_form` — an overflow this same cleanup pass fixed
+  (`acl_19`, `isExpanded` + a 500→540 `ResizableBox`) — and it was never
+  finished: it declared `var flexWidths = <double>[]`, never wrote to it, and
+  printed `flexWidths=[]` unconditionally. The demo itself stays gated against
+  overflow by `demo_overflow_test.dart`, which mounts `acl_19` with the other
+  58, so deleting the probe costs no coverage.
+
+  `debug_heights_test` was the one with something to say, and it is said
+  properly now — see the `tom_flutter_ui` entry of the same date. Its rects
+  were of a raw `AclBuilder`, not of any demo: a library test that had been
+  living in the demo app.
+
+  `debug_shrink_test.dart` keeps its name and its place. It has a real `fail()`
+  for anything that is not the by-design minimum-size overflow, so it is a gate;
+  the `debug_` prefix describes how the file reads, not whether it can fail.
+
+  Gate `+116 → +113`, the three assertionless tests and nothing else;
+  `flutter analyze` clean.
 - **The demo app was the one consumer left behind by the `RadioGroup<T>`
   ancestor migration**, and the omission was larger than it looked.
   `demo_04_toggles.dart` still passed `groupValue:` / `onChanged:` to its five

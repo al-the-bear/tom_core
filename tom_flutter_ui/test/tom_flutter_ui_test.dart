@@ -816,6 +816,136 @@ void main() {
           reason: 'no overflow expected');
     });
 
+    // Why these two exist alongside the edge-flush pair above: an anchor
+    // relation is a statement about two children *relative to each other*, and
+    // `follower.top == anchor.bottom` stays true under any uniform translation
+    // of the whole layout. The tests above also mount inside a fixed
+    // `SizedBox(height: 200)`, which supplies slack the ACL never has to
+    // account for. Between them, the ACL's own vertical extent — and whether it
+    // places a child above its own top edge — is unconstrained.
+    //
+    // That matters most for `alignBottomToTop`, whose follower is positioned by
+    // an offset that is negative before normalisation. The ACL resolves this by
+    // shifting the row so the topmost edge lands at 0 and sizing itself to the
+    // content extent; get it wrong and a caller's first row renders clipped or
+    // with dead space, under unbounded height, where nothing else would catch
+    // it.
+    testWidgets('alignTopToBottom: the ACL wraps to its content extent',
+        (tester) async {
+      const anchorKey = ValueKey('acl-tb-wrap-anchor');
+      const followerKey = ValueKey('acl-tb-wrap-follower');
+      const aclKey = ValueKey('acl-tb-wrap');
+      final anchor = Container(
+        key: anchorKey,
+        color: const Color(0xFFE64A19),
+        width: 160,
+        height: 64,
+      );
+      final follower = Container(
+        key: followerKey,
+        color: const Color(0xFF004D40),
+        width: 160,
+        height: 36,
+      );
+      final acl = KeyedSubtree(
+        key: aclKey,
+        child: AclBuilder()
+            .append(anchor)
+            .setPSize(160, 64)
+            .append(const SizedBox(width: 24))
+            .append(follower)
+            .setPSize(160, 36)
+            .alignTopToBottom(anchor)
+            .build(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            // Unbounded height: the ACL's own height is its answer, not the
+            // parent's.
+            body: SingleChildScrollView(
+              child: SizedBox(width: 800, child: acl),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final aclRect = tester.getRect(find.byKey(aclKey));
+      final anchorRect = tester.getRect(find.byKey(anchorKey));
+      final followerRect = tester.getRect(find.byKey(followerKey));
+
+      expect(aclRect.height, closeTo(100, 0.5),
+          reason: 'anchor 64 + follower 36 stacked edge-flush is a 100px '
+              'content extent; the ACL must be exactly that tall');
+      expect(anchorRect.top, closeTo(aclRect.top, 0.5),
+          reason: 'the topmost child starts at the ACL top — no dead space');
+      expect(followerRect.bottom, closeTo(aclRect.bottom, 0.5),
+          reason: 'the bottommost child ends at the ACL bottom — no overhang');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+        'alignBottomToTop: the ACL normalises the negative offset rather than '
+        'placing the follower above its own top edge', (tester) async {
+      const anchorKey = ValueKey('acl-bt-wrap-anchor');
+      const followerKey = ValueKey('acl-bt-wrap-follower');
+      const aclKey = ValueKey('acl-bt-wrap');
+      final anchor = Container(
+        key: anchorKey,
+        color: const Color(0xFF607D8B),
+        width: 160,
+        height: 64,
+      );
+      final follower = Container(
+        key: followerKey,
+        color: const Color(0xFF6A1B9A),
+        width: 160,
+        height: 36,
+      );
+      final acl = KeyedSubtree(
+        key: aclKey,
+        child: AclBuilder()
+            .append(anchor)
+            .setPSize(160, 64)
+            .append(const SizedBox(width: 24))
+            .append(follower)
+            .setPSize(160, 36)
+            .alignBottomToTop(anchor)
+            .build(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SizedBox(width: 800, child: acl),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final aclRect = tester.getRect(find.byKey(aclKey));
+      final anchorRect = tester.getRect(find.byKey(anchorKey));
+      final followerRect = tester.getRect(find.byKey(followerKey));
+
+      expect(aclRect.height, closeTo(100, 0.5),
+          reason: 'the content extent is still 100px, measured from the '
+              'follower top rather than the anchor top');
+      expect(followerRect.top, closeTo(aclRect.top, 0.5),
+          reason: 'the follower is the topmost child once the relation is '
+              'resolved, so the whole row shifts down to keep it at the ACL '
+              'top instead of at a negative offset');
+      expect(anchorRect.bottom, closeTo(aclRect.bottom, 0.5),
+          reason: 'the anchor, displaced downwards by the shift, ends flush '
+              'with the ACL bottom');
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets(
         'alignTopToBottom gap>0 pushes follower further down; gap<0 overlaps',
         (tester) async {

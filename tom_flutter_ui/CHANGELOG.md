@@ -2,6 +2,32 @@
 
 ### Added
 
+- **Two ACL tests for the vertical extent an anchor relation produces**
+  (`test/tom_flutter_ui_test.dart`, `AclContainer widget`). The existing
+  alignment pair asserts `follower.top == anchor.bottom` and
+  `follower.bottom == anchor.top`, which are statements about two children
+  *relative to each other* and therefore survive any uniform translation of the
+  layout; both also mount inside a fixed `SizedBox(height: 200)`, which hands
+  the ACL slack it never has to account for. Between them the ACL's own height
+  went unasserted, as did whether it places a child above its own top edge.
+
+  The new pair mounts under unbounded height and pins the absolute answer: the
+  ACL is exactly its 100 px content extent in both directions, and under
+  `alignBottomToTop` — where the follower's offset is negative before
+  resolution — the row shifts down so the follower sits at the ACL top rather
+  than at a negative offset, with the anchor flush at the bottom. Get that wrong
+  and a caller's first row renders clipped or with dead space, in exactly the
+  unbounded-height case a scroll view supplies.
+
+  The measurements came from `tom_flutter_ui_test`'s `debug_heights_test.dart`,
+  which had been printing these numbers into the console since the day it was
+  written and asserting none of them. That file built a raw `AclBuilder`, so it
+  was a test of this package sitting in the demo app; it is deleted there, and
+  the contract it was pointed at is asserted here instead.
+
+  Both assertions were falsified before being trusted — the extent one against
+  164 px (reported the real 100), the normalisation one against a −36 px offset
+  (reported 0). Gate `+2410`, serial; `flutter analyze` clean.
 - **`TomObservableObservation` on the kernel bridge** (`lib/src/kernel_types.dart`,
   26 → 27 names). It is the extension declaring `>>`, the kernel's documented
   way to register an observer and get back the `TomFunctionObserver` you must
