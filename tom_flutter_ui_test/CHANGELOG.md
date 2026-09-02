@@ -1,5 +1,52 @@
 ## Unreleased — cleanup pass
 
+- **The 1.0.0 entry's demo counts were wrong when they were written, and are
+  corrected rather than left standing as history.** It claimed "27 layout
+  demos"; `lib/acl_demos/` holds 26 screens and four support files (the barrel,
+  `demo_helpers`, `expanding_box`, `resizable_box`), and `doc/demo_catalogue.md`,
+  the completion document and `AclDemosTab` have all said 26 throughout.
+
+  The distinction matters, because a release log normally *should* be left
+  alone — an earlier repair in this same pass declined to touch it on exactly
+  that ground. So the premise was checked instead of assumed: `git log
+  --diff-filter=DR` over `lib/acl_demos/` is **empty** — no ACL demo has ever
+  been deleted or renamed — and every one was added in `1b501689`
+  (2026-03-31), two and a half months *before* `64a13a59` (2026-06-16) wrote
+  the entry. At that commit `AclDemosTab` already listed 26 tiles. There is no
+  state of this repository in which 27 was true, so this is a miscount, not a
+  record of a former shape, and correcting it removes an error instead of
+  falsifying a release.
+
+  The same entry's widget bullet is corrected on the same evidence: it paired
+  "27 per-category widget showcases" with the range `demo_01…demo_28`, then
+  added "plus the resource-resolution and scoped-element-provider demos" —
+  which double-counted, since `demo_21` and `demo_26` are inside the range it
+  had just given. It now states the 28-screens / 27-tab-entries split and the
+  reason for it, as the README does.
+- **The recorded gate is now the command that runs.** An Unreleased entry
+  recorded `dart analyze` as the verification for what is a Flutter
+  application, where `flutter analyze` is the gate. (`dart analyze` does run
+  here and reports "No issues found!" — so nothing was being hidden; the
+  CHANGELOG simply named a verification other than the one performed.)
+- **`tool/check_demo_counts.py`** — the third defect filed against this one
+  number, so the number is now checked. Two earlier repairs each restated a
+  count that nothing verified, which is why there was a third. The gate reads
+  the demo classes out of `lib/` and the tiles out of `lib/main.dart`, and
+  holds the README's counts table to both.
+
+  It reports **screens and tiles side by side** because a bare count is
+  ambiguous *even when it is right*: 28 widget screens produce 29 widget tiles,
+  and the app declares 59 screens while offering 60. A document must now say
+  which it means. Counting classes rather than files is likewise deliberate —
+  `lib/forms_demos/` packs five demos into two files, so a file count gets that
+  row wrong.
+
+  Falsified in six directions before being trusted: a wrong screen count, a
+  wrong tile count, a deleted row, a demo added to `lib/` but not to the
+  document, a tile naming a class no folder declares, and a demo folder renamed
+  away. The fifth and sixth exposed a defect in the checker itself — the two
+  source-side branches counted a fault but printed nothing, so the run exited
+  non-zero with no reason on stdout. Fixed, then re-provoked to confirm.
 - **The README now names all eleven gating suites, and the list is gated.** An
   earlier entry below records replacing the README's stale five-name list with
   the discovery rule — "`flutter test` takes `*_test.dart`; no list is kept here
@@ -117,7 +164,8 @@
   (a manual capture-and-diff harness, per its own docstring not a gate) and
   fixed its fake-async raster deadlock via `tester.runAsync()`; drained the
   by-design overflow in `debug_shrink_test.dart` so its measurement loop
-  completes. `dart analyze` clean; default `flutter test` gate `+6 / 0`, serial.
+  completes. `flutter analyze` clean; default `flutter test` gate `+6 / 0`,
+  serial.
 - Layout gate: extracted the demo mount into `test/demo_harness.dart` and added
   `test/demo_overflow_test.dart`, which fails when a demo overflows the
   1280x2400 viewport. The gate measures the Ahem placeholder font — wider than
@@ -139,12 +187,14 @@
   Authorization/Resources) exercising the `tom_flutter_ui` Advanced Container
   Layout engine, the Tom-wrapped Material/Cupertino widget set, and the form /
   authorization framework, driven by `tom_core_kernel` resources and security.
-- ACL Demos: 27 layout demos (rows, alignment, expand flags, spacing,
+- ACL Demos: 26 layout demos (rows, alignment, expand flags, spacing,
   min/preferred/max sizing, character-width sizing, reference and cross-row
   constraints, titled/bordered groups, nested containers, responsive shrink/grow,
   row breakpoints, fluent `AclBuilder`).
-- Widget Demos: 27 per-category widget showcases (`demo_01…demo_28`) plus the
-  resource-resolution and scoped-element-provider demos.
+- Widget Demos: 28 per-category widget screens (`demo_01…demo_28`), of which the
+  tab lists `demo_01…demo_27`; `demo_28_authorization.dart` and a second entry
+  for `demo_21_resource_resolution.dart` are surfaced from the
+  Authorization/Resources tab instead.
 - Forms/Actions and Authorization/Resources tabs covering `TomForm` validation,
   selection/boolean variants, `TomFormStyleScope` breakpoints, action/auth
   gating, and `TomUIGroup` authorization.

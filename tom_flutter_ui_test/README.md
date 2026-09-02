@@ -28,6 +28,27 @@ counts (27 + 2) are both right, and differ by the one screen that appears twice.
 `demo_coverage_test.dart` compares tiles to harness entries by runtime type, not
 by name, for exactly this reason.
 
+Because a demo can be counted two ways that are both correct, the counts are
+given as a pair — screens declared in `lib/`, tiles offered by `lib/main.dart` —
+and checked against the source by `tool/check_demo_counts.py`. A tile is
+attributed to the folder that declares its screen class, so the two
+Authorization/Resources tiles appear in the Widget Demos row rather than in a
+row of their own:
+
+<!-- demo-counts:begin -->
+
+| Group | Screens | Tiles | Declared in |
+| --- | --- | --- | --- |
+| ACL Demos | 26 | 26 | `lib/acl_demos/` |
+| Widget Demos | 28 | 29 | `lib/widget_demos/` |
+| Forms/Actions | 5 | 5 | `lib/forms_demos/` |
+
+<!-- demo-counts:end -->
+
+That is **59 demo screens and 60 demo tiles**. A screen is a top-level class
+whose name ends in `Demo`; counting files instead gets the Forms/Actions row
+wrong, because `lib/forms_demos/` packs its five demos into two files.
+
 ## Running it
 
 ```bash
