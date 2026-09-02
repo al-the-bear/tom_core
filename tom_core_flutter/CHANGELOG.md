@@ -86,6 +86,43 @@
 
 ### Fixed
 
+- **The removal record paraphrased away both halves of a cross-reference the
+  two bookmark readmes made to each other (tcinc1115).** One sentence in
+  `tom_core_flutter_removed_modules_changes.md` summarised the deleted
+  `qrcode/readme.md` as "three bullets — generate, scan, scan-from-picture".
+  The count was right and the shape was wrong: it split bullet 1 ("Generate and
+  scan QR codes") into two items and dropped bullet 2, which was "Camera
+  integration?". That bullet is the one asking for the capability the record's
+  own *Camera → not provided* section and the first entry of *What is still
+  open* both answer with "no", so the paraphrase deleted the evidence tying the
+  two removed bookmarks together.
+
+  The fault was larger than the one sentence. The neighbouring `camera` summary
+  named two of that readme's four bullets, and one of the two it dropped was
+  "check how to link this with QR-code recognition" — the *other* half of the
+  same reciprocal reference. Fixing only the half named above would have left
+  the identical loss one clause earlier. All seven `camera` and `qrcode` bullets
+  are now quoted verbatim, `localstorage`'s four headings and eight links are
+  stated as such, and a closing paragraph says plainly that the two bookmarks
+  were asking one question, not two.
+
+  Drafting it reproduced the fault being fixed: the first `localstorage`
+  sentence enumerated six links where the file has eight. It was caught by
+  counting the file rather than re-reading the sentence — which is the only
+  method that works here, and the reason the section now carries a
+  `git show 3bdb9f0:./lib/src/tomclient/<dir>/readme.md` pointer. This is the
+  sole document in the completion corpus whose subject is *deleted* files;
+  everywhere else a reader can open the source, and only here does a quotation
+  have no reachable original to be checked against.
+
+  No gate was added, on measurement. A rule judging quoted fragments against
+  repo content finds 1002 across 75 documents, 246 of them four words or longer,
+  and the overwhelming majority of those 246 are the author's own rhetorical
+  questions ("can I serve traffic", "where do files live") which have no source
+  to match. ~240 false positives on a clean tree puts it in the same band as the
+  cross-library dartdoc rule (353), "name every public type" (519) and markdown
+  line-citations (173) — all three declined here for the same reason.
+
 - **The removal record covered four removed directories; a fifth was invisible
   to the method that built it (tcinc1114).**
   `tom_core_flutter_removed_modules_changes.md` scoped itself to "four
