@@ -51,6 +51,46 @@
 
 ### Fixed
 
+- **Two completion records promised "verbatim" for blocks that were not
+  (tcinc1113).** The removal record introduced its `AdminLoginForm` block as
+  `advanced_authadmin_client/lib/forms/admin_login_form.dart` "verbatim, minus
+  its dartdoc", but the block also dropped
+  `import '../domain/admin_login_credentials.dart';`, without which
+  `TomForm<AdminLoginCredentials>` has no declaration for its type argument —
+  so the snippet a reader is invited to copy does not compile as printed.
+  Diffing the block against the file line by line found three deltas, not one:
+  the missing import, the `library;` directive, and an inter-field blank line.
+  The latter two are legitimate consequences of removing dartdoc (`library;`
+  exists only to carry it; the blank exists only because each field has it), so
+  the import was the sole real defect. Both DONE WHEN branches are now
+  satisfied rather than the cheaper one — the import is restored *and* the
+  introduction names what was elided.
+
+  The endpoints record carried the same claim shape and was checked the same
+  way: its readme quick-start is "verbatim identical, minus dartdoc" to the
+  `TodoApi`/`TodoApiServer` pair in `test/fixtures/reflection_fixture.dart`.
+  Measured, `TodoApiServer` is identical and `TodoApi` differs by one dartdoc
+  line; the wording now says so.
+
+  **No gate was added, and the numbers say why.** Two detectors were built and
+  measured before declining. A prose detector (a `dart` fence preceded within
+  six lines by "verbatim" plus a backticked resolvable `.dart` path) raises 8
+  candidates for 1 true positive — one false positive comes from a "verbatim"
+  sitting in an unrelated table row six lines above an unrelated fence, which
+  only natural-language judgement separates. A content detector (an inverted
+  line index over 1499 files identifies the reproduced file by ≥80 % line
+  overlap, then requires the block to carry that file's imports) reports 5
+  blocks on a clean tree, and both firings inspected are excerpts that never
+  claimed to be reproductions — one is introduced with "this is how
+  `test/runtime_test.dart` reaches it", the other is a readme Quick Start.
+  `tool/check_source_citations.py` gates a population of one on the argument
+  that "the rule fires zero times on the current tree, so switching it on adds
+  no triage burden at all"; it can afford that because its detector is
+  syntactic (`foo.dart:214`). Neither detector here is. This is the same noise
+  ground on which this repo already declined the cross-library dartdoc rule at
+  353, "name every public type" at 519, and markdown line-citations at 173 — a
+  principled decline, not an unexamined one.
+
 - **A shipping sample's dartdoc oriented the reader against deleted types
   (tcinc1112).** `advanced_authadmin_client/lib/forms/admin_login_form.dart`
   described its fields as "not the legacy `TomFormOld`/`TomEmailField` API" —
