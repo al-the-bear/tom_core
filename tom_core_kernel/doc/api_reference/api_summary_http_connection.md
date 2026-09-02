@@ -312,6 +312,12 @@ type parameters describe the expected server response and the request body type.
 
 - **Type Parameters:** `ReturnType` — the expected response type; `RequestType` — the request body type.
 
+Both are reflection-first DTOs: `@tomReflectable` with plain non-`final` fields
+and no hand-written codec. Serialization is delegated to `tomReflectionInfo`,
+so the same type crosses the wire identically on the server side. A `final`
+member cannot be restored by a reflective deserializer, and an all-`final`
+class is refused outbound with `reflector.type.all_final`.
+
 ##### Constructors
 
 ```dart

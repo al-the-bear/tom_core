@@ -174,9 +174,14 @@ round-trip via reflection.
 - **G-DTO-2** — DTO members are **non-`final`**; declare them as plain mutable
   fields. This is not a style preference: a `final` field cannot be assigned
   after construction, so a reflective deserializer can never populate it. An
-  all-`final` DTO is un-deserializable by construction, and outbound it
-  serializes to an empty map. **`final` members in request and response classes
-  are discouraged throughout tom_core.**
+  all-`final` DTO is un-deserializable by construction, and the framework
+  refuses it in *both* directions rather than degrading quietly — inbound, a
+  payload key naming a `final` member raises
+  `reflection.set.unexpected_condition_final_static_private`; outbound, a class
+  whose every wire member was skipped for being `final` raises
+  `reflector.type.all_final` instead of rendering an empty map. **`final`
+  members in request and response classes are discouraged throughout
+  tom_core.**
 - **G-DTO-3** — A DTO SHOULD have **no `toJson`/`fromJson` at all**. When one is
   genuinely required (a real technical reason — e.g. a legacy external wire
   shape), it MUST contain **no business or security logic**. It is a shape

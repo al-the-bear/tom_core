@@ -32,9 +32,16 @@ the wire. Note the consequence for `final`: a `final` field cannot be assigned
 after construction, so a reflective deserializer can never populate it. An
 immutable all-`final` value object is un-deserializable by construction, which is
 why **`final` members in request and response classes are discouraged**
-throughout Tom Core.
+throughout Tom Core. The reflection module refuses such a class in both
+directions rather than degrading quietly: inbound, a payload key naming a
+`final` member raises
+`reflection.set.unexpected_condition_final_static_private`; outbound, a class
+whose every wire member was skipped for being `final` raises
+`reflector.type.all_final` instead of returning `{}`.
 
-`TomJsonSerializable` is for the remainder — a type that genuinely must control
+Implementing `TomJsonSerializable` is *not* the way to keep an all-`final` DTO —
+that trades a diagnosable refusal for a hand-written codec the guidelines
+discourage (G-DTO-2, G-DTO-3). It is for the remainder — a type that genuinely must control
 its own JSON, typically to match an external wire shape it does not own. Its
 value is that the declaration is **cheap to detect**: an `is` check, not a
 speculative member invocation with the failure caught to decide whether the

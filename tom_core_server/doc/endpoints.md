@@ -145,6 +145,16 @@ the same way — this is how `GET /projects?workspaceId=` binds a bare
 body (deserialised onto the parameter type via reflection, merged with path
 params), and finally a `Map`-typed context entry.
 
+The body strategy is why a request DTO is **reflection-first**: it is filled by
+`tomReflectionInfo.setValues`, so the type needs `@tomReflectable` and **plain
+non-`final` members** — nothing else. A `final` member cannot be assigned after
+construction, so a payload key naming one does not quietly land elsewhere, it
+fails the request with
+`reflection.set.unexpected_condition_final_static_private`. `final` members in
+request and response classes are discouraged throughout Tom Core for that
+reason; the pipeline inherits the rule rather than restating it, because
+binding is the reflection module's contract and not a policy of its own.
+
 ### Parameters that cannot be filled
 
 The result is a *positional* argument list, and a positional list has no way to

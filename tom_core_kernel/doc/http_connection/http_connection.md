@@ -149,6 +149,20 @@ TomApiEndpoint<OrderResponse, CreateOrderRequest>(
 )
 ```
 
+The two type parameters are the response and request DTOs, and they are
+**reflection-first**: annotate each with `@tomReflectable` and declare **plain
+non-`final` fields**, with no hand-written `toJson`/`fromJson`. This module does
+not serialize them itself — it hands them to `tomReflectionInfo`, the same pair
+of entry points the server pipeline uses, so a type that round-trips here
+round-trips identically there. A `final` member cannot be assigned after
+construction, so reflection can never restore it, and the framework says so in
+both directions rather than degrading quietly: a response payload naming a
+`final` member fails to decode with
+`reflection.set.unexpected_condition_final_static_private`, and a request DTO
+whose members are *all* `final` fails to encode with
+`reflector.type.all_final`. See the
+[Reflection Module](../reflection/reflection.md) for the full precedence.
+
 #### Path and Query Parameters
 
 `urlParameterMapping` binds both halves of a URL to fields of the request DTO.
@@ -867,7 +881,10 @@ This module depends on:
 - [**Reflection Module**](../reflection/reflection.md): the global
   `tomReflectionInfo` — `createInstance`, `convertToJsonString` and
   `convertFromJsonString`, which *are* the send path. A DTO sent through this
-  module needs generated reflection data or the round trip produces nothing
+  module needs generated reflection data; without it the send fails loudly —
+  `reflector.reflect.not_reflectable` for a class with no generated data at all,
+  `reflector.type.not_annotated` for one that reflects but carries no
+  `@tomReflector` — rather than sending something empty
 - **Runtime Module** (`tom_basics`): `TomPlatformUtils.current.httpClient()`,
   which is how a channel obtains a platform-appropriate client
 - **`package:http`**: `Client`, `Response` and `StreamedResponse`, the transport

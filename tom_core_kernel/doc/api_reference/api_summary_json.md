@@ -1,8 +1,9 @@
 # Tom Core Kernel API Reference: JSON Module
 
 A small set of JSON helpers: an explicit, reflection-free serialization contract
-for immutable value objects, deep-merge / traversal / path-access / profile
-injection utilities for nested map trees, and pretty-printing formatters.
+for the types that cannot take the reflected path, deep-merge / traversal /
+path-access / profile injection utilities for nested map trees, and
+pretty-printing formatters.
 
 ## Table of Contents
 
@@ -26,7 +27,10 @@ not own. Its value is that the declaration is a **cheap type test**: consumers
 resolve it with an `is` check before the reflected field walk, rather than
 probing for a speculative member. (`final` members are discouraged on wire types:
 a `final` field is unassignable after construction, so reflection can never
-populate it.)
+populate it — and a class whose members are *all* `final` is refused outbound
+with `reflector.type.all_final` rather than rendered as an empty map.
+Implementing this interface is not the way to keep such a class: it is for a
+type whose wire shape belongs to someone else.)
 
 `map_merge_and_process.dart` exposes top-level functions for working with nested
 `Map<String, dynamic>` trees: one-sided deep merge (`mergeMapsOneSided`),
