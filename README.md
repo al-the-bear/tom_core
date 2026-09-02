@@ -179,6 +179,9 @@ package lives in that package's own `tool/`.
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
+| [`tool/check_kernel_bridge.py`](tool/check_kernel_bridge.py) | Audits the kernel bridge registrations against the types the bridge declares |
+| [`tool/check_demo_counts.py`](tool/check_demo_counts.py) | Pins the demo screen/tile counts printed in `tom_flutter_ui_test/README.md` to the source |
+| [`tool/check_pubspec_boilerplate.py`](tool/check_pubspec_boilerplate.py) | Finds pubspecs still carrying a `flutter create` / `dart create` placeholder description or its tutorial commentary |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
@@ -558,6 +561,46 @@ stale checkout, not like a file that is present, visually correct, and rejected
 over two characters in a comment nobody reads. Well-formedness is decidable, so
 the check is total for the fault it names — and it fires zero times on the nine
 figures today.
+
+```bash
+python3 tool/check_kernel_bridge.py    # the whole repository
+```
+
+Audits the kernel bridge: every type the bridge registers should appear in a
+declaration position, and the companions that legitimately do not are named
+explicitly rather than passed silently.
+
+```bash
+python3 tool/check_demo_counts.py      # the whole repository
+```
+
+Pins the demo counts in `tom_flutter_ui_test/README.md` to `lib/`. A demo can be
+counted two ways that are both correct — screens declared in `lib/`, tiles
+offered by `lib/main.dart` — and three separate filings had each restated an
+unchecked number. The counts live between `<!-- demo-counts:begin -->` markers
+so the check compares a table, not prose.
+
+```bash
+python3 tool/check_pubspec_boilerplate.py                  # the whole repository
+python3 tool/check_pubspec_boilerplate.py tom_core_samples # one subtree
+```
+
+Finds pubspecs still carrying generator boilerplate: a placeholder `description:`
+("A new Flutter project."), or the tutorial commentary explaining versioning,
+`pub upgrade`, `flutter_lints`, and how one *would* declare assets and fonts.
+
+The description is the one place a tool reads the package's own summary, so a
+placeholder there is the package failing to say what it is however well its
+README reads. The commentary is worse than merely useless: in
+`tom_flutter_ui_test` it was 62 of 100 lines, and its commented-out asset block
+described an asset bundle the package does not have.
+
+Unlike a prose slip this defect is machine-generated, reproducibly, by the
+standard way packages are created — so every future `flutter create` reintroduces
+it in full. The match is exact rather than heuristic: every sentinel was verified
+verbatim against freshly generated `flutter create` (app and package) and
+`dart create` (package and console) output, so a hand-written description is
+never a false positive.
 
 ## License
 

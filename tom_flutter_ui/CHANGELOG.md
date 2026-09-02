@@ -1,5 +1,21 @@
 ## Unreleased
 
+### Changed
+
+- **Dropped the `flutter create` tutorial commentary from the pubspec.** The
+  library's own description and dependency comments were already specific and
+  are untouched; the last 37 lines were not. They were the generator's
+  commented-out `assets:` and `fonts:` examples under an otherwise empty
+  `flutter:` key, explaining how one *would* declare an asset bundle this
+  library does not have and does not want — it ships no assets, no fonts, and
+  leaves `uses-material-design` to the consuming application, which is now
+  stated in one line instead of implied by 37 lines of unrelated example.
+
+  Found by the new `tool/check_pubspec_boilerplate.py` on its first run, not by
+  the search that preceded it: that search looked for placeholder *descriptions*
+  and this package has a real one, so the commentary sitting underneath it went
+  unseen. `pubspec.lock` is byte-identical after re-resolution.
+
 ### Added
 
 - **Two ACL tests for the vertical extent an anchor relation produces**

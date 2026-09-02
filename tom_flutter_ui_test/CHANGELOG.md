@@ -1,5 +1,35 @@
 ## Unreleased — cleanup pass
 
+- **The pubspec was still the `flutter create` output, description and all.**
+  `description: "A new Flutter project."` sat at line 2 of a package whose
+  README, CHANGELOG, catalogue and completion document all describe it
+  precisely. The description is the one place a *tool* reads the package's own
+  summary, so however well the prose reads, the package was failing to say what
+  it is.
+
+  How much of the file was template was worth measuring rather than estimating.
+  Diffed against a freshly generated `flutter create -t app` pubspec, it was
+  **byte-identical except for twelve added lines** — the name, the SDK
+  constraint, `flutter_localizations`, `shared_preferences` and the two path
+  dependencies. Everything else, including 62 of the file's 100 lines, was
+  untouched generator prose: the versioning explainer, the `pub upgrade`
+  advice, the `flutter_lints` paragraph, and commented-out `assets:` and
+  `fonts:` blocks in a package that has no `assets/` directory at all.
+
+  Now 41 lines with a real description and four comments that each say *why* a
+  dependency is present, modelled on the sibling `tom_flutter_form_test`, which
+  had already been through this (tcinc1099). Every dependency was confirmed
+  used before being written up — `cupertino_icons` by demos 05, 13, 24 and 25,
+  `shared_preferences` and `flutter_localizations` by `main.dart` and
+  `locale_settings.dart`. That nothing load-bearing left with the prose is
+  established two ways: `pubspec.lock` is byte-identical after re-resolution,
+  and comment-stripped, the old and new files differ in the description alone.
+
+  The description deliberately carries **no demo counts**.
+  `check_demo_counts.py` audits `README.md` only, so a count here would be an
+  ungated second copy of exactly the number that has already been miscounted
+  three times.
+
 - **Both demo-logic suites described a coverage landscape that had moved under
   them.** A suite's opening docstring is the argument for why it exists, so the
   claim it makes about what came before is the one part a reader is most likely
